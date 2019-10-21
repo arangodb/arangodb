@@ -1,0 +1,60 @@
+[section:benchmarks Benchmarks]
+
+The library is designed to be fast. When configured correctly, it is one of the fastest libraries on the market. If you find a library that is faster than Boost.Histogram, please submit an issue on Github. We care about performance.
+
+That being said, the time spend in filling the histogram is usually not the bottleneck of an application. Only in processing of really large data sets the performance of the histogram can be important.
+
+All benchmarks are compiled on a laptop with a 2,9 GHz Intel Core i5 processor with Apple LLVM (clang-1001.0.46.4) and the flags `-DNDEBUG -O3 -funsafe-math-optimizations`. Adding `-fno-exceptions -fno-rtti` would increase the Boost.Histogram performance by another (10-20) %, but this is not done here since the ROOT histograms do not compile with these options.
+
+[section:fill_performance Fill performance]
+
+The fill performance of different configurations of Boost.Histogram are compared with histogram classes and functions from other libraries. 6 million random numbers from a uniform and a normal distribution are filled into histograms with 1, 2, 3, and 6 axes. 100 bins per axis are used for 1, 2, 3 axes. 10 bins per axis for the case with 6 axes. Shown is the average computing time per number in nanoseconds.
+
+There is one bar for each benchmark, and the upper end has a hatched part. The full bar is the result when the histograms are filled with random normally distributed data that falls outside of the axis domain in about 10 % of the cases. This makes the branch predictors in the CPU fail every now and then, which degrades performance. The bar without the hatched part is the result when the histograms are filled with uniform random numbers which are always inside the axis range.
+
+[$../fill_performance.svg]
+
+[variablelist
+	[[root] [[@https://root.cern.ch ROOT classes] (`TH1I` for 1D, `TH2I` for 2D, `TH3I` for 3D and `THnI` for 6D)]]
+
+	[[gsl] [[@https://www.gnu.org/software/gsl/doc/html/histogram.html GSL histograms] for 1D and 2D]]
+
+	[[boost-SS] [Histogram with `std::tuple<axis::regular<>>` and `std::vector<int>`]]
+
+	[[boost-SD] [Histogram with `std::tuple<axis::regular<>>` with [classref boost::histogram::unlimited_storage]]]
+
+	[[boost-DS] [Histogram with `std::vector<axis::variant<axis::regular<>>>` with `std::vector<int>`]]
+
+	[[boost-DD] [Histogram with `std::vector<axis::variant<axis::regular<>>>` with [classref boost::histogram::unlimited_storage]]]
+]
+
+Boost.Histogram is mostly faster than the competition. Simultaneously, it is much more flexible, since the axis and storage types can be customized.
+
+A histogram with compile-time configured axes is always faster than one with run-time configured axes. [classref boost::histogram::unlimited_storage] is faster than a `std::vector<int>` for histograms with many bins, because it uses the cache more effectively due to its smaller memory consumption per bin. If the number of bins is small, it is slower because of the overhead of handling memory dynamically.
+
+[endsect]
+
+[section:iteration_performance Iteration performance]
+
+Boost.Histogram provides the [funcref boost::histogram::indexed] range generator for convenient iteration over the histogram cells. Using the range generator is very convenient and it is faster than by writing nested for-loops.
+```
+// nested for loops over 2d histogram
+for (int i = 0; i < h.axis(0).size(); ++i) {
+  for (int j = 0; j < h.axis(1).size(); ++j) {
+    std::cout << i << " " << j << " " << h.at(i, j) << std::endl;
+  }
+}
+
+// same, with indexed range generator
+for (auto&& x : boost::histogram::indexed(h)) {
+  std::cout << x.index(0) << " " << x.index(1) << " " << *x << std::endl;
+}
+```
+
+The access time per bin is compared for these two iteration strategies for histograms that hold the axes in a `std::tuple` (tuple), in a `std::vector` (vector), and in a `std::vector<boost::histogram::axis::variant>` (vector of variants). The access time per bin is measured for axis with 4 to 128 bins per axis.
+
+[$../iteration_performance.svg]
+
+[endsect]
+
+[endsect]

@@ -1,0 +1,12 @@
+boost-no-inspect
+
+* Adding Doxygen comments to describe briefly the files, functions etc (so users can find which include files may be needed?)
+* I don't understand the timing figures given in Performance section.   Some items refer to MSVC express 10, other detailed tables in Boost 1.55 to 11? No Clang results?
+
+* You are not using links to take from the text to the appropriate functions etc
+in the  reference section.  Users will find this helpful too.
+
+* The reference section could be much improved by adding brief Doxygen comments to
+the files, functions etc.
+
+

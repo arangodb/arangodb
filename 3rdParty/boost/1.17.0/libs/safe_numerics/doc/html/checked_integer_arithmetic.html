@@ -1,0 +1,112 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>safe_compare&lt;T, U&gt;</title>
+<link rel="stylesheet" href="boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="index.html" title="Safe Numerics">
+<link rel="up" href="library_implementation.html" title="Library Implementation">
+<link rel="prev" href="interval.html" title="interval&lt;R&gt;">
+<link rel="next" href="performance_tests.html" title="Performance Tests">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img href="index.html" height="164px" src="pre-boost.jpg" alt="Library Documentation Index"></td>
+<td><h2>Safe Numerics</h2></td>
+</tr></table>
+<div class="spirit-nav">
+<a accesskey="p" href="interval.html"><img src="images/prev.png" alt="Prev"></a><a accesskey="u" href="library_implementation.html"><img src="images/up.png" alt="Up"></a><a accesskey="h" href="index.html"><img src="images/home.png" alt="Home"></a><a accesskey="n" href="performance_tests.html"><img src="images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="safe_numerics.checked_integer_arithmetic"></a>safe_compare&lt;T, U&gt;</h3></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="checked_integer_arithmetic.html#idm130201926816">Synopsis</a></span></dt>
+<dt><span class="section"><a href="checked_integer_arithmetic.html#idm130201838640">Description</a></span></dt>
+<dt><span class="section"><a href="checked_integer_arithmetic.html#idm130201831296">Type requirements</a></span></dt>
+<dt><span class="section"><a href="checked_integer_arithmetic.html#idm130201827792">Complexity</a></span></dt>
+<dt><span class="section"><a href="checked_integer_arithmetic.html#idm130201826560">Example of use</a></span></dt>
+<dt><span class="section"><a href="checked_integer_arithmetic.html#idm130201795904">Header</a></span></dt>
+</dl></div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="idm130201926816"></a>Synopsis</h4></div></div></div>
+<pre class="programlisting"><span class="comment">// compare any pair of integers</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">U</span><span class="special">&gt;</span>
+<span class="keyword">bool</span> <span class="keyword">constexpr</span> <span class="identifier">safe_compare</span><span class="special">::</span><span class="identifier">less_than</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">T</span> <span class="special">&amp;</span> <span class="identifier">lhs</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">U</span> <span class="special">&amp;</span> <span class="identifier">rhs</span><span class="special">)</span><span class="special">;</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">U</span><span class="special">&gt;</span>
+<span class="keyword">bool</span> <span class="keyword">constexpr</span> <span class="identifier">safe_compare</span><span class="special">::</span><span class="identifier">greater_than</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">T</span> <span class="special">&amp;</span> <span class="identifier">lhs</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">U</span> <span class="special">&amp;</span> <span class="identifier">rhs</span><span class="special">)</span><span class="special">;</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">U</span><span class="special">&gt;</span>
+<span class="keyword">bool</span> <span class="keyword">constexpr</span> <span class="identifier">safe_compare</span><span class="special">::</span><span class="identifier">less_than_equal</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">T</span> <span class="special">&amp;</span> <span class="identifier">lhs</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">U</span> <span class="special">&amp;</span> <span class="identifier">rhs</span><span class="special">)</span><span class="special">;</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">U</span><span class="special">&gt;</span>
+<span class="keyword">bool</span> <span class="keyword">constexpr</span> <span class="identifier">safe_compare</span><span class="special">::</span><span class="identifier">greater_than_equal</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">T</span> <span class="special">&amp;</span> <span class="identifier">lhs</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">U</span> <span class="special">&amp;</span> <span class="identifier">rhs</span><span class="special">)</span><span class="special">;</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">U</span><span class="special">&gt;</span>
+<span class="keyword">bool</span> <span class="keyword">constexpr</span> <span class="identifier">safe_compare</span><span class="special">::</span><span class="identifier">equal</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">T</span> <span class="special">&amp;</span> <span class="identifier">lhs</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">U</span> <span class="special">&amp;</span> <span class="identifier">rhs</span><span class="special">)</span><span class="special">;</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">U</span><span class="special">&gt;</span>
+<span class="keyword">bool</span> <span class="keyword">constexpr</span> <span class="identifier">safe_compare</span><span class="special">::</span><span class="identifier">not_equal</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">T</span> <span class="special">&amp;</span> <span class="identifier">lhs</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">U</span> <span class="special">&amp;</span> <span class="identifier">rhs</span><span class="special">)</span><span class="special">;</span></pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="idm130201838640"></a>Description</h4></div></div></div>
+<p>Compare two primitive integers. These functions will return a
+    correct result regardless of the type of the operands. Specifically it is
+    guaranteed to return the correct arithmetic result when comparing signed
+    and unsigned types of any size. It does not follow the standard C/C++
+    procedure of converting the operands to some common type then doing the
+    compare. So it is not equivalent to the C/C++ binary operations
+    <code class="computeroutput">&lt;</code>, <code class="computeroutput">&gt;</code>, <code class="computeroutput"><code class="computeroutput">&gt;</code>=</code>,
+    <code class="computeroutput">&lt;=</code>, <code class="computeroutput">==</code>, <code class="computeroutput">!=</code> and shouldn't be used
+    by user programs which should be portable to standard C/C++ integer
+    arithmetic. The functions are free functions defined inside the namespace
+    <code class="computeroutput">boost::numeric::safe_compare</code>.</p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="idm130201831296"></a>Type requirements</h4></div></div></div>
+<p>All template parameters of the functions must be C/C++ built-in
+    integer types, <code class="computeroutput"><code class="computeroutput">char</code></code>,
+    <code class="computeroutput"><code class="computeroutput">int</code></code> ....</p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="idm130201827792"></a>Complexity</h4></div></div></div>
+<p>Each function performs one and only one arithmetic operation.</p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="idm130201826560"></a>Example of use</h4></div></div></div>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">cassert</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">safe_compare</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="keyword">using</span> <span class="keyword">namespace</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">numeric</span><span class="special">;</span>
+<span class="keyword">const</span> <span class="keyword">short</span> <span class="keyword">int</span> <span class="identifier">x</span> <span class="special">=</span> <span class="special">-</span><span class="number">64</span><span class="special">;</span>
+<span class="keyword">const</span> <span class="keyword">unsigned</span> <span class="keyword">int</span> <span class="identifier">y</span> <span class="special">=</span> <span class="number">42000</span><span class="special">;</span>
+
+<span class="identifier">assert</span><span class="special">(</span><span class="identifier">x</span> <span class="special">&lt;</span> <span class="identifier">y</span><span class="special">)</span><span class="special">;</span> <span class="comment">// fails</span>
+<span class="identifier">assert</span><span class="special">(</span><span class="identifier">safe_compare</span><span class="special">::</span><span class="identifier">less_than</span><span class="special">(</span><span class="identifier">x</span><span class="special">,</span> <span class="identifier">y</span><span class="special">)</span><span class="special">)</span><span class="special">;</span> <span class="comment">// OK</span></pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="idm130201795904"></a>Header</h4></div></div></div>
+<p><a href="../../include/safe_compare.hpp" target="_top"><code class="computeroutput">#include
+    &lt;boost/numeric/safe_numerics/safe_compare.hpp&gt;
+    </code></a></p>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2012-2018 Robert Ramey<p><a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">Subject to Boost
+      Software License</a></p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="interval.html"><img src="images/prev.png" alt="Prev"></a><a accesskey="u" href="library_implementation.html"><img src="images/up.png" alt="Up"></a><a accesskey="h" href="index.html"><img src="images/home.png" alt="Home"></a><a accesskey="n" href="performance_tests.html"><img src="images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

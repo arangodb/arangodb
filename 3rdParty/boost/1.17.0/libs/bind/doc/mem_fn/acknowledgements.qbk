@@ -1,0 +1,28 @@
+﻿[/
+ /  Copyright (c) 2001, 2002 Peter Dimov and Multi Media Ltd.
+ /  Copyright (c) 2003-2005 Peter Dimov
+ /
+ / Distributed under the Boost Software License, Version 1.0. (See
+ / accompanying file LICENSE_1_0.txt or copy at
+ / http://www.boost.org/LICENSE_1_0.txt)
+ /]
+
+[section:acknowledgements Acknowledgements]
+
+* Rene Jager's initial suggestion of using traits classes to make `mem_fn`
+adapt to user-defined smart pointers inspired the `get_pointer`-based design.
+
+* Numerous improvements were suggested during the formal review period by
+Richard Crossley, Jens Maurer, Ed Brey, and others. Review manager was Darin
+Adler.
+
+* Steve Anichini pointed out that COM interfaces use `__stdcall`.
+
+* Dave Abrahams modified `bind` and `mem_fn` to support `void` returns on
+deficient compilers.
+
+* Daniel Boelzle pointed out that UDK uses `__cdecl`.
+
+This documentation was ported to Quickbook by Agustín Bergé.
+
+[endsect]

@@ -1,0 +1,94 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Compile Time Arithmetic is Not Always Correct</title>
+<link rel="stylesheet" href="../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="Safe Numerics">
+<link rel="up" href="../tutorial.html" title="Tutorial and Motivating Examples">
+<link rel="prev" href="8.html" title="Cannot Recover From Arithmetic Errors">
+<link rel="next" href="10.html" title="Programming by Contract is Too Slow">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img href="index.html" height="164px" src="pre-boost.jpg" alt="Library Documentation Index"></td>
+<td><h2>Safe Numerics</h2></td>
+</tr></table>
+<div class="spirit-nav">
+<a accesskey="p" href="8.html"><img src="../images/prev.png" alt="Prev"></a><a accesskey="u" href="../tutorial.html"><img src="../images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../images/home.png" alt="Home"></a><a accesskey="n" href="10.html"><img src="../images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="safe_numerics.tutorial.9"></a>Compile Time Arithmetic is Not Always Correct</h3></div></div></div>
+<p>If a divide by zero error occurs while a program is being compiled,
+    there is not guarantee that it will be detected. This example shows a real
+    example compiled with a recent version of CLang.</p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem"><p>Source code includes a constant expression containing a simple
+        arithmetic error.</p></li>
+<li class="listitem"><p>The compiler emits a warning but otherwise calculates the wrong
+        result.</p></li>
+<li class="listitem"><p>Replacing int with safe&lt;int&gt; will guarantee that the error
+        is detected at runtime</p></li>
+<li class="listitem"><p>Operations using safe types are marked constexpr. So we can
+        force the operations to occur at runtime by marking the results as
+        constexpr. This will result in an error at compile time if the
+        operations cannot be correctly calculated.</p></li>
+</ul></div>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">stdexcept</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">iostream</span><span class="special">&gt;</span>
+
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">safe_numerics</span><span class="special">/</span><span class="identifier">safe_integer</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="keyword">int</span> <span class="identifier">main</span><span class="special">(</span><span class="keyword">int</span><span class="special">,</span> <span class="keyword">const</span> <span class="keyword">char</span> <span class="special">*</span><span class="special">[</span><span class="special">]</span><span class="special">)</span><span class="special">{</span>
+    <span class="comment">// problem: cannot recover from arithmetic errors</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"example 8: "</span><span class="special">;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"cannot detect compile time arithmetic errors"</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"Not using safe numerics"</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+
+    <span class="keyword">try</span><span class="special">{</span>
+        <span class="keyword">const</span> <span class="keyword">int</span> <span class="identifier">x</span> <span class="special">=</span> <span class="number">1</span><span class="special">;</span>
+        <span class="keyword">const</span> <span class="keyword">int</span> <span class="identifier">y</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span>
+        <span class="comment">// will emit warning at compile time</span>
+        <span class="comment">// will leave an invalid result at runtime.</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">x</span> <span class="special">/</span> <span class="identifier">y</span><span class="special">;</span> <span class="comment">// will display "0"!</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"error NOT detected!"</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+    <span class="special">}</span>
+    <span class="keyword">catch</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">exception</span> <span class="special">&amp;</span><span class="special">)</span><span class="special">{</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"error detected!"</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+    <span class="special">}</span>
+    <span class="comment">// solution: replace int with safe&lt;int&gt;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"Using safe numerics"</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+    <span class="keyword">try</span><span class="special">{</span>
+        <span class="keyword">using</span> <span class="keyword">namespace</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">safe_numerics</span><span class="special">;</span>
+        <span class="keyword">const</span> <span class="identifier">safe</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;</span> <span class="identifier">x</span> <span class="special">=</span> <span class="number">1</span><span class="special">;</span>
+        <span class="keyword">const</span> <span class="identifier">safe</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;</span> <span class="identifier">y</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span>
+        <span class="comment">// constexpr const safe&lt;int&gt; z = x / y; // note constexpr here!</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">x</span> <span class="special">/</span> <span class="identifier">y</span><span class="special">;</span> <span class="comment">// error would be detected at runtime</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">" error NOT detected!"</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+    <span class="special">}</span>
+    <span class="keyword">catch</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">exception</span> <span class="special">&amp;</span> <span class="identifier">e</span><span class="special">)</span><span class="special">{</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"error detected:"</span> <span class="special">&lt;&lt;</span> <span class="identifier">e</span><span class="special">.</span><span class="identifier">what</span><span class="special">(</span><span class="special">)</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+    <span class="special">}</span>
+    <span class="keyword">return</span> <span class="number">0</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+<pre class="screen">example 8: cannot detect compile time arithmetic errors
+Not using safe numerics
+0error NOT detected!
+Using safe numerics
+error detected:positive overflow error
+Program ended with exit code: 0</pre>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2012-2018 Robert Ramey<p><a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">Subject to Boost
+      Software License</a></p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="8.html"><img src="../images/prev.png" alt="Prev"></a><a accesskey="u" href="../tutorial.html"><img src="../images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../images/home.png" alt="Home"></a><a accesskey="n" href="10.html"><img src="../images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

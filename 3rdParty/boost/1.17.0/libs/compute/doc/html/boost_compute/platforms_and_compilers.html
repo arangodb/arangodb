@@ -1,0 +1,126 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Platforms and Compilers</title>
+<link rel="stylesheet" href="../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="Chapter&#160;1.&#160;Boost.Compute">
+<link rel="up" href="../index.html" title="Chapter&#160;1.&#160;Boost.Compute">
+<link rel="prev" href="porting_guide.html" title="Porting Guide">
+<link rel="next" href="reference.html" title="Reference">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="porting_guide.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="reference.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="boost_compute.platforms_and_compilers"></a><a class="link" href="platforms_and_compilers.html" title="Platforms and Compilers">Platforms and Compilers</a>
+</h2></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="platforms_and_compilers.html#boost_compute.platforms_and_compilers.compilers">Compilers</a></span></dt>
+<dt><span class="section"><a href="platforms_and_compilers.html#boost_compute.platforms_and_compilers.platforms">Platforms</a></span></dt>
+<dt><span class="section"><a href="platforms_and_compilers.html#boost_compute.platforms_and_compilers.opencl_implementations">OpenCL
+      Implementations</a></span></dt>
+</dl></div>
+<p>
+      Boost.Compute has been tested on the following:
+    </p>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_compute.platforms_and_compilers.compilers"></a><a class="link" href="platforms_and_compilers.html#boost_compute.platforms_and_compilers.compilers" title="Compilers">Compilers</a>
+</h3></div></div></div>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            GCC (&gt;= 4.6)
+          </li>
+<li class="listitem">
+            Clang (&gt;= 3.0)
+          </li>
+<li class="listitem">
+            MSVC (&gt;= 2010)
+          </li>
+</ul></div>
+<p>
+        Boost.Compute requires variadic macro support. Variadic macros are supported
+        by most modern C++98 compilers and all C++11 compilers.
+      </p>
+<p>
+        To explicitly enable variadic support for Boost.Preprocessor add <code class="computeroutput"><span class="special">-</span><span class="identifier">DBOOST_PP_VARIADICS</span><span class="special">=</span><span class="number">1</span></code> to your
+        compiler flags.
+      </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_compute.platforms_and_compilers.platforms"></a><a class="link" href="platforms_and_compilers.html#boost_compute.platforms_and_compilers.platforms" title="Platforms">Platforms</a>
+</h3></div></div></div>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            Linux
+          </li>
+<li class="listitem">
+            Mac OSX
+          </li>
+<li class="listitem">
+            Windows
+          </li>
+</ul></div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_compute.platforms_and_compilers.opencl_implementations"></a><a class="link" href="platforms_and_compilers.html#boost_compute.platforms_and_compilers.opencl_implementations" title="OpenCL Implementations">OpenCL
+      Implementations</a>
+</h3></div></div></div>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            NVIDIA (NVIDIA GPUs only)
+          </li>
+<li class="listitem">
+            AMD (CPUs and AMD GPUs)
+          </li>
+<li class="listitem">
+            Intel (CPUs and Intel GPUs)
+          </li>
+<li class="listitem">
+            POCL (CPUs only)
+          </li>
+<li class="listitem">
+            Beignet (Intel GPUs only)
+          </li>
+<li class="listitem">
+            Apple (CPUs and GPUs)
+          </li>
+<li class="listitem">
+            Xilinx (FPGA)
+          </li>
+</ul></div>
+</div>
+<p>
+      If you have an additional platform you would like to see supported please
+      <a href="https://github.com/boostorg/compute/issues/new" target="_top">submit</a>
+      a bug-report.
+    </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2013, 2014 Kyle Lutz<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="porting_guide.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="reference.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

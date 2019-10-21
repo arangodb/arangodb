@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+  <head></head>
+  <body>
+    <h3>
+      Nested Compatibility Test
+    </h3>
+    <div class="toc">
+      <p>
+        <b>Table of contents</b>
+      </p>
+      <ul>
+        <li>
+          <a href="#nested_compatibility_test.duplicate_name">Duplicate Name</a>
+        </li>
+        <li>
+          <a href="#nested_compatibility_test.duplicate_name0">Duplicate Name</a>
+        </li>
+      </ul>
+    </div>
+    <div id="nested_compatibility_test.duplicate_name">
+      <h3>
+        Duplicate Name
+      </h3>
+      <div id="nested_compatibility_test.duplicate_name">
+      </div>
+      <div id="nested_compatibility_test.duplicate_name.nested">
+        <h3>
+          Nested Section 1.5
+        </h3>
+        <div id="nested_compatibility_test.duplicate_name.nested">
+          <h4 id="nested_compatibility_test.duplicate_name.nested.nested_heading_1_5">
+            Nested Heading 1.5
+          </h4>
+        </div>
+      </div>
+      <div id="nested_compatibility_test.duplicate_name.nested0">
+        <h3>
+          Nested Section 1.6
+        </h3>
+        <div id="nested_compatibility_test.duplicate_name.nested0">
+          <h4 id="nested_compatibility_test.duplicate_name.nested0.nested_heading_1_6">
+            Nested Heading 1.6
+          </h4>
+        </div>
+      </div>
+    </div>
+    <div id="nested_compatibility_test.duplicate_name0">
+      <h3>
+        Duplicate Name
+      </h3>
+      <div id="nested_compatibility_test.duplicate_name0">
+      </div>
+      <div id="nested_compatibility_test.duplicate_name0.nested">
+        <h3>
+          Nested Section 1.5
+        </h3>
+        <div id="nested_compatibility_test.duplicate_name0.nested">
+          <h4 id="nested_compatibility_test.duplicate_name0.nested.nested_heading_1_5">
+            Nested Heading 1.5
+          </h4>
+        </div>
+      </div>
+      <div id="nested_compatibility_test.duplicate_name0.nested0">
+        <h3>
+          Nested Section 1.6
+        </h3>
+        <div id="nested_compatibility_test.duplicate_name0.nested0">
+          <h4 id="nested_compatibility_test.duplicate_name0.nested0.nested_heading_1_6">
+            Nested Heading 1.6
+          </h4>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,163 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>is_palindrome</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="The Boost Algorithm Library">
+<link rel="up" href="../../algorithm/Misc.html" title="Other Algorithms">
+<link rel="prev" href="hex.html" title="hex">
+<link rel="next" href="is_partitioned_until.html" title="is_partitioned_until">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="hex.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../algorithm/Misc.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="is_partitioned_until.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="the_boost_algorithm_library.Misc.is_palindrome"></a><a class="link" href="is_palindrome.html" title="is_palindrome">is_palindrome</a>
+</h3></div></div></div>
+<p>
+        The header file 'is_palindrome.hpp' contains six variants of a single algorithm,
+        is_palindrome. The algorithm tests the sequence and returns true if the sequence
+        is a palindrome; i.e, it is identical when traversed either backwards or
+        frontwards.
+      </p>
+<p>
+        The routine <code class="computeroutput"><span class="identifier">is_palindrome</span></code>
+        takes a sequence and, optionally, a predicate. It will return true if the
+        predicate returns true for tested elements by algorithm in the sequence.
+      </p>
+<p>
+        The routine come in 6 forms; the first one takes two iterators to define
+        the range. The second form takes two iterators to define the range and a
+        predicate. The third form takes a single range parameter, and uses Boost.Range
+        to traverse it. The fourth form takes a single range parameter ( uses Boost.Range
+        to traverse it) and a predicate. The fifth form takes a single C-string and
+        a predicate. The sixth form takes a single C-string.
+      </p>
+<h5>
+<a name="the_boost_algorithm_library.Misc.is_palindrome.h0"></a>
+        <span class="phrase"><a name="the_boost_algorithm_library.Misc.is_palindrome.interface"></a></span><a class="link" href="is_palindrome.html#the_boost_algorithm_library.Misc.is_palindrome.interface">interface</a>
+      </h5>
+<p>
+        The function <code class="computeroutput"><span class="identifier">is_palindrome</span></code>
+        returns true if the predicate returns true any tested by algorithm items
+        in the sequence. There are six versions: 1) takes two iterators. 2) takes
+        two iterators and a predicate. 3) takes a range. 4) takes a range and a predicate.
+        5) takes a C-string and a predicate. 6) takes a C-string.
+      </p>
+<p>
+</p>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">BidirectionalIterator</span><span class="special">&gt;</span>
+	<span class="keyword">bool</span> <span class="identifier">is_palindrome</span> <span class="special">(</span> <span class="identifier">BidirectionalIterator</span> <span class="identifier">begin</span><span class="special">,</span> <span class="identifier">BidirectionalIterator</span> <span class="identifier">end</span> <span class="special">);</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">BidirectionalIterator</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Predicate</span><span class="special">&gt;</span>
+	<span class="keyword">bool</span> <span class="identifier">is_palindrome</span> <span class="special">(</span> <span class="identifier">BidirectionalIterator</span> <span class="identifier">begin</span><span class="special">,</span> <span class="identifier">BidirectionalIterator</span> <span class="identifier">end</span><span class="special">,</span> <span class="identifier">Predicate</span> <span class="identifier">p</span> <span class="special">);</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Range</span><span class="special">&gt;</span>
+	<span class="keyword">bool</span> <span class="identifier">is_palindrome</span> <span class="special">(</span> <span class="keyword">const</span> <span class="identifier">Range</span> <span class="special">&amp;</span><span class="identifier">r</span> <span class="special">);</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Range</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Predicate</span><span class="special">&gt;</span>
+	<span class="keyword">bool</span> <span class="identifier">is_palindrome</span> <span class="special">(</span> <span class="keyword">const</span> <span class="identifier">Range</span> <span class="special">&amp;</span><span class="identifier">r</span><span class="special">,</span> <span class="identifier">Predicate</span> <span class="identifier">p</span> <span class="special">);</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Predicate</span><span class="special">&gt;</span>
+	<span class="keyword">bool</span> <span class="identifier">is_palindrome</span> <span class="special">(</span> <span class="keyword">const</span> <span class="keyword">char</span><span class="special">*</span> <span class="identifier">str</span><span class="special">,</span> <span class="identifier">Predicate</span> <span class="identifier">p</span> <span class="special">);</span>
+<span class="keyword">bool</span> <span class="identifier">is_palindrome</span><span class="special">(</span><span class="keyword">const</span> <span class="keyword">char</span><span class="special">*</span> <span class="identifier">str</span><span class="special">);</span>
+</pre>
+<p>
+      </p>
+<h5>
+<a name="the_boost_algorithm_library.Misc.is_palindrome.h1"></a>
+        <span class="phrase"><a name="the_boost_algorithm_library.Misc.is_palindrome.examples"></a></span><a class="link" href="is_palindrome.html#the_boost_algorithm_library.Misc.is_palindrome.examples">Examples</a>
+      </h5>
+<p>
+        Given the containers: const std::list&lt;int&gt; empty, const std::vector&lt;char&gt;
+        singleElement{'z'}, int oddNonPalindrome[] = {3,2,2}, const int oddPalindrome[]
+        = {1,2,3,2,1}, const int evenPalindrome[] = {1,2,2,1}, int evenNonPalindrome[]
+        = {1,4,8,8}, then
+</p>
+<pre class="programlisting"><span class="identifier">is_palindrome</span><span class="special">(</span><span class="identifier">empty</span><span class="special">))</span>  <span class="special">--&gt;</span> <span class="keyword">true</span> <span class="comment">//empty range                                                                       </span>
+<span class="identifier">is_palindrome</span><span class="special">(</span><span class="identifier">singleElement</span><span class="special">))</span>  <span class="special">--&gt;</span> <span class="keyword">true</span>
+<span class="identifier">is_palindrome</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">begin</span><span class="special">(</span><span class="identifier">oddNonPalindrome</span><span class="special">),</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">end</span><span class="special">(</span><span class="identifier">oddNonPalindrome</span><span class="special">)))</span> <span class="special">--&gt;</span> <span class="keyword">false</span>
+<span class="identifier">is_palindrome</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">begin</span><span class="special">(</span><span class="identifier">evenPalindrome</span><span class="special">),</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">end</span><span class="special">(</span><span class="identifier">evenPalindrome</span><span class="special">)))</span> <span class="special">--&gt;</span> <span class="keyword">true</span>
+<span class="identifier">is_palindrome</span><span class="special">(</span><span class="identifier">empty</span><span class="special">.</span><span class="identifier">begin</span><span class="special">(),</span> <span class="identifier">empty</span><span class="special">.</span><span class="identifier">end</span><span class="special">(),</span> <span class="identifier">functorComparator</span><span class="special">()))</span> <span class="special">--&gt;</span> <span class="keyword">true</span> <span class="comment">//empty range                             </span>
+<span class="identifier">is_palindrome</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">begin</span><span class="special">(</span><span class="identifier">oddNonPalindrome</span><span class="special">),</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">end</span><span class="special">(</span><span class="identifier">oddNonPalindrome</span><span class="special">),</span> <span class="identifier">funcComparator</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;))</span> <span class="special">--&gt;</span> <span class="keyword">false</span>
+<span class="identifier">is_palindrome</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">begin</span><span class="special">(</span><span class="identifier">oddPalindrome</span><span class="special">),</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">end</span><span class="special">(</span><span class="identifier">oddPalindrome</span><span class="special">))</span> <span class="special">--&gt;</span> <span class="keyword">true</span>
+<span class="identifier">is_palindrome</span><span class="special">(</span><span class="identifier">evenPalindrome</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">equal_to</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;()))</span> <span class="special">--&gt;</span> <span class="keyword">true</span>
+<span class="identifier">is_palindrome</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">begin</span><span class="special">(</span><span class="identifier">evenNonPalindrome</span><span class="special">),</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">end</span><span class="special">(</span><span class="identifier">evenNonPalindrome</span><span class="special">))</span> <span class="special">--&gt;</span> <span class="keyword">false</span>
+<span class="identifier">is_palindrome</span><span class="special">(</span><span class="string">"a"</span><span class="special">)</span> <span class="special">--&gt;</span> <span class="keyword">true</span>
+<span class="identifier">is_palindrome</span><span class="special">(</span><span class="string">"aba"</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">equal_to</span><span class="special">&lt;</span><span class="keyword">char</span><span class="special">&gt;())</span> <span class="special">--&gt;</span> <span class="keyword">true</span>
+</pre>
+<p>
+      </p>
+<h5>
+<a name="the_boost_algorithm_library.Misc.is_palindrome.h2"></a>
+        <span class="phrase"><a name="the_boost_algorithm_library.Misc.is_palindrome.iterator_requirements"></a></span><a class="link" href="is_palindrome.html#the_boost_algorithm_library.Misc.is_palindrome.iterator_requirements">Iterator
+        Requirements</a>
+      </h5>
+<p>
+        <code class="computeroutput"><span class="identifier">is_palindrome</span></code> work on Bidirectional
+        and RandomAccess iterators.
+      </p>
+<h5>
+<a name="the_boost_algorithm_library.Misc.is_palindrome.h3"></a>
+        <span class="phrase"><a name="the_boost_algorithm_library.Misc.is_palindrome.complexity"></a></span><a class="link" href="is_palindrome.html#the_boost_algorithm_library.Misc.is_palindrome.complexity">Complexity</a>
+      </h5>
+<p>
+        All of the variants of <code class="computeroutput"><span class="identifier">is_palindrome</span></code>
+        run in <span class="emphasis"><em>O(N)</em></span> (linear) time; that is, they compare against
+        each element in the list once. If any of the comparisons not succeed, the
+        algorithm will terminate immediately, without examining the remaining members
+        of the sequence.
+      </p>
+<h5>
+<a name="the_boost_algorithm_library.Misc.is_palindrome.h4"></a>
+        <span class="phrase"><a name="the_boost_algorithm_library.Misc.is_palindrome.exception_safety"></a></span><a class="link" href="is_palindrome.html#the_boost_algorithm_library.Misc.is_palindrome.exception_safety">Exception
+        Safety</a>
+      </h5>
+<p>
+        All of the variants of <code class="computeroutput"><span class="identifier">is_palindrome</span></code>
+        take their parameters by value, const pointer or const reference, and do
+        not depend upon any global state. Therefore, all the routines in this file
+        provide the strong exception guarantee.
+      </p>
+<h5>
+<a name="the_boost_algorithm_library.Misc.is_palindrome.h5"></a>
+        <span class="phrase"><a name="the_boost_algorithm_library.Misc.is_palindrome.notes"></a></span><a class="link" href="is_palindrome.html#the_boost_algorithm_library.Misc.is_palindrome.notes">Notes</a>
+      </h5>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">is_palindrome</span></code> returns
+            true for empty ranges, const char* null pointers and for single element
+            ranges.
+          </li>
+<li class="listitem">
+            If you use version of 'is_palindrome' without custom predicate, 'is_palindrome'
+            uses default 'operator==()' for elements.
+          </li>
+<li class="listitem">
+            Be careful with using not null pointer 'const char*' without '\0' - if
+            you use it with 'is_palindrome', it's a undefined behaviour.
+          </li>
+</ul></div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2010-2012 Marshall Clow<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="hex.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../algorithm/Misc.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="is_partitioned_until.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

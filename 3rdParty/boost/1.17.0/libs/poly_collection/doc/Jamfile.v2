@@ -1,0 +1,42 @@
+# Copyright 2016-2017 Joaquín M López Muñoz.
+# Copyright 2017 Rene Rivera
+# Distributed under the Boost Software License, Version 1.0.
+# (See accompanying file LICENSE_1_0.txt or copy at
+# http://www.boost.org/LICENSE_1_0.txt)
+#
+# See http://www.boost.org/libs/poly_collection for library home page.
+
+using quickbook ;
+using boostbook ;
+
+# image dependencies
+
+install images_standalone
+  : [ glob img/*.png ]
+  : <location>html/poly_collection/img
+  ;
+
+explicit images_standalone ;
+
+install images_boostdoc
+  : [ glob img/*.png ]
+  : <location>../../../doc/html/poly_collection/img
+  ;
+
+explicit images_boostdoc ;
+
+xml poly_collection : poly_collection.qbk ;
+
+boostbook standalone
+  : poly_collection
+  : 
+    <xsl:param>boost.defaults=Boost
+    <xsl:param>boost.image.src=poly_collection/img/boost.png
+    <xsl:param>boost.root=http://www.boost.org/doc/libs/develop
+    <dependency>images_standalone
+  ;
+
+alias boostdoc : poly_collection : : : <dependency>images_boostdoc ;
+explicit boostdoc ;
+alias boostrelease ;
+explicit boostrelease ;

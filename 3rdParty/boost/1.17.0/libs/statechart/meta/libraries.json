@@ -1,0 +1,14 @@
+{
+    "key": "statechart",
+    "name": "Statechart",
+    "authors": [
+        "Andreas Huber Dönni"
+    ],
+    "description": "Boost.Statechart - Arbitrarily complex finite state machines can be implemented in easily readable and maintainable C++ code.",
+    "category": [
+        "State"
+    ],
+    "maintainers": [
+        "Andreas Huber <ahd6974-boostorg -at- yahoo.com>"
+    ]
+}

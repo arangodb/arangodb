@@ -1,0 +1,518 @@
+[section Expressions]
+
+_yap_ consists of expressions and functions that operate on them.  A function
+that takes an expression will accept any type that models the _Expr_ concept.
+
+For a type `T` to model the _Expr_ concept, `T` must contain at least an
+_kind_ (terminal, plus-operation, etc.) and a _tuple_ of values.  That's it.
+
+[note The _tuple_ of values is constrained, based on the kind of the
+expression; see the full _Expr_ documentation for details.]
+
+Here's an example of an expression:
+
+[minimal_template]
+
+That's a template that models _ExprTmpl_.  Instantiated with the proper
+template parameters, it produces _Exprs_.
+
+Ok, so it's not that interesting by itself _emdash_ `minimal_expr` has no
+operations defined for it.  But we can still use it with the _yap_ functions
+that take an _Expr_.  Let's make a _yap_ plus-expression manually:
+
+[minimal_template_manual_construction]
+
+If we evaluate it using _eval_, it does what you would expect:
+
+[minimal_template_evaluation]
+
+One more thing.  It is important to remember that _yap_ expressions are
+all-lazy, all the time.  There is no auto-evaluation of a _yap_ expression
+like there is with normal C++ expressions.  If you want your expressions to be
+evaluated, you must call _eval_, or define non-lazy operations that force
+evaluation where and when you want it.  This last approach is usually the
+right one, and there are lots of examples of how to do this in the _examples_
+section.  In particular, checkout the _lazy_vector_ and _tarray_ examples.
+
+[endsect]
+
+
+[section Mix-and-Match Expression Templates]
+
+Because _yap_ operates on _Exprs_, it is possible to mix and match _Exprs_
+that are instantiations of different templates.
+
+Here's why that's important.  Say we have two types in a library.  `S` is a
+string type, and `M` is a matrix type.  In the code here, `s` and `m` are
+objects of types `S` and `M` respectively.  Say we also have typical operator
+overloads for these types, so `m * m` and `s[0]` are well-formed expressions,
+but `m[0]` and `s * s` are not.
+
+To use these with _yap_ I might write an expression template for each:
+
+    template <...>
+    struct m_expr
+    {
+        // ...
+    };
+
+    BOOST_YAP_USER_BINARY_OPERATOR(times, m_expr, m_expr)
+
+    template <...>
+    struct s_expr
+    {
+        // ...
+        BOOST_YAP_USER_SUBSCRIPT_OPERATOR(::s_expr)
+    };
+
+With this, I might write a _yap_ expression like:
+
+    some_expr_producing_func(S("my_matrix")) * some_matrix
+
+I can transform this expression however I like, and do not have to worry about
+the fact that it contains expressions instantiated from different templates.
+
+If _yap_ required an expression to be instantiated from a single expression
+template `expr<>`, `expr<>` would have to have both operators.  This means
+that all of a sudden `s * s` and `m[0]` would be well-formed expressions
+within a _yap_ expression, but *not* for the real types `S` and `M`
+respectively.  That would be super weird.
+
+[endsect]
+
+
+[section Kinds of Expressions]
+
+Most of the expression kinds are the overloadable operators (`operator!()`,
+`operator<<=()`, etc.), See _kind_ for the full list.
+
+There are three special kinds of expressions:
+
+[variablelist
+    [[_terminal_] [A terminal contains a non-Expression value, and represents a leaf-node in an
+expression tree.  A terminal may have a _placeholder_ value, in which case it acts as a placeholder. ]]
+    [[_if_else_] [An `if_else` expression is analogous to the C++ ternary operator (`?:`).  It's up to you to make sure that the conditional expression given to `if_else` can be converted to `bool`; _yap_ does not check this.]]
+    [[_expr_ref_] [An `expr_ref` expression is one that acts as a (possibly `const`) lvalue reference to another expression.  It exists to prevent unnecessary copies of expressions.]]
+]
+
+[endsect]
+
+
+[section Operators]
+
+Let's see an expression template type with some operators:
+
+[lazy_vector_decl]
+
+Those macros are used to define operator overloads that return _Exprs_.  As
+shown here, that sort of operator can be mixed with normal, non-lazy ones
+_emdash_ the `operator[]` is a normal eager function.
+
+Use of the macros is not necessary (you can write your own operators that
+return _Exprs_ if you like), but it is suitable 99% of the time.
+
+Making the operators easy to define like this allows you to define custom
+expression templates that have only the operators defined that are appropriate
+for your use case.
+
+Detailed documentation on all the available macros can be found later in the
+_operator_macros_ section.
+
+[endsect]
+
+
+[section Transforming Expressions]
+
+Transformations in _yap_ are done using the _xform_ function.
+
+Let's take another look at the example expression from the intro:
+
+[$yap/img/expr.png]
+
+Consider a call to _xform_, operating on that expression:
+
+    auto result = boost::yap::transform(expr, xform);
+
+_yap_'s _xform_ first looks at the top level expression, which in this case is
+a `+` expression.  If the transform object `xform` matches the `+` expression,
+_xform_ is done; it just returns `xform(expr)`.  If `xform` does not match the
+`+` expression, _xform_ transforms all its operands (which for `operator+()`
+is just the left and right operands), and returns a new `+` expression with
+those transformed operands.  What I mean by "match" is covered in detail
+below.
+
+The overall effect of this is that _xform_ effectively copies an `expr` node
+that *does not* match `xform`, and returns a transformed node for an `expr`
+node that *does* match `xform`.
+
+_xform_ can also take multiple transform objects.  If you call it with N
+transform objects, it will attempt to match each of the N transforms to a
+given expression, one at a time and in their given order.  Only if no
+transform matches an expression does the copy-and-recurse behavior kick in.
+
+[note There's another form of _xform_, _xform_strict_.  _xform_strict_ is
+identical to _xform_ except that it does not copy or recurse into an unmatched
+expression.  Instead, a failed match is a hard error.  This is useful when you
+have written a transform that you expect to completely transform an
+expression, and you want the compiler to tell you if you've made a mistake.]
+
+One common result of calling _xform_ is that you create a copy of `expr`, with
+a few matching nodes transformed.  But this does not have to be the result of
+calling _xform_, because a _yap_ transformation is free-form; it must return a
+value, but may do just about anything else.  It can transform an expression
+into anything _emdash_ a new expression of any kind, or even a non-expression
+value (effectively evaluating the expression).  As before, here is the
+`get_arity` transform from the _calc3_ example.  It returns a value, not an
+_Expr_:
+
+[calc3_get_arity_xform]
+
+Also, note that in this case the transform is stateless, but you could also
+give your transform objects data members containing contextual state:
+
+[vector_take_nth_xform]
+
+[tip Often when you create an expression, you will want to evaluate it in
+different contexts, changing its evaluation _emdash_ or even entire meaning
+_emdash_ in each context.  _eval_ is wrong for this task, since it only takes
+values for substitution into placeholders.  In these situations, you should
+instead use multiple transforms that evaluate your expression in different
+ways.]
+
+[heading When _xform_ Recurses]
+
+As described above, _xform_ only recurses when it *does not* find a match.
+This means that if you want to transform a nonterminal, say an
+`expr_kind::call` expression we'll call `C`, and *also* `C`'s subexpressions,
+you must explicitly call _xform_ yourself in your transform that matches `C`.
+You can see this kind of explicit _xform_ call in the recursive case of
+`get_arity` in the example code above.
+
+[note The code you write with _yap_ is likely going to be very generic,
+especially when you're writing a transform.  _xform_ requires an _Expr_ as its
+first parameter.  In situations when you want to make sure that the first
+parameter you pass to _xform_ is always a _yap_ expression, use the _as_expr_
+function.  This is commonly needed when writing a transform in which you
+manually recurse by calling _xform_ inside one of your transform overloads.]
+
+[heading Transform Matching]
+
+In _yap_ a _XForm_ is a _Callable_ that has *zero or more* overloads that
+model the _ExprXForm_ or _TagXForm_ concepts.
+
+An _ExprXForm_ overload takes a single parameter whose type is the expression
+to be transformed.  Here's one from a transform object in the _future_group_
+example:
+
+[expr_xform]
+
+_ExprXForms_ are most useful when you want to transform a narrow set of
+expression types (perhaps only one).  In particular, you can distinguish
+between `const` and non-`const`, reference and non-reference, etc., in the
+expression and its operands in a way that you have less control over with the
+other kind of transform.
+
+A _TagXForm_ overload takes a tag that indicates the _kind_ of the expression
+to be transformed, and then (loosely) the value of each operand of the
+expression to be transformed.  This looseness prevents you from needing to
+write out the full type of the matched expression.  Here's one from the
+_pipable_algorithms_ example:
+
+[tag_xform]
+
+_TagXForms_ are most useful when the transform needs to match an expression
+without regard to whether its operands are _expr_ref_ expressions, or _emdash_
+if they are terminals _emdash_ whether they contain or refer to their values.
+_TagXForms_ tend to be far more concise.
+
+[heading A More Rigorous Description of TagTransform Parameters]
+
+That "(loosely)" before probably bothered you, right?  Me too.  Each non-tag
+parameter is passed to a _TagXForm_ by calling an operand accessor appropriate
+to `expr`'s kind, and then calling a terminal-specific version of _value_
+(`terminal_value()`) on the result.  For example, consider a plus expression
+`expr`.  The _TagXForm_ on a transform object `xform` would be called like
+this:
+
+    xform(plus_tag, terminal_value(left(expr)), terminal_value(right(expr)))
+
+The operand accessors (_left_ and _right_ in this example) all dereference
+_expr_ref_ expressions before operating on them, and `terminal_value()` does
+the same.
+
+`terminal_value()` works much like _value_, except that it does not take the
+value of a *nonterminal* unary expression; it just forwards a nonterminal
+through.  It still takes values out of terminals and unwraps _expr_ref_
+expressions, though.
+
+The auto-unwrapping of terminals means that you can effectively ignore the
+presence of _expr_ref_ expressions when writing a _TagXForm_.  You can also
+just deal with the values inside terminals, and not the terminals
+themselves. Also, you can match all terminal value qualifiers (`const` or not,
+lvalue or rvalue) uniformly with a `T const &` parameter.  Finally, you can
+write _TagXForm_ parameter types that can catch conversions; for instance, you
+can match any negation expression containing a terminal, *or a reference to
+one*, containing a value convertible to `double` like this:
+
+     struct xform
+     {
+         auto operator() (boost::yap::negate_tag, double x)
+         { return /* ... */; }
+     }
+
+That will match a negation of a terminal containing an `unsigned int`,
+`unsigned int &`, `int const &`, `float &&`, etc.  It will also match a
+negation of a reference to such a terminal.
+
+[heading Mixing the Two Kinds of Transforms]
+
+You can have two overloads in your transform that match an expression, one an
+_ExprXForm_ and one a _TagXForm_, and there will not be any ambiguity.  The
+_TagXForm_ is matched first, and the _ExprXForm_ is matched only if the
+_TagXForm_ did not.  You don't have to worry about ambiguity, but save
+yourself some confusion and mix the two kinds of overloads as little as
+possible.
+
+[note The above only applies when you have an _ExprXForm_ and a _TagXForm_
+that match *the same kind of expression*.  Having unrelated _ExprXForms_ and
+_TagXForms_ within the same transform object is often quite useful.]
+
+[heading Multiple Transform Objects]
+
+In the case that multiple transform objects are being used in _xform_, the
+above logic applies to each one independently before the next one is used.  In
+other words, in the call `boost::yap::transform(expr, a, b)`, _xform_ tries to
+match any _TagXForm_ from `a` to an expression first, then any _ExprXForm_
+from `a`, then any _TagXForm_ from `b`, and finally any _ExprXForm_ from `b`.
+
+[heading YAP-Supplied Transforms]
+
+_yap_ comes with a couple of functions that return ready-made transforms,
+_replacements_ and _evaluation_.
+
+The transforms returned by _replacements_ replace only placeholder terminals.
+Placeholder `I` is replaced by the `I-1`-th argument passed to _replacements_.
+Placeholders are `1`-based for consistency with other Boost and `std`
+placeholders.
+
+There are also a couple of specialty transform functions,
+_replace_placeholders_ and _eval_.  These are convenience functions that just
+call _xform_ on an expression using _replacements_ or _evaluation_ as the
+transform, respectively.
+
+The behavior of _evaluation_ is covered in the next section, [link
+boost_yap.manual.evaluating_expressions Evaluating Expressions].
+
+[endsect]
+
+
+[section Evaluating Expressions]
+
+_yap_ expressions are evaluated explicitly, by calling the _eval_ function or
+calling _xform_ using a transform object returned from _evaluation_.  The
+former is a convenince function that does the latter.
+
+_eval_ simply removes all the _yap_ machinery from an expression and evaluates
+it exactly as it would have been if _yap_ were not used.  This means that
+functions are called, operators evaluated, etc. all as normal.  To illustrate
+this, take a look at the implementation of `operator,()` used in _eval_:
+
+[evaluation_transform_comma]
+
+What this transformation does is transform the left and right expressions, and
+then use the built-in `operator,()` on the result.  The evaluation
+transformations for the other operators do the same thing _emdash_ evaluate
+the operands, then return the result of applying the built-in operator to the
+operands.
+
+Function calls are done in a similar way, except that the callable is also a
+subexpression that needs to be evaluated before being called:
+
+[evaluation_transform_call]
+
+[endsect]
+
+
+[section Operator Macros]
+
+If you got here without reading the _operators_ section, go read that first.
+Here are the operator macros and their uses:
+
+[table Unary and Binary Operator-Defining Macros
+    [[Macro] [Use] [First/Left Operand Type] [Right Operand Type] [Notes]]
+
+    [[_unary_m_] [Unary operators.] [An _Expr_ instantiated from _ExprTmpl_ macro parameter `expr_template`.] [--] []]
+    [[_binary_m_] [Binary operators.] [Any type.] [Any type.] [At least one parameter must be an _Expr_ instantiated from _ExprTmpl_ macro parameter `expr_template`.]]
+    [[_udt_unary_m_] [Free operators defined over non-_Expr_ types constrained by a type trait (e.g. all `std::map<>`s).] [Any non-_Expr_ that satisfies the given type trait.] [--] []]
+    [[_udt_udt_binary_m_] [Free operators defined over non-_Expr_ types constrained by a pair of type traits (e.g. a `std::map<>` on the left, and a `std::vector<>` on the right).  Useful for type-asymmetric operators.] [Any non-_Expr_ that satisfies the left-hand type trait.] [Any non-_Expr_ that satisfies the right-hand type trait.] []]
+    [[_udt_any_binary_m_] [Free operators defined over pairs of non-_Expr_ types, one constrained by a type trait and one not (e.g. a `std::list<>` on either side, and anything on the other).] [Any non-_Expr_.] [--] [At least one parameter must satisfy the given type trait.]]
+]
+
+Some operators may only be defined as member functions, and so are not covered
+by general-purpose the unary and binary operator macros above:
+
+[table The Member-Only Operator Macros
+    [[Macro] [Use] [Operands] [Notes]]
+
+    [[_member_assign_m_] [Assignment operator.] [Any type except `decltype(*this)`.] [Does not conflict with the assignment or move assignment operators.]]
+    [[_member_subscript_m_] [Subscript operator.] [Any type.] []]
+    [[_member_call_m_] [Call operator taking any number of parameters.] [Any type.] []]
+    [[_member_call_n_m_] [Call operator taking exactly N parameters.] [Any type.] []]
+]
+
+[table if_else Psuedo-Operator Macros
+    [[Macro] [Use] [Operands] [Notes]]
+
+    [[_expr_if_else_m_] [Free `if_else()` function that requires at least one parameter to be an expression.] [Any type.] [At least one parameter must be an _Expr_.]]
+    [[_udt_any_if_else_m_] [Free `if_else()` function for non-_Expr_ types that requires at least one parameter to satisfy the given type trait.] [Any non-_Expr_.] [At least one parameter must satisfy the given type trait.]]
+]
+
+[note Operands are handled in a uniform way across all functions defined by
+all the macros listed here.  See _how_treated_ for details.]
+
+[endsect]
+
+
+[section How Expression Operands Are Treated]
+
+For any _expr_ operator overload, or any function defined using one of the
+function definition macros, operands are treated in a uniform way.
+
+The guiding design principle here is that an expression built using _yap_
+should match the semantics of a builtin C++ expression as closely as possible.
+This implies that an rvalue be treated as if it were a temporary (as it may in
+fact have initially been) throughout the building and transformation of an
+expression, and that an lvalue should retain its connection to the underlying
+named entity to which it refers.
+
+For example, if you see
+
+    auto expr = a + 1;
+
+you should expect that `a` will be an lvalue reference to some object of type
+`decltype(a)`, regardless of whether `a` is a _yap_ _Expr_ or a builtin type.
+Similarly, you should expect the `1` to be an rvalue, whether wrapped in a
+terminal or not.
+
+Let's take a quick look at _make_term_.  If you call it with a `T` rvalue, the
+terminal's value type is a `T`, and the rvalue gets moved into it.  If you
+call it with a `T [const]` lvalue, the value type is `T [const] &`, and the
+reference refers to the lvalue (read `[const]` as "possibly
+`const`-qualified").  This is important because you might write through the
+terminal later in an assignment operation.  You don't want to lose the ability
+to do this, or be forced to write some Baroque pile of code to do so _emdash_
+it should be natural and easy.
+
+And it is:
+
+[assign_through_terminal]
+
+Now, there is a wrinkle.  _yap_'s lazy expressions can be built piecemeal:
+
+    auto subexpr = boost::yap::make_terminal(1) + 2;
+    // This is fine, and acts more-or-less as if you wrote "1 / (1 + 2)".
+    auto expr = 1 / subexpr;
+
+whereas C++'s eager builtin expressions cannot:
+
+    auto subexpr = 1 + 2;    // Same as "int subexpr = 3;".  Hm.
+    auto expr = 1 / subexpr; // Same as "int expr = 0;" Arg.
+
+Ok, so since you can build these lazy _yap_ expressions up from
+subexpressions, how do we treat the subexpressions?  We treat them in exactly
+the same way as _make_term_ treats its parameter.  Rvalues are moved in, and
+lvalues are captured by (possibly `const`) reference.
+
+[note If you want to subvert the capture-by-reference semantics of using
+subexpressions, just `std::move()` them.  That will force a move _emdash_ or
+copy of values for which move is not defined.]
+
+The capture-by-reference behavior is implemented via a special _kind_,
+_expr_ref_.  An `expr_ref` expression has a single data element: a (possibly
+`const` (Can I stop saying that every time?  You get it, right? Ok, good.))
+reference to an expression.  This additional level of indirection causes some
+complications at times, as you can see in the examples.  Fortunately, the
+complications are not overly cumbersome.
+
+So, given the rules above, here is a comprehensive breakdown of what happens
+when an operand is passed to a _yap_ operator.  In this table, `expr_tmpl` is
+an _ExprTmpl_, and `T` is a non-_Expr_ type.  `E` refers to any non-`expr_ref`
+_Expr_.  _yap_ does a partial decay on non-_Expr_ operands, in which `cv` and
+reference qualifiers are left unchanged, but arrays are decayed to pointers
+and functions are decayed to function pointers. `PARTIAL_DECAY(T)` indicates
+such a partial decay of `T`.
+
+[table Operand Handling
+    [[Operand] [Captured As] [Notes]]
+
+    [[`T const &`] [`expr_tmpl<expr_kind::terminal, boost::hana::tuple<PARTIAL_DECAY(T)>>`] []]
+    [[`T &`] [`expr_tmpl<expr_kind::terminal, boost::hana::tuple<PARTIAL_DECAY(T)>>`] []]
+    [[`T &&`] [`expr_tmpl<expr_kind::terminal, boost::hana::tuple<PARTIAL_DECAY(T)>>`] [Operand moved.]]
+
+    [[`E const &`] [`expr_tmpl<expr_kind::expr_ref, boost::hana::tuple<E const &>>`] []]
+    [[`E &`] [`expr_tmpl<expr_kind::expr_ref, boost::hana::tuple<E &>>`] []]
+    [[`E &&`] [`E`] [Operand moved.]]
+
+    [[`expr_tmpl<expr_kind::expr_ref, ...> const &`] [`expr_tmpl<expr_kind::expr_ref, ...>`] []]
+    [[`expr_tmpl<expr_kind::expr_ref, ...> &`] [`expr_tmpl<expr_kind::expr_ref, ...>`] []]
+    [[`expr_tmpl<expr_kind::expr_ref, ...> &&`] [`expr_tmpl<expr_kind::expr_ref, ...>`] [Operand moved.]]
+]
+
+The partial decay of non-_Expr_ operands is another example of how _yap_
+attempts to create expression trees that are as semantically close to builtin
+expressions as possible.
+
+[endsect]
+
+
+[section Printing]
+
+_yap_ has a convenient _print_ function, that prints an expression tree to a
+stream.  It is not intended for production work (for instance, it has no
+formatting options), but it is excellent for debugging and instrumentation.
+
+Since it is only a debugging aid, _print_ is found in a separate header not
+included when you include _yap_ with
+
+    #include <boost/yap/yap.hpp>
+
+You must include `<boost/yap/print.hpp>` explicitly.
+
+_print_ handles several patterns of expression specially, to allow a concise
+representation of a given expression tree.  For example, given this
+definition:
+
+[print_decl]
+
+and this expression:
+
+[print_expr]
+
+_print_ produces this output:
+
+[pre
+expr<->
+    expr<+>
+        term<boost::yap::placeholder<4ll>>[=4\]
+        expr<*>
+            term<double &>[=1\]
+            term<thing>[=<<unprintable-value>>\] &
+    term<char const*>[=lvalue terminal\] const &
+]
+
+As you can see, _print_ shows one node per line, and represents the tree
+structure with indentation.  It abbreviates non-terminal nodes in the tree
+`expr<op>`, where `op` is an operator symbol.  Terminal nodes are abbreviated
+`term<T>`, where `T` is the type of value contained in the terminal; this may
+be a reference type or a value.
+
+A `term` node may not be a terminal node at all, but an _expr_ref_ expression
+containing a terminal.  Such a _expr_ref_ node has a `&` or `const &` suffix,
+to indicate that it is a mutable or `const` reference, respectively.
+
+Each `term` node has a bracketed value near the end.  The format is `[=X]`
+where `X` is the value the terminal contains.  If the terminal contains a
+value for which no `operator<<(std::ostream &, ...)` overload exists (such as
+the `thing` type above), `X` will be `<<unprintable-value>>`.
+
+[endsect]

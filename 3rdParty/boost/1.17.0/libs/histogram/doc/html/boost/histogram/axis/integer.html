@@ -1,0 +1,181 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Class template integer</title>
+<link rel="stylesheet" href="../../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../index.html" title="Chapter&#160;1.&#160;Boost.Histogram">
+<link rel="up" href="../../../histogram/reference.html#header.boost.histogram.axis.integer_hpp" title="Header &lt;boost/histogram/axis/integer.hpp&gt;">
+<link rel="prev" href="category.html" title="Class template category">
+<link rel="next" href="interval_view.html" title="Class template interval_view">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="category.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../../histogram/reference.html#header.boost.histogram.axis.integer_hpp"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="interval_view.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="refentry">
+<a name="boost.histogram.axis.integer"></a><div class="titlepage"></div>
+<div class="refnamediv">
+<h2><span class="refentrytitle">Class template integer</span></h2>
+<p>boost::histogram::axis::integer &#8212; Axis for an interval of integer values with unit steps. </p>
+</div>
+<h2 xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv-title">Synopsis</h2>
+<div xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv"><pre class="synopsis"><span class="comment">// In header: &lt;<a class="link" href="../../../histogram/reference.html#header.boost.histogram.axis.integer_hpp" title="Header &lt;boost/histogram/axis/integer.hpp&gt;">boost/histogram/axis/integer.hpp</a>&gt;
+
+</span><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Value<span class="special">,</span> <span class="keyword">typename</span> MetaData<span class="special">,</span> <span class="keyword">typename</span> Options<span class="special">&gt;</span> 
+<span class="keyword">class</span> <a class="link" href="integer.html" title="Class template integer">integer</a> <span class="special">:</span> <span class="keyword">public</span> boost::histogram::axis::iterator_mixin&lt; integer&lt; Value, MetaData, Options &gt; &gt;
+<span class="special">{</span>
+<span class="keyword">public</span><span class="special">:</span>
+  <span class="comment">// <a class="link" href="integer.html#boost.histogram.axis.integerconstruct-copy-destruct">construct/copy/destruct</a></span>
+  <a class="link" href="integer.html#idm45525155969392-bb"><span class="identifier">integer</span></a><span class="special">(</span><span class="special">)</span> <span class="special">=</span> <span class="keyword">default</span><span class="special">;</span>
+  <a class="link" href="integer.html#idm45525155968832-bb"><span class="identifier">integer</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="integer.html" title="Class template integer">integer</a> <span class="special">&amp;</span><span class="special">)</span> <span class="special">=</span> <span class="keyword">default</span><span class="special">;</span>
+  <a class="link" href="integer.html#idm45525155964864-bb"><span class="identifier">integer</span></a><span class="special">(</span><a class="link" href="integer.html" title="Class template integer">integer</a> <span class="special">&amp;&amp;</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <a class="link" href="integer.html#idm45525155961216-bb"><span class="identifier">integer</span></a><span class="special">(</span><span class="identifier">value_type</span><span class="special">,</span> <span class="identifier">value_type</span><span class="special">,</span> <span class="identifier">metadata_type</span> <span class="special">=</span> <span class="special">{</span><span class="special">}</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="integer.html#idm45525155956512-bb"><span class="identifier">integer</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="integer.html" title="Class template integer">integer</a> <span class="special">&amp;</span><span class="special">,</span> <span class="identifier">index_type</span><span class="special">,</span> <span class="identifier">index_type</span><span class="special">,</span> <span class="keyword">unsigned</span><span class="special">)</span><span class="special">;</span>
+  <a class="link" href="integer.html" title="Class template integer">integer</a> <span class="special">&amp;</span> <a class="link" href="integer.html#idm45525155967136-bb"><span class="keyword">operator</span><span class="special">=</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="integer.html" title="Class template integer">integer</a> <span class="special">&amp;</span><span class="special">)</span> <span class="special">=</span> <span class="keyword">default</span><span class="special">;</span>
+  <a class="link" href="integer.html" title="Class template integer">integer</a> <span class="special">&amp;</span> <a class="link" href="integer.html#idm45525155963328-bb"><span class="keyword">operator</span><span class="special">=</span></a><span class="special">(</span><a class="link" href="integer.html" title="Class template integer">integer</a> <span class="special">&amp;&amp;</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+  <span class="comment">// <a class="link" href="integer.html#idm45525155994416-bb">public member functions</a></span>
+  <span class="identifier">index_type</span> <a class="link" href="integer.html#idm45525155993856-bb"><span class="identifier">index</span></a><span class="special">(</span><span class="identifier">value_type</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="keyword">auto</span> <a class="link" href="integer.html#idm45525155991744-bb"><span class="identifier">update</span></a><span class="special">(</span><span class="identifier">value_type</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="identifier">value_type</span> <a class="link" href="integer.html#idm45525155989600-bb"><span class="identifier">value</span></a><span class="special">(</span><span class="identifier">local_index_type</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="keyword">decltype</span><span class="special">(</span><span class="keyword">auto</span><span class="special">)</span> <a class="link" href="integer.html#idm45525155987488-bb"><span class="identifier">bin</span></a><span class="special">(</span><span class="identifier">index_type</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="identifier">index_type</span> <a class="link" href="integer.html#idm45525155985376-bb"><span class="identifier">size</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="identifier">metadata_type</span> <span class="special">&amp;</span> <a class="link" href="integer.html#idm45525155983920-bb"><span class="identifier">metadata</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="keyword">const</span> <span class="identifier">metadata_type</span> <span class="special">&amp;</span> <a class="link" href="integer.html#idm45525155982496-bb"><span class="identifier">metadata</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> V<span class="special">,</span> <span class="keyword">typename</span> M<span class="special">,</span> <span class="keyword">typename</span> O<span class="special">&gt;</span> 
+    <span class="keyword">bool</span> <a class="link" href="integer.html#idm45525155981072-bb"><span class="keyword">operator</span><span class="special">==</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="integer.html" title="Class template integer">integer</a><span class="special">&lt;</span> <span class="identifier">V</span><span class="special">,</span> <span class="identifier">M</span><span class="special">,</span> <span class="identifier">O</span> <span class="special">&gt;</span> <span class="special">&amp;</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> V<span class="special">,</span> <span class="keyword">typename</span> M<span class="special">,</span> <span class="keyword">typename</span> O<span class="special">&gt;</span> 
+    <span class="keyword">bool</span> <a class="link" href="integer.html#idm45525155976848-bb"><span class="keyword">operator</span><span class="special">!=</span></a><span class="special">(</span><span class="keyword">const</span> <a class="link" href="integer.html" title="Class template integer">integer</a><span class="special">&lt;</span> <span class="identifier">V</span><span class="special">,</span> <span class="identifier">M</span><span class="special">,</span> <span class="identifier">O</span> <span class="special">&gt;</span> <span class="special">&amp;</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+  <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Archive<span class="special">&gt;</span> <span class="keyword">void</span> <a class="link" href="integer.html#idm45525155972624-bb"><span class="identifier">serialize</span></a><span class="special">(</span><span class="identifier">Archive</span> <span class="special">&amp;</span><span class="special">,</span> <span class="keyword">unsigned</span><span class="special">)</span><span class="special">;</span>
+
+  <span class="comment">// <a class="link" href="integer.html#idm45525155952688-bb">public static functions</a></span>
+  <span class="keyword">static</span> <span class="keyword">constexpr</span> <span class="keyword">unsigned</span> <a class="link" href="integer.html#idm45525155952128-bb"><span class="identifier">options</span></a><span class="special">(</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+<span class="special">}</span><span class="special">;</span></pre></div>
+<div class="refsect1">
+<a name="idm45952480917808"></a><h2>Description</h2>
+<p>Binning is a O(1) operation. This axis bins faster than a regular axis.</p>
+<p>
+</p>
+<div class="refsect2">
+<a name="idm45952480916800"></a><h3>Template Parameters</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">typename</span> Value</pre>
+<p>input value type. Must be integer or floating point. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">typename</span> MetaData</pre>
+<p>type to store meta data. </p>
+</li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">typename</span> Options</pre>
+<p>see boost::histogram::axis::option (all values allowed). </p>
+</li>
+</ol></div>
+</div>
+<div class="refsect2">
+<a name="idm45952480909424"></a><h3>
+<a name="boost.histogram.axis.integerconstruct-copy-destruct"></a><code class="computeroutput">integer</code> 
+        public
+       construct/copy/destruct</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem"><pre class="literallayout"><a name="idm45525155969392-bb"></a><span class="identifier">integer</span><span class="special">(</span><span class="special">)</span> <span class="special">=</span> <span class="keyword">default</span><span class="special">;</span></pre></li>
+<li class="listitem"><pre class="literallayout"><a name="idm45525155968832-bb"></a><span class="identifier">integer</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="integer.html" title="Class template integer">integer</a> <span class="special">&amp;</span><span class="special">)</span> <span class="special">=</span> <span class="keyword">default</span><span class="special">;</span></pre></li>
+<li class="listitem"><pre class="literallayout"><a name="idm45525155964864-bb"></a><span class="identifier">integer</span><span class="special">(</span><a class="link" href="integer.html" title="Class template integer">integer</a> <span class="special">&amp;&amp;</span> o<span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre></li>
+<li class="listitem">
+<pre class="literallayout"><a name="idm45525155961216-bb"></a><span class="identifier">integer</span><span class="special">(</span><span class="identifier">value_type</span> start<span class="special">,</span> <span class="identifier">value_type</span> stop<span class="special">,</span> <span class="identifier">metadata_type</span> meta <span class="special">=</span> <span class="special">{</span><span class="special">}</span><span class="special">)</span><span class="special">;</span></pre>Construct over semi-open integer interval [start, stop). <p>
+</p>
+<div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody><tr>
+<td><p><span class="term">Parameters:</span></p></td>
+<td><div class="variablelist"><table border="0" class="variablelist compact">
+<colgroup>
+<col align="left" valign="top">
+<col>
+</colgroup>
+<tbody>
+<tr>
+<td><p><span class="term"><code class="computeroutput">meta</code></span></p></td>
+<td><p>description of the axis. </p></td>
+</tr>
+<tr>
+<td><p><span class="term"><code class="computeroutput">start</code></span></p></td>
+<td><p>first integer of covered range. </p></td>
+</tr>
+<tr>
+<td><p><span class="term"><code class="computeroutput">stop</code></span></p></td>
+<td><p>one past last integer of covered range. </p></td>
+</tr>
+</tbody>
+</table></div></td>
+</tr></tbody>
+</table></div>
+</li>
+<li class="listitem">
+<pre class="literallayout"><a name="idm45525155956512-bb"></a><span class="identifier">integer</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="integer.html" title="Class template integer">integer</a> <span class="special">&amp;</span> src<span class="special">,</span> <span class="identifier">index_type</span> begin<span class="special">,</span> <span class="identifier">index_type</span> end<span class="special">,</span> <span class="keyword">unsigned</span> merge<span class="special">)</span><span class="special">;</span></pre>Constructor used by algorithm::reduce to shrink and rebin. </li>
+<li class="listitem"><pre class="literallayout"><a class="link" href="integer.html" title="Class template integer">integer</a> <span class="special">&amp;</span> <a name="idm45525155967136-bb"></a><span class="keyword">operator</span><span class="special">=</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="integer.html" title="Class template integer">integer</a> <span class="special">&amp;</span><span class="special">)</span> <span class="special">=</span> <span class="keyword">default</span><span class="special">;</span></pre></li>
+<li class="listitem"><pre class="literallayout"><a class="link" href="integer.html" title="Class template integer">integer</a> <span class="special">&amp;</span> <a name="idm45525155963328-bb"></a><span class="keyword">operator</span><span class="special">=</span><span class="special">(</span><a class="link" href="integer.html" title="Class template integer">integer</a> <span class="special">&amp;&amp;</span> o<span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre></li>
+</ol></div>
+</div>
+<div class="refsect2">
+<a name="idm45952480847312"></a><h3>
+<a name="idm45525155994416-bb"></a><code class="computeroutput">integer</code> public member functions</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">index_type</span> <a name="idm45525155993856-bb"></a><span class="identifier">index</span><span class="special">(</span><span class="identifier">value_type</span> x<span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>Return index for value argument. </li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">auto</span> <a name="idm45525155991744-bb"></a><span class="identifier">update</span><span class="special">(</span><span class="identifier">value_type</span> x<span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>Returns index and shift (if axis has grown) for the passed argument. </li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">value_type</span> <a name="idm45525155989600-bb"></a><span class="identifier">value</span><span class="special">(</span><span class="identifier">local_index_type</span> i<span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>Return value for index argument. </li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">decltype</span><span class="special">(</span><span class="keyword">auto</span><span class="special">)</span> <a name="idm45525155987488-bb"></a><span class="identifier">bin</span><span class="special">(</span><span class="identifier">index_type</span> idx<span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>Return bin for index argument. </li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">index_type</span> <a name="idm45525155985376-bb"></a><span class="identifier">size</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>Returns the number of bins, without over- or underflow. </li>
+<li class="listitem">
+<pre class="literallayout"><span class="identifier">metadata_type</span> <span class="special">&amp;</span> <a name="idm45525155983920-bb"></a><span class="identifier">metadata</span><span class="special">(</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>Returns reference to metadata. </li>
+<li class="listitem">
+<pre class="literallayout"><span class="keyword">const</span> <span class="identifier">metadata_type</span> <span class="special">&amp;</span> <a name="idm45525155982496-bb"></a><span class="identifier">metadata</span><span class="special">(</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>Returns reference to const metadata. </li>
+<li class="listitem"><pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> V<span class="special">,</span> <span class="keyword">typename</span> M<span class="special">,</span> <span class="keyword">typename</span> O<span class="special">&gt;</span> 
+  <span class="keyword">bool</span> <a name="idm45525155981072-bb"></a><span class="keyword">operator</span><span class="special">==</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="integer.html" title="Class template integer">integer</a><span class="special">&lt;</span> <span class="identifier">V</span><span class="special">,</span> <span class="identifier">M</span><span class="special">,</span> <span class="identifier">O</span> <span class="special">&gt;</span> <span class="special">&amp;</span> o<span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></pre></li>
+<li class="listitem"><pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> V<span class="special">,</span> <span class="keyword">typename</span> M<span class="special">,</span> <span class="keyword">typename</span> O<span class="special">&gt;</span> 
+  <span class="keyword">bool</span> <a name="idm45525155976848-bb"></a><span class="keyword">operator</span><span class="special">!=</span><span class="special">(</span><span class="keyword">const</span> <a class="link" href="integer.html" title="Class template integer">integer</a><span class="special">&lt;</span> <span class="identifier">V</span><span class="special">,</span> <span class="identifier">M</span><span class="special">,</span> <span class="identifier">O</span> <span class="special">&gt;</span> <span class="special">&amp;</span> o<span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span></pre></li>
+<li class="listitem"><pre class="literallayout"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> Archive<span class="special">&gt;</span> <span class="keyword">void</span> <a name="idm45525155972624-bb"></a><span class="identifier">serialize</span><span class="special">(</span><span class="identifier">Archive</span> <span class="special">&amp;</span><span class="special">,</span> <span class="keyword">unsigned</span><span class="special">)</span><span class="special">;</span></pre></li>
+</ol></div>
+</div>
+<div class="refsect2">
+<a name="idm45952480754032"></a><h3>
+<a name="idm45525155952688-bb"></a><code class="computeroutput">integer</code> public static functions</h3>
+<div class="orderedlist"><ol class="orderedlist" type="1"><li class="listitem">
+<pre class="literallayout"><span class="keyword">static</span> <span class="keyword">constexpr</span> <span class="keyword">unsigned</span> <a name="idm45525155952128-bb"></a><span class="identifier">options</span><span class="special">(</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span></pre>Returns the options. </li></ol></div>
+</div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2016-2019 Hans
+      Dembinski<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="category.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../../histogram/reference.html#header.boost.histogram.axis.integer_hpp"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="interval_view.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

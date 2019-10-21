@@ -1,0 +1,54 @@
+# Boost Filesystem Library test Jamfile
+
+# (C) Copyright Beman Dawes 2002-2006
+# Distributed under the Boost Software License, Version 1.0.
+# See www.boost.org/LICENSE_1_0.txt
+
+import testing ;
+import os ;
+
+project
+    : requirements
+      <library>/boost/filesystem//boost_filesystem
+    ;
+
+# Some tests are run both statically and as shared libraries since Filesystem
+# has a history of bugs that appear only in one type of build or the other.
+
+path-constant HERE : . ;
+
+local VIS ;
+
+if [ os.environ UBSAN ]
+{
+    VIS = <visibility>global
+       -<library>/boost/filesystem//boost_filesystem
+        <library>/boost/filesystem//boost_filesystem/<visibility>global ;
+}
+
+run config_info.cpp : : : <link>shared <test-info>always_show_run_output ;
+run config_info.cpp : : : <link>static <test-info>always_show_run_output : config_info_static ;
+run convenience_test.cpp ;
+compile macro_default_test.cpp ;
+run odr1_test.cpp odr2_test.cpp ;
+run deprecated_test.cpp ;
+run fstream_test.cpp : : :  $(VIS) ;
+run large_file_support_test.cpp ;
+run locale_info.cpp : : : <test-info>always_show_run_output ;
+run operations_test.cpp : : : <link>shared <test-info>always_show_run_output ;
+run operations_test.cpp : : : <link>static : operations_test_static ;
+run operations_unit_test.cpp : $(HERE) : : <link>shared <test-info>always_show_run_output ;
+run path_test.cpp : : : <link>shared ;
+run path_test.cpp : : : <link>static : path_test_static ;
+run path_unit_test.cpp : : : <link>shared $(VIS) ;
+run path_unit_test.cpp : : : <link>static $(VIS) : path_unit_test_static ;
+run relative_test.cpp ;
+run ../example/simple_ls.cpp ;
+run ../example/file_status.cpp ;
+run foreach_test.cpp ;
+
+# `quick` target (for CI)
+run quick.cpp ;
+
+# Tests for specific issues
+run issues/70-71-copy.cpp ;

@@ -1,0 +1,412 @@
+[/
+          Copyright Oliver Kowalke 2017.
+ Distributed under the Boost Software License, Version 1.0.
+    (See accompanying file LICENSE_1_0.txt or copy at
+          http://www.boost.org/LICENSE_1_0.txt
+]
+
+[#numa]
+[section:numa NUMA]
+
+Modern micro-processors contain integrated memory controllers that are connected
+via channels to the memory. Accessing the memory can be organized in two kinds:[br]
+Uniform Memory Access (UMA) and Non-Uniform Memory Access (NUMA).
+
+In contrast to UMA, that provides a centralized pool of memory (and thus does
+not scale after a certain number of processors), a NUMA architecture divides the
+memory into local and remote memory relative to the micro-processor.[br]
+Local memory is directly attached to the processor's integrated memory controller.
+Memory connected to the memory controller of another micro-processor (multi-socket
+systems) is considered as remote memory. If a memory controller access remote memory
+it has to traverse the interconnect[footnote On x86 the interconnection is implemented
+by Intel's Quick Path Interconnect (QPI) and AMD's HyperTransport.] and
+connect to the remote memory controller.[br]
+Thus accessing remote memory adds additional latency overhead to local memory access.
+Because of the different memory locations, a NUMA-system experiences ['non-uniform]
+memory access time.[br]
+As a consequence the best performance is achieved by keeping the memory access
+local.
+
+[$../../../../libs/fiber/doc/NUMA.png [align center]]
+
+
+[heading NUMA support in Boost.Fiber]
+
+Because only a subset of the NUMA-functionality is exposed by several operating systems,
+Boost.Fiber provides only a minimalistic NUMA API.
+
+[important In order to enable NUMA support, b2 property `numa=on` must be specified
+and linked against additional library `libboost_fiber_numa.so`.]
+[important MinGW using pthread implementation is not supported on Windows.]
+
+[table Supported functionality/operating systems
+    [
+        []
+        [AIX]
+        [FreeBSD]
+        [HP/UX]
+        [Linux]
+        [Solaris]
+        [Windows]
+    ]
+    [
+        [pin thread]
+        [+]
+        [+]
+        [+]
+        [+]
+        [+]
+        [+]
+    ]
+    [
+        [logical CPUs/NUMA nodes]
+        [+]
+        [+]
+        [+]
+        [+]
+        [+]
+        [+[footnote Windows organizes logical cpus in groups of 64; boost.fiber maps
+           {group-id,cpud-id} to a scalar equivalent to cpu ID of Linux (64 * group ID + cpu ID).]]
+    ]
+    [
+        [NUMA node distance]
+        [-]
+        [-]
+        [-]
+        [+]
+        [-]
+        [-]
+    ]
+    [
+        [tested on]
+        [AIX 7.2]
+        [FreeBSD 11]
+        [-]
+        [Arch Linux (4.10.13)]
+        [OpenIndiana HIPSTER]
+        [Windows 10]
+    ]
+]
+
+In order to keep the memory access local as possible, the NUMA topology must be evaluated.
+
+    std::vector< boost::fibers::numa::node > topo = boost::fibers::numa::topology();
+    for ( auto n : topo) {
+        std::cout << "node: " << n.id << " | ";
+        std::cout << "cpus: ";
+        for ( auto cpu_id : n.logical_cpus) {
+            std::cout << cpu_id << " ";
+        }
+        std::cout << "| distance: ";
+        for ( auto d : n.distance) {
+            std::cout << d << " ";
+        }
+        std::cout << std::endl;
+    }
+    std::cout << "done" << std::endl;
+
+    output:
+        node: 0 | cpus: 0 1 2 3 4 5 6 7 16 17 18 19 20 21 22 23 | distance: 10 21
+        node: 1 | cpus: 8 9 10 11 12 13 14 15 24 25 26 27 28 29 30 31 | distance: 21 10
+        done
+
+The example shows that the systems consits out of 2 NUMA-nodes, to each NUMA-node belong
+16 logical cpus. The distance measures the costs to access the memory of another NUMA-node.
+A NUMA-node has always a distance `10` to itself (lowest possible value).[br]
+The position in the array corresponds with the NUMA-node ID.
+
+Some work-loads benefit from pinning threads to a logical cpus. For instance scheduling
+algorithm __numa_work_stealing__ pins the thread that runs the fiber scheduler to
+a logical cpu. This prevents the operating system scheduler to move the thread to another
+logical cpu that might run other fiber scheduler(s) or migrating the thread to a logical
+cpu part of another NUMA-node.
+
+        void thread( std::uint32_t cpu_id, std::uint32_t node_id, std::vector< boost::fibers::numa::node > const& topo) {
+            // thread registers itself at work-stealing scheduler
+            boost::fibers::use_scheduling_algorithm< boost::fibers::algo::numa::work_stealing >( cpu_id, node_id, topo);
+            ...
+        }
+
+        // evaluate the NUMA topology
+        std::vector< boost::fibers::numa::node > topo = boost::fibers::numa::topology();
+        // start-thread runs on NUMA-node `0`
+        auto node = topo[0];
+        // start-thread is pinnded to first cpu ID in the list of logical cpus of NUMA-node `0`
+        auto start_cpu_id = * node.logical_cpus.begin();
+        // start worker-threads first
+        std::vector< std::thread > threads;
+        for ( auto & node : topo) {
+            for ( std::uint32_t cpu_id : node.logical_cpus) {
+                // exclude start-thread
+                if ( start_cpu_id != cpu_id) {
+                    // spawn thread
+                    threads.emplace_back( thread, cpu_id, node.id, std::cref( topo) );
+                }
+            }
+        }
+        // start-thread registers itself on work-stealing scheduler
+        boost::fibers::use_scheduling_algorithm< boost::fibers::algo::numa::work_stealing >( start_cpu_id, node.id, topo);
+        ...
+
+The example evaluates the NUMA topology with `boost::fibers::numa::topology()`
+and spawns for each logical cpu a thread. Each spawned thread installs the
+NUMA-aware work-stealing scheduler. The scheduler pins the thread to the
+logical cpu that was specified at construction.[br]
+If the local queue of one thread runs out of ready fibers, the thread tries to
+steal a ready fiber from another thread running at logical cpu that belong to
+the same NUMA-node (local memory access). If no fiber could be stolen, the
+thread tries to steal fibers from logical cpus part of other NUMA-nodes (remote
+memory access).
+
+
+[heading Synopsis]
+
+    #include <boost/fiber/numa/pin_thread.hpp>
+    #include <boost/fiber/numa/topology.hpp>
+
+    namespace boost {
+    namespace fibers {
+    namespace numa {
+
+    struct node {
+        std::uint32_t                   id;
+        std::set< std::uint32_t >       logical_cpus;
+        std::vector< std::uint32_t >    distance;
+    };
+    bool operator<( node const&, node const&) noexcept;
+
+    std::vector< node > topology();
+
+    void pin_thread( std::uint32_t);
+    void pin_thread( std::uint32_t, std::thread::native_handle_type);
+
+    }}}
+
+    #include <boost/fiber/numa/algo/work_stealing.hpp>
+
+    namespace boost {
+    namespace fibers {
+    namespace numa {
+    namespace algo {
+
+    class work_stealing;
+
+    }}}
+
+
+[ns_class_heading numa..node]
+
+    #include <boost/fiber/numa/topology.hpp>
+
+    namespace boost {
+    namespace fibers {
+    namespace numa {
+
+    struct node {
+        std::uint32_t                   id;
+        std::set< std::uint32_t >       logical_cpus;
+        std::vector< std::uint32_t >    distance;
+    };
+    bool operator<( node const&, node const&) noexcept;
+
+    }}}
+
+[ns_data_member_heading numa..node..id]
+
+        std::uint32_t id;
+
+[variablelist
+[[Effects:] [ID of the NUMA-node]]
+]
+
+[ns_data_member_heading numa..node..logical_cpus]
+
+        std::set< std::uint32_t > logical_cpus;
+
+[variablelist
+[[Effects:] [set of logical cpu IDs belonging to the NUMA-node]]
+]
+
+[ns_data_member_heading numa..node..distance]
+
+        std::vector< std::uint32_t > distance;
+
+[variablelist
+[[Effects:] [The distance between NUMA-nodes describe the cots of accessing the
+remote memory.]]
+[[Note:] [A NUMA-node has a distance of `10` to itself, remote NUMA-nodes
+have a distance > `10`. The index in the array corresponds to the ID `id`
+of the NUMA-node. At the moment only Linux returns the correct distances,
+for all other operating systems remote NUMA-nodes get a default value of
+`20`.]]
+]
+
+[ns_operator_heading numa..node..operator_less..operator<]
+
+        bool operator<( node const& lhs, node const& rhs) const noexcept;
+
+[variablelist
+[[Returns:] [`true` if `lhs != rhs` is true and the
+implementation-defined total order of `node::id` values places `lhs` before
+`rhs`, false otherwise.]]
+[[Throws:] [Nothing.]]
+]
+
+
+[ns_function_heading numa..topology]
+
+    #include <boost/fiber/numa/topology.hpp>
+
+    namespace boost {
+    namespace fibers {
+    namespace numa {
+
+    std::vector< node > topology();
+
+    }}}
+
+[variablelist
+[[Effects:] [Evaluates the NUMA topology.]]
+[[Returns:] [a vector of NUMA-nodes describing the NUMA architecture of the
+system (each element represents a NUMA-node).]]
+[[Throws:] [`system_error`]]
+]
+
+
+[ns_function_heading numa..pin_thread]
+
+    #include <boost/fiber/numa/pin_thread.hpp>
+
+    namespace boost {
+    namespace fibers {
+    namespace numa {
+
+    void pin_thread( std::uint32_t cpu_id);
+    void pin_thread( std::uint32_t cpu_id, std::thread::native_handle_type h);
+
+    }}}
+
+[variablelist
+[[Effects:] [First version pins `this thread` to the logical cpu with ID `cpu_id`, e.g.
+the operating system scheduler will not migrate the thread to another logical cpu.
+The second variant pins the thread with the native ID `h` to logical cpu with ID `cpu_id`.]]
+[[Throws:] [`system_error`]]
+]
+
+
+[ns_class_heading numa..work_stealing]
+
+This class implements __algo__; the thread running this scheduler is pinned to the given
+logical cpu. If the local ready-queue runs out of ready fibers, ready fibers are stolen
+from other schedulers that run on logical cpus that belong to the same NUMA-node (local
+memory access).[br]
+If no ready fibers can be stolen from the local NUMA-node, the algorithm selects
+schedulers running on other NUMA-nodes (remote memory access).[br]
+The victim scheduler (from which a ready fiber is stolen) is selected at random.
+
+        #include <boost/fiber/numa/algo/work_stealing.hpp>
+
+        namespace boost {
+        namespace fibers {
+        namespace numa {
+        namespace algo {
+
+        class work_stealing : public algorithm {
+        public:
+            work_stealing( std::uint32_t cpu_id,
+                           std::uint32_t node_id,
+                           std::vector< boost::fibers::numa::node > const& topo,
+                           bool suspend = false);
+
+            work_stealing( work_stealing const&) = delete;
+            work_stealing( work_stealing &&) = delete;
+
+            work_stealing & operator=( work_stealing const&) = delete;
+            work_stealing & operator=( work_stealing &&) = delete;
+
+            virtual void awakened( context *) noexcept;
+
+            virtual context * pick_next() noexcept;
+
+            virtual bool has_ready_fibers() const noexcept;
+
+            virtual void suspend_until( std::chrono::steady_clock::time_point const&) noexcept;
+
+            virtual void notify() noexcept;
+        };
+
+        }}}}
+
+[heading Constructor]
+
+        work_stealing( std::uint32_t cpu_id, std::uint32_t node_id,
+                       std::vector< boost::fibers::numa::node > const& topo,
+                       bool suspend = false);
+
+[variablelist
+[[Effects:] [Constructs work-stealing scheduling algorithm. The thread is pinned to logical cpu with ID
+`cpu_id`. If local ready-queue runs out of ready fibers, ready fibers are stolen from other schedulers
+using `topology` (represents the NUMA-topology of the system).]]
+[[Throws:] [`system_error`]]
+[[Note:][If `suspend` is set to `true`, then the scheduler suspends if no ready fiber could be stolen.
+The scheduler will by woken up if a sleeping fiber times out or it was notified from remote (other thread or
+fiber scheduler).]]
+]
+
+[ns_member_heading numa..work_stealing..awakened]
+
+        virtual void awakened( context * f) noexcept;
+
+[variablelist
+[[Effects:] [Enqueues fiber `f` onto the shared ready queue.]]
+[[Throws:] [Nothing.]]
+]
+
+[ns_member_heading numa..work_stealing..pick_next]
+
+        virtual context * pick_next() noexcept;
+
+[variablelist
+[[Returns:] [the fiber at the head of the ready queue, or `nullptr` if the
+queue is empty.]]
+[[Throws:] [Nothing.]]
+[[Note:] [Placing ready fibers onto the tail of the sahred queue, and returning them
+from the head of that queue, shares the thread between ready fibers in
+round-robin fashion.]]
+]
+
+[ns_member_heading numa..work_stealing..has_ready_fibers]
+
+        virtual bool has_ready_fibers() const noexcept;
+
+[variablelist
+[[Returns:] [`true` if scheduler has fibers ready to run.]]
+[[Throws:] [Nothing.]]
+]
+
+[ns_member_heading numa..work_stealing..suspend_until]
+
+        virtual void suspend_until( std::chrono::steady_clock::time_point const& abs_time) noexcept;
+
+[variablelist
+[[Effects:] [Informs `work_stealing` that no ready fiber will be available until
+time-point `abs_time`. This implementation blocks in
+[@http://en.cppreference.com/w/cpp/thread/condition_variable/wait_until
+`std::condition_variable::wait_until()`].]]
+[[Throws:] [Nothing.]]
+]
+
+[ns_member_heading numa..work_stealing..notify]
+
+        virtual void notify() noexcept = 0;
+
+[variablelist
+[[Effects:] [Wake up a pending call to [member_link
+work_stealing..suspend_until], some fibers might be ready. This implementation
+wakes `suspend_until()` via
+[@http://en.cppreference.com/w/cpp/thread/condition_variable/notify_all
+`std::condition_variable::notify_all()`].]]
+[[Throws:] [Nothing.]]
+]
+
+[endsect]

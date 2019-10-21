@@ -1,0 +1,780 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Chapter&#160;1.&#160;Boost.Tuple</title>
+<link rel="stylesheet" href="../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="tuple_users_guide.html" title="Chapter&#160;1.&#160;Boost.Tuple">
+<link rel="next" href="tuple_advanced_interface.html" title="Tuple library advanced features">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../boost.png"></td>
+<td align="center"><a href="../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav"><a accesskey="n" href="tuple_advanced_interface.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a></div>
+<div class="chapter">
+<div class="titlepage"><div>
+<div><h2 class="title">
+<a name="tuple"></a>Chapter&#160;1.&#160;Boost.Tuple</h2></div>
+<div><p class="copyright">Copyright &#169; 2001 Jaakko J&#228;rvi</p></div>
+<div><div class="legalnotice">
+<a name="tuple.legal"></a><p>
+        Distributed under the <a href="http://boost.org/LICENSE_1_0.txt" target="_top">Boost
+        Software License, Version 1.0</a>.
+      </p>
+</div></div>
+</div></div>
+<div class="toc">
+<p><b>Table of Contents</b></p>
+<dl class="toc">
+<dt><span class="article"><a href="tuple_advanced_interface.html">Tuple library advanced features</a></span></dt>
+<dt><span class="article"><a href="design_decisions_rationale.html">Design decisions rationale</a></span></dt>
+<dt><span class="section"><a href="tuple_users_guide.html#tuple.using_library">Using the Library</a></span></dt>
+<dt><span class="section"><a href="tuple_users_guide.html#tuple.tuple_types">Tuple Types</a></span></dt>
+<dt><span class="section"><a href="tuple_users_guide.html#tuple.constructing_tuples">Constructing Tuples</a></span></dt>
+<dt><span class="section"><a href="tuple_users_guide.html#tuple.accessing_elements">Accessing Tuple Elements</a></span></dt>
+<dt><span class="section"><a href="tuple_users_guide.html#tuple.construction_and_assignment">Copy Construction and
+    Tuple Assignment</a></span></dt>
+<dt><span class="section"><a href="tuple_users_guide.html#tuple.relational_operators">Relational Operators</a></span></dt>
+<dt><span class="section"><a href="tuple_users_guide.html#tuple.tiers">Tiers</a></span></dt>
+<dt><span class="section"><a href="tuple_users_guide.html#tuple.streaming">Streaming</a></span></dt>
+<dt><span class="section"><a href="tuple_users_guide.html#tuple.performance">Performance</a></span></dt>
+<dt><span class="section"><a href="tuple_users_guide.html#tuple.portability">Portability</a></span></dt>
+<dt><span class="section"><a href="tuple_users_guide.html#tuple.more_details">More Details</a></span></dt>
+<dt><span class="section"><a href="tuple_users_guide.html#tuple.thanks">Acknowledgements</a></span></dt>
+<dt><span class="section"><a href="tuple_users_guide.html#tuple.references">References</a></span></dt>
+</dl>
+</div>
+<p>
+    A tuple (or n-tuple) is a fixed size collection of elements. Pairs, triples,
+    quadruples etc. are tuples. In a programming language, a tuple is a data object
+    containing other objects as elements. These element objects may be of different
+    types.
+  </p>
+<p>
+    Tuples are convenient in many circumstances. For instance, tuples make it easy
+    to define functions that return more than one value.
+  </p>
+<p>
+    Some programming languages, such as ML, Python and Haskell, have built-in tuple
+    constructs. Unfortunately C++ does not. To compensate for this "deficiency",
+    the Boost Tuple Library implements a tuple construct using templates.
+  </p>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="tuple.using_library"></a><a class="link" href="tuple_users_guide.html#tuple.using_library" title="Using the Library">Using the Library</a>
+</h2></div></div></div>
+<p>
+      To use the library, just include:
+    </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="string">"boost/tuple/tuple.hpp"</span>
+</pre>
+<p>
+      Comparison operators can be included with:
+    </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="string">"boost/tuple/tuple_comparison.hpp"</span>
+</pre>
+<p>
+      To use tuple input and output operators,
+    </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="string">"boost/tuple/tuple_io.hpp"</span>
+</pre>
+<p>
+      Both <code class="computeroutput"><span class="identifier">tuple_io</span><span class="special">.</span><span class="identifier">hpp</span></code> and <code class="computeroutput"><span class="identifier">tuple_comparison</span><span class="special">.</span><span class="identifier">hpp</span></code> include
+      <code class="computeroutput"><span class="identifier">tuple</span><span class="special">.</span><span class="identifier">hpp</span></code>.
+    </p>
+<p>
+      All definitions are in namespace <code class="computeroutput"><span class="special">::</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">tuples</span></code>,
+      but the most common names are lifted to namespace <code class="computeroutput"><span class="special">::</span><span class="identifier">boost</span></code> with using declarations. These names
+      are: <code class="computeroutput"><span class="identifier">tuple</span></code>, <code class="computeroutput"><span class="identifier">make_tuple</span></code>,
+      <code class="computeroutput"><span class="identifier">tie</span></code> and <code class="computeroutput"><span class="identifier">get</span></code>.
+      Further, <code class="computeroutput"><span class="identifier">ref</span></code> and <code class="computeroutput"><span class="identifier">cref</span></code> are defined directly under the <code class="computeroutput"><span class="special">::</span><span class="identifier">boost</span></code> namespace.
+    </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="tuple.tuple_types"></a><a class="link" href="tuple_users_guide.html#tuple.tuple_types" title="Tuple Types">Tuple Types</a>
+</h2></div></div></div>
+<p>
+      A tuple type is an instantiation of the <code class="computeroutput"><span class="identifier">tuple</span></code>
+      template. The template parameters specify the types of the tuple elements.
+      The current version supports tuples with 0-10 elements. If necessary, the upper
+      limit can be increased up to, say, a few dozen elements. The data element can
+      be any C++ type. Note that <code class="computeroutput"><span class="keyword">void</span></code>
+      and plain function types are valid C++ types, but objects of such types cannot
+      exist. Hence, if a tuple type contains such types as elements, the tuple type
+      can exist, but not an object of that type. There are natural limitations for
+      element types that cannot be copied, or that are not default constructible
+      (see <a class="link" href="tuple_users_guide.html#tuple.constructing_tuples" title="Constructing Tuples">'Constructing tuples'</a>
+      below).
+    </p>
+<p>
+      For example, the following definitions are valid tuple instantiations (<code class="computeroutput"><span class="identifier">A</span></code>, <code class="computeroutput"><span class="identifier">B</span></code>
+      and <code class="computeroutput"><span class="identifier">C</span></code> are some user defined
+      classes):
+    </p>
+<pre class="programlisting"><span class="identifier">tuple</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;</span>
+<span class="identifier">tuple</span><span class="special">&lt;</span><span class="keyword">double</span><span class="special">&amp;,</span> <span class="keyword">const</span> <span class="keyword">double</span><span class="special">&amp;,</span> <span class="keyword">const</span> <span class="keyword">double</span><span class="special">,</span> <span class="keyword">double</span><span class="special">*,</span> <span class="keyword">const</span> <span class="keyword">double</span><span class="special">*&gt;</span>
+<span class="identifier">tuple</span><span class="special">&lt;</span><span class="identifier">A</span><span class="special">,</span> <span class="keyword">int</span><span class="special">(*)(</span><span class="keyword">char</span><span class="special">,</span> <span class="keyword">int</span><span class="special">),</span> <span class="identifier">B</span><span class="special">(</span><span class="identifier">A</span><span class="special">::*)(</span><span class="identifier">C</span><span class="special">&amp;),</span> <span class="identifier">C</span><span class="special">&gt;</span>
+<span class="identifier">tuple</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">pair</span><span class="special">&lt;</span><span class="identifier">A</span><span class="special">,</span> <span class="identifier">B</span><span class="special">&gt;</span> <span class="special">&gt;</span>
+<span class="identifier">tuple</span><span class="special">&lt;</span><span class="identifier">A</span><span class="special">*,</span> <span class="identifier">tuple</span><span class="special">&lt;</span><span class="keyword">const</span> <span class="identifier">A</span><span class="special">*,</span> <span class="keyword">const</span> <span class="identifier">B</span><span class="special">&amp;,</span> <span class="identifier">C</span><span class="special">&gt;,</span> <span class="keyword">bool</span><span class="special">,</span> <span class="keyword">void</span><span class="special">*&gt;</span>
+</pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="tuple.constructing_tuples"></a><a class="link" href="tuple_users_guide.html#tuple.constructing_tuples" title="Constructing Tuples">Constructing Tuples</a>
+</h2></div></div></div>
+<p>
+      The tuple constructor takes the tuple elements as arguments. For an <span class="emphasis"><em>n</em></span>-
+      element tuple, the constructor can be invoked with <span class="emphasis"><em>k</em></span> arguments,
+      where <code class="computeroutput"><span class="number">0</span></code> &lt;= <span class="emphasis"><em>k</em></span>
+      &lt;= <span class="emphasis"><em>n</em></span>. For example:
+    </p>
+<pre class="programlisting"><span class="identifier">tuple</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">,</span> <span class="keyword">double</span><span class="special">&gt;()</span>
+<span class="identifier">tuple</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">,</span> <span class="keyword">double</span><span class="special">&gt;(</span><span class="number">1</span><span class="special">)</span>
+<span class="identifier">tuple</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">,</span> <span class="keyword">double</span><span class="special">&gt;(</span><span class="number">1</span><span class="special">,</span> <span class="number">3.14</span><span class="special">)</span>
+</pre>
+<p>
+      If no initial value for an element is provided, it is default initialized (and
+      hence must be default initializable). For example:
+    </p>
+<pre class="programlisting"><span class="keyword">class</span> <span class="identifier">X</span> <span class="special">{</span>
+  <span class="identifier">X</span><span class="special">();</span>
+<span class="keyword">public</span><span class="special">:</span>
+  <span class="identifier">X</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span><span class="special">);</span>
+<span class="special">};</span>
+
+<span class="identifier">tuple</span><span class="special">&lt;</span><span class="identifier">X</span><span class="special">,</span><span class="identifier">X</span><span class="special">,</span><span class="identifier">X</span><span class="special">&gt;()</span>                                              <span class="comment">// error: no default constructor for X</span>
+<span class="identifier">tuple</span><span class="special">&lt;</span><span class="identifier">X</span><span class="special">,</span><span class="identifier">X</span><span class="special">,</span><span class="identifier">X</span><span class="special">&gt;(</span><span class="identifier">string</span><span class="special">(</span><span class="string">"Jaba"</span><span class="special">),</span> <span class="identifier">string</span><span class="special">(</span><span class="string">"Daba"</span><span class="special">),</span> <span class="identifier">string</span><span class="special">(</span><span class="string">"Duu"</span><span class="special">))</span> <span class="comment">// ok</span>
+</pre>
+<p>
+      In particular, reference types do not have a default initialization:
+    </p>
+<pre class="programlisting"><span class="identifier">tuple</span><span class="special">&lt;</span><span class="keyword">double</span><span class="special">&amp;&gt;()</span>                <span class="comment">// error: reference must be</span>
+                                <span class="comment">// initialized explicitly</span>
+
+<span class="keyword">double</span> <span class="identifier">d</span> <span class="special">=</span> <span class="number">5</span><span class="special">;</span>
+<span class="identifier">tuple</span><span class="special">&lt;</span><span class="keyword">double</span><span class="special">&amp;&gt;(</span><span class="identifier">d</span><span class="special">)</span>               <span class="comment">// ok</span>
+
+<span class="identifier">tuple</span><span class="special">&lt;</span><span class="keyword">double</span><span class="special">&amp;&gt;(</span><span class="identifier">d</span><span class="special">+</span><span class="number">3.14</span><span class="special">)</span>          <span class="comment">// error: cannot initialize</span>
+                                <span class="comment">// non-const reference with a temporary</span>
+
+<span class="identifier">tuple</span><span class="special">&lt;</span><span class="keyword">const</span> <span class="keyword">double</span><span class="special">&amp;&gt;(</span><span class="identifier">d</span><span class="special">+</span><span class="number">3.14</span><span class="special">)</span>    <span class="comment">// ok, but dangerous:</span>
+                                <span class="comment">// the element becomes a dangling reference</span>
+</pre>
+<p>
+      Using an initial value for an element that cannot be copied, is a compile time
+      error:
+    </p>
+<pre class="programlisting"><span class="keyword">class</span> <span class="identifier">Y</span> <span class="special">{</span>
+  <span class="identifier">Y</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">Y</span><span class="special">&amp;);</span>
+<span class="keyword">public</span><span class="special">:</span>
+  <span class="identifier">Y</span><span class="special">();</span>
+<span class="special">};</span>
+
+<span class="keyword">char</span> <span class="identifier">a</span><span class="special">[</span><span class="number">10</span><span class="special">];</span>
+
+<span class="identifier">tuple</span><span class="special">&lt;</span><span class="keyword">char</span><span class="special">[</span><span class="number">10</span><span class="special">],</span> <span class="identifier">Y</span><span class="special">&gt;(</span><span class="identifier">a</span><span class="special">,</span> <span class="identifier">Y</span><span class="special">());</span> <span class="comment">// error, neither arrays nor Y can be copied</span>
+<span class="identifier">tuple</span><span class="special">&lt;</span><span class="keyword">char</span><span class="special">[</span><span class="number">10</span><span class="special">],</span> <span class="identifier">Y</span><span class="special">&gt;();</span>       <span class="comment">// ok</span>
+</pre>
+<p>
+      Note particularly that the following is perfectly ok:
+    </p>
+<pre class="programlisting"><span class="identifier">Y</span> <span class="identifier">y</span><span class="special">;</span>
+<span class="identifier">tuple</span><span class="special">&lt;</span><span class="keyword">char</span><span class="special">(&amp;)[</span><span class="number">10</span><span class="special">],</span> <span class="identifier">Y</span><span class="special">&amp;&gt;(</span><span class="identifier">a</span><span class="special">,</span> <span class="identifier">y</span><span class="special">);</span>
+</pre>
+<p>
+      It is possible to come up with a tuple type that cannot be constructed. This
+      occurs if an element that cannot be initialized has a lower index than an element
+      that requires initialization. For example: <code class="computeroutput"><span class="identifier">tuple</span><span class="special">&lt;</span><span class="keyword">char</span><span class="special">[</span><span class="number">10</span><span class="special">],</span> <span class="keyword">int</span><span class="special">&amp;&gt;</span></code>.
+    </p>
+<p>
+      In sum, the tuple construction is semantically just a group of individual elementary
+      constructions.
+    </p>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="tuple.constructing_tuples.make_tuple"></a><a class="link" href="tuple_users_guide.html#tuple.constructing_tuples.make_tuple" title="The make_tuple function">The <code class="computeroutput"><span class="identifier">make_tuple</span></code> function</a>
+</h3></div></div></div>
+<p>
+        Tuples can also be constructed using the <code class="computeroutput"><span class="identifier">make_tuple</span></code>
+        (cf. <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">make_pair</span></code>) helper functions. This makes
+        the construction more convenient, saving the programmer from explicitly specifying
+        the element types:
+      </p>
+<pre class="programlisting"><span class="identifier">tuple</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">,</span> <span class="keyword">int</span><span class="special">,</span> <span class="keyword">double</span><span class="special">&gt;</span> <span class="identifier">add_multiply_divide</span><span class="special">(</span><span class="keyword">int</span> <span class="identifier">a</span><span class="special">,</span> <span class="keyword">int</span> <span class="identifier">b</span><span class="special">)</span> <span class="special">{</span>
+  <span class="keyword">return</span> <span class="identifier">make_tuple</span><span class="special">(</span><span class="identifier">a</span><span class="special">+</span><span class="identifier">b</span><span class="special">,</span> <span class="identifier">a</span><span class="special">*</span><span class="identifier">b</span><span class="special">,</span> <span class="keyword">double</span><span class="special">(</span><span class="identifier">a</span><span class="special">)/</span><span class="keyword">double</span><span class="special">(</span><span class="identifier">b</span><span class="special">));</span>
+<span class="special">}</span>
+</pre>
+<p>
+        By default, the element types are deduced to the plain non-reference types.
+        E.g.:
+      </p>
+<pre class="programlisting"><span class="keyword">void</span> <span class="identifier">foo</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">A</span><span class="special">&amp;</span> <span class="identifier">a</span><span class="special">,</span> <span class="identifier">B</span><span class="special">&amp;</span> <span class="identifier">b</span><span class="special">)</span> <span class="special">{</span>
+  <span class="special">...</span>
+  <span class="identifier">make_tuple</span><span class="special">(</span><span class="identifier">a</span><span class="special">,</span> <span class="identifier">b</span><span class="special">);</span>
+</pre>
+<p>
+        The <code class="computeroutput"><span class="identifier">make_tuple</span></code> invocation
+        results in a tuple of type <code class="computeroutput"><span class="identifier">tuple</span><span class="special">&lt;</span><span class="identifier">A</span><span class="special">,</span>
+        <span class="identifier">B</span><span class="special">&gt;</span></code>.
+      </p>
+<p>
+        Sometimes the plain non-reference type is not desired, e.g. if the element
+        type cannot be copied. Therefore, the programmer can control the type deduction
+        and state that a reference to const or reference to non-const type should
+        be used as the element type instead. This is accomplished with two helper
+        template functions: <a href="../../../../libs/core/doc/html/core/ref.html" target="_top"><code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">ref</span></code></a> and <a href="../../../../libs/core/doc/html/core/ref.html" target="_top"><code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">cref</span></code></a>. Any argument can be wrapped
+        with these functions to get the desired type. The mechanism does not compromise
+        const correctness since a const object wrapped with ref results in a tuple
+        element with const reference type (see the fifth example below). For example:
+      </p>
+<pre class="programlisting"><span class="identifier">A</span> <span class="identifier">a</span><span class="special">;</span> <span class="identifier">B</span> <span class="identifier">b</span><span class="special">;</span> <span class="keyword">const</span> <span class="identifier">A</span> <span class="identifier">ca</span> <span class="special">=</span> <span class="identifier">a</span><span class="special">;</span>
+<span class="identifier">make_tuple</span><span class="special">(</span><span class="identifier">cref</span><span class="special">(</span><span class="identifier">a</span><span class="special">),</span> <span class="identifier">b</span><span class="special">);</span>      <span class="comment">// creates tuple&lt;const A&amp;, B&gt;</span>
+<span class="identifier">make_tuple</span><span class="special">(</span><span class="identifier">ref</span><span class="special">(</span><span class="identifier">a</span><span class="special">),</span> <span class="identifier">b</span><span class="special">);</span>       <span class="comment">// creates tuple&lt;A&amp;, B&gt;</span>
+<span class="identifier">make_tuple</span><span class="special">(</span><span class="identifier">ref</span><span class="special">(</span><span class="identifier">a</span><span class="special">),</span> <span class="identifier">cref</span><span class="special">(</span><span class="identifier">b</span><span class="special">));</span> <span class="comment">// creates tuple&lt;A&amp;, const B&amp;&gt;</span>
+<span class="identifier">make_tuple</span><span class="special">(</span><span class="identifier">cref</span><span class="special">(</span><span class="identifier">ca</span><span class="special">));</span>        <span class="comment">// creates tuple&lt;const A&amp;&gt;</span>
+<span class="identifier">make_tuple</span><span class="special">(</span><span class="identifier">ref</span><span class="special">(</span><span class="identifier">ca</span><span class="special">));</span>         <span class="comment">// creates tuple&lt;const A&amp;&gt;</span>
+</pre>
+<p>
+        Array arguments to <code class="computeroutput"><span class="identifier">make_tuple</span></code>
+        functions are deduced to reference to const types by default; there is no
+        need to wrap them with <code class="computeroutput"><span class="identifier">cref</span></code>.
+        For example:
+      </p>
+<pre class="programlisting"><span class="identifier">make_tuple</span><span class="special">(</span><span class="string">"Donald"</span><span class="special">,</span> <span class="string">"Daisy"</span><span class="special">);</span>
+</pre>
+<p>
+        This creates an object of type <code class="computeroutput"><span class="identifier">tuple</span><span class="special">&lt;</span><span class="keyword">const</span> <span class="keyword">char</span> <span class="special">(&amp;)[</span><span class="number">7</span><span class="special">],</span> <span class="keyword">const</span>
+        <span class="keyword">char</span> <span class="special">(&amp;)[</span><span class="number">6</span><span class="special">]&gt;</span></code> (note
+        that the type of a string literal is an array of const characters, not <code class="computeroutput"><span class="keyword">const</span> <span class="keyword">char</span><span class="special">*</span></code>). However, to get <code class="computeroutput"><span class="identifier">make_tuple</span></code>
+        to create a tuple with an element of a non-const array type one must use
+        the <code class="computeroutput"><span class="identifier">ref</span></code> wrapper.
+      </p>
+<p>
+        Function pointers are deduced to the plain non-reference type, that is, to
+        plain function pointer. A tuple can also hold a reference to a function,
+        but such a tuple cannot be constructed with <code class="computeroutput"><span class="identifier">make_tuple</span></code>
+        (a const qualified function type would result, which is illegal):
+      </p>
+<pre class="programlisting"><span class="keyword">void</span> <span class="identifier">f</span><span class="special">(</span><span class="keyword">int</span> <span class="identifier">i</span><span class="special">);</span>
+  <span class="special">...</span>
+<span class="identifier">make_tuple</span><span class="special">(&amp;</span><span class="identifier">f</span><span class="special">);</span> <span class="comment">// tuple&lt;void (*)(int)&gt;</span>
+  <span class="special">...</span>
+<span class="identifier">tuple</span><span class="special">&lt;</span><span class="identifier">tuple</span><span class="special">&lt;</span><span class="keyword">void</span> <span class="special">(&amp;)(</span><span class="keyword">int</span><span class="special">)&gt;</span> <span class="special">&gt;</span> <span class="identifier">a</span><span class="special">(</span><span class="identifier">f</span><span class="special">)</span> <span class="comment">// ok</span>
+<span class="identifier">make_tuple</span><span class="special">(</span><span class="identifier">f</span><span class="special">);</span>                    <span class="comment">// not ok</span>
+</pre>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="tuple.accessing_elements"></a><a class="link" href="tuple_users_guide.html#tuple.accessing_elements" title="Accessing Tuple Elements">Accessing Tuple Elements</a>
+</h2></div></div></div>
+<p>
+      Tuple elements are accessed with the expression:
+    </p>
+<pre class="programlisting"><span class="identifier">t</span><span class="special">.</span><span class="identifier">get</span><span class="special">&lt;</span><span class="identifier">N</span><span class="special">&gt;()</span>
+</pre>
+<p>
+      or
+    </p>
+<pre class="programlisting"><span class="identifier">get</span><span class="special">&lt;</span><span class="identifier">N</span><span class="special">&gt;(</span><span class="identifier">t</span><span class="special">)</span>
+</pre>
+<p>
+      where <code class="computeroutput"><span class="identifier">t</span></code> is a tuple object and
+      <code class="computeroutput"><span class="identifier">N</span></code> is a constant integral expression
+      specifying the index of the element to be accessed. Depending on whether <code class="computeroutput"><span class="identifier">t</span></code> is const or not, <code class="computeroutput"><span class="identifier">get</span></code>
+      returns the <code class="computeroutput"><span class="identifier">N</span></code>-th element as
+      a reference to const or non-const type. The index of the first element is
+      <code class="computeroutput"><span class="number">0</span></code> and thus <code class="computeroutput"><span class="identifier">N</span></code>
+      must be between <code class="computeroutput"><span class="number">0</span></code> and <span class="emphasis"><em>k</em></span><code class="computeroutput"><span class="special">-</span><span class="number">1</span></code>, where <span class="emphasis"><em>k</em></span>
+      is the number of elements in the tuple. Violations of these constraints are
+      detected at compile time. Examples:
+    </p>
+<pre class="programlisting"><span class="keyword">double</span> <span class="identifier">d</span> <span class="special">=</span> <span class="number">2.7</span><span class="special">;</span> <span class="identifier">A</span> <span class="identifier">a</span><span class="special">;</span>
+<span class="identifier">tuple</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">,</span> <span class="keyword">double</span><span class="special">&amp;,</span> <span class="keyword">const</span> <span class="identifier">A</span><span class="special">&amp;&gt;</span> <span class="identifier">t</span><span class="special">(</span><span class="number">1</span><span class="special">,</span> <span class="identifier">d</span><span class="special">,</span> <span class="identifier">a</span><span class="special">);</span>
+<span class="keyword">const</span> <span class="identifier">tuple</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">,</span> <span class="keyword">double</span><span class="special">&amp;,</span> <span class="keyword">const</span> <span class="identifier">A</span><span class="special">&amp;&gt;</span> <span class="identifier">ct</span> <span class="special">=</span> <span class="identifier">t</span><span class="special">;</span>
+  <span class="special">...</span>
+<span class="keyword">int</span> <span class="identifier">i</span> <span class="special">=</span> <span class="identifier">get</span><span class="special">&lt;</span><span class="number">0</span><span class="special">&gt;(</span><span class="identifier">t</span><span class="special">);</span> <span class="identifier">i</span> <span class="special">=</span> <span class="identifier">t</span><span class="special">.</span><span class="identifier">get</span><span class="special">&lt;</span><span class="number">0</span><span class="special">&gt;();</span>        <span class="comment">// ok</span>
+<span class="keyword">int</span> <span class="identifier">j</span> <span class="special">=</span> <span class="identifier">get</span><span class="special">&lt;</span><span class="number">0</span><span class="special">&gt;(</span><span class="identifier">ct</span><span class="special">);</span>                       <span class="comment">// ok</span>
+<span class="identifier">get</span><span class="special">&lt;</span><span class="number">0</span><span class="special">&gt;(</span><span class="identifier">t</span><span class="special">)</span> <span class="special">=</span> <span class="number">5</span><span class="special">;</span>                            <span class="comment">// ok</span>
+<span class="identifier">get</span><span class="special">&lt;</span><span class="number">0</span><span class="special">&gt;(</span><span class="identifier">ct</span><span class="special">)</span> <span class="special">=</span> <span class="number">5</span><span class="special">;</span>                           <span class="comment">// error, can't assign to const</span>
+  <span class="special">...</span>
+<span class="keyword">double</span> <span class="identifier">e</span> <span class="special">=</span> <span class="identifier">get</span><span class="special">&lt;</span><span class="number">1</span><span class="special">&gt;(</span><span class="identifier">t</span><span class="special">);</span> <span class="comment">// ok</span>
+<span class="identifier">get</span><span class="special">&lt;</span><span class="number">1</span><span class="special">&gt;(</span><span class="identifier">t</span><span class="special">)</span> <span class="special">=</span> <span class="number">3.14</span><span class="special">;</span>     <span class="comment">// ok</span>
+<span class="identifier">get</span><span class="special">&lt;</span><span class="number">2</span><span class="special">&gt;(</span><span class="identifier">t</span><span class="special">)</span> <span class="special">=</span> <span class="identifier">A</span><span class="special">();</span>      <span class="comment">// error, can't assign to const</span>
+<span class="identifier">A</span> <span class="identifier">aa</span> <span class="special">=</span> <span class="identifier">get</span><span class="special">&lt;</span><span class="number">3</span><span class="special">&gt;(</span><span class="identifier">t</span><span class="special">);</span>     <span class="comment">// error: index out of bounds</span>
+  <span class="special">...</span>
+<span class="special">++</span><span class="identifier">get</span><span class="special">&lt;</span><span class="number">0</span><span class="special">&gt;(</span><span class="identifier">t</span><span class="special">);</span>  <span class="comment">// ok, can be used as any variable</span>
+</pre>
+<p>
+      <span class="emphasis"><em>[Note:</em></span> The member <code class="computeroutput"><span class="identifier">get</span></code>
+      functions are not supported with MS Visual C++ compiler. Further, the compiler
+      has trouble with finding the non-member <code class="computeroutput"><span class="identifier">get</span></code>
+      functions without an explicit namespace qualifier. Hence, all <code class="computeroutput"><span class="identifier">get</span></code> calls should be qualified as <code class="computeroutput"><span class="identifier">tuples</span><span class="special">::</span><span class="identifier">get</span><span class="special">&lt;</span><span class="identifier">N</span><span class="special">&gt;(</span><span class="identifier">a_tuple</span><span class="special">)</span></code> when writing code that should compile with
+      MSVC++ 6.0.<span class="emphasis"><em>]</em></span>
+    </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="tuple.construction_and_assignment"></a><a class="link" href="tuple_users_guide.html#tuple.construction_and_assignment" title="Copy Construction and Tuple Assignment">Copy Construction and
+    Tuple Assignment</a>
+</h2></div></div></div>
+<p>
+      A tuple can be copy constructed from another tuple, provided that the element
+      types are element-wise copy constructible. Analogously, a tuple can be assigned
+      to another tuple, provided that the element types are element-wise assignable.
+      For example:
+    </p>
+<pre class="programlisting"><span class="keyword">class</span> <span class="identifier">A</span> <span class="special">{};</span>
+<span class="keyword">class</span> <span class="identifier">B</span> <span class="special">:</span> <span class="keyword">public</span> <span class="identifier">A</span> <span class="special">{};</span>
+<span class="keyword">struct</span> <span class="identifier">C</span> <span class="special">{</span> <span class="identifier">C</span><span class="special">();</span> <span class="identifier">C</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">B</span><span class="special">&amp;);</span> <span class="special">};</span>
+<span class="keyword">struct</span> <span class="identifier">D</span> <span class="special">{</span> <span class="keyword">operator</span> <span class="identifier">C</span><span class="special">()</span> <span class="keyword">const</span><span class="special">;</span> <span class="special">};</span>
+<span class="identifier">tuple</span><span class="special">&lt;</span><span class="keyword">char</span><span class="special">,</span> <span class="identifier">B</span><span class="special">*,</span> <span class="identifier">B</span><span class="special">,</span> <span class="identifier">D</span><span class="special">&gt;</span> <span class="identifier">t</span><span class="special">;</span>
+  <span class="special">...</span>
+<span class="identifier">tuple</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">,</span> <span class="identifier">A</span><span class="special">*,</span> <span class="identifier">C</span><span class="special">,</span> <span class="identifier">C</span><span class="special">&gt;</span> <span class="identifier">a</span><span class="special">(</span><span class="identifier">t</span><span class="special">);</span> <span class="comment">// ok</span>
+<span class="identifier">a</span> <span class="special">=</span> <span class="identifier">t</span><span class="special">;</span>                     <span class="comment">// ok</span>
+</pre>
+<p>
+      In both cases, the conversions performed are:
+    </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+          <code class="computeroutput"><span class="keyword">char</span> <span class="special">-&gt;</span>
+          <span class="keyword">int</span></code>,
+        </li>
+<li class="listitem">
+          <code class="computeroutput"><span class="identifier">B</span><span class="special">*</span>
+          <span class="special">-&gt;</span> <span class="identifier">A</span><span class="special">*</span></code> (derived class pointer to base class pointer),
+        </li>
+<li class="listitem">
+          <code class="computeroutput"><span class="identifier">B</span> <span class="special">-&gt;</span>
+          <span class="identifier">C</span></code> (a user defined conversion),
+          and
+        </li>
+<li class="listitem">
+          <code class="computeroutput"><span class="identifier">D</span> <span class="special">-&gt;</span>
+          <span class="identifier">C</span></code> (a user defined conversion).
+        </li>
+</ul></div>
+<p>
+      Note that assignment is also defined from <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">pair</span></code> types:
+    </p>
+<pre class="programlisting"><span class="identifier">tuple</span><span class="special">&lt;</span><span class="keyword">float</span><span class="special">,</span> <span class="keyword">int</span><span class="special">&gt;</span> <span class="identifier">a</span> <span class="special">=</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">make_pair</span><span class="special">(</span><span class="number">1</span><span class="special">,</span> <span class="char">'a'</span><span class="special">);</span>
+</pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="tuple.relational_operators"></a><a class="link" href="tuple_users_guide.html#tuple.relational_operators" title="Relational Operators">Relational Operators</a>
+</h2></div></div></div>
+<p>
+      Tuples reduce the operators <code class="computeroutput"><span class="special">==</span></code>,
+      <code class="computeroutput"><span class="special">!=</span></code>, <code class="computeroutput"><span class="special">&lt;</span></code>,
+      <code class="computeroutput"><span class="special">&gt;</span></code>, <code class="computeroutput"><span class="special">&lt;=</span></code>
+      and <code class="computeroutput"><span class="special">&gt;=</span></code> to the corresponding
+      elementary operators. This means, that if any of these operators is defined
+      between all elements of two tuples, then the same operator is defined between
+      the tuples as well. The equality operators for two tuples <code class="computeroutput"><span class="identifier">a</span></code>
+      and <code class="computeroutput"><span class="identifier">b</span></code> are defined as:
+    </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+          <code class="computeroutput"><span class="identifier">a</span> <span class="special">==</span>
+          <span class="identifier">b</span></code> iff for each <code class="computeroutput"><span class="identifier">i</span></code>: <code class="computeroutput"><span class="identifier">a</span></code><sub>i</sub><code class="computeroutput">
+          <span class="special">==</span> <span class="identifier">b</span></code><sub>i</sub>
+        </li>
+<li class="listitem">
+          <code class="computeroutput"><span class="identifier">a</span> <span class="special">!=</span>
+          <span class="identifier">b</span></code> iff exists <code class="computeroutput"><span class="identifier">i</span></code>:
+          <code class="computeroutput"><span class="identifier">a</span></code><sub>i</sub><code class="computeroutput"> <span class="special">!=</span>
+          <span class="identifier">b</span></code><sub>i</sub>
+        </li>
+</ul></div>
+<p>
+      The operators <code class="computeroutput"><span class="special">&lt;</span></code>, <code class="computeroutput"><span class="special">&gt;</span></code>, <code class="computeroutput"><span class="special">&lt;=</span></code>
+      and <code class="computeroutput"><span class="special">&gt;=</span></code> implement a lexicographical
+      ordering.
+    </p>
+<p>
+      Note that an attempt to compare two tuples of different lengths results in
+      a compile time error. Also, the comparison operators are <span class="emphasis"><em>"short-circuited"</em></span>:
+      elementary comparisons start from the first elements and are performed only
+      until the result is clear.
+    </p>
+<p>
+      Examples:
+    </p>
+<pre class="programlisting"><span class="identifier">tuple</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span><span class="special">,</span> <span class="keyword">int</span><span class="special">,</span> <span class="identifier">A</span><span class="special">&gt;</span> <span class="identifier">t1</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span><span class="special">(</span><span class="string">"same?"</span><span class="special">),</span> <span class="number">2</span><span class="special">,</span> <span class="identifier">A</span><span class="special">());</span>
+<span class="identifier">tuple</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span><span class="special">,</span> <span class="keyword">long</span><span class="special">,</span> <span class="identifier">A</span><span class="special">&gt;</span> <span class="identifier">t2</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span><span class="special">(</span><span class="string">"same?"</span><span class="special">),</span> <span class="number">2</span><span class="special">,</span> <span class="identifier">A</span><span class="special">());</span>
+<span class="identifier">tuple</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span><span class="special">,</span> <span class="keyword">long</span><span class="special">,</span> <span class="identifier">A</span><span class="special">&gt;</span> <span class="identifier">t3</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span><span class="special">(</span><span class="string">"different"</span><span class="special">),</span> <span class="number">3</span><span class="special">,</span> <span class="identifier">A</span><span class="special">());</span>
+
+<span class="keyword">bool</span> <span class="keyword">operator</span><span class="special">==(</span><span class="identifier">A</span><span class="special">,</span> <span class="identifier">A</span><span class="special">)</span> <span class="special">{</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"All the same to me..."</span><span class="special">;</span> <span class="keyword">return</span> <span class="keyword">true</span><span class="special">;</span> <span class="special">}</span>
+
+<span class="identifier">t1</span> <span class="special">==</span> <span class="identifier">t2</span><span class="special">;</span>               <span class="comment">// true</span>
+<span class="identifier">t1</span> <span class="special">==</span> <span class="identifier">t3</span><span class="special">;</span>               <span class="comment">// false, does not print "All the..."</span>
+</pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="tuple.tiers"></a><a class="link" href="tuple_users_guide.html#tuple.tiers" title="Tiers">Tiers</a>
+</h2></div></div></div>
+<p>
+      <span class="emphasis"><em>Tiers</em></span> are tuples, where all elements are of non-const
+      reference types. They are constructed with a call to the <code class="computeroutput"><span class="identifier">tie</span></code>
+      function template (cf. <code class="computeroutput"><span class="identifier">make_tuple</span></code>):
+    </p>
+<pre class="programlisting"><span class="keyword">int</span> <span class="identifier">i</span><span class="special">;</span> <span class="keyword">char</span> <span class="identifier">c</span><span class="special">;</span> <span class="keyword">double</span> <span class="identifier">d</span><span class="special">;</span>
+  <span class="special">...</span>
+<span class="identifier">tie</span><span class="special">(</span><span class="identifier">i</span><span class="special">,</span> <span class="identifier">c</span><span class="special">,</span> <span class="identifier">a</span><span class="special">);</span>
+</pre>
+<p>
+      The above <code class="computeroutput"><span class="identifier">tie</span></code> function creates
+      a tuple of type <code class="computeroutput"><span class="identifier">tuple</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&amp;,</span> <span class="keyword">char</span><span class="special">&amp;,</span> <span class="keyword">double</span><span class="special">&amp;&gt;</span></code>. The same result could be achieved
+      with the call <code class="computeroutput"><span class="identifier">make_tuple</span><span class="special">(</span><span class="identifier">ref</span><span class="special">(</span><span class="identifier">i</span><span class="special">),</span> <span class="identifier">ref</span><span class="special">(</span><span class="identifier">c</span><span class="special">),</span> <span class="identifier">ref</span><span class="special">(</span><span class="identifier">a</span><span class="special">))</span></code>.
+    </p>
+<p>
+      A tuple that contains non-const references as elements can be used to 'unpack'
+      another tuple into variables. E.g.:
+    </p>
+<pre class="programlisting"><span class="keyword">int</span> <span class="identifier">i</span><span class="special">;</span> <span class="keyword">char</span> <span class="identifier">c</span><span class="special">;</span> <span class="keyword">double</span> <span class="identifier">d</span><span class="special">;</span>
+<span class="identifier">tie</span><span class="special">(</span><span class="identifier">i</span><span class="special">,</span> <span class="identifier">c</span><span class="special">,</span> <span class="identifier">d</span><span class="special">)</span> <span class="special">=</span> <span class="identifier">make_tuple</span><span class="special">(</span><span class="number">1</span><span class="special">,</span><span class="char">'a'</span><span class="special">,</span> <span class="number">5.5</span><span class="special">);</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">i</span> <span class="special">&lt;&lt;</span> <span class="string">" "</span> <span class="special">&lt;&lt;</span>  <span class="identifier">c</span> <span class="special">&lt;&lt;</span> <span class="string">" "</span> <span class="special">&lt;&lt;</span> <span class="identifier">d</span><span class="special">;</span>
+</pre>
+<p>
+      This code prints <code class="computeroutput"><span class="number">1</span> <span class="identifier">a</span>
+      <span class="number">5.5</span></code> to the standard output stream. A
+      tuple unpacking operation like this is found for example in ML and Python.
+      It is convenient when calling functions which return tuples.
+    </p>
+<p>
+      The tying mechanism works with <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">pair</span></code> templates
+      as well:
+    </p>
+<pre class="programlisting"><span class="keyword">int</span> <span class="identifier">i</span><span class="special">;</span> <span class="keyword">char</span> <span class="identifier">c</span><span class="special">;</span>
+<span class="identifier">tie</span><span class="special">(</span><span class="identifier">i</span><span class="special">,</span> <span class="identifier">c</span><span class="special">)</span> <span class="special">=</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">make_pair</span><span class="special">(</span><span class="number">1</span><span class="special">,</span> <span class="char">'a'</span><span class="special">);</span>
+</pre>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="tuple.tiers.ignore"></a><a class="link" href="tuple_users_guide.html#tuple.tiers.ignore" title="Ignore">Ignore</a>
+</h3></div></div></div>
+<p>
+        There is also an object called <code class="computeroutput"><span class="identifier">ignore</span></code>
+        which allows you to ignore an element assigned by a tuple. The idea is that
+        a function may return a tuple, only part of which you are interested in.
+        For example (note, that ignore is under the <code class="computeroutput"><span class="identifier">tuples</span></code>
+        subnamespace):
+      </p>
+<pre class="programlisting"><span class="keyword">char</span> <span class="identifier">c</span><span class="special">;</span>
+<span class="identifier">tie</span><span class="special">(</span><span class="identifier">tuples</span><span class="special">::</span><span class="identifier">ignore</span><span class="special">,</span> <span class="identifier">c</span><span class="special">)</span> <span class="special">=</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">make_pair</span><span class="special">(</span><span class="number">1</span><span class="special">,</span> <span class="char">'a'</span><span class="special">);</span>
+</pre>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="tuple.streaming"></a><a class="link" href="tuple_users_guide.html#tuple.streaming" title="Streaming">Streaming</a>
+</h2></div></div></div>
+<p>
+      The global <code class="computeroutput"><span class="keyword">operator</span><span class="special">&lt;&lt;</span></code>
+      has been overloaded for <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">ostream</span></code>
+      such that tuples are output by recursively calling <code class="computeroutput"><span class="keyword">operator</span><span class="special">&lt;&lt;</span></code> for each element.
+    </p>
+<p>
+      Analogously, the global <code class="computeroutput"><span class="keyword">operator</span><span class="special">&gt;&gt;</span></code> has been overloaded to extract tuples
+      from <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">istream</span></code> by recursively calling <code class="computeroutput"><span class="keyword">operator</span><span class="special">&gt;&gt;</span></code>
+      for each element.
+    </p>
+<p>
+      The default delimiter between the elements is space, and the tuple is enclosed
+      in parenthesis. For Example:
+    </p>
+<pre class="programlisting"><span class="identifier">tuple</span><span class="special">&lt;</span><span class="keyword">float</span><span class="special">,</span> <span class="keyword">int</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span><span class="special">&gt;</span> <span class="identifier">a</span><span class="special">(</span><span class="number">1.0f</span><span class="special">,</span>  <span class="number">2</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span><span class="special">(</span><span class="string">"Howdy folks!"</span><span class="special">);</span>
+
+<span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">a</span><span class="special">;</span>
+</pre>
+<p>
+      outputs the tuple as: <code class="computeroutput"><span class="special">(</span><span class="number">1.0</span>
+      <span class="number">2</span> <span class="identifier">Howdy</span>
+      <span class="identifier">folks</span><span class="special">!)</span></code>
+    </p>
+<p>
+      The library defines three manipulators for changing the default behavior:
+    </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+          <code class="computeroutput"><span class="identifier">set_open</span><span class="special">(</span><span class="keyword">char</span><span class="special">)</span></code> defines
+          the character that is output before the first element.
+        </li>
+<li class="listitem">
+          <code class="computeroutput"><span class="identifier">set_close</span><span class="special">(</span><span class="keyword">char</span><span class="special">)</span></code> defines
+          the character that is output after the last element.
+        </li>
+<li class="listitem">
+          <code class="computeroutput"><span class="identifier">set_delimiter</span><span class="special">(</span><span class="keyword">char</span><span class="special">)</span></code> defines
+          the delimiter character between elements.
+        </li>
+</ul></div>
+<p>
+      Note, that these manipulators are defined in the tuples subnamespace. For example:
+    </p>
+<pre class="programlisting"><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">tuples</span><span class="special">::</span><span class="identifier">set_open</span><span class="special">(</span><span class="char">'['</span><span class="special">)</span> <span class="special">&lt;&lt;</span> <span class="identifier">tuples</span><span class="special">::</span><span class="identifier">set_close</span><span class="special">(</span><span class="char">']'</span><span class="special">)</span> <span class="special">&lt;&lt;</span> <span class="identifier">tuples</span><span class="special">::</span><span class="identifier">set_delimiter</span><span class="special">(</span><span class="char">','</span><span class="special">)</span> <span class="special">&lt;&lt;</span> <span class="identifier">a</span><span class="special">;</span>
+</pre>
+<p>
+      outputs the same tuple <code class="computeroutput"><span class="identifier">a</span></code> as:
+      <code class="computeroutput"><span class="special">[</span><span class="number">1.0</span><span class="special">,</span><span class="number">2</span><span class="special">,</span><span class="identifier">Howdy</span> <span class="identifier">folks</span><span class="special">!]</span></code>
+    </p>
+<p>
+      The same manipulators work with <code class="computeroutput"><span class="keyword">operator</span><span class="special">&gt;&gt;</span></code> and <code class="computeroutput"><span class="identifier">istream</span></code>
+      as well. Suppose the <code class="computeroutput"><span class="identifier">cin</span></code> stream
+      contains the following data:
+    </p>
+<pre class="programlisting"><span class="special">(</span><span class="number">1</span> <span class="number">2</span> <span class="number">3</span><span class="special">)</span> <span class="special">[</span><span class="number">4</span><span class="special">:</span><span class="number">5</span><span class="special">]</span>
+</pre>
+<p>
+      The code:
+    </p>
+<pre class="programlisting"><span class="identifier">tuple</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">,</span> <span class="keyword">int</span><span class="special">,</span> <span class="keyword">int</span><span class="special">&gt;</span> <span class="identifier">i</span><span class="special">;</span>
+<span class="identifier">tuple</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">,</span> <span class="keyword">int</span><span class="special">&gt;</span> <span class="identifier">j</span><span class="special">;</span>
+
+<span class="identifier">cin</span> <span class="special">&gt;&gt;</span> <span class="identifier">i</span><span class="special">;</span>
+<span class="identifier">cin</span> <span class="special">&gt;&gt;</span> <span class="identifier">tuples</span><span class="special">::</span><span class="identifier">set_open</span><span class="special">(</span><span class="char">'['</span><span class="special">)</span> <span class="special">&gt;&gt;</span> <span class="identifier">tuples</span><span class="special">::</span><span class="identifier">set_close</span><span class="special">(</span><span class="char">']'</span><span class="special">)</span> <span class="special">&gt;&gt;</span> <span class="identifier">tuples</span><span class="special">::</span><span class="identifier">set_delimiter</span><span class="special">(</span><span class="char">':'</span><span class="special">);</span>
+<span class="identifier">cin</span> <span class="special">&gt;&gt;</span> <span class="identifier">j</span><span class="special">;</span>
+</pre>
+<p>
+      reads the data into the tuples <code class="computeroutput"><span class="identifier">i</span></code>
+      and <code class="computeroutput"><span class="identifier">j</span></code>.
+    </p>
+<p>
+      Note that extracting tuples with <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span></code>
+      or C-style string elements does not generally work, since the streamed tuple
+      representation may not be unambiguously parseable.
+    </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="tuple.performance"></a><a class="link" href="tuple_users_guide.html#tuple.performance" title="Performance">Performance</a>
+</h2></div></div></div>
+<p>
+      All tuple access and construction functions are small inlined one-liners. Therefore,
+      a decent compiler can eliminate any extra cost of using tuples compared to
+      using hand-written tuple like classes. Particularly, with a decent compiler
+      there is no performance difference between this code:
+    </p>
+<pre class="programlisting"><span class="keyword">class</span> <span class="identifier">hand_made_tuple</span> <span class="special">{</span>
+  <span class="identifier">A</span> <span class="identifier">a</span><span class="special">;</span> <span class="identifier">B</span> <span class="identifier">b</span><span class="special">;</span> <span class="identifier">C</span> <span class="identifier">c</span><span class="special">;</span>
+<span class="keyword">public</span><span class="special">:</span>
+  <span class="identifier">hand_made_tuple</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">A</span><span class="special">&amp;</span> <span class="identifier">aa</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">B</span><span class="special">&amp;</span> <span class="identifier">bb</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">C</span><span class="special">&amp;</span> <span class="identifier">cc</span><span class="special">)</span>
+    <span class="special">:</span> <span class="identifier">a</span><span class="special">(</span><span class="identifier">aa</span><span class="special">),</span> <span class="identifier">b</span><span class="special">(</span><span class="identifier">bb</span><span class="special">),</span> <span class="identifier">c</span><span class="special">(</span><span class="identifier">cc</span><span class="special">)</span> <span class="special">{};</span>
+  <span class="identifier">A</span><span class="special">&amp;</span> <span class="identifier">getA</span><span class="special">()</span> <span class="special">{</span> <span class="keyword">return</span> <span class="identifier">a</span><span class="special">;</span> <span class="special">};</span>
+  <span class="identifier">B</span><span class="special">&amp;</span> <span class="identifier">getB</span><span class="special">()</span> <span class="special">{</span> <span class="keyword">return</span> <span class="identifier">b</span><span class="special">;</span> <span class="special">};</span>
+  <span class="identifier">C</span><span class="special">&amp;</span> <span class="identifier">getC</span><span class="special">()</span> <span class="special">{</span> <span class="keyword">return</span> <span class="identifier">c</span><span class="special">;</span> <span class="special">};</span>
+<span class="special">};</span>
+
+<span class="identifier">hand_made_tuple</span> <span class="identifier">hmt</span><span class="special">(</span><span class="identifier">A</span><span class="special">(),</span> <span class="identifier">B</span><span class="special">(),</span> <span class="identifier">C</span><span class="special">());</span>
+<span class="identifier">hmt</span><span class="special">.</span><span class="identifier">getA</span><span class="special">();</span> <span class="identifier">hmt</span><span class="special">.</span><span class="identifier">getB</span><span class="special">();</span> <span class="identifier">hmt</span><span class="special">.</span><span class="identifier">getC</span><span class="special">();</span>
+</pre>
+<p>
+      and this code:
+    </p>
+<pre class="programlisting"><span class="identifier">tuple</span><span class="special">&lt;</span><span class="identifier">A</span><span class="special">,</span> <span class="identifier">B</span><span class="special">,</span> <span class="identifier">C</span><span class="special">&gt;</span> <span class="identifier">t</span><span class="special">(</span><span class="identifier">A</span><span class="special">(),</span> <span class="identifier">B</span><span class="special">(),</span> <span class="identifier">C</span><span class="special">());</span>
+<span class="identifier">t</span><span class="special">.</span><span class="identifier">get</span><span class="special">&lt;</span><span class="number">0</span><span class="special">&gt;();</span> <span class="identifier">t</span><span class="special">.</span><span class="identifier">get</span><span class="special">&lt;</span><span class="number">1</span><span class="special">&gt;();</span> <span class="identifier">t</span><span class="special">.</span><span class="identifier">get</span><span class="special">&lt;</span><span class="number">2</span><span class="special">&gt;();</span>
+</pre>
+<p>
+      Note, that there are widely used compilers (e.g. bcc 5.5.1) which fail to optimize
+      this kind of tuple usage.
+    </p>
+<p>
+      Depending on the optimizing ability of the compiler, the tier mechanism may
+      have a small performance penalty compared to using non-const reference parameters
+      as a mechanism for returning multiple values from a function. For example,
+      suppose that the following functions <code class="computeroutput"><span class="identifier">f1</span></code>
+      and <code class="computeroutput"><span class="identifier">f2</span></code> have equivalent functionalities:
+    </p>
+<pre class="programlisting"><span class="keyword">void</span> <span class="identifier">f1</span><span class="special">(</span><span class="keyword">int</span><span class="special">&amp;,</span> <span class="keyword">double</span><span class="special">&amp;);</span>
+<span class="identifier">tuple</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">,</span> <span class="keyword">double</span><span class="special">&gt;</span> <span class="identifier">f2</span><span class="special">();</span>
+</pre>
+<p>
+      Then, the call #1 may be slightly faster than #2 in the code below:
+    </p>
+<pre class="programlisting"><span class="keyword">int</span> <span class="identifier">i</span><span class="special">;</span> <span class="keyword">double</span> <span class="identifier">d</span><span class="special">;</span>
+  <span class="special">...</span>
+<span class="identifier">f1</span><span class="special">(</span><span class="identifier">i</span><span class="special">,</span><span class="identifier">d</span><span class="special">);</span>         <span class="comment">// #1</span>
+<span class="identifier">tie</span><span class="special">(</span><span class="identifier">i</span><span class="special">,</span><span class="identifier">d</span><span class="special">)</span> <span class="special">=</span> <span class="identifier">f2</span><span class="special">();</span> <span class="comment">// #2</span>
+</pre>
+<p>
+      See [<a class="link" href="tuple_users_guide.html#publ_1">1</a>, <a class="link" href="tuple_users_guide.html#publ_2">2</a>] for
+      more in-depth discussions about efficiency.
+    </p>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="tuple.performance.effect_on_compile_time"></a><a class="link" href="tuple_users_guide.html#tuple.performance.effect_on_compile_time" title="Effect on Compile Time">Effect on Compile
+      Time</a>
+</h3></div></div></div>
+<p>
+        Compiling tuples can be slow due to the excessive amount of template instantiations.
+        Depending on the compiler and the tuple length, it may be more than 10 times
+        slower to compile a tuple construct, compared to compiling an equivalent
+        explicitly written class, such as the <code class="computeroutput"><span class="identifier">hand_made_tuple</span></code>
+        class above. However, as a realistic program is likely to contain a lot of
+        code in addition to tuple definitions, the difference is probably unnoticeable.
+        Compile time increases between 5 and 10 percent were measured for programs
+        which used tuples very frequently. With the same test programs, memory consumption
+        of compiling increased between 22% to 27%. See [<a class="link" href="tuple_users_guide.html#publ_1">1</a>,
+        <a class="link" href="tuple_users_guide.html#publ_2">2</a>] for details.
+      </p>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="tuple.portability"></a><a class="link" href="tuple_users_guide.html#tuple.portability" title="Portability">Portability</a>
+</h2></div></div></div>
+<p>
+      The library code is(?) standard C++ and thus the library works with a standard
+      conforming compiler. Below is a list of compilers and known problems with each
+      compiler:
+    </p>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+              <p>
+                Compiler
+              </p>
+            </th>
+<th>
+              <p>
+                Problems
+              </p>
+            </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+              <p>
+                gcc 2.95
+              </p>
+            </td>
+<td>
+              <p>
+                -
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                edg 2.44
+              </p>
+            </td>
+<td>
+              <p>
+                -
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                Borland 5.5
+              </p>
+            </td>
+<td>
+              <p>
+                Can't use function pointers or member pointers as tuple elements
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                Metrowerks 6.2
+              </p>
+            </td>
+<td>
+              <p>
+                Can't use <code class="computeroutput"><span class="identifier">ref</span></code> and
+                <code class="computeroutput"><span class="identifier">cref</span></code> wrappers
+              </p>
+            </td>
+</tr>
+<tr>
+<td>
+              <p>
+                MS Visual C++
+              </p>
+            </td>
+<td>
+              <p>
+                No reference elements (<code class="computeroutput"><span class="identifier">tie</span></code>
+                still works). Can't use <code class="computeroutput"><span class="identifier">ref</span></code>
+                and <code class="computeroutput"><span class="identifier">cref</span></code> wrappers
+              </p>
+            </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="tuple.more_details"></a><a class="link" href="tuple_users_guide.html#tuple.more_details" title="More Details">More Details</a>
+</h2></div></div></div>
+<p>
+      <a class="link" href="tuple_advanced_interface.html" title="Tuple library advanced features">Advanced features</a> (describes
+      some metafunctions etc.).
+    </p>
+<p>
+      <a class="link" href="design_decisions_rationale.html" title="Design decisions rationale">Rationale behind some design/implementation
+      decisions</a>.
+    </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="tuple.thanks"></a><a class="link" href="tuple_users_guide.html#tuple.thanks" title="Acknowledgements">Acknowledgements</a>
+</h2></div></div></div>
+<p>
+      Gary Powell has been an indispensable helping hand. In particular, stream manipulators
+      for tuples were his idea. Doug Gregor came up with a working version for MSVC,
+      David Abrahams found a way to get rid of most of the restrictions for compilers
+      not supporting partial specialization. Thanks to Jeremy Siek, William Kempf
+      and Jens Maurer for their help and suggestions. The comments by Vesa Karvonen,
+      John Max Skaller, Ed Brey, Beman Dawes, David Abrahams and Hartmut Kaiser helped
+      to improve the library. The idea for the <code class="computeroutput"><span class="identifier">tie</span></code>
+      mechanism came from an old usenet article by Ian McCulloch, where he proposed
+      something similar for <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">pair</span></code>s.
+    </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="tuple.references"></a><a class="link" href="tuple_users_guide.html#tuple.references" title="References">References</a>
+</h2></div></div></div>
+<p>
+      <a name="publ_1"></a>[1] J&#228;rvi J.: <span class="emphasis"><em>Tuples and multiple return
+      values in C++</em></span>, TUCS Technical Report No 249, 1999.
+    </p>
+<p>
+      <a name="publ_2"></a>[2] J&#228;rvi J.: <span class="emphasis"><em>ML-Style Tuple Assignment
+      in Standard C++ - Extending the Multiple Return Value Formalism</em></span>,
+      TUCS Technical Report No 267, 1999.
+    </p>
+<p>
+      <a name="publ_3"></a>[3] J&#228;rvi J.: <span class="emphasis"><em>Tuple Types and Multiple
+      Return Values</em></span>, C/C++ Users Journal, August 2001.
+    </p>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"><p><small>Last revised: August 14, 2019 at 12:05:26 GMT</small></p></td>
+<td align="right"><div class="copyright-footer"></div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav"><a accesskey="n" href="tuple_advanced_interface.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a></div>
+</body>
+</html>

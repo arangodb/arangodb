@@ -1,0 +1,37 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html><meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>The HTMLTidy library - Boost.Outcome documentation</title>
+<link rel="stylesheet" href="../../../css/boost.css" type="text/css">
+<meta name="generator" content="Hugo 0.52 with Boostdoc theme">
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+
+<link rel="icon" href="../../../images/favicon.ico" type="image/ico"/>
+<body><div class="spirit-nav">
+<a accesskey="p" href="../../../tutorial/advanced/interop/httplib.html"><img src="../../../images/prev.png" alt="Prev"></a>
+    <a accesskey="u" href="../../../tutorial/advanced/interop.html"><img src="../../../images/up.png" alt="Up"></a>
+    <a accesskey="h" href="../../../index.html"><img src="../../../images/home.png" alt="Home"></a><a accesskey="n" href="../../../tutorial/advanced/interop/filelib.html"><img src="../../../images/next.png" alt="Next"></a></div><div id="content">
+  <div class="titlepage"><div><div><h1 style="clear: both">The HTMLTidy library</h1></div></div></div>
+  <div class="code-snippet"><div class="highlight"><pre class="chroma"><code class="language-c++" data-lang="c++"><span class="c1">// There actually is a library for tidying HTML into XHTML called HTMLTidy
+</span><span class="c1">// See http://www.html-tidy.org/
+</span><span class="c1">// HTMLTidy is actually a great tool for dealing with 1990s-era tag soup
+</span><span class="c1">// HTML, I highly recommend it.
+</span><span class="c1"></span>
+<span class="c1">// This isn&#39;t the API for Tidy, but let&#39;s assume it&#39;s a C library returning
+</span><span class="c1">// errno domained error codes. out must be freed with free() after use.
+</span><span class="c1"></span><span class="k">extern</span> <span class="s">&#34;C&#34;</span> <span class="kt">int</span> <span class="n">tidy_html</span><span class="p">(</span><span class="kt">char</span> <span class="o">**</span><span class="n">out</span><span class="p">,</span> <span class="n">size_t</span> <span class="o">*</span><span class="n">outlen</span><span class="p">,</span> <span class="k">const</span> <span class="kt">char</span> <span class="o">*</span><span class="n">in</span><span class="p">,</span> <span class="n">size_t</span> <span class="n">inlen</span><span class="p">);</span>
+</code></pre></div><a href="https://github.com/boostorg/outcome/tree/master/doc/src/snippets/finale.cpp#L147" class="code-snippet-url" target="_blank">View this code on Github</a></div>
+
+
+<p>A C API may not initially appear to be a <code>T|E</code> based API, but if failure
+returns some domained error code and causes no other effects, and success
+returns some value, then it is effectively a &ldquo;split&rdquo; <code>T|E</code> API. The above
+is an example of exactly that form of &ldquo;split&rdquo; <code>T|E</code> API.</p>
+
+
+        </div><p><small>Last revised: February 08, 2019 at 22:18:08 UTC</small></p>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../../../tutorial/advanced/interop/httplib.html"><img src="../../../images/prev.png" alt="Prev"></a>
+    <a accesskey="u" href="../../../tutorial/advanced/interop.html"><img src="../../../images/up.png" alt="Up"></a>
+    <a accesskey="h" href="../../../index.html"><img src="../../../images/home.png" alt="Home"></a><a accesskey="n" href="../../../tutorial/advanced/interop/filelib.html"><img src="../../../images/next.png" alt="Next"></a></div></body>
+</html>

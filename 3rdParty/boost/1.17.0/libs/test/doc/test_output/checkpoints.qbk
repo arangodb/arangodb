@@ -1,0 +1,59 @@
+[/
+ / Copyright (c) 2001 Boost.Test contributors
+ /
+ / Distributed under the Boost Software License, Version 1.0. (See accompanying
+ / file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+ /]
+
+[section:checkpoints Checkpoints for accurate failure location]
+
+In most cases, the __UTF__ can't provide an exact location where system error occurs or uncaught C++ exception
+is thrown from. To be able to pinpoint it as close as possible the __UTF__ keeps track of *checkpoints* - the
+location a test module passed through.
+
+The __UTF__ keeps track of checkpoints at test case entrance, exit, fixture initialization, and at test tool invocation point.
+
+Any other checkpoints should be entered by you manually if you need more granularity in case a fatal
+error occurs during the test. The __UTF__ provides two macros for this purpose:
+
+* [link ref_named_checkpoint `BOOST_TEST_CHECKPOINT`] to specify a ['named] checkpoint and
+* [link ref_unnamed_checkpoint `BOOST_TEST_PASSPOINT`] to specify an ['unnamed] checkpoint.
+
+The checkpoints are also convenient for checks in loops as they might provide
+more information about the occurrence of a failure (although superseded by
+[links boost_test.test_output.test_tools_support_for_logging.contexts contexts]).
+
+[/ -------------------------------------------------------------------------------------------------- ]
+[#ref_named_checkpoint][h3 Named checkpoints]
+
+The macro __BOOST_TEST_CHECKPOINT__ is intended to be used to inject [*named] checkpoint position. The
+macro signature is as follows:
+
+``
+  __BOOST_TEST_CHECKPOINT__(checkpoint_message);
+``
+
+The message formatted at the checkpoint position is saved and reported by the exception logging functions (if any
+occurs). Similarly to the __BOOST_TEST_MESSAGE__ the message can be formatted from any standard
+output stream compliant components.
+
+[bt_example example22..__BOOST_TEST_CHECKPOINT__ usage..run-fail]
+
+
+[/ -------------------------------------------------------------------------------------------------- ]
+[#ref_unnamed_checkpoint][h3 Unnamed checkpoints]
+
+The macro __BOOST_TEST_PASSPOINT__ is intended to be used to inject an [*unnamed] checkpoint position. The
+macro signature is as follows:
+
+``
+  __BOOST_TEST_PASSPOINT__();
+``
+
+Unlike the macro __BOOST_TEST_CHECKPOINT__ this macro doesn't require any message to be
+supplied with it. It's just a simple "been there" marker that records file name and line number
+code passes through.
+
+[bt_example example23..__BOOST_TEST_PASSPOINT__ usage..run-fail]
+
+[endsect] [/checkpoints]

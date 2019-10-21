@@ -1,0 +1,963 @@
+////
+Copyright 2003-2017 Beman Dawes
+Copyright 2018 Peter Dimov
+
+Distributed under the Boost Software License, Version 1.0.
+
+See accompanying file LICENSE_1_0.txt or copy at
+http://www.boost.org/LICENSE_1_0.txt
+////
+
+[#reference]
+# Reference
+:idprefix: ref_
+
+## Use of {cpp}11 and {cpp}14 Features
+
+The library is documented to use several {cpp}11 and {cpp}14 features,
+including `noexcept`, explicit conversion operators and `constexpr`. The
+actual implementation uses {cpp}11 and {cpp}14 features only when they are
+available, and otherwise falls back on {cpp}03 features.
+
+## Macros
+
+When `BOOST_SYSTEM_ENABLE_DEPRECATED` is defined, the library provides
+deprecated features for compatibility. These features are bound to eventually
+disappear.
+
+When `BOOST_SYSTEM_USE_UTF8` is defined, on Windows the library returns
+UTF-8 messages using code page `CP_UTF8` instead of the default `CP_ACP`.
+This macro has no effect on POSIX.
+
+## Deprecated Names
+
+In the process of adding Boost.System to the {cpp}11 standard library, the
+{cpp} committee changed some names. To ease transition, Boost.System deprecates
+the old names, but will provide them when the macro `BOOST_SYSTEM_ENABLE_DEPRECATED` is defined.
+
+|===
+|Old usage, now deprecated|Replacement
+
+|`get_generic_category()`|`generic_category()`
+|`get_system_category()`|`system_category()`
+|`namespace posix`|`namespace errc`
+|`namespace posix_error`|`namespace errc`
+|`get_posix_category()`|`generic_category()`
+|`posix_category`|`generic_category()`
+|`errno_ecat`|`generic_category()`
+|`native_ecat`|`system_category()`
+|===
+
+## <boost/system/error_code.hpp>
+
+### Synopsis
+
+```
+namespace boost {
+  namespace system {
+
+    class error_category;
+
+    constexpr const error_category & system_category() noexcept;
+    constexpr const error_category & generic_category() noexcept;
+
+    class error_code;
+    class error_condition;
+
+    // "Concept" helpers
+
+    template<class T>
+      struct is_error_code_enum { static const bool value = false; };
+
+    template<class T>
+      struct is_error_condition_enum { static const bool value = false; };
+
+    // generic error conditions
+
+    namespace errc {
+      enum errc_t
+      {
+        success = 0,
+        address_family_not_supported,   //EAFNOSUPPORT
+        address_in_use,                 //EADDRINUSE
+        address_not_available,          //EADDRNOTAVAIL
+        already_connected,              //EISCONN
+        argument_list_too_long,         //E2BIG
+        argument_out_of_domain,         //EDOM
+        bad_address,                    //EFAULT
+        bad_file_descriptor,            //EBADF
+        bad_message,                    //EBADMSG
+        broken_pipe,                    //EPIPE
+        connection_aborted,             //ECONNABORTED
+        connection_already_in_progress, //EALREADY
+        connection_refused,             //ECONNREFUSED
+        connection_reset,               //ECONNRESET
+        cross_device_link,              //EXDEV
+        destination_address_required,   //EDESTADDRREQ
+        device_or_resource_busy,        //EBUSY
+        directory_not_empty,            //ENOTEMPTY
+        executable_format_error,        //ENOEXEC
+        file_exists,                    //EEXIST
+        file_too_large,                 //EFBIG
+        filename_too_long,              //ENAMETOOLONG
+        function_not_supported,         //ENOSYS
+        host_unreachable,               //EHOSTUNREACH
+        identifier_removed,             //EIDRM
+        illegal_byte_sequence,          //EILSEQ
+        inappropriate_io_control_operation, //ENOTTY
+        interrupted,                    //EINTR
+        invalid_argument,               //EINVAL
+        invalid_seek,                   //ESPIPE
+        io_error,                       //EIO
+        is_a_directory,                 //EISDIR
+        message_size,                   //EMSGSIZE
+        network_down,                   //ENETDOWN
+        network_reset,                  //ENETRESET
+        network_unreachable,            //ENETUNREACH
+        no_buffer_space,                //ENOBUFS
+        no_child_process,               //ECHILD
+        no_link,                        //ENOLINK
+        no_lock_available,              //ENOLCK
+        no_message_available,           //ENODATA
+        no_message,                     //ENOMSG
+        no_protocol_option,             //ENOPROTOOPT
+        no_space_on_device,             //ENOSPC
+        no_stream_resources,            //ENOSR
+        no_such_device_or_address,      //ENXIO
+        no_such_device,                 //ENODEV
+        no_such_file_or_directory,      //ENOENT
+        no_such_process,                //ESRCH
+        not_a_directory,                //ENOTDIR
+        not_a_socket,                   //ENOTSOCK
+        not_a_stream,                   //ENOSTR
+        not_connected,                  //ENOTCONN
+        not_enough_memory,              //ENOMEM
+        not_supported,                  //ENOTSUP
+        operation_canceled,             //ECANCELED
+        operation_in_progress,          //EINPROGRESS
+        operation_not_permitted,        //EPERM
+        operation_not_supported,        //EOPNOTSUPP
+        operation_would_block,          //EWOULDBLOCK
+        owner_dead,                     //EOWNERDEAD
+        permission_denied,              //EACCES
+        protocol_error,                 //EPROTO
+        protocol_not_supported,         //EPROTONOSUPPORT
+        read_only_file_system,          //EROFS
+        resource_deadlock_would_occur,  //EDEADLK
+        resource_unavailable_try_again, //EAGAIN
+        result_out_of_range,            //ERANGE
+        state_not_recoverable,          //ENOTRECOVERABLE
+        stream_timeout,                 //ETIME
+        text_file_busy,                 //ETXTBSY
+        timed_out,                      //ETIMEDOUT
+        too_many_files_open_in_system,  //ENFILE
+        too_many_files_open,            //EMFILE
+        too_many_links,                 //EMLINK
+        too_many_synbolic_link_levels,  //ELOOP
+        value_too_large,                //EOVERFLOW
+        wrong_protocol_type             //EPROTOTYPE
+      };
+
+    } // namespace errc
+
+    template<> struct is_error_condition_enum<errc::errc_t>
+      { static const bool value = true; };
+
+    // non-member functions
+
+    constexpr bool operator==( const error_code & lhs,
+      const error_code & rhs ) noexcept;
+    bool operator==( const error_code & code,
+      const error_condition & condition ) noexcept;
+    bool operator==( const error_condition & condition,
+      const error_code & code ) noexcept;
+    constexpr bool operator==( const error_condition & lhs,
+      const error_condition & rhs ) noexcept;
+
+    constexpr bool operator!=( const error_code & lhs,
+      const error_code & rhs ) noexcept;
+    bool operator!=( const error_code & code,
+      const error_condition & condition ) noexcept;
+    bool operator!=( const error_condition & condition,
+      const error_code & code ) noexcept;
+    constexpr bool operator!=( const error_condition & lhs,
+      const error_condition & rhs ) noexcept;
+
+    constexpr bool operator<( const error_code & lhs,
+      const error_code & rhs ) noexcept;
+    constexpr bool operator<( const error_condition & lhs,
+      const error_condition & rhs ) noexcept;
+
+    constexpr error_code make_error_code( errc::errc_t e ) noexcept;
+    constexpr error_condition make_error_condition( errc::errc_t e ) noexcept;
+
+    template <class charT, class traits>
+      std::basic_ostream<charT, traits>&
+        operator<<( basic_ostream<charT, traits>& os, const error_code & ec );
+
+    std::size_t hash_value( const error_code & ec );
+
+  } // namespace system
+} // namespace boost
+```
+
+The value of each `errc_t` constant is the same as the value of the `<cerrno>`
+macro shown in the above synopsis.
+
+Users may specialize `is_error_code_enum` and `is_error_condition_enum`
+templates to indicate that a type is eligible for class `error_code` and
+`error_condition` automatic conversions respectively.
+
+### Class error_category
+
+The class `error_category` defines the base class for types used
+to identify the source and encoding of a particular category of error code.
+
+Classes may be derived from `error_category` to support categories of
+errors in addition to those defined in Boost.System.
+
+```
+namespace boost {
+  namespace system {
+
+    class error_category
+    {
+    public: // noncopyable
+
+      error_category( error_category const & ) = delete;
+      error_category& operator=( error_category const & ) = delete;
+
+    protected:
+
+      ~error_category() = default;
+
+      constexpr error_category() noexcept;
+      explicit constexpr error_category( unsigned long long id ) noexcept;
+
+    public:
+
+      virtual const char * name() const noexcept = 0;
+
+      virtual error_condition default_error_condition( int ev ) const noexcept;
+
+      virtual bool equivalent( int code, const error_condition & condition )
+        const noexcept;
+      virtual bool equivalent( const error_code & code, int condition )
+        const noexcept;
+
+      virtual std::string message( int ev ) const = 0;
+      virtual char const * message( int ev, char * buffer, std::size_t len )
+        const noexcept;
+
+      virtual bool failed( int ev ) const noexcept;
+
+      constexpr bool operator==( const error_category & rhs ) const noexcept;
+      constexpr bool operator!=( const error_category & rhs ) const noexcept;
+      constexpr bool operator< ( const error_category & rhs ) const noexcept;
+
+      operator std::error_category const & () const;
+
+    private:
+
+      unsigned long long id_; // exposition only
+
+    };
+  }
+}
+```
+
+#### Constructors
+
+```
+constexpr error_category() noexcept;
+```
+[none]
+* {blank}
++
+Effects: :: Initializes `id_` to 0.
+Remarks: :: Since equivalence for categories that do not have an identifier is
+  based on comparing object addresses, a user-defined derived category of type
+  `C` that uses this constructor should ensure that only one object of type `C`
+  exists in the program.
+
+```
+explicit constexpr error_category( unsigned long long id ) noexcept;
+```
+[none]
+* {blank}
++
+Effects: :: Initializes `id_` to `id`.
+Remarks: :: User-defined derived categories that use this constructor are considered
+  equivalent when their identifiers match. Therefore, those categories may have more
+  than one instance existing in a program, but to minimize the possibility of
+  collision, their identifiers must be randomly chosen (at the time the category
+  is implemented, not at runtime). One way of generating a 64 bit random identifier
+  is https://www.random.org/cgi-bin/randbyte?nbytes=8&format=h.
+
+#### Virtuals
+
+```
+virtual const char * name() const noexcept = 0;
+```
+[none]
+* {blank}
++
+Returns: :: In derived classes, a character literal naming the error category.
+
+```
+virtual error_condition default_error_condition( int ev ) const noexcept;
+```
+[none]
+* {blank}
++
+Returns: ::
+- In derived classes, an error condition corresponding to `ev`.
+  The returned error condition will typically come from the generic category.
+- In the default implementation, `error_condition( ev, *this )`.
+
+```
+virtual bool equivalent( int code, const error_condition & condition )
+  const noexcept;
+```
+[none]
+* {blank}
++
+Returns: ::
+- In derived classes, `true` when `error_code( code, *this )` is equivalent to `condition`.
+- In the default implementation, `default_error_condition( code ) == condition`.
+
+```
+virtual bool equivalent( const error_code & code, int condition )
+  const noexcept;
+```
+[none]
+* {blank}
++
+Returns: ::
+- In derived classes, `true` when `code` is equivalent to `error_condition( condition, *this )`.
+- In the default implementation, `*this == code.category() && code.value() == condition`.
+
+```
+virtual std::string message( int ev ) const = 0;
+```
+[none]
+* {blank}
++
+Returns: :: In derived classes, a string that describes the error denoted by `ev`.
+
+```
+virtual char const * message( int ev, char * buffer, std::size_t len )
+  const noexcept;
+```
+[none]
+* {blank}
++
+Effects: ::
+** Derived classes should either
+  *** return a pointer to a character literal describing the error denoted by `ev`, or
+  *** copy a string describing the error into `buffer`, truncating it to `len-1`
+      characters and storing a null terminator, and return `buffer`. If `len` is 0,
+      nothing is copied, but the function still returns `buffer`. Note that
+      when `len` is 0, `buffer` may be `nullptr`.
+** The default implementation calls `message(ev)` and copies the result into
+   `buffer`, truncating it to `len-1` characters and storing a null terminator.
+   If `len` is 0, copies nothing. Returns `buffer`. If `message(ev)` throws an
+   exception, the string `"Message text unavailable"` is used.
+Example: ::
++
+```
+const char* my_category::message(int ev, char* buffer, size_t len) const noexcept
+{
+  switch(ev)
+  {
+  case 0: return "no error";
+  case 1: return "voltage out of range";
+  case 2: return "impedance mismatch";
+  case 31:
+  case 32:
+  case 33:
+    std::snprintf(buffer, len, "component %d failure", ev-30);
+    return buffer;
+  default:
+    std::snprintf(buffer, len, "unknown error %d", ev);
+    return buffer;
+  }
+}
+```
+
+```
+virtual bool failed( int ev ) const noexcept;
+```
+[none]
+* {blank}
++
+Returns: ::
+- In derived classes, `true` when `ev` represents a failure.
+- In the default implementation, `ev != 0`.
+Remarks: ::
+  All calls to this function with the same `ev` must return the same value.
+
+#### Nonvirtuals
+
+```
+constexpr bool operator==( const error_category & rhs ) const noexcept;
+```
+[none]
+* {blank}
++
+Returns: :: `rhs.id_ == 0? this == &rhs: id_ == rhs.id_`.
+Remarks: :: Two category objects are considered equivalent when they have matching
+  nonzero identifiers, or are the same object.
+
+```
+constexpr bool operator!=( const error_category & rhs ) const noexcept;
+```
+[none]
+* {blank}
++
+Returns: :: `!( *this == rhs )`.
+
+```
+constexpr bool operator< ( const error_category & rhs ) const noexcept;
+```
+[none]
+* {blank}
++
+Returns: ::
+** If `id_ < rhs.id_`, `true`;
+** Otherwise, if `id_ > rhs.id_`, `false`;
+** Otherwise, if `rhs.id_ != 0`, `false`;
+** Otherwise, `std::less<error_category const *>()( this, &rhs )`.
+
+```
+operator std::error_category const & () const;
+```
+[none]
+* {blank}
++
+Returns: :: A reference to an `std::error_category` object corresponding
+  to `*this`.
+
+### Predefined Categories
+
+```
+constexpr const error_category & system_category() noexcept;
+```
+[none]
+* {blank}
++
+Returns: :: A reference to an `error_category` object identifying errors
+  originating from the operating system.
+
+```
+constexpr const error_category & generic_category() noexcept;
+```
+[none]
+* {blank}
++
+Returns: :: A reference to an `error_category` object identifying portable
+  error conditions.
+
+### Class error_code
+
+The class `error_code` describes an object used to hold error code
+values, such as those originating from the operating system or other
+low-level application program interfaces. It's an adjunct to error reporting
+by exception.
+
+```
+namespace boost {
+  namespace system {
+
+    class error_code {
+    public:
+
+      // constructors:
+
+      constexpr error_code() noexcept;
+      constexpr error_code( int val, const error_category & cat ) noexcept;
+
+      template <class ErrorCodeEnum>
+        constexpr error_code( ErrorCodeEnum e ) noexcept;
+
+      // modifiers:
+
+      constexpr void assign( int val, const error_category & cat ) noexcept;
+
+      template<typename ErrorCodeEnum>
+        constexpr error_code & operator=( ErrorCodeEnum e ) noexcept;
+
+      constexpr void clear() noexcept;
+
+      // observers:
+
+      constexpr int value() const noexcept;
+      constexpr const error_category & category() const noexcept;
+
+      error_condition default_error_condition() const noexcept;
+
+      std::string message() const;
+      char const * message( char * buffer, std::size_t len ) const noexcept;
+
+      constexpr bool failed() const noexcept;
+      constexpr explicit operator bool() const noexcept;
+
+      operator std::error_code() const;
+
+    private: // exposition only
+
+      int val_;
+      const error_category * cat_;
+
+    };
+  }
+}
+```
+
+#### Constructors
+
+```
+constexpr error_code() noexcept;
+```
+[none]
+* {blank}
++
+Ensures: :: `val_ == 0`; `*cat_ == system_category()`.
+
+```
+constexpr error_code( int val, const error_category & cat ) noexcept;
+```
+[none]
+* {blank}
++
+Ensures: :: `val_ == val`; `cat_ == &cat`.
+
+```
+template <class ErrorCodeEnum>
+  constexpr error_code( ErrorCodeEnum e ) noexcept;
+```
+[none]
+* {blank}
++
+Ensures: :: `*this == make_error_code( e )`.
+Remarks: :: This constructor is only enabled when `is_error_code_enum<ErrorCodeEnum>::value` is `true`.
+
+#### Modifiers
+
+```
+constexpr void assign( int val, const error_category & cat ) noexcept;
+```
+[none]
+* {blank}
++
+Ensures: :: `val_ == val`; `cat_ == &cat`.
+
+```
+template<typename ErrorCodeEnum>
+  constexpr error_code & operator=( ErrorCodeEnum e ) noexcept;
+```
+[none]
+* {blank}
++
+Ensures: :: `*this == make_error_code( e )`.
+Remarks: :: This operator is only enabled when `is_error_code_enum<ErrorCodeEnum>::value` is `true`.
+
+```
+constexpr void clear() noexcept;
+```
+[none]
+* {blank}
++
+Ensures: :: `val_ == 0`; `*cat_ == system_category()`.
+
+#### Observers
+
+```
+constexpr int value() const noexcept;
+```
+[none]
+* {blank}
++
+Returns: :: `val_`.
+
+```
+constexpr const error_category & category() const noexcept;
+```
+[none]
+* {blank}
++
+Returns: :: `*cat_`.
+
+```
+error_condition default_error_condition() const noexcept;
+```
+[none]
+* {blank}
++
+Returns: :: `cat_\->default_error_condition( val_ )`.
+
+```
+std::string message() const;
+```
+[none]
+* {blank}
++
+Returns: :: `cat_\->message( val_ )`.
+
+```
+char const * message( char * buffer, std::size_t len ) const noexcept;
+```
+[none]
+* {blank}
++
+Returns: :: `cat_\->message( val_, buffer, len )`.
+
+```
+constexpr bool failed() const noexcept;
+```
+[none]
+* {blank}
++
+Returns: :: `cat_\->failed( val_ )`.
+
+```
+constexpr explicit operator bool() const noexcept;
+```
+[none]
+* {blank}
++
+Returns: :: `val_ != 0`.
+
+```
+operator std::error_code() const;
+```
+[none]
+* {blank}
++
+Returns: :: `std::error_code( val_, *cat_ )`.
+
+### Class error_condition
+
+```
+namespace boost {
+  namespace system {
+
+    class error_condition {
+    public:
+
+      // constructors:
+
+      constexpr error_condition() noexcept;
+      constexpr error_condition( int val, const error_category & cat ) noexcept;
+
+      template <class ErrorConditionEnum>
+        constexpr error_condition( ErrorConditionEnum e ) noexcept;
+
+      // modifiers:
+
+      constexpr void assign( int val, const error_category & cat ) noexcept;
+
+      template<typename ErrorConditionEnum>
+        constexpr error_condition & operator=( ErrorConditionEnum e ) noexcept;
+
+      constexpr void clear() noexcept;
+
+      // observers:
+
+      constexpr int value() const noexcept;
+      constexpr const error_category & category() const noexcept;
+
+      std::string message() const;
+      char const * message( char * buffer, std::size_t len ) const noexcept;
+
+      constexpr bool failed() const noexcept;
+      constexpr explicit operator bool() const noexcept;
+
+      operator std::error_condition() const;
+
+    private: // exposition only
+
+      int val_;
+      const error_category * cat_;
+
+    };
+  }
+}
+```
+
+#### Constructors
+
+```
+constexpr error_condition() noexcept;
+```
+[none]
+* {blank}
++
+Ensures: :: `val_ == 0`; `*cat_ == generic_category()`.
+
+```
+constexpr error_condition( int val, const error_category & cat ) noexcept;
+```
+[none]
+* {blank}
++
+Ensures: :: `val_ == val`; `cat_ == &cat`.
+
+```
+template <class ErrorConditionEnum>
+  constexpr error_condition( ErrorConditionEnum e ) noexcept;
+```
+[none]
+* {blank}
++
+Ensures: :: `*this == make_error_condition( e )`.
+Remarks: :: This constructor is only enabled when `is_error_condition_enum<ErrorConditionEnum>::value` is `true`.
+
+#### Modifiers
+
+```
+constexpr void assign( int val, const error_category & cat ) noexcept;
+```
+[none]
+* {blank}
++
+Ensures: :: `val_ == val`; `cat_ == &cat`.
+
+```
+template <class ErrorConditionEnum>
+  constexpr error_condition & operator=( ErrorConditionEnum e ) noexcept;
+```
+[none]
+* {blank}
++
+Ensures: :: `*this == make_error_condition( e )`.
+Remarks: :: This operator is only enabled when `is_error_condition_enum<ErrorConditionEnum>::value` is `true`.
+
+```
+constexpr void clear() noexcept;
+```
+[none]
+* {blank}
++
+Ensures: :: `val_ == 0`; `*cat_ == generic_category()`.
+
+#### Observers
+
+```
+constexpr int value() const noexcept;
+```
+[none]
+* {blank}
++
+Returns: :: `val_`.
+
+```
+constexpr const error_category & category() const noexcept;
+```
+[none]
+* {blank}
++
+Returns: :: `*cat_`.
+
+```
+std::string message() const;
+```
+[none]
+* {blank}
++
+Returns: :: `cat_\->message( val_ )`.
+
+```
+char const * message( char * buffer, std::size_t len ) const noexcept;
+```
+[none]
+* {blank}
++
+Returns: :: `cat_\->message( val_, buffer, len )`.
+
+```
+constexpr bool failed() const noexcept;
+```
+[none]
+* {blank}
++
+Returns: :: `cat_\->failed( val_ )`.
+
+```
+constexpr explicit operator bool() const noexcept;
+```
+[none]
+* {blank}
++
+Returns: :: `val_ != 0`.
+
+```
+operator std::error_condition() const;
+```
+[none]
+* {blank}
++
+Returns: :: `std::error_condition( val_, *cat_ )`.
+
+### Nonmember functions
+
+```
+constexpr bool operator==( const error_code & lhs,
+  const error_code & rhs ) noexcept;
+constexpr bool operator==( const error_condition & lhs,
+  const error_condition & rhs ) noexcept;
+```
+[none]
+* {blank}
++
+Returns: :: `lhs.value() == rhs.value() && lhs.category() == rhs.category()`.
+
+```
+bool operator==( const error_code & code,
+  const error_condition & condition ) noexcept;
+bool operator==( const error_condition & condition,
+  const error_code & code ) noexcept;
+```
+[none]
+* {blank}
++
+Returns: :: `code.category().equivalent( code.value(), condition ) || condition.category().equivalent( code, condition.value() )`.
+
+```
+constexpr bool operator!=( const error_code & lhs,
+  const error_code & rhs ) noexcept;
+constexpr bool operator!=( const error_condition & lhs,
+  const error_condition & rhs ) noexcept;
+bool operator!=( const error_code & code,
+  const error_condition & condition ) noexcept;
+bool operator!=( const error_condition & condition,
+  const error_code & code ) noexcept;
+```
+[none]
+* {blank}
++
+Returns: :: `!( lhs == rhs )`.
+
+```
+constexpr bool operator<( const error_code & lhs,
+  const error_code & rhs ) noexcept;
+constexpr bool operator<( const error_condition & lhs,
+  const error_condition & rhs ) noexcept;
+```
+[none]
+* {blank}
++
+Returns: :: `lhs.category() < rhs.category() || ( lhs.category() == rhs.category() && lhs.value() < rhs.value() )`.
+
+```
+constexpr error_code make_error_code( errc::errc_t e ) noexcept;
+```
+[none]
+* {blank}
++
+Returns: :: `error_code( e, generic_category() )`.
+
+```
+constexpr error_condition make_error_condition( errc::errc_t e ) noexcept;
+```
+[none]
+* {blank}
++
+Returns: :: `error_condition( e, generic_category() )`.
+
+```
+template <class charT, class traits>
+  std::basic_ostream<charT, traits>&
+    operator<<( basic_ostream<charT, traits>& os, const error_code & ec );
+```
+[none]
+* {blank}
++
+Effects: :: `os << ec.category().name() << ':' << ec.value()`.
+Returns: :: `os`.
+
+```
+std::size_t hash_value( const error_code & ec );
+```
+[none]
+* {blank}
++
+Returns: :: A hash value representing `ec`.
+
+## <boost/system/system_error.hpp>
+
+### Class system_error
+
+The class `system_error` describes an exception object used to
+report errors that have an associated `error_code`. Such errors
+typically originate from operating system or other low-level
+application program interfaces.
+
+```
+namespace boost
+{
+  namespace system
+  {
+    class system_error: public std::runtime_error
+    {
+    public:
+
+      explicit system_error( error_code ec );
+      system_error( error_code ec, const char * what_arg );
+      system_error( error_code ec, const std::string & what_arg );
+
+      system_error( int ev, const error_category & ecat );
+      system_error( int ev, const error_category & ecat,
+        const char * what_arg );
+      system_error( int ev, const error_category & ecat,
+        const std::string & what_arg );
+
+      error_code code() const noexcept;
+      const char * what() const noexcept;
+    };
+  }
+}
+```
+
+#### Constructors
+
+```
+explicit system_error( error_code ec );
+system_error( error_code ec, const char * what_arg );
+system_error( error_code ec, const std::string & what_arg );
+```
+[none]
+* {blank}
++
+Ensures: :: `code() == ec`.
+
+```
+system_error( int ev, const error_category & ecat,
+  const char * what_arg );
+system_error( int ev, const error_category & ecat,
+  const std::string & what_arg );
+system_error( int ev, const error_category & ecat );
+```
+[none]
+* {blank}
++
+Ensures: :: `code() == error_code( ev, ecat )`.
+
+#### Observers
+
+```
+error_code code() const noexcept;
+```
+[none]
+* {blank}
++
+Returns: :: `ec` or `error_code( ev, ecat )`, from the constructor, as appropriate.
+
+```
+const char * what() const noexcept;
+```
+[none]
+* {blank}
++
+Returns: :: A null-terminated character string incorporating the arguments supplied
+  in the constructor, typically of the form `what_arg + ": " + code.message()`.

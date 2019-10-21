@@ -1,0 +1,86 @@
+[#accept_when]
+[section accept_when]
+
+[h1 Synopsis]
+
+  template <class P, class Pred, class Msg>
+  struct accept_when;
+
+This is a [link parser_combinator parser combinator].
+
+[table Arguments
+  [[Name]   [Type]]
+  [[`P`]    [[link parser parser]]]
+  [[`Pred`] [[link predicate predicate]]]
+  [[`Msg`]  [[link parsing_error_message parsing error message]]]
+]
+
+[h1 Description]
+
+It parses the input with `P`. When `P` rejects the input, `accept_when` rejects
+it as well. When `P` accepts it, `accept_when` evaluates `Pred` with the result
+of parsing the input with `P`. When `Pred` returns `true`, `accept_when` accepts
+the input and the result of parsing will be what `P` returned. Otherwise
+`accept_when` rejects the input and `Msg` is used as the error reason.
+
+[h1 Header]
+
+  #include <boost/metaparse/accept_when.hpp>
+
+[h1 Expression semantics]
+
+For any `p` parser, `pred` predicate, `msg` parsing error message, `s`
+compile-time string and `pos` source position
+
+  accept_when<p, pred, msg>i::apply<s, pos>::type
+
+is equivalent to
+
+  p::apply<s, pos>::type
+
+when `p::apply<s, pos>` doesn't return an error and
+`pred::apply<get_result<p::apply<s, pos>>>::type` is `true`. Otherwise it is
+equivalent to
+
+  fail<msg>
+
+[h1 Example]
+
+  #include <boost/metaparse/accept_when.hpp>
+  #include <boost/metaparse/one_char.hpp>
+  #include <boost/metaparse/util/is_digit.hpp>
+  #include <boost/metaparse/start.hpp>
+  #include <boost/metaparse/string.hpp>
+  #include <boost/metaparse/is_error.hpp>
+  #include <boost/metaparse/get_result.hpp>
+  #include <boost/metaparse/define_error.hpp>
+  
+  using namespace boost::metaparse;
+  
+  BOOST_METAPARSE_DEFINE_ERROR(digit_expected, "Digit expected");
+  
+  using accept_digit = accept_when<one_char, util::is_digit<>, digit_expected>;
+  
+  static_assert(
+    !is_error<
+      accept_digit::apply<BOOST_METAPARSE_STRING("0"), start>
+    >::type::value,
+    "accept_digit should accept a digit"
+  );
+  
+  static_assert(
+    get_result<
+      accept_digit::apply<BOOST_METAPARSE_STRING("0"), start>
+    >::type::value == '0',
+    "the result of parsing should be the character value"
+  );
+  
+  static_assert(
+    is_error<
+      accept_digit::apply<BOOST_METAPARSE_STRING("x"), start>
+    >::type::value,
+    "accept_digit should reject a character that is not a digit"
+  );
+
+[endsect]
+

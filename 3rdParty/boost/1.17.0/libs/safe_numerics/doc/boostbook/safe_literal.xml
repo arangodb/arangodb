@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE section PUBLIC "-//Boost//DTD BoostBook XML V1.1//EN"
+"http://www.boost.org/tools/boostbook/dtd/boostbook.dtd">
+<section id="safe_numerics.safe_literal">
+  <title>safe_signed_literal&lt;Value, PP , EP&gt; and
+  safe_unsigned_literal&lt;Value, PP, EP&gt;</title>
+
+  <?dbhtml stop-chunking?>
+
+  <section>
+    <title>Description</title>
+
+    <para>A safe type which holds a literal value. This is required to be able
+    to initialize other safe types in such a way that an exception code is not
+    generated. It is also useful when creating constexpr versions of safe
+    types. It contains one immutable value known at compile time and hence can
+    be used in any constexpr expression.</para>
+  </section>
+
+  <section>
+    <title>Model of</title>
+
+    <para><link linkend="safe_numerics.numeric">Integer</link></para>
+
+    <para><link
+    linkend="safe_numerics.safe_numeric_concept">SafeNumeric</link></para>
+
+    <para>This type inherits all the notation, associated types and template
+    parameters and valid expressions of <link
+    linkend="safe_numerics.safe_numeric_concept">SafeNumeric</link> types. The
+    following specify additional features of this type.</para>
+  </section>
+
+  <section>
+    <title>Associated Types</title>
+
+    <informaltable>
+      <tgroup cols="2">
+        <colspec align="left" colwidth="1*"/>
+
+        <colspec align="left" colwidth="10*"/>
+
+        <tbody>
+          <row>
+            <entry><code>PP</code></entry>
+
+            <entry>A type which specifies the result type of an expression
+            using safe types.</entry>
+          </row>
+
+          <row>
+            <entry><code>EP</code></entry>
+
+            <entry>A type containing members which are called when a correct
+            result cannot be returned</entry>
+          </row>
+        </tbody>
+      </tgroup>
+    </informaltable>
+  </section>
+
+  <section>
+    <title>Template Parameters</title>
+
+    <informaltable>
+      <tgroup cols="3">
+        <colspec align="left" colwidth="1*"/>
+
+        <colspec align="left" colwidth="1*"/>
+
+        <colspec align="left" colwidth="3*"/>
+
+        <thead>
+          <row>
+            <entry align="left">Parameter</entry>
+
+            <entry align="left">Type Requirements</entry>
+
+            <entry>Description</entry>
+          </row>
+        </thead>
+
+        <tbody>
+          <row>
+            <entry><code>Value</code></entry>
+
+            <entry><code><link
+            linkend="safe_numerics.numeric">Integer</link></code></entry>
+
+            <entry>value used to initialize the literal</entry>
+          </row>
+
+          <row>
+            <entry><code>PP</code></entry>
+
+            <entry><link linkend="safe_numerics.numeric"><link
+            linkend="safe_numerics.promotion_policy">PromotionPolicy&lt;PP&gt;</link></link></entry>
+
+            <entry><para>Optional promotion policy. Default value is
+            <code>void</code></para></entry>
+          </row>
+
+          <row>
+            <entry><code>EP</code></entry>
+
+            <entry><link linkend="safe_numerics.numeric"><link
+            linkend="safe_numerics.exception_policy">Exception
+            Policy&lt;EP&gt;</link></link></entry>
+
+            <entry><para>Optional exception policy. Default value is
+            <code>void</code></para></entry>
+          </row>
+        </tbody>
+      </tgroup>
+    </informaltable>
+  </section>
+
+  <section>
+    <title>Inherited Valid Expressions</title>
+
+    <para>safe literal types are immutable. Hence they only inherit those
+    valid expressions which don't change the value. <emphasis>This excludes
+    assignment, increment, and decrement and all unary operators except unary
+    -, + and ~</emphasis>. Other than that, they can be used anywhere a <link
+    linkend="safe_numerics.safe_numeric_concept">SafeNumeric</link> type can
+    be used. Note that the default promotion and exception policies are void.
+    This is usually convenient since when a safe literal is used in a binary
+    operation, this will inherit the policies of the other type. On the other
+    hand, this can be inconvenient when operands of a binary expression are
+    both safe literals. This will fail to compile since there are no
+    designated promotion and exception policies. The way to address this to
+    assign specific policies as in this example.</para>
+
+    <para><programlisting>template&lt;typename T&gt;
+using compile_time_value = safe_signed_literal&lt;T&gt;;
+
+constexpr compile_time_value&lt;1000&gt; x;
+constexpr compile_time_value&lt;0&gt; y;
+
+// should compile and execute without problem
+    
+std::cout &lt;&lt; x &lt;&lt; '\n';
+
+// all the following statements should fail to compile because there are 
+// no promotion and exception policies specified.
+constexpr safe&lt;int&gt; z = x / y;
+</programlisting></para>
+  </section>
+
+  <section>
+    <title>Example of use</title>
+
+    <programlisting>#include &lt;boost/numeric/safe_numerics/safe_integer_literal.hpp&gt;
+
+constexpr boost::numeric::safe_signed_literal&lt;42&gt; x;
+</programlisting>
+  </section>
+
+  <section id="safe_numerics.safe_literal.make_safe_literal">
+    <title><code>make_safe_literal(n, PP, EP) </code></title>
+
+    <para>This is a macro which returns an instance of a safe literal type.
+    This instance will hold the value n. The type of the value returned will
+    be the smallest safe type which can hold the value <code>n</code>.</para>
+  </section>
+
+  <section>
+    <title>Header</title>
+
+    <para><ulink
+    url="../../include/boost/safe_numerics/safe_integer_literal.hpp">#include
+    &lt;boost/numeric/safe_numerics/safe_integer_literal.hpp&gt;</ulink></para>
+  </section>
+</section>

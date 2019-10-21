@@ -1,0 +1,14 @@
+{
+  "key": "type_index",
+  "name": "Type Index",
+  "authors": [
+    "Antony Polukhin"
+  ],
+  "maintainers": [
+    "Antony Polukhin <antoshkka -at- gmail.com>"
+  ],
+  "description": "Runtime/Compile time copyable type info.",
+  "category": [
+    "Emulation"
+  ]
+}

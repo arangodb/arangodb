@@ -1,0 +1,52 @@
+[/
+ / Copyright (c) 2003-2019 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+ /
+ / Distributed under the Boost Software License, Version 1.0. (See accompanying
+ / file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+ /]
+
+[section:WaitTraits Wait traits requirements]
+
+The `basic_waitable_timer` template uses wait traits to allow programs to
+customize `wait` and `async_wait` behavior.
+[inline_note Possible uses of wait traits include:\n
+[mdash] To enable timers based on non-realtime clocks.\n
+[mdash] Determining how quickly wallclock-based timers respond to system time
+changes.\n
+[mdash] Correcting for errors or rounding timeouts to boundaries.\n
+[mdash] Preventing duration overflow. That is, a program may set a timer's
+expiry `e` to be `Clock::max()` (meaning never reached) or `Clock::min()`
+(meaning always in the past). As a result, computing the duration until timer
+expiry as `e - Clock::now()` may cause overflow.]
+
+For a type `Clock` meeting the `Clock` requirements (C++Std
+[time.clock.req]), a type `X` meets the `WaitTraits` requirements if it
+satisfies the requirements listed below.
+
+In the table below, `t` denotes a (possibly const) value of type
+`Clock::time_point`; and `d` denotes a (possibly const) value of type
+`Clock::duration`.
+
+[table WaitTraits requirements
+  [[expression] [return type] [assertion/note\npre/post-condition]]
+  [
+    [`X::to_wait_duration(d)`]
+    [`Clock::duration`]
+    [
+      Returns a `Clock::duration` value to be used in a `wait` or `async_wait`
+      operation. [inline_note The return value is typically representative of
+      the duration `d`.]
+    ]
+  ]
+  [
+    [`X::to_wait_duration(t)`]
+    [`Clock::duration`]
+    [
+      Returns a `Clock::duration` value to be used in a `wait` or `async_wait`
+      operation. [inline_note The return value is typically representative of
+      the duration from `Clock::now()` until the time point `t`.]
+    ]
+  ]
+]
+
+[endsect]

@@ -1,0 +1,100 @@
+[/===========================================================================
+ Copyright (c) 2013-2015 Kyle Lutz <kyle.r.lutz@gmail.com>
+
+ Distributed under the Boost Software License, Version 1.0
+ See accompanying file LICENSE_1_0.txt or copy at
+ http://www.boost.org/LICENSE_1_0.txt
+=============================================================================/]
+
+[section:getting_started Getting Started]
+
+[section Installation]
+
+Boost.Compute is available in Boost starting with version 1.61. Visit
+[@http://www.boost.org/users/download/] for download instructions.
+
+[endsect]
+
+[section Compilation and Usage]
+
+Boost.Compute is a header-only library, so no linking is required. To use the
+library just add the include directory to the compilation flags and link with
+the system's OpenCL library. For example, with GCC:
+
+``
+g++ -I/path/to/compute/include main.cpp -lOpenCL
+``
+
+All of the Boost.Compute headers can be included with the following directive:
+
+``
+#include <boost/compute.hpp>
+``
+
+If you only want to include the core OpenCL wrapper headers (which have minimal
+dependencies on the rest of Boost), use the following directive:
+
+``
+#include <boost/compute/core.hpp>
+``
+
+All of the classes and functions in Boost.Compute live in the `boost::compute`
+namespace and can be brought into global scope with:
+
+``
+using namespace boost::compute;
+``
+
+[endsect]
+
+[section Configuration Macros]
+
+Boost.Compute provides a number of optional features which can be configured
+with the following macros.
+
+[table
+    [[Macro] [Description]]
+    [
+        [[^BOOST_COMPUTE_DEBUG_KERNEL_COMPILATION]][
+            When defined, if program::build() fails, the program source and
+            build log will be written to stdout.
+        ]
+    ]
+    [
+        [[^BOOST_COMPUTE_HAVE_THREAD_LOCAL]][
+            Enables the use of C++11 [^thread_local] storage specifier.
+        ]
+    ]
+    [
+        [[^BOOST_COMPUTE_THREAD_SAFE]][
+            Builds Boost.Compute in a thread-safe mode. This requires either
+            support for C++11 thread-local storage (via defining the
+            [^BOOST_COMPUTE_HAVE_THREAD_LOCAL] macro) or linking with
+            Boost.Thread.
+        ]
+    ]
+    [
+        [[^BOOST_COMPUTE_USE_OFFLINE_CACHE]][
+            Enables the offline-cache which stores compiled binaries on disk.
+            This option requires linking with Boost.Filesystem and
+            Boost.System.
+        ]
+    ]
+]
+
+[endsect]
+
+[section Support]
+
+Bugs and issues can be reported to the
+[@https://github.com/boostorg/compute/issues?state=open issue tracker].
+
+There is also a mailing list for users and developers at
+[@https://groups.google.com/forum/#!forum/boost-compute].
+
+Look through the [link boost_compute.faq FAQ] to see if you're encountering a
+known or common issue.
+
+[endsect] [/ support]
+
+[endsect]

@@ -1,0 +1,26 @@
+<?xml version="1.0" standalone="yes"?>
+<library-reference id="temperature_base_units_reference"><title>Temperature Base Units Reference</title><header name="boost/units/base_units/temperature/celsius.hpp">
+<namespace name="boost">
+<namespace name="units">
+<namespace name="temperature">
+<struct name="celsius_base_unit"><inherit access="public">base_unit&lt; celsius_base_unit, temperature_dimension, -1008 &gt;</inherit><method-group name="public static functions">
+<method name="name" specifiers="static"><type>std::string</type></method>
+<method name="symbol" specifiers="static"><type>std::string</type></method>
+</method-group>
+</struct></namespace>
+</namespace>
+</namespace>
+</header>
+<header name="boost/units/base_units/temperature/fahrenheit.hpp">
+<namespace name="boost">
+<namespace name="units">
+<namespace name="temperature">
+<struct name="fahrenheit_base_unit"><inherit access="public">base_unit&lt; fahrenheit_base_unit, temperature_dimension, -1007 &gt;</inherit><method-group name="public static functions">
+<method name="name" specifiers="static"><type>std::string</type></method>
+<method name="symbol" specifiers="static"><type>std::string</type></method>
+</method-group>
+</struct></namespace>
+</namespace>
+</namespace>
+</header>
+</library-reference>

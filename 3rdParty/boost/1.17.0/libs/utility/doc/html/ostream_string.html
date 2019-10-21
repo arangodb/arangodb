@@ -1,0 +1,152 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>ostream_string</title>
+<link rel="stylesheet" href="../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="ostream_string.html" title="ostream_string">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../boost.png"></td>
+<td align="center"><a href="../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav"></div>
+<div class="article">
+<div class="titlepage">
+<div>
+<div><h2 class="title">
+<a name="ostream_string"></a>ostream_string</h2></div>
+<div><div class="authorgroup"><div class="author"><h3 class="author">
+<span class="firstname">Glen</span> <span class="surname">Fernandes</span>
+</h3></div></div></div>
+<div><p class="copyright">Copyright &#169; 2019 Glen Joseph Fernandes</p></div>
+<div><div class="legalnotice">
+<a name="ostream_string.legal"></a><p>
+        Distributed under the Boost Software License, Version 1.0.
+      </p>
+</div></div>
+</div>
+<hr>
+</div>
+<div class="toc">
+<p><b>Table of Contents</b></p>
+<dl class="toc">
+<dt><span class="section"><a href="ostream_string.html#ostream_string.overview">Overview</a></span></dt>
+<dt><span class="section"><a href="ostream_string.html#ostream_string.examples">Examples</a></span></dt>
+<dt><span class="section"><a href="ostream_string.html#ostream_string.reference">Reference</a></span></dt>
+<dt><span class="section"><a href="ostream_string.html#ostream_string.history">History</a></span></dt>
+</dl>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="ostream_string.overview"></a><a class="link" href="ostream_string.html#ostream_string.overview" title="Overview">Overview</a>
+</h2></div></div></div>
+<p>
+      The header &lt;boost/utility/ostream_string.hpp&gt; provides the function template
+      <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">ostream_string</span></code> for formatted output that
+      satisfies the requirements of [ostream.formatted.reqmts].
+    </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="ostream_string.examples"></a><a class="link" href="ostream_string.html#ostream_string.examples" title="Examples">Examples</a>
+</h2></div></div></div>
+<p>
+      The inserter for class template <code class="computeroutput"><span class="identifier">basic_string_view</span></code>
+      could be implemented as follows:
+    </p>
+<p>
+</p>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">charT</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">traits</span><span class="special">&gt;</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">basic_ostream</span><span class="special">&lt;</span><span class="identifier">charT</span><span class="special">,</span> <span class="identifier">traits</span><span class="special">&gt;&amp;</span>
+<span class="keyword">operator</span><span class="special">&lt;&lt;(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">basic_ostream</span><span class="special">&lt;</span><span class="identifier">charT</span><span class="special">,</span> <span class="identifier">traits</span><span class="special">&gt;&amp;</span> <span class="identifier">os</span><span class="special">,</span>
+    <span class="keyword">const</span> <span class="identifier">basic_string_view</span><span class="special">&lt;</span><span class="identifier">charT</span><span class="special">,</span> <span class="identifier">traits</span><span class="special">&gt;&amp;</span> <span class="identifier">str</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="keyword">return</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">ostream_string</span><span class="special">(</span><span class="identifier">os</span><span class="special">,</span> <span class="identifier">str</span><span class="special">.</span><span class="identifier">data</span><span class="special">(),</span> <span class="identifier">str</span><span class="special">.</span><span class="identifier">size</span><span class="special">());</span>
+<span class="special">}</span>
+</pre>
+<p>
+    </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="ostream_string.reference"></a><a class="link" href="ostream_string.html#ostream_string.reference" title="Reference">Reference</a>
+</h2></div></div></div>
+<p>
+</p>
+<pre class="programlisting"><span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">charT</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">traits</span><span class="special">&gt;</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">basic_ostream</span><span class="special">&lt;</span><span class="identifier">charT</span><span class="special">,</span> <span class="identifier">traits</span><span class="special">&gt;&amp;</span>
+<span class="identifier">ostream_string</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">basic_ostream</span><span class="special">&lt;</span><span class="identifier">charT</span><span class="special">,</span> <span class="identifier">traits</span><span class="special">&gt;&amp;</span> <span class="identifier">os</span><span class="special">,</span>
+    <span class="keyword">const</span> <span class="identifier">charT</span><span class="special">*</span> <span class="identifier">data</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">size</span><span class="special">);</span>
+
+<span class="special">}</span> <span class="comment">/* boost */</span>
+</pre>
+<p>
+    </p>
+<h4>
+<a name="ostream_string.reference.h0"></a>
+      <span class="phrase"><a name="ostream_string.reference.free_functions"></a></span><a class="link" href="ostream_string.html#ostream_string.reference.free_functions">Free
+      functions</a>
+    </h4>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term"><code class="computeroutput"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">charT</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">traits</span><span class="special">&gt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">basic_ostream</span><span class="special">&lt;</span><span class="identifier">charT</span><span class="special">,</span> <span class="identifier">traits</span><span class="special">&gt;&amp;</span> <span class="identifier">ostream_string</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">basic_ostream</span><span class="special">&lt;</span><span class="identifier">charT</span><span class="special">,</span> <span class="identifier">traits</span><span class="special">&gt;&amp;</span>
+        <span class="identifier">os</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">charT</span><span class="special">*</span> <span class="identifier">data</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">size</span><span class="special">);</span></code></span></dt>
+<dd><div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects</span></dt>
+<dd><p>
+                  Behaves like a formatted inserter (as described in [ostream.formatted.reqmts])
+                  of <code class="computeroutput"><span class="identifier">os</span></code>. Creates
+                  a character sequence <code class="computeroutput"><span class="identifier">seq</span></code>
+                  of <code class="computeroutput"><span class="identifier">size</span></code> characters
+                  starting at <code class="computeroutput"><span class="identifier">data</span></code>,
+                  each widened using <code class="computeroutput"><span class="identifier">os</span><span class="special">.</span><span class="identifier">widen</span><span class="special">()</span></code> ([basic.ios.members]). Determines
+                  padding for <code class="computeroutput"><span class="identifier">seq</span></code>
+                  as described in [ostream.formatted.reqmts]. Inserts <code class="computeroutput"><span class="identifier">seq</span></code> into <code class="computeroutput"><span class="identifier">os</span></code>.
+                  Calls <code class="computeroutput"><span class="identifier">width</span><span class="special">(</span><span class="number">0</span><span class="special">)</span></code>.
+                </p></dd>
+<dt><span class="term">Returns</span></dt>
+<dd><p>
+                  <code class="computeroutput"><span class="identifier">os</span></code>.
+                </p></dd>
+</dl>
+</div></dd>
+</dl>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="ostream_string.history"></a><a class="link" href="ostream_string.html#ostream_string.history" title="History">History</a>
+</h2></div></div></div>
+<h4>
+<a name="ostream_string.history.h0"></a>
+      <span class="phrase"><a name="ostream_string.history.boost_1_71"></a></span><a class="link" href="ostream_string.html#ostream_string.history.boost_1_71">boost
+      1.71</a>
+    </h4>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; "><li class="listitem">
+          Glen Fernandes updated the implementation of the <code class="computeroutput"><span class="identifier">basic_string_ref</span></code>
+          and <code class="computeroutput"><span class="identifier">basic_string_view</span></code> stream
+          insertion operators to write directly to the <code class="computeroutput"><span class="identifier">basic_streambuf</span></code>
+          and refactored that functionality into this common utility.
+        </li></ul></div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"><p><small>Last revised: August 14, 2019 at 12:05:25 GMT</small></p></td>
+<td align="right"><div class="copyright-footer"></div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav"></div>
+</body>
+</html>

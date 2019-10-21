@@ -1,0 +1,18 @@
+////
+Copyright 2019 Peter Dimov
+
+Distributed under the Boost Software License, Version 1.0.
+
+See accompanying file LICENSE_1_0.txt or copy at
+http://www.boost.org/LICENSE_1_0.txt
+////
+
+[#changelog]
+# Revision History
+:idprefix: changelog_
+
+## Changes in 1.71.0
+
+After the Boost formal review, the implementation has been
+changed to provide the strong exception safety guarantee,
+instead of basic. `expected` has been removed.

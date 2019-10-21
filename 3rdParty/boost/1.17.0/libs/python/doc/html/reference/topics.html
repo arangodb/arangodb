@@ -1,0 +1,332 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Chapter&#160;8.&#160;Topics</title>
+<link rel="stylesheet" href="../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="index.html" title="Boost.Python Reference Manual">
+<link rel="up" href="index.html" title="Boost.Python Reference Manual">
+<link rel="prev" href="utility_and_infrastructure/boost_python_ssize_t_hpp.html" title="boost/python/ssize_t.hpp">
+<link rel="next" href="topics/pickle_support.html" title="Pickle support">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr><td valign="top"><img alt="" width="" height="" src="../images/boost.png"></td></tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="utility_and_infrastructure/boost_python_ssize_t_hpp.html"><img src="../images/prev.png" alt="Prev"></a><a accesskey="u" href="index.html"><img src="../images/up.png" alt="Up"></a><a accesskey="h" href="index.html"><img src="../images/home.png" alt="Home"></a><a accesskey="n" href="topics/pickle_support.html"><img src="../images/next.png" alt="Next"></a>
+</div>
+<div class="chapter">
+<div class="titlepage"><div><div><h1 class="title">
+<a name="topics"></a>Chapter&#160;8.&#160;Topics</h1></div></div></div>
+<div class="toc">
+<p><b>Table of Contents</b></p>
+<dl class="toc">
+<dt><span class="section"><a href="topics.html#topics.calling_python_functions_and_met">Calling Python
+      Functions and Methods</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="topics.html#topics.calling_python_functions_and_met.introduction">Introduction</a></span></dt>
+<dt><span class="section"><a href="topics.html#topics.calling_python_functions_and_met.argument_handling">Argument
+        Handling</a></span></dt>
+<dt><span class="section"><a href="topics.html#topics.calling_python_functions_and_met.result_handling">Result
+        Handling</a></span></dt>
+<dt><span class="section"><a href="topics.html#topics.calling_python_functions_and_met.rationale">Rationale</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="topics/pickle_support.html">Pickle support</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="topics/pickle_support.html#topics.pickle_support.introduction">Introduction</a></span></dt>
+<dt><span class="section"><a href="topics/pickle_support.html#topics.pickle_support.the_pickle_interface">The Pickle
+        Interface</a></span></dt>
+<dt><span class="section"><a href="topics/pickle_support.html#topics.pickle_support.example">Example</a></span></dt>
+<dt><span class="section"><a href="topics/pickle_support.html#topics.pickle_support.pitfall_and_safety_guard">Pitfall
+        and Safety Guard</a></span></dt>
+<dt><span class="section"><a href="topics/pickle_support.html#topics.pickle_support.practical_advice">Practical Advice</a></span></dt>
+<dt><span class="section"><a href="topics/pickle_support.html#topics.pickle_support.light_weight_alternative_pickle_">Light-weight
+        alternative: pickle support implemented in Python</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="topics/indexing_support.html">Indexing support</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="topics/indexing_support.html#topics.indexing_support.introduction">Introduction</a></span></dt>
+<dt><span class="section"><a href="topics/indexing_support.html#topics.indexing_support.the_indexing_interface">The
+        Indexing Interface</a></span></dt>
+<dt><span class="section"><a href="topics/indexing_support.html#topics.indexing_support.index_suite_sub_classes">index_suite
+        sub-classes</a></span></dt>
+<dt><span class="section"><a href="topics/indexing_support.html#topics.indexing_support.indexing_suite_class"><code class="computeroutput"><span class="identifier">indexing_suite</span></code> class</a></span></dt>
+<dt><span class="section"><a href="topics/indexing_support.html#topics.indexing_support.class_vector_indexing_suite">class
+        <code class="computeroutput"><span class="identifier">vector_indexing_suite</span></code></a></span></dt>
+<dt><span class="section"><a href="topics/indexing_support.html#topics.indexing_support.class_map_indexing_suite">class
+        <code class="computeroutput"><span class="identifier">map_indexing_suite</span></code></a></span></dt>
+</dl></dd>
+</dl>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="topics.calling_python_functions_and_met"></a><a class="link" href="topics.html#topics.calling_python_functions_and_met" title="Calling Python Functions and Methods">Calling Python
+      Functions and Methods</a>
+</h2></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="topics.html#topics.calling_python_functions_and_met.introduction">Introduction</a></span></dt>
+<dt><span class="section"><a href="topics.html#topics.calling_python_functions_and_met.argument_handling">Argument
+        Handling</a></span></dt>
+<dt><span class="section"><a href="topics.html#topics.calling_python_functions_and_met.result_handling">Result
+        Handling</a></span></dt>
+<dt><span class="section"><a href="topics.html#topics.calling_python_functions_and_met.rationale">Rationale</a></span></dt>
+</dl></div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="topics.calling_python_functions_and_met.introduction"></a><a class="link" href="topics.html#topics.calling_python_functions_and_met.introduction" title="Introduction">Introduction</a>
+</h3></div></div></div>
+<p>
+          The simplest way to call a Python function from C++, given an <a class="link" href="object_wrappers/boost_python_object_hpp.html#object_wrappers.boost_python_object_hpp.class_object" title="Class object"><code class="computeroutput"><span class="identifier">object</span></code></a> instance f holding the
+          function, is simply to invoke its function call operator.
+        </p>
+<pre class="programlisting"><span class="identifier">f</span><span class="special">(</span><span class="string">"tea"</span><span class="special">,</span> <span class="number">4</span><span class="special">,</span> <span class="number">2</span><span class="special">)</span> <span class="comment">// In Python: f('tea', 4, 2)</span></pre>
+<p>
+          And of course, a method of an <a class="link" href="object_wrappers/boost_python_object_hpp.html#object_wrappers.boost_python_object_hpp.class_object" title="Class object"><code class="computeroutput"><span class="identifier">object</span></code></a> instance <code class="computeroutput"><span class="identifier">x</span></code> can be invoked by using the function-call
+          operator of the corresponding attribute:
+        </p>
+<pre class="programlisting"><span class="identifier">x</span><span class="special">.</span><span class="identifier">attr</span><span class="special">(</span><span class="string">"tea"</span><span class="special">)(</span><span class="number">4</span><span class="special">,</span> <span class="number">2</span><span class="special">);</span> <span class="comment">// In Python: x.tea(4, 2)</span></pre>
+<p>
+          If you don't have an <a class="link" href="object_wrappers/boost_python_object_hpp.html#object_wrappers.boost_python_object_hpp.class_object" title="Class object"><code class="computeroutput"><span class="identifier">object</span></code></a> instance, <code class="computeroutput"><span class="identifier">Boost</span><span class="special">.</span><span class="identifier">Python</span></code> provides two families of function
+          templates, <a class="link" href="function_invocation_and_creation/boost_python_call_hpp.html#function_invocation_and_creation.boost_python_call_hpp.function_call" title="Function call"><code class="computeroutput"><span class="identifier">call</span></code></a> and <a class="link" href="function_invocation_and_creation/boost_python_call_method_hpp.html#function_invocation_and_creation.boost_python_call_method_hpp.function_call_method" title="Function call_method"><code class="computeroutput"><span class="identifier">call_method</span></code></a>, for invoking Python
+          functions and methods respectively on <code class="computeroutput"><span class="identifier">PyObject</span><span class="special">*</span></code>s. The interface for calling a Python function
+          object (or any Python callable object) looks like:
+        </p>
+<pre class="programlisting"><span class="identifier">call</span><span class="special">&lt;</span><span class="identifier">ResultType</span><span class="special">&gt;(</span><span class="identifier">callable_object</span><span class="special">,</span> <span class="identifier">a1</span><span class="special">,</span> <span class="identifier">a2</span><span class="special">...</span> <span class="identifier">aN</span><span class="special">);</span></pre>
+<p>
+          Calling a method of a Python object is similarly easy:
+        </p>
+<pre class="programlisting"><span class="identifier">call_method</span><span class="special">&lt;</span><span class="identifier">ResultType</span><span class="special">&gt;(</span><span class="identifier">self_object</span><span class="special">,</span> <span class="string">"method-name"</span><span class="special">,</span> <span class="identifier">a1</span><span class="special">,</span> <span class="identifier">a2</span><span class="special">...</span> <span class="identifier">aN</span><span class="special">);</span></pre>
+<p>
+          This comparitively low-level interface is the one you'll use when implementing
+          C++ virtual functions that can be overridden in Python.
+        </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="topics.calling_python_functions_and_met.argument_handling"></a><a class="link" href="topics.html#topics.calling_python_functions_and_met.argument_handling" title="Argument Handling">Argument
+        Handling</a>
+</h3></div></div></div>
+<p>
+          Arguments are converted to Python according to their type. By default,
+          the arguments <code class="computeroutput"><span class="identifier">a1</span><span class="special">...</span><span class="identifier">aN</span></code> are copied into new Python objects,
+          but this behavior can be overridden by the use of <a class="link" href="function_invocation_and_creation/boost_python_ptr_hpp.html#function_invocation_and_creation.boost_python_ptr_hpp.functions" title="Functions"><code class="computeroutput"><span class="identifier">ptr</span><span class="special">()</span></code></a>
+          and <code class="computeroutput"><span class="identifier">ref</span><span class="special">()</span></code>:
+        </p>
+<pre class="programlisting"><span class="keyword">class</span> <span class="identifier">X</span> <span class="special">:</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">noncopyable</span>
+<span class="special">{</span>
+   <span class="special">...</span>
+<span class="special">};</span>
+
+<span class="keyword">void</span> <span class="identifier">apply</span><span class="special">(</span><span class="identifier">PyObject</span><span class="special">*</span> <span class="identifier">callable</span><span class="special">,</span> <span class="identifier">X</span><span class="special">&amp;</span> <span class="identifier">x</span><span class="special">)</span>
+<span class="special">{</span>
+   <span class="comment">// Invoke callable, passing a Python object which holds a reference to x</span>
+   <span class="identifier">boost</span><span class="special">::</span><span class="identifier">python</span><span class="special">::</span><span class="identifier">call</span><span class="special">&lt;</span><span class="keyword">void</span><span class="special">&gt;(</span><span class="identifier">callable</span><span class="special">,</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">ref</span><span class="special">(</span><span class="identifier">x</span><span class="special">));</span>
+<span class="special">}</span>
+</pre>
+<p>
+          In the table below, x denotes the actual argument object and cv denotes
+          an optional cv-qualification: "const", "volatile",
+          or "const volatile".
+        </p>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                  <p>
+                    Argument Type
+                  </p>
+                </th>
+<th>
+                  <p>
+                    Behavior
+                  </p>
+                </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">T</span> <span class="identifier">cv</span>
+                    <span class="special">&amp;</span></code> <code class="computeroutput"><span class="identifier">T</span>
+                    <span class="identifier">cv</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    The Python argument is created by the same means used for the
+                    return value of a wrapped C++ function returning T. When T is
+                    a class type, that normally means *x is copy-constructed into
+                    the new Python object.
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    T*
+                  </p>
+                </td>
+<td>
+                  <p>
+                    If x == 0, the Python argument will be None. Otherwise, the Python
+                    argument is created by the same means used for the return value
+                    of a wrapped C++ function returning T. When T is a class type,
+                    that normally means *x is copy-constructed into the new Python
+                    object.
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    boost::reference_wrapper&lt;T&gt;
+                  </p>
+                </td>
+<td>
+                  <p>
+                    The Python argument contains a pointer to, rather than a copy
+                    of, x.get(). Note: failure to ensure that no Python code holds
+                    a reference to the resulting object beyond the lifetime of *x.get()
+                    may result in a crash!
+                  </p>
+                </td>
+</tr>
+<tr>
+<td>
+                  <p>
+                    pointer_wrapper&lt;T&gt;
+                  </p>
+                </td>
+<td>
+                  <p>
+                    If x.get() == 0, the Python argument will be None. Otherwise,
+                    the Python argument contains a pointer to, rather than a copy
+                    of, *x.get(). Note: failure to ensure that no Python code holds
+                    a reference to the resulting object beyond the lifetime of *x.get()
+                    may result in a crash!
+                  </p>
+                </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="topics.calling_python_functions_and_met.result_handling"></a><a class="link" href="topics.html#topics.calling_python_functions_and_met.result_handling" title="Result Handling">Result
+        Handling</a>
+</h3></div></div></div>
+<p>
+          In general, <code class="computeroutput"><span class="identifier">call</span><span class="special">&lt;</span><span class="identifier">ResultType</span><span class="special">&gt;()</span></code>
+          and call_method&lt;ResultType&gt;() return ResultType by exploiting all
+          lvalue and rvalue from_python converters registered for ResultType and
+          returning a copy of the result. However, when ResultType is a pointer or
+          reference type, Boost.Python searches only for lvalue converters. To prevent
+          dangling pointers and references, an exception will be thrown if the Python
+          result object has only a single reference count.
+        </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="topics.calling_python_functions_and_met.rationale"></a><a class="link" href="topics.html#topics.calling_python_functions_and_met.rationale" title="Rationale">Rationale</a>
+</h3></div></div></div>
+<p>
+          In general, to get Python arguments corresponding to a1...aN, a new Python
+          object must be created for each one; should the C++ object be copied into
+          that Python object, or should the Python object simply hold a reference/pointer
+          to the C++ object? In general, the latter approach is unsafe, since the
+          called function may store a reference to the Python object somewhere. If
+          the Python object is used after the C++ object is destroyed, we'll crash
+          Python.
+        </p>
+<p>
+          In keeping with the philosophy that users on the Python side shouldn't
+          have to worry about crashing the interpreter, the default behavior is to
+          copy the C++ object, and to allow a non-copying behavior only if the user
+          writes boost::ref(a1) instead of a1 directly. At least this way, the user
+          doesn't get dangerous behavior "by accident". It's also worth
+          noting that the non-copying ("by-reference") behavior is in general
+          only available for class types, and will fail at runtime with a Python
+          exception if used otherwise[1].
+        </p>
+<p>
+          However, pointer types present a problem: one approach is to refuse to
+          compile if any aN has pointer type: after all, a user can always pass *aN
+          to pass "by-value" or ref(*aN) to indicate a pass-by-reference
+          behavior. However, this creates a problem for the expected null pointer
+          to None conversion: it's illegal to dereference a null pointer value.
+        </p>
+<p>
+          The compromise I've settled on is this:
+        </p>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+              The default behavior is pass-by-value. If you pass a non-null pointer,
+              the pointee is copied into a new Python object; otherwise the corresponding
+              Python argument will be None.
+            </li>
+<li class="listitem">
+              if you want by-reference behavior, use ptr(aN) if aN is a pointer and
+              ref(aN) otherwise. If a null pointer is passed to ptr(aN), the corresponding
+              Python argument will be None.
+            </li>
+</ol></div>
+<p>
+          As for results, we have a similar problem: if ResultType is allowed to
+          be a pointer or reference type, the lifetime of the object it refers to
+          is probably being managed by a Python object. When that Python object is
+          destroyed, our pointer dangles. The problem is particularly bad when the
+          ResultType is char const* - the corresponding Python String object is typically
+          uniquely-referenced, meaning that the pointer dangles as soon as call&lt;char
+          const*&gt;(...) returns.
+        </p>
+<p>
+          The old Boost.Python v1 deals with this issue by refusing to compile any
+          uses of call&lt;char const*&gt;(), but this goes both too far and not far
+          enough. It goes too far because there are cases where the owning Python
+          string object survives beyond the call (just for instance, when it's the
+          name of a Python class), and it goes not far enough because we might just
+          as well have the same problem with a returned pointer or reference of any
+          other type.
+        </p>
+<p>
+          In Boost.Python this is dealt with by:
+        </p>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+              lifting the compile-time restriction on <code class="computeroutput"><span class="keyword">char</span>
+              <span class="keyword">const</span> <span class="special">*</span></code>
+              callback returns
+            </li>
+<li class="listitem">
+              detecting the case when the reference count on the result Python object
+              is 1 and throwing an exception inside of <code class="computeroutput"><span class="identifier">call</span><span class="special">&lt;</span><span class="identifier">U</span><span class="special">&gt;(...)</span></code> when <code class="computeroutput"><span class="identifier">U</span></code>
+              is a pointer or reference type.
+            </li>
+</ol></div>
+<p>
+          This should be acceptably safe because users have to explicitly specify
+          a pointer/reference for <code class="computeroutput"><span class="identifier">U</span></code>
+          in <code class="computeroutput"><span class="identifier">call</span><span class="special">&lt;</span><span class="identifier">U</span><span class="special">&gt;</span></code>,
+          and they will be protected against dangles at runtime, at least long enough
+          to get out of the <code class="computeroutput"><span class="identifier">call</span><span class="special">&lt;</span><span class="identifier">U</span><span class="special">&gt;(...)</span></code> invocation.
+        </p>
+</div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2002-2005, 2015 David Abrahams, Stefan Seefeld<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="utility_and_infrastructure/boost_python_ssize_t_hpp.html"><img src="../images/prev.png" alt="Prev"></a><a accesskey="u" href="index.html"><img src="../images/up.png" alt="Up"></a><a accesskey="h" href="index.html"><img src="../images/home.png" alt="Home"></a><a accesskey="n" href="topics/pickle_support.html"><img src="../images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

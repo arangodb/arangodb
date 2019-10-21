@@ -1,0 +1,18 @@
+{
+  "key": "ratio",
+  "name": "Ratio",
+  "authors": [
+    "Howard Hinnant",
+    "Beman Dawes",
+    "Vicente J. Botet Escriba"
+  ],
+  "maintainers": [
+    "Vicente J. Botet Escriba <vicente.botet -at- wanadoo.fr>"
+  ],
+  "description":
+    "Compile time rational arithmetic. C++11.",
+  "std": [ "proposal" ],    
+  "category": [
+    "Math"
+  ]
+}

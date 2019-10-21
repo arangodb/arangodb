@@ -1,0 +1,413 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>HTTP Message Container &#127910;</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Chapter&#160;1.&#160;Boost.Beast">
+<link rel="up" href="../design_choices.html" title="Design Choices">
+<link rel="prev" href="../design_choices.html" title="Design Choices">
+<link rel="next" href="http_comparison_to_other_librari.html" title="HTTP Comparison to Other Libraries">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../design_choices.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../design_choices.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="http_comparison_to_other_librari.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="beast.design_choices.http_message_container"></a><a class="link" href="http_message_container.html" title="HTTP Message Container &#127910;">HTTP Message
+      Container &#127910;</a>
+</h3></div></div></div>
+<p>
+        The following video presentation was delivered at <a href="https://cppcon.org/" target="_top">CppCon</a>
+        in 2017. The presentation provides a simplified explanation of the design
+        process for the HTTP message container used in Beast. The slides and code
+        used are available in the <a href="https://github.com/vinniefalco/CppCon2017" target="_top">GitHub
+        repository</a>.
+      </p>
+<div class="mediaobject"><embed src="https://www.youtube.com/embed/WsUnnYEKPnI?rel=0" align="middle" width="560" height="315"></embed></div>
+<p>
+        In this section we describe the problem of modeling HTTP messages and explain
+        how the library arrived at its solution, with a discussion of the benefits
+        and drawbacks of the design choices. The goal for creating a message model
+        is to create a container with value semantics, possibly movable and/or copyable,
+        that contains all the information needed to serialize, or all of the information
+        captured during parsing. More formally, given:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">m</span></code> is an instance of an
+            HTTP message container
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">x</span></code> is a series of octets
+            describing a valid HTTP message in the serialized format described in
+            <a href="https://tools.ietf.org/html/rfc7230" target="_top">rfc7230</a>.
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">S</span><span class="special">(</span><span class="identifier">m</span><span class="special">)</span></code>
+            is a serialization function which produces a series of octets from a
+            message container.
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">P</span><span class="special">(</span><span class="identifier">x</span><span class="special">)</span></code>
+            is a parsing function which produces a message container from a series
+            of octets.
+          </li>
+</ul></div>
+<p>
+        These relations are true:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">S</span><span class="special">(</span><span class="identifier">m</span><span class="special">)</span> <span class="special">==</span> <span class="identifier">x</span></code>
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">P</span><span class="special">(</span><span class="identifier">S</span><span class="special">(</span><span class="identifier">m</span><span class="special">))</span> <span class="special">==</span> <span class="identifier">m</span></code>
+          </li>
+</ul></div>
+<p>
+        We would also like our message container to have customization points permitting
+        the following: allocator awareness, user-defined containers to represent
+        header fields, and user-defined types and algorithms to represent the body.
+        And finally, because requests and responses have different fields in the
+        <span class="emphasis"><em>start-line</em></span>, we would like the containers for requests
+        and responses to be represented by different types for function overloading.
+      </p>
+<p>
+        Here is our first attempt at declaring some message containers:
+      </p>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<tbody><tr>
+<td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="comment">/// An HTTP request</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Fields</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Body</span><span class="special">&gt;</span>
+<span class="keyword">struct</span> <span class="identifier">request</span>
+<span class="special">{</span>
+    <span class="keyword">int</span>         <span class="identifier">version</span><span class="special">;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="identifier">method</span><span class="special">;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="identifier">target</span><span class="special">;</span>
+    <span class="identifier">Fields</span>      <span class="identifier">fields</span><span class="special">;</span>
+
+    <span class="keyword">typename</span> <span class="identifier">Body</span><span class="special">::</span><span class="identifier">value_type</span> <span class="identifier">body</span><span class="special">;</span>
+<span class="special">};</span>
+</pre>
+              </td>
+<td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="comment">/// An HTTP response</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Fields</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Body</span><span class="special">&gt;</span>
+<span class="keyword">struct</span> <span class="identifier">response</span>
+<span class="special">{</span>
+    <span class="keyword">int</span>         <span class="identifier">version</span><span class="special">;</span>
+    <span class="keyword">int</span>         <span class="identifier">status</span><span class="special">;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="identifier">reason</span><span class="special">;</span>
+    <span class="identifier">Fields</span>      <span class="identifier">fields</span><span class="special">;</span>
+
+    <span class="keyword">typename</span> <span class="identifier">Body</span><span class="special">::</span><span class="identifier">value_type</span> <span class="identifier">body</span><span class="special">;</span>
+<span class="special">};</span>
+</pre>
+              </td>
+</tr></tbody>
+</table></div>
+<p>
+        These containers are capable of representing everything in the model of HTTP
+        requests and responses described in <a href="https://tools.ietf.org/html/rfc7230" target="_top">rfc7230</a>.
+        Request and response objects are different types. The user can choose the
+        container used to represent the fields. And the user can choose the <span class="bold"><strong>Body</strong></span> type, which is a concept defining not only the
+        type of <code class="computeroutput"><span class="identifier">body</span></code> member but also
+        the algorithms used to transfer information in and out of that member when
+        performing serialization and parsing.
+      </p>
+<p>
+        However, a problem arises. How do we write a function which can accept an
+        object that is either a request or a response? As written, the only obvious
+        solution is to make the message a template type. Additional traits classes
+        would then be needed to make sure that the passed object has a valid type
+        which meets the requirements. These unnecessary complexities are bypassed
+        by making each container a partial specialization:
+      </p>
+<pre class="programlisting"><span class="comment">/// An HTTP message</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">bool</span> <span class="identifier">isRequest</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Fields</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Body</span><span class="special">&gt;</span>
+<span class="keyword">struct</span> <span class="identifier">message</span><span class="special">;</span>
+
+<span class="comment">/// An HTTP request</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Fields</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Body</span><span class="special">&gt;</span>
+<span class="keyword">struct</span> <span class="identifier">message</span><span class="special">&lt;</span><span class="keyword">true</span><span class="special">,</span> <span class="identifier">Fields</span><span class="special">,</span> <span class="identifier">Body</span><span class="special">&gt;</span>
+<span class="special">{</span>
+    <span class="keyword">int</span>         <span class="identifier">version</span><span class="special">;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="identifier">method</span><span class="special">;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="identifier">target</span><span class="special">;</span>
+    <span class="identifier">Fields</span>      <span class="identifier">fields</span><span class="special">;</span>
+
+    <span class="keyword">typename</span> <span class="identifier">Body</span><span class="special">::</span><span class="identifier">value_type</span> <span class="identifier">body</span><span class="special">;</span>
+<span class="special">};</span>
+
+<span class="comment">/// An HTTP response</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">bool</span> <span class="identifier">isRequest</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Fields</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Body</span><span class="special">&gt;</span>
+<span class="keyword">struct</span> <span class="identifier">message</span><span class="special">&lt;</span><span class="keyword">false</span><span class="special">,</span> <span class="identifier">Fields</span><span class="special">,</span> <span class="identifier">Body</span><span class="special">&gt;</span>
+<span class="special">{</span>
+    <span class="keyword">int</span>         <span class="identifier">version</span><span class="special">;</span>
+    <span class="keyword">int</span>         <span class="identifier">status</span><span class="special">;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="identifier">reason</span><span class="special">;</span>
+    <span class="identifier">Fields</span>      <span class="identifier">fields</span><span class="special">;</span>
+
+    <span class="keyword">typename</span> <span class="identifier">Body</span><span class="special">::</span><span class="identifier">value_type</span> <span class="identifier">body</span><span class="special">;</span>
+<span class="special">};</span>
+</pre>
+<p>
+        Now we can declare a function which takes any message as a parameter:
+      </p>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">bool</span> <span class="identifier">isRequest</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Fields</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Body</span><span class="special">&gt;</span>
+<span class="keyword">void</span> <span class="identifier">f</span><span class="special">(</span><span class="identifier">message</span><span class="special">&lt;</span><span class="identifier">isRequest</span><span class="special">,</span> <span class="identifier">Fields</span><span class="special">,</span> <span class="identifier">Body</span><span class="special">&gt;&amp;</span> <span class="identifier">msg</span><span class="special">);</span>
+</pre>
+<p>
+        This function can manipulate the fields common to requests and responses.
+        If it needs to access the other fields, it can use overloads with partial
+        specialization, or in C++17 a <code class="computeroutput"><span class="keyword">constexpr</span></code>
+        expression:
+      </p>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">bool</span> <span class="identifier">isRequest</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Fields</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Body</span><span class="special">&gt;</span>
+<span class="keyword">void</span> <span class="identifier">f</span><span class="special">(</span><span class="identifier">message</span><span class="special">&lt;</span><span class="identifier">isRequest</span><span class="special">,</span> <span class="identifier">Fields</span><span class="special">,</span> <span class="identifier">Body</span><span class="special">&gt;&amp;</span> <span class="identifier">msg</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="keyword">if</span> <span class="keyword">constexpr</span><span class="special">(</span><span class="identifier">isRequest</span><span class="special">)</span>
+    <span class="special">{</span>
+        <span class="comment">// call msg.method(), msg.target()</span>
+    <span class="special">}</span>
+    <span class="keyword">else</span>
+    <span class="special">{</span>
+        <span class="comment">// call msg.result(), msg.reason()</span>
+    <span class="special">}</span>
+<span class="special">}</span>
+</pre>
+<p>
+        Often, in non-trivial HTTP applications, we want to read the HTTP header
+        and examine its contents before choosing a type for <span class="bold"><strong>Body</strong></span>.
+        To accomplish this, there needs to be a way to model the header portion of
+        a message. And we'd like to do this in a way that allows functions which
+        take the header as a parameter, to also accept a type representing the whole
+        message (the function will see just the header part). This suggests inheritance,
+        by splitting a new base class off of the message:
+      </p>
+<pre class="programlisting"><span class="comment">/// An HTTP message header</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">bool</span> <span class="identifier">isRequest</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Fields</span><span class="special">&gt;</span>
+<span class="keyword">struct</span> <span class="identifier">header</span><span class="special">;</span>
+</pre>
+<p>
+        Code which accesses the fields has to laboriously mention the <code class="computeroutput"><span class="identifier">fields</span></code> member, so we'll not only make
+        <code class="computeroutput"><span class="identifier">header</span></code> a base class but we'll
+        make a quality of life improvement and derive the header from the fields
+        for notational convenience. In order to properly support all forms of construction
+        of <span class="bold"><strong>Fields</strong></span> there will need to be a set of
+        suitable constructor overloads (not shown):
+      </p>
+<pre class="programlisting"><span class="comment">/// An HTTP request header</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Fields</span><span class="special">&gt;</span>
+<span class="keyword">struct</span> <span class="identifier">header</span><span class="special">&lt;</span><span class="keyword">true</span><span class="special">,</span> <span class="identifier">Fields</span><span class="special">&gt;</span> <span class="special">:</span> <span class="identifier">Fields</span>
+<span class="special">{</span>
+    <span class="keyword">int</span>         <span class="identifier">version</span><span class="special">;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="identifier">method</span><span class="special">;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="identifier">target</span><span class="special">;</span>
+<span class="special">};</span>
+
+<span class="comment">/// An HTTP response header</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Fields</span><span class="special">&gt;</span>
+<span class="keyword">struct</span> <span class="identifier">header</span><span class="special">&lt;</span><span class="keyword">false</span><span class="special">,</span> <span class="identifier">Fields</span><span class="special">&gt;</span> <span class="special">:</span> <span class="identifier">Fields</span>
+<span class="special">{</span>
+    <span class="keyword">int</span>         <span class="identifier">version</span><span class="special">;</span>
+    <span class="keyword">int</span>         <span class="identifier">status</span><span class="special">;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="identifier">reason</span><span class="special">;</span>
+<span class="special">};</span>
+
+<span class="comment">/// An HTTP message</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">bool</span> <span class="identifier">isRequest</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Fields</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Body</span><span class="special">&gt;</span>
+<span class="keyword">struct</span> <span class="identifier">message</span> <span class="special">:</span> <span class="identifier">header</span><span class="special">&lt;</span><span class="identifier">isRequest</span><span class="special">,</span> <span class="identifier">Fields</span><span class="special">&gt;</span>
+<span class="special">{</span>
+    <span class="keyword">typename</span> <span class="identifier">Body</span><span class="special">::</span><span class="identifier">value_type</span> <span class="identifier">body</span><span class="special">;</span>
+
+    <span class="comment">/// Construct from a `header`</span>
+    <span class="identifier">message</span><span class="special">(</span><span class="identifier">header</span><span class="special">&lt;</span><span class="identifier">isRequest</span><span class="special">,</span> <span class="identifier">Fields</span><span class="special">&gt;&amp;&amp;</span> <span class="identifier">h</span><span class="special">);</span>
+<span class="special">};</span>
+</pre>
+<p>
+        Note that the <code class="computeroutput"><span class="identifier">message</span></code> class
+        now has a constructor allowing messages to be constructed from a similarly
+        typed <code class="computeroutput"><span class="identifier">header</span></code>. This handles
+        the case where the user already has the header and wants to make a commitment
+        to the type for <span class="bold"><strong>Body</strong></span>. A function can be
+        declared which accepts any header:
+      </p>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">bool</span> <span class="identifier">isRequest</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Fields</span><span class="special">&gt;</span>
+<span class="keyword">void</span> <span class="identifier">f</span><span class="special">(</span><span class="identifier">header</span><span class="special">&lt;</span><span class="identifier">isRequest</span><span class="special">,</span> <span class="identifier">Fields</span><span class="special">&gt;&amp;</span> <span class="identifier">msg</span><span class="special">);</span>
+</pre>
+<p>
+        Until now we have not given significant consideration to the constructors
+        of the <code class="computeroutput"><span class="identifier">message</span></code> class. But
+        to achieve all our goals we will need to make sure that there are enough
+        constructor overloads to not only provide for the special copy and move members
+        if the instantiated types support it, but also allow the fields container
+        and body container to be constructed with arbitrary variadic lists of parameters.
+        This allows the container to fully support allocators.
+      </p>
+<p>
+        The solution used in the library is to treat the message like a <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">pair</span></code>
+        for the purposes of construction, except that instead of <code class="computeroutput"><span class="identifier">first</span></code>
+        and <code class="computeroutput"><span class="identifier">second</span></code> we have the <code class="computeroutput"><span class="identifier">Fields</span></code> base class and <code class="computeroutput"><span class="identifier">message</span><span class="special">::</span><span class="identifier">body</span></code>
+        member. This means that single-argument constructors for those fields should
+        be accessible as they are with <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">pair</span></code>,
+        and that a mechanism identical to the pair's use of <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">piecewise_construct</span></code>
+        should be provided. Those constructors are too complex to repeat here, but
+        interested readers can view the declarations in the corresponding header
+        file.
+      </p>
+<p>
+        There is now significant progress with our message container but a stumbling
+        block remains. There is no way to control the allocator for the <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span></code>
+        members. We could add an allocator to the template parameter list of the
+        header and message classes, use it for those strings. This is unsatisfying
+        because of the combinatorial explosion of constructor variations needed to
+        support the scheme. It also means that request messages could have <span class="bold"><strong>four</strong></span> different allocators: two for the fields and
+        body, and two for the method and target strings. A better solution is needed.
+      </p>
+<p>
+        To get around this we make an interface modification and then add a requirement
+        to the <span class="bold"><strong>Fields</strong></span> type. First, the interface
+        change:
+      </p>
+<pre class="programlisting"><span class="comment">/// An HTTP request header</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Fields</span><span class="special">&gt;</span>
+<span class="keyword">struct</span> <span class="identifier">header</span><span class="special">&lt;</span><span class="keyword">true</span><span class="special">,</span> <span class="identifier">Fields</span><span class="special">&gt;</span> <span class="special">:</span> <span class="identifier">Fields</span>
+<span class="special">{</span>
+    <span class="keyword">int</span>         <span class="identifier">version</span><span class="special">;</span>
+
+    <span class="identifier">verb</span>        <span class="identifier">method</span><span class="special">()</span> <span class="keyword">const</span><span class="special">;</span>
+    <span class="identifier">string_view</span> <span class="identifier">method_string</span><span class="special">()</span> <span class="keyword">const</span><span class="special">;</span>
+    <span class="keyword">void</span>        <span class="identifier">method</span><span class="special">(</span><span class="identifier">verb</span><span class="special">);</span>
+    <span class="keyword">void</span>        <span class="identifier">method</span><span class="special">(</span><span class="identifier">string_view</span><span class="special">);</span>
+
+    <span class="identifier">string_view</span> <span class="identifier">target</span><span class="special">();</span> <span class="keyword">const</span><span class="special">;</span>
+    <span class="keyword">void</span>        <span class="identifier">target</span><span class="special">(</span><span class="identifier">string_view</span><span class="special">);</span>
+
+<span class="keyword">private</span><span class="special">:</span>
+    <span class="identifier">verb</span> <span class="identifier">method_</span><span class="special">;</span>
+<span class="special">};</span>
+
+<span class="comment">/// An HTTP response header</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Fields</span><span class="special">&gt;</span>
+<span class="keyword">struct</span> <span class="identifier">header</span><span class="special">&lt;</span><span class="keyword">false</span><span class="special">,</span> <span class="identifier">Fields</span><span class="special">&gt;</span> <span class="special">:</span> <span class="identifier">Fields</span>
+<span class="special">{</span>
+    <span class="keyword">int</span>         <span class="identifier">version</span><span class="special">;</span>
+    <span class="keyword">int</span>         <span class="identifier">result</span><span class="special">;</span>
+    <span class="identifier">string_view</span> <span class="identifier">reason</span><span class="special">()</span> <span class="keyword">const</span><span class="special">;</span>
+    <span class="keyword">void</span>        <span class="identifier">reason</span><span class="special">(</span><span class="identifier">string_view</span><span class="special">);</span>
+<span class="special">};</span>
+</pre>
+<p>
+        The start-line data members are replaced by traditional accessors using non-owning
+        references to string buffers. The method is stored using a simple integer
+        instead of the entire string, for the case where the method is recognized
+        from the set of known verb strings.
+      </p>
+<p>
+        Now we add a requirement to the fields type: management of the corresponding
+        string is delegated to the <span class="bold"><strong>Fields</strong></span> container,
+        which can already be allocator aware and constructed with the necessary allocator
+        parameter via the provided constructor overloads for <code class="computeroutput"><span class="identifier">message</span></code>.
+        The delegation implementation looks like this (only the response header specialization
+        is shown):
+      </p>
+<pre class="programlisting"><span class="comment">/// An HTTP response header</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Fields</span><span class="special">&gt;</span>
+<span class="keyword">struct</span> <span class="identifier">header</span><span class="special">&lt;</span><span class="keyword">false</span><span class="special">,</span> <span class="identifier">Fields</span><span class="special">&gt;</span> <span class="special">:</span> <span class="identifier">Fields</span>
+<span class="special">{</span>
+    <span class="keyword">int</span>     <span class="identifier">version</span><span class="special">;</span>
+    <span class="keyword">int</span>     <span class="identifier">status</span><span class="special">;</span>
+
+    <span class="identifier">string_view</span>
+    <span class="identifier">reason</span><span class="special">()</span> <span class="keyword">const</span>
+    <span class="special">{</span>
+        <span class="keyword">return</span> <span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">reason_impl</span><span class="special">();</span> <span class="comment">// protected member of Fields</span>
+    <span class="special">}</span>
+
+    <span class="keyword">void</span>
+    <span class="identifier">reason</span><span class="special">(</span><span class="identifier">string_view</span> <span class="identifier">s</span><span class="special">)</span>
+    <span class="special">{</span>
+        <span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">reason_impl</span><span class="special">(</span><span class="identifier">s</span><span class="special">);</span>       <span class="comment">// protected member of Fields</span>
+    <span class="special">}</span>
+<span class="special">};</span>
+</pre>
+<p>
+        Now that we've accomplished our initial goals and more, there are a few more
+        quality of life improvements to make. Users will choose different types for
+        <code class="computeroutput"><span class="identifier">Body</span></code> far more often than
+        they will for <code class="computeroutput"><span class="identifier">Fields</span></code>. Thus,
+        we swap the order of these types and provide a default. Then, we provide
+        type aliases for requests and responses to soften the impact of using <code class="computeroutput"><span class="keyword">bool</span></code> to choose the specialization:
+      </p>
+<pre class="programlisting"><span class="comment">/// An HTTP header</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">bool</span> <span class="identifier">isRequest</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Body</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Fields</span> <span class="special">=</span> <span class="identifier">fields</span><span class="special">&gt;</span>
+<span class="keyword">struct</span> <span class="identifier">header</span><span class="special">;</span>
+
+<span class="comment">/// An HTTP message</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">bool</span> <span class="identifier">isRequest</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Body</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Fields</span> <span class="special">=</span> <span class="identifier">fields</span><span class="special">&gt;</span>
+<span class="keyword">struct</span> <span class="identifier">message</span><span class="special">;</span>
+
+<span class="comment">/// An HTTP request</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Body</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Fields</span> <span class="special">=</span> <span class="identifier">fields</span><span class="special">&gt;</span>
+<span class="keyword">using</span> <span class="identifier">request</span> <span class="special">=</span> <span class="identifier">message</span><span class="special">&lt;</span><span class="keyword">true</span><span class="special">,</span> <span class="identifier">Body</span><span class="special">,</span> <span class="identifier">Fields</span><span class="special">&gt;;</span>
+
+<span class="comment">/// An HTTP response</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Body</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Fields</span> <span class="special">=</span> <span class="identifier">fields</span><span class="special">&gt;</span>
+<span class="keyword">using</span> <span class="identifier">response</span> <span class="special">=</span> <span class="identifier">message</span><span class="special">&lt;</span><span class="keyword">false</span><span class="special">,</span> <span class="identifier">Body</span><span class="special">,</span> <span class="identifier">Fields</span><span class="special">&gt;;</span>
+</pre>
+<p>
+        This allows concise specification for the common cases, while allowing for
+        maximum customization for edge cases:
+      </p>
+<pre class="programlisting"><span class="identifier">request</span><span class="special">&lt;</span><span class="identifier">string_body</span><span class="special">&gt;</span> <span class="identifier">req</span><span class="special">;</span>
+
+<span class="identifier">response</span><span class="special">&lt;</span><span class="identifier">file_body</span><span class="special">&gt;</span> <span class="identifier">res</span><span class="special">;</span>
+</pre>
+<p>
+        This container is also capable of representing complete HTTP/2 messages.
+        Not because it was explicitly designed for, but because the IETF wanted to
+        preserve message compatibility with HTTP/1. Aside from version specific fields
+        such as Connection, the contents of HTTP/1 and HTTP/2 messages are identical
+        even though their serialized representation is considerably different. The
+        message model presented in this library is ready for HTTP/2.
+      </p>
+<p>
+        In conclusion, this representation for the message container is well thought
+        out, provides comprehensive flexibility, and avoids the necessity of defining
+        additional traits classes. User declarations of functions that accept headers
+        or messages as parameters are easy to write in a variety of ways to accomplish
+        different results, without forcing cumbersome SFINAE declarations everywhere.
+      </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2016-2019 Vinnie
+      Falco<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../design_choices.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../design_choices.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="http_comparison_to_other_librari.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

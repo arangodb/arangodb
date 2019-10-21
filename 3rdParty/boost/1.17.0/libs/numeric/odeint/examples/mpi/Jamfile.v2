@@ -1,0 +1,15 @@
+# Copyright 2011-2013 Mario Mulansky
+# Copyright 2012 Karsten Ahnert
+# Copyright 2013 Pascal Germroth
+# Distributed under the Boost Software License, Version 1.0. (See
+# accompanying file LICENSE_1_0.txt or copy at
+# http://www.boost.org/LICENSE_1_0.txt)
+
+project
+    : requirements
+      <define>BOOST_ALL_NO_LIB=1
+      <library>/boost//mpi
+      <library>/boost//timer
+    ;
+
+exe phase_chain : phase_chain.cpp ;

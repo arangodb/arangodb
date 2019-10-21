@@ -1,0 +1,141 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Using safe_range and safe_literal</title>
+<link rel="stylesheet" href="../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="Safe Numerics">
+<link rel="up" href="../eliminate_runtime_penalty.html" title="Eliminating Runtime Penalty">
+<link rel="prev" href="../eliminate_runtime_penalty.html" title="Eliminating Runtime Penalty">
+<link rel="next" href="1.html" title="Using Automatic Type Promotion">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img href="index.html" height="164px" src="pre-boost.jpg" alt="Library Documentation Index"></td>
+<td><h2>Safe Numerics</h2></td>
+</tr></table>
+<div class="spirit-nav">
+<a accesskey="p" href="../eliminate_runtime_penalty.html"><img src="../images/prev.png" alt="Prev"></a><a accesskey="u" href="../eliminate_runtime_penalty.html"><img src="../images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../images/home.png" alt="Home"></a><a accesskey="n" href="1.html"><img src="../images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="safe_numerics.eliminate_runtime_penalty.2"></a>Using <a class="link" href="safe_range.html" title="safe_signed_range&lt;MIN, MAX, PP, EP&gt; and safe_unsigned_range&lt;MIN, MAX, PP, EP&gt;">safe_range</a>
+    and <a class="link" href="safe_literal.html" title="safe_signed_literal&lt;Value, PP , EP&gt; and safe_unsigned_literal&lt;Value, PP, EP&gt;">safe_literal</a>
+</h3></div></div></div>
+<p>When trying to avoid arithmetic errors of the above type,
+    programmers will select data types which are wide enough to hold values
+    large enough to be certain that results won't overflow, but are not so
+    large as to make the program needlessly inefficient. In the example below,
+    we presume we know that the values we want to work with fall in the range
+    [-24,82]. So we "know" the program will always result in a correct result.
+    But since we trust no one, and since the program could change and the
+    expressions be replaced with other ones, we'll still use the <a class="link" href="exception_policies.html#safe_numerics.exception_policies.loose_trap_policy"><code class="computeroutput">loose_trap_policy</code></a>
+    exception policy to verify at compile time that what we "know" to be true
+    is in fact true.</p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">iostream</span><span class="special">&gt;</span>
+
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">safe_numerics</span><span class="special">/</span><span class="identifier">safe_integer_range</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">safe_numerics</span><span class="special">/</span><span class="identifier">safe_integer_literal</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">safe_numerics</span><span class="special">/</span><span class="identifier">exception</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">safe_numerics</span><span class="special">/</span><span class="identifier">native</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="string">"safe_format.hpp"</span> <span class="comment">// prints out range and value of any type</span>
+
+<span class="keyword">using</span> <span class="keyword">namespace</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">safe_numerics</span><span class="special">;</span>
+
+<span class="comment">// create a type for holding small integers in a specific range</span>
+<span class="keyword">using</span> <span class="identifier">safe_t</span> <span class="special">=</span> <span class="identifier">safe_signed_range</span><span class="special">&lt;</span>
+    <span class="special">-</span><span class="number">24</span><span class="special">,</span>
+    <span class="number">82</span><span class="special">,</span>
+    <span class="identifier">native</span><span class="special">,</span>           <span class="comment">// C++ type promotion rules work OK for this example</span>
+    <span class="identifier">loose_trap_policy</span> <span class="comment">// catch problems at compile time</span>
+<span class="special">&gt;</span><span class="special">;</span>
+
+<span class="comment">// create a type to hold one specific value</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">int</span> <span class="identifier">I</span><span class="special">&gt;</span>
+<span class="keyword">using</span> <span class="identifier">const_safe_t</span> <span class="special">=</span> <span class="identifier">safe_signed_literal</span><span class="special">&lt;</span><span class="identifier">I</span><span class="special">,</span> <span class="identifier">native</span><span class="special">,</span> <span class="identifier">loose_trap_policy</span><span class="special">&gt;</span><span class="special">;</span>
+
+<span class="comment">// We "know" that C++ type promotion rules will work such that</span>
+<span class="comment">// addition will never overflow. If we change the program to break this,</span>
+<span class="comment">// the usage of the loose_trap_policy promotion policy will prevent compilation.</span>
+<span class="keyword">int</span> <span class="identifier">main</span><span class="special">(</span><span class="keyword">int</span><span class="special">,</span> <span class="keyword">const</span> <span class="keyword">char</span> <span class="special">*</span><span class="special">[</span><span class="special">]</span><span class="special">)</span><span class="special">{</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"example 83:\n"</span><span class="special">;</span>
+
+    <span class="keyword">constexpr</span> <span class="keyword">const</span> <span class="identifier">const_safe_t</span><span class="special">&lt;</span><span class="number">10</span><span class="special">&gt;</span> <span class="identifier">x</span><span class="special">;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"x = "</span> <span class="special">&lt;&lt;</span> <span class="identifier">safe_format</span><span class="special">(</span><span class="identifier">x</span><span class="special">)</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+    <span class="keyword">constexpr</span> <span class="keyword">const</span> <span class="identifier">const_safe_t</span><span class="special">&lt;</span><span class="number">67</span><span class="special">&gt;</span> <span class="identifier">y</span><span class="special">;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"y = "</span> <span class="special">&lt;&lt;</span> <span class="identifier">safe_format</span><span class="special">(</span><span class="identifier">y</span><span class="special">)</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+    <span class="keyword">const</span> <span class="identifier">safe_t</span> <span class="identifier">z</span> <span class="special">=</span> <span class="identifier">x</span> <span class="special">+</span> <span class="identifier">y</span><span class="special">;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"x + y = "</span> <span class="special">&lt;&lt;</span> <span class="identifier">safe_format</span><span class="special">(</span><span class="identifier">x</span> <span class="special">+</span> <span class="identifier">y</span><span class="special">)</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"z = "</span> <span class="special">&lt;&lt;</span> <span class="identifier">safe_format</span><span class="special">(</span><span class="identifier">z</span><span class="special">)</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+    <span class="keyword">return</span> <span class="number">0</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem"><p><code class="computeroutput"><code class="computeroutput">safe_signed_range</code></code> defines a type
+          which is limited to the indicated range. Out of range assignments
+          will be detected at compile time if possible (as in this case) or at
+          run time if necessary.</p></li>
+<li class="listitem"><p>A safe range could be defined with the same minimum and
+          maximum value effectively restricting the type to holding one
+          specific value. This is what <code class="computeroutput">safe_signed_literal</code>
+          does.</p></li>
+<li class="listitem"><p>Defining constants with <code class="computeroutput">safe_signed_literal</code>
+          enables the library to correctly anticipate the correct range of the
+          results of arithmetic expressions at compile time.</p></li>
+<li class="listitem"><p>The usage of <code class="computeroutput"><a class="link" href="exception_policies.html#safe_numerics.exception_policies.loose_trap_policy"><code class="computeroutput">loose_trap_policy</code></a></code>
+          will mean that any assignment to z which could be outside its legal
+          range will result in a compile time error.</p></li>
+<li class="listitem"><p>All safe integer operations are implemented as constant
+          expressions. The usage of <code class="computeroutput">constexpr</code> will guarantee that
+          <code class="computeroutput">z</code> will be available at compile time for any subsequent
+          use.</p></li>
+<li class="listitem"><p>So if this program compiles, it's guaranteed to return a valid
+          result.</p></li>
+</ul></div>
+<p>The output uses a custom output manipulator,
+    <code class="computeroutput">safe_format</code>, for safe types to display the underlying type
+    and its range as well as current value. This program produces the
+    following run time output.</p>
+<pre class="screen">example 83:
+x = &lt;signed char&gt;[10,10] = 10
+y = &lt;signed char&gt;[67,67] = 67
+x + y = &lt;int&gt;[77,77] = 77
+z = &lt;signed char&gt;[-24,82] = 77</pre>
+<p>Take note of the various variable types:</p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem"><p><code class="computeroutput">x</code> and <code class="computeroutput">y</code> are safe types with fixed
+          ranges which encompass one single value. They can hold only that
+          value which they have been assigned at compile time.</p></li>
+<li class="listitem"><p><code class="computeroutput">The sum x + y can also be determined at compile
+          time.</code></p></li>
+<li class="listitem"><p>The type of z is defined so that It can hold only values in
+          the closed range -24,82. We can assign the sum of x + y because it
+          is in the range that <code class="computeroutput">z</code> is guaranteed to hold. If the
+          sum could not be be guaranteed to fall in the range of
+          <code class="computeroutput">z</code>, we would get a compile time error due to the fact we
+          are using the <code class="computeroutput">loose_trap_policy</code> exception
+          policy.</p></li>
+</ul></div>
+<p>All this information regarding the range and values of
+    variables has been determined at compile time. There is no runtime
+    overhead. The usage of safe types does not alter the calculations or
+    results in anyway. So <code class="computeroutput">safe_t</code> and <code class="computeroutput">const_safe_t</code>
+    could be redefined to <code class="computeroutput">int</code> and <code class="computeroutput">const int</code>
+    respectively and the program would operate identically - although it might
+    We could compile the program for another machine - as is common when
+    building embedded systems and know (assuming the target machine
+    architecture was the same as our native one) that no erroneous results
+    would ever be produced.</p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2012-2018 Robert Ramey<p><a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">Subject to Boost
+      Software License</a></p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../eliminate_runtime_penalty.html"><img src="../images/prev.png" alt="Prev"></a><a accesskey="u" href="../eliminate_runtime_penalty.html"><img src="../images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../images/home.png" alt="Home"></a><a accesskey="n" href="1.html"><img src="../images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

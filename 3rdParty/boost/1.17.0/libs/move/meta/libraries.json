@@ -1,0 +1,14 @@
+{
+    "key": "move",
+    "name": "Move",
+    "authors": [
+        "Ion Gazta\u00f1aga"
+    ],
+    "description": "Portable move semantics for C++03 and C++11 compilers.",
+    "category": [
+        "Emulation"
+    ],
+    "maintainers": [
+        "Ion Gaztanaga <igaztanaga -at- gmail.com>"
+    ]
+}

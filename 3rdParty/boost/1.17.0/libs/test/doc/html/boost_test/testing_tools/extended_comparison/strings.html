@@ -1,0 +1,133 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Strings and C-strings comparison</title>
+<link rel="stylesheet" href="../../../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../index.html" title="Boost.Test">
+<link rel="up" href="../extended_comparison.html" title="Extended comparisons support">
+<link rel="prev" href="floating_point/floating_points_comparison_theory.html" title="Theory behind floating point comparisons">
+<link rel="next" href="collections.html" title="Collections comparison">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="floating_point/floating_points_comparison_theory.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../extended_comparison.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="collections.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="boost_test.testing_tools.extended_comparison.strings"></a><a class="link" href="strings.html" title="Strings and C-strings comparison">Strings
+        and C-strings comparison</a>
+</h4></div></div></div>
+<p>
+          In the general case, pointers are compared using their value. However when
+          type of the the pointers are <code class="computeroutput"><span class="keyword">char</span><span class="special">*</span></code> or <code class="computeroutput"><span class="keyword">wchar_t</span><span class="special">*</span></code>, <a class="link" href="../../utf_reference/testing_tool_ref/assertion_boost_test_universal_macro.html" title="BOOST_TEST"><code class="computeroutput"><span class="identifier">BOOST_TEST</span></code></a> promotes them as null
+          terminated <code class="computeroutput"><span class="keyword">char</span></code> arrays and
+          string comparison is used instead. <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span></code>
+          (or any <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">basic_string</span></code>) is eligible for string
+          comparison.
+        </p>
+<p>
+          String comparison can be used only if the the operands to compare in <a class="link" href="../../utf_reference/testing_tool_ref/assertion_boost_test_universal_macro.html" title="BOOST_TEST"><code class="computeroutput"><span class="identifier">BOOST_TEST</span></code></a> can both be considered
+          as strings type.
+        </p>
+<div class="tip"><table border="0" summary="Tip">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Tip]" src="../../../../../../../doc/src/images/tip.png"></td>
+<th align="left">Tip</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+            In this form, the comparison method and reporting can be overridden an
+            additional argument to <a class="link" href="../../utf_reference/testing_tool_ref/assertion_boost_test_universal_macro.html" title="BOOST_TEST"><code class="computeroutput"><span class="identifier">BOOST_TEST</span></code></a>. See the <a class="link" href="collections.html" title="Collections comparison">collection
+            comparison</a> section for more details, in particular <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">test_tools</span><span class="special">::</span><span class="identifier">per_element</span><span class="special">()</span></code>
+            and <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">test_tools</span><span class="special">::</span><span class="identifier">lexicographic</span><span class="special">()</span></code>
+            modifiers.
+          </p></td></tr>
+</table></div>
+<h6>
+<a name="boost_test.testing_tools.extended_comparison.strings.h0"></a>
+          <span class="phrase"><a name="boost_test.testing_tools.extended_comparison.strings.example_descr"></a></span><a class="link" href="strings.html#boost_test.testing_tools.extended_comparison.strings.example_descr">Example:
+          BOOST_TEST string comparison</a>
+        </h6>
+<div class="informaltable"><table class="table">
+<colgroup><col></colgroup>
+<thead><tr><th>
+                  <p>
+                    Code
+                  </p>
+                </th></tr></thead>
+<tbody><tr><td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="preprocessor">#define</span> <span class="identifier">BOOST_TEST_MODULE</span> <span class="identifier">boost_test_strings</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">test</span><span class="special">/</span><span class="identifier">included</span><span class="special">/</span><span class="identifier">unit_test</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="identifier">BOOST_AUTO_TEST_CASE</span><span class="special">(</span> <span class="identifier">test_pointers</span> <span class="special">)</span>
+<span class="special">{</span>
+  <span class="keyword">float</span> <span class="identifier">a</span><span class="special">(</span><span class="number">0.5f</span><span class="special">),</span> <span class="identifier">b</span><span class="special">(</span><span class="number">0.5f</span><span class="special">);</span>
+  <span class="keyword">const</span> <span class="keyword">float</span><span class="special">*</span> <span class="identifier">pa</span> <span class="special">=</span> <span class="special">&amp;</span><span class="identifier">a</span><span class="special">,</span> <span class="special">*</span><span class="identifier">pb</span> <span class="special">=</span> <span class="special">&amp;</span><span class="identifier">b</span><span class="special">;</span>
+  <span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">a</span> <span class="special">==</span> <span class="identifier">b</span><span class="special">);</span>
+  <span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">pa</span> <span class="special">==</span> <span class="identifier">pb</span><span class="special">);</span>
+<span class="special">}</span>
+
+<span class="identifier">BOOST_AUTO_TEST_CASE</span><span class="special">(</span> <span class="identifier">test_strings</span> <span class="special">)</span>
+<span class="special">{</span>
+  <span class="keyword">const</span> <span class="keyword">char</span><span class="special">*</span> <span class="identifier">a</span> <span class="special">=</span> <span class="string">"test1"</span><span class="special">;</span>
+  <span class="keyword">const</span> <span class="keyword">char</span><span class="special">*</span> <span class="identifier">b</span> <span class="special">=</span> <span class="string">"test2"</span><span class="special">;</span>
+  <span class="keyword">const</span> <span class="keyword">char</span><span class="special">*</span> <span class="identifier">c</span> <span class="special">=</span> <span class="string">"test1"</span><span class="special">;</span>
+  <span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">a</span> <span class="special">==</span> <span class="identifier">b</span><span class="special">);</span>
+  <span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">a</span> <span class="special">==</span> <span class="identifier">c</span><span class="special">);</span>
+  <span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span><span class="special">(</span><span class="string">"test1"</span><span class="special">)</span> <span class="special">==</span> <span class="identifier">b</span><span class="special">);</span>
+  <span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span><span class="special">(</span><span class="string">"test1"</span><span class="special">)</span> <span class="special">&lt;</span> <span class="identifier">a</span><span class="special">,</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">test_tools</span><span class="special">::</span><span class="identifier">per_element</span><span class="special">());</span>
+  <span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">b</span> <span class="special">&lt;</span> <span class="identifier">a</span><span class="special">,</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">test_tools</span><span class="special">::</span><span class="identifier">lexicographic</span><span class="special">());</span>
+<span class="special">}</span>
+</pre>
+                </td></tr></tbody>
+</table></div>
+<div class="informaltable"><table class="table">
+<colgroup><col></colgroup>
+<thead><tr><th>
+                  <p>
+                    Output
+                  </p>
+                </th></tr></thead>
+<tbody><tr><td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="special">&gt;</span> <span class="special">./</span><span class="identifier">boost_test_strings</span>
+<span class="identifier">Running</span> <span class="number">2</span> <span class="identifier">test</span> <span class="identifier">cases</span><span class="special">...</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">:</span><span class="number">17</span><span class="special">:</span> <span class="identifier">error</span><span class="special">:</span> <span class="identifier">in</span> <span class="string">"test_pointers"</span><span class="special">:</span> <span class="identifier">check</span> <span class="identifier">pa</span> <span class="special">==</span> <span class="identifier">pb</span> <span class="identifier">has</span> <span class="identifier">failed</span> <span class="special">[</span><span class="number">0</span><span class="identifier">x7fff54f9dea4</span> <span class="special">!=</span> <span class="number">0</span><span class="identifier">x7fff54f9dea0</span><span class="special">]</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">:</span><span class="number">25</span><span class="special">:</span> <span class="identifier">error</span><span class="special">:</span> <span class="identifier">in</span> <span class="string">"test_strings"</span><span class="special">:</span> <span class="identifier">check</span> <span class="identifier">a</span> <span class="special">==</span> <span class="identifier">b</span> <span class="identifier">has</span> <span class="identifier">failed</span> <span class="special">[</span><span class="identifier">test1</span> <span class="special">!=</span> <span class="identifier">test2</span><span class="special">]</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">:</span><span class="number">27</span><span class="special">:</span> <span class="identifier">error</span><span class="special">:</span> <span class="identifier">in</span> <span class="string">"test_strings"</span><span class="special">:</span> <span class="identifier">check</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span><span class="special">(</span><span class="string">"test1"</span><span class="special">)</span> <span class="special">==</span> <span class="identifier">b</span> <span class="identifier">has</span> <span class="identifier">failed</span> <span class="special">[</span><span class="identifier">test1</span> <span class="special">!=</span> <span class="identifier">test2</span><span class="special">]</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">:</span><span class="number">28</span><span class="special">:</span> <span class="identifier">error</span><span class="special">:</span> <span class="identifier">in</span> <span class="string">"test_strings"</span><span class="special">:</span> <span class="identifier">check</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span><span class="special">(</span><span class="string">"test1"</span><span class="special">)</span> <span class="special">&lt;</span> <span class="identifier">a</span> <span class="identifier">has</span> <span class="identifier">failed</span>
+<span class="identifier">Mismatch</span> <span class="identifier">at</span> <span class="identifier">position</span> <span class="number">0</span><span class="special">:</span> <span class="char">'t'</span> <span class="special">&gt;=</span> <span class="char">'t'</span><span class="special">.</span>
+<span class="identifier">Mismatch</span> <span class="identifier">at</span> <span class="identifier">position</span> <span class="number">1</span><span class="special">:</span> <span class="char">'e'</span> <span class="special">&gt;=</span> <span class="char">'e'</span><span class="special">.</span>
+<span class="identifier">Mismatch</span> <span class="identifier">at</span> <span class="identifier">position</span> <span class="number">2</span><span class="special">:</span> <span class="char">'s'</span> <span class="special">&gt;=</span> <span class="char">'s'</span><span class="special">.</span>
+<span class="identifier">Mismatch</span> <span class="identifier">at</span> <span class="identifier">position</span> <span class="number">3</span><span class="special">:</span> <span class="char">'t'</span> <span class="special">&gt;=</span> <span class="char">'t'</span><span class="special">.</span>
+<span class="identifier">Mismatch</span> <span class="identifier">at</span> <span class="identifier">position</span> <span class="number">4</span><span class="special">:</span> <span class="char">'1'</span> <span class="special">&gt;=</span> <span class="char">'1'</span><span class="special">.</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">:</span><span class="number">29</span><span class="special">:</span> <span class="identifier">error</span><span class="special">:</span> <span class="identifier">in</span> <span class="string">"test_strings"</span><span class="special">:</span> <span class="identifier">check</span> <span class="identifier">b</span> <span class="special">&lt;</span> <span class="identifier">a</span> <span class="identifier">has</span> <span class="identifier">failed</span>
+<span class="identifier">Failure</span> <span class="identifier">at</span> <span class="identifier">position</span> <span class="number">4</span><span class="special">:</span> <span class="char">'2'</span> <span class="special">&gt;=</span> <span class="char">'1'</span><span class="special">.</span>
+
+<span class="special">***</span> <span class="number">5</span> <span class="identifier">failures</span> <span class="identifier">are</span> <span class="identifier">detected</span> <span class="identifier">in</span> <span class="identifier">the</span> <span class="identifier">test</span> <span class="identifier">module</span> <span class="string">"boost_test_strings"</span>
+</pre>
+                </td></tr></tbody>
+</table></div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2001-2018 Boost.Test contributors<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="floating_point/floating_points_comparison_theory.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../extended_comparison.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="collections.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

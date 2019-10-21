@@ -1,0 +1,61 @@
+<%
+  hana = (0...50).step(5).to_a + (50..400).step(25).to_a
+  fusion = (0...50).step(5).to_a + [50, 75, 100]
+  mpl = hana
+  meta = (0...50).step(5).to_a + (50..200).step(25).to_a
+  mpl11 = hana
+  std = (0...50).step(5).to_a + (50..100).step(25).to_a
+%>
+
+{
+  "title": {
+    "text": "Compile-time behavior of creating a sequence"
+  },
+  "series": [
+    {
+      "name": "hana::tuple",
+      "data": <%= time_compilation('compile.hana.tuple.erb.cpp', hana) %>
+    }, {
+      "name": "hana::basic_tuple",
+      "data": <%= time_compilation('compile.hana.basic_tuple.erb.cpp', hana) %>
+    }, {
+      "name": "std::array",
+      "data": <%= time_compilation('compile.std.array.erb.cpp', hana) %>
+    }
+
+    <% if not ("@CMAKE_CXX_COMPILER_ID@" == "Clang" &&
+               "@CMAKE_CXX_COMPILER_VERSION@" == "3.5.0") %>
+    , {
+      "name": "std::tuple",
+      "data": <%= time_compilation('compile.std.tuple.erb.cpp', std) %>
+    }
+    <% end %>
+
+    <% if cmake_bool("@Boost_FOUND@") %>
+    , {
+      "name": "fusion::vector",
+      "data": <%= time_compilation('compile.fusion.vector.erb.cpp', fusion) %>
+    }, {
+      "name": "fusion::list",
+      "data": <%= time_compilation('compile.fusion.list.erb.cpp', fusion) %>
+    }, {
+      "name": "mpl::vector",
+      "data": <%= time_compilation('compile.mpl.vector.erb.cpp', mpl) %>
+    }
+    <% end %>
+
+    <% if cmake_bool("@Meta_FOUND@") %>
+    , {
+      "name": "meta::list",
+      "data": <%= time_compilation('compile.meta.list.erb.cpp', meta) %>
+    }
+    <% end %>
+
+    <% if cmake_bool("@MPL11_FOUND@") %>
+    , {
+      "name": "mpl11::list",
+      "data": <%= time_compilation('compile.mpl11.list.erb.cpp', mpl11) %>
+    }
+    <% end %>
+  ]
+}

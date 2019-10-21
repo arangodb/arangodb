@@ -1,0 +1,182 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>find_backward</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="The Boost Algorithm Library">
+<link rel="up" href="../../algorithm/Misc.html" title="Other Algorithms">
+<link rel="prev" href="find_not.html" title="find_not">
+<link rel="next" href="gather.html" title="gather">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="find_not.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../algorithm/Misc.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="gather.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="the_boost_algorithm_library.Misc.find_backward"></a><a class="link" href="find_backward.html" title="find_backward">find_backward
+      </a>
+</h3></div></div></div>
+<p>
+        The header file 'find_backward.hpp' contains variants of the stl algorithm
+        <code class="computeroutput"><span class="identifier">find</span></code>. These variants are
+        like <code class="computeroutput"><span class="identifier">find</span></code>, except that the
+        evaluate the elements of the given sequence in reverse order.
+      </p>
+<p>
+        Consider how finding the last element that is equal to <code class="computeroutput"><span class="identifier">x</span></code>
+        in a range is typically done:
+      </p>
+<pre class="programlisting"><span class="comment">// Assume a valid range if elements delimited by [first, last).</span>
+<span class="keyword">while</span> <span class="special">(</span><span class="identifier">last</span><span class="special">--</span> <span class="special">!=</span> <span class="identifier">first</span><span class="special">)</span> <span class="special">{</span>
+    <span class="keyword">if</span> <span class="special">(*</span><span class="identifier">last</span> <span class="special">==</span> <span class="identifier">x</span><span class="special">)</span> <span class="special">{</span>
+        <span class="comment">// Use last here...</span>
+    <span class="special">}</span>
+<span class="special">}</span>
+</pre>
+<p>
+        Raw loops are icky though. Perhaps we should do a bit of extra work to allow
+        the use of <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">find</span><span class="special">()</span></code>:
+      </p>
+<pre class="programlisting"><span class="keyword">auto</span> <span class="identifier">rfirst</span> <span class="special">=</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">make_reverse_iterator</span><span class="special">(</span><span class="identifier">last</span><span class="special">);</span>
+<span class="keyword">auto</span> <span class="identifier">rlast</span> <span class="special">=</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">make_reverse_iterator</span><span class="special">(</span><span class="identifier">first</span><span class="special">);</span>
+<span class="keyword">auto</span> <span class="identifier">it</span> <span class="special">=</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">find</span><span class="special">(</span><span class="identifier">rfirst</span><span class="special">,</span> <span class="identifier">rlast</span><span class="special">,</span> <span class="identifier">x</span><span class="special">);</span>
+<span class="comment">// Use it here...</span>
+</pre>
+<p>
+        That seems nicer in that there is no raw loop, but it has two major drawbacks.
+        First, it requires an unpleasant amount of typing. Second, it is less efficient
+        than forward-iterator <code class="computeroutput"><span class="identifier">find</span></code>
+        , since <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">reverse_iterator</span></code> calls its base-iterator's
+        <code class="computeroutput"><span class="keyword">operator</span><span class="special">--()</span></code>
+        in most of its member functions before doing the work that the member function
+        requires.
+      </p>
+<h5>
+<a name="the_boost_algorithm_library.Misc.find_backward.h0"></a>
+        <span class="phrase"><a name="the_boost_algorithm_library.Misc.find_backward.interface"></a></span><a class="link" href="find_backward.html#the_boost_algorithm_library.Misc.find_backward.interface">interface</a>
+      </h5>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">BidiIter</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">T</span><span class="special">&gt;</span>
+<span class="identifier">BidiIter</span> <span class="identifier">find_backward</span><span class="special">(</span><span class="identifier">BidiIter</span> <span class="identifier">first</span><span class="special">,</span> <span class="identifier">BidiIter</span> <span class="identifier">last</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">T</span> <span class="special">&amp;</span> <span class="identifier">x</span><span class="special">);</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Range</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">T</span><span class="special">&gt;</span>
+<span class="identifier">boost</span><span class="special">::</span><span class="identifier">range_iterator</span><span class="special">&lt;</span><span class="identifier">Range</span><span class="special">&gt;</span> <span class="identifier">find_backward</span><span class="special">(</span><span class="identifier">Range</span> <span class="special">&amp;</span> <span class="identifier">range</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">T</span> <span class="special">&amp;</span> <span class="identifier">x</span><span class="special">);</span>
+</pre>
+<p>
+        These overloads of <code class="computeroutput"><span class="identifier">find_backward</span></code>
+        return an iterator to the last element that is equal to <code class="computeroutput"><span class="identifier">x</span></code>
+        in <code class="computeroutput"><span class="special">[</span><span class="identifier">first</span><span class="special">,</span> <span class="identifier">last</span><span class="special">)</span></code> or <code class="computeroutput"><span class="identifier">r</span></code>,
+        respectively.
+      </p>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">BidiIter</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">T</span><span class="special">&gt;</span>
+<span class="identifier">BidiIter</span> <span class="identifier">find_not_backward</span><span class="special">(</span><span class="identifier">BidiIter</span> <span class="identifier">first</span><span class="special">,</span> <span class="identifier">BidiIter</span> <span class="identifier">last</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">T</span> <span class="special">&amp;</span> <span class="identifier">x</span><span class="special">);</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Range</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">T</span><span class="special">&gt;</span>
+<span class="identifier">boost</span><span class="special">::</span><span class="identifier">range_iterator</span><span class="special">&lt;</span><span class="identifier">Range</span><span class="special">&gt;</span> <span class="identifier">find_not_backward</span><span class="special">(</span><span class="identifier">Range</span> <span class="special">&amp;</span> <span class="identifier">range</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">T</span> <span class="special">&amp;</span> <span class="identifier">x</span><span class="special">);</span>
+</pre>
+<p>
+        These overloads of <code class="computeroutput"><span class="identifier">find_not_backward</span></code>
+        return an iterator to the last element that is not equal to <code class="computeroutput"><span class="identifier">x</span></code> in <code class="computeroutput"><span class="special">[</span><span class="identifier">first</span><span class="special">,</span> <span class="identifier">last</span><span class="special">)</span></code> or
+        <code class="computeroutput"><span class="identifier">r</span></code>, respectively.
+      </p>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">BidiIter</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Pred</span><span class="special">&gt;</span>
+<span class="identifier">BidiIter</span> <span class="identifier">find_if_backward</span><span class="special">(</span><span class="identifier">BidiIter</span> <span class="identifier">first</span><span class="special">,</span> <span class="identifier">BidiIter</span> <span class="identifier">last</span><span class="special">,</span> <span class="identifier">Pred</span> <span class="identifier">p</span><span class="special">);</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Range</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Pred</span><span class="special">&gt;</span>
+<span class="identifier">boost</span><span class="special">::</span><span class="identifier">range_iterator</span><span class="special">&lt;</span><span class="identifier">Range</span><span class="special">&gt;</span> <span class="identifier">find_if_backward</span><span class="special">(</span><span class="identifier">Range</span> <span class="special">&amp;</span> <span class="identifier">range</span><span class="special">,</span> <span class="identifier">Pred</span> <span class="identifier">p</span><span class="special">);</span>
+</pre>
+<p>
+        These overloads of <code class="computeroutput"><span class="identifier">find_if_backward</span></code>
+        return an iterator to the last element for which <code class="computeroutput"><span class="identifier">pred</span></code>
+        returns <code class="computeroutput"><span class="keyword">true</span></code> in <code class="computeroutput"><span class="special">[</span><span class="identifier">first</span><span class="special">,</span> <span class="identifier">last</span><span class="special">)</span></code> or <code class="computeroutput"><span class="identifier">r</span></code>,
+        respectively.
+      </p>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">BidiIter</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Pred</span><span class="special">&gt;</span>
+<span class="identifier">BidiIter</span> <span class="identifier">find_if_not_backward</span><span class="special">(</span><span class="identifier">BidiIter</span> <span class="identifier">first</span><span class="special">,</span> <span class="identifier">BidiIter</span> <span class="identifier">last</span><span class="special">,</span> <span class="identifier">Pred</span> <span class="identifier">p</span><span class="special">);</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Range</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Pred</span><span class="special">&gt;</span>
+<span class="identifier">boost</span><span class="special">::</span><span class="identifier">range_iterator</span><span class="special">&lt;</span><span class="identifier">Range</span><span class="special">&gt;</span> <span class="identifier">find_if_not_backward</span><span class="special">(</span><span class="identifier">Range</span> <span class="special">&amp;</span> <span class="identifier">range</span><span class="special">,</span> <span class="identifier">Pred</span> <span class="identifier">p</span><span class="special">);</span>
+</pre>
+<p>
+        These overloads of <code class="computeroutput"><span class="identifier">find_if_not_backward</span></code>
+        return an iterator to the last element for which <code class="computeroutput"><span class="identifier">pred</span></code>
+        returns <code class="computeroutput"><span class="keyword">false</span></code> in <code class="computeroutput"><span class="special">[</span><span class="identifier">first</span><span class="special">,</span> <span class="identifier">last</span><span class="special">)</span></code> or <code class="computeroutput"><span class="identifier">r</span></code>,
+        respectively.
+      </p>
+<h5>
+<a name="the_boost_algorithm_library.Misc.find_backward.h1"></a>
+        <span class="phrase"><a name="the_boost_algorithm_library.Misc.find_backward.examples"></a></span><a class="link" href="find_backward.html#the_boost_algorithm_library.Misc.find_backward.examples">Examples</a>
+      </h5>
+<p>
+        Given the container <code class="computeroutput"><span class="identifier">c1</span></code> containing
+        <code class="computeroutput"><span class="special">{</span> <span class="number">2</span><span class="special">,</span> <span class="number">1</span><span class="special">,</span>
+        <span class="number">2</span> <span class="special">}</span></code>,
+        then
+      </p>
+<pre class="programlisting"><span class="identifier">find_backward</span>        <span class="special">(</span> <span class="identifier">c1</span><span class="special">.</span><span class="identifier">begin</span><span class="special">(),</span> <span class="identifier">c1</span><span class="special">.</span><span class="identifier">end</span><span class="special">(),</span> <span class="number">2</span>                          <span class="special">)</span> <span class="special">--&gt;</span> <span class="special">--</span><span class="identifier">c1</span><span class="special">.</span><span class="identifier">end</span><span class="special">()</span>
+<span class="identifier">find_backward</span>        <span class="special">(</span> <span class="identifier">c1</span><span class="special">.</span><span class="identifier">begin</span><span class="special">(),</span> <span class="identifier">c1</span><span class="special">.</span><span class="identifier">end</span><span class="special">(),</span> <span class="number">3</span>                          <span class="special">)</span> <span class="special">--&gt;</span> <span class="identifier">c1</span><span class="special">.</span><span class="identifier">end</span><span class="special">()</span>
+<span class="identifier">find_if_backward</span>     <span class="special">(</span> <span class="identifier">c1</span><span class="special">.</span><span class="identifier">begin</span><span class="special">(),</span> <span class="identifier">c1</span><span class="special">.</span><span class="identifier">end</span><span class="special">(),</span> <span class="special">[](</span><span class="keyword">int</span> <span class="identifier">i</span><span class="special">)</span> <span class="special">{</span><span class="keyword">return</span> <span class="identifier">i</span> <span class="special">==</span> <span class="number">2</span><span class="special">;}</span> <span class="special">)</span> <span class="special">--&gt;</span> <span class="special">--</span><span class="identifier">c1</span><span class="special">.</span><span class="identifier">end</span><span class="special">()</span>
+<span class="identifier">find_if_backward</span>     <span class="special">(</span> <span class="identifier">c1</span><span class="special">.</span><span class="identifier">begin</span><span class="special">(),</span> <span class="identifier">c1</span><span class="special">.</span><span class="identifier">end</span><span class="special">(),</span> <span class="special">[](</span><span class="keyword">int</span> <span class="identifier">i</span><span class="special">)</span> <span class="special">{</span><span class="keyword">return</span> <span class="identifier">i</span> <span class="special">==</span> <span class="number">3</span><span class="special">;}</span> <span class="special">)</span> <span class="special">--&gt;</span> <span class="identifier">c1</span><span class="special">.</span><span class="identifier">end</span><span class="special">()</span>
+<span class="identifier">find_not_backward</span>    <span class="special">(</span> <span class="identifier">c1</span><span class="special">.</span><span class="identifier">begin</span><span class="special">(),</span> <span class="identifier">c1</span><span class="special">.</span><span class="identifier">end</span><span class="special">(),</span> <span class="number">2</span>                          <span class="special">)</span> <span class="special">--&gt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">prev</span><span class="special">(</span><span class="identifier">c1</span><span class="special">.</span><span class="identifier">end</span><span class="special">(),</span> <span class="number">2</span><span class="special">)</span>
+<span class="identifier">find_not_backward</span>    <span class="special">(</span> <span class="identifier">c1</span><span class="special">.</span><span class="identifier">begin</span><span class="special">(),</span> <span class="identifier">c1</span><span class="special">.</span><span class="identifier">end</span><span class="special">(),</span> <span class="number">1</span>                          <span class="special">)</span> <span class="special">--&gt;</span> <span class="identifier">c1</span><span class="special">.</span><span class="identifier">end</span><span class="special">()</span>
+<span class="identifier">find_if_not_backward</span> <span class="special">(</span> <span class="identifier">c1</span><span class="special">.</span><span class="identifier">begin</span><span class="special">(),</span> <span class="identifier">c1</span><span class="special">.</span><span class="identifier">end</span><span class="special">(),</span> <span class="special">[](</span><span class="keyword">int</span> <span class="identifier">i</span><span class="special">)</span> <span class="special">{</span><span class="keyword">return</span> <span class="identifier">i</span> <span class="special">==</span> <span class="number">2</span><span class="special">;}</span> <span class="special">)</span> <span class="special">--&gt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">prev</span><span class="special">(</span><span class="identifier">c1</span><span class="special">.</span><span class="identifier">end</span><span class="special">(),</span> <span class="number">2</span><span class="special">)</span>
+<span class="identifier">find_if_not_backward</span> <span class="special">(</span> <span class="identifier">c1</span><span class="special">.</span><span class="identifier">begin</span><span class="special">(),</span> <span class="identifier">c1</span><span class="special">.</span><span class="identifier">end</span><span class="special">(),</span> <span class="special">[](</span><span class="keyword">int</span> <span class="identifier">i</span><span class="special">)</span> <span class="special">{</span><span class="keyword">return</span> <span class="identifier">i</span> <span class="special">==</span> <span class="number">1</span><span class="special">;}</span> <span class="special">)</span> <span class="special">--&gt;</span> <span class="identifier">c1</span><span class="special">.</span><span class="identifier">end</span><span class="special">()</span>
+</pre>
+<h5>
+<a name="the_boost_algorithm_library.Misc.find_backward.h2"></a>
+        <span class="phrase"><a name="the_boost_algorithm_library.Misc.find_backward.iterator_requirements"></a></span><a class="link" href="find_backward.html#the_boost_algorithm_library.Misc.find_backward.iterator_requirements">Iterator
+        Requirements</a>
+      </h5>
+<p>
+        All variants work on bidirectional iterators.
+      </p>
+<h5>
+<a name="the_boost_algorithm_library.Misc.find_backward.h3"></a>
+        <span class="phrase"><a name="the_boost_algorithm_library.Misc.find_backward.complexity"></a></span><a class="link" href="find_backward.html#the_boost_algorithm_library.Misc.find_backward.complexity">Complexity</a>
+      </h5>
+<p>
+        Linear.
+      </p>
+<h5>
+<a name="the_boost_algorithm_library.Misc.find_backward.h4"></a>
+        <span class="phrase"><a name="the_boost_algorithm_library.Misc.find_backward.exception_safety"></a></span><a class="link" href="find_backward.html#the_boost_algorithm_library.Misc.find_backward.exception_safety">Exception
+        Safety</a>
+      </h5>
+<p>
+        All of the variants take their parameters by value and do not depend upon
+        any global state. Therefore, all the routines in this file provide the strong
+        exception guarantee.
+      </p>
+<h5>
+<a name="the_boost_algorithm_library.Misc.find_backward.h5"></a>
+        <span class="phrase"><a name="the_boost_algorithm_library.Misc.find_backward.notes"></a></span><a class="link" href="find_backward.html#the_boost_algorithm_library.Misc.find_backward.notes">Notes</a>
+      </h5>
+<p>
+        All variants are <code class="computeroutput"><span class="keyword">constexpr</span></code> in
+        C++14 or later.
+      </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2010-2012 Marshall Clow<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="find_not.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../algorithm/Misc.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="gather.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

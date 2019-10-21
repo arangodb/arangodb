@@ -1,0 +1,151 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html><meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Built-in policies - Boost.Outcome documentation</title>
+<link rel="stylesheet" href="../../../css/boost.css" type="text/css">
+<meta name="generator" content="Hugo 0.52 with Boostdoc theme">
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+
+<link rel="icon" href="../../../images/favicon.ico" type="image/ico"/>
+<body><div class="spirit-nav">
+<a accesskey="p" href="../../../tutorial/essential/no-value/custom.html"><img src="../../../images/prev.png" alt="Prev"></a>
+    <a accesskey="u" href="../../../tutorial/essential/no-value.html"><img src="../../../images/up.png" alt="Up"></a>
+    <a accesskey="h" href="../../../index.html"><img src="../../../images/home.png" alt="Home"></a><a accesskey="n" href="../../../tutorial/essential/conventions.html"><img src="../../../images/next.png" alt="Next"></a></div><div id="content">
+  <div class="titlepage"><div><div><h1 style="clear: both">Built-in policies</h1></div></div></div>
+  <p>These are the predefined policies built into Outcome:</p>
+
+<hr style="border-color: black;">
+
+<p>&nbsp;</p>
+
+<a href="../../../reference/policies/all_narrow.html" class="api-reference"><code>all_narrow</code></a>
+
+
+<p>If there is an observation of a value/error/exception which is not present,
+the program is put into a <strong>hard undefined behaviour</strong> situation. The
+compiler <em>literally</em> compiles no code for an invalid observation &ndash; the
+CPU &ldquo;runs off&rdquo; into the unknown.</p>
+
+<p>As bad as this may sound, it generates the most optimal code, and such
+hard UB is very tool-friendly for detection e.g. undefined behaviour
+sanitiser, valgrind memcheck, etc.</p>
+
+<p>If you are considering choosing this policy, definitely read
+<a href="../../../reference/policies/base/ub.html" class="api-reference"><code>static void _ub(Impl &amp;&amp;)</code></a>
+ first.</p>
+
+<p>Note that <a href="../../../reference/aliases/unchecked.html" class="api-reference"><code>unchecked&lt;T, E = varies&gt;</code></a>
+ aliases a <code>basic_result</code>
+with the <code>all_narrow</code> no-value policy.</p>
+
+<hr style="border-color: black;">
+
+<p>&nbsp;</p>
+
+<a href="../../../reference/policies/terminate.html" class="api-reference"><code>terminate</code></a>
+
+
+<p>Observation of a missing value/error/exception causes a call to
+<code>std::terminate()</code>.</p>
+
+<p>Note that configuring <code>EC = void</code> or <code>EP = void</code> causes
+<a href="../../../reference/aliases/default_policy.html" class="api-reference"><code>default_policy</code></a>
+ to choose <code>terminate</code> as the no-value policy.</p>
+
+<hr style="border-color: black;">
+
+<p>&nbsp;</p>
+
+<a href="../../../reference/policies/error_code_throw_as_system_error_outcome.html" class="api-reference"><code>error_code_throw_as_system_error&lt;T, EC, EP&gt;</code></a>
+
+
+<p>This policy assumes that <code>EC</code> has the interface of <code>std::error_code</code>,
+and <code>EP</code> has the interface of <code>std::exception_ptr</code>. Upon missing value
+observation:</p>
+
+<ul>
+<li>if an exception is stored through pointer of type <code>EP</code> it is rethrown;</li>
+<li>otherwise, if an error of type <code>EC</code> is stored, it is converted to <code>error_code</code>
+and then thrown as <code>system_error</code>.</li>
+</ul>
+
+<p>Upon missing error observation throws:</p>
+
+<ul>
+<li><code>bad_result_access(&quot;no error&quot;)</code> from instances of <code>basic_result&lt;&gt;</code>.</li>
+<li><code>bad_outcome_access(&quot;no error&quot;)</code> from instances of <code>basic_outcome&lt;&gt;</code>.</li>
+</ul>
+
+<p>Upon missing exception observation throws <code>bad_outcome_access(&quot;no exception&quot;)</code>.</p>
+
+<p>Overloads are provided for <code>boost::system::error_code</code> and <code>boost::exception_ptr</code>.</p>
+
+<p>Note that if <a href="../../../reference/traits/is_error_code_available.html" class="api-reference"><code>is_error_code_available&lt;T&gt;</code></a>
+ is true for <code>EC</code>,
+and (if <code>basic_outcome</code>) <a href="../../../reference/traits/is_exception_ptr_available.html" class="api-reference"><code>is_exception_ptr_available&lt;T&gt;</code></a>
+
+is true for <code>EP</code>, <a href="../../../reference/aliases/default_policy.html" class="api-reference"><code>default_policy</code></a>
+ chooses
+<code>error_code_throw_as_system_error&lt;T, EC, EP&gt;</code> as the no-value policy.</p>
+
+<hr style="border-color: black;">
+
+<p>&nbsp;</p>
+
+<a href="../../../reference/policies/exception_ptr_rethrow_outcome.html" class="api-reference"><code>exception_ptr_rethrow&lt;T, EC, EP&gt;</code></a>
+
+
+<p>This policy assumes that either <code>EC</code> or <code>EP</code> (unless <code>void</code>) has the interface of <code>std::exception_ptr</code>. Upon missing value observation:</p>
+
+<ul>
+<li>in instances of <code>basic_result&lt;&gt;</code>, rethrows exception pointed to by <code>EC</code>;</li>
+<li>in instances of <code>basic_outcome&lt;&gt;</code>, if exception <code>EP</code> is present rethrows it,
+otherwise rethrows <code>EC</code>.</li>
+</ul>
+
+<p>Upon missing error observation:</p>
+
+<ul>
+<li>in instances of <code>basic_result&lt;&gt;</code>, throws  <code>bad_result_access(&quot;no error&quot;)</code> ;</li>
+<li>in instances of <code>basic_outcome&lt;&gt;</code>, throws  <code>bad_outcome_access(&quot;no error&quot;)</code>.</li>
+</ul>
+
+<p>Upon missing exception observation throws <code>bad_outcome_access(&quot;no exception&quot;)</code>.</p>
+
+<p>Overloads are provided for <code>boost::exception_ptr</code>.</p>
+
+<p>Note that if <a href="../../../reference/traits/is_exception_ptr_available.html" class="api-reference"><code>is_exception_ptr_available&lt;T&gt;</code></a>
+ is true for <code>EC</code>,
+or (if <code>basic_outcome</code>) <a href="../../../reference/traits/is_exception_ptr_available.html" class="api-reference"><code>is_exception_ptr_available&lt;T&gt;</code></a>
+
+is true for <code>EP</code>, <a href="../../../reference/aliases/default_policy.html" class="api-reference"><code>default_policy</code></a>
+ chooses
+<code>exception_ptr_rethrow&lt;T, EC, EP&gt;</code> as the no-value policy.</p>
+
+<hr style="border-color: black;">
+
+<p>&nbsp;</p>
+
+<a href="../../../reference/policies/throw_bad_result_access.html" class="api-reference"><code>throw_bad_result_access&lt;EC&gt;</code></a>
+
+
+<p>Upon missing value observation throws <code>bad_result_access_with&lt;EC&gt;(ec)</code>,
+where <code>ec</code> is the value of the stored error. If error is not stored,
+the behaviour is undefined.</p>
+
+<p>Upon missing error observation throws <code>bad_result_access(&quot;no error&quot;)</code>.</p>
+
+<p>This policy can be used with <code>basic_outcome&lt;&gt;</code> instances, where it always
+throws <code>bad_outcome_access</code> for all no-value/error/exception observations.</p>
+
+<p>Note that <a href="../../../reference/aliases/checked.html" class="api-reference"><code>checked&lt;T, E = varies&gt;</code></a>
+ aliases a <code>basic_result</code>
+with the <code>throw_bad_result_access&lt;EC&gt;</code> no-value policy.</p>
+
+
+        </div><p><small>Last revised: February 09, 2019 at 15:18:26 UTC</small></p>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../../../tutorial/essential/no-value/custom.html"><img src="../../../images/prev.png" alt="Prev"></a>
+    <a accesskey="u" href="../../../tutorial/essential/no-value.html"><img src="../../../images/up.png" alt="Up"></a>
+    <a accesskey="h" href="../../../index.html"><img src="../../../images/home.png" alt="Home"></a><a accesskey="n" href="../../../tutorial/essential/conventions.html"><img src="../../../images/next.png" alt="Next"></a></div></body>
+</html>

@@ -1,0 +1,27 @@
+//[example_output
+# Example run 1
+> runtime_configuration3 --log_level=all  -- --create-parametrized 3
+Running 3 test cases...
+Entering test module "Master Test Suite"
+test.cpp:59: Entering test case "name 0"
+test.cpp:17: error: in "name 0": check i >= 1 has failed [0 < 1]
+test.cpp:59: Leaving test case "name 0"; testing time: 179us
+test.cpp:59: Entering test case "name 1"
+test.cpp:17: info: check i >= 1 has passed
+test.cpp:59: Leaving test case "name 1"; testing time: 45us
+test.cpp:59: Entering test case "name 2"
+test.cpp:17: info: check i >= 1 has passed
+test.cpp:59: Leaving test case "name 2"; testing time: 34us
+Leaving test module "Master Test Suite"; testing time: 443us
+
+*** 1 failure is detected in the test module "Master Test Suite"
+
+# Example run 2
+> runtime_configuration3 --log_level=all  -- --create-parametrized 
+Not enough parameters
+Test setup error: std::runtime_error: test module initialization failed
+
+# Example run 3
+> runtime_configuration3 --log_level=all  -- --create-parametrized dummy
+Test setup error: boost::unit_test::framework::setup_error: Argument 'dummy' not integer
+//]

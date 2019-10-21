@@ -1,0 +1,53 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>#include Issues</title>
+<link rel="stylesheet" href="../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="Boost.Python">
+<link rel="up" href="../building.html" title="Chapter&#160;2.&#160;Building and Testing">
+<link rel="prev" href="choosing_a_boost_python_library_.html" title="Choosing a Boost.Python Library Binary">
+<link rel="next" href="python_debugging_builds.html" title="Python Debugging Builds">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr><td valign="top"><img alt="" width="" height="" src="../images/boost.png"></td></tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="choosing_a_boost_python_library_.html"><img src="../images/prev.png" alt="Prev"></a><a accesskey="u" href="../building.html"><img src="../images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../images/home.png" alt="Home"></a><a accesskey="n" href="python_debugging_builds.html"><img src="../images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="building.include_issues"></a><a class="link" href="include_issues.html" title="#include Issues"><code class="computeroutput"><span class="preprocessor">#include</span></code>
+      Issues</a>
+</h3></div></div></div>
+<p>
+        1. If you should ever have occasion to <code class="computeroutput"><span class="preprocessor">#include</span>
+        <span class="string">"python.h"</span></code> directly in a
+        translation unit of a program using Boost.Python, use <code class="computeroutput"><span class="preprocessor">#include</span>
+        <span class="string">"boost/python/detail/wrap_python.hpp"</span></code>
+        instead. It handles several issues necessary for use with Boost.Python, one
+        of which is mentioned in the next section.
+      </p>
+<p>
+        2. Be sure not to <code class="computeroutput"><span class="preprocessor">#include</span></code>
+        any system headers before <code class="computeroutput"><span class="identifier">wrap_python</span><span class="special">.</span><span class="identifier">hpp</span></code>. This
+        restriction is actually imposed by Python, or more properly, by Python's
+        interaction with your operating system. See <a href="http://docs.python.org/ext/simpleExample.html" target="_top">http://docs.python.org/ext/simpleExample.html</a>
+        for details.
+      </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2002-2015 David
+      Abrahams, Stefan Seefeld<br>Copyright &#169; 2002-2015 David Abrahams, Stefan Seefeld<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="choosing_a_boost_python_library_.html"><img src="../images/prev.png" alt="Prev"></a><a accesskey="u" href="../building.html"><img src="../images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../images/home.png" alt="Home"></a><a accesskey="n" href="python_debugging_builds.html"><img src="../images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

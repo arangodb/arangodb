@@ -1,0 +1,86 @@
+[/==============================================================================
+    Copyright (C) 2018-2019 Nikita Kniazev
+
+    Distributed under the Boost Software License, Version 1.0. (See accompanying
+    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+===============================================================================/]
+
+[section Changelog]
+
+[/////////////////////////////////////////////////////////////////////////////]
+[section:spirit_3_0_4 Spirit V3.0.4 (Boost V1.70.0)]
+
+* Integer parsers should now handle user defined types. [gh_pr 429]
+*[/^] [*Note:] The `check_overflow` trait default implementation now relies on
+  `std::numeric_limits<T>::is_bounded` instead of `boost::integer_traits<T>::is_integral`.
+* Removed use of deprecated `boost/detail/iterator.hpp` header. [gh_pr 432]
+* Removed sequence into plain parsing. Now it triggers a compile time error
+  instead of silently parsing the the sequence and taking the last value as a result. [gh_pr 439]
+* Fixed `parse_rule` instantiation with `BOOST_SPIRIT_INSTANTIATE` when:
+  * A rule has no attribute. [gh_pr 455]
+  * An actual attribute is not of type a rule was declared with. [gh_pr 456] [gh 457]
+*[/^] A [*huge] thanks goes out to [@https://github.com/Xeverous Xeverous]
+  for reporting a regression in [gh 453].
+* Fixed unneded attribute synthesization and no-transformation attribute
+  reference pass-through in rules. [gh 444] [gh_pr 449] [gh_pr 452]
+* Removed broken 1.0#INF parser. It was poorly documented and never worked. [gh 415] [gh_pr 458] [trac 8699]
+* The undocumented `make_attribute` trait was removed due to bugs [gh_pr 449]
+  and to simplify attribute transformation. [gh_pr 460]
+*[/^] If you were using it to workaround bugs in attribute transformation -
+  they should not be needed anymore as of this release.
+* The integer value parser now respects `std::numeric_limits<T>::digits10` value. [gh_pr 469]
+* Fixed underflow check for a `(Min % Base) == 0` corner case. [gh_pr 469]
+* Fixed an output value on overflow of `IgnoreOverflowDigits=true` integer parser. [gh_pr 470]
+* Container attribute elements were copyied, but not moved. [gh_pr 472]
+* Special handling of references in `transform_attribute` was removed. [gh_pr 480]
+
+[endsect]
+
+[/////////////////////////////////////////////////////////////////////////////]
+[section:spirit_3_0_3 Spirit V3.0.3 (Boost V1.69.0)]
+
+* Drop own FP routines in favor of `boost::math`. [gh_pr 392] [trac 13531]
+* Missing visibility mark on exception types. [gh_pr 409]
+* to_utf8: Fixed `wchar_t` handling on Windows. [gh_pr 413] [gh 395]
+
+[endsect]
+
+[/////////////////////////////////////////////////////////////////////////////]
+[section:spirit_3_0_2 Spirit V3.0.2 (Boost V1.68.0)]
+
+* Small list parser optimization. [gh_pr 368]
+* Pass container attributes through sequence parser or unary
+  ending down to a sequence parser. [gh_pr 370] [trac 12085]
+* More fine grained sequence attribute check message. [gh_pr 371]
+* Removed redundant check in `skip_over`. [gh_pr 373]
+* Workaround constexpr in noexcept VS2015 bug in entire `x3::variant`. [gh_pr 379]
+* Fixed `calc4b` example compilation. [gh_pr 384]
+* Minor code improvements. [gh_pr 374]
+
+[endsect]
+
+[/////////////////////////////////////////////////////////////////////////////]
+[section:spirit_3_0_1 Spirit V3.0.1 (Boost V1.67.0)]
+
+There was no version bump and changelog for Boost V1.56.0-1.66.0 releases.
+
+* Removed `with_context`. [gh_pr 239]
+* Added noexcept to `x3::variant` and `forward_ast`. [gh_pr 241]
+* CR+LF lines wrongly counted in `error_handler::position()`. [gh_pr 248]
+* Fixed `unused_type` attribute case in `parse_into_container`. [gh_pr 266]
+* Fixed parsing into associative containers. [gh_pr 289]
+* Fixed overflow problem in `uint_parser<signed T>`. [gh_pr 297]
+* Added VS2015 Update 3 support by using workarounds. [gh_pr 308]
+* Fixed include guard names collision with Qi. [gh_pr 313]
+* Added parsing into range. [gh_pr 316] [trac 12928]
+* Changed iterator concept static assert from `ForwardIterator` to
+  `ReadableIteratorConcept && ForwardTraversalConcept`. [gh_pr 320]
+* Reenabled `fusion::map` support. [gh_pr 330]
+* Fixed `string("...")` and `attr("...")` to single item sequence. [gh_pr 337]
+* Dereference a single item view instead of unwrapping sequence. [gh_pr 340]
+* Prevent `parse_nan` from dereferencing out of range iterator. [gh_pr 351]
+* Use traits to test if container is empty. [gh_pr 355]
+
+[endsect]
+
+[endsect]

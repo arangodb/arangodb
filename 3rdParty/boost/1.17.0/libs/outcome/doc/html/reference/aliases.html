@@ -1,0 +1,56 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html><meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Aliases - Boost.Outcome documentation</title>
+<link rel="stylesheet" href="../css/boost.css" type="text/css">
+<meta name="generator" content="Hugo 0.52 with Boostdoc theme">
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+
+<link rel="icon" href="../images/favicon.ico" type="image/ico"/>
+<body><div class="spirit-nav">
+<a accesskey="p" href="../reference/types/success_type.html"><img src="../images/prev.png" alt="Prev"></a>
+    <a accesskey="u" href="../reference.html"><img src="../images/up.png" alt="Up"></a>
+    <a accesskey="h" href="../index.html"><img src="../images/home.png" alt="Home"></a><a accesskey="n" href="../reference/aliases/boost_checked.html"><img src="../images/next.png" alt="Next"></a></div><div id="content">
+
+  <div class="titlepage"><div><div><h1 style="clear: both">Aliases</h1></div></div></div>
+<ol class="children children-li"><li>
+	<a href="../reference/aliases/boost_checked.html" ><code>boost_checked&lt;T, E = boost::system::error_code&gt;</code></a>
+<p>A type alias to a <code>basic_result</code> configured with <code>boost::system::error_code</code> and <code>policy::throw_bad_result_access&lt;EC&gt;</code>.</p><li>
+	<a href="../reference/aliases/boost_outcome.html" ><code>boost_outcome&lt;T, EC = boost::system::error_code, EP = boost::exception_ptr, NoValuePolicy = policy::default_policy&lt;T, EC, EP&gt;&gt;</code></a>
+<p>A type alias to a <code>basic_outcome</code> configured with <code>boost::system::error_code</code>, <code>boost::exception_ptr</code> and <code>policy::default_policy</code>.</p><li>
+	<a href="../reference/aliases/boost_result.html" ><code>boost_result&lt;T, E = boost::system::error_code, NoValuePolicy = policy::default_policy&lt;T, E, void&gt;&gt;</code></a>
+<p>A type alias to a <code>basic_result</code> configured with <code>boost::system::error_code</code> and <code>policy::default_policy</code>.</p><li>
+	<a href="../reference/aliases/boost_unchecked.html" ><code>boost_unchecked&lt;T, E = boost::system::error_code&gt;</code></a>
+<p>A type alias to a <code>basic_result</code> configured with <code>boost::system::error_code</code> and <code>policy::all_narrow</code>.</p><li>
+	<a href="../reference/aliases/checked.html" ><code>checked&lt;T, E = varies&gt;</code></a>
+<p>A type alias to a <code>std_checked&lt;T, E&gt;</code> (standalone edition) or <code>boost_checked&lt;T, E&gt;</code> (Boost edition).</p><li>
+	<a href="../reference/aliases/default_policy.html" ><code>default_policy&lt;T, EC, EP&gt;</code></a>
+<p>A type alias to a no-value policy selected based on traits matching of <code>T</code>, <code>EC</code> and <code>EP</code>.</p><li>
+	<a href="../reference/aliases/outcome.html" ><code>outcome&lt;T, EC = varies, EP = varies, NoValuePolicy = policy::default_policy&lt;T, EC, EP&gt;&gt;</code></a>
+<p>A type alias to a <code>std_outcome&lt;T, EC, EP, NoValuePolicy&gt;</code> (standalone edition) or <code>boost_outcome&lt;T, EC, EP, NoValuePolicy&gt;</code> (Boost edition).</p><li>
+	<a href="../reference/aliases/result.html" ><code>result&lt;T, E = varies, NoValuePolicy = policy::default_policy&lt;T, E, void&gt;&gt;</code></a>
+<p>A type alias to a <code>std_result&lt;T, E, NoValuePolicy&gt;</code> (standalone edition) or <code>boost_result&lt;T, E, NoValuePolicy&gt;</code> (Boost edition).</p><li>
+	<a href="../reference/aliases/std_checked.html" ><code>std_checked&lt;T, E = std::error_code&gt;</code></a>
+<p>A type alias to a <code>basic_result</code> configured with <code>std::error_code</code> and <code>policy::throw_bad_result_access&lt;EC&gt;</code>.</p><li>
+	<a href="../reference/aliases/std_outcome.html" ><code>std_outcome&lt;T, EC = std::error_code, EP = std::exception_ptr, NoValuePolicy = policy::default_policy&lt;T, EC, EP&gt;&gt;</code></a>
+<p>A type alias to a <code>basic_outcome</code> configured with <code>std::error_code</code>, <code>std::exception_ptr</code> and <code>policy::default_policy</code>.</p><li>
+	<a href="../reference/aliases/std_result.html" ><code>std_result&lt;T, E = std::error_code, NoValuePolicy = policy::default_policy&lt;T, E, void&gt;&gt;</code></a>
+<p>A type alias to a <code>basic_result</code> configured with <code>std::error_code</code> and <code>policy::default_policy</code>.</p><li>
+	<a href="../reference/aliases/std_unchecked.html" ><code>std_unchecked&lt;T, E = std::error_code&gt;</code></a>
+<p>A type alias to a <code>basic_result</code> configured with <code>std::error_code</code> and <code>policy::all_narrow</code>.</p><li>
+	<a href="../reference/aliases/unchecked.html" ><code>unchecked&lt;T, E = varies&gt;</code></a>
+<p>A type alias to a <code>std_unchecked&lt;T, E&gt;</code> (standalone edition) or <code>boost_unchecked&lt;T, E&gt;</code> (Boost edition).</p></li></ol>
+
+
+
+
+
+
+
+
+        </div><p><small>Last revised: December 13, 2018 at 21:10:19 UTC</small></p>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../reference/types/success_type.html"><img src="../images/prev.png" alt="Prev"></a>
+    <a accesskey="u" href="../reference.html"><img src="../images/up.png" alt="Up"></a>
+    <a accesskey="h" href="../index.html"><img src="../images/home.png" alt="Home"></a><a accesskey="n" href="../reference/aliases/boost_checked.html"><img src="../images/next.png" alt="Next"></a></div></body>
+</html>

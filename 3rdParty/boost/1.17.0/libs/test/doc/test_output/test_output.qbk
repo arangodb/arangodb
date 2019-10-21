@@ -1,0 +1,48 @@
+[/
+ / Copyright (c) 2003 Boost.Test contributors
+ /
+ / Distributed under the Boost Software License, Version 1.0. (See accompanying
+ / file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+ /]
+
+
+[section:test_output Controlling outputs]
+The output produced by a test module is one of the major assets the __UTF__ brings to users. In comparison with any
+kind of manual/assert based solution the __UTF__ provide following services:
+
+[variablelist
+[[All test errors are reported uniformly][
+  The test execution monitor along with standardized output from all included
+  [link boost_test.testing_tools testing tools] provides uniform reporting for all errors
+  including fatal errors, like memory assess violation and uncaught exceptions.]]
+[[Detailed information on the source of an error][
+  The __UTF__ test tool's based assertion provides as much information as possible about cause of error,
+  usually allowing you to deduce what is wrong without entering the debugger or core analysis.]]
+[[Separation of the test errors description (test log) from the results report summary (test results report)][
+  The information produced during test execution, including all error, warning and info messages from the test
+  tools, executed test units notification constitute the *test log*.
+
+  Once testing is completed the __UTF__ may produce a summary *test report* with
+  different levels of detail.]]
+[[Flexibility in what is shown in the output][
+The __UTF__ provides the ability to configure what is shown in both the test log and the test report. The
+  configuration is supported both at runtime (from the command line) and at compile time from within a
+  test module.]]
+[[Flexibility in how output is formatted][
+The __UTF__ provides the ability to configure the format of the test module output. At the moment only
+  [link boost_test.test_output.log_formats three formats]
+  are supported by the __UTF__ itself. However the well defined public interface allows you to
+  [link boost_test.test_output.logging_api.custom_log_formatter customize] an output for
+  your purposes.]]
+]
+
+
+[include test_tools_support.qbk]
+[include log_format.qbk]
+[include report_format.qbk]
+[include logger_api.qbk]
+
+[include progress_display.qbk]
+[include testout_summary.qbk]
+
+[endsect]  [/test_output]

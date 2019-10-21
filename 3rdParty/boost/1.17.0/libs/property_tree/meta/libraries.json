@@ -1,0 +1,16 @@
+{
+    "key": "property_tree",
+    "name": "Property Tree",
+    "authors": [
+        "Marcin Kalicinski",
+        "Sebastian Redl"
+    ],
+    "description": "A tree data structure especially suited to storing configuration data.",
+    "category": [
+        "Containers",
+        "Data"
+    ],
+    "maintainers": [
+        "Sebastian Redl <sebastian.redl -at- getdesigned.at>"
+    ]
+}

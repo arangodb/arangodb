@@ -1,0 +1,73 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Supported Compilers</title>
+<link rel="stylesheet" href="../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="Chapter&#160;1.&#160;Boost.Convert 2.0">
+<link rel="up" href="../index.html" title="Chapter&#160;1.&#160;Boost.Convert 2.0">
+<link rel="prev" href="supporting_tools/boost__cnv__is_cnv.html" title="boost::cnv::is_cnv">
+<link rel="next" href="acknowledgements.html" title="Acknowledgements">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="supporting_tools/boost__cnv__is_cnv.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="acknowledgements.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="boost_convert.supported_compilers"></a><a class="link" href="supported_compilers.html" title="Supported Compilers">Supported Compilers</a>
+</h2></div></div></div>
+<p>
+      <span class="emphasis"><em>Boost.Convert</em></span> makes use of SFINAE for correct <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">convert</span><span class="special">()</span></code> deployment depending on the context. Unfortunately,
+      the correctness and the completeness of SFINAE support varies with different
+      compilers and different versions of those compilers. Consequently, some compilers
+      fail to compile <span class="emphasis"><em>Boost.Convert</em></span> API (although the actual
+      functionality provided by the converters themselves is probably availabable
+      via other non-standard means). <span class="emphasis"><em>Boost.Convert</em></span> has been
+      tested through the Boost regression-testing framework with the following results:
+    </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+          CLANG. Successfully tested with versions from 2.9 to 3.6;
+        </li>
+<li class="listitem">
+          GCC. Successfully tested with versions from 4.2.1 through to 5.0. Earlier
+          versions were not tested;
+        </li>
+<li class="listitem">
+          Intel C++ compiler. Successfully tested with versions from 12.1 forward.
+          Earlier versions fail to compile <span class="emphasis"><em>Boost.Convert</em></span> due
+          to lacking full SFINAE support;
+        </li>
+<li class="listitem">
+          MSVC. Successfully tested from MSVC 2013 (msvc-12.0) forward. Earlier versions
+          had some components disabled due to lacking full SFINAE support;
+        </li>
+</ul></div>
+<p>
+      Please visit <a href="http://www.boost.org/development/tests/develop/developer/convert.html" target="_top"><span class="emphasis"><em>Boost.Convert</em></span>
+      regression test summary</a> for the latest available report.
+    </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2009-2016 Vladimir Batov<p>
+        Distributed under the Boost Software License, Version 1.0. See copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>.
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="supporting_tools/boost__cnv__is_cnv.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="acknowledgements.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

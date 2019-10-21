@@ -1,0 +1,452 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE section PUBLIC "-//Boost//DTD BoostBook XML V1.1//EN"
+"http://www.boost.org/tools/boostbook/dtd/boostbook.dtd">
+<section id="safe_numerics.numeric">
+  <title>Numeric&lt;T&gt;</title>
+
+  <?dbhtml stop-chunking?>
+
+  <section id="safe_numerics.numeric.description">
+    <title>Description</title>
+
+    <para>A type is Numeric if it has the properties of a number.</para>
+
+    <para>More specifically, a type T is Numeric if there exists a
+    specialization of <code>std::numeric_limits&lt;T&gt;</code>. See the
+    documentation for the standard library class <code>numeric_limits</code>.
+    The standard library includes such specializations for all the built-in
+    numeric types. Note that this concept is distinct from the C++ standard
+    library type traits <code>is_integral</code> and
+    <code>is_arithmetic</code>. These latter fulfill the requirement of the
+    concept Numeric. But there are types T which fulfill this concept for
+    which <code>is_arithmetic&lt;T&gt;::value == false</code>. For example see
+    <code>safe_signed_integer&lt;int&gt;</code>.</para>
+  </section>
+
+  <section>
+    <title>Notation</title>
+
+    <informaltable>
+      <tgroup cols="2" colsep="1" rowsep="1">
+        <colspec align="left"/>
+
+        <colspec align="left" colwidth="3*"/>
+
+        <tbody>
+          <row>
+            <entry><code>T, U, V</code></entry>
+
+            <entry>A type that is a model of Numeric</entry>
+          </row>
+
+          <row>
+            <entry><code>t, u</code></entry>
+
+            <entry>An object of a type modeling Numeric</entry>
+          </row>
+        </tbody>
+      </tgroup>
+    </informaltable>
+  </section>
+
+  <section>
+    <title>Associated Types</title>
+
+    <informaltable>
+      <tgroup cols="2">
+        <colspec align="left"/>
+
+        <colspec align="left" colwidth="3*"/>
+
+        <tbody>
+          <row>
+            <entry><code>std::numeric_limits&lt;T&gt;</code></entry>
+
+            <entry>The numeric_limits class template provides a C++ program
+            with information about various properties of the implementation's
+            representation of the arithmetic types. See C++ standard
+            18.3.2.2.</entry>
+          </row>
+        </tbody>
+      </tgroup>
+    </informaltable>
+  </section>
+
+  <section>
+    <title>Valid Expressions</title>
+
+    <para>In addition to the expressions defined in <ulink
+    url="http://www.sgi.com/tech/stl/Assignable.html">Assignable</ulink> the
+    following expressions must be valid. Any operations which result in
+    integers which cannot be represented as some Numeric type will throw an
+    exception.<table>
+        <title>General</title>
+
+        <tgroup cols="3">
+          <colspec align="left" colwidth="2*"/>
+
+          <colspec align="left" colwidth="1*"/>
+
+          <colspec align="left" colwidth="2*"/>
+
+          <thead>
+            <row>
+              <entry align="left">Expression</entry>
+
+              <entry>Return Type</entry>
+
+              <entry>Return Value</entry>
+            </row>
+          </thead>
+
+          <tbody>
+            <row>
+              <entry><code>std::numeric_limits&lt;T&gt;::is_bounded
+              </code></entry>
+
+              <entry><code>bool</code></entry>
+
+              <entry><code>true</code> or <code>false</code></entry>
+            </row>
+
+            <row>
+              <entry><code>std::numeric_limits&lt;T&gt;::is_integer</code></entry>
+
+              <entry><code>bool</code></entry>
+
+              <entry><code>true</code> or <code>false</code></entry>
+            </row>
+
+            <row>
+              <entry><code>std::numeric_limits&lt;T&gt;::is_signed</code></entry>
+
+              <entry><code>bool</code></entry>
+
+              <entry><code>true</code> or <code>false</code></entry>
+            </row>
+
+            <row>
+              <entry><code>std::numeric_limits&lt;T&gt;::is_specialized
+              </code></entry>
+
+              <entry><code>bool</code></entry>
+
+              <entry><code>true</code></entry>
+            </row>
+          </tbody>
+        </tgroup>
+      </table></para>
+
+    <table>
+      <title>Unary Operators</title>
+
+      <tgroup cols="3">
+        <colspec align="left"/>
+
+        <colspec align="left"/>
+
+        <colspec align="left" colwidth="3*"/>
+
+        <thead>
+          <row>
+            <entry align="left">Expression</entry>
+
+            <entry>Return Type</entry>
+
+            <entry>Semantics</entry>
+          </row>
+        </thead>
+
+        <tbody>
+          <row>
+            <entry><code>-t</code></entry>
+
+            <entry><code>T</code></entry>
+
+            <entry>Invert sign</entry>
+          </row>
+
+          <row>
+            <entry><code>+t</code></entry>
+
+            <entry><code>T</code></entry>
+
+            <entry>unary plus - a no op</entry>
+          </row>
+
+          <row>
+            <entry><code>t--</code></entry>
+
+            <entry><code>T</code></entry>
+
+            <entry>post decrement</entry>
+          </row>
+
+          <row>
+            <entry><code>t++</code></entry>
+
+            <entry><code>T</code></entry>
+
+            <entry>post increment</entry>
+          </row>
+
+          <row>
+            <entry><code>--t</code></entry>
+
+            <entry><code>T</code></entry>
+
+            <entry>pre decrement</entry>
+          </row>
+
+          <row>
+            <entry><code>++t</code></entry>
+
+            <entry><code>T</code></entry>
+
+            <entry>pre increment</entry>
+          </row>
+        </tbody>
+      </tgroup>
+    </table>
+
+    <table>
+      <title>Binary Operators</title>
+
+      <tgroup cols="3">
+        <colspec align="left"/>
+
+        <colspec align="left"/>
+
+        <colspec align="left" colwidth="3*"/>
+
+        <thead>
+          <row>
+            <entry align="left">Expression</entry>
+
+            <entry>Return Type</entry>
+
+            <entry>Semantics</entry>
+          </row>
+        </thead>
+
+        <tbody>
+          <row>
+            <entry><code>t - u</code></entry>
+
+            <entry><code>V</code></entry>
+
+            <entry>subtract u from t</entry>
+          </row>
+
+          <row>
+            <entry><code>t + u</code></entry>
+
+            <entry><code>V</code></entry>
+
+            <entry>add u to t</entry>
+          </row>
+
+          <row>
+            <entry><code>t * u</code></entry>
+
+            <entry><code>V</code></entry>
+
+            <entry>multiply t by u</entry>
+          </row>
+
+          <row>
+            <entry><code>t / u</code></entry>
+
+            <entry><code>T</code></entry>
+
+            <entry>divide t by u</entry>
+          </row>
+
+          <row>
+            <entry><code>t % u</code></entry>
+
+            <entry><code>T</code></entry>
+
+            <entry>t modulus u</entry>
+          </row>
+
+          <row>
+            <entry><code>t &lt; u</code></entry>
+
+            <entry><code>bool</code></entry>
+
+            <entry><code>true</code> if t less than u, <code>false</code>
+            otherwise</entry>
+          </row>
+
+          <row>
+            <entry><code>t &lt;= u</code></entry>
+
+            <entry><code>bool</code></entry>
+
+            <entry><code>true</code> if t less than or equal to u,
+            <code>false</code> otherwise</entry>
+          </row>
+
+          <row>
+            <entry><code>t &gt; u</code></entry>
+
+            <entry><code>bool</code></entry>
+
+            <entry><code>true</code> if t greater than u, <code>false</code>
+            otherwise</entry>
+          </row>
+
+          <row>
+            <entry><code>t &gt;= u</code></entry>
+
+            <entry><code>bool</code></entry>
+
+            <entry><code>true</code> if t greater than or equal to u,
+            <code>false</code> otherwise</entry>
+          </row>
+
+          <row>
+            <entry><code>t == u</code></entry>
+
+            <entry><code>bool</code></entry>
+
+            <entry><code>true</code> if t equal to u, <code>false</code>
+            otherwise</entry>
+          </row>
+
+          <row>
+            <entry><code>t != u</code></entry>
+
+            <entry><code>bool</code></entry>
+
+            <entry><code>true</code> if t not equal to u, <code>false</code>
+            otherwise</entry>
+          </row>
+
+          <row>
+            <entry><code>t = u</code></entry>
+
+            <entry><code><code>T</code></code></entry>
+
+            <entry>assign value of u to t</entry>
+          </row>
+
+          <row>
+            <entry><code>t += u</code></entry>
+
+            <entry><code><code>T</code></code></entry>
+
+            <entry>add u to t and assign to t</entry>
+          </row>
+
+          <row>
+            <entry><code>t -= u</code></entry>
+
+            <entry><code><code>T</code></code></entry>
+
+            <entry>subtract u from t and assign to t</entry>
+          </row>
+
+          <row>
+            <entry><code>t *= u</code></entry>
+
+            <entry><code><code>T</code></code></entry>
+
+            <entry>multiply t by u and assign to t</entry>
+          </row>
+
+          <row>
+            <entry><code>t /= u</code></entry>
+
+            <entry><code><code>T</code></code></entry>
+
+            <entry>divide t by u and assign to t</entry>
+          </row>
+        </tbody>
+      </tgroup>
+    </table>
+  </section>
+
+  <section>
+    <title>Models</title>
+
+    <para><code>int, float, safe_signed_integer&lt;int&gt;,
+    safe_signed_range&lt;int&gt;, checked_result&lt;int&gt;,
+    etc.</code></para>
+  </section>
+
+  <section>
+    <title>Header</title>
+
+    <para><ulink
+    url="../../include/boost/safe_numerics/concept/numeric.hpp"><code>#include
+    &lt;boost/numeric/safe_numerics/concepts/numeric.hpp&gt;
+    </code></ulink></para>
+  </section>
+
+  <section>
+    <title>Note on Usage of <code>std::numeric_limits</code></title>
+
+    <para>We define the word "Numeric" in terms of the operations which are
+    supported by "Numeric" types. This is in line with the current and
+    historical usage of the word "concept" in the context of C++. It is also
+    common to define compile time predicates such as
+    "<code>is_numeric&lt;T&gt;</code>" to permit one to include expressions in
+    his code which will generated a compile time error if the specified type
+    (T) does not support the operations required. But this is not always true.
+    In the C++ standard library there is a predicate
+    <code>is_arithmetic&lt;T&gt;</code> whose name might suggest that it
+    should return <code>true</code> for any type which supports the operations
+    above. But this is not the case. The standard defines
+    <code>is_arithmetic&lt;T&gt;</code> as <code>true</code> for any of the
+    builtin types <code>int</code>, <code>long</code>, <code>float</code>,
+    <code>double</code>, etc and <code>false</code> for any other types. So
+    even if a user defined type U were to support the operations above,
+    <code>is_arithmetic&lt;U&gt;</code> would still return <code>false</code>.
+    This is quite unintuitive and not a good match for our purposes. Hence we
+    define our own term "Numeric" to designate any type T which:</para>
+
+    <para><itemizedlist>
+        <listitem>
+          <para>Supports the operations above</para>
+        </listitem>
+
+        <listitem>
+          <para>Specializes the standard type numeric_limits</para>
+        </listitem>
+      </itemizedlist>while following the C++ standard in using
+    <code>is_arithmetic&lt;T&gt;</code>, <code>is_integral&lt;T&gt;</code> to
+    detect specific types only. The standard types are useful in various
+    aspects of the implementation - which of course is done in terms of the
+    standard types.</para>
+
+    <para>This in turn raises another question: Is it "legal" to specialize
+    <code>std::numeric_limits</code> for one's own types such as
+    <code>safe&lt;int&gt;</code>. In my view the standard is ambiguous on
+    this. See various interpretations: <itemizedlist>
+        <listitem>
+          <para><ulink
+          url="https://stackoverflow.com/questions/16122912/is-it-ok-to-specialize-stdnumeric-limitst-for-user-defined-number-like-class">is-it-ok-to-specialize-stdnumeric-limitst-for-user-defined-number-like-class</ulink></para>
+        </listitem>
+
+        <listitem>
+          <para><ulink
+          url="https://en.cppreference.com/w/cpp/types/numeric_limits">cppreference.com/w/cpp/types/numeric_limits</ulink></para>
+        </listitem>
+      </itemizedlist></para>
+
+    <para>In any case, it seems pretty clear that no harm will come of it. In
+    spite of the consideration given to this issue, it turns out that the
+    found no real need to implement these predicates. For example, there is no
+    "is_numeric&lt;T&gt;" implemented as part of the safe numerics library.
+    This may change in the future though. Even if not used, defining and
+    maintaining these type requirements in this document has been very
+    valuable in keeping the concepts and code more unified and
+    understandable.</para>
+
+    <para>Remember that above considerations apply to other numeric types used
+    in this library even though we don't explicitly repeat this information
+    for every case.</para>
+  </section>
+</section>

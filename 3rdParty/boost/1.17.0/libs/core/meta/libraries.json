@@ -1,0 +1,72 @@
+[
+    {
+    "key": "core",
+    "name": "Core",
+    "authors": [
+        "Peter Dimov",
+        "Glen Fernandes",
+        "Andrey Semashev"
+    ],
+    "maintainers": [
+        "Peter Dimov <pdimov -at- pdimov.com>",
+        "Glen Fernandes <glenjofe -at- gmail.com>",
+        "Andrey Semashev <andrey.semashev -at- gmail.com>"
+    ],
+    "description": "A collection of simple core utilities with minimal dependencies.",
+    "category": [
+        "Miscellaneous"
+    ]
+    },
+    {
+        "key": "utility/enable_if",
+        "name": "Enable If",
+        "authors": [
+            "Jaakko J\u00e4rvi",
+            "Jeremiah Willcock",
+            "Andrew Lumsdaine"
+        ],
+        "description": "Selective inclusion of function template overloads.",
+        "documentation": "doc/html/core/enable_if.html",
+        "category": [
+            "Generic"
+        ],
+        "maintainers": [
+            "Jaakko Jarvi <jarvi -at- cs.tamu.edu>",
+            "Jeremiah Willcock <jewillco -at- osl.iu.edu>"
+        ]
+    },
+    {
+        "key": "utility/swap",
+        "boost-version": "1.38.0",
+        "name": "Swap",
+        "authors": [
+            "Joseph Gauterin"
+        ],
+        "description": "Enhanced generic swap function.",
+        "documentation": "swap.html",
+        "category": [
+            "Miscellaneous"
+        ],
+        "maintainers": [
+            "Joseph Gauterin <joseph.gauterin -at- googlemail.com>"
+        ]
+    },
+    {
+        "key": "bind/ref",
+        "name": "Ref",
+        "authors": [
+            "Jaako Järvi",
+            "Peter Dimov",
+            "Doug Gregor",
+            "Dave Abrahams"
+        ],
+        "description": "A utility library for passing references to generic functions.",
+        "documentation": "ref.html",
+        "std": [
+            "tr1"
+        ],
+        "category": [
+            "Function-objects"
+        ]
+    }
+]

@@ -1,0 +1,291 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Design decisions rationale</title>
+<link rel="stylesheet" href="../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="tuple_users_guide.html" title="Chapter&#160;1.&#160;Boost.Tuple">
+<link rel="up" href="tuple_users_guide.html" title="Chapter&#160;1.&#160;Boost.Tuple">
+<link rel="prev" href="tuple_advanced_interface.html" title="Tuple library advanced features">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../boost.png"></td>
+<td align="center"><a href="../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="tuple_advanced_interface.html"><img src="../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="tuple_users_guide.html"><img src="../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="tuple_users_guide.html"><img src="../../../../doc/src/images/home.png" alt="Home"></a>
+</div>
+<div class="article">
+<div class="titlepage">
+<div>
+<div><h2 class="title">
+<a name="design_decisions_rationale"></a>Design decisions rationale</h2></div>
+<div><p class="copyright">Copyright &#169; 2001 Jaakko J&#228;rvi</p></div>
+<div><div class="legalnotice">
+<a name="design_decisions_rationale.legal"></a><p>
+          Distributed under the <a href="http://boost.org/LICENSE_1_0.txt" target="_top">Boost
+          Software License, Version 1.0</a>.
+        </p>
+</div></div>
+</div>
+<hr>
+</div>
+<div class="toc">
+<p><b>Table of Contents</b></p>
+<dl class="toc">
+<dt><span class="section"><a href="design_decisions_rationale.html#design_decisions_rationale.about_namespaces">About namespaces</a></span></dt>
+<dt><span class="section"><a href="design_decisions_rationale.html#design_decisions_rationale.the_end_mark_of_the_cons_list_ni">The
+      end mark of the cons list (<code class="computeroutput"><span class="identifier">nil</span></code>,
+      <code class="computeroutput"><span class="identifier">null_type</span></code>, ...)</a></span></dt>
+<dt><span class="section"><a href="design_decisions_rationale.html#design_decisions_rationale.element_indexing">Element
+      indexing</a></span></dt>
+<dt><span class="section"><a href="design_decisions_rationale.html#design_decisions_rationale.tuple_comparison">Tuple comparison</a></span></dt>
+<dt><span class="section"><a href="design_decisions_rationale.html#design_decisions_rationale.streaming">Streaming</a></span></dt>
+</dl>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="design_decisions_rationale.about_namespaces"></a><a class="link" href="design_decisions_rationale.html#design_decisions_rationale.about_namespaces" title="About namespaces">About namespaces</a>
+</h3></div></div></div>
+<p>
+        There was a discussion about whether tuples should be in a separate namespace
+        or directly in the <code class="computeroutput"><span class="identifier">boost</span></code>
+        namespace. The common principle is that domain libraries (like <span class="emphasis"><em>graph</em></span>,
+        <span class="emphasis"><em>python</em></span>) should be on a separate subnamespace, while
+        utility like libraries directly in the boost namespace. Tuples are somewhere
+        in between, as the tuple template is clearly a general utility, but the library
+        introduces quite a lot of names in addition to just the tuple template. Tuples
+        were originally under a subnamespace. As a result of the discussion, tuple
+        definitions were moved directly under the <code class="computeroutput"><span class="identifier">boost</span></code>
+        namespace. As a result of a continued discussion, the subnamespace was reintroduced.
+        The final (I truly hope so) solution is now to have all definitions in namespace
+        <code class="computeroutput"><span class="special">::</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">tuples</span></code>,
+        and the most common names in the <code class="computeroutput"><span class="special">::</span><span class="identifier">boost</span></code> namespace as well. This is accomplished
+        with using declarations (suggested by Dave Abrahams):
+      </p>
+<pre class="programlisting"><span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span>
+  <span class="keyword">namespace</span> <span class="identifier">tuples</span> <span class="special">{</span>
+      <span class="special">...</span>
+    <span class="comment">// All library code</span>
+      <span class="special">...</span>
+  <span class="special">}</span>
+  <span class="keyword">using</span> <span class="identifier">tuples</span><span class="special">::</span><span class="identifier">tuple</span><span class="special">;</span>
+  <span class="keyword">using</span> <span class="identifier">tuples</span><span class="special">::</span><span class="identifier">make_tuple</span><span class="special">;</span>
+  <span class="keyword">using</span> <span class="identifier">tuples</span><span class="special">::</span><span class="identifier">tie</span><span class="special">;</span>
+  <span class="keyword">using</span> <span class="identifier">tuples</span><span class="special">::</span><span class="identifier">get</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+<p>
+        With this arrangement, tuple creation with direct constructor calls, <code class="computeroutput"><span class="identifier">make_tuple</span></code> or <code class="computeroutput"><span class="identifier">tie</span></code>
+        functions do not need the namespace qualifier. Further, all functions that
+        manipulate tuples are found with Koenig-lookup. The only exceptions are the
+        <code class="computeroutput"><span class="identifier">get</span><span class="special">&lt;</span><span class="identifier">N</span><span class="special">&gt;</span></code> functions,
+        which are always called with an explicitly qualified template argument, and
+        thus Koenig-lookup does not apply. Therefore, <code class="computeroutput"><span class="identifier">get</span></code>
+        is lifted to <code class="computeroutput"><span class="special">::</span><span class="identifier">boost</span></code>
+        namespace with a using declaration. Hence, the interface for an application
+        programmer is in practice under the namespace <code class="computeroutput"><span class="special">::</span><span class="identifier">boost</span></code>.
+      </p>
+<p>
+        The other names, forming an interface for library writers (cons lists, metafunctions
+        manipulating cons lists, ...) remain in the subnamespace <code class="computeroutput"><span class="special">::</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">tuples</span></code>. Note, that the names <code class="computeroutput"><span class="identifier">ignore</span></code>, <code class="computeroutput"><span class="identifier">set_open</span></code>,
+        <code class="computeroutput"><span class="identifier">set_close</span></code> and <code class="computeroutput"><span class="identifier">set_delimiter</span></code> are considered to be part
+        of the application programmer's interface, but are still not under <code class="computeroutput"><span class="identifier">boost</span></code> namespace. The reason being the danger
+        for name clashes for these common names. Further, the usage of these features
+        is probably not very frequent.
+      </p>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="design_decisions_rationale.about_namespaces.for_those_who_are_really_interes"></a><a class="link" href="design_decisions_rationale.html#design_decisions_rationale.about_namespaces.for_those_who_are_really_interes" title="For those who are really interested in namespaces">For
+        those who are really interested in namespaces</a>
+</h4></div></div></div>
+<p>
+          The subnamespace name <span class="emphasis"><em>tuples</em></span> raised some discussion.
+          The rationale for not using the most natural name 'tuple' is to avoid having
+          an identical name with the tuple template. Namespace names are, however,
+          not generally in plural form in Boost libraries. First, no real trouble
+          was reported for using the same name for a namespace and a class and we
+          considered changing the name 'tuples' to 'tuple'. But we found some trouble
+          after all. Both gcc and edg compilers reject using declarations where the
+          namespace and class names are identical:
+        </p>
+<pre class="programlisting"><span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span>
+  <span class="keyword">namespace</span> <span class="identifier">tuple</span> <span class="special">{</span>
+    <span class="special">...</span> <span class="identifier">tie</span><span class="special">(...);</span>
+    <span class="keyword">class</span> <span class="identifier">tuple</span><span class="special">;</span>
+      <span class="special">...</span>
+  <span class="special">}</span>
+  <span class="keyword">using</span> <span class="identifier">tuple</span><span class="special">::</span><span class="identifier">tie</span><span class="special">;</span> <span class="comment">// ok</span>
+  <span class="keyword">using</span> <span class="identifier">tuple</span><span class="special">::</span><span class="identifier">tuple</span><span class="special">;</span> <span class="comment">// error</span>
+    <span class="special">...</span>
+<span class="special">}</span>
+</pre>
+<p>
+          Note, however, that a corresponding using declaration in the global namespace
+          seems to be ok:
+        </p>
+<pre class="programlisting"><span class="keyword">using</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">tuple</span><span class="special">::</span><span class="identifier">tuple</span><span class="special">;</span> <span class="comment">// ok;</span>
+</pre>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="design_decisions_rationale.the_end_mark_of_the_cons_list_ni"></a><a class="link" href="design_decisions_rationale.html#design_decisions_rationale.the_end_mark_of_the_cons_list_ni" title="The end mark of the cons list (nil, null_type, ...)">The
+      end mark of the cons list (<code class="computeroutput"><span class="identifier">nil</span></code>,
+      <code class="computeroutput"><span class="identifier">null_type</span></code>, ...)</a>
+</h3></div></div></div>
+<p>
+        Tuples are internally represented as cons lists:
+      </p>
+<pre class="programlisting"><span class="identifier">tuple</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">,</span> <span class="keyword">int</span><span class="special">&gt;</span>
+</pre>
+<p>
+        inherits from
+      </p>
+<pre class="programlisting"><span class="identifier">cons</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">,</span> <span class="identifier">cons</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">,</span> <span class="identifier">null_type</span><span class="special">&gt;</span> <span class="special">&gt;</span>
+</pre>
+<p>
+        <code class="computeroutput"><span class="identifier">null_type</span></code> is the end mark
+        of the list. Original proposition was <code class="computeroutput"><span class="identifier">nil</span></code>,
+        but the name is used in MacOS, and might have caused problems, so <code class="computeroutput"><span class="identifier">null_type</span></code> was chosen instead. Other names
+        considered were <span class="emphasis"><em>null_t</em></span> and <span class="emphasis"><em>unit</em></span>
+        (the empty tuple type in SML).
+      </p>
+<p>
+        Note that <code class="computeroutput"><span class="identifier">null_type</span></code> is the
+        internal representation of an empty tuple: <code class="computeroutput"><span class="identifier">tuple</span><span class="special">&lt;&gt;</span></code> inherits from <code class="computeroutput"><span class="identifier">null_type</span></code>.
+      </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="design_decisions_rationale.element_indexing"></a><a class="link" href="design_decisions_rationale.html#design_decisions_rationale.element_indexing" title="Element indexing">Element
+      indexing</a>
+</h3></div></div></div>
+<p>
+        Whether to use <code class="computeroutput"><span class="number">0</span></code>- or <code class="computeroutput"><span class="number">1</span></code>-based indexing was discussed more than thoroughly,
+        and the following observations were made:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            <code class="computeroutput"><span class="number">0</span></code>-based indexing is 'the
+            C++ way' and used with arrays etc.
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="number">1</span></code>-based 'name like' indexing
+            exists as well, eg. <code class="computeroutput"><span class="identifier">bind1st</span></code>,
+            <code class="computeroutput"><span class="identifier">bind2nd</span></code>, <code class="computeroutput"><span class="identifier">pair</span><span class="special">::</span><span class="identifier">first</span></code>, etc.
+          </li>
+</ul></div>
+<p>
+        Tuple access with the syntax <code class="computeroutput"><span class="identifier">get</span><span class="special">&lt;</span><span class="identifier">N</span><span class="special">&gt;(</span><span class="identifier">a</span><span class="special">)</span></code>, or
+        <code class="computeroutput"><span class="identifier">a</span><span class="special">.</span><span class="identifier">get</span><span class="special">&lt;</span><span class="identifier">N</span><span class="special">&gt;()</span></code>
+        (where <code class="computeroutput"><span class="identifier">a</span></code> is a tuple and
+        <code class="computeroutput"><span class="identifier">N</span></code> an index), was considered
+        to be of the first category, hence, the index of the first element in a tuple
+        is <code class="computeroutput"><span class="number">0</span></code>.
+      </p>
+<p>
+        A suggestion to provide <code class="computeroutput"><span class="number">1</span></code>-based
+        'name like' indexing with constants like <code class="computeroutput"><span class="identifier">_1st</span></code>,
+        <code class="computeroutput"><span class="identifier">_2nd</span></code>, <code class="computeroutput"><span class="identifier">_3rd</span></code>,
+        ... was made. By suitably chosen constant types, this would allow alternative
+        syntaxes:
+      </p>
+<pre class="programlisting"><span class="identifier">a</span><span class="special">.</span><span class="identifier">get</span><span class="special">&lt;</span><span class="number">0</span><span class="special">&gt;()</span> <span class="special">==</span> <span class="identifier">a</span><span class="special">.</span><span class="identifier">get</span><span class="special">(</span><span class="identifier">_1st</span><span class="special">)</span> <span class="special">==</span> <span class="identifier">a</span><span class="special">[</span><span class="identifier">_1st</span><span class="special">]</span> <span class="special">==</span> <span class="identifier">a</span><span class="special">(</span><span class="identifier">_1st</span><span class="special">);</span>
+</pre>
+<p>
+        We chose not to provide more than one indexing method for the following reasons:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            <code class="computeroutput"><span class="number">0</span></code>-based indexing might not
+            please everyone, but once its fixed, it is less confusing than having
+            two different methods (would anyone want such constants for arrays?).
+          </li>
+<li class="listitem">
+            Adding the other indexing scheme doesn't really provide anything new
+            (like a new feature) to the user of the library.
+          </li>
+<li class="listitem">
+            C++ variable and constant naming rules don't give many possibilities
+            for defining short and nice index constants (like <code class="computeroutput"><span class="identifier">_1st</span></code>,
+            ...). Let the binding and lambda libraries use these for a better purpose.
+          </li>
+<li class="listitem">
+            The access syntax a<span class="underline">1st</span> (or a(_1st))
+            is appealing, and almost made us add the index constants after all. However,
+            <code class="computeroutput"><span class="number">0</span></code>-based subscripting is so
+            deep in C++, that we had a fear for confusion.
+          </li>
+<li class="listitem">
+            Such constants are easy to add.
+          </li>
+</ul></div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="design_decisions_rationale.tuple_comparison"></a><a class="link" href="design_decisions_rationale.html#design_decisions_rationale.tuple_comparison" title="Tuple comparison">Tuple comparison</a>
+</h3></div></div></div>
+<p>
+        The comparison operator implements lexicographical order. Other orderings
+        were considered, mainly dominance <span class="emphasis"><em>(a &lt; b iff for each i a(i)
+        &lt; b(i))</em></span>. Our belief is, that lexicographical ordering, though
+        not mathematically the most natural one, is the most frequently needed ordering
+        in everyday programming.
+      </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="design_decisions_rationale.streaming"></a><a class="link" href="design_decisions_rationale.html#design_decisions_rationale.streaming" title="Streaming">Streaming</a>
+</h3></div></div></div>
+<p>
+        The characters specified with tuple stream manipulators are stored within
+        the space allocated by <code class="computeroutput"><span class="identifier">ios_base</span><span class="special">::</span><span class="identifier">xalloc</span></code>,
+        which allocates storage for <code class="computeroutput"><span class="keyword">long</span></code>
+        type objects. <code class="computeroutput"><span class="keyword">static_cast</span></code> is
+        used in casting between <code class="computeroutput"><span class="keyword">long</span></code>
+        and the stream's character type. Streams that have character types not convertible
+        back and forth to long thus fail to compile.
+      </p>
+<p>
+        This may be revisited at some point. The two possible solutions are:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            Allow only plain <code class="computeroutput"><span class="keyword">char</span></code> types
+            as the tuple delimiters and use <code class="computeroutput"><span class="identifier">widen</span></code>
+            and <code class="computeroutput"><span class="identifier">narrow</span></code> to convert
+            between the real character type of the stream. This would always compile,
+            but some calls to set manipulators might result in a different character
+            than expected (some default character).
+          </li>
+<li class="listitem">
+            Allocate enough space to hold the real character type of the stream.
+            This means memory for holding the delimiter characters must be allocated
+            separately, and that pointers to this memory are stored in the space
+            allocated with <code class="computeroutput"><span class="identifier">ios_base</span><span class="special">::</span><span class="identifier">xalloc</span></code>.
+            Any volunteers?
+          </li>
+</ul></div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"><p><small>Last revised: August 14, 2019 at 12:05:26 GMT</small></p></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2001 Jaakko J&#228;rvi<p>
+        Distributed under the <a href="http://boost.org/LICENSE_1_0.txt" target="_top">Boost
+        Software License, Version 1.0</a>.
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="tuple_advanced_interface.html"><img src="../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="tuple_users_guide.html"><img src="../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="tuple_users_guide.html"><img src="../../../../doc/src/images/home.png" alt="Home"></a>
+</div>
+</body>
+</html>

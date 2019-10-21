@@ -1,0 +1,160 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Teardown</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Chapter&#160;1.&#160;Boost.Beast">
+<link rel="up" href="../using_websocket.html" title="WebSocket">
+<link rel="prev" href="timeouts.html" title="Timeouts">
+<link rel="next" href="notes.html" title="Notes">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="timeouts.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../using_websocket.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="notes.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="beast.using_websocket.teardown"></a><a class="link" href="teardown.html" title="Teardown">Teardown</a>
+</h3></div></div></div>
+<p>
+        The WebSocket protocol requirements described in rfc6455 section 7.1.1 outline
+        an operation described as <a href="https://tools.ietf.org/html/rfc6455#section-7.1.1" target="_top"><span class="emphasis"><em>Close
+        the WebSocket Connection</em></span></a>. This operation cleanly discards
+        bytes remaining at receiving endpoints and also closes the underlying TCP/IP
+        connection. Orderly shutdowns are always preferred; for TLS or SSL streams,
+        a protocol-level shutdown is desired. This presents a small issue for the
+        <a class="link" href="../ref/boost__beast__websocket__stream.html" title="websocket::stream"><code class="computeroutput"><span class="identifier">stream</span></code></a>
+        implementation: the stream's <code class="computeroutput"><span class="identifier">NextLayer</span></code>
+        template type requires only <a class="link" href="../concepts/streams.html#beast.concepts.streams.SyncStream"><span class="emphasis"><em>SyncStream</em></span></a>
+        or <a class="link" href="../concepts/streams.html#beast.concepts.streams.AsyncStream"><span class="emphasis"><em>AsyncStream</em></span></a>,
+        but those concepts do not support the operations to shut down the connection.
+      </p>
+<p>
+        To enable the implementation to perform the shutdown components of the close
+        operation, the library exposes two customization points expressed as free
+        functions associated with the next layer type:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            <a class="link" href="../ref/boost__beast__websocket__teardown.html" title="websocket::teardown"><code class="computeroutput"><span class="identifier">teardown</span></code></a>: Overloads of this
+            function drain and shut down a stream synchronously.
+          </li>
+<li class="listitem">
+            <a class="link" href="../ref/boost__beast__websocket__teardown.html" title="websocket::teardown"><code class="computeroutput"><span class="identifier">async_teardown</span></code></a>: Overloads of
+            this function drain and shut down a stream asynchronously.
+          </li>
+</ul></div>
+<p>
+        The implementation provides suitable overloads of the teardown customization
+        points when websocket streams are instantiated using the Asio types <a href="../../../../../../doc/html/boost_asio/reference/ip__tcp/socket.html" target="_top"><code class="computeroutput"><span class="identifier">tcp</span><span class="special">::</span><span class="identifier">socket</span></code></a>
+        or <a href="../../../../../../doc/html/boost_asio/reference/ssl__stream.html" target="_top"><code class="computeroutput"><span class="identifier">net</span><span class="special">::</span><span class="identifier">ssl</span><span class="special">::</span><span class="identifier">stream</span></code></a>
+        for the next layer. In this case no user action is required. However, when
+        the websocket stream is instantiated for a user-defined type, compile errors
+        will result if the customization points are not provided for the user defined
+        type. Furthermore, user-defined types that wrap one of the Asio objects mentioned
+        earlier may wish to invoke a teardown customization point for the wrapped
+        object. This is how those tasks are accomplished.
+      </p>
+<h5>
+<a name="beast.using_websocket.teardown.h0"></a>
+        <span class="phrase"><a name="beast.using_websocket.teardown.user_defined_teardown"></a></span><a class="link" href="teardown.html#beast.using_websocket.teardown.user_defined_teardown">User-defined
+        Teardown</a>
+      </h5>
+<p>
+        To provide overloads of teardown for a user-defined type, simply declare
+        the two free functions with the correct signature, accepting a reference
+        to the user-defined type as the stream parameter:
+      </p>
+<pre class="programlisting"><span class="keyword">struct</span> <span class="identifier">custom_stream</span><span class="special">;</span>
+
+<span class="keyword">void</span>
+<span class="identifier">teardown</span><span class="special">(</span>
+    <span class="identifier">role_type</span> <span class="identifier">role</span><span class="special">,</span>
+    <span class="identifier">custom_stream</span><span class="special">&amp;</span> <span class="identifier">stream</span><span class="special">,</span>
+    <span class="identifier">error_code</span><span class="special">&amp;</span> <span class="identifier">ec</span><span class="special">);</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">TeardownHandler</span><span class="special">&gt;</span>
+<span class="keyword">void</span>
+<span class="identifier">async_teardown</span><span class="special">(</span>
+    <span class="identifier">role_type</span> <span class="identifier">role</span><span class="special">,</span>
+    <span class="identifier">custom_stream</span><span class="special">&amp;</span> <span class="identifier">stream</span><span class="special">,</span>
+    <span class="identifier">TeardownHandler</span><span class="special">&amp;&amp;</span> <span class="identifier">handler</span><span class="special">);</span>
+</pre>
+<p>
+        When the implementation invokes the asynchronous teardown function, it always
+        uses an invokable completion handler. It is not necessary to specify the
+        return type customization when creating user-defined overloads of <code class="computeroutput"><span class="identifier">async_teardown</span></code>.
+      </p>
+<h5>
+<a name="beast.using_websocket.teardown.h1"></a>
+        <span class="phrase"><a name="beast.using_websocket.teardown.invoking_teardown"></a></span><a class="link" href="teardown.html#beast.using_websocket.teardown.invoking_teardown">Invoking
+        Teardown</a>
+      </h5>
+<p>
+        To invoke the customization point, first bring the default implementation
+        into scope with a <code class="computeroutput"><span class="keyword">using</span></code> statement.
+        Then call the customization point without namespace qualification, allowing
+        argument-dependent lookup to take effect:
+      </p>
+<pre class="programlisting"><span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">NextLayer</span><span class="special">&gt;</span>
+<span class="keyword">struct</span> <span class="identifier">custom_wrapper</span>
+<span class="special">{</span>
+    <span class="identifier">NextLayer</span> <span class="identifier">next_layer</span><span class="special">;</span>
+
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span><span class="special">...</span> <span class="identifier">Args</span><span class="special">&gt;</span>
+    <span class="keyword">explicit</span>
+    <span class="identifier">custom_wrapper</span><span class="special">(</span><span class="identifier">Args</span><span class="special">&amp;&amp;...</span> <span class="identifier">args</span><span class="special">)</span>
+        <span class="special">:</span> <span class="identifier">next_layer</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">forward</span><span class="special">&lt;</span><span class="identifier">Args</span><span class="special">&gt;(</span><span class="identifier">args</span><span class="special">)...)</span>
+    <span class="special">{</span>
+    <span class="special">}</span>
+
+    <span class="keyword">friend</span>
+    <span class="keyword">void</span>
+    <span class="identifier">teardown</span><span class="special">(</span>
+        <span class="identifier">role_type</span> <span class="identifier">role</span><span class="special">,</span>
+        <span class="identifier">custom_wrapper</span><span class="special">&amp;</span> <span class="identifier">stream</span><span class="special">,</span>
+        <span class="identifier">error_code</span><span class="special">&amp;</span> <span class="identifier">ec</span><span class="special">)</span>
+    <span class="special">{</span>
+        <span class="keyword">using</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">beast</span><span class="special">::</span><span class="identifier">websocket</span><span class="special">::</span><span class="identifier">teardown</span><span class="special">;</span>
+        <span class="identifier">teardown</span><span class="special">(</span><span class="identifier">role</span><span class="special">,</span> <span class="identifier">stream</span><span class="special">.</span><span class="identifier">next_layer</span><span class="special">,</span> <span class="identifier">ec</span><span class="special">);</span>
+    <span class="special">}</span>
+
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">TeardownHandler</span><span class="special">&gt;</span>
+    <span class="keyword">friend</span>
+    <span class="keyword">void</span>
+    <span class="identifier">async_teardown</span><span class="special">(</span>
+        <span class="identifier">role_type</span> <span class="identifier">role</span><span class="special">,</span>
+        <span class="identifier">custom_wrapper</span><span class="special">&amp;</span> <span class="identifier">stream</span><span class="special">,</span>
+        <span class="identifier">TeardownHandler</span><span class="special">&amp;&amp;</span> <span class="identifier">handler</span><span class="special">)</span>
+    <span class="special">{</span>
+        <span class="keyword">using</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">beast</span><span class="special">::</span><span class="identifier">websocket</span><span class="special">::</span><span class="identifier">async_teardown</span><span class="special">;</span>
+        <span class="identifier">async_teardown</span><span class="special">(</span><span class="identifier">role</span><span class="special">,</span> <span class="identifier">stream</span><span class="special">.</span><span class="identifier">next_layer</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">forward</span><span class="special">&lt;</span><span class="identifier">TeardownHandler</span><span class="special">&gt;(</span><span class="identifier">handler</span><span class="special">));</span>
+    <span class="special">}</span>
+<span class="special">};</span>
+</pre>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2016-2019 Vinnie
+      Falco<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="timeouts.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../using_websocket.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="notes.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

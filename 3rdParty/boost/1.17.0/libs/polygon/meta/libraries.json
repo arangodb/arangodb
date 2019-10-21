@@ -1,0 +1,18 @@
+{
+    "key": "polygon",
+    "name": "Polygon",
+    "authors": [
+        "Lucanus Simonson",
+        "Andrii Sydorchuk"
+    ],
+    "description": "Voronoi diagram construction and booleans/clipping, resizing/offsetting and more for planar polygons with integral coordinates.",
+    "category": [
+        "Algorithms",
+        "Data",
+        "Math"
+    ],
+    "maintainers": [
+        "Lucanus Simonson <lucanus.j.simonson -at- intel.com>",
+        "Andrii Sydorchuk <sydorchuk.andriy -at- gmail.com>"
+    ]
+}

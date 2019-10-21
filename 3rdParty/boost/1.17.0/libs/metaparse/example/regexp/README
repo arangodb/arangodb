@@ -1,0 +1,7 @@
+This example provides an interface in front of boost::xpressive.
+A regular expression can be specified by a compile-time string
+which is parsed (and verified) at compile-time. A boost::xpressive
+object is constructed at runtime based on it.
+This is just an example, it supports only a subset of the capabilities
+of boost::xpressive.
+

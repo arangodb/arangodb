@@ -1,0 +1,683 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>http::basic_fields</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Chapter&#160;1.&#160;Boost.Beast">
+<link rel="up" href="../ref.html" title="This Page Intentionally Left Blank 2/2">
+<link rel="prev" href="boost__beast__http__basic_dynamic_body/writer.html" title="http::basic_dynamic_body::writer">
+<link rel="next" href="boost__beast__http__basic_fields/allocator_type.html" title="http::basic_fields::allocator_type">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="boost__beast__http__basic_dynamic_body/writer.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../ref.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="boost__beast__http__basic_fields/allocator_type.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="beast.ref.boost__beast__http__basic_fields"></a><a class="link" href="boost__beast__http__basic_fields.html" title="http::basic_fields">http::basic_fields</a>
+</h4></div></div></div>
+<p>
+        A container for storing HTTP header fields.
+      </p>
+<h5>
+<a name="beast.ref.boost__beast__http__basic_fields.h0"></a>
+        <span class="phrase"><a name="beast.ref.boost__beast__http__basic_fields.synopsis"></a></span><a class="link" href="boost__beast__http__basic_fields.html#beast.ref.boost__beast__http__basic_fields.synopsis">Synopsis</a>
+      </h5>
+<p>
+        Defined in header <code class="literal">&lt;<a href="../../../../../../boost/beast/http/fields.hpp" target="_top">boost/beast/http/fields.hpp</a>&gt;</code>
+      </p>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span>
+    <span class="keyword">class</span> <a href="https://en.cppreference.com/w/cpp/named_req/Allocator" target="_top"><span class="emphasis"><em>Allocator</em></span></a><span class="special">&gt;</span>
+<span class="keyword">class</span> <span class="identifier">basic_fields</span>
+</pre>
+<h5>
+<a name="beast.ref.boost__beast__http__basic_fields.h1"></a>
+        <span class="phrase"><a name="beast.ref.boost__beast__http__basic_fields.types"></a></span><a class="link" href="boost__beast__http__basic_fields.html#beast.ref.boost__beast__http__basic_fields.types">Types</a>
+      </h5>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Name
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="boost__beast__http__basic_fields/allocator_type.html" title="http::basic_fields::allocator_type"><span class="bold"><strong>allocator_type</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  The type of allocator used.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="boost__beast__http__basic_fields__value_type.html" title="http::basic_fields::value_type"><span class="bold"><strong>value_type</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  The type of element used to represent a field.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="boost__beast__http__basic_fields/const_iterator.html" title="http::basic_fields::const_iterator"><span class="bold"><strong>const_iterator</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  A constant iterator to the field sequence.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="boost__beast__http__basic_fields/iterator.html" title="http::basic_fields::iterator"><span class="bold"><strong>iterator</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  A constant iterator to the field sequence.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="boost__beast__http__basic_fields/key_compare.html" title="http::basic_fields::key_compare"><span class="bold"><strong>key_compare</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  A strictly less predicate for comparing keys, using a case-insensitive
+                  comparison.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="boost__beast__http__basic_fields/writer.html" title="http::basic_fields::writer"><span class="bold"><strong>writer</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  The algorithm used to serialize the header.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+<h5>
+<a name="beast.ref.boost__beast__http__basic_fields.h2"></a>
+        <span class="phrase"><a name="beast.ref.boost__beast__http__basic_fields.member_functions"></a></span><a class="link" href="boost__beast__http__basic_fields.html#beast.ref.boost__beast__http__basic_fields.member_functions">Member
+        Functions</a>
+      </h5>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Name
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="boost__beast__http__basic_fields/at.html" title="http::basic_fields::at"><span class="bold"><strong>at</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Returns the value for a field, or throws an exception.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="boost__beast__http__basic_fields/basic_fields.html" title="http::basic_fields::basic_fields"><span class="bold"><strong>basic_fields</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Constructor.
+                </p>
+                <p>
+                  Move constructor.
+                </p>
+                <p>
+                  Copy constructor.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="boost__beast__http__basic_fields/begin.html" title="http::basic_fields::begin"><span class="bold"><strong>begin</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Return a const iterator to the beginning of the field sequence.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="boost__beast__http__basic_fields/cbegin.html" title="http::basic_fields::cbegin"><span class="bold"><strong>cbegin</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Return a const iterator to the beginning of the field sequence.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="boost__beast__http__basic_fields/cend.html" title="http::basic_fields::cend"><span class="bold"><strong>cend</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Return a const iterator to the end of the field sequence.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="boost__beast__http__basic_fields/clear.html" title="http::basic_fields::clear"><span class="bold"><strong>clear</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Remove all fields from the container.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="boost__beast__http__basic_fields/count.html" title="http::basic_fields::count"><span class="bold"><strong>count</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Return the number of fields with the specified name.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="boost__beast__http__basic_fields/end.html" title="http::basic_fields::end"><span class="bold"><strong>end</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Return a const iterator to the end of the field sequence.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="boost__beast__http__basic_fields/equal_range.html" title="http::basic_fields::equal_range"><span class="bold"><strong>equal_range</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Returns a range of iterators to the fields with the specified name.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="boost__beast__http__basic_fields/erase.html" title="http::basic_fields::erase"><span class="bold"><strong>erase</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Remove a field.
+                </p>
+                <p>
+                  Remove all fields with the specified name.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="boost__beast__http__basic_fields/find.html" title="http::basic_fields::find"><span class="bold"><strong>find</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Returns an iterator to the case-insensitive matching field.
+                </p>
+                <p>
+                  Returns an iterator to the case-insensitive matching field name.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="boost__beast__http__basic_fields/get_allocator.html" title="http::basic_fields::get_allocator"><span class="bold"><strong>get_allocator</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Return a copy of the allocator associated with the container.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="boost__beast__http__basic_fields/insert.html" title="http::basic_fields::insert"><span class="bold"><strong>insert</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Insert a field.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="boost__beast__http__basic_fields/key_comp.html" title="http::basic_fields::key_comp"><span class="bold"><strong>key_comp</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Returns a copy of the key comparison function.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="boost__beast__http__basic_fields/operator_eq_.html" title="http::basic_fields::operator="><span class="bold"><strong>operator=</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Move assignment.
+                </p>
+                <p>
+                  Copy assignment.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="boost__beast__http__basic_fields/operator_lb__rb_.html" title="http::basic_fields::operator[]"><span class="bold"><strong>operator[]</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Returns the value for a field, or "" if it does not exist.
+                </p>
+                <p>
+                  Returns the value for a case-insensitive matching header, or ""
+                  if it does not exist.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="boost__beast__http__basic_fields/set.html" title="http::basic_fields::set"><span class="bold"><strong>set</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Set a field value, removing any other instances of that field.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="boost__beast__http__basic_fields/swap.html" title="http::basic_fields::swap"><span class="bold"><strong>swap</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Return a buffer sequence representing the trailers.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="boost__beast__http__basic_fields/basic_fields_dtor_.html" title="http::basic_fields::~basic_fields"><span class="bold"><strong>~basic_fields</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Destructor.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+<h5>
+<a name="beast.ref.boost__beast__http__basic_fields.h3"></a>
+        <span class="phrase"><a name="beast.ref.boost__beast__http__basic_fields.protected_member_functions"></a></span><a class="link" href="boost__beast__http__basic_fields.html#beast.ref.boost__beast__http__basic_fields.protected_member_functions">Protected
+        Member Functions</a>
+      </h5>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Name
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="boost__beast__http__basic_fields/get_chunked_impl.html" title="http::basic_fields::get_chunked_impl"><span class="bold"><strong>get_chunked_impl</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Returns the chunked Transfer-Encoding setting.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="boost__beast__http__basic_fields/get_keep_alive_impl.html" title="http::basic_fields::get_keep_alive_impl"><span class="bold"><strong>get_keep_alive_impl</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Returns the keep-alive setting.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="boost__beast__http__basic_fields/get_method_impl.html" title="http::basic_fields::get_method_impl"><span class="bold"><strong>get_method_impl</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Returns the request-method string.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="boost__beast__http__basic_fields/get_reason_impl.html" title="http::basic_fields::get_reason_impl"><span class="bold"><strong>get_reason_impl</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Returns the response reason-phrase string.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="boost__beast__http__basic_fields/get_target_impl.html" title="http::basic_fields::get_target_impl"><span class="bold"><strong>get_target_impl</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Returns the request-target string.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="boost__beast__http__basic_fields/has_content_length_impl.html" title="http::basic_fields::has_content_length_impl"><span class="bold"><strong>has_content_length_impl</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Returns true if the Content-Length field is present.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="boost__beast__http__basic_fields/set_chunked_impl.html" title="http::basic_fields::set_chunked_impl"><span class="bold"><strong>set_chunked_impl</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Adjusts the chunked Transfer-Encoding value.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="boost__beast__http__basic_fields/set_content_length_impl.html" title="http::basic_fields::set_content_length_impl"><span class="bold"><strong>set_content_length_impl</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Sets or clears the Content-Length field.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="boost__beast__http__basic_fields/set_keep_alive_impl.html" title="http::basic_fields::set_keep_alive_impl"><span class="bold"><strong>set_keep_alive_impl</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Adjusts the Connection field.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="boost__beast__http__basic_fields/set_method_impl.html" title="http::basic_fields::set_method_impl"><span class="bold"><strong>set_method_impl</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Set or clear the method string.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="boost__beast__http__basic_fields/set_reason_impl.html" title="http::basic_fields::set_reason_impl"><span class="bold"><strong>set_reason_impl</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Set or clear the reason string.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="boost__beast__http__basic_fields/set_target_impl.html" title="http::basic_fields::set_target_impl"><span class="bold"><strong>set_target_impl</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Set or clear the target string.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+<h5>
+<a name="beast.ref.boost__beast__http__basic_fields.h4"></a>
+        <span class="phrase"><a name="beast.ref.boost__beast__http__basic_fields.friends"></a></span><a class="link" href="boost__beast__http__basic_fields.html#beast.ref.boost__beast__http__basic_fields.friends">Friends</a>
+      </h5>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Name
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody><tr>
+<td>
+                <p>
+                  <a class="link" href="boost__beast__http__basic_fields/swap.html" title="http::basic_fields::swap"><span class="bold"><strong>swap</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Swap two field containers.
+                </p>
+              </td>
+</tr></tbody>
+</table></div>
+<h5>
+<a name="beast.ref.boost__beast__http__basic_fields.h5"></a>
+        <span class="phrase"><a name="beast.ref.boost__beast__http__basic_fields.description"></a></span><a class="link" href="boost__beast__http__basic_fields.html#beast.ref.boost__beast__http__basic_fields.description">Description</a>
+      </h5>
+<p>
+        This container is designed to store the field value pairs that make up the
+        fields and trailers in an HTTP message. Objects of this type are iterable,
+        with each element holding the field name and field value. Field names are
+        stored as-is, but comparisons are case-insensitive. The container behaves
+        as a <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">multiset</span></code>; there will be a separate value
+        for each occurrence of the same field name. When the container is iterated
+        the fields are presented in the order of insertion, with fields having the
+        same name following each other consecutively. Meets the requirements of
+        <span class="emphasis"><em>Fields</em></span>
+      </p>
+<h5>
+<a name="beast.ref.boost__beast__http__basic_fields.h6"></a>
+        <span class="phrase"><a name="beast.ref.boost__beast__http__basic_fields.template_parameters"></a></span><a class="link" href="boost__beast__http__basic_fields.html#beast.ref.boost__beast__http__basic_fields.template_parameters">Template
+        Parameters</a>
+      </h5>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Type
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody><tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">Allocator</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  The allocator to use.
+                </p>
+              </td>
+</tr></tbody>
+</table></div>
+<p>
+        Convenience header <code class="literal">&lt;<a href="../../../../../../boost/beast/http.hpp" target="_top">boost/beast/http.hpp</a>&gt;</code>
+      </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2016-2019 Vinnie
+      Falco<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="boost__beast__http__basic_dynamic_body/writer.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../ref.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="boost__beast__http__basic_fields/allocator_type.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

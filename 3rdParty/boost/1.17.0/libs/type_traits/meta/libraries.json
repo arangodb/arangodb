@@ -1,0 +1,18 @@
+{
+    "key": "type_traits",
+    "name": "Type Traits",
+    "authors": [
+        "John Maddock, Steve Cleary, et al"
+    ],
+    "description": "Templates for fundamental properties of types.",
+    "std": [
+        "tr1"
+    ],
+    "category": [
+        "Generic",
+        "Metaprogramming"
+    ],
+    "maintainers": [
+        "John Maddock <john -at- johnmaddock.co.uk>"
+    ]
+}

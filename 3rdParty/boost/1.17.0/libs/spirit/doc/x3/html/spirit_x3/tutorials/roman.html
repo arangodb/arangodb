@@ -1,0 +1,394 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Roman Numerals</title>
+<link rel="stylesheet" href="../../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Spirit X3 3.0.4">
+<link rel="up" href="../tutorials.html" title="Tutorials">
+<link rel="prev" href="number_list_attribute___one_more__with_style.html" title="Number List Attribute - one more, with style">
+<link rel="next" href="employee.html" title="Employee - Parsing into structs">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="number_list_attribute___one_more__with_style.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../tutorials.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="employee.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="spirit_x3.tutorials.roman"></a><a class="link" href="roman.html" title="Roman Numerals">Roman Numerals</a>
+</h3></div></div></div>
+<p>
+        This example demonstrates:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            The Symbol Table
+          </li>
+<li class="listitem">
+            Non-terminal rules
+          </li>
+</ul></div>
+<h5>
+<a name="spirit_x3.tutorials.roman.h0"></a>
+        <span class="phrase"><a name="spirit_x3.tutorials.roman.symbol_table"></a></span><a class="link" href="roman.html#spirit_x3.tutorials.roman.symbol_table">Symbol
+        Table</a>
+      </h5>
+<p>
+        The symbol table holds a dictionary of symbols where each symbol is a sequence
+        of characters. The template class, can work efficiently with 8, 16, 32 and
+        even 64 bit characters. Mutable data of type T are associated with each symbol.
+      </p>
+<p>
+        Traditionally, symbol table management is maintained separately outside the
+        BNF grammar through semantic actions. Contrary to standard practice, the
+        Spirit symbol table class <code class="computeroutput"><span class="identifier">symbols</span></code>
+        is a parser. An object of which may be used anywhere in the EBNF grammar
+        specification. It is an example of a dynamic parser. A dynamic parser is
+        characterized by its ability to modify its behavior at run time. Initially,
+        an empty symbols object matches nothing. At any time, symbols may be added
+        or removed, thus, dynamically altering its behavior.
+      </p>
+<p>
+        Each entry in a symbol table may have an associated mutable data slot. In
+        this regard, one can view the symbol table as an associative container (or
+        map) of key-value pairs where the keys are strings.
+      </p>
+<p>
+        The symbols class expects one template parameter to specify the data type
+        associated with each symbol: its attribute. There are a couple of namespaces
+        in X3 where you can find various versions of the symbols class for handling
+        different character encoding including ascii, standard, standard_wide, iso8859_1,
+        and unicode. The default symbol parser type in the main x3 namespace is standard.
+      </p>
+<p>
+        Here's a parser for roman hundreds (100..900) using the symbol table. Keep
+        in mind that the data associated with each slot is the parser's attribute
+        (which is passed to attached semantic actions).
+      </p>
+<pre class="programlisting"><span class="keyword">struct</span> <span class="identifier">hundreds_</span> <span class="special">:</span> <span class="identifier">x3</span><span class="special">::</span><span class="identifier">symbols</span><span class="special">&lt;</span><span class="keyword">unsigned</span><span class="special">&gt;</span>
+<span class="special">{</span>
+    <span class="identifier">hundreds_</span><span class="special">()</span>
+    <span class="special">{</span>
+        <span class="identifier">add</span>
+            <span class="special">(</span><span class="string">"C"</span>    <span class="special">,</span> <span class="number">100</span><span class="special">)</span>
+            <span class="special">(</span><span class="string">"CC"</span>   <span class="special">,</span> <span class="number">200</span><span class="special">)</span>
+            <span class="special">(</span><span class="string">"CCC"</span>  <span class="special">,</span> <span class="number">300</span><span class="special">)</span>
+            <span class="special">(</span><span class="string">"CD"</span>   <span class="special">,</span> <span class="number">400</span><span class="special">)</span>
+            <span class="special">(</span><span class="string">"D"</span>    <span class="special">,</span> <span class="number">500</span><span class="special">)</span>
+            <span class="special">(</span><span class="string">"DC"</span>   <span class="special">,</span> <span class="number">600</span><span class="special">)</span>
+            <span class="special">(</span><span class="string">"DCC"</span>  <span class="special">,</span> <span class="number">700</span><span class="special">)</span>
+            <span class="special">(</span><span class="string">"DCCC"</span> <span class="special">,</span> <span class="number">800</span><span class="special">)</span>
+            <span class="special">(</span><span class="string">"CM"</span>   <span class="special">,</span> <span class="number">900</span><span class="special">)</span>
+        <span class="special">;</span>
+    <span class="special">}</span>
+
+<span class="special">}</span> <span class="identifier">hundreds</span><span class="special">;</span>
+</pre>
+<p>
+        Here's a parser for roman tens (10..90):
+      </p>
+<pre class="programlisting"><span class="keyword">struct</span> <span class="identifier">tens_</span> <span class="special">:</span> <span class="identifier">x3</span><span class="special">::</span><span class="identifier">symbols</span><span class="special">&lt;</span><span class="keyword">unsigned</span><span class="special">&gt;</span>
+<span class="special">{</span>
+    <span class="identifier">tens_</span><span class="special">()</span>
+    <span class="special">{</span>
+        <span class="identifier">add</span>
+            <span class="special">(</span><span class="string">"X"</span>    <span class="special">,</span> <span class="number">10</span><span class="special">)</span>
+            <span class="special">(</span><span class="string">"XX"</span>   <span class="special">,</span> <span class="number">20</span><span class="special">)</span>
+            <span class="special">(</span><span class="string">"XXX"</span>  <span class="special">,</span> <span class="number">30</span><span class="special">)</span>
+            <span class="special">(</span><span class="string">"XL"</span>   <span class="special">,</span> <span class="number">40</span><span class="special">)</span>
+            <span class="special">(</span><span class="string">"L"</span>    <span class="special">,</span> <span class="number">50</span><span class="special">)</span>
+            <span class="special">(</span><span class="string">"LX"</span>   <span class="special">,</span> <span class="number">60</span><span class="special">)</span>
+            <span class="special">(</span><span class="string">"LXX"</span>  <span class="special">,</span> <span class="number">70</span><span class="special">)</span>
+            <span class="special">(</span><span class="string">"LXXX"</span> <span class="special">,</span> <span class="number">80</span><span class="special">)</span>
+            <span class="special">(</span><span class="string">"XC"</span>   <span class="special">,</span> <span class="number">90</span><span class="special">)</span>
+        <span class="special">;</span>
+    <span class="special">}</span>
+
+<span class="special">}</span> <span class="identifier">tens</span><span class="special">;</span>
+</pre>
+<p>
+        and, finally, for ones (1..9):
+      </p>
+<pre class="programlisting"><span class="keyword">struct</span> <span class="identifier">ones_</span> <span class="special">:</span> <span class="identifier">x3</span><span class="special">::</span><span class="identifier">symbols</span><span class="special">&lt;</span><span class="keyword">unsigned</span><span class="special">&gt;</span>
+<span class="special">{</span>
+    <span class="identifier">ones_</span><span class="special">()</span>
+    <span class="special">{</span>
+        <span class="identifier">add</span>
+            <span class="special">(</span><span class="string">"I"</span>    <span class="special">,</span> <span class="number">1</span><span class="special">)</span>
+            <span class="special">(</span><span class="string">"II"</span>   <span class="special">,</span> <span class="number">2</span><span class="special">)</span>
+            <span class="special">(</span><span class="string">"III"</span>  <span class="special">,</span> <span class="number">3</span><span class="special">)</span>
+            <span class="special">(</span><span class="string">"IV"</span>   <span class="special">,</span> <span class="number">4</span><span class="special">)</span>
+            <span class="special">(</span><span class="string">"V"</span>    <span class="special">,</span> <span class="number">5</span><span class="special">)</span>
+            <span class="special">(</span><span class="string">"VI"</span>   <span class="special">,</span> <span class="number">6</span><span class="special">)</span>
+            <span class="special">(</span><span class="string">"VII"</span>  <span class="special">,</span> <span class="number">7</span><span class="special">)</span>
+            <span class="special">(</span><span class="string">"VIII"</span> <span class="special">,</span> <span class="number">8</span><span class="special">)</span>
+            <span class="special">(</span><span class="string">"IX"</span>   <span class="special">,</span> <span class="number">9</span><span class="special">)</span>
+        <span class="special">;</span>
+    <span class="special">}</span>
+
+<span class="special">}</span> <span class="identifier">ones</span><span class="special">;</span>
+</pre>
+<p>
+        Now we can use <code class="computeroutput"><span class="identifier">hundreds</span></code>,
+        <code class="computeroutput"><span class="identifier">tens</span></code> and <code class="computeroutput"><span class="identifier">ones</span></code>
+        anywhere in our parser expressions. They are all parsers.
+      </p>
+<h5>
+<a name="spirit_x3.tutorials.roman.h1"></a>
+        <span class="phrase"><a name="spirit_x3.tutorials.roman.rules"></a></span><a class="link" href="roman.html#spirit_x3.tutorials.roman.rules">Rules</a>
+      </h5>
+<p>
+        Up until now, we've been inlining our parser expressions, passing them directly
+        to the <code class="computeroutput"><span class="identifier">phrase_parse</span></code> function.
+        The expression evaluates into a temporary, unnamed parser which is passed
+        into the <code class="computeroutput"><span class="identifier">phrase_parse</span></code> function,
+        used, and then destroyed. This is fine for small parsers. When the expressions
+        get complicated, you'd want to break the expressions into smaller easier-to-understand
+        pieces, name them, and refer to them from other parser expressions by name.
+      </p>
+<p>
+        A parser expression can be assigned to what is called a "rule".
+        There are various ways to declare rules. The simplest form is:
+      </p>
+<pre class="programlisting"><span class="identifier">rule</span><span class="special">&lt;</span><span class="identifier">ID</span><span class="special">&gt;</span> <span class="keyword">const</span> <span class="identifier">r</span> <span class="special">=</span> <span class="string">"some-name"</span><span class="special">;</span>
+</pre>
+<h5>
+<a name="spirit_x3.tutorials.roman.h2"></a>
+        <span class="phrase"><a name="spirit_x3.tutorials.roman.rule_id"></a></span><a class="link" href="roman.html#spirit_x3.tutorials.roman.rule_id">Rule
+        ID</a>
+      </h5>
+<p>
+        At the very least, the rule needs an identification tag. This ID can be any
+        struct or class type and need not be defined. Forward declaration would suffice.
+        In subsequent tutorials, we will see that the rule ID can have additional
+        functionalities for error handling and annotation.
+      </p>
+<h5>
+<a name="spirit_x3.tutorials.roman.h3"></a>
+        <span class="phrase"><a name="spirit_x3.tutorials.roman.rule_name"></a></span><a class="link" href="roman.html#spirit_x3.tutorials.roman.rule_name">Rule
+        Name</a>
+      </h5>
+<p>
+        The name is optional, but is useful for debugging and error handling, as
+        we'll see later. Notice that rule <code class="computeroutput"><span class="identifier">r</span></code>
+        is declared <code class="computeroutput"><span class="keyword">const</span></code>. Rules are
+        immutable and are best declared as <code class="computeroutput"><span class="keyword">const</span></code>.
+        Rules are lightweight and can be passed around by value. Its only member
+        variable is a <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span></code>: its name.
+      </p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+          Unlike Qi (Spirit V2), X3 rules can be used with both <code class="computeroutput"><span class="identifier">phrase_parse</span></code>
+          and <code class="computeroutput"><span class="identifier">parse</span></code> without having
+          to specify the skip parser
+        </p></td></tr>
+</table></div>
+<h5>
+<a name="spirit_x3.tutorials.roman.h4"></a>
+        <span class="phrase"><a name="spirit_x3.tutorials.roman.rule_attributes"></a></span><a class="link" href="roman.html#spirit_x3.tutorials.roman.rule_attributes">Rule
+        Attributes</a>
+      </h5>
+<p>
+        For our next example, there's one more rule form you should know about:
+      </p>
+<pre class="programlisting"><span class="identifier">rule</span><span class="special">&lt;</span><span class="identifier">ID</span><span class="special">,</span> <span class="identifier">Attribute</span><span class="special">&gt;</span> <span class="keyword">const</span> <span class="identifier">r</span> <span class="special">=</span> <span class="string">"some-name"</span><span class="special">;</span>
+</pre>
+<p>
+        The Attribute parameter specifies the attribute type of the rule. You've
+        seen that our parsers can have an attribute. Recall that the <code class="computeroutput"><span class="identifier">double_</span></code> parser has an attribute of <code class="computeroutput"><span class="keyword">double</span></code>. To be precise, these are <span class="emphasis"><em>synthesized</em></span>
+        attributes. The parser "synthesizes" the attribute value. If the
+        parser is a function, think of them as function return values.
+      </p>
+<h5>
+<a name="spirit_x3.tutorials.roman.h5"></a>
+        <span class="phrase"><a name="spirit_x3.tutorials.roman.rule_definition"></a></span><a class="link" href="roman.html#spirit_x3.tutorials.roman.rule_definition">Rule
+        Definition</a>
+      </h5>
+<p>
+        After having declared a rule, you need a definition for the rule. Example:
+      </p>
+<pre class="programlisting"><span class="keyword">auto</span> <span class="keyword">const</span> <span class="identifier">r_def</span> <span class="special">=</span> <span class="identifier">double_</span> <span class="special">&gt;&gt;</span> <span class="special">*(</span><span class="char">','</span> <span class="special">&gt;&gt;</span> <span class="identifier">double_</span><span class="special">);</span>
+</pre>
+<p>
+        By convention, rule definitions have a _def suffix. Like rules, rule definitions
+        are immutable and are best declared as <code class="computeroutput"><span class="keyword">const</span></code>.
+      </p>
+<a name="__tutorial_spirit_define__"></a><h5>
+<a name="spirit_x3.tutorials.roman.h6"></a>
+        <span class="phrase"><a name="spirit_x3.tutorials.roman.boost_spirit_define"></a></span><a class="link" href="roman.html#spirit_x3.tutorials.roman.boost_spirit_define">BOOST_SPIRIT_DEFINE</a>
+      </h5>
+<p>
+        Now that we have a rule and its definition, we tie the rule with a rule definition
+        using the <code class="computeroutput"><span class="identifier">BOOST_SPIRIT_DEFINE</span></code>
+        macro:
+      </p>
+<pre class="programlisting"><span class="identifier">BOOST_SPIRIT_DEFINE</span><span class="special">(</span><span class="identifier">r</span><span class="special">);</span>
+</pre>
+<p>
+        Behind the scenes, what's actually happening is that we are defining a <code class="computeroutput"><span class="identifier">parse_rule</span></code> function in the client namespace
+        that tells X3 how to invoke the rule. For example, given a rule named <code class="computeroutput"><span class="identifier">my_rule</span></code> and a corresponding definition
+        named <code class="computeroutput"><span class="identifier">my_rule_def</span></code>, <code class="computeroutput"><span class="identifier">BOOST_SPIRIT_DEFINE</span><span class="special">(</span><span class="identifier">my_rule</span><span class="special">)</span></code>
+        expands to this code:
+      </p>
+<pre class="programlisting"><span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Iterator</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Context</span><span class="special">&gt;</span>
+<span class="keyword">inline</span> <span class="keyword">bool</span> <span class="identifier">parse_rule</span><span class="special">(</span>
+    <span class="keyword">decltype</span><span class="special">(</span><span class="identifier">my_rule</span><span class="special">)</span>
+  <span class="special">,</span> <span class="identifier">Iterator</span><span class="special">&amp;</span> <span class="identifier">first</span><span class="special">,</span> <span class="identifier">Iterator</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">last</span>
+  <span class="special">,</span> <span class="identifier">Context</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">context</span><span class="special">,</span> <span class="keyword">decltype</span><span class="special">(</span><span class="identifier">my_rule</span><span class="special">)::</span><span class="identifier">attribute_type</span><span class="special">&amp;</span> <span class="identifier">attr</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="keyword">using</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">spirit</span><span class="special">::</span><span class="identifier">x3</span><span class="special">::</span><span class="identifier">unused</span><span class="special">;</span>
+    <span class="keyword">static</span> <span class="keyword">auto</span> <span class="keyword">const</span> <span class="identifier">def_</span> <span class="special">=</span> <span class="identifier">my_rule_def</span><span class="special">;</span>
+    <span class="keyword">return</span> <span class="identifier">def_</span><span class="special">.</span><span class="identifier">parse</span><span class="special">(</span><span class="identifier">first</span><span class="special">,</span> <span class="identifier">last</span><span class="special">,</span> <span class="identifier">context</span><span class="special">,</span> <span class="identifier">unused</span><span class="special">,</span> <span class="identifier">attr</span><span class="special">);</span>
+<span class="special">}</span>
+</pre>
+<p>
+        And so for each rule defined using <code class="computeroutput"><span class="identifier">BOOST_SPIRIT_DEFINE</span></code>,
+        there is an overloaded <code class="computeroutput"><span class="identifier">parse_rule</span></code>
+        function. At parse time, Spirit X3 recursively calls the appropriate <code class="computeroutput"><span class="identifier">parse_rule</span></code> function.
+      </p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+          <code class="computeroutput"><span class="identifier">BOOST_SPIRIT_DEFINE</span></code> is
+          variadic and may be used for one or more rules. Example: <code class="computeroutput"><span class="identifier">BOOST_SPIRIT_DEFINE</span><span class="special">(</span><span class="identifier">r1</span><span class="special">,</span> <span class="identifier">r2</span><span class="special">,</span> <span class="identifier">r3</span><span class="special">);</span></code>
+        </p></td></tr>
+</table></div>
+<h5>
+<a name="spirit_x3.tutorials.roman.h7"></a>
+        <span class="phrase"><a name="spirit_x3.tutorials.roman.grammars"></a></span><a class="link" href="roman.html#spirit_x3.tutorials.roman.grammars">Grammars</a>
+      </h5>
+<p>
+        Unlike Qi (Spirit V2), X3 discards the notion of a grammar as a concrete
+        entity for encapsulating rules. In X3, a grammar is simply a logical group
+        of rules that work together, typically with a single top-level start rule
+        which serves as the main entry point. X3 grammars are grouped using namespaces.
+        The roman numeral grammar is a very nice and simple example of a grammar:
+      </p>
+<pre class="programlisting"><span class="keyword">namespace</span> <span class="identifier">parser</span>
+<span class="special">{</span>
+    <span class="keyword">using</span> <span class="identifier">x3</span><span class="special">::</span><span class="identifier">eps</span><span class="special">;</span>
+    <span class="keyword">using</span> <span class="identifier">x3</span><span class="special">::</span><span class="identifier">lit</span><span class="special">;</span>
+    <span class="keyword">using</span> <span class="identifier">x3</span><span class="special">::</span><span class="identifier">_val</span><span class="special">;</span>
+    <span class="keyword">using</span> <span class="identifier">x3</span><span class="special">::</span><span class="identifier">_attr</span><span class="special">;</span>
+    <span class="keyword">using</span> <span class="identifier">ascii</span><span class="special">::</span><span class="identifier">char_</span><span class="special">;</span>
+
+    <span class="keyword">auto</span> <span class="identifier">set_zero</span> <span class="special">=</span> <span class="special">[&amp;](</span><span class="keyword">auto</span><span class="special">&amp;</span> <span class="identifier">ctx</span><span class="special">){</span> <span class="identifier">_val</span><span class="special">(</span><span class="identifier">ctx</span><span class="special">)</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span> <span class="special">};</span>
+    <span class="keyword">auto</span> <span class="identifier">add1000</span> <span class="special">=</span> <span class="special">[&amp;](</span><span class="keyword">auto</span><span class="special">&amp;</span> <span class="identifier">ctx</span><span class="special">){</span> <span class="identifier">_val</span><span class="special">(</span><span class="identifier">ctx</span><span class="special">)</span> <span class="special">+=</span> <span class="number">1000</span><span class="special">;</span> <span class="special">};</span>
+    <span class="keyword">auto</span> <span class="identifier">add</span> <span class="special">=</span> <span class="special">[&amp;](</span><span class="keyword">auto</span><span class="special">&amp;</span> <span class="identifier">ctx</span><span class="special">){</span> <span class="identifier">_val</span><span class="special">(</span><span class="identifier">ctx</span><span class="special">)</span> <span class="special">+=</span> <span class="identifier">_attr</span><span class="special">(</span><span class="identifier">ctx</span><span class="special">);</span> <span class="special">};</span>
+
+    <span class="identifier">x3</span><span class="special">::</span><span class="identifier">rule</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">roman</span><span class="special">,</span> <span class="keyword">unsigned</span><span class="special">&gt;</span> <span class="keyword">const</span> <span class="identifier">roman</span> <span class="special">=</span> <span class="string">"roman"</span><span class="special">;</span>
+
+    <span class="keyword">auto</span> <span class="keyword">const</span> <span class="identifier">roman_def</span> <span class="special">=</span>
+        <span class="identifier">eps</span>                 <span class="special">[</span><span class="identifier">set_zero</span><span class="special">]</span>
+        <span class="special">&gt;&gt;</span>
+        <span class="special">(</span>
+            <span class="special">-(+</span><span class="identifier">lit</span><span class="special">(</span><span class="char">'M'</span><span class="special">)</span>     <span class="special">[</span><span class="identifier">add1000</span><span class="special">])</span>
+            <span class="special">&gt;&gt;</span>  <span class="special">-</span><span class="identifier">hundreds</span>   <span class="special">[</span><span class="identifier">add</span><span class="special">]</span>
+            <span class="special">&gt;&gt;</span>  <span class="special">-</span><span class="identifier">tens</span>       <span class="special">[</span><span class="identifier">add</span><span class="special">]</span>
+            <span class="special">&gt;&gt;</span>  <span class="special">-</span><span class="identifier">ones</span>       <span class="special">[</span><span class="identifier">add</span><span class="special">]</span>
+        <span class="special">)</span>
+    <span class="special">;</span>
+
+    <span class="identifier">BOOST_SPIRIT_DEFINE</span><span class="special">(</span><span class="identifier">roman</span><span class="special">);</span>
+<span class="special">}</span>
+</pre>
+<p>
+        Things to take notice of:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            The start rule's attribute is <code class="computeroutput"><span class="keyword">unsigned</span></code>.
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">_val</span><span class="special">(</span><span class="identifier">ctx</span><span class="special">)</span></code>
+            gets a reference to the rule's synthesized attribute.
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">_attr</span><span class="special">(</span><span class="identifier">ctx</span><span class="special">)</span></code>
+            gets a reference to the parser's synthesized attribute.
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">eps</span></code> is a special spirit
+            parser that consumes no input but is always successful. We use it to
+            initialize the rule's synthesized attribute, to zero before anything
+            else. The actual parser starts at <code class="computeroutput"><span class="special">+</span><span class="identifier">lit</span><span class="special">(</span><span class="char">'M'</span><span class="special">)</span></code>, parsing
+            roman thousands. Using <code class="computeroutput"><span class="identifier">eps</span></code>
+            this way is good for doing pre and post initializations.
+          </li>
+<li class="listitem">
+            The rule <code class="computeroutput"><span class="identifier">roman</span></code> and the
+            definition <code class="computeroutput"><span class="identifier">roman_def</span></code>
+            are const objects.
+          </li>
+<li class="listitem">
+            The rule's ID is <code class="computeroutput"><span class="keyword">class</span> <span class="identifier">roman</span></code>. C++ allows you to declare the
+            class in the actual template declaration as you can see in the example:
+          </li>
+</ul></div>
+<pre class="programlisting"><span class="identifier">x3</span><span class="special">::</span><span class="identifier">rule</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">roman</span><span class="special">,</span> <span class="keyword">unsigned</span><span class="special">&gt;</span> <span class="keyword">const</span> <span class="identifier">roman</span> <span class="special">=</span> <span class="string">"roman"</span><span class="special">;</span>
+</pre>
+<h5>
+<a name="spirit_x3.tutorials.roman.h8"></a>
+        <span class="phrase"><a name="spirit_x3.tutorials.roman.let_s_parse_"></a></span><a class="link" href="roman.html#spirit_x3.tutorials.roman.let_s_parse_">Let's
+        Parse!</a>
+      </h5>
+<pre class="programlisting"><span class="keyword">bool</span> <span class="identifier">r</span> <span class="special">=</span> <span class="identifier">parse</span><span class="special">(</span><span class="identifier">iter</span><span class="special">,</span> <span class="identifier">end</span><span class="special">,</span> <span class="identifier">roman</span><span class="special">,</span> <span class="identifier">result</span><span class="special">);</span>
+
+<span class="keyword">if</span> <span class="special">(</span><span class="identifier">r</span> <span class="special">&amp;&amp;</span> <span class="identifier">iter</span> <span class="special">==</span> <span class="identifier">end</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"-------------------------\n"</span><span class="special">;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"Parsing succeeded\n"</span><span class="special">;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"result = "</span> <span class="special">&lt;&lt;</span> <span class="identifier">result</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"-------------------------\n"</span><span class="special">;</span>
+<span class="special">}</span>
+<span class="keyword">else</span>
+<span class="special">{</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="identifier">rest</span><span class="special">(</span><span class="identifier">iter</span><span class="special">,</span> <span class="identifier">end</span><span class="special">);</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"-------------------------\n"</span><span class="special">;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"Parsing failed\n"</span><span class="special">;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"stopped at: \": "</span> <span class="special">&lt;&lt;</span> <span class="identifier">rest</span> <span class="special">&lt;&lt;</span> <span class="string">"\"\n"</span><span class="special">;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"-------------------------\n"</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+<p>
+        <code class="computeroutput"><span class="identifier">roman</span></code> is our roman numeral
+        parser. This time around we are using the no-skipping version of the parse
+        functions. We do not want to skip any spaces! We are also passing in an attribute,
+        <code class="computeroutput"><span class="keyword">unsigned</span> <span class="identifier">result</span></code>,
+        which will receive the parsed value.
+      </p>
+<p>
+        The full cpp file for this example can be found here: <a href="../../../../../example/x3/roman.cpp" target="_top">roman.cpp</a>
+      </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2001-2018 Joel de Guzman,
+      Hartmut Kaiser<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="number_list_attribute___one_more__with_style.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../tutorials.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="employee.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

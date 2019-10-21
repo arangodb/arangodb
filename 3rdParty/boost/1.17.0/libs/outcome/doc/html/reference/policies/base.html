@@ -1,0 +1,85 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html><meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>base - Boost.Outcome documentation</title>
+<link rel="stylesheet" href="../../css/boost.css" type="text/css">
+<meta name="generator" content="Hugo 0.52 with Boostdoc theme">
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+
+<link rel="icon" href="../../images/favicon.ico" type="image/ico"/>
+<body><div class="spirit-nav">
+<a accesskey="p" href="../../reference/policies.html"><img src="../../images/prev.png" alt="Prev"></a>
+    <a accesskey="u" href="../../reference/policies.html"><img src="../../images/up.png" alt="Up"></a>
+    <a accesskey="h" href="../../index.html"><img src="../../images/home.png" alt="Home"></a><a accesskey="n" href="../../reference/policies/base/ub.html"><img src="../../images/next.png" alt="Next"></a></div><div id="content">
+
+  <div class="titlepage"><div><div><h1 style="clear: both"><code>base</code></h1></div></div></div>
+
+
+<p>Implements the base class of most policy classes defining the narrow observer policies.</p>
+
+<p><em>Requires</em>: Nothing.</p>
+
+<p><em>Namespace</em>: <code>BOOST_OUTCOME_V2_NAMESPACE::policy</code></p>
+
+<p><em>Header</em>: <code>&lt;boost/outcome/policy/base.hpp&gt;</code></p>
+
+<h3 id="protected-member-functions">Protected member functions</h3>
+
+<h4 id="special">Special</h4>
+
+<ol class="children children-li"><li>
+	<a href="../../reference/policies/base/ub.html" ><code>static void _ub(Impl &amp;&amp;)</code></a>
+<p>Special function which causes noticeable hard undefined behaviour.</p></li></ol>
+
+<h4 id="observers">Observers</h4>
+
+<ol class="children children-li"><li>
+    <a href="../../reference/policies/base/has_value.html" ><code>static bool _has_value(Impl &amp;&amp;) noexcept</code></a>
+<p>Returns true if a value is present in the implementation passed in. Constexpr, never throws.</p><li>
+    <a href="../../reference/policies/base/has_error.html" ><code>static bool _has_error(Impl &amp;&amp;) noexcept</code></a>
+<p>Returns true if an error is present in the implementation passed in. Constexpr, never throws.</p><li>
+    <a href="../../reference/policies/base/has_exception.html" ><code>static bool _has_exception(Impl &amp;&amp;) noexcept</code></a>
+<p>Returns true if an exception is present in the implementation passed in. Constexpr, never throws.</p><li>
+    <a href="../../reference/policies/base/has_error_is_errno.html" ><code>static bool _has_error_is_errno(Impl &amp;&amp;) noexcept</code></a>
+<p>Returns true if the error code in the implementation passed in has a domain or category matching that of POSIX <code>errno</code>. Constexpr, never throws.</p><li>
+    <a href="../../reference/policies/base/value.html" ><code>static auto &amp;&amp;_value(Impl &amp;&amp;) noexcept</code></a>
+<p>Returns a reference to the value in the implementation passed in. Constexpr, never throws.</p><li>
+    <a href="../../reference/policies/base/error.html" ><code>static auto &amp;&amp;_error(Impl &amp;&amp;) noexcept</code></a>
+<p>Returns a reference to the error in the implementation passed in. Constexpr, never throws.</p><li>
+    <a href="../../reference/policies/base/exception.html" ><code>static auto &amp;&amp;_exception(Impl &amp;&amp;) noexcept</code></a>
+<p>Returns a reference to the exception in the implementation passed in. Constexpr, never throws.</p></li></ol>
+
+<h4 id="modifiers">Modifiers</h4>
+
+<ol class="children children-li"><li>
+    <a href="../../reference/policies/base/set_has_value.html" ><code>static void _set_has_value(Impl &amp;&amp;, bool) noexcept</code></a>
+<p>Sets whether the implementation has a value. Constexpr, never throws.</p><li>
+    <a href="../../reference/policies/base/set_has_error.html" ><code>static void _set_has_error(Impl &amp;&amp;, bool) noexcept</code></a>
+<p>Sets whether the implementation has an error. Constexpr, never throws.</p><li>
+    <a href="../../reference/policies/base/set_has_exception.html" ><code>static void _set_has_exception(Impl &amp;&amp;, bool) noexcept</code></a>
+<p>Sets whether the implementation has an exception. Constexpr, never throws.</p><li>
+    <a href="../../reference/policies/base/set_has_error_is_errno.html" ><code>static void _set_has_exception(Impl &amp;&amp;, bool) noexcept</code></a>
+<p>Sets whether the implementation&rsquo;s error code has a domain or category matching that of POSIX <code>errno</code>. Constexpr, never throws.</p></li></ol>
+
+<h3 id="public-member-functions">Public member functions</h3>
+
+<ol class="children children-li"><li>
+    <a href="../../reference/policies/base/narrow_value_check.html" ><code>static void narrow_value_check(Impl &amp;&amp;) noexcept</code></a>
+<p>Observer policy performing hard UB if no value is present. Constexpr, never throws.</p><li>
+    <a href="../../reference/policies/base/narrow_error_check.html" ><code>static void narrow_error_check(Impl &amp;&amp;) noexcept</code></a>
+<p>Observer policy performing hard UB if no error is present. Constexpr, never throws.</p><li>
+    <a href="../../reference/policies/base/narrow_exception_check.html" ><code>static void narrow_exception_check(Impl &amp;&amp;) noexcept</code></a>
+<p>Observer policy performing hard UB if no exception is present. Constexpr, never throws.</p></li></ol>
+
+
+
+
+
+
+
+        </div><p><small>Last revised: January 22, 2019 at 01:11:40 UTC</small></p>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../../reference/policies.html"><img src="../../images/prev.png" alt="Prev"></a>
+    <a accesskey="u" href="../../reference/policies.html"><img src="../../images/up.png" alt="Up"></a>
+    <a accesskey="h" href="../../index.html"><img src="../../images/home.png" alt="Home"></a><a accesskey="n" href="../../reference/policies/base/ub.html"><img src="../../images/next.png" alt="Next"></a></div></body>
+</html>

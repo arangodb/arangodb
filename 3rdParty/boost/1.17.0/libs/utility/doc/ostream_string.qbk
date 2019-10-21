@@ -1,0 +1,78 @@
+[/
+Copyright 2019 Glen Joseph Fernandes
+(glenjofe@gmail.com)
+
+Distributed under the Boost Software License, Version 1.0.
+(http://www.boost.org/LICENSE_1_0.txt)
+]
+
+[article ostream_string
+[quickbook 1.5]
+[authors [Fernandes, Glen]]
+[copyright 2019 Glen Joseph Fernandes]
+[license Distributed under the Boost Software License, Version 1.0.]]
+
+[section Overview]
+
+The header <boost/utility/ostream_string.hpp> provides the function template
+`boost::ostream_string` for formatted output that satisfies the requirements of
+\[ostream.formatted.reqmts\].
+
+[endsect]
+
+[section Examples]
+
+The inserter for class template `basic_string_view` could be implemented as
+follows:
+
+```
+template<class charT, class traits>
+std::basic_ostream<charT, traits>&
+operator<<(std::basic_ostream<charT, traits>& os,
+    const basic_string_view<charT, traits>& str)
+{
+    return boost::ostream_string(os, str.data(), str.size());
+}
+```
+
+[endsect]
+
+[section Reference]
+
+```
+namespace boost {
+
+template<class charT, class traits>
+std::basic_ostream<charT, traits>&
+ostream_string(std::basic_ostream<charT, traits>& os,
+    const charT* data, std::size_t size);
+
+} /* boost */
+```
+
+[heading Free functions]
+
+[variablelist
+[[`template<class charT, class traits> std::basic_ostream<charT, traits>&
+ostream_string(std::basic_ostream<charT, traits>& os, const charT* data,
+std::size_t size);`]
+[[variablelist
+[[Effects]
+[Behaves like a formatted inserter (as described in
+\[ostream.formatted.reqmts\]) of `os`. Creates a character sequence `seq` of
+`size` characters starting at `data`, each widened using `os.widen()`
+(\[basic.ios.members\]). Determines padding for `seq` as described in
+\[ostream.formatted.reqmts\]. Inserts `seq` into `os`. Calls `width(0)`.]]
+[[Returns][`os`.]]]]]]
+
+[endsect]
+
+[section History]
+
+[heading boost 1.71]
+
+* Glen Fernandes updated the implementation of the `basic_string_ref` and
+`basic_string_view` stream insertion operators to write directly to the
+`basic_streambuf` and refactored that functionality into this common utility.
+
+[endsect]

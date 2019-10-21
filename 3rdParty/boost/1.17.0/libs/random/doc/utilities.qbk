@@ -1,0 +1,14 @@
+[/
+ / Copyright (c) 2015 Steven Watanabe
+ /
+ / Distributed under the Boost Software License, Version 1.0. (See
+ / accompanying file LICENSE_1_0.txt or copy at
+ / http://www.boost.org/LICENSE_1_0.txt)
+]
+
+[table Utilities
+  [[Name][Description]]
+  [[__seed_seq] [Used to seed [prng Random Engines]]]
+  [[__random_number_generator] [Adapts a __PseudoRandomNumberGenerator to work with std::random_shuffle]]
+  [[__generate_canonical] [Produces random floating point values with specific precision.]]
+]

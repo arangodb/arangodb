@@ -1,0 +1,139 @@
+#
+#          Copyright Andrey Semashev 2015 - 2018.
+# Distributed under the Boost Software License, Version 1.0.
+#    (See accompanying file LICENSE_1_0.txt or copy at
+#          http://www.boost.org/LICENSE_1_0.txt)
+
+import testing ;
+import modules ;
+import path ;
+import regex ;
+import project ;
+import configure ;
+
+lib advapi32 ;
+lib bcrypt ;
+lib user32 ;
+
+local here = [ modules.binding $(__name__) ] ;
+
+project.push-current [ project.current ] ;
+project.load [ path.join [ path.make $(here:D) ] config/has-bcrypt ] ;
+project.pop-current ;
+
+project
+    : requirements
+
+        # Disable warnings about using 'insecure' standard C functions
+        <toolset>msvc:<define>_SCL_SECURE_NO_WARNINGS
+        <toolset>msvc:<define>_SCL_SECURE_NO_DEPRECATE
+        <toolset>msvc:<define>_CRT_SECURE_NO_WARNINGS
+        <toolset>msvc:<define>_CRT_SECURE_NO_DEPRECATE
+        <toolset>intel-win:<define>_SCL_SECURE_NO_WARNINGS
+        <toolset>intel-win:<define>_SCL_SECURE_NO_DEPRECATE
+        <toolset>intel-win:<define>_CRT_SECURE_NO_WARNINGS
+        <toolset>intel-win:<define>_CRT_SECURE_NO_DEPRECATE
+
+    : default-build
+        # Testers typically don't specify threading environment and the library can be built and tested for single and multi. I'm more interested in multi though.
+        <threading>multi
+#        <link>static
+    ;
+
+# This rule makes sure the tests are run only on Windows
+rule filter-target-os ( properties * )
+{
+    local result ;
+    if ! ( <target-os>windows in $(properties) || <target-os>cygwin in $(properties) )
+    {
+        result = <build>no ;
+    }
+
+    return $(result) ;
+}
+
+# The rule tests if the Windows SDK supports BCrypt API and library
+rule check-has-bcrypt ( properties * )
+{
+    local result ;
+
+    local has_bcrypt = [ configure.builds /boost/winapi/test/has-bcrypt//has_bcrypt : $(properties) : windows-sdk-supports-bcrypt ] ;
+    if ! $(has_bcrypt)
+    {
+        result = <build>no ;
+    }
+
+    return $(result) ;
+}
+
+# This rule enumerates through all the sources and invokes
+# the run rule for each source, the result is a list of all
+# the run rules, which we can pass on to the test_suite rule:
+rule test_all
+{
+    local all_rules ;
+    local file ;
+    local headers_path = [ path.make $(BOOST_ROOT)/libs/winapi/include/boost/winapi ] ;
+    for file in [ path.glob-tree $(headers_path) : *.hpp : detail ]
+    {
+        local rel_file = [ path.relative-to [ path.parent $(headers_path) ] $(file) ] ;
+        # Note: The test name starts with '~' in order to group these tests in the test report table, preferably at the end.
+        #       All '/' are replaced with '-' because apparently test scripts have a problem with test names containing slashes.
+        local test_name = [ regex.replace $(rel_file) "/" "-" ] ;
+        local decl_test_name = ~hdr-decl-$(test_name) ;
+        local use_winh_test_name = ~hdr-use-winh-$(test_name) ;
+        local pre_winh_test_name = ~hdr-pre-winh-$(test_name) ;
+        local post_winh_test_name = ~hdr-post-winh-$(test_name) ;
+        #ECHO $(rel_file) ;
+        all_rules += [ compile compile/decl_header.cpp : <conditional>@filter-target-os <define>"BOOST_WINAPI_TEST_HEADER=$(rel_file)" <dependency>$(file) : $(decl_test_name) ] ;
+        all_rules += [ compile compile/decl_header.cpp : <conditional>@filter-target-os <define>"BOOST_WINAPI_TEST_HEADER=$(rel_file)" <define>"BOOST_USE_WINDOWS_H" <dependency>$(file) : $(use_winh_test_name) ] ;
+        all_rules += [ compile compile/windows_h_pre.cpp : <conditional>@filter-target-os <define>"BOOST_WINAPI_TEST_HEADER=$(rel_file)" <dependency>$(file) : $(pre_winh_test_name) ] ;
+        all_rules += [ compile compile/windows_h_post.cpp : <conditional>@filter-target-os <define>"BOOST_WINAPI_TEST_HEADER=$(rel_file)" <dependency>$(file) : $(post_winh_test_name) ] ;
+    }
+
+    headers_path = [ path.make $(BOOST_ROOT)/libs/winapi/include/boost/detail ] ;
+    for file in [ path.glob $(headers_path) : *.hpp : detail ]
+    {
+        local rel_file = [ path.relative-to $(headers_path) $(file) ] ;
+        local test_name = [ regex.replace $(rel_file) "/" "-" ] ;
+        local decl_test_name = ~hdr-decl-$(test_name) ;
+        local use_winh_test_name = ~hdr-use-winh-$(test_name) ;
+        local pre_winh_test_name = ~hdr-pre-winh-$(test_name) ;
+        local post_winh_test_name = ~hdr-post-winh-$(test_name) ;
+        #ECHO $(rel_file) ;
+        all_rules += [ compile compile/decl_header.cpp : <conditional>@filter-target-os <define>"BOOST_WINAPI_TEST_HEADER=detail/$(rel_file)" <dependency>$(file) : $(decl_test_name) ] ;
+        all_rules += [ compile compile/decl_header.cpp : <conditional>@filter-target-os <define>"BOOST_WINAPI_TEST_HEADER=detail/$(rel_file)" <define>"BOOST_USE_WINDOWS_H" <dependency>$(file) : $(use_winh_test_name) ] ;
+        all_rules += [ compile compile/windows_h_pre.cpp : <conditional>@filter-target-os <define>"BOOST_WINAPI_TEST_HEADER=detail/$(rel_file)" <dependency>$(file) : $(pre_winh_test_name) ] ;
+        all_rules += [ compile compile/windows_h_post.cpp : <conditional>@filter-target-os <define>"BOOST_WINAPI_TEST_HEADER=detail/$(rel_file)" <dependency>$(file) : $(post_winh_test_name) ] ;
+    }
+
+    for file in [ glob run/*.cpp ]
+    {
+        local reqs = <conditional>@filter-target-os <define>"BOOST_WINAPI_DEFINE_VERSION_MACROS=1" ;
+        local test_name = [ path.basename $(file) ] ;
+        if $(test_name) = "winapi_info.cpp"
+        {
+            reqs += <test-info>always_show_run_output ;
+        }
+        else if $(test_name) = "bcrypt_abi.cpp"
+        {
+            reqs += <conditional>@check-has-bcrypt ;
+            reqs += <library>bcrypt ;
+        }
+        else if $(test_name) = "crypt_abi.cpp" || $(test_name) = "pipes_abi.cpp" || $(test_name) = "security_abi.cpp"
+        {
+            reqs += <library>advapi32 ;
+        }
+        else if $(test_name) = "show_window_abi.cpp"
+        {
+            reqs += <library>user32 ;
+        }
+
+        all_rules += [ run $(file) : : : $(reqs) ] ;
+    }
+
+    #ECHO All rules: $(all_rules) ;
+    return $(all_rules) ;
+}
+
+test-suite winapi : [ test_all ] ;

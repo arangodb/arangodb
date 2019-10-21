@@ -1,0 +1,14 @@
+{
+    "key": "lockfree",
+    "name": "Lockfree",
+    "authors": [
+        "Tim Blechmann"
+    ],
+    "description": "Lockfree data structures.",
+    "category": [
+        "Concurrent"
+    ],
+    "maintainers": [
+        "Tim Blechmann <tim -at- klingt.org>"
+    ]
+}

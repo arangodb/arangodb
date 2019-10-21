@@ -1,0 +1,14 @@
+{
+    "key": "variant2",
+    "name": "Variant2",
+    "authors": [
+        "Peter Dimov"
+    ],
+    "maintainers": [
+        "Peter Dimov <pdimov -at- pdimov.com>"
+    ],
+    "description": "A never-valueless, strong guarantee implementation of std::variant.",
+    "category": [
+        "Containers", "Data"
+    ]
+}

@@ -1,0 +1,552 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Chapter&#160;1.&#160;Boost.Member Function</title>
+<link rel="stylesheet" href="../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="mem_fn.html" title="Chapter&#160;1.&#160;Boost.Member Function">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../boost.png"></td>
+<td align="center"><a href="../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav"></div>
+<div class="chapter">
+<div class="titlepage"><div>
+<div><h2 class="title">
+<a name="mem_fn"></a>Chapter&#160;1.&#160;Boost.Member Function</h2></div>
+<div><p class="copyright">Copyright &#169; 2001, 2002 Peter Dimov and Multi Media Ltd.</p></div>
+<div><p class="copyright">Copyright &#169; 2003-2005 Peter Dimov</p></div>
+<div><div class="legalnotice">
+<a name="mem_fn.legal"></a><p>
+        Distributed under the <a href="http://boost.org/LICENSE_1_0.txt" target="_top">Boost
+        Software License, Version 1.0</a>.
+      </p>
+</div></div>
+</div></div>
+<div class="toc">
+<p><b>Table of Contents</b></p>
+<dl class="toc">
+<dt><span class="section"><a href="mem_fn.html#mem_fn.purpose">Purpose</a></span></dt>
+<dt><span class="section"><a href="mem_fn.html#mem_fn.faq">Frequently Asked Questions</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="mem_fn.html#mem_fn.faq.can_mem_fn_be_used_instead_of_th">Can <code class="computeroutput"><span class="identifier">mem_fn</span></code> be used instead of the standard <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">mem_fun</span><span class="special">[</span><span class="identifier">_ref</span><span class="special">]</span></code>
+      adaptors?</a></span></dt>
+<dt><span class="section"><a href="mem_fn.html#mem_fn.faq.should_i_replace_every_occurence">Should I
+      replace every occurence of <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">mem_fun</span><span class="special">[</span><span class="identifier">_ref</span><span class="special">]</span></code>
+      with <code class="computeroutput"><span class="identifier">mem_fn</span></code> in my existing
+      code?</a></span></dt>
+<dt><span class="section"><a href="mem_fn.html#mem_fn.faq.does_mem_fn_work_with_com_method">Does <code class="computeroutput"><span class="identifier">mem_fn</span></code> work with COM methods?</a></span></dt>
+<dt><span class="section"><a href="mem_fn.html#mem_fn.faq.why_isn_t_boost_mem_fn_enable_st">Why isn't
+      <code class="computeroutput"><span class="identifier">BOOST_MEM_FN_ENABLE_STDCALL</span></code>
+      defined automatically?</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="mem_fn.html#mem_fn.interface">Interface</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="mem_fn.html#mem_fn.interface.synopsys">Synopsis</a></span></dt>
+<dt><span class="section"><a href="mem_fn.html#mem_fn.interface.common_requirements">Common requirements</a></span></dt>
+<dt><span class="section"><a href="mem_fn.html#mem_fn.interface.get_pointer"><code class="computeroutput"><span class="identifier">get_pointer</span></code></a></span></dt>
+<dt><span class="section"><a href="mem_fn.html#mem_fn.interface.mem_fn"><code class="computeroutput"><span class="identifier">mem_fn</span></code></a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="mem_fn.html#mem_fn.implementation">Implementation</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="mem_fn.html#mem_fn.implementation.files">Files</a></span></dt>
+<dt><span class="section"><a href="mem_fn.html#mem_fn.implementation.dependencies">Dependencies</a></span></dt>
+<dt><span class="section"><a href="mem_fn.html#mem_fn.implementation.number_of_arguments">Number of
+      Arguments</a></span></dt>
+<dt><span class="section"><a href="mem_fn.html#mem_fn.implementation.stdcall"><code class="computeroutput"><span class="identifier">__stdcall</span></code>,
+      <code class="computeroutput"><span class="identifier">__cdecl</span></code>, and <code class="computeroutput"><span class="identifier">__fastcall</span></code> Support</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="mem_fn.html#mem_fn.acknowledgements">Acknowledgements</a></span></dt>
+</dl>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="mem_fn.purpose"></a><a class="link" href="mem_fn.html#mem_fn.purpose" title="Purpose">Purpose</a>
+</h2></div></div></div>
+<p>
+      <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">mem_fn</span></code> is a generalization of the standard
+      functions <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">mem_fun</span></code> and <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">mem_fun_ref</span></code>.
+      It supports member function pointers with more than one argument, and the returned
+      function object can take a pointer, a reference, or a smart pointer to an object
+      instance as its first argument. <code class="computeroutput"><span class="identifier">mem_fn</span></code>
+      also supports pointers to data members by treating them as functions taking
+      no arguments and returning a (const) reference to the member.
+    </p>
+<p>
+      The purpose of <code class="computeroutput"><span class="identifier">mem_fn</span></code> is twofold.
+      First, it allows users to invoke a member function on a container with the
+      familiar
+    </p>
+<pre class="programlisting"><span class="identifier">std</span><span class="special">::</span><span class="identifier">for_each</span><span class="special">(</span><span class="identifier">v</span><span class="special">.</span><span class="identifier">begin</span><span class="special">(),</span> <span class="identifier">v</span><span class="special">.</span><span class="identifier">end</span><span class="special">(),</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">mem_fn</span><span class="special">(&amp;</span><span class="identifier">Shape</span><span class="special">::</span><span class="identifier">draw</span><span class="special">));</span>
+</pre>
+<p>
+      syntax, even when the container stores smart pointers.
+    </p>
+<p>
+      Second, it can be used as a building block by library developers that want
+      to treat a pointer to member function as a function object. A library might
+      define an enhanced <code class="computeroutput"><span class="identifier">for_each</span></code>
+      algorithm with an overload of the form:
+    </p>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">It</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">R</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span> <span class="keyword">void</span> <span class="identifier">for_each</span><span class="special">(</span><span class="identifier">It</span> <span class="identifier">first</span><span class="special">,</span> <span class="identifier">It</span> <span class="identifier">last</span><span class="special">,</span> <span class="identifier">R</span> <span class="special">(</span><span class="identifier">T</span><span class="special">::*</span><span class="identifier">pmf</span><span class="special">)</span> <span class="special">())</span>
+<span class="special">{</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">for_each</span><span class="special">(</span><span class="identifier">first</span><span class="special">,</span> <span class="identifier">last</span><span class="special">,</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">mem_fn</span><span class="special">(</span><span class="identifier">pmf</span><span class="special">));</span>
+<span class="special">}</span>
+</pre>
+<p>
+      that will allow the convenient syntax:
+    </p>
+<pre class="programlisting"><span class="identifier">for_each</span><span class="special">(</span><span class="identifier">v</span><span class="special">.</span><span class="identifier">begin</span><span class="special">(),</span> <span class="identifier">v</span><span class="special">.</span><span class="identifier">end</span><span class="special">(),</span> <span class="special">&amp;</span><span class="identifier">Shape</span><span class="special">::</span><span class="identifier">draw</span><span class="special">);</span>
+</pre>
+<p>
+      When documenting the feature, the library author will simply state:
+    </p>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">It</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">R</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span> <span class="keyword">void</span> <span class="identifier">for_each</span><span class="special">(</span><span class="identifier">It</span> <span class="identifier">first</span><span class="special">,</span> <span class="identifier">It</span> <span class="identifier">last</span><span class="special">,</span> <span class="identifier">R</span> <span class="special">(</span><span class="identifier">T</span><span class="special">::*</span><span class="identifier">pmf</span><span class="special">)</span> <span class="special">());</span>
+</pre>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; "><li class="listitem">
+          <span class="emphasis"><em>Effects:</em></span> Equivalent to <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">for_each</span><span class="special">(</span><span class="identifier">first</span><span class="special">,</span> <span class="identifier">last</span><span class="special">,</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">mem_fn</span><span class="special">(</span><span class="identifier">pmf</span><span class="special">))</span></code>.
+        </li></ul></div>
+<p>
+      where <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">mem_fn</span></code> can be a link to this page. See the
+      <a href="../../../../libs/bind/bind.html" target="_top">documentation of <code class="computeroutput"><span class="identifier">bind</span></code></a>
+      for an example.
+    </p>
+<p>
+      <code class="computeroutput"><span class="identifier">mem_fn</span></code> takes one argument,
+      a pointer to a member, and returns a function object suitable for use with
+      standard or user-defined algorithms:
+    </p>
+<pre class="programlisting"><span class="keyword">struct</span> <span class="identifier">X</span>
+<span class="special">{</span>
+    <span class="keyword">void</span> <span class="identifier">f</span><span class="special">();</span>
+<span class="special">};</span>
+
+<span class="keyword">void</span> <span class="identifier">g</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="identifier">X</span><span class="special">&gt;</span> <span class="special">&amp;</span> <span class="identifier">v</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">for_each</span><span class="special">(</span><span class="identifier">v</span><span class="special">.</span><span class="identifier">begin</span><span class="special">(),</span> <span class="identifier">v</span><span class="special">.</span><span class="identifier">end</span><span class="special">(),</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">mem_fn</span><span class="special">(&amp;</span><span class="identifier">X</span><span class="special">::</span><span class="identifier">f</span><span class="special">));</span>
+<span class="special">};</span>
+
+<span class="keyword">void</span> <span class="identifier">h</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="identifier">X</span> <span class="special">*&gt;</span> <span class="keyword">const</span> <span class="special">&amp;</span> <span class="identifier">v</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">for_each</span><span class="special">(</span><span class="identifier">v</span><span class="special">.</span><span class="identifier">begin</span><span class="special">(),</span> <span class="identifier">v</span><span class="special">.</span><span class="identifier">end</span><span class="special">(),</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">mem_fn</span><span class="special">(&amp;</span><span class="identifier">X</span><span class="special">::</span><span class="identifier">f</span><span class="special">));</span>
+<span class="special">};</span>
+
+<span class="keyword">void</span> <span class="identifier">k</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">shared_ptr</span><span class="special">&lt;</span><span class="identifier">X</span><span class="special">&gt;</span> <span class="special">&gt;</span> <span class="keyword">const</span> <span class="special">&amp;</span> <span class="identifier">v</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">for_each</span><span class="special">(</span><span class="identifier">v</span><span class="special">.</span><span class="identifier">begin</span><span class="special">(),</span> <span class="identifier">v</span><span class="special">.</span><span class="identifier">end</span><span class="special">(),</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">mem_fn</span><span class="special">(&amp;</span><span class="identifier">X</span><span class="special">::</span><span class="identifier">f</span><span class="special">));</span>
+<span class="special">};</span>
+</pre>
+<p>
+      The returned function object takes the same arguments as the input member function
+      plus a "flexible" first argument that represents the object instance.
+    </p>
+<p>
+      When the function object is invoked with a first argument <code class="computeroutput"><span class="identifier">x</span></code>
+      that is neither a pointer nor a reference to the appropriate class (<code class="computeroutput"><span class="identifier">X</span></code> in the example above), it uses <code class="computeroutput"><span class="identifier">get_pointer</span><span class="special">(</span><span class="identifier">x</span><span class="special">)</span></code> to obtain
+      a pointer from <code class="computeroutput"><span class="identifier">x</span></code>. Library authors
+      can "register" their smart pointer classes by supplying an appropriate
+      <code class="computeroutput"><span class="identifier">get_pointer</span></code> overload, allowing
+      <code class="computeroutput"><span class="identifier">mem_fn</span></code> to recognize and support
+      them.
+    </p>
+<p>
+      <span class="emphasis"><em>[Note:</em></span> <code class="computeroutput"><span class="identifier">get_pointer</span></code>
+      is not restricted to return a pointer. Any object that can be used in a member
+      function call expression <code class="computeroutput"><span class="special">(</span><span class="identifier">x</span><span class="special">-&gt;*</span><span class="identifier">pmf</span><span class="special">)(...)</span></code> will work.<span class="emphasis"><em>]</em></span>
+    </p>
+<p>
+      <span class="emphasis"><em>[Note:</em></span> the library uses an unqualified call to <code class="computeroutput"><span class="identifier">get_pointer</span></code>. Therefore, it will find, through
+      argument-dependent lookup, <code class="computeroutput"><span class="identifier">get_pointer</span></code>
+      overloads that are defined in the same namespace as the corresponding smart
+      pointer class, in addition to any <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">get_pointer</span></code>
+      overloads.<span class="emphasis"><em>]</em></span>
+    </p>
+<p>
+      All function objects returned by <code class="computeroutput"><span class="identifier">mem_fn</span></code>
+      expose a <code class="computeroutput"><span class="identifier">result_type</span></code> typedef
+      that represents the return type of the member function. For data members,
+      <code class="computeroutput"><span class="identifier">result_type</span></code> is defined as the
+      type of the member.
+    </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="mem_fn.faq"></a><a class="link" href="mem_fn.html#mem_fn.faq" title="Frequently Asked Questions">Frequently Asked Questions</a>
+</h2></div></div></div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="mem_fn.faq.can_mem_fn_be_used_instead_of_th"></a><a class="link" href="mem_fn.html#mem_fn.faq.can_mem_fn_be_used_instead_of_th" title="Can mem_fn be used instead of the standard std::mem_fun[_ref] adaptors?">Can <code class="computeroutput"><span class="identifier">mem_fn</span></code> be used instead of the standard <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">mem_fun</span><span class="special">[</span><span class="identifier">_ref</span><span class="special">]</span></code>
+      adaptors?</a>
+</h3></div></div></div>
+<p>
+        Yes. For simple uses, <code class="computeroutput"><span class="identifier">mem_fn</span></code>
+        provides additional functionality that the standard adaptors do not. Complicated
+        expressions that use <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">bind1st</span></code>,
+        <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">bind2nd</span></code> or <a href="http://www.boost.org/doc/libs/1_31_0/libs/compose/index.htm" target="_top">Boost.Compose</a>
+        along with the standard adaptors can be rewritten using <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">bind</span></code>
+        that automatically takes advantage of <code class="computeroutput"><span class="identifier">mem_fn</span></code>.
+      </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="mem_fn.faq.should_i_replace_every_occurence"></a><a class="link" href="mem_fn.html#mem_fn.faq.should_i_replace_every_occurence" title="Should I replace every occurence of std::mem_fun[_ref] with mem_fn in my existing code?">Should I
+      replace every occurence of <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">mem_fun</span><span class="special">[</span><span class="identifier">_ref</span><span class="special">]</span></code>
+      with <code class="computeroutput"><span class="identifier">mem_fn</span></code> in my existing
+      code?</a>
+</h3></div></div></div>
+<p>
+        No, unless you have good reasons to do so. <code class="computeroutput"><span class="identifier">mem_fn</span></code>
+        is not 100% compatible with the standard adaptors, although it comes pretty
+        close. In particular, <code class="computeroutput"><span class="identifier">mem_fn</span></code>
+        does not return objects of type <code class="computeroutput"><span class="identifier">std</span><span class="special">::[</span><span class="identifier">const_</span><span class="special">]</span><span class="identifier">mem_fun</span><span class="special">[</span><span class="number">1</span><span class="special">][</span><span class="identifier">_ref</span><span class="special">]</span><span class="identifier">_t</span></code>,
+        as the standard adaptors do, and it is not possible to fully describe the
+        type of the first argument using the standard <code class="computeroutput"><span class="identifier">argument_type</span></code>
+        and <code class="computeroutput"><span class="identifier">first_argument_type</span></code> nested
+        typedefs. Libraries that need adaptable function objects in order to function
+        might not like <code class="computeroutput"><span class="identifier">mem_fn</span></code>.
+      </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="mem_fn.faq.does_mem_fn_work_with_com_method"></a><a class="link" href="mem_fn.html#mem_fn.faq.does_mem_fn_work_with_com_method" title="Does mem_fn work with COM methods?">Does <code class="computeroutput"><span class="identifier">mem_fn</span></code> work with COM methods?</a>
+</h3></div></div></div>
+<p>
+        Yes, if you <a class="link" href="mem_fn.html#mem_fn.implementation.stdcall" title="__stdcall, __cdecl, and __fastcall Support">`#define BOOST_MEM_FN_ENABLE_STDCALL</a>.
+      </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="mem_fn.faq.why_isn_t_boost_mem_fn_enable_st"></a><a class="link" href="mem_fn.html#mem_fn.faq.why_isn_t_boost_mem_fn_enable_st" title="Why isn't BOOST_MEM_FN_ENABLE_STDCALL defined automatically?">Why isn't
+      <code class="computeroutput"><span class="identifier">BOOST_MEM_FN_ENABLE_STDCALL</span></code>
+      defined automatically?</a>
+</h3></div></div></div>
+<p>
+        Non-portable extensions, in general, should default to off to prevent vendor
+        lock-in. Had <code class="computeroutput"><span class="identifier">BOOST_MEM_FN_ENABLE_STDCALL</span></code>
+        been defined automatically, you could have accidentally taken advantage of
+        it without realizing that your code is, perhaps, no longer portable. In addition,
+        it is possible for the default calling convention to be <code class="computeroutput"><span class="identifier">__stdcall</span></code>,
+        in which case enabling <code class="computeroutput"><span class="identifier">__stdcall</span></code>
+        support will result in duplicate definitions.
+      </p>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="mem_fn.interface"></a><a class="link" href="mem_fn.html#mem_fn.interface" title="Interface">Interface</a>
+</h2></div></div></div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="mem_fn.interface.synopsys"></a><a class="link" href="mem_fn.html#mem_fn.interface.synopsys" title="Synopsis">Synopsis</a>
+</h3></div></div></div>
+<pre class="programlisting"><span class="keyword">namespace</span> <span class="identifier">boost</span>
+<span class="special">{</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span> <span class="identifier">T</span> <span class="special">*</span> <a class="link" href="mem_fn.html#get_pointer_1"><code class="computeroutput"><span class="identifier">get_pointer</span></code></a><span class="special">(</span><span class="identifier">T</span> <span class="special">*</span> <span class="identifier">p</span><span class="special">);</span>
+
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">R</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span> <span class="emphasis"><em>unspecified-1</em></span> <a class="link" href="mem_fn.html#mem_fn_1"><code class="computeroutput"><span class="identifier">mem_fn</span></code></a><span class="special">(</span><span class="identifier">R</span> <span class="special">(</span><span class="identifier">T</span><span class="special">::*</span><span class="identifier">pmf</span><span class="special">)</span> <span class="special">());</span>
+
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">R</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span> <span class="emphasis"><em>unspecified-2</em></span> <a class="link" href="mem_fn.html#mem_fn_2"><code class="computeroutput"><span class="identifier">mem_fn</span></code></a><span class="special">(</span><span class="identifier">R</span> <span class="special">(</span><span class="identifier">T</span><span class="special">::*</span><span class="identifier">pmf</span><span class="special">)</span> <span class="special">()</span> <span class="keyword">const</span><span class="special">);</span>
+
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">R</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span> <span class="emphasis"><em>unspecified-2-1</em></span> <a class="link" href="mem_fn.html#mem_fn_2_1"><code class="computeroutput"><span class="identifier">mem_fn</span></code></a><span class="special">(</span><span class="identifier">R</span> <span class="identifier">T</span><span class="special">::*</span><span class="identifier">pm</span><span class="special">);</span>
+
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">R</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">T</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">A1</span><span class="special">&gt;</span> <span class="emphasis"><em>unspecified-3</em></span> <a class="link" href="mem_fn.html#mem_fn_3"><code class="computeroutput"><span class="identifier">mem_fn</span></code></a><span class="special">(</span><span class="identifier">R</span> <span class="special">(</span><span class="identifier">T</span><span class="special">::*</span><span class="identifier">pmf</span><span class="special">)</span> <span class="special">(</span><span class="identifier">A1</span><span class="special">));</span>
+
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">R</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">T</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">A1</span><span class="special">&gt;</span> <span class="emphasis"><em>unspecified-4</em></span> <a class="link" href="mem_fn.html#mem_fn_4"><code class="computeroutput"><span class="identifier">mem_fn</span></code></a><span class="special">(</span><span class="identifier">R</span> <span class="special">(</span><span class="identifier">T</span><span class="special">::*</span><span class="identifier">pmf</span><span class="special">)</span> <span class="special">(</span><span class="identifier">A1</span><span class="special">)</span> <span class="keyword">const</span><span class="special">);</span>
+
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">R</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">T</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">A1</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">A2</span><span class="special">&gt;</span> <span class="emphasis"><em>unspecified-5</em></span> <a class="link" href="mem_fn.html#mem_fn_5"><code class="computeroutput"><span class="identifier">mem_fn</span></code></a><span class="special">(</span><span class="identifier">R</span> <span class="special">(</span><span class="identifier">T</span><span class="special">::*</span><span class="identifier">pmf</span><span class="special">)</span> <span class="special">(</span><span class="identifier">A1</span><span class="special">,</span> <span class="identifier">A2</span><span class="special">));</span>
+
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">R</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">T</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">A1</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">A2</span><span class="special">&gt;</span> <span class="emphasis"><em>unspecified-6</em></span> <a class="link" href="mem_fn.html#mem_fn_6"><code class="computeroutput"><span class="identifier">mem_fn</span></code></a><span class="special">(</span><span class="identifier">R</span> <span class="special">(</span><span class="identifier">T</span><span class="special">::*</span><span class="identifier">pmf</span><span class="special">)</span> <span class="special">(</span><span class="identifier">A1</span><span class="special">,</span> <span class="identifier">A2</span><span class="special">)</span> <span class="keyword">const</span><span class="special">);</span>
+
+    <span class="comment">// implementation defined number of additional overloads for more arguments</span>
+<span class="special">}</span>
+</pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="mem_fn.interface.common_requirements"></a><a class="link" href="mem_fn.html#mem_fn.interface.common_requirements" title="Common requirements">Common requirements</a>
+</h3></div></div></div>
+<p>
+        All <span class="emphasis"><em>unspecified-N</em></span> types mentioned in the Synopsis are
+        <span class="emphasis"><em>CopyConstructible</em></span> and <span class="emphasis"><em>Assignable</em></span>.
+        Their copy constructors and assignment operators do not throw exceptions.
+        <span class="emphasis"><em>unspecified-N</em></span><code class="computeroutput"><span class="special">::</span><span class="identifier">result_type</span></code> is defined as the return type
+        of the member function pointer passed as an argument to <code class="computeroutput"><span class="identifier">mem_fn</span></code>
+        (<code class="computeroutput"><span class="identifier">R</span></code> in the Synopsis.) <span class="emphasis"><em>unspecified-2-1</em></span><code class="computeroutput"><span class="special">::</span><span class="identifier">result_type</span></code>
+        is defined as <code class="computeroutput"><span class="identifier">R</span></code>.
+      </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="mem_fn.interface.get_pointer"></a><a class="link" href="mem_fn.html#mem_fn.interface.get_pointer" title="get_pointer"><code class="computeroutput"><span class="identifier">get_pointer</span></code></a>
+</h3></div></div></div>
+<a name="get_pointer_1"></a><pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span> <span class="identifier">T</span> <span class="special">*</span> <span class="identifier">get_pointer</span><span class="special">(</span><span class="identifier">T</span> <span class="special">*</span> <span class="identifier">p</span><span class="special">)</span>
+</pre>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            <span class="emphasis"><em>Returns:</em></span> <code class="computeroutput"><span class="identifier">p</span></code>.
+          </li>
+<li class="listitem">
+            <span class="emphasis"><em>Throws:</em></span> Nothing.
+          </li>
+</ul></div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="mem_fn.interface.mem_fn"></a><a class="link" href="mem_fn.html#mem_fn.interface.mem_fn" title="mem_fn"><code class="computeroutput"><span class="identifier">mem_fn</span></code></a>
+</h3></div></div></div>
+<a name="mem_fn_1"></a><pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">R</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span> <span class="emphasis"><em>unspecified-1</em></span> <span class="identifier">mem_fn</span><span class="special">(</span><span class="identifier">R</span> <span class="special">(</span><span class="identifier">T</span><span class="special">::*</span><span class="identifier">pmf</span><span class="special">)</span> <span class="special">())</span>
+</pre>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            <span class="emphasis"><em>Returns:</em></span> a function object &#989; such that the
+            expression &#989;<code class="computeroutput"><span class="special">(</span><span class="identifier">t</span><span class="special">)</span></code> is equivalent to <code class="computeroutput"><span class="special">(</span><span class="identifier">t</span><span class="special">.*</span><span class="identifier">pmf</span><span class="special">)()</span></code>
+            when <code class="computeroutput"><span class="identifier">t</span></code> is an l-value
+            of type <code class="computeroutput"><span class="identifier">T</span></code> or derived,
+            <code class="computeroutput"><span class="special">(</span><span class="identifier">get_pointer</span><span class="special">(</span><span class="identifier">t</span><span class="special">)-&gt;*</span><span class="identifier">pmf</span><span class="special">)()</span></code> otherwise.
+          </li>
+<li class="listitem">
+            <span class="emphasis"><em>Throws:</em></span> Nothing.
+          </li>
+</ul></div>
+<a name="mem_fn_2"></a><pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">R</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span> <span class="emphasis"><em>unspecified-2</em></span> <span class="identifier">mem_fn</span><span class="special">(</span><span class="identifier">R</span> <span class="special">(</span><span class="identifier">T</span><span class="special">::*</span><span class="identifier">pmf</span><span class="special">)</span> <span class="special">()</span> <span class="keyword">const</span><span class="special">)</span>
+</pre>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            <span class="emphasis"><em>Returns:</em></span> a function object &#989; such that the
+            expression &#989;<code class="computeroutput"><span class="special">(</span><span class="identifier">t</span><span class="special">)</span></code> is equivalent to <code class="computeroutput"><span class="special">(</span><span class="identifier">t</span><span class="special">.*</span><span class="identifier">pmf</span><span class="special">)()</span></code>
+            when <code class="computeroutput"><span class="identifier">t</span></code> is of type <code class="computeroutput"><span class="identifier">T</span></code> <span class="emphasis"><em>[</em></span><code class="computeroutput"><span class="keyword">const</span></code><span class="emphasis"><em>]</em></span> or derived,
+            <code class="computeroutput"><span class="special">(</span><span class="identifier">get_pointer</span><span class="special">(</span><span class="identifier">t</span><span class="special">)-&gt;*</span><span class="identifier">pmf</span><span class="special">)()</span></code> otherwise.
+          </li>
+<li class="listitem">
+            <span class="emphasis"><em>Throws:</em></span> Nothing.
+          </li>
+</ul></div>
+<a name="mem_fn_2_1"></a><pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">R</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">T</span><span class="special">&gt;</span> <span class="emphasis"><em>unspecified-2-1</em></span> <span class="identifier">mem_fn</span><span class="special">(</span><span class="identifier">R</span> <span class="identifier">T</span><span class="special">::*</span><span class="identifier">pm</span><span class="special">)</span>
+</pre>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            <span class="emphasis"><em>Returns:</em></span> a function object &#989; such that the
+            expression &#989;<code class="computeroutput"><span class="special">(</span><span class="identifier">t</span><span class="special">)</span></code> is equivalent to <code class="computeroutput"><span class="identifier">t</span><span class="special">.*</span><span class="identifier">pm</span></code>
+            when <code class="computeroutput"><span class="identifier">t</span></code> is of type <code class="computeroutput"><span class="identifier">T</span></code> <span class="emphasis"><em>[</em></span><code class="computeroutput"><span class="keyword">const</span></code><span class="emphasis"><em>]</em></span> or derived,
+            <code class="computeroutput"><span class="identifier">get_pointer</span><span class="special">(</span><span class="identifier">t</span><span class="special">)-&gt;*</span><span class="identifier">pm</span></code> otherwise.
+          </li>
+<li class="listitem">
+            <span class="emphasis"><em>Throws:</em></span> Nothing.
+          </li>
+</ul></div>
+<a name="mem_fn_3"></a><pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">R</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">T</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">A1</span><span class="special">&gt;</span> <span class="emphasis"><em>unspecified-3</em></span> <span class="identifier">mem_fn</span><span class="special">(</span><span class="identifier">R</span> <span class="special">(</span><span class="identifier">T</span><span class="special">::*</span><span class="identifier">pmf</span><span class="special">)</span> <span class="special">(</span><span class="identifier">A1</span><span class="special">))</span>
+</pre>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            <span class="emphasis"><em>Returns:</em></span> a function object &#989; such that the
+            expression &#989;<code class="computeroutput"><span class="special">(</span><span class="identifier">t</span><span class="special">,</span> <span class="identifier">a1</span><span class="special">)</span></code> is equivalent to <code class="computeroutput"><span class="special">(</span><span class="identifier">t</span><span class="special">.*</span><span class="identifier">pmf</span><span class="special">)(</span><span class="identifier">a1</span><span class="special">)</span></code>
+            when <code class="computeroutput"><span class="identifier">t</span></code> is an l-value
+            of type <code class="computeroutput"><span class="identifier">T</span></code> or derived,
+            <code class="computeroutput"><span class="special">(</span><span class="identifier">get_pointer</span><span class="special">(</span><span class="identifier">t</span><span class="special">)-&gt;*</span><span class="identifier">pmf</span><span class="special">)(</span><span class="identifier">a1</span><span class="special">)</span></code> otherwise.
+          </li>
+<li class="listitem">
+            <span class="emphasis"><em>Throws:</em></span> Nothing.
+          </li>
+</ul></div>
+<a name="mem_fn_4"></a><pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">R</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">T</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">A1</span><span class="special">&gt;</span> <span class="emphasis"><em>unspecified-4</em></span> <span class="identifier">mem_fn</span><span class="special">(</span><span class="identifier">R</span> <span class="special">(</span><span class="identifier">T</span><span class="special">::*</span><span class="identifier">pmf</span><span class="special">)</span> <span class="special">(</span><span class="identifier">A1</span><span class="special">)</span> <span class="keyword">const</span><span class="special">)</span>
+</pre>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            <span class="emphasis"><em>Returns:</em></span> a function object &#989; such that the
+            expression &#989;<code class="computeroutput"><span class="special">(</span><span class="identifier">t</span><span class="special">,</span> <span class="identifier">a1</span><span class="special">)</span></code> is equivalent to <code class="computeroutput"><span class="special">(</span><span class="identifier">t</span><span class="special">.*</span><span class="identifier">pmf</span><span class="special">)(</span><span class="identifier">a1</span><span class="special">)</span></code>
+            when <code class="computeroutput"><span class="identifier">t</span></code> is of type <code class="computeroutput"><span class="identifier">T</span></code> <span class="emphasis"><em>[</em></span><code class="computeroutput"><span class="keyword">const</span></code><span class="emphasis"><em>]</em></span> or derived,
+            <code class="computeroutput"><span class="special">(</span><span class="identifier">get_pointer</span><span class="special">(</span><span class="identifier">t</span><span class="special">)-&gt;*</span><span class="identifier">pmf</span><span class="special">)(</span><span class="identifier">a1</span><span class="special">)</span></code> otherwise.
+          </li>
+<li class="listitem">
+            <span class="emphasis"><em>Throws:</em></span> Nothing.
+          </li>
+</ul></div>
+<a name="mem_fn_5"></a><pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">R</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">T</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">A1</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">A2</span><span class="special">&gt;</span> <span class="emphasis"><em>unspecified-5</em></span> <span class="identifier">mem_fn</span><span class="special">(</span><span class="identifier">R</span> <span class="special">(</span><span class="identifier">T</span><span class="special">::*</span><span class="identifier">pmf</span><span class="special">)</span> <span class="special">(</span><span class="identifier">A1</span><span class="special">,</span> <span class="identifier">A2</span><span class="special">))</span>
+</pre>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            <span class="emphasis"><em>Returns:</em></span> a function object &#989; such that the
+            expression &#989;<code class="computeroutput"><span class="special">(</span><span class="identifier">t</span><span class="special">,</span> <span class="identifier">a1</span><span class="special">,</span> <span class="identifier">a2</span><span class="special">)</span></code> is equivalent to <code class="computeroutput"><span class="special">(</span><span class="identifier">t</span><span class="special">.*</span><span class="identifier">pmf</span><span class="special">)(</span><span class="identifier">a1</span><span class="special">,</span> <span class="identifier">a2</span><span class="special">)</span></code>
+            when <code class="computeroutput"><span class="identifier">t</span></code> is an l-value
+            of type <code class="computeroutput"><span class="identifier">T</span></code> or derived,
+            <code class="computeroutput"><span class="special">(</span><span class="identifier">get_pointer</span><span class="special">(</span><span class="identifier">t</span><span class="special">)-&gt;*</span><span class="identifier">pmf</span><span class="special">)(</span><span class="identifier">a1</span><span class="special">,</span> <span class="identifier">a2</span><span class="special">)</span></code> otherwise.
+          </li>
+<li class="listitem">
+            <span class="emphasis"><em>Throws:</em></span> Nothing.
+          </li>
+</ul></div>
+<a name="mem_fn_6"></a><pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">R</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">T</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">A1</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">A2</span><span class="special">&gt;</span> <span class="emphasis"><em>unspecified-6</em></span> <span class="identifier">mem_fn</span><span class="special">(</span><span class="identifier">R</span> <span class="special">(</span><span class="identifier">T</span><span class="special">::*</span><span class="identifier">pmf</span><span class="special">)</span> <span class="special">(</span><span class="identifier">A1</span><span class="special">,</span> <span class="identifier">A2</span><span class="special">)</span> <span class="keyword">const</span><span class="special">)</span>
+</pre>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            <span class="emphasis"><em>Returns:</em></span> a function object &#989; such that the
+            expression &#989;<code class="computeroutput"><span class="special">(</span><span class="identifier">t</span><span class="special">,</span> <span class="identifier">a1</span><span class="special">,</span> <span class="identifier">a2</span><span class="special">)</span></code> is equivalent to <code class="computeroutput"><span class="special">(</span><span class="identifier">t</span><span class="special">.*</span><span class="identifier">pmf</span><span class="special">)(</span><span class="identifier">a1</span><span class="special">,</span> <span class="identifier">a2</span><span class="special">)</span></code>
+            when <code class="computeroutput"><span class="identifier">t</span></code> is of type <code class="computeroutput"><span class="identifier">T</span></code> <span class="emphasis"><em>[</em></span><code class="computeroutput"><span class="keyword">const</span></code><span class="emphasis"><em>]</em></span> or derived,
+            <code class="computeroutput"><span class="special">(</span><span class="identifier">get_pointer</span><span class="special">(</span><span class="identifier">t</span><span class="special">)-&gt;*</span><span class="identifier">pmf</span><span class="special">)(</span><span class="identifier">a1</span><span class="special">,</span> <span class="identifier">a2</span><span class="special">)</span></code> otherwise.
+          </li>
+<li class="listitem">
+            <span class="emphasis"><em>Throws:</em></span> Nothing.
+          </li>
+</ul></div>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="mem_fn.implementation"></a><a class="link" href="mem_fn.html#mem_fn.implementation" title="Implementation">Implementation</a>
+</h2></div></div></div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="mem_fn.implementation.files"></a><a class="link" href="mem_fn.html#mem_fn.implementation.files" title="Files">Files</a>
+</h3></div></div></div>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            <a href="../../../../boost/mem_fn.hpp" target="_top">boost/mem_fn.hpp</a> (main
+            header)
+          </li>
+<li class="listitem">
+            <a href="../../../../boost/bind/mem_fn_cc.hpp" target="_top">boost/bind/mem_fn_cc.hpp</a>
+            (used by <code class="computeroutput"><span class="identifier">mem_fn</span><span class="special">.</span><span class="identifier">hpp</span></code>, do not include directly)
+          </li>
+<li class="listitem">
+            <a href="../../../../boost/bind/mem_fn_vw.hpp" target="_top">boost/bind/mem_fn_vw.hpp</a>
+            (used by <code class="computeroutput"><span class="identifier">mem_fn</span><span class="special">.</span><span class="identifier">hpp</span></code>, do not include directly)
+          </li>
+<li class="listitem">
+            <a href="../../../../boost/bind/mem_fn_template.hpp" target="_top">boost/bind/mem_fn_template.hpp</a>
+            (used by <code class="computeroutput"><span class="identifier">mem_fn</span><span class="special">.</span><span class="identifier">hpp</span></code>, do not include directly)
+          </li>
+<li class="listitem">
+            <a href="../../test/mem_fn_test.cpp" target="_top">libs/bind/test/mem_fn_test.cpp</a>
+            (test)
+          </li>
+<li class="listitem">
+            <a href="../../test/mem_fn_derived_test.cpp" target="_top">libs/bind/test/mem_fn_derived_test.cpp</a>
+            (test with derived objects)
+          </li>
+<li class="listitem">
+            <a href="../../test/mem_fn_fastcall_test.cpp" target="_top">libs/bind/test/mem_fn_fastcall_test.cpp</a>
+            (test for <code class="computeroutput"><span class="identifier">__fastcall</span></code>)
+          </li>
+<li class="listitem">
+            <a href="../../test/mem_fn_stdcall_test.cpp" target="_top">libs/bind/test/mem_fn_stdcall_test.cpp</a>
+            (test for <code class="computeroutput"><span class="identifier">__stdcall</span></code>)
+          </li>
+<li class="listitem">
+            <a href="../../test/mem_fn_void_test.cpp" target="_top">libs/bind/test/mem_fn_void_test.cpp</a>
+            (test for <code class="computeroutput"><span class="keyword">void</span></code> returns)
+          </li>
+</ul></div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="mem_fn.implementation.dependencies"></a><a class="link" href="mem_fn.html#mem_fn.implementation.dependencies" title="Dependencies">Dependencies</a>
+</h3></div></div></div>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; "><li class="listitem">
+            <a href="../../../../libs/config/config.htm" target="_top">Boost.Config</a>
+          </li></ul></div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="mem_fn.implementation.number_of_arguments"></a><a class="link" href="mem_fn.html#mem_fn.implementation.number_of_arguments" title="Number of Arguments">Number of
+      Arguments</a>
+</h3></div></div></div>
+<p>
+        This implementation supports member functions with up to eight arguments.
+        This is not an inherent limitation of the design, but an implementation detail.
+      </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="mem_fn.implementation.stdcall"></a><a class="link" href="mem_fn.html#mem_fn.implementation.stdcall" title="__stdcall, __cdecl, and __fastcall Support"><code class="computeroutput"><span class="identifier">__stdcall</span></code>,
+      <code class="computeroutput"><span class="identifier">__cdecl</span></code>, and <code class="computeroutput"><span class="identifier">__fastcall</span></code> Support</a>
+</h3></div></div></div>
+<p>
+        Some platforms allow several types of member functions that differ by their
+        calling convention (the rules by which the function is invoked: how are arguments
+        passed, how is the return value handled, and who cleans up the stack - if
+        any.)
+      </p>
+<p>
+        For example, Windows API functions and COM interface member functions use
+        a calling convention known as <code class="computeroutput"><span class="identifier">__stdcall</span></code>.
+        Borland VCL components use <code class="computeroutput"><span class="identifier">__fastcall</span></code>.
+        UDK, the component model of OpenOffice.org, uses <code class="computeroutput"><span class="identifier">__cdecl</span></code>.
+      </p>
+<p>
+        To use <code class="computeroutput"><span class="identifier">mem_fn</span></code> with <code class="computeroutput"><span class="identifier">__stdcall</span></code> member functions, <code class="computeroutput"><span class="preprocessor">#define</span></code> the macro <code class="computeroutput"><span class="identifier">BOOST_MEM_FN_ENABLE_STDCALL</span></code>
+        before including <code class="computeroutput"><span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">mem_fn</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span></code>.
+      </p>
+<p>
+        To use <code class="computeroutput"><span class="identifier">mem_fn</span></code> with <code class="computeroutput"><span class="identifier">__fastcall</span></code> member functions, <code class="computeroutput"><span class="preprocessor">#define</span></code> the macro <code class="computeroutput"><span class="identifier">BOOST_MEM_FN_ENABLE_FASTCALL</span></code>
+        before including <code class="computeroutput"><span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">mem_fn</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span></code>.
+      </p>
+<p>
+        To use <code class="computeroutput"><span class="identifier">mem_fn</span></code> with <code class="computeroutput"><span class="identifier">__cdecl</span></code> member functions, <code class="computeroutput"><span class="preprocessor">#define</span></code> the macro <code class="computeroutput"><span class="identifier">BOOST_MEM_FN_ENABLE_CDECL</span></code>
+        before including <code class="computeroutput"><span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">mem_fn</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span></code>.
+      </p>
+<p>
+        <span class="bold"><strong>It is best to define these macros in the project options,
+        via <code class="computeroutput"><span class="special">-</span><span class="identifier">D</span></code>
+        on the command line, or as the first line in the translation unit (.cpp file)
+        where <code class="computeroutput"><span class="identifier">mem_fn</span></code> is used.</strong></span>
+        Not following this rule can lead to obscure errors when a header includes
+        <code class="computeroutput"><span class="identifier">mem_fn</span><span class="special">.</span><span class="identifier">hpp</span></code> before the macro has been defined.
+      </p>
+<p>
+        <span class="emphasis"><em>[Note:</em></span> this is a non-portable extension. It is not part
+        of the interface.<span class="emphasis"><em>]</em></span>
+      </p>
+<p>
+        <span class="emphasis"><em>[Note:</em></span> Some compilers provide only minimal support for
+        the <code class="computeroutput"><span class="identifier">__stdcall</span></code> keyword.<span class="emphasis"><em>]</em></span>
+      </p>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="mem_fn.acknowledgements"></a><a class="link" href="mem_fn.html#mem_fn.acknowledgements" title="Acknowledgements">Acknowledgements</a>
+</h2></div></div></div>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+          Rene Jager's initial suggestion of using traits classes to make <code class="computeroutput"><span class="identifier">mem_fn</span></code> adapt to user-defined smart pointers
+          inspired the <code class="computeroutput"><span class="identifier">get_pointer</span></code>-based
+          design.
+        </li>
+<li class="listitem">
+          Numerous improvements were suggested during the formal review period by
+          Richard Crossley, Jens Maurer, Ed Brey, and others. Review manager was
+          Darin Adler.
+        </li>
+<li class="listitem">
+          Steve Anichini pointed out that COM interfaces use <code class="computeroutput"><span class="identifier">__stdcall</span></code>.
+        </li>
+<li class="listitem">
+          Dave Abrahams modified <code class="computeroutput"><span class="identifier">bind</span></code>
+          and <code class="computeroutput"><span class="identifier">mem_fn</span></code> to support
+          <code class="computeroutput"><span class="keyword">void</span></code> returns on deficient
+          compilers.
+        </li>
+<li class="listitem">
+          Daniel Boelzle pointed out that UDK uses <code class="computeroutput"><span class="identifier">__cdecl</span></code>.
+        </li>
+</ul></div>
+<p>
+      This documentation was ported to Quickbook by Agust&#237;n Berg&#233;.
+    </p>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"><p><small>Last revised: August 14, 2019 at 12:07:49 GMT</small></p></td>
+<td align="right"><div class="copyright-footer"></div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav"></div>
+</body>
+</html>

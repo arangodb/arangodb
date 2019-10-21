@@ -1,0 +1,19 @@
+[/
+Copyright 2015 Paul A. Bristow.
+Copyright 2015 John Maddock.
+Distributed under the Boost Software License, Version 1.0.
+(See accompanying file LICENSE_1_0.txt or copy at
+http://www.boost.org/LICENSE_1_0.txt).
+]
+
+
+[h5 Program root_finding_algorithms.cpp, GNU C++ version 8.2.0, GNU libstdc++ version 20180728, linux, x64[br]1000000 evaluations of each of 5 root_finding algorithms.]
+[table:cbrt_4 Cube root(28) for float, double, long double and cpp_bin_float_50
+[[][float][][][] [][double][][][] [][long d][][][] [][cpp50][][]]
+[[Algorithm][Its][Times][Norm][Dis][ ][Its][Times][Norm][Dis][ ][Its][Times][Norm][Dis][ ][Its][Times][Norm][Dis][ ]]
+[[cbrt     ][  0][30000][[role blue 1.0]][  0][ ][  0][60000][[role blue 1.0]][  0][ ][  0][70000][[role blue 1.0]][  0][ ][  0][4440000][[role blue 1.0]][  0][ ]]
+[[TOMS748  ][  8][220000][[role red 7.3]][ -1][ ][ 11][370000][[role red 6.2]][  2][ ][ 10][580000][[role red 8.3]][ -1][ ][  6][28360000][[role red 6.7]][ -2][ ]]
+[[Newton   ][  5][120000][4.0][  0][ ][  6][130000][2.2][  0][ ][  6][180000][2.6][  0][ ][  2][4260000][[role blue 1.0]][ -1][ ]]
+[[Halley   ][  3][110000][3.7][  0][ ][  4][140000][2.3][  0][ ][  4][230000][3.3][  0][ ][  2][9210000][2.2][  0][ ]]
+[[Schr'''&#xf6;'''der][  4][120000][4.0][  0][ ][  5][140000][2.3][  0][ ][  5][280000][4.0][  0][ ][  2][11630000][2.7][  0][ ]]
+] [/end of table cbrt_4]

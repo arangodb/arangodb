@@ -1,0 +1,222 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Integrating Fibers with Nonblocking I/O</title>
+<link rel="stylesheet" href="../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="Chapter&#160;1.&#160;Fiber">
+<link rel="up" href="../index.html" title="Chapter&#160;1.&#160;Fiber">
+<link rel="prev" href="callbacks/then_there_s____boost_asio__.html" title="Then There&#8217;s Boost.Asio">
+<link rel="next" href="when_any.html" title="when_any / when_all functionality">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="callbacks/then_there_s____boost_asio__.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="when_any.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="fiber.nonblocking"></a><a name="nonblocking"></a><a class="link" href="nonblocking.html" title="Integrating Fibers with Nonblocking I/O">Integrating
+    Fibers with Nonblocking I/O</a>
+</h2></div></div></div>
+<h4>
+<a name="fiber.nonblocking.h0"></a>
+      <span class="phrase"><a name="fiber.nonblocking.overview"></a></span><a class="link" href="nonblocking.html#fiber.nonblocking.overview">Overview</a>
+    </h4>
+<p>
+      <span class="emphasis"><em>Nonblocking</em></span> I/O is distinct from <span class="emphasis"><em>asynchronous</em></span>
+      I/O. A true async I/O operation promises to initiate the operation and notify
+      the caller on completion, usually via some sort of callback (as described in
+      <a class="link" href="callbacks.html#callbacks">Integrating Fibers with Asynchronous Callbacks</a>).
+    </p>
+<p>
+      In contrast, a nonblocking I/O operation refuses to start at all if it would
+      be necessary to block, returning an error code such as <a href="http://man7.org/linux/man-pages/man3/errno.3.html" target="_top"><code class="computeroutput"><span class="identifier">EWOULDBLOCK</span></code></a>. The operation is performed
+      only when it can complete immediately. In effect, the caller must repeatedly
+      retry the operation until it stops returning <code class="computeroutput"><span class="identifier">EWOULDBLOCK</span></code>.
+    </p>
+<p>
+      In a classic event-driven program, it can be something of a headache to use
+      nonblocking I/O. At the point where the nonblocking I/O is attempted, a return
+      value of <code class="computeroutput"><span class="identifier">EWOULDBLOCK</span></code> requires
+      the caller to pass control back to the main event loop, arranging to retry
+      again on the next iteration.
+    </p>
+<p>
+      Worse, a nonblocking I/O operation might <span class="emphasis"><em>partially</em></span> succeed.
+      That means that the relevant business logic must continue receiving control
+      on every main loop iteration until all required data have been processed: a
+      doubly-nested loop, implemented as a callback-driven state machine.
+    </p>
+<p>
+      <span class="bold"><strong>Boost.Fiber</strong></span> can simplify this problem immensely.
+      Once you have integrated with the application's main loop as described in
+      <a class="link" href="integration.html#integration">Sharing a Thread with Another Main Loop</a>,
+      waiting for the next main-loop iteration is as simple as calling <a class="link" href="fiber_mgmt/this_fiber.html#this_fiber_yield"><code class="computeroutput">this_fiber::yield()</code></a>.
+    </p>
+<h4>
+<a name="fiber.nonblocking.h1"></a>
+      <span class="phrase"><a name="fiber.nonblocking.example_nonblocking_api"></a></span><a class="link" href="nonblocking.html#fiber.nonblocking.example_nonblocking_api">Example
+      Nonblocking API</a>
+    </h4>
+<p>
+      For purposes of illustration, consider this API:
+    </p>
+<p>
+</p>
+<pre class="programlisting"><span class="keyword">class</span> <span class="identifier">NonblockingAPI</span> <span class="special">{</span>
+<span class="keyword">public</span><span class="special">:</span>
+    <span class="identifier">NonblockingAPI</span><span class="special">();</span>
+
+    <span class="comment">// nonblocking operation: may return EWOULDBLOCK</span>
+    <span class="keyword">int</span> <span class="identifier">read</span><span class="special">(</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="special">&amp;</span> <span class="identifier">data</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">desired</span><span class="special">);</span>
+
+    <span class="special">...</span>
+<span class="special">};</span>
+</pre>
+<p>
+    </p>
+<h4>
+<a name="fiber.nonblocking.h2"></a>
+      <span class="phrase"><a name="fiber.nonblocking.polling_for_completion"></a></span><a class="link" href="nonblocking.html#fiber.nonblocking.polling_for_completion">Polling
+      for Completion</a>
+    </h4>
+<p>
+      We can build a low-level wrapper around <code class="computeroutput"><span class="identifier">NonblockingAPI</span><span class="special">::</span><span class="identifier">read</span><span class="special">()</span></code>
+      that shields its caller from ever having to deal with <code class="computeroutput"><span class="identifier">EWOULDBLOCK</span></code>:
+    </p>
+<p>
+</p>
+<pre class="programlisting"><span class="comment">// guaranteed not to return EWOULDBLOCK</span>
+<span class="keyword">int</span> <span class="identifier">read_chunk</span><span class="special">(</span> <span class="identifier">NonblockingAPI</span> <span class="special">&amp;</span> <span class="identifier">api</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="special">&amp;</span> <span class="identifier">data</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">desired</span><span class="special">)</span> <span class="special">{</span>
+    <span class="keyword">int</span> <span class="identifier">error</span><span class="special">;</span>
+    <span class="keyword">while</span> <span class="special">(</span> <span class="identifier">EWOULDBLOCK</span> <span class="special">==</span> <span class="special">(</span> <span class="identifier">error</span> <span class="special">=</span> <span class="identifier">api</span><span class="special">.</span><span class="identifier">read</span><span class="special">(</span> <span class="identifier">data</span><span class="special">,</span> <span class="identifier">desired</span><span class="special">)</span> <span class="special">)</span> <span class="special">)</span> <span class="special">{</span>
+        <span class="comment">// not ready yet -- try again on the next iteration of the</span>
+        <span class="comment">// application's main loop</span>
+        <span class="identifier">boost</span><span class="special">::</span><span class="identifier">this_fiber</span><span class="special">::</span><span class="identifier">yield</span><span class="special">();</span>
+    <span class="special">}</span>
+    <span class="keyword">return</span> <span class="identifier">error</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+<p>
+    </p>
+<h4>
+<a name="fiber.nonblocking.h3"></a>
+      <span class="phrase"><a name="fiber.nonblocking.filling_all_desired_data"></a></span><a class="link" href="nonblocking.html#fiber.nonblocking.filling_all_desired_data">Filling
+      All Desired Data</a>
+    </h4>
+<p>
+      Given <code class="computeroutput"><span class="identifier">read_chunk</span><span class="special">()</span></code>,
+      we can straightforwardly iterate until we have all desired data:
+    </p>
+<p>
+</p>
+<pre class="programlisting"><span class="comment">// keep reading until desired length, EOF or error</span>
+<span class="comment">// may return both partial data and nonzero error</span>
+<span class="keyword">int</span> <span class="identifier">read_desired</span><span class="special">(</span> <span class="identifier">NonblockingAPI</span> <span class="special">&amp;</span> <span class="identifier">api</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="special">&amp;</span> <span class="identifier">data</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">desired</span><span class="special">)</span> <span class="special">{</span>
+    <span class="comment">// we're going to accumulate results into 'data'</span>
+    <span class="identifier">data</span><span class="special">.</span><span class="identifier">clear</span><span class="special">();</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="identifier">chunk</span><span class="special">;</span>
+    <span class="keyword">int</span> <span class="identifier">error</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span>
+    <span class="keyword">while</span> <span class="special">(</span> <span class="identifier">data</span><span class="special">.</span><span class="identifier">length</span><span class="special">()</span> <span class="special">&lt;</span> <span class="identifier">desired</span> <span class="special">&amp;&amp;</span>
+           <span class="special">(</span> <span class="identifier">error</span> <span class="special">=</span> <span class="identifier">read_chunk</span><span class="special">(</span> <span class="identifier">api</span><span class="special">,</span> <span class="identifier">chunk</span><span class="special">,</span> <span class="identifier">desired</span> <span class="special">-</span> <span class="identifier">data</span><span class="special">.</span><span class="identifier">length</span><span class="special">()</span> <span class="special">)</span> <span class="special">)</span> <span class="special">==</span> <span class="number">0</span><span class="special">)</span> <span class="special">{</span>
+        <span class="identifier">data</span><span class="special">.</span><span class="identifier">append</span><span class="special">(</span> <span class="identifier">chunk</span><span class="special">);</span>
+    <span class="special">}</span>
+    <span class="keyword">return</span> <span class="identifier">error</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+<p>
+    </p>
+<p>
+      (Of <span class="emphasis"><em>course</em></span> there are more efficient ways to accumulate
+      string data. That's not the point of this example.)
+    </p>
+<h4>
+<a name="fiber.nonblocking.h4"></a>
+      <span class="phrase"><a name="fiber.nonblocking.wrapping_it_up"></a></span><a class="link" href="nonblocking.html#fiber.nonblocking.wrapping_it_up">Wrapping
+      it Up</a>
+    </h4>
+<p>
+      Finally, we can define a relevant exception:
+    </p>
+<p>
+</p>
+<pre class="programlisting"><span class="comment">// exception class augmented with both partially-read data and errorcode</span>
+<span class="keyword">class</span> <span class="identifier">IncompleteRead</span> <span class="special">:</span> <span class="keyword">public</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">runtime_error</span> <span class="special">{</span>
+<span class="keyword">public</span><span class="special">:</span>
+    <span class="identifier">IncompleteRead</span><span class="special">(</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">what</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">partial</span><span class="special">,</span> <span class="keyword">int</span> <span class="identifier">ec</span><span class="special">)</span> <span class="special">:</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">runtime_error</span><span class="special">(</span> <span class="identifier">what</span><span class="special">),</span>
+        <span class="identifier">partial_</span><span class="special">(</span> <span class="identifier">partial</span><span class="special">),</span>
+        <span class="identifier">ec_</span><span class="special">(</span> <span class="identifier">ec</span><span class="special">)</span> <span class="special">{</span>
+    <span class="special">}</span>
+
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="identifier">get_partial</span><span class="special">()</span> <span class="keyword">const</span> <span class="special">{</span>
+        <span class="keyword">return</span> <span class="identifier">partial_</span><span class="special">;</span>
+    <span class="special">}</span>
+
+    <span class="keyword">int</span> <span class="identifier">get_errorcode</span><span class="special">()</span> <span class="keyword">const</span> <span class="special">{</span>
+        <span class="keyword">return</span> <span class="identifier">ec_</span><span class="special">;</span>
+    <span class="special">}</span>
+
+<span class="keyword">private</span><span class="special">:</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="identifier">partial_</span><span class="special">;</span>
+    <span class="keyword">int</span>         <span class="identifier">ec_</span><span class="special">;</span>
+<span class="special">};</span>
+</pre>
+<p>
+    </p>
+<p>
+      and write a simple <code class="computeroutput"><span class="identifier">read</span><span class="special">()</span></code>
+      function that either returns all desired data or throws <code class="computeroutput"><span class="identifier">IncompleteRead</span></code>:
+    </p>
+<p>
+</p>
+<pre class="programlisting"><span class="comment">// read all desired data or throw IncompleteRead</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="identifier">read</span><span class="special">(</span> <span class="identifier">NonblockingAPI</span> <span class="special">&amp;</span> <span class="identifier">api</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">desired</span><span class="special">)</span> <span class="special">{</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="identifier">data</span><span class="special">;</span>
+    <span class="keyword">int</span> <span class="identifier">ec</span><span class="special">(</span> <span class="identifier">read_desired</span><span class="special">(</span> <span class="identifier">api</span><span class="special">,</span> <span class="identifier">data</span><span class="special">,</span> <span class="identifier">desired</span><span class="special">)</span> <span class="special">);</span>
+
+    <span class="comment">// for present purposes, EOF isn't a failure</span>
+    <span class="keyword">if</span> <span class="special">(</span> <span class="number">0</span> <span class="special">==</span> <span class="identifier">ec</span> <span class="special">||</span> <span class="identifier">EOF</span> <span class="special">==</span> <span class="identifier">ec</span><span class="special">)</span> <span class="special">{</span>
+        <span class="keyword">return</span> <span class="identifier">data</span><span class="special">;</span>
+    <span class="special">}</span>
+
+    <span class="comment">// oh oh, partial read</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">ostringstream</span> <span class="identifier">msg</span><span class="special">;</span>
+    <span class="identifier">msg</span> <span class="special">&lt;&lt;</span> <span class="string">"NonblockingAPI::read() error "</span> <span class="special">&lt;&lt;</span> <span class="identifier">ec</span> <span class="special">&lt;&lt;</span> <span class="string">" after "</span>
+        <span class="special">&lt;&lt;</span> <span class="identifier">data</span><span class="special">.</span><span class="identifier">length</span><span class="special">()</span> <span class="special">&lt;&lt;</span> <span class="string">" of "</span> <span class="special">&lt;&lt;</span> <span class="identifier">desired</span> <span class="special">&lt;&lt;</span> <span class="string">" characters"</span><span class="special">;</span>
+    <span class="keyword">throw</span> <span class="identifier">IncompleteRead</span><span class="special">(</span> <span class="identifier">msg</span><span class="special">.</span><span class="identifier">str</span><span class="special">(),</span> <span class="identifier">data</span><span class="special">,</span> <span class="identifier">ec</span><span class="special">);</span>
+<span class="special">}</span>
+</pre>
+<p>
+    </p>
+<p>
+      Once we can transparently wait for the next main-loop iteration using <a class="link" href="fiber_mgmt/this_fiber.html#this_fiber_yield"><code class="computeroutput">this_fiber::yield()</code></a>,
+      ordinary encapsulation Just Works.
+    </p>
+<p>
+      The source code above is found in <a href="../../../examples/adapt_nonblocking.cpp" target="_top">adapt_nonblocking.cpp</a>.
+    </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2013 Oliver Kowalke<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="callbacks/then_there_s____boost_asio__.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="when_any.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

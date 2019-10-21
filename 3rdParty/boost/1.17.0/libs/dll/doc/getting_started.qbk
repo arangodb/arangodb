@@ -1,0 +1,74 @@
+[/
+    Copyright 2014 Renato Tegon Forti, Antony Polukhin.
+    Copyright 2015-2019 Antony Polukhin.
+    Distributed under the Boost Software License, Version 1.0.
+    (See accompanying file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+/]
+
+[section:getting_started Getting started]
+
+Boost.DLL is a header only library. To start with the library you only need to include `<boost/dll.hpp>` header. After that you are free to import and export functions and variables. Importing code requires linking with `boost_filesystem` and `boost_system` libraries.
+
+If you want to load a library, just construct [classref boost::dll::shared_library] class with a path to the library as a parameter:
+```
+boost::dll::shared_library lib("/test/boost/application/libtest_library.so");
+
+```
+Now you can easily import symbols from that library using the `get` and `get_alias` member functions:
+```
+int plugin_constant = lib.get<const int>("integer_variable");
+boost::function<int()> f = lib.get<int()>("function_returning_int");
+int& i = lib.get_alias<int>("alias_to_int_variable");
+```
+In case of `boost::dll::shared_library` it is safe to use imported symbols only until `boost::dll::shared_library`
+instance is not destroyed.
+
+Query libraries using [classref boost::dll::library_info] and get symbol infos using [funcref boost::dll::symbol_location],
+[funcref boost::dll::this_line_location] and [funcref boost::dll::program_location].
+
+For importing a single function or variable you may use a following one liners:
+[import ../example/getting_started.cpp]
+[import ../example/getting_started_library.cpp]
+
+```
+using namespace boost;
+
+// `extern "C"` - specifies C linkage: forces the compiler to export function/variable by a pretty (unmangled) C name.
+#define API extern "C" BOOST_SYMBOL_EXPORT
+```
+[table:starting
+[[ Import (code that uses DLL/DSL): ] [ Export (DLL/DSL sources): ] [ Functions description: ]]
+[
+    [ [getting_started_imports_cpp11_function] ]
+    [ [getting_started_exports_cpp11_function] ]
+    [ [funcref boost::dll::import import<T>(...)] ]
+][
+    [ [getting_started_imports_cpp_variable] ]
+    [ [getting_started_exports_cpp_variable] ]
+    [ [funcref boost::dll::import import<T>(...)] ]
+][
+    [ [getting_started_imports_alias] ]
+    [ [getting_started_exports_alias] ]
+    [
+        [funcref boost::dll::import_alias import_alias<T>(...)]
+
+        [macroref BOOST_DLL_ALIAS]
+    ]
+][/
+    [ [getting_started_imports_c_function] ]
+    [ [getting_started_exports_c_function] ]
+    [ [funcref boost::dll::import import<T>(...) ] ]
+/][/
+    [ [getting_started_imports_c_variable] ]
+    [ [getting_started_exports_c_variable] ]
+    [ [funcref boost::dll::import import<T>(...) ] ]
+/]]
+
+It is safe to use imported variable or function because the variables returned from [funcref boost::dll::import import<T>(...)] and [funcref boost::dll::import_alias import_alias<T>(...)] functions
+internally hold a reference to the shared library.
+
+[macroref BOOST_SYMBOL_EXPORT] is just a macro from Boost.Config that expands into the `__declspec(dllexport)` or `__attribute__((visibility("default")))`. You are free to use your own macro for exports.
+
+[note On Linux/POSIX/MacOS link with library "dl". "-fvisibility=hidden" flag is also recommended.]
+
+[endsect]

@@ -1,0 +1,91 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Array Index Value Can Exceed Array Limits</title>
+<link rel="stylesheet" href="../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="Safe Numerics">
+<link rel="up" href="../tutorial.html" title="Tutorial and Motivating Examples">
+<link rel="prev" href="5.html" title="Mixing Data Types Can Create Subtle Errors">
+<link rel="next" href="7.html" title="Checking of Input Values Can Be Easily Overlooked">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img href="index.html" height="164px" src="pre-boost.jpg" alt="Library Documentation Index"></td>
+<td><h2>Safe Numerics</h2></td>
+</tr></table>
+<div class="spirit-nav">
+<a accesskey="p" href="5.html"><img src="../images/prev.png" alt="Prev"></a><a accesskey="u" href="../tutorial.html"><img src="../images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../images/home.png" alt="Home"></a><a accesskey="n" href="7.html"><img src="../images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="safe_numerics.tutorial.6"></a>Array Index Value Can Exceed Array Limits</h3></div></div></div>
+<p>Using an intrinsic C++ array, it's very easy to exceed array limits.
+    This can fail to be detected when it occurs and create bugs which are hard
+    to find. There are several ways to address this, but one of the simplest
+    would be to use safe_unsigned_range;</p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">stdexcept</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">iostream</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">array</span><span class="special">&gt;</span>
+
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">safe_numerics</span><span class="special">/</span><span class="identifier">safe_integer_range</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="keyword">void</span> <span class="identifier">detected_msg</span><span class="special">(</span><span class="keyword">bool</span> <span class="identifier">detected</span><span class="special">)</span><span class="special">{</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="special">(</span><span class="identifier">detected</span> <span class="special">?</span> <span class="string">"error detected!"</span> <span class="special">:</span> <span class="string">"error NOT detected! "</span><span class="special">)</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+<span class="special">}</span>
+
+<span class="keyword">int</span> <span class="identifier">main</span><span class="special">(</span><span class="keyword">int</span><span class="special">,</span> <span class="keyword">const</span> <span class="keyword">char</span> <span class="special">*</span><span class="special">[</span><span class="special">]</span><span class="special">)</span><span class="special">{</span>
+    <span class="comment">// problem: array index values can exceed array bounds</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"example 5: "</span><span class="special">;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"array index values can exceed array bounds"</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"Not using safe numerics"</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">array</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">,</span> <span class="number">37</span><span class="special">&gt;</span> <span class="identifier">i_array</span><span class="special">;</span>
+
+    <span class="comment">// unsigned int i_index = 43;</span>
+    <span class="comment">// the following corrupts memory.</span>
+    <span class="comment">// This may or may not be detected at run time.</span>
+    <span class="comment">// i_array[i_index] = 84; // comment this out so it can be tested!</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"error NOT detected!"</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+
+    <span class="comment">// solution: replace unsigned array index with safe_unsigned_range</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"Using safe numerics"</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+    <span class="keyword">try</span><span class="special">{</span>
+        <span class="keyword">using</span> <span class="keyword">namespace</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">safe_numerics</span><span class="special">;</span>
+        <span class="keyword">using</span> <span class="identifier">i_index_t</span> <span class="special">=</span> <span class="identifier">safe_unsigned_range</span><span class="special">&lt;</span><span class="number">0</span><span class="special">,</span> <span class="identifier">i_array</span><span class="special">.</span><span class="identifier">size</span><span class="special">(</span><span class="special">)</span> <span class="special">-</span> <span class="number">1</span><span class="special">&gt;</span><span class="special">;</span>
+        <span class="identifier">i_index_t</span> <span class="identifier">i_index</span><span class="special">;</span>
+        <span class="identifier">i_index</span> <span class="special">=</span> <span class="number">36</span><span class="special">;</span> <span class="comment">// this works fine</span>
+        <span class="identifier">i_array</span><span class="special">[</span><span class="identifier">i_index</span><span class="special">]</span> <span class="special">=</span> <span class="number">84</span><span class="special">;</span>
+        <span class="identifier">i_index</span> <span class="special">=</span> <span class="number">43</span><span class="special">;</span> <span class="comment">// throw exception here!</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"error NOT detected!"</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span> <span class="comment">// so we never arrive here</span>
+    <span class="special">}</span>
+    <span class="keyword">catch</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">exception</span> <span class="special">&amp;</span> <span class="identifier">e</span><span class="special">)</span><span class="special">{</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span>  <span class="string">"error detected:"</span> <span class="special">&lt;&lt;</span> <span class="identifier">e</span><span class="special">.</span><span class="identifier">what</span><span class="special">(</span><span class="special">)</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+    <span class="special">}</span>
+    <span class="keyword">return</span> <span class="number">0</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+<pre class="screen">example 5: array index values can exceed array bounds
+Not using safe numerics
+error NOT detected!
+Using safe numerics
+error detected:Value out of range for this safe type: domain error
+</pre>
+<p>Collections like standard arrays and vectors do array index checking
+    in some function calls and not in others so this may not be the best
+    example. However it does illustrate the usage of
+    <code class="computeroutput">safe_range&lt;T&gt;</code> for assigning legal ranges to variables.
+    This will guarantee that under no circumstances will the variable contain
+    a value outside of the specified range.</p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2012-2018 Robert Ramey<p><a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">Subject to Boost
+      Software License</a></p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="5.html"><img src="../images/prev.png" alt="Prev"></a><a accesskey="u" href="../tutorial.html"><img src="../images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../images/home.png" alt="Home"></a><a accesskey="n" href="7.html"><img src="../images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

@@ -1,0 +1,34 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html><meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>auto success(T &amp;&amp;) - Boost.Outcome documentation</title>
+<link rel="stylesheet" href="../../css/boost.css" type="text/css">
+<meta name="generator" content="Hugo 0.52 with Boostdoc theme">
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+
+<link rel="icon" href="../../images/favicon.ico" type="image/ico"/>
+<body><div class="spirit-nav">
+<a accesskey="p" href="../../reference/functions/failure.html"><img src="../../images/prev.png" alt="Prev"></a>
+    <a accesskey="u" href="../../reference/functions.html"><img src="../../images/up.png" alt="Up"></a>
+    <a accesskey="h" href="../../index.html"><img src="../../images/home.png" alt="Home"></a><a accesskey="n" href="../../reference/functions/try_operation_has_value.html"><img src="../../images/next.png" alt="Next"></a></div><div id="content">
+  <div class="titlepage"><div><div><h1 style="clear: both"><code>auto success(T &amp;&amp;)</code></h1></div></div></div>
+  <p>Returns appropriate type sugar for constructing a successful result or outcome, usually <a href="../../reference/types/success_type.html" class="api-reference"><code>success_type&lt;T&gt;</code></a>
+ with a decayed <code>T</code>.</p>
+
+<p>Two default overloads are provided, one taking a single parameter returning <code>success_type&lt;std::decay_t&lt;T&gt;&gt;</code> and perfectly forwarding the input. The other overload takes no parameters, and returns <code>success_type&lt;void&gt;</code>, which usually causes the construction of the receiving <code>basic_result</code> or <code>basic_outcome</code>&rsquo;s with a default construction of their value type.</p>
+
+<p><em>Overridable</em>: By Argument Dependent Lookup (ADL).</p>
+
+<p><em>Requires</em>: Always available.</p>
+
+<p><em>Namespace</em>: <code>BOOST_OUTCOME_V2_NAMESPACE</code></p>
+
+<p><em>Header</em>: <code>&lt;boost/outcome/success_failure.hpp&gt;</code></p>
+
+
+        </div><p><small>Last revised: February 01, 2019 at 23:42:52 UTC</small></p>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../../reference/functions/failure.html"><img src="../../images/prev.png" alt="Prev"></a>
+    <a accesskey="u" href="../../reference/functions.html"><img src="../../images/up.png" alt="Up"></a>
+    <a accesskey="h" href="../../index.html"><img src="../../images/home.png" alt="Home"></a><a accesskey="n" href="../../reference/functions/try_operation_has_value.html"><img src="../../images/next.png" alt="Next"></a></div></body>
+</html>

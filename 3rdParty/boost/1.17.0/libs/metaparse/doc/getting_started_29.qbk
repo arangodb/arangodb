@@ -1,0 +1,5 @@
+[#getting_started_29]
+
+  using mult_exp4 = foldl_start_with_parser< sequence<one_of<times_token, divides_token>, unary_exp1>, unary_exp1, boost::mpl::quote2<binary_op> >;
+  using exp_parser18 = build_parser< foldl_start_with_parser< sequence<one_of<plus_token, minus_token>, mult_exp4>, mult_exp4, boost::mpl::quote2<binary_op> > >;
+

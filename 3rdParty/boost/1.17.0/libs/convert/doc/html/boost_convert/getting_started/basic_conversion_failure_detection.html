@@ -1,0 +1,168 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Basic Conversion-Failure Detection</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Chapter&#160;1.&#160;Boost.Convert 2.0">
+<link rel="up" href="../getting_started.html" title="Getting Started">
+<link rel="prev" href="flexibility_and_adaptability_to_change.html" title="Flexibility and Adaptability to Change">
+<link rel="next" href="../error_detection.html" title="Better Error Detection">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="flexibility_and_adaptability_to_change.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../getting_started.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../error_detection.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_convert.getting_started.basic_conversion_failure_detection"></a><a class="link" href="basic_conversion_failure_detection.html" title="Basic Conversion-Failure Detection">Basic
+      Conversion-Failure Detection</a>
+</h3></div></div></div>
+<p>
+</p>
+<pre class="programlisting"><span class="keyword">using</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span><span class="special">;</span>
+<span class="keyword">using</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">lexical_cast</span><span class="special">;</span>
+<span class="keyword">using</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">convert</span><span class="special">;</span>
+</pre>
+<p>
+      </p>
+<p>
+</p>
+<pre class="programlisting"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">cnv</span><span class="special">::</span><span class="identifier">cstream</span> <span class="identifier">cnv</span><span class="special">;</span>
+
+<span class="keyword">int</span> <span class="identifier">i1</span> <span class="special">=</span> <span class="identifier">lexical_cast</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;(</span><span class="string">"123"</span><span class="special">);</span>              <span class="comment">// Throws when conversion fails.</span>
+<span class="keyword">int</span> <span class="identifier">i2</span> <span class="special">=</span> <span class="identifier">convert</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;(</span><span class="string">"123"</span><span class="special">,</span> <span class="identifier">cnv</span><span class="special">).</span><span class="identifier">value</span><span class="special">();</span>      <span class="comment">// Throws when conversion fails.</span>
+<span class="keyword">int</span> <span class="identifier">i3</span> <span class="special">=</span> <span class="identifier">convert</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;(</span><span class="string">"uhm"</span><span class="special">,</span> <span class="identifier">cnv</span><span class="special">).</span><span class="identifier">value_or</span><span class="special">(-</span><span class="number">1</span><span class="special">);</span> <span class="comment">// Returns -1 when conversion fails.</span>
+
+<span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">i1</span> <span class="special">==</span> <span class="number">123</span><span class="special">);</span>
+<span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">i2</span> <span class="special">==</span> <span class="number">123</span><span class="special">);</span>
+<span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">i3</span> <span class="special">==</span> <span class="special">-</span><span class="number">1</span><span class="special">);</span>
+</pre>
+<p>
+      </p>
+<p>
+        The above is translated to English as
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            "<span class="emphasis"><em>convert a string to int</em></span>" for <code class="computeroutput"><span class="identifier">i1</span></code> and <code class="computeroutput"><span class="identifier">i2</span></code>
+            and
+          </li>
+<li class="listitem">
+            "<span class="emphasis"><em>convert a string to int and return -1 if the conversion
+            fails</em></span>" for <code class="computeroutput"><span class="identifier">i3</span></code>.
+          </li>
+</ul></div>
+<p>
+        The <code class="computeroutput"><span class="identifier">i1</span></code> and <code class="computeroutput"><span class="identifier">i2</span></code> deployments look sufficiently close
+        and behave identically. Namely, with the user instructions silent about the
+        conversion failure, those are treated as "exceptional" and throw.
+      </p>
+<p>
+        The <code class="computeroutput"><span class="identifier">i3</span></code> specification, on
+        the other hand, is explicit about conversion failures. The supplied fallback
+        value is returned if the requested conversion fails.
+      </p>
+<p>
+        That basic error detection and processing might be sufficient for a variety
+        of conversion deployments. For example:
+      </p>
+<p>
+</p>
+<pre class="programlisting"><span class="keyword">int</span> <span class="identifier">i1</span> <span class="special">=</span> <span class="identifier">convert</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;(</span><span class="identifier">s1</span><span class="special">,</span> <span class="identifier">cnv</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">hex</span><span class="special">)).</span><span class="identifier">value_or</span><span class="special">(-</span><span class="number">1</span><span class="special">);</span> <span class="comment">// Read as hex</span>
+<span class="keyword">int</span> <span class="identifier">i2</span> <span class="special">=</span> <span class="identifier">convert</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;(</span><span class="identifier">s2</span><span class="special">,</span> <span class="identifier">cnv</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">dec</span><span class="special">)).</span><span class="identifier">value_or</span><span class="special">(-</span><span class="number">1</span><span class="special">);</span> <span class="comment">// Read as decimal</span>
+
+<span class="keyword">if</span> <span class="special">(</span><span class="identifier">i1</span> <span class="special">==</span> <span class="special">-</span><span class="number">1</span><span class="special">)</span> <span class="identifier">log</span><span class="special">(</span><span class="string">"bad i1"</span><span class="special">),</span> <span class="identifier">i1</span> <span class="special">=</span> <span class="identifier">default_i1</span><span class="special">;</span> <span class="comment">// Log failure. Proceed with the default</span>
+<span class="keyword">if</span> <span class="special">(</span><span class="identifier">i2</span> <span class="special">==</span> <span class="special">-</span><span class="number">1</span><span class="special">)</span> <span class="identifier">log</span><span class="special">(</span><span class="string">"bad i2"</span><span class="special">),</span> <span class="identifier">i2</span> <span class="special">=</span> <span class="identifier">default_i2</span><span class="special">;</span> <span class="comment">// Log failure. Proceed with the default</span>
+
+<span class="comment">// ... proceed</span>
+</pre>
+<p>
+      </p>
+<p>
+        Or
+      </p>
+<p>
+</p>
+<pre class="programlisting"><span class="keyword">int</span>
+<span class="identifier">fallback_fun</span><span class="special">(</span><span class="keyword">char</span> <span class="keyword">const</span><span class="special">*</span> <span class="identifier">msg</span><span class="special">,</span> <span class="keyword">int</span> <span class="identifier">fallback_value</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="comment">// The principal advantage of a fallback_func over a fallback_value</span>
+    <span class="comment">// is that the former is only called when the conversion request fails.</span>
+    <span class="comment">// Consequently, the returned fallback_value is only calculated (which</span>
+    <span class="comment">// potentially might be expensive) when it is absolutely necessary.</span>
+    <span class="identifier">log</span><span class="special">(</span><span class="identifier">msg</span><span class="special">);</span> <span class="keyword">return</span> <span class="identifier">fallback_value</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+<p>
+      </p>
+<p>
+</p>
+<pre class="programlisting"><span class="keyword">int</span> <span class="identifier">i1</span> <span class="special">=</span> <span class="identifier">convert</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;(</span><span class="identifier">s1</span><span class="special">).</span><span class="identifier">value_or_eval</span><span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">bind</span><span class="special">(</span><span class="identifier">fallback_fun</span><span class="special">,</span> <span class="string">"bad i1"</span><span class="special">,</span> <span class="identifier">default_i1</span><span class="special">));</span>
+<span class="keyword">int</span> <span class="identifier">i2</span> <span class="special">=</span> <span class="identifier">convert</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;(</span><span class="identifier">s2</span><span class="special">).</span><span class="identifier">value_or_eval</span><span class="special">(</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">bind</span><span class="special">(</span><span class="identifier">fallback_fun</span><span class="special">,</span> <span class="string">"bad i2"</span><span class="special">,</span> <span class="identifier">default_i2</span><span class="special">));</span>
+<span class="comment">// ... proceed</span>
+</pre>
+<p>
+      </p>
+<p>
+        Or, if we do not care about logging conversion failures:
+      </p>
+<p>
+</p>
+<pre class="programlisting"><span class="keyword">int</span> <span class="identifier">i1</span> <span class="special">=</span> <span class="identifier">convert</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;(</span><span class="identifier">s1</span><span class="special">,</span> <span class="identifier">cnv</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">hex</span><span class="special">)).</span><span class="identifier">value_or</span><span class="special">(</span><span class="identifier">default_i1</span><span class="special">);</span> <span class="comment">// If failed, proceed with the default</span>
+<span class="keyword">int</span> <span class="identifier">i2</span> <span class="special">=</span> <span class="identifier">convert</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;(</span><span class="identifier">s2</span><span class="special">,</span> <span class="identifier">cnv</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">dec</span><span class="special">)).</span><span class="identifier">value_or</span><span class="special">(</span><span class="identifier">default_i2</span><span class="special">);</span> <span class="comment">// If failed, proceed with the default</span>
+<span class="comment">// ... proceed</span>
+</pre>
+<p>
+      </p>
+<p>
+        So far the deployment of <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">convert</span></code>
+        seems more flexible, more compact and natural (your mileage may vary) and
+        potentially more efficient compared to <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">lexical_cast</span></code>
+        which achieves somewhat similar results with:
+      </p>
+<p>
+</p>
+<pre class="programlisting"><span class="keyword">int</span> <span class="identifier">i1</span> <span class="special">=</span> <span class="identifier">default_i1</span><span class="special">;</span>
+
+<span class="keyword">try</span>
+<span class="special">{</span>
+    <span class="identifier">i1</span> <span class="special">=</span> <span class="identifier">lexical_cast</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;(</span><span class="identifier">str</span><span class="special">);</span>
+<span class="special">}</span>
+<span class="keyword">catch</span> <span class="special">(...)</span>
+<span class="special">{</span>
+    <span class="identifier">log</span><span class="special">(</span><span class="string">"bad i1"</span><span class="special">);</span>
+<span class="special">}</span>
+</pre>
+<p>
+      </p>
+<p>
+        By design, this is <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">lexical_cast</span></code>'s
+        only behavior -- straightforward and comprehensible, but limited. It makes
+        quite a few legitimate process/program flows difficult and awkward to implement.
+        <span class="emphasis"><em>Boost.Convert</em></span> addresses that with additional functionality,
+        flexibility and convenience.
+      </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2009-2016 Vladimir Batov<p>
+        Distributed under the Boost Software License, Version 1.0. See copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>.
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="flexibility_and_adaptability_to_change.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../getting_started.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../error_detection.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

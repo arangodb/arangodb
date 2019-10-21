@@ -1,0 +1,15 @@
+{
+    "key": "multi_array",
+    "name": "Multi-Array",
+    "authors": [
+        "Ron Garcia"
+    ],
+    "description": "Boost.MultiArray provides a generic N-dimensional array concept definition and common implementations of that interface.",
+    "category": [
+        "Containers",
+        "Math"
+    ],
+    "maintainers": [
+        "Ronald Garcia <garcia -at- osl.iu.edu>"
+    ]
+}

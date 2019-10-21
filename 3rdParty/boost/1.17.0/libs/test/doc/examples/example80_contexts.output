@@ -1,0 +1,11 @@
+//[example_output
+> example
+Running 1 test case...
+test.cpp(14): error: in "test_case1": check false has failed
+Failure occurred in a following context:
+    Gamma
+    Delta
+
+*** 1 failures is detected in test module "example80"
+
+//]

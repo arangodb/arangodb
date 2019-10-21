@@ -1,0 +1,18 @@
+# Boost.GIL (Generic Image Library) - Numeric tests
+#
+# Copyright (c) 2013 Christian Henning
+#
+# Distributed under the Boost Software License, Version 1.0.
+# (See accompanying file LICENSE_1_0.txt or
+# copy at http://www.boost.org/LICENSE_1_0.txt)
+
+import testing ;
+
+project
+    : requirements
+    <include>$(BOOST_ROOT)
+    <library>/boost/test//boost_unit_test_framework
+    <link>shared:<define>BOOST_TEST_DYN_LINK=1
+    ;
+
+run numeric.cpp ;

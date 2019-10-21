@@ -1,0 +1,47 @@
+#index.idx for Convert Quickbook, Doxygen and Auto-index.
+#  Copyright (c) Vladimir Batov 2009-2014
+#  Distributed under the Boost Software License, Version 1.0.
+#  See copy at http://www.boost.org/LICENSE_1_0.txt.
+
+!scan ../include/boost/convert/lexical_cast.hpp
+!scan ../include/boost/convert/parameters.hpp
+!scan ../include/boost/convert/printf.hpp
+!scan ../include/boost/convert/spirit.hpp
+!scan ../include/boost/convert/stream.hpp
+!scan ../include/boost/convert/strtol.hpp
+!scan ../include/boost/make_default.hpp
+!scan ../include/boost/convert.hpp
+
+#!scan "../example"  ".*.cpp" true
+
+!scan ../example/algorithms.cpp
+!scan ../example/default_converter.cpp
+!scan ../example/default_converter_fail.cpp
+!scan ../example/getting_started.cpp
+!scan ../example/getting_serious.cpp
+!scan ../example/lexical_cast.cpp
+!scan ../example/stream.cpp
+
+# Might be useful to Doxygen document everything for maintenance?
+#!scan "../include/boost/detail/" "*.hpp" true
+
+base \<\w*\base\w*\>
+boolalpha \<\w*boolalpha\w*\>
+fixed \<\w*fixed\w*\>
+floating-point \<\w*float\w*\>
+dec
+encryption \<\w*(encryption|decryption)\w*\>
+hex
+leading
+locale \<\w*\locale\w*\>
+precision
+oct
+scientific
+skipws  \<skip\w*\>
+transformation \<transform\w*\>
+user-defined types (UDT)  \<\w*user\w*\>
+whitespace \<white\w*\>
+
+
+
+

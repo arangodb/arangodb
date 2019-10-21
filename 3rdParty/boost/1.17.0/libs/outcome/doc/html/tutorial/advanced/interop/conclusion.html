@@ -1,0 +1,38 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html><meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Conclusion - Boost.Outcome documentation</title>
+<link rel="stylesheet" href="../../../css/boost.css" type="text/css">
+<meta name="generator" content="Hugo 0.52 with Boostdoc theme">
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+
+<link rel="icon" href="../../../images/favicon.ico" type="image/ico"/>
+<body><div class="spirit-nav">
+<a accesskey="p" href="../../../tutorial/advanced/interop/app-go.html"><img src="../../../images/prev.png" alt="Prev"></a>
+    <a accesskey="u" href="../../../tutorial/advanced/interop.html"><img src="../../../images/up.png" alt="Up"></a>
+    <a accesskey="h" href="../../../index.html"><img src="../../../images/home.png" alt="Home"></a><a accesskey="n" href="../../../recipes.html"><img src="../../../images/next.png" alt="Next"></a></div><div id="content">
+  <div class="titlepage"><div><div><h1 style="clear: both">Conclusion</h1></div></div></div>
+  <p>This worked example was in fact excessively complex: a quicker route
+to achieving the same thing would be to add explicit converting constructors
+to <code>app::error_code</code> for each of the third party library <code>E</code> types.
+One then could have saved oneself with having to bother injecting
+custom converters into the <code>BOOST_OUTCOME_V2_NAMESPACE::convert</code> namespace.
+If you control your application&rsquo;s <code>E</code> type, then that is probably a
+better, and certainly simpler, approach.</p>
+
+<p>However there are occasions when you don&rsquo;t have control over the
+implementation of the destination <code>E</code> type e.g. in callbacks. Outcome&rsquo;s <code>ValueOrError</code>
+infrastructure lets you inject custom interop code for any pair
+of incommensurate third party <code>E</code> types, without needing to modify either&rsquo;s
+source code.</p>
+
+<p>This is without doubt a &ldquo;power users&rdquo; feature, but
+one which will prove useful as <code>T|E</code> based C++ code proliferates.</p>
+
+
+        </div><p><small>Last revised: February 11, 2019 at 13:38:04 UTC</small></p>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../../../tutorial/advanced/interop/app-go.html"><img src="../../../images/prev.png" alt="Prev"></a>
+    <a accesskey="u" href="../../../tutorial/advanced/interop.html"><img src="../../../images/up.png" alt="Up"></a>
+    <a accesskey="h" href="../../../index.html"><img src="../../../images/home.png" alt="Home"></a><a accesskey="n" href="../../../recipes.html"><img src="../../../images/next.png" alt="Next"></a></div></body>
+</html>

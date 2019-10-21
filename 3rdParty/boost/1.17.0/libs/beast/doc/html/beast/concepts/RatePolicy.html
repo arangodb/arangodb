@@ -1,0 +1,294 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>RatePolicy</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Chapter&#160;1.&#160;Boost.Beast">
+<link rel="up" href="../concepts.html" title="Concepts">
+<link rel="prev" href="File.html" title="File">
+<link rel="next" href="streams.html" title="Streams">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="File.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../concepts.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="streams.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="beast.concepts.RatePolicy"></a><a class="link" href="RatePolicy.html" title="RatePolicy">RatePolicy</a>
+</h3></div></div></div>
+<p>
+        An instance of <span class="bold"><strong>RatePolicy</strong></span> is associated
+        with a <a class="link" href="../ref/boost__beast__basic_stream.html" title="basic_stream"><code class="computeroutput"><span class="identifier">basic_stream</span></code></a>, and controls the rate
+        at which bytes may be independently sent and received. This may be used to
+        achieve fine-grained bandwidth management and flow control.
+      </p>
+<h5>
+<a name="beast.concepts.RatePolicy.h0"></a>
+        <span class="phrase"><a name="beast.concepts.RatePolicy.associated_types"></a></span><a class="link" href="RatePolicy.html#beast.concepts.RatePolicy.associated_types">Associated
+        Types</a>
+      </h5>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; "><li class="listitem">
+            <a class="link" href="../ref/boost__beast__rate_policy_access.html" title="rate_policy_access"><code class="computeroutput"><span class="identifier">rate_policy_access</span></code></a>
+          </li></ul></div>
+<div class="warning"><table border="0" summary="Warning">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Warning]" src="../../../../../../doc/src/images/warning.png"></td>
+<th align="left">Warning</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+          These requirements may undergo non-backward compatible changes in subsequent
+          versions.
+        </p></td></tr>
+</table></div>
+<h5>
+<a name="beast.concepts.RatePolicy.h1"></a>
+        <span class="phrase"><a name="beast.concepts.RatePolicy.requirements"></a></span><a class="link" href="RatePolicy.html#beast.concepts.RatePolicy.requirements">Requirements</a>
+      </h5>
+<p>
+        In this table:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">P</span></code> denotes a type that
+            meets the requirements of <span class="bold"><strong>RatePolicy</strong></span>.
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">x</span></code> denotes an xvalue of
+            type <code class="computeroutput"><span class="identifier">P</span></code>
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">a</span></code> denotes a value of
+            type <code class="computeroutput"><span class="identifier">P</span></code>.
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">n</span></code> denotes a value of
+            type <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span></code>
+          </li>
+</ul></div>
+<div class="table">
+<a name="beast.concepts.RatePolicy.valid_expressions"></a><p class="title"><b>Table&#160;1.43.&#160;Valid expressions</b></p>
+<div class="table-contents"><table class="table" summary="Valid expressions">
+<colgroup>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Expression
+                </p>
+              </th>
+<th>
+                <p>
+                  Type
+                </p>
+              </th>
+<th>
+                <p>
+                  Semantics, Pre/Post-conditions
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">P</span> <span class="identifier">a</span><span class="special">(</span><span class="identifier">x</span><span class="special">)</span></code>
+                </p>
+              </td>
+<td>
+              </td>
+<td>
+                <p>
+                  Requires <span class="emphasis"><em>MoveConstructible</em></span>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="keyword">friend</span> <span class="identifier">rate_policy_access</span></code>
+                </p>
+              </td>
+<td>
+              </td>
+<td>
+                <p>
+                  The member functions required in <code class="computeroutput"><span class="identifier">P</span></code>
+                  should be private. <a class="link" href="../ref/boost__beast__rate_policy_access.html" title="rate_policy_access"><code class="computeroutput"><span class="identifier">rate_policy_access</span></code></a> must
+                  be a friend of <code class="computeroutput"><span class="identifier">P</span></code>
+                  for the implementation to gain access to the required member functions.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">a</span><span class="special">.</span><span class="identifier">available_read_bytes</span><span class="special">()</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  This function is called by the implementation to determine the
+                  maximum number of allowed bytes to be transferred in the next read
+                  operation. The actual number of bytes subsequently transferred
+                  may be less than this number.
+                </p>
+                <p>
+                  If the policy returns a value of zero, the read operation will
+                  asynchronously wait until the next timer interval before retrying.
+                  When the retry occurs, this function will be called again.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">a</span><span class="special">.</span><span class="identifier">available_write_bytes</span><span class="special">()</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  This function is called by the implementation to determine the
+                  maximum number of allowed bytes to be transferred in the next write
+                  operation. The actual number of bytes subsequently transferred
+                  may be less than this number.
+                </p>
+                <p>
+                  If the policy returns a value of zero, the read operation will
+                  asynchronously wait until the next timer interval before retrying.
+                  When the retry occurs, this function will be called again.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">a</span><span class="special">.</span><span class="identifier">transfer_read_bytes</span><span class="special">(</span><span class="identifier">n</span><span class="special">)</span></code>
+                </p>
+              </td>
+<td>
+              </td>
+<td>
+                <p>
+                  The implementation calls this function to inform the policy that
+                  <code class="computeroutput"><span class="identifier">n</span></code> bytes were successfully
+                  transferred in the most recent read operation. The policy object
+                  may optionally use this information to calculate throughputs and/or
+                  inform the algorithm used to determine subsequently queried transfer
+                  maximums.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">a</span><span class="special">.</span><span class="identifier">transfer_write_bytes</span><span class="special">(</span><span class="identifier">n</span><span class="special">)</span></code>
+                </p>
+              </td>
+<td>
+              </td>
+<td>
+                <p>
+                  The implementation calls this function to inform the policy that
+                  <code class="computeroutput"><span class="identifier">n</span></code> bytes were successfully
+                  transferred in the most recent write operation. The policy object
+                  may optionally use this information to calculate throughputs and/or
+                  inform the algorithm used to determine subsequently queried transfer
+                  limits.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">a</span><span class="special">.</span><span class="identifier">on_timer</span><span class="special">()</span></code>
+                </p>
+              </td>
+<td>
+              </td>
+<td>
+                <p>
+                  The implementation calls this function every time the internal
+                  timer expires. The policy object may optionally use this opportunity
+                  to calculate elapsed time and throughput, and/or inform the algorithm
+                  used to determine subsequently queried transfer limits.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<br class="table-break"><h5>
+<a name="beast.concepts.RatePolicy.h2"></a>
+        <span class="phrase"><a name="beast.concepts.RatePolicy.exemplar"></a></span><a class="link" href="RatePolicy.html#beast.concepts.RatePolicy.exemplar">Exemplar</a>
+      </h5>
+<pre class="programlisting"><span class="keyword">class</span> <span class="identifier">RatePolicy</span>
+<span class="special">{</span>
+    <span class="keyword">friend</span> <span class="keyword">class</span> <span class="identifier">rate_policy_access</span><span class="special">;</span>
+
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span>
+    <span class="identifier">available_read_bytes</span><span class="special">();</span>
+
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span>
+    <span class="identifier">available_write_bytes</span><span class="special">();</span>
+
+    <span class="keyword">void</span>
+    <span class="identifier">transfer_read_bytes</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span><span class="special">);</span>
+
+    <span class="keyword">void</span>
+    <span class="identifier">transfer_write_bytes</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span><span class="special">);</span>
+
+    <span class="keyword">void</span>
+    <span class="identifier">on_timer</span><span class="special">();</span>
+<span class="special">};</span>
+</pre>
+<h5>
+<a name="beast.concepts.RatePolicy.h3"></a>
+        <span class="phrase"><a name="beast.concepts.RatePolicy.models"></a></span><a class="link" href="RatePolicy.html#beast.concepts.RatePolicy.models">Models</a>
+      </h5>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            <a class="link" href="../ref/boost__beast__simple_rate_policy.html" title="simple_rate_policy"><code class="computeroutput"><span class="identifier">simple_rate_policy</span></code></a>
+          </li>
+<li class="listitem">
+            <a class="link" href="../ref/boost__beast__unlimited_rate_policy.html" title="unlimited_rate_policy"><code class="computeroutput"><span class="identifier">unlimited_rate_policy</span></code></a>
+          </li>
+</ul></div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2016-2019 Vinnie
+      Falco<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="File.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../concepts.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="streams.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

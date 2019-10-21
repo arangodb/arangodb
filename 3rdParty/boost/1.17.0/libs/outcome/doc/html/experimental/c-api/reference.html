@@ -1,0 +1,97 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html><meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>C Macro API Reference - Boost.Outcome documentation</title>
+<link rel="stylesheet" href="../../css/boost.css" type="text/css">
+<meta name="generator" content="Hugo 0.52 with Boostdoc theme">
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+
+<link rel="icon" href="../../images/favicon.ico" type="image/ico"/>
+<body><div class="spirit-nav">
+<a accesskey="p" href="../../experimental/c-api/example2.html"><img src="../../images/prev.png" alt="Prev"></a>
+    <a accesskey="u" href="../../experimental/c-api.html"><img src="../../images/up.png" alt="Up"></a>
+    <a accesskey="h" href="../../index.html"><img src="../../images/home.png" alt="Home"></a><a accesskey="n" href="../../reference.html"><img src="../../images/next.png" alt="Next"></a></div><div id="content">
+  <div class="titlepage"><div><div><h1 style="clear: both">C Macro API Reference</h1></div></div></div>
+  
+
+<p>The C macro API header <code>&lt;boost/outcome/experimental/result.h&gt;</code> consists of these macros:</p>
+
+<dl>
+<dt><code>BOOST_OUTCOME_C_DECLARE_RESULT(ident, T, E)</code>
+<dd>Declares to C a <code>basic_result<T, E></code> type uniquely
+identified by <code>ident</code>. <code>T</code> is available at the
+member variable <code>.value</code>, and <code>E</code> is available
+at the member variable <code>.error</code>.
+
+<dt><code>BOOST_OUTCOME_C_RESULT(ident)</code>
+<dd>A reference to a previously declared <code>result</code> type with
+unique <code>ident</code>.
+
+<dt><code>BOOST_OUTCOME_C_RESULT_HAS_VALUE(r)</code>
+<dd>Evaluates to 1 (true) if the input <code>result</code> has a value.
+
+<dt><code>BOOST_OUTCOME_C_RESULT_HAS_ERROR(r)</code>
+<dd>Evaluates to 1 (true) if the input <code>result</code> has an error.
+
+<dt><code>BOOST_OUTCOME_C_RESULT_ERROR_IS_ERRNO(r)</code>
+<dd>Evaluates to 1 (true) if the input <code>result</code>'s error value
+is a code in the POSIX <code>errno</code> domain.
+</dl>
+
+<p>The above let you work, somewhat awkwardly, with any C-compatible
+<code>basic_result&lt;T, E&gt;</code>. <code>basic_result&lt;T, E&gt;</code> is trivially copyable and
+standard layout if its <code>T</code> and <code>E</code> are both so, and it has the C layout:</p>
+<div class="highlight"><pre class="chroma"><code class="language-c++" data-lang="c++"><span class="k">struct</span> <span class="n">cxx_result_</span><span class="cp">##ident
+</span><span class="cp"></span><span class="p">{</span>
+  <span class="n">T</span> <span class="n">value</span><span class="p">;</span>
+  <span class="kt">unsigned</span> <span class="n">flags</span><span class="p">;</span>
+  <span class="n">E</span> <span class="n">error</span><span class="p">;</span>
+<span class="p">};</span>
+</code></pre></div>
+<h3 id="system-error2-support"><code>&lt;system_error2&gt;</code> support</h3>
+
+<dl>
+<dt><code>BOOST_OUTCOME_C_DECLARE_STATUS_CODE(ident, value_type)</code>
+<dd>Declares to C a status code type with domain <code>value_type</code>
+available at the member variable <code>.value</code>. The <code>ident</code>
+must be any identifier fragment unique in this translation unit. It is
+used to uniquely identify this status code type in other macros.
+
+<dt><code>BOOST_OUTCOME_C_STATUS_CODE(ident)</code>
+<dd>A reference to a previously declared status code type with unique
+<code>ident</code>.
+</dl>
+
+<p>There is a high likelihood that C++ functions regularly called by C
+code will return their failures either in erased <code>system_code</code>
+or in <code>posix_code</code> (i.e. <code>errno</code> code domain). Via querying the
+returned value using <code>BOOST_OUTCOME_C_RESULT_ERROR_IS_ERRNO(r)</code>, one can determine
+if the returned code is in the <code>errno</code> code domain, and thus can be
+fed to <code>strerror()</code> and so on. Therefore there are
+convenience macro APIs for those particular use cases.</p>
+
+<dl>
+<dt><code>BOOST_OUTCOME_C_DECLARE_RESULT_ERRNO(ident, T)</code>
+<dd>Declares to C a <code>basic_result&lt;T, posix_code&gt;</code>
+type uniquely identified by <code>ident</code>.
+
+<dt><code>BOOST_OUTCOME_C_RESULT_ERRNO(ident)</code>
+<dd>A reference to a previously declared <code>basic_result&lt;T, posix_code&gt;</code>
+type with unique <code>ident</code>.
+
+<dt><code>BOOST_OUTCOME_C_DECLARE_RESULT_SYSTEM(ident, T)</code>
+<dd>Declares to C a <code>basic_result&lt;T, system_code&gt;</code>
+type uniquely identified by <code>ident</code>.
+
+<dt><code>BOOST_OUTCOME_C_RESULT_SYSTEM(ident)</code>
+<dd>A reference to a previously declared <code>basic_result&lt;T, system_code&gt;</code>
+type with unique <code>ident</code>.
+</dl>
+
+
+        </div><p><small>Last revised: February 05, 2019 at 17:14:18 UTC</small></p>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../../experimental/c-api/example2.html"><img src="../../images/prev.png" alt="Prev"></a>
+    <a accesskey="u" href="../../experimental/c-api.html"><img src="../../images/up.png" alt="Up"></a>
+    <a accesskey="h" href="../../index.html"><img src="../../images/home.png" alt="Home"></a><a accesskey="n" href="../../reference.html"><img src="../../images/next.png" alt="Next"></a></div></body>
+</html>

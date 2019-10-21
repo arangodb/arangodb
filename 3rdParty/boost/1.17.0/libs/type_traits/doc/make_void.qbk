@@ -1,0 +1,48 @@
+[/
+Copyright 2017 Glen Joseph Fernandes
+(glenjofe@gmail.com)
+
+Distributed under the Boost Software License,
+Version 1.0. (See accompanying file LICENSE_1_0.txt
+or copy at http://www.boost.org/LICENSE_1_0.txt).
+]
+
+[section:make_void make_void]
+
+    template<class...>
+    struct make_void
+    {
+        typedef void type;
+    };
+
+    template<class... Ts>
+    using void_t = typename make_void<Ts...>::type;
+
+__type The type `void` for all `T`.
+
+__header ` #include <boost/type_traits/make_void.hpp>` or ` #include <boost/type_traits.hpp>`
+
+[table Examples
+
+[[Expression] [Result Type]]
+
+[[`make_void<int>::type`][`void`]]
+
+[[`make_void<int&>::type`] [`void`]]
+
+[[`make_void<int(*)(int)>::type`] [`void`]]
+
+[[`make_void<int[]>::type`] [`void`]]
+
+[[`make_void<int[1]>::type`] [`void`]]
+
+[[`make_void<>::type`] [`void`]]
+
+[[`make_void<int, int>::type`] [`void`]]
+
+]
+
+[all_compilers]  However, the type alias `void_t` is only available if the compiler supports template aliases.
+Further, in the absence of variadic-template support, `make_void` only supports up to 5 parameters.
+
+[endsect]

@@ -1,0 +1,38 @@
+[chapter Glossary
+    [quickbook 1.7]
+    [id glossary]
+]
+
+[variablelist
+[[arity [#arity]]
+ [The number of argumnts accepted by a function or member function.
+  Unless otherwise specified, the hidden `this` argument to member
+  functions is not counted when specifying arity.]]
+[[ntbs [#ntbs]]
+ [Null-Terminated Byte String, or 'C'-string. C++ string literals are *ntbs*\ es.
+  An *ntbs* must never be null.]]
+[[raise [#raise]]
+ [Exceptions in Python are "raised", not "thrown", as they are in C++.
+  When this documentation says that some Python exception is "raised" in
+  the context of C++ code, it means that the corresponding Python exception
+  is set via the [@http://www.python.org/doc/current/api/exceptionHandling.html Python/'C' API],
+  and `throw_error_already_set()` is called.]]
+[[POD [#pod]]
+ [A technical term from the C++ standard. Short for "Plain Ol'Data":
+  A POD-struct is an aggregate class that has no non-static data members
+  of type pointer to member, non-POD-struct, non-POD-union (or array of such
+  types) or reference, and has no user-defined copy assign- ment operator and
+  no user-defined destructor. Similarly, a POD-union is an aggregate union that
+  has no non-static data members of type pointer to member, non-POD-struct,
+  non-POD-union (or array of such types) or reference, and has no
+  user-defined copy assignment operator and no user-defined destructor. A
+  POD class is a class that is either a POD-struct or a POD-union. An
+  aggregate is an array or a class (clause 9) with no user-declared
+  constructors (12.1), no private or protected non-static data members
+  (clause 11), no base classes (clause 10), and no virtual functions
+  (10.3).]]
+[[ODR [#odr]]
+ [The "One Definition Rule", which says that any entity in a C++ program must have
+  the same definition in all translation units (object files) which make up a program.]]
+]
+

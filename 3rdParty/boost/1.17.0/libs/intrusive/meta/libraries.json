@@ -1,0 +1,14 @@
+{
+    "key": "intrusive",
+    "name": "Intrusive",
+    "authors": [
+        "Ion Gazta\u00f1aga"
+    ],
+    "description": "Intrusive containers and algorithms.",
+    "category": [
+        "Containers"
+    ],
+    "maintainers": [
+        "Ion Gaztanaga <igaztanaga -at- gmail.com>"
+    ]
+}

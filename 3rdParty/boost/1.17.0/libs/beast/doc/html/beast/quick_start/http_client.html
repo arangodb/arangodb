@@ -1,0 +1,137 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Simple HTTP Client &#128161;</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Chapter&#160;1.&#160;Boost.Beast">
+<link rel="up" href="../quick_start.html" title="Quick Look">
+<link rel="prev" href="../quick_start.html" title="Quick Look">
+<link rel="next" href="websocket_client.html" title="Simple WebSocket Client &#128161;">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../quick_start.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../quick_start.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="websocket_client.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="beast.quick_start.http_client"></a><a class="link" href="http_client.html" title="Simple HTTP Client &#128161;">Simple HTTP Client &#128161;</a>
+</h3></div></div></div>
+<p>
+        Use HTTP to make a GET request to a website and print the response:
+      </p>
+<p>
+        File: <a href="../../../../example/http/client/sync/http_client_sync.cpp" target="_top">http_sync_client.cpp</a>
+      </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">beast</span><span class="special">/</span><span class="identifier">core</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">beast</span><span class="special">/</span><span class="identifier">http</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">beast</span><span class="special">/</span><span class="identifier">version</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">asio</span><span class="special">/</span><span class="identifier">connect</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">asio</span><span class="special">/</span><span class="identifier">ip</span><span class="special">/</span><span class="identifier">tcp</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">cstdlib</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">iostream</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">string</span><span class="special">&gt;</span>
+
+<span class="keyword">namespace</span> <span class="identifier">beast</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">beast</span><span class="special">;</span>     <span class="comment">// from &lt;boost/beast.hpp&gt;</span>
+<span class="keyword">namespace</span> <span class="identifier">http</span> <span class="special">=</span> <span class="identifier">beast</span><span class="special">::</span><span class="identifier">http</span><span class="special">;</span>       <span class="comment">// from &lt;boost/beast/http.hpp&gt;</span>
+<span class="keyword">namespace</span> <span class="identifier">net</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">;</span>        <span class="comment">// from &lt;boost/asio.hpp&gt;</span>
+<span class="keyword">using</span> <span class="identifier">tcp</span> <span class="special">=</span> <span class="identifier">net</span><span class="special">::</span><span class="identifier">ip</span><span class="special">::</span><span class="identifier">tcp</span><span class="special">;</span>           <span class="comment">// from &lt;boost/asio/ip/tcp.hpp&gt;</span>
+
+<span class="comment">// Performs an HTTP GET and prints the response</span>
+<span class="keyword">int</span> <span class="identifier">main</span><span class="special">(</span><span class="keyword">int</span> <span class="identifier">argc</span><span class="special">,</span> <span class="keyword">char</span><span class="special">**</span> <span class="identifier">argv</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="keyword">try</span>
+    <span class="special">{</span>
+        <span class="comment">// Check command line arguments.</span>
+        <span class="keyword">if</span><span class="special">(</span><span class="identifier">argc</span> <span class="special">!=</span> <span class="number">4</span> <span class="special">&amp;&amp;</span> <span class="identifier">argc</span> <span class="special">!=</span> <span class="number">5</span><span class="special">)</span>
+        <span class="special">{</span>
+            <span class="identifier">std</span><span class="special">::</span><span class="identifier">cerr</span> <span class="special">&lt;&lt;</span>
+                <span class="string">"Usage: http-client-sync &lt;host&gt; &lt;port&gt; &lt;target&gt; [&lt;HTTP version: 1.0 or 1.1(default)&gt;]\n"</span> <span class="special">&lt;&lt;</span>
+                <span class="string">"Example:\n"</span> <span class="special">&lt;&lt;</span>
+                <span class="string">"    http-client-sync www.example.com 80 /\n"</span> <span class="special">&lt;&lt;</span>
+                <span class="string">"    http-client-sync www.example.com 80 / 1.0\n"</span><span class="special">;</span>
+            <span class="keyword">return</span> <span class="identifier">EXIT_FAILURE</span><span class="special">;</span>
+        <span class="special">}</span>
+        <span class="keyword">auto</span> <span class="keyword">const</span> <span class="identifier">host</span> <span class="special">=</span> <span class="identifier">argv</span><span class="special">[</span><span class="number">1</span><span class="special">];</span>
+        <span class="keyword">auto</span> <span class="keyword">const</span> <span class="identifier">port</span> <span class="special">=</span> <span class="identifier">argv</span><span class="special">[</span><span class="number">2</span><span class="special">];</span>
+        <span class="keyword">auto</span> <span class="keyword">const</span> <span class="identifier">target</span> <span class="special">=</span> <span class="identifier">argv</span><span class="special">[</span><span class="number">3</span><span class="special">];</span>
+        <span class="keyword">int</span> <span class="identifier">version</span> <span class="special">=</span> <span class="identifier">argc</span> <span class="special">==</span> <span class="number">5</span> <span class="special">&amp;&amp;</span> <span class="special">!</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">strcmp</span><span class="special">(</span><span class="string">"1.0"</span><span class="special">,</span> <span class="identifier">argv</span><span class="special">[</span><span class="number">4</span><span class="special">])</span> <span class="special">?</span> <span class="number">10</span> <span class="special">:</span> <span class="number">11</span><span class="special">;</span>
+
+        <span class="comment">// The io_context is required for all I/O</span>
+        <span class="identifier">net</span><span class="special">::</span><span class="identifier">io_context</span> <span class="identifier">ioc</span><span class="special">;</span>
+
+        <span class="comment">// These objects perform our I/O</span>
+        <span class="identifier">tcp</span><span class="special">::</span><span class="identifier">resolver</span> <span class="identifier">resolver</span><span class="special">(</span><span class="identifier">ioc</span><span class="special">);</span>
+        <span class="identifier">beast</span><span class="special">::</span><span class="identifier">tcp_stream</span> <span class="identifier">stream</span><span class="special">(</span><span class="identifier">ioc</span><span class="special">);</span>
+
+        <span class="comment">// Look up the domain name</span>
+        <span class="keyword">auto</span> <span class="keyword">const</span> <span class="identifier">results</span> <span class="special">=</span> <span class="identifier">resolver</span><span class="special">.</span><span class="identifier">resolve</span><span class="special">(</span><span class="identifier">host</span><span class="special">,</span> <span class="identifier">port</span><span class="special">);</span>
+
+        <span class="comment">// Make the connection on the IP address we get from a lookup</span>
+        <span class="identifier">stream</span><span class="special">.</span><span class="identifier">connect</span><span class="special">(</span><span class="identifier">results</span><span class="special">);</span>
+
+        <span class="comment">// Set up an HTTP GET request message</span>
+        <span class="identifier">http</span><span class="special">::</span><span class="identifier">request</span><span class="special">&lt;</span><span class="identifier">http</span><span class="special">::</span><span class="identifier">string_body</span><span class="special">&gt;</span> <span class="identifier">req</span><span class="special">{</span><span class="identifier">http</span><span class="special">::</span><span class="identifier">verb</span><span class="special">::</span><span class="identifier">get</span><span class="special">,</span> <span class="identifier">target</span><span class="special">,</span> <span class="identifier">version</span><span class="special">};</span>
+        <span class="identifier">req</span><span class="special">.</span><span class="identifier">set</span><span class="special">(</span><span class="identifier">http</span><span class="special">::</span><span class="identifier">field</span><span class="special">::</span><span class="identifier">host</span><span class="special">,</span> <span class="identifier">host</span><span class="special">);</span>
+        <span class="identifier">req</span><span class="special">.</span><span class="identifier">set</span><span class="special">(</span><span class="identifier">http</span><span class="special">::</span><span class="identifier">field</span><span class="special">::</span><span class="identifier">user_agent</span><span class="special">,</span> <span class="identifier">BOOST_BEAST_VERSION_STRING</span><span class="special">);</span>
+
+        <span class="comment">// Send the HTTP request to the remote host</span>
+        <span class="identifier">http</span><span class="special">::</span><span class="identifier">write</span><span class="special">(</span><span class="identifier">stream</span><span class="special">,</span> <span class="identifier">req</span><span class="special">);</span>
+
+        <span class="comment">// This buffer is used for reading and must be persisted</span>
+        <span class="identifier">beast</span><span class="special">::</span><span class="identifier">flat_buffer</span> <span class="identifier">buffer</span><span class="special">;</span>
+
+        <span class="comment">// Declare a container to hold the response</span>
+        <span class="identifier">http</span><span class="special">::</span><span class="identifier">response</span><span class="special">&lt;</span><span class="identifier">http</span><span class="special">::</span><span class="identifier">dynamic_body</span><span class="special">&gt;</span> <span class="identifier">res</span><span class="special">;</span>
+
+        <span class="comment">// Receive the HTTP response</span>
+        <span class="identifier">http</span><span class="special">::</span><span class="identifier">read</span><span class="special">(</span><span class="identifier">stream</span><span class="special">,</span> <span class="identifier">buffer</span><span class="special">,</span> <span class="identifier">res</span><span class="special">);</span>
+
+        <span class="comment">// Write the message to standard out</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">res</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+
+        <span class="comment">// Gracefully close the socket</span>
+        <span class="identifier">beast</span><span class="special">::</span><span class="identifier">error_code</span> <span class="identifier">ec</span><span class="special">;</span>
+        <span class="identifier">stream</span><span class="special">.</span><span class="identifier">socket</span><span class="special">().</span><span class="identifier">shutdown</span><span class="special">(</span><span class="identifier">tcp</span><span class="special">::</span><span class="identifier">socket</span><span class="special">::</span><span class="identifier">shutdown_both</span><span class="special">,</span> <span class="identifier">ec</span><span class="special">);</span>
+
+        <span class="comment">// not_connected happens sometimes</span>
+        <span class="comment">// so don't bother reporting it.</span>
+        <span class="comment">//</span>
+        <span class="keyword">if</span><span class="special">(</span><span class="identifier">ec</span> <span class="special">&amp;&amp;</span> <span class="identifier">ec</span> <span class="special">!=</span> <span class="identifier">beast</span><span class="special">::</span><span class="identifier">errc</span><span class="special">::</span><span class="identifier">not_connected</span><span class="special">)</span>
+            <span class="keyword">throw</span> <span class="identifier">beast</span><span class="special">::</span><span class="identifier">system_error</span><span class="special">{</span><span class="identifier">ec</span><span class="special">};</span>
+
+        <span class="comment">// If we get here then the connection is closed gracefully</span>
+    <span class="special">}</span>
+    <span class="keyword">catch</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">exception</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">e</span><span class="special">)</span>
+    <span class="special">{</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">cerr</span> <span class="special">&lt;&lt;</span> <span class="string">"Error: "</span> <span class="special">&lt;&lt;</span> <span class="identifier">e</span><span class="special">.</span><span class="identifier">what</span><span class="special">()</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+        <span class="keyword">return</span> <span class="identifier">EXIT_FAILURE</span><span class="special">;</span>
+    <span class="special">}</span>
+    <span class="keyword">return</span> <span class="identifier">EXIT_SUCCESS</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2016-2019 Vinnie
+      Falco<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../quick_start.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../quick_start.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="websocket_client.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

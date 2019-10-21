@@ -1,0 +1,16 @@
+[section Header Organization]
+
+The main header you will always need to use _yap_ is the _alg_header_.  If you
+want to ensure that you don't accidentally use _expr_ (which I recommend),
+just include this header and nothing else.
+
+If you want to use the _expr_ reference expression template (great for
+prototyping, but not recommended for production work), include the
+_expr_header_.
+
+If you want to include all of the above, use the _yap_header_.
+
+If you want to use _print_, include the _print_header_; this header is not
+included in the _yap_header_.
+
+[endsect]

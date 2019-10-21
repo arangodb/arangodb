@@ -1,0 +1,262 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE section PUBLIC "-//Boost//DTD BoostBook XML V1.1//EN"
+"http://www.boost.org/tools/boostbook/dtd/boostbook.dtd">
+<section id="safe_numerics.promotion_policy">
+  <title>PromotionPolicy&lt;PP&gt;</title>
+
+  <?dbhtml stop-chunking?>
+
+  <section>
+    <title>Description</title>
+
+    <para>In C++, arithmetic operations result in types which may or may not
+    be the same as the constituent types. A promotion policy determines the
+    type of the result of an arithmetic operation. For example, in the
+    following code<programlisting>int x;
+char y;
+auto z = x + y</programlisting>the type of <code>z</code> will be an
+    <code>int</code>. This is a consequence for the standard rules for type
+    promotion for C/C++ arithmetic. A key feature of library permits one to
+    specify his own type promotion rules via a PromotionPolicy class.</para>
+  </section>
+
+  <section>
+    <title>Notation</title>
+
+    <informaltable>
+      <tgroup cols="2" colsep="1" rowsep="1">
+        <colspec align="left" colwidth="1*"/>
+
+        <colspec align="left" colwidth="4*"/>
+
+        <tbody>
+          <row>
+            <entry><code>PP</code></entry>
+
+            <entry>A type that full fills the requirements of a
+            PromotionPollicy</entry>
+          </row>
+
+          <row>
+            <entry><code>T, U</code></entry>
+
+            <entry>A type that is a model of the Numeric concept</entry>
+          </row>
+
+          <row>
+            <entry><code>R</code></entry>
+
+            <entry>An object of type modeling Numeric which can be used to
+            construct a SafeNumeric type.</entry>
+          </row>
+        </tbody>
+      </tgroup>
+    </informaltable>
+  </section>
+
+  <section>
+    <title>Valid Expressions</title>
+
+    <para>Any operations which result in integers which cannot be represented
+    as some Numeric type will throw an exception.These expressions return a
+    type which can be used as the basis create a SafeNumeric type.</para>
+
+    <para><informaltable>
+        <tgroup cols="2">
+          <colspec align="left"/>
+
+          <colspec align="left"/>
+
+          <thead>
+            <row>
+              <entry align="left">Expression</entry>
+
+              <entry>Return Value</entry>
+            </row>
+          </thead>
+
+          <tbody>
+            <row>
+              <entry><code>PP::addition_result&lt;T,
+              U&gt;::type</code></entry>
+
+              <entry>unspecified Numeric type</entry>
+            </row>
+
+            <row>
+              <entry><code>PP::subtraction_result&lt;T,
+              U&gt;::type</code></entry>
+
+              <entry>unspecified Numeric type</entry>
+            </row>
+
+            <row>
+              <entry><code>PP::multiplication_result&lt;T,
+              U&gt;::type</code></entry>
+
+              <entry>unspecified Numeric type</entry>
+            </row>
+
+            <row>
+              <entry><code>PP::division_result&lt;T,
+              U&gt;::type</code></entry>
+
+              <entry>unspecified Numeric type</entry>
+            </row>
+
+            <row>
+              <entry><code>PP::modulus_result&lt;T, U&gt;::type</code></entry>
+
+              <entry>unspecified Numeric type</entry>
+            </row>
+
+            <row>
+              <entry><code>PP::comparison_result&lt;T,
+              U&gt;::type</code></entry>
+
+              <entry>bool</entry>
+            </row>
+
+            <row>
+              <entry><code>PP::left_shift_result&lt;T,
+              U&gt;::type</code></entry>
+
+              <entry>unspecified Numeric type</entry>
+            </row>
+
+            <row>
+              <entry><code>PP::right_shift_result&lt;T,
+              u&gt;::type</code></entry>
+
+              <entry>unspecified Numeric type</entry>
+            </row>
+
+            <row>
+              <entry><code>PP::bitwise_or_result&lt;T,
+              U&gt;::type</code></entry>
+
+              <entry>unspecified Numeric type</entry>
+            </row>
+
+            <row>
+              <entry><code>PP::bitwise_and_result&lt;T,
+              U&gt;::type</code></entry>
+
+              <entry>unspecified Numeric type</entry>
+            </row>
+
+            <row>
+              <entry><code>PP::bitwise_xor_result&lt;T,
+              U&gt;::type</code></entry>
+
+              <entry>unspecified Numeric type</entry>
+            </row>
+          </tbody>
+        </tgroup>
+      </informaltable></para>
+  </section>
+
+  <section>
+    <title>Models</title>
+
+    <para>The library contains a number of pre-made promotion policies:</para>
+
+    <itemizedlist>
+      <listitem id="safe_numerics.promotion_policy.models.native">
+        <para><code>boost::numeric::native</code></para>
+
+        <para>Use the normal C/C++ expression type promotion rules.
+        <programlisting name="cpp">int x;
+char y;
+auto z = x + y; // could result in overflow
+safe&lt;int, native&gt; sx;
+auto sz = sx + y; // standard C++ code which detects errors</programlisting></para>
+
+        <para>Type sz will be a <link
+        linkend="safe_numerics.safe_numeric_concept">SafeNumeric</link> type
+        based on <code>int</code>. If the result exceeds the maximum value
+        that can be stored in an <code>int</code>, an error is
+        detected.</para>
+
+        <para>The <code>native</code> policy is documented in <link
+        linkend="safe_numerics.promotion_policies.native">Promotion Policies -
+        native</link>.</para>
+      </listitem>
+
+      <listitem id="safe_numerics.promotion_policy.models.automatic">
+        <para><code>boost::numeric::automatic</code></para>
+
+        <para>Use optimizing expression type promotion rules. These rules
+        replace the normal C/C++ type promotion rules with other rules which
+        are designed to result in more efficient computations. Expression
+        types are promoted to the smallest type which can be guaranteed to
+        hold the result without overflow. If there is no such type, the result
+        will be checked for overflow. Consider the following
+        example:<programlisting>int x;
+char y;
+auto z = x + y; // could result in overflow
+safe&lt;int, automatic&gt; sx;
+auto sz = sx + y; 
+    // sz is a safe type based on long
+    // hence sz is guaranteed not to overflow.
+safe_unsigned_range&lt;1, 4&gt; a;
+safe_unsigned_range&lt;2, 4&gt; b;
+auto c = a + b; // c will be a safe type with a range [3,8] and cannot overflow
+</programlisting></para>
+
+        <para>Type sz will be a <link
+        linkend="safe_numerics.safe_numeric_concept">SafeNumeric</link> type
+        which is guaranteed to hold he result of x + y. In this case that will
+        be a long int (or perhaps a long long) depending upon the compiler and
+        machine architecture. In this case, there will be no need for any
+        special checking on the result and there can be no overflow.</para>
+
+        <para>Type of c will be a signed character as that type can be
+        guaranteed to hold the sum so no overflow checking is done.</para>
+
+        <para>This policy is documented in <link
+        linkend="safe_numerics.promotion_policies.automatic">Promotion
+        Policies - automatic</link></para>
+      </listitem>
+
+      <listitem>
+        <para>boost::numeric::cpp</para>
+
+        <para>Use expression type promotion rules to emulate another
+        processor. When this policy is used, C++ type for safe integers
+        follows the rules that a compiler on the target processor would use.
+        This permits one to test code destined for a one processor on the
+        another one. One situation there this can be very, very useful is when
+        testing code destined for a micro controller which doesn't have the
+        logging, debugging, input/output facilities of a
+        desktop.<programlisting>// specify a promotion policy to support proper emulation of 
+// PIC 18f2520 types on the desktop
+using pic16_promotion = boost::numeric::cpp&lt;
+    8,  // char      8 bits
+    16, // short     16 bits
+    16, // int       16 bits
+    16, // long      16 bits
+    32  // long long 32 bits
+&gt;;
+...
+safe&lt;std::uint16_t, pic16_promotion&gt; x, y;
+...
+
+x + y; // detect possible overflow on the pic.</programlisting></para>
+
+        <para>For a complete example see <link
+        linkend="safe_numerics.safety_critical_embedded_controller">Safety
+        Critical Embedded Controller</link>.</para>
+      </listitem>
+    </itemizedlist>
+  </section>
+
+  <section>
+    <title>Header</title>
+
+    <para><ulink
+    url="../../include/boost/safe_numerics/concept/promotion_policy.hpp"><code>#include
+    &lt;boost/numeric/safe_numerics/concepts/promotion_policy.hpp&gt;
+    </code></ulink></para>
+  </section>
+</section>

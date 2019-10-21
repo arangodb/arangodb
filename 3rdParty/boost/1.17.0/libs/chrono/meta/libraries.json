@@ -1,0 +1,20 @@
+[
+  {
+    "key": "chrono",
+    "name": "Chrono",
+    "authors": [
+      "Howard Hinnant",
+      "Beman Dawes",
+      "Vicente J. Botet Escriba"
+    ],
+    "maintainers": [
+      "Vicente J. Botet Escriba <vicente.botet -at- wanadoo.fr>"
+    ],
+    "description":
+      "Useful time utilities. C++11.",
+    "std": [ "proposal" ],    
+    "category": [
+      "Domain", "System"
+    ]
+  }
+]

@@ -1,0 +1,141 @@
+[/
+    Copyright (c) 2016-2019 Vinnie Falco (vinnie dot falco at gmail dot com)
+
+    Distributed under the Boost Software License, Version 1.0. (See accompanying
+    file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+
+    Official repository: https://github.com/boostorg/beast
+]
+
+[section Parser Stream Operations]
+
+Non-trivial algorithms need to do more than receive entire messages
+at once, such as:
+
+
+* Receive the header first and body later.
+
+* Receive a large body using a fixed-size buffer.
+
+* Receive a message incrementally: bounded work in each I/O cycle.
+
+* Defer the commitment to a __Body__ type until after reading the header.
+
+These types of operations require callers to manage the lifetime of
+associated state, by constructing a class derived from __basic_parser__.
+Beast comes with the derived instance __parser__ which creates complete
+__message__ objects using the __basic_fields__ Fields container.
+
+[table Parser
+[[Name][Description]]
+[[
+    __parser__
+][
+    ```
+    /// An HTTP/1 parser for producing a message.
+    template<
+        bool isRequest,                         // `true` to parse an HTTP request
+        class Body,                             // The Body type for the resulting message
+        class Allocator = std::allocator<char>> // The type of allocator for the header
+    class parser
+        : public basic_parser<...>;
+    ```
+]]
+[[
+    [link beast.ref.boost__beast__http__request_parser `request_parser`]
+][
+    ```
+    /// An HTTP/1 parser for producing a request message.
+    template<class Body, class Allocator = std::allocator<char>>
+    using request_parser = parser<true, Body, Allocator>;
+    ```
+]]
+[[
+    [link beast.ref.boost__beast__http__response_parser `response_parser`]
+][
+    ```
+    /// An HTTP/1 parser for producing a response message.
+    template<class Body, class Allocator = std::allocator<char>>
+    using response_parser = parser<false, Body, Allocator>;
+    ```
+]]
+]
+
+[note
+    The __basic_parser__ and classes derived from it handle octet streams
+    serialized in the HTTP/1 format described in __rfc7230__.
+]
+
+The stream operations which work on parsers are:
+
+[table Parser Stream Operations
+[[Name][Description]]
+[[
+    [link beast.ref.boost__beast__http__read.overload1 [*read]]
+][
+    Read everything into a parser from a __SyncWriteStream__.
+]]
+[[
+    [link beast.ref.boost__beast__http__async_read.overload1 [*async_read]]
+][
+    Read everything into a parser asynchronously from an __AsyncWriteStream__.
+]]
+[[
+    [link beast.ref.boost__beast__http__read_header.overload1 [*read_header]]
+][
+    Read only the header octets into a parser from a __SyncWriteStream__.
+]]
+[[
+    [link beast.ref.boost__beast__http__async_read_header [*async_read_header]]
+][
+    Read only the header octets into a parser asynchronously from an __AsyncWriteStream__.
+]]
+[[
+    [link beast.ref.boost__beast__http__read_some.overload1 [*read_some]]
+][
+    Read some octets into a parser from a __SyncReadStream__.
+]]
+[[
+    [link beast.ref.boost__beast__http__async_read_some [*async_read_some]]
+][
+    Read some octets into a parser asynchronously from an __AsyncWriteStream__.
+]]
+]
+
+As with message stream operations, parser stream operations require a
+persisted __DynamicBuffer__  for holding unused octets from the stream.
+The basic parser implementation is optimized for the case where this dynamic
+buffer stores its input sequence in a single contiguous memory buffer. It is
+advised to use an instance of __flat_buffer__, __flat_static_buffer__, or
+__flat_static_buffer_base__ for this purpose, although a user defined instance
+of __DynamicBuffer__ which produces input sequences of length one is also
+suitable.
+
+The parser contains a message constructed internally. Arguments passed
+to the parser's constructor are forwarded into the message container.
+The caller can access the message inside the parser by calling
+[link beast.ref.boost__beast__http__parser.get `parser::get`].
+If the `Fields` and `Body` types are [*MoveConstructible], the caller
+can take ownership of the message by calling
+[link beast.ref.boost__beast__http__parser.release `parser::release`]. In this example
+we read an HTTP response with a string body using a parser, then print
+the response:
+
+[http_snippet_13]
+
+
+
+[section:incremental_read Incremental Read __example__]
+
+This function uses
+[link beast.ref.boost__beast__http__buffer_body `buffer_body`]
+and parser stream operations to read a message body progressively
+using a small, fixed-size buffer:
+
+[example_incremental_read]
+
+[endsect]
+
+
+
+[endsect]

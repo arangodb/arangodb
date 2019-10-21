@@ -1,0 +1,81 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html><meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Approximate map between error code designs - Boost.Outcome documentation</title>
+<link rel="stylesheet" href="../css/boost.css" type="text/css">
+<meta name="generator" content="Hugo 0.52 with Boostdoc theme">
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+
+<link rel="icon" href="../images/favicon.ico" type="image/ico"/>
+<body><div class="spirit-nav">
+<a accesskey="p" href="../experimental/advantages.html"><img src="../images/prev.png" alt="Prev"></a>
+    <a accesskey="u" href="../experimental.html"><img src="../images/up.png" alt="Up"></a>
+    <a accesskey="h" href="../index.html"><img src="../images/home.png" alt="Home"></a><a accesskey="n" href="../experimental/differences.html"><img src="../images/next.png" alt="Next"></a></div><div id="content">
+  <div class="titlepage"><div><div><h1 style="clear: both">Approximate map between error code designs</h1></div></div></div>
+  <p>Much of the design of Boost.System (which went on to become <code>&lt;system_error&gt;</code>)
+has been retained in proposed <code>&lt;system_error2&gt;</code>, so an approximate map between
+<code>&lt;system_error2&gt;</code> and <code>&lt;system_error&gt;</code> and Boost.System can be given:</p>
+
+<table width="100%" cellpadding="5" border="1">
+<colgroup>
+ <col width="25%">
+ <col width="25%">
+ <col width="50%">
+</colgroup>
+<tr><th>C++ 17 <tt>&lt;system_error&gt;</tt><th>Boost.System<th>Proposed <tt>&lt;system_error2&gt;</tt>
+<tr>
+ <td style="vertical-align: top;"><tt>std::errc</tt>
+ <td style="vertical-align: top;"><tt>boost::system::errc</tt>
+ <td style="vertical-align: top;"><tt>experimental::errc</tt> (almost identical)
+<tr>
+ <td style="vertical-align: top;"><tt>std::error_category</tt>
+ <td style="vertical-align: top;"><tt>boost::system::error_category</tt>
+ <td style="vertical-align: top;"><tt>experimental::status_code_domain</tt>
+<tr>
+ <td style="vertical-align: top;"><tt>std::generic_category</tt>
+ <td style="vertical-align: top;"><tt>boost::system::generic_category</tt>
+ <td style="vertical-align: top;"><tt>experimental::generic_code_domain</tt>
+<tr>
+ <td style="vertical-align: top;"><tt>std::system_category</tt>
+ <td style="vertical-align: top;"><tt>boost::system::system_category</tt>
+ <td style="vertical-align: top;">One of:<ul>
+  <li><tt>experimental::posix_code_domain</tt> (POSIX systems)<p>
+  <li><tt>experimental::win32_code_domain</tt> (Microsoft Windows)<p>
+  <li><tt>experimental::nt_code_domain</tt> (Microsoft Windows)
+ </ul>
+<tr>
+ <td style="vertical-align: top;"><tt>std::error_condition</tt>
+ <td style="vertical-align: top;"><tt>boost::system::error_condition</tt>
+ <td style="vertical-align: top;"><b>No equivalent</b> (deliberately removed as hindsight proved it to be a design mistake leading to much confusing and hard to audit for correctness code)
+<tr>
+ <td style="vertical-align: top;"><tt>std::error_code</tt>
+ <td style="vertical-align: top;"><tt>boost::system::error_code</tt>
+ <td style="vertical-align: top;">One of:<ul>
+  <li><tt>experimental::status_code&lt;DomainType&gt;</tt><p>
+  <li><tt>const experimental::status_code&lt;void&gt; &amp;</tt><p>
+  <li><tt>experimental::status_code&lt;erased&lt;intptr_t&gt;&gt;</tt> (aliased to <tt>experimental::system_code</tt>)<p>
+  <li><tt>experimental::errored_status_code&lt;DomainType&gt;</tt><p>
+  <li><tt>const experimental::errored_status_code&lt;void&gt; &amp;</tt><p>
+  <li><tt>experimental::errored_status_code&lt;erased&lt;intptr_t&gt;&gt;</tt> (aliased to <tt>experimental::error</tt>)
+ </ul>
+<tr>
+ <td style="vertical-align: top;"><tt>std::system_error</tt>
+ <td style="vertical-align: top;"><tt>boost::system::system_error</tt>
+ <td style="vertical-align: top;">One of:<ul>
+  <li><tt>const experimental::status_error&lt;void&gt; &amp;</tt><p>
+  <li><tt>experimental::status_error&lt;DomainType&gt;</tt>
+ </ul>
+</table>
+
+<p>As is obvious from the above, in <code>&lt;system_error2&gt;</code> one must be much more specific and accurate
+with respect to intent and specification and desired semantics than with <code>&lt;system_error&gt;</code>. Much
+ambiguity and incorrectness which flies silently in <code>&lt;system_error&gt;</code> will
+refuse to compile in <code>&lt;system_error2&gt;</code>.</p>
+
+
+        </div><p><small>Last revised: January 27, 2019 at 13:13:26 UTC</small></p>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../experimental/advantages.html"><img src="../images/prev.png" alt="Prev"></a>
+    <a accesskey="u" href="../experimental.html"><img src="../images/up.png" alt="Up"></a>
+    <a accesskey="h" href="../index.html"><img src="../images/home.png" alt="Home"></a><a accesskey="n" href="../experimental/differences.html"><img src="../images/next.png" alt="Next"></a></div></body>
+</html>

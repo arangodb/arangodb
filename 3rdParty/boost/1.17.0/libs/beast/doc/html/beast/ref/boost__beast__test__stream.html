@@ -1,0 +1,454 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>test::stream</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Chapter&#160;1.&#160;Boost.Beast">
+<link rel="up" href="../ref.html" title="This Page Intentionally Left Blank 2/2">
+<link rel="prev" href="boost__beast__test__run_for.html" title="test::run_for">
+<link rel="next" href="boost__beast__test__stream/append.html" title="test::stream::append">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="boost__beast__test__run_for.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../ref.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="boost__beast__test__stream/append.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="beast.ref.boost__beast__test__stream"></a><a class="link" href="boost__beast__test__stream.html" title="test::stream">test::stream</a>
+</h4></div></div></div>
+<p>
+        A two-way socket useful for unit testing.
+      </p>
+<h5>
+<a name="beast.ref.boost__beast__test__stream.h0"></a>
+        <span class="phrase"><a name="beast.ref.boost__beast__test__stream.synopsis"></a></span><a class="link" href="boost__beast__test__stream.html#beast.ref.boost__beast__test__stream.synopsis">Synopsis</a>
+      </h5>
+<p>
+        Defined in header <code class="literal">&lt;<a href="../../../../../../boost/beast/_experimental/test/stream.hpp" target="_top">boost/beast/_experimental/test/stream.hpp</a>&gt;</code>
+      </p>
+<pre class="programlisting"><span class="keyword">class</span> <span class="identifier">stream</span>
+</pre>
+<h5>
+<a name="beast.ref.boost__beast__test__stream.h1"></a>
+        <span class="phrase"><a name="beast.ref.boost__beast__test__stream.types"></a></span><a class="link" href="boost__beast__test__stream.html#beast.ref.boost__beast__test__stream.types">Types</a>
+      </h5>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Name
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="boost__beast__test__stream/buffer_type.html" title="test::stream::buffer_type"><span class="bold"><strong>buffer_type</strong></span></a>
+                </p>
+              </td>
+<td>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="boost__beast__test__stream/executor_type.html" title="test::stream::executor_type"><span class="bold"><strong>executor_type</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  The type of the executor associated with the object.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+<h5>
+<a name="beast.ref.boost__beast__test__stream.h2"></a>
+        <span class="phrase"><a name="beast.ref.boost__beast__test__stream.member_functions"></a></span><a class="link" href="boost__beast__test__stream.html#beast.ref.boost__beast__test__stream.member_functions">Member Functions</a>
+      </h5>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Name
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="boost__beast__test__stream/append.html" title="test::stream::append"><span class="bold"><strong>append</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Appends a string to the pending input data.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="boost__beast__test__stream/async_read_some.html" title="test::stream::async_read_some"><span class="bold"><strong>async_read_some</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Start an asynchronous read.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="boost__beast__test__stream/async_write_some.html" title="test::stream::async_write_some"><span class="bold"><strong>async_write_some</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Start an asynchronous write.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="boost__beast__test__stream/buffer.html" title="test::stream::buffer"><span class="bold"><strong>buffer</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Direct input buffer access.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="boost__beast__test__stream/clear.html" title="test::stream::clear"><span class="bold"><strong>clear</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Clear the pending input area.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="boost__beast__test__stream/close.html" title="test::stream::close"><span class="bold"><strong>close</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Close the stream.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="boost__beast__test__stream/close_remote.html" title="test::stream::close_remote"><span class="bold"><strong>close_remote</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Close the other end of the stream.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="boost__beast__test__stream/connect.html" title="test::stream::connect"><span class="bold"><strong>connect</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Establish a connection.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="boost__beast__test__stream/get_executor.html" title="test::stream::get_executor"><span class="bold"><strong>get_executor</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Return the executor associated with the object.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="boost__beast__test__stream/nread.html" title="test::stream::nread"><span class="bold"><strong>nread</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Return the number of reads.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="boost__beast__test__stream/nread_bytes.html" title="test::stream::nread_bytes"><span class="bold"><strong>nread_bytes</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Return the number of bytes read.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="boost__beast__test__stream/nwrite.html" title="test::stream::nwrite"><span class="bold"><strong>nwrite</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Return the number of writes.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="boost__beast__test__stream/nwrite_bytes.html" title="test::stream::nwrite_bytes"><span class="bold"><strong>nwrite_bytes</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Return the number of bytes written.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="boost__beast__test__stream/operator_eq_.html" title="test::stream::operator="><span class="bold"><strong>operator=</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Move Assignment.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="boost__beast__test__stream/read_size.html" title="test::stream::read_size"><span class="bold"><strong>read_size</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Set the maximum number of bytes returned by read_some.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="boost__beast__test__stream/read_some.html" title="test::stream::read_some"><span class="bold"><strong>read_some</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Read some data from the stream.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="boost__beast__test__stream/str.html" title="test::stream::str"><span class="bold"><strong>str</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Returns a string view representing the pending input data.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="boost__beast__test__stream/stream.html" title="test::stream::stream"><span class="bold"><strong>stream</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Move Constructor.
+                </p>
+                <p>
+                  Construct a stream.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="boost__beast__test__stream/write_size.html" title="test::stream::write_size"><span class="bold"><strong>write_size</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Set the maximum number of bytes returned by write_some.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="boost__beast__test__stream/write_some.html" title="test::stream::write_some"><span class="bold"><strong>write_some</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Write some data to the stream.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="boost__beast__test__stream/stream_dtor_.html" title="test::stream::~stream"><span class="bold"><strong>~stream</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Destructor.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+<h5>
+<a name="beast.ref.boost__beast__test__stream.h3"></a>
+        <span class="phrase"><a name="beast.ref.boost__beast__test__stream.description"></a></span><a class="link" href="boost__beast__test__stream.html#beast.ref.boost__beast__test__stream.description">Description</a>
+      </h5>
+<p>
+        An instance of this class simulates a traditional socket, while also providing
+        features useful for unit testing. Each endpoint maintains an independent
+        buffer called the input area. Writes from one endpoint append data to the
+        peer's pending input area. When an endpoint performs a read and data is present
+        in the input area, the data is delivered to the blocking or asynchronous
+        operation. Otherwise the operation is blocked or deferred until data is made
+        available, or until the endpoints become disconnected. These streams may
+        be used anywhere an algorithm accepts a reference to a synchronous or asynchronous
+        read or write stream. It is possible to use a test stream in a call to <code class="computeroutput"><span class="identifier">net</span><span class="special">::</span><span class="identifier">read_until</span></code>,
+        or in a call to <a class="link" href="boost__beast__http__async_write.html" title="http::async_write"><code class="computeroutput"><span class="identifier">http</span><span class="special">::</span><span class="identifier">async_write</span></code></a> for example. As with
+        Boost.Asio I/O objects, a <a class="link" href="boost__beast__test__stream.html" title="test::stream"><code class="computeroutput"><span class="identifier">test</span><span class="special">::</span><span class="identifier">stream</span></code></a> constructs with a reference
+        to the <code class="computeroutput"><span class="identifier">net</span><span class="special">::</span><span class="identifier">io_context</span></code> to use for handling asynchronous
+        I/O. For asynchronous operations, the stream follows the same rules as a
+        traditional asio socket with respect to how completion handlers for asynchronous
+        operations are performed. To facilitate testing, these streams support some
+        additional features:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            The input area, represented by a <a class="link" href="boost__beast__basic_flat_buffer.html" title="basic_flat_buffer"><code class="computeroutput"><span class="identifier">basic_flat_buffer</span></code></a>, may be directly
+            accessed by the caller to inspect the contents before or after the remote
+            endpoint writes data. This allows a unit test to verify that the received
+            data matches.
+          </li>
+<li class="listitem">
+            Data may be manually appended to the input area. This data will delivered
+            in the next call to <a class="link" href="boost__beast__test__stream/read_some.html" title="test::stream::read_some"><code class="computeroutput"><span class="identifier">test</span><span class="special">::</span><span class="identifier">stream</span><span class="special">::</span><span class="identifier">read_some</span></code></a> or <a class="link" href="boost__beast__test__stream/async_read_some.html" title="test::stream::async_read_some"><code class="computeroutput"><span class="identifier">test</span><span class="special">::</span><span class="identifier">stream</span><span class="special">::</span><span class="identifier">async_read_some</span></code></a>. This allows
+            predefined test vectors to be set up for testing read algorithms.
+          </li>
+<li class="listitem">
+            The stream may be constructed with a fail count. The stream will eventually
+            fail with a predefined error after a certain number of operations, where
+            the number of operations is controlled by the test. When a test loops
+            over a range of operation counts, it is possible to exercise every possible
+            point of failure in the algorithm being tested. When used correctly the
+            technique allows the tests to reach a high percentage of code coverage.
+          </li>
+</ul></div>
+<h5>
+<a name="beast.ref.boost__beast__test__stream.h4"></a>
+        <span class="phrase"><a name="beast.ref.boost__beast__test__stream.thread_safety"></a></span><a class="link" href="boost__beast__test__stream.html#beast.ref.boost__beast__test__stream.thread_safety">Thread
+        Safety</a>
+      </h5>
+<p>
+        <span class="emphasis"><em>Distinct</em></span> <span class="emphasis"><em>objects:</em></span> Safe.
+      </p>
+<p>
+        <span class="emphasis"><em>Shared</em></span> <span class="emphasis"><em>objects:</em></span> Unsafe. The application
+        must also ensure that all asynchronous operations are performed within the
+        same implicit or explicit strand.
+      </p>
+<h5>
+<a name="beast.ref.boost__beast__test__stream.h5"></a>
+        <span class="phrase"><a name="beast.ref.boost__beast__test__stream.concepts"></a></span><a class="link" href="boost__beast__test__stream.html#beast.ref.boost__beast__test__stream.concepts">Concepts</a>
+      </h5>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            <span class="emphasis"><em>SyncReadStream</em></span>
+          </li>
+<li class="listitem">
+            <span class="emphasis"><em>SyncWriteStream</em></span>
+          </li>
+<li class="listitem">
+            <span class="emphasis"><em>AsyncReadStream</em></span>
+          </li>
+<li class="listitem">
+            <span class="emphasis"><em>AsyncWriteStream</em></span>
+          </li>
+</ul></div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2016-2019 Vinnie
+      Falco<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="boost__beast__test__run_for.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../ref.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="boost__beast__test__stream/append.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

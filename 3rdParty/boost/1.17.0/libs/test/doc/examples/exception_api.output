@@ -1,0 +1,14 @@
+//[example_output
+> example --log_level=all
+Running 1 test case...
+Entering test module "example"
+test.cpp:47: Entering test case "test_throw_behaviour"
+test.cpp:50: info: check 'no exceptions thrown by FileWordHistogram("test")' has passed
+test.cpp:54: info: check 'exception std::exception is caught' has passed
+unknown location:0: fatal error: in "test_throw_behaviour": std::runtime_error: "process" has not been called or was not successful
+test.cpp:62: last checkpoint
+test.cpp:47: Leaving test case "test_throw_behaviour"; testing time: 533us
+Leaving test module "example"; testing time: 643us
+
+*** 1 failure is detected in the test module "example"
+//]

@@ -1,0 +1,80 @@
+[section:Accumulator Accumulator]
+
+An [*Accumulator] is a functor which consumes the argument to update some internal state. The state can be read with member functions or free functions. Must be [@https://en.cppreference.com/w/cpp/named_req/DefaultConstructible DefaultConstructible], [@https://en.cppreference.com/w/cpp/named_req/CopyConstructible CopyConstructible], and [@https://en.cppreference.com/w/cpp/named_req/CopyAssignable CopyAssignable].
+
+[heading Required features]
+
+* `A` is a type meeting the requirements of [*Accumulator]
+* `a` and `b` are values of type `A`
+* `ts...` is a pack of values
+
+[table Valid expressions
+[[Expression] [Returns] [Semantics, Pre/Post-conditions]]
+[
+  [`a(ts...)` or `++a`]
+  []
+  [
+    Either a call operator accepting a fixed number of arguments must be implemented, or the pre-increment operator.
+  ]
+]
+[
+  [`a == b`]
+  [`bool`]
+  [
+    Returns `true` if all state variables compare equal. Otherwise returns `false`.
+  ]
+]
+[
+  [`a != b`]
+  [`bool`]
+  [
+    Must be implemented if `a == b` is implemented and must be equal to `!(a == b)`.
+  ]
+]
+]
+
+[heading Optional features]
+
+* `A` is a type meeting the requirements of [*Accumulator]
+* `a` and `b` are values of type `A`
+
+[table Valid expressions
+[[Expression] [Return] [Semantics, Pre/Post-conditions]]
+[
+  [`a += b`]
+  [`A&`]
+  [
+    Adds a second accumulator `b` of type `A`. The result must be the same as if `a` had been filled with all arguments of `b`.
+  ]
+]
+[
+  [`a *= x`]
+  [`A&`]
+  [
+    Scales the accumulator state by the real value `x`. The result must be the same as if `a` had been filled with all arguments scaled by `x`.
+  ]
+]
+[
+  [`os << a`]
+  [`std::basic_ostream<CharT, Traits>&`]
+  [
+    `os` is a value of type `std::basic_ostream<CharT, Traits>`. Streams a text representation of the axis. May not mutate `a`.
+  ]
+]
+[
+  [`ar & a`]
+  []
+  [
+    `ar` is a value of an archive with Boost.Serialization semantics. Serializes `a` to the archive or loads serialized state from the archive.
+  ]
+]
+]
+
+[heading Models]
+
+* [classref boost::histogram::accumulators::sum]
+* [classref boost::histogram::accumulators::weighted_sum]
+* [classref boost::histogram::accumulators::mean]
+* [classref boost::histogram::accumulators::weighted_mean]
+
+[endsect]

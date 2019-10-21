@@ -1,0 +1,6 @@
+Primary dependencies for assert:
+
+config:
+    <boost/config.hpp>
+        from <boost/assert.hpp>
+

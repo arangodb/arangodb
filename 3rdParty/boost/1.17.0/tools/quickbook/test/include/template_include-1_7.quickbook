@@ -1,0 +1,8 @@
+[article Template include test
+[quickbook 1.7]
+]
+
+[template include_foo[name] [include [name].quickbook]]
+
+[include_foo include-id-inc1]
+[include_foo source_mode-inc2]

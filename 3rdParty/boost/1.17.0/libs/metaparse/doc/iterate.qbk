@@ -1,0 +1,98 @@
+[#iterate]
+[section iterate]
+
+[h1 Synopsis]
+
+  template <class P, class N>
+  struct iterate;
+
+This is a [link parser_combinator parser combinator].
+
+[table Arguments
+  [[Name] [Type]]
+  [[`P`]  [[link parser parser]]]
+  [[`N`]  [[link boxed_value boxed] non-negative integer value]]
+]
+
+[h1 Description]
+
+It applies `P` on the input string `N` times. The result of parsing is a
+sequence of the results of the individual applications of `P`. `P` has to accept
+the input `N` times for `iterate` to accept it.
+
+[h1 Header]
+
+  #include <boost/metaparse/iterate.hpp>
+
+[h1 Expression semantics]
+
+For any `p` parser, `n` wrapped integer the following are equivalent:
+
+  iterate<p, n>
+  
+  iterate_c<p, n::type::value>
+
+[h1 Example]
+
+  #include <boost/metaparse/iterate.hpp>
+  #include <boost/metaparse/digit.hpp>
+  #include <boost/metaparse/string.hpp>
+  #include <boost/metaparse/start.hpp>
+  #include <boost/metaparse/get_result.hpp>
+  #include <boost/metaparse/is_error.hpp>
+  
+  #include <boost/mpl/vector.hpp>
+  #include <boost/mpl/equal.hpp>
+  #include <boost/mpl/char.hpp>
+  
+  #include <type_traits>
+  
+  using namespace boost::metaparse;
+  
+  static_assert(
+    boost::mpl::equal<
+      boost::mpl::vector<
+        boost::mpl::char_<'1'>,
+        boost::mpl::char_<'2'>,
+        boost::mpl::char_<'3'>
+      >,
+      get_result<
+        iterate<digit, std::integral_constant<int, 3>>::apply<
+          BOOST_METAPARSE_STRING("123"),
+          start
+        >
+      >::type
+    >::type::value,
+    "the result should be the sequence of the individual applications of digit"
+  );
+  
+  static_assert(
+    boost::mpl::equal<
+      boost::mpl::vector<
+        boost::mpl::char_<'1'>,
+        boost::mpl::char_<'2'>,
+        boost::mpl::char_<'3'>
+      >,
+      get_result<
+        iterate<digit, std::integral_constant<int, 3>>::apply<
+          BOOST_METAPARSE_STRING("1234"),
+          start
+        >
+      >::type
+    >::type::value,
+    "only three iterations should be made"
+  );
+  
+  static_assert(
+    is_error<
+      iterate<digit, std::integral_constant<int, 3>>::apply<
+        BOOST_METAPARSE_STRING("12"),
+        start
+      >
+    >::type::value,
+    "it should fail when digit can not be applied three times"
+  );
+  
+
+[endsect]
+

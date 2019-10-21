@@ -1,0 +1,383 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>buffered_read_stream</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Chapter&#160;1.&#160;Boost.Beast">
+<link rel="up" href="../ref.html" title="This Page Intentionally Left Blank 2/2">
+<link rel="prev" href="boost__beast__buffer_bytes.html" title="buffer_bytes">
+<link rel="next" href="boost__beast__buffered_read_stream/async_read_some.html" title="buffered_read_stream::async_read_some">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="boost__beast__buffer_bytes.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../ref.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="boost__beast__buffered_read_stream/async_read_some.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="beast.ref.boost__beast__buffered_read_stream"></a><a class="link" href="boost__beast__buffered_read_stream.html" title="buffered_read_stream">buffered_read_stream</a>
+</h4></div></div></div>
+<p>
+        A <span class="emphasis"><em>Stream</em></span> with attached <span class="emphasis"><em>DynamicBuffer</em></span>
+        to buffer reads.
+      </p>
+<h5>
+<a name="beast.ref.boost__beast__buffered_read_stream.h0"></a>
+        <span class="phrase"><a name="beast.ref.boost__beast__buffered_read_stream.synopsis"></a></span><a class="link" href="boost__beast__buffered_read_stream.html#beast.ref.boost__beast__buffered_read_stream.synopsis">Synopsis</a>
+      </h5>
+<p>
+        Defined in header <code class="literal">&lt;<a href="../../../../../../boost/beast/core/buffered_read_stream.hpp" target="_top">boost/beast/core/buffered_read_stream.hpp</a>&gt;</code>
+      </p>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span>
+    <span class="keyword">class</span> <a class="link" href="../concepts/streams.html" title="Streams"><span class="emphasis"><em>Stream</em></span></a><span class="special">,</span>
+    <span class="keyword">class</span> <a class="link" href="../concepts/DynamicBuffer.html" title="DynamicBuffer"><span class="emphasis"><em>DynamicBuffer</em></span></a><span class="special">&gt;</span>
+<span class="keyword">class</span> <span class="identifier">buffered_read_stream</span>
+</pre>
+<h5>
+<a name="beast.ref.boost__beast__buffered_read_stream.h1"></a>
+        <span class="phrase"><a name="beast.ref.boost__beast__buffered_read_stream.types"></a></span><a class="link" href="boost__beast__buffered_read_stream.html#beast.ref.boost__beast__buffered_read_stream.types">Types</a>
+      </h5>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Name
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="boost__beast__buffered_read_stream/buffer_type.html" title="buffered_read_stream::buffer_type"><span class="bold"><strong>buffer_type</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  The type of the internal buffer.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="boost__beast__buffered_read_stream/executor_type.html" title="buffered_read_stream::executor_type"><span class="bold"><strong>executor_type</strong></span></a>
+                </p>
+              </td>
+<td>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="boost__beast__buffered_read_stream/next_layer_type.html" title="buffered_read_stream::next_layer_type"><span class="bold"><strong>next_layer_type</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  The type of the next layer.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+<h5>
+<a name="beast.ref.boost__beast__buffered_read_stream.h2"></a>
+        <span class="phrase"><a name="beast.ref.boost__beast__buffered_read_stream.member_functions"></a></span><a class="link" href="boost__beast__buffered_read_stream.html#beast.ref.boost__beast__buffered_read_stream.member_functions">Member
+        Functions</a>
+      </h5>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Name
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="boost__beast__buffered_read_stream/async_read_some.html" title="buffered_read_stream::async_read_some"><span class="bold"><strong>async_read_some</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Start an asynchronous read.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="boost__beast__buffered_read_stream/async_write_some.html" title="buffered_read_stream::async_write_some"><span class="bold"><strong>async_write_some</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Start an asynchronous write.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="boost__beast__buffered_read_stream/buffer.html" title="buffered_read_stream::buffer"><span class="bold"><strong>buffer</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Access the internal buffer.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="boost__beast__buffered_read_stream/buffered_read_stream.html" title="buffered_read_stream::buffered_read_stream"><span class="bold"><strong>buffered_read_stream</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Move constructor.
+                </p>
+                <p>
+                  Construct the wrapping stream.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="boost__beast__buffered_read_stream/capacity.html" title="buffered_read_stream::capacity"><span class="bold"><strong>capacity</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Set the maximum buffer size.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="boost__beast__buffered_read_stream/get_executor.html" title="buffered_read_stream::get_executor"><span class="bold"><strong>get_executor</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Get the executor associated with the object.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="boost__beast__buffered_read_stream/next_layer.html" title="buffered_read_stream::next_layer"><span class="bold"><strong>next_layer</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Get a reference to the next layer.
+                </p>
+                <p>
+                  Get a const reference to the next layer.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="boost__beast__buffered_read_stream/operator_eq_.html" title="buffered_read_stream::operator="><span class="bold"><strong>operator=</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Move assignment.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="boost__beast__buffered_read_stream/read_some.html" title="buffered_read_stream::read_some"><span class="bold"><strong>read_some</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Read some data from the stream.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="boost__beast__buffered_read_stream/write_some.html" title="buffered_read_stream::write_some"><span class="bold"><strong>write_some</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Write some data to the stream.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+<h5>
+<a name="beast.ref.boost__beast__buffered_read_stream.h3"></a>
+        <span class="phrase"><a name="beast.ref.boost__beast__buffered_read_stream.description"></a></span><a class="link" href="boost__beast__buffered_read_stream.html#beast.ref.boost__beast__buffered_read_stream.description">Description</a>
+      </h5>
+<p>
+        This wraps a <span class="emphasis"><em>Stream</em></span> implementation so that calls to
+        write are passed through to the underlying stream, while calls to read will
+        first consume the input sequence stored in a <span class="emphasis"><em>DynamicBuffer</em></span>
+        which is part of the object. The use-case for this class is different than
+        that of the <code class="computeroutput"><span class="identifier">net</span><span class="special">::</span><span class="identifier">buffered_read_stream</span></code>. It is designed to
+        facilitate the use of <code class="computeroutput"><span class="identifier">net</span><span class="special">::</span><span class="identifier">read_until</span></code>,
+        and to allow buffers acquired during detection of handshakes to be made transparently
+        available to callers. A hypothetical implementation of the buffered version
+        of <code class="computeroutput"><span class="identifier">net</span><span class="special">::</span><span class="identifier">ssl</span><span class="special">::</span><span class="identifier">stream</span><span class="special">::</span><span class="identifier">async_handshake</span></code>
+        could make use of this wrapper. Uses:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            Transparently leave untouched input acquired in calls to <code class="computeroutput"><span class="identifier">net</span><span class="special">::</span><span class="identifier">read_until</span></code> behind for subsequent callers.
+          </li>
+<li class="listitem">
+            "Preload" a stream with handshake input data acquired from
+            other sources.
+          </li>
+</ul></div>
+<p>
+        Example:
+      </p>
+<pre class="programlisting"><span class="comment">// Process the next HTTP header on the stream,</span>
+<span class="comment">// leaving excess bytes behind for the next call.</span>
+<span class="comment">//</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Stream</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">DynamicBuffer</span><span class="special">&gt;</span>
+<span class="keyword">void</span> <span class="identifier">process_http_message</span><span class="special">(</span>
+    <span class="identifier">buffered_read_stream</span><span class="special">&lt;</span><span class="identifier">Stream</span><span class="special">,</span> <span class="identifier">DynamicBuffer</span><span class="special">&gt;&amp;</span> <span class="identifier">stream</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="comment">// Read up to and including the end of the HTTP</span>
+    <span class="comment">// header, leaving the sequence in the stream's</span>
+    <span class="comment">// buffer. read_until may read past the end of the</span>
+    <span class="comment">// headers; the return value will include only the</span>
+    <span class="comment">// part up to the end of the delimiter.</span>
+    <span class="comment">//</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">bytes_transferred</span> <span class="special">=</span>
+        <span class="identifier">net</span><span class="special">::</span><span class="identifier">read_until</span><span class="special">(</span>
+            <span class="identifier">stream</span><span class="special">.</span><span class="identifier">next_layer</span><span class="special">(),</span> <span class="identifier">stream</span><span class="special">.</span><span class="identifier">buffer</span><span class="special">(),</span> <span class="string">"\r\n\r\n"</span><span class="special">);</span>
+
+    <span class="comment">// Use buffers_prefix() to limit the input</span>
+    <span class="comment">// sequence to only the data up to and including</span>
+    <span class="comment">// the trailing "\r\n\r\n".</span>
+    <span class="comment">//</span>
+    <span class="keyword">auto</span> <span class="identifier">header_buffers</span> <span class="special">=</span> <span class="identifier">buffers_prefix</span><span class="special">(</span>
+        <span class="identifier">bytes_transferred</span><span class="special">,</span> <span class="identifier">stream</span><span class="special">.</span><span class="identifier">buffer</span><span class="special">().</span><span class="identifier">data</span><span class="special">());</span>
+
+    <span class="special">...</span>
+
+    <span class="comment">// Discard the portion of the input corresponding</span>
+    <span class="comment">// to the HTTP headers.</span>
+    <span class="comment">//</span>
+    <span class="identifier">stream</span><span class="special">.</span><span class="identifier">buffer</span><span class="special">().</span><span class="identifier">consume</span><span class="special">(</span><span class="identifier">bytes_transferred</span><span class="special">);</span>
+
+    <span class="comment">// Everything we read from the stream</span>
+    <span class="comment">// is part of the content-body.</span>
+<span class="special">}</span>
+</pre>
+<h5>
+<a name="beast.ref.boost__beast__buffered_read_stream.h4"></a>
+        <span class="phrase"><a name="beast.ref.boost__beast__buffered_read_stream.template_parameters"></a></span><a class="link" href="boost__beast__buffered_read_stream.html#beast.ref.boost__beast__buffered_read_stream.template_parameters">Template
+        Parameters</a>
+      </h5>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Type
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">Stream</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  The type of stream to wrap.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="computeroutput"><span class="identifier">DynamicBuffer</span></code>
+                </p>
+              </td>
+<td>
+                <p>
+                  The type of stream buffer to use.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+<p>
+        Convenience header <code class="literal">&lt;<a href="../../../../../../boost/beast/core.hpp" target="_top">boost/beast/core.hpp</a>&gt;</code>
+      </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2016-2019 Vinnie
+      Falco<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="boost__beast__buffer_bytes.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../ref.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="boost__beast__buffered_read_stream/async_read_some.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

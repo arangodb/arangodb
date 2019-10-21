@@ -1,0 +1,42 @@
+[/===========================================================================
+ Copyright (c) 2017 Steven Ross, Francisco Tapia, Orson Peters
+
+
+ Distributed under the Boost Software License, Version 1.0
+ See accompanying file LICENSE_1_0.txt or copy at
+ http://www.boost.org/LICENSE_1_0.txt
+=============================================================================/]
+
+[section:gratitude 5.- Gratitude]
+
+[*Steven Ross]
+
+To Steve's wife Mary for her patience and support during the long process of converting spreadsort from a piece of C code to a template library.
+
+To Phil Endecott and Frank Gennari for the improvements they've suggested and for testing.
+Without them this would have taken longer to develop or performed worse.
+
+To Scott McMurray for the fast and safe `float_mem_cast`.
+That fix was critical for a high-performance cross-platform __float_sort.
+
+To Paul A. Bristow for refactoring the initial documentation to use Quickbooks.
+
+To Steven Watanabe, Edouard Alligand, and others in the boost community for their helpful suggestions.
+
+[*Francisco Tapia]
+
+To [@http://www.cesvima.upm.es CESVIMA], Centro de Cálculo de la Universidad Politécnica de Madrid.
+ When need machines for to tune this algorithm, I contacted with the investigation department of many Universities of Madrid. Only them, help me.
+
+To Hartmut Kaiser, Adjunct Professor of Computer Science at Louisiana State University. By their faith in my work,
+
+To Steven Ross, by their infinite patience in the long way in the develop of this algorithm, and their wise advises.
+
+
+
+[*Orson Peters]
+
+[endsect]
+
+
+

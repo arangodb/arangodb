@@ -1,0 +1,75 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Macro BOOST_VMD_ELEM</title>
+<link rel="stylesheet" href="../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="index.html" title="Chapter&#160;1.&#160;The Variadic Macro Data Library 1.9">
+<link rel="up" href="header/boost/vmd/elem_hpp.html" title="Header &lt;boost/vmd/elem.hpp&gt;">
+<link rel="prev" href="header/boost/vmd/elem_hpp.html" title="Header &lt;boost/vmd/elem.hpp&gt;">
+<link rel="next" href="BOOST_VMD_ELEM_D.html" title="Macro BOOST_VMD_ELEM_D">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../boost.png"></td>
+<td align="center"><a href="../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="header/boost/vmd/elem_hpp.html"><img src="../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="header/boost/vmd/elem_hpp.html"><img src="../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="index.html"><img src="../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="BOOST_VMD_ELEM_D.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="refentry">
+<a name="BOOST_VMD_ELEM"></a><div class="titlepage"></div>
+<div class="refnamediv">
+<h2><span class="refentrytitle">Macro BOOST_VMD_ELEM</span></h2>
+<p>BOOST_VMD_ELEM &#8212; Accesses an element of a sequence. </p>
+</div>
+<h2 xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv-title">Synopsis</h2>
+<div xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="refsynopsisdiv"><pre class="synopsis"><span class="comment">// In header: &lt;<a class="link" href="header/boost/vmd/elem_hpp.html" title="Header &lt;boost/vmd/elem.hpp&gt;">boost/vmd/elem.hpp</a>&gt;
+
+</span>BOOST_VMD_ELEM(elem, ...)</pre></div>
+<div class="refsect1">
+<a name="idm46213760529344"></a><h2>Description</h2>
+<p>elem = A sequence element number. From 0 to sequence size - 1. ... = Variadic parameters.</p>
+<p>The first variadic parameter is required and is the sequence to access. Further variadic parameters are all optional.</p>
+<p>With no further variadic parameters the macro returns the particular element in the sequence. If the element number is outside the bounds of the sequence macro access fails and the macro turns emptiness.</p>
+<p>Optional parameters determine what it means that an element is successfully accessed as well as what data is returned by the macro.</p>
+<p>Filters: specifying a VMD type tells the macro to return the element only if it is of the VMD type specified, else macro access fails. If more than one VMD type is specified as an optional parameter the last one specified is the filter.</p>
+<p>Matching Identifiers: If the filter is specified as the identifier type, BOOST_VMD_TYPE_IDENTIFIER, optional parameters which are identifiers specify that the element accessed must match one of the identifiers else access fails. The identifiers may be specified multiple times as single optional parameters or once as a tuple of identifier parameters. If the identifiers are specified as single optional parameters they cannot be any of the specific BOOST_VMD_ optional parameters in order to be recognized as matching identifiers. Normally this should never be the case. The only situation where this could occur is if the VMD types, which are filters, are used as matching identifiers; in this case the matching identifiers need to be passed as a tuple of identifier parameters so they are not treated as filters.</p>
+<p>Filters and matching identifiers change what it means that an element is successfully accessed. They do not change what data is returned by the macro. The remaining optional parameters do not change what it means that an element is successfully accessed but they do change what data is returned by the macro.</p>
+<p>Splitting: Splitting allows the macro to return the rest of the sequence after the element accessed.</p>
+<p>If BOOST_VMD_RETURN_AFTER is specified the return is a tuple with the element accessed as the first tuple parameter and the rest of the sequence as the second tuple parameter. If element access fails both tuple parameters are empty.</p>
+<p>If BOOST_VMD_RETURN_ONLY_AFTER is specified the return is the rest of the sequence after the element accessed found. If the element access fails the return is emptiness.</p>
+<p>If BOOST_VMD_RETURN_NO_AFTER, the default, is specified no splitting occurs.</p>
+<p>If more than one of the splitting identifiers are specified the last one specified determines the splitting.</p>
+<p>Return Type: The element accessed can be changed to return both the type of the element as well as the element data with optional return type parameters. When a type is returned, the element accessed which is returned becomes a two-element tuple where the type of the element accessed is the first tuple element and the element data itself is the second tuple element. If the macro fails to access the element the element access returned is emptiness and not a tuple.</p>
+<p>If BOOST_VMD_RETURN_NO_TYPE, the default, is specified no type is returned as part of the element accessed.</p>
+<p>If BOOST_VMD_RETURN_TYPE is specified the specific type of the element is returned in the tuple.</p>
+<p>If BOOST_VMD_RETURN_TYPE_ARRAY is specified an array type is returned if the element is an array, else a tuple type is returned if the element is a tuple, else the actual type is returned for non-tuple data.</p>
+<p>If BOOST_VMD_RETURN_TYPE_LIST is specified a list type is returned if the element is a list, else a tuple type is returned if the element is a tuple, else the actual type is returned for non-tuple data.</p>
+<p>If BOOST_VMD_RETURN_TYPE_TUPLE is specified a tuple type is returned for all tuple-like data, else the actual type is returned for non-tuple data.</p>
+<p>If more than one return type optional parameter is specified the last one specified determines the return type.</p>
+<p>If a filter is specified optional return type parameters are ignored and the default BOOST_VMD_RETURN_NO_TYPE is in effect.</p>
+<p>Index: If the filter is specified as the identifier type, BOOST_VMD_TYPE_IDENTIFIER, and matching identifiers are specified, an index parameter specifies that the numeric index, starting with 0, of the matching identifier found, be returned as part of the result.</p>
+<p>If BOOST_VMD_RETURN_INDEX is specified an index is returned as part of the result.</p>
+<p>If BOOST_VMD_RETURN_NO_INDEX, the default, is specified no index is returned as part of the result.</p>
+<p>If both are specified the last one specified determines the index parameter.</p>
+<p>When an index is returned as part of the result, the result is a tuple where the element accessed is the first tuple parameter and the index is the last tuple parameter. If element access fails the index is empty. If there is no BOOST_VMD_TYPE_IDENTIFIER filter or if there are no matching identifiers the BOOST_VMD_RETURN_INDEX is ignored and no index is returned as part of the result.</p>
+<p>returns = With no optional parameters the element accessed is returned, or emptiness if element is outside the bounds of the sequence. Filters and matching identifiers can change the meaning of whether the element accessed is returned or failure occurs, but whenever failure occurs emptiness is returned as the element access part of that failure, else the element accessed is returned. Return type optional parameters, when filters are not used, return the element accessed as a two-element tuple where the first tuple element is the type and the second tuple element is the data; if the element is not accessed then emptiness is returned as the element access and not a tuple. Splitting with BOOST_VMD_RETURN_AFTER returns a tuple where the element accessed is the first tuple element and the rest of the sequence is the second tuple element. Splitting with BOOST_VMD_RETURN_ONLY_AFTER returns the rest of the sequence after the element accessed or emptiness if the element can not be accessed. Indexing returns the index as part of the output only if filtering with BOOST_VMD_TYPE_IDENTIFIER is specified and matching identifiers are specified. When the index is returned with BOOST_VMD_RETURN_AFTER it is the third element of the tuple returned, else it is the second element of a tuple where the element accessed is the first element of the tuple. </p>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2010-2017 Tropic Software
+      East Inc</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="header/boost/vmd/elem_hpp.html"><img src="../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="header/boost/vmd/elem_hpp.html"><img src="../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="index.html"><img src="../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="BOOST_VMD_ELEM_D.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

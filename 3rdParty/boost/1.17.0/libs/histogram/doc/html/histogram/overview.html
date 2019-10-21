@@ -1,0 +1,1008 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Overview</title>
+<link rel="stylesheet" href="../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="Chapter&#160;1.&#160;Boost.Histogram">
+<link rel="up" href="../index.html" title="Chapter&#160;1.&#160;Boost.Histogram">
+<link rel="prev" href="../index.html" title="Chapter&#160;1.&#160;Boost.Histogram">
+<link rel="next" href="getting_started.html" title="Getting started">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../index.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="getting_started.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="histogram.overview"></a><a class="link" href="overview.html" title="Overview">Overview</a>
+</h2></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="overview.html#histogram.overview.introduction">Introduction</a></span></dt>
+<dt><span class="section"><a href="overview.html#histogram.overview.motivation">Motivation</a></span></dt>
+<dt><span class="section"><a href="overview.html#histogram.overview.rationale">Rationale</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="overview.html#histogram.overview.rationale.guidelines">Guidelines</a></span></dt>
+<dt><span class="section"><a href="overview.html#histogram.overview.rationale.structure">Structure</a></span></dt>
+<dt><span class="section"><a href="overview.html#histogram.overview.rationale.no_lambdas">No lambdas
+        as axis types</a></span></dt>
+<dt><span class="section"><a href="overview.html#histogram.overview.rationale.uoflow">Under- and overflow
+        bins</a></span></dt>
+<dt><span class="section"><a href="overview.html#histogram.overview.rationale.index_type">Size method
+        of axis returns signed integer</a></span></dt>
+<dt><span class="section"><a href="overview.html#histogram.overview.rationale.real_index_type">Continuous
+        axis maps real-valued indices to values</a></span></dt>
+<dt><span class="section"><a href="overview.html#histogram.overview.rationale.variance">Variance estimates</a></span></dt>
+<dt><span class="section"><a href="overview.html#histogram.overview.rationale.weights">Support of weighted
+        fills</a></span></dt>
+<dt><span class="section"><a href="overview.html#histogram.overview.rationale.python_support">Python
+        support</a></span></dt>
+<dt><span class="section"><a href="overview.html#histogram.overview.rationale.support_of_boost_accumulators">Support
+        of Boost.Accumulators</a></span></dt>
+<dt><span class="section"><a href="overview.html#histogram.overview.rationale.support_of_boost_range">Support
+        of Boost.Range</a></span></dt>
+<dt><span class="section"><a href="overview.html#histogram.overview.rationale.serialization">Serialization</a></span></dt>
+<dt><span class="section"><a href="overview.html#histogram.overview.rationale.comparison_to_boost_accumulators">Comparison
+        to Boost.Accumulators</a></span></dt>
+<dt><span class="section"><a href="overview.html#histogram.overview.rationale.why_is_boost_histogram_not_built">Why
+        is Boost.Histogram not built on top of Boost.MultiArray?</a></span></dt>
+</dl></dd>
+</dl></div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="histogram.overview.introduction"></a><a class="link" href="overview.html#histogram.overview.introduction" title="Introduction">Introduction</a>
+</h3></div></div></div>
+<p>
+        <a href="https://en.wikipedia.org/wiki/Histogram" target="_top">Histograms</a> are
+        a basic tool in statistical analysis. A histogram consists of a number of
+        non-overlapping cells in data space. When an input value is passed to the
+        histogram, the corresponding cell that envelopes the value is found and an
+        associated counter is incremented.
+      </p>
+<p>
+        When analyzing a large low-dimensional data set, it is more convenient to
+        work with a histogram of the input values than the original values. Keeping
+        the cell counts in memory for analysis and/or processing the counts requires
+        far fewer resources than keeping the original values in memory and processing
+        them. Information present in the original can also be extracted from the
+        histogram<a href="#ftn.histogram.overview.introduction.f0" class="footnote" name="histogram.overview.introduction.f0"><sup class="footnote">[1]</sup></a>. Some information is lost in this way, but if the cells are small
+        enough<a href="#ftn.histogram.overview.introduction.f1" class="footnote" name="histogram.overview.introduction.f1"><sup class="footnote">[2]</sup></a>, the loss is often negligible. A histogram is a kind of lossy
+        data-compression. It is also often used as a simple estimator for the <a href="https://en.wikipedia.org/wiki/Probability_density_function" target="_top">probability
+        density function</a> of the input data. More complex density estimators
+        exist, but histograms remain attractive because they are easy to reason about.
+      </p>
+<p>
+        This library provides a histogram for multi-dimensional data. In the multi-dimensional
+        case, the input consist of tuples of values which belong together and describing
+        different aspects of the same entity. A point in space is a good example.
+        You need three coordinate values to describe a point. The entity is the point,
+        and to fully characterize a point distribution in space you need three values
+        and therefore a three-dimensional histogram. A three-dimensional histogram
+        collects more information than three separate one-dimensional histograms,
+        one for each coordinate. For example, you could have a point distribution
+        that looks like a checker board in three dimensions (a checker cube): high
+        and low densities are alternating along each coordinate. Then, the one-dimensional
+        histograms along each coordinate would look like flat distributions, completely
+        hiding the complex structure, while the three-dimensional histogram would
+        retain the structure for further analysis.
+      </p>
+<p>
+        The term <span class="emphasis"><em>histogram</em></span> is usually strictly used for something
+        with cells over discrete or continuous data. This histogram class can also
+        process categorical variables and it even allows for non-consecutive cells
+        if that is desired. There is no restriction to numbers as input. Any C++
+        type can be fed into the histogram, if the user provides a specialized axis
+        class that maps values of this type to a cell index. The only remaining restriction
+        is that cells are non-overlapping, since there must be a unique mapping from
+        input value to cell. The library is not able to automatically ensure this
+        for user-provided axis classes, so the responsibly is on the user.
+      </p>
+<p>
+        Furthermore, the histogram can handle weighted input. Normally, the cell
+        counter which is connected to an input tuple is incremented by one, but sometimes
+        it is useful to increment by a weight, an integral or floating point number.
+      </p>
+<p>
+        Finally, the histogram can be configured to store an accumulator in each
+        cell. Arbitrary samples can be passed to this accumulator, which may compute
+        the mean, variance, median, or other interesting statistics from the samples
+        that are sorted into its cell. When the accumulator computes a mean, the
+        result is called a <span class="emphasis"><em>profile</em></span>.
+      </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="histogram.overview.motivation"></a><a class="link" href="overview.html#histogram.overview.motivation" title="Motivation">Motivation</a>
+</h3></div></div></div>
+<p>
+        C++ lacks a widely-used, free multi-dimensional histogram class. While it
+        is easy to write a one-dimensional histogram, writing a general multi-dimensional
+        histogram poses more of a challenge. If you add a few more features required
+        by scientific professionals onto the wish-list, then the implementation becomes
+        non-trivial and a well-tested library solution desirable.
+      </p>
+<p>
+        The <a href="https://www.gnu.org/software/gsl" target="_top">GNU Scientific Library
+        (GSL)</a> and the <a href="https://root.cern.ch" target="_top">ROOT framework</a>
+        from CERN have histogram implementations. The GSL has histograms for one
+        and two dimensions in C. The implementations are not customizable. ROOT has
+        well-tested implementations of histograms, but they are not customizable
+        and they are not easy to use correctly. ROOT also has new implementations
+        in beta-stage similar to this one, but they cannot be used without the rest
+        of ROOT, which is a huge library to install just to get histograms.
+      </p>
+<p>
+        The templated histogram class in this library has a minimalistic interface,
+        which strives to be as elegant as the GSL implementations. In addition, it
+        is very customizable and extensible through user-provided classes. A single
+        implementation is used for one and multi-dimensional histograms. While being
+        safe, customizable, and convenient, the histogram is also very fast. The
+        static version, which has an axis configuration that is hard-coded at compile-time,
+        is faster than any tested competitor.
+      </p>
+<p>
+        One of the central design goals was to provide an abstract interface to the
+        internal bin counters. The internal counting mechanism is encapsulated in
+        a storage class, which can be replaced at compile-time. The default storage
+        uses an adaptive memory management which is safe to use, memory-efficient,
+        and fast. The safety comes from the guarantee, that counts cannot overflow
+        or be capped. This is a rare guarantee, hardly found in other libraries.
+        In the standard configuration, the histogram <span class="emphasis"><em>just works</em></span>
+        under any circumstance. Yet, users with unusual requirements can implement
+        their own custom storage class or use an alternative builtin array-based
+        storage.
+      </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="histogram.overview.rationale"></a><a class="link" href="overview.html#histogram.overview.rationale" title="Rationale">Rationale</a>
+</h3></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="overview.html#histogram.overview.rationale.guidelines">Guidelines</a></span></dt>
+<dt><span class="section"><a href="overview.html#histogram.overview.rationale.structure">Structure</a></span></dt>
+<dt><span class="section"><a href="overview.html#histogram.overview.rationale.no_lambdas">No lambdas
+        as axis types</a></span></dt>
+<dt><span class="section"><a href="overview.html#histogram.overview.rationale.uoflow">Under- and overflow
+        bins</a></span></dt>
+<dt><span class="section"><a href="overview.html#histogram.overview.rationale.index_type">Size method
+        of axis returns signed integer</a></span></dt>
+<dt><span class="section"><a href="overview.html#histogram.overview.rationale.real_index_type">Continuous
+        axis maps real-valued indices to values</a></span></dt>
+<dt><span class="section"><a href="overview.html#histogram.overview.rationale.variance">Variance estimates</a></span></dt>
+<dt><span class="section"><a href="overview.html#histogram.overview.rationale.weights">Support of weighted
+        fills</a></span></dt>
+<dt><span class="section"><a href="overview.html#histogram.overview.rationale.python_support">Python
+        support</a></span></dt>
+<dt><span class="section"><a href="overview.html#histogram.overview.rationale.support_of_boost_accumulators">Support
+        of Boost.Accumulators</a></span></dt>
+<dt><span class="section"><a href="overview.html#histogram.overview.rationale.support_of_boost_range">Support
+        of Boost.Range</a></span></dt>
+<dt><span class="section"><a href="overview.html#histogram.overview.rationale.serialization">Serialization</a></span></dt>
+<dt><span class="section"><a href="overview.html#histogram.overview.rationale.comparison_to_boost_accumulators">Comparison
+        to Boost.Accumulators</a></span></dt>
+<dt><span class="section"><a href="overview.html#histogram.overview.rationale.why_is_boost_histogram_not_built">Why
+        is Boost.Histogram not built on top of Boost.MultiArray?</a></span></dt>
+</dl></div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="histogram.overview.rationale.guidelines"></a><a class="link" href="overview.html#histogram.overview.rationale.guidelines" title="Guidelines">Guidelines</a>
+</h4></div></div></div>
+<p>
+          This library was written based on a decade of experience collected in working
+          with big data, more precisely in the field of particle physics and astroparticle
+          physics. The design is guided by advice from people like Bjarne Stroustrup,
+          Scott Meyers, Herb Sutter, and Andrei Alexandrescu, and Chandler Carruth.
+          I also like the <a href="https://www.python.org/dev/peps/pep-0020" target="_top">Zen
+          of Python</a> (also applies to other languages). I also borrowed ideas
+          from the <a href="https://eigen.tuxfamily.org/" target="_top">Eigen library</a>.
+        </p>
+<p>
+          Design goals of the library:
+        </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+              Provide a simple and convenient default behavior for the casual user,
+              yet allow a maximum of customization for the power user. Follow the
+              "Don't pay for what you don't use" principle. Features that
+              you don't use should not affect your performance negatively.
+            </li>
+<li class="listitem">
+              Provide the same interface for one-dimensional and multi-dimensional
+              histograms. This makes the interface easier to learn, and makes it
+              easier to move a project from one-dimensional to multi-dimensional
+              analysis.
+            </li>
+<li class="listitem">
+              Hide the details of how the bin counters work. This design allows for
+              interesting implementations, such as the default storage that provides
+              a no-overflow-guarantee, which no other library offers.
+            </li>
+<li class="listitem">
+              STL and Boost compatibility. The library should be compatible with
+              STL algorithms and other Boost libraries, especially <a href="../../../../../libs/accumulators/index.html" target="_top">Boost.Accumulators</a>
+              and <a href="../../../../../libs/range/index.html" target="_top">Boost.Range</a>.
+              This potentiates what one can do with the library. Features provided
+              by compatible libraries do not need to be explicitly implemented in
+              this library.
+            </li>
+</ul></div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="histogram.overview.rationale.structure"></a><a class="link" href="overview.html#histogram.overview.rationale.structure" title="Structure">Structure</a>
+</h4></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="overview.html#histogram.overview.rationale.structure.host">Histogram
+          host class</a></span></dt>
+<dt><span class="section"><a href="overview.html#histogram.overview.rationale.structure.axis">Axis
+          types</a></span></dt>
+<dt><span class="section"><a href="overview.html#histogram.overview.rationale.structure.storage">Storage
+          types</a></span></dt>
+</dl></div>
+<p>
+          The library consists of three orthogonal components:
+        </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+              <a class="link" href="overview.html#histogram.overview.rationale.structure.host" title="Histogram host class">histogram
+              host class</a>: The histogram host class defines the public user
+              interface and holds axis objects (one for each dimension) and a storage
+              object. The user can chose whether axis objects are stored in a static
+              tuple, a vector, or a vector of variants.
+            </li>
+<li class="listitem">
+              <a class="link" href="overview.html#histogram.overview.rationale.structure.axis" title="Axis types">axis types</a>:
+              Defines how input values are mapped to bins. Several axis types are
+              provided which implement different specializations. Users can make
+              their own axis types following the axis concept and use them with the
+              library. A variant type is provided, which can hold one of several
+              concrete axis types.
+            </li>
+<li class="listitem">
+              <a class="link" href="overview.html#histogram.overview.rationale.structure.storage" title="Storage types">storage
+              types</a>: Manages a collection of bin counters. The requirements
+              for a storage differ from those of an STL container, it needs to follow
+              the storage concept. Two implementations are provided.
+            </li>
+</ul></div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="histogram.overview.rationale.structure.host"></a><a class="link" href="overview.html#histogram.overview.rationale.structure.host" title="Histogram host class">Histogram
+          host class</a>
+</h5></div></div></div>
+<p>
+            Histograms store axis objects and a storage object. A one-dimensional
+            histogram has one axis, a multi-dimensional histogram has several. When
+            you pass an input tuple, say (v1, v2, v3), then the first axis will map
+            v1 onto index i1, the second axis v2 onto i2, and so on, to generate
+            the index tuple (i1, i2, i3). The histogram host class then converts
+            these indices into a linear global index that is used to address bin
+            counter in the storage object.
+          </p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+              To understand the need for multi-dimensional histograms, think of point
+              coordinates. If all points that you consider lie on a line, you need
+              only one value to describe the point. If all points lie in a plane,
+              you need two values to describe the position. Three values are needed
+              for a point in space. A histogram puts a discrete grid over the line,
+              the plane or the space, and counts how many points lie in each cell
+              of the grid. To approximate a point distribution on a line, a 1d-histogram
+              is sufficient. To do the same in 3d-space, one needs a 3d-histogram.
+            </p></td></tr>
+</table></div>
+<p>
+            This library supports different axis types, so that the user can customize
+            how the mapping is done exactly, see <a class="link" href="overview.html#histogram.overview.rationale.structure.axis" title="Axis types">axis
+            types</a>. Users can furthermore chose between several ways of storing
+            axis types in the histogram.
+          </p>
+<p>
+            When the number and types of the axes are known at compile-time, the
+            histogram host class stores axis types in a <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">tuple</span></code>.
+            We call this a <span class="emphasis"><em>static histogram</em></span>. To access a particular
+            axis, one should use a compile-time number as index (a run-time index
+            also works with some limitations). A static histogram is extremely fast
+            (see <a class="link" href="benchmarks.html" title="Benchmarks">benchmark</a>), because
+            there is no overhead and the compiler can inline code, unroll loops,
+            and more. Also, many user errors are can be caught at compile-time rather
+            than run-time.
+          </p>
+<p>
+            Static histograms are the best kind, but cannot be used when histograms
+            are to be created with an axis configuration that is only known at run-time.
+            This is the case, for example, when histograms are created from Python
+            or from a graphical user interface. Therefore also more dynamic kinds
+            of histograms are supported.
+          </p>
+<p>
+            There are two levels of dynamism. The histogram can hold instances of
+            a single axis type in a <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span></code>.
+            Now the number of axis instances per histogram can vary at run-time,
+            but the axis type must be the same for all instances. We call this a
+            <span class="emphasis"><em>semi-dynamic histogram</em></span>.
+          </p>
+<p>
+            If also the axis types need to vary at run-time, one can place <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">histogram</span><span class="special">::</span><span class="identifier">axis</span><span class="special">::</span><span class="identifier">variant</span></code> type in a <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span></code>,
+            which can hold one of a set of different concrete axis types. We call
+            this a <span class="emphasis"><em>dynamic histogram</em></span>. The dynamic histogram
+            is a single type that can store arbitrary sequences of different axes
+            types, which may be generated at run-time. The polymorphic behavior of
+            the generic <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">histogram</span><span class="special">::</span><span class="identifier">axis</span><span class="special">::</span><span class="identifier">variant</span></code> type has a run-time cost, however.
+            Typically, the performance is reduced by a factor of two compared to
+            a static histogram.
+          </p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+              The design decision to store axis types in the variant-like type <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">histogram</span><span class="special">::</span><span class="identifier">axis</span><span class="special">::</span><span class="identifier">variant</span></code> has several advantages over
+              forms of run-time polymorphism. Firstly, it guarantees that axis objects
+              which belong to the same histogram are stored locally together in memory,
+              which reduces cache misses when the histogram iterates over axis objects
+              in a tight loop, which it often does. Secondly, each axis can accept
+              a different value type in this scheme. Classic polymorphism with vtables
+              requires that all classes share the same method call signatures, but
+              we want different axis to allowed to accepted different types of arguments.
+              Variants work well for this case.
+            </p></td></tr>
+</table></div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="histogram.overview.rationale.structure.axis"></a><a class="link" href="overview.html#histogram.overview.rationale.structure.axis" title="Axis types">Axis
+          types</a>
+</h5></div></div></div>
+<p>
+            An axis defines an injective mapping of (a range of) input values to
+            a bin. The logic is encapsulated in an axis type. Users can create their
+            own axis classes and use them with the library, by implementing the
+            <a class="link" href="concepts.html#histogram.concepts.Axis" title="Axis"><span class="bold"><strong>Axis</strong></span>
+            concept</a>. The library comes with four builtin types, which implement
+            different specializations.
+          </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+                <code class="computeroutput"><a class="link" href="../boost/histogram/axis/regular.html" title="Class template regular">boost::histogram::axis::regular</a></code>
+                sorts real numbers into bins with equal width. The regular axis also
+                supports monotonic transforms, which are applied when the input values
+                are passed to the axis. This can be used to make a fast logarithmic
+                axis, where the bins have equal width in the logarithm of the variable.
+              </li>
+<li class="listitem">
+                <code class="computeroutput"><a class="link" href="../boost/histogram/axis/variable.html" title="Class template variable">boost::histogram::axis::variable</a></code>
+                sorts real numbers into bins with varying width.
+              </li>
+<li class="listitem">
+                <code class="computeroutput"><a class="link" href="../boost/histogram/axis/integer.html" title="Class template integer">boost::histogram::axis::integer</a></code>
+                is a specialization of a regular axis for a range of integers with
+                unit bin width. It is much faster than a regular axis.
+              </li>
+<li class="listitem">
+                <code class="computeroutput"><a class="link" href="../boost/histogram/axis/category.html" title="Class template category">boost::histogram::axis::category</a></code>
+                is a bijective mapping of unique values onto bin indices and vice
+                versa. This can be used with discrete categorical data, like "red",
+                "green", "blue", for example.
+              </li>
+</ul></div>
+<p>
+            Each builtin axis type has a few compile-time options, which change its
+            behavior.
+          </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+                All axis types can have an optional overflow bin. When the overflow
+                bin is enabled and an input value is above the range covered by the
+                axis, it is not discarded but counted in the overflow bin.
+              </li>
+<li class="listitem">
+                All axis types except the category axis can have an optional underflow
+                bin. When the underflow bin is enabled and an input value is below
+                the range covered by the axis, it is not discarded but counted in
+                the underflow bin.
+              </li>
+<li class="listitem">
+                All axis types except the category axis can be circular, meaning
+                that the axis range is periodic. This is useful for periodic data
+                like polar angles.
+              </li>
+<li class="listitem">
+                All axis types can optionally grow. When an input value is outside
+                of the range of an axis which is configured to grow, the range of
+                the axis is extended until the value is in range. This option is
+                incompatible with the circular option, only either can be active.
+              </li>
+</ul></div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="histogram.overview.rationale.structure.storage"></a><a class="link" href="overview.html#histogram.overview.rationale.structure.storage" title="Storage types">Storage
+          types</a>
+</h5></div></div></div>
+<p>
+            A storage type holds the actual cell values. It uses a one-dimensional
+            index for cell lookup, computed by the histogram host from the indices
+            generated by its axes. The storage needs to know nothing about axes.
+            Users can integrate their own storage classes with the library, by implementing
+            the <a class="link" href="concepts.html#histogram.concepts.Storage" title="Storage">storage concept</a>.
+            Standard containers can be used as storage backends, the library adapts
+            them with the <code class="computeroutput"><a class="link" href="../boost/histogram/storage_adaptor.html" title="Class template storage_adaptor">boost::histogram::storage_adaptor</a></code>.
+          </p>
+<p>
+            Cell lookup is often happening in a tight loop and is random-access.
+            A normal <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span></code> works well as a storage backend.
+            Sometimes this is the best solution, but there are some caveats to this
+            approach. The user has to decide which type should represents the cell
+            counts and it is not an obvious choice. An integer type needs to be large
+            enough to avoid counter overflow, but only a fraction of the bits are
+            used if its capacity is too large. This is a waste of memory then. When
+            memory is wasted, more cache misses occur and performance is degraded
+            (see the benchmarks). The performance of modern CPUs depends a lot on
+            effective utilization of the CPU cache, which is still small. Using floating
+            point numbers instead of integers is also dangerous. They don't overflow,
+            but cap the bin count when the bits in the mantissa are used up.
+          </p>
+<p>
+            The default storage used in the library is <code class="computeroutput"><a class="link" href="../boost/histogram/unlimited_storage.html" title="Class template unlimited_storage">boost::histogram::unlimited_storage</a></code>.
+            It solves these issues with a dynamic counter type management, based
+            on the following insight. The <a href="https://en.wikipedia.org/wiki/Curse_of_dimensionality" target="_top">curse
+            of dimensionality</a> makes the total number of bins grow very fast
+            as the dimension of the histogram grows. However, having many bins also
+            reduces the typical number of counts per bin, since the input values
+            are spread over many more bins now. This means a small counter is often
+            sufficient for high-dimensional histograms.
+          </p>
+<p>
+            The default storage therefore starts with a minimum amount of memory
+            per cell, it uses an 1 byte. If the count in any cell is about to overflow,
+            all cells switch to the next larger integer type simultaneously. This
+            goes on, the capacity per cell is always doubled when it is used up,
+            until 8 byte per bin are reached. The following images illustrate this
+            progression for a storage of 3 bin counters. A new memory block is always
+            allocated for all counters, when the first one of them hits its capacity
+            limit.
+          </p>
+<p>
+            <span class="inlinemediaobject"><object type="image/svg+xml" data="../../storage_3_uint8.svg" width="65" height="23"></object></span>
+          </p>
+<p>
+            <span class="inlinemediaobject"><object type="image/svg+xml" data="../../storage_3_uint16.svg" width="129" height="23"></object></span>
+          </p>
+<p>
+            <span class="inlinemediaobject"><object type="image/svg+xml" data="../../storage_3_uint32.svg" width="256" height="23"></object></span>
+          </p>
+<p>
+            <span class="inlinemediaobject"><object type="image/svg+xml" data="../../storage_3_uint64.svg" width="511" height="23"></object></span>
+          </p>
+<p>
+            When even that is not enough, the default storage switches to a multiprecision
+            type similar to those in <a href="../../../../../libs/multiprecision/index.html" target="_top">Boost.Multiprecision</a>,
+            whose capacity is limited only by available memory. The following image
+            is not to scale:
+          </p>
+<p>
+            <span class="inlinemediaobject"><object type="image/svg+xml" data="../../storage_3_cpp_int.svg" width="511" height="23"></object></span>
+          </p>
+<p>
+            This approach is not only memory conserving, but also provides the strong
+            guarantee that bin counters cannot overflow.
+          </p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+              The no-overflow-guarantee only applies when the histogram is not using
+              weighted fills or if all weights are integral numbers. When floating
+              point weights are used, the default storage switches to a double counter
+              per cell to store the sum of such weights. A double cannot provide
+              the no-overflow-guarantee.
+            </p></td></tr>
+</table></div>
+<p>
+            The best part: this approach is even faster for a histogram with sufficient
+            size despite the run-time overheads of handling the counter type dynamically.
+            The benchmarks show that the gains from better cache usage outweigh the
+            run-time overheads of dynamic dispatching to the right bin counter type
+            and the occasional allocation costs. Doubling the size of the bin counters
+            each time helps, because the allocations happen only O(logN) times for
+            N increments.
+          </p>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="histogram.overview.rationale.no_lambdas"></a><a class="link" href="overview.html#histogram.overview.rationale.no_lambdas" title="No lambdas as axis types">No lambdas
+        as axis types</a>
+</h4></div></div></div>
+<p>
+          Lambdas were considered and rejected as a form of simple user-defined axis
+          type, because they do not allow access to their state, such as the current
+          axis size. Lambdas can be fully replaced by locally-defined structs. A
+          local struct cannot be templated and cannot have templated methods, but
+          this is not an issue. In the local context where the struct is created,
+          all relevant types must be known already so that locally defined structs
+          can simply use these concrete types and there is no need for templates.
+        </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="histogram.overview.rationale.uoflow"></a><a class="link" href="overview.html#histogram.overview.rationale.uoflow" title="Under- and overflow bins">Under- and overflow
+        bins</a>
+</h4></div></div></div>
+<p>
+          Axis instances by default add extra bins that count values which fall below
+          or above the range covered by the axis (for those types where that makes
+          sense). These extra bins are called under- and overflow bins, respectively.
+          The extra bins can be turned off individually for each axis to conserve
+          memory, but it is generally recommended to have them. The normal bins,
+          excluding under- and overflow, are called <span class="bold"><strong>inner bins</strong></span>.
+        </p>
+<p>
+          Under- and overflow bins are useful in one-dimensional histograms, and
+          nearly essential in multi-dimensional histograms. Here are the advantages:
+        </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+              No loss: The total sum over all bin counts is strictly equal to the
+              number of times the histogram was filled. Even NaN values are counted,
+              they are put in the overflow-bin by convention.
+            </li>
+<li class="listitem">
+              Diagnosis: Unexpected extreme values show up in the extra bins, which
+              otherwise may be overlooked.
+            </li>
+<li class="listitem">
+              Ability to reduce histograms: In multi-dimensional histograms, an out-of-range
+              value along one axis may be paired with an in-range value along another
+              axis. If under- and overflow bins are missing, such a value pair is
+              lost completely. If you apply a <code class="computeroutput"><span class="identifier">reduce</span></code>
+              operation on a histogram, which removes some axes by summing all counts
+              along that dimension, this would lead to distortions of the histogram
+              along the remaining axes. When under- and overflow bins are present,
+              the <code class="computeroutput"><span class="identifier">reduce</span></code> operation
+              always produces a sub-histogram identical to one obtained, if it was
+              filled with the original data.
+            </li>
+</ul></div>
+<p>
+          The presence of the extra bins does not interfere with normal indexing.
+          On an axis with <code class="computeroutput"><span class="identifier">n</span></code> bins,
+          the first bin has the index <code class="computeroutput"><span class="number">0</span></code>,
+          the last bin <code class="computeroutput"><span class="identifier">n</span><span class="special">-</span><span class="number">1</span></code>, while the under- and overflow bins are
+          accessible at the indices <code class="computeroutput"><span class="special">-</span><span class="number">1</span></code> and <code class="computeroutput"><span class="identifier">n</span></code>,
+          respectively. This choice is optimized for users who are unaware of the
+          existence of these extra bins. They would find the other indexing scheme
+          surprising, where you start with <code class="computeroutput"><span class="number">0</span></code>
+          at the underflow bin and the first normal bin is at <code class="computeroutput"><span class="number">1</span></code>.
+          Also, the chosen scheme allows one to turn off the extra bins in the code
+          where the histogram is created, without changing any code downstream that
+          addresses inner bins with indices.
+        </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="histogram.overview.rationale.index_type"></a><a class="link" href="overview.html#histogram.overview.rationale.index_type" title="Size method of axis returns signed integer">Size method
+        of axis returns signed integer</a>
+</h4></div></div></div>
+<p>
+          The standard library returns a container size as an unsigned integer, because
+          a container size cannot be negative. The <code class="computeroutput"><span class="identifier">size</span><span class="special">()</span></code> method of the histogram class follows
+          this rule, but the <code class="computeroutput"><span class="identifier">size</span><span class="special">()</span></code> methods of axis types return a signed
+          integral type. Why?
+        </p>
+<p>
+          As explained in the <a class="link" href="overview.html#histogram.overview.rationale.uoflow" title="Under- and overflow bins">section
+          about under- and overflow</a>, a histogram axis may have an optional
+          underflow bin, which is addressed by the index <code class="computeroutput"><span class="special">-</span><span class="number">1</span></code>. It follows that the index type must be
+          signed integer for all axis types.
+        </p>
+<p>
+          The <code class="computeroutput"><span class="identifier">size</span><span class="special">()</span></code>
+          method of any axis returns the same signed integer type. The size of an
+          axis cannot be negative, but this choice has two advantages. Firstly, the
+          value returned by <code class="computeroutput"><span class="identifier">size</span><span class="special">()</span></code> itself is guaranteed to be a valid index,
+          which is good since it may address the overflow bin. Secondly, comparisons
+          between an index and the value returned by <code class="computeroutput"><span class="identifier">size</span><span class="special">()</span></code> are frequent. If <code class="computeroutput"><span class="identifier">size</span><span class="special">()</span></code> returned an unsigned integral type, compilers
+          would produce a warning for each comparisons, and rightly so. <a href="https://www.youtube.com/watch?v=wvtFGa6XJDU" target="_top">Something
+          awful happens</a> on most machines when you compare <code class="computeroutput"><span class="special">-</span><span class="number">1</span></code> with an unsigned integer, <code class="computeroutput"><span class="special">-</span><span class="number">1</span> <span class="special">&lt;</span>
+          <span class="number">1u</span> <span class="special">==</span> <span class="keyword">false</span></code>, which causes a serious bug in the
+          following innocent-looking loop:
+        </p>
+<pre class="programlisting"><span class="keyword">auto</span> <span class="identifier">my_axis</span> <span class="special">=</span> <span class="comment">/* ... */</span><span class="special">;</span>
+<span class="comment">// naive loop to iterate over all bins, including underflow and overflow</span>
+<span class="keyword">for</span> <span class="special">(</span><span class="keyword">int</span> <span class="identifier">i</span> <span class="special">=</span> <span class="special">-</span><span class="number">1</span><span class="special">;</span> <span class="identifier">i</span> <span class="special">&lt;=</span> <span class="identifier">my_axis</span><span class="special">.</span><span class="identifier">size</span><span class="special">();</span> <span class="special">++</span><span class="identifier">i</span><span class="special">)</span> <span class="special">{</span>
+  <span class="comment">// body is never executed if return value of my_axis.size() is an unsigned integral type</span>
+<span class="special">}</span>
+</pre>
+<p>
+          The advantages clearly override the disadvantages of this choice.
+        </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="histogram.overview.rationale.real_index_type"></a><a class="link" href="overview.html#histogram.overview.rationale.real_index_type" title="Continuous axis maps real-valued indices to values">Continuous
+        axis maps real-valued indices to values</a>
+</h4></div></div></div>
+<p>
+          An axis has a method which converts an index into the equivalent value
+          at that index. If the axis is continuous, there are many possible values
+          in the interval between two adjacent integer indices. User often want to
+          access the center of such an interval. The easiest and most efficient way
+          to compute the center value is to accept real-valued indices in the conversion
+          method. Then, the center of the first bin between index <code class="computeroutput"><span class="identifier">i</span></code>
+          and <code class="computeroutput"><span class="identifier">i</span><span class="special">+</span><span class="number">1</span></code> is simply obtained by passing <code class="computeroutput"><span class="identifier">i</span><span class="special">+</span><span class="number">0.5</span></code>
+          to the method which computes the value.
+        </p>
+<p>
+          This scheme is computationally efficient and intuitive. It is so useful
+          that each continuous axis is required to accept a real-valued index. Library
+          code relies on this to detect whether an axis is continuous or discrete.
+          It introspects the argument type of the conversion function and checks
+          whether it is a floating point or integral type, respectively.
+        </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="histogram.overview.rationale.variance"></a><a class="link" href="overview.html#histogram.overview.rationale.variance" title="Variance estimates">Variance estimates</a>
+</h4></div></div></div>
+<p>
+          Once a histogram is filled, the bin counter can be accessed with the <code class="computeroutput"><span class="identifier">at</span><span class="special">(...)</span></code>
+          method. The standard counter type has a <code class="computeroutput"><span class="identifier">value</span><span class="special">()</span></code> method to return the count <span class="emphasis"><em>k</em></span>.
+          It also offers a <code class="computeroutput"><span class="identifier">variance</span><span class="special">()</span></code> method, which returns an estimate <span class="emphasis"><em>v</em></span>
+          of the <a href="https://en.wikipedia.org/wiki/Variance" target="_top">variance</a>
+          of that count.
+        </p>
+<p>
+          If the input values for the histogram come from a <a href="https://en.wikipedia.org/wiki/Stochastic_process" target="_top">stochastic
+          process</a>, the variance provides useful additional information. Examples
+          for a stochastic process are a physics experiment or a random person filling
+          out a questionnaire <a href="#ftn.histogram.overview.rationale.variance.f0" class="footnote" name="histogram.overview.rationale.variance.f0"><sup class="footnote">[3]</sup></a>. The variance <span class="emphasis"><em>v</em></span> is the square of the
+          <a href="https://en.wikipedia.org/wiki/Standard_deviation" target="_top">standard
+          deviation</a>. The standard deviation is a number that tells us how
+          much we can expect the observed value to fluctuate if we or someone else
+          would repeat our experiment with new random input.
+        </p>
+<p>
+          Variance estimates are useful in many ways:
+        </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+              Error bars: Drawing an <a href="https://en.wikipedia.org/wiki/Error_bar" target="_top">error
+              bar</a> over the interval <span class="emphasis"><em>(k - sqrt(v), k + sqrt(v))</em></span>
+              is a simple visualization of the expected random scatter of the bin
+              value <span class="emphasis"><em>k</em></span>, if the histogram was cleared and filled
+              again with another independent sample of the same size (e.g. by repeating
+              the physics experiment or asking more people to fill a questionnaire).
+              If you compare the result with a fitted model (see next item), about
+              2/3 of the error bars should overlap with the model, if the model is
+              correct.
+            </li>
+<li class="listitem">
+              Least-squares fitting: Often you have a model of the expected number
+              of counts <span class="emphasis"><em>lambda</em></span> per bin, which is a function
+              of parameters with unknown values. A simple method to find good (sometimes
+              the best) estimates for those parameter values is to vary them until
+              the sum of squared residuals <span class="emphasis"><em>(k - lambda)^2/v</em></span>
+              is minimized. This is the <a href="https://en.wikipedia.org/wiki/Least_squares" target="_top">method
+              of least squares</a>, in which both the bin values <span class="emphasis"><em>k</em></span>
+              and variance estimates <span class="emphasis"><em>v</em></span> enter.
+            </li>
+<li class="listitem">
+              Pull distributions: If you have two histograms filled with the same
+              number of samples and you want to know whether they are in agreement,
+              you can compare the so-called pull distribution. It is formed by subtracting
+              the counts and dividing by the square root of their variances <span class="emphasis"><em>(k1
+              - k2)/sqrt(v1 + v2)</em></span>. If the histograms are identical, the
+              pull distribution randomly scatters around zero, and about 2/3 of the
+              values are in the interval <span class="emphasis"><em>[ -1, 1]</em></span>.
+            </li>
+</ul></div>
+<p>
+          Why return the variance <span class="emphasis"><em>v</em></span> and not the standard deviation
+          <span class="emphasis"><em>s = sqrt(v)</em></span>? The reason is that variances can be trivially
+          added. <a href="https://en.wikipedia.org/wiki/Variance#Properties" target="_top">Variances
+          of independent samples can be added</a> like normal numbers <span class="emphasis"><em>v3
+          = v1 + v2</em></span>. This is not true for standard deviations, where the
+          addition law is more complex <span class="emphasis"><em>s3 = sqrt(s1^2 + s2^2)</em></span>.
+          In that sense, the variance is more straight-forward to use during data
+          processing. It is also more efficient for the same reason. The user can
+          take the square-root at the end of the processing obtain the standard deviation
+          as needed.
+        </p>
+<p>
+          How is the variance estimate <span class="emphasis"><em>v</em></span> computed? If we know
+          the expected number of counts <span class="emphasis"><em>lambda</em></span> per bin, we could
+          compute the variance as <span class="emphasis"><em>v = lambda</em></span>, because counts
+          in a histogram follow the <a href="https://en.wikipedia.org/wiki/Poisson_distribution" target="_top">Poisson
+          distribution</a> <a href="#ftn.histogram.overview.rationale.variance.f1" class="footnote" name="histogram.overview.rationale.variance.f1"><sup class="footnote">[4]</sup></a>. After filling a histogram, we do not know the expected number
+          of counts <span class="emphasis"><em>lambda</em></span> for any particular bin, but we know
+          the observed count <span class="emphasis"><em>k</em></span>, which is not too far from <span class="emphasis"><em>lambda</em></span>.
+          We therefore might be tempted to just replace <span class="emphasis"><em>lambda</em></span>
+          with <span class="emphasis"><em>k</em></span> in the formula <span class="emphasis"><em>v = lambda = k</em></span>.
+          This is in fact the so-called non-parametric estimate for the variance
+          based on the <a href="https://en.wikipedia.org/wiki/Plug-in_principle" target="_top">plug-in
+          principle</a>. It is the best (and only) estimate for the variance,
+          if we know nothing more about the underlying stochastic process which generated
+          the inputs (or want to feign ignorance about it).
+        </p>
+<p>
+          Now, if the number returned by the <code class="computeroutput"><span class="identifier">variance</span><span class="special">()</span></code> method is just the same as the number
+          return by <code class="computeroutput"><span class="identifier">value</span><span class="special">()</span></code>
+          method, why bother with adding a <code class="computeroutput"><span class="identifier">variance</span><span class="special">()</span></code> method? There is a reason, which becomes
+          apparent if the histograms are filled with weights, which is discussed
+          next.
+        </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="histogram.overview.rationale.weights"></a><a class="link" href="overview.html#histogram.overview.rationale.weights" title="Support of weighted fills">Support of weighted
+        fills</a>
+</h4></div></div></div>
+<p>
+          A histogram sorts input values into bins and increments a bin counter if
+          an input value falls into the range covered by that bin. The <code class="computeroutput"><a class="link" href="../boost/histogram/unlimited_storage.html" title="Class template unlimited_storage">standard storage</a></code>
+          uses integer types to store these counts, see the <a class="link" href="overview.html#histogram.overview.rationale.structure.storage" title="Storage types">storage
+          section</a> how integer overflow is avoided. However, sometimes histograms
+          need to be filled with values that have a weight <span class="emphasis"><em>w</em></span>
+          attached to them. In this case, the corresponding bin counter is not increased
+          by one, but by the weight value <span class="emphasis"><em>w</em></span>.
+        </p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+            There are several use-cases for weighted increments. The main use in
+            particle physics is to adapt simulated data of an experiment to real
+            data. Simulations are needed to determine various corrections and efficiencies,
+            but a simulated experiment is almost never a perfect replica of the real
+            experiment. In addition, simulations are expensive to do. So, when deviations
+            in a simulated distribution of a variable are found, one typically does
+            not rerun the simulations, but assigns weights to match the simulated
+            distribution to the real one.
+          </p></td></tr>
+</table></div>
+<p>
+          When the <code class="computeroutput"><a class="link" href="../boost/histogram/unlimited_storage.html" title="Class template unlimited_storage">unlimited_storage</a></code>
+          is used, histograms may also be filled with weighted value tuples. The
+          choice of using weighted fills can be made at run-time. If the call <code class="computeroutput"><span class="keyword">operator</span><span class="special">()(</span><span class="identifier">weight</span><span class="special">(</span><span class="identifier">x</span><span class="special">),</span> <span class="special">...)</span></code> is used, two doubles per bin are stored
+          (previous integer counts are automatically converted). The first double
+          keeps track of the sum of weights. The second double keeps track of the
+          sum of weights squared, which is the variance estimate in this case. The
+          former is accessed with the <code class="computeroutput"><span class="identifier">value</span><span class="special">()</span></code> method of the bin counter, and the latter
+          with the <code class="computeroutput"><span class="identifier">variance</span><span class="special">()</span></code>
+          method.
+        </p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+            Why the sum of weights squared is the variance estimate can be derived
+            from the <a href="https://en.wikipedia.org/wiki/Variance#Properties" target="_top">mathematical
+            properties of the variance</a>. Let us say a bin is filled <span class="emphasis"><em>k1</em></span>
+            times with a fixed weight <span class="emphasis"><em>w1</em></span>. The sum of weights
+            is then <span class="emphasis"><em>w1 k1</em></span>. It then follows from the variance
+            properties that <span class="emphasis"><em>Var(w1 k1) = w1^2 Var(k1)</em></span>. Using
+            the reasoning from before, the estimated variance of <span class="emphasis"><em>k1</em></span>
+            is <span class="emphasis"><em>k1</em></span>, so that <span class="emphasis"><em>Var(w1 k1) = w1^2 Var(k1)
+            = w1^2 k1</em></span>. Variances of independent samples are additive.
+            If the bin is further filled <span class="emphasis"><em>k2</em></span> times with weight
+            <span class="emphasis"><em>w2</em></span>, the sum of weights is <span class="emphasis"><em>w1 k1 + w2 k2</em></span>,
+            with variance <span class="emphasis"><em>w1^2 k1 + w2^2 k2</em></span>. This also holds
+            for <span class="emphasis"><em>k1 = k2 = 1</em></span>. Therefore, the sum of weights
+            <span class="emphasis"><em>w[i]</em></span> has variance sum of <span class="emphasis"><em>w[i]^2</em></span>.
+            In other words, to incrementally keep track of the variance of the sum
+            of weights, we need to keep track of the sum of weights squared.
+          </p></td></tr>
+</table></div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="histogram.overview.rationale.python_support"></a><a class="link" href="overview.html#histogram.overview.rationale.python_support" title="Python support">Python
+        support</a>
+</h4></div></div></div>
+<p>
+          Python is a popular scripting language in the data science community. Thus,
+          the library must be designed to support Python bindings, which are developed
+          separately. The histogram is usable as an interface between a complex simulation
+          or data-storage system written in C++ and data-analysis/plotting in Python.
+          Users are able to define a histogram in Python, let it be filled on the
+          C++ side, and then get it back for further data analysis or plotting.
+        </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="histogram.overview.rationale.support_of_boost_accumulators"></a><a class="link" href="overview.html#histogram.overview.rationale.support_of_boost_accumulators" title="Support of Boost.Accumulators">Support
+        of Boost.Accumulators</a>
+</h4></div></div></div>
+<p>
+          Boost.Histogram can be configured to use arbitrary accumulators as cells,
+          in particular the accumulators from <a href="../../../../../libs/accumulators/index.html" target="_top">Boost.Accumulators</a>.
+          Sample values can be passed to the cell accumulator, which it may use to
+          compute the mean, median, variance or other statistics of the samples sorted
+          into each cell.
+        </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="histogram.overview.rationale.support_of_boost_range"></a><a class="link" href="overview.html#histogram.overview.rationale.support_of_boost_range" title="Support of Boost.Range">Support
+        of Boost.Range</a>
+</h4></div></div></div>
+<p>
+          The histogram class is a valid range and can be used with the <a href="../../../../../libs/range/index.html" target="_top">Boost.Range</a>
+          library. This library provides a custom adaptor generator, <code class="computeroutput"><span class="identifier">indexed</span></code>, analog to the corresponding
+          adaptor generator in Boost.Range, but with a potentially multi-dimensional
+          index.
+        </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="histogram.overview.rationale.serialization"></a><a class="link" href="overview.html#histogram.overview.rationale.serialization" title="Serialization">Serialization</a>
+</h4></div></div></div>
+<p>
+          Serialization is implemented using <a href="../../../../../libs/serialization/index.html" target="_top">Boost.Serialization</a>.
+          It would be great to have a portable binary archive with support for floating
+          point data to store and retrieve histograms efficiently, which is currently
+          not available. The library has to be open for other serialization libraries.
+        </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="histogram.overview.rationale.comparison_to_boost_accumulators"></a><a class="link" href="overview.html#histogram.overview.rationale.comparison_to_boost_accumulators" title="Comparison to Boost.Accumulators">Comparison
+        to Boost.Accumulators</a>
+</h4></div></div></div>
+<p>
+          Boost.Histogram has a minor overlap with <a href="../../../../../libs/accumulators/index.html" target="_top">Boost.Accumulators</a>,
+          but the scopes are rather different. The statistical accumulators <code class="computeroutput"><span class="identifier">density</span></code> and <code class="computeroutput"><span class="identifier">weighted_density</span></code>
+          in Boost.Accumulators generate one-dimensional histograms. The axis range
+          and the bin widths are determined automatically from a cached sample of
+          initial values. They cannot be used for multi-dimensional data. Boost.Histogram
+          focuses on multi-dimensional data and gives the user full control of how
+          the binning should be done for each dimension.
+        </p>
+<p>
+          Automatic binning is not an option for Boost.Histogram, because it does
+          not scale well to many dimensions. Because of the Curse of Dimensionality,
+          a prohibitive number of samples would need to be collected.
+        </p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+            There is no scientific consensus on how do automatic binning in an optimal
+            way, mostly because there is no consensus over the cost function (there
+            are many articles with different solutions in the literature). The problem
+            is not solved for one-dimensional data, and even less so for multi-dimensional
+            data.
+          </p></td></tr>
+</table></div>
+<p>
+          Recommendation:
+        </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+              Boost.Accumulators
+              <div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: circle; "><li class="listitem">
+                    You have one-dimensional data of which you know nothing about,
+                    and you want a histogram quickly without worrying about binning
+                    details.
+                  </li></ul></div>
+            </li>
+<li class="listitem">
+              Boost.Histogram
+              <div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: circle; ">
+<li class="listitem">
+                    You have multi-dimensional data or you suspect you will switch
+                    to multi-dimensional data later.
+                  </li>
+<li class="listitem">
+                    You want to customize the binning by hand, for example, to make
+                    bin edges coincide with special values or to handle special properties
+                    of your values, like angles defined on a circle.
+                  </li>
+</ul></div>
+            </li>
+</ul></div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="histogram.overview.rationale.why_is_boost_histogram_not_built"></a><a class="link" href="overview.html#histogram.overview.rationale.why_is_boost_histogram_not_built" title="Why is Boost.Histogram not built on top of Boost.MultiArray?">Why
+        is Boost.Histogram not built on top of Boost.MultiArray?</a>
+</h4></div></div></div>
+<p>
+          Boost.MultiArray implements a multi-dimensional array, it also converts
+          an index tuple into a global index that is used to access an element in
+          the array. Boost.Histogram and Boost.MultiArray share this functionality,
+          but Boost.Histogram cannot use Boost.MultiArray as a back-end. Boost.MultiArray
+          makes the rank of the array a compile-time property, while this library
+          needs the rank to be dynamic.
+        </p>
+<p>
+          Boost.MultiArray also does not allow to change the element type dynamically.
+          This is needed to implement the adaptive storage mentioned further up.
+          Using a variant type as the element type of a Boost.MultiArray would not
+          work, because it creates this wasteful layout:
+        </p>
+<p>
+          <code class="computeroutput"><span class="special">[</span><span class="identifier">type</span><span class="special">-</span><span class="identifier">index</span> <span class="number">1</span><span class="special">][</span><span class="identifier">value</span>
+          <span class="number">1</span><span class="special">][</span><span class="identifier">type</span><span class="special">-</span><span class="identifier">index</span> <span class="number">2</span><span class="special">][</span><span class="identifier">value</span> <span class="number">2</span><span class="special">]...</span></code>
+        </p>
+<p>
+          A type index is stored for each cell. Moreover, the variant is always as
+          large as the largest type in the union, so there is no way to safe memory
+          by using a smaller type when the bin count is low, as it is done by the
+          adaptive storage. The adaptive storage uses only one type-index for the
+          whole array and allocates a homogeneous array of values of the same type
+          that exactly matches their sizes, creating the following layout:
+        </p>
+<p>
+          <code class="computeroutput"><span class="special">[</span><span class="identifier">type</span><span class="special">-</span><span class="identifier">index</span><span class="special">][</span><span class="identifier">value</span> <span class="number">1</span><span class="special">][</span><span class="identifier">value</span>
+          <span class="number">2</span><span class="special">][</span><span class="identifier">value</span> <span class="number">3</span><span class="special">]...</span></code>
+        </p>
+<p>
+          There is only one type index and the number of allocated bytes for the
+          array can adapted dynamically to the size of the value type.
+        </p>
+</div>
+</div>
+<div class="footnotes">
+<br><hr style="width:100; text-align:left;margin-left: 0">
+<div id="ftn.histogram.overview.introduction.f0" class="footnote"><p><a href="#histogram.overview.introduction.f0" class="para"><sup class="para">[1] </sup></a>
+          Parameters of interest, like the center of a distribution, can be extracted
+          from the histogram instead of the original data set; likewise, statistical
+          models can be fitted to histograms.
+        </p></div>
+<div id="ftn.histogram.overview.introduction.f1" class="footnote"><p><a href="#histogram.overview.introduction.f1" class="para"><sup class="para">[2] </sup></a>
+          What small enough means has to be decided case by case.
+        </p></div>
+<div id="ftn.histogram.overview.rationale.variance.f0" class="footnote"><p><a href="#histogram.overview.rationale.variance.f0" class="para"><sup class="para">[3] </sup></a>
+            The choices of the person are most likely not random, but if we pick
+            a random person from a group, we randomly sample from a pool of opinions
+          </p></div>
+<div id="ftn.histogram.overview.rationale.variance.f1" class="footnote"><p><a href="#histogram.overview.rationale.variance.f1" class="para"><sup class="para">[4] </sup></a>
+            The Poisson distribution is correct as far as the counts <span class="emphasis"><em>k</em></span>
+            themselves are of interest. If the fractions per bin <span class="emphasis"><em>p = k
+            / N</em></span> are of interest, where <span class="emphasis"><em>N</em></span> is the total
+            number of counts, then the correct distribution to describe the fractions
+            is the <a href="https://en.wikipedia.org/wiki/Multinomial_distribution" target="_top">multinomial
+            distribution</a>.
+          </p></div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2016-2019 Hans
+      Dembinski<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../index.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="getting_started.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

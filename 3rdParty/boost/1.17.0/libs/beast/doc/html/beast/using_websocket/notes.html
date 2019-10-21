@@ -1,0 +1,151 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Notes</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Chapter&#160;1.&#160;Boost.Beast">
+<link rel="up" href="../using_websocket.html" title="WebSocket">
+<link rel="prev" href="teardown.html" title="Teardown">
+<link rel="next" href="../concepts.html" title="Concepts">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="teardown.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../using_websocket.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../concepts.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="beast.using_websocket.notes"></a><a class="link" href="notes.html" title="Notes">Notes</a>
+</h3></div></div></div>
+<p>
+        Because calls to read data may return a variable amount of bytes, the interface
+        to calls that read data require an object that meets the requirements of
+        <a class="link" href="../concepts/DynamicBuffer.html" title="DynamicBuffer"><span class="emphasis"><em>DynamicBuffer</em></span></a>.
+        This concept is modeled on <a href="../../../../../../doc/html/boost_asio/reference/streambuf.html" target="_top"><code class="computeroutput"><span class="identifier">net</span><span class="special">::</span><span class="identifier">streambuf</span></code></a>.
+      </p>
+<p>
+        The implementation does not perform queueing or buffering of messages. If
+        desired, these features should be provided by callers. The impact of this
+        design is that library users are in full control of the allocation strategy
+        used to store data and the back-pressure applied on the read and write side
+        of the underlying TCP/IP connection.
+      </p>
+<h5>
+<a name="beast.using_websocket.notes.h0"></a>
+        <span class="phrase"><a name="beast.using_websocket.notes.asynchronous_operations"></a></span><a class="link" href="notes.html#beast.using_websocket.notes.asynchronous_operations">Asynchronous
+        Operations</a>
+      </h5>
+<p>
+        Asynchronous versions are available for all functions:
+      </p>
+<pre class="programlisting"><span class="identifier">flat_buffer</span> <span class="identifier">buffer</span><span class="special">;</span>
+
+<span class="identifier">ws</span><span class="special">.</span><span class="identifier">async_read</span><span class="special">(</span><span class="identifier">buffer</span><span class="special">,</span>
+    <span class="special">[](</span><span class="identifier">error_code</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span><span class="special">)</span>
+    <span class="special">{</span>
+        <span class="comment">// Do something with the buffer</span>
+    <span class="special">});</span>
+</pre>
+<p>
+        Calls to asynchronous initiation functions support the extensible asynchronous
+        model developed by the Boost.Asio author, allowing for traditional completion
+        handlers, stackful or stackless coroutines, and even futures:
+      </p>
+<pre class="programlisting"><span class="keyword">void</span> <span class="identifier">echo</span><span class="special">(</span><span class="identifier">stream</span><span class="special">&lt;</span><span class="identifier">tcp_stream</span><span class="special">&gt;&amp;</span> <span class="identifier">ws</span><span class="special">,</span>
+    <span class="identifier">multi_buffer</span><span class="special">&amp;</span> <span class="identifier">buffer</span><span class="special">,</span> <span class="identifier">net</span><span class="special">::</span><span class="identifier">yield_context</span> <span class="identifier">yield</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="identifier">ws</span><span class="special">.</span><span class="identifier">async_read</span><span class="special">(</span><span class="identifier">buffer</span><span class="special">,</span> <span class="identifier">yield</span><span class="special">);</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">future</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span><span class="special">&gt;</span> <span class="identifier">fut</span> <span class="special">=</span>
+        <span class="identifier">ws</span><span class="special">.</span><span class="identifier">async_write</span><span class="special">(</span><span class="identifier">buffer</span><span class="special">.</span><span class="identifier">data</span><span class="special">(),</span> <span class="identifier">net</span><span class="special">::</span><span class="identifier">use_future</span><span class="special">);</span>
+<span class="special">}</span>
+</pre>
+<p>
+        The example programs that come with the library demonstrate the usage of
+        websocket stream operations with all asynchronous varieties.
+      </p>
+<h5>
+<a name="beast.using_websocket.notes.h1"></a>
+        <span class="phrase"><a name="beast.using_websocket.notes.the_io_context"></a></span><a class="link" href="notes.html#beast.using_websocket.notes.the_io_context">The
+        io_context</a>
+      </h5>
+<p>
+        The creation and operation of the <a href="../../../../../../doc/html/boost_asio/reference/io_context.html" target="_top"><code class="computeroutput"><span class="identifier">net</span><span class="special">::</span><span class="identifier">io_context</span></code></a>
+        associated with the underlying stream is left to the callers, permitting
+        any implementation strategy including one that does not require threads for
+        environments where threads are unavailable. Beast WebSocket itself does not
+        use or require threads.
+      </p>
+<h5>
+<a name="beast.using_websocket.notes.h2"></a>
+        <span class="phrase"><a name="beast.using_websocket.notes.thread_safety"></a></span><a class="link" href="notes.html#beast.using_websocket.notes.thread_safety">Thread
+        Safety</a>
+      </h5>
+<p>
+        Like a regular <a href="../../../../../../libs/asio/index.html" target="_top">Boost.Asio</a>
+        socket, a <a class="link" href="../ref/boost__beast__websocket__stream.html" title="websocket::stream"><code class="computeroutput"><span class="identifier">stream</span></code></a> is not thread safe. Callers
+        are responsible for synchronizing operations on the socket using an implicit
+        or explicit strand, as per the Asio documentation. The websocket stream asynchronous
+        interface supports one of each of the following operations to be active at
+        the same time:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            <a class="link" href="../ref/boost__beast__websocket__stream/async_read.html" title="websocket::stream::async_read"><code class="computeroutput"><span class="identifier">async_read</span></code></a> or <a class="link" href="../ref/boost__beast__websocket__stream/async_read_some.html" title="websocket::stream::async_read_some"><code class="computeroutput"><span class="identifier">async_read_some</span></code></a>
+          </li>
+<li class="listitem">
+            <a class="link" href="../ref/boost__beast__websocket__stream/async_write.html" title="websocket::stream::async_write"><code class="computeroutput"><span class="identifier">async_write</span></code></a> or <a class="link" href="../ref/boost__beast__websocket__stream/async_write_some.html" title="websocket::stream::async_write_some"><code class="computeroutput"><span class="identifier">async_write_some</span></code></a>
+          </li>
+<li class="listitem">
+            <a class="link" href="../ref/boost__beast__websocket__stream/async_ping.html" title="websocket::stream::async_ping"><code class="computeroutput"><span class="identifier">async_ping</span></code></a> or <a class="link" href="../ref/boost__beast__websocket__stream/async_pong.html" title="websocket::stream::async_pong"><code class="computeroutput"><span class="identifier">async_pong</span></code></a>
+          </li>
+<li class="listitem">
+            <a class="link" href="../ref/boost__beast__websocket__stream/async_close.html" title="websocket::stream::async_close"><code class="computeroutput"><span class="identifier">async_close</span></code></a>
+          </li>
+</ul></div>
+<p>
+        For example, the following code is produces undefined behavior, because the
+        program is attempting to perform two simultaneous reads:
+      </p>
+<pre class="programlisting"><span class="identifier">ws</span><span class="special">.</span><span class="identifier">async_read</span><span class="special">(</span><span class="identifier">b</span><span class="special">,</span> <span class="special">[](</span><span class="identifier">error_code</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span><span class="special">){});</span>
+<span class="identifier">ws</span><span class="special">.</span><span class="identifier">async_read</span><span class="special">(</span><span class="identifier">b</span><span class="special">,</span> <span class="special">[](</span><span class="identifier">error_code</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span><span class="special">){});</span>
+</pre>
+<p>
+        However, this code is correct:
+      </p>
+<pre class="programlisting"><span class="identifier">ws</span><span class="special">.</span><span class="identifier">async_read</span><span class="special">(</span><span class="identifier">b</span><span class="special">,</span> <span class="special">[](</span><span class="identifier">error_code</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span><span class="special">){});</span>
+<span class="identifier">ws</span><span class="special">.</span><span class="identifier">async_write</span><span class="special">(</span><span class="identifier">b</span><span class="special">.</span><span class="identifier">data</span><span class="special">(),</span> <span class="special">[](</span><span class="identifier">error_code</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span><span class="special">){});</span>
+<span class="identifier">ws</span><span class="special">.</span><span class="identifier">async_ping</span><span class="special">({},</span> <span class="special">[](</span><span class="identifier">error_code</span><span class="special">){});</span>
+<span class="identifier">ws</span><span class="special">.</span><span class="identifier">async_close</span><span class="special">({},</span> <span class="special">[](</span><span class="identifier">error_code</span><span class="special">){});</span>
+</pre>
+<p>
+        The implementation uses composed asynchronous operations; although some individual
+        operations can perform both reads and writes, this behavior is coordinated
+        internally to make sure the underlying stream is operated in a safe fashion.
+        This allows an asynchronous read operation to respond to a received ping
+        frame even while a user-initiated call to asynchronous write is active.
+      </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2016-2019 Vinnie
+      Falco<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="teardown.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../using_websocket.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="../concepts.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

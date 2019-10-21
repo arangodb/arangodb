@@ -1,0 +1,436 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>X3 Program Structure</title>
+<link rel="stylesheet" href="../../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Spirit X3 3.0.4">
+<link rel="up" href="../tutorials.html" title="Tutorials">
+<link rel="prev" href="employee.html" title="Employee - Parsing into structs">
+<link rel="next" href="annotation.html" title="Annotations - Decorating the ASTs">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="employee.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../tutorials.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="annotation.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="spirit_x3.tutorials.minimal"></a><a class="link" href="minimal.html" title="X3 Program Structure">X3 Program Structure</a>
+</h3></div></div></div>
+<p>
+        As a prerequisite in understanding this tutorial, please review the previous
+        <a class="link" href="employee.html" title="Employee - Parsing into structs">employee example</a>. This
+        example builds on top of that example.
+      </p>
+<p>
+        So far, to keep things simple, all of the tutorial programs are self contained
+        in one cpp file. In reality, you will want to separate various logical modules
+        of the parser into separate cpp and header files, decoupling the interface
+        from the implememtation.
+      </p>
+<p>
+        There are many ways to structure an X3 parser, but the "minimal"
+        example in this tutorial shows the preferred way. This example basically
+        reuses the same parser as the <a class="link" href="employee.html" title="Employee - Parsing into structs">employee
+        example</a> for the sake of familiarity, but structured to allow separate
+        compilation of the actual parser in its own definition file and cpp file.
+        The cpp files, including main see only the header files --the interfaces.
+        This is a good example on how X3 parsers are structured in a C++ application.
+      </p>
+<h5>
+<a name="spirit_x3.tutorials.minimal.h0"></a>
+        <span class="phrase"><a name="spirit_x3.tutorials.minimal.structure"></a></span><a class="link" href="minimal.html#spirit_x3.tutorials.minimal.structure">Structure</a>
+      </h5>
+<p>
+        The program is structured in a directory with the following header and cpp
+        files:
+      </p>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  <code class="computeroutput"><span class="identifier">File</span></code>
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <a href="../../../../../example/x3/minimal/ast.hpp" target="_top">ast.hpp</a>
+                </p>
+              </td>
+<td>
+                <p>
+                  The AST
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a href="../../../../../example/x3/minimal/ast_adapted.hpp" target="_top">ast_adapted.hpp</a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Fusion adapters
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a href="../../../../../example/x3/minimal/config.hpp" target="_top">config.hpp</a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Configuration
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a href="../../../../../example/x3/minimal/employee.hpp" target="_top">employee.hpp</a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Main parser API
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a href="../../../../../example/x3/minimal/employee_def.hpp" target="_top">employee_def.hpp</a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Parser definitions
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a href="../../../../../example/x3/minimal/employee.cpp" target="_top">employee.cpp</a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Parser instantiation
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a href="../../../../../example/x3/minimal/main.cpp" target="_top">main.cpp</a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Main program
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+<p>
+        The contents of the files should already be familiar. It's essentially the
+        same <a class="link" href="employee.html" title="Employee - Parsing into structs">employee example</a>.
+        So I will skip the details on how the parser works and focus only on the
+        features needed for refactoring the program into a modular structure suitable
+        for real-world deployment.
+      </p>
+<h5>
+<a name="spirit_x3.tutorials.minimal.h1"></a>
+        <span class="phrase"><a name="spirit_x3.tutorials.minimal.ast"></a></span><a class="link" href="minimal.html#spirit_x3.tutorials.minimal.ast">AST</a>
+      </h5>
+<p>
+        We place the AST declaration here:
+      </p>
+<pre class="programlisting"><span class="keyword">namespace</span> <span class="identifier">client</span> <span class="special">{</span> <span class="keyword">namespace</span> <span class="identifier">ast</span>
+<span class="special">{</span>
+    <span class="keyword">struct</span> <span class="identifier">employee</span>
+    <span class="special">{</span>
+        <span class="keyword">int</span> <span class="identifier">age</span><span class="special">;</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="identifier">forename</span><span class="special">;</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="identifier">surname</span><span class="special">;</span>
+        <span class="keyword">double</span> <span class="identifier">salary</span><span class="special">;</span>
+    <span class="special">};</span>
+
+    <span class="keyword">using</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">fusion</span><span class="special">::</span><span class="keyword">operator</span><span class="special">&lt;&lt;;</span>
+<span class="special">}}</span>
+</pre>
+<h5>
+<a name="spirit_x3.tutorials.minimal.h2"></a>
+        <span class="phrase"><a name="spirit_x3.tutorials.minimal.fusion_adapters"></a></span><a class="link" href="minimal.html#spirit_x3.tutorials.minimal.fusion_adapters">Fusion
+        adapters</a>
+      </h5>
+<p>
+        Here, we adapt the AST for Fusion, making it a first-class fusion citizen:
+      </p>
+<pre class="programlisting"><span class="identifier">BOOST_FUSION_ADAPT_STRUCT</span><span class="special">(</span><span class="identifier">client</span><span class="special">::</span><span class="identifier">ast</span><span class="special">::</span><span class="identifier">employee</span><span class="special">,</span>
+   <span class="identifier">age</span><span class="special">,</span> <span class="identifier">forename</span><span class="special">,</span> <span class="identifier">surname</span><span class="special">,</span> <span class="identifier">salary</span>
+<span class="special">)</span>
+</pre>
+<h5>
+<a name="spirit_x3.tutorials.minimal.h3"></a>
+        <span class="phrase"><a name="spirit_x3.tutorials.minimal.main_parser_api"></a></span><a class="link" href="minimal.html#spirit_x3.tutorials.minimal.main_parser_api">Main
+        parser API</a>
+      </h5>
+<p>
+        This is the main header file that all other cpp files need to include.
+      </p>
+<a name="__tutorial_spirit_declare__"></a><h5>
+<a name="spirit_x3.tutorials.minimal.h4"></a>
+        <span class="phrase"><a name="spirit_x3.tutorials.minimal.boost_spirit_declare"></a></span><a class="link" href="minimal.html#spirit_x3.tutorials.minimal.boost_spirit_declare">BOOST_SPIRIT_DECLARE</a>
+      </h5>
+<p>
+        Remember <a class="link" href="roman.html#__tutorial_spirit_define__"><code class="computeroutput"><span class="identifier">BOOST_SPIRIT_DEFINE</span></code></a>?
+        If not, then you probably want to go back and review that section to get
+        a better understanding of what's happening.
+      </p>
+<p>
+        Here in the header file, instead of <code class="computeroutput"><span class="identifier">BOOST_SPIRIT_DEFINE</span></code>,
+        we use <code class="computeroutput"><span class="identifier">BOOST_SPIRIT_DECLARE</span></code>
+        for the <span class="bold"><strong>top</strong></span> rule. Behind the scenes, what's
+        actually happening is that we are declaring a <code class="computeroutput"><span class="identifier">parse_rule</span></code>
+        function in the client namespace. For example, given a rule named <code class="computeroutput"><span class="identifier">my_rule</span></code>, <code class="computeroutput"><span class="identifier">BOOST_SPIRIT_DECLARE</span><span class="special">(</span><span class="identifier">my_rule</span><span class="special">)</span></code> expands to this code:
+      </p>
+<pre class="programlisting"><span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">Iterator</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">Context</span><span class="special">&gt;</span>
+<span class="keyword">bool</span> <span class="identifier">parse_rule</span><span class="special">(</span>
+    <span class="keyword">decltype</span><span class="special">(</span><span class="identifier">my_rule</span><span class="special">)</span>
+  <span class="special">,</span> <span class="identifier">Iterator</span><span class="special">&amp;</span> <span class="identifier">first</span><span class="special">,</span> <span class="identifier">Iterator</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">last</span>
+  <span class="special">,</span> <span class="identifier">Context</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">context</span><span class="special">,</span> <span class="keyword">decltype</span><span class="special">(</span><span class="identifier">my_rule</span><span class="special">)::</span><span class="identifier">attribute_type</span><span class="special">&amp;</span> <span class="identifier">attr</span><span class="special">);</span>
+</pre>
+<p>
+        If you went back and reviewed <a class="link" href="roman.html#__tutorial_spirit_define__">BOOST_SPIRIT_DEFINE</a>,
+        you'll see why it is exactly what we need to use for header files. <code class="computeroutput"><span class="identifier">BOOST_SPIRIT_DECLARE</span></code> generates function
+        declarations that are meant to be placed in hpp (header) files while <code class="computeroutput"><span class="identifier">BOOST_SPIRIT_DEFINE</span></code> generates function
+        definitions that are meant to be placed in cpp files.
+      </p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+          <code class="computeroutput"><span class="identifier">BOOST_SPIRIT_DECLARE</span></code> is
+          variadic and may be used for one or more rules. Example: <code class="computeroutput"><span class="identifier">BOOST_SPIRIT_DECLARE</span><span class="special">(</span><span class="identifier">r1</span><span class="special">,</span> <span class="identifier">r2</span><span class="special">,</span> <span class="identifier">r3</span><span class="special">);</span></code>
+        </p></td></tr>
+</table></div>
+<p>
+        In this example, the top rule is <code class="computeroutput"><span class="identifier">employee</span></code>.
+        We declare <code class="computeroutput"><span class="identifier">employee</span></code> in this
+        header file:
+      </p>
+<pre class="programlisting"><span class="keyword">namespace</span> <span class="identifier">client</span>
+<span class="special">{</span>
+    <span class="keyword">namespace</span> <span class="identifier">parser</span>
+    <span class="special">{</span>
+        <span class="keyword">namespace</span> <span class="identifier">x3</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">spirit</span><span class="special">::</span><span class="identifier">x3</span><span class="special">;</span>
+        <span class="keyword">using</span> <span class="identifier">employee_type</span> <span class="special">=</span> <span class="identifier">x3</span><span class="special">::</span><span class="identifier">rule</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">employee</span><span class="special">,</span> <span class="identifier">ast</span><span class="special">::</span><span class="identifier">employee</span><span class="special">&gt;;</span>
+        <span class="identifier">BOOST_SPIRIT_DECLARE</span><span class="special">(</span><span class="identifier">employee_type</span><span class="special">);</span>
+    <span class="special">}</span>
+
+    <span class="identifier">parser</span><span class="special">::</span><span class="identifier">employee_type</span> <span class="identifier">employee</span><span class="special">();</span>
+<span class="special">}</span>
+</pre>
+<p>
+        We also provide a function that returns an <code class="computeroutput"><span class="identifier">employee</span></code>
+        object. This is the parser that we will use anywhere it is needed. X3 parser
+        objects are very lightweight. They are basically simple tags with no data
+        other than the name of the rule (e.g. "employee"). Notice that
+        we are passing this by value.
+      </p>
+<h5>
+<a name="spirit_x3.tutorials.minimal.h5"></a>
+        <span class="phrase"><a name="spirit_x3.tutorials.minimal.parser_definitions"></a></span><a class="link" href="minimal.html#spirit_x3.tutorials.minimal.parser_definitions">Parser
+        Definitions</a>
+      </h5>
+<p>
+        Here is where we place the actual rules that make up our grammar:
+      </p>
+<pre class="programlisting"><span class="keyword">namespace</span> <span class="identifier">parser</span>
+<span class="special">{</span>
+    <span class="keyword">namespace</span> <span class="identifier">x3</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">spirit</span><span class="special">::</span><span class="identifier">x3</span><span class="special">;</span>
+    <span class="keyword">namespace</span> <span class="identifier">ascii</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">spirit</span><span class="special">::</span><span class="identifier">x3</span><span class="special">::</span><span class="identifier">ascii</span><span class="special">;</span>
+
+    <span class="keyword">using</span> <span class="identifier">x3</span><span class="special">::</span><span class="identifier">int_</span><span class="special">;</span>
+    <span class="keyword">using</span> <span class="identifier">x3</span><span class="special">::</span><span class="identifier">lit</span><span class="special">;</span>
+    <span class="keyword">using</span> <span class="identifier">x3</span><span class="special">::</span><span class="identifier">double_</span><span class="special">;</span>
+    <span class="keyword">using</span> <span class="identifier">x3</span><span class="special">::</span><span class="identifier">lexeme</span><span class="special">;</span>
+    <span class="keyword">using</span> <span class="identifier">ascii</span><span class="special">::</span><span class="identifier">char_</span><span class="special">;</span>
+
+    <span class="identifier">x3</span><span class="special">::</span><span class="identifier">rule</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">employee</span><span class="special">,</span> <span class="identifier">ast</span><span class="special">::</span><span class="identifier">employee</span><span class="special">&gt;</span> <span class="keyword">const</span> <span class="identifier">employee</span> <span class="special">=</span> <span class="string">"employee"</span><span class="special">;</span>
+
+    <span class="keyword">auto</span> <span class="keyword">const</span> <span class="identifier">quoted_string</span> <span class="special">=</span> <span class="identifier">lexeme</span><span class="special">[</span><span class="char">'"'</span> <span class="special">&gt;&gt;</span> <span class="special">+(</span><span class="identifier">char_</span> <span class="special">-</span> <span class="char">'"'</span><span class="special">)</span> <span class="special">&gt;&gt;</span> <span class="char">'"'</span><span class="special">];</span>
+
+    <span class="keyword">auto</span> <span class="keyword">const</span> <span class="identifier">employee_def</span> <span class="special">=</span>
+        <span class="identifier">lit</span><span class="special">(</span><span class="string">"employee"</span><span class="special">)</span>
+        <span class="special">&gt;&gt;</span> <span class="char">'{'</span>
+        <span class="special">&gt;&gt;</span>  <span class="identifier">int_</span> <span class="special">&gt;&gt;</span> <span class="char">','</span>
+        <span class="special">&gt;&gt;</span>  <span class="identifier">quoted_string</span> <span class="special">&gt;&gt;</span> <span class="char">','</span>
+        <span class="special">&gt;&gt;</span>  <span class="identifier">quoted_string</span> <span class="special">&gt;&gt;</span> <span class="char">','</span>
+        <span class="special">&gt;&gt;</span>  <span class="identifier">double_</span>
+        <span class="special">&gt;&gt;</span>  <span class="char">'}'</span>
+        <span class="special">;</span>
+
+    <span class="identifier">BOOST_SPIRIT_DEFINE</span><span class="special">(</span><span class="identifier">employee</span><span class="special">);</span>
+<span class="special">}</span>
+
+<span class="identifier">parser</span><span class="special">::</span><span class="identifier">employee_type</span> <span class="identifier">employee</span><span class="special">()</span>
+<span class="special">{</span>
+    <span class="keyword">return</span> <span class="identifier">parser</span><span class="special">::</span><span class="identifier">employee</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+<p>
+        In the parser definition, we use <a class="link" href="roman.html#__tutorial_spirit_define__"><code class="computeroutput"><span class="identifier">BOOST_SPIRIT_DEFINE</span></code></a> just like we
+        did in the <a class="link" href="employee.html" title="Employee - Parsing into structs">employee example</a>.
+      </p>
+<p>
+        While this is another header file, it is not meant to be included by the
+        client. Its purpose is to be included by an instantiations cpp file (see
+        below). We place this in an <code class="computeroutput"><span class="special">.</span><span class="identifier">hpp</span></code> file for flexibility, so we have the
+        freedom to instantiate the parser with different iterator types.
+      </p>
+<a name="tutorial_configuration"></a><h5>
+<a name="spirit_x3.tutorials.minimal.h6"></a>
+        <span class="phrase"><a name="spirit_x3.tutorials.minimal.configuration"></a></span><a class="link" href="minimal.html#spirit_x3.tutorials.minimal.configuration">Configuration</a>
+      </h5>
+<p>
+        Here, we declare some types for instatntaiting our X3 parser with. Rememeber
+        that Spirit parsers can work with any <a href="http://en.cppreference.com/w/cpp/named_req/ForwardIterator" target="_top"><code class="computeroutput"><span class="identifier">ForwardIterator</span></code></a>. We'll also need
+        to provide the initial context type. This is the context that X3 will use
+        to initiate a parse. For calling <code class="computeroutput"><span class="identifier">phrase_parse</span></code>,
+        you will need the <code class="computeroutput"><span class="identifier">phrase_parse_context</span></code>
+        like we do below, passing in the skipper type.
+      </p>
+<pre class="programlisting"><span class="keyword">using</span> <span class="identifier">iterator_type</span> <span class="special">=</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span><span class="special">::</span><span class="identifier">const_iterator</span><span class="special">;</span>
+<span class="keyword">using</span> <span class="identifier">context_type</span> <span class="special">=</span> <span class="identifier">x3</span><span class="special">::</span><span class="identifier">phrase_parse_context</span><span class="special">&lt;</span><span class="identifier">x3</span><span class="special">::</span><span class="identifier">ascii</span><span class="special">::</span><span class="identifier">space_type</span><span class="special">&gt;::</span><span class="identifier">type</span><span class="special">;</span>
+</pre>
+<p>
+        For plain <code class="computeroutput"><span class="identifier">parse</span></code>, we simply
+        use <code class="computeroutput"><span class="identifier">x3</span><span class="special">::</span><span class="identifier">unused_type</span></code>.
+      </p>
+<h5>
+<a name="spirit_x3.tutorials.minimal.h7"></a>
+        <span class="phrase"><a name="spirit_x3.tutorials.minimal.parser_instantiation"></a></span><a class="link" href="minimal.html#spirit_x3.tutorials.minimal.parser_instantiation">Parser
+        Instantiation</a>
+      </h5>
+<p>
+        Now we instantiate our parser here, for our specific configuration:
+      </p>
+<pre class="programlisting"><span class="keyword">namespace</span> <span class="identifier">client</span> <span class="special">{</span> <span class="keyword">namespace</span> <span class="identifier">parser</span>
+<span class="special">{</span>
+    <span class="identifier">BOOST_SPIRIT_INSTANTIATE</span><span class="special">(</span><span class="identifier">employee_type</span><span class="special">,</span> <span class="identifier">iterator_type</span><span class="special">,</span> <span class="identifier">context_type</span><span class="special">);</span>
+<span class="special">}}</span>
+</pre>
+<p>
+        For that, we use <code class="computeroutput"><span class="identifier">BOOST_SPIRIT_INSTANTIATE</span></code>,
+        passing in the parser type, the iterator type, and the context type.
+      </p>
+<h5>
+<a name="spirit_x3.tutorials.minimal.h8"></a>
+        <span class="phrase"><a name="spirit_x3.tutorials.minimal.boost_spirit_instantiate"></a></span><a class="link" href="minimal.html#spirit_x3.tutorials.minimal.boost_spirit_instantiate">BOOST_SPIRIT_INSTANTIATE</a>
+      </h5>
+<p>
+        Go back and review <a class="link" href="roman.html#__tutorial_spirit_define__"><code class="computeroutput"><span class="identifier">BOOST_SPIRIT_DEFINE</span></code></a> and <a class="link" href="minimal.html#__tutorial_spirit_declare__"><code class="computeroutput"><span class="identifier">BOOST_SPIRIT_DECLARE</span></code></a> to get a better
+        grasp of what's happening with <code class="computeroutput"><span class="identifier">BOOST_SPIRIT_INSTANTIATE</span></code>
+        and why it is needed.
+      </p>
+<p>
+        So what the heck is <code class="computeroutput"><span class="identifier">BOOST_SPIRIT_INSTANTIATE</span></code>?
+        What we want is to isolate the instantiation of our parsers (rules and all
+        that), into separate translation units (or cpp files, if you will). In this
+        example, we want to place our x3 employee stuff in <a href="../../../../../example/x3/minimal/employee.cpp" target="_top">employee.cpp</a>.
+        That way, we have separate compilation. Every time we update our employee
+        parser source code, we only have to build the <code class="computeroutput"><span class="identifier">employee</span><span class="special">.</span><span class="identifier">cpp</span></code> file.
+        All the rest will not be affected. By compiling only once in one translation
+        unit, we save on build times and avoid code bloat. There is no code duplication,
+        which can happen otherwise if you simply include the employee parser (<a href="../../../../../example/x3/minimal/employee.hpp" target="_top">employee.hpp</a>) everywhere.
+      </p>
+<p>
+        But how do you do that. Remember that our parser definitions are also placed
+        in its own header file for flexibility, so we have the freedom to instantiate
+        the parser with different iterator types.
+      </p>
+<p>
+        What we need to do is explicitly instantiate the <code class="computeroutput"><span class="identifier">parse_rule</span></code>
+        function we declared and defined via <code class="computeroutput"><span class="identifier">BOOST_SPIRIT_DECLARE</span></code>
+        and <code class="computeroutput"><span class="identifier">BOOST_SPIRIT_DEFINE</span></code> respectively,
+        using <code class="computeroutput"><span class="identifier">BOOST_SPIRIT_INSTANTIATE</span></code>.
+        For our particular example, <code class="computeroutput"><span class="identifier">BOOST_SPIRIT_INSTANTIATE</span></code>
+        expands to this code:
+      </p>
+<pre class="programlisting"><span class="keyword">template</span> <span class="keyword">bool</span> <span class="identifier">parse_rule</span><span class="special">&lt;</span><span class="identifier">iterator_type</span><span class="special">,</span> <span class="identifier">context_type</span><span class="special">&gt;(</span>
+    <span class="identifier">employee_type</span> <span class="identifier">rule_</span>
+  <span class="special">,</span> <span class="identifier">iterator_type</span><span class="special">&amp;</span> <span class="identifier">first</span><span class="special">,</span> <span class="identifier">iterator_type</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">last</span>
+  <span class="special">,</span> <span class="identifier">context_type</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">context</span><span class="special">,</span> <span class="identifier">employee_type</span><span class="special">::</span><span class="identifier">attribute_type</span><span class="special">&amp;</span> <span class="identifier">attr</span><span class="special">);</span>
+</pre>
+<h5>
+<a name="spirit_x3.tutorials.minimal.h9"></a>
+        <span class="phrase"><a name="spirit_x3.tutorials.minimal.main_program"></a></span><a class="link" href="minimal.html#spirit_x3.tutorials.minimal.main_program">Main
+        Program</a>
+      </h5>
+<p>
+        Finally, we have our main program. The code is the same as single cpp file
+        <a class="link" href="employee.html" title="Employee - Parsing into structs">employee example</a>, but
+        here, we simply include three header files:
+      </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="string">"ast.hpp"</span>
+<span class="preprocessor">#include</span> <span class="string">"ast_adapted.hpp"</span>
+<span class="preprocessor">#include</span> <span class="string">"employee.hpp"</span>
+</pre>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">ast</span><span class="special">.</span><span class="identifier">hpp</span></code> for the AST declaration
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">ast_adapted</span><span class="special">.</span><span class="identifier">hpp</span></code> if you need to traverse the AST
+            using fusion
+          </li>
+<li class="listitem">
+            <code class="computeroutput"><span class="identifier">employee</span><span class="special">.</span><span class="identifier">hpp</span></code> the main parser API
+          </li>
+</ol></div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2001-2018 Joel de Guzman,
+      Hartmut Kaiser<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="employee.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../tutorials.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="annotation.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

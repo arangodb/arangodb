@@ -1,0 +1,25 @@
+# Build and install benchmark programs
+ 
+# Copyright Beman Dawes 2013
+# Distributed under the Boost Software License, Version 1.0.
+# See www.boost.org/LICENSE_1_0.txt
+
+project 
+    : source-location ../test    : requirements
+      <toolset>msvc:<asynch-exceptions>on
+      <library>/boost/timer//boost_timer
+    ;
+
+SOURCES = speed_test speed_test_functions ;
+    
+exe "speed_test"
+       : $(SOURCES).cpp 
+       : <toolset>gcc:<cxxflags>-march=native 
+       ;
+
+exe "loop_time_test"  
+       : loop_time_test.cpp 
+       : <toolset>gcc:<cxxflags>-march=native 
+       ;
+
+install bin : speed_test loop_time_test ;

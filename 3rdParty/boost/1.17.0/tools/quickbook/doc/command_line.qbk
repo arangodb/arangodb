@@ -1,0 +1,96 @@
+[/
+    Copyright 2016 Daniel James
+
+    Distributed under the Boost Software License, Version 1.0.
+    (See accompanying file LICENSE_1_0.txt or copy at
+    http://www.boost.org/LICENSE_1_0.txt)
+]
+
+[chapter Command Line Usage
+    [quickbook 1.7]
+    [id quickbook.command_line]
+    [source-mode teletype]
+]
+
+Quickbook is generally run by a build tool, but if you want to run it manually,
+it's pretty simple to use. Basic usage is:
+
+    quickbook filename.qbk
+
+Which, if successful, will print out something like:
+
+    Generating Output File: filename.xml
+
+[section:options Command Line Options]
+
+[variablelist
+    [[--help] [
+    Prints out a summary of the options supported by quickbook, and exits.
+    ]]
+    [[--version] [
+    Prints out the version of the quickbook executable, and exists.
+    ]]
+    [[--no-pretty-print] [
+    Disable XML pretty printing. Normally quickbook runs its output through
+    a post processor which generates consistent XML indentation, this flag
+    disables it.
+    ]]
+    [[--strict] [
+    Strict mode. Adds extra errors for possible issues, including sections that
+    weren't closed, and square brackets that don't match any tags or templates.
+    ]]
+    [[--no-self-linked-headers] [
+    By default quickbook generates docbook headers that link to themselves,
+    so that in a web browser you can get a link to the header by right clicking
+    on the header and copying the link. This requires generating slightly odd
+    boostbook markup, so this head disables the feature and generates plain headers.
+    ]]
+    [[--indent] [
+    Indentation to use in the pretty printer.
+    ]]
+    [[--linewidth] [
+    Line width to use in the pretty printer.
+    ]]
+    [[--input-file path] [
+    Used to explicitly specify that the argument is an input file. Normally not used,
+    as you can just write: ``quickbook filename.qbk``.
+    But if you wish to you can also write: ``quickbook --input-file filename.qbk``.
+    This could be useful if a file path could be confused with an option, for example
+    to use a file called `--filename.qbk`:
+    ``quickbook --input-file --filename.qbk``
+    Only one input file can be specified.
+    ]]
+    [[--output-file path] [
+    Explicitly specifiy the path of the file to be generated. By default, it's just the
+    input file name with the extension replaced by `.xml`.
+    ]]
+    [[--no-output] [
+    Don't write out a boostbook file. This is useful for checking that a
+    document doesn't have any sytax errors, or for running with
+    `--output-deps`. If `--output-file-path` is also defined, that overwrites
+    this.
+    ]]
+    [[--output-deps path] [
+    Writes the full path of all the files read in by quickbook to the given path.
+    This is useful for build tools so that they can tell when to rebuild the
+    documentation.
+    ]]
+    [[--ms-errors] [
+    Use Microsoft Visual Studio style error and warn message format, so that
+    Visual Studio IDE will understand them.
+    ]]
+    [[--include-path path, -I path] [
+    Add the given path to the include path, can be specified multiple times.
+    ]]
+    [[--define macro, -D macro] [
+    Define a quickbook macro. This can have a value: ``quickbook -D __foo__=bar``
+    Or you can just define an empty macro: ``quickbook -D __foo__``
+    This can be useful for [link quickbook.ref.cond conditional generation].
+    ]]
+    [[--image-location path] [
+    Path the image elements are relative to. This is only used for reading
+    in SVG details.
+    ]]
+]
+
+[endsect]

@@ -1,0 +1,87 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>IO operators</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Boost.Optional">
+<link rel="up" href="../../optional/tutorial.html" title="Tutorial">
+<link rel="prev" href="relational_operators.html" title="Relational operators">
+<link rel="next" href="optional_references.html" title="Optional references">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="relational_operators.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../optional/tutorial.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="optional_references.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_optional.tutorial.io_operators"></a><a class="link" href="io_operators.html" title="IO operators">IO operators</a>
+</h3></div></div></div>
+<p>
+        It is possible to use <code class="computeroutput"><span class="identifier">optional</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;</span></code>
+        with IO streams, provided that <code class="computeroutput"><span class="identifier">T</span></code>
+        can be used with streams. IOStream operators are defined in a separate header.
+      </p>
+<p>
+</p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">iostream</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">optional</span><span class="special">/</span><span class="identifier">optional_io</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="keyword">int</span> <span class="identifier">main</span><span class="special">()</span>
+<span class="special">{</span>
+  <span class="identifier">boost</span><span class="special">::</span><span class="identifier">optional</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;</span> <span class="identifier">o1</span> <span class="special">=</span> <span class="number">1</span><span class="special">,</span> <span class="identifier">oN</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">none</span><span class="special">;</span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">o1</span><span class="special">;</span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">cin</span> <span class="special">&gt;&gt;</span> <span class="identifier">oN</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+<p>
+      </p>
+<p>
+        The current implementation does not guarantee any particular output. What
+        it guarantees is that if streaming out and then back in <code class="computeroutput"><span class="identifier">T</span></code>
+        gives the same value, then streaming out and then back in <code class="computeroutput"><span class="identifier">optional</span><span class="special">&lt;</span><span class="identifier">T</span><span class="special">&gt;</span></code>
+        will also give back the same result:
+      </p>
+<p>
+</p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">cassert</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">sstream</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">optional</span><span class="special">/</span><span class="identifier">optional_io</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="keyword">int</span> <span class="identifier">main</span><span class="special">()</span>
+<span class="special">{</span>
+  <span class="identifier">boost</span><span class="special">::</span><span class="identifier">optional</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;</span> <span class="identifier">o1</span> <span class="special">=</span> <span class="number">1</span><span class="special">,</span> <span class="identifier">oN</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">none</span><span class="special">;</span>
+  <span class="identifier">boost</span><span class="special">::</span><span class="identifier">optional</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;</span> <span class="identifier">x1</span><span class="special">,</span> <span class="identifier">x2</span><span class="special">;</span>
+  <span class="identifier">std</span><span class="special">::</span><span class="identifier">stringstream</span> <span class="identifier">s</span><span class="special">;</span>
+  <span class="identifier">s</span> <span class="special">&lt;&lt;</span> <span class="identifier">o1</span> <span class="special">&lt;&lt;</span> <span class="identifier">oN</span><span class="special">;</span>
+  <span class="identifier">s</span> <span class="special">&gt;&gt;</span> <span class="identifier">x1</span> <span class="special">&gt;&gt;</span> <span class="identifier">x2</span><span class="special">;</span>
+  <span class="identifier">assert</span> <span class="special">(</span><span class="identifier">o1</span> <span class="special">==</span> <span class="identifier">x1</span><span class="special">);</span>
+  <span class="identifier">assert</span> <span class="special">(</span><span class="identifier">oN</span> <span class="special">==</span> <span class="identifier">x2</span><span class="special">);</span>
+<span class="special">}</span>
+</pre>
+<p>
+      </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2003-2007 Fernando Luis Cacciola Carballal<br>Copyright &#169; 2014-2018 Andrzej Krzemie&#324;ski<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="relational_operators.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../../optional/tutorial.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="optional_references.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

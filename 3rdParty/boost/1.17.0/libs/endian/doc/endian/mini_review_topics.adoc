@@ -1,0 +1,79 @@
+////
+Copyright 2011-2016 Beman Dawes
+
+Distributed under the Boost Software License, Version 1.0.
+(http://www.boost.org/LICENSE_1_0.txt)
+////
+
+[#appendix_mini_review_topics]
+[appendix]
+# Endian Mini-Review
+
+The results of the Boost.Endian formal review included a list of issues to be
+resolved before a mini-review.
+
+The issues are shown in *bold* below, with the resolution indicated.
+
+Common use case scenarios should be developed.::
+Done. The documentation have been refactored. A page is now devoted to
+<<choosing,Choosing the Approach>> to endianness. See
+<<choosing_use_cases,Use cases>> for use case scenarios.
+
+Example programs should be developed for the common use case scenarios.::
+Done. See <<choosing,Choosing the Approach>>. Example code has been added
+throughout.
+
+Documentation should illuminate the differences between endian integer/float type and endian conversion approaches to the common use case scenarios, and provide guidelines for choosing the most appropriate approach in user's applications.::
+Done. See <<choosing,Choosing the Approach>>.
+
+Conversion functions supplying results via return should be provided.::
+Done. See <<conversion,Conversion Functions>>.
+
+Platform specific performance enhancements such as use of compiler intrinsics or relaxed alignment requirements should be supported.::
+Done. Compiler (Clang, GCC, Visual{cpp}, etc.) intrinsics and built-in
+functions are used in the implementation where appropriate, as requested. See
+<<overview_intrinsic,Built-in support for Intrinsics>>. See
+<<overview_timings,Timings for Example 2>> to gauge the impact of intrinsics.
+
+Endian integer (and floating) types should be implemented via the conversion functions. If that can't be done efficiently, consideration should be given to expanding the conversion function signatures to  resolve the inefficiencies.::
+Done. For the endian types, the implementation uses the endian conversion
+functions, and thus the intrinsics, as requested.
+
+Benchmarks that measure performance should be provided. It should be possible to compare platform specific performance enhancements against portable base implementations, and to compare endian integer approaches against endian conversion approaches for the common use case scenarios.::
+Done. See <<overview_timings,Timings for Example 2>>. The `endian/test`
+directory  also contains several additional benchmark and speed test programs.
+
+Float (32-bits) and double (64-bits) should be supported. IEEE 754 is the primary use case.::
+Done. The <<buffers,endian buffer types>>,
+<<arithmetic,endian arithmetic types>> and
+<<conversion,endian conversion functions>> now support 32-bit `(float)`
+and 64-bit `(double)` floating point, as requested.
+
+Support for user defined types (UDTs) is desirable, and should be provided where there would be no conflict with the other concerns.::
+Done. See <<conversion_customization,Customization points for user-defined
+types (UDTs)>>.
+
+There is some concern that endian integer/float arithmetic operations might used inadvertently or inappropriately. The impact of adding an endian_buffer class without arithmetic operations should be investigated.::
+Done. The endian types have been decomposed into class template
+`<<buffers,endian_buffer>>` and class template
+`<<arithmetic,endian_arithmetic>>`. Class `endian_buffer` is a public base
+class for `endian_arithmetic`, and can also be used by users as a stand-alone
+class.
+
+Stream insertion and extraction of the endian integer/float types should be documented and included in the test coverage.::
+Done. See <<buffers_stream_inserter,Stream inserter>> and
+<<buffers_stream_extractor,Stream extractor>>.
+
+Binary I/O support that was investigated during development of the Endian library should be put up for mini-review for inclusion in the Boost I/O library.::
+Not done yet. Will be handled as a separate min-review soon after the Endian
+mini-review.
+
+Other requested changes.::
+ In addition to the named-endianness conversion functions, functions that
+perform compile-time (via template) and run-time (via function argument)
+dispatch are now provided.
+ `order*native` is now a synonym for `order*big` or `order*little` according
+to the endianness of the platform. This reduces the number of template
+specializations required.
+ Headers have been reorganized to make them easier to read, with a synopsis
+at the front and implementation following.

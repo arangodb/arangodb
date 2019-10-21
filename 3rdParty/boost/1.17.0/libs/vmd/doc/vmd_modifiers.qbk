@@ -1,0 +1,79 @@
+[/ 
+  (C) Copyright Edward Diener 2011-2015
+  Distributed under the Boost Software License, Version 1.0.
+  (See accompanying file LICENSE_1_0.txt or copy at
+  http://www.boost.org/LICENSE_1_0.txt).
+]
+
+[section:vmd_modifiers Macros with modifiers]
+
+The basic functionality for VMD macros parsing data types
+has been given using the required parameters of those
+macros. This basic functionality may be perfectly adequate for
+macro programmers to use VMD effectively in their programming efforts.
+
+A number of those macros take optional parameters,
+called in general "modifiers", which enhance or change the
+functionality of those macros in various ways. All modifiers
+are VMD identifiers.
+
+In all situations modifiers are optional parameters which are parsed 
+by VMD to provide enhanced functionality for some of its macros. 
+They are never required as part of the basic functionality of a macro.
+
+When modifiers are used as optional arguments to a macro they
+can be input after the required parameters in any order and 
+VMD will still handle the optional parameters correctly.
+
+There are two general types of modifiers, 'specific modifiers' and
+'user-defined modifiers'. Specific modifers start with BOOST_VMD_
+and are both registered and pre-detected identifiers known to VMD.
+The specific modifiers change the expansion of particular macros
+in various ways which will be subsequently explained. User-defined
+modifiers are user-defined identifiers which the end-user of
+specific macros must register and pre-detect for himself. They also
+change the expansion of particular macros in various ways which 
+will be subsequently explained.
+
+For any particular macro if a specific modifier
+is not appropriate it is just ignored. This means that VMD never
+generates a preprocessing error or gives an incorrect result 
+just because a specific modifier does not apply for a particular 
+macro. Any modifier which is not recognized as a specific modifier 
+is treated as a user-defined modifier. In cases where a user-defined 
+modifier is not appropriate it is also just ignored.
+
+The situations where modifiers can be used to enhance the basic
+functionality of VMD macros can be divided by particular types
+of specific modifiers. Each particular type of a specific modifier
+has a name given to it, functionality, and set of identifiers
+associated with that particular type.
+Each particular type of a specific modifier may be used as optional
+parameters in one or more designated macros depending on the specific
+modifier type. 
+
+When more than one mutually exclusive specific modifier from a particular type of modifier is 
+specified as an optional parameter the last specified takes effect. This
+allows the programmer to override a specific modifier by adding the
+overridden identifier as an optional argument to the end of the
+macro's invocation.
+
+Header files for specific modifiers are automatically included when
+the header files for macros taking those specific modifiers are
+included.
+
+Header files for user-defined modifiers, which register and pre-detect
+those user-defined modifiers, must be included as needed by the programmer 
+using those modifiers.
+
+The following topics will explain each particular type of modifier 
+and where it may be used.
+
+[include vmd_modifiers_return_type.qbk]
+[include vmd_modifiers_filter.qbk]
+[include vmd_modifiers_identifier.qbk]
+[include vmd_modifiers_splitting.qbk]
+[include vmd_modifiers_index.qbk]
+[include vmd_modifiers_single_element.qbk]
+
+[endsect]

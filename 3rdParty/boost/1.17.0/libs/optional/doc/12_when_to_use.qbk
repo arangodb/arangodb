@@ -1,0 +1,37 @@
+﻿
+[section When to use Optional]
+
+It is recommended to use `optional<T>` in situations where there is exactly one, clear (to all parties) reason for having no value of type `T`, and where the lack of value is as natural as having any regular value of `T`. One example of such situation is asking the user in some GUI form to optionally specify some limit on an `int` value, but the user is allowed to say 'I want the number not to be constrained by the maximum'. 
+For another example, consider a config parameter specifying how many threads the application should launch. Leaving this parameter unspecified means that the application should decide itself. For yet another example, consider a function returning the index of the smallest element in a `vector`. We need to be prepared for the situation, where the `vector` is empty. Therefore a natural signature for such function would be:
+
+    template <typename T>
+    optional<size_t> find_smallest_elem(const std::vector<T>& vec);
+
+Here, having received an empty `vec` and having no `size_t` to return is not a ['failure] but a ['normal], albeit irregular, situation.
+
+Another typical situation is to indicate that we do not have a value yet, but we expect to have it later. This notion can be used in implementing solutions like lazy initialization or a two-phase initialization.
+
+`optional` can be used to take a non-__SGI_DEFAULT_CONSTRUCTIBLE__ type `T` and create a sibling type with a default constructor. This is a way to add a ['null-state] to any type that doesn't have it already.
+
+Sometimes type `T` already provides a built-in null-state, but it may still be useful to wrap it into `optional`. Consider `std::string`. When you read a piece of text from a GUI form or a DB table, it is hardly ever that the empty string indicates anything else but a missing text. And some data bases do not even distinguish between a null string entry and a non-null string of length 0. Still, it may be practical to use `optional<string>` to indicate in the returned type that we want to treat the empty string in a special dedicated program path:
+
+    if(boost::optional<std::string> name = ask_user_name()) {
+        assert(*name != "");
+        logon_as(*name);
+    }
+    else {
+        skip_logon();
+    }
+    
+In the example above, the assertion indicates that if we choose to use this technique, we must translate the empty string state to an optional object with no contained value (inside function  `ask_user_name`).
+
+[heading Not recommended usages]
+
+It is not recommended to use `optional` to indicate that we were not able to compute a value because of a ['failure]. It is difficult to define what a failure is, but it usually has one common characteristic: an associated information on the cause of the failure. This can be the type and member data of an exception object, or an error code. It is a bad design to signal a failure and not inform about the cause. If you do not want to use exceptions, and do not like the fact that by returning error codes you cannot return the computed value, you can use [@https://github.com/ptal/Boost.Expected Expected] library. It is sort of __BOOST_VARIANT__ that contains either a computed value or a reason why the computation failed.
+
+Sometimes the distinction into what is a failure and what is a valid but irregular result is blurry and depends on a particular usage and personal preference. Consider a function that converts a `string` to an `int`. Is it a failure that you cannot convert? It might in some cases, but in other you may call it exactly for the purpose of figuring out if a given `string` is convertible, and you are not even interested in the resulting value. Sometimes when a conversion fails you may not consider it a failure, but you need to know why it cannot be converted; for instance at which character it is determined that the conversion is impossible. In this case returning `optional<T>` will not suffice. Finally, there is a use case where an input string that does not represent an `int` is not a failure condition, but during the conversion we use resources whose acquisition may fail. In that case the natural representation is to both return `optional<int>` and signal failure:
+
+    optional<int> convert1(const string& str); // throws
+    expected<ErrorT, optional<int>> convert2(const string& str); // return either optional or error
+ 
+[endsect]

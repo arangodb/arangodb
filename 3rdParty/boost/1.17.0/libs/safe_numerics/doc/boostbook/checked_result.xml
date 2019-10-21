@@ -1,0 +1,358 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE section PUBLIC "-//Boost//DTD BoostBook XML V1.1//EN"
+"http://www.boost.org/tools/boostbook/dtd/boostbook.dtd">
+<section id="safenumerics.checked_result">
+  <title>checked_result&lt;R&gt;</title>
+
+  <?dbhtml stop-chunking?>
+
+  <section>
+    <title>Description</title>
+
+    <para>checked_result is a special kind of variant class designed to hold
+    the result of some operation. It can hold either the result of the
+    operation or information on why the operation failed to produce a valid
+    result. It is similar to other types proposed for and/or included to the
+    C++ standard library or Boost such as<code> expected</code>,
+    <code>variant</code>, <code>optional</code> and <code>outcome</code>. In
+    some circumstances it may be referred to as a "monad".</para>
+
+    <para><itemizedlist>
+        <listitem>
+          <para>All instances of <code>checked_result&lt;R&gt;</code> are
+          immutable. That is, once constructed, they cannot be altered.</para>
+        </listitem>
+
+        <listitem>
+          <para>There is no default constructor.</para>
+        </listitem>
+
+        <listitem>
+          <para><code>checked_result&lt;R&gt;</code> is never empty.</para>
+        </listitem>
+
+        <listitem>
+          <para>Binary operations supported by type R are guaranteed to be
+          supported by checked_result&lt;R&gt;.</para>
+        </listitem>
+
+        <listitem>
+          <para>Binary operations can be invoked on a pair of
+          <code>checked_result&lt;R&gt;</code> instances if and only if the
+          underlying type (R) is identical for both instances. They will
+          return a value of type <code>checked_result&lt;R&gt;</code>.</para>
+        </listitem>
+
+        <listitem>
+          <para>Unary operations can be invoked on
+          <code>checked_result&lt;R&gt;</code> instances. They will return a
+          value of type <code>checked_result&lt;R&gt;</code>.</para>
+        </listitem>
+
+        <listitem>
+          <para>Comparison operations will return a
+          <code>boost::logic::tribool</code>. Other binary operations will a
+          value of the same type as the arguments.</para>
+        </listitem>
+      </itemizedlist></para>
+
+    <para>Think of <code>checked&lt;R&gt;</code> as an "extended" version of R
+    which can hold all the values that R can hold in addition other "special
+    values". For example, consider checked&lt;int&gt;.</para>
+  </section>
+
+  <section>
+    <title>Notation</title>
+
+    <informaltable>
+      <tgroup cols="2">
+        <colspec align="left" colwidth="1*"/>
+
+        <colspec align="left" colwidth="4*"/>
+
+        <thead>
+          <row>
+            <entry align="left">Symbol</entry>
+
+            <entry align="left">Description</entry>
+          </row>
+        </thead>
+
+        <tbody>
+          <row>
+            <entry><code>R</code></entry>
+
+            <entry>Underlying type</entry>
+          </row>
+
+          <row>
+            <entry><code>r</code></entry>
+
+            <entry>An instance of type R</entry>
+          </row>
+
+          <row>
+            <entry><code>c, c1, c2</code></entry>
+
+            <entry>an instance of checked_result&lt;R&gt;</entry>
+          </row>
+
+          <row>
+            <entry><code>t</code></entry>
+
+            <entry>an instance of checked_result&lt;T&gt; for some type T not
+            necessarily the same as R</entry>
+          </row>
+
+          <row>
+            <entry><code>e</code></entry>
+
+            <entry>An instance of type <link
+            linkend="safe_numerics.safe_numerics_error"><code>safe_numerics_error</code></link></entry>
+          </row>
+
+          <row>
+            <entry><code>msg</code></entry>
+
+            <entry>An instance of type const char *</entry>
+          </row>
+
+          <row>
+            <entry><code>OS</code></entry>
+
+            <entry>A type convertible to <link
+            linkend="safe_numerics.safe_numerics_error"><code>std::basic_ostream</code></link></entry>
+          </row>
+
+          <row>
+            <entry><code>os</code></entry>
+
+            <entry>An instance of type convertible to <link
+            linkend="safe_numerics.safe_numerics_error"><code>std::basic_ostream</code></link></entry>
+          </row>
+        </tbody>
+      </tgroup>
+    </informaltable>
+  </section>
+
+  <section>
+    <title>Template Parameters</title>
+
+    <para>R must model the type requirements of <link
+    linkend="safe_numerics.numeric">Numeric</link></para>
+
+    <informaltable>
+      <tgroup cols="2">
+        <colspec align="left" colwidth="1*"/>
+
+        <colspec align="left" colwidth="4*"/>
+
+        <thead>
+          <row>
+            <entry align="left">Parameter</entry>
+
+            <entry>Description</entry>
+          </row>
+        </thead>
+
+        <tbody>
+          <row>
+            <entry><code>R</code></entry>
+
+            <entry>Underlying type</entry>
+          </row>
+        </tbody>
+      </tgroup>
+    </informaltable>
+  </section>
+
+  <section>
+    <title>Model of</title>
+
+    <para><link linkend="safe_numerics.numeric">Numeric</link></para>
+  </section>
+
+  <section>
+    <title>Valid Expressions</title>
+
+    <para>All expressions are <code>constexpr</code>.</para>
+
+    <para><informaltable>
+        <tgroup cols="3">
+          <colspec align="left" colwidth="2*"/>
+
+          <colspec align="left" colwidth="1*"/>
+
+          <colspec align="left" colwidth="3*"/>
+
+          <thead>
+            <row>
+              <entry align="left">Expression</entry>
+
+              <entry>Return Type</entry>
+
+              <entry>Semantics</entry>
+            </row>
+          </thead>
+
+          <tbody>
+            <row>
+              <entry><code>checked_result(r)</code></entry>
+
+              <entry><code>checked_result&lt;R&gt;</code></entry>
+
+              <entry>constructor with valid instance of R</entry>
+            </row>
+
+            <row>
+              <entry><code>checked_result&lt;R&gt;(t)</code></entry>
+
+              <entry><code>checked_result&lt;R&gt;</code></entry>
+
+              <entry>constructor with <code>checked_result&lt;T&gt;</code>
+              where T is not R. T must be convertible to R.</entry>
+            </row>
+
+            <row>
+              <entry><code>checked_result(e, msg)</code></entry>
+
+              <entry><code>checked_result&lt;R&gt;</code></entry>
+
+              <entry>constructor with error information</entry>
+            </row>
+
+            <row>
+              <entry><code>static_cast&lt;R&gt;(c)</code></entry>
+
+              <entry>R</entry>
+
+              <entry>extract wrapped value - compile time error if not
+              possible</entry>
+            </row>
+
+            <row>
+              <entry><code>static_cast&lt;<code><link
+              linkend="safe_numerics.safe_numerics_error"><code>safe_numerics_error</code></link></code>&gt;(c)</code></entry>
+
+              <entry><link
+              linkend="safe_numerics.safe_numerics_error"><code>safe_numerics_error</code></link></entry>
+
+              <entry>extract wrapped value - may return <link
+              linkend="safe_numerics.safe_numerics_error"><code>safe_numerics_error</code></link><code>::success</code>
+              if there is no error</entry>
+            </row>
+
+            <row>
+              <entry><code>static_cast&lt;const char *&gt;(c)</code></entry>
+
+              <entry><code>const char *</code></entry>
+
+              <entry>returns pointer to the included error message</entry>
+            </row>
+
+            <row>
+              <entry><code>c.exception()</code></entry>
+
+              <entry><code>bool</code></entry>
+
+              <entry>true if <code>checked_result</code> contains an error
+              condition.</entry>
+            </row>
+
+            <row>
+              <entry><code><simplelist>
+                  <member>c1 &lt; c2</member>
+
+                  <member>c1 &gt;= c2</member>
+
+                  <member>c1 &gt; c2</member>
+
+                  <member>c1 &lt;= c2</member>
+
+                  <member>c1 == c2</member>
+
+                  <member>c1 != c2</member>
+                </simplelist></code></entry>
+
+              <entry><code>boost::logic::tribool</code></entry>
+
+              <entry>compare the wrapped values of two checked_result
+              instances. If the values are such that the result of such a
+              comparison cannot be reasonably defined, The result of the
+              comparison is
+              <code>boost::logic::tribool::indeterminant</code>.</entry>
+            </row>
+
+            <row>
+              <entry><code><simplelist>
+                  <member>c1 + c2</member>
+
+                  <member>c1 - c2</member>
+
+                  <member>c1 * c2</member>
+
+                  <member>c1 / c2</member>
+
+                  <member>c1 % c2</member>
+
+                  <member>c1 | c2</member>
+
+                  <member>c1 &amp; c2</member>
+
+                  <member>c1 ^ c2</member>
+
+                  <member>c1 &lt;&lt; c2</member>
+
+                  <member>c1 &gt;&gt; c2</member>
+                </simplelist></code></entry>
+
+              <entry><code>checked_result&lt;R&gt;</code></entry>
+
+              <entry>returns a new instance of
+              <code>checked_result&lt;R&gt;.</code></entry>
+            </row>
+
+            <row>
+              <entry><code><simplelist>
+                  <member>os &lt;&lt; c</member>
+                </simplelist></code></entry>
+
+              <entry><code>OS</code></entry>
+
+              <entry>writes result to output stream. If the result is an error
+              it writes the string corresponding to the error message.
+              Otherwise, it writes the numeric value resulting from the
+              operation. Returns reference to output stream.</entry>
+            </row>
+          </tbody>
+        </tgroup>
+      </informaltable></para>
+  </section>
+
+  <section>
+    <title>Example of use</title>
+
+    <programlisting><xi:include href="../../example/example20.cpp"
+        parse="text" xmlns:xi="http://www.w3.org/2001/XInclude"/></programlisting>
+  </section>
+
+  <section>
+    <title>See Also</title>
+
+    <para><link
+    linkend="safe_numerics.exception_policy">ExceptionPolicy</link></para>
+  </section>
+
+  <section>
+    <title>Header</title>
+
+    <para><ulink
+    url="../../include/boost/safe_numerics/checked_result.hpp"><code>#include
+    &lt;boost/numeric/safe_numerics/checked_result.hpp&gt;</code></ulink></para>
+
+    <para><ulink
+    url="../../include/boost/safe_numerics/checked_result_operations.hpp"><code>#include
+    &lt;boost/numeric/safe_numerics/checked_result_operations.hpp&gt;
+    </code></ulink></para>
+  </section>
+</section>

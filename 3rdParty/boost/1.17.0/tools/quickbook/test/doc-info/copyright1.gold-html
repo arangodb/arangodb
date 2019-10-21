@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+  <head></head>
+  <body>
+    <h3>
+      Copyright Test
+    </h3>
+    <p class="copyright">
+      1963, 1964, 1965 Jane Doe
+    </p>
+    <p class="copyright">
+      2018 Joe Blow, John Coe
+    </p>
+    <p class="copyright">
+      1977, 1985 Someone else
+    </p>
+  </body>
+</html>

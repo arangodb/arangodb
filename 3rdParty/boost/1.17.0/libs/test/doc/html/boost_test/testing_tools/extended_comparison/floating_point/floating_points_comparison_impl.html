@@ -1,0 +1,161 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Tolerance-based comparisons</title>
+<link rel="stylesheet" href="../../../../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../../index.html" title="Boost.Test">
+<link rel="up" href="../floating_point.html" title="Floating point comparison">
+<link rel="prev" href="customizing_for_tolerance.html" title="Enabling tolerance for user-defined types">
+<link rel="next" href="floating_points_comparison_theory.html" title="Theory behind floating point comparisons">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="customizing_for_tolerance.html"><img src="../../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../floating_point.html"><img src="../../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../../index.html"><img src="../../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="floating_points_comparison_theory.html"><img src="../../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h5 class="title">
+<a name="boost_test.testing_tools.extended_comparison.floating_point.floating_points_comparison_impl"></a><a class="link" href="floating_points_comparison_impl.html" title="Tolerance-based comparisons">Tolerance-based
+          comparisons</a>
+</h5></div></div></div>
+<p>
+            Assertions in the <span class="emphasis"><em>Unit Test Framework</em></span> use two kinds
+            of comparison. For <code class="computeroutput"><span class="identifier">u</span></code>
+            being close to zero with absolute tolerance <code class="computeroutput"><span class="identifier">eps</span></code>:
+          </p>
+<pre class="programlisting"><span class="identifier">abs</span><span class="special">(</span><span class="identifier">u</span><span class="special">)</span> <span class="special">&lt;=</span> <span class="identifier">eps</span><span class="special">;</span> <span class="comment">// (abs)</span>
+</pre>
+<p>
+            For <code class="computeroutput"><span class="identifier">u</span></code> and <code class="computeroutput"><span class="identifier">v</span></code> being close with relative tolerance
+            <code class="computeroutput"><span class="identifier">eps</span></code>:
+          </p>
+<pre class="programlisting">   <span class="identifier">abs</span><span class="special">(</span><span class="identifier">u</span> <span class="special">-</span> <span class="identifier">v</span><span class="special">)/</span><span class="identifier">abs</span><span class="special">(</span><span class="identifier">u</span><span class="special">)</span> <span class="special">&lt;=</span> <span class="identifier">eps</span>
+<span class="special">&amp;&amp;</span> <span class="identifier">abs</span><span class="special">(</span><span class="identifier">u</span> <span class="special">-</span> <span class="identifier">v</span><span class="special">)/</span><span class="identifier">abs</span><span class="special">(</span><span class="identifier">v</span><span class="special">)</span> <span class="special">&lt;=</span> <span class="identifier">eps</span><span class="special">;</span> <span class="comment">// (rel)</span>
+</pre>
+<p>
+            For rationale for choosing these formulae, see section <a class="link" href="floating_points_comparison_theory.html" title="Theory behind floating point comparisons">Floating
+            point comparison algorithms</a>.
+          </p>
+<p>
+            Assertion <a class="link" href="../../../utf_reference/testing_tool_ref/assertion_boost_test_universal_macro.html" title="BOOST_TEST"><code class="computeroutput"><span class="identifier">BOOST_TEST</span></code></a> (when comparing floating-point
+            numbers) uses the following algorithm:
+          </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+                When either value <code class="computeroutput"><span class="identifier">u</span></code>
+                or <code class="computeroutput"><span class="identifier">v</span></code> is zero, evaluates
+                formula (abs) on the other value.
+              </li>
+<li class="listitem">
+                When the specified tolerance is zero, performs direct (native) comparison
+                between <code class="computeroutput"><span class="identifier">u</span></code> and <code class="computeroutput"><span class="identifier">v</span></code>.
+              </li>
+<li class="listitem">
+                Otherwise, performs formula (rel) on <code class="computeroutput"><span class="identifier">u</span></code>
+                and <code class="computeroutput"><span class="identifier">v</span></code>.
+              </li>
+</ul></div>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top">
+<p>
+              Therefore in order to check if a number is close to zero with tolerance,
+              you need to type:
+            </p>
+<pre class="programlisting"><span class="identifier">BOOST_TEST</span><span class="special">(</span><span class="identifier">v</span> <span class="special">==</span> <span class="identifier">T</span><span class="special">(</span><span class="number">0</span><span class="special">),</span> <span class="identifier">tt</span><span class="special">::</span><span class="identifier">tolerance</span><span class="special">(</span><span class="identifier">eps</span><span class="special">));</span>
+</pre>
+</td></tr>
+</table></div>
+<p>
+            The compatibility assertions <a class="link" href="../../../utf_reference/testing_tool_ref/assertion_boost_level_close.html" title="BOOST_&lt;level&gt;_CLOSE"><code class="computeroutput"><span class="identifier">BOOST_</span><span class="special">&lt;</span><span class="identifier">level</span><span class="special">&gt;</span><span class="identifier">_CLOSE</span></code></a> and <a class="link" href="../../../utf_reference/testing_tool_ref/assertion_boost_level_close_fraction.html" title="BOOST_&lt;level&gt;_CLOSE_FRACTION"><code class="computeroutput"><span class="identifier">BOOST_</span><span class="special">&lt;</span><span class="identifier">level</span><span class="special">&gt;</span><span class="identifier">_CLOSE_FRACTION</span></code></a> perform formula
+            (rel).
+          </p>
+<p>
+            The compatibility assertion <a class="link" href="../../../utf_reference/testing_tool_ref/assertion_boost_level_small.html" title="BOOST_&lt;level&gt;_SMALL"><code class="computeroutput"><span class="identifier">BOOST_</span><span class="special">&lt;</span><span class="identifier">level</span><span class="special">&gt;</span><span class="identifier">_SMALL</span></code></a> performs formula (abs).
+          </p>
+<p>
+            The <span class="emphasis"><em>Unit Test Framework</em></span> also provides unary predicate
+            <code class="computeroutput"><a class="link" href="../../../../boost/math/fpc/small_with_tolerance.html" title="Class template small_with_tolerance">small_with_tolerance</a></code> and
+            binary predicate predicate <code class="computeroutput"><a class="link" href="../../../../boost/math/fpc/close_at_tolerance.html" title="Class template close_at_tolerance">close_at_tolerance</a></code> that
+            implement formula (abs) and (rel) respectively.
+          </p>
+<h4>
+<a name="boost_test.testing_tools.extended_comparison.floating_point.floating_points_comparison_impl.h0"></a>
+            <span class="phrase"><a name="boost_test.testing_tools.extended_comparison.floating_point.floating_points_comparison_impl.tolerance_in_operator"></a></span><a class="link" href="floating_points_comparison_impl.html#boost_test.testing_tools.extended_comparison.floating_point.floating_points_comparison_impl.tolerance_in_operator">Tolerance
+            in <code class="computeroutput"><span class="keyword">operator</span><span class="special">&lt;</span></code></a>
+          </h4>
+<p>
+            Tolerance-based computations also apply to <code class="computeroutput"><span class="keyword">operator</span><span class="special">&lt;</span></code> and other relational operators. The
+            semantics are defined as follows:
+          </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+                <span class="emphasis"><em>less-at-tolerance</em></span> &lt;==&gt; <span class="emphasis"><em>strictly-less</em></span>
+                and not <span class="emphasis"><em>close-at-tolerance</em></span>
+              </li>
+<li class="listitem">
+                <span class="emphasis"><em>greater-at-tolerance</em></span> &lt;==&gt; <span class="emphasis"><em>strictly-greater</em></span>
+                and not <span class="emphasis"><em>close-at-tolerance</em></span>
+              </li>
+<li class="listitem">
+                <span class="emphasis"><em>less-or-equal-at-tolerance</em></span> &lt;==&gt; <span class="emphasis"><em>strictly-less</em></span>
+                or <span class="emphasis"><em>close-at-tolerance</em></span>
+              </li>
+<li class="listitem">
+                <span class="emphasis"><em>greater-or-equal-at-tolerance</em></span> &lt;==&gt; <span class="emphasis"><em>strictly-greater</em></span>
+                or <span class="emphasis"><em>close-at-tolerance</em></span>
+              </li>
+</ul></div>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+              This implies that the exactly one of these: <code class="computeroutput"><span class="identifier">u</span>
+              <span class="special">&lt;</span> <span class="identifier">v</span></code>,
+              <code class="computeroutput"><span class="identifier">u</span> <span class="special">==</span>
+              <span class="identifier">v</span></code>, <code class="computeroutput"><span class="identifier">u</span>
+              <span class="special">&gt;</span> <span class="identifier">v</span></code>,
+              passes with <a class="link" href="../../../utf_reference/testing_tool_ref/assertion_boost_test_universal_macro.html" title="BOOST_TEST"><code class="computeroutput"><span class="identifier">BOOST_TEST</span></code></a> at any given tolerance.
+            </p></td></tr>
+</table></div>
+<div class="caution"><table border="0" summary="Caution">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Caution]" src="../../../../../../../../doc/src/images/caution.png"></td>
+<th align="left">Caution</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+              Relation <span class="emphasis"><em>less-at-tolerance</em></span> is not a <span class="emphasis"><em>Strict
+              Weak Ordering</em></span> as it lacks the <span class="emphasis"><em>transitivity of
+              the equivalence</em></span>; using it as predicate in <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">map</span></code> or any order-based STL algorithm
+              would result in undefined behavior.
+            </p></td></tr>
+</table></div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2001-2018 Boost.Test contributors<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="customizing_for_tolerance.html"><img src="../../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../floating_point.html"><img src="../../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../../index.html"><img src="../../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="floating_points_comparison_theory.html"><img src="../../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

@@ -1,0 +1,16 @@
+# Copyright (c) 2016 Rene Rivera
+#
+# Distributed under the Boost Software License, Version 1.0.
+# (See accompanying file LICENSE_1_0.txt or copy at
+# http://www.boost.org/LICENSE_1_0.txt)
+
+###############################################################################
+alias boostdoc
+    : ../xmldoc/date_time.xml
+    :
+    : <dependency>../xmldoc//date_time_autodoc <dependency>../xmldoc//gregorian_autodoc
+      <dependency>../xmldoc//posix_time_autodoc <dependency>../xmldoc//local_time_autodoc
+    : ;
+explicit boostdoc ;
+alias boostrelease ;
+explicit boostrelease ;

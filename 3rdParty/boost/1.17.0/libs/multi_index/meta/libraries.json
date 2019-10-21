@@ -1,0 +1,15 @@
+{
+    "key": "multi_index",
+    "name": "Multi-Index",
+    "authors": [
+        "Joaqu\u00edn M L\u00f3pez Mu\u00f1oz"
+    ],
+    "description": "The Boost Multi-index Containers Library provides a class template named multi_index_container which enables the construction of containers maintaining one or more indices with different sorting and access semantics.",
+    "category": [
+        "Containers",
+        "Data"
+    ],
+    "maintainers": [
+        "Joaquin M Lopez Munoz <joaquin.lopezmunoz -at- gmail.com>"
+    ]
+}

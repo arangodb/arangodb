@@ -1,0 +1,163 @@
+<html><head><!--
+     Copyright 2018 Yi Ji
+    
+     Use, modification and distribution is subject to the Boost Software
+     License, Version 1.0. (See accompanying file LICENSE_1_0.txt or copy at
+     http://www.boost.org/LICENSE_1_0.txt)
+    
+      Author: Yi Ji
+  --><title>Boost Graph Library: Maximum Weighted Matching</title></head>
+<body alink="#ff0000" bgcolor="#ffffff" link="#0000ee" text="#000000" vlink="#551a8b">
+<img src="../../../boost.png" alt="C++ Boost" height="86" width="277">
+<br clear="">
+<h1>
+<a name="sec:maximum_weighted_matching">Maximum Weighted Matching</a>
+</h1>
+<pre>
+template &lt;typename Graph, typename MateMap&gt;
+void maximum_weighted_matching(const Graph&amp; g, MateMap mate);
+
+template &lt;typename Graph, typename MateMap, typename VertexIndexMap&gt;
+void maximum_weighted_matching(const Graph&amp; g, MateMap mate, VertexIndexMap vm);
+
+template &lt;typename Graph, typename MateMap&gt;
+void brute_force_maximum_weighted_matching(const Graph&amp; g, MateMap mate);
+
+template &lt;typename Graph, typename MateMap, typename VertexIndexMap&gt;
+void brute_force_maximum_weighted_matching(const Graph&amp; g, MateMap mate, VertexIndexMap vm);
+</pre>
+<p>
+<a name="sec:weighted_matching">Before you continue, it is recommended to read
+about <a href="./maximum_matching.html">maximal cardinality matching</a> first. 
+A <i>maximum weighted matching</i> of an edge-weighted graph is a matching
+for which the sum of the weights of the edges is maximum. 
+Two different matchings (edges in the matching are colored blue) in the same graph are illustrated below. 
+The matching on the left is a maximum cardinality matching of size 8 and a maximal
+weighted matching of weight sum 30, meaning that is has maximum size over all matchings in the graph
+and its weight sum can't be increased by adding edges.
+The matching on the right is a maximum weighted matching of size 7 and weight sum 38, meaning that it has maximum
+weight sum over all matchings in the graph.
+
+</a></p><p></p><center>
+<table border="0">
+<tr>
+<td><a name="fig:maximal_weighted_matching"><img src="figs/maximal-weighted-match.png"></a></td>
+<td width="150"></td>
+<td><a name="fig:maximum_weighted_matching"><img src="figs/maximum-weighted-match.png"></a></td>
+</tr>
+</table>
+</center>
+
+<p>
+Both <tt>maximum_weighted_matching</tt> and 
+<tt>brute_force_maximum_weighted_matching</tt> find a
+maximum weighted matching in any undirected graph. The matching is returned in a
+<tt>MateMap</tt>, which is a 
+<a href="../../property_map/doc/ReadWritePropertyMap.html">ReadWritePropertyMap</a> 
+that maps vertices to vertices. In the mapping returned, each vertex is either mapped
+to the vertex it's matched to, or to <tt>graph_traits&lt;Graph&gt;::null_vertex()</tt> if it
+doesn't participate in the matching. If no <tt>VertexIndexMap</tt> is provided, both functions
+assume that the <tt>VertexIndexMap</tt> is provided as an internal graph property accessible
+by calling <tt>get(vertex_index, g)</tt>.  
+
+<p>
+The maximum weighted matching problem was solved by Edmonds in [<a href="bibliography.html#edmonds65:_max_weighted_match">74</a>].
+The implementation of <tt>maximum_weighted_matching</tt> followed Chapter 6, Section 10 of [<a href="bibliography.html#lawler76:_comb_opt">20</a>] and
+was written in a consistent style with <tt>edmonds_maximum_cardinality_matching</tt> because of their algorithmic similarity. 
+In addition, a brute-force verifier <tt>brute_force_maximum_weighted_matching</tt> simply searches all possible matchings in any graph and selects one with the maximum weight sum.
+
+</p><h3>Algorithm Description</h3>
+
+Primal-dual method in linear programming is introduced to solve weighted matching problems. Edmonds proved that for any graph, 
+the maximum number of edges in a matching is equal to the minimum capacity of an odd-set cover; this further enable us to prove a max-min duality theorem for weighted matching.
+Let <i>H<sub>k-1</sub></i> denote any graph obtained from G by contracting odd sets of three or more nodes and deleting single nodes,
+where the capacity of the family of odd sets (not necessarily a cover of G) is <i>k-1</i>. Let <i>X<sub>k</sub></i> denote any matching containing <i>k</i> edges.
+Each edge <i>(i, j)</i> has a weight <i>w<sub>ij</sub></i>. We have:
+<math>
+max<i><sub>X<sub>k</sub></sub></i> min {<i>w<sub>ij</sub>|(i, j) ϵ X<sub>k</sub></i>} = min<i><sub>H<sub>k-1</sub></sub></i> max {<i>w<sub>ij</sub>|(i, j) ϵ H<sub>k-1</sub></i>}.
+</math>
+This matching duality theorem gives an indication of how the matching problem should be formulated as a linear programming problem. That is, 
+the theorem suggests a set of linear inequalities which are satisfied by any matching, and it is anticipated that these inequalities describe a convex polyhedron
+with integer vertices corresponding to feasible matchings.
+
+<p>
+For <tt>maximum_weighted_matching</tt>, the management of blossoms is much more involved than in the case of <tt>max_cardinality_matching</tt>.
+It is not sufficient to record only the outermost blossoms. When an outermost blossom is expanded,
+it is necessary to know which blossom are nested immediately with it, so that these blossoms can be restored to the status of the outermost blossoms.
+When augmentation occurs, blossoms with strictly positive dual variables must be maintained for use in the next application of the labeling procedure.
+
+<p>
+The outline of the algorithm is as follow:
+
+<ol start="0">
+<li>Start with an empty matching and initialize dual variables as a half of maximum edge weight.</li>
+<li>(Labeling) Root an alternate tree at each exposed node, and proceed to construct alternate trees by labeling, using only edges with zero slack value.
+If an augmenting path is found, go to step 2. If a blossom is formed, go to step 3. Otherwise, go to step 4. </li>
+<li>(Augmentation) Find the augmenting path, tracing the path through shrunken blossoms. Augment the matching,
+correct labels on nodes in the augmenting path, expand blossoms with zero dual variables and remove labels from all base nodes. Go to step 1.</li>
+<li>(Blossoming) Determine the membership and base node of the new blossom and supply missing labels for all non-base nodes in the blossom. 
+Return to step 1.</li>
+<li>(Revision of Dual Solution) Adjust the dual variables based on the primal-dual method. Go to step 1 or halt, accordingly.</li>
+</ol>
+
+Note that in <tt>maximum_weighted_matching</tt>, all edge weights are multiplied by 4, so that all dual variables always remain as integers if all edge weights are integers.
+Unlike <tt>max_cardinality_matching</tt>, the initial matching and augmenting path finder are not parameterized,
+because the algorithm maintains blossoms, dual variables and node labels across all augmentations.
+
+The algorithm's time complexity is reduced from <i>O(V<sup>4</sup>)</i> (naive implementation of [<a href="bibliography.html#edmonds65:_max_weighted_match">74</a>]) 
+to <i>O(V<sup>3</sup>)</i>, by a delicate labeling procedure [<a href="bibliography.html#gabow76">75</a>] to avoid re-scanning labels after revision of the dual solution. 
+Special variables <i>pi, tau, gamma</i> and two arrays <i>critical_edge, tau_idx</i> are introduced for this purpose.
+Please refer to [<a href="bibliography.html#lawler76:_comb_opt">20</a>] and code comments for more implementation details.
+
+</p><h3>Where Defined</h3>
+
+<p>
+<a href="../../../boost/graph/maximum_weighted_matching.hpp"><tt>boost/graph/maximum_weighted_matching.hpp</tt></a>
+
+</p><h3>Parameters</h3>
+
+IN: <tt>const Graph&amp; g</tt>
+<blockquote>
+An undirected graph. The graph type must be a model of 
+<a href="VertexAndEdgeListGraph.html">Vertex and Edge List Graph</a> and
+<a href="IncidenceGraph.html">Incidence Graph</a>.
+The edge property of the graph <tt>property_map&lt;Graph, edge_weight_t&gt;</tt> must exist and have numeric value type.<br>
+</blockquote>
+
+IN: <tt>VertexIndexMap vm</tt>
+<blockquote>
+Must be a model of <a href="../../property_map/doc/ReadablePropertyMap.html">ReadablePropertyMap</a>, mapping vertices to integer indices.
+</blockquote>
+
+OUT: <tt>MateMap mate</tt>
+<blockquote>
+Must be a model of <a href="../../property_map/doc/ReadWritePropertyMap.html">ReadWritePropertyMap</a>, mapping
+vertices to vertices. For any vertex v in the graph, <tt>get(mate,v)</tt> will be the vertex that v is matched to, or
+<tt>graph_traits<Graph>::null_vertex()</tt> if v isn't matched.
+</blockquote>
+
+<h3>Complexity</h3>
+
+<p>
+Let <i>m</i> and <i>n</i> be the number of edges and vertices in the input graph, respectively. Assuming the 
+<tt>VertexIndexMap</tt> supplied allows constant-time lookup, the time complexity for 
+<tt>maximum_weighted_matching</tt> is <i>O(n<sup>3</sup>)</i>. For <tt>brute_force_maximum_weighted_matching</tt>, the time complexity is exponential of <i>m</i>.
+Note that the best known time complexity for maximum weighted matching in general graph
+is <i>O(nm+n<sup>2</sup>log(n))</i> by [<a href="bibliography.html#gabow90">76</a>], but relies on an
+efficient algorithm for solving nearest ancestor problem on trees, which is not provided in Boost C++ libraries.
+</p><p>
+
+</p><h3>Example</h3>
+
+<p> The file <a href="../example/weighted_matching_example.cpp"><tt>example/weighted_matching_example.cpp</tt></a>
+contains an example.
+
+<br>
+</p><hr>
+<table>
+<tbody><tr valign="top">
+<td nowrap="nowrap">Copyright © 2018</td><td>
+Yi Ji (<a href="mailto:jiy@pku.edu.cn">jiy@pku.edu.cn</a>)<br>
+</td></tr></tbody></table>
+
+</body></html>

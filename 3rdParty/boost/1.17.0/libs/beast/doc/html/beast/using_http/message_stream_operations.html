@@ -1,0 +1,232 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Message Stream Operations</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Chapter&#160;1.&#160;Boost.Beast">
+<link rel="up" href="../using_http.html" title="HTTP">
+<link rel="prev" href="message_containers.html" title="Message Containers">
+<link rel="next" href="serializer_stream_operations.html" title="Serializer Stream Operations">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="message_containers.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../using_http.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="serializer_stream_operations.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="beast.using_http.message_stream_operations"></a><a class="link" href="message_stream_operations.html" title="Message Stream Operations">Message Stream
+      Operations</a>
+</h3></div></div></div>
+<p>
+        Beast provides synchronous and asynchronous algorithms to parse and serialize
+        HTTP/1 wire format messages on streams. These functions form the message-oriented
+        stream interface:
+      </p>
+<div class="table">
+<a name="beast.using_http.message_stream_operations.message_stream_operations"></a><p class="title"><b>Table&#160;1.18.&#160;Message Stream Operations</b></p>
+<div class="table-contents"><table class="table" summary="Message Stream Operations">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Name
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__beast__http__read/overload3.html" title="http::read (3 of 4 overloads)"><span class="bold"><strong>read</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Read a <a class="link" href="../ref/boost__beast__http__message.html" title="http::message"><code class="computeroutput"><span class="identifier">message</span></code></a> from a <a href="../../../../../../doc/html/boost_asio/reference/SyncReadStream.html" target="_top"><span class="emphasis"><em>SyncReadStream</em></span></a>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__beast__http__async_read/overload2.html" title="http::async_read (2 of 2 overloads)"><span class="bold"><strong>async_read</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Read a <a class="link" href="../ref/boost__beast__http__message.html" title="http::message"><code class="computeroutput"><span class="identifier">message</span></code></a> from an <a href="../../../../../../doc/html/boost_asio/reference/AsyncReadStream.html" target="_top"><span class="emphasis"><em>AsyncReadStream</em></span></a>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__beast__http__write/overload1.html" title="http::write (1 of 6 overloads)"><span class="bold"><strong>write</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Write a <a class="link" href="../ref/boost__beast__http__message.html" title="http::message"><code class="computeroutput"><span class="identifier">message</span></code></a> to a <a href="../../../../../../doc/html/boost_asio/reference/SyncWriteStream.html" target="_top"><span class="emphasis"><em>SyncWriteStream</em></span></a>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__beast__http__async_write.html" title="http::async_write"><span class="bold"><strong>async_write</strong></span></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Write a <a class="link" href="../ref/boost__beast__http__message.html" title="http::message"><code class="computeroutput"><span class="identifier">message</span></code></a> to an <a href="../../../../../../doc/html/boost_asio/reference/AsyncWriteStream.html" target="_top"><span class="emphasis"><em>AsyncWriteStream</em></span></a>.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<br class="table-break"><p>
+        All synchronous stream operations come in two varieties. One which throws
+        an exception upon error, and another which accepts as the last parameter
+        an argument of type <a class="link" href="../ref/boost__beast__error_code.html" title="error_code"><code class="computeroutput"><span class="identifier">error_code</span><span class="special">&amp;</span></code></a>.
+        If an error occurs this argument will be set to contain the error code.
+      </p>
+<h5>
+<a name="beast.using_http.message_stream_operations.h0"></a>
+        <span class="phrase"><a name="beast.using_http.message_stream_operations.reading"></a></span><a class="link" href="message_stream_operations.html#beast.using_http.message_stream_operations.reading">Reading</a>
+      </h5>
+<p>
+        Because a serialized header is not length-prefixed, algorithms which parse
+        messages from a stream may read past the end of a message for efficiency.
+        To hold this surplus data, all stream read operations use a passed-in <a class="link" href="../concepts/DynamicBuffer.html" title="DynamicBuffer"><span class="emphasis"><em>DynamicBuffer</em></span></a>
+        which must be persisted between calls until the end of stream is reached
+        or the stream object is destroyed. Each read operation may consume bytes
+        remaining in the buffer, and leave behind new bytes. In this example we declare
+        the buffer and a message variable, then read a complete HTTP request synchronously:
+      </p>
+<pre class="programlisting"><span class="identifier">flat_buffer</span> <span class="identifier">buffer</span><span class="special">;</span>         <span class="comment">// (The parser is optimized for flat buffers)</span>
+<span class="identifier">request</span><span class="special">&lt;</span><span class="identifier">string_body</span><span class="special">&gt;</span> <span class="identifier">req</span><span class="special">;</span>
+<span class="identifier">read</span><span class="special">(</span><span class="identifier">sock</span><span class="special">,</span> <span class="identifier">buffer</span><span class="special">,</span> <span class="identifier">req</span><span class="special">);</span>
+</pre>
+<p>
+        This example uses <a class="link" href="../ref/boost__beast__flat_buffer.html" title="flat_buffer"><code class="computeroutput"><span class="identifier">flat_buffer</span></code></a>. Beast's <a class="link" href="../ref/boost__beast__http__basic_parser.html" title="http::basic_parser"><code class="computeroutput"><span class="identifier">basic_parser</span></code></a> is optimized for structured
+        HTTP data located in a single contiguous (<span class="emphasis"><em>flat</em></span>) memory
+        buffer. When not using a flat buffer the implementation may perform an additional
+        memory allocations to restructure the input into a single buffer for parsing.
+      </p>
+<div class="tip"><table border="0" summary="Tip">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Tip]" src="../../../../../../doc/src/images/tip.png"></td>
+<th align="left">Tip</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+          Other Implementations of <a class="link" href="../concepts/DynamicBuffer.html" title="DynamicBuffer"><span class="emphasis"><em>DynamicBuffer</em></span></a>
+          may avoid parser memory allocation by always returning buffer sequences
+          of length one.
+        </p></td></tr>
+</table></div>
+<p>
+        Messages may also be read asynchronously. When performing asynchronous stream
+        read operations the stream, buffer, and message variables must remain valid
+        until the operation has completed. Beast asynchronous initiation functions
+        use Asio's completion handler model. This call reads a message asynchronously
+        and reports the error code upon completion. The handler is called with the
+        error, set to any that occurs, and the number of bytes parsed. This number
+        may be used to measure the relative amount of work performed, or it may be
+        ignored as this example shows.
+      </p>
+<pre class="programlisting"><span class="identifier">flat_buffer</span> <span class="identifier">buffer</span><span class="special">;</span>
+<span class="identifier">response</span><span class="special">&lt;</span><span class="identifier">string_body</span><span class="special">&gt;</span> <span class="identifier">res</span><span class="special">;</span>
+<span class="identifier">async_read</span><span class="special">(</span><span class="identifier">sock</span><span class="special">,</span> <span class="identifier">buffer</span><span class="special">,</span> <span class="identifier">res</span><span class="special">,</span>
+    <span class="special">[&amp;](</span><span class="identifier">error_code</span> <span class="identifier">ec</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">bytes_transferred</span><span class="special">)</span>
+    <span class="special">{</span>
+        <span class="identifier">boost</span><span class="special">::</span><span class="identifier">ignore_unused</span><span class="special">(</span><span class="identifier">bytes_transferred</span><span class="special">);</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">cerr</span> <span class="special">&lt;&lt;</span> <span class="identifier">ec</span><span class="special">.</span><span class="identifier">message</span><span class="special">()</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+    <span class="special">});</span>
+</pre>
+<p>
+        If a read stream algorithm cannot complete its operation without exceeding
+        the maximum specified size of the dynamic buffer provided, the error <a class="link" href="../ref/boost__beast__http__error.html" title="http::error"><code class="computeroutput"><span class="identifier">buffer_overflow</span></code></a>
+        is returned. This is one technique which may be used to impose a limit on
+        the maximum size of an HTTP message header for protection from buffer overflow
+        attacks. The following code will print the error message:
+      </p>
+<pre class="programlisting"><span class="comment">// This buffer's max size is too small for much of anything</span>
+<span class="identifier">flat_buffer</span> <span class="identifier">buffer</span><span class="special">{</span><span class="number">10</span><span class="special">};</span>
+
+<span class="comment">// Try to read a request</span>
+<span class="identifier">error_code</span> <span class="identifier">ec</span><span class="special">;</span>
+<span class="identifier">request</span><span class="special">&lt;</span><span class="identifier">string_body</span><span class="special">&gt;</span> <span class="identifier">req</span><span class="special">;</span>
+<span class="identifier">read</span><span class="special">(</span><span class="identifier">sock</span><span class="special">,</span> <span class="identifier">buffer</span><span class="special">,</span> <span class="identifier">req</span><span class="special">,</span> <span class="identifier">ec</span><span class="special">);</span>
+<span class="keyword">if</span><span class="special">(</span><span class="identifier">ec</span> <span class="special">==</span> <span class="identifier">http</span><span class="special">::</span><span class="identifier">error</span><span class="special">::</span><span class="identifier">buffer_overflow</span><span class="special">)</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cerr</span> <span class="special">&lt;&lt;</span> <span class="string">"Buffer limit exceeded!"</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+</pre>
+<h5>
+<a name="beast.using_http.message_stream_operations.h1"></a>
+        <span class="phrase"><a name="beast.using_http.message_stream_operations.writing"></a></span><a class="link" href="message_stream_operations.html#beast.using_http.message_stream_operations.writing">Writing</a>
+      </h5>
+<p>
+        A set of free functions allow serialization of an entire HTTP message to
+        a stream. This example constructs and sends an HTTP response:
+      </p>
+<pre class="programlisting"><span class="identifier">response</span><span class="special">&lt;</span><span class="identifier">string_body</span><span class="special">&gt;</span> <span class="identifier">res</span><span class="special">;</span>
+<span class="identifier">res</span><span class="special">.</span><span class="identifier">version</span><span class="special">(</span><span class="number">11</span><span class="special">);</span>
+<span class="identifier">res</span><span class="special">.</span><span class="identifier">result</span><span class="special">(</span><span class="identifier">status</span><span class="special">::</span><span class="identifier">ok</span><span class="special">);</span>
+<span class="identifier">res</span><span class="special">.</span><span class="identifier">set</span><span class="special">(</span><span class="identifier">field</span><span class="special">::</span><span class="identifier">server</span><span class="special">,</span> <span class="string">"Beast"</span><span class="special">);</span>
+<span class="identifier">res</span><span class="special">.</span><span class="identifier">body</span><span class="special">()</span> <span class="special">=</span> <span class="string">"Hello, world!"</span><span class="special">;</span>
+<span class="identifier">res</span><span class="special">.</span><span class="identifier">prepare_payload</span><span class="special">();</span>
+
+<span class="identifier">error_code</span> <span class="identifier">ec</span><span class="special">;</span>
+<span class="identifier">write</span><span class="special">(</span><span class="identifier">sock</span><span class="special">,</span> <span class="identifier">res</span><span class="special">,</span> <span class="identifier">ec</span><span class="special">);</span>
+</pre>
+<p>
+        The asynchronous version could be used instead:
+      </p>
+<pre class="programlisting"><span class="identifier">async_write</span><span class="special">(</span><span class="identifier">sock</span><span class="special">,</span> <span class="identifier">res</span><span class="special">,</span>
+    <span class="special">[&amp;](</span><span class="identifier">error_code</span> <span class="identifier">ec</span><span class="special">,</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">size_t</span> <span class="identifier">bytes_transferred</span><span class="special">)</span>
+    <span class="special">{</span>
+        <span class="identifier">boost</span><span class="special">::</span><span class="identifier">ignore_unused</span><span class="special">(</span><span class="identifier">bytes_transferred</span><span class="special">);</span>
+        <span class="keyword">if</span><span class="special">(</span><span class="identifier">ec</span><span class="special">)</span>
+            <span class="identifier">std</span><span class="special">::</span><span class="identifier">cerr</span> <span class="special">&lt;&lt;</span> <span class="identifier">ec</span><span class="special">.</span><span class="identifier">message</span><span class="special">()</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+    <span class="special">});</span>
+</pre>
+<p>
+        The completion handler is called with the number of bytes written to the
+        stream, which includes protocol specific data such as the delimiters in the
+        header and line endings. The number may be used to measure the amount of
+        data transferred, or it may be ignored as in the example.
+      </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2016-2019 Vinnie
+      Falco<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="message_containers.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../using_http.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="serializer_stream_operations.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

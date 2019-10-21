@@ -1,0 +1,132 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Log formats</title>
+<link rel="stylesheet" href="../../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Boost.Test">
+<link rel="up" href="../test_output.html" title="Controlling outputs">
+<link rel="prev" href="test_tools_support_for_logging/log_floating_points.html" title="Logging floating point type numbers">
+<link rel="next" href="log_formats/test_log_output.html" title="Test log output">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="test_tools_support_for_logging/log_floating_points.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../test_output.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="log_formats/test_log_output.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_test.test_output.log_formats"></a><a class="link" href="log_formats.html" title="Log formats">Log formats</a>
+</h3></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="log_formats/test_log_output.html">Test
+        log output</a></span></dt>
+<dt><span class="section"><a href="log_formats/log_human_readable_format.html">HRF:
+        Human readable log format</a></span></dt>
+<dt><span class="section"><a href="log_formats/log_xml_format.html">XML
+        log format</a></span></dt>
+<dt><span class="section"><a href="log_formats/log_junit_format.html">JUNIT
+        log format</a></span></dt>
+</dl></div>
+<p>
+        The <span class="emphasis"><em>Unit Test Framework</em></span> supports several log formats:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            <a class="link" href="log_formats/log_human_readable_format.html" title="HRF: Human readable log format">HRF</a>:
+            human readable format
+          </li>
+<li class="listitem">
+            <a class="link" href="log_formats/log_xml_format.html" title="XML log format">XML</a>:
+            an machine interpretable log format
+          </li>
+<li class="listitem">
+            <a class="link" href="log_formats/log_junit_format.html" title="JUNIT log format">JUNIT</a>:
+            a standardized log format understandable by automated tools such as Continuous
+            Builds
+          </li>
+</ul></div>
+<h5>
+<a name="boost_test.test_output.log_formats.h0"></a>
+        <span class="phrase"><a name="boost_test.test_output.log_formats.design"></a></span><a class="link" href="log_formats.html#boost_test.test_output.log_formats.design">Design</a>
+      </h5>
+<p>
+        The following functionalities are supported by the logging framework:
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            each logger manages its own log level. The rationale is that some log
+            format are meant for automated processing, and by design need to carry
+            all the information that will later be digested by a visualization tool.
+          </li>
+<li class="listitem">
+            several log format may be active at the same time. The rationale is that
+            the user might want to see a non-exhaustive log in his terminal using
+            a human friendly format, while having a detailed full log in a file with
+            a format dedicated to automated processing.
+          </li>
+<li class="listitem">
+            each logger <span class="emphasis"><em>indicates</em></span> its default output stream.
+            some logger may prefer to output to one of the standard stream while
+            other may prefer output to a file.
+          </li>
+</ul></div>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+          The logger indicates the default output stream in case the default should
+          be used.
+        </p></td></tr>
+</table></div>
+<h5>
+<a name="boost_test.test_output.log_formats.h1"></a>
+        <span class="phrase"><a name="boost_test.test_output.log_formats.defaults"></a></span><a class="link" href="log_formats.html#boost_test.test_output.log_formats.defaults">Defaults</a>
+      </h5>
+<p>
+        By default the active log level threshold is set to
+      </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+            <a class="link" href="log_formats/test_log_output.html" title="Test log output">"non
+            fatal error messages"</a> and the test log output is generated
+            in <a class="link" href="log_formats/log_human_readable_format.html" title="HRF: Human readable log format">human
+            readable format</a>.
+          </li>
+<li class="listitem">
+            <a class="link" href="log_formats/test_log_output.html" title="Test log output">"general
+            information"</a> for <a class="link" href="log_formats/log_junit_format.html" title="JUNIT log format">JUNIT</a>
+            log format
+          </li>
+</ul></div>
+<p>
+        The active log level threshold and the output format can be configured at
+        runtime during a test module invocation and at compile time from within a
+        test module using the <a class="link" href="logging_api.html" title="Logging API">test
+        log public interfaces</a>. The behavior is logger specific though.
+      </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2001-2018 Boost.Test contributors<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="test_tools_support_for_logging/log_floating_points.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../test_output.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="log_formats/test_log_output.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

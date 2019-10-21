@@ -1,0 +1,772 @@
+[/
+  Copyright 2015-2017 Peter Dimov
+
+  Distributed under the Boost Software License, Version 1.0.
+
+  See accompanying file LICENSE_1_0.txt or copy at
+  http://boost.org/LICENSE_1_0.txt
+]
+
+[article Boostdep
+  [quickbook 1.6]
+  [id boostdep]
+  [copyright 2014-2017 Peter Dimov]
+  [license Distributed under the
+    [@http://boost.org/LICENSE_1_0.txt Boost Software License, Version 1.0].
+  ]
+]
+
+[template simplesect[title]
+[block '''<simplesect><title>'''[title]'''</title>''']]
+
+[template endsimplesect[]
+[block '''</simplesect>''']]
+
+[section Introduction]
+
+/Boostdep/ is a tool for generating Boost dependency reports. It scans
+the header or source files of the Boost libraries for `#include`
+directives, builds a dependency graph from this information and outputs
+its findings in plain text or HTML.
+
+[section Modular Boost]
+
+/Boostdep/ requires the so-called "modular Boost" directory structure.
+
+If you already have a [@https://svn.boost.org/trac/boost/wiki/ModularBoost
+modular Boost installation], you can skip this section. Otherwise, read on.
+
+Boost libraries reside in subdirectories under the =libs= directory. For
+example, the contents of the Boost.Filesystem library are in =libs/filesystem=.
+This includes the build scripts (in =libs/filesystem/build=), the source files
+(in =libs/filesystem/src=), the tests (in =libs/filesystem/test=), the documentation
+(in =libs/filesystem/doc=), and so on.
+
+In the past, when Boost used SVN as its version control system, the header files
+were an exception. The header files of all libraries resided in the =boost= subdirectory,
+and it wasn't possible to accurately determine which header belonged to which library.
+
+When Boost moved to Git for version control, header files were moved to their corresponding
+libraries, into an =include= subdirectory. The header files of Boost.Filesystem are now in
+=libs/filesystem/include=.
+
+For compatibility, =boost= is now a "virtual" directory, containing links to the headers.
+It's maintained automatically by Boost.Build. (The command =b2 headers= creates or recreates
+the contents of the =boost= directory.)
+
+This new structure allows /Boostdep/ to determine that, when faced with an
+`#include <boost/filesystem.hpp>` directive, that this header is part of Boost.Filesystem, and
+that therefore, the current library being scanned depends on Boost.Filesystem.
+
+Unfortunately, Boost releases do not have this structure. For backward compatibility, they
+have an old-style =boost= directory containing all header files, whereas the per-library =include=
+subdirectories are missing. Therefore, /Boostdep/ will not work with a downloaded Boost release.
+
+To use /Boostdep/, you will have to clone the Boost Git repository instead. To do that, execute the
+following command:
+
+[pre
+git clone https://github.com/boostorg/boost.git boost
+]
+
+This will download the Boost "superproject" (the master project, without any libraries) and place it
+into the subdirectory =boost= of the current directory. To override the directory name, pass it as a
+second argument instead of =boost=:
+
+[pre
+git clone https://github.com/boostorg/boost.git /mydir/
+]
+
+You can now =cd= into the newly created directory with
+
+[pre
+cd /mydir/
+]
+
+This directory is called the "Boost root". All of the commands below assume that it is the current directory.
+
+The above =git clone= commands download the default branch of the Boost Git repository, which is =master=.
+This is the current more-or-less stable version of Boost.
+
+To verify this, issue the command
+
+[pre
+git status
+]
+
+from the Boost root. This will output
+
+[pre
+# On branch master
+nothing to commit, working directory clean
+]
+
+To download a specific release instead, such as 1.58.0, issue the following command after =git clone=, from
+the Boost root:
+
+[pre
+git checkout boost-1.58.0
+]
+
+=git status= will now say
+
+[pre
+# HEAD detached at boost-1.58.0
+nothing to commit, working directory clean
+]
+
+Then, download all the libraries:
+
+[pre
+git submodule update --init
+]
+
+This step will take a while.
+
+If all goes well, you will now have the complete contents of Boost's latest =master= branch (if you didn't =checkout=
+a specific release by name) or the corresponding Boost release (if you did).
+
+You can switch between the =master= branch, the =develop= (unstable) branch, and a release, by issuing the following
+commands:
+
+[:For the =master= branch:]
+
+[pre
+git checkout master
+git pull
+git submodule update --init
+]
+
+[:(=git pull= updates your local copy of the =master= branch from the server, in case it has changed since your initial
+checkout.)]
+
+[:For the =develop= branch:]
+
+[pre
+git checkout develop
+git pull
+git submodule update --init
+]
+
+[:For the =boost-1.58.0= release:]
+
+[pre
+git checkout boost-1.58.0
+git submodule update --init
+]
+
+[:For the =boost-1.57.0= release:]
+
+[pre
+git checkout boost-1.57.0
+git submodule update --init
+]
+
+Note that, while the initial =git submodule update= is quite slow, as it needs to download all the libraries, the
+subsequent invocations are a lot faster.
+
+Also note that if a new Boost library (=libs/convert=, for example) is present in, say, =master=, and you have it checked out,
+when you later switch to =boost-1.58.0=, where this library doesn't exist, Git will not delete =libs/convert=. In this case,
+=git status= will output
+
+[pre
+# HEAD detached at boost-1.58.0
+# Untracked files:
+#   (use "git add <file>..." to include in what will be committed)
+#
+#       libs/convert/
+nothing added to commit but untracked files present (use "git add" to track)
+]
+
+and you will have to remove =libs/convert= by hand.
+
+Once you have the Boost contents which you want to analyze for dependencies, proceed with the next step, building /Boostdep/.
+
+[endsect]
+
+[section Building Boostdep]
+
+To build /Boostdep/, issue the following command from the Boost root:
+
+[pre
+b2 tools/boostdep/build
+]
+
+This will build /Boostdep/ from source using the default "toolset" (a Boost.Build term meaning "compiler") and if successful,
+place it into the =dist/bin= subdirectory. The command assumes that =b2= (the Boost.Build executable) is somewhere in your path.
+If you don't have =b2=, execute
+
+[pre
+.\bootstrap
+]
+
+under Windows or
+
+[pre
+./bootstrap.sh
+]
+
+under Unix-like systems, which should build =b2= and place it into the current directory. You can then use =./b2= instead of =b2=.
+
+[endsect]
+
+[section Running Boostdep]
+
+Once you have built /Boostdep/, execute it with the following command:
+
+[pre
+dist/bin/boostdep
+]
+
+or
+
+[pre
+dist\bin\boostdep
+]
+
+on Windows. The commands below are given as using =dist/bin/boostdep=; if you're using Windows, use =dist\bin\boostdep= instead.
+
+This will print out the following help message:
+
+[pre
+Usage:
+
+    boostdep --list-modules
+    boostdep --list-buildable
+    boostdep \[--track-sources\] \[--track-tests\] --list-dependencies
+    boostdep --list-exceptions
+    boostdep --list-missing-headers
+    boostdep --list-buildable-dependencies
+
+    boostdep \[options\] --module-overview
+    boostdep \[options\] --module-levels
+    boostdep \[options\] --module-weights
+
+    boostdep \[options\] \[--primary\] <module>
+    boostdep \[options\] --secondary <module>
+    boostdep \[options\] --reverse <module>
+    boostdep \[options\] --subset <module>
+    boostdep \[options\] \[--header\] <header>
+    boostdep --test <module>
+    boostdep --cmake <module>
+    boostdep --pkgconfig <module> <version> \[<var>=<value>\] \[<var>=<value>\]...
+    boostdep \[options\] --subset-for <directory>
+
+    \[options\]: \[--boost-root <path-to-boost>\]
+               \[--\[no-\]track-sources\] \[--\[no-\]track-tests\]
+               \[--html-title <title>\] \[--html-footer <footer>\]
+               \[--html-stylesheet <stylesheet>\] \[--html-prefix <prefix>\]
+               \[--html\]
+]
+
+[endsect]
+
+[endsect]
+
+[section Usage]
+
+[section Simple Queries]
+
+To list the dependencies of a specific library, use the command
+
+[pre
+dist/bin/boostdep /library/
+]
+
+For Boost.Filesystem, for example, type
+
+[pre
+dist/bin/boostdep filesystem
+]
+
+This will print out something similar to the following:
+
+[pre
+Primary dependencies for filesystem:
+
+assert:
+    <boost/assert.hpp>
+        from <boost/filesystem/operations.hpp>
+        from <boost/filesystem/path_traits.hpp>
+
+config:
+    <boost/config.hpp>
+        from <boost/filesystem/config.hpp>
+        from <boost/filesystem/convenience.hpp>
+        from <boost/filesystem/fstream.hpp>
+        from <boost/filesystem/operations.hpp>
+        from <boost/filesystem/path.hpp>
+        from <boost/filesystem/path_traits.hpp>
+    /.../
+
+functional:
+    <boost/functional/hash_fwd.hpp>
+        from <boost/filesystem/path.hpp>
+
+io:
+    <boost/io/detail/quoted_manip.hpp>
+        from <boost/filesystem/path.hpp>
+
+iterator:
+    <boost/iterator/iterator_facade.hpp>
+        from <boost/filesystem/path.hpp>
+    /.../
+]
+
+This lists the immediate dependencies of Boost.Filesystem. =assert:= is the library,
+=<boost/assert.hpp>= is the file that is being included, and =from <boost/filesystem/config.hpp>=
+shows where =<boost/assert.hpp>= is being included.
+
+/Boostdep/ names libraries (or modules) after their directory name. The =libs/filesystem=
+directory, for example, is the =filesystem= module. The =libs/numeric/conversion= directory
+is the =numeric~conversion= module, according to the /Boostdep/ naming convention.
+
+The reason forward slashes are replaced with tildes is that =numeric~conversion= is a valid
+file name, which makes generating HTML reports a bit easier.
+
+To see where a given header resides and who includes it, type
+
+[pre
+dist/bin/boostdep /header/
+]
+
+For =boost/filesystem.hpp=, for example, type
+
+[pre
+dist/bin/boostdep boost/filesystem.hpp
+]
+
+This will print something along the lines of
+
+[pre
+Inclusion report for <boost/filesystem.hpp> (in module filesystem):
+
+    from spirit:
+        <boost/spirit/home/x3/support/utility/testing.hpp>
+]
+
+What this tells you is that =boost/filesystem.hpp= is part of Boost.Filesystem and is only
+included once, from =<boost/spirit/home/x3/support/utility/testing.hpp>=. Other headers,
+such as =boost/shared_ptr.hpp=, are more widely used, as you can see if you try
+
+[pre
+dist/bin/boostdep boost/shared_ptr.hpp
+]
+
+To print the reverse dependencies of a library, use
+
+[pre
+dist/bin/boostdep --reverse /library/
+]
+
+For example,
+
+[pre
+dist/bin/boostdep --reverse filesystem
+]
+
+will list which libraries depend on Boost.Filesystem:
+
+[pre
+Reverse dependencies for filesystem:
+
+graph_parallel:
+    <boost/filesystem/operations.hpp>
+        from <boost/graph/distributed/adjlist/serialization.hpp>
+    <boost/filesystem/path.hpp>
+        from <boost/graph/distributed/adjlist/serialization.hpp>
+
+log:
+    <boost/filesystem/config.hpp>
+        from <boost/log/detail/config.hpp>
+    <boost/filesystem/path.hpp>
+        from <boost/log/sinks/event_log_backend.hpp>
+        from <boost/log/sinks/text_file_backend.hpp>
+        from <boost/log/sinks/text_multifile_backend.hpp>
+
+spirit:
+    <boost/filesystem.hpp>
+        from <boost/spirit/home/x3/support/utility/testing.hpp>
+    <boost/filesystem/fstream.hpp>
+        from <boost/spirit/home/x3/support/utility/testing.hpp>
+    <boost/filesystem/path.hpp>
+        from <boost/spirit/home/x3/support/utility/error_reporting.hpp>
+
+wave:
+    <boost/filesystem/operations.hpp>
+        from <boost/wave/util/cpp_include_paths.hpp>
+        from <boost/wave/util/cpp_iterator.hpp>
+        from <boost/wave/util/filesystem_compatibility.hpp>
+    <boost/filesystem/path.hpp>
+        from <boost/wave/cpp_context.hpp>
+        from <boost/wave/util/cpp_include_paths.hpp>
+        from <boost/wave/util/cpp_iterator.hpp>
+        from <boost/wave/util/cpp_macromap.hpp>
+        from <boost/wave/util/filesystem_compatibility.hpp>
+]
+
+[endsect]
+
+[section HTML reports]
+
+The primary purpose of /Boostdep/ is to generate HTML dependency reports. In
+the typical case, two types of reports are generated: overviews that contain
+information for all modules, and per-module ones that list information for a
+specific library.
+
+/Boostdep/ can generate three types of the first kind of report: module overview,
+module levels and module weights. To generate a module overview, use the command
+
+[pre
+dist/bin/boostdep --html --module-overview > module-overview.html
+]
+
+For a module level report, use
+
+[pre
+dist/bin/boostdep --html --module-levels > module-levels.html
+]
+
+For a module weight report, use
+
+[pre
+dist/bin/boostdep --html --module-weights > module-weights.html
+]
+
+In these reports, module names such as /module/ are HTML links to [^/module/.html].
+
+To make these links work as expected, you can generate HTML reports for each module
+as follows:
+
+[pre
+dist/bin/boostdep --html-title "Dependency Report for /module/" --html --primary /module/ --secondary /module/ --reverse /module/ > /module/.html
+]
+
+This step can be automated if you generate a module list first with
+
+[pre
+dist/bin/boostdep --list-modules > list-modules.txt
+]
+
+that will contain one module name per line, and then use a script to issue the previous
+command for each module name.
+
+For more information about the /Boostdep/ options and commands, see the [link boostdep.reference Reference] section.
+
+For an example of a report generation script, see the file =tools/boostdep/examples/report.bat=.
+This is a Windows batch file, but translating it to a Unix-style shell script should be
+straightforward.
+
+For convenience, the contents of =tools/boostdep/examples/report.bat= are given below:
+
+[pre
+SET BOOSTDEP=dist\bin\boostdep.exe
+
+FOR /f %%i IN ('git rev-parse HEAD') DO @SET REV=%%i
+
+FOR /f %%i IN ('git rev-parse --short HEAD') DO @SET SHREV=%%i
+
+FOR /f %%i IN ('git rev-parse --abbrev-ref HEAD') DO @SET BRANCH=%%i
+
+SET FOOTER=Generated on %DATE% %TIME% from revision %REV% on branch '%BRANCH%'
+
+SET OUTDIR=..\report-%BRANCH%-%SHREV%
+
+mkdir %OUTDIR%
+
+%BOOSTDEP% --list-modules > %OUTDIR%\list-modules.txt
+
+%BOOSTDEP% --html-footer "%FOOTER%" --html --module-overview > %OUTDIR%\module-overview.html
+%BOOSTDEP% --html-footer "%FOOTER%" --html --module-levels > %OUTDIR%\module-levels.html
+%BOOSTDEP% --html-footer "%FOOTER%" --html --module-weights > %OUTDIR%\module-weights.html
+
+FOR /f %%i IN (%OUTDIR%\list-modules.txt) DO %BOOSTDEP% --html-title "Dependency Report for %%i" --html-footer "%FOOTER%" --html --primary %%i --secondary %%i --reverse %%i > %OUTDIR%\%%i.html
+]
+
+[endsect]
+
+[endsect]
+
+[section Reference]
+
+[section --list-modules]
+=boostdep --list-modules= prints the module list. /Boostdep/ considers a
+subdirectory of =libs= a module if it contains an =include= subdirectory.
+
+This command is typically used from scripts which then use the list to execute
+a command for each module.
+[endsect]
+
+[section --list-buildable]
+=boostdep --list-buildable= prints a list of the modules that require building.
+/Boostdep/ considers a module to require building if it contains subdirectories
+named =build= and =src=.
+
+This command is typically used from scripts.
+
+[endsect]
+
+[section --list-dependencies]
+=boostdep --list-dependencies= prints a module list in which each line is of the
+form
+
+[pre
+module -> dependency1 dependency2 /.../
+]
+
+By default, only the =include= directory is scanned for `#include` directives. If
+the option =--track-sources= is given, the =src= directory is also scanned. If
+the option =--track-tests= is given, the =test= directory is also scanned.
+
+This command is typically used from scripts. The output is virtually identical to
+=--module-overview= in plain text, but slightly more machine-friendly.
+[endsect]
+
+[section --list-exceptions]
+=boostdep --list-exceptions= prints a list of the headers that are not contained into
+the include directory ot their corresponding module.
+
+[endsect]
+
+[section --list-missing-headers]
+=boostdep --list-missing-headers= prints a list of the headers that are included by
+another header, but are missing.
+
+[endsect]
+
+[section --list-buildable-dependencies]
+=boostdep --list-buildable-dependencies= prints a list of the dependencies of the buildable
+libraries, in the form
+
+[pre
+module = dependency1 dependency2 /.../ ;
+]
+
+This is valid Boost.Build syntax, so the output can be used as a Boost.Build module. All
+header-only libraries are considered one library named =headers=.
+
+[endsect]
+
+[section --module-overview]
+=boostdep --module-overview= generates a module overview, in plain text or HTML. The
+plain text output is of the form
+
+[pre
+Module Overview:
+
+accumulators -> array assert circular_buffer concept_check config core fusion iterator mpl numeric~conversion numeric~ublas parameter preprocessor range static_assert throw_exception tuple type_traits typeof
+algorithm -> array assert bind concept_check config core exception function iterator mpl range regex static_assert tuple type_traits unordered
+align -> assert config core static_assert throw_exception
+]
+
+whereas the HTML output is similar to
+
+[:
+*Module Overview*
+
+[*/accumulators/]
+
+\u21E2 array assert circular_buffer concept_check config core fusion iterator mpl numeric~conversion numeric~ublas parameter preprocessor range static_assert throw_exception tuple type_traits typeof
+]
+
+where /accumulators/ is a link to =accumulators.html=.
+
+As before, if =--track-sources= is given, the =src= subdirectory is scanned for `#include` directives.
+
+HTML output is enabled by the =--html= option. The =--html-title= and =--html-footer= options set the HTML =<title>=
+and the page footer and need to precede =--html=, like in the following example:
+
+[pre
+dist/bin/boostdep --html-title "Module Overview" --html-footer "Generated on 21.05.2015 20:53:11" --html --module-overview > module-overview.html
+]
+
+[endsect]
+
+[section --module-levels]
+
+=boostdep --module-levels= generates a report that groups modules by level. Levels are determined in such
+a way so that a module of level =N= never depends on modules of levels greater than =N=, and in the absence
+of cyclic dependencies, doesn't depend on other modules of level =N=. It takes the same options as
+=--module-overview=.
+
+[pre
+dist/bin/boostdep --html-title "Module Levels" --html-footer "Generated on 21.05.2015 20:53:11" --html --module-levels > module-levels.html
+]
+
+[endsect]
+
+[section --module-weights]
+
+=boostdep --module-weights= generates a report that lists modules by weight. A module weight is the total number of
+its dependencies. This includes the indirect dependencies.
+
+=--module-weights= takes the same options as =--module-overview=.
+
+[pre
+dist/bin/boostdep --html-title "Module Weights" --html-footer "Generated on 21.05.2015 20:53:11" --html --module-weights > module-weights.html
+]
+
+[endsect]
+
+[section --primary]
+
+[^boostdep --primary /module/] lists the primary (direct) dependencies of /module/. It takes the same options as =--module-overview=.
+
+[pre
+dist/bin/boostdep --html-title "Primary Dependencies of filesystem" --html-footer "Generated on 21.05.2015 20:53:11" --html --primary filesystem > filesystem-primary.html
+]
+
+[endsect]
+
+[section --secondary]
+
+[^boostdep --secondary /module/] lists the secondary (indirect) dependencies of /module/. It takes the same options as =--module-overview=.
+
+[pre
+dist/bin/boostdep --html-title "Secondary Dependencies of filesystem" --html-footer "Generated on 21.05.2015 20:53:11" --html --secondary filesystem > filesystem-secondary.html
+]
+
+You can combine =--primary= and =--secondary= in one invocation.
+
+[pre
+dist/bin/boostdep --html-title "Dependencies of filesystem" --html-footer "Generated on 21.05.2015 20:53:11" --html --primary filesystem --secondary filesystem > filesystem.html
+]
+
+[endsect]
+
+[section --reverse]
+
+[^boostdep --reverse /module/] lists the reverse dependencies of /module/, that is, it lists which modules depend on /module/. It takes the same options as =--module-overview=.
+
+[pre
+dist/bin/boostdep --html-title "Reverse Dependencies of filesystem" --html-footer "Generated on 21.05.2015 20:53:11" --html --reverse filesystem > filesystem-reverse.html
+]
+
+You can combine =--reverse= with =--primary= and =--secondary= for a complete module report.
+
+[pre
+dist/bin/boostdep --html-title "Dependency Report for filesystem" --html-footer "Generated on 21.05.2015 20:53:11" --html --primary filesystem --secondary filesystem --reverse filesystem > filesystem.html
+]
+
+[endsect]
+
+[section --subset]
+
+[^boostdep --subset /module/] lists the subset dependencies of /module/, that is, it lists which modules comprise the subset which /module/ requires in order to be usable.
+The dependencies are determined by tracing the =#include= directives starting from /module/'s headers.
+
+The difference between using the modules reported by =--subset= and those reported by the sum of =--primary= and =--secondary= is that the former only guarantees
+that /module/ will be usable, whereas the latter guarantees it for every module in the subset.
+
+=--subset= takes the same options as =--module-overview=.
+
+[pre
+dist/bin/boostdep --html-title "Subset Dependencies of filesystem" --html-footer "Generated on 21.05.2015 20:53:11" --html --subset filesystem > filesystem-subset.html
+]
+
+You can combine =--subset= with the other module report options.
+
+[endsect]
+
+[section --header]
+
+[^boostdep --header /header/] creates an inclusion report for /header/. It takes the same options as =--module-overview=.
+
+[pre
+dist/bin/boostdep --html-title "Inclusion Report for <boost/shared_ptr.hpp>" --html-footer "Generated on 21.05.2015 20:53:11" --html --header boost/shared_ptr.hpp > header-boost-shared_ptr.html
+]
+
+[endsect]
+
+[section --test]
+
+[^boostdep --test /module/] lists the test dependencies of /module/, that is, it lists which modules need to be present so that the tests of /module/ can be run.
+
+[pre
+dist/bin/boostdep --test filesystem
+]
+
+[endsect]
+
+[section --cmake]
+
+[^boostdep --cmake /module/] lists the dependencies of /module/ in a =cmake=-friendly form. This is typically used to generate a =dependencies.cmake= file.
+
+[endsect]
+
+[section --pkgconfig]
+
+[^boostdep --pkgconfig /module/ /version/ /var/=/value/...] outputs a =pkg-config= =.pc= file for /module/.
+
+[pre
+dist/bin/boostdep --pkgconfig system 1.65.0 prefix=/usr/local includedir=${prefix}/include libdir=${prefix}/lib
+]
+
+[endsect]
+
+[section --subset-for]
+
+[^boostdep --subset-for /directory/] scans /directory/ for `#include` directives and lists which Boost modules are reachable through these `#include`s.
+
+Its use is in determining what subset of Boost is needed by a user application or library.
+
+[pre
+dist/bin/boostdep --subset-for d:\my_app
+]
+
+[endsect]
+
+[section --boost-root]
+
+[^--boost-root /path-to-boost/] instructs /Boostdep/ to look for the Boost root directory at /path-to-boost/. If this option
+is not given, the current directory and its parents are searched for the presence of a file named =Jamroot=. If one is found,
+that directory is assumed to be the root. If not, the environment variable =BOOST_ROOT= is assumed to contain the path to the
+Boost root.
+
+[endsect]
+
+[section --track-sources]
+
+The =--track-sources= option instructs /Boostdep/ to scan the =src= library subdirectory for `#include` directives. By default,
+only the =include= subdirectory is scanned.
+
+[endsect]
+
+[section --track-tests]
+
+The =--track-tests= option instructs /Boostdep/ to scan the =test= library subdirectory for `#include` directives. By default,
+only the =include= subdirectory is scanned.
+
+[endsect]
+
+[section --html-title]
+
+[^--html-title /title/] sets the contents of the HTML =<title>= tag. It must precede =--html= to have an effect.
+
+[endsect]
+
+[section --html-footer]
+
+[^--html-footer /footer/] sets the HTML page footer text. It has no effect if =--html= is not given.
+
+[endsect]
+
+[section --html-stylesheet]
+
+[^--html-stylesheet /stylesheet/] sets the HTML stylesheet URL. It has no effect if =--html= is not given.
+
+[endsect]
+
+[section --html-prefix]
+
+[^--html-prefix /prefix/] sets the HTML prefix; the prefix is output immediately after the `<body>` tag. It has no effect if =--html= is not given.
+
+[endsect]
+
+[section --html]
+
+=--html= switches to HTML output mode (the default is plain text). It must precede the commands that generate output.
+
+[endsect]
+
+[endsect]

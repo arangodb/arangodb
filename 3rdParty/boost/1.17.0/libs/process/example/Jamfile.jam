@@ -1,0 +1,28 @@
+# Copyright (c) 2006, 2007 Julio M. Merino Vidal
+# Copyright (c) 2008 Ilya Sokolov, Boris Schaeling
+# Copyright (c) 2009 Boris Schaeling
+# Copyright (c) 2010 Felipe Tanus, Boris Schaeling
+# Copyright (c) 2011, 2012 Jeff Flinn, Boris Schaeling
+#
+# Distributed under the Boost Software License, Version 1.0. (See accompanying
+# file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+
+project : requirements
+  <include>../../..
+  <toolset>msvc:<define>_SCL_SECURE_NO_WARNINGS
+  <target-os>windows:<define>WIN32_LEAN_AND_MEAN
+;
+
+import testing ;
+
+compile args.cpp ;
+compile async_io.cpp ;
+compile env.cpp ;
+compile error_handling.cpp ;
+compile io.cpp ;
+compile posix.cpp : <build>no <target-os>linux:<build>yes ;
+compile start_dir.cpp ;
+compile sync_io.cpp ;
+compile terminate.cpp ;
+compile wait.cpp ;
+compile windows.cpp : <build>no <target-os>windows:<build>yes ;

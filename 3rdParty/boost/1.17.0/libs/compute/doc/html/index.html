@@ -1,0 +1,122 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Chapter&#160;1.&#160;Boost.Compute</title>
+<link rel="stylesheet" href="../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="index.html" title="Chapter&#160;1.&#160;Boost.Compute">
+<link rel="next" href="boost_compute/getting_started.html" title="Getting Started">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../boost.png"></td>
+<td align="center"><a href="../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav"><a accesskey="n" href="boost_compute/getting_started.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a></div>
+<div class="chapter">
+<div class="titlepage"><div>
+<div><h2 class="title">
+<a name="compute"></a>Chapter&#160;1.&#160;Boost.Compute</h2></div>
+<div><div class="author"><h3 class="author">
+<span class="firstname">Kyle</span> <span class="surname">Lutz</span>
+</h3></div></div>
+<div><p class="copyright">Copyright &#169; 2013, 2014 Kyle Lutz</p></div>
+<div><div class="legalnotice">
+<a name="compute.legal"></a><p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></div>
+</div></div>
+<div class="toc">
+<p><b>Table of Contents</b></p>
+<dl class="toc">
+<dt><span class="section"><a href="index.html#boost_compute.introduction">Introduction</a></span></dt>
+<dt><span class="section"><a href="boost_compute/getting_started.html">Getting Started</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="boost_compute/getting_started.html#boost_compute.getting_started.installation">Installation</a></span></dt>
+<dt><span class="section"><a href="boost_compute/getting_started.html#boost_compute.getting_started.compilation_and_usage">Compilation
+      and Usage</a></span></dt>
+<dt><span class="section"><a href="boost_compute/getting_started.html#boost_compute.getting_started.configuration_macros">Configuration
+      Macros</a></span></dt>
+<dt><span class="section"><a href="boost_compute/getting_started.html#boost_compute.getting_started.support">Support</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="boost_compute/design.html">Design</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="boost_compute/design.html#boost_compute.design.library_architecture">Library Architecture</a></span></dt>
+<dt><span class="section"><a href="boost_compute/design.html#boost_compute.design.why_opencl">Why OpenCL</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="boost_compute/tutorial.html">Tutorial</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="boost_compute/tutorial.html#boost_compute.tutorial.hello_world">Hello World</a></span></dt>
+<dt><span class="section"><a href="boost_compute/tutorial.html#boost_compute.tutorial.transferring_data">Transferring
+      Data</a></span></dt>
+<dt><span class="section"><a href="boost_compute/tutorial.html#boost_compute.tutorial.transforming_data">Transforming
+      Data</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="boost_compute/advanced_topics.html">Advanced Topics</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="boost_compute/advanced_topics.html#boost_compute.advanced_topics.vector_data_types">Vector
+      Data Types</a></span></dt>
+<dt><span class="section"><a href="boost_compute/advanced_topics.html#boost_compute.advanced_topics.custom_functions">Custom
+      Functions</a></span></dt>
+<dt><span class="section"><a href="boost_compute/advanced_topics.html#boost_compute.advanced_topics.custom_types">Custom Types</a></span></dt>
+<dt><span class="section"><a href="boost_compute/advanced_topics.html#boost_compute.advanced_topics.complex_values">Complex
+      Values</a></span></dt>
+<dt><span class="section"><a href="boost_compute/advanced_topics.html#boost_compute.advanced_topics.lambda_expressions">Lambda
+      Expressions</a></span></dt>
+<dt><span class="section"><a href="boost_compute/advanced_topics.html#boost_compute.advanced_topics.asynchronous_operations">Asynchronous
+      Operations</a></span></dt>
+<dt><span class="section"><a href="boost_compute/advanced_topics.html#boost_compute.advanced_topics.performance_timing">Performance
+      Timing</a></span></dt>
+<dt><span class="section"><a href="boost_compute/advanced_topics.html#boost_compute.advanced_topics.opencl_api_interoperability">OpenCL
+      API Interoperability</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="boost_compute/interop.html">Interoperability</a></span></dt>
+<dd><dl><dt><span class="section"><a href="boost_compute/interop.html#boost_compute.interop.opengl">OpenGL</a></span></dt></dl></dd>
+<dt><span class="section"><a href="boost_compute/porting_guide.html">Porting Guide</a></span></dt>
+<dd><dl><dt><span class="section"><a href="boost_compute/porting_guide.html#boost_compute.porting_guide.opencl_api">OpenCL API</a></span></dt></dl></dd>
+<dt><span class="section"><a href="boost_compute/platforms_and_compilers.html">Platforms and Compilers</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="boost_compute/platforms_and_compilers.html#boost_compute.platforms_and_compilers.compilers">Compilers</a></span></dt>
+<dt><span class="section"><a href="boost_compute/platforms_and_compilers.html#boost_compute.platforms_and_compilers.platforms">Platforms</a></span></dt>
+<dt><span class="section"><a href="boost_compute/platforms_and_compilers.html#boost_compute.platforms_and_compilers.opencl_implementations">OpenCL
+      Implementations</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="boost_compute/reference.html">Reference</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="boost_compute/reference.html#boost_compute.reference.api_overview">API Overview</a></span></dt>
+<dt><span class="section"><a href="boost_compute/reference.html#header_reference">Header Reference</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="boost_compute/performance.html">Performance</a></span></dt>
+<dt><span class="section"><a href="boost_compute/faq.html">Frequently Asked Questions</a></span></dt>
+</dl>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="boost_compute.introduction"></a><a class="link" href="index.html#boost_compute.introduction" title="Introduction">Introduction</a>
+</h2></div></div></div>
+<p>
+      The Boost Compute library provides a C++ interface to multi-core CPU and GPGPU
+      computing platforms based on <a href="http://en.wikipedia.org/wiki/OpenCL" target="_top">OpenCL</a>.
+    </p>
+<p>
+      The project is hosted on GitHub at <a href="https://github.com/boostorg/compute" target="_top">https://github.com/boostorg/compute</a>.
+      Click the arrow below to see the guide on <a class="link" href="boost_compute/getting_started.html" title="Getting Started">Getting
+      Started</a>.
+    </p>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"><p><small>Last revised: August 14, 2019 at 12:07:35 GMT</small></p></td>
+<td align="right"><div class="copyright-footer"></div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav"><a accesskey="n" href="boost_compute/getting_started.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a></div>
+</body>
+</html>

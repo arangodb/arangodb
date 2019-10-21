@@ -1,0 +1,12 @@
+//[example_output
+> example --log_level=unit_scope
+Running 2 test cases...
+Entering test module "Master Test Suite"
+example.cpp:20: Entering test case "free_test_function"
+example.cpp:20: Leaving test case "free_test_function"; testing time: 50us
+example.cpp:22: Entering test case "second-check-free-test-function"
+example.cpp:22: Leaving test case "second-check-free-test-function"; testing time: 32us
+Leaving test module "Master Test Suite"; testing time: 158us
+
+*** No errors detected
+//]

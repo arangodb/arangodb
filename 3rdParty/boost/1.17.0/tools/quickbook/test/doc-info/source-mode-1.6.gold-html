@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+  <head></head>
+  <body>
+    <h3>
+      C++ test
+    </h3>
+    <div class="legalnotice">
+      <p>
+        <code><span class="keyword">def</span> <span class="identifier">foo</span><span
+        class="special">(</span><span class="identifier">x</span><span class="special">):</span>
+        <span class="keyword">print</span> <span class="string">&quot;Hello&quot;</span></code>
+      </p>
+    </div>
+    <div class="toc">
+      <p>
+        <b>Table of contents</b>
+      </p>
+      <ul>
+        <li>
+          <a href="#c___source_mode_include">C++ source mode include</a>
+        </li>
+        <li>
+          <a href="#python_source_mode_include">Python source mode include</a>
+        </li>
+        <li>
+          <a href="#teletype_source_mode_include">Teletype source mode include</a>
+        </li>
+      </ul>
+    </div>
+<pre class="programlisting">This shouldn't be highlighted.</pre>
+<pre class="programlisting">This shouldn't be highlighted.</pre>
+<pre class="programlisting">This shouldn't be highlighted.</pre>
+<pre class="programlisting">This shouldn't be highlighted.</pre>
+    <div id="c___source_mode_include">
+      <h3>
+        C++ source mode include
+      </h3>
+      <p>
+<pre class="programlisting"><span class="keyword">int</span> <span class="identifier">main</span><span class="special">()</span> <span class="special">{}</span></pre>
+      </p>
+    </div>
+    <div id="python_source_mode_include">
+      <h3>
+        Python source mode include
+      </h3>
+      <p>
+<pre class="programlisting"><span class="keyword">def</span> <span class="identifier">foo</span><span class="special">():</span></pre>
+      </p>
+    </div>
+    <div id="teletype_source_mode_include">
+      <h3>
+        Teletype source mode include
+      </h3>
+      <p>
+<pre class="programlisting">This shouldn't be highlighted</pre>
+      </p>
+    </div>
+  </body>
+</html>

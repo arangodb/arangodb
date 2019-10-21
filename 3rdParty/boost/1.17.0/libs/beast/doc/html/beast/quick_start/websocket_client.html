@@ -1,0 +1,133 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Simple WebSocket Client &#128161;</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Chapter&#160;1.&#160;Boost.Beast">
+<link rel="up" href="../quick_start.html" title="Quick Look">
+<link rel="prev" href="http_client.html" title="Simple HTTP Client &#128161;">
+<link rel="next" href="security_review_bishop_fox.html" title="Security Review (Bishop Fox) &#127910;">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="http_client.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../quick_start.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="security_review_bishop_fox.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="beast.quick_start.websocket_client"></a><a class="link" href="websocket_client.html" title="Simple WebSocket Client &#128161;">Simple WebSocket
+      Client &#128161;</a>
+</h3></div></div></div>
+<p>
+        Establish a WebSocket connection, send a message and receive the reply:
+      </p>
+<p>
+        File: <a href="../../../../example/websocket/client/sync/websocket_client_sync.cpp" target="_top">websocket_sync_client.cpp</a>
+      </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">beast</span><span class="special">/</span><span class="identifier">core</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">beast</span><span class="special">/</span><span class="identifier">websocket</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">asio</span><span class="special">/</span><span class="identifier">connect</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">asio</span><span class="special">/</span><span class="identifier">ip</span><span class="special">/</span><span class="identifier">tcp</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">cstdlib</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">iostream</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">string</span><span class="special">&gt;</span>
+
+<span class="keyword">namespace</span> <span class="identifier">beast</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">beast</span><span class="special">;</span>         <span class="comment">// from &lt;boost/beast.hpp&gt;</span>
+<span class="keyword">namespace</span> <span class="identifier">http</span> <span class="special">=</span> <span class="identifier">beast</span><span class="special">::</span><span class="identifier">http</span><span class="special">;</span>           <span class="comment">// from &lt;boost/beast/http.hpp&gt;</span>
+<span class="keyword">namespace</span> <span class="identifier">websocket</span> <span class="special">=</span> <span class="identifier">beast</span><span class="special">::</span><span class="identifier">websocket</span><span class="special">;</span> <span class="comment">// from &lt;boost/beast/websocket.hpp&gt;</span>
+<span class="keyword">namespace</span> <span class="identifier">net</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">;</span>            <span class="comment">// from &lt;boost/asio.hpp&gt;</span>
+<span class="keyword">using</span> <span class="identifier">tcp</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">asio</span><span class="special">::</span><span class="identifier">ip</span><span class="special">::</span><span class="identifier">tcp</span><span class="special">;</span>       <span class="comment">// from &lt;boost/asio/ip/tcp.hpp&gt;</span>
+
+<span class="comment">// Sends a WebSocket message and prints the response</span>
+<span class="keyword">int</span> <span class="identifier">main</span><span class="special">(</span><span class="keyword">int</span> <span class="identifier">argc</span><span class="special">,</span> <span class="keyword">char</span><span class="special">**</span> <span class="identifier">argv</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="keyword">try</span>
+    <span class="special">{</span>
+        <span class="comment">// Check command line arguments.</span>
+        <span class="keyword">if</span><span class="special">(</span><span class="identifier">argc</span> <span class="special">!=</span> <span class="number">4</span><span class="special">)</span>
+        <span class="special">{</span>
+            <span class="identifier">std</span><span class="special">::</span><span class="identifier">cerr</span> <span class="special">&lt;&lt;</span>
+                <span class="string">"Usage: websocket-client-sync &lt;host&gt; &lt;port&gt; &lt;text&gt;\n"</span> <span class="special">&lt;&lt;</span>
+                <span class="string">"Example:\n"</span> <span class="special">&lt;&lt;</span>
+                <span class="string">"    websocket-client-sync echo.websocket.org 80 \"Hello, world!\"\n"</span><span class="special">;</span>
+            <span class="keyword">return</span> <span class="identifier">EXIT_FAILURE</span><span class="special">;</span>
+        <span class="special">}</span>
+        <span class="keyword">auto</span> <span class="keyword">const</span> <span class="identifier">host</span> <span class="special">=</span> <span class="identifier">argv</span><span class="special">[</span><span class="number">1</span><span class="special">];</span>
+        <span class="keyword">auto</span> <span class="keyword">const</span> <span class="identifier">port</span> <span class="special">=</span> <span class="identifier">argv</span><span class="special">[</span><span class="number">2</span><span class="special">];</span>
+        <span class="keyword">auto</span> <span class="keyword">const</span> <span class="identifier">text</span> <span class="special">=</span> <span class="identifier">argv</span><span class="special">[</span><span class="number">3</span><span class="special">];</span>
+
+        <span class="comment">// The io_context is required for all I/O</span>
+        <span class="identifier">net</span><span class="special">::</span><span class="identifier">io_context</span> <span class="identifier">ioc</span><span class="special">;</span>
+
+        <span class="comment">// These objects perform our I/O</span>
+        <span class="identifier">tcp</span><span class="special">::</span><span class="identifier">resolver</span> <span class="identifier">resolver</span><span class="special">{</span><span class="identifier">ioc</span><span class="special">};</span>
+        <span class="identifier">websocket</span><span class="special">::</span><span class="identifier">stream</span><span class="special">&lt;</span><span class="identifier">tcp</span><span class="special">::</span><span class="identifier">socket</span><span class="special">&gt;</span> <span class="identifier">ws</span><span class="special">{</span><span class="identifier">ioc</span><span class="special">};</span>
+
+        <span class="comment">// Look up the domain name</span>
+        <span class="keyword">auto</span> <span class="keyword">const</span> <span class="identifier">results</span> <span class="special">=</span> <span class="identifier">resolver</span><span class="special">.</span><span class="identifier">resolve</span><span class="special">(</span><span class="identifier">host</span><span class="special">,</span> <span class="identifier">port</span><span class="special">);</span>
+
+        <span class="comment">// Make the connection on the IP address we get from a lookup</span>
+        <span class="identifier">net</span><span class="special">::</span><span class="identifier">connect</span><span class="special">(</span><span class="identifier">ws</span><span class="special">.</span><span class="identifier">next_layer</span><span class="special">(),</span> <span class="identifier">results</span><span class="special">.</span><span class="identifier">begin</span><span class="special">(),</span> <span class="identifier">results</span><span class="special">.</span><span class="identifier">end</span><span class="special">());</span>
+
+        <span class="comment">// Set a decorator to change the User-Agent of the handshake</span>
+        <span class="identifier">ws</span><span class="special">.</span><span class="identifier">set_option</span><span class="special">(</span><span class="identifier">websocket</span><span class="special">::</span><span class="identifier">stream_base</span><span class="special">::</span><span class="identifier">decorator</span><span class="special">(</span>
+            <span class="special">[](</span><span class="identifier">websocket</span><span class="special">::</span><span class="identifier">request_type</span><span class="special">&amp;</span> <span class="identifier">req</span><span class="special">)</span>
+            <span class="special">{</span>
+                <span class="identifier">req</span><span class="special">.</span><span class="identifier">set</span><span class="special">(</span><span class="identifier">http</span><span class="special">::</span><span class="identifier">field</span><span class="special">::</span><span class="identifier">user_agent</span><span class="special">,</span>
+                    <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span><span class="special">(</span><span class="identifier">BOOST_BEAST_VERSION_STRING</span><span class="special">)</span> <span class="special">+</span>
+                        <span class="string">" websocket-client-coro"</span><span class="special">);</span>
+            <span class="special">}));</span>
+
+        <span class="comment">// Perform the websocket handshake</span>
+        <span class="identifier">ws</span><span class="special">.</span><span class="identifier">handshake</span><span class="special">(</span><span class="identifier">host</span><span class="special">,</span> <span class="string">"/"</span><span class="special">);</span>
+
+        <span class="comment">// Send the message</span>
+        <span class="identifier">ws</span><span class="special">.</span><span class="identifier">write</span><span class="special">(</span><span class="identifier">net</span><span class="special">::</span><span class="identifier">buffer</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span><span class="special">(</span><span class="identifier">text</span><span class="special">)));</span>
+
+        <span class="comment">// This buffer will hold the incoming message</span>
+        <span class="identifier">beast</span><span class="special">::</span><span class="identifier">flat_buffer</span> <span class="identifier">buffer</span><span class="special">;</span>
+
+        <span class="comment">// Read a message into our buffer</span>
+        <span class="identifier">ws</span><span class="special">.</span><span class="identifier">read</span><span class="special">(</span><span class="identifier">buffer</span><span class="special">);</span>
+
+        <span class="comment">// Close the WebSocket connection</span>
+        <span class="identifier">ws</span><span class="special">.</span><span class="identifier">close</span><span class="special">(</span><span class="identifier">websocket</span><span class="special">::</span><span class="identifier">close_code</span><span class="special">::</span><span class="identifier">normal</span><span class="special">);</span>
+
+        <span class="comment">// If we get here then the connection is closed gracefully</span>
+
+        <span class="comment">// The make_printable() function helps print a ConstBufferSequence</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">beast</span><span class="special">::</span><span class="identifier">make_printable</span><span class="special">(</span><span class="identifier">buffer</span><span class="special">.</span><span class="identifier">data</span><span class="special">())</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+    <span class="special">}</span>
+    <span class="keyword">catch</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">exception</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">e</span><span class="special">)</span>
+    <span class="special">{</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">cerr</span> <span class="special">&lt;&lt;</span> <span class="string">"Error: "</span> <span class="special">&lt;&lt;</span> <span class="identifier">e</span><span class="special">.</span><span class="identifier">what</span><span class="special">()</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+        <span class="keyword">return</span> <span class="identifier">EXIT_FAILURE</span><span class="special">;</span>
+    <span class="special">}</span>
+    <span class="keyword">return</span> <span class="identifier">EXIT_SUCCESS</span><span class="special">;</span>
+<span class="special">}</span>
+</pre>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2016-2019 Vinnie
+      Falco<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="http_client.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../quick_start.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="security_review_bishop_fox.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

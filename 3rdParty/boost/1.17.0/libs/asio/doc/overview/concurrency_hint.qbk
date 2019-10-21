@@ -1,0 +1,88 @@
+[/
+ / Copyright (c) 2003-2019 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+ /
+ / Distributed under the Boost Software License, Version 1.0. (See accompanying
+ / file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+ /]
+
+[section:concurrency_hint Concurrency Hints]
+
+The [link boost_asio.reference.io_context.io_context `io_context` constructor]
+allows programs to specify a concurrency hint. This is a suggestion to the
+`io_context` implementation as to the number of active threads that should be
+used for running completion handlers.
+
+When the Windows I/O completion port backend is in use, this value is passed
+to [^CreateIoCompletionPort].
+
+When a reactor-based backend is used, the implementation recognises the
+following special concurrency hint values:
+
+[table
+  [[Value][Description]]
+  [
+    [`1`]
+    [
+      The implementation assumes that the `io_context` will be run from a
+      single thread, and applies several optimisations based on this
+      assumption.
+    
+      For example, when a handler is posted from within another handler, the
+      new handler is added to a fast thread-local queue (with the consequence
+      that the new handler is held back until the currently executing handler
+      finishes).
+    ]
+  ]
+  [
+    [`BOOST_ASIO_CONCURRENCY_HINT_UNSAFE`]
+    [
+      This special concurrency hint disables locking in both the scheduler and
+      reactor I/O. This hint has the following restrictions:
+
+      [mdash] Care must be taken to ensure that all operations on the
+      `io_context` and any of its associated I/O objects (such as sockets and
+      timers) occur in only one thread at a time.
+
+      [mdash] Asynchronous resolve operations fail with `operation_not_supported`.
+
+      [mdash] If a `signal_set` is used with the `io_context`, `signal_set`
+      objects cannot be used with any other io_context in the program.
+    ]
+  ]
+  [
+    [`BOOST_ASIO_CONCURRENCY_HINT_UNSAFE_IO`]
+    [
+      This special concurrency hint disables locking in the reactor I/O. This
+      hint has the following restrictions:
+
+      [mdash] Care must be taken to ensure that run functions on the
+      `io_context`, and all operations on the context's associated I/O objects
+      (such as sockets and timers), occur in only one thread at a time.
+    ]
+  ]
+  [
+    [`BOOST_ASIO_CONCURRENCY_HINT_SAFE`]
+    [
+      The default. The `io_context` provides full thread safety, and distinct
+      I/O objects may be used from any thread.
+    ]
+  ]
+]
+
+[teletype]
+The concurrency hint used by default-constructed `io_context` objects can be
+overridden at compile time by defining the `BOOST_ASIO_CONCURRENCY_HINT_DEFAULT`
+macro. For example, specifying
+
+  -DBOOST_ASIO_CONCURRENCY_HINT_DEFAULT=1
+
+on the compiler command line means that a concurrency hint of `1` is used for
+all default-constructed `io_context` objects in the program. Similarly, the
+concurrency hint used by `io_context` objects constructed with `1` can be
+overridden by defining `BOOST_ASIO_CONCURRENCY_HINT_1`. For example, passing
+
+  -DBOOST_ASIO_CONCURRENCY_HINT_1=BOOST_ASIO_CONCURRENCY_HINT_UNSAFE
+  
+to the compiler will disable thread safety for all of these objects.
+
+[endsect]

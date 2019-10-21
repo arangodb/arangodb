@@ -1,0 +1,14 @@
+{
+    "key": "compute",
+    "name": "Compute",
+    "authors": [
+        "Kyle Lutz"
+    ],
+    "description": "Parallel/GPU-computing library",
+    "category": [
+        "Concurrent"
+    ],
+    "maintainers": [
+        "Kyle Lutz <kyle.r.lutz -at- gmail.com>"
+    ]
+}

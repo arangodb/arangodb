@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+  <head></head>
+  <body>
+    <h3>
+      Macros Test 1.6
+    </h3>
+    <p>
+      Foo:macros-inc1.quickbook
+    </p>
+    <p>
+      Defined conditional phrase.
+    </p>
+    <ul>
+      <li>
+        <div>
+          __foo__
+        </div>
+      </li>
+      <li>
+        <div>
+          [defined_template]
+        </div>
+      </li>
+      <li>
+        <div>
+          __defined_macro__
+        </div>
+      </li>
+      <li>
+        <div>
+          [not_defined_template]
+        </div>
+      </li>
+      <li>
+        <div>
+          <span class="underline">_not_defined_macro__</span>
+        </div>
+      </li>
+    </ul>
+    <ul>
+      <li>
+        <div>
+          Foo:macros-inc1.quickbook
+        </div>
+      </li>
+      <li>
+        <div>
+          Defined template:macros-1.6.quickbook
+        </div>
+      </li>
+      <li>
+        <div>
+          Defined macro:macros-inc1.quickbook
+        </div>
+      </li>
+      <li>
+        <div>
+          [not_defined_template]
+        </div>
+      </li>
+      <li>
+        <div>
+          <span class="underline">_not_defined_macro__</span>
+        </div>
+      </li>
+    </ul>
+  </body>
+</html>

@@ -1,0 +1,60 @@
+<?xml version="1.0" standalone="yes"?>
+<programlisting>
+for (auto &amp; s : seq)
+    s.<methodname alt="boost::process::extend::handler::on_setup">on_setup</methodname>(*this);
+
+if (<methodname alt="boost::process::extend::posix_executor::error">error</methodname>())
+{
+    for (auto &amp; s : seq)
+       s.<methodname alt="boost::process::extend::handler::on_error">on_error</methodname>(*this, <methodname alt="boost::process::extend::posix_executor::error">error</methodname>());
+    return <classname alt="boost::process::child">child</classname>();
+}
+
+pid = <ulink url="http://pubs.opengroup.org/onlinepubs/009695399/functions/fork.html">fork()</ulink>
+<methodname alt="boost::process::extend::handler::on_setup">on_setup</methodname>(*this);
+
+if (pid == -1) //fork error 
+{
+    <methodname alt="boost::process::extend::posix_executor::set_error">set_error</methodname>(<functionname alt="boost::process::extend::get_last_error">get_last_error</functionname>());
+    for (auto &amp; s : seq)
+        s.<methodname alt="boost::process::extend::handler::on_fork_error">on_fork_error</methodname>(*this, <methodname alt="boost::process::extend::posix_executor::error">error</methodname>());
+    for (auto &amp; s : seq)
+        s.<methodname alt="boost::process::extend::handler::on_error">on_error</methodname>(*this, <methodname alt="boost::process::extend::posix_executor::error">error</methodname>());
+    return <classname alt="boost::process::child">child</classname>()
+}
+else if (pid == 0) //child process
+{
+    for (auto &amp; s : seq)
+        s.<methodname alt="boost::process::extend::handler::on_exec_setup">on_exec_setup</methodname>(*this);
+    <ulink url="http://pubs.opengroup.org/onlinepubs/009695399/functions/exec.html">execve</ulink>(exe, cmd_line, env);
+    auto ec = <functionname alt="boost::process::extend::get_last_error">get_last_error</functionname>();
+    for (auto &amp; s : seq)
+        s.<methodname alt="boost::process::extend::handler::on_exec_error">on_exec_error</methodname>(*this);
+
+    <emphasis>unspecified();</emphasis>//here the error is send to the father process interally
+
+    <ulink url="http://en.cppreference.com/w/cpp/utility/program/exit">std::exit</ulink>(<ulink url="http://en.cppreference.com/w/c/program/EXIT_status">EXIT_FAILURE</ulink>);
+    return <classname alt="boost::process::child">child</classname>(); //for C++ compliance
+}
+
+<classname alt="boost::process::child">child</classname> c(pid, exit_code);
+
+<emphasis>unspecified();</emphasis>//here, we read the the error from the child process
+
+if (<methodname alt="boost::process::extend::posix_executor::error">error</methodname>())
+    for (auto &amp; s : seq)
+        s.<methodname alt="boost::process::extend::handler::on_error">on_error</methodname>(*this, <methodname alt="boost::process::extend::posix_executor::error">error</methodname>());
+else
+    for (auto &amp; s : seq)
+        s.<methodname alt="boost::process::extend::handler::on_error">on_success</methodname>(*this);
+
+//now we check again, because a on_success handler might've errored.
+if (<methodname alt="boost::process::extend::posix_executor::error">error</methodname>())
+{
+    for (auto &amp; s : seq)
+        s.<methodname alt="boost::process::extend::handler::on_error">on_error</methodname>(*this, <methodname alt="boost::process::extend::posix_executor::error">error</methodname>());
+    return <classname alt="boost::process::child">child</classname>();
+}
+else
+    return c;
+</programlisting>

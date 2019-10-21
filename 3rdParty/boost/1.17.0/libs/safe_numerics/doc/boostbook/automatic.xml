@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE section PUBLIC "-//Boost//DTD BoostBook XML V1.1//EN"
+"http://www.boost.org/tools/boostbook/dtd/boostbook.dtd">
+<section id="safe_numerics.promotion_policies.automatic">
+  <title>automatic</title>
+
+  <section>
+    <title>Description</title>
+
+    <para>This type contains the meta-functions to return a type with
+    sufficient capacity to hold the result of a given binary arithmetic
+    operation.</para>
+
+    <para>The standard C/C++ procedure for executing arithmetic operations on
+    operands of different types is:<itemizedlist>
+        <listitem>
+          <para>Convert operands to some common type using a somewhat
+          elaborate elaborate rules defined in the C++ standard.</para>
+        </listitem>
+
+        <listitem>
+          <para>Execute the operation.</para>
+        </listitem>
+
+        <listitem>
+          <para>If the result of the operation cannot fit in the common type
+          of the operands, discard the high order bits.</para>
+        </listitem>
+      </itemizedlist></para>
+
+    <para>The automatic promotion policy replaces the standard C/C++ procedure
+    for the following one:<itemizedlist>
+        <listitem>
+          <para>Convert operands to some common type using to the following
+          rules.<itemizedlist>
+              <listitem>
+                <para>For addition. If the operands are both unsigned the
+                common type will be unsigned. Otherwise it will be
+                signed.</para>
+              </listitem>
+
+              <listitem>
+                <para>For subtraction, the common type will be signed.</para>
+              </listitem>
+
+              <listitem>
+                <para>For left/right shift, the sign of the result will be the
+                sign of the left operand.</para>
+              </listitem>
+
+              <listitem>
+                <para>For all other types of operants, if both operands are
+                unsigned the common type will be unsigned. Otherwise, it will
+                be signed.</para>
+              </listitem>
+            </itemizedlist></para>
+        </listitem>
+
+        <listitem>
+          <para>Determine the smallest size of the signed or unsigned type
+          which can be guaranteed hold the result.</para>
+        </listitem>
+
+        <listitem>
+          <para>If this size exceeds the maximum size supported by the
+          compiler, use the maximum size supported by the compiler.</para>
+        </listitem>
+
+        <listitem>
+          <para>Execute the operation.<itemizedlist>
+              <listitem>
+                <para>Convert each operand to the common type.</para>
+              </listitem>
+
+              <listitem>
+                <para>If the result cannot be contained in the result type as
+                above, invoke an error procedure.</para>
+              </listitem>
+
+              <listitem>
+                <para>Otherwise, return the result in the common type</para>
+              </listitem>
+            </itemizedlist></para>
+        </listitem>
+      </itemizedlist></para>
+
+    <para>This type promotion policy is applicable only to safe types whose
+    base type is an <link linkend="safe_numerics.integer">Integer</link>
+    type.</para>
+  </section>
+
+  <section>
+    <title>Model of</title>
+
+    <para><link
+    linkend="safe_numerics.promotion_policy">PromotionPolicy</link></para>
+  </section>
+
+  <section>
+    <title>Example of use</title>
+
+    <para>The following example illustrates the <code>automatic</code> type
+    being passed as a template parameter for the type
+    <code>safe&lt;int&gt;</code>.</para>
+
+    <programlisting>#include &lt;boost/safe_numerics/safe_integer.hpp&gt; 
+#include &lt;boost/safe_numerics/automatic.hpp&gt;
+ 
+int main(){
+    using namespace boost::numeric;
+    // use automatic promotion policy where C++ standard arithmetic 
+    // might lead to incorrect results
+    using safe_t = safe&lt;std::int8_t, automatic&gt;;
+
+    // In such cases, there is no runtime overhead from using safe types.
+    safe_t x = 127;
+    safe_t y = 2;
+    // z is guaranteed correct without any runtime overhead or exception.
+    auto z = x + y; 
+    return 0;
+}</programlisting>
+  </section>
+
+  <section>
+    <title>Header</title>
+
+    <para><code><ulink
+    url="../../include/boost/safe_numerics/automatic.hpp"><code>#include
+    &lt;boost/numeric/safe_numerics/automatic.hpp&gt;
+    </code></ulink></code></para>
+  </section>
+</section>

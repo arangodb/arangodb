@@ -1,0 +1,25 @@
+[
+  {
+    "key": "geometry/index",
+    "boost-version": "1.54.0",
+    "name": "Geometry Index",
+    "authors": [
+      "Barend Gehrels",
+      "Bruno Lalande",
+      "Mateusz Loskot",
+      "Adam Wulkiewicz",
+      "Menelaos Karavelas"
+    ],
+    "maintainers": [
+      "Barend Gehrels <barend -at- xs4all.nl>",
+      "Bruno Lalande <bruno.lalande -at- gmail.com>",
+      "Mateusz Loskot <mateusz -at- loskot.net>",
+      "Adam Wulkiewicz <adam.wulkiewicz -at- gmail.com>"
+    ],
+    "description":
+      "The Boost.Geometry library provides geometric algorithms, primitives and spatial index.",
+    "category": [
+      "Algorithms", "Data", "Math"
+    ]
+  }
+]

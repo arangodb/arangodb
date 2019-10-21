@@ -1,0 +1,67 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html><meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Experimental - Boost.Outcome documentation</title>
+<link rel="stylesheet" href="./css/boost.css" type="text/css">
+<meta name="generator" content="Hugo 0.52 with Boostdoc theme">
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+
+<link rel="icon" href="./images/favicon.ico" type="image/ico"/>
+<body><div class="spirit-nav">
+<a accesskey="p" href="./recipes/foreign-try.html"><img src="./images/prev.png" alt="Prev"></a>
+    <a accesskey="u" href="./index.html"><img src="./images/up.png" alt="Up"></a>
+    <a accesskey="h" href="./index.html"><img src="./images/home.png" alt="Home"></a><a accesskey="n" href="./experimental/advantages.html"><img src="./images/next.png" alt="Next"></a></div><div id="content">
+
+  <div class="titlepage"><div><div><h1 style="clear: both">Experimental</h1></div></div></div>
+<p>In <code>&lt;boost/outcome/experimental&gt;</code>, there ships an Outcome-based simulation of
+the proposed <a href="https://wg21.link/P1095">P1095 <em>Zero overhead deterministic failure</em></a>
+specific implementation of <a href="http://wg21.link/P0709">P0709 <em>Zero overhead exceptions: Throwing values</em></a>, aka &ldquo;Herbceptions&rdquo;. This library-only implementation lets you use a close simulacrum
+of potential future C++ lightweight exceptions today in <a href="./requirements.html">any C++ 14 compiler
+which Outcome supports</a>.</p>
+
+<div class="notices warning" style="background: url('images/warning.png') top left no-repeat padding-box padding-box;">
+<div class="notices heading">warning</div>
+<div class="notices message"><p><b>It is stressed, in the strongest possible terms, that any item inside
+<code>&lt;boost/outcome/experimental&gt;</code> is subject to unannounced breaking change based
+on WG21 standards committee feedback</b>. That said, the chances are high
+that most of those breaking changes will be to naming rather than to
+fundamental semantics, so you can upgrade with a bit of find and replace.
+There are quite a few large code bases out there
+already using this experimental support in anger, we know it works well
+at scale and it&rsquo;s a good bit superior to <code>std::error_code</code> et al on every
+measure.</p>
+</div>
+</div>
+
+
+<p>P1095&rsquo;s support library has a reference implementation at <a href="https://ned14.github.io/status-code/">https://ned14.github.io/status-code/</a>.
+You will find terse documentation there, and an API reference.
+This library is wholly incorporated into Outcome in the <code>&lt;boost/outcome/experimental/status-code&gt;</code>
+directory, with bindings into Outcome provided in the following headers:</p>
+
+<ul>
+<li><code>&lt;boost/outcome/experimental/status_result.hpp&gt;</code></li>
+<li><code>&lt;boost/outcome/experimental/status_outcome.hpp&gt;</code></li>
+</ul>
+
+<p>These headers import the entire contents of the <code>BOOST_OUTCOME_SYSTEM_ERROR2_NAMESPACE</code>
+namespace into the <code>BOOST_OUTCOME_V2_NAMESPACE::experimental</code> namespace. You
+can thus address everything in <code>BOOST_OUTCOME_SYSTEM_ERROR2_NAMESPACE</code> via
+<code>BOOST_OUTCOME_V2_NAMESPACE::experimental</code>.</p>
+
+<p>As P1095 also proposes C language support for lightweight C++ exceptions,
+experimental Outcome also has a macro-based C interface that enables C
+code to work with the C-compatible subset of <code>status_result&lt;T, E&gt;</code>:</p>
+
+<ul>
+<li><code>&lt;boost/outcome/experimental/result.h&gt;</code></li>
+</ul>
+
+
+
+        </div><p><small>Last revised: January 26, 2019 at 21:01:46 UTC</small></p>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="./recipes/foreign-try.html"><img src="./images/prev.png" alt="Prev"></a>
+    <a accesskey="u" href="./index.html"><img src="./images/up.png" alt="Up"></a>
+    <a accesskey="h" href="./index.html"><img src="./images/home.png" alt="Home"></a><a accesskey="n" href="./experimental/advantages.html"><img src="./images/next.png" alt="Next"></a></div></body>
+</html>

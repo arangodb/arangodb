@@ -1,0 +1,5 @@
+[#before_3]
+['Definitions before section 3.]
+
+  #include <boost/metaparse/string.hpp>
+

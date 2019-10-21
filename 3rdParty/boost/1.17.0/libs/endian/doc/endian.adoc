@@ -1,0 +1,43 @@
+////
+Copyright 2019 Glen Joseph Fernandes
+(glenjofe@gmail.com)
+
+Distributed under the Boost Software License, Version 1.0.
+(http://www.boost.org/LICENSE_1_0.txt)
+////
+
+# Boost.Endian: The Boost Endian Library
+Beman Dawes
+:toc: left
+:toclevels: 2
+:idprefix:
+:listing-caption: Code Example
+:docinfo: private-footer
+
+:leveloffset: +1
+
+include::endian/overview.adoc[]
+
+include::endian/changelog.adoc[]
+
+include::endian/conversion.adoc[]
+
+include::endian/buffers.adoc[]
+
+include::endian/arithmetic.adoc[]
+
+include::endian/choosing_approach.adoc[]
+
+include::endian/mini_review_topics.adoc[]
+
+:leveloffset: -1
+
+[appendix]
+## Copyright and License
+
+This documentation is
+
+* Copyright 2011-2016 Beman Dawes
+* Copyright 2019 Peter Dimov
+
+and is distributed under the http://www.boost.org/LICENSE_1_0.txt[Boost Software License, Version 1.0].

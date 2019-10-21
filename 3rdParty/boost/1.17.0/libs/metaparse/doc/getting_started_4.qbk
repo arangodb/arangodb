@@ -1,0 +1,5 @@
+[#getting_started_4]
+
+  #include <boost/mpl/quote.hpp>
+  using exp_parser6 = build_parser< transform< sequence<int_token, plus_token, int_token>, boost::mpl::quote1<eval_plus> > >;
+

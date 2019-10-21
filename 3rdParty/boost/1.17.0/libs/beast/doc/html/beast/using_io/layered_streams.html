@@ -1,0 +1,240 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Layered Streams</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Chapter&#160;1.&#160;Boost.Beast">
+<link rel="up" href="../using_io.html" title="Networking">
+<link rel="prev" href="rate_limiting.html" title="Rate Limiting &#128161;">
+<link rel="next" href="layered_streams/counted_stream_example.html" title="Counted Stream &#128161;">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="rate_limiting.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../using_io.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="layered_streams/counted_stream_example.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="beast.using_io.layered_streams"></a><a class="link" href="layered_streams.html" title="Layered Streams">Layered Streams</a>
+</h3></div></div></div>
+<p>
+        Networking's <a href="../../../../../../doc/html/boost_asio/reference/ssl__stream.html" target="_top"><code class="computeroutput"><span class="identifier">net</span><span class="special">::</span><span class="identifier">ssl</span><span class="special">::</span><span class="identifier">stream</span></code></a>
+        is a class template meeting the requirements of both synchronous and asynchronous
+        read and write streams, implemented in terms of a "next layer"
+        object whose type is determined by a class template parameter. The SSL stream
+        constructs an instance of the next layer object internally, while allowing
+        external access through the observer <code class="computeroutput"><span class="identifier">net</span><span class="special">::</span><span class="identifier">ssl</span><span class="special">::</span><span class="identifier">stream</span><span class="special">::</span><span class="identifier">next_layer</span><span class="special">()</span></code>.
+        This declares an SSL stream which uses a regular TCP/IP socket as the next
+        layer:
+      </p>
+<pre class="programlisting"><span class="identifier">net</span><span class="special">::</span><span class="identifier">ssl</span><span class="special">::</span><span class="identifier">stream</span><span class="special">&lt;</span><span class="identifier">net</span><span class="special">::</span><span class="identifier">ip</span><span class="special">::</span><span class="identifier">tcp</span><span class="special">::</span><span class="identifier">socket</span><span class="special">&gt;</span> <span class="identifier">ss</span><span class="special">(</span><span class="identifier">ioc</span><span class="special">,</span> <span class="identifier">ctx</span><span class="special">);</span>
+</pre>
+<p>
+        Objects using this design pattern are referred to in networking as "a
+        stack of stream layers". In Beast we use the term <span class="emphasis"><em>layered
+        stream</em></span>, although the property of having a next layer is not exclusive
+        to streams. As with the SSL stream, <a class="link" href="../ref/boost__beast__websocket__stream.html" title="websocket::stream"><code class="computeroutput"><span class="identifier">websocket</span><span class="special">::</span><span class="identifier">stream</span></code></a> is a class template parameterized
+        on a next layer object. This declares a websocket stream which uses a regular
+        TCP/IP socket as the next layer:
+      </p>
+<pre class="programlisting"><span class="identifier">websocket</span><span class="special">::</span><span class="identifier">stream</span><span class="special">&lt;</span><span class="identifier">net</span><span class="special">::</span><span class="identifier">ip</span><span class="special">::</span><span class="identifier">tcp</span><span class="special">::</span><span class="identifier">socket</span><span class="special">&gt;</span> <span class="identifier">ws</span><span class="special">(</span><span class="identifier">ioc</span><span class="special">);</span>
+</pre>
+<p>
+        If a Secure WebSockets stream is desired, this is accomplished simply by
+        changing the type of the next layer and adjusting the constructor arguments
+        to match:
+      </p>
+<pre class="programlisting"><span class="identifier">websocket</span><span class="special">::</span><span class="identifier">stream</span><span class="special">&lt;</span><span class="identifier">net</span><span class="special">::</span><span class="identifier">ssl</span><span class="special">::</span><span class="identifier">stream</span><span class="special">&lt;</span><span class="identifier">net</span><span class="special">::</span><span class="identifier">ip</span><span class="special">::</span><span class="identifier">tcp</span><span class="special">::</span><span class="identifier">socket</span><span class="special">&gt;&gt;</span> <span class="identifier">ws</span><span class="special">(</span><span class="identifier">ioc</span><span class="special">,</span> <span class="identifier">ctx</span><span class="special">);</span>
+</pre>
+<p>
+        Higher level abstractions can be developed in this fashion by nesting stream
+        layers to arbitrary degree. The stack of stream layers effectively forms
+        a compile-time singly linked list. The object at the end of this list is
+        called the <span class="emphasis"><em>lowest layer</em></span>, and is special from the others
+        because it typically represents the underlying socket.
+      </p>
+<p>
+        Beast comes with several layered stream wrappers, as well as facilities for
+        authoring and working with layered streams:
+      </p>
+<div class="table">
+<a name="beast.using_io.layered_streams.layered_stream_algorithms_and_ty"></a><p class="title"><b>Table&#160;1.6.&#160;Layered Stream Algorithms and Types</b></p>
+<div class="table-contents"><table class="table" summary="Layered Stream Algorithms and Types">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Name
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__beast__basic_stream.html" title="basic_stream"><code class="computeroutput"><span class="identifier">basic_stream</span></code></a> <a class="link" href="../ref/boost__beast__tcp_stream.html" title="tcp_stream"><code class="computeroutput"><span class="identifier">tcp_stream</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  This stream can be used for synchronous and asynchronous reading
+                  and writing. It allows timeouts to be set on logical operations,
+                  and can have an executor associated with the stream which is used
+                  to invoke completion handlers. This lets you set a strand on the
+                  stream once, which is then used for all asynchronous operations
+                  automatically.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__beast__buffered_read_stream.html" title="buffered_read_stream"><code class="computeroutput"><span class="identifier">buffered_read_stream</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  A buffered read stream meets the requirements for synchronous and
+                  asynchronous read and write streams, and additionally implements
+                  configurable buffering for reads.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__beast__close_socket.html" title="close_socket"><code class="computeroutput"><span class="identifier">close_socket</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  This function closes a socket by performing an unqualified call
+                  to the <a class="link" href="../ref/boost__beast__beast_close_socket.html" title="beast_close_socket"><code class="computeroutput"><span class="identifier">beast_close_socket</span></code></a> customization
+                  point, allowing sockets to be closed in generic contexts in an
+                  extensible fashion.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__beast__flat_stream.html" title="flat_stream"><code class="computeroutput"><span class="identifier">flat_stream</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  A flat stream operates as a transparent stream which helps to work
+                  around a limitation of <code class="computeroutput"><span class="identifier">net</span><span class="special">::</span><span class="identifier">ssl</span><span class="special">::</span><span class="identifier">stream</span></code>.
+                  It is used in the implementation of <a class="link" href="../ref/boost__beast__ssl_stream.html" title="ssl_stream"><code class="computeroutput"><span class="identifier">ssl_stream</span></code></a>.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__beast__get_lowest_layer.html" title="get_lowest_layer"><code class="computeroutput"><span class="identifier">get_lowest_layer</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  Returns the lowest layer in a stack of stream layers by recursively
+                  calling the <code class="computeroutput"><span class="identifier">next_layer</span></code>
+                  member function on each object until reaching an object which lacks
+                  the member. This example puts a layered stream into non-blocking
+                  mode by retrieving the TCP/IP socket in the lowest layer and changing
+                  the socket option:
+                </p>
+<pre class="programlisting"><span class="comment">// Set non-blocking mode on a stack of stream</span>
+<span class="comment">// layers with a regular socket at the lowest layer.</span>
+<span class="keyword">template</span> <span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Stream</span><span class="special">&gt;</span>
+<span class="keyword">void</span> <span class="identifier">set_non_blocking</span> <span class="special">(</span><span class="identifier">Stream</span><span class="special">&amp;</span> <span class="identifier">stream</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="identifier">error_code</span> <span class="identifier">ec</span><span class="special">;</span>
+    <span class="comment">// A compile error here means your lowest layer is not the right type!</span>
+    <span class="identifier">get_lowest_layer</span><span class="special">(</span><span class="identifier">stream</span><span class="special">).</span><span class="identifier">non_blocking</span><span class="special">(</span><span class="keyword">true</span><span class="special">,</span> <span class="identifier">ec</span><span class="special">);</span>
+    <span class="keyword">if</span><span class="special">(</span><span class="identifier">ec</span><span class="special">)</span>
+        <span class="keyword">throw</span> <span class="identifier">system_error</span><span class="special">{</span><span class="identifier">ec</span><span class="special">};</span>
+<span class="special">}</span>
+</pre>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__beast__http__icy_stream.html" title="http::icy_stream"><code class="computeroutput"><span class="identifier">http</span><span class="special">::</span><span class="identifier">icy_stream</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  An ICY stream transparently converts the non-standard "ICY
+                  200 OK" HTTP response from Shoutcast servers into a conforming
+                  200 level HTTP response.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__beast__lowest_layer_type.html" title="lowest_layer_type"><code class="computeroutput"><span class="identifier">lowest_layer_type</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  A metafunction to return the type of the lowest layer used in a
+                  type representing a stack of stream layers. This is the type of
+                  reference returned by <a class="link" href="../ref/boost__beast__get_lowest_layer.html" title="get_lowest_layer"><code class="computeroutput"><span class="identifier">get_lowest_layer</span></code></a>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="../ref/boost__beast__ssl_stream.html" title="ssl_stream"><code class="computeroutput"><span class="identifier">ssl_stream</span></code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  The SSL stream is a drop-in replacement for <code class="computeroutput"><span class="identifier">net</span><span class="special">::</span><span class="identifier">ssl</span><span class="special">::</span><span class="identifier">stream</span></code>
+                  which allows for move-construction and move-assignment, and also
+                  implements a work-around for a performance limitation in the original
+                  SSL stream.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<br class="table-break">
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2016-2019 Vinnie
+      Falco<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="rate_limiting.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../using_io.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="layered_streams/counted_stream_example.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

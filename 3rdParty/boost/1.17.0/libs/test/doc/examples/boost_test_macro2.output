@@ -1,0 +1,10 @@
+//[example_output
+> ./boost_test_macro2 --log_level=all
+Running 2 test cases...
+test.cpp(16): error: in "test_op_precedence": check a % b == c has failed [13 % 2 != 12]
+test.cpp(18): error: in "test_op_precedence": check a == c % b has failed [13 != 0]
+test.cpp(25): error: in "test_op_right_associative": check !a has failed
+test.cpp(26): error: in "test_op_right_associative": check --a has failed [(bool)0 is false]
+
+*** 4 failures are detected in the test module "boost_test_macro2"
+//]

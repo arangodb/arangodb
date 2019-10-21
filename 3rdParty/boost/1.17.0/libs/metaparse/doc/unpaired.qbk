@@ -1,0 +1,38 @@
+[#unpaired]
+[section unpaired]
+
+[h1 Synopsis]
+
+  namespace error
+  {
+    template <int Line, int Col, class Msg = boost::mpl::na>
+    struct unpaired;
+  }
+
+This is a [link parsing_error_message parsing error message].
+
+[table Arguments
+  [[Name]   [Type]]
+  [[`Line`] [`int` value]]
+  [[`Col`]  [`int` value]]
+  [[`Msg`]  [[link metaprogramming_value template metaprogramming value]]]
+]
+
+[h1 Description]
+
+Template class representing the error that the closing element of an
+"['opening element] ... ['closing element]" structure is missing. (eg. a closing
+paren is missing). `Line` and `Col` point to the beginning of the
+['opening element] (eg. the opening paren). `Msg` is the error message the
+parser trying to parse the ['closing element] failed with.
+
+It supports currying: `unpaired<Line, Col>` is a
+[link metafunction_class template metafunction class] taking one argument: the
+`Msg` element and returning the corresponding `unpaired` value.
+
+[h1 Header]
+
+  #include <boost/metaparse/error/unpaired.hpp>
+
+[endsect]
+

@@ -1,0 +1,83 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html><meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>status_result and status_outcome - Boost.Outcome documentation</title>
+<link rel="stylesheet" href="../css/boost.css" type="text/css">
+<meta name="generator" content="Hugo 0.52 with Boostdoc theme">
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+
+<link rel="icon" href="../images/favicon.ico" type="image/ico"/>
+<body><div class="spirit-nav">
+<a accesskey="p" href="../experimental/differences.html"><img src="../images/prev.png" alt="Prev"></a>
+    <a accesskey="u" href="../experimental.html"><img src="../images/up.png" alt="Up"></a>
+    <a accesskey="h" href="../index.html"><img src="../images/home.png" alt="Home"></a><a accesskey="n" href="../experimental/worked-example.html"><img src="../images/next.png" alt="Next"></a></div><div id="content">
+  <div class="titlepage"><div><div><h1 style="clear: both"><code>status_result</code> and <code>status_outcome</code></h1></div></div></div>
+  <p><code>status_result</code> and <code>status_outcome</code> are type aliases to <a href="../reference/types/basic_result.html" class="api-reference"><code>basic_result&lt;T, E, NoValuePolicy&gt;</code></a>
+
+and <a href="../reference/types/basic_outcome.html" class="api-reference"><code>basic_outcome&lt;T, EC, EP, NoValuePolicy&gt;</code></a>
+ in the usual way, but
+with a defaulted <code>NoValuePolicy</code> which selects on the basis of <code>status_code&lt;DomainType&gt;</code>
+instead.</p>
+
+<div class="notices note" style="background: url('../images/note.png') top left no-repeat padding-box padding-box;">
+<div class="notices heading">note</div>
+<div class="notices message"><p>If the <code>E</code> type is not some <code>status_code&lt;&gt;</code>, the default policy selector
+will complain.</p>
+</div>
+</div>
+
+
+<p>The specifications are:</p>
+<div class="highlight"><pre class="chroma"><code class="language-c++" data-lang="c++"><span class="n">experimental</span><span class="o">::</span><span class="n">status_result</span><span class="o">&lt;</span><span class="n">T</span><span class="p">,</span> <span class="n">E</span> <span class="o">=</span> <span class="n">experimental</span><span class="o">::</span><span class="n">system_code</span><span class="o">&gt;</span>
+<span class="n">experimental</span><span class="o">::</span><span class="n">status_outcome</span><span class="o">&lt;</span><span class="n">T</span><span class="p">,</span> <span class="n">E</span> <span class="o">=</span> <span class="n">experimental</span><span class="o">::</span><span class="n">system_code</span><span class="p">,</span> <span class="n">EP</span> <span class="o">=</span> <span class="n">std</span><span class="o">::</span><span class="n">exception_ptr</span><span class="o">&gt;</span>
+</code></pre></div>
+<p>So, the default <code>E</code> is the erased status code <code>system_code</code>, which can represent
+any <code>generic_code</code>, <code>posix_code</code>, <code>win32_code</code>, <code>nt_code</code>, <code>com_code</code> and many
+other integer error and status
+codings. <strong>Note</strong> that <code>system_code</code> may represent successes as well as failures.
+This mirrors, somewhat, how <code>std::error_code</code> can have an all bits zero defaulted
+state.</p>
+
+<p>You can absolutely choose an <code>E</code> type which is non-erased e.g. <code>posix_code</code> directly.
+You can also choose an <code>E</code> type which is contract guaranteed to be a failure
+rather than an unknown success or failure &ndash; see <code>errored_status_code</code>.</p>
+
+<p>Whether to choose typed status codes versus the erased status codes depends on your
+use cases. Outcome replicates faithfully the implicit and explicit conversion
+semantics of its underlying types, so you can mix results and outcomes of
+<code>&lt;system_error2&gt;</code> types exactly as you can the <code>&lt;system_error2&gt;</code> types themselves
+e.g. typed forms will implicitly convert into erased forms if the source type
+is trivially copyable or move relocating. This means that you can return a
+<code>generic_code</code> from a function returning a <code>system_code</code> or <code>error</code>, and it&rsquo;ll
+work exactly as you&rsquo;d expect (implicit conversion).</p>
+
+<div class="notices note" style="background: url('../images/note.png') top left no-repeat padding-box padding-box;">
+<div class="notices heading">note</div>
+<div class="notices message"><p>As <code>status_code&lt;erased&lt;T&gt;&gt;</code> is move-only, so is any <code>status_result</code> or <code>status_outcome</code>.
+For some reason this surprises a lot of people, and they tend to react by not using the erased
+form because it seems &ldquo;difficult&rdquo;.</p>
+</div>
+</div>
+
+
+<p>It is actually, in fact, a wise discipline to follow to make all functions return
+move-only types if you care about determinism and performance. Whilst C++ 17 onwards
+does much to have the compiler avoid copying of identical function return values thanks to
+guaranteed copy elision, when a chain of functions return different types, if the
+programmer forgets to scatter <code>std::move()</code> appropriately, copies rather than moves
+tend to occur in non-obvious ways. No doubt future C++ standards will improve on the
+automatic use of moves instead of copies where possible, but until then making all
+your <code>result</code> and <code>outcome</code> types move-only is an excellent discipline.</p>
+
+<p>Note that move-only <code>result</code> and <code>outcome</code> capable code (i.e. your project is in Experimental
+Outcome configuration) usually compiles fine when <code>result</code> and <code>outcome</code> are copyable
+(i.e. your project is in Standard Outcome configuration), albeit sometimes with a few
+compiler warnings about unnecessary use of <code>std::move()</code>.</p>
+
+
+        </div><p><small>Last revised: February 05, 2019 at 17:14:18 UTC</small></p>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../experimental/differences.html"><img src="../images/prev.png" alt="Prev"></a>
+    <a accesskey="u" href="../experimental.html"><img src="../images/up.png" alt="Up"></a>
+    <a accesskey="h" href="../index.html"><img src="../images/home.png" alt="Home"></a><a accesskey="n" href="../experimental/worked-example.html"><img src="../images/next.png" alt="Next"></a></div></body>
+</html>

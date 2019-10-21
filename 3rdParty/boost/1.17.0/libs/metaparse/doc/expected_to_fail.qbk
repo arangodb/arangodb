@@ -1,0 +1,23 @@
+[#expected_to_fail]
+[section expected_to_fail]
+
+[h1 Synopsis]
+
+  namespace error
+  {
+    struct expected_to_fail;
+  }
+
+This is a [link parsing_error_message parsing error message].
+
+[h1 Description]
+
+Class representing the error that a parser was expected to fail but it did not
+fail.
+
+[h1 Header]
+
+  #include <boost/metaparse/error/expected_to_fail.hpp>
+
+[endsect]
+

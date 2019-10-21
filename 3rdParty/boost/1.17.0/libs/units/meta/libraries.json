@@ -1,0 +1,16 @@
+{
+    "key": "units",
+    "name": "Units",
+    "authors": [
+        "Matthias Schabel",
+        "Steven Watanabe"
+    ],
+    "description": "Zero-overhead dimensional analysis and unit/quantity manipulation and conversion.",
+    "category": [
+        "Domain"
+    ],
+    "maintainers": [
+        "Jürgen Hunold <jhunold -at- gmx.eu>",
+        "Steven Watanabe <steven -at- providere-consulting.com>"
+    ]
+}

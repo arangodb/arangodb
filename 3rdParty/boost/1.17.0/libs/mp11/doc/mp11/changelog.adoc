@@ -1,0 +1,30 @@
+////
+Copyright 2019 Peter Dimov
+
+Distributed under the Boost Software License, Version 1.0.
+
+See accompanying file LICENSE_1_0.txt or copy at
+http://www.boost.org/LICENSE_1_0.txt
+////
+
+[#changelog]
+# Revision History
+
+## Changes in 1.70.0
+
+* Renamed `mp_invoke` to `mp_invoke_q`
+* Added `mp_similar`
+* Added `mp_set_union`, `mp_set_intersection`, `mp_set_difference`
+* Added `mp_not_fn`
+* Added `mp_transform_first`, `mp_transform_second`, `mp_transform_third`
+* Added `mp_filter`
+* Added `mp_eval_if_not`, `mp_eval_or`, `mp_valid_q`
+* Added `mp_back`, `mp_pop_back`
+* Added `BOOST_MP11_VERSION`
+
+## Changes in 1.69.0
+
+* Removed dependency on Boost.Config; Mp11 is now standalone
+* Improved code generation for `mp_with_index`
+* Added `mp_starts_with` (contributed by Glen Fernandes)
+* Added CMake support

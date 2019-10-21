@@ -1,0 +1,34 @@
+[/
+ / Copyright (c) 2003-2019 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+ /
+ / Distributed under the Boost Software License, Version 1.0. (See accompanying
+ / file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+ /]
+
+[section:read_write_operations Requirements on read and write operations]
+
+A ['read operation] is an operation that reads data into a mutable buffer
+sequence argument of a type meeting [link boost_asio.reference.MutableBufferSequence
+`MutableBufferSequence`] requirements. The mutable buffer sequence specifies
+memory where the data should be placed. A read operation shall always fill a
+buffer in the sequence completely before proceeding to the next.
+
+A ['write operation] is an operation that writes data from a constant buffer
+sequence argument of a type meeting [link boost_asio.reference.ConstBufferSequence
+`ConstBufferSequence`] requirements. The constant buffer sequence specifies
+memory where the data to be written is located. A write operation shall always
+write a buffer in the sequence completely before proceeding to the next.
+
+If a read or write operation is also an [link
+boost_asio.reference.asynchronous_operations asynchronous operation], the operation
+shall maintain one or more copies of the buffer sequence until such time as the
+operation no longer requires access to the memory specified by the buffers in
+the sequence. The program shall ensure the memory remains valid until:
+
+[mdash] the last copy of the buffer sequence is destroyed, or
+
+[mdash] the completion handler for the asynchronous operation is invoked,
+
+whichever comes first.
+
+[endsect]

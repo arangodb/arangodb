@@ -1,0 +1,50 @@
+[/
+ / Copyright (c) 2003-2019 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+ /
+ / Distributed under the Boost Software License, Version 1.0. (See accompanying
+ / file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+ /]
+
+[section:AsyncReadStream Buffer-oriented asynchronous read stream requirements]
+
+A type `X` meets the `AsyncReadStream` requirements if it satisfies the
+requirements listed below.
+
+In the table below, `a` denotes a value of type `X`, `mb` denotes a (possibly
+const) value satisfying the [link boost_asio.reference.MutableBufferSequence
+`MutableBufferSequence`] requirements, and `t` is a completion token.
+
+[table AsyncReadStream requirements
+  [[operation] [type] [semantics, pre/post-conditions]]
+  [
+    [`a.get_executor()`]
+    [A type satisfying the [link boost_asio.reference.Executor1 Executor requirements].]
+    [Returns the associated I/O executor.]
+  ]
+  [
+    [`a.async_read_some(mb,t)`]
+    [
+      The return type is determined according to the requirements for an
+      [link boost_asio.reference.asynchronous_operations asynchronous operation].
+    ]
+    [
+      Meets the requirements for a [link boost_asio.reference.read_write_operations
+      read operation] and an [link boost_asio.reference.asynchronous_operations
+      asynchronous operation] with completion signature `void(error_code ec,
+      size_t n)`.\n
+      \n
+      If `buffer_size(mb) > 0`, initiates an asynchronous operation to read one
+      or more bytes of data from the stream `a` into the buffer sequence `mb`.
+      If successful, `ec` is set such that `!ec` is `true`, and `n` is the
+      number of bytes read. If an error occurred, `ec` is set such that `!!ec`
+      is `true`, and `n` is 0. If all data has been read from the stream, and
+      the stream performed an orderly shutdown, `ec` is
+      `stream_errc::eof` and `n` is 0.\n
+      \n
+      If `buffer_size(mb) == 0`, the operation completes immediately. `ec` is
+      set such that `!ec` is `true`, and `n` is 0.
+    ]
+  ]
+]
+
+[endsect]

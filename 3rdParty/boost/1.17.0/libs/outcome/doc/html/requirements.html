@@ -1,0 +1,67 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html><meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Prerequisites - Boost.Outcome documentation</title>
+<link rel="stylesheet" href="./css/boost.css" type="text/css">
+<meta name="generator" content="Hugo 0.52 with Boostdoc theme">
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+
+<link rel="icon" href="./images/favicon.ico" type="image/ico"/>
+<body><div class="spirit-nav">
+<a accesskey="p" href="./index.html"><img src="./images/prev.png" alt="Prev"></a>
+    <a accesskey="u" href="./index.html"><img src="./images/up.png" alt="Up"></a>
+    <a accesskey="h" href="./index.html"><img src="./images/home.png" alt="Home"></a><a accesskey="n" href="./build.html"><img src="./images/next.png" alt="Next"></a></div><div id="content">
+
+  <div class="titlepage"><div><div><h1 style="clear: both">Prerequisites</h1></div></div></div>
+<p>Outcome is a header-only C++ 14 library known to work well on the latest
+point releases of these compiler-platform combinations or better:</p>
+
+<ul>
+<li>clang 4.0.1 (LLVM) [FreeBSD, Linux, OS X]</li>
+<li>GCC 6.5 [Linux]</li>
+<li>Visual Studio 2017.9 [Windows]</li>
+<li>XCode 9 [MacOS]</li>
+</ul>
+
+<p>It is worth turning on C++ 17 if you can, as there are many usability and
+performance improvements. If your compiler implements the Concepts TS, it
+is worth turning support on. Support is automatically
+detected and used.</p>
+
+<p>Partially working compilers (this was last updated January 2019):</p>
+
+<ul>
+<li>clang 3.5 - 3.9 can compile varying degrees of the test suite, the
+problem is lack of complete and unbuggy C++ 14 language support.</li>
+<li>Older point releases of GCCs 7 and 8 have internal compiler error bugs
+in their constexpr implementation which tend to be triggered by using
+Outcome in constexpr. If you don&rsquo;t use Outcome in constexpr, you won&rsquo;t
+see these problems. If you need your GCC to not ICE, upgrade to the
+very latest point release, the constexpr ICE has been since fixed.</li>
+<li>Early editions of Visual Studio 2017 have many corner case problems.
+The latest point release, VS2017.9, only has a few known problems,
+and should be relatively unsurprising for most use cases.</li>
+</ul>
+
+<hr />
+
+<p>&ldquo;C++ 14&rdquo; compilers which do not work, and will not work until their
+maintainers fix them:</p>
+
+<ul>
+<li>GCC 5, due to a bug in nested template variables parsing which was fixed
+in GCC 6. I appreciate that this upsets a lot of users. Please raise your
+upset at <a href="https://gcc.gnu.org/bugzilla/">https://gcc.gnu.org/bugzilla/</a>. In the meantime, you can get fairly
+far in Outcome with even clang 3.5.</li>
+<li>Any compiler which uses the libstdc++ version which comes with GCC 5, as it does
+not implement enough of the C++ 14 standard library for Outcome to compile.</li>
+</ul>
+
+
+
+        </div><p><small>Last revised: June 20, 2019 at 22:20:02 &#43;0100</small></p>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="./index.html"><img src="./images/prev.png" alt="Prev"></a>
+    <a accesskey="u" href="./index.html"><img src="./images/up.png" alt="Up"></a>
+    <a accesskey="h" href="./index.html"><img src="./images/home.png" alt="Home"></a><a accesskey="n" href="./build.html"><img src="./images/next.png" alt="Next"></a></div></body>
+</html>

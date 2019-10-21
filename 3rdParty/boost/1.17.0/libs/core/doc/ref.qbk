@@ -1,0 +1,82 @@
+[/
+ /  Copyright (c) 2001, 2002, 2006 Peter Dimov
+ /  Copyright (c) 2002 David Abrahams
+ /  Copyright (c) 2002 Aleksey Gurtovoy
+ /  Copyright (c) 2003, 2004 Douglas Gregor
+ /  Copyright (c) 2009 Ronald Garcia
+ /  Copyright (c) 2014 Glen Joseph Fernandes
+ /
+ / Distributed under the Boost Software License, Version 1.0. (See
+ / accompanying file LICENSE_1_0.txt or copy at
+ / http://www.boost.org/LICENSE_1_0.txt)
+ /]
+
+[section:ref ref]
+
+[simplesect Authors]
+
+* Jaakko J\u00E4rvi
+* Peter Dimov
+* Douglas Gregor
+* Dave Abrahams
+* Frank Mori Hess
+* Ronald Garcia
+
+[endsimplesect]
+
+[section Introduction]
+
+The Ref library is a small library that is useful for passing
+references to function templates (algorithms) that would
+usually take copies of their arguments. It defines the class
+template `boost::reference_wrapper<T>`, two functions
+`boost::ref` and `boost::cref` that return instances of
+`boost::reference_wrapper<T>`, a function `boost::unwrap_ref`
+that unwraps a `boost::reference_wrapper<T>` or returns a
+reference to any other type of object, and the two traits
+classes `boost::is_reference_wrapper<T>` and
+`boost::unwrap_reference<T>`.
+
+The purpose of `boost::reference_wrapper<T>` is to contain a
+reference to an object of type `T`. It is primarily used to
+"feed" references to function templates (algorithms) that take
+their parameter by value.
+
+To support this usage, `boost::reference_wrapper<T>` provides
+an implicit conversion to `T&`. This usually allows the
+function templates to work on references unmodified.
+
+`boost::reference_wrapper<T>` is both CopyConstructible and
+Assignable (ordinary references are not Assignable).
+
+The `expression boost::ref(x)` returns a
+`boost::reference_wrapper<X>(x)` where `X` is the type of `x`.
+Similarly, `boost::cref(x)` returns a
+`boost::reference_wrapper<X const>(x)`.
+
+The expression `boost::unwrap_ref(x)` returns a
+`boost::unwrap_reference<X>::type&` where `X` is the type of
+`x`.
+
+The expression `boost::is_reference_wrapper<T>::value` is
+`true` if `T` is a `reference_wrapper`, and `false` otherwise.
+
+The type-expression `boost::unwrap_reference<T>::type` is
+`T::type` if `T` is a `reference_wrapper`, `T` otherwise.
+
+[endsect]
+
+[xinclude ref_reference.xml]
+
+[section Acknowledgments]
+
+`ref` and `cref` were originally part of the Tuple library by
+Jaakko J\u00E4rvi. They were "promoted to `boost::` status" by
+Peter Dimov because they are generally useful. Douglas Gregor
+and Dave Abrahams contributed `is_reference_wrapper` and
+`unwrap_reference`. Frank Mori Hess and Ronald Garcia
+contributed `boost::unwrap_ref`.
+
+[endsect]
+
+[endsect]

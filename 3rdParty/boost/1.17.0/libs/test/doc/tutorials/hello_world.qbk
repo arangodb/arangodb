@@ -1,0 +1,77 @@
+[/
+ / Copyright (c) 2003 Boost.Test contributors 
+ /
+ / Distributed under the Boost Software License, Version 1.0. (See accompanying
+ / file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+ /]
+
+[section:hello A testing framework, what for?]
+How should a test program report errors? Displaying an error message is an obvious possibility:
+
+[/snippet9 deleted]
+``
+if( something_bad_detected )
+  std::cout << "something bad has been detected" << std::endl;
+``
+ 
+But that requires inspection of the program's output after each run to determine if an error occurred. Since test
+programs are often run as part of a regression test suite, human inspection of output to detect error messages is time
+consuming and unreliable. Test frameworks like GNU/expect can do the inspections automatically, but are overly complex
+for simple testing.
+
+A better simple way to report errors is for the test program to return `EXIT_SUCCESS` (normally 0) if the test program
+completes satisfactorily, and `EXIT_FAILURE` if an error is detected. This allows a simple regression test script to
+automatically and unambiguously detect success or failure. Further appropriate actions such as creating an HTML table or
+emailing an alert can be taken by the script, and can be modified as desired without having to change the actual C++
+test programs.
+
+A testing protocol based on a policy of test programs returning `EXIT_SUCCESS` or `EXIT_FAILURE` does not require any
+supporting tools; the C++ language and standard library are sufficient. The programmer must remember, however, to catch
+all exceptions and convert them to program exits with non-zero return codes. The programmer must also remember to not
+use the standard library `assert()` macro for test code, because on some systems it results in undesirable side effects
+like a message requiring manual intervention.
+
+The Boost Test Library's Unit Test Framework is designed to automate those tasks. The library supplied `main()` relieves
+users from messy error detection and reporting duties. Users could use supplied testing tools to perform complex
+validation tasks. Let's take a look on the following simple test program:
+
+
+``
+#include <my_class.hpp>
+
+int main( int, char* [] )
+{
+  my_class test_object( "qwerty" );
+  return test_object.is_valid() ? EXIT_SUCCESS : EXIT_FAILURE;
+}
+``
+
+There are several issues with above test.
+
+# You need to convert `is_valid` result in proper result code.
+# Would exception happen in test_object construction of method `is_valid` invocation, the program will crash.
+# You won't see any output, would you run this test manually.
+
+The __UTF__ solves all these issues. To integrate with it above program needs to be changed to:
+
+``
+#include <my_class.hpp>
+#define __BOOST_TEST_MODULE__ MyTest
+#include <boost/test/unit_test.hpp>
+
+__BOOST_AUTO_TEST_CASE__( my_test )
+{
+  my_class test_object( "qwerty" );
+  BOOST_TEST( test_object.is_valid() );
+}
+``
+ 
+Now, you not only receive uniform result code, even in case of exception, but also nicely formatted output from
+__BOOST_TEST__ tool, would you choose to see it. Is there any other ways to perform checks? The following example test
+program shows several different ways to detect and report an error in the `add()` function.
+
+[import ../snippet/snippet12.cpp]
+[snippet12]
+
+
+[endsect] [/section:hello]

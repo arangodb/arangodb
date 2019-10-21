@@ -1,0 +1,84 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html><meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Hooking events - Boost.Outcome documentation</title>
+<link rel="stylesheet" href="../../css/boost.css" type="text/css">
+<meta name="generator" content="Hugo 0.52 with Boostdoc theme">
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+
+<link rel="icon" href="../../images/favicon.ico" type="image/ico"/>
+<body><div class="spirit-nav">
+<a accesskey="p" href="../../tutorial/advanced/constructors/metaprogrammg3.html"><img src="../../images/prev.png" alt="Prev"></a>
+    <a accesskey="u" href="../../tutorial/advanced.html"><img src="../../images/up.png" alt="Up"></a>
+    <a accesskey="h" href="../../index.html"><img src="../../images/home.png" alt="Home"></a><a accesskey="n" href="../../tutorial/advanced/hooks/keeping_state.html"><img src="../../images/next.png" alt="Next"></a></div><div id="content">
+
+  <div class="titlepage"><div><div><h1 style="clear: both">Hooking events</h1></div></div></div>
+<p>Outcome provides multiple methods for user code to intercept various events which occur.
+The deepest method is simply to inherit from <code>basic_result</code> or <code>basic_outcome</code>, and override member functions,
+for which you will need to study the source code as that form of customisation is out of scope for this tutorial.</p>
+
+<p>Another option is to supply a custom <code>NoValuePolicy</code> which can get you surprisingly
+far into customisation (<a href="../../tutorial/essential/no-value/custom.html">see preceding section</a>).</p>
+
+<p>The final option, which this section covers, is to use the ADL discovered event hooks
+which tell you when a namespace-localised <code>basic_outcome</code> or <code>basic_result</code> has been:</p>
+
+<ul>
+<li>Constructed
+
+<ul>
+<li><a href="../../reference/functions/hooks/hook_result_construction.html" class="api-reference"><code>void hook_result_construction(T *, U &amp;&amp;) noexcept</code></a>
+</li>
+<li><a href="../../reference/functions/hooks/hook_outcome_construction.html" class="api-reference"><code>void hook_outcome_construction(T *, U &amp;&amp;) noexcept</code></a>
+</li>
+</ul></li>
+<li>In-place constructed
+
+<ul>
+<li><a href="../../reference/functions/hooks/hook_result_in_place_construction.html" class="api-reference"><code>void hook_result_in_place_construction(T *, in_place_type_t&lt;U&gt;, Args &amp;&amp;...) noexcept</code></a>
+</li>
+<li><a href="../../reference/functions/hooks/hook_outcome_in_place_construction.html" class="api-reference"><code>void hook_outcome_in_place_construction(T *, in_place_type_t&lt;U&gt;, Args &amp;&amp;...) noexcept</code></a>
+</li>
+</ul></li>
+<li>Copied
+
+<ul>
+<li><a href="../../reference/functions/hooks/hook_result_copy_construction.html" class="api-reference"><code>void hook_result_copy_construction(T *, U &amp;&amp;) noexcept</code></a>
+</li>
+<li><a href="../../reference/functions/hooks/hook_outcome_copy_construction.html" class="api-reference"><code>void hook_outcome_copy_construction(T *, U &amp;&amp;) noexcept</code></a>
+</li>
+</ul></li>
+<li>Moved
+
+<ul>
+<li><a href="../../reference/functions/hooks/hook_result_move_construction.html" class="api-reference"><code>void hook_result_move_construction(T *, U &amp;&amp;) noexcept</code></a>
+</li>
+<li><a href="../../reference/functions/hooks/hook_outcome_move_construction.html" class="api-reference"><code>void hook_outcome_move_construction(T *, U &amp;&amp;) noexcept</code></a>
+</li>
+</ul></li>
+</ul>
+
+<p>One criticism often levelled against library-based exception throw alternatives is that they do
+not provide as rich a set of facilities as C++ exception throws. This section shows
+you how to configure Outcome, using the ADL event hooks, to take a stack backtrace on
+construction of an errored <code>result&lt;T, error_code&gt;</code>,
+and if that <code>result&lt;T, error_code&gt;</code> should ever be converted into an <code>outcome&lt;T, error_code, std::exception_ptr&gt;</code>,
+a custom <code>std::exception_ptr</code> will be just-in-time synthesised consisting of the <code>std::system_error</code>
+for the error code, plus an expanded message string containing the stack backtrace of where
+the error originally occurred.</p>
+
+<p>One can see the use case for such a configuration where low-level, deterministic,
+fixed latency code is built with <code>result</code>, and it dovetails into higher-level
+application code built with <code>outcome</code> where execution time guarantees are not
+important, and thus where a <code>malloc</code> is okay. One effectively has constructed a
+&ldquo;lazy indeterminism&rdquo;, or &ldquo;just-in-time indeterminism&rdquo; mechanism for handling
+failure, but with all the rich information of throwing C++ exceptions.</p>
+
+
+
+        </div><p><small>Last revised: February 08, 2019 at 22:18:08 UTC</small></p>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../../tutorial/advanced/constructors/metaprogrammg3.html"><img src="../../images/prev.png" alt="Prev"></a>
+    <a accesskey="u" href="../../tutorial/advanced.html"><img src="../../images/up.png" alt="Up"></a>
+    <a accesskey="h" href="../../index.html"><img src="../../images/home.png" alt="Home"></a><a accesskey="n" href="../../tutorial/advanced/hooks/keeping_state.html"><img src="../../images/next.png" alt="Next"></a></div></body>
+</html>

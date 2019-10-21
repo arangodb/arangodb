@@ -1,0 +1,12 @@
+//[example_output
+> decorator_03 --run_test=@trivial
+Running 3 test cases...
+
+*** No errors detected
+
+
+> decorator_03 --run_test=@simple
+Running 3 test cases...
+
+*** No errors detected
+//]

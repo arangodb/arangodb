@@ -1,0 +1,8 @@
+[quickbook 1.7]
+[article Mismatched brackets]
+
+[template foo Oops]
+
+[foo
+[template blah Eek]
+[blah]

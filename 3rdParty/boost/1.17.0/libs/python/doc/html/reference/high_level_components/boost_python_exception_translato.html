@@ -1,0 +1,130 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>boost/python/exception_translator.hpp</title>
+<link rel="stylesheet" href="../../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="Boost.Python Reference Manual">
+<link rel="up" href="../high_level_components.html" title="Chapter&#160;2.&#160;High Level Components">
+<link rel="prev" href="boost_python_errors_hpp.html" title="boost/python/errors.hpp">
+<link rel="next" href="boost_python_init_hpp.html" title="boost/python/init.hpp">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr><td valign="top"><img alt="" width="" height="" src="../../images/boost.png"></td></tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="boost_python_errors_hpp.html"><img src="../../images/prev.png" alt="Prev"></a><a accesskey="u" href="../high_level_components.html"><img src="../../images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../images/home.png" alt="Home"></a><a accesskey="n" href="boost_python_init_hpp.html"><img src="../../images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="high_level_components.boost_python_exception_translato"></a><a class="link" href="boost_python_exception_translato.html" title="boost/python/exception_translator.hpp">boost/python/exception_translator.hpp</a>
+</h2></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="boost_python_exception_translato.html#high_level_components.boost_python_exception_translato.introduction">Introduction</a></span></dt>
+<dt><span class="section"><a href="boost_python_exception_translato.html#high_level_components.boost_python_exception_translato.function_register_exception_tran">Function
+        <code class="computeroutput"><span class="identifier">register_exception_translator</span></code></a></span></dt>
+<dt><span class="section"><a href="boost_python_exception_translato.html#high_level_components.boost_python_exception_translato.example">Example</a></span></dt>
+</dl></div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="high_level_components.boost_python_exception_translato.introduction"></a><a class="link" href="boost_python_exception_translato.html#high_level_components.boost_python_exception_translato.introduction" title="Introduction">Introduction</a>
+</h3></div></div></div>
+<p>
+          As described <a class="link" href="boost_python_errors_hpp.html#high_level_components.boost_python_errors_hpp.introduction" title="Introduction">here</a>,
+          it is important to make sure that exceptions thrown by C++ code do not
+          pass into the Python interpreter core. By default, Boost.Python translates
+          all C++ exceptions thrown by wrapped functions and module init functions
+          into Python, but the default translators are extremely limited: most C++
+          exceptions will appear in Python as a <a href="http://www.python.org/doc/current/lib/module-exceptions.html" target="_top">RuntimeError</a>
+          exception whose representation is 'Unidentifiable C++ Exception'. To produce
+          better error messages, users can register additional exception translators
+          as described below.
+        </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="high_level_components.boost_python_exception_translato.function_register_exception_tran"></a><a class="link" href="boost_python_exception_translato.html#high_level_components.boost_python_exception_translato.function_register_exception_tran" title="Function register_exception_translator">Function
+        <code class="computeroutput"><span class="identifier">register_exception_translator</span></code></a>
+</h3></div></div></div>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">ExceptionType</span><span class="special">,</span> <span class="keyword">class</span> <span class="identifier">Translate</span><span class="special">&gt;</span>
+<span class="keyword">void</span> <span class="identifier">register_exception_translator</span><span class="special">(</span><span class="identifier">Translate</span> <span class="identifier">translate</span><span class="special">);</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Requires</span></dt>
+<dd>
+<p>
+                Translate is CopyConstructible, and the following code must be well-formed:
+              </p>
+<pre class="programlisting"><span class="keyword">void</span> <span class="identifier">f</span><span class="special">(</span><span class="identifier">ExceptionType</span> <span class="identifier">x</span><span class="special">)</span> <span class="special">{</span> <span class="identifier">translate</span><span class="special">(</span><span class="identifier">x</span><span class="special">);</span> <span class="special">}</span></pre>
+<p>
+                . The expression <code class="computeroutput"><span class="identifier">translate</span><span class="special">(</span><span class="identifier">x</span><span class="special">)</span></code> must either throw a C++ exception,
+                or a subsequent call to <code class="computeroutput"><span class="identifier">PyErr_Occurred</span><span class="special">()</span></code> must return 1.
+              </p>
+</dd>
+<dt><span class="term">Effects</span></dt>
+<dd><p>
+                Adds a copy of translate to the sequence of exception translators
+                tried when Boost.Python catches an exception that is about to pass
+                into Python's core interpreter. The new translator will get "first
+                shot" at translating all exceptions matching the catch clause
+                shown above. Any subsequently-registered translators will be allowed
+                to translate the exception earlier. A translator which cannot translate
+                a given C++ exception can re-throw it, and it will be handled by
+                a translator which was registered earlier (or by the default translator).
+              </p></dd>
+</dl>
+</div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="high_level_components.boost_python_exception_translato.example"></a><a class="link" href="boost_python_exception_translato.html#high_level_components.boost_python_exception_translato.example" title="Example">Example</a>
+</h3></div></div></div>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">python</span><span class="special">/</span><span class="identifier">module</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">python</span><span class="special">/</span><span class="identifier">def</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">python</span><span class="special">/</span><span class="identifier">exception_translator</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">exception</span><span class="special">&gt;</span>
+
+<span class="keyword">struct</span> <span class="identifier">my_exception</span> <span class="special">:</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">exception</span>
+<span class="special">{</span>
+  <span class="keyword">char</span> <span class="keyword">const</span><span class="special">*</span> <span class="identifier">what</span><span class="special">()</span> <span class="keyword">throw</span><span class="special">()</span> <span class="special">{</span> <span class="keyword">return</span> <span class="string">"One of my exceptions"</span><span class="special">;</span> <span class="special">}</span>
+<span class="special">};</span>
+
+<span class="keyword">void</span> <span class="identifier">translate</span><span class="special">(</span><span class="identifier">my_exception</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">e</span><span class="special">)</span>
+<span class="special">{</span>
+    <span class="comment">// Use the Python 'C' API to set up an exception object</span>
+    <span class="identifier">PyErr_SetString</span><span class="special">(</span><span class="identifier">PyExc_RuntimeError</span><span class="special">,</span> <span class="identifier">e</span><span class="special">.</span><span class="identifier">what</span><span class="special">());</span>
+<span class="special">}</span>
+
+<span class="keyword">void</span> <span class="identifier">something_which_throws</span><span class="special">()</span>
+<span class="special">{</span>
+    <span class="special">...</span>
+    <span class="keyword">throw</span> <span class="identifier">my_exception</span><span class="special">();</span>
+    <span class="special">...</span>
+<span class="special">}</span>
+
+<span class="identifier">BOOST_PYTHON_MODULE</span><span class="special">(</span><span class="identifier">exception_translator_ext</span><span class="special">)</span>
+<span class="special">{</span>
+  <span class="keyword">using</span> <span class="keyword">namespace</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">python</span><span class="special">;</span>
+  <span class="identifier">register_exception_translator</span><span class="special">&lt;</span><span class="identifier">my_exception</span><span class="special">&gt;(&amp;</span><span class="identifier">translate</span><span class="special">);</span>
+
+  <span class="identifier">def</span><span class="special">(</span><span class="string">"something_which_throws"</span><span class="special">,</span> <span class="identifier">something_which_throws</span><span class="special">);</span>
+<span class="special">}</span>
+</pre>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2002-2005, 2015 David Abrahams, Stefan Seefeld<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="boost_python_errors_hpp.html"><img src="../../images/prev.png" alt="Prev"></a><a accesskey="u" href="../high_level_components.html"><img src="../../images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../images/home.png" alt="Home"></a><a accesskey="n" href="boost_python_init_hpp.html"><img src="../../images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

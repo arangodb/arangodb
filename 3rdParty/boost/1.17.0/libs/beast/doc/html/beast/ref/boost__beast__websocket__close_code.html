@@ -1,0 +1,354 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>websocket::close_code</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Chapter&#160;1.&#160;Boost.Beast">
+<link rel="up" href="../ref.html" title="This Page Intentionally Left Blank 2/2">
+<link rel="prev" href="boost__beast__websocket__async_teardown/overload2.html" title="websocket::async_teardown (2 of 2 overloads)">
+<link rel="next" href="boost__beast__websocket__close_reason.html" title="websocket::close_reason">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="boost__beast__websocket__async_teardown/overload2.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../ref.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="boost__beast__websocket__close_reason.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="beast.ref.boost__beast__websocket__close_code"></a><a class="link" href="boost__beast__websocket__close_code.html" title="websocket::close_code">websocket::close_code</a>
+</h4></div></div></div>
+<p>
+        <a class="indexterm" name="idm45886626396848"></a>
+Close status codes.
+      </p>
+<h5>
+<a name="beast.ref.boost__beast__websocket__close_code.h0"></a>
+        <span class="phrase"><a name="beast.ref.boost__beast__websocket__close_code.synopsis"></a></span><a class="link" href="boost__beast__websocket__close_code.html#beast.ref.boost__beast__websocket__close_code.synopsis">Synopsis</a>
+      </h5>
+<p>
+        Defined in header <code class="literal">&lt;<a href="../../../../../../boost/beast/websocket/rfc6455.hpp" target="_top">boost/beast/websocket/rfc6455.hpp</a>&gt;</code>
+      </p>
+<pre class="programlisting"><span class="keyword">enum</span> <span class="identifier">close_code</span>
+</pre>
+<p>
+        <a class="indexterm" name="idm45886626388928"></a>
+ <a class="indexterm" name="idm45886626387824"></a>
+ <a class="indexterm" name="idm45886626386720"></a>
+ <a class="indexterm" name="idm45886626385616"></a>
+ <a class="indexterm" name="idm45886626384512"></a>
+ <a class="indexterm" name="idm45886626383408"></a>
+ <a class="indexterm" name="idm45886626382304"></a>
+ <a class="indexterm" name="idm45886626381200"></a>
+ <a class="indexterm" name="idm45886626380096"></a>
+ <a class="indexterm" name="idm45886626378992"></a>
+ <a class="indexterm" name="idm45886626377888"></a>
+ <a class="indexterm" name="idm45886626376784"></a>
+ <a class="indexterm" name="idm45886626375680"></a>
+ <a class="indexterm" name="idm45886626374576"></a>
+ <a class="indexterm" name="idm45886626373472"></a>
+ <a class="indexterm" name="idm45886626372368"></a>
+ <a class="indexterm" name="idm45886626371264"></a>
+
+      </p>
+<h5>
+<a name="beast.ref.boost__beast__websocket__close_code.h1"></a>
+        <span class="phrase"><a name="beast.ref.boost__beast__websocket__close_code.values"></a></span><a class="link" href="boost__beast__websocket__close_code.html#beast.ref.boost__beast__websocket__close_code.values">Values</a>
+      </h5>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  Name
+                </p>
+              </th>
+<th>
+                <p>
+                  Description
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <code class="literal">normal</code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Normal closure; the connection successfully completed whatever
+                  purpose for which it was created.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="literal">going_away</code>
+                </p>
+              </td>
+<td>
+                <p>
+                  The endpoint is going away, either because of a server failure
+                  or because the browser is navigating away from the page that opened
+                  the connection.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="literal">protocol_error</code>
+                </p>
+              </td>
+<td>
+                <p>
+                  The endpoint is terminating the connection due to a protocol error.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="literal">unknown_data</code>
+                </p>
+              </td>
+<td>
+                <p>
+                  The connection is being terminated because the endpoint received
+                  data of a type it cannot accept (for example, a text-only endpoint
+                  received binary data).
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="literal">bad_payload</code>
+                </p>
+              </td>
+<td>
+                <p>
+                  The endpoint is terminating the connection because a message was
+                  received that contained inconsistent data (e.g., non-UTF-8 data
+                  within a text message).
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="literal">policy_error</code>
+                </p>
+              </td>
+<td>
+                <p>
+                  The endpoint is terminating the connection because it received
+                  a message that violates its policy. This is a generic status code,
+                  used when codes 1003 and 1009 are not suitable.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="literal">too_big</code>
+                </p>
+              </td>
+<td>
+                <p>
+                  The endpoint is terminating the connection because a data frame
+                  was received that is too large.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="literal">needs_extension</code>
+                </p>
+              </td>
+<td>
+                <p>
+                  The client is terminating the connection because it expected the
+                  server to negotiate one or more extension, but the server didn't.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="literal">internal_error</code>
+                </p>
+              </td>
+<td>
+                <p>
+                  The server is terminating the connection because it encountered
+                  an unexpected condition that prevented it from fulfilling the request.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="literal">service_restart</code>
+                </p>
+              </td>
+<td>
+                <p>
+                  The server is terminating the connection because it is restarting.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="literal">try_again_later</code>
+                </p>
+              </td>
+<td>
+                <p>
+                  The server is terminating the connection due to a temporary condition,
+                  e.g. it is overloaded and is casting off some of its clients.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="literal">none</code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Used internally to mean "no error".
+                </p>
+                <p>
+                  This code is reserved and may not be sent.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="literal">reserved1</code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Reserved for future use by the WebSocket standard.
+                </p>
+                <p>
+                  This code is reserved and may not be sent.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="literal">no_status</code>
+                </p>
+              </td>
+<td>
+                <p>
+                  No status code was provided even though one was expected.
+                </p>
+                <p>
+                  This code is reserved and may not be sent.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="literal">abnormal</code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Connection was closed without receiving a close frame.
+                </p>
+                <p>
+                  This code is reserved and may not be sent.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="literal">reserved2</code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Reserved for future use by the WebSocket standard.
+                </p>
+                <p>
+                  This code is reserved and may not be sent.
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <code class="literal">reserved3</code>
+                </p>
+              </td>
+<td>
+                <p>
+                  Reserved for future use by the WebSocket standard.
+                </p>
+                <p>
+                  This code is reserved and may not be sent.
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+<h5>
+<a name="beast.ref.boost__beast__websocket__close_code.h2"></a>
+        <span class="phrase"><a name="beast.ref.boost__beast__websocket__close_code.description"></a></span><a class="link" href="boost__beast__websocket__close_code.html#beast.ref.boost__beast__websocket__close_code.description">Description</a>
+      </h5>
+<p>
+        These codes accompany close frames.
+      </p>
+<h5>
+<a name="beast.ref.boost__beast__websocket__close_code.h3"></a>
+        <span class="phrase"><a name="beast.ref.boost__beast__websocket__close_code.see_also"></a></span><a class="link" href="boost__beast__websocket__close_code.html#beast.ref.boost__beast__websocket__close_code.see_also">See Also</a>
+      </h5>
+<p>
+        <a href="https://tools.ietf.org/html/rfc6455#section-7.4.1" target="_top">RFC 6455 7.4.1
+        Defined Status Codes</a>
+      </p>
+<p>
+        Convenience header <code class="literal">&lt;<a href="../../../../../../boost/beast/websocket.hpp" target="_top">boost/beast/websocket.hpp</a>&gt;</code>
+      </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2016-2019 Vinnie
+      Falco<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="boost__beast__websocket__async_teardown/overload2.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../ref.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="boost__beast__websocket__close_reason.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

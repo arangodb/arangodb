@@ -1,0 +1,161 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>CUDA</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Chapter&#160;1.&#160;Fiber">
+<link rel="up" href="../gpu_computing.html" title="GPU computing">
+<link rel="prev" href="../gpu_computing.html" title="GPU computing">
+<link rel="next" href="hip.html" title="ROCm/HIP">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../gpu_computing.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../gpu_computing.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="hip.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="fiber.gpu_computing.cuda"></a><a name="cuda"></a><a class="link" href="cuda.html" title="CUDA">CUDA</a>
+</h3></div></div></div>
+<p>
+        <a href="http://developer.nvidia.com/cuda-zone/" target="_top">CUDA (Compute Unified
+        Device Architecture)</a> is a platform for parallel computing on NVIDIA
+        GPUs. The application programming interface of CUDA gives access to GPU's
+        instruction set and computation resources (Execution of compute kernels).
+      </p>
+<h5>
+<a name="fiber.gpu_computing.cuda.h0"></a>
+        <span class="phrase"><a name="fiber.gpu_computing.cuda.synchronization_with_cuda_streams"></a></span><a class="link" href="cuda.html#fiber.gpu_computing.cuda.synchronization_with_cuda_streams">Synchronization
+        with CUDA streams</a>
+      </h5>
+<p>
+        CUDA operation such as compute kernels or memory transfer (between host and
+        device) can be grouped/queued by CUDA streams. are executed on the GPUs.
+        Boost.Fiber enables a fiber to sleep (suspend) till a CUDA stream has completed
+        its operations. This enables applications to run other fibers on the CPU
+        without the need to spawn an additional OS-threads. And resume the fiber
+        when the CUDA streams has finished.
+      </p>
+<pre class="programlisting"><span class="identifier">__global__</span>
+<span class="keyword">void</span> <span class="identifier">kernel</span><span class="special">(</span> <span class="keyword">int</span> <span class="identifier">size</span><span class="special">,</span> <span class="keyword">int</span> <span class="special">*</span> <span class="identifier">a</span><span class="special">,</span> <span class="keyword">int</span> <span class="special">*</span> <span class="identifier">b</span><span class="special">,</span> <span class="keyword">int</span> <span class="special">*</span> <span class="identifier">c</span><span class="special">)</span> <span class="special">{</span>
+    <span class="keyword">int</span> <span class="identifier">idx</span> <span class="special">=</span> <span class="identifier">threadIdx</span><span class="special">.</span><span class="identifier">x</span> <span class="special">+</span> <span class="identifier">blockIdx</span><span class="special">.</span><span class="identifier">x</span> <span class="special">*</span> <span class="identifier">blockDim</span><span class="special">.</span><span class="identifier">x</span><span class="special">;</span>
+    <span class="keyword">if</span> <span class="special">(</span> <span class="identifier">idx</span> <span class="special">&lt;</span> <span class="identifier">size</span><span class="special">)</span> <span class="special">{</span>
+        <span class="keyword">int</span> <span class="identifier">idx1</span> <span class="special">=</span> <span class="special">(</span><span class="identifier">idx</span> <span class="special">+</span> <span class="number">1</span><span class="special">)</span> <span class="special">%</span> <span class="number">256</span><span class="special">;</span>
+        <span class="keyword">int</span> <span class="identifier">idx2</span> <span class="special">=</span> <span class="special">(</span><span class="identifier">idx</span> <span class="special">+</span> <span class="number">2</span><span class="special">)</span> <span class="special">%</span> <span class="number">256</span><span class="special">;</span>
+        <span class="keyword">float</span> <span class="identifier">as</span> <span class="special">=</span> <span class="special">(</span><span class="identifier">a</span><span class="special">[</span><span class="identifier">idx</span><span class="special">]</span> <span class="special">+</span> <span class="identifier">a</span><span class="special">[</span><span class="identifier">idx1</span><span class="special">]</span> <span class="special">+</span> <span class="identifier">a</span><span class="special">[</span><span class="identifier">idx2</span><span class="special">])</span> <span class="special">/</span> <span class="number">3.0f</span><span class="special">;</span>
+        <span class="keyword">float</span> <span class="identifier">bs</span> <span class="special">=</span> <span class="special">(</span><span class="identifier">b</span><span class="special">[</span><span class="identifier">idx</span><span class="special">]</span> <span class="special">+</span> <span class="identifier">b</span><span class="special">[</span><span class="identifier">idx1</span><span class="special">]</span> <span class="special">+</span> <span class="identifier">b</span><span class="special">[</span><span class="identifier">idx2</span><span class="special">])</span> <span class="special">/</span> <span class="number">3.0f</span><span class="special">;</span>
+        <span class="identifier">c</span><span class="special">[</span><span class="identifier">idx</span><span class="special">]</span> <span class="special">=</span> <span class="special">(</span><span class="identifier">as</span> <span class="special">+</span> <span class="identifier">bs</span><span class="special">)</span> <span class="special">/</span> <span class="number">2</span><span class="special">;</span>
+    <span class="special">}</span>
+<span class="special">}</span>
+
+<span class="identifier">boost</span><span class="special">::</span><span class="identifier">fibers</span><span class="special">::</span><span class="identifier">fiber</span> <span class="identifier">f</span><span class="special">([&amp;</span><span class="identifier">done</span><span class="special">]{</span>
+    <span class="identifier">cudaStream_t</span> <span class="identifier">stream</span><span class="special">;</span>
+    <span class="identifier">cudaStreamCreate</span><span class="special">(</span> <span class="special">&amp;</span> <span class="identifier">stream</span><span class="special">);</span>
+    <span class="keyword">int</span> <span class="identifier">size</span> <span class="special">=</span> <span class="number">1024</span> <span class="special">*</span> <span class="number">1024</span><span class="special">;</span>
+    <span class="keyword">int</span> <span class="identifier">full_size</span> <span class="special">=</span> <span class="number">20</span> <span class="special">*</span> <span class="identifier">size</span><span class="special">;</span>
+    <span class="keyword">int</span> <span class="special">*</span> <span class="identifier">host_a</span><span class="special">,</span> <span class="special">*</span> <span class="identifier">host_b</span><span class="special">,</span> <span class="special">*</span> <span class="identifier">host_c</span><span class="special">;</span>
+    <span class="identifier">cudaHostAlloc</span><span class="special">(</span> <span class="special">&amp;</span> <span class="identifier">host_a</span><span class="special">,</span> <span class="identifier">full_size</span> <span class="special">*</span> <span class="keyword">sizeof</span><span class="special">(</span> <span class="keyword">int</span><span class="special">),</span> <span class="identifier">cudaHostAllocDefault</span><span class="special">);</span>
+    <span class="identifier">cudaHostAlloc</span><span class="special">(</span> <span class="special">&amp;</span> <span class="identifier">host_b</span><span class="special">,</span> <span class="identifier">full_size</span> <span class="special">*</span> <span class="keyword">sizeof</span><span class="special">(</span> <span class="keyword">int</span><span class="special">),</span> <span class="identifier">cudaHostAllocDefault</span><span class="special">);</span>
+    <span class="identifier">cudaHostAlloc</span><span class="special">(</span> <span class="special">&amp;</span> <span class="identifier">host_c</span><span class="special">,</span> <span class="identifier">full_size</span> <span class="special">*</span> <span class="keyword">sizeof</span><span class="special">(</span> <span class="keyword">int</span><span class="special">),</span> <span class="identifier">cudaHostAllocDefault</span><span class="special">);</span>
+    <span class="keyword">int</span> <span class="special">*</span> <span class="identifier">dev_a</span><span class="special">,</span> <span class="special">*</span> <span class="identifier">dev_b</span><span class="special">,</span> <span class="special">*</span> <span class="identifier">dev_c</span><span class="special">;</span>
+    <span class="identifier">cudaMalloc</span><span class="special">(</span> <span class="special">&amp;</span> <span class="identifier">dev_a</span><span class="special">,</span> <span class="identifier">size</span> <span class="special">*</span> <span class="keyword">sizeof</span><span class="special">(</span> <span class="keyword">int</span><span class="special">)</span> <span class="special">);</span>
+    <span class="identifier">cudaMalloc</span><span class="special">(</span> <span class="special">&amp;</span> <span class="identifier">dev_b</span><span class="special">,</span> <span class="identifier">size</span> <span class="special">*</span> <span class="keyword">sizeof</span><span class="special">(</span> <span class="keyword">int</span><span class="special">)</span> <span class="special">);</span>
+    <span class="identifier">cudaMalloc</span><span class="special">(</span> <span class="special">&amp;</span> <span class="identifier">dev_c</span><span class="special">,</span> <span class="identifier">size</span> <span class="special">*</span> <span class="keyword">sizeof</span><span class="special">(</span> <span class="keyword">int</span><span class="special">)</span> <span class="special">);</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">minstd_rand</span> <span class="identifier">generator</span><span class="special">;</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">uniform_int_distribution</span><span class="special">&lt;&gt;</span> <span class="identifier">distribution</span><span class="special">(</span><span class="number">1</span><span class="special">,</span> <span class="number">6</span><span class="special">);</span>
+    <span class="keyword">for</span> <span class="special">(</span> <span class="keyword">int</span> <span class="identifier">i</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span> <span class="identifier">i</span> <span class="special">&lt;</span> <span class="identifier">full_size</span><span class="special">;</span> <span class="special">++</span><span class="identifier">i</span><span class="special">)</span> <span class="special">{</span>
+        <span class="identifier">host_a</span><span class="special">[</span><span class="identifier">i</span><span class="special">]</span> <span class="special">=</span> <span class="identifier">distribution</span><span class="special">(</span> <span class="identifier">generator</span><span class="special">);</span>
+        <span class="identifier">host_b</span><span class="special">[</span><span class="identifier">i</span><span class="special">]</span> <span class="special">=</span> <span class="identifier">distribution</span><span class="special">(</span> <span class="identifier">generator</span><span class="special">);</span>
+    <span class="special">}</span>
+    <span class="keyword">for</span> <span class="special">(</span> <span class="keyword">int</span> <span class="identifier">i</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span> <span class="identifier">i</span> <span class="special">&lt;</span> <span class="identifier">full_size</span><span class="special">;</span> <span class="identifier">i</span> <span class="special">+=</span> <span class="identifier">size</span><span class="special">)</span> <span class="special">{</span>
+        <span class="identifier">cudaMemcpyAsync</span><span class="special">(</span> <span class="identifier">dev_a</span><span class="special">,</span> <span class="identifier">host_a</span> <span class="special">+</span> <span class="identifier">i</span><span class="special">,</span> <span class="identifier">size</span> <span class="special">*</span> <span class="keyword">sizeof</span><span class="special">(</span> <span class="keyword">int</span><span class="special">),</span> <span class="identifier">cudaMemcpyHostToDevice</span><span class="special">,</span> <span class="identifier">stream</span><span class="special">);</span>
+        <span class="identifier">cudaMemcpyAsync</span><span class="special">(</span> <span class="identifier">dev_b</span><span class="special">,</span> <span class="identifier">host_b</span> <span class="special">+</span> <span class="identifier">i</span><span class="special">,</span> <span class="identifier">size</span> <span class="special">*</span> <span class="keyword">sizeof</span><span class="special">(</span> <span class="keyword">int</span><span class="special">),</span> <span class="identifier">cudaMemcpyHostToDevice</span><span class="special">,</span> <span class="identifier">stream</span><span class="special">);</span>
+        <span class="identifier">kernel</span><span class="special">&lt;&lt;&lt;</span> <span class="identifier">size</span> <span class="special">/</span> <span class="number">256</span><span class="special">,</span> <span class="number">256</span><span class="special">,</span> <span class="number">0</span><span class="special">,</span> <span class="identifier">stream</span> <span class="special">&gt;&gt;&gt;(</span> <span class="identifier">size</span><span class="special">,</span> <span class="identifier">dev_a</span><span class="special">,</span> <span class="identifier">dev_b</span><span class="special">,</span> <span class="identifier">dev_c</span><span class="special">);</span>
+        <span class="identifier">cudaMemcpyAsync</span><span class="special">(</span> <span class="identifier">host_c</span> <span class="special">+</span> <span class="identifier">i</span><span class="special">,</span> <span class="identifier">dev_c</span><span class="special">,</span> <span class="identifier">size</span> <span class="special">*</span> <span class="keyword">sizeof</span><span class="special">(</span> <span class="keyword">int</span><span class="special">),</span> <span class="identifier">cudaMemcpyDeviceToHost</span><span class="special">,</span> <span class="identifier">stream</span><span class="special">);</span>
+    <span class="special">}</span>
+    <span class="keyword">auto</span> <span class="identifier">result</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">fibers</span><span class="special">::</span><span class="identifier">cuda</span><span class="special">::</span><span class="identifier">waitfor_all</span><span class="special">(</span> <span class="identifier">stream</span><span class="special">);</span> <span class="comment">// suspend fiber till CUDA stream has finished</span>
+    <span class="identifier">BOOST_ASSERT</span><span class="special">(</span> <span class="identifier">stream</span> <span class="special">==</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">get</span><span class="special">&lt;</span> <span class="number">0</span> <span class="special">&gt;(</span> <span class="identifier">result</span><span class="special">)</span> <span class="special">);</span>
+    <span class="identifier">BOOST_ASSERT</span><span class="special">(</span> <span class="identifier">cudaSuccess</span> <span class="special">==</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">get</span><span class="special">&lt;</span> <span class="number">1</span> <span class="special">&gt;(</span> <span class="identifier">result</span><span class="special">)</span> <span class="special">);</span>
+    <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"f1: GPU computation finished"</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+    <span class="identifier">cudaFreeHost</span><span class="special">(</span> <span class="identifier">host_a</span><span class="special">);</span>
+    <span class="identifier">cudaFreeHost</span><span class="special">(</span> <span class="identifier">host_b</span><span class="special">);</span>
+    <span class="identifier">cudaFreeHost</span><span class="special">(</span> <span class="identifier">host_c</span><span class="special">);</span>
+    <span class="identifier">cudaFree</span><span class="special">(</span> <span class="identifier">dev_a</span><span class="special">);</span>
+    <span class="identifier">cudaFree</span><span class="special">(</span> <span class="identifier">dev_b</span><span class="special">);</span>
+    <span class="identifier">cudaFree</span><span class="special">(</span> <span class="identifier">dev_c</span><span class="special">);</span>
+    <span class="identifier">cudaStreamDestroy</span><span class="special">(</span> <span class="identifier">stream</span><span class="special">);</span>
+<span class="special">});</span>
+<span class="identifier">f</span><span class="special">.</span><span class="identifier">join</span><span class="special">();</span>
+</pre>
+<h5>
+<a name="fiber.gpu_computing.cuda.h1"></a>
+        <span class="phrase"><a name="fiber.gpu_computing.cuda.synopsis"></a></span><a class="link" href="cuda.html#fiber.gpu_computing.cuda.synopsis">Synopsis</a>
+      </h5>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">fiber</span><span class="special">/</span><span class="identifier">cuda</span><span class="special">/</span><span class="identifier">waitfor</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span>
+<span class="keyword">namespace</span> <span class="identifier">fibers</span> <span class="special">{</span>
+<span class="keyword">namespace</span> <span class="identifier">cuda</span> <span class="special">{</span>
+
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">tuple</span><span class="special">&lt;</span> <span class="identifier">cudaStream_t</span><span class="special">,</span> <span class="identifier">cudaError_t</span> <span class="special">&gt;</span> <span class="identifier">waitfor_all</span><span class="special">(</span> <span class="identifier">cudaStream_t</span> <span class="identifier">st</span><span class="special">);</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">tuple</span><span class="special">&lt;</span> <span class="identifier">cudaStream_t</span><span class="special">,</span> <span class="identifier">cudaError_t</span> <span class="special">&gt;</span> <span class="special">&gt;</span> <span class="identifier">waitfor_all</span><span class="special">(</span> <span class="identifier">cudaStream_t</span> <span class="special">...</span> <span class="identifier">st</span><span class="special">);</span>
+
+<span class="special">}}}</span>
+</pre>
+<p>
+        </p>
+<h5>
+<a name="cuda_waitfor_bridgehead"></a>
+  <span class="phrase"><a name="cuda_waitfor"></a></span>
+  <a class="link" href="cuda.html#cuda_waitfor">Non-member function <code class="computeroutput">cuda::waitfor()</code></a>
+</h5>
+<p>
+      </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">fiber</span><span class="special">/</span><span class="identifier">cuda</span><span class="special">/</span><span class="identifier">waitfor</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span>
+<span class="keyword">namespace</span> <span class="identifier">fibers</span> <span class="special">{</span>
+<span class="keyword">namespace</span> <span class="identifier">cuda</span> <span class="special">{</span>
+
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">tuple</span><span class="special">&lt;</span> <span class="identifier">cudaStream_t</span><span class="special">,</span> <span class="identifier">cudaError_t</span> <span class="special">&gt;</span> <span class="identifier">waitfor_all</span><span class="special">(</span> <span class="identifier">cudaStream_t</span> <span class="identifier">st</span><span class="special">);</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">tuple</span><span class="special">&lt;</span> <span class="identifier">cudaStream_t</span><span class="special">,</span> <span class="identifier">cudaError_t</span> <span class="special">&gt;</span> <span class="special">&gt;</span> <span class="identifier">waitfor_all</span><span class="special">(</span> <span class="identifier">cudaStream_t</span> <span class="special">...</span> <span class="identifier">st</span><span class="special">);</span>
+
+<span class="special">}}}</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+              Suspends active fiber till CUDA stream has finished its operations.
+            </p></dd>
+<dt><span class="term">Returns:</span></dt>
+<dd><p>
+              tuple of stream reference and the CUDA stream status
+            </p></dd>
+</dl>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2013 Oliver Kowalke<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../gpu_computing.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../gpu_computing.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="hip.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

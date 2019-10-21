@@ -1,0 +1,5263 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>CallableTraits</title>
+<link rel="stylesheet" href="../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="index.html" title="CallableTraits">
+<link rel="next" href="callable_traits/reference.html" title="Reference Documentation">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../boost.png"></td>
+<td align="center"><a href="../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav"><a accesskey="n" href="callable_traits/reference.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a></div>
+<div lang="en" class="article">
+<div class="titlepage">
+<div>
+<div><h2 class="title">
+<a name="callable_traits"></a>CallableTraits</h2></div>
+<div><div class="authorgroup"><div class="author"><h3 class="author">
+<span class="firstname">Barrett</span> <span class="surname">Adair</span>
+</h3></div></div></div>
+<div><p class="copyright">Copyright &#169; 2016-2018 Barrett Adair</p></div>
+<div><div class="legalnotice">
+<a name="callable_traits.legal"></a><p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE.md or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></div>
+</div>
+<hr>
+</div>
+<div class="toc">
+<p><b>Table of Contents</b></p>
+<dl class="toc">
+<dt><span class="section"><a href="index.html#callable_traits.introduction">Overview</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="index.html#callable_traits.introduction.motivation">Motivation</a></span></dt>
+<dt><span class="section"><a href="index.html#callable_traits.introduction.boost_function_types">Regarding
+      <code class="literal">Boost.FunctionTypes</code></a></span></dt>
+<dt><span class="section"><a href="index.html#callable_traits.introduction.compatibility">Compatibility</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="callable_traits/reference.html">Reference Documentation</a></span></dt>
+<dd><dl>
+<dt><span class="section"><a href="callable_traits/reference.html#callable_traits.reference.ref_add_member_const">add_member_const</a></span></dt>
+<dt><span class="section"><a href="callable_traits/reference.html#callable_traits.reference.ref_add_member_cv">add_member_cv</a></span></dt>
+<dt><span class="section"><a href="callable_traits/reference.html#callable_traits.reference.ref_add_member_lvalue_reference">add_member_lvalue_reference</a></span></dt>
+<dt><span class="section"><a href="callable_traits/reference.html#callable_traits.reference.ref_add_member_rvalue_reference">add_member_rvalue_reference</a></span></dt>
+<dt><span class="section"><a href="callable_traits/reference.html#callable_traits.reference.ref_add_member_volatile">add_member_volatile</a></span></dt>
+<dt><span class="section"><a href="callable_traits/reference.html#callable_traits.reference.ref_add_noexcept">add_noexcept</a></span></dt>
+<dt><span class="section"><a href="callable_traits/reference.html#callable_traits.reference.ref_add_transaction_safe">add_transaction_safe</a></span></dt>
+<dt><span class="section"><a href="callable_traits/reference.html#callable_traits.reference.ref_add_varargs">add_varargs</a></span></dt>
+<dt><span class="section"><a href="callable_traits/reference.html#callable_traits.reference.ref_apply_member_pointer">apply_member_pointer</a></span></dt>
+<dt><span class="section"><a href="callable_traits/reference.html#callable_traits.reference.ref_apply_return">apply_return</a></span></dt>
+<dt><span class="section"><a href="callable_traits/reference.html#callable_traits.reference.ref_args">args</a></span></dt>
+<dt><span class="section"><a href="callable_traits/reference.html#callable_traits.reference.ref_class_of">class_of</a></span></dt>
+<dt><span class="section"><a href="callable_traits/reference.html#callable_traits.reference.ref_function_type">function_type</a></span></dt>
+<dt><span class="section"><a href="callable_traits/reference.html#callable_traits.reference.ref_has_member_qualifiers">has_member_qualifiers</a></span></dt>
+<dt><span class="section"><a href="callable_traits/reference.html#callable_traits.reference.ref_has_varargs">has_varargs</a></span></dt>
+<dt><span class="section"><a href="callable_traits/reference.html#callable_traits.reference.ref_has_void_return">has_void_return</a></span></dt>
+<dt><span class="section"><a href="callable_traits/reference.html#callable_traits.reference.ref_is_const_member">is_const_member</a></span></dt>
+<dt><span class="section"><a href="callable_traits/reference.html#callable_traits.reference.ref_is_cv_member">is_cv_member</a></span></dt>
+<dt><span class="section"><a href="callable_traits/reference.html#callable_traits.reference.ref_is_invocable">is_invocable</a></span></dt>
+<dt><span class="section"><a href="callable_traits/reference.html#callable_traits.reference.ref_is_lvalue_reference_member">is_lvalue_reference_member</a></span></dt>
+<dt><span class="section"><a href="callable_traits/reference.html#callable_traits.reference.ref_is_reference_member">is_reference_member</a></span></dt>
+<dt><span class="section"><a href="callable_traits/reference.html#callable_traits.reference.ref_is_rvalue_reference_member">is_rvalue_reference_member</a></span></dt>
+<dt><span class="section"><a href="callable_traits/reference.html#callable_traits.reference.ref_is_noexcept">is_noexcept</a></span></dt>
+<dt><span class="section"><a href="callable_traits/reference.html#callable_traits.reference.ref_is_transaction_safe">is_transaction_safe</a></span></dt>
+<dt><span class="section"><a href="callable_traits/reference.html#callable_traits.reference.ref_is_volatile_member">is_volatile_member</a></span></dt>
+<dt><span class="section"><a href="callable_traits/reference.html#callable_traits.reference.ref_qualified_class_of">qualified_class_of</a></span></dt>
+<dt><span class="section"><a href="callable_traits/reference.html#callable_traits.reference.ref_remove_member_const">remove_member_const</a></span></dt>
+<dt><span class="section"><a href="callable_traits/reference.html#callable_traits.reference.ref_remove_member_cv">remove_member_cv</a></span></dt>
+<dt><span class="section"><a href="callable_traits/reference.html#callable_traits.reference.ref_remove_member_reference">remove_member_reference</a></span></dt>
+<dt><span class="section"><a href="callable_traits/reference.html#callable_traits.reference.ref_remove_member_volatile">remove_member_volatile</a></span></dt>
+<dt><span class="section"><a href="callable_traits/reference.html#callable_traits.reference.ref_remove_noexcept">remove_noexcept</a></span></dt>
+<dt><span class="section"><a href="callable_traits/reference.html#callable_traits.reference.ref_remove_transaction_safe">remove_transaction_safe</a></span></dt>
+<dt><span class="section"><a href="callable_traits/reference.html#callable_traits.reference.ref_remove_varargs">remove_varargs</a></span></dt>
+<dt><span class="section"><a href="callable_traits/reference.html#callable_traits.reference.ref_return_type">return_type</a></span></dt>
+</dl></dd>
+<dt><span class="section"><a href="callable_traits/faq.html">FAQ</a></span></dt>
+<dt><span class="section"><a href="callable_traits/building.html">Building the test suite</a></span></dt>
+<dt><span class="section"><a href="callable_traits/contact.html">Contact</a></span></dt>
+<dt><span class="section"><a href="callable_traits/acknowledgements.html">Acknowledgements</a></span></dt>
+</dl>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="callable_traits.introduction"></a><a class="link" href="index.html#callable_traits.introduction" title="Overview">Overview</a>
+</h2></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="index.html#callable_traits.introduction.motivation">Motivation</a></span></dt>
+<dt><span class="section"><a href="index.html#callable_traits.introduction.boost_function_types">Regarding
+      <code class="literal">Boost.FunctionTypes</code></a></span></dt>
+<dt><span class="section"><a href="index.html#callable_traits.introduction.compatibility">Compatibility</a></span></dt>
+</dl></div>
+<p>
+      <code class="literal">Boost.CallableTraits</code> is a C++11 header-only library for
+      the inspection, synthesis, and decomposition of callable types. <code class="literal">Boost.CallableTraits</code>
+      aims to be the "complete type manipulation facility for function types"
+      mentioned in the final paragraph of C++17 proposal <a href="http://www.open-std.org/JTC1/SC22/WG21/docs/papers/2015/p0172r0.html" target="_top">p0172</a>,
+      and removes the need for template specializations for different function signatures.
+      C++17 <code class="computeroutput"><span class="keyword">noexcept</span></code> and the Transactional
+      Memory TS are also supported if available.
+    </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">type_traits</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">tuple</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">callable_traits</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="keyword">namespace</span> <span class="identifier">ct</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">callable_traits</span><span class="special">;</span>
+
+<span class="comment">// This function template helps keep our example code neat</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">A</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">B</span><span class="special">&gt;</span>
+<span class="keyword">void</span> <span class="identifier">assert_same</span><span class="special">(){</span> <span class="keyword">static_assert</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">is_same</span><span class="special">&lt;</span><span class="identifier">A</span><span class="special">,</span> <span class="identifier">B</span><span class="special">&gt;::</span><span class="identifier">value</span><span class="special">,</span> <span class="string">""</span><span class="special">);</span> <span class="special">}</span>
+
+<span class="comment">// foo is a function object</span>
+<span class="keyword">struct</span> <span class="identifier">foo</span> <span class="special">{</span>
+    <span class="keyword">void</span> <span class="keyword">operator</span><span class="special">()(</span><span class="keyword">int</span><span class="special">,</span> <span class="keyword">char</span><span class="special">,</span> <span class="keyword">float</span><span class="special">)</span> <span class="keyword">const</span> <span class="special">{}</span>
+<span class="special">};</span>
+
+<span class="keyword">int</span> <span class="identifier">main</span><span class="special">()</span> <span class="special">{</span>
+
+    <span class="comment">// Use args_t to retrieve a parameter list as a std::tuple:</span>
+    <span class="identifier">assert_same</span><span class="special">&lt;</span>
+        <span class="identifier">ct</span><span class="special">::</span><span class="identifier">args_t</span><span class="special">&lt;</span><span class="identifier">foo</span><span class="special">&gt;,</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">tuple</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">,</span> <span class="keyword">char</span><span class="special">,</span> <span class="keyword">float</span><span class="special">&gt;</span>
+    <span class="special">&gt;();</span>
+
+    <span class="comment">// has_void_return lets us perform a quick check for a void return type</span>
+    <span class="keyword">static_assert</span><span class="special">(</span><span class="identifier">ct</span><span class="special">::</span><span class="identifier">has_void_return</span><span class="special">&lt;</span><span class="identifier">foo</span><span class="special">&gt;::</span><span class="identifier">value</span><span class="special">,</span> <span class="string">""</span><span class="special">);</span>
+
+    <span class="comment">// Detect C-style variadics (ellipses) in a signature (e.g. printf)</span>
+    <span class="keyword">static_assert</span><span class="special">(!</span><span class="identifier">ct</span><span class="special">::</span><span class="identifier">has_varargs</span><span class="special">&lt;</span><span class="identifier">foo</span><span class="special">&gt;::</span><span class="identifier">value</span><span class="special">,</span> <span class="string">""</span><span class="special">);</span>
+
+    <span class="comment">// pmf is a pointer-to-member function: void (foo::*)(int, char, float) const</span>
+    <span class="keyword">using</span> <span class="identifier">pmf</span> <span class="special">=</span> <span class="keyword">decltype</span><span class="special">(&amp;</span><span class="identifier">foo</span><span class="special">::</span><span class="keyword">operator</span><span class="special">());</span>
+
+    <span class="comment">// remove_member_const_t lets you remove the const member qualifier</span>
+    <span class="identifier">assert_same</span><span class="special">&lt;</span>
+        <span class="identifier">ct</span><span class="special">::</span><span class="identifier">remove_member_const_t</span><span class="special">&lt;</span><span class="identifier">pmf</span><span class="special">&gt;,</span>
+        <span class="keyword">void</span> <span class="special">(</span><span class="identifier">foo</span><span class="special">::*)(</span><span class="keyword">int</span><span class="special">,</span> <span class="keyword">char</span><span class="special">,</span> <span class="keyword">float</span><span class="special">)</span> <span class="comment">/*no const!*/</span>
+    <span class="special">&gt;();</span>
+
+    <span class="comment">// Conversely, add_member_const_t adds a const member qualifier</span>
+    <span class="identifier">assert_same</span><span class="special">&lt;</span>
+        <span class="identifier">pmf</span><span class="special">,</span>
+        <span class="identifier">ct</span><span class="special">::</span><span class="identifier">add_member_const_t</span><span class="special">&lt;</span><span class="keyword">void</span> <span class="special">(</span><span class="identifier">foo</span><span class="special">::*)(</span><span class="keyword">int</span><span class="special">,</span> <span class="keyword">char</span><span class="special">,</span> <span class="keyword">float</span><span class="special">)&gt;</span>
+    <span class="special">&gt;();</span>
+
+    <span class="comment">// is_const_member_v checks for the presence of member const</span>
+    <span class="keyword">static_assert</span><span class="special">(</span><span class="identifier">ct</span><span class="special">::</span><span class="identifier">is_const_member</span><span class="special">&lt;</span><span class="identifier">pmf</span><span class="special">&gt;::</span><span class="identifier">value</span><span class="special">,</span> <span class="string">""</span><span class="special">);</span>
+<span class="special">}</span>
+</pre>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="callable_traits.introduction.motivation"></a><a class="link" href="index.html#callable_traits.introduction.motivation" title="Motivation">Motivation</a>
+</h3></div></div></div>
+<div class="blockquote"><blockquote class="blockquote">
+<p>
+          <span class="bold"><strong><span class="emphasis"><em><span class="quote">&#8220;<span class="quote">Don't try to write helper code to
+          detect PMFs/PMDs and dispatch on them -- it is an <span class="underline">absolute
+          nightmare</span>. PMF types are the worst types by far in the core
+          language.</span>&#8221;</span></em></span></strong></span>
+        </p>
+<p>
+          -- Stephan T. Lavavej, CppCon 2015, <a href="https://www.youtube.com/watch?v=zt7ThwVfap0&amp;t=11m40s" target="_top">"functional:
+          What's New, And Proper Usage"</a>
+        </p>
+</blockquote></div>
+<p>
+        Consider for a moment the code below, which defines all 48 template specializations
+        necessary to specialize for every valid function type in pure C++17:
+      </p>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">T</span><span class="special">&gt;</span> <span class="keyword">struct</span> <span class="identifier">foo</span><span class="special">;</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Return</span><span class="special">,</span> <span class="keyword">class</span><span class="special">...</span> <span class="identifier">Args</span><span class="special">&gt;</span> <span class="keyword">struct</span> <span class="identifier">foo</span><span class="special">&lt;</span><span class="identifier">Return</span><span class="special">(</span><span class="identifier">Args</span><span class="special">...)&gt;</span> <span class="special">{};</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Return</span><span class="special">,</span> <span class="keyword">class</span><span class="special">...</span> <span class="identifier">Args</span><span class="special">&gt;</span> <span class="keyword">struct</span> <span class="identifier">foo</span><span class="special">&lt;</span><span class="identifier">Return</span><span class="special">(</span><span class="identifier">Args</span><span class="special">...)</span> <span class="special">&amp;&gt;</span> <span class="special">{};</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Return</span><span class="special">,</span> <span class="keyword">class</span><span class="special">...</span> <span class="identifier">Args</span><span class="special">&gt;</span> <span class="keyword">struct</span> <span class="identifier">foo</span><span class="special">&lt;</span><span class="identifier">Return</span><span class="special">(</span><span class="identifier">Args</span><span class="special">...)</span> <span class="special">&amp;&amp;&gt;</span> <span class="special">{};</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Return</span><span class="special">,</span> <span class="keyword">class</span><span class="special">...</span> <span class="identifier">Args</span><span class="special">&gt;</span> <span class="keyword">struct</span> <span class="identifier">foo</span><span class="special">&lt;</span><span class="identifier">Return</span><span class="special">(</span><span class="identifier">Args</span><span class="special">...)</span> <span class="keyword">const</span><span class="special">&gt;</span> <span class="special">{};</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Return</span><span class="special">,</span> <span class="keyword">class</span><span class="special">...</span> <span class="identifier">Args</span><span class="special">&gt;</span> <span class="keyword">struct</span> <span class="identifier">foo</span><span class="special">&lt;</span><span class="identifier">Return</span><span class="special">(</span><span class="identifier">Args</span><span class="special">...)</span> <span class="keyword">const</span> <span class="special">&amp;&gt;</span> <span class="special">{};</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Return</span><span class="special">,</span> <span class="keyword">class</span><span class="special">...</span> <span class="identifier">Args</span><span class="special">&gt;</span> <span class="keyword">struct</span> <span class="identifier">foo</span><span class="special">&lt;</span><span class="identifier">Return</span><span class="special">(</span><span class="identifier">Args</span><span class="special">...)</span> <span class="keyword">const</span> <span class="special">&amp;&amp;&gt;</span> <span class="special">{};</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Return</span><span class="special">,</span> <span class="keyword">class</span><span class="special">...</span> <span class="identifier">Args</span><span class="special">&gt;</span> <span class="keyword">struct</span> <span class="identifier">foo</span><span class="special">&lt;</span><span class="identifier">Return</span><span class="special">(</span><span class="identifier">Args</span><span class="special">...)</span> <span class="keyword">volatile</span><span class="special">&gt;</span> <span class="special">{};</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Return</span><span class="special">,</span> <span class="keyword">class</span><span class="special">...</span> <span class="identifier">Args</span><span class="special">&gt;</span> <span class="keyword">struct</span> <span class="identifier">foo</span><span class="special">&lt;</span><span class="identifier">Return</span><span class="special">(</span><span class="identifier">Args</span><span class="special">...)</span> <span class="keyword">volatile</span> <span class="special">&amp;&gt;</span> <span class="special">{};</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Return</span><span class="special">,</span> <span class="keyword">class</span><span class="special">...</span> <span class="identifier">Args</span><span class="special">&gt;</span> <span class="keyword">struct</span> <span class="identifier">foo</span><span class="special">&lt;</span><span class="identifier">Return</span><span class="special">(</span><span class="identifier">Args</span><span class="special">...)</span> <span class="keyword">volatile</span> <span class="special">&amp;&amp;&gt;</span> <span class="special">{};</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Return</span><span class="special">,</span> <span class="keyword">class</span><span class="special">...</span> <span class="identifier">Args</span><span class="special">&gt;</span> <span class="keyword">struct</span> <span class="identifier">foo</span><span class="special">&lt;</span><span class="identifier">Return</span><span class="special">(</span><span class="identifier">Args</span><span class="special">...)</span> <span class="keyword">const</span> <span class="keyword">volatile</span><span class="special">&gt;</span> <span class="special">{};</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Return</span><span class="special">,</span> <span class="keyword">class</span><span class="special">...</span> <span class="identifier">Args</span><span class="special">&gt;</span> <span class="keyword">struct</span> <span class="identifier">foo</span><span class="special">&lt;</span><span class="identifier">Return</span><span class="special">(</span><span class="identifier">Args</span><span class="special">...)</span> <span class="keyword">const</span> <span class="keyword">volatile</span> <span class="special">&amp;&gt;</span> <span class="special">{};</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Return</span><span class="special">,</span> <span class="keyword">class</span><span class="special">...</span> <span class="identifier">Args</span><span class="special">&gt;</span> <span class="keyword">struct</span> <span class="identifier">foo</span><span class="special">&lt;</span><span class="identifier">Return</span><span class="special">(</span><span class="identifier">Args</span><span class="special">...)</span> <span class="keyword">const</span> <span class="keyword">volatile</span> <span class="special">&amp;&amp;&gt;</span> <span class="special">{};</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Return</span><span class="special">,</span> <span class="keyword">class</span><span class="special">...</span> <span class="identifier">Args</span><span class="special">&gt;</span> <span class="keyword">struct</span> <span class="identifier">foo</span><span class="special">&lt;</span><span class="identifier">Return</span><span class="special">(</span><span class="identifier">Args</span><span class="special">...,</span> <span class="special">...)&gt;</span> <span class="special">{};</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Return</span><span class="special">,</span> <span class="keyword">class</span><span class="special">...</span> <span class="identifier">Args</span><span class="special">&gt;</span> <span class="keyword">struct</span> <span class="identifier">foo</span><span class="special">&lt;</span><span class="identifier">Return</span><span class="special">(</span><span class="identifier">Args</span><span class="special">...,</span> <span class="special">...)</span> <span class="special">&amp;&gt;</span> <span class="special">{};</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Return</span><span class="special">,</span> <span class="keyword">class</span><span class="special">...</span> <span class="identifier">Args</span><span class="special">&gt;</span> <span class="keyword">struct</span> <span class="identifier">foo</span><span class="special">&lt;</span><span class="identifier">Return</span><span class="special">(</span><span class="identifier">Args</span><span class="special">...,</span> <span class="special">...)</span> <span class="special">&amp;&amp;&gt;</span> <span class="special">{};</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Return</span><span class="special">,</span> <span class="keyword">class</span><span class="special">...</span> <span class="identifier">Args</span><span class="special">&gt;</span> <span class="keyword">struct</span> <span class="identifier">foo</span><span class="special">&lt;</span><span class="identifier">Return</span><span class="special">(</span><span class="identifier">Args</span><span class="special">...,</span> <span class="special">...)</span> <span class="keyword">const</span><span class="special">&gt;</span> <span class="special">{};</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Return</span><span class="special">,</span> <span class="keyword">class</span><span class="special">...</span> <span class="identifier">Args</span><span class="special">&gt;</span> <span class="keyword">struct</span> <span class="identifier">foo</span><span class="special">&lt;</span><span class="identifier">Return</span><span class="special">(</span><span class="identifier">Args</span><span class="special">...,</span> <span class="special">...)</span> <span class="keyword">const</span> <span class="special">&amp;&gt;</span> <span class="special">{};</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Return</span><span class="special">,</span> <span class="keyword">class</span><span class="special">...</span> <span class="identifier">Args</span><span class="special">&gt;</span> <span class="keyword">struct</span> <span class="identifier">foo</span><span class="special">&lt;</span><span class="identifier">Return</span><span class="special">(</span><span class="identifier">Args</span><span class="special">...,</span> <span class="special">...)</span> <span class="keyword">const</span> <span class="special">&amp;&amp;&gt;</span> <span class="special">{};</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Return</span><span class="special">,</span> <span class="keyword">class</span><span class="special">...</span> <span class="identifier">Args</span><span class="special">&gt;</span> <span class="keyword">struct</span> <span class="identifier">foo</span><span class="special">&lt;</span><span class="identifier">Return</span><span class="special">(</span><span class="identifier">Args</span><span class="special">...,</span> <span class="special">...)</span> <span class="keyword">volatile</span><span class="special">&gt;</span> <span class="special">{};</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Return</span><span class="special">,</span> <span class="keyword">class</span><span class="special">...</span> <span class="identifier">Args</span><span class="special">&gt;</span> <span class="keyword">struct</span> <span class="identifier">foo</span><span class="special">&lt;</span><span class="identifier">Return</span><span class="special">(</span><span class="identifier">Args</span><span class="special">...,</span> <span class="special">...)</span> <span class="keyword">volatile</span> <span class="special">&amp;&gt;</span> <span class="special">{};</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Return</span><span class="special">,</span> <span class="keyword">class</span><span class="special">...</span> <span class="identifier">Args</span><span class="special">&gt;</span> <span class="keyword">struct</span> <span class="identifier">foo</span><span class="special">&lt;</span><span class="identifier">Return</span><span class="special">(</span><span class="identifier">Args</span><span class="special">...,</span> <span class="special">...)</span> <span class="keyword">volatile</span> <span class="special">&amp;&amp;&gt;</span> <span class="special">{};</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Return</span><span class="special">,</span> <span class="keyword">class</span><span class="special">...</span> <span class="identifier">Args</span><span class="special">&gt;</span> <span class="keyword">struct</span> <span class="identifier">foo</span><span class="special">&lt;</span><span class="identifier">Return</span><span class="special">(</span><span class="identifier">Args</span><span class="special">...,</span> <span class="special">...)</span> <span class="keyword">const</span> <span class="keyword">volatile</span><span class="special">&gt;</span> <span class="special">{};</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Return</span><span class="special">,</span> <span class="keyword">class</span><span class="special">...</span> <span class="identifier">Args</span><span class="special">&gt;</span> <span class="keyword">struct</span> <span class="identifier">foo</span><span class="special">&lt;</span><span class="identifier">Return</span><span class="special">(</span><span class="identifier">Args</span><span class="special">...,</span> <span class="special">...)</span> <span class="keyword">const</span> <span class="keyword">volatile</span> <span class="special">&amp;&gt;</span> <span class="special">{};</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Return</span><span class="special">,</span> <span class="keyword">class</span><span class="special">...</span> <span class="identifier">Args</span><span class="special">&gt;</span> <span class="keyword">struct</span> <span class="identifier">foo</span><span class="special">&lt;</span><span class="identifier">Return</span><span class="special">(</span><span class="identifier">Args</span><span class="special">...,</span> <span class="special">...)</span> <span class="keyword">const</span> <span class="keyword">volatile</span> <span class="special">&amp;&amp;&gt;</span> <span class="special">{};</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Return</span><span class="special">,</span> <span class="keyword">class</span><span class="special">...</span> <span class="identifier">Args</span><span class="special">&gt;</span> <span class="keyword">struct</span> <span class="identifier">foo</span><span class="special">&lt;</span><span class="identifier">Return</span><span class="special">(</span><span class="identifier">Args</span><span class="special">...)</span> <span class="keyword">noexcept</span><span class="special">&gt;</span> <span class="special">{};</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Return</span><span class="special">,</span> <span class="keyword">class</span><span class="special">...</span> <span class="identifier">Args</span><span class="special">&gt;</span> <span class="keyword">struct</span> <span class="identifier">foo</span><span class="special">&lt;</span><span class="identifier">Return</span><span class="special">(</span><span class="identifier">Args</span><span class="special">...)</span> <span class="special">&amp;</span> <span class="keyword">noexcept</span><span class="special">&gt;</span> <span class="special">{};</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Return</span><span class="special">,</span> <span class="keyword">class</span><span class="special">...</span> <span class="identifier">Args</span><span class="special">&gt;</span> <span class="keyword">struct</span> <span class="identifier">foo</span><span class="special">&lt;</span><span class="identifier">Return</span><span class="special">(</span><span class="identifier">Args</span><span class="special">...)</span> <span class="special">&amp;&amp;</span> <span class="keyword">noexcept</span><span class="special">&gt;</span> <span class="special">{};</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Return</span><span class="special">,</span> <span class="keyword">class</span><span class="special">...</span> <span class="identifier">Args</span><span class="special">&gt;</span> <span class="keyword">struct</span> <span class="identifier">foo</span><span class="special">&lt;</span><span class="identifier">Return</span><span class="special">(</span><span class="identifier">Args</span><span class="special">...)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">&gt;</span> <span class="special">{};</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Return</span><span class="special">,</span> <span class="keyword">class</span><span class="special">...</span> <span class="identifier">Args</span><span class="special">&gt;</span> <span class="keyword">struct</span> <span class="identifier">foo</span><span class="special">&lt;</span><span class="identifier">Return</span><span class="special">(</span><span class="identifier">Args</span><span class="special">...)</span> <span class="keyword">const</span> <span class="special">&amp;</span> <span class="keyword">noexcept</span><span class="special">&gt;</span> <span class="special">{};</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Return</span><span class="special">,</span> <span class="keyword">class</span><span class="special">...</span> <span class="identifier">Args</span><span class="special">&gt;</span> <span class="keyword">struct</span> <span class="identifier">foo</span><span class="special">&lt;</span><span class="identifier">Return</span><span class="special">(</span><span class="identifier">Args</span><span class="special">...)</span> <span class="keyword">const</span> <span class="special">&amp;&amp;</span> <span class="keyword">noexcept</span><span class="special">&gt;</span> <span class="special">{};</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Return</span><span class="special">,</span> <span class="keyword">class</span><span class="special">...</span> <span class="identifier">Args</span><span class="special">&gt;</span> <span class="keyword">struct</span> <span class="identifier">foo</span><span class="special">&lt;</span><span class="identifier">Return</span><span class="special">(</span><span class="identifier">Args</span><span class="special">...)</span> <span class="keyword">volatile</span> <span class="keyword">noexcept</span><span class="special">&gt;</span> <span class="special">{};</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Return</span><span class="special">,</span> <span class="keyword">class</span><span class="special">...</span> <span class="identifier">Args</span><span class="special">&gt;</span> <span class="keyword">struct</span> <span class="identifier">foo</span><span class="special">&lt;</span><span class="identifier">Return</span><span class="special">(</span><span class="identifier">Args</span><span class="special">...)</span> <span class="keyword">volatile</span> <span class="special">&amp;</span> <span class="keyword">noexcept</span><span class="special">&gt;</span> <span class="special">{};</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Return</span><span class="special">,</span> <span class="keyword">class</span><span class="special">...</span> <span class="identifier">Args</span><span class="special">&gt;</span> <span class="keyword">struct</span> <span class="identifier">foo</span><span class="special">&lt;</span><span class="identifier">Return</span><span class="special">(</span><span class="identifier">Args</span><span class="special">...)</span> <span class="keyword">volatile</span> <span class="special">&amp;&amp;</span> <span class="keyword">noexcept</span><span class="special">&gt;</span> <span class="special">{};</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Return</span><span class="special">,</span> <span class="keyword">class</span><span class="special">...</span> <span class="identifier">Args</span><span class="special">&gt;</span> <span class="keyword">struct</span> <span class="identifier">foo</span><span class="special">&lt;</span><span class="identifier">Return</span><span class="special">(</span><span class="identifier">Args</span><span class="special">...)</span> <span class="keyword">const</span> <span class="keyword">volatile</span> <span class="keyword">noexcept</span><span class="special">&gt;</span> <span class="special">{};</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Return</span><span class="special">,</span> <span class="keyword">class</span><span class="special">...</span> <span class="identifier">Args</span><span class="special">&gt;</span> <span class="keyword">struct</span> <span class="identifier">foo</span><span class="special">&lt;</span><span class="identifier">Return</span><span class="special">(</span><span class="identifier">Args</span><span class="special">...)</span> <span class="keyword">const</span> <span class="keyword">volatile</span> <span class="special">&amp;</span> <span class="keyword">noexcept</span><span class="special">&gt;</span> <span class="special">{};</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Return</span><span class="special">,</span> <span class="keyword">class</span><span class="special">...</span> <span class="identifier">Args</span><span class="special">&gt;</span> <span class="keyword">struct</span> <span class="identifier">foo</span><span class="special">&lt;</span><span class="identifier">Return</span><span class="special">(</span><span class="identifier">Args</span><span class="special">...)</span> <span class="keyword">const</span> <span class="keyword">volatile</span> <span class="special">&amp;&amp;</span> <span class="keyword">noexcept</span><span class="special">&gt;</span> <span class="special">{};</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Return</span><span class="special">,</span> <span class="keyword">class</span><span class="special">...</span> <span class="identifier">Args</span><span class="special">&gt;</span> <span class="keyword">struct</span> <span class="identifier">foo</span><span class="special">&lt;</span><span class="identifier">Return</span><span class="special">(</span><span class="identifier">Args</span><span class="special">...,</span> <span class="special">...)</span> <span class="keyword">noexcept</span><span class="special">&gt;</span> <span class="special">{};</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Return</span><span class="special">,</span> <span class="keyword">class</span><span class="special">...</span> <span class="identifier">Args</span><span class="special">&gt;</span> <span class="keyword">struct</span> <span class="identifier">foo</span><span class="special">&lt;</span><span class="identifier">Return</span><span class="special">(</span><span class="identifier">Args</span><span class="special">...,</span> <span class="special">...)</span> <span class="special">&amp;</span> <span class="keyword">noexcept</span><span class="special">&gt;</span> <span class="special">{};</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Return</span><span class="special">,</span> <span class="keyword">class</span><span class="special">...</span> <span class="identifier">Args</span><span class="special">&gt;</span> <span class="keyword">struct</span> <span class="identifier">foo</span><span class="special">&lt;</span><span class="identifier">Return</span><span class="special">(</span><span class="identifier">Args</span><span class="special">...,</span> <span class="special">...)</span> <span class="special">&amp;&amp;</span> <span class="keyword">noexcept</span><span class="special">&gt;</span> <span class="special">{};</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Return</span><span class="special">,</span> <span class="keyword">class</span><span class="special">...</span> <span class="identifier">Args</span><span class="special">&gt;</span> <span class="keyword">struct</span> <span class="identifier">foo</span><span class="special">&lt;</span><span class="identifier">Return</span><span class="special">(</span><span class="identifier">Args</span><span class="special">...,</span> <span class="special">...)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">&gt;</span> <span class="special">{};</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Return</span><span class="special">,</span> <span class="keyword">class</span><span class="special">...</span> <span class="identifier">Args</span><span class="special">&gt;</span> <span class="keyword">struct</span> <span class="identifier">foo</span><span class="special">&lt;</span><span class="identifier">Return</span><span class="special">(</span><span class="identifier">Args</span><span class="special">...,</span> <span class="special">...)</span> <span class="keyword">const</span> <span class="special">&amp;</span> <span class="keyword">noexcept</span><span class="special">&gt;</span> <span class="special">{};</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Return</span><span class="special">,</span> <span class="keyword">class</span><span class="special">...</span> <span class="identifier">Args</span><span class="special">&gt;</span> <span class="keyword">struct</span> <span class="identifier">foo</span><span class="special">&lt;</span><span class="identifier">Return</span><span class="special">(</span><span class="identifier">Args</span><span class="special">...,</span> <span class="special">...)</span> <span class="keyword">const</span> <span class="special">&amp;&amp;</span> <span class="keyword">noexcept</span><span class="special">&gt;</span> <span class="special">{};</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Return</span><span class="special">,</span> <span class="keyword">class</span><span class="special">...</span> <span class="identifier">Args</span><span class="special">&gt;</span> <span class="keyword">struct</span> <span class="identifier">foo</span><span class="special">&lt;</span><span class="identifier">Return</span><span class="special">(</span><span class="identifier">Args</span><span class="special">...,</span> <span class="special">...)</span> <span class="keyword">volatile</span> <span class="keyword">noexcept</span><span class="special">&gt;</span> <span class="special">{};</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Return</span><span class="special">,</span> <span class="keyword">class</span><span class="special">...</span> <span class="identifier">Args</span><span class="special">&gt;</span> <span class="keyword">struct</span> <span class="identifier">foo</span><span class="special">&lt;</span><span class="identifier">Return</span><span class="special">(</span><span class="identifier">Args</span><span class="special">...,</span> <span class="special">...)</span> <span class="keyword">volatile</span> <span class="special">&amp;</span> <span class="keyword">noexcept</span><span class="special">&gt;</span> <span class="special">{};</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Return</span><span class="special">,</span> <span class="keyword">class</span><span class="special">...</span> <span class="identifier">Args</span><span class="special">&gt;</span> <span class="keyword">struct</span> <span class="identifier">foo</span><span class="special">&lt;</span><span class="identifier">Return</span><span class="special">(</span><span class="identifier">Args</span><span class="special">...,</span> <span class="special">...)</span> <span class="keyword">volatile</span> <span class="special">&amp;&amp;</span> <span class="keyword">noexcept</span><span class="special">&gt;</span> <span class="special">{};</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Return</span><span class="special">,</span> <span class="keyword">class</span><span class="special">...</span> <span class="identifier">Args</span><span class="special">&gt;</span> <span class="keyword">struct</span> <span class="identifier">foo</span><span class="special">&lt;</span><span class="identifier">Return</span><span class="special">(</span><span class="identifier">Args</span><span class="special">...,</span> <span class="special">...)</span> <span class="keyword">const</span> <span class="keyword">volatile</span> <span class="keyword">noexcept</span><span class="special">&gt;</span> <span class="special">{};</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Return</span><span class="special">,</span> <span class="keyword">class</span><span class="special">...</span> <span class="identifier">Args</span><span class="special">&gt;</span> <span class="keyword">struct</span> <span class="identifier">foo</span><span class="special">&lt;</span><span class="identifier">Return</span><span class="special">(</span><span class="identifier">Args</span><span class="special">...,</span> <span class="special">...)</span> <span class="keyword">const</span> <span class="keyword">volatile</span> <span class="special">&amp;</span> <span class="keyword">noexcept</span><span class="special">&gt;</span> <span class="special">{};</span>
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">class</span> <span class="identifier">Return</span><span class="special">,</span> <span class="keyword">class</span><span class="special">...</span> <span class="identifier">Args</span><span class="special">&gt;</span> <span class="keyword">struct</span> <span class="identifier">foo</span><span class="special">&lt;</span><span class="identifier">Return</span><span class="special">(</span><span class="identifier">Args</span><span class="special">...,</span> <span class="special">...)</span> <span class="keyword">const</span> <span class="keyword">volatile</span> <span class="special">&amp;&amp;</span> <span class="keyword">noexcept</span><span class="special">&gt;</span> <span class="special">{};</span>
+</pre>
+<p>
+        Things get even more complicated with member function pointers, function
+        pointers, function references, function objects, and <code class="computeroutput"><span class="identifier">transaction_safe</span></code>.
+      </p>
+<p>
+        Granted, use cases for such obscure specializations are vitually nonexistent
+        in run-of-the-mill application codebases. Even in library code, these are
+        exceedingly rare. However, there are a handful of metaprogramming scenarios
+        that can only be solved with this kind of template "spam". Writing,
+        testing, and maintaining such code is tedious and costly.
+      </p>
+<p>
+        <code class="literal">Boost.CallableTraits</code> offers a final and decisive library-level
+        solution to this problem, and removes the need for these specializations
+        entirely (platform-specific calling conventions notwithstanding).
+      </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="callable_traits.introduction.boost_function_types"></a><a class="link" href="index.html#callable_traits.introduction.boost_function_types" title="Regarding Boost.FunctionTypes">Regarding
+      <code class="literal">Boost.FunctionTypes</code></a>
+</h3></div></div></div>
+<p>
+        The features in <code class="literal">Boost.CallableTraits</code> largely overlap with
+        <a href="http://www.boost.org/doc/libs/1_61_0/libs/function_types/doc/html/index.html" target="_top"><code class="literal">Boost.FunctionTypes</code></a>.
+        Here are some reasons why you might prefer <code class="literal">Boost.CallableTraits</code>:
+      </p>
+<div class="orderedlist"><ol class="orderedlist" type="1">
+<li class="listitem">
+            <code class="literal">Boost.FunctionTypes</code> is tightly coupled to <a href="http://www.boost.org/doc/libs/1_64_0/libs/mpl/doc/index.html" target="_top"><code class="literal">Boost.MPL</code></a>
+            sequences, while <code class="literal">Boost.CallableTraits</code> has no dependencies
+            other than the standard library.
+          </li>
+<li class="listitem">
+            <code class="literal">Boost.CallableTraits</code> targets C++11 and later:
+            <div class="orderedlist"><ol class="orderedlist" type="a">
+<li class="listitem">
+                  <code class="literal">Boost.CallableTraits</code> treats function objects/lambdas
+                  as first-class citizens.
+                </li>
+<li class="listitem">
+                  <code class="literal">Boost.CallableTraits</code> supports lvalue/rvalue
+                  reference member qualifiers.
+                </li>
+<li class="listitem">
+                  <code class="literal">Boost.CallableTraits</code> supports <code class="computeroutput"><span class="keyword">noexcept</span></code> and <code class="computeroutput"><span class="identifier">transaction_safe</span></code>.
+                </li>
+</ol></div>
+          </li>
+<li class="listitem">
+            <code class="literal">Boost.FunctionTypes</code> does not attempt to factor all
+            callable types into a unified, <a href="http://en.cppreference.com/w/cpp/utility/functional/invoke" target="_top"><code class="literal"><span class="emphasis"><em>INVOKE</em></span></code></a>-aware
+            interface.
+          </li>
+<li class="listitem">
+            <code class="literal">Boost.FunctionTypes</code> relies heavily on "tag"
+            types, while <code class="literal">Boost.CallableTraits</code> follows the style
+            of &lt;type_traits&gt; instead. Supporting C++11 and later in <code class="literal">Boost.FunctionTypes</code>
+            would have required significant proliferation of these tags.
+          </li>
+</ol></div>
+<p>
+        For example, here is how to remove member <code class="computeroutput"><span class="keyword">const</span></code>
+        from a member function pointer type in the <code class="literal">Boost.FunctionTypes</code>
+        library:
+      </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">type_traits</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">function_types</span><span class="special">/</span><span class="identifier">components</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">function_types</span><span class="special">/</span><span class="identifier">member_function_pointer</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="keyword">struct</span> <span class="identifier">foo</span> <span class="special">{</span>
+    <span class="keyword">void</span> <span class="identifier">bar</span><span class="special">()</span> <span class="keyword">const</span> <span class="special">{}</span>
+<span class="special">};</span>
+
+<span class="keyword">using</span> <span class="identifier">const_removed</span> <span class="special">=</span> <span class="keyword">typename</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">function_types</span><span class="special">::</span><span class="identifier">member_function_pointer</span><span class="special">&lt;</span>
+    <span class="keyword">typename</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">function_types</span><span class="special">::</span><span class="identifier">components</span><span class="special">&lt;</span><span class="keyword">decltype</span><span class="special">(&amp;</span><span class="identifier">foo</span><span class="special">::</span><span class="identifier">bar</span><span class="special">)&gt;::</span><span class="identifier">types</span><span class="special">,</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">function_types</span><span class="special">::</span><span class="identifier">non_const</span><span class="special">&gt;::</span><span class="identifier">type</span><span class="special">;</span>
+
+<span class="keyword">static_assert</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">is_same</span><span class="special">&lt;</span><span class="identifier">const_removed</span><span class="special">,</span> <span class="keyword">void</span><span class="special">(</span><span class="identifier">foo</span><span class="special">::*)()&gt;::</span><span class="identifier">value</span><span class="special">,</span> <span class="string">""</span><span class="special">);</span>
+
+<span class="keyword">int</span> <span class="identifier">main</span><span class="special">(){}</span>
+</pre>
+<p>
+        <code class="literal">Boost.CallableTraits</code> makes this easier:
+      </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">type_traits</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">callable_traits</span><span class="special">/</span><span class="identifier">remove_member_const</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="keyword">struct</span> <span class="identifier">foo</span> <span class="special">{</span>
+        <span class="keyword">void</span> <span class="identifier">bar</span><span class="special">()</span> <span class="keyword">const</span> <span class="special">{}</span>
+<span class="special">};</span>
+
+<span class="keyword">using</span> <span class="identifier">const_removed</span> <span class="special">=</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">callable_traits</span><span class="special">::</span><span class="identifier">remove_member_const_t</span><span class="special">&lt;</span><span class="keyword">decltype</span><span class="special">(&amp;</span><span class="identifier">foo</span><span class="special">::</span><span class="identifier">bar</span><span class="special">)&gt;;</span>
+
+<span class="keyword">static_assert</span><span class="special">(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">is_same</span><span class="special">&lt;</span><span class="identifier">const_removed</span><span class="special">,</span> <span class="keyword">void</span><span class="special">(</span><span class="identifier">foo</span><span class="special">::*)()&gt;::</span><span class="identifier">value</span><span class="special">,</span> <span class="string">""</span><span class="special">);</span>
+
+<span class="keyword">int</span> <span class="identifier">main</span><span class="special">(){}</span>
+</pre>
+<p>
+        The <code class="literal">Boost.FunctionTypes</code> library includes an excellent
+        <a href="http://www.boost.org/doc/libs/1_64_0/libs/function_types/example/interface_example.cpp" target="_top">example</a>
+        for generating type-erased interfaces (implementation <a href="http://www.boost.org/doc/libs/1_64_0/libs/function_types/example/interface.hpp" target="_top">here</a>).
+        This example was <a href="https://github.com/badair/eraserface/blob/master/include/eraserface/eraserface.hpp" target="_top">re-implemented</a>
+        using <code class="literal">Boost.CallableTraits</code> to yield a <a href="https://github.com/badair/eraserface/blob/master/example/basic_example.cpp" target="_top">slightly
+        more intuitive interface</a>.
+      </p>
+<p>
+        <code class="literal">Boost.FunctionTypes</code> is a fine library, but its interface
+        left room for improvement.
+      </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="callable_traits.introduction.compatibility"></a><a class="link" href="index.html#callable_traits.introduction.compatibility" title="Compatibility">Compatibility</a>
+</h3></div></div></div>
+<p>
+        <code class="literal">Boost.CallableTraits</code> supports on GCC 4.7.4+, Clang 3.5.2+,
+        XCode 6.4+, and Visual Studio 2015+. Continuous integration is managed on
+        <a href="https://ci.appveyor.com/project/boostorg/callable-traits" target="_top">Appveyor</a>
+        for Visual Studio, and on <a href="https://travis-ci.org/boostorg/callable_traits/builds" target="_top">Travis</a>
+        for everything else. The Intel C++ Compiler is not officially supported yet,
+        although the 2017 version for Linux does pass a handful of test cases.
+      </p>
+<div class="table">
+<a name="callable_traits.introduction.compatibility.gcc_support"></a><p class="title"><b>Table&#160;1.&#160;GCC Support</b></p>
+<div class="table-contents"><table class="table" summary="GCC Support">
+<colgroup>
+<col>
+<col>
+<col>
+<col>
+<col>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  feature
+                </p>
+              </th>
+<th>
+                <p>
+                  GCC 8.2.0
+                </p>
+              </th>
+<th>
+                <p>
+                  GCC 7.3.0
+                </p>
+              </th>
+<th>
+                <p>
+                  GCC 6.3.0
+                </p>
+              </th>
+<th>
+                <p>
+                  GCC 5.4.0
+                </p>
+              </th>
+<th>
+                <p>
+                  GCC 4.9.2
+                </p>
+              </th>
+<th>
+                <p>
+                  GCC 4.8.2
+                </p>
+              </th>
+<th>
+                <p>
+                  GCC 4.7.4
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_add_member_const" title="add_member_const"><code class="literal">add_member_const</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++11</span> (no abominables)
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++11</span> (no abominables)
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_add_member_cv" title="add_member_cv"><code class="literal">add_member_cv</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++11</span> (no abominables)
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++11</span> (no abominables)
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_add_member_lvalue_reference" title="add_member_lvalue_reference"><code class="literal">add_member_lvalue_reference</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="red">static_assert fails on instantiation</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="red">static_assert fails on instantiation</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_add_member_rvalue_reference" title="add_member_rvalue_reference"><code class="literal">add_member_rvalue_reference</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="red">static_assert fails on instantiation</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="red">static_assert fails on instantiation</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_add_member_volatile" title="add_member_volatile"><code class="literal">add_member_volatile</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++11</span> (no abominables)
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++11</span> (no abominables)
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_add_noexcept" title="add_noexcept"><code class="literal">add_noexcept</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++17</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++17</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++17</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="red">static_assert fails on instantiation</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="red">static_assert fails on instantiation</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="red">static_assert fails on instantiation</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="red">static_assert fails on instantiation</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_add_transaction_safe" title="add_transaction_safe"><code class="literal">add_transaction_safe</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++17</span> (requires -fgnu-tm)
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++17</span> (requires -fgnu-tm)
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++17</span> (requires -fgnu-tm)
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="red">static_assert fails on instantiation</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="red">static_assert fails on instantiation</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="red">static_assert fails on instantiation</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="red">static_assert fails on instantiation</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_add_varargs" title="add_varargs"><code class="literal">add_varargs</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_apply_member_pointer" title="apply_member_pointer"><code class="literal">apply_member_pointer</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_apply_return" title="apply_return"><code class="literal">apply_return</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_args" title="args"><code class="literal">args</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_class_of" title="class_of"><code class="literal">class_of</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_function_type" title="function_type"><code class="literal">function_type</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_has_member_qualifiers" title="has_member_qualifiers"><code class="literal">has_member_qualifiers</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++11</span> (no abominables)
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++11</span> (no abominables)
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_has_varargs" title="has_varargs"><code class="literal">has_varargs</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_has_void_return" title="has_void_return"><code class="literal">has_void_return</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_is_const_member" title="is_const_member"><code class="literal">is_const_member</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++11</span> (no abominables)
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++11</span> (no abominables)
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_is_cv_member" title="is_cv_member"><code class="literal">is_cv_member</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++11</span> (no abominables)
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++11</span> (no abominables)
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_is_invocable" title="is_invocable"><code class="literal">is_invocable</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  unknown
+                </p>
+              </td>
+<td>
+                <p>
+                  unknown
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_is_lvalue_reference_member" title="is_lvalue_reference_member"><code class="literal">is_lvalue_reference_member</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++11</span> (always false)
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++11</span> (always false)
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_is_noexcept" title="is_noexcept"><code class="literal">is_noexcept</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++17</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++17</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++17</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++11</span> (always false)
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++11</span> (always false)
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++11</span> (always false)
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++11</span> (always false)
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_is_reference_member" title="is_reference_member"><code class="literal">is_reference_member</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++11</span> (always false)
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++11</span> (always false)
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_is_rvalue_reference_member" title="is_rvalue_reference_member"><code class="literal">is_rvalue_reference_member</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++11</span> (always false)
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++11</span> (always false)
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_is_transaction_safe" title="is_transaction_safe"><code class="literal">is_transaction_safe</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++17</span> (requires -fgnu-tm)
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++17</span> (requires -fgnu-tm)
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++17</span> (requires -fgnu-tm)
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++11</span> (always false)
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++11</span> (always false)
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++11</span> (always false)
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++11</span> (always false)
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_is_volatile_member" title="is_volatile_member"><code class="literal">is_volatile_member</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++11</span> (no abominables)
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++11</span> (no abominables)
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_qualified_class_of" title="qualified_class_of"><code class="literal">qualified_class_of</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_remove_member_const" title="remove_member_const"><code class="literal">remove_member_const</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++11</span> (no abominables)
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++11</span> (no abominables)
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_remove_member_cv" title="remove_member_cv"><code class="literal">remove_member_cv</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++11</span> (no abominables)
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++11</span> (no abominables)
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_remove_member_reference" title="remove_member_reference"><code class="literal">remove_member_reference</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++11</span> (no effect)
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++11</span> (no effect)
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_remove_member_volatile" title="remove_member_volatile"><code class="literal">remove_member_volatile</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++11</span> (no abominables)
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++11</span> (no abominables)
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_remove_noexcept" title="remove_noexcept"><code class="literal">remove_noexcept</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++17</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++17</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++17</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++11</span> (no effect)
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++11</span> (no effect)
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++11</span> (no effect)
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++11</span> (no effect)
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_remove_transaction_safe" title="remove_transaction_safe"><code class="literal">remove_transaction_safe</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++17</span> (requires -fgnu-tm)
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++17</span> (requires -fgnu-tm)
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++17</span> (requires -fgnu-tm)
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++11</span> (no effect)
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++11</span> (no effect)
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++11</span> (no effect)
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++11</span> (no effect)
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_remove_varargs" title="remove_varargs"><code class="literal">remove_varargs</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_return_type" title="return_type"><code class="literal">return_type</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<br class="table-break"><div class="table">
+<a name="callable_traits.introduction.compatibility.llvm_clang_support"></a><p class="title"><b>Table&#160;2.&#160;LLVM/Clang Support</b></p>
+<div class="table-contents"><table class="table" summary="LLVM/Clang Support">
+<colgroup>
+<col>
+<col>
+<col>
+<col>
+<col>
+<col>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  feature
+                </p>
+              </th>
+<th>
+                <p>
+                  Clang 7.0.1
+                </p>
+              </th>
+<th>
+                <p>
+                  Clang 6.0.0
+                </p>
+              </th>
+<th>
+                <p>
+                  Clang 5.0.1
+                </p>
+              </th>
+<th>
+                <p>
+                  Clang 4.0.0
+                </p>
+              </th>
+<th>
+                <p>
+                  Clang 3.8.0
+                </p>
+              </th>
+<th>
+                <p>
+                  Clang 3.7.1
+                </p>
+              </th>
+<th>
+                <p>
+                  Clang 3.6.2
+                </p>
+              </th>
+<th>
+                <p>
+                  Clang 3.5.2
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_add_member_const" title="add_member_const"><code class="literal">add_member_const</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_add_member_cv" title="add_member_cv"><code class="literal">add_member_cv</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_add_member_lvalue_reference" title="add_member_lvalue_reference"><code class="literal">add_member_lvalue_reference</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_add_member_rvalue_reference" title="add_member_rvalue_reference"><code class="literal">add_member_rvalue_reference</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_add_member_volatile" title="add_member_volatile"><code class="literal">add_member_volatile</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_add_noexcept" title="add_noexcept"><code class="literal">add_noexcept</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++17</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++17</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++17</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="red">static_assert fails on instantiation</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="red">static_assert fails on instantiation</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="red">static_assert fails on instantiation</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="red">static_assert fails on instantiation</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_add_transaction_safe" title="add_transaction_safe"><code class="literal">add_transaction_safe</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  unknown
+                </p>
+              </td>
+<td>
+                <p>
+                  unknown
+                </p>
+              </td>
+<td>
+                <p>
+                  unknown
+                </p>
+              </td>
+<td>
+                <p>
+                  unknown
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="red">static_assert fails on instantiation</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="red">static_assert fails on instantiation</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="red">static_assert fails on instantiation</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="red">static_assert fails on instantiation</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_add_varargs" title="add_varargs"><code class="literal">add_varargs</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_apply_member_pointer" title="apply_member_pointer"><code class="literal">apply_member_pointer</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_apply_return" title="apply_return"><code class="literal">apply_return</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_args" title="args"><code class="literal">args</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_class_of" title="class_of"><code class="literal">class_of</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_function_type" title="function_type"><code class="literal">function_type</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_has_member_qualifiers" title="has_member_qualifiers"><code class="literal">has_member_qualifiers</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_has_varargs" title="has_varargs"><code class="literal">has_varargs</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_has_void_return" title="has_void_return"><code class="literal">has_void_return</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_is_const_member" title="is_const_member"><code class="literal">is_const_member</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_is_cv_member" title="is_cv_member"><code class="literal">is_cv_member</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_is_invocable" title="is_invocable"><code class="literal">is_invocable</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_is_lvalue_reference_member" title="is_lvalue_reference_member"><code class="literal">is_lvalue_reference_member</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_is_noexcept" title="is_noexcept"><code class="literal">is_noexcept</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++17</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++17</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++17</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++17</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++11</span> (always false)
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++11</span> (always false)
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++11</span> (always false)
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++11</span> (always false)
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_is_reference_member" title="is_reference_member"><code class="literal">is_reference_member</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_is_rvalue_reference_member" title="is_rvalue_reference_member"><code class="literal">is_rvalue_reference_member</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_is_transaction_safe" title="is_transaction_safe"><code class="literal">is_transaction_safe</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  unknown
+                </p>
+              </td>
+<td>
+                <p>
+                  unknown
+                </p>
+              </td>
+<td>
+                <p>
+                  unknown
+                </p>
+              </td>
+<td>
+                <p>
+                  unknown
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++11</span> (always false)
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++11</span> (always false)
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++11</span> (always false)
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++11</span> (always false)
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_is_volatile_member" title="is_volatile_member"><code class="literal">is_volatile_member</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_qualified_class_of" title="qualified_class_of"><code class="literal">qualified_class_of</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_remove_member_const" title="remove_member_const"><code class="literal">remove_member_const</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_remove_member_cv" title="remove_member_cv"><code class="literal">remove_member_cv</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_remove_member_reference" title="remove_member_reference"><code class="literal">remove_member_reference</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_remove_member_volatile" title="remove_member_volatile"><code class="literal">remove_member_volatile</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_remove_noexcept" title="remove_noexcept"><code class="literal">remove_noexcept</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++17</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++17</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++17</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++17</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++11</span> (no effect)
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++11</span> (no effect)
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++11</span> (no effect)
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++11</span> (no effect)
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_remove_transaction_safe" title="remove_transaction_safe"><code class="literal">remove_transaction_safe</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  unknown
+                </p>
+              </td>
+<td>
+                <p>
+                  unknown
+                </p>
+              </td>
+<td>
+                <p>
+                  unknown
+                </p>
+              </td>
+<td>
+                <p>
+                  unknown
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++11</span> (no effect)
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++11</span> (no effect)
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++11</span> (no effect)
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++11</span> (no effect)
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_remove_varargs" title="remove_varargs"><code class="literal">remove_varargs</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_return_type" title="return_type"><code class="literal">return_type</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<br class="table-break"><div class="table">
+<a name="callable_traits.introduction.compatibility.xcode_appleclang_support"></a><p class="title"><b>Table&#160;3.&#160;XCode/AppleClang Support</b></p>
+<div class="table-contents"><table class="table" summary="XCode/AppleClang Support">
+<colgroup>
+<col>
+<col>
+<col>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  feature
+                </p>
+              </th>
+<th>
+                <p>
+                  XCode 8
+                </p>
+              </th>
+<th>
+                <p>
+                  XCode 7.3
+                </p>
+              </th>
+<th>
+                <p>
+                  XCode 7.2
+                </p>
+              </th>
+<th>
+                <p>
+                  XCode 7.1
+                </p>
+              </th>
+<th>
+                <p>
+                  XCode 6.4
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_add_member_const" title="add_member_const"><code class="literal">add_member_const</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_add_member_cv" title="add_member_cv"><code class="literal">add_member_cv</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_add_member_lvalue_reference" title="add_member_lvalue_reference"><code class="literal">add_member_lvalue_reference</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_add_member_rvalue_reference" title="add_member_rvalue_reference"><code class="literal">add_member_rvalue_reference</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_add_member_volatile" title="add_member_volatile"><code class="literal">add_member_volatile</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_add_noexcept" title="add_noexcept"><code class="literal">add_noexcept</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  unknown
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="red">static_assert fails on instantiation</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="red">static_assert fails on instantiation</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="red">static_assert fails on instantiation</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="red">static_assert fails on instantiation</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_add_transaction_safe" title="add_transaction_safe"><code class="literal">add_transaction_safe</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  unknown
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="red">static_assert fails on instantiation</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="red">static_assert fails on instantiation</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="red">static_assert fails on instantiation</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="red">static_assert fails on instantiation</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_add_varargs" title="add_varargs"><code class="literal">add_varargs</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_apply_member_pointer" title="apply_member_pointer"><code class="literal">apply_member_pointer</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_apply_return" title="apply_return"><code class="literal">apply_return</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_args" title="args"><code class="literal">args</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_class_of" title="class_of"><code class="literal">class_of</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_function_type" title="function_type"><code class="literal">function_type</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_has_member_qualifiers" title="has_member_qualifiers"><code class="literal">has_member_qualifiers</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_has_varargs" title="has_varargs"><code class="literal">has_varargs</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_has_void_return" title="has_void_return"><code class="literal">has_void_return</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_is_const_member" title="is_const_member"><code class="literal">is_const_member</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_is_cv_member" title="is_cv_member"><code class="literal">is_cv_member</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_is_invocable" title="is_invocable"><code class="literal">is_invocable</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_is_lvalue_reference_member" title="is_lvalue_reference_member"><code class="literal">is_lvalue_reference_member</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_is_noexcept" title="is_noexcept"><code class="literal">is_noexcept</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  unknown
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++11</span> (always false)
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++11</span> (always false)
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++11</span> (always false)
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++11</span> (always false)
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_is_reference_member" title="is_reference_member"><code class="literal">is_reference_member</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_is_rvalue_reference_member" title="is_rvalue_reference_member"><code class="literal">is_rvalue_reference_member</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_is_transaction_safe" title="is_transaction_safe"><code class="literal">is_transaction_safe</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  unknown
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++11</span> (always false)
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++11</span> (always false)
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++11</span> (always false)
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++11</span> (always false)
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_is_volatile_member" title="is_volatile_member"><code class="literal">is_volatile_member</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_qualified_class_of" title="qualified_class_of"><code class="literal">qualified_class_of</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_remove_member_const" title="remove_member_const"><code class="literal">remove_member_const</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_remove_member_cv" title="remove_member_cv"><code class="literal">remove_member_cv</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_remove_member_reference" title="remove_member_reference"><code class="literal">remove_member_reference</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_remove_member_volatile" title="remove_member_volatile"><code class="literal">remove_member_volatile</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_remove_noexcept" title="remove_noexcept"><code class="literal">remove_noexcept</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  unknown
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++11</span> (no effect)
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++11</span> (no effect)
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++11</span> (no effect)
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++11</span> (no effect)
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_remove_transaction_safe" title="remove_transaction_safe"><code class="literal">remove_transaction_safe</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  unknown
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++11</span> (no effect)
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++11</span> (no effect)
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++11</span> (no effect)
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++11</span> (no effect)
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_remove_varargs" title="remove_varargs"><code class="literal">remove_varargs</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_return_type" title="return_type"><code class="literal">return_type</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<br class="table-break"><div class="table">
+<a name="callable_traits.introduction.compatibility.visual_studio_support"></a><p class="title"><b>Table&#160;4.&#160;Visual Studio Support</b></p>
+<div class="table-contents"><table class="table" summary="Visual Studio Support">
+<colgroup>
+<col>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                <p>
+                  feature
+                </p>
+              </th>
+<th>
+                <p>
+                  MSVC with Visual Studio 2017
+                </p>
+              </th>
+<th>
+                <p>
+                  MSVC with Visual Studio 2015 (latest update)
+                </p>
+              </th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_add_member_const" title="add_member_const"><code class="literal">add_member_const</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_add_member_cv" title="add_member_cv"><code class="literal">add_member_cv</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_add_member_lvalue_reference" title="add_member_lvalue_reference"><code class="literal">add_member_lvalue_reference</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_add_member_rvalue_reference" title="add_member_rvalue_reference"><code class="literal">add_member_rvalue_reference</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_add_member_volatile" title="add_member_volatile"><code class="literal">add_member_volatile</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_add_noexcept" title="add_noexcept"><code class="literal">add_noexcept</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="red">static_assert fails on instantiation</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="red">static_assert fails on instantiation</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_add_transaction_safe" title="add_transaction_safe"><code class="literal">add_transaction_safe</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="red">static_assert fails on instantiation</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="red">static_assert fails on instantiation</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_add_varargs" title="add_varargs"><code class="literal">add_varargs</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span> (define BOOST_DISABLE_WIN32
+                  to disable __cdecl on PMF varargs)
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span> (define BOOST_DISABLE_WIN32
+                  to disable __cdecl on PMF varargs)
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_apply_member_pointer" title="apply_member_pointer"><code class="literal">apply_member_pointer</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_apply_return" title="apply_return"><code class="literal">apply_return</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_args" title="args"><code class="literal">args</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_class_of" title="class_of"><code class="literal">class_of</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_function_type" title="function_type"><code class="literal">function_type</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_has_member_qualifiers" title="has_member_qualifiers"><code class="literal">has_member_qualifiers</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_has_varargs" title="has_varargs"><code class="literal">has_varargs</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span> (define BOOST_DISABLE_WIN32
+                  to disable __cdecl on PMF varargs)
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span> (define BOOST_DISABLE_WIN32
+                  to disable __cdecl on PMF varargs)
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_has_void_return" title="has_void_return"><code class="literal">has_void_return</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_is_const_member" title="is_const_member"><code class="literal">is_const_member</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_is_cv_member" title="is_cv_member"><code class="literal">is_cv_member</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_is_invocable" title="is_invocable"><code class="literal">is_invocable</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++11</span> (always false for functions
+                  that are simultaneously ref and cv-qualified due to compiler bug)
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_is_lvalue_reference_member" title="is_lvalue_reference_member"><code class="literal">is_lvalue_reference_member</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_is_noexcept" title="is_noexcept"><code class="literal">is_noexcept</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++11</span> (always false)
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++11</span> (always false)
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_is_reference_member" title="is_reference_member"><code class="literal">is_reference_member</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_is_rvalue_reference_member" title="is_rvalue_reference_member"><code class="literal">is_rvalue_reference_member</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_is_transaction_safe" title="is_transaction_safe"><code class="literal">is_transaction_safe</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++11</span> (always false)
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++11</span> (always false)
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_is_volatile_member" title="is_volatile_member"><code class="literal">is_volatile_member</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_qualified_class_of" title="qualified_class_of"><code class="literal">qualified_class_of</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_remove_member_const" title="remove_member_const"><code class="literal">remove_member_const</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_remove_member_cv" title="remove_member_cv"><code class="literal">remove_member_cv</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_remove_member_reference" title="remove_member_reference"><code class="literal">remove_member_reference</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_remove_member_volatile" title="remove_member_volatile"><code class="literal">remove_member_volatile</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_remove_noexcept" title="remove_noexcept"><code class="literal">remove_noexcept</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++11</span> (no effect)
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++11</span> (no effect)
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_remove_transaction_safe" title="remove_transaction_safe"><code class="literal">remove_transaction_safe</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++11</span> (no effect)
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="gold">c++11</span> (no effect)
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_remove_varargs" title="remove_varargs"><code class="literal">remove_varargs</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span> (define BOOST_DISABLE_WIN32
+                  to disable __cdecl on PMF varargs)
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span> (define BOOST_DISABLE_WIN32
+                  to disable __cdecl on PMF varargs)
+                </p>
+              </td>
+</tr>
+<tr>
+<td>
+                <p>
+                  <a class="link" href="callable_traits/reference.html#callable_traits.reference.ref_return_type" title="return_type"><code class="literal">return_type</code></a>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+<td>
+                <p>
+                  <span class="green">c++11</span>
+                </p>
+              </td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<br class="table-break">
+</div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer"></div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav"><a accesskey="n" href="callable_traits/reference.html"><img src="../../../../doc/src/images/next.png" alt="Next"></a></div>
+</body>
+</html>

@@ -1,0 +1,15 @@
+{
+    "key": "logic/tribool",
+    "name": "Tribool",
+    "authors": [
+        "Doug Gregor"
+    ],
+    "description": "3-state boolean type library.",
+    "documentation": "/doc/html/tribool.html",
+    "category": [
+        "Miscellaneous"
+    ],
+    "maintainers": [
+        "Douglas Gregor <dgregor -at- cs.indiana.edu>"
+    ]
+}

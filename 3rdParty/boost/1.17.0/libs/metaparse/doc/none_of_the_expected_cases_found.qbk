@@ -1,0 +1,23 @@
+[#none_of_the_expected_cases_found]
+[section none_of_the_expected_cases_found]
+
+[h1 Synopsis]
+
+  namespace error
+  {
+    struct none_of_the_expected_cases_found;
+  }
+
+This is a [link parsing_error_message parsing error message].
+
+[h1 Description]
+
+Class representing the error that none of a list of parsers could parse the
+input.
+
+[h1 Header]
+
+  #include <boost/metaparse/error/none_of_the_expected_cases_found.hpp>
+
+[endsect]
+

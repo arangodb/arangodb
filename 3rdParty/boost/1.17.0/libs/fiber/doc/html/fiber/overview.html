@@ -1,0 +1,211 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Overview</title>
+<link rel="stylesheet" href="../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="Chapter&#160;1.&#160;Fiber">
+<link rel="up" href="../index.html" title="Chapter&#160;1.&#160;Fiber">
+<link rel="prev" href="../index.html" title="Chapter&#160;1.&#160;Fiber">
+<link rel="next" href="overview/implementations__fcontext_t__ucontext_t_and_winfiber.html" title="Implementations: fcontext_t, ucontext_t and WinFiber">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../index.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="overview/implementations__fcontext_t__ucontext_t_and_winfiber.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="fiber.overview"></a><a class="link" href="overview.html" title="Overview">Overview</a>
+</h2></div></div></div>
+<div class="toc"><dl class="toc"><dt><span class="section"><a href="overview/implementations__fcontext_t__ucontext_t_and_winfiber.html">Implementations:
+      fcontext_t, ucontext_t and WinFiber</a></span></dt></dl></div>
+<p>
+      <span class="bold"><strong>Boost.Fiber</strong></span> provides a framework for micro-/userland-threads
+      (fibers) scheduled cooperatively. The API contains classes and functions to
+      manage and synchronize fibers similiarly to <a href="http://en.cppreference.com/w/cpp/thread" target="_top">standard
+      thread support library</a>.
+    </p>
+<p>
+      Each fiber has its own stack.
+    </p>
+<p>
+      A fiber can save the current execution state, including all registers and CPU
+      flags, the instruction pointer, and the stack pointer and later restore this
+      state. The idea is to have multiple execution paths running on a single thread
+      using cooperative scheduling (versus threads, which are preemptively scheduled).
+      The running fiber decides explicitly when it should yield to allow another
+      fiber to run (context switching). <span class="bold"><strong>Boost.Fiber</strong></span>
+      internally uses <a href="http://www.boost.org/doc/libs/release/libs/context/doc/html/context/cc.html" target="_top"><span class="emphasis"><em>call/cc</em></span></a>
+      from <a href="http://www.boost.org/doc/libs/release/libs/context/index.html" target="_top">Boost.Context</a>;
+      the classes in this library manage, schedule and, when needed, synchronize
+      those execution contexts. A context switch between threads usually costs thousands
+      of CPU cycles on x86, compared to a fiber switch with less than a hundred cycles.
+      A fiber runs on a single thread at any point in time.
+    </p>
+<p>
+      In order to use the classes and functions described here, you can either include
+      the specific headers specified by the descriptions of each class or function,
+      or include the master library header:
+    </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">fiber</span><span class="special">/</span><span class="identifier">all</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+</pre>
+<p>
+      which includes all the other headers in turn.
+    </p>
+<p>
+      The namespaces used are:
+    </p>
+<pre class="programlisting"><span class="keyword">namespace</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">fibers</span>
+<span class="keyword">namespace</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">this_fiber</span>
+</pre>
+<h4>
+<a name="fiber.overview.h0"></a>
+      <span class="phrase"><a name="fiber.overview.fibers_and_threads"></a></span><a class="link" href="overview.html#fiber.overview.fibers_and_threads">Fibers
+      and Threads</a>
+    </h4>
+<p>
+      Control is cooperatively passed between fibers launched on a given thread.
+      At a given moment, on a given thread, at most one fiber is running.
+    </p>
+<p>
+      Spawning additional fibers on a given thread does not distribute your program
+      across more hardware cores, though it can make more effective use of the core
+      on which it's running.
+    </p>
+<p>
+      On the other hand, a fiber may safely access any resource exclusively owned
+      by its parent thread without explicitly needing to defend that resource against
+      concurrent access by other fibers on the same thread. You are already guaranteed
+      that no other fiber on that thread is concurrently touching that resource.
+      This can be particularly important when introducing concurrency in legacy code.
+      You can safely spawn fibers running old code, using asynchronous I/O to interleave
+      execution.
+    </p>
+<p>
+      In effect, fibers provide a natural way to organize concurrent code based on
+      asynchronous I/O. Instead of chaining together completion handlers, code running
+      on a fiber can make what looks like a normal blocking function call. That call
+      can cheaply suspend the calling fiber, allowing other fibers on the same thread
+      to run. When the operation has completed, the suspended fiber resumes, without
+      having to explicitly save or restore its state. Its local stack variables persist
+      across the call.
+    </p>
+<p>
+      A fiber can be migrated from one thread to another, though the library does
+      not do this by default. It is possible for you to supply a custom scheduler
+      that migrates fibers between threads. You may specify custom fiber properties
+      to help your scheduler decide which fibers are permitted to migrate. Please
+      see <a class="link" href="migration.html#migration">Migrating fibers between threads</a> and
+      <a class="link" href="custom.html#custom">Customization</a> for more details.
+    </p>
+<p>
+      <span class="bold"><strong>Boost.Fiber</strong></span> allows to <span class="bold"><strong><code class="computeroutput"><span class="identifier">multiplex</span> <span class="identifier">fibers</span>
+      <span class="identifier">across</span> <span class="identifier">multiple</span>
+      <span class="identifier">cores</span></code></strong></span> (see <a class="link" href="numa.html#class_numa_work_stealing"><code class="computeroutput">numa::work_stealing</code></a>).
+    </p>
+<p>
+      A fiber launched on a particular thread continues running on that thread unless
+      migrated. It might be unblocked (see <a class="link" href="overview.html#blocking">Blocking</a>
+      below) by some other thread, but that only transitions the fiber from <span class="quote">&#8220;<span class="quote">blocked</span>&#8221;</span>
+      to <span class="quote">&#8220;<span class="quote">ready</span>&#8221;</span> on its current thread &#8212; it does not cause the fiber to
+      resume on the thread that unblocked it.
+    </p>
+<a name="thread_local_storage"></a><h4>
+<a name="fiber.overview.h1"></a>
+      <span class="phrase"><a name="fiber.overview.thread_local_storage"></a></span><a class="link" href="overview.html#fiber.overview.thread_local_storage">thread-local
+      storage</a>
+    </h4>
+<p>
+      Unless migrated, a fiber may access thread-local storage; however that storage
+      will be shared among all fibers running on the same thread. For fiber-local
+      storage, please see <a class="link" href="fls.html#class_fiber_specific_ptr"><code class="computeroutput">fiber_specific_ptr</code></a>.
+    </p>
+<a name="cross_thread_sync"></a><h4>
+<a name="fiber.overview.h2"></a>
+      <span class="phrase"><a name="fiber.overview.boost_fibers_no_atomics"></a></span><a class="link" href="overview.html#fiber.overview.boost_fibers_no_atomics">BOOST_FIBERS_NO_ATOMICS</a>
+    </h4>
+<p>
+      The fiber synchronization objects provided by this library will, by default,
+      safely synchronize fibers running on different threads. However, this level
+      of synchronization can be removed (for performance) by building the library
+      with <span class="bold"><strong><code class="computeroutput"><span class="identifier">BOOST_FIBERS_NO_ATOMICS</span></code></strong></span>
+      defined. When the library is built with that macro, you must ensure that all
+      the fibers referencing a particular synchronization object are running in the
+      same thread. Please see <a class="link" href="synchronization.html#synchronization">Synchronization</a>.
+    </p>
+<a name="blocking"></a><h4>
+<a name="fiber.overview.h3"></a>
+      <span class="phrase"><a name="fiber.overview.blocking"></a></span><a class="link" href="overview.html#fiber.overview.blocking">Blocking</a>
+    </h4>
+<p>
+      Normally, when this documentation states that a particular fiber <span class="emphasis"><em>blocks</em></span>
+      (or equivalently, <span class="emphasis"><em>suspends),</em></span> it means that it yields control,
+      allowing other fibers on the same thread to run. The synchronization mechanisms
+      provided by <span class="bold"><strong>Boost.Fiber</strong></span> have this behavior.
+    </p>
+<p>
+      A fiber may, of course, use normal thread synchronization mechanisms; however
+      a fiber that invokes any of these mechanisms will block its entire thread,
+      preventing any other fiber from running on that thread in the meantime. For
+      instance, when a fiber wants to wait for a value from another fiber in the
+      same thread, using <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">future</span></code> would be unfortunate: <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">future</span><span class="special">::</span><span class="identifier">get</span><span class="special">()</span></code>
+      would block the whole thread, preventing the other fiber from delivering its
+      value. Use <a class="link" href="synchronization/futures/future.html#class_future"><code class="computeroutput">future&lt;&gt;</code></a> instead.
+    </p>
+<p>
+      Similarly, a fiber that invokes a normal blocking I/O operation will block
+      its entire thread. Fiber authors are encouraged to consistently use asynchronous
+      I/O. <a href="http://www.boost.org/doc/libs/release/libs/asio/index.html" target="_top">Boost.Asio</a>
+      and other asynchronous I/O operations can straightforwardly be adapted for
+      <span class="bold"><strong>Boost.Fiber</strong></span>: see <a class="link" href="callbacks.html#callbacks">Integrating
+      Fibers with Asynchronous Callbacks</a>.
+    </p>
+<p>
+      <span class="bold"><strong>Boost.Fiber</strong></span> depends upon <a href="http://www.boost.org/doc/libs/release/libs/context/index.html" target="_top">Boost.Context</a>.
+      Boost version 1.61.0 or greater is required.
+    </p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+        This library requires C++11!
+      </p></td></tr>
+</table></div>
+<div class="important"><table border="0" summary="Important">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Important]" src="../../../../../doc/src/images/important.png"></td>
+<th align="left">Important</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+        Windows using fcontext_t: turn off global program optimization (/GL) and
+        change /EHsc (compiler assumes that functions declared as extern "C"
+        never throw a C++ exception) to /EHs (tells compiler assumes that functions
+        declared as extern "C" may throw an exception).
+      </p></td></tr>
+</table></div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2013 Oliver Kowalke<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../index.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="overview/implementations__fcontext_t__ucontext_t_and_winfiber.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

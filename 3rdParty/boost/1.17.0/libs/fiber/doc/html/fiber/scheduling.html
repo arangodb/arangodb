@@ -1,0 +1,2016 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Scheduling</title>
+<link rel="stylesheet" href="../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="Chapter&#160;1.&#160;Fiber">
+<link rel="up" href="../index.html" title="Chapter&#160;1.&#160;Fiber">
+<link rel="prev" href="fiber_mgmt/this_fiber.html" title="Namespace this_fiber">
+<link rel="next" href="stack.html" title="Stack allocation">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="fiber_mgmt/this_fiber.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="stack.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="fiber.scheduling"></a><a name="scheduling"></a><a class="link" href="scheduling.html" title="Scheduling">Scheduling</a>
+</h2></div></div></div>
+<p>
+      The fibers in a thread are coordinated by a fiber manager. Fibers trade control
+      cooperatively, rather than preemptively: the currently-running fiber retains
+      control until it invokes some operation that passes control to the manager.
+      Each time a fiber suspends (or yields), the fiber manager consults a scheduler
+      to determine which fiber will run next.
+    </p>
+<p>
+      <span class="bold"><strong>Boost.Fiber</strong></span> provides the fiber manager, but
+      the scheduler is a customization point. (See <a class="link" href="custom.html#custom">Customization</a>.)
+    </p>
+<p>
+      Each thread has its own scheduler. Different threads in a process may use different
+      schedulers. By default, <span class="bold"><strong>Boost.Fiber</strong></span> implicitly
+      instantiates <a class="link" href="scheduling.html#class_round_robin"><code class="computeroutput">round_robin</code></a> as the scheduler for each thread.
+    </p>
+<p>
+      You are explicitly permitted to code your own <a class="link" href="scheduling.html#class_algorithm"><code class="computeroutput">algorithm</code></a> subclass.
+      For the most part, your <code class="computeroutput"><span class="identifier">algorithm</span></code>
+      subclass need not defend against cross-thread calls: the fiber manager intercepts
+      and defers such calls. Most <code class="computeroutput"><span class="identifier">algorithm</span></code>
+      methods are only ever directly called from the thread whose fibers it is managing
+      &#8212; with exceptions as documented below.
+    </p>
+<p>
+      Your <code class="computeroutput"><span class="identifier">algorithm</span></code> subclass is
+      engaged on a particular thread by calling <a class="link" href="fiber_mgmt/fiber.html#use_scheduling_algorithm"><code class="computeroutput">use_scheduling_algorithm()</code></a>:
+    </p>
+<pre class="programlisting"><span class="keyword">void</span> <span class="identifier">thread_fn</span><span class="special">()</span> <span class="special">{</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">fibers</span><span class="special">::</span><span class="identifier">use_scheduling_algorithm</span><span class="special">&lt;</span> <span class="identifier">my_fiber_scheduler</span> <span class="special">&gt;();</span>
+    <span class="special">...</span>
+<span class="special">}</span>
+</pre>
+<p>
+      A scheduler class must implement interface <a class="link" href="scheduling.html#class_algorithm"><code class="computeroutput">algorithm</code></a>. <span class="bold"><strong>Boost.Fiber</strong></span> provides schedulers: <a class="link" href="scheduling.html#class_round_robin"><code class="computeroutput">round_robin</code></a>,
+      <a class="link" href="scheduling.html#class_work_stealing"><code class="computeroutput">work_stealing</code></a>, <a class="link" href="numa.html#class_numa_work_stealing"><code class="computeroutput">numa::work_stealing</code></a> and
+      <a class="link" href="scheduling.html#class_shared_work"><code class="computeroutput">shared_work</code></a>.
+    </p>
+<pre class="programlisting"><span class="keyword">void</span> <span class="identifier">thread</span><span class="special">(</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">uint32_t</span> <span class="identifier">thread_count</span><span class="special">)</span> <span class="special">{</span>
+    <span class="comment">// thread registers itself at work-stealing scheduler</span>
+    <span class="identifier">boost</span><span class="special">::</span><span class="identifier">fibers</span><span class="special">::</span><span class="identifier">use_scheduling_algorithm</span><span class="special">&lt;</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">fibers</span><span class="special">::</span><span class="identifier">algo</span><span class="special">::</span><span class="identifier">work_stealing</span> <span class="special">&gt;(</span> <span class="identifier">thread_count</span><span class="special">);</span>
+    <span class="special">...</span>
+<span class="special">}</span>
+
+<span class="comment">// count of logical cpus</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">uint32_t</span> <span class="identifier">thread_count</span> <span class="special">=</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">thread</span><span class="special">::</span><span class="identifier">hardware_concurrency</span><span class="special">();</span>
+<span class="comment">// start worker-threads first</span>
+<span class="identifier">std</span><span class="special">::</span><span class="identifier">vector</span><span class="special">&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">thread</span> <span class="special">&gt;</span> <span class="identifier">threads</span><span class="special">;</span>
+<span class="keyword">for</span> <span class="special">(</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">uint32_t</span> <span class="identifier">i</span> <span class="special">=</span> <span class="number">1</span> <span class="comment">/* count start-thread */</span><span class="special">;</span> <span class="identifier">i</span> <span class="special">&lt;</span> <span class="identifier">thread_count</span><span class="special">;</span> <span class="special">++</span><span class="identifier">i</span><span class="special">)</span> <span class="special">{</span>
+    <span class="comment">// spawn thread</span>
+    <span class="identifier">threads</span><span class="special">.</span><span class="identifier">emplace_back</span><span class="special">(</span> <span class="identifier">thread</span><span class="special">,</span> <span class="identifier">thread_count</span><span class="special">);</span>
+<span class="special">}</span>
+<span class="comment">// start-thread registers itself at work-stealing scheduler</span>
+<span class="identifier">boost</span><span class="special">::</span><span class="identifier">fibers</span><span class="special">::</span><span class="identifier">use_scheduling_algorithm</span><span class="special">&lt;</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">fibers</span><span class="special">::</span><span class="identifier">algo</span><span class="special">::</span><span class="identifier">work_stealing</span> <span class="special">&gt;(</span> <span class="identifier">thread_count</span><span class="special">);</span>
+<span class="special">...</span>
+</pre>
+<p>
+      The example spawns as many threads as <code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">thread</span><span class="special">::</span><span class="identifier">hardware_concurrency</span><span class="special">()</span></code> returns. Each thread runs a <a class="link" href="scheduling.html#class_work_stealing"><code class="computeroutput">work_stealing</code></a> scheduler.
+      Each instance of this scheduler needs to know how many threads run the work-stealing
+      scheduler in the program. If the local queue of one thread runs out of ready
+      fibers, the thread tries to steal a ready fiber from another thread running
+      this scheduler.
+    </p>
+<p>
+      </p>
+<h5>
+<a name="class_algorithm_bridgehead"></a>
+  <span class="phrase"><a name="class_algorithm"></a></span>
+  <a class="link" href="scheduling.html#class_algorithm">Class <code class="computeroutput">algorithm</code></a>
+</h5>
+<p>
+    </p>
+<p>
+      <code class="computeroutput"><span class="identifier">algorithm</span></code> is the abstract base
+      class defining the interface that a fiber scheduler must implement.
+    </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">fiber</span><span class="special">/</span><span class="identifier">algo</span><span class="special">/</span><span class="identifier">algorithm</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span>
+<span class="keyword">namespace</span> <span class="identifier">fibers</span> <span class="special">{</span>
+<span class="keyword">namespace</span> <span class="identifier">algo</span> <span class="special">{</span>
+
+<span class="keyword">struct</span> <span class="identifier">algorithm</span> <span class="special">{</span>
+    <span class="keyword">virtual</span> <span class="special">~</span><span class="identifier">algorithm</span><span class="special">();</span>
+
+    <span class="keyword">virtual</span> <span class="keyword">void</span> <span class="identifier">awakened</span><span class="special">(</span> <span class="identifier">context</span> <span class="special">*)</span> <span class="keyword">noexcept</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span>
+
+    <span class="keyword">virtual</span> <span class="identifier">context</span> <span class="special">*</span> <span class="identifier">pick_next</span><span class="special">()</span> <span class="keyword">noexcept</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span>
+
+    <span class="keyword">virtual</span> <span class="keyword">bool</span> <span class="identifier">has_ready_fibers</span><span class="special">()</span> <span class="keyword">const</span> <span class="keyword">noexcept</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span>
+
+    <span class="keyword">virtual</span> <span class="keyword">void</span> <span class="identifier">suspend_until</span><span class="special">(</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">chrono</span><span class="special">::</span><span class="identifier">steady_clock</span><span class="special">::</span><span class="identifier">time_point</span> <span class="keyword">const</span><span class="special">&amp;)</span> <span class="keyword">noexcept</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span>
+
+    <span class="keyword">virtual</span> <span class="keyword">void</span> <span class="identifier">notify</span><span class="special">()</span> <span class="keyword">noexcept</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span>
+<span class="special">};</span>
+
+<span class="special">}}}</span>
+</pre>
+<p>
+      </p>
+<h5>
+<a name="algorithm_awakened_bridgehead"></a>
+  <span class="phrase"><a name="algorithm_awakened"></a></span>
+  <a class="link" href="scheduling.html#algorithm_awakened">Member function
+      <code class="computeroutput">awakened</code>()</a>
+</h5>
+<p>
+    </p>
+<pre class="programlisting"><span class="keyword">virtual</span> <span class="keyword">void</span> <span class="identifier">awakened</span><span class="special">(</span> <span class="identifier">context</span> <span class="special">*</span> <span class="identifier">f</span><span class="special">)</span> <span class="keyword">noexcept</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+            Informs the scheduler that fiber <code class="computeroutput"><span class="identifier">f</span></code>
+            is ready to run. Fiber <code class="computeroutput"><span class="identifier">f</span></code>
+            might be newly launched, or it might have been blocked but has just been
+            awakened, or it might have called <a class="link" href="fiber_mgmt/this_fiber.html#this_fiber_yield"><code class="computeroutput">this_fiber::yield()</code></a>.
+          </p></dd>
+<dt><span class="term">Note:</span></dt>
+<dd><p>
+            This method advises the scheduler to add fiber <code class="computeroutput"><span class="identifier">f</span></code>
+            to its collection of fibers ready to run. A typical scheduler implementation
+            places <code class="computeroutput"><span class="identifier">f</span></code> into a queue.
+          </p></dd>
+<dt><span class="term">See also:</span></dt>
+<dd><p>
+            <a class="link" href="scheduling.html#class_round_robin"><code class="computeroutput">round_robin</code></a>
+          </p></dd>
+</dl>
+</div>
+<p>
+      </p>
+<h5>
+<a name="algorithm_pick_next_bridgehead"></a>
+  <span class="phrase"><a name="algorithm_pick_next"></a></span>
+  <a class="link" href="scheduling.html#algorithm_pick_next">Member
+      function <code class="computeroutput">pick_next</code>()</a>
+</h5>
+<p>
+    </p>
+<pre class="programlisting"><span class="keyword">virtual</span> <span class="identifier">context</span> <span class="special">*</span> <span class="identifier">pick_next</span><span class="special">()</span> <span class="keyword">noexcept</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Returns:</span></dt>
+<dd><p>
+            the fiber which is to be resumed next, or <code class="computeroutput"><span class="keyword">nullptr</span></code>
+            if there is no ready fiber.
+          </p></dd>
+<dt><span class="term">Note:</span></dt>
+<dd><p>
+            This is where the scheduler actually specifies the fiber which is to
+            run next. A typical scheduler implementation chooses the head of the
+            ready queue.
+          </p></dd>
+<dt><span class="term">See also:</span></dt>
+<dd><p>
+            <a class="link" href="scheduling.html#class_round_robin"><code class="computeroutput">round_robin</code></a>
+          </p></dd>
+</dl>
+</div>
+<p>
+      </p>
+<h5>
+<a name="algorithm_has_ready_fibers_bridgehead"></a>
+  <span class="phrase"><a name="algorithm_has_ready_fibers"></a></span>
+  <a class="link" href="scheduling.html#algorithm_has_ready_fibers">Member
+      function <code class="computeroutput">has_ready_fibers</code>()</a>
+</h5>
+<p>
+    </p>
+<pre class="programlisting"><span class="keyword">virtual</span> <span class="keyword">bool</span> <span class="identifier">has_ready_fibers</span><span class="special">()</span> <span class="keyword">const</span> <span class="keyword">noexcept</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Returns:</span></dt>
+<dd><p>
+            <code class="computeroutput"><span class="keyword">true</span></code> if scheduler has fibers
+            ready to run.
+          </p></dd>
+</dl>
+</div>
+<p>
+      </p>
+<h5>
+<a name="algorithm_suspend_until_bridgehead"></a>
+  <span class="phrase"><a name="algorithm_suspend_until"></a></span>
+  <a class="link" href="scheduling.html#algorithm_suspend_until">Member
+      function <code class="computeroutput">suspend_until</code>()</a>
+</h5>
+<p>
+    </p>
+<pre class="programlisting"><span class="keyword">virtual</span> <span class="keyword">void</span> <span class="identifier">suspend_until</span><span class="special">(</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">chrono</span><span class="special">::</span><span class="identifier">steady_clock</span><span class="special">::</span><span class="identifier">time_point</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">abs_time</span><span class="special">)</span> <span class="keyword">noexcept</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+            Informs the scheduler that no fiber will be ready until time-point <code class="computeroutput"><span class="identifier">abs_time</span></code>.
+          </p></dd>
+<dt><span class="term">Note:</span></dt>
+<dd><p>
+            This method allows a custom scheduler to yield control to the containing
+            environment in whatever way makes sense. The fiber manager is stating
+            that <code class="computeroutput"><span class="identifier">suspend_until</span><span class="special">()</span></code>
+            need not return until <code class="computeroutput"><span class="identifier">abs_time</span></code>
+            &#8212; or <a class="link" href="scheduling.html#algorithm_notify"><code class="computeroutput">algorithm::notify()</code></a> is called &#8212; whichever comes first.
+            The interaction with <code class="computeroutput"><span class="identifier">notify</span><span class="special">()</span></code> means that, for instance, calling
+            <a href="http://en.cppreference.com/w/cpp/thread/sleep_until" target="_top"><code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">this_thread</span><span class="special">::</span><span class="identifier">sleep_until</span><span class="special">(</span><span class="identifier">abs_time</span><span class="special">)</span></code></a>
+            would be too simplistic. <a class="link" href="scheduling.html#round_robin_suspend_until"><code class="computeroutput">round_robin::suspend_until()</code></a> uses
+            a <a href="http://en.cppreference.com/w/cpp/thread/condition_variable" target="_top"><code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">condition_variable</span></code></a> to coordinate
+            with <a class="link" href="scheduling.html#round_robin_notify"><code class="computeroutput">round_robin::notify()</code></a>.
+          </p></dd>
+<dt><span class="term">Note:</span></dt>
+<dd><p>
+            Given that <code class="computeroutput"><span class="identifier">notify</span><span class="special">()</span></code>
+            might be called from another thread, your <code class="computeroutput"><span class="identifier">suspend_until</span><span class="special">()</span></code> implementation &#8212; like the rest of your
+            <code class="computeroutput"><span class="identifier">algorithm</span></code> implementation
+            &#8212; must guard any data it shares with your <code class="computeroutput"><span class="identifier">notify</span><span class="special">()</span></code> implementation.
+          </p></dd>
+</dl>
+</div>
+<p>
+      </p>
+<h5>
+<a name="algorithm_notify_bridgehead"></a>
+  <span class="phrase"><a name="algorithm_notify"></a></span>
+  <a class="link" href="scheduling.html#algorithm_notify">Member function
+      <code class="computeroutput">notify</code>()</a>
+</h5>
+<p>
+    </p>
+<pre class="programlisting"><span class="keyword">virtual</span> <span class="keyword">void</span> <span class="identifier">notify</span><span class="special">()</span> <span class="keyword">noexcept</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+            Requests the scheduler to return from a pending call to <a class="link" href="scheduling.html#algorithm_suspend_until"><code class="computeroutput">algorithm::suspend_until()</code></a>.
+          </p></dd>
+<dt><span class="term">Note:</span></dt>
+<dd><p>
+            Alone among the <code class="computeroutput"><span class="identifier">algorithm</span></code>
+            methods, <code class="computeroutput"><span class="identifier">notify</span><span class="special">()</span></code>
+            may be called from another thread. Your <code class="computeroutput"><span class="identifier">notify</span><span class="special">()</span></code> implementation must guard any data
+            it shares with the rest of your <code class="computeroutput"><span class="identifier">algorithm</span></code>
+            implementation.
+          </p></dd>
+</dl>
+</div>
+<p>
+      </p>
+<h5>
+<a name="class_round_robin_bridgehead"></a>
+  <span class="phrase"><a name="class_round_robin"></a></span>
+  <a class="link" href="scheduling.html#class_round_robin">Class <code class="computeroutput">round_robin</code></a>
+</h5>
+<p>
+    </p>
+<p>
+      This class implements <a class="link" href="scheduling.html#class_algorithm"><code class="computeroutput">algorithm</code></a>, scheduling fibers in round-robin
+      fashion.
+    </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">fiber</span><span class="special">/</span><span class="identifier">algo</span><span class="special">/</span><span class="identifier">round_robin</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span>
+<span class="keyword">namespace</span> <span class="identifier">fibers</span> <span class="special">{</span>
+<span class="keyword">namespace</span> <span class="identifier">algo</span> <span class="special">{</span>
+
+<span class="keyword">class</span> <span class="identifier">round_robin</span> <span class="special">:</span> <span class="keyword">public</span> <span class="identifier">algorithm</span> <span class="special">{</span>
+    <span class="keyword">virtual</span> <span class="keyword">void</span> <span class="identifier">awakened</span><span class="special">(</span> <span class="identifier">context</span> <span class="special">*)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+    <span class="keyword">virtual</span> <span class="identifier">context</span> <span class="special">*</span> <span class="identifier">pick_next</span><span class="special">()</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+    <span class="keyword">virtual</span> <span class="keyword">bool</span> <span class="identifier">has_ready_fibers</span><span class="special">()</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+    <span class="keyword">virtual</span> <span class="keyword">void</span> <span class="identifier">suspend_until</span><span class="special">(</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">chrono</span><span class="special">::</span><span class="identifier">steady_clock</span><span class="special">::</span><span class="identifier">time_point</span> <span class="keyword">const</span><span class="special">&amp;)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+    <span class="keyword">virtual</span> <span class="keyword">void</span> <span class="identifier">notify</span><span class="special">()</span> <span class="keyword">noexcept</span><span class="special">;</span>
+<span class="special">};</span>
+
+<span class="special">}}}</span>
+</pre>
+<p>
+      </p>
+<h5>
+<a name="round_robin_awakened_bridgehead"></a>
+  <span class="phrase"><a name="round_robin_awakened"></a></span>
+  <a class="link" href="scheduling.html#round_robin_awakened">Member
+      function <code class="computeroutput">awakened</code>()</a>
+</h5>
+<p>
+    </p>
+<pre class="programlisting"><span class="keyword">virtual</span> <span class="keyword">void</span> <span class="identifier">awakened</span><span class="special">(</span> <span class="identifier">context</span> <span class="special">*</span> <span class="identifier">f</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+            Enqueues fiber <code class="computeroutput"><span class="identifier">f</span></code> onto
+            a ready queue.
+          </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+            Nothing.
+          </p></dd>
+</dl>
+</div>
+<p>
+      </p>
+<h5>
+<a name="round_robin_pick_next_bridgehead"></a>
+  <span class="phrase"><a name="round_robin_pick_next"></a></span>
+  <a class="link" href="scheduling.html#round_robin_pick_next">Member
+      function <code class="computeroutput">pick_next</code>()</a>
+</h5>
+<p>
+    </p>
+<pre class="programlisting"><span class="keyword">virtual</span> <span class="identifier">context</span> <span class="special">*</span> <span class="identifier">pick_next</span><span class="special">()</span> <span class="keyword">noexcept</span><span class="special">;</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Returns:</span></dt>
+<dd><p>
+            the fiber at the head of the ready queue, or <code class="computeroutput"><span class="keyword">nullptr</span></code>
+            if the queue is empty.
+          </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+            Nothing.
+          </p></dd>
+<dt><span class="term">Note:</span></dt>
+<dd><p>
+            Placing ready fibers onto the tail of a queue, and returning them from
+            the head of that queue, shares the thread between ready fibers in round-robin
+            fashion.
+          </p></dd>
+</dl>
+</div>
+<p>
+      </p>
+<h5>
+<a name="round_robin_has_ready_fibers_bridgehead"></a>
+  <span class="phrase"><a name="round_robin_has_ready_fibers"></a></span>
+  <a class="link" href="scheduling.html#round_robin_has_ready_fibers">Member
+      function <code class="computeroutput">has_ready_fibers</code>()</a>
+</h5>
+<p>
+    </p>
+<pre class="programlisting"><span class="keyword">virtual</span> <span class="keyword">bool</span> <span class="identifier">has_ready_fibers</span><span class="special">()</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Returns:</span></dt>
+<dd><p>
+            <code class="computeroutput"><span class="keyword">true</span></code> if scheduler has fibers
+            ready to run.
+          </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+            Nothing.
+          </p></dd>
+</dl>
+</div>
+<p>
+      </p>
+<h5>
+<a name="round_robin_suspend_until_bridgehead"></a>
+  <span class="phrase"><a name="round_robin_suspend_until"></a></span>
+  <a class="link" href="scheduling.html#round_robin_suspend_until">Member
+      function <code class="computeroutput">suspend_until</code>()</a>
+</h5>
+<p>
+    </p>
+<pre class="programlisting"><span class="keyword">virtual</span> <span class="keyword">void</span> <span class="identifier">suspend_until</span><span class="special">(</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">chrono</span><span class="special">::</span><span class="identifier">steady_clock</span><span class="special">::</span><span class="identifier">time_point</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">abs_time</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+            Informs <code class="computeroutput"><span class="identifier">round_robin</span></code> that
+            no ready fiber will be available until time-point <code class="computeroutput"><span class="identifier">abs_time</span></code>.
+            This implementation blocks in <a href="http://en.cppreference.com/w/cpp/thread/condition_variable/wait_until" target="_top"><code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">condition_variable</span><span class="special">::</span><span class="identifier">wait_until</span><span class="special">()</span></code></a>.
+          </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+            Nothing.
+          </p></dd>
+</dl>
+</div>
+<p>
+      </p>
+<h5>
+<a name="round_robin_notify_bridgehead"></a>
+  <span class="phrase"><a name="round_robin_notify"></a></span>
+  <a class="link" href="scheduling.html#round_robin_notify">Member function
+      <code class="computeroutput">notify</code>()</a>
+</h5>
+<p>
+    </p>
+<pre class="programlisting"><span class="keyword">virtual</span> <span class="keyword">void</span> <span class="identifier">notify</span><span class="special">()</span> <span class="keyword">noexcept</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+            Wake up a pending call to <a class="link" href="scheduling.html#round_robin_suspend_until"><code class="computeroutput">round_robin::suspend_until()</code></a>,
+            some fibers might be ready. This implementation wakes <code class="computeroutput"><span class="identifier">suspend_until</span><span class="special">()</span></code> via <a href="http://en.cppreference.com/w/cpp/thread/condition_variable/notify_all" target="_top"><code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">condition_variable</span><span class="special">::</span><span class="identifier">notify_all</span><span class="special">()</span></code></a>.
+          </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+            Nothing.
+          </p></dd>
+</dl>
+</div>
+<p>
+      </p>
+<h5>
+<a name="class_work_stealing_bridgehead"></a>
+  <span class="phrase"><a name="class_work_stealing"></a></span>
+  <a class="link" href="scheduling.html#class_work_stealing">Class <code class="computeroutput">work_stealing</code></a>
+</h5>
+<p>
+    </p>
+<p>
+      This class implements <a class="link" href="scheduling.html#class_algorithm"><code class="computeroutput">algorithm</code></a>; if the local ready-queue runs
+      out of ready fibers, ready fibers are stolen from other schedulers.<br> The
+      victim scheduler (from which a ready fiber is stolen) is selected at random.
+    </p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+        Worker-threads are stored in a static variable, dynamically adding/removing
+        worker threads is not supported.
+      </p></td></tr>
+</table></div>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">fiber</span><span class="special">/</span><span class="identifier">algo</span><span class="special">/</span><span class="identifier">work_stealing</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span>
+<span class="keyword">namespace</span> <span class="identifier">fibers</span> <span class="special">{</span>
+<span class="keyword">namespace</span> <span class="identifier">algo</span> <span class="special">{</span>
+
+<span class="keyword">class</span> <span class="identifier">work_stealing</span> <span class="special">:</span> <span class="keyword">public</span> <span class="identifier">algorithm</span> <span class="special">{</span>
+<span class="keyword">public</span><span class="special">:</span>
+    <span class="identifier">work_stealing</span><span class="special">(</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">uint32_t</span> <span class="identifier">thread_count</span><span class="special">,</span> <span class="keyword">bool</span> <span class="identifier">suspend</span> <span class="special">=</span> <span class="keyword">false</span><span class="special">);</span>
+
+    <span class="identifier">work_stealing</span><span class="special">(</span> <span class="identifier">work_stealing</span> <span class="keyword">const</span><span class="special">&amp;)</span> <span class="special">=</span> <span class="keyword">delete</span><span class="special">;</span>
+    <span class="identifier">work_stealing</span><span class="special">(</span> <span class="identifier">work_stealing</span> <span class="special">&amp;&amp;)</span> <span class="special">=</span> <span class="keyword">delete</span><span class="special">;</span>
+
+    <span class="identifier">work_stealing</span> <span class="special">&amp;</span> <span class="keyword">operator</span><span class="special">=(</span> <span class="identifier">work_stealing</span> <span class="keyword">const</span><span class="special">&amp;)</span> <span class="special">=</span> <span class="keyword">delete</span><span class="special">;</span>
+    <span class="identifier">work_stealing</span> <span class="special">&amp;</span> <span class="keyword">operator</span><span class="special">=(</span> <span class="identifier">work_stealing</span> <span class="special">&amp;&amp;)</span> <span class="special">=</span> <span class="keyword">delete</span><span class="special">;</span>
+
+    <span class="keyword">virtual</span> <span class="keyword">void</span> <span class="identifier">awakened</span><span class="special">(</span> <span class="identifier">context</span> <span class="special">*)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+    <span class="keyword">virtual</span> <span class="identifier">context</span> <span class="special">*</span> <span class="identifier">pick_next</span><span class="special">()</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+    <span class="keyword">virtual</span> <span class="keyword">bool</span> <span class="identifier">has_ready_fibers</span><span class="special">()</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+    <span class="keyword">virtual</span> <span class="keyword">void</span> <span class="identifier">suspend_until</span><span class="special">(</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">chrono</span><span class="special">::</span><span class="identifier">steady_clock</span><span class="special">::</span><span class="identifier">time_point</span> <span class="keyword">const</span><span class="special">&amp;)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+    <span class="keyword">virtual</span> <span class="keyword">void</span> <span class="identifier">notify</span><span class="special">()</span> <span class="keyword">noexcept</span><span class="special">;</span>
+<span class="special">};</span>
+
+<span class="special">}}}</span>
+</pre>
+<h4>
+<a name="fiber.scheduling.h0"></a>
+      <span class="phrase"><a name="fiber.scheduling.constructor"></a></span><a class="link" href="scheduling.html#fiber.scheduling.constructor">Constructor</a>
+    </h4>
+<pre class="programlisting"><span class="identifier">work_stealing</span><span class="special">(</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">uint32_t</span> <span class="identifier">thread_count</span><span class="special">,</span> <span class="keyword">bool</span> <span class="identifier">suspend</span> <span class="special">=</span> <span class="keyword">false</span><span class="special">);</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+            Constructs work-stealing scheduling algorithm. <code class="computeroutput"><span class="identifier">thread_count</span></code>
+            represents the number of threads running this algorithm.
+          </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+            <code class="computeroutput"><span class="identifier">system_error</span></code>
+          </p></dd>
+<dt><span class="term">Note:</span></dt>
+<dd><p>
+            If <code class="computeroutput"><span class="identifier">suspend</span></code> is set to
+            <code class="computeroutput"><span class="keyword">true</span></code>, then the scheduler
+            suspends if no ready fiber could be stolen. The scheduler will by woken
+            up if a sleeping fiber times out or it was notified from remote (other
+            thread or fiber scheduler).
+          </p></dd>
+</dl>
+</div>
+<p>
+      </p>
+<h5>
+<a name="work_stealing_awakened_bridgehead"></a>
+  <span class="phrase"><a name="work_stealing_awakened"></a></span>
+  <a class="link" href="scheduling.html#work_stealing_awakened">Member
+      function <code class="computeroutput">awakened</code>()</a>
+</h5>
+<p>
+    </p>
+<pre class="programlisting"><span class="keyword">virtual</span> <span class="keyword">void</span> <span class="identifier">awakened</span><span class="special">(</span> <span class="identifier">context</span> <span class="special">*</span> <span class="identifier">f</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+            Enqueues fiber <code class="computeroutput"><span class="identifier">f</span></code> onto
+            the shared ready queue.
+          </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+            Nothing.
+          </p></dd>
+</dl>
+</div>
+<p>
+      </p>
+<h5>
+<a name="work_stealing_pick_next_bridgehead"></a>
+  <span class="phrase"><a name="work_stealing_pick_next"></a></span>
+  <a class="link" href="scheduling.html#work_stealing_pick_next">Member
+      function <code class="computeroutput">pick_next</code>()</a>
+</h5>
+<p>
+    </p>
+<pre class="programlisting"><span class="keyword">virtual</span> <span class="identifier">context</span> <span class="special">*</span> <span class="identifier">pick_next</span><span class="special">()</span> <span class="keyword">noexcept</span><span class="special">;</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Returns:</span></dt>
+<dd><p>
+            the fiber at the head of the ready queue, or <code class="computeroutput"><span class="keyword">nullptr</span></code>
+            if the queue is empty.
+          </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+            Nothing.
+          </p></dd>
+<dt><span class="term">Note:</span></dt>
+<dd><p>
+            Placing ready fibers onto the tail of the sahred queue, and returning
+            them from the head of that queue, shares the thread between ready fibers
+            in round-robin fashion.
+          </p></dd>
+</dl>
+</div>
+<p>
+      </p>
+<h5>
+<a name="work_stealing_has_ready_fibers_bridgehead"></a>
+  <span class="phrase"><a name="work_stealing_has_ready_fibers"></a></span>
+  <a class="link" href="scheduling.html#work_stealing_has_ready_fibers">Member
+      function <code class="computeroutput">has_ready_fibers</code>()</a>
+</h5>
+<p>
+    </p>
+<pre class="programlisting"><span class="keyword">virtual</span> <span class="keyword">bool</span> <span class="identifier">has_ready_fibers</span><span class="special">()</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Returns:</span></dt>
+<dd><p>
+            <code class="computeroutput"><span class="keyword">true</span></code> if scheduler has fibers
+            ready to run.
+          </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+            Nothing.
+          </p></dd>
+</dl>
+</div>
+<p>
+      </p>
+<h5>
+<a name="work_stealing_suspend_until_bridgehead"></a>
+  <span class="phrase"><a name="work_stealing_suspend_until"></a></span>
+  <a class="link" href="scheduling.html#work_stealing_suspend_until">Member
+      function <code class="computeroutput">suspend_until</code>()</a>
+</h5>
+<p>
+    </p>
+<pre class="programlisting"><span class="keyword">virtual</span> <span class="keyword">void</span> <span class="identifier">suspend_until</span><span class="special">(</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">chrono</span><span class="special">::</span><span class="identifier">steady_clock</span><span class="special">::</span><span class="identifier">time_point</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">abs_time</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+            Informs <code class="computeroutput"><span class="identifier">work_stealing</span></code>
+            that no ready fiber will be available until time-point <code class="computeroutput"><span class="identifier">abs_time</span></code>. This implementation blocks
+            in <a href="http://en.cppreference.com/w/cpp/thread/condition_variable/wait_until" target="_top"><code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">condition_variable</span><span class="special">::</span><span class="identifier">wait_until</span><span class="special">()</span></code></a>.
+          </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+            Nothing.
+          </p></dd>
+</dl>
+</div>
+<p>
+      </p>
+<h5>
+<a name="work_stealing_notify_bridgehead"></a>
+  <span class="phrase"><a name="work_stealing_notify"></a></span>
+  <a class="link" href="scheduling.html#work_stealing_notify">Member
+      function <code class="computeroutput">notify</code>()</a>
+</h5>
+<p>
+    </p>
+<pre class="programlisting"><span class="keyword">virtual</span> <span class="keyword">void</span> <span class="identifier">notify</span><span class="special">()</span> <span class="keyword">noexcept</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+            Wake up a pending call to <a class="link" href="scheduling.html#work_stealing_suspend_until"><code class="computeroutput">work_stealing::suspend_until()</code></a>,
+            some fibers might be ready. This implementation wakes <code class="computeroutput"><span class="identifier">suspend_until</span><span class="special">()</span></code> via <a href="http://en.cppreference.com/w/cpp/thread/condition_variable/notify_all" target="_top"><code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">condition_variable</span><span class="special">::</span><span class="identifier">notify_all</span><span class="special">()</span></code></a>.
+          </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+            Nothing.
+          </p></dd>
+</dl>
+</div>
+<p>
+      </p>
+<h5>
+<a name="class_shared_work_bridgehead"></a>
+  <span class="phrase"><a name="class_shared_work"></a></span>
+  <a class="link" href="scheduling.html#class_shared_work">Class <code class="computeroutput">shared_work</code></a>
+</h5>
+<p>
+    </p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+        Because of the non-locality of data, <span class="emphasis"><em>shared_work</em></span> is
+        less performant than <a class="link" href="scheduling.html#class_work_stealing"><code class="computeroutput">work_stealing</code></a>.
+      </p></td></tr>
+</table></div>
+<p>
+      This class implements <a class="link" href="scheduling.html#class_algorithm"><code class="computeroutput">algorithm</code></a>, scheduling fibers in round-robin
+      fashion. Ready fibers are shared between all instances (running on different
+      threads) of shared_work, thus the work is distributed equally over all threads.
+    </p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+        Worker-threads are stored in a static variable, dynamically adding/removing
+        worker threads is not supported.
+      </p></td></tr>
+</table></div>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">fiber</span><span class="special">/</span><span class="identifier">algo</span><span class="special">/</span><span class="identifier">shared_work</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span>
+<span class="keyword">namespace</span> <span class="identifier">fibers</span> <span class="special">{</span>
+<span class="keyword">namespace</span> <span class="identifier">algo</span> <span class="special">{</span>
+
+<span class="keyword">class</span> <span class="identifier">shared_work</span> <span class="special">:</span> <span class="keyword">public</span> <span class="identifier">algorithm</span> <span class="special">{</span>
+    <span class="identifier">shared_work</span><span class="special">();</span>
+    <span class="identifier">shared_work</span><span class="special">(</span> <span class="keyword">bool</span> <span class="identifier">suspend</span><span class="special">);</span>
+
+    <span class="keyword">virtual</span> <span class="keyword">void</span> <span class="identifier">awakened</span><span class="special">(</span> <span class="identifier">context</span> <span class="special">*)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+    <span class="keyword">virtual</span> <span class="identifier">context</span> <span class="special">*</span> <span class="identifier">pick_next</span><span class="special">()</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+    <span class="keyword">virtual</span> <span class="keyword">bool</span> <span class="identifier">has_ready_fibers</span><span class="special">()</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+    <span class="keyword">virtual</span> <span class="keyword">void</span> <span class="identifier">suspend_until</span><span class="special">(</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">chrono</span><span class="special">::</span><span class="identifier">steady_clock</span><span class="special">::</span><span class="identifier">time_point</span> <span class="keyword">const</span><span class="special">&amp;)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+    <span class="keyword">virtual</span> <span class="keyword">void</span> <span class="identifier">notify</span><span class="special">()</span> <span class="keyword">noexcept</span><span class="special">;</span>
+<span class="special">};</span>
+
+<span class="special">}}}</span>
+</pre>
+<h4>
+<a name="fiber.scheduling.h1"></a>
+      <span class="phrase"><a name="fiber.scheduling.constructor0"></a></span><a class="link" href="scheduling.html#fiber.scheduling.constructor0">Constructor</a>
+    </h4>
+<pre class="programlisting"><span class="identifier">shared_work</span><span class="special">();</span>
+<span class="identifier">shared_work</span><span class="special">(</span> <span class="keyword">bool</span> <span class="identifier">suspend</span><span class="special">);</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+            Constructs work-sharing scheduling algorithm.
+          </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+            <code class="computeroutput"><span class="identifier">system_error</span></code>
+          </p></dd>
+<dt><span class="term">Note:</span></dt>
+<dd><p>
+            If <code class="computeroutput"><span class="identifier">suspend</span></code> is set to
+            <code class="computeroutput"><span class="keyword">true</span></code> (default is <code class="computeroutput"><span class="keyword">false</span></code>), then the scheduler suspends if
+            no ready fiber could be stolen. The scheduler will by woken up if a sleeping
+            fiber times out or it was notified from remote (other thread or fiber
+            scheduler).
+          </p></dd>
+</dl>
+</div>
+<p>
+      </p>
+<h5>
+<a name="shared_work_awakened_bridgehead"></a>
+  <span class="phrase"><a name="shared_work_awakened"></a></span>
+  <a class="link" href="scheduling.html#shared_work_awakened">Member
+      function <code class="computeroutput">awakened</code>()</a>
+</h5>
+<p>
+    </p>
+<pre class="programlisting"><span class="keyword">virtual</span> <span class="keyword">void</span> <span class="identifier">awakened</span><span class="special">(</span> <span class="identifier">context</span> <span class="special">*</span> <span class="identifier">f</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+            Enqueues fiber <code class="computeroutput"><span class="identifier">f</span></code> onto
+            the shared ready queue.
+          </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+            Nothing.
+          </p></dd>
+</dl>
+</div>
+<p>
+      </p>
+<h5>
+<a name="shared_work_pick_next_bridgehead"></a>
+  <span class="phrase"><a name="shared_work_pick_next"></a></span>
+  <a class="link" href="scheduling.html#shared_work_pick_next">Member
+      function <code class="computeroutput">pick_next</code>()</a>
+</h5>
+<p>
+    </p>
+<pre class="programlisting"><span class="keyword">virtual</span> <span class="identifier">context</span> <span class="special">*</span> <span class="identifier">pick_next</span><span class="special">()</span> <span class="keyword">noexcept</span><span class="special">;</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Returns:</span></dt>
+<dd><p>
+            the fiber at the head of the ready queue, or <code class="computeroutput"><span class="keyword">nullptr</span></code>
+            if the queue is empty.
+          </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+            Nothing.
+          </p></dd>
+<dt><span class="term">Note:</span></dt>
+<dd><p>
+            Placing ready fibers onto the tail of the shared queue, and returning
+            them from the head of that queue, shares the thread between ready fibers
+            in round-robin fashion.
+          </p></dd>
+</dl>
+</div>
+<p>
+      </p>
+<h5>
+<a name="shared_work_has_ready_fibers_bridgehead"></a>
+  <span class="phrase"><a name="shared_work_has_ready_fibers"></a></span>
+  <a class="link" href="scheduling.html#shared_work_has_ready_fibers">Member
+      function <code class="computeroutput">has_ready_fibers</code>()</a>
+</h5>
+<p>
+    </p>
+<pre class="programlisting"><span class="keyword">virtual</span> <span class="keyword">bool</span> <span class="identifier">has_ready_fibers</span><span class="special">()</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Returns:</span></dt>
+<dd><p>
+            <code class="computeroutput"><span class="keyword">true</span></code> if scheduler has fibers
+            ready to run.
+          </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+            Nothing.
+          </p></dd>
+</dl>
+</div>
+<p>
+      </p>
+<h5>
+<a name="shared_work_suspend_until_bridgehead"></a>
+  <span class="phrase"><a name="shared_work_suspend_until"></a></span>
+  <a class="link" href="scheduling.html#shared_work_suspend_until">Member
+      function <code class="computeroutput">suspend_until</code>()</a>
+</h5>
+<p>
+    </p>
+<pre class="programlisting"><span class="keyword">virtual</span> <span class="keyword">void</span> <span class="identifier">suspend_until</span><span class="special">(</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">chrono</span><span class="special">::</span><span class="identifier">steady_clock</span><span class="special">::</span><span class="identifier">time_point</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">abs_time</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+            Informs <code class="computeroutput"><span class="identifier">shared_work</span></code> that
+            no ready fiber will be available until time-point <code class="computeroutput"><span class="identifier">abs_time</span></code>.
+            This implementation blocks in <a href="http://en.cppreference.com/w/cpp/thread/condition_variable/wait_until" target="_top"><code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">condition_variable</span><span class="special">::</span><span class="identifier">wait_until</span><span class="special">()</span></code></a>.
+          </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+            Nothing.
+          </p></dd>
+</dl>
+</div>
+<p>
+      </p>
+<h5>
+<a name="shared_work_notify_bridgehead"></a>
+  <span class="phrase"><a name="shared_work_notify"></a></span>
+  <a class="link" href="scheduling.html#shared_work_notify">Member function
+      <code class="computeroutput">notify</code>()</a>
+</h5>
+<p>
+    </p>
+<pre class="programlisting"><span class="keyword">virtual</span> <span class="keyword">void</span> <span class="identifier">notify</span><span class="special">()</span> <span class="keyword">noexcept</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+            Wake up a pending call to <a class="link" href="scheduling.html#shared_work_suspend_until"><code class="computeroutput">shared_work::suspend_until()</code></a>,
+            some fibers might be ready. This implementation wakes <code class="computeroutput"><span class="identifier">suspend_until</span><span class="special">()</span></code> via <a href="http://en.cppreference.com/w/cpp/thread/condition_variable/notify_all" target="_top"><code class="computeroutput"><span class="identifier">std</span><span class="special">::</span><span class="identifier">condition_variable</span><span class="special">::</span><span class="identifier">notify_all</span><span class="special">()</span></code></a>.
+          </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+            Nothing.
+          </p></dd>
+</dl>
+</div>
+<h4>
+<a name="fiber.scheduling.h2"></a>
+      <span class="phrase"><a name="fiber.scheduling.custom_scheduler_fiber_properties"></a></span><a class="link" href="scheduling.html#fiber.scheduling.custom_scheduler_fiber_properties">Custom
+      Scheduler Fiber Properties</a>
+    </h4>
+<p>
+      A scheduler class directly derived from <a class="link" href="scheduling.html#class_algorithm"><code class="computeroutput">algorithm</code></a> can use any
+      information available from <a class="link" href="scheduling.html#class_context"><code class="computeroutput">context</code></a> to implement the <code class="computeroutput"><span class="identifier">algorithm</span></code> interface. But a custom scheduler
+      might need to track additional properties for a fiber. For instance, a priority-based
+      scheduler would need to track a fiber&#8217;s priority.
+    </p>
+<p>
+      <span class="bold"><strong>Boost.Fiber</strong></span> provides a mechanism by which
+      your custom scheduler can associate custom properties with each fiber.
+    </p>
+<p>
+      </p>
+<h5>
+<a name="class_fiber_properties_bridgehead"></a>
+  <span class="phrase"><a name="class_fiber_properties"></a></span>
+  <a class="link" href="scheduling.html#class_fiber_properties">Class
+      <code class="computeroutput">fiber_properties</code></a>
+</h5>
+<p>
+    </p>
+<p>
+      A custom fiber properties class must be derived from <code class="computeroutput"><span class="identifier">fiber_properties</span></code>.
+    </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">fiber</span><span class="special">/</span><span class="identifier">properties</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span>
+<span class="keyword">namespace</span> <span class="identifier">fibers</span> <span class="special">{</span>
+
+<span class="keyword">class</span> <span class="identifier">fiber_properties</span> <span class="special">{</span>
+<span class="keyword">public</span><span class="special">:</span>
+    <span class="identifier">fiber_properties</span><span class="special">(</span> <span class="identifier">context</span> <span class="special">*)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+    <span class="keyword">virtual</span> <span class="special">~</span><span class="identifier">fiber_properties</span><span class="special">();</span>
+
+<span class="keyword">protected</span><span class="special">:</span>
+    <span class="keyword">void</span> <span class="identifier">notify</span><span class="special">()</span> <span class="keyword">noexcept</span><span class="special">;</span>
+<span class="special">};</span>
+
+<span class="special">}}</span>
+</pre>
+<h4>
+<a name="fiber.scheduling.h3"></a>
+      <span class="phrase"><a name="fiber.scheduling.constructor1"></a></span><a class="link" href="scheduling.html#fiber.scheduling.constructor1">Constructor</a>
+    </h4>
+<pre class="programlisting"><span class="identifier">fiber_properties</span><span class="special">(</span> <span class="identifier">context</span> <span class="special">*</span> <span class="identifier">f</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+            Constructs base-class component of custom subclass.
+          </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+            Nothing.
+          </p></dd>
+<dt><span class="term">Note:</span></dt>
+<dd><p>
+            Your subclass constructor must accept a <code class="computeroutput"><span class="identifier">context</span><span class="special">*</span></code> and pass it to the base-class <code class="computeroutput"><span class="identifier">fiber_properties</span></code> constructor.
+          </p></dd>
+</dl>
+</div>
+<p>
+      </p>
+<h5>
+<a name="fiber_properties_notify_bridgehead"></a>
+  <span class="phrase"><a name="fiber_properties_notify"></a></span>
+  <a class="link" href="scheduling.html#fiber_properties_notify">Member
+      function <code class="computeroutput">notify</code>()</a>
+</h5>
+<p>
+    </p>
+<pre class="programlisting"><span class="keyword">void</span> <span class="identifier">notify</span><span class="special">()</span> <span class="keyword">noexcept</span><span class="special">;</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+            Pass control to the custom <a class="link" href="scheduling.html#class_algorithm_with_properties"><code class="computeroutput">algorithm_with_properties&lt;&gt;</code></a> subclass&#8217;s
+            <a class="link" href="scheduling.html#algorithm_with_properties_property_change"><code class="computeroutput">algorithm_with_properties::property_change()</code></a> method.
+          </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+            Nothing.
+          </p></dd>
+<dt><span class="term">Note:</span></dt>
+<dd><p>
+            A custom scheduler&#8217;s <a class="link" href="scheduling.html#algorithm_with_properties_pick_next"><code class="computeroutput">algorithm_with_properties::pick_next()</code></a> method
+            might dynamically select from the ready fibers, or <a class="link" href="scheduling.html#algorithm_with_properties_awakened"><code class="computeroutput">algorithm_with_properties::awakened()</code></a> might
+            instead insert each ready fiber into some form of ready queue for <code class="computeroutput"><span class="identifier">pick_next</span><span class="special">()</span></code>.
+            In the latter case, if application code modifies a fiber property (e.g.
+            priority) that should affect that fiber&#8217;s relationship to other ready
+            fibers, the custom scheduler must be given the opportunity to reorder
+            its ready queue. The custom property subclass should implement an access
+            method to modify such a property; that access method should call <code class="computeroutput"><span class="identifier">notify</span><span class="special">()</span></code>
+            once the new property value has been stored. This passes control to the
+            custom scheduler&#8217;s <code class="computeroutput"><span class="identifier">property_change</span><span class="special">()</span></code> method, allowing the custom scheduler
+            to reorder its ready queue appropriately. Use at your discretion. Of
+            course, if you define a property which does not affect the behavior of
+            the <code class="computeroutput"><span class="identifier">pick_next</span><span class="special">()</span></code>
+            method, you need not call <code class="computeroutput"><span class="identifier">notify</span><span class="special">()</span></code> when that property is modified.
+          </p></dd>
+</dl>
+</div>
+<p>
+      </p>
+<h5>
+<a name="class_algorithm_with_properties_bridgehead"></a>
+  <span class="phrase"><a name="class_algorithm_with_properties"></a></span>
+  <a class="link" href="scheduling.html#class_algorithm_with_properties">Template
+      <code class="computeroutput">algorithm_with_properties&lt;&gt;</code></a>
+</h5>
+<p>
+    </p>
+<p>
+      A custom scheduler that depends on a custom properties class <code class="computeroutput"><span class="identifier">PROPS</span></code> should be derived from <code class="computeroutput"><span class="identifier">algorithm_with_properties</span><span class="special">&lt;</span><span class="identifier">PROPS</span><span class="special">&gt;</span></code>.
+      <code class="computeroutput"><span class="identifier">PROPS</span></code> should be derived from
+      <a class="link" href="scheduling.html#class_fiber_properties"><code class="computeroutput">fiber_properties</code></a>.
+    </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">fiber</span><span class="special">/</span><span class="identifier">algorithm</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span>
+<span class="keyword">namespace</span> <span class="identifier">fibers</span> <span class="special">{</span>
+<span class="keyword">namespace</span> <span class="identifier">algo</span> <span class="special">{</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">typename</span> <span class="identifier">PROPS</span> <span class="special">&gt;</span>
+<span class="keyword">struct</span> <span class="identifier">algorithm_with_properties</span> <span class="special">{</span>
+    <span class="keyword">virtual</span> <span class="keyword">void</span> <span class="identifier">awakened</span><span class="special">(</span> <span class="identifier">context</span> <span class="special">*,</span> <span class="identifier">PROPS</span> <span class="special">&amp;)</span> <span class="keyword">noexcept</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span>
+
+    <span class="keyword">virtual</span> <span class="identifier">context</span> <span class="special">*</span> <span class="identifier">pick_next</span><span class="special">()</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+    <span class="keyword">virtual</span> <span class="keyword">bool</span> <span class="identifier">has_ready_fibers</span><span class="special">()</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+    <span class="keyword">virtual</span> <span class="keyword">void</span> <span class="identifier">suspend_until</span><span class="special">(</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">chrono</span><span class="special">::</span><span class="identifier">steady_clock</span><span class="special">::</span><span class="identifier">time_point</span> <span class="keyword">const</span><span class="special">&amp;)</span> <span class="keyword">noexcept</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span>
+
+    <span class="keyword">virtual</span> <span class="keyword">void</span> <span class="identifier">notify</span><span class="special">()</span> <span class="keyword">noexcept</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span>
+
+    <span class="identifier">PROPS</span> <span class="special">&amp;</span> <span class="identifier">properties</span><span class="special">(</span> <span class="identifier">context</span> <span class="special">*)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+    <span class="keyword">virtual</span> <span class="keyword">void</span> <span class="identifier">property_change</span><span class="special">(</span> <span class="identifier">context</span> <span class="special">*,</span> <span class="identifier">PROPS</span> <span class="special">&amp;)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+    <span class="keyword">virtual</span> <span class="identifier">fiber_properties</span> <span class="special">*</span> <span class="identifier">new_properties</span><span class="special">(</span> <span class="identifier">context</span> <span class="special">*);</span>
+<span class="special">};</span>
+
+<span class="special">}}}</span>
+</pre>
+<p>
+      </p>
+<h5>
+<a name="algorithm_with_properties_awakened_bridgehead"></a>
+  <span class="phrase"><a name="algorithm_with_properties_awakened"></a></span>
+  <a class="link" href="scheduling.html#algorithm_with_properties_awakened">Member
+      function <code class="computeroutput">awakened</code>()</a>
+</h5>
+<p>
+    </p>
+<pre class="programlisting"><span class="keyword">virtual</span> <span class="keyword">void</span> <span class="identifier">awakened</span><span class="special">(</span> <span class="identifier">context</span> <span class="special">*</span> <span class="identifier">f</span><span class="special">,</span> <span class="identifier">PROPS</span> <span class="special">&amp;</span> <span class="identifier">properties</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+            Informs the scheduler that fiber <code class="computeroutput"><span class="identifier">f</span></code>
+            is ready to run, like <a class="link" href="scheduling.html#algorithm_awakened"><code class="computeroutput">algorithm::awakened()</code></a>. Passes
+            the fiber&#8217;s associated <code class="computeroutput"><span class="identifier">PROPS</span></code>
+            instance.
+          </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+            Nothing.
+          </p></dd>
+<dt><span class="term">Note:</span></dt>
+<dd><p>
+            An <code class="computeroutput"><span class="identifier">algorithm_with_properties</span><span class="special">&lt;&gt;</span></code> subclass must override this method
+            instead of <code class="computeroutput"><span class="identifier">algorithm</span><span class="special">::</span><span class="identifier">awakened</span><span class="special">()</span></code>.
+          </p></dd>
+</dl>
+</div>
+<p>
+      </p>
+<h5>
+<a name="algorithm_with_properties_pick_next_bridgehead"></a>
+  <span class="phrase"><a name="algorithm_with_properties_pick_next"></a></span>
+  <a class="link" href="scheduling.html#algorithm_with_properties_pick_next">Member
+      function <code class="computeroutput">pick_next</code>()</a>
+</h5>
+<p>
+    </p>
+<pre class="programlisting"><span class="keyword">virtual</span> <span class="identifier">context</span> <span class="special">*</span> <span class="identifier">pick_next</span><span class="special">()</span> <span class="keyword">noexcept</span><span class="special">;</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Returns:</span></dt>
+<dd><p>
+            the fiber which is to be resumed next, or <code class="computeroutput"><span class="keyword">nullptr</span></code>
+            if there is no ready fiber.
+          </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+            Nothing.
+          </p></dd>
+<dt><span class="term">Note:</span></dt>
+<dd><p>
+            same as <a class="link" href="scheduling.html#algorithm_pick_next"><code class="computeroutput">algorithm::pick_next()</code></a>
+          </p></dd>
+</dl>
+</div>
+<p>
+      </p>
+<h5>
+<a name="algorithm_with_properties_has_ready_fibers_bridgehead"></a>
+  <span class="phrase"><a name="algorithm_with_properties_has_ready_fibers"></a></span>
+  <a class="link" href="scheduling.html#algorithm_with_properties_has_ready_fibers">Member
+      function <code class="computeroutput">has_ready_fibers</code>()</a>
+</h5>
+<p>
+    </p>
+<pre class="programlisting"><span class="keyword">virtual</span> <span class="keyword">bool</span> <span class="identifier">has_ready_fibers</span><span class="special">()</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Returns:</span></dt>
+<dd><p>
+            <code class="computeroutput"><span class="keyword">true</span></code> if scheduler has fibers
+            ready to run.
+          </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+            Nothing.
+          </p></dd>
+<dt><span class="term">Note:</span></dt>
+<dd><p>
+            same as <a class="link" href="scheduling.html#algorithm_has_ready_fibers"><code class="computeroutput">algorithm::has_ready_fibers()</code></a>
+          </p></dd>
+</dl>
+</div>
+<p>
+      </p>
+<h5>
+<a name="algorithm_with_properties_suspend_until_bridgehead"></a>
+  <span class="phrase"><a name="algorithm_with_properties_suspend_until"></a></span>
+  <a class="link" href="scheduling.html#algorithm_with_properties_suspend_until">Member
+      function <code class="computeroutput">suspend_until</code>()</a>
+</h5>
+<p>
+    </p>
+<pre class="programlisting"><span class="keyword">virtual</span> <span class="keyword">void</span> <span class="identifier">suspend_until</span><span class="special">(</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">chrono</span><span class="special">::</span><span class="identifier">steady_clock</span><span class="special">::</span><span class="identifier">time_point</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">abs_time</span><span class="special">)</span> <span class="keyword">noexcept</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+            Informs the scheduler that no fiber will be ready until time-point <code class="computeroutput"><span class="identifier">abs_time</span></code>.
+          </p></dd>
+<dt><span class="term">Note:</span></dt>
+<dd><p>
+            same as <a class="link" href="scheduling.html#algorithm_suspend_until"><code class="computeroutput">algorithm::suspend_until()</code></a>
+          </p></dd>
+</dl>
+</div>
+<p>
+      </p>
+<h5>
+<a name="algorithm_with_properties_notify_bridgehead"></a>
+  <span class="phrase"><a name="algorithm_with_properties_notify"></a></span>
+  <a class="link" href="scheduling.html#algorithm_with_properties_notify">Member
+      function <code class="computeroutput">notify</code>()</a>
+</h5>
+<p>
+    </p>
+<pre class="programlisting"><span class="keyword">virtual</span> <span class="keyword">void</span> <span class="identifier">notify</span><span class="special">()</span> <span class="keyword">noexcept</span> <span class="special">=</span> <span class="number">0</span><span class="special">;</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+            Requests the scheduler to return from a pending call to <a class="link" href="scheduling.html#algorithm_with_properties_suspend_until"><code class="computeroutput">algorithm_with_properties::suspend_until()</code></a>.
+          </p></dd>
+<dt><span class="term">Note:</span></dt>
+<dd><p>
+            same as <a class="link" href="scheduling.html#algorithm_notify"><code class="computeroutput">algorithm::notify()</code></a>
+          </p></dd>
+</dl>
+</div>
+<p>
+      </p>
+<h5>
+<a name="algorithm_with_properties_properties_bridgehead"></a>
+  <span class="phrase"><a name="algorithm_with_properties_properties"></a></span>
+  <a class="link" href="scheduling.html#algorithm_with_properties_properties">Member
+      function <code class="computeroutput">properties</code>()</a>
+</h5>
+<p>
+    </p>
+<pre class="programlisting"><span class="identifier">PROPS</span><span class="special">&amp;</span> <span class="identifier">properties</span><span class="special">(</span> <span class="identifier">context</span> <span class="special">*</span> <span class="identifier">f</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Returns:</span></dt>
+<dd><p>
+            the <code class="computeroutput"><span class="identifier">PROPS</span></code> instance associated
+            with fiber <code class="computeroutput"><span class="identifier">f</span></code>.
+          </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+            Nothing.
+          </p></dd>
+<dt><span class="term">Note:</span></dt>
+<dd><p>
+            The fiber&#8217;s associated <code class="computeroutput"><span class="identifier">PROPS</span></code>
+            instance is already passed to <a class="link" href="scheduling.html#algorithm_with_properties_awakened"><code class="computeroutput">algorithm_with_properties::awakened()</code></a> and
+            <a class="link" href="scheduling.html#algorithm_with_properties_property_change"><code class="computeroutput">algorithm_with_properties::property_change()</code></a>.
+            However, every <a class="link" href="scheduling.html#class_algorithm"><code class="computeroutput">algorithm</code></a> subclass is expected to track
+            a collection of ready <a class="link" href="scheduling.html#class_context"><code class="computeroutput">context</code></a> instances. This method allows
+            your custom scheduler to retrieve the <a class="link" href="scheduling.html#class_fiber_properties"><code class="computeroutput">fiber_properties</code></a> subclass
+            instance for any <code class="computeroutput"><span class="identifier">context</span></code>
+            in its collection.
+          </p></dd>
+</dl>
+</div>
+<p>
+      </p>
+<h5>
+<a name="algorithm_with_properties_property_change_bridgehead"></a>
+  <span class="phrase"><a name="algorithm_with_properties_property_change"></a></span>
+  <a class="link" href="scheduling.html#algorithm_with_properties_property_change">Member
+      function <code class="computeroutput">property_change</code>()</a>
+</h5>
+<p>
+    </p>
+<pre class="programlisting"><span class="keyword">virtual</span> <span class="keyword">void</span> <span class="identifier">property_change</span><span class="special">(</span> <span class="identifier">context</span> <span class="special">*</span> <span class="identifier">f</span><span class="special">,</span> <span class="identifier">PROPS</span> <span class="special">&amp;</span> <span class="identifier">properties</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+            Notify the custom scheduler of a possibly-relevant change to a property
+            belonging to fiber <code class="computeroutput"><span class="identifier">f</span></code>.
+            <code class="computeroutput"><span class="identifier">properties</span></code> contains the
+            new values of all relevant properties.
+          </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+            Nothing.
+          </p></dd>
+<dt><span class="term">Note:</span></dt>
+<dd><p>
+            This method is only called when a custom <a class="link" href="scheduling.html#class_fiber_properties"><code class="computeroutput">fiber_properties</code></a> subclass
+            explicitly calls <a class="link" href="scheduling.html#fiber_properties_notify"><code class="computeroutput">fiber_properties::notify()</code></a>.
+          </p></dd>
+</dl>
+</div>
+<p>
+      </p>
+<h5>
+<a name="algorithm_with_properties_new_properties_bridgehead"></a>
+  <span class="phrase"><a name="algorithm_with_properties_new_properties"></a></span>
+  <a class="link" href="scheduling.html#algorithm_with_properties_new_properties">Member
+      function <code class="computeroutput">new_properties</code>()</a>
+</h5>
+<p>
+    </p>
+<pre class="programlisting"><span class="keyword">virtual</span> <span class="identifier">fiber_properties</span> <span class="special">*</span> <span class="identifier">new_properties</span><span class="special">(</span> <span class="identifier">context</span> <span class="special">*</span> <span class="identifier">f</span><span class="special">);</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Returns:</span></dt>
+<dd><p>
+            A new instance of <a class="link" href="scheduling.html#class_fiber_properties"><code class="computeroutput">fiber_properties</code></a> subclass <code class="computeroutput"><span class="identifier">PROPS</span></code>.
+          </p></dd>
+<dt><span class="term">Note:</span></dt>
+<dd><p>
+            By default, <code class="computeroutput"><span class="identifier">algorithm_with_properties</span><span class="special">&lt;&gt;::</span><span class="identifier">new_properties</span><span class="special">()</span></code> simply returns <code class="computeroutput"><span class="keyword">new</span>
+            <span class="identifier">PROPS</span><span class="special">(</span><span class="identifier">f</span><span class="special">)</span></code>,
+            placing the <code class="computeroutput"><span class="identifier">PROPS</span></code> instance
+            on the heap. Override this method to allocate <code class="computeroutput"><span class="identifier">PROPS</span></code>
+            some other way. The returned <code class="computeroutput"><span class="identifier">fiber_properties</span></code>
+            pointer must point to the <code class="computeroutput"><span class="identifier">PROPS</span></code>
+            instance to be associated with fiber <code class="computeroutput"><span class="identifier">f</span></code>.
+          </p></dd>
+</dl>
+</div>
+<p>
+      <a name="context"></a></p>
+<h5>
+<a name="class_context_bridgehead"></a>
+  <span class="phrase"><a name="class_context"></a></span>
+  <a class="link" href="scheduling.html#class_context">Class
+      <code class="computeroutput">context</code></a>
+</h5>
+<p>
+    </p>
+<p>
+      While you are free to treat <code class="computeroutput"><span class="identifier">context</span><span class="special">*</span></code> as an opaque token, certain <code class="computeroutput"><span class="identifier">context</span></code> members may be useful to a custom
+      scheduler implementation.
+    </p>
+<p>
+      <a name="ready_queue_t"></a>Of particular note is the fact that <code class="computeroutput"><span class="identifier">context</span></code> contains a hook to participate in
+      a <a href="http://www.boost.org/doc/libs/release/doc/html/intrusive/list.html" target="_top"><code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">intrusive</span><span class="special">::</span><span class="identifier">list</span></code></a>
+      <code class="literal">typedef</code>&#8217;ed as <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">fibers</span><span class="special">::</span><span class="identifier">scheduler</span><span class="special">::</span><span class="identifier">ready_queue_t</span></code>.
+      This hook is reserved for use by <a class="link" href="scheduling.html#class_algorithm"><code class="computeroutput">algorithm</code></a> implementations. (For
+      instance, <a class="link" href="scheduling.html#class_round_robin"><code class="computeroutput">round_robin</code></a> contains a <code class="computeroutput"><span class="identifier">ready_queue_t</span></code>
+      instance to manage its ready fibers.) See <a class="link" href="scheduling.html#context_ready_is_linked"><code class="computeroutput">context::ready_is_linked()</code></a>,
+      <a class="link" href="scheduling.html#context_ready_link"><code class="computeroutput">context::ready_link()</code></a>, <a class="link" href="scheduling.html#context_ready_unlink"><code class="computeroutput">context::ready_unlink()</code></a>.
+    </p>
+<p>
+      Your <code class="computeroutput"><span class="identifier">algorithm</span></code> implementation
+      may use any container you desire to manage passed <code class="computeroutput"><span class="identifier">context</span></code>
+      instances. <code class="computeroutput"><span class="identifier">ready_queue_t</span></code> avoids
+      some of the overhead of typical STL containers.
+    </p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">fiber</span><span class="special">/</span><span class="identifier">context</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="keyword">namespace</span> <span class="identifier">boost</span> <span class="special">{</span>
+<span class="keyword">namespace</span> <span class="identifier">fibers</span> <span class="special">{</span>
+
+<span class="keyword">enum</span> <span class="keyword">class</span> <span class="identifier">type</span> <span class="special">{</span>
+  <span class="identifier">none</span>               <span class="special">=</span> <span class="emphasis"><em>unspecified</em></span><span class="special">,</span>
+  <span class="identifier">main_context</span>       <span class="special">=</span> <span class="emphasis"><em>unspecified</em></span><span class="special">,</span> <span class="comment">// fiber associated with thread's stack</span>
+  <span class="identifier">dispatcher_context</span> <span class="special">=</span> <span class="emphasis"><em>unspecified</em></span><span class="special">,</span> <span class="comment">// special fiber for maintenance operations</span>
+  <span class="identifier">worker_context</span>     <span class="special">=</span> <span class="emphasis"><em>unspecified</em></span><span class="special">,</span> <span class="comment">// fiber not special to the library</span>
+  <span class="identifier">pinned_context</span>     <span class="special">=</span> <span class="emphasis"><em>unspecified</em></span>  <span class="comment">// fiber must not be migrated to another thread</span>
+<span class="special">};</span>
+
+<span class="keyword">class</span> <span class="identifier">context</span> <span class="special">{</span>
+<span class="keyword">public</span><span class="special">:</span>
+    <span class="keyword">class</span> <span class="identifier">id</span><span class="special">;</span>
+
+    <span class="keyword">static</span> <span class="identifier">context</span> <span class="special">*</span> <span class="identifier">active</span><span class="special">()</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+    <span class="identifier">context</span><span class="special">(</span> <span class="identifier">context</span> <span class="keyword">const</span><span class="special">&amp;)</span> <span class="special">=</span> <span class="keyword">delete</span><span class="special">;</span>
+    <span class="identifier">context</span> <span class="special">&amp;</span> <span class="keyword">operator</span><span class="special">=(</span> <span class="identifier">context</span> <span class="keyword">const</span><span class="special">&amp;)</span> <span class="special">=</span> <span class="keyword">delete</span><span class="special">;</span>
+
+    <span class="identifier">id</span> <span class="identifier">get_id</span><span class="special">()</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+    <span class="keyword">void</span> <span class="identifier">detach</span><span class="special">()</span> <span class="keyword">noexcept</span><span class="special">;</span>
+    <span class="keyword">void</span> <span class="identifier">attach</span><span class="special">(</span> <span class="identifier">context</span> <span class="special">*)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+    <span class="keyword">bool</span> <span class="identifier">is_context</span><span class="special">(</span> <span class="identifier">type</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+    <span class="keyword">bool</span> <span class="identifier">is_terminated</span><span class="special">()</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+    <span class="keyword">bool</span> <span class="identifier">ready_is_linked</span><span class="special">()</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+    <span class="keyword">bool</span> <span class="identifier">remote_ready_is_linked</span><span class="special">()</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+    <span class="keyword">bool</span> <span class="identifier">wait_is_linked</span><span class="special">()</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+    <span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">typename</span> <span class="identifier">List</span> <span class="special">&gt;</span>
+    <span class="keyword">void</span> <span class="identifier">ready_link</span><span class="special">(</span> <span class="identifier">List</span> <span class="special">&amp;)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+    <span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">typename</span> <span class="identifier">List</span> <span class="special">&gt;</span>
+    <span class="keyword">void</span> <span class="identifier">remote_ready_link</span><span class="special">(</span> <span class="identifier">List</span> <span class="special">&amp;)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+    <span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">typename</span> <span class="identifier">List</span> <span class="special">&gt;</span>
+    <span class="keyword">void</span> <span class="identifier">wait_link</span><span class="special">(</span> <span class="identifier">List</span> <span class="special">&amp;)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+    <span class="keyword">void</span> <span class="identifier">ready_unlink</span><span class="special">()</span> <span class="keyword">noexcept</span><span class="special">;</span>
+    <span class="keyword">void</span> <span class="identifier">remote_ready_unlink</span><span class="special">()</span> <span class="keyword">noexcept</span><span class="special">;</span>
+    <span class="keyword">void</span> <span class="identifier">wait_unlink</span><span class="special">()</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+    <span class="keyword">void</span> <span class="identifier">suspend</span><span class="special">()</span> <span class="keyword">noexcept</span><span class="special">;</span>
+    <span class="keyword">void</span> <span class="identifier">schedule</span><span class="special">(</span> <span class="identifier">context</span> <span class="special">*)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+<span class="special">};</span>
+
+<span class="keyword">bool</span> <span class="keyword">operator</span><span class="special">&lt;(</span> <span class="identifier">context</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">l</span><span class="special">,</span> <span class="identifier">context</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">r</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+
+<span class="special">}}</span>
+</pre>
+<p>
+      </p>
+<h5>
+<a name="context_active_bridgehead"></a>
+  <span class="phrase"><a name="context_active"></a></span>
+  <a class="link" href="scheduling.html#context_active">Static member function
+      <code class="computeroutput">active</code>()</a>
+</h5>
+<p>
+    </p>
+<pre class="programlisting"><span class="keyword">static</span> <span class="identifier">context</span> <span class="special">*</span> <span class="identifier">active</span><span class="special">()</span> <span class="keyword">noexcept</span><span class="special">;</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Returns:</span></dt>
+<dd><p>
+            Pointer to instance of current fiber.
+          </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+            Nothing
+          </p></dd>
+</dl>
+</div>
+<p>
+      </p>
+<h5>
+<a name="context_get_id_bridgehead"></a>
+  <span class="phrase"><a name="context_get_id"></a></span>
+  <a class="link" href="scheduling.html#context_get_id">Member function <code class="computeroutput">get_id</code>()</a>
+</h5>
+<p>
+    </p>
+<pre class="programlisting"><span class="identifier">context</span><span class="special">::</span><span class="identifier">id</span> <span class="identifier">get_id</span><span class="special">()</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Returns:</span></dt>
+<dd><p>
+            If <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code>
+            refers to a fiber of execution, an instance of <a class="link" href="fiber_mgmt.html#class_fiber_id"><code class="computeroutput"><span class="identifier">fiber</span><span class="special">::</span><span class="identifier">id</span></code></a> that represents that fiber. Otherwise
+            returns a default-constructed <a class="link" href="fiber_mgmt.html#class_fiber_id"><code class="computeroutput"><span class="identifier">fiber</span><span class="special">::</span><span class="identifier">id</span></code></a>.
+          </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+            Nothing
+          </p></dd>
+<dt><span class="term">See also:</span></dt>
+<dd><p>
+            <a class="link" href="fiber_mgmt/fiber.html#fiber_get_id"><code class="computeroutput">fiber::get_id()</code></a>
+          </p></dd>
+</dl>
+</div>
+<p>
+      </p>
+<h5>
+<a name="context_attach_bridgehead"></a>
+  <span class="phrase"><a name="context_attach"></a></span>
+  <a class="link" href="scheduling.html#context_attach">Member function <code class="computeroutput">attach</code>()</a>
+</h5>
+<p>
+    </p>
+<pre class="programlisting"><span class="keyword">void</span> <span class="identifier">attach</span><span class="special">(</span> <span class="identifier">context</span> <span class="special">*</span> <span class="identifier">f</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Precondition:</span></dt>
+<dd><p>
+            <code class="computeroutput"><span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">get_scheduler</span><span class="special">()</span>
+            <span class="special">==</span> <span class="keyword">nullptr</span></code>
+          </p></dd>
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+            Attach fiber <code class="computeroutput"><span class="identifier">f</span></code> to scheduler
+            running <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code>.
+          </p></dd>
+<dt><span class="term">Postcondition:</span></dt>
+<dd><p>
+            <code class="computeroutput"><span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">get_scheduler</span><span class="special">()</span>
+            <span class="special">!=</span> <span class="keyword">nullptr</span></code>
+          </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+            Nothing
+          </p></dd>
+<dt><span class="term">Note:</span></dt>
+<dd><p>
+            A typical call: <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">fibers</span><span class="special">::</span><span class="identifier">context</span><span class="special">::</span><span class="identifier">active</span><span class="special">()-&gt;</span><span class="identifier">attach</span><span class="special">(</span><span class="identifier">f</span><span class="special">);</span></code>
+          </p></dd>
+<dt><span class="term">Note:</span></dt>
+<dd><p>
+            <code class="computeroutput"><span class="identifier">f</span></code> must not be the running
+            fiber&#8217;s context. It must not be <a class="link" href="overview.html#blocking"><span class="emphasis"><em>blocked</em></span></a>
+            or terminated. It must not be a <code class="computeroutput"><span class="identifier">pinned_context</span></code>.
+            It must be currently detached. It must not currently be linked into an
+            <a class="link" href="scheduling.html#class_algorithm"><code class="computeroutput">algorithm</code></a> implementation&#8217;s ready queue. Most of these conditions
+            are implied by <code class="computeroutput"><span class="identifier">f</span></code> being
+            owned by an <code class="computeroutput"><span class="identifier">algorithm</span></code>
+            implementation: that is, it has been passed to <a class="link" href="scheduling.html#algorithm_awakened"><code class="computeroutput">algorithm::awakened()</code></a> but
+            has not yet been returned by <a class="link" href="scheduling.html#algorithm_pick_next"><code class="computeroutput">algorithm::pick_next()</code></a>.
+            Typically a <code class="computeroutput"><span class="identifier">pick_next</span><span class="special">()</span></code> implementation would call <code class="computeroutput"><span class="identifier">attach</span><span class="special">()</span></code>
+            with the <code class="computeroutput"><span class="identifier">context</span><span class="special">*</span></code>
+            it is about to return. It must first remove <code class="computeroutput"><span class="identifier">f</span></code>
+            from its ready queue. You should never pass a <code class="computeroutput"><span class="identifier">pinned_context</span></code>
+            to <code class="computeroutput"><span class="identifier">attach</span><span class="special">()</span></code>
+            because you should never have called its <code class="computeroutput"><span class="identifier">detach</span><span class="special">()</span></code> method in the first place.
+          </p></dd>
+</dl>
+</div>
+<p>
+      </p>
+<h5>
+<a name="context_detach_bridgehead"></a>
+  <span class="phrase"><a name="context_detach"></a></span>
+  <a class="link" href="scheduling.html#context_detach">Member function <code class="computeroutput">detach</code>()</a>
+</h5>
+<p>
+    </p>
+<pre class="programlisting"><span class="keyword">void</span> <span class="identifier">detach</span><span class="special">()</span> <span class="keyword">noexcept</span><span class="special">;</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Precondition:</span></dt>
+<dd><p>
+            <code class="computeroutput"><span class="special">(</span><span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">get_scheduler</span><span class="special">()</span> <span class="special">!=</span> <span class="keyword">nullptr</span><span class="special">)</span> <span class="special">&amp;&amp;</span> <span class="special">!</span>
+            <span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">is_context</span><span class="special">(</span><span class="identifier">pinned_context</span><span class="special">)</span></code>
+          </p></dd>
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+            Detach fiber <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code>
+            from its scheduler running <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code>.
+          </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+            Nothing
+          </p></dd>
+<dt><span class="term">Postcondition:</span></dt>
+<dd><p>
+            <code class="computeroutput"><span class="keyword">this</span><span class="special">-&gt;</span><span class="identifier">get_scheduler</span><span class="special">()</span>
+            <span class="special">==</span> <span class="keyword">nullptr</span></code>
+          </p></dd>
+<dt><span class="term">Note:</span></dt>
+<dd><p>
+            This method must be called on the thread with which the fiber is currently
+            associated. <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code>
+            must not be the running fiber&#8217;s context. It must not be <a class="link" href="overview.html#blocking"><span class="emphasis"><em>blocked</em></span></a>
+            or terminated. It must not be a <code class="computeroutput"><span class="identifier">pinned_context</span></code>.
+            It must not be detached already. It must not already be linked into an
+            <a class="link" href="scheduling.html#class_algorithm"><code class="computeroutput">algorithm</code></a> implementation&#8217;s ready queue. Most of these conditions
+            are implied by <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code>
+            being passed to <a class="link" href="scheduling.html#algorithm_awakened"><code class="computeroutput">algorithm::awakened()</code></a>; an <code class="computeroutput"><span class="identifier">awakened</span><span class="special">()</span></code>
+            implementation must, however, test for <code class="computeroutput"><span class="identifier">pinned_context</span></code>.
+            It must call <code class="computeroutput"><span class="identifier">detach</span><span class="special">()</span></code>
+            <span class="emphasis"><em>before</em></span> linking <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code> into its ready queue.
+          </p></dd>
+<dt><span class="term">Note:</span></dt>
+<dd><p>
+            In particular, it is erroneous to attempt to migrate a fiber from one
+            thread to another by calling both <code class="computeroutput"><span class="identifier">detach</span><span class="special">()</span></code> and <code class="computeroutput"><span class="identifier">attach</span><span class="special">()</span></code> in the <a class="link" href="scheduling.html#algorithm_pick_next"><code class="computeroutput">algorithm::pick_next()</code></a> method.
+            <code class="computeroutput"><span class="identifier">pick_next</span><span class="special">()</span></code>
+            is called on the intended destination thread. <code class="computeroutput"><span class="identifier">detach</span><span class="special">()</span></code> must be called on the fiber&#8217;s original
+            thread. You must call <code class="computeroutput"><span class="identifier">detach</span><span class="special">()</span></code> in the corresponding <code class="computeroutput"><span class="identifier">awakened</span><span class="special">()</span></code>
+            method.
+          </p></dd>
+<dt><span class="term">Note:</span></dt>
+<dd><p>
+            Unless you intend make a fiber available for potential migration to a
+            different thread, you should call neither <code class="computeroutput"><span class="identifier">detach</span><span class="special">()</span></code> nor <code class="computeroutput"><span class="identifier">attach</span><span class="special">()</span></code> with its <code class="computeroutput"><span class="identifier">context</span></code>.
+          </p></dd>
+</dl>
+</div>
+<p>
+      </p>
+<h5>
+<a name="context_is_context_bridgehead"></a>
+  <span class="phrase"><a name="context_is_context"></a></span>
+  <a class="link" href="scheduling.html#context_is_context">Member function
+      <code class="computeroutput">is_context</code>()</a>
+</h5>
+<p>
+    </p>
+<pre class="programlisting"><span class="keyword">bool</span> <span class="identifier">is_context</span><span class="special">(</span> <span class="identifier">type</span> <span class="identifier">t</span><span class="special">)</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Returns:</span></dt>
+<dd><p>
+            <code class="computeroutput"><span class="keyword">true</span></code> if <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code> is of the specified type.
+          </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+            Nothing
+          </p></dd>
+<dt><span class="term">Note:</span></dt>
+<dd><p>
+            <code class="computeroutput"><span class="identifier">type</span><span class="special">::</span><span class="identifier">worker_context</span></code> here means any fiber
+            not special to the library. For <code class="computeroutput"><span class="identifier">type</span><span class="special">::</span><span class="identifier">main_context</span></code>
+            the <code class="computeroutput"><span class="identifier">context</span></code> is associated
+            with the <span class="quote">&#8220;<span class="quote">main</span>&#8221;</span> fiber of the thread: the one implicitly
+            created by the thread itself, rather than one explicitly created by
+            <span class="bold"><strong>Boost.Fiber</strong></span>. For <code class="computeroutput"><span class="identifier">type</span><span class="special">::</span><span class="identifier">dispatcher_context</span></code>
+            the <code class="computeroutput"><span class="identifier">context</span></code> is associated
+            with a <span class="quote">&#8220;<span class="quote">dispatching</span>&#8221;</span> fiber, responsible for dispatching
+            awakened fibers to a scheduler&#8217;s ready-queue. The <span class="quote">&#8220;<span class="quote">dispatching</span>&#8221;</span>
+            fiber is an implementation detail of the fiber manager. The context of
+            the <span class="quote">&#8220;<span class="quote">main</span>&#8221;</span> or <span class="quote">&#8220;<span class="quote">dispatching</span>&#8221;</span> fiber &#8212; any fiber
+            for which <code class="computeroutput"><span class="identifier">is_context</span><span class="special">(</span><span class="identifier">pinned_context</span><span class="special">)</span></code> is <code class="computeroutput"><span class="keyword">true</span></code>
+            &#8212; must never be passed to <a class="link" href="scheduling.html#context_detach"><code class="computeroutput">context::detach()</code></a>.
+          </p></dd>
+</dl>
+</div>
+<p>
+      </p>
+<h5>
+<a name="context_is_terminated_bridgehead"></a>
+  <span class="phrase"><a name="context_is_terminated"></a></span>
+  <a class="link" href="scheduling.html#context_is_terminated">Member
+      function <code class="computeroutput">is_terminated</code>()</a>
+</h5>
+<p>
+    </p>
+<pre class="programlisting"><span class="keyword">bool</span> <span class="identifier">is_terminated</span><span class="special">()</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Returns:</span></dt>
+<dd><p>
+            <code class="computeroutput"><span class="keyword">true</span></code> if <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code> is no longer a valid context.
+          </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+            Nothing
+          </p></dd>
+<dt><span class="term">Note:</span></dt>
+<dd><p>
+            The <code class="computeroutput"><span class="identifier">context</span></code> has returned
+            from its fiber-function and is no longer considered a valid context.
+          </p></dd>
+</dl>
+</div>
+<p>
+      </p>
+<h5>
+<a name="context_ready_is_linked_bridgehead"></a>
+  <span class="phrase"><a name="context_ready_is_linked"></a></span>
+  <a class="link" href="scheduling.html#context_ready_is_linked">Member
+      function <code class="computeroutput">ready_is_linked</code>()</a>
+</h5>
+<p>
+    </p>
+<pre class="programlisting"><span class="keyword">bool</span> <span class="identifier">ready_is_linked</span><span class="special">()</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Returns:</span></dt>
+<dd><p>
+            <code class="computeroutput"><span class="keyword">true</span></code> if <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code> is stored in an <a class="link" href="scheduling.html#class_algorithm"><code class="computeroutput">algorithm</code></a>
+implementation&#8217;s
+            ready-queue.
+          </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+            Nothing
+          </p></dd>
+<dt><span class="term">Note:</span></dt>
+<dd><p>
+            Specifically, this method indicates whether <a class="link" href="scheduling.html#context_ready_link"><code class="computeroutput">context::ready_link()</code></a> has
+            been called on <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code>.
+            <code class="computeroutput"><span class="identifier">ready_is_linked</span><span class="special">()</span></code>
+            has no information about participation in any other containers.
+          </p></dd>
+</dl>
+</div>
+<p>
+      </p>
+<h5>
+<a name="context_remote_ready_is_linked_bridgehead"></a>
+  <span class="phrase"><a name="context_remote_ready_is_linked"></a></span>
+  <a class="link" href="scheduling.html#context_remote_ready_is_linked">Member
+      function <code class="computeroutput">remote_ready_is_linked</code>()</a>
+</h5>
+<p>
+    </p>
+<pre class="programlisting"><span class="keyword">bool</span> <span class="identifier">remote_ready_is_linked</span><span class="special">()</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Returns:</span></dt>
+<dd><p>
+            <code class="computeroutput"><span class="keyword">true</span></code> if <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code> is stored in the fiber manager&#8217;s remote-ready-queue.
+          </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+            Nothing
+          </p></dd>
+<dt><span class="term">Note:</span></dt>
+<dd><p>
+            A <code class="computeroutput"><span class="identifier">context</span></code> signaled as
+            ready by another thread is first stored in the fiber manager&#8217;s remote-ready-queue.
+            This is the mechanism by which the fiber manager protects an <a class="link" href="scheduling.html#class_algorithm"><code class="computeroutput">algorithm</code></a> implementation
+            from cross-thread <a class="link" href="scheduling.html#algorithm_awakened"><code class="computeroutput">algorithm::awakened()</code></a> calls.
+          </p></dd>
+</dl>
+</div>
+<p>
+      </p>
+<h5>
+<a name="context_wait_is_linked_bridgehead"></a>
+  <span class="phrase"><a name="context_wait_is_linked"></a></span>
+  <a class="link" href="scheduling.html#context_wait_is_linked">Member
+      function <code class="computeroutput">wait_is_linked</code>()</a>
+</h5>
+<p>
+    </p>
+<pre class="programlisting"><span class="keyword">bool</span> <span class="identifier">wait_is_linked</span><span class="special">()</span> <span class="keyword">const</span> <span class="keyword">noexcept</span><span class="special">;</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Returns:</span></dt>
+<dd><p>
+            <code class="computeroutput"><span class="keyword">true</span></code> if <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code> is stored in the wait-queue of some
+            synchronization object.
+          </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+            Nothing
+          </p></dd>
+<dt><span class="term">Note:</span></dt>
+<dd><p>
+            The <code class="computeroutput"><span class="identifier">context</span></code> of a fiber
+            waiting on a synchronization object (e.g. <code class="computeroutput"><span class="identifier">mutex</span></code>,
+            <code class="computeroutput"><span class="identifier">condition_variable</span></code> etc.)
+            is stored in the wait-queue of that synchronization object.
+          </p></dd>
+</dl>
+</div>
+<p>
+      </p>
+<h5>
+<a name="context_ready_link_bridgehead"></a>
+  <span class="phrase"><a name="context_ready_link"></a></span>
+  <a class="link" href="scheduling.html#context_ready_link">Member function
+      <code class="computeroutput">ready_link</code>()</a>
+</h5>
+<p>
+    </p>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">typename</span> <span class="identifier">List</span> <span class="special">&gt;</span>
+<span class="keyword">void</span> <span class="identifier">ready_link</span><span class="special">(</span> <span class="identifier">List</span> <span class="special">&amp;</span> <span class="identifier">lst</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+            Stores <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code>
+            in ready-queue <code class="computeroutput"><span class="identifier">lst</span></code>.
+          </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+            Nothing
+          </p></dd>
+<dt><span class="term">Note:</span></dt>
+<dd><p>
+            Argument <code class="computeroutput"><span class="identifier">lst</span></code> must be
+            a doubly-linked list from <a href="http://www.boost.org/doc/libs/release/libs/intrusive/index.html" target="_top">Boost.Intrusive</a>,
+            e.g. an instance of <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">fibers</span><span class="special">::</span><span class="identifier">scheduler</span><span class="special">::</span><span class="identifier">ready_queue_t</span></code>.
+            Specifically, it must be a <a href="http://www.boost.org/doc/libs/release/doc/html/intrusive/list.html" target="_top"><code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">intrusive</span><span class="special">::</span><span class="identifier">list</span></code></a> compatible with the <code class="computeroutput"><span class="identifier">list_member_hook</span></code> stored in the <code class="computeroutput"><span class="identifier">context</span></code> object.
+          </p></dd>
+</dl>
+</div>
+<p>
+      </p>
+<h5>
+<a name="context_remote_ready_link_bridgehead"></a>
+  <span class="phrase"><a name="context_remote_ready_link"></a></span>
+  <a class="link" href="scheduling.html#context_remote_ready_link">Member
+      function <code class="computeroutput">remote_ready_link</code>()</a>
+</h5>
+<p>
+    </p>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">typename</span> <span class="identifier">List</span> <span class="special">&gt;</span>
+<span class="keyword">void</span> <span class="identifier">remote_ready_link</span><span class="special">(</span> <span class="identifier">List</span> <span class="special">&amp;</span> <span class="identifier">lst</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+            Stores <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code>
+            in remote-ready-queue <code class="computeroutput"><span class="identifier">lst</span></code>.
+          </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+            Nothing
+          </p></dd>
+<dt><span class="term">Note:</span></dt>
+<dd><p>
+            Argument <code class="computeroutput"><span class="identifier">lst</span></code> must be
+            a doubly-linked list from <a href="http://www.boost.org/doc/libs/release/libs/intrusive/index.html" target="_top">Boost.Intrusive</a>.
+          </p></dd>
+</dl>
+</div>
+<p>
+      </p>
+<h5>
+<a name="context_wait_link_bridgehead"></a>
+  <span class="phrase"><a name="context_wait_link"></a></span>
+  <a class="link" href="scheduling.html#context_wait_link">Member function
+      <code class="computeroutput">wait_link</code>()</a>
+</h5>
+<p>
+    </p>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span> <span class="keyword">typename</span> <span class="identifier">List</span> <span class="special">&gt;</span>
+<span class="keyword">void</span> <span class="identifier">wait_link</span><span class="special">(</span> <span class="identifier">List</span> <span class="special">&amp;</span> <span class="identifier">lst</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+            Stores <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code>
+            in wait-queue <code class="computeroutput"><span class="identifier">lst</span></code>.
+          </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+            Nothing
+          </p></dd>
+<dt><span class="term">Note:</span></dt>
+<dd><p>
+            Argument <code class="computeroutput"><span class="identifier">lst</span></code> must be
+            a doubly-linked list from <a href="http://www.boost.org/doc/libs/release/libs/intrusive/index.html" target="_top">Boost.Intrusive</a>.
+          </p></dd>
+</dl>
+</div>
+<p>
+      </p>
+<h5>
+<a name="context_ready_unlink_bridgehead"></a>
+  <span class="phrase"><a name="context_ready_unlink"></a></span>
+  <a class="link" href="scheduling.html#context_ready_unlink">Member
+      function <code class="computeroutput">ready_unlink</code>()</a>
+</h5>
+<p>
+    </p>
+<pre class="programlisting"><span class="keyword">void</span> <span class="identifier">ready_unlink</span><span class="special">()</span> <span class="keyword">noexcept</span><span class="special">;</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+            Removes <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code>
+            from ready-queue: undoes the effect of <a class="link" href="scheduling.html#context_ready_link"><code class="computeroutput">context::ready_link()</code></a>.
+          </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+            Nothing
+          </p></dd>
+</dl>
+</div>
+<p>
+      </p>
+<h5>
+<a name="context_remote_ready_unlink_bridgehead"></a>
+  <span class="phrase"><a name="context_remote_ready_unlink"></a></span>
+  <a class="link" href="scheduling.html#context_remote_ready_unlink">Member
+      function <code class="computeroutput">remote_ready_unlink</code>()</a>
+</h5>
+<p>
+    </p>
+<pre class="programlisting"><span class="keyword">void</span> <span class="identifier">remote_ready_unlink</span><span class="special">()</span> <span class="keyword">noexcept</span><span class="special">;</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+            Removes <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code>
+            from remote-ready-queue.
+          </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+            Nothing
+          </p></dd>
+</dl>
+</div>
+<p>
+      </p>
+<h5>
+<a name="context_wait_unlink_bridgehead"></a>
+  <span class="phrase"><a name="context_wait_unlink"></a></span>
+  <a class="link" href="scheduling.html#context_wait_unlink">Member
+      function <code class="computeroutput">wait_unlink</code>()</a>
+</h5>
+<p>
+    </p>
+<pre class="programlisting"><span class="keyword">void</span> <span class="identifier">wait_unlink</span><span class="special">()</span> <span class="keyword">noexcept</span><span class="special">;</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+            Removes <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code>
+            from wait-queue.
+          </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+            Nothing
+          </p></dd>
+</dl>
+</div>
+<p>
+      </p>
+<h5>
+<a name="context_suspend_bridgehead"></a>
+  <span class="phrase"><a name="context_suspend"></a></span>
+  <a class="link" href="scheduling.html#context_suspend">Member function <code class="computeroutput">suspend</code>()</a>
+</h5>
+<p>
+    </p>
+<pre class="programlisting"><span class="keyword">void</span> <span class="identifier">suspend</span><span class="special">()</span> <span class="keyword">noexcept</span><span class="special">;</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+            Suspends the running fiber (the fiber associated with <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code>) until some other fiber passes <code class="computeroutput"><span class="keyword">this</span></code> to <a class="link" href="scheduling.html#context_schedule"><code class="computeroutput">context::schedule()</code></a>.
+            <code class="computeroutput"><span class="special">*</span><span class="keyword">this</span></code>
+            is marked as not-ready, and control passes to the scheduler to select
+            another fiber to run.
+          </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+            Nothing
+          </p></dd>
+<dt><span class="term">Note:</span></dt>
+<dd><p>
+            This is a low-level API potentially useful for integration with other
+            frameworks. It is not intended to be directly invoked by a typical application
+            program.
+          </p></dd>
+<dt><span class="term">Note:</span></dt>
+<dd><p>
+            The burden is on the caller to arrange for a call to <code class="computeroutput"><span class="identifier">schedule</span><span class="special">()</span></code> with a pointer to <code class="computeroutput"><span class="keyword">this</span></code>
+            at some future time.
+          </p></dd>
+</dl>
+</div>
+<p>
+      </p>
+<h5>
+<a name="context_schedule_bridgehead"></a>
+  <span class="phrase"><a name="context_schedule"></a></span>
+  <a class="link" href="scheduling.html#context_schedule">Member function
+      <code class="computeroutput">schedule</code>()</a>
+</h5>
+<p>
+    </p>
+<pre class="programlisting"><span class="keyword">void</span> <span class="identifier">schedule</span><span class="special">(</span> <span class="identifier">context</span> <span class="special">*</span> <span class="identifier">ctx</span> <span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Effects:</span></dt>
+<dd><p>
+            Mark the fiber associated with context <code class="computeroutput"><span class="special">*</span><span class="identifier">ctx</span></code> as being ready to run. This does
+            not immediately resume that fiber; rather it passes the fiber to the
+            scheduler for subsequent resumption. If the scheduler is idle (has not
+            returned from a call to <a class="link" href="scheduling.html#algorithm_suspend_until"><code class="computeroutput">algorithm::suspend_until()</code></a>),
+            <a class="link" href="scheduling.html#algorithm_notify"><code class="computeroutput">algorithm::notify()</code></a> is called to wake it up.
+          </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+            Nothing
+          </p></dd>
+<dt><span class="term">Note:</span></dt>
+<dd><p>
+            This is a low-level API potentially useful for integration with other
+            frameworks. It is not intended to be directly invoked by a typical application
+            program.
+          </p></dd>
+<dt><span class="term">Note:</span></dt>
+<dd><p>
+            It is explicitly supported to call <code class="computeroutput"><span class="identifier">schedule</span><span class="special">(</span><span class="identifier">ctx</span><span class="special">)</span></code> from a thread other than the one on
+            which <code class="computeroutput"><span class="special">*</span><span class="identifier">ctx</span></code>
+            is currently suspended. The corresponding fiber will be resumed on its
+            original thread in due course.
+          </p></dd>
+</dl>
+</div>
+<p>
+      </p>
+<h5>
+<a name="context_less_bridgehead"></a>
+  <span class="phrase"><a name="context_less"></a></span>
+  <a class="link" href="scheduling.html#context_less">Non-member function <code class="computeroutput">operator&lt;()</code></a>
+</h5>
+<p>
+    </p>
+<pre class="programlisting"><span class="keyword">bool</span> <span class="keyword">operator</span><span class="special">&lt;(</span> <span class="identifier">context</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">l</span><span class="special">,</span> <span class="identifier">context</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">r</span><span class="special">)</span> <span class="keyword">noexcept</span><span class="special">;</span>
+</pre>
+<div class="variablelist">
+<p class="title"><b></b></p>
+<dl class="variablelist">
+<dt><span class="term">Returns:</span></dt>
+<dd><p>
+            <code class="computeroutput"><span class="keyword">true</span></code> if <code class="computeroutput"><span class="identifier">l</span><span class="special">.</span><span class="identifier">get_id</span><span class="special">()</span> <span class="special">&lt;</span> <span class="identifier">r</span><span class="special">.</span><span class="identifier">get_id</span><span class="special">()</span></code>
+            is <code class="computeroutput"><span class="keyword">true</span></code>, <code class="computeroutput"><span class="keyword">false</span></code>
+            otherwise.
+          </p></dd>
+<dt><span class="term">Throws:</span></dt>
+<dd><p>
+            Nothing.
+          </p></dd>
+</dl>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2013 Oliver Kowalke<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="fiber_mgmt/this_fiber.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="stack.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

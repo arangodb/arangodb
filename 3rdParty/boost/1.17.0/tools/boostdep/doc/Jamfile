@@ -1,0 +1,22 @@
+# Copyright 2015 Peter Dimov. Use, modification, and distribution are
+# subject to the Boost Software License, Version 1.0. See accompanying
+# file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt
+
+using quickbook ;
+
+xml boostdep : src/boostdep.qbk ;
+
+boostbook standalone
+    :
+        boostdep
+    :
+        <xsl:param>boost.root=../../../..
+
+        <xsl:param>chunk.section.depth=0
+        <xsl:param>chunk.first.sections=0
+        <xsl:param>toc.section.depth=2
+        <xsl:param>toc.max.depth=2
+        <xsl:param>generate.section.toc.level=1
+
+        <xsl:param>generate.manifest=0
+    ;

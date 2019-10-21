@@ -1,0 +1,212 @@
+[def __on_exit__ [globalref boost::process::on_exit on_exit]]
+[def __on_success__ [globalref boost::process::extend::on_success ex::on_success]]
+[def __child__ [classref boost::process::child child]]
+[def __handler__ [classref boost::process::extend::handler handler]]
+[def __on_success__ [memberref boost::process::extend::handler::on_success on_success]]
+[def __posix_executor__ [classref boost::process::extend::posix_executor ex::posix_executor]]
+[def __windows_executor__ [classref boost::process::extend::windows_executor ex::windows_executor]]
+[def __io_context__  [@http://www.boost.org/doc/libs/release/doc/html/boost_asio/reference/io_context.html boost::asio::io_context]]
+[def __require_io_context__ [classref boost::process::extend::require_io_context ex::require_io_context]]
+[def __async_handler__ [classref boost::process::extend::async_handler ex::async_handler]]
+[def __get_io_context__ [funcref boost::process::extend::get_io_context ex::get_io_context]]
+
+[section:extend Extensions]
+To extend the library, the header [headerref boost/process/extend.hpp extend] is provided.
+
+It only provides the explicit style for custom properties, but no implicit style.
+
+What this means is, that a custom initializer can be implemented, a reference to which can be passed to one of the launching functions.
+If a class inherits [classref boost::process::extend::handler] it will be regarded as a initializer and thus directly put into the sequence 
+the executor gets passed.
+
+[section:structure Structure]
+
+The executor calls different handlers of the initializers during the process launch. 
+The basic structure is consists of three functions, as given below:
+
+* [globalref boost::process::extend::on_setup on_setup]
+* [globalref boost::process::extend::on_error on_error]
+* [globalref boost::process::extend::on_success on_success]
+
+'''
+<imagedata fileref="boost_process/windows_exec.svg"/>
+'''
+
+Additionally posix provides three more handlers, listed below:
+
+* [globalref boost::process::extend::on_fork_error on_fork_error]
+* [globalref boost::process::extend::on_exec_setup on_exec_setup]
+* [globalref boost::process::extend::on_exec_error on_exec_error] 
+
+For more information see the reference of [classref boost::process::extend::posix_executor posix_executor]. 
+
+[endsect]
+[section:simple Simple extensions]
+
+The simplest extension just takes a single handler, which can be done in a functional style.
+So let's start with a simple hello-world example, while we use a C++14 generic lambda.
+
+```
+using namespace boost::process;
+namespace ex = bp::extend;
+
+__child__ c("foo", __on_success__=[](auto & exec) {std::cout << "hello world" << std::endl;});
+```
+
+Considering that lambda can also capture values, data can easily be shared between handlers. 
+
+To see which members the executor has, refer to [classref boost::process::extend::windows_executor windows_executor]
+and [classref boost::process::extend::posix_executor posix_executor].
+
+[note Combined with __on_exit__ this can also handle the process exit.]
+
+[caution The posix handler symbols are not defined on windows.]
+
+[endsect]
+
+[section:handler Handler Types]
+
+Since the previous example is in a functional style, it is not very reusable. 
+To solve that problem, the [classref boost::process::extend::handler handler] has an alias in the `boost::process::extend` namespace, to be inherited.
+So let's implement the hello world example in a class.
+
+```
+struct hello_world : __handler__
+{
+    template<typename Executor>
+    void __on_success__(Executor & exec) const
+    {
+        std::cout << "hello world" << std::endl;
+    }
+};
+
+//in our function
+__child__ c("foo", hello_world()); 
+```
+
+[note The implementation is done via overloading, not overriding.]
+
+Every handler not implemented dafaults to [classref boost::process::extend::handler handler], where an empty handler is defined for each event.
+
+[endsect]
+
+
+
+[section:async Asynchronous Functionality]
+
+Since `boost.process` provides an interface for [@http://www.boost.org/doc/libs/release/libs/asio/ boost.asio], 
+this functionality is also available for extensions. If the class needs the __io_context__ for some reason, the following code will do that.
+
+```
+struct async_foo : __handler__, __require_io_context__
+{
+    tempalte<typename Executor>
+    void on_setup(Executor & exec)
+    {
+        __io_context__ & ios = __get_io_context__(exec.seq); //gives us a reference and a compiler error if not present.
+        //do something with ios
+    }
+};
+```
+[note Inheriting [globalref boost::process::extend::require_io_context require_io_context] is necessary, so [funcref boost::process::system system] provides one.]
+
+Additionally the handler can provide a function that is invoked when the child process exits. This is done through __async_handler__.
+
+[note [globalref boost::process::extend::async_handler async_handler] implies [globalref boost::process::extend::require_io_context require_io_context] .]
+
+```
+struct async_bar : __handler, __async_handler__
+{
+    template<typename Executor>
+    std::function<void(int, const std::error_code&)> on_exit_handler(Executor & exec)
+    {
+        auto handler_ = this->handler;
+        return [handler_](int exit_code, const std::error_code & ec)
+               {
+                   std::cout << "hello world, I exited with " << exit_code << std::endl; 
+               };
+    
+    }
+}; 
+```
+
+
+[caution `on_exit_handler` does not default and is always required when [classref boost::process::extend::async_handler async_handler] is inherited. ]
+
+[caution `on_exit_handler` uses `boost::asio::signal_set` to listen for SIGCHLD on posix. The application must not also register a signal handler for SIGCHLD using functions such as `signal()` or `sigaction()` (but using `boost::asio::signal_set` is fine). ]
+
+[endsect]
+
+[section:error Error handling]
+
+If an error occurs in the initializers it shall be told to the executor and not handles directly. This is because
+the behaviour can be changed through arguments passed to the launching function. Hence the the executor
+has the function `set_error`, which takes an [@http://en.cppreference.com/w/cpp/error/error_code std::error_code] and a string.
+Depending on the cofiguration of the executor, this may either throw, set an internal `error_code`, or do nothing.
+
+So let's take a simple example, where we set a randomly chosen `error_code`.
+
+```
+auto set_error = [](auto & exec)
+        {
+            std::error_code ec{42, std::system_category()};
+            exec.set_error(ec, "a fake error");
+            
+        };
+__child__ c("foo", on_setup=set_error);
+```
+
+Since we do not specify the error-handling mode in this example, this will throw [classref boost::process::process_error process_error]. 
+
+[endsect]
+
+[section:exec_over Executor Overloading]
+
+Now that we have a custom initializer, let's consider how we can handle differences between different executors.
+The distinction is between posix and windows and `char` and `wchar_t` on windows. 
+One solution is to use the [@http://www.boost.org/doc/libs/master/boost/system/api_config.hpp BOOST_WINDOWS_API and BOOST_POSIX_API] macros,
+which are automatically available as soon as any process-header is included.
+
+Another variant are the type aliases __posix_executor__ and __windows_executor__, where the executor, not on the current system is a forward-declaration.
+This works fine, because the function will never get invoked. So let's implement another example, which prints the executable name __on_success__.
+
+```
+struct hello_exe : __handler__
+{
+    template<typename Sequence>
+    void __on_success__(__posix_executor__<Sequence> & exec)
+    {
+        std::cout << "posix-exe: " << exec.exe << std::endl;
+    }
+    
+    template<typename Sequence>
+    void __on_success__(__windows_executor__<char, Sequence> & exec)
+    {
+        //note: exe might be a nullptr on windows.
+        if (exec.exe != nullptr)
+            std::cout << "windows-exe: " << exec.exe << std::endl;
+        else
+            std::cout << "windows didn't use exe" << std::endl;
+    }
+    
+    template<typename Sequence>
+    void __on_success__(__windows_executor__<wchar_t, Sequence> & exec)
+    {
+        //note: exe might be a nullptr on windows.
+        if (exec.exe != nullptr)
+            std::wcout << L"windows-exe: " << exec.exe << std::endl;
+        else
+            std::cout << "windows didn't use exe" << std::endl;
+    }
+    
+};
+```
+
+So given our example, the definitions with the non-native exectur are still a template so that they will not be evaluated if not used. Hence this provides a
+way to implement systems-specific code without using the preprocessor.
+
+[note If you only write a partial implementation, e.g. only for __posix_executor__, the other variants will default to __handler__].
+
+[endsect]
+
+[endsect]

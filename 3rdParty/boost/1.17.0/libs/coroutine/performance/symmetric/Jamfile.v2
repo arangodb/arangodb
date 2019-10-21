@@ -1,0 +1,83 @@
+
+#          Copyright Oliver Kowalke 2009.
+# Distributed under the Boost Software License, Version 1.0.
+#    (See accompanying file LICENSE_1_0.txt or copy at
+#          http://www.boost.org/LICENSE_1_0.txt)
+
+# For more information, see http://www.boost.org/
+
+import common ;
+import feature ;
+import indirect ;
+import modules ;
+import os ;
+import toolset ;
+
+project boost/coroutine/performance/symmetric
+    : requirements
+      <library>/boost/chrono//boost_chrono
+      <library>/boost/context//boost_context
+      <library>/boost/coroutine//boost_coroutine
+      <library>/boost/program_options//boost_program_options
+      <toolset>gcc,<segmented-stacks>on:<cxxflags>-fsplit-stack
+      <toolset>gcc,<segmented-stacks>on:<cxxflags>-DBOOST_USE_SEGMENTED_STACKS
+      <toolset>clang,<segmented-stacks>on:<cxxflags>-fsplit-stack
+      <toolset>clang,<segmented-stacks>on:<cxxflags>-DBOOST_USE_SEGMENTED_STACKS
+      <link>static
+      <threading>multi
+      <cxxflags>-DBOOST_DISABLE_ASSERTS
+      <optimization>speed
+      <variant>release
+    ;
+
+alias sources
+   : ../bind_processor_aix.cpp
+   : <target-os>aix
+   ;
+
+alias sources
+   : ../bind_processor_freebsd.cpp
+   : <target-os>freebsd
+   ;
+
+alias sources
+   : ../bind_processor_hpux.cpp
+   : <target-os>hpux
+   ;
+
+alias sources
+   : ../bind_processor_linux.cpp
+   : <target-os>linux
+   ;
+
+alias sources
+   : ../bind_processor_solaris.cpp
+   : <target-os>solaris
+   ;
+
+alias sources
+   : ../bind_processor_windows.cpp
+   : <target-os>windows
+   ;
+
+explicit sources ;
+
+exe performance_create_protected
+   : sources
+     performance_create_protected.cpp
+   ;
+
+exe performance_create_standard
+   : sources
+     performance_create_standard.cpp
+   ;
+
+exe performance_create_prealloc
+   : sources
+     performance_create_prealloc.cpp
+   ;
+
+exe performance_switch
+   : sources
+     performance_switch.cpp
+   ;

@@ -1,0 +1,17 @@
+{
+    "key": "variant",
+    "name": "Variant",
+    "authors": [
+        "Eric Friedman",
+        "Itay Maman"
+    ],
+    "description": "Safe, generic, stack-based discriminated union container.",
+    "category": [
+        "Containers",
+        "Data"
+    ],
+    "maintainers": [
+        "Antony Polukhin <antoshkka -at- gmail.com>",
+        "Eric Friedman <ericbrandon -at- gmail.com>"
+    ]
+}

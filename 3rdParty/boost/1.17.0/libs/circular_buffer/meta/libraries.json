@@ -1,0 +1,14 @@
+{
+    "key": "circular_buffer",
+    "name": "Circular Buffer",
+    "authors": [
+        "Jan Gaspar"
+    ],
+    "description": "A STL compliant container also known as ring or cyclic buffer.",
+    "category": [
+        "Containers"
+    ],
+    "maintainers": [
+        "Jan Gaspar <jano_gaspar -at- yahoo.com>"
+    ]
+}

@@ -1,0 +1,11 @@
+
+project meta_hs :
+  requirements
+    <include>.
+    <toolset>gcc:<cxxflags>-ftemplate-depth=512
+    <toolset>clang:<cxxflags>-ftemplate-depth=512
+  ;
+
+exe handcrafted : main_handcrafted.cpp ;
+exe in_haskell : main_in_haskell.cpp ;
+

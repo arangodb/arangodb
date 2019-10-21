@@ -1,0 +1,80 @@
+[#is_error]
+[section is_error]
+
+[h1 Synopsis]
+
+  template <class C>
+  struct is_error;
+
+
+This is a [link lazy_metafunction lazy template metafunction] that supports
+[link currying currying].
+
+[table Arguments
+  [[Name] [Type]]
+  [[`C`]  [[link accept accept] or [link reject reject] value]]
+]
+
+[h1 Description]
+
+Determines if `C` is a parsing error or not. Returns a [link boxed_value boxed]
+boolean value.
+
+[h1 Header]
+
+  #include <boost/metaparse/is_error.hpp>
+
+[h1 Expression semantics]
+
+For any `e` parsing error `is_error<c>::type` is a wrapped compile-time `true`
+value, for any other `c` class `is_error<c>::type` is a wrapped compile-time
+`false` value.
+
+[h1 Example]
+
+  #include <boost/metaparse/is_error.hpp>
+  #include <boost/metaparse/accept.hpp>
+  #include <boost/metaparse/reject.hpp>
+  #include <boost/metaparse/string.hpp>
+  #include <boost/metaparse/start.hpp>
+  #include <boost/metaparse/define_error.hpp>
+  
+  #include <type_traits>
+  
+  using namespace boost::metaparse;
+  
+  BOOST_METAPARSE_DEFINE_ERROR(sample_error, "Sample error message");
+  
+  struct returns_reject
+  {
+    typedef reject<sample_error, start> type;
+  };
+  
+  static_assert(
+    !is_error<
+      accept<
+        std::integral_constant<int, 13>,
+        BOOST_METAPARSE_STRING("foo"),
+        start
+      >
+    >::type::value,
+    "an accept should not be an error"
+  );
+  
+  static_assert(
+    is_error<reject<sample_error, start>>::type::value,
+    "an reject should be an error"
+  );
+  
+  static_assert(
+    is_error<>::type::apply<reject<sample_error, start>>::type::value,
+    "it should support currying"
+  );
+  
+  static_assert(
+    is_error<returns_reject>::type::value,
+    "it should support lazy evaluation"
+  );
+
+[endsect]
+

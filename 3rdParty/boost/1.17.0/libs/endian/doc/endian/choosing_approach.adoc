@@ -1,0 +1,318 @@
+////
+Copyright 2011-2016 Beman Dawes
+
+Distributed under the Boost Software License, Version 1.0.
+(http://www.boost.org/LICENSE_1_0.txt)
+////
+
+[#choosing]
+# Choosing Approach
+:idprefix: choosing_
+
+## Introduction
+
+Deciding which is the best endianness approach (conversion functions, buffer
+types, or arithmetic types) for a particular application involves complex
+engineering trade-offs. It is hard to assess those trade-offs without some
+understanding of the different interfaces, so you might want to read the
+<<conversion,conversion functions>>, <<buffers,buffer types>>, and
+<<arithmetic,arithmetic types>> pages before diving into this page.
+
+## Choosing between conversion functions, buffer types, and arithmetic types
+
+The best approach to endianness for a particular application depends on the
+interaction between the application's needs and the characteristics of each of
+the three  approaches.
+
+*Recommendation:* If you are new to endianness, uncertain, or don't want to
+invest the time to study engineering trade-offs, use
+<<arithmetic,endian arithmetic types>>. They are safe, easy to use, and easy to
+maintain. Use the _<<choosing_anticipating_need,anticipating need>>_ design
+pattern locally around performance hot spots like lengthy loops, if needed.
+
+### Background
+
+A dealing with endianness usually implies a program portability or a data
+portability requirement, and often both. That means real programs dealing with
+endianness are usually complex, so the examples shown here would really be
+written as multiple functions spread across multiple translation units. They
+would involve interfaces that can not be altered as they are supplied by
+third-parties or the standard library.
+
+### Characteristics
+
+The characteristics that differentiate the three approaches to endianness are
+the endianness invariants, conversion explicitness, arithmetic operations, sizes
+available, and alignment requirements.
+
+#### Endianness invariants
+
+*Endian conversion functions* use objects of the ordinary {cpp} arithmetic types
+like `int` or `unsigned short` to hold values. That breaks the implicit
+invariant that the {cpp} language rules apply. The usual language rules only apply
+if the endianness of the object is currently set to the native endianness for
+the platform. That can make it very hard to reason about logic flow, and result
+in difficult to find bugs.
+
+For example:
+
+```
+struct data_t  // big endian
+{
+  int32_t   v1;  // description ...
+  int32_t   v2;  // description ...
+  ... additional character data members (i.e. non-endian)
+  int32_t   v3;  // description ...
+};
+
+data_t data;
+
+read(data);
+big_to_native_inplace(data.v1);
+big_to_native_inplace(data.v2);
+
+...
+
+++v1;
+third_party::func(data.v2);
+
+...
+
+native_to_big_inplace(data.v1);
+native_to_big_inplace(data.v2);
+write(data);
+```
+
+The programmer didn't bother to convert `data.v3` to native endianness because
+that member isn't used. A later maintainer needs to pass `data.v3` to the
+third-party function, so adds `third_party::func(data.v3);` somewhere deep in
+the code. This causes a silent failure because the usual invariant that an
+object of type `int32_t` holds a value as described by the {cpp} core language
+does not apply.
+
+*Endian buffer and arithmetic types* hold values internally as arrays of
+characters with an invariant that the endianness of the array never changes.
+That makes these types easier to use and programs easier to maintain.
+
+Here is the same example, using an endian arithmetic type:
+
+```
+struct data_t
+{
+  big_int32_t   v1;  // description ...
+  big_int32_t   v2;  // description ...
+  ... additional character data members (i.e. non-endian)
+  big_int32_t   v3;  // description ...
+};
+
+data_t data;
+
+read(data);
+
+...
+
+++v1;
+third_party::func(data.v2);
+
+...
+
+write(data);
+```
+
+A later maintainer can add `third_party::func(data.v3)` and it will just-work.
+
+#### Conversion explicitness
+
+*Endian conversion functions* and *buffer types* never perform implicit
+conversions. This gives users explicit control of when conversion occurs, and
+may help avoid unnecessary conversions.
+
+*Endian arithmetic types* perform conversion implicitly. That makes these types
+very easy to use, but can result in unnecessary conversions. Failure to hoist
+conversions out of inner loops can bring a performance penalty.
+
+#### Arithmetic operations
+
+*Endian conversion functions* do not supply arithmetic operations, but this is
+not a concern since this approach uses ordinary {cpp} arithmetic types to hold
+values.
+
+*Endian buffer types* do not supply arithmetic operations. Although this
+approach avoids unnecessary conversions, it can result in the introduction of
+additional variables and confuse maintenance programmers.
+
+*Endian arithmetic types* do supply arithmetic operations. They are very easy to
+use if lots of arithmetic is involved.
+
+### Sizes
+
+*Endianness conversion functions* only support 1, 2, 4, and 8 byte integers.
+That's sufficient for many applications.
+
+*Endian buffer and arithmetic types* support 1, 2, 3, 4, 5, 6, 7, and 8 byte
+integers. For an application where memory use or I/O speed is the limiting
+factor, using sizes tailored to application needs can be useful.
+
+#### Alignments
+
+*Endianness conversion functions* only support aligned integer and
+floating-point types. That's sufficient for most applications.
+
+*Endian buffer and arithmetic types* support both aligned and unaligned
+integer and floating-point types. Unaligned types are rarely needed, but when
+needed they are often very useful and workarounds are painful. For example:
+
+Non-portable code like this:
+
+```
+struct S {
+  uint16_t a; // big endian
+  uint32_t b; // big endian
+} __attribute__ ((packed));
+```
+
+Can be replaced with portable code like this:
+
+```
+struct S {
+  big_uint16_ut a;
+  big_uint32_ut b;
+};
+```
+
+### Design patterns
+
+Applications often traffic in endian data as records or packets containing
+multiple endian data elements. For simplicity, we will just call them records.
+
+If desired endianness differs from native endianness, a conversion has to be
+performed. When should that conversion occur? Three design patterns have
+evolved.
+
+#### Convert only as needed (i.e. lazy)
+
+This pattern defers conversion to the point in the code where the data
+element is actually used.
+
+This pattern is appropriate when which endian element is actually used varies
+greatly according to record content or other circumstances
+
+[#choosing_anticipating_need]
+#### Convert in anticipation of need
+
+This pattern performs conversion to native endianness in anticipation of use,
+such as immediately after reading records. If needed, conversion to the output
+endianness is performed after all possible needs have passed, such as just
+before writing records.
+
+One implementation of this pattern is to create a proxy record with endianness
+converted to native in a read function, and expose only that proxy to the rest
+of the implementation. If a write function, if needed, handles the conversion
+from native to the desired output endianness.
+
+This pattern is appropriate when all endian elements in a record are typically
+used regardless of record content or other circumstances.
+
+#### Convert only as needed, except locally in anticipation of need
+
+This pattern in general defers conversion but for specific local needs does
+anticipatory conversion. Although particularly appropriate when coupled with the
+endian buffer or arithmetic types, it also works well with the conversion
+functions.
+
+Example:
+
+[subs=+quotes]
+```
+struct data_t
+{
+  big_int32_t   v1;
+  big_int32_t   v2;
+  big_int32_t   v3;
+};
+
+data_t data;
+
+read(data);
+
+...
+++v1;
+...
+
+int32_t v3_temp = data.v3;  // hoist conversion out of loop
+
+for (int32_t i = 0; i < `large-number`; ++i)
+{
+  ... `lengthy computation that accesses v3_temp` ...
+}
+data.v3 = v3_temp;
+
+write(data);
+```
+
+In general the above pseudo-code leaves conversion up to the endian arithmetic
+type `big_int32_t`. But to avoid conversion inside the loop, a temporary is
+created before the loop is entered, and then used to set the new value of
+`data.v3` after the loop is complete.
+
+Question: Won't the compiler's optimizer hoist the conversion out of the loop
+anyhow?
+
+Answer: V{cpp} 2015 Preview, and probably others, does not, even for a toy test
+program. Although the savings is small (two register `bswap` instructions), the
+cost might be significant if the loop is repeated enough times. On the other
+hand, the program may be so dominated by I/O time that even a lengthy loop will
+be immaterial.
+
+### Use case examples
+
+#### Porting endian unaware codebase
+
+An existing codebase runs on  big endian systems. It does not currently deal
+with endianness. The codebase needs to be modified so it can run on little
+endian systems under various operating systems. To ease transition and protect
+value of existing files, external data will continue to be maintained as big
+endian.
+
+The <<arithmetic,endian arithmetic approach>> is recommended to meet these
+needs. A relatively small number of header files dealing with binary I/O layouts
+need to change types. For example, `short` or `int16_t` would change to
+`big_int16_t`. No changes are required for `.cpp` files.
+
+#### Porting endian aware codebase
+
+An existing codebase runs on little-endian Linux systems. It already deals with
+endianness via
+http://man7.org/linux/man-pages/man3/endian.3.html[Linux provided functions].
+Because of a business merger, the codebase has to be quickly modified for
+Windows and possibly other operating systems, while still supporting Linux. The
+codebase is reliable and the programmers are all well-aware of endian issues.
+
+These factors all argue for an <<conversion, endian conversion approach>> that
+just mechanically changes the calls to `htobe32`, etc. to
+`boost::endian::native_to_big`, etc. and replaces `<endian.h>` with
+`<boost/endian/conversion.hpp>`.
+
+#### Reliability and arithmetic-speed
+
+A new, complex, multi-threaded application is to be developed that must run
+on little endian machines, but do big endian network I/O. The developers believe
+computational speed for endian variable is critical but have seen numerous bugs
+result from inability to reason about endian conversion state. They are also
+worried that future maintenance changes could inadvertently introduce a lot of
+slow conversions if full-blown endian arithmetic types are used.
+
+The <<buffers,endian buffers>> approach is made-to-order for this use case.
+
+#### Reliability and ease-of-use
+
+A new, complex, multi-threaded application is to be developed that must run on
+little endian machines, but do big endian network I/O. The developers believe
+computational speed for endian variables is *not critical* but have seen
+numerous bugs result from inability to reason about endian conversion state.
+They are also concerned about ease-of-use both during development and long-term
+maintenance.
+
+Removing concern about conversion speed and adding concern about ease-of-use
+tips the balance strongly in favor the
+<<arithmetic,endian arithmetic approach>>.

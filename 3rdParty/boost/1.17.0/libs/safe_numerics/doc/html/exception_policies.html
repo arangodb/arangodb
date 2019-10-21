@@ -1,0 +1,239 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>exception_policy&lt;AE, IDB, UB, UV&gt;</title>
+<link rel="stylesheet" href="boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="index.html" title="Safe Numerics">
+<link rel="up" href="types.html" title="Types">
+<link rel="prev" href="exception.html" title="exception">
+<link rel="next" href="promotion_policies.html" title="Promotion Policies">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img href="index.html" height="164px" src="pre-boost.jpg" alt="Library Documentation Index"></td>
+<td><h2>Safe Numerics</h2></td>
+</tr></table>
+<div class="spirit-nav">
+<a accesskey="p" href="exception.html"><img src="images/prev.png" alt="Prev"></a><a accesskey="u" href="types.html"><img src="images/up.png" alt="Up"></a><a accesskey="h" href="index.html"><img src="images/home.png" alt="Home"></a><a accesskey="n" href="promotion_policies.html"><img src="images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="safe_numeric.exception_policies"></a>exception_policy&lt;AE, IDB, UB, UV&gt;</h3></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="exception_policies.html#idm130202951248">Description</a></span></dt>
+<dt><span class="section"><a href="exception_policies.html#idm130202949952">Template Parameters</a></span></dt>
+<dt><span class="section"><a href="exception_policies.html#idm130202934048">Model of</a></span></dt>
+<dt><span class="section"><a href="exception_policies.html#idm130202932336">Inherited Valid Expressions</a></span></dt>
+<dt><span class="section"><a href="exception_policies.html#idm130202930224">Function Objects</a></span></dt>
+<dt><span class="section"><a href="exception_policies.html#idm130202892272">Policies Provided by the library</a></span></dt>
+<dt><span class="section"><a href="exception_policies.html#idm130202855952">Header</a></span></dt>
+</dl></div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="idm130202951248"></a>Description</h4></div></div></div>
+<p>Create a valid exception policy from 4 function objects. This
+    specifies the actions to be taken for different types of invalid
+    results.</p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="idm130202949952"></a>Template Parameters</h4></div></div></div>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col align="left">
+<col align="left">
+<col align="left">
+</colgroup>
+<thead><tr>
+<th align="left">Parameter</th>
+<th align="left">Type Requirements</th>
+<th align="left">Invoked when:</th>
+</tr></thead>
+<tbody>
+<tr>
+<td align="left"><code class="computeroutput">AE</code></td>
+<td align="left">Function object callable with the expression AE(e,
+            message)</td>
+<td align="left"><p>The operation cannot produce valid arithmetic result
+            such as overflows, divide by zero, etc.</p></td>
+</tr>
+<tr>
+<td align="left"><code class="computeroutput">UB</code></td>
+<td align="left">Function object callable with the expression UB(e,
+            message)</td>
+<td align="left"><p>The result is undefined by the C++
+            standard</p></td>
+</tr>
+<tr>
+<td align="left"><code class="computeroutput">IDB</code></td>
+<td align="left">Function object callable with the expression IDB(e,</td>
+<td align="left"><p>The result depends upon implementation defined
+            behavior according to the C++ standard</p></td>
+</tr>
+<tr>
+<td align="left"><code class="computeroutput">UV</code></td>
+<td align="left">Function object callable with the expression UV(e,
+            message)</td>
+<td align="left"><p>A variable is not initialized</p></td>
+</tr>
+</tbody>
+</table></div>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="idm130202934048"></a>Model of</h4></div></div></div>
+<p><a class="link" href="promotion_policy.html" title="PromotionPolicy&lt;PP&gt;">ExceptionPolicy</a></p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="idm130202932336"></a>Inherited Valid Expressions</h4></div></div></div>
+<p>This class implements all the valid operations from the type
+    requirements <a class="link" href="promotion_policy.html" title="PromotionPolicy&lt;PP&gt;">ExceptionPolicy</a>. Aside
+    from these, there are no other operations implemented.</p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="idm130202930224"></a>Function Objects</h4></div></div></div>
+<p>In order to create an exception policy, one needs some function
+    objects. The library includes some appropriate examples of these:</p>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col align="left">
+<col align="left">
+</colgroup>
+<thead><tr>
+<th align="left">Name</th>
+<th align="left">Description</th>
+</tr></thead>
+<tbody>
+<tr>
+<td align="left"><code class="computeroutput">ignore_exception</code></td>
+<td align="left">Ignore any runtime exception and just return - thus
+            propagating the error. This is what would happen with unsafe data
+            types</td>
+</tr>
+<tr>
+<td align="left"><code class="computeroutput">throw_exception</code></td>
+<td align="left">throw an exception of type std::system_error</td>
+</tr>
+<tr>
+<td align="left"><code class="computeroutput">trap_exception</code></td>
+<td align="left">Invoke a function which is undefined. Compilers will
+            include this function if and only if there is a possibility of a
+            runtime error. Conversely, This will create a compile time error
+            if there is any possibility that the operation will fail at
+            runtime. Use the action to guarantee that your application will
+            never produce an invalid result. Any operation invoke</td>
+</tr>
+</tbody>
+</table></div>
+<p>But of course one is free to provide his own. Here is an example of
+    a function object which would could be used exception conditions.</p>
+<pre class="programlisting"><span class="comment">// log an exception condition but continue processing as though nothing has happened</span>
+<span class="comment">// this would emulate the behavior of an unsafe type.</span>
+<span class="keyword">struct</span> <span class="identifier">log_runtime_exception</span> <span class="special">{</span>
+    <span class="identifier">log_runtime_exception</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">safe_numerics_error</span> <span class="special">&amp;</span> <span class="identifier">e</span><span class="special">,</span> <span class="keyword">const</span> <span class="keyword">char</span> <span class="special">*</span> <span class="identifier">message</span><span class="special">)</span><span class="special">{</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"Caught system_error with code "</span> <span class="special">&lt;&lt;</span> <span class="identifier">e</span><span class="special">.</span><span class="identifier">code</span><span class="special">(</span><span class="special">)</span> 
+                  <span class="special">&lt;&lt;</span> <span class="string">" meaning "</span> <span class="special">&lt;&lt;</span> <span class="identifier">e</span><span class="special">.</span><span class="identifier">what</span><span class="special">(</span><span class="special">)</span> <span class="special">&lt;&lt;</span> <span class="char">'\n'</span><span class="special">;</span>
+    <span class="special">}</span>
+<span class="special">}</span><span class="special">;</span>
+</pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="idm130202892272"></a>Policies Provided by the library</h4></div></div></div>
+<p>The above function object can be composed into an exception policy
+    by this class. The library provides common policies all ready to use. In
+    the table below, the word "loose" is used to indicate that implementation
+    defined and undefined behavior is not considered an exceptional condition,
+    while "strict" means the opposite. The word "exception" means that a
+    runtime exception will be thrown. The word "trap" means that the mere
+    possibility of an error condition will result in a compile time
+    error.</p>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col align="left">
+<col align="left">
+</colgroup>
+<thead><tr>
+<th align="left">Name</th>
+<th align="left">Description</th>
+</tr></thead>
+<tbody>
+<tr>
+<td align="left">
+<a name="safe_numerics.exception_policies.loose_exception_policy"></a><a class="link" href="exception_policies.html#safe_numerics.exception_policies.loose_exception_policy">loose_exception_policy</a>
+</td>
+<td align="left">Throws runtime exception on any arithmetic error.
+              Undefined and implementation defined behavior is permitted as
+              long as it does not produce an arithmetic error.</td>
+</tr>
+<tr>
+<td align="left">
+<a name="safe_numerics.exception_policies.loose_trap_policy"></a><code class="computeroutput"><a class="link" href="exception_policies.html#safe_numerics.exception_policies.loose_trap_policy">loose_trap_policy</a></code>
+</td>
+<td align="left">Invoke a compile time error in any case where it's
+              possible to result in an arithmetic error.</td>
+</tr>
+<tr>
+<td align="left">
+<a name="safe_numerics.exception_policies.strict_exception_policy"></a><code class="computeroutput"><a class="link" href="exception_policies.html#safe_numerics.exception_policies.strict_exception_policy">strict_exception_policy</a></code>
+</td>
+<td align="left">Throws runtime exception on any arithmetic error. Any
+              undefined or implementation defined behavior also results in
+              throwing an exception.</td>
+</tr>
+<tr>
+<td align="left">
+<a name="safe_numerics.exception_policies.strict_trap_policy"></a><code class="computeroutput"><a class="link" href="exception_policies.html#safe_numerics.exception_policies.strict_trap_policy">strict_trap_policy</a></code>
+</td>
+<td align="left">Invoke a compile time error in any case where it's
+              possible to result in an arithmetic error, undefined behavior or
+              implementation defined behavior</td>
+</tr>
+<tr>
+<td align="left">
+<a name="safe_numerics.exception_policies.default_exception_policy"></a><code class="computeroutput"><a class="link" href="exception_policies.html#safe_numerics.exception_policies.default_exception_policy">default_exception_policy</a></code>
+</td>
+<td align="left">an alias for <code class="computeroutput"><a class="link" href="exception_policies.html#safe_numerics.exception_policies.strict_exception_policy">strict_exception_policy</a></code>
+</td>
+</tr>
+</tbody>
+</table></div>
+<p>If none of the above suit your needs, you're free to
+    create your own. Here is one where use the logging function object defined
+    above as a component in a loose exception policy which logs any arithmetic
+    errors and ignores any other types of errors.</p>
+<pre class="programlisting"><span class="comment">// logging policy</span>
+<span class="comment">// log arithmetic errors but ignore them and continue to execute</span>
+<span class="comment">// implementation defined and undefined behavior is just executed</span>
+<span class="comment">// without logging.</span>
+
+<span class="keyword">using</span> <span class="identifier">logging_exception_policy</span> <span class="special">=</span> <span class="identifier">exception_policy</span><span class="special">&lt;</span>
+    <span class="identifier">log_runtime_exception</span><span class="special">,</span>    <span class="comment">// arithmetic error</span>
+    <span class="identifier">ignore_exception</span><span class="special">,</span>         <span class="comment">// implementation defined behavior</span>
+    <span class="identifier">ignore_exception</span><span class="special">,</span>         <span class="comment">// undefined behavior</span>
+    <span class="identifier">ignore_exception</span>          <span class="comment">// uninitialized value</span>
+<span class="special">&gt;</span><span class="special">;</span>
+</pre>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="idm130202855952"></a>Header</h4></div></div></div>
+<p><a href="../../include/concept/exception_policy.hpp" target="_top"><code class="computeroutput">#include
+    &lt;boost/numeric/safe_numerics/concept/exception_policy.hpp&gt;</code></a></p>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2012-2018 Robert Ramey<p><a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">Subject to Boost
+      Software License</a></p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="exception.html"><img src="images/prev.png" alt="Prev"></a><a accesskey="u" href="types.html"><img src="images/up.png" alt="Up"></a><a accesskey="h" href="index.html"><img src="images/home.png" alt="Home"></a><a accesskey="n" href="promotion_policies.html"><img src="images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

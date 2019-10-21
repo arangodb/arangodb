@@ -1,0 +1,28 @@
+[/============================================================================
+  Boost.Geometry (aka GGL, Generic Geometry Library)
+
+  Copyright (c) 2011-2014 Barend Gehrels, Amsterdam, the Netherlands.
+
+  This file was modified by Oracle on 2014.
+  Modifications copyright (c) 2014, Oracle and/or its affiliates.
+
+  Contributed and/or modified by Menelaos Karavelas, on behalf of Oracle
+
+  Use, modification and distribution is subject to the Boost Software License,
+  Version 1.0. (See accompanying file LICENSE_1_0.txt or copy at
+  http://www.boost.org/LICENSE_1_0.txt)
+=============================================================================/]
+
+[heading Behavior]
+[table
+[[Case] [Behavior] ]
+[[__2dim__][All combinations of: box, ring, polygon, multi_polygon]]
+[[__1dim__ / __2dim__][A combinations of a (multi) linestring with a (multi) polygon
+    results in a collection of linestrings]]
+[[__1dim__][All combinations of: linestring, multi_linestring; results in a collection of linestrings]]
+[[__0dim__][All combinations of: point, multi_point; results in a collection of points]]
+[[__other__][__nyiversion__]]
+[[__sph__][__nyiversion__]]
+[[Three dimensional][__nyiversion__]]
+]
+

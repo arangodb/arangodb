@@ -1,0 +1,4 @@
+//[example_output
+> example --report_level=no
+<TestLog><Error file="test.cpp" line="23">check false failed</Error></TestLog>
+//]

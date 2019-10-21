@@ -1,0 +1,49 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html><meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Inspecting outcome&lt;T, EC, EP&gt; - Boost.Outcome documentation</title>
+<link rel="stylesheet" href="../../../css/boost.css" type="text/css">
+<meta name="generator" content="Hugo 0.52 with Boostdoc theme">
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+
+<link rel="icon" href="../../../images/favicon.ico" type="image/ico"/>
+<body><div class="spirit-nav">
+<a accesskey="p" href="../../../tutorial/essential/outcome.html"><img src="../../../images/prev.png" alt="Prev"></a>
+    <a accesskey="u" href="../../../tutorial/essential/outcome.html"><img src="../../../images/up.png" alt="Up"></a>
+    <a accesskey="h" href="../../../index.html"><img src="../../../images/home.png" alt="Home"></a><a accesskey="n" href="../../../tutorial/essential/no-value.html"><img src="../../../images/next.png" alt="Next"></a></div><div id="content">
+  <div class="titlepage"><div><div><h1 style="clear: both">Inspecting outcome<T, EC, EP></h1></div></div></div>
+  <p>Continuing with the previous example, in <code>Layer3</code> we have function <code>z</code> which again reports failures via exceptions.
+It will call function <code>h</code> from <code>Layer2_old</code> which returns <code>outcome&lt;int&gt;</code> (which may store a <code>double</code> or an <code>std::error_code</code> or an <code>std::exception_ptr</code>).
+The goal is to unpack it to either the successful return value <code>int</code> or to throw an appropriate exception: if we are storing an <code>std::exception_ptr</code> just rethrow it.
+If we are storing an <code>std::error_code</code> throw it as <code>std::system_error</code>, which is designed to store <code>std::error_code</code>&rsquo;s:</p>
+
+<div class="code-snippet"><div class="highlight"><pre class="chroma"><code class="language-c++" data-lang="c++"><span class="k">auto</span> <span class="nf">z</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kt">int</span> <span class="c1">// throws on failure
+</span><span class="c1"></span><span class="p">{</span>
+  <span class="k">if</span> <span class="p">(</span><span class="n">outcome</span><span class="o">::</span><span class="n">outcome</span><span class="o">&lt;</span><span class="kt">int</span><span class="o">&gt;</span> <span class="n">o</span> <span class="o">=</span> <span class="n">old</span><span class="o">::</span><span class="n">h</span><span class="p">())</span>
+    <span class="k">return</span> <span class="n">o</span><span class="p">.</span><span class="n">value</span><span class="p">();</span>
+  <span class="k">else</span> <span class="k">if</span> <span class="p">(</span><span class="n">o</span><span class="p">.</span><span class="n">has_exception</span><span class="p">())</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">rethrow_exception</span><span class="p">(</span><span class="n">o</span><span class="p">.</span><span class="n">exception</span><span class="p">());</span>
+  <span class="k">else</span>
+    <span class="k">throw</span> <span class="n">std</span><span class="o">::</span><span class="n">system_error</span><span class="p">{</span><span class="n">o</span><span class="p">.</span><span class="n">error</span><span class="p">()};</span>
+<span class="p">}</span>
+</code></pre></div><a href="https://github.com/boostorg/outcome/tree/master/doc/src/snippets/using_outcome.cpp#L70" class="code-snippet-url" target="_blank">View this code on Github</a></div>
+
+
+<p>Function <code>has_exception</code> checks if it is <code>EP</code> (<code>std::exception_ptr</code>) that is stored, function <code>exception</code> accesses it. Similarly, function <code>error</code> accesses the <code>EC</code> (<code>std::error_code</code>) if it is stored.
+<code>outcome&lt;&gt;</code> also has a function <code>has_failure</code> to check if either <code>EC</code> or <code>EP</code> is being stored.</p>
+
+<p>It would seem obvious that the above pattern of &ldquo;unpacking&rdquo; <code>outcome&lt;&gt;</code>
+is so common that it ought to be implemented inside function <code>.value()</code>,
+so function <code>z</code> could be written as:</p>
+<div class="highlight"><pre class="chroma"><code class="language-c++" data-lang="c++"><span class="k">return</span> <span class="n">old</span><span class="o">::</span><span class="n">h</span><span class="p">().</span><span class="n">value</span><span class="p">();</span>
+</code></pre></div>
+<p>And this is exactly what the aforementioned no-value policy template argument is for, which is described in
+the next section.</p>
+
+
+        </div><p><small>Last revised: February 08, 2019 at 22:18:08 UTC</small></p>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../../../tutorial/essential/outcome.html"><img src="../../../images/prev.png" alt="Prev"></a>
+    <a accesskey="u" href="../../../tutorial/essential/outcome.html"><img src="../../../images/up.png" alt="Up"></a>
+    <a accesskey="h" href="../../../index.html"><img src="../../../images/home.png" alt="Home"></a><a accesskey="n" href="../../../tutorial/essential/no-value.html"><img src="../../../images/next.png" alt="Next"></a></div></body>
+</html>

@@ -1,0 +1,104 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>BOOST_IS_DEFINED</title>
+<link rel="stylesheet" href="../../../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../../index.html" title="Boost.Test">
+<link rel="up" href="../testing_tool_ref.html" title="Reference API for writing tests">
+<link rel="prev" href="assertion_boost_fail.html" title="BOOST_FAIL">
+<link rel="next" href="assertion_control_under_debugger.html" title="BOOST_TEST_TOOLS_UNDER_DEBUGGER">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="assertion_boost_fail.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../testing_tool_ref.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="assertion_control_under_debugger.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="boost_test.utf_reference.testing_tool_ref.assertion_boost_is_defined"></a><a class="link" href="assertion_boost_is_defined.html" title="BOOST_IS_DEFINED"><code class="computeroutput"><span class="identifier">BOOST_IS_DEFINED</span></code></a>
+</h4></div></div></div>
+<pre class="programlisting"><span class="identifier">BOOST_IS_DEFINED</span><span class="special">(</span><span class="identifier">symbol</span><span class="special">);</span>
+</pre>
+<p>
+          Unlike the rest of the tools in the toolbox this tool does not perform
+          the logging itself. Its only purpose is to check at runtime whether or
+          not the supplied preprocessor symbol is defined. Use it in combination
+          with <a class="link" href="assertion_boost_level.html" title="BOOST_&lt;level&gt;"><code class="computeroutput"><span class="identifier">BOOST_</span><span class="special">&lt;</span><span class="identifier">level</span><span class="special">&gt;</span></code></a>
+          to perform and log validation. Macros of any arity could be checked. To
+          check the macro definition with non-zero arity specify dummy arguments
+          for it. See below for example.
+        </p>
+<p>
+          The only tool's parameter is a preprocessor symbol that gets validated.
+        </p>
+<h6>
+<a name="boost_test.utf_reference.testing_tool_ref.assertion_boost_is_defined.h0"></a>
+          <span class="phrase"><a name="boost_test.utf_reference.testing_tool_ref.assertion_boost_is_defined.example_descr"></a></span><a class="link" href="assertion_boost_is_defined.html#boost_test.utf_reference.testing_tool_ref.assertion_boost_is_defined.example_descr">Example:
+          BOOST_IS_DEFINED usage</a>
+        </h6>
+<div class="informaltable"><table class="table">
+<colgroup><col></colgroup>
+<thead><tr><th>
+                  <p>
+                    Code
+                  </p>
+                </th></tr></thead>
+<tbody><tr><td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="preprocessor">#define</span> <span class="identifier">BOOST_TEST_MODULE</span> <span class="identifier">example</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">test</span><span class="special">/</span><span class="identifier">included</span><span class="special">/</span><span class="identifier">unit_test</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="identifier">BOOST_AUTO_TEST_CASE</span><span class="special">(</span> <span class="identifier">test</span> <span class="special">)</span>
+<span class="special">{</span>
+  <span class="identifier">BOOST_TEST</span><span class="special">(</span> <span class="identifier">BOOST_IS_DEFINED</span><span class="special">(</span><span class="identifier">SYMBOL1</span><span class="special">)</span> <span class="special">);</span>
+  <span class="identifier">BOOST_TEST</span><span class="special">(</span> <span class="identifier">BOOST_IS_DEFINED</span><span class="special">(</span><span class="identifier">SYMBOL2</span><span class="special">(</span><span class="identifier">arg</span><span class="special">))</span> <span class="special">);</span>
+<span class="special">}</span>
+</pre>
+                </td></tr></tbody>
+</table></div>
+<div class="informaltable"><table class="table">
+<colgroup><col></colgroup>
+<thead><tr><th>
+                  <p>
+                    Output
+                  </p>
+                </th></tr></thead>
+<tbody><tr><td>
+<pre xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" class="table-programlisting"><span class="special">&gt;</span> <span class="identifier">example</span>
+<span class="identifier">Running</span> <span class="number">1</span> <span class="identifier">test</span> <span class="keyword">case</span><span class="special">...</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">(</span><span class="number">8</span><span class="special">):</span> <span class="identifier">error</span> <span class="identifier">in</span> <span class="string">"test"</span><span class="special">:</span> <span class="identifier">check</span> <span class="special">::</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">test_tools</span><span class="special">::</span><span class="identifier">tt_detail</span><span class="special">::</span><span class="identifier">is_defined_impl</span><span class="special">(</span> <span class="string">"SYMBOL1"</span><span class="special">,</span> <span class="string">"= SYMBOL1"</span> <span class="special">)</span> <span class="identifier">failed</span>
+<span class="identifier">test</span><span class="special">.</span><span class="identifier">cpp</span><span class="special">(</span><span class="number">9</span><span class="special">):</span> <span class="identifier">error</span> <span class="identifier">in</span> <span class="string">"test"</span><span class="special">:</span> <span class="identifier">check</span> <span class="special">::</span><span class="identifier">boost</span><span class="special">::</span><span class="identifier">test_tools</span><span class="special">::</span><span class="identifier">tt_detail</span><span class="special">::</span><span class="identifier">is_defined_impl</span><span class="special">(</span> <span class="string">"SYMBOL2(arg)"</span><span class="special">,</span> <span class="string">"= SYMBOL2(arg)"</span> <span class="special">)</span> <span class="identifier">failed</span>
+
+<span class="special">***</span> <span class="number">2</span> <span class="identifier">failures</span> <span class="identifier">are</span> <span class="identifier">detected</span> <span class="identifier">in</span> <span class="identifier">test</span> <span class="identifier">suite</span> <span class="string">"example"</span>
+</pre>
+                </td></tr></tbody>
+</table></div>
+<p>
+          See also:
+        </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; "><li class="listitem">
+              <a class="link" href="assertion_boost_level.html" title="BOOST_&lt;level&gt;"><code class="computeroutput"><span class="identifier">BOOST_</span><span class="special">&lt;</span><span class="identifier">level</span><span class="special">&gt;</span></code></a>
+            </li></ul></div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2001-2018 Boost.Test contributors<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="assertion_boost_fail.html"><img src="../../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../testing_tool_ref.html"><img src="../../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../../index.html"><img src="../../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="assertion_control_under_debugger.html"><img src="../../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

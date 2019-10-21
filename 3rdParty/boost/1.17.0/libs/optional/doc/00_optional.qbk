@@ -1,0 +1,106 @@
+[library Boost.Optional
+    [quickbook 1.4]
+    [authors [Cacciola Carballal, Fernando Luis]]
+    [copyright 2003-2007 Fernando Luis Cacciola Carballal]
+    [copyright 2014-2018 Andrzej Krzemie&#324;ski]
+    [category miscellaneous]
+    [id optional]
+    [dirname optional]
+    [purpose
+        Discriminated-union wrapper for optional values
+    ]
+    [source-mode c++]
+    [license
+Distributed under the Boost Software License, Version 1.0.
+(See accompanying file LICENSE_1_0.txt or copy at
+[@http://www.boost.org/LICENSE_1_0.txt])
+    ]
+]
+
+[/ Macros will be used for links so we have a central place to change them ]
+
+
+[/ Cited Boost resources ]
+
+[def __BOOST_VARIANT__ [@../../../variant/index.html Boost.Variant]]
+[def __BOOST_TUPLE__ [@../../../tuple/index.html Boost.Tuple]]
+[def __BOOST_TRIBOOL__ [@../../../../doc/html/tribool.html boost::tribool]]
+
+[def __OPTIONAL_POINTEE__ [@../../../utility/OptionalPointee.html `OptionalPointee`]]
+[def __COPY_CONSTRUCTIBLE__ [@../../../utility/CopyConstructible.html `CopyConstructible`]]
+[def __MOVE_CONSTRUCTIBLE__ `MoveConstructible`]
+[def __FUNCTION_EQUAL_POINTEES__ [@../../../utility/OptionalPointee.html#equal `equal_pointees()`]]
+[def __FUNCTION_LESS_POINTEES__ [@../../../utility/OptionalPointee.html#less `less_pointees()`]]
+
+[def __IN_PLACE_FACTORY_HPP__ [@../../../../boost/utility/in_place_factory.hpp in_place_factory.hpp]]
+[def __TYPED_IN_PLACE_FACTORY_HPP__ [@../../../../boost/utility/typed_in_place_factory.hpp typed_in_place_factory.hpp]]
+
+[/ Other web resources ]
+
+[def __HASKELL__ [@http://www.haskell.org/ Haskell]]
+[def __SGI_DEFAULT_CONSTRUCTIBLE__ [@http://www.sgi.com/tech/stl/DefaultConstructible.html `DefaultConstructible`]]
+[def __SGI_LESS_THAN_COMPARABLE__ [@http://www.sgi.com/tech/stl/LessThanComparable.html `LessThanComparable`]]
+[def __SGI_EQUALITY_COMPARABLE__ [@http://www.sgi.com/tech/stl/EqualityComparable.html `EqualityComparable`]]
+[def __SGI_GENERATOR__ [@http://www.sgi.com/tech/stl/Generator.html `Generator`]]
+
+
+[/ Icons ]
+
+[def __SPACE__ [$images/space.png]]
+[def __GO_TO__ [$images/callouts/R.png]]
+
+
+[section Introduction]
+Class template `optional` is a wrapper for representing 'optional' (or 'nullable') objects who may not (yet) contain a valid value. Optional objects offer full value semantics; they are good for passing by value and usage inside STL containers. This is a header-only library.
+
+[heading Problem]
+Suppose we want to read a parameter form a config file which represents some integral value, let's call it `"MaxValue"`. It is possible that this parameter is not specified; such situation is no error. It is valid to not specify the parameter and in that case the program is supposed to behave slightly differently. Also, suppose that any possible value of type `int` is a valid value for `"MaxValue"`, so we cannot just use `-1` to represent the absence of the parameter in the config file.
+
+[heading Solution]
+
+This is how you solve it with `boost::optional`:
+
+    #include <boost/optional.hpp>
+    
+    boost::optional<int> getConfigParam(std::string name);  // return either an int or a `not-an-int`
+
+    int main()
+    {
+      if (boost::optional<int> oi = getConfigParam("MaxValue")) // did I get a real int?
+        runWithMax(*oi);                                        // use my int
+      else
+        runWithNoMax();
+    }
+ 
+[endsect]
+
+[include 01_quick_start.qbk]
+[section Tutorial]
+[include 10_motivation.qbk]
+[include 11_development.qbk]
+[include 12_when_to_use.qbk]
+[include 13_relational_operators.qbk]
+[include 14_io.qbk]
+[include 15_optional_references.qbk]
+[include 16_in_place_factories.qbk]
+[include 17_gotchas.qbk]
+[include 18_exception_safety.qbk]
+[include 19_type_requirements.qbk]
+[include 1A_on_performance.qbk]
+[endsect]
+[section:reference Reference]
+[include 21_ref_none.qbk]
+[include 22_ref_bad_optional_access.qbk]
+[include 23_ref_optional_io.qbk]
+[include 24_ref_optional_fwd.qbk]
+[section Header <boost/optional/optional.hpp>]
+[include 27_ref_optional_synopsis.qbk]
+[include 28_ref_optional_semantics.qbk]
+[endsect]
+[include 29_ref_optional_convenience.qbk]
+[endsect]
+[include 90_dependencies.qbk]
+[include 91_relnotes.qbk]
+[include 92_acknowledgments.qbk]
+
+

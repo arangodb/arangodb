@@ -1,0 +1,194 @@
+[section boost/python/pytype_function.hpp]
+[section Introduction]
+To support Pythonic signatures the converters should supply a `get_pytype` function returning a pointer to the associated `PyTypeObject`. See for example [link concepts.resultconverter `ResultConverter`] or [link to_from_python_type_conversion.boost_python_to_python_converter.class_template_to_python_convert.class_template_to_python_convert `to_python_converter`]. The classes in this header file are meant to be used when implmenting `get_pytype`. There are also `_direct` versions of the templates of `class T` which should be used with undecorated type parameter, expected to be in the conversion registry when the module loads. 
+[endsect]
+[section Class `wrap_pytype`]
+This template generates a static `get_pytype` member returning the template parameter. 
+``
+namespace boost { namespace python { namespace converter{
+
+    template < PyTypeObject const *pytype >
+    class wrap_pytype 
+    {
+      public:
+          static PyTypeObject const *get_pytype(){return pytype; }
+    };
+
+}}}
+``
+[endsect]
+[section Class `registered_pytype`]
+This template should be used with template parameters which are (possibly decorated) types exported to python using [link high_level_components.boost_python_class_hpp.class_template_class_t_bases_hel `class_`]. The generated a static `get_pytype` member returns the corresponding python type. 
+``
+namespace boost { namespace python { namespace converter{
+
+    template < class T >
+    class registered_pytype 
+    {
+      public:
+          static PyTypeObject const *get_pytype();
+    };
+
+}}}
+``
+[endsect]
+[section Class `expected_from_python_type`]
+This template generates a static `get_pytype` member which inspects the registered `from_python` converters for the type `T` and returns a matching python type. 
+``
+namespace boost { namespace python { namespace converter{
+
+    template < class T >
+    class expected_from_python_type 
+    {
+      public:
+          static PyTypeObject const *get_pytype();
+    };
+
+}}}
+``
+[endsect]
+[section Class `to_python_target_type`]
+This template generates a static `get_pytype` member returning the python type to which `T` can be converted. 
+``
+namespace boost { namespace python { namespace converter{
+
+    template < class T >
+    class to_python_target_type 
+    {
+      public:
+          static PyTypeObject const *get_pytype();
+    };
+
+}}}
+``
+[endsect]
+[section Example]
+This example presumes that someone has implemented the standard noddy example module from the Python documentation, and placed the corresponding declarations in "noddy.h". Because `noddy_NoddyObject` is the ultimate trivial extension type, the example is a bit contrived: it wraps a function for which all information is contained in the type of its return value.
+
+C++ module definition:
+``
+#include <boost/python/reference.hpp>
+#include <boost/python/module.hpp>
+#include "noddy.h"
+
+struct tag {};
+tag make_tag() { return tag(); }
+
+using namespace boost::python;
+
+struct tag_to_noddy 
+#if defined BOOST_PYTHON_SUPPORTS_PY_SIGNATURES //unnecessary overhead if py signatures are not supported
+: wrap_pytype<&noddy_NoddyType> //inherits get_pytype from wrap_pytype
+#endif
+{
+    static PyObject* convert(tag const& x)
+    {
+        return PyObject_New(noddy_NoddyObject, &noddy_NoddyType);
+    }
+};
+
+BOOST_PYTHON_MODULE(to_python_converter)
+{
+    def("make_tag", make_tag);
+    to_python_converter<tag, tag_to_noddy
+#if defined BOOST_PYTHON_SUPPORTS_PY_SIGNATURES //invalid if py signatures are not supported
+          , true
+#endif
+          >(); //"true" because tag_to_noddy has member get_pytype
+}
+``
+The following example registers to and from python converters using the templates expected_from_python_type and to_pyhton_target_type.
+``
+#include <boost/python/module.hpp>
+#include <boost/python/def.hpp>
+#include <boost/python/extract.hpp>
+#include <boost/python/to_python_converter.hpp>
+#include <boost/python/class.hpp>
+
+using namespace boost::python;
+
+struct A
+{
+};
+
+struct B
+{
+  A a;
+  B(const A& a_):a(a_){}
+};
+
+// Converter from A to python int
+struct BToPython 
+#if defined BOOST_PYTHON_SUPPORTS_PY_SIGNATURES //unnecessary overhead if py signatures are not supported
+   : converter::to_python_target_type<A>  //inherits get_pytype
+#endif
+{
+  static PyObject* convert(const B& b)
+  {
+    return incref(object(b.a).ptr());
+  }
+};
+
+// Conversion from python int to A
+struct BFromPython
+{
+  BFromPython()
+  {
+    boost::python::converter::registry::push_back
+        ( &convertible
+        , &construct
+        , type_id< B >()
+#if defined BOOST_PYTHON_SUPPORTS_PY_SIGNATURES //invalid if py signatures are not supported
+        , &converter::expected_from_python_type<A>::get_pytype//convertible to A can be converted to B
+#endif
+        );
+  }
+
+  static void* convertible(PyObject* obj_ptr)
+  {
+      extract<const A&> ex(obj_ptr);
+      if (!ex.check()) return 0;
+      return obj_ptr;
+  }
+
+  static void construct(
+      PyObject* obj_ptr,
+      converter::rvalue_from_python_stage1_data* data)
+  {
+    void* storage = (
+        (converter::rvalue_from_python_storage< B >*)data)-> storage.bytes;
+
+    extract<const A&> ex(obj_ptr);
+    new (storage) B(ex());
+    data->convertible = storage;
+  }
+};
+
+
+B func(const B& b) { return b ; }
+
+BOOST_PYTHON_MODULE(pytype_function_ext)
+{
+  to_python_converter< B , BToPython
+#if defined BOOST_PYTHON_SUPPORTS_PY_SIGNATURES //invalid if py signatures are not supported
+             ,true 
+#endif
+             >(); //has get_pytype
+  BFromPython();
+
+  class_<A>("A") ;
+
+  def("func", &func);
+
+}
+
+
+
+>>> from pytype_function_ext import *
+>>> print func.__doc__
+func( (A)arg1) -> A :
+    C++ signature:
+         struct B func(struct B)
+``
+[endsect]
+[endsect]

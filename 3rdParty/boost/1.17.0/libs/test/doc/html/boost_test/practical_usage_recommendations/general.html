@@ -1,0 +1,117 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>General</title>
+<link rel="stylesheet" href="../../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Boost.Test">
+<link rel="up" href="../practical_usage_recommendations.html" title="Practical usage recommendations">
+<link rel="prev" href="../practical_usage_recommendations.html" title="Practical usage recommendations">
+<link rel="next" href="ide_usage_recommendations.html" title="IDE usage recommendations">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../practical_usage_recommendations.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../practical_usage_recommendations.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="ide_usage_recommendations.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="boost_test.practical_usage_recommendations.general"></a><a class="link" href="general.html" title="General">General</a>
+</h3></div></div></div>
+<h5>
+<a name="boost_test.practical_usage_recommendations.general.h0"></a>
+        <span class="phrase"><a name="boost_test.practical_usage_recommendations.general.prefer_offline_compiled_librarie"></a></span><a class="link" href="general.html#boost_test.practical_usage_recommendations.general.prefer_offline_compiled_librarie">Prefer
+        offline compiled libraries to the inline included components</a>
+      </h5>
+<p>
+        If you are just want to write quick simple test in environment where you
+        never used Boost.Test before - yes, use included components. But if you plan
+        to use Boost.Test on permanent basis, small investment of time needed to
+        build (if not build yet), install and change you makefiles/project settings
+        will soon return to you in a form of shorter compilation time. Why do you
+        need to make your compiler do the same work over and over again?
+      </p>
+<h5>
+<a name="boost_test.practical_usage_recommendations.general.h1"></a>
+        <span class="phrase"><a name="boost_test.practical_usage_recommendations.general.if_you_use_only_free_function_ba"></a></span><a class="link" href="general.html#boost_test.practical_usage_recommendations.general.if_you_use_only_free_function_ba">If
+        you use only free function based test cases advance to the automatic registration
+        facility</a>
+      </h5>
+<p>
+        It's really easy to switch to automatic registration. And you don't need
+        to worry about forgotten test cases.
+      </p>
+<h5>
+<a name="boost_test.practical_usage_recommendations.general.h2"></a>
+        <span class="phrase"><a name="boost_test.practical_usage_recommendations.general.to_find_location_of_first_error_"></a></span><a class="link" href="general.html#boost_test.practical_usage_recommendations.general.to_find_location_of_first_error_">To
+        find location of first error reported by test tool within reused template
+        function, use special hook within framework headers</a>
+      </h5>
+<p>
+        In some cases you are reusing the same template based code from within one
+        test case (actually we recommend better solution in such case - see below).
+        Now if an error gets reported by the test tool within that reused code you
+        may have difficulty locating were exactly error occurred. To address this
+        issue you could either a add <a class="link" href="../utf_reference/testout_reference/test_output_macro_message.html" title="BOOST_TEST_MESSAGE"><code class="computeroutput"><span class="identifier">BOOST_TEST_MESSAGE</span></code></a> statements in
+        templated code that log current type id of template parameters or you can
+        use special hook located in <code class="computeroutput"><span class="identifier">unit_test_result</span><span class="special">.</span><span class="identifier">hpp</span></code> called
+        <code class="computeroutput"><span class="identifier">first_failed_assertion</span><span class="special">()</span></code>.
+        If you set a breakpoint right on the line where this function is defined
+        you will be able to unroll the stack and see where error actually occurred.
+      </p>
+<h5>
+<a name="boost_test.practical_usage_recommendations.general.h3"></a>
+        <span class="phrase"><a name="boost_test.practical_usage_recommendations.general.to_test_reusable_template_base_c"></a></span><a class="link" href="general.html#boost_test.practical_usage_recommendations.general.to_test_reusable_template_base_c">To
+        test reusable template base component with different template parameter use
+        test case template facility</a>
+      </h5>
+<p>
+        If you writing unit test for generic reusable component you may have a need
+        to test it against set of different template parameter types . Most probably
+        you will end up with a code like this:
+      </p>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">TestType</span><span class="special">&gt;</span>
+<span class="keyword">void</span> <span class="identifier">specific_type_test</span><span class="special">(</span> <span class="identifier">TestType</span><span class="special">*</span> <span class="special">=</span> <span class="number">0</span> <span class="special">)</span>
+<span class="special">{</span>
+  <span class="identifier">MyComponent</span><span class="special">&lt;</span><span class="identifier">TestType</span><span class="special">&gt;</span> <span class="identifier">c</span><span class="special">;</span>
+  <span class="comment">// ... here we perform actual testing</span>
+<span class="special">}</span>
+
+<span class="keyword">void</span> <span class="identifier">my_component_test</span><span class="special">()</span>
+<span class="special">{</span>
+  <span class="identifier">specific_type_test</span><span class="special">(</span> <span class="special">(</span><span class="keyword">int</span><span class="special">*)</span><span class="number">0</span> <span class="special">);</span>
+  <span class="identifier">specific_type_test</span><span class="special">(</span> <span class="special">(</span><span class="keyword">float</span><span class="special">*)</span><span class="number">0</span> <span class="special">);</span>
+  <span class="identifier">specific_type_test</span><span class="special">(</span> <span class="special">(</span><span class="identifier">UDT</span><span class="special">*)</span><span class="number">0</span> <span class="special">);</span>
+  <span class="comment">// ...</span>
+<span class="special">}</span>
+</pre>
+<p>
+        This is namely the situation where you would use test case template facility.
+        It not only simplifies this kind of unit testing by automating some of the
+        work, in addition every argument type gets tested separately under unit test
+        monitor. As a result if one of types produce exception or non-fatal error
+        you may still continue and get results from testing with other types.
+      </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2001-2018 Boost.Test contributors<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../practical_usage_recommendations.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../practical_usage_recommendations.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="ide_usage_recommendations.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

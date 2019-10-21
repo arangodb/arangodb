@@ -1,0 +1,62 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html><meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Upgrading the Filesystem TS - Boost.Outcome documentation</title>
+<link rel="stylesheet" href="../../../css/boost.css" type="text/css">
+<meta name="generator" content="Hugo 0.52 with Boostdoc theme">
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+
+<link rel="icon" href="../../../images/favicon.ico" type="image/ico"/>
+<body><div class="spirit-nav">
+<a accesskey="p" href="../../../tutorial/advanced/payload/copy_file.html"><img src="../../../images/prev.png" alt="Prev"></a>
+    <a accesskey="u" href="../../../tutorial/advanced/payload.html"><img src="../../../images/up.png" alt="Up"></a>
+    <a accesskey="h" href="../../../index.html"><img src="../../../images/home.png" alt="Home"></a><a accesskey="n" href="../../../tutorial/advanced/payload/copy_file3.html"><img src="../../../images/next.png" alt="Next"></a></div><div id="content">
+  <div class="titlepage"><div><div><h1 style="clear: both">Upgrading the Filesystem TS</h1></div></div></div>
+  <p>An Outcome based solution to the dual overload problem is straightforward:</p>
+
+<div class="code-snippet"><div class="highlight"><pre class="chroma"><code class="language-c++" data-lang="c++"><span class="k">namespace</span> <span class="n">filesystem2</span>
+<span class="p">{</span>
+  <span class="c1">// Error code + paths related to a failure. Also causes ADL discovery to check this namespace.
+</span><span class="c1"></span>  <span class="k">struct</span> <span class="n">failure_info</span>
+  <span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">error_code</span> <span class="n">ec</span><span class="p">;</span>
+    <span class="n">path</span> <span class="n">path1</span><span class="p">,</span> <span class="n">path2</span><span class="p">;</span>
+  <span class="p">};</span>
+
+  <span class="c1">// Tell Outcome that failure_info is to be treated as a std::error_code
+</span><span class="c1"></span>  <span class="kr">inline</span> <span class="k">const</span> <span class="n">std</span><span class="o">::</span><span class="n">error_code</span> <span class="o">&amp;</span><span class="n">make_error_code</span><span class="p">(</span><span class="k">const</span> <span class="n">failure_info</span> <span class="o">&amp;</span><span class="n">fi</span><span class="p">)</span> <span class="p">{</span> <span class="k">return</span> <span class="n">fi</span><span class="p">.</span><span class="n">ec</span><span class="p">;</span> <span class="p">}</span>
+
+  <span class="c1">// Localise an outcome implementation specific to this namespace. Normally would just
+</span><span class="c1"></span>  <span class="c1">// be `result`, but for clarity we&#39;ll use `fs_result`.
+</span><span class="c1"></span>  <span class="k">template</span> <span class="o">&lt;</span><span class="k">class</span><span class="err"> </span><span class="nc">T</span><span class="o">&gt;</span> <span class="k">using</span> <span class="n">fs_result</span> <span class="o">=</span> <span class="n">outcome</span><span class="o">::</span><span class="n">result</span><span class="o">&lt;</span><span class="n">T</span><span class="p">,</span> <span class="n">failure_info</span><span class="o">&gt;</span><span class="p">;</span>
+
+  <span class="cm">/*! Copies the file at path `from` to path `to`.
+</span><span class="cm">  \returns Successful if file was successfully copied, otherwise the error code reported
+</span><span class="cm">  by the operating system plus a payload of the paths involved.
+</span><span class="cm">  \throws Never throws.
+</span><span class="cm">  */</span>
+  <span class="n">fs_result</span><span class="o">&lt;</span><span class="kt">void</span><span class="o">&gt;</span> <span class="n">copy_file</span><span class="p">(</span><span class="k">const</span> <span class="n">path</span> <span class="o">&amp;</span><span class="n">from</span><span class="p">,</span> <span class="k">const</span> <span class="n">path</span> <span class="o">&amp;</span><span class="n">to</span><span class="p">)</span> <span class="k">noexcept</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div><a href="https://github.com/boostorg/outcome/tree/master/doc/src/snippets/outcome_payload.cpp#L69" class="code-snippet-url" target="_blank">View this code on Github</a></div>
+
+
+<p>Starting at the bottom, there is now a single <code>copy_file()</code> function which returns a <code>fs_result&lt;void&gt;</code>.
+As <code>result</code> is either successful or not, there is no longer any point in returning a boolean, so we
+simply return <code>void</code> on success. On failure, as the template alias <code>fs_result&lt;T&gt;</code> above it shows,
+we are returning a <code>failure_info</code> structure containing an error code and the same additional information
+as <code>filesystem_error</code> provides.</p>
+
+<p>It is important to note that the fact that <code>failure_info</code> is defined in namespace <code>filesystem2</code> is very
+important. This is because Outcome uses <a href="http://en.cppreference.com/w/cpp/language/adl">Argument Dependent Lookup (ADL)</a>
+to find the <code>make_error_code()</code>
+function, as well as other customisation point free functions. In other words, only the namespaces as
+defined by ADL are searched when finding a free function telling us what to do for <code>failure_info</code>,
+which includes the namespace <code>failure_info</code> is declared into.</p>
+
+
+        </div><p><small>Last revised: February 08, 2019 at 22:18:08 UTC</small></p>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../../../tutorial/advanced/payload/copy_file.html"><img src="../../../images/prev.png" alt="Prev"></a>
+    <a accesskey="u" href="../../../tutorial/advanced/payload.html"><img src="../../../images/up.png" alt="Up"></a>
+    <a accesskey="h" href="../../../index.html"><img src="../../../images/home.png" alt="Home"></a><a accesskey="n" href="../../../tutorial/advanced/payload/copy_file3.html"><img src="../../../images/next.png" alt="Next"></a></div></body>
+</html>

@@ -1,0 +1,18 @@
+[/===========================================================================
+ Copyright (c) 2013-2015 Kyle Lutz <kyle.r.lutz@gmail.com>
+
+ Distributed under the Boost Software License, Version 1.0
+ See accompanying file LICENSE_1_0.txt or copy at
+ http://www.boost.org/LICENSE_1_0.txt
+=============================================================================/]
+
+[section:introduction Introduction]
+
+The Boost Compute library provides a C++ interface to multi-core CPU and GPGPU
+computing platforms based on [@http://en.wikipedia.org/wiki/OpenCL OpenCL].
+
+The project is hosted on GitHub at [@https://github.com/boostorg/compute]. Click
+the arrow below to see the guide on [link boost_compute.getting_started Getting
+Started].
+
+[endsect]

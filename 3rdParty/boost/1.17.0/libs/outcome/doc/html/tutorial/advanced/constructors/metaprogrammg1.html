@@ -1,0 +1,54 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html><meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Phase 3 - Boost.Outcome documentation</title>
+<link rel="stylesheet" href="../../../css/boost.css" type="text/css">
+<meta name="generator" content="Hugo 0.52 with Boostdoc theme">
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+
+<link rel="icon" href="../../../images/favicon.ico" type="image/ico"/>
+<body><div class="spirit-nav">
+<a accesskey="p" href="../../../tutorial/advanced/constructors/static-constructor.html"><img src="../../../images/prev.png" alt="Prev"></a>
+    <a accesskey="u" href="../../../tutorial/advanced/constructors.html"><img src="../../../images/up.png" alt="Up"></a>
+    <a accesskey="h" href="../../../index.html"><img src="../../../images/home.png" alt="Home"></a><a accesskey="n" href="../../../tutorial/advanced/constructors/metaprogrammg2.html"><img src="../../../images/next.png" alt="Next"></a></div><div id="content">
+  <div class="titlepage"><div><div><h1 style="clear: both">Phase 3</h1></div></div></div>
+  <p>We have built our first two phases of construction for <code>file_handle</code>,
+and for some users they might be happy writing:</p>
+
+<div class="code-snippet"><div class="highlight"><pre class="chroma"><code class="language-c++" data-lang="c++">  <span class="n">outcome</span><span class="o">::</span><span class="n">result</span><span class="o">&lt;</span><span class="n">file_handle</span><span class="o">&gt;</span> <span class="n">fh1</span> <span class="o">=</span> <span class="n">file_handle</span><span class="o">::</span><span class="n">file</span><span class="p">(</span><span class="s">&#34;hello&#34;</span> <span class="cm">/*, file_handle::mode::read */</span><span class="p">);</span>
+  <span class="k">if</span><span class="p">(</span><span class="o">!</span><span class="n">fh1</span><span class="p">)</span>
+  <span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">cerr</span> <span class="o">&lt;&lt;</span> <span class="s">&#34;Opening file &#39;hello&#39; failed with &#34;</span> <span class="o">&lt;&lt;</span> <span class="n">fh1</span><span class="p">.</span><span class="n">error</span><span class="p">().</span><span class="n">message</span><span class="p">()</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+  <span class="p">}</span>
+</code></pre></div><a href="https://github.com/boostorg/outcome/tree/master/doc/src/snippets/constructors.cpp#L179" class="code-snippet-url" target="_blank">View this code on Github</a></div>
+
+
+<p>&hellip; and be done with it.</p>
+
+<p>But wouldn&rsquo;t it be nicer if we could instead write:</p>
+
+<div class="code-snippet"><div class="highlight"><pre class="chroma"><code class="language-c++" data-lang="c++">  <span class="n">outcome</span><span class="o">::</span><span class="n">result</span><span class="o">&lt;</span><span class="n">file_handle</span><span class="o">&gt;</span> <span class="n">fh2</span> <span class="o">=</span> <span class="n">make</span><span class="o">&lt;</span><span class="n">file_handle</span><span class="o">&gt;</span><span class="p">{</span><span class="s">&#34;hello&#34;</span> <span class="cm">/*, file_handle::mode::read */</span><span class="p">}();</span>
+  <span class="k">if</span><span class="p">(</span><span class="o">!</span><span class="n">fh2</span><span class="p">)</span>
+  <span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">cerr</span> <span class="o">&lt;&lt;</span> <span class="s">&#34;Opening file &#39;hello&#39; failed with &#34;</span> <span class="o">&lt;&lt;</span> <span class="n">fh2</span><span class="p">.</span><span class="n">error</span><span class="p">().</span><span class="n">message</span><span class="p">()</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+  <span class="p">}</span>
+</code></pre></div><a href="https://github.com/boostorg/outcome/tree/master/doc/src/snippets/constructors.cpp#L186" class="code-snippet-url" target="_blank">View this code on Github</a></div>
+
+
+<p>The eye is immediately drawn to the two-stage invocation pattern, so we are
+constructing a type <code>make&lt;file_handle&gt;</code> using the arguments with which we wish
+to invoke the <code>file_handle</code> constructor with, and then invoking the
+call operator on that <code>make&lt;file_handle&gt;</code> instance to do the
+actual construction.</p>
+
+<p>It may seem a bit clunky to use brace initialisation for parameters followed
+by a &ldquo;spurious&rdquo; set of empty brackets, but we think that this is a better
+approach than alternatives. We shall briefly cover those at the end of this section.</p>
+
+
+        </div><p><small>Last revised: February 08, 2019 at 22:18:08 UTC</small></p>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../../../tutorial/advanced/constructors/static-constructor.html"><img src="../../../images/prev.png" alt="Prev"></a>
+    <a accesskey="u" href="../../../tutorial/advanced/constructors.html"><img src="../../../images/up.png" alt="Up"></a>
+    <a accesskey="h" href="../../../index.html"><img src="../../../images/home.png" alt="Home"></a><a accesskey="n" href="../../../tutorial/advanced/constructors/metaprogrammg2.html"><img src="../../../images/next.png" alt="Next"></a></div></body>
+</html>

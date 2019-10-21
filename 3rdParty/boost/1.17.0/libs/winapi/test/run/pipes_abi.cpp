@@ -1,0 +1,69 @@
+/*
+ *             Copyright Andrey Semashev 2018.
+ * Distributed under the Boost Software License, Version 1.0.
+ *    (See accompanying file LICENSE_1_0.txt or copy at
+ *          http://www.boost.org/LICENSE_1_0.txt)
+ */
+/*!
+ * \file   pipes_abi.cpp
+ * \author Andrey Semashev
+ * \date   10.03.2018
+ *
+ * \brief  This file contains ABI test for pipes.hpp
+ */
+
+#include <boost/winapi/pipes.hpp>
+#include <windows.h>
+#include <boost/predef/platform/windows_uwp.h>
+#include "abi_test_tools.hpp"
+
+int main()
+{
+#if BOOST_WINAPI_PARTITION_DESKTOP_SYSTEM
+
+    BOOST_WINAPI_TEST_CONSTANT(PIPE_ACCESS_DUPLEX);
+    BOOST_WINAPI_TEST_CONSTANT(PIPE_ACCESS_INBOUND);
+    BOOST_WINAPI_TEST_CONSTANT(PIPE_ACCESS_OUTBOUND);
+
+    BOOST_WINAPI_TEST_CONSTANT(PIPE_TYPE_BYTE);
+    BOOST_WINAPI_TEST_CONSTANT(PIPE_TYPE_MESSAGE);
+
+    BOOST_WINAPI_TEST_CONSTANT(PIPE_READMODE_BYTE);
+    BOOST_WINAPI_TEST_CONSTANT(PIPE_READMODE_MESSAGE);
+
+    BOOST_WINAPI_TEST_CONSTANT(PIPE_WAIT);
+    BOOST_WINAPI_TEST_CONSTANT(PIPE_NOWAIT);
+
+    BOOST_WINAPI_TEST_CONSTANT(PIPE_UNLIMITED_INSTANCES);
+
+    BOOST_WINAPI_TEST_CONSTANT(NMPWAIT_USE_DEFAULT_WAIT);
+    BOOST_WINAPI_TEST_CONSTANT(NMPWAIT_NOWAIT);
+    BOOST_WINAPI_TEST_CONSTANT(NMPWAIT_WAIT_FOREVER);
+
+#if BOOST_PLAT_WINDOWS_SDK_VERSION >= BOOST_WINAPI_WINDOWS_SDK_7_0
+    // These constants are not defined in Windows SDK prior to 7.0A
+    BOOST_WINAPI_TEST_CONSTANT(PIPE_ACCEPT_REMOTE_CLIENTS);
+    BOOST_WINAPI_TEST_CONSTANT(PIPE_REJECT_REMOTE_CLIENTS);
+#endif // BOOST_PLAT_WINDOWS_SDK_VERSION >= BOOST_WINAPI_WINDOWS_SDK_7_0
+
+    BOOST_WINAPI_TEST_FUNCTION_SIGNATURE(ImpersonateNamedPipeClient);
+    BOOST_WINAPI_TEST_FUNCTION_SIGNATURE(DisconnectNamedPipe);
+    BOOST_WINAPI_TEST_FUNCTION_SIGNATURE(SetNamedPipeHandleState);
+    BOOST_WINAPI_TEST_FUNCTION_SIGNATURE(PeekNamedPipe);
+
+#if !defined( BOOST_NO_ANSI_APIS )
+    BOOST_WINAPI_TEST_FUNCTION_SIGNATURE(WaitNamedPipeA);
+#endif
+    BOOST_WINAPI_TEST_FUNCTION_SIGNATURE(WaitNamedPipeW);
+
+#if BOOST_USE_WINAPI_VERSION >= BOOST_WINAPI_VERSION_WIN6
+#if !defined(BOOST_NO_ANSI_APIS)
+    BOOST_WINAPI_TEST_FUNCTION_SIGNATURE(GetNamedPipeClientComputerNameA);
+#endif // !defined(BOOST_NO_ANSI_APIS)
+    BOOST_WINAPI_TEST_FUNCTION_SIGNATURE(GetNamedPipeClientComputerNameW);
+#endif // BOOST_USE_WINAPI_VERSION >= BOOST_WINAPI_VERSION_WIN6
+
+#endif // BOOST_WINAPI_PARTITION_DESKTOP_SYSTEM
+
+    return boost::report_errors();
+}

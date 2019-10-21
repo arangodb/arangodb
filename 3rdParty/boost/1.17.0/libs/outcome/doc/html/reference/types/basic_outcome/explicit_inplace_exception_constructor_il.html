@@ -1,0 +1,30 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html><meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>explicit basic_outcome(in_place_type_t&lt;exception_type_if_enabled&gt;, std::initializer_list&lt;U&gt;, Args &hellip;) - Boost.Outcome documentation</title>
+<link rel="stylesheet" href="../../../css/boost.css" type="text/css">
+<meta name="generator" content="Hugo 0.52 with Boostdoc theme">
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+
+<link rel="icon" href="../../../images/favicon.ico" type="image/ico"/>
+<body><div class="spirit-nav">
+<a accesskey="p" href="../../../reference/types/basic_outcome/explicit_inplace_exception_constructor.html"><img src="../../../images/prev.png" alt="Prev"></a>
+    <a accesskey="u" href="../../../reference/types/basic_outcome.html"><img src="../../../images/up.png" alt="Up"></a>
+    <a accesskey="h" href="../../../index.html"><img src="../../../images/home.png" alt="Home"></a><a accesskey="n" href="../../../reference/types/basic_outcome/implicit_inplace_value_error_exception_constructor.html"><img src="../../../images/next.png" alt="Next"></a></div><div id="content">
+  <div class="titlepage"><div><div><h1 style="clear: both"><code>explicit basic_outcome(in_place_type_t&lt;exception_type_if_enabled&gt;, std::initializer_list&lt;U&gt;, Args ...)</code></h1></div></div></div>
+  <p>Explicit inplace exception constructor. Calls <a href="../../../reference/functions/hooks/hook_outcome_in_place_construction.html" class="api-reference"><code>void hook_outcome_in_place_construction(T *, in_place_type_t&lt;U&gt;, Args &amp;&amp;...) noexcept</code></a>
+ with <code>this</code>, <code>in_place_type&lt;exception_type&gt;</code>, <code>std::initializer_list&lt;U&gt;</code> and <code>Args ...</code>.</p>
+
+<p><em>Requires</em>: <code>predicate::enable_inplace_exception_constructor&lt;std::initializer_list&lt;U&gt;, Args ...&gt;</code> is true.</p>
+
+<p><em>Complexity</em>: Same as for the <code>exception_type</code> constructor which accepts <code>std::initializer_list&lt;U&gt;, Args ...</code>. Constexpr, triviality and noexcept of underlying operations is propagated.</p>
+
+<p><em>Guarantees</em>: If an exception is thrown during the operation, the state of the Args is left indeterminate.</p>
+
+
+        </div><p><small>Last revised: January 31, 2019 at 01:07:35 UTC</small></p>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../../../reference/types/basic_outcome/explicit_inplace_exception_constructor.html"><img src="../../../images/prev.png" alt="Prev"></a>
+    <a accesskey="u" href="../../../reference/types/basic_outcome.html"><img src="../../../images/up.png" alt="Up"></a>
+    <a accesskey="h" href="../../../index.html"><img src="../../../images/home.png" alt="Home"></a><a accesskey="n" href="../../../reference/types/basic_outcome/implicit_inplace_value_error_exception_constructor.html"><img src="../../../images/next.png" alt="Next"></a></div></body>
+</html>

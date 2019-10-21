@@ -1,0 +1,19 @@
+[#metaprogramming_value]
+[section Template metaprogramming value]
+
+A ['template metaprogramming value] is a
+[link nullary_metafunction nullary template metafunction] returning itself.
+For example:
+
+  struct void_
+  {
+    using type = void_;
+  };
+
+This template metaprogramming value is called `void_`. It is a nullary
+metafunction returning itself as its result. Because of this, it can be treated
+as a nullary metafunction and evaluated any number of times. For example 
+`void_::type::type::type` is still `void_`.
+
+[endsect]
+

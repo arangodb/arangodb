@@ -1,0 +1,108 @@
+[section boost/python/stl_iterator.hpp]
+[section Introduction]
+<boost/python/stl_iterator.hpp> provides types for creating C++ Iterators from [@http://www.python.org/doc/current/lib/typeiter.html Python iterables].
+[endsect]
+[section Class template `stl_input_iterator`]
+Instances of `stl_input_iterator<T>` hold a Python iterator and adapt it for use with STL algorithms. `stl_input_iterator<T>` satisfies the requirements for an Input Iterator.
+[table
+[[Template Parameter][Requirements][Semantics][Default]]
+[[ValueType][ValueType must be CopyConstructible.][Dereferencing an instance of `stl_input_iterator<ValueType>` will return an rvalue of type ValueType.][None]]
+]
+``
+namespace boost { namespace python
+{
+  template <class ValueType>
+  struct stl_input_iterator
+  {
+      typedef std::ptrdiff_t difference_type;
+      typedef ValueType value_type;
+      typedef ValueType* pointer;
+      typedef ValueType reference;
+      typedef std::input_iterator_tag iterator_category;
+
+      stl_input_iterator();
+      stl_input_iterator(object const& ob);
+
+      stl_input_iterator& operator++();
+      stl_input_iterator operator++(int);
+
+      ValueType operator*() const;
+
+      friend bool operator==(stl_input_iterator const& lhs, stl_input_iterator const& rhs);
+      friend bool operator!=(stl_input_iterator const& lhs, stl_input_iterator const& rhs);
+  private:
+      object it; // For exposition only
+      object ob; // For exposition only
+  };
+}}
+``
+[endsect]
+[section Class template `stl_input_iterator` constructors]
+``
+stl_input_iterator()
+``
+[variablelist
+[[Effects][Creates a past-the-end input iterator, useful for signifying the end of a sequence. ]]
+[[Postconditions][`this` is past-the-end]]
+[[Throws][Nothing.]]
+]
+``stl_input_iterator(object const& ob)``
+[variablelist
+[[Effects][Calls ob.attr("__iter__")() and stores the resulting Python iterator object in this->it. Then, calls this->it.attr("next")() and stores the result in this->ob. If the sequence is exhausted, sets this->ob to object(). ]]
+[[Postconditions][this is a dereferenceable or past-the-end.]]
+]
+[endsect]
+[section Class template `stl_input_iterator` modifiers]
+``
+stl_input_iterator &operator++()
+``
+[variablelist
+[[Effects][Calls this->it.attr("next")() and stores the result in this->ob. If the sequence is exhausted, sets this->ob to object(). ]]
+[[Postconditions][this is a dereferenceable or past-the-end.]]
+[[Returns][`*this`]]
+]
+``stl_input_iterator &operator++(int)``
+[variablelist
+[[Effects][`stl_input_iterator tmp = *this; ++*this; return tmp;`]]
+[[Postconditions][this is a dereferenceable or past-the-end.]]
+]
+[endsect]
+[section Class template `stl_input_iterator` observers]
+``
+ValueType operator*() const
+``
+[variablelist
+[[Effects][Returns the current element in the sequence. ]]
+[[Returns][`extract<ValueType>(this->ob);`]]
+]
+``
+friend bool operator==(stl_input_iterator const& lhs, stl_input_iterator const& rhs)
+``
+[variablelist
+[[Effects][Returns true if both iterators are dereferenceable or if both iterators are past-the-end, false otherwise. ]]
+[[Returns][`(lhs.ob == object()) == (rhs.ob == object())`]]
+]
+``
+friend bool operator!=(stl_input_iterator const& lhs, stl_input_iterator const& rhs)
+``
+[variablelist
+[[Effects][Returns false if both iterators are dereferenceable or if both iterators are past-the-end, true otherwise. ]]
+[[Returns][`!(lhs == rhs)`]]
+]
+[endsect]
+[section Example]
+``
+#include <boost/python/object.hpp>
+#include <boost/python/stl_iterator.hpp>
+
+#include <list>
+
+using namespace boost::python;
+std::list<int> sequence_to_int_list(object const& ob)
+{
+    stl_input_iterator<int> begin(ob), end;
+    return std::list<int>(begin, end);
+}
+``
+[endsect]
+[endsect]

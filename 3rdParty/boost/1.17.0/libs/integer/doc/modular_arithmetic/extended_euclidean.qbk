@@ -1,0 +1,53 @@
+[section:extended_euclidean Extended Euclidean Algorithm]
+
+[section Introduction]
+
+The extended Euclidean algorithm solves the integer relation /mx + ny/ = gcd(/m/, /n/) for /x/ and /y/.
+
+[endsect]
+
+[section Synopsis]
+
+    #include <boost/integer/extended_euclidean.hpp>
+
+    namespace boost { namespace integer {
+
+    template<class Z>
+    struct euclidean_result_t {
+      Z gcd;
+      Z x;
+      Z y;
+    };
+
+
+    template<class Z>
+    euclidean_result_t<Z> extended_euclidean(Z m, Z n);
+
+    }}
+
+[endsect]
+
+[section Usage]
+
+    int m = 12;
+    int n = 15;
+    auto res = extended_euclidean(m, n);
+
+    int gcd = res.gcd;
+    int x = res.x;
+    int y = res.y;
+    // mx + ny = gcd(m,n) should now hold
+
+[endsect]
+
+[section References]
+Wagstaff, Samuel S., ['The Joy of Factoring], Vol. 68. American Mathematical Soc., 2013.
+
+[endsect]
+[endsect]
+[/
+Copyright 2018 Nick Thompson.
+Distributed under the Boost Software License, Version 1.0.
+(See accompanying file LICENSE_1_0.txt or copy at
+http://www.boost.org/LICENSE_1_0.txt).
+]

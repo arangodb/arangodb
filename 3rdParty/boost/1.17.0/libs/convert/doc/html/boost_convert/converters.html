@@ -1,0 +1,190 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Converters</title>
+<link rel="stylesheet" href="../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="Chapter&#160;1.&#160;Boost.Convert 2.0">
+<link rel="up" href="../index.html" title="Chapter&#160;1.&#160;Boost.Convert 2.0">
+<link rel="prev" href="alternative_interface.html" title="Alternative Interface">
+<link rel="next" href="integration_of_user_types.html" title="Integration of User-Defined Types">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="alternative_interface.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="integration_of_user_types.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="boost_convert.converters"></a><a class="link" href="converters.html" title="Converters">Converters</a>
+</h2></div></div></div>
+<p>
+      The <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">convert</span><span class="special">()</span></code>
+      API plays its role by providing a <span class="emphasis"><em>uniform interface</em></span> and
+      ensuring <span class="emphasis"><em>consistent behavior</em></span>. However, it is the respective
+      converter which does the hard work of actual type conversion/transformation.
+    </p>
+<p>
+      <span class="emphasis"><em>Boost.Convert</em></span> design reflects the fact that no one converter
+      is to satisfy all imaginable conversion/transformation-related user requirements.
+      Consequently, <span class="emphasis"><em>extendibility</em></span> and <span class="emphasis"><em>converter pluggability</em></span>
+      are important properties of <span class="emphasis"><em>Boost.Convert</em></span>. The library
+      provides several converters for common type conversions with varying degrees
+      of formatting support and performance. However, it is an expectation that more
+      generic-purpose and custom-specific converters are to be written and deployed
+      with <span class="emphasis"><em>Boost.Convert</em></span>.
+    </p>
+<p>
+      For a converter to be plugged in to the <span class="emphasis"><em>Boost.Convert</em></span>
+      framework it needs to be a <span class="emphasis"><em>callable</em></span> with one of the signatures:
+    </p>
+<pre class="programlisting"><span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">TypeOut</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">TypeIn</span><span class="special">&gt;</span>
+<span class="keyword">void</span> <span class="keyword">operator</span><span class="special">()(</span><span class="identifier">TypeIn</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">value_in</span><span class="special">,</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">optional</span><span class="special">&lt;</span><span class="identifier">TypeOut</span><span class="special">&gt;&amp;</span> <span class="identifier">result_out</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+
+<span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">TypeOut</span><span class="special">,</span> <span class="keyword">typename</span> <span class="identifier">TypeIn</span><span class="special">&gt;</span>
+<span class="keyword">void</span> <span class="keyword">operator</span><span class="special">()(</span><span class="identifier">TypeIn</span> <span class="identifier">value_in</span><span class="special">,</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">optional</span><span class="special">&lt;</span><span class="identifier">TypeOut</span><span class="special">&gt;&amp;</span> <span class="identifier">result_out</span><span class="special">)</span> <span class="keyword">const</span><span class="special">;</span>
+</pre>
+<p>
+      if that is a general-purpose converter capable of handling many types (like
+      string-to-type and type-to-string conversions). Alternatively, a purpose-built
+      custom converter might only care to provide
+    </p>
+<pre class="programlisting"><span class="keyword">void</span> <span class="keyword">operator</span><span class="special">()(</span><span class="identifier">TypeIn</span> <span class="keyword">const</span><span class="special">&amp;,</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">optional</span><span class="special">&lt;</span><span class="identifier">TypeOut</span><span class="special">&gt;&amp;)</span> <span class="keyword">const</span><span class="special">;</span>
+</pre>
+<p>
+      if its sole purpose is to handle one specific conversion/transformation of
+      <span class="emphasis"><em>TypeIn</em></span> to <span class="emphasis"><em>TypeOut</em></span>. For example, a
+      converter from the operating-system-specific MBCS string format to the UCS-2
+      or UCS-4 (depending on <code class="computeroutput"><span class="keyword">wchar_t</span></code>
+      size) might be one such example:
+    </p>
+<pre class="programlisting"><span class="keyword">void</span> <span class="keyword">operator</span><span class="special">()(</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span> <span class="keyword">const</span><span class="special">&amp;,</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">optional</span><span class="special">&lt;</span><span class="identifier">std</span><span class="special">::</span><span class="identifier">wstring</span><span class="special">&gt;&amp;)</span> <span class="keyword">const</span><span class="special">;</span>
+</pre>
+<p>
+      Alternatively again, an ad-hoc in-place <span class="emphasis"><em>callable</em></span> might
+      be provided as a converter. For example,
+    </p>
+<p>
+</p>
+<pre class="programlisting"><span class="keyword">using</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">string</span><span class="special">;</span>
+<span class="keyword">using</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">lexical_cast</span><span class="special">;</span>
+<span class="keyword">using</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">convert</span><span class="special">;</span>
+</pre>
+<p>
+    </p>
+<p>
+</p>
+<pre class="programlisting"><span class="keyword">int</span> <span class="identifier">v03</span> <span class="special">=</span> <span class="identifier">convert</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;(</span><span class="identifier">str</span><span class="special">,</span>
+              <span class="identifier">boost</span><span class="special">::</span><span class="identifier">bind</span><span class="special">(</span><span class="identifier">assign</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;,</span> <span class="identifier">_2</span><span class="special">,</span>
+                  <span class="identifier">boost</span><span class="special">::</span><span class="identifier">bind</span><span class="special">(</span><span class="identifier">lexical_cast</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">,</span> <span class="identifier">string</span><span class="special">&gt;,</span> <span class="identifier">_1</span><span class="special">))).</span><span class="identifier">value_or</span><span class="special">(-</span><span class="number">1</span><span class="special">);</span>
+</pre>
+<p>
+    </p>
+<p>
+      or an old-fashioned function:
+    </p>
+<p>
+</p>
+<pre class="programlisting"><span class="keyword">void</span> <span class="identifier">plain_old_func</span><span class="special">(</span><span class="identifier">string</span> <span class="keyword">const</span><span class="special">&amp;</span> <span class="identifier">value_in</span><span class="special">,</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">optional</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;&amp;</span> <span class="identifier">value_out</span><span class="special">)</span>
+</pre>
+<p>
+    </p>
+<p>
+</p>
+<pre class="programlisting"><span class="keyword">int</span> <span class="identifier">v01</span> <span class="special">=</span> <span class="identifier">convert</span><span class="special">&lt;</span><span class="keyword">int</span><span class="special">&gt;(</span><span class="identifier">str</span><span class="special">,</span> <span class="identifier">plain_old_func</span><span class="special">).</span><span class="identifier">value_or</span><span class="special">(-</span><span class="number">1</span><span class="special">);</span>
+</pre>
+<p>
+    </p>
+<p>
+      With regard to converters the <span class="emphasis"><em>Boost.Convert</em></span> framework
+      has been designed with the following requirement in mind:
+    </p>
+<div class="note"><table border="0" summary="Note">
+<tr>
+<td rowspan="2" align="center" valign="top" width="25"><img alt="[Note]" src="../../../../../doc/src/images/note.png"></td>
+<th align="left">Note</th>
+</tr>
+<tr><td align="left" valign="top"><p>
+        Converters shall be independent from and must not rely on the <span class="emphasis"><em>Boost.Convert</em></span>
+        infrastructure.
+      </p></td></tr>
+</table></div>
+<h4>
+<a name="boost_convert.converters.h0"></a>
+      <span class="phrase"><a name="boost_convert.converters.implicit__emphasis_typein__emphasis__promotions_and_conversions"></a></span><a class="link" href="converters.html#boost_convert.converters.implicit__emphasis_typein__emphasis__promotions_and_conversions">Implicit
+      <span class="emphasis"><em>TypeIn</em></span> Promotions and Conversions</a>
+    </h4>
+<p>
+      It is worth remembering that <span class="emphasis"><em>TypeIn</em></span> in the signature should
+      be interpreted in the context of the potential implicit type promotions and
+      conversions allowed <span class="emphasis"><em>by the language</em></span>. For example, depending
+      on the context the <code class="computeroutput"><span class="identifier">take_double</span></code>
+      and <code class="computeroutput"><span class="identifier">take_int</span></code> converters below
+      might not do what is expected of them due to implicit <span class="emphasis"><em>int-to-double</em></span>
+      promotion and value-destroying <span class="emphasis"><em>double-to-int</em></span> conversion
+      applied <span class="emphasis"><em>by the compiler</em></span>:
+    </p>
+<p>
+</p>
+<pre class="programlisting"><span class="keyword">struct</span> <span class="identifier">take_double</span> <span class="special">{</span> <span class="keyword">void</span> <span class="keyword">operator</span><span class="special">()(</span><span class="keyword">double</span><span class="special">,</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">optional</span><span class="special">&lt;</span><span class="identifier">string</span><span class="special">&gt;&amp;)</span> <span class="keyword">const</span> <span class="special">{}};</span>
+<span class="keyword">struct</span>    <span class="identifier">take_int</span> <span class="special">{</span> <span class="keyword">void</span> <span class="keyword">operator</span><span class="special">()(</span><span class="keyword">int</span><span class="special">,</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">optional</span><span class="special">&lt;</span><span class="identifier">string</span><span class="special">&gt;&amp;)</span> <span class="keyword">const</span> <span class="special">{}};</span>
+</pre>
+<p>
+    </p>
+<p>
+</p>
+<pre class="programlisting"><span class="identifier">convert</span><span class="special">&lt;</span><span class="identifier">string</span><span class="special">&gt;(</span><span class="number">11</span><span class="special">,</span> <span class="identifier">take_double</span><span class="special">());</span> <span class="comment">// Compiler applies int-to-double promotion to call the converter.</span>
+<span class="identifier">convert</span><span class="special">&lt;</span><span class="identifier">string</span><span class="special">&gt;(</span><span class="number">11.23</span><span class="special">,</span> <span class="identifier">take_int</span><span class="special">());</span> <span class="comment">// Compiler applies double-to-int implicit truncation.</span>
+</pre>
+<p>
+    </p>
+<p>
+      <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">convert</span><span class="special">()</span></code>
+      API does not modify <span class="emphasis"><em>TypeIn</em></span> or interpret it in any way.
+      The passed-in value and its type are delivered to the underlying converter
+      as-is. Consequently, if potential implicit type promotions and conversions
+      are not desirable, then it is the converter's responsibility to address that
+      issue. For example, one way to disable implicit conversions might be:
+    </p>
+<p>
+</p>
+<pre class="programlisting"><span class="keyword">struct</span> <span class="identifier">double_only</span>
+<span class="special">{</span>
+    <span class="comment">// Declared for all types.</span>
+    <span class="keyword">template</span><span class="special">&lt;</span><span class="keyword">typename</span> <span class="identifier">TypeIn</span><span class="special">&gt;</span> <span class="keyword">void</span> <span class="keyword">operator</span><span class="special">()(</span><span class="identifier">TypeIn</span><span class="special">,</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">optional</span><span class="special">&lt;</span><span class="identifier">string</span><span class="special">&gt;&amp;)</span> <span class="keyword">const</span><span class="special">;</span>
+<span class="special">};</span>
+
+<span class="comment">// Defined only for certain types.</span>
+<span class="keyword">template</span><span class="special">&lt;&gt;</span> <span class="keyword">void</span> <span class="identifier">double_only</span><span class="special">::</span><span class="keyword">operator</span><span class="special">()&lt;</span><span class="keyword">double</span><span class="special">&gt;(</span><span class="keyword">double</span><span class="special">,</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">optional</span><span class="special">&lt;</span><span class="identifier">string</span><span class="special">&gt;&amp;)</span> <span class="keyword">const</span> <span class="special">{}</span>
+</pre>
+<p>
+    </p>
+<p>
+</p>
+<pre class="programlisting">    <span class="identifier">convert</span><span class="special">&lt;</span><span class="identifier">string</span><span class="special">&gt;(</span><span class="number">11.23</span><span class="special">,</span> <span class="identifier">double_only</span><span class="special">());</span> <span class="comment">// Fine.</span>
+<span class="comment">//  convert&lt;string&gt;(11,    double_only()); // Fails: undefined reference to double_only::operator()&lt;int&gt;</span>
+</pre>
+<p>
+    </p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2009-2016 Vladimir Batov<p>
+        Distributed under the Boost Software License, Version 1.0. See copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>.
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="alternative_interface.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="integration_of_user_types.html"><img src="../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

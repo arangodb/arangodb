@@ -1,0 +1,71 @@
+<?xml version="1.0" standalone="yes"?>
+<library-reference><header name="boost/core/ref.hpp">
+<namespace name="boost">
+<struct name="is_reference_wrapper"><template>
+      <template-type-parameter name="T"/>
+    </template><purpose>Determine if a type <computeroutput>T</computeroutput> is an instantiation of <computeroutput><classname alt="boost::reference_wrapper">reference_wrapper</classname></computeroutput>. </purpose><description><para>The value static constant will be true if the type <computeroutput>T</computeroutput> is a specialization of <computeroutput><classname alt="boost::reference_wrapper">reference_wrapper</classname></computeroutput>. </para></description><method-group name="public member functions">
+<method name="BOOST_STATIC_CONSTANT"><type/><parameter name=""><paramtype>bool</paramtype></parameter><parameter name=""><paramtype>value</paramtype><default>false</default></parameter></method>
+</method-group>
+</struct><class name="reference_wrapper"><template>
+      <template-type-parameter name="T"/>
+    </template><purpose>Contains a reference to an object of type <computeroutput>T</computeroutput>. </purpose><description><para><computeroutput><classname alt="boost::reference_wrapper">reference_wrapper</classname></computeroutput> is primarily used to "feed" references to function templates (algorithms) that take their parameter by value. It provides an implicit conversion to <computeroutput>T&amp;</computeroutput>, which usually allows the function templates to work on references unmodified. </para></description><typedef name="type"><description><para>Type <computeroutput>T</computeroutput>. </para></description><type>T</type></typedef>
+<method-group name="public member functions">
+<method name="conversion-operator" cv="const"><type>T &amp;</type><description><para>
+<para>Does not throw. </para>
+
+</para></description><returns><para>The stored reference. </para>
+</returns></method>
+<method name="get" cv="const"><type>T &amp;</type><description><para>
+<para>Does not throw. </para>
+
+</para></description><returns><para>The stored reference. </para>
+</returns></method>
+<method name="get_pointer" cv="const"><type>T *</type><description><para>
+<para>Does not throw. </para>
+
+</para></description><returns><para>A pointer to the object referenced by the stored reference. </para>
+</returns></method>
+</method-group>
+<constructor specifiers="explicit"><parameter name="t"><paramtype>T &amp;</paramtype></parameter><description><para>Constructs a <computeroutput><classname alt="boost::reference_wrapper">reference_wrapper</classname></computeroutput> object that stores a reference to <computeroutput>t</computeroutput>.</para><para><para>Does not throw. </para>
+
+</para></description></constructor>
+<constructor cv="= delete"><parameter name="t"><paramtype>T &amp;&amp;</paramtype></parameter><description><para><para>Construction from a temporary object is disabled. </para>
+
+</para></description></constructor>
+</class><struct name="unwrap_reference"><template>
+      <template-type-parameter name="T"/>
+    </template><purpose>Find the type in a <computeroutput><classname alt="boost::reference_wrapper">reference_wrapper</classname></computeroutput>. </purpose><description><para>The <computeroutput>typedef</computeroutput> type is <computeroutput>T::type</computeroutput> if <computeroutput>T</computeroutput> is a <computeroutput><classname alt="boost::reference_wrapper">reference_wrapper</classname></computeroutput>, <computeroutput>T</computeroutput> otherwise. </para></description><typedef name="type"><type>T</type></typedef>
+</struct><function name="ref"><type><classname>reference_wrapper</classname>&lt; T &gt; const</type><template>
+          <template-type-parameter name="T"/>
+        </template><parameter name="t"><paramtype>T &amp;</paramtype></parameter><description><para>
+<para>Does not throw. </para>
+
+</para></description><returns><para><computeroutput><classname alt="boost::reference_wrapper">reference_wrapper</classname>&lt;T&gt;(t)</computeroutput> </para>
+</returns></function>
+<function name="cref"><type><classname>reference_wrapper</classname>&lt; T const  &gt; const</type><template>
+          <template-type-parameter name="T"/>
+        </template><parameter name="t"><paramtype>T const &amp;</paramtype></parameter><description><para>
+<para>Does not throw. </para>
+
+</para></description><returns><para><computeroutput><classname alt="boost::reference_wrapper">reference_wrapper</classname>&lt;T const&gt;(t)</computeroutput> </para>
+</returns></function>
+<function name="ref"><type>void</type><template>
+          <template-type-parameter name="T"/>
+        </template><parameter name=""><paramtype>T const &amp;&amp;</paramtype></parameter><description><para><para>Construction from a temporary object is disabled. </para>
+
+</para></description></function>
+<function name="cref"><type>void</type><template>
+          <template-type-parameter name="T"/>
+        </template><parameter name=""><paramtype>T const &amp;&amp;</paramtype></parameter><description><para><para>Construction from a temporary object is disabled. </para>
+
+</para></description></function>
+<function name="unwrap_ref"><type><classname>unwrap_reference</classname>&lt; T &gt;::type &amp;</type><template>
+          <template-type-parameter name="T"/>
+        </template><parameter name="t"><paramtype>T &amp;</paramtype></parameter><description><para>
+<para>Does not throw. </para>
+
+</para></description><returns><para><computeroutput><classname alt="boost::unwrap_reference">unwrap_reference</classname>&lt;T&gt;::type&amp;(t)</computeroutput> </para>
+</returns></function>
+</namespace>
+</header>
+</library-reference>

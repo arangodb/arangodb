@@ -1,0 +1,4 @@
+[#getting_started_10]
+
+  boost::mpl::fold< boost::mpl::at_c<temp_result, 1>::type, /* The vector to summarise */ boost::mpl::int_<0>, /* The value to start the sum from */ boost::mpl::quote2<sum_items> /* The function to call in each iteration */ >::type
+

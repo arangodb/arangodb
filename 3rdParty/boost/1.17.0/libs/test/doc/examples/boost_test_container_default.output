@@ -1,0 +1,13 @@
+//[example_output
+> ./boost_test_container_default --log_level=all
+Running 1 test case...
+Entering test module "boost_test_sequence"
+test.cpp(13): Entering test case "test_collections_vectors"
+test.cpp(23): info: check a < c has passed
+test.cpp(24): error: in "test_collections_vectors": check a >= c has failed
+test.cpp(25): info: check a != c has passed
+test.cpp(13): Leaving test case "test_collections_vectors"; testing time: 208us
+Leaving test module "boost_test_sequence"; testing time: 286us
+
+*** 1 failure is detected in the test module "boost_test_container_default"
+//]

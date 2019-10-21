@@ -1,0 +1,23 @@
+[/
+Copyright 2018 Glen Joseph Fernandes
+(glenjofe@gmail.com)
+
+Distributed under the Boost Software License,
+Version 1.0. (See accompanying file LICENSE_1_0.txt
+or copy at http://www.boost.org/LICENSE_1_0.txt).
+]
+
+[section:nonesuch nonesuch]
+
+    struct nonesuch {
+        nonesuch() = delete;
+        ~nonesuch() = delete;
+        nonesuch(const nonesuch&) = delete;
+        void operator=(const nonesuch&) = delete;
+    };
+
+__header `#include <boost/type_traits/nonesuch.hpp>`
+
+Type `nonesuch` is a placeholder type used when the detection idiom fails - see __detected.
+
+[endsect]

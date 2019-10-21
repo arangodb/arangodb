@@ -1,0 +1,38 @@
+////
+Copyright 2017 Peter Dimov
+
+Distributed under the Boost Software License, Version 1.0.
+
+See accompanying file LICENSE_1_0.txt or copy at
+http://www.boost.org/LICENSE_1_0.txt
+////
+
+[#tuple]
+# Tuple Operations, <boost/mp11/tuple.hpp>
+:toc:
+:toc-title:
+:idprefix:
+
+## tuple_apply(f, tp)
+
+    template<class F, class Tp> constexpr /*...*/ tuple_apply(F&& f, Tp&& tp);
+
+`tuple_apply(f, tp)` returns `std::forward<F>(f)(std::get<J>(std::forward<Tp>(tp))...)` for `J` in 0..`N-1`,
+where `N` is `std::tuple_size<typename std::remove_reference<Tp>::type>::value`. Same as `std::apply` in C++17.
+
+## construct_from_tuple<T>(tp)
+
+    template<class T, class Tp> T construct_from_tuple(Tp&& tp);
+
+`construct_from_tuple<T>(tp)` returns `T(std::get<J>(std::forward<Tp>(tp))...)` for `J` in 0..`N-1`,
+where `N` is `std::tuple_size<typename std::remove_reference<Tp>::type>::value`. Same as `std::make_from_tuple` in {cpp}17.
+The name of the function doesn't match the {cpp}17 one to avoid ambiguities when both are visible or in unqualified calls.
+
+## tuple_for_each(tp, f)
+
+    template<class Tp, class F> constexpr F tuple_for_each(Tp&& tp, F&& f);
+
+`tuple_for_each(tp, f)` applies the function object `f` to each element of `tp` by evaluating the
+expression `f(std::get<J>(std::forward<Tp>(tp)))` for `J` in 0..`N-1`, where `N` is `std::tuple_size<typename std::remove_reference<Tp>::type>::value`.
+
+Returns `std::forward<F>(f)`.

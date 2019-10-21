@@ -1,0 +1,56 @@
+# Copyright Antony Polukhin 2016-2019.
+# Use, modification, and distribution are
+# subject to the Boost Software License, Version 1.0. (See accompanying
+# file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+
+using quickbook ;
+import boostbook : boostbook ;
+import doxygen ;
+
+doxygen autodoc
+   :
+      [ glob ../../../boost/stacktrace.hpp ]
+      [ glob ../../../boost/stacktrace/*.hpp ]
+      [ glob ../../../boost/stacktrace/detail/frame_decl.hpp ]
+   :
+        <doxygen:param>EXTRACT_ALL=NO
+        <doxygen:param>HIDE_UNDOC_MEMBERS=YES
+        <doxygen:param>EXTRACT_PRIVATE=NO
+        <doxygen:param>ENABLE_PREPROCESSING=YES
+        <doxygen:param>EXPAND_ONLY_PREDEF=YES
+        <doxygen:param>MACRO_EXPANSION=YES
+        <doxygen:param>SEARCH_INCLUDES=YES
+        <doxygen:param>SHORT_NAMES=NO
+        <doxygen:param>INCLUDE_PATH=../../../
+        <doxygen:param>"PREDEFINED=\"stl_type_info=std::type_info\" \\
+                                   \"BOOST_EXPLICIT_OPERATOR_BOOL_NOEXCEPT()=explicit operator bool() const noexcept;\" \\
+                                   \"BOOST_CONSTEXPR_EXPLICIT_OPERATOR_BOOL()=explicit constexpr operator bool() const noexcept;\" \\
+                                   \"BOOST_STATIC_CONSTEXPR=static constexpr\" \\
+                                   \"BOOST_FORCEINLINE=inline\" \\
+                                   \"BOOST_STACKTRACE_FUNCTION=inline\" \\
+                                   \"BOOST_CONSTEXPR=constexpr\" \\
+                                   \"BOOST_STACKTRACE_DOXYGEN_INVOKED\""
+        <xsl:param>"boost.doxygen.reftitle=Reference"
+        <xsl:param>"boost.doxygen.refid=stacktrace.reference"
+   ;
+
+xml stacktrace : stacktrace.qbk : <dependency>autodoc ;
+boostbook standalone
+    :
+        stacktrace
+    :
+        <xsl:param>boost.root=http://www.boost.org/doc/libs/1_63_0
+#        <xsl:param>boost.root=../../../..
+        <format>pdf:<xsl:param>boost.url.prefix=http://www.boost.org/doc/libs/release/doc/html
+    ;
+
+###############################################################################
+alias boostdoc
+    : stacktrace
+    :
+    :
+    : ;
+
+explicit boostdoc ;
+alias boostrelease ;
+explicit boostrelease ;

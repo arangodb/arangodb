@@ -1,0 +1,39 @@
+<html>
+  <head>
+    <meta content="text/html; charset=windows-1252" http-equiv="content-type">
+    <title>BOOST_PP_TUPLE_PUSH_FRONT</title>
+    <link rel="stylesheet" type="text/css" href="../styles.css">
+  </head>
+  <body>
+    <div style="margin-left:  0px;"> The <b>BOOST_PP_TUPLE_PUSH_FRONT</b> macro
+      appends an element to the beginning of a <i>tuple</i>.</div>
+    <h4>Usage</h4>
+    <div class="code"> <b>BOOST_PP_TUPLE_PUSH_FRONT</b>(<i>tuple</i>, <i>elem</i>)
+      <a href="../topics/variadic_macros.html#VNotation"><sup>(v)</sup></a></div>
+    <h4>Arguments</h4>
+    <dl>
+      <dt>tuple</dt>
+      <dd> The <i>tuple</i> to append an element to.</dd>
+      <dt>elem</dt>
+      <dd> The element to append. </dd>
+    </dl>
+    <h4>Requirements</h4>
+    <div> <b>Header:</b> &nbsp;<a href="../headers/tuple/push_front.html">&lt;boost/preprocessor/tuple/push_front.hpp&gt;</a>
+    </div>
+    <h4>Sample Code</h4>
+    <div>
+      <pre>#include &lt;<a href="../headers/tuple/push_front.html">boost/preprocessor/tuple/push_front.hpp</a>&gt;
+
+#define TUPLE (b, c, d)
+
+<a href="tuple_push_front.html">BOOST_PP_TUPLE_PUSH_FRONT</a>(TUPLE, a) // expands to (a, b, c, d)
+</pre></div>
+    <hr size="1">
+    <div style="margin-left: 0px;"> <i>© Copyright Edward Diener 2013</i> </div>
+    <div style="margin-left: 0px;">
+      <p><small>Distributed under the Boost Software License, Version 1.0. (See
+          accompanying file <a href="../../../../LICENSE_1_0.txt">LICENSE_1_0.txt</a>
+          or copy at <a href="http://www.boost.org/LICENSE_1_0.txt">www.boost.org/LICENSE_1_0.txt</a>)</small></p>
+    </div>
+  </body>
+</html>

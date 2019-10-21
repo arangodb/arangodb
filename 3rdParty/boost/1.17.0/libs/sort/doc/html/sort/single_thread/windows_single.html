@@ -1,0 +1,110 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>2.6.- Windows Benchmarks</title>
+<link rel="stylesheet" href="../../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../../index.html" title="Boost.Sort">
+<link rel="up" href="../single_thread.html" title="2.- Single Thread Algorithms">
+<link rel="prev" href="linux_single/complex_benchmarks.html" title="Complex (Several Types)">
+<link rel="next" href="windows_single/complex_benchmarks.html" title="Complex (Several Types)">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../../../libs/libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="linux_single/complex_benchmarks.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../single_thread.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="windows_single/complex_benchmarks.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="sort.single_thread.windows_single"></a><a class="link" href="windows_single.html" title="2.6.- Windows Benchmarks">2.6.- Windows Benchmarks</a>
+</h3></div></div></div>
+<div class="blockquote"><blockquote class="blockquote">
+<p>
+          This library contains a benchmark folder with programs to measure the speed
+          of the algorithms on your machine and operating system. These are short
+          benchmarks to test speed with different kinds of data ( random, sorted,
+          sorted plus unsorted append at end ...)
+        </p>
+<p>
+          The benchmark runs over a VirtualBox virtual machine with 8 threads and
+          16 GB of RAM, running over a Intel(R) Core(TM) i7-5820K CPU @ 3.30GHz with
+          6 cores and 2 threads by core, and 15M of cache.
+        </p>
+<p>
+          The Operating System is Windows 10 64 bits, and the compiler is VC2017
+        </p>
+</blockquote></div>
+<div class="section">
+<div class="titlepage"><div><div><h4 class="title">
+<a name="sort.single_thread.windows_single.near_sorted"></a><a class="link" href="windows_single.html#sort.single_thread.windows_single.near_sorted" title="Near Sorted Data">Near
+        Sorted Data</a>
+</h4></div></div></div>
+<div class="blockquote"><blockquote class="blockquote">
+<h5>
+<a name="sort.single_thread.windows_single.near_sorted.h0"></a>
+            <span class="phrase"><a name="sort.single_thread.windows_single.near_sorted.near_sorted_data_with_100_000_00"></a></span><a class="link" href="windows_single.html#sort.single_thread.windows_single.near_sorted.near_sorted_data_with_100_000_00"><span class="underline">Near Sorted Data With 100 000 000 64 bits Integers</span></a>
+          </h5>
+<p>
+            benchmark/single/benchmark_numbers.cpp : This benchmark shows the results
+            obtained with several kind of integers numbers (random, and near sorted).
+          </p>
+<p>
+            The benchmarks with strings and objects of different sizes are not showed
+            here, but you can obtain running the benchmark_strings.cpp ans benchmarks_objects.cpp
+            programs.
+          </p>
+<p>
+            <span class="bold"><strong>
+<pre class="programlisting">                            |           |           |           |           |           |           |
+                            |           |           |std::      |           |flat_      |           |
+                            | std::sort | pdqsort   |stable_sort| spin_sort |stable_sort|spreadsort |
+----------------------------+-----------+-----------+-----------+-----------+-----------+-----------+
+random                      |  11.74    |   9.40    |  13.42    |  12.12    |  13.17    |   7.10    |
+                            |           |           |           |           |           |           |
+sorted                      |   1.93    |   0.16    |   4.43    |   0.12    |   0.09    |   0.09    |
+sorted + 0.1% end           |   3.54    |   2.08    |   4.39    |   0.87    |   0.48    |   5.87    |
+sorted +   1% end           |   4.52    |   2.77    |   4.82    |   1.12    |   1.00    |   7.20    |
+sorted +  10% end           |   9.69    |   5.99    |   7.40    |   2.21    |   2.29    |   8.59    |
+                            |           |           |           |           |           |           |
+sorted + 0.1% middle        |   3.66    |   2.43    |   4.74    |   2.63    |   3.84    |   5.59    |
+sorted +   1% middle        |   4.36    |   3.04    |   4.97    |   4.35    |   6.21    |   9.20    |
+sorted +  10% middle        |   9.50    |   7.28    |   7.44    |   5.37    |   8.03    |   9.95    |
+                            |           |           |           |           |           |           |
+reverse sorted              |   2.38    |   0.35    |   5.61    |   0.24    |   0.18    |   2.84    |
+reverse sorted + 0.1% end   |   4.24    |   2.64    |   5.72    |   0.96    |   0.67    |   6.66    |
+reverse sorted +   1% end   |   4.44    |   2.67    |   5.22    |   1.10    |   0.86    |   5.68    |
+reverse sorted +  10% end   |   6.93    |   4.98    |   6.27    |   2.00    |   1.95    |   7.37    |
+                            |           |           |           |           |           |           |
+reverse sorted + 0.1% middle|   4.63    |   3.18    |   5.76    |   3.18    |   5.22    |   7.52    |
+reverse sorted +   1% middle|   4.38    |   3.06    |   4.94    |   3.10    |   4.54    |   6.55    |
+reverse sorted +  10% middle|   9.20    |   7.08    |   7.56    |   5.28    |   7.40    |   9.04    |
+                            |           |           |           |           |           |           |
+</pre>
+            </strong></span>
+          </p>
+</blockquote></div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2014-2017 Steven
+      Ross, Francisco Tapia, Orson Peters<p>
+        Distributed under the <a href="http://boost.org/LICENSE_1_0.txt" target="_top">Boost
+        Software License, Version 1.0</a>.
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="linux_single/complex_benchmarks.html"><img src="../../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../single_thread.html"><img src="../../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../../index.html"><img src="../../../../../../doc/src/images/home.png" alt="Home"></a><a accesskey="n" href="windows_single/complex_benchmarks.html"><img src="../../../../../../doc/src/images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

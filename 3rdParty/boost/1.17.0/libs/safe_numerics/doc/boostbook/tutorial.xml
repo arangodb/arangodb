@@ -1,0 +1,347 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE section PUBLIC "-//Boost//DTD BoostBook XML V1.1//EN"
+"http://www.oasis-open.org/docbook/xml/4.2/docbookx.dtd">
+<section id="safe_numerics.tutorial">
+  <title>Tutorial and Motivating Examples</title>
+
+  <section id="safe_numerics.tutorial.1">
+    <title>Arithmetic Expressions Can Yield Incorrect Results</title>
+
+    <para>When some operation on signed integer types results in a result
+    which exceeds the capacity of a data variable to hold it, the result is
+    undefined. In the case of unsigned integer types a similar situation
+    results in a value wrap as per modulo arithmetic. In either case the
+    result is different than in integer number arithmetic in the mathematical
+    sense. This is called "overflow". Since word size can differ between
+    machines, code which produces mathematically correct results in one set of
+    circumstances may fail when re-compiled on a machine with different
+    hardware. When this occurs, most C++ programs will continue to execute
+    with no indication that the results are wrong. It is the programmer's
+    responsibility to ensure such undefined behavior is avoided.</para>
+
+    <para>This program demonstrates this problem. The solution is to replace
+    instances of built in integer types with corresponding safe types.</para>
+
+    <programlisting><xi:include href="../../example/example1.cpp" parse="text"
+        xmlns:xi="http://www.w3.org/2001/XInclude"/></programlisting>
+
+    <screen>example 1:undetected erroneous expression evaluation
+Not using safe numerics
+error NOT detected!
+-127 != 127 + 2
+Using safe numerics
+error detected:converted signed value too large: positive overflow error
+Program ended with exit code: 0</screen>
+  </section>
+
+  <section id="safe_numerics.tutorial.2">
+    <title>Arithmetic Operations Can Overflow Silently</title>
+
+    <para>A variation of the above is when a value is incremented/decremented
+    beyond its domain.</para>
+
+    <programlisting><xi:include href="../../example/example2.cpp" parse="text"
+        xmlns:xi="http://www.w3.org/2001/XInclude"/></programlisting>
+
+    <screen>example 2:undetected overflow in data type
+Not using safe numerics
+-2147483648 != 2147483647 + 1
+error NOT detected!
+Using safe numerics
+addition result too large
+error detected!</screen>
+
+    <para>When variables of unsigned integer type are decremented below zero,
+    they "roll over" to the highest possible unsigned version of that integer
+    type. This is a common problem which is generally never detected.</para>
+  </section>
+
+  <section id="safe_numerics.tutorial.3">
+    <title>Arithmetic on Unsigned Integers Can Yield Incorrect Results</title>
+
+    <para>Subtracting two unsigned values of the same size will result in an
+    unsigned value. If the first operand is less than the second the result
+    will be arithmetically in correct. But if the size of the unsigned types
+    is less than that of an <code>unsigned int</code>, C/C++ will promote the
+    types to <code>signed int</code> before subtracting resulting in an
+    correct result. In either case, there is no indication of an error.
+    Somehow, the programmer is expected to avoid this behavior. Advice usually
+    takes the form of "Don't use unsigned integers for arithmetic". This is
+    well and good, but often not practical. C/C++ itself uses unsigned for
+    <code>sizeof(T)</code> which is then used by users in arithmetic.</para>
+
+    <para>This program demonstrates this problem. The solution is to replace
+    instances of built in integer types with corresponding safe types.</para>
+
+    <programlisting><para><xi:include href="../../example/example8.cpp"
+          parse="text" xmlns:xi="http://www.w3.org/2001/XInclude"/></para></programlisting>
+
+    <screen>example 8:undetected erroneous expression evaluation
+Not using safe numerics
+error NOT detected!
+4294967171 != 2 - 127
+Using safe numerics
+error detected:subtraction result cannot be negative: negative overflow error
+Program ended with exit code: 0</screen>
+  </section>
+
+  <section id="safe_numerics.tutorial.4">
+    <title>Implicit Conversions Can Lead to Erroneous Results</title>
+
+    <para>At CPPCon 2016 Jon Kalb gave a very entertaining (and disturbing)
+    <ulink url="https://www.youtube.com/watch?v=wvtFGa6XJDU">lightning
+    talk</ulink> related to C++ expressions.</para>
+
+    <para>The talk included a very, very simple example similar to the
+    following:</para>
+
+    <para><programlisting><xi:include href="../../example/example4.cpp"
+          parse="text" xmlns:xi="http://www.w3.org/2001/XInclude"/></programlisting><screen>example 3: implicit conversions change data values
+Not using safe numerics
+a is -1 b is 1
+b is less than a
+error NOT detected!
+Using safe numerics
+a is -1 b is 1
+converted negative value to unsigned: domain error
+error detected!
+</screen></para>
+
+    <para>A normal person reads the above code and has to be dumbfounded by
+    this. The code doesn't do what the text - according to the rules of
+    algebra - says it does. But C++ doesn't follow the rules of algebra - it
+    has its own rules. There is generally no compile time error. You can get a
+    compile time warning if you set some specific compile time switches. The
+    explanation lies in reviewing how C++ reconciles binary expressions
+    (<code>a &lt; b</code> is an expression here) where operands are different
+    types. In processing this expression, the compiler:</para>
+
+    <para><itemizedlist>
+        <listitem>
+          <para>Determines the "best" common type for the two operands. In
+          this case, application of the rules in the C++ standard dictate that
+          this type will be an <code>unsigned int</code>.</para>
+        </listitem>
+
+        <listitem>
+          <para>Converts each operand to this common type. The signed value of
+          -1 is converted to an unsigned value with the same bit-wise
+          contents, 0xFFFFFFFF, on a machine with 32 bit integers. This
+          corresponds to a decimal value of 4294967295.</para>
+        </listitem>
+
+        <listitem>
+          <para>Performs the calculation - in this case it's
+          <code>&lt;</code>, the "less than" operation. Since 1 is less than
+          4294967295 the program prints "b is less than a".</para>
+        </listitem>
+      </itemizedlist></para>
+
+    <para>In order for a programmer to detect and understand this error he
+    should be pretty familiar with the implicit conversion rules of the C++
+    standard. These are available in a copy of the standard and also in the
+    canonical reference book <citetitle><link linkend="stroustrup">The C++
+    Programming Language</link></citetitle> (both are over 1200 pages long!).
+    Even experienced programmers won't spot this issue and know to take
+    precautions to avoid it. And this is a relatively easy one to spot. In the
+    more general case this will use integers which don't correspond to easily
+    recognizable numbers and/or will be buried as a part of some more complex
+    expression.</para>
+
+    <para>This example generated a good amount of web traffic along with
+    everyone's pet suggestions. See for example <ulink
+    url="https://bulldozer00.com/2016/10/16/the-unsigned-conundrum/">a blog
+    post with everyone's favorite "solution"</ulink>. All the proposed
+    "solutions" have disadvantages and attempts to agree on how handle this
+    are ultimately fruitless in spite of, or maybe because of, the <ulink
+    url="https://twitter.com/robertramey1/status/795742870045016065">emotional
+    content</ulink>. Our solution is by far the simplest: just use the safe
+    numerics library as shown in the example above.</para>
+
+    <para>Note that in this particular case, usage of the safe types results
+    in no runtime overhead in using the safe integer library. Code generated
+    will either equal or exceed the efficiency of using primitive integer
+    types.</para>
+  </section>
+
+  <section id="safe_numerics.tutorial.5">
+    <title>Mixing Data Types Can Create Subtle Errors</title>
+
+    <para>C++ contains signed and unsigned integer types. In spite of their
+    names, they function differently which often produces surprising results
+    for some operands. Program errors from this behavior can be exceedingly
+    difficult to find. This has lead to recommendations of various ad hoc
+    "rules" to avoid these problems. It's not always easy to apply these
+    "rules" to existing code without creating even more bugs. Here is a
+    typical example of this problem:</para>
+
+    <para><programlisting><xi:include href="../../example/example10.cpp"
+          parse="text" xmlns:xi="http://www.w3.org/2001/XInclude"/></programlisting>Here
+    is the output of the above program:<screen>example 4: mixing types produces surprising results
+Not using safe numerics
+10000
+4294957296
+error NOT detected!
+Using safe numerics
+10000
+error detected!converted negative value to unsigned: domain error
+</screen>This solution is simple, just replace instances of <code>int</code>
+    with <code>safe&lt;int&gt;</code>.</para>
+  </section>
+
+  <section id="safe_numerics.tutorial.6">
+    <title>Array Index Value Can Exceed Array Limits</title>
+
+    <para>Using an intrinsic C++ array, it's very easy to exceed array limits.
+    This can fail to be detected when it occurs and create bugs which are hard
+    to find. There are several ways to address this, but one of the simplest
+    would be to use safe_unsigned_range;</para>
+
+    <para><programlisting><xi:include href="../../example/example5.cpp"
+          parse="text" xmlns:xi="http://www.w3.org/2001/XInclude"/></programlisting><screen>example 5: array index values can exceed array bounds
+Not using safe numerics
+error NOT detected!
+Using safe numerics
+error detected:Value out of range for this safe type: domain error
+</screen></para>
+
+    <para>Collections like standard arrays and vectors do array index checking
+    in some function calls and not in others so this may not be the best
+    example. However it does illustrate the usage of
+    <code>safe_range&lt;T&gt;</code> for assigning legal ranges to variables.
+    This will guarantee that under no circumstances will the variable contain
+    a value outside of the specified range.</para>
+  </section>
+
+  <section id="safe_numerics.tutorial.7">
+    <title>Checking of Input Values Can Be Easily Overlooked</title>
+
+    <para>It's way too easy to overlook the checking of parameters received
+    from outside the current program.<programlisting><xi:include
+          href="../../example/example6.cpp" parse="text"
+          xmlns:xi="http://www.w3.org/2001/XInclude"/></programlisting><screen>example 6: checking of externally produced value can be overlooked
+Not using safe numerics
+2147483647 0
+error NOT detected!
+Using safe numerics
+error detected:error in file input: domain error
+</screen>Without safe integer, one will have to insert new code every time an
+    integer variable is retrieved. This is a tedious and error prone
+    procedure. Here we have used program input. But in fact this problem can
+    occur with any externally produced input.</para>
+  </section>
+
+  <section id="safe_numerics.tutorial.8">
+    <title>Cannot Recover From Arithmetic Errors</title>
+
+    <para>If a divide by zero error occurs in a program, it's detected by
+    hardware. The way this manifests itself to the program can and will depend
+    upon</para>
+
+    <para><itemizedlist>
+        <listitem>
+          <para>data type - int, float, etc</para>
+        </listitem>
+
+        <listitem>
+          <para>setting of compile time command line switches</para>
+        </listitem>
+
+        <listitem>
+          <para>invocation of some configuration functions which convert these
+          hardware events into C++ exceptions</para>
+        </listitem>
+      </itemizedlist>It's not all that clear how one would detect and recover
+    from a divide by zero error in a simple portable way. Usually, users just
+    ignore the issue which usually results in immediate program termination
+    when this situation occurs.</para>
+
+    <para>This library will detect divide by zero errors before the operation
+    is invoked. Any errors of this nature are handled according to the <link
+    linkend="safe_numeric.exception_policies">exception_policy</link> selected
+    by the library user.</para>
+
+    <para><programlisting><xi:include href="../../example/example13.cpp"
+          parse="text" xmlns:xi="http://www.w3.org/2001/XInclude"/></programlisting><screen>example 7: cannot recover from arithmetic errors
+Not using safe numerics
+error NOT detectable!
+Using safe numerics
+error detected:divide by zero: domain error
+</screen></para>
+  </section>
+
+  <section id="safe_numerics.tutorial.9">
+    <title>Compile Time Arithmetic is Not Always Correct</title>
+
+    <para>If a divide by zero error occurs while a program is being compiled,
+    there is not guarantee that it will be detected. This example shows a real
+    example compiled with a recent version of CLang.</para>
+
+    <itemizedlist>
+      <listitem>
+        <para>Source code includes a constant expression containing a simple
+        arithmetic error.</para>
+      </listitem>
+
+      <listitem>
+        <para>The compiler emits a warning but otherwise calculates the wrong
+        result.</para>
+      </listitem>
+
+      <listitem>
+        <para>Replacing int with safe&lt;int&gt; will guarantee that the error
+        is detected at runtime</para>
+      </listitem>
+
+      <listitem>
+        <para>Operations using safe types are marked constexpr. So we can
+        force the operations to occur at runtime by marking the results as
+        constexpr. This will result in an error at compile time if the
+        operations cannot be correctly calculated.</para>
+      </listitem>
+    </itemizedlist>
+
+    <para><programlisting><xi:include href="../../example/example14.cpp"
+          parse="text" xmlns:xi="http://www.w3.org/2001/XInclude"/></programlisting><screen>example 8: cannot detect compile time arithmetic errors
+Not using safe numerics
+0error NOT detected!
+Using safe numerics
+error detected:positive overflow error
+Program ended with exit code: 0</screen></para>
+  </section>
+
+  <section id="safe_numerics.tutorial.10">
+    <title>Programming by Contract is Too Slow</title>
+
+    <para>Programming by Contract is a highly regarded technique. There has
+    been much written about it and it has been proposed as an addition to the
+    C++ language <citation><xref linkend="garcia"/></citation><citation><xref
+    linkend="crowl2"/></citation> It (mostly) depends upon runtime checking of
+    parameter and object values upon entry to and exit from every function.
+    This can slow the program down considerably which in turn undermines the
+    main motivation for using C++ in the first place! One popular scheme for
+    addressing this issue is to enable parameter checking only during
+    debugging and testing which defeats the guarantee of correctness which we
+    are seeking here! Programming by Contract will never be accepted by
+    programmers as long as it is associated with significant additional
+    runtime cost.</para>
+
+    <para>The Safe Numerics Library has facilities which, in many cases, can
+    check guaranteed parameter requirements with little or no runtime
+    overhead. Consider the following example:</para>
+
+    <para><programlisting><xi:include href="../../example/example7.cpp"
+          parse="text" xmlns:xi="http://www.w3.org/2001/XInclude"/></programlisting><screen>example 8: 
+enforce contracts with zero runtime cost
+parameter error detected</screen></para>
+
+    <para>In the example above, the function <code>convert</code> incurs
+    significant runtime cost every time the function is called. By using
+    "safe" types, this cost is moved to the moment when the parameters are
+    constructed. Depending on how the program is constructed, this may totally
+    eliminate extraneous computations for parameter requirement type checking.
+    In this scenario, there is no reason to suppress the checking for release
+    mode and our program can be guaranteed to be always arithmetically
+    correct.</para>
+  </section>
+</section>

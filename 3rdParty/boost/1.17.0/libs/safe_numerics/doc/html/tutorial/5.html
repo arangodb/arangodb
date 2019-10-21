@@ -1,0 +1,101 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Mixing Data Types Can Create Subtle Errors</title>
+<link rel="stylesheet" href="../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="Safe Numerics">
+<link rel="up" href="../tutorial.html" title="Tutorial and Motivating Examples">
+<link rel="prev" href="4.html" title="Implicit Conversions Can Lead to Erroneous Results">
+<link rel="next" href="6.html" title="Array Index Value Can Exceed Array Limits">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img href="index.html" height="164px" src="pre-boost.jpg" alt="Library Documentation Index"></td>
+<td><h2>Safe Numerics</h2></td>
+</tr></table>
+<div class="spirit-nav">
+<a accesskey="p" href="4.html"><img src="../images/prev.png" alt="Prev"></a><a accesskey="u" href="../tutorial.html"><img src="../images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../images/home.png" alt="Home"></a><a accesskey="n" href="6.html"><img src="../images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="safe_numerics.tutorial.5"></a>Mixing Data Types Can Create Subtle Errors</h3></div></div></div>
+<p>C++ contains signed and unsigned integer types. In spite of their
+    names, they function differently which often produces surprising results
+    for some operands. Program errors from this behavior can be exceedingly
+    difficult to find. This has lead to recommendations of various ad hoc
+    "rules" to avoid these problems. It's not always easy to apply these
+    "rules" to existing code without creating even more bugs. Here is a
+    typical example of this problem:</p>
+<pre class="programlisting"><span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">iostream</span><span class="special">&gt;</span>
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">cstdint</span><span class="special">&gt;</span>
+
+<span class="preprocessor">#include</span> <span class="special">&lt;</span><span class="identifier">boost</span><span class="special">/</span><span class="identifier">safe_numerics</span><span class="special">/</span><span class="identifier">safe_integer</span><span class="special">.</span><span class="identifier">hpp</span><span class="special">&gt;</span>
+
+<span class="keyword">using</span> <span class="keyword">namespace</span> <span class="identifier">std</span><span class="special">;</span>
+<span class="keyword">using</span> <span class="keyword">namespace</span> <span class="identifier">boost</span><span class="special">::</span><span class="identifier">safe_numerics</span><span class="special">;</span>
+
+<span class="keyword">void</span> <span class="identifier">f</span><span class="special">(</span><span class="keyword">const</span> <span class="keyword">unsigned</span> <span class="keyword">int</span> <span class="special">&amp;</span> <span class="identifier">x</span><span class="special">,</span> <span class="keyword">const</span> <span class="identifier">int8_t</span> <span class="special">&amp;</span> <span class="identifier">y</span><span class="special">)</span><span class="special">{</span>
+    <span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">x</span> <span class="special">*</span> <span class="identifier">y</span> <span class="special">&lt;&lt;</span> <span class="identifier">endl</span><span class="special">;</span>
+<span class="special">}</span>
+<span class="keyword">void</span> <span class="identifier">safe_f</span><span class="special">(</span>
+    <span class="keyword">const</span> <span class="identifier">safe</span><span class="special">&lt;</span><span class="keyword">unsigned</span> <span class="keyword">int</span><span class="special">&gt;</span> <span class="special">&amp;</span> <span class="identifier">x</span><span class="special">,</span>
+    <span class="keyword">const</span> <span class="identifier">safe</span><span class="special">&lt;</span><span class="identifier">int8_t</span><span class="special">&gt;</span> <span class="special">&amp;</span> <span class="identifier">y</span>
+<span class="special">)</span><span class="special">{</span>
+    <span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="identifier">x</span> <span class="special">*</span> <span class="identifier">y</span> <span class="special">&lt;&lt;</span> <span class="identifier">endl</span><span class="special">;</span>
+<span class="special">}</span>
+
+<span class="keyword">int</span> <span class="identifier">main</span><span class="special">(</span><span class="special">)</span><span class="special">{</span>
+    <span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"example 4: "</span><span class="special">;</span>
+    <span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"mixing types produces surprising results"</span> <span class="special">&lt;&lt;</span> <span class="identifier">endl</span><span class="special">;</span>
+    <span class="keyword">try</span> <span class="special">{</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"Not using safe numerics"</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+        <span class="comment">// problem: mixing types produces surprising results.</span>
+        <span class="identifier">f</span><span class="special">(</span><span class="number">100</span><span class="special">,</span> <span class="number">100</span><span class="special">)</span><span class="special">;</span>  <span class="comment">// works as expected</span>
+        <span class="identifier">f</span><span class="special">(</span><span class="number">100</span><span class="special">,</span> <span class="special">-</span><span class="number">100</span><span class="special">)</span><span class="special">;</span> <span class="comment">// wrong result - unnoticed</span>
+        <span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"error NOT detected!"</span> <span class="special">&lt;&lt;</span> <span class="identifier">endl</span><span class="special">;</span><span class="special">;</span>
+    <span class="special">}</span>
+    <span class="keyword">catch</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">exception</span> <span class="special">&amp;</span> <span class="identifier">e</span><span class="special">)</span><span class="special">{</span>
+        <span class="comment">// never arrive here</span>
+        <span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"error detected:"</span> <span class="special">&lt;&lt;</span> <span class="identifier">e</span><span class="special">.</span><span class="identifier">what</span><span class="special">(</span><span class="special">)</span> <span class="special">&lt;&lt;</span> <span class="identifier">endl</span><span class="special">;</span><span class="special">;</span>
+    <span class="special">}</span>
+    <span class="keyword">try</span> <span class="special">{</span>
+        <span class="comment">// solution: use safe types</span>
+        <span class="identifier">std</span><span class="special">::</span><span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"Using safe numerics"</span> <span class="special">&lt;&lt;</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">endl</span><span class="special">;</span>
+        <span class="identifier">safe_f</span><span class="special">(</span><span class="number">100</span><span class="special">,</span> <span class="number">100</span><span class="special">)</span><span class="special">;</span>  <span class="comment">// works as expected</span>
+        <span class="identifier">safe_f</span><span class="special">(</span><span class="number">100</span><span class="special">,</span> <span class="special">-</span><span class="number">100</span><span class="special">)</span><span class="special">;</span> <span class="comment">// throw error</span>
+        <span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"error NOT detected!"</span> <span class="special">&lt;&lt;</span> <span class="identifier">endl</span><span class="special">;</span><span class="special">;</span>
+    <span class="special">}</span>
+    <span class="keyword">catch</span><span class="special">(</span><span class="keyword">const</span> <span class="identifier">std</span><span class="special">::</span><span class="identifier">exception</span> <span class="special">&amp;</span> <span class="identifier">e</span><span class="special">)</span><span class="special">{</span>
+        <span class="identifier">cout</span> <span class="special">&lt;&lt;</span> <span class="string">"error detected:"</span> <span class="special">&lt;&lt;</span> <span class="identifier">e</span><span class="special">.</span><span class="identifier">what</span><span class="special">(</span><span class="special">)</span> <span class="special">&lt;&lt;</span> <span class="identifier">endl</span><span class="special">;</span><span class="special">;</span>
+    <span class="special">}</span>
+    <span class="keyword">return</span> <span class="number">0</span><span class="special">;</span>
+<span class="special">}</span>
+
+</pre>
+<p>Here
+    is the output of the above program:</p>
+<pre class="screen">example 4: mixing types produces surprising results
+Not using safe numerics
+10000
+4294957296
+error NOT detected!
+Using safe numerics
+10000
+error detected!converted negative value to unsigned: domain error
+</pre>
+<p>This solution is simple, just replace instances of <code class="computeroutput">int</code>
+    with <code class="computeroutput">safe&lt;int&gt;</code>.</p>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2012-2018 Robert Ramey<p><a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">Subject to Boost
+      Software License</a></p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="4.html"><img src="../images/prev.png" alt="Prev"></a><a accesskey="u" href="../tutorial.html"><img src="../images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../images/home.png" alt="Home"></a><a accesskey="n" href="6.html"><img src="../images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

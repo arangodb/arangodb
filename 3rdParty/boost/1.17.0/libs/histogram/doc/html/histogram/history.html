@@ -1,0 +1,357 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>Revision history</title>
+<link rel="stylesheet" href="../../../../../doc/src/boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="Chapter&#160;1.&#160;Boost.Histogram">
+<link rel="up" href="../index.html" title="Chapter&#160;1.&#160;Boost.Histogram">
+<link rel="prev" href="../boost/histogram/unsafe_access.html" title="Struct unsafe_access">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr>
+<td valign="top"><img alt="Boost C++ Libraries" width="277" height="86" src="../../../../../boost.png"></td>
+<td align="center"><a href="../../../../../index.html">Home</a></td>
+<td align="center"><a href="../../../../libraries.htm">Libraries</a></td>
+<td align="center"><a href="http://www.boost.org/users/people.html">People</a></td>
+<td align="center"><a href="http://www.boost.org/users/faq.html">FAQ</a></td>
+<td align="center"><a href="../../../../../more/index.htm">More</a></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../boost/histogram/unsafe_access.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="histogram.history"></a><a class="link" href="history.html" title="Revision history">Revision history</a>
+</h2></div></div></div>
+<h4>
+<a name="histogram.history.h0"></a>
+      <span class="phrase"><a name="histogram.history.boost_1_71"></a></span><a class="link" href="history.html#histogram.history.boost_1_71">Boost
+      1.71</a>
+    </h4>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+          New features
+          <div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: circle; ">
+<li class="listitem">
+                Thread-safe accumulators boost::histogram::accumulators::thread_safe
+                based on std::atomics
+              </li>
+<li class="listitem">
+                Support for thread-safe storages
+              </li>
+<li class="listitem">
+                Support for compiling without exceptions/RTTI (increases performance
+                by 10-20 %) [with contributions from Glen Fernandez]
+              </li>
+<li class="listitem">
+                Performance improvements for 1D and 2D histograms
+              </li>
+<li class="listitem">
+                boost::histogram::indexed now returns forward iterator range instead
+                of input iterator range
+              </li>
+<li class="listitem">
+                boost::histogram::indexed_range::accessor is now non-copyable and
+                acts like reference to cell value, making most algorithms from the
+                stdlib work
+              </li>
+<li class="listitem">
+                boost::histogram::algorithm::reduce
+                <div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: square; ">
+<li class="listitem">
+                      New slice option
+                    </li>
+<li class="listitem">
+                      Fuse shrink, slice, and rebin options passed for the same axis
+                    </li>
+<li class="listitem">
+                      Support histograms with some axis types with reduction support
+                    </li>
+</ul></div>
+              </li>
+<li class="listitem">
+                boost::histogram::algorithm::project accepts runtime indices for
+                static histograms
+              </li>
+</ul></div>
+        </li>
+<li class="listitem">
+          Fixes
+          <div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: circle; ">
+<li class="listitem">
+                boost::histogram::algorithm::reduce also works on histograms that
+                have some axis types without reduction support
+              </li>
+<li class="listitem">
+                boost::histogram::axis::traits::update now works correctly for boost::histogram::axis::variant
+              </li>
+</ul></div>
+        </li>
+<li class="listitem">
+          Other
+          <div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: circle; ">
+<li class="listitem">
+                100 % test coverage
+              </li>
+<li class="listitem">
+                Drastically reduced internal Boost dependencies
+              </li>
+<li class="listitem">
+                Improved documentation and examples
+              </li>
+<li class="listitem">
+                Internally replaced boost::variant with boost::variant2
+              </li>
+<li class="listitem">
+                boost::histogram::axis::traits::is_reducible detects reducible axis
+                types
+              </li>
+<li class="listitem">
+                Cleanup and refactoring of internals
+              </li>
+<li class="listitem">
+                Guarantee no-throw moves for all builtin axis types
+              </li>
+<li class="listitem">
+                Improved internal benchmarks
+              </li>
+<li class="listitem">
+                Compile cleanly at higher warning levels
+              </li>
+</ul></div>
+        </li>
+</ul></div>
+<h4>
+<a name="histogram.history.h1"></a>
+      <span class="phrase"><a name="histogram.history.boost_1_70"></a></span><a class="link" href="history.html#histogram.history.boost_1_70">Boost
+      1.70</a>
+    </h4>
+<p>
+      First Boost release, version 4.0 in former internal counting.
+    </p>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+          Removed Python bindings, will be developed in separate repository
+        </li>
+<li class="listitem">
+          All axes can be made optionally circular, except category axis
+        </li>
+<li class="listitem">
+          All axes now support generic attached metadata
+        </li>
+<li class="listitem">
+          All axes have now independently configurable underflow/overflow extra bins
+        </li>
+<li class="listitem">
+          Removed circular axis (which is just a circular regular axis)
+        </li>
+<li class="listitem">
+          Added indexed adaptor generator for convenient and fast iteration over
+          histograms
+        </li>
+<li class="listitem">
+          Support for axes that can grow in range
+        </li>
+<li class="listitem">
+          Support for axes which accept multiple values (example: hexagonal binning)
+        </li>
+<li class="listitem">
+          Support for profiles and more generally, arbitrary accumulators in each
+          cell
+        </li>
+<li class="listitem">
+          Support for serializing to xml archives
+        </li>
+<li class="listitem">
+          Added compatibility with Boost.Range, Boost.Units, and Boost.Accumulators
+        </li>
+<li class="listitem">
+          Added deduction guides for axis types and histogram
+        </li>
+<li class="listitem">
+          Performance improvements
+        </li>
+<li class="listitem">
+          Renamed <code class="computeroutput"><span class="identifier">adaptive_storage</span></code>
+          to <code class="computeroutput"><span class="identifier">unlimited_storage</span></code>
+        </li>
+<li class="listitem">
+          Replaced <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">multiprecision</span><span class="special">::</span><span class="identifier">cpp_int</span></code> with custom type to decouple
+          libraries
+        </li>
+<li class="listitem">
+          Internal simplification of <code class="computeroutput"><span class="identifier">axis</span><span class="special">::</span><span class="identifier">variant</span></code>
+        </li>
+<li class="listitem">
+          Make all storages behave more like containers, simplifying the design
+        </li>
+<li class="listitem">
+          Histograms supports add, sub, mul, div
+        </li>
+<li class="listitem">
+          replaced <code class="computeroutput"><span class="keyword">operator</span><span class="special">[]</span></code>
+          in axis with explicit method <code class="computeroutput"><span class="identifier">bin</span></code>
+        </li>
+<li class="listitem">
+          replaced <code class="computeroutput"><span class="keyword">operator</span><span class="special">()</span></code>
+          in axis with explicit method <code class="computeroutput"><span class="identifier">index</span></code>
+        </li>
+<li class="listitem">
+          replaced internal use of <code class="computeroutput"><span class="identifier">boost</span><span class="special">::</span><span class="identifier">containers</span></code>
+          with stdlib containers
+        </li>
+<li class="listitem">
+          Much improved docs, reference documentation, user guide, more examples
+        </li>
+</ul></div>
+<h4>
+<a name="histogram.history.h2"></a>
+      <span class="phrase"><a name="histogram.history.3_2_not_in_boost"></a></span><a class="link" href="history.html#histogram.history.3_2_not_in_boost">3.2
+      (not in Boost)</a>
+    </h4>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+          Allocator support everywhere
+        </li>
+<li class="listitem">
+          Internal refactoring
+        </li>
+</ul></div>
+<h4>
+<a name="histogram.history.h3"></a>
+      <span class="phrase"><a name="histogram.history.3_1_not_in_boost"></a></span><a class="link" href="history.html#histogram.history.3_1_not_in_boost">3.1
+      (not in Boost)</a>
+    </h4>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+          Renamed <code class="computeroutput"><span class="identifier">bincount</span></code> method
+          to <code class="computeroutput"><span class="identifier">size</span></code>
+        </li>
+<li class="listitem">
+          Support for axes with only overflow and no underflow bin
+        </li>
+<li class="listitem">
+          category axis now by default has bin for "other" input that does
+          not fall into the predefined categories, making it consistent with other
+          axes
+        </li>
+<li class="listitem">
+          NaN is now consistently put into overflow bin for all axes
+        </li>
+<li class="listitem">
+          Eliminated warnings about safe internal conversions on MSVC
+        </li>
+<li class="listitem">
+          Established a cpp house style with corresponding .clang-format file
+        </li>
+<li class="listitem">
+          Better detection of Python library on all systems
+        </li>
+<li class="listitem">
+          Improved code coverage by testing more input errors
+        </li>
+<li class="listitem">
+          Raise ValueError instead of generic RuntimeError in Python on input errors
+        </li>
+</ul></div>
+<h4>
+<a name="histogram.history.h4"></a>
+      <span class="phrase"><a name="histogram.history.3_0_not_in_boost"></a></span><a class="link" href="history.html#histogram.history.3_0_not_in_boost">3.0
+      (not in Boost)</a>
+    </h4>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+          Support for efficient adding of multiple histograms and scaling
+        </li>
+<li class="listitem">
+          Re-design of category axis as a general mapping between unique values and
+          bins
+        </li>
+<li class="listitem">
+          Re-design of the bin description an axis returns upon element access
+        </li>
+<li class="listitem">
+          Interface cleanup and simplification, more consistency between Python and
+          C++ interface
+        </li>
+<li class="listitem">
+          Iterators for histogram and axes for STL compatibility
+        </li>
+<li class="listitem">
+          Regular axis in C++: Allowing transforms with state
+        </li>
+<li class="listitem">
+          Regular axis in Python: Support for all C++ transforms
+        </li>
+<li class="listitem">
+          Polymorphic axis::any type
+        </li>
+<li class="listitem">
+          Internal refactoring from boost::mpl and boost::fusion to std::tuple and
+          boost::mp11
+        </li>
+<li class="listitem">
+          Windows support
+        </li>
+</ul></div>
+<h4>
+<a name="histogram.history.h5"></a>
+      <span class="phrase"><a name="histogram.history.2_0_not_in_boost"></a></span><a class="link" href="history.html#histogram.history.2_0_not_in_boost">2.0
+      (not in Boost)</a>
+    </h4>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; ">
+<li class="listitem">
+          Added static_histogram (v1.0 only had dynamic_histogram).
+        </li>
+<li class="listitem">
+          Merged wfill(...) and fill(...) interface.
+        </li>
+<li class="listitem">
+          Support custom allocators in storage classes.
+        </li>
+<li class="listitem">
+          Replaced static_storage with array_storage.
+        </li>
+<li class="listitem">
+          Replaced dynamic_storage with unlimited_storage, which adds the capability
+          to grow the bin counter into a cpp_int, thus avoiding integer overflow
+          completely.
+        </li>
+<li class="listitem">
+          Serialization uses binary_archive instead of text_archive. The latter is
+          portable, but the performance is terrible.
+        </li>
+<li class="listitem">
+          Python interface changed: histograms are now iterable, returning axis classes
+        </li>
+<li class="listitem">
+          Support reduction (removing a subset of axes and returning the equivalent
+          histogram; in other words, those axes are integrated over)
+        </li>
+</ul></div>
+<h4>
+<a name="histogram.history.h6"></a>
+      <span class="phrase"><a name="histogram.history.1_0_not_in_boost"></a></span><a class="link" href="history.html#histogram.history.1_0_not_in_boost">1.0
+      (not in Boost)</a>
+    </h4>
+<div class="itemizedlist"><ul class="itemizedlist" style="list-style-type: disc; "><li class="listitem">
+          First stable version.
+        </li></ul></div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2016-2019 Hans
+      Dembinski<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="../boost/histogram/unsafe_access.html"><img src="../../../../../doc/src/images/prev.png" alt="Prev"></a><a accesskey="u" href="../index.html"><img src="../../../../../doc/src/images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../../../../doc/src/images/home.png" alt="Home"></a>
+</div>
+</body>
+</html>

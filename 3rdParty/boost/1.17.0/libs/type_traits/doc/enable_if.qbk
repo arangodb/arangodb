@@ -1,0 +1,48 @@
+[/
+Copyright 2018 Glen Joseph Fernandes
+(glenjofe@gmail.com)
+
+Distributed under the Boost Software License,
+Version 1.0. (See accompanying file LICENSE_1_0.txt
+or copy at http://www.boost.org/LICENSE_1_0.txt).
+]
+
+[section:enable_if enable_if_]
+
+    template<bool B, class T = void>
+    struct enable_if_;
+
+    template<bool B, class T = void>
+    using enable_if_t = typename enable_if_<B, T>::type;
+
+__type If `B` is true, then the member `type` is defined to be `T`. Otherwise
+there is no member `type`.
+
+__header `#include <boost/type_traits/enable_if.hpp>`
+
+[note The trait has the name `enable_if_` (with a trailing underscore) but
+behaves like `std::enable_if` or `boost::enable_if_c`. The existing trait
+with the name `boost::enable_if` has a different interface.]
+
+__examples
+
+The following function can be used to destroy each element of an array and
+specially handle arrays of trivially destructible types.
+
+    template<class T>
+    typename boost::enable_if_<!boost::has_trivial_destructor<T>::value>::type
+    destroy(T* ptr, std::size_t size)
+    {
+        while (size > 0) {
+            ptr[--size].~T();
+        }
+    }
+
+    template<class T>
+    typename boost::enable_if_<boost::has_trivial_destructor<T>::value>::type
+    destroy(T*, std::size_t) { }
+
+[all_compilers] The type alias `enable_if_t` is only available if the compiler
+supports template aliases.
+
+[endsect]

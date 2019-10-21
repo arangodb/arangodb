@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+  <head></head>
+  <body>
+    <h3>
+      Coniditional Phrase Test
+    </h3>
+    <p>
+      This should show
+    </p>
+    <p>
+      The should be no space inserted.
+    </p>
+    <p>
+      <span class="bold"><strong>Bold text</strong></span>
+    </p>
+  </body>
+</html>

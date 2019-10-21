@@ -1,0 +1,37 @@
+[/
+Copyright 2018 Glen Joseph Fernandes
+(glenjofe@gmail.com)
+
+Distributed under the Boost Software License,
+Version 1.0. (See accompanying file LICENSE_1_0.txt
+or copy at http://www.boost.org/LICENSE_1_0.txt).
+]
+
+[section:is_detected_exact is_detected_exact]
+
+    template<class Expected, template<class...> class Op, class... Args>
+    using is_detected_exact = is_same<Expected, detected_t<Op, Args...> >;
+
+    template<class Expected, template<class...> class Op, class... Args>
+    constexpr bool is_detected_exact_v = is_detected_exact<Op, Args...>::value;
+
+__std_paper [@http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2015/n4502.pdf N4502]
+
+__compat Requires C++11 variadic templates and C++11 template aliases.
+
+__header `#include <boost/type_traits/is_detected_exact.hpp>`
+
+The type `is_detected_exact<To, Op, Args>` is an alias for __true_type if the result of 
+`Op<Args>` is type `To`.  Otherwise it's the type __false_type;
+
+
+__examples
+
+    template<class T>
+    using difference_t = typename T::difference_type;
+
+    static_assert(boost::is_detected_exact_v<std::ptrdiff_t, difference_t, T>);
+
+See also: __is_detected, __is_detected_convertible.
+
+[endsect]

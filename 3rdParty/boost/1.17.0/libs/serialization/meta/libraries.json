@@ -1,0 +1,14 @@
+{
+    "key": "serialization",
+    "name": "Serialization",
+    "authors": [
+        "Robert Ramey"
+    ],
+    "description": "Serialization for persistence and marshalling.",
+    "category": [
+        "IO"
+    ],
+    "maintainers": [
+        "Robert Ramey <ramey -at- rrsd.com>"
+    ]
+}

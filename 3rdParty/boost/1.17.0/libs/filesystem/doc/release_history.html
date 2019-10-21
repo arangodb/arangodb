@@ -1,0 +1,467 @@
+<html>
+
+<head>
+<meta http-equiv="Content-Language" content="en-us">
+<meta name="GENERATOR" content="Microsoft FrontPage 5.0">
+<meta name="ProgId" content="FrontPage.Editor.Document">
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Filesystem Release History</title>
+<link href="styles.css" rel="stylesheet">
+</head>
+
+<body>
+
+<table border="0" cellpadding="5" cellspacing="0" style="border-collapse: collapse" bordercolor="#111111">
+  <tr>
+    <td width="277">
+<a href="../../../index.htm">
+<img src="../../../boost.png" alt="boost.png (6897 bytes)" align="middle" width="300" height="86" border="0"></a></td>
+    <td align="middle">
+    <font size="7">Filesystem Release History</font>
+    </td>
+  </tr>
+</table>
+
+<table border="0" cellpadding="5" cellspacing="0" style="border-collapse: collapse"
+ bordercolor="#111111" bgcolor="#D7EEFF" width="100%">
+  <tr>
+    <td><a href="index.htm">Home</a> &nbsp;&nbsp;
+    <a href="tutorial.html">Tutorial</a> &nbsp;&nbsp;
+    <a href="reference.html">Reference</a> &nbsp;&nbsp;
+    <a href="faq.htm">FAQ</a> &nbsp;&nbsp;
+    <a href="release_history.html">Releases</a> &nbsp;&nbsp;
+    <a href="portability_guide.htm">Portability</a> &nbsp;&nbsp;
+    <a href="v3.html">V3 Intro</a> &nbsp;&nbsp;
+    <a href="v3_design.html">V3 Design</a> &nbsp;&nbsp;
+    <a href="deprecated.html">Deprecated</a> &nbsp;&nbsp;
+    <a href="issue_reporting.html">Bug Reports </a>&nbsp;&nbsp;
+    </td>
+</table>
+
+<h2>1.66.0</h2>
+<ul>
+  <li>Clean up some tutorial example code and fix the wording for it in the 
+  tutorial. Thanks to Anmol-Singh-Jaggi for pull request #11.</li>
+</ul>
+
+<h2>1.64.0</h2>
+<ul>
+  <li><code>is_empty()</code>overload with <code>error_code</code> parameter 
+  should not throw on error. Thanks to ldqrk for pull request #42</li>
+  <li>Fix <a href="https://svn.boost.org/trac/boost/ticket/10731">#10731</a> and
+  <a href="https://svn.boost.org/trac/boost/ticket/9480">#9480</a>, <i>Evaluate 
+  path.extension only once</i>. Thanks to Daniel Krügler for pull request #41.</li>
+  <li>Fix error propagation in <code>space(p, ec)</code>. Thanks to cmuellner 
+  for pull request #39.</li>
+  <li>Add test/config_info.cpp to increase macro state reporting in hopes of 
+  easing debugging on remote machines.</li>
+  <li>Fix <code>operations_test</code> failure on MinGW: MinGW defines 
+  __MINGW32__ rather than _MSC_VER, so also test for __MINGW32__ to see if 
+  setenv/unsetenv workaround needed.</li>
+</ul>
+
+<h2>1.63.0</h2>
+<ul>
+  <li dir="ltr">
+  <p dir="ltr"><b>Deprecated <code>generic()</code> function name</b>: The undocumented experimental class
+  <code>path</code> member function <code>generic()</code> has been renamed <code>
+  generic_path()</code>. Fixes
+  <a href="https://svn.boost.org/trac/boost/ticket/11855">#11855</a>, <i>generic 
+  gives problems in C++/CLI.</i> Unless the macro BOOST_FILESYSTEM_NO_DEPRECATED 
+  is defined, the original <code>generic()</code> will continue to be supplied 
+  as a workaround for existing user code. But <code>generic()</code>is 
+  deprecated. User code should migrate to the new name.</li>
+  <li><b>New:</b> Class <code>path</code> adds constexpr constants <code>
+  separator</code> and <code>dot</code> of the type appropriate for the 
+  platform, and adds query functions <a href="reference.html#filename_is_dot">
+  <code>filename_is_do</code>t</a> and <code>
+  <a href="reference.html#filename_is_dot­_dot">filename_is_dot_dot</a></code>. 
+  These add convenience and the implementations may be more efficient that user 
+  coded equivalent functions.</li>
+  <li>Fix <a href="https://svn.boost.org/trac/boost/ticket/12578">#12578</a>, <i>
+  Make directory iterators able to detect when a copy has advanced to the end</i>. 
+  This bug in <code>directory_iterator</code> and <code>
+  recursive_directory_iterator</code> equality testing has existed more than a 
+  dozen years. Nowadays test driven development would likely have detected the 
+  problem in early development. Sigh.</li>
+  <li>Fix <a href="https://svn.boost.org/trac/boost/ticket/12495">#12495</a>, <i>
+  <code>create_directories()</code> crashes when passed empty string as path</i>, 
+  from Samantha Ritter. Also affected <code>create_directory()</code>. Charles 
+  Olivi submitted a pull request with some particularly helpful test cases.</li>
+  <li>Fix <a href="https://svn.boost.org/trac/boost/ticket/7307">#7307</a>, <i>
+  remove_all(dirname,ec) throws on write protected directories.</i> This is a 
+  tough one to test. There are three internal function calls where errors might 
+  arise, and it would take too much time to write tests for each of those cases. 
+  Someday we will have Titus Winter&#39;s mock installable file system, but for now 
+  are relying on code inspection rather than testing.</li>
+  <li>Fix a cygwin warning and a cygwin error. Thanks to thtrummer for pull 
+  request #30.</li>
+  <li>Fixed two broken links in reference docs. Thanks to tbeu for pull 
+  request #34.</li>
+  <li>Fix reference doc signatures for <code>path</code> stem(), extension() 
+  member functions. Thanks to faithandbrave for pull request #31</li>
+  <li>Fix broken link to <a href="https://svn.boost.org/trac/boost/ticket/7506">#7506</a> in 1.60.0 Release History (Daniel Krügler).</li>
+  <li>Refactor <code>push_directory()</code>internal logic so it is easier to 
+  reason about.</li>
+</ul>
+
+<h2>1.60.0</h2>
+<ul>
+  <li dir="ltr">
+  <p dir="ltr"><b>New:</b> Added functions <code>
+  <a href="reference.html#lex-normal">lexically_normal</a></code>, <code>
+  <a href="reference.html#lex-relative">lexically_relative</a></code>, <code>
+  <a href="reference.html#op-relative">relative</a></code>, and <code>
+  <a href="reference.html#weakly_canonical">weakly_canonical</a></code>. Many thanks to Jamie Allsop for his help and 
+  perseverance. Resolves tickets
+  <a href="https://svn.boost.org/trac/boost/ticket/1976">#1976</a>,
+  <a href="https://svn.boost.org/trac/boost/ticket/5897">#5897</a>,
+  <a href="https://svn.boost.org/trac/boost/ticket/6249">#6249</a></li>
+  <li><b>New:</b> Class <code>path</code> now has
+  <a href="reference.html#path-iterators"> <code>reverse_iterator</code>,
+  <code>const_reverse_iterator</code>, <code>rbegin()</code>, and <code>rend()</code></a>. </li>
+  <li><b>New:</b> C++11 <code>noexcept</code> supplied as specified in the 
+  Filesystem TS if supported by the compiler.</li>
+  <li><b>New:</b> C++11 move constructors and move assignments supplied as 
+  specified in the Filesystem TS if supported by the compiler. Resolves
+  <a href="https://svn.boost.org/trac/boost/ticket/10291">#10291</a>.</li>
+  <li><b>New:</b> Existing functions whose names changed in the Filesystem TS 
+  are now supported under both the old and new names.</li>
+  <li><b>New: </b>Added <code><a href="reference.html#path-size">size</a>()</code> 
+  function to class <code>path</code>. Resolves
+  <a href="https://svn.boost.org/trac/boost/ticket/6874">#6874</a>, <i>Path 
+  should have a size() member function</i>.</li>
+  <li>Clear several spurious GCC warnings.</li>
+  <li>Fix <a href="https://svn.boost.org/trac/boost/ticket/11733">#11733</a>, <i>
+  Missing unistd.h include in boost/libs/filesystem/src/unique_path.cpp</i> by 
+  apply a patch from Idar Tollefsen.</li>
+  <li>Fix a race condition in <code>unique_path</code> by applying
+  <a href="https://github.com/boostorg/filesystem/pull/15">pull request #15</a> 
+  from Sebastian Redl. Also fixes
+  <a href="https://svn.boost.org/trac/boost/ticket/7506">#7506</a>, <i><code>unique_path</code> Fails on Windows for Temporary User 
+  Profiles</i>.</li>
+  <li>Fix bug in <i><code>file_status</code></i> and <i><code>
+  recursive_directory_iterator</code></i>: C++ turns an explicit constructor 
+  with all arguments except first defaulted into non-explicit single argument 
+  constructor.</li>
+  <li>Fix <a href="https://svn.boost.org/trac/boost/ticket/10591">#10591</a>, <i>
+  boost::filesystem does not build on iOS 8</i>, by applying a patch submitted 
+  by Daniel Seither.</li>
+  <li>Fix <a href="https://svn.boost.org/trac/boost/ticket/9454">#9454</a>, <i>
+  Boost Filesystem [library build] not compiling when 
+  BOOST_FILESYSTEM_NO_DEPRECATED is defined</i>, by applying a patch submitted 
+  by Makesim.</li>
+  <li>Fix <a href="https://svn.boost.org/trac/boost/ticket/11447">#11447</a>, <i>
+  __OpenBSD__ macro name misspelled</i>, by applying a patch submitted by Jasper 
+  Lievisse Adriaanse.</li>
+  <li>
+  <p>Fix <a href="https://svn.boost.org/trac/boost/ticket/11288">#11288</a>, <i>
+  <font face="Arial">A patch to avoid redundant string allocations</font></i>, 
+  by applying a patch submitted by Yevhen Ivannikov.</li>
+  <li>Fix <a href="https://svn.boost.org/trac/boost/ticket/11175">#11175</a>, 
+  out-of-date documentation causing users to incorrectly expect that the library 
+  could be used with exceptions disabled.</li>
+  <li>Resolve <a href="https://svn.boost.org/trac/boost/ticket/11175">#11166</a> 
+  by mitigating (i.e. reducing the likelihood of) a possible external file 
+  system race in <code>remove()</code>.</li>
+  <li>
+  <p>Fix <a href="https://svn.boost.org/trac/boost/ticket/7258">#7258</a>,
+  <i><code>create_directories</code> returns false if the path ends with a slash</i>. 
+  Also fix related issues if path contains <i>dot</i> or <i>dot-dot</i> 
+  elements, and added test cases to the test suite.</li>
+  <li>
+  <p>Reference docs editorial cleanups: Use same style sheet as the 
+  rest of the documentation. Tweak tab font size. Fix excessively long lines in 
+  tables, synopsis.</li>
+  <li>Resolve <a href="https://svn.boost.org/trac/boost/ticket/10766">
+  #10766</a>, <i>parent_path() with redundant separator returns wrong value</i>, 
+  by adding examples and notes to the reference documentation to show why the 
+  returned value is in fact correct, and to provide rationale for that behavior. 
+  See <a href="reference.html#path-iterators">[path.itr]</a>, and
+  <a href="reference.html#path-decomposition">[path.decompose]</a> <code>
+  parent_path()</code> and <code>filename()</code> sections of the reference 
+  docs.</li>
+  <li>Minor other fixes, including pull requests from Jonathan Wakely and Marcel 
+  Raad.</li>
+  <li>Closed several tickets as duplicates or otherwise resolved by the 
+  above changes:<ul>
+  <li><a href="https://svn.boost.org/trac/boost/ticket/7607">#7607</a>, <i>path 
+  should not infer an invisible &quot;.&quot; at the end of a path that ends with a slash;
+  </i><a href="https://svn.boost.org/trac/boost/ticket/7258">#7258</a>,
+  <a href="https://svn.boost.org/trac/boost/ticket/10766">#10766</a></li>
+  <li><a href="https://svn.boost.org/trac/boost/ticket/11061">#11061</a>,
+  <a href="https://svn.boost.org/trac/boost/ticket/11062">#11062</a>, <i>
+  impossible to traverse the path of the reverse iterator</i>, is effectively 
+  resolved by the addition of the class <code>path</code> reverse iteration 
+  feature. The reference documentation has also been updated with
+  <a href="reference.html#path-iterators">a note</a> warning about the 
+  limitations of class <code>path</code> iterators.</li>
+</ul>
+
+  </li>
+</ul>
+
+<h2>1.59.0</h2>
+<ul>
+  <li>Update the Tutorial:<ul>
+    <li>Use C++11 in the example programs to improve clarity.</li>
+    <li>Update the example source code show to match the actual example source 
+    code in the cpp files.</li>
+    <li>Rerun all the examples and update the output shown in the tutorial 
+    accordingly.</li>
+    <li>Fix spacing and other HTML presentation issues.</li>
+  </ul>
+  </li>
+  <li>Fix <a href="https://svn.boost.org/trac/boost/ticket/11491">#11491</a>, <i>
+  <code>temp_directory_path()</code> doesn&#39;t return valid temp path on Android</i>.</li>
+</ul>
+
+<h2>1.58.0</h2>
+<ul>
+  <li>Fix <a href="https://svn.boost.org/trac/boost/ticket/6124">#6124</a>,
+  <a href="https://svn.boost.org/trac/boost/ticket/6779">#6779</a>, and
+  <a href="https://svn.boost.org/trac/boost/ticket/10038">#10038</a>. Cannot 
+  pass a BOOST_SCOPED_ENUM to a compiled function because it will result in an 
+  undefined reference if the library is compiled with -std=c++0x but the use is 
+  compiled in C++03 mode, or visa versa.</li>
+  <li>Rewrite Windows implementation of <code>temp_directory_path()</code> to (1) avoid
+  <code>GetTempPath()</code> failure if path length &gt; 130 (ticket #5300) and (2) provide a 
+  more sensible sequence of directories than provided by <code>GetTempPath()</code>, per 
+  boost list discussion &quot;[filesystem] temp_directory_path() behavior on 
+  Windows&quot;. The new sequence is:<ol>
+    <li><i><code>%TMP%</code></i></li>
+    <li><i><code>%TEMP%</code></i></li>
+    <li><code><i>%LOCALAPPDATA%</i>/Temp</code></li>
+    <li><code><i>%USERPROFILE%</i>/Temp</code></li>
+    <li><code><i>GetWindowsDirectoryW()</i>/Temp</code></li>
+  </ol>
+  </li>
+</ul>
+
+<h2>1.57.0</h2>
+<ul>
+  <li>Rework class <code>path</code> locale and codecvt implementation for increased reliability. 
+  This change was SVN revision 83021, which should have gone into 1.56.0 but 
+  unfortunately the merge didn't happen until too late.</li>
+  <li>Fix tickets <a href="https://svn.boost.org/trac/boost/ticket/8930">#8930</a>, <a href="https://svn.boost.org/trac/boost/ticket/9054">#9054</a>,
+  <a href="https://svn.boost.org/trac/boost/ticket/9214">#9219</a>,
+  <a href="https://svn.boost.org/trac/boost/ticket/10228">#10228</a>, and
+  <a href="https://svn.boost.org/trac/boost/ticket/10641">#10641</a>, all 
+  related to locales and codecvt facets.</li>
+  <li>The net effect of the above changes and fixes should be to eliminate 
+  spurious &quot;locale::facet::_S_create_c_locale name not valid&quot; errors on Linux 
+  and other non-BSD POSIX-like systems. The error will continue to occur, as it 
+  should, when a path encoding conversion char-to-wchar_t or wchar_t-to-char is 
+  attempted in an environment without a valid C locale (for example, if the LANG 
+  environment variable is invalid or not defined).</li>
+  <li>Fix <a href="https://svn.boost.org/trac/boost/ticket/6124">#6124</a>,
+  <a href="https://svn.boost.org/trac/boost/ticket/6779">#6779</a>, and
+  <a href="https://svn.boost.org/trac/boost/ticket/10038">#10038</a> - an 
+  undefined reference that occurred when the library was compiled for C++03 but 
+  the using program was compiled for C++11, or vice versa. The private library 
+  interface has been changed to use a plain-old C++03 enum. This is the fix 
+  suggested by Andy in 6779.</li>
+  <li>The Windows implementation now treats NTFS directory junctions (also known 
+  as junctions, also known as mount points) as symlinks. This has the effect of 
+  treating directory junctions as directories, and thus supporting all 
+  operations suitable for directories. This resolves
+  <a href="https://svn.boost.org/trac/boost/ticket/9016">#9016</a>. Directory 
+  junctions are very similar to symlinks, but may have performance or other 
+  advantages in some situations. They can be created from the command line with 
+  &quot;<code>mklink /j link target</code>&quot;. There is no plan for Boost.Filesystem to 
+  be able to create them directly other than by calling <code>std::system()</code>.</li>
+</ul>
+
+<h2>1.56.0</h2>
+<ul>
+  <li>Reorganize <code>recursive_directory_iterator::increment</code>, adding an 
+  invariant that progress is always made, even if an error is reported by 
+  exception or error_code. Add a manually executed test, <code>
+  test/issues/recurse_dir_iter_5403.cpp</code>. Adjust regular regression tests 
+  as needed. Thanks to Claudio Bley for the
+  <a href="https://github.com/boostorg/filesystem/pull/4">pull request</a> - the 
+  change was incorporated into the reorganized code. Fixes
+  <a href="https://svn.boost.org/trac/boost/ticket/5403">#5403</a> and
+  <a href="https://svn.boost.org/trac/boost/ticket/6821">#6821</a>.</li>
+  <li>Fix <code>canonical()</code> to treat parent of root as root. (Christian 
+  Hammerl) Fixes <a href="https://svn.boost.org/trac/boost/ticket/9683">#9683</a> 
+  and <a href="https://svn.boost.org/trac/boost/ticket/10187">#10187</a>.</li>
+  <li>Added missing test for <code>__sun</code> macro which is defined on 
+  Solaris 10. (Chris Stylianou)</li>
+  <li>Minor fixes and code cleanup.</li>
+  <li>Update IDE projects to Visual Studio 2013.</li>
+  <li>Remove unused <code>const char colon</code> to clear clang warning. (J?gen 
+  Hunold)</li>
+  <li>Add BOOST_NOEXCEPT to <code>class filesystem_error</code>.</li>
+  <li>Change <code>perms::all_all</code> and <code>perms::perms_mask</code> to 
+  absolute values to quiet intellisense warnings, and conform to C++11.</li>
+</ul>
+
+<h2>1.54.0</h2>
+<ul>
+  <li>Reimplement <code>path::codecvt()</code> and <code>path::imbue()</code> 
+  with portable code that is intended to be much more robust and maintainable. A 
+  section on <a href="reference.html#path-Usage">path usage concerns</a> has 
+  been added to the reference documentation describing several concerns that 
+  arise in the context of multithreading and <code>path::codecvt()</code>.</li>
+</ul>
+
+<h2>1.52.0</h2>
+<ul>
+  <li>Fix <a href="http://svn.boost.org/trac/boost/ticket/7239">#7239</a>, <i>Stack 
+  overflow when calling <code>create_directories(&quot;:D&quot;)</code></i>. The reported 
+  problem was a symptom of an internal bug that caused <code>path::filename()</code> 
+  and <code>path::parent_path()</code> to fail on Windows for <code>path(&quot;:&quot;)</code>, 
+  and that in turn caused other functions that depend on <code>filename()</code> 
+  or <code>parent_path()</code> to fail, such as <code>create_directories()</code>.</li>
+</ul>
+
+<h2>1.51.0</h2>
+<ul>
+  <li>Add begin() and end() non-member functions for directory_iterator and 
+  recursive_directory_iterator so that C++11 range-based for statements  work. 
+  Suggested by feature requests
+  <a href="https://svn.boost.org/trac/boost/ticket/5896">#5896</a> and
+  <a href="https://svn.boost.org/trac/boost/ticket/6521">#6521</a>, using the
+  <a href="https://svn.boost.org/trac/boost/ticket/5896">#5896</a> approach.</li>
+  <li>Add range_begin() and range_end() non-member functions for directory_iterator and 
+  recursive_directory_iterator so that 
+  <a href="http://www.boost.org/libs/foreach/">BOOST_FOREACH</a> works.</li>
+  <li>Fix a Linux fchmodat problem affecting symlink permissions reported during 
+  discussion of <a href="https://svn.boost.org/trac/boost/ticket/6659">#6659</a>.</li>
+  <li>Fix <a href="https://svn.boost.org/trac/boost/ticket/6659">#6659</a> and
+  <a href="https://svn.boost.org/trac/boost/ticket/7051">#7051</a>, <i>fchmodat 
+  supported only on Solaris 11</i>. Fix for both Sun and GCC compilers. </li>
+</ul>
+
+<h2>1.50.0</h2>
+<ul>
+  <li>Remove Filesystem Version 2 from the distribution. Version 3 is now the 
+  only distributed version. Those still using V2 are urged to migrate to V3 as 
+  soon as possible.</li>
+  <li>Add <code>constexpr value_type preferred_separator</code> to class path.</li>
+  <li>Fix <a href="https://svn.boost.org/trac/boost/ticket/5118">#5118</a>, <i>
+  <code>replace_extension</code> doesn't work as specified in documentation</i>. The 
+  documentation, implementation, and test cases have all had fixes applied. The 
+  documentation had failed to mention that any existing extension is removed. 
+  The behavior for simple cases has been reverted to the Version 2 behavior, but 
+  with corrections so that complex replacements now work. Two test cases from 
+  #5118 have been added.</li>
+  <li>Fix <a href="http://svn.boost.org/trac/boost/ticket/3737">#3737</a>, 
+  <i>Boost.Filesystem does not compile on Windows Mobile</i>. On Windows, &lt;sys/stat.h&gt; 
+  is no longer included.</li>
+  <li>Fix <a href="https://svn.boost.org/trac/boost/ticket/4065">#4065</a>, 
+  <i>Boost Filesystem lexicographic path comparison inconsistent</i>. This required 
+  multiple source code bug fixes and code cleanup, correcting problems not 
+  related to lexicographical issues.</li>
+  <li>Add class path member function <code>compare</code> for consistency with 
+  std::string.</li>
+  <li>Tighten BOOST_FILESYSTEM_DYN_LINK and BOOST_FILESYSTEM_STATIC_LINK logic 
+  in filesystem/config.hpp so that one or the other is always defined, and both 
+  being defined is a #error.</li>
+  <li>Fix <a href="http://svn.boost.org/trac/boost/ticket/6690">#6690</a> and
+  <a href="http://svn.boost.org/trac/boost/ticket/6737">#6737</a>, resolving 
+  static linking related problems with VC++ 8 through 11. Note that this fix may 
+  reintroduce codecvt thread safety problems
+  <a href="http://svn.boost.org/trac/boost/ticket/4889">#4889</a>,
+  <a href="http://svn.boost.org/trac/boost/ticket/6320">#6320</a>, for these 
+  compilers if static linking is used.</li>
+  <li>Add path::operator+= and concat functions to tack on things like suffixes 
+  or numbers. Suggested by Ed Smith-Rowland and others.</li>
+  <li>Fix <a href="http://svn.boost.org/trac/boost/ticket/6809">#6809</a>, 
+  <i>Implementation of filesystem::rename() method for MS Windows is wrong</i>, by 
+  adding MOVEFILE_COPY_ALLOWED to deal with renames across drives, volumes, file 
+  systems. Fix has no effect on non-Windows systems.</li>
+  <li>Fix <a href="http://svn.boost.org/trac/boost/ticket/6819">#6819</a>, A path operand with a source that was a one character array was 
+  treated as empty, even if it wasn't empty. Such arrays can occur in unions or 
+  in code using C variable length array idioms.</li>
+  <li>Fix <a href="http://svn.boost.org/trac/boost/ticket/6932">#6932</a>, 
+  <i>create_directories throws exception even if error_code is specified</i>.</li>
+</ul>
+
+<h2>1.49.0</h2>
+<ul>
+  <li>Fix <a href="https://svn.boost.org/trac/boost/ticket/3714">#3714</a>, 
+  Added test cases and fixes for class path errors when assignment or append 
+  used self or portion of self as source. </li>
+  <li>Fix <a href="https://svn.boost.org/trac/boost/ticket/4889">#4889</a>, 
+  <a href="https://svn.boost.org/trac/boost/ticket/6320">#6320</a>, <i>Locale codecvt_facet not thread safe on Windows</i>. Move 
+  Windows, Mac OS X, locale and codecvt facet back to namespace scope. POSIX 
+  except OS X uses local static initialization (IE lazy) to ensure exceptions 
+  are catchable if environmental variables are misconfigured and to avoid use of 
+  locale(&quot;&quot;) if not actually used.</li>
+  <li>Fix <a href="https://svn.boost.org/trac/boost/ticket/5652">#5652</a>, 
+  <i>recursive_directory_iterator fails on cyclic symbolic links</i>. Thanks to Daniel Aarno for the patch.</li>
+  <li>Fix <a href="https://svn.boost.org/trac/boost/ticket/5653">#5653</a>, 
+  <i>recursive_directory_iterator(error_code) can still throw filesystem_error</i>.</li>
+  <li>Fix <a href="https://svn.boost.org/trac/boost/ticket/5900">#5900</a>, <i>directory_iterator 
+  access violation on Windows if error is thrown</i>. Thanks to Andreas Eckleder for the patch.</li>
+  <li>Fix <a href="https://svn.boost.org/trac/boost/ticket/5900#comment:2">#5900 
+  comment 2</a>, a bug in director_iterator construction with error_code argument that 
+  caused increment to be called without the ec argument being passed.</li>
+  <li>Fix <a href="https://svn.boost.org/trac/boost/ticket/5900">#5989</a> by cleaning up test suite path_test.cpp code even 
+  though the ticket itself was not a defect, and clarifying docs; iteration over a path yields 
+  generic format.</li>
+  <li>Fix <a href="https://svn.boost.org/trac/boost/ticket/5592">#5592</a>, <i>Change Windows codecvt processing from CP_THREAD_ACP to CP_ACP</i>.</li>
+  <li>Operations function fixes for PGI compiler, thanks to Noel Belcourt.</li>
+  <li>Relax permissions test to reflect reality, particularly on the Sandia test 
+  platforms.</li>
+</ul>
+
+<h2>1.48.0</h2>
+<ul>
+  <li>Added operational function <a href="reference.html#canonical">canonical()</a>, 
+  suggested by David Svoboda, who also provided pseudo-code.</li>
+  <li>Added <a href="reference.html#hash_value">hash_value()</a> function for 
+  paths. (Daniel James)</li>
+  <li>Fix path inserter problem (<a href="https://svn.boost.org/trac/boost/ticket/5764">#5764</a>) 
+  reported for QNX6.3.2 host (gcc-3.3.5)</li>
+  <li>Fix problem of locale(&quot;&quot;) exception being thrown before main() starts on 
+  poorly configured (e.g. LANG=&quot;bad name&quot;) POSIX systems. Resolves the most 
+  serious aspect of tickets
+  <a href="https://svn.boost.org/trac/boost/ticket/4688">#4688</a>,
+  <a href="https://svn.boost.org/trac/boost/ticket/5100">#5100</a>,
+  <a href="https://svn.boost.org/trac/boost/ticket/5289">#5289</a>.</li>
+</ul>
+
+<h2>1.47.0</h2>
+<ul>
+  <li>Program file_status.cpp added (V3). See boost-root/libs/filesystem/v3/example. 
+  Useful both as an example and to explore how Boost.Filesystem treats various 
+  status errors.&nbsp; Run &quot;bjam&quot; (NOT &quot;bjam install&quot;) in the example directory 
+  to install in example/bin.</li>
+</ul>
+
+<h2>1.46.1</h2>
+
+<ul>
+  <li>Fix fstream problem for STLPort masquerading as Dinkumware (<a href="https://svn.boost.org/trac/boost/ticket/5217">#5217</a>).</li>
+</ul>
+
+<h2>1.46.0</h2>
+<ul>
+  <li>Version 3 of the library is now the default.</li>
+  <li>IBM vacpp: Workaround for compiler bug affecting iterator_facade. (<a href="https://svn.boost.org/trac/boost/ticket/4912">#4912</a>)</li>
+  <li>Verify, clarify, document that &lt;boost/config/user.hpp&gt; can be used to 
+  specify BOOST_FILESYSTEM_VERSION. (<a href="https://svn.boost.org/trac/boost/ticket/4891">#4891</a>)</li>
+  <li>Replaced C-style assert with BOOST_ASSERT.</li>
+  <li>Undeprecated unique_path(). Instead, add a note mentioning the workaround 
+  for lack of thread safety and possible change to cwd. unique_path() is just 
+  too convenient to deprecate!</li>
+  <li>Cleared several GCC warnings.</li>
+  <li>Changed V2 code to use BOOST_THROW_EXCEPTION.</li>
+  <li>Windows: Fix status() to report non-symlink reparse point correctly.</li>
+  <li>Add <code>symlink_option</code> to <code>recursive_directory_iterator</code>, 
+  allowing control over recursion into directory symlinks. Note that the default 
+  is changed to not recurse into directory symlinks.</li>
+  <li><a href="reference.html">Reference</a> documentation cleanup, including 
+  fixing missing and broken links, and adding missing functions.</li>
+  <li>Miscellaneous implementation code cleanup. </li>
+</ul>
+<hr>
+<p>Revised
+<!--webbot bot="Timestamp" S-Type="EDITED" S-Format="%d %B, %Y" startspan -->07 August, 2017<!--webbot bot="Timestamp" endspan i-checksum="34770" --></p>
+<p>&copy; Copyright Beman Dawes, 2011</p>
+<p> Use, modification, and distribution are subject to the Boost Software 
+License, Version 1.0. See <a href="http://www.boost.org/LICENSE_1_0.txt">
+www.boost.org/LICENSE_1_0.txt</a></p>

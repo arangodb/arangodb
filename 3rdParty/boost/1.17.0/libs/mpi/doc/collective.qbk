@@ -1,0 +1,367 @@
+[section:collectives Collective operations]
+
+[link mpi.tutorial.point_to_point Point-to-point operations] are the
+core message passing primitives in Boost.MPI. However, many
+message-passing applications also require higher-level communication
+algorithms that combine or summarize the data stored on many different
+processes. These algorithms support many common tasks such as
+"broadcast this value to all processes", "compute the sum of the
+values on all processors" or "find the global minimum." 
+
+[section:broadcast Broadcast]
+The [funcref boost::mpi::broadcast `broadcast`] algorithm is
+by far the simplest collective operation. It broadcasts a value from a
+single process to all other processes within a [classref
+boost::mpi::communicator communicator]. For instance, the
+following program broadcasts "Hello, World!" from process 0 to every
+other process. (`hello_world_broadcast.cpp`)
+
+  #include <boost/mpi.hpp>
+  #include <iostream>
+  #include <string>
+  #include <boost/serialization/string.hpp>
+  namespace mpi = boost::mpi;
+
+  int main()
+  {
+    mpi::environment env;
+    mpi::communicator world;
+
+    std::string value;
+    if (world.rank() == 0) {
+      value = "Hello, World!";
+    }
+
+    broadcast(world, value, 0);
+
+    std::cout << "Process #" << world.rank() << " says " << value 
+              << std::endl;
+    return 0;
+  } 
+
+Running this program with seven processes will produce a result such
+as:
+
+[pre
+Process #0 says Hello, World!
+Process #2 says Hello, World!
+Process #1 says Hello, World!
+Process #4 says Hello, World!
+Process #3 says Hello, World!
+Process #5 says Hello, World!
+Process #6 says Hello, World!
+]
+[endsect:broadcast]
+
+[section:gather Gather]
+The [funcref boost::mpi::gather `gather`] collective gathers
+the values produced by every process in a communicator into a vector
+of values on the "root" process (specified by an argument to
+`gather`). The /i/th element in the vector will correspond to the
+value gathered from the /i/th process. For instance, in the following
+program each process computes its own random number. All of these
+random numbers are gathered at process 0 (the "root" in this case),
+which prints out the values that correspond to each processor. 
+(`random_gather.cpp`)
+
+  #include <boost/mpi.hpp>
+  #include <iostream>
+  #include <vector>
+  #include <cstdlib>
+  namespace mpi = boost::mpi;
+
+  int main()
+  {
+    mpi::environment env;
+    mpi::communicator world;
+
+    std::srand(time(0) + world.rank());
+    int my_number = std::rand();
+    if (world.rank() == 0) {
+      std::vector<int> all_numbers;
+      gather(world, my_number, all_numbers, 0);
+      for (int proc = 0; proc < world.size(); ++proc)
+        std::cout << "Process #" << proc << " thought of " 
+                  << all_numbers[proc] << std::endl;
+    } else {
+      gather(world, my_number, 0);
+    }
+
+    return 0;
+  } 
+
+Executing this program with seven processes will result in output such
+as the following. Although the random values will change from one run
+to the next, the order of the processes in the output will remain the
+same because only process 0 writes to `std::cout`.
+
+[pre
+Process #0 thought of 332199874
+Process #1 thought of 20145617
+Process #2 thought of 1862420122
+Process #3 thought of 480422940
+Process #4 thought of 1253380219
+Process #5 thought of 949458815
+Process #6 thought of 650073868
+]
+
+The `gather` operation collects values from every process into a
+vector at one process. If instead the values from every process need
+to be collected into identical vectors on every process, use the
+[funcref boost::mpi::all_gather `all_gather`] algorithm,
+which is semantically equivalent to calling `gather` followed by a
+`broadcast` of the resulting vector.
+
+[endsect:gather]
+
+[section:scatter Scatter]
+The [funcref boost::mpi::scatter `scatter`] collective scatters
+the values from a vector in the "root" process in a communicator into 
+values in all the processes of the communicator.
+ The /i/th element in the vector will correspond to the
+value received by the /i/th process. For instance, in the following
+program, the root process produces a vector of random nomber and send 
+one value to each process that will print it. (`random_scatter.cpp`)
+
+  #include <boost/mpi.hpp>
+  #include <boost/mpi/collectives.hpp>
+  #include <iostream>
+  #include <cstdlib>
+  #include <vector>
+  
+  namespace mpi = boost::mpi;
+  
+  int main(int argc, char* argv[])
+  {
+    mpi::environment env(argc, argv);
+    mpi::communicator world;
+    
+    std::srand(time(0) + world.rank());
+    std::vector<int> all;
+    int mine = -1;
+    if (world.rank() == 0) {
+      all.resize(world.size());
+      std::generate(all.begin(), all.end(), std::rand);
+    }
+    mpi::scatter(world, all, mine, 0);
+    for (int r = 0; r < world.size(); ++r) {
+      world.barrier();
+      if (r == world.rank()) {
+        std::cout << "Rank " << r << " got " << mine << '\n';
+      }
+    }
+    return 0;
+  }
+
+Executing this program with seven processes will result in output such
+as the following. Although the random values will change from one run
+to the next, the order of the processes in the output will remain the
+same because of the barrier.
+
+[pre
+Rank 0 got 1409381269
+Rank 1 got 17045268
+Rank 2 got 440120016
+Rank 3 got 936998224
+Rank 4 got 1827129182
+Rank 5 got 1951746047
+Rank 6 got 2117359639
+]
+
+[endsect:scatter]
+
+[section:reduce Reduce] 
+
+The [funcref boost::mpi::reduce `reduce`] collective
+summarizes the values from each process into a single value at the
+user-specified "root" process. The Boost.MPI `reduce` operation is
+similar in spirit to the STL _accumulate_ operation, because it takes
+a sequence of values (one per process) and combines them via a
+function object. For instance, we can randomly generate values in each
+process and the compute the minimum value over all processes via a
+call to [funcref boost::mpi::reduce `reduce`]
+(`random_min.cpp`):
+
+  #include <boost/mpi.hpp>
+  #include <iostream>
+  #include <cstdlib>
+  namespace mpi = boost::mpi;
+
+  int main()
+  {
+    mpi::environment env;
+    mpi::communicator world;
+
+    std::srand(time(0) + world.rank());
+    int my_number = std::rand();
+
+    if (world.rank() == 0) {
+      int minimum;
+      reduce(world, my_number, minimum, mpi::minimum<int>(), 0);
+      std::cout << "The minimum value is " << minimum << std::endl;
+    } else {
+      reduce(world, my_number, mpi::minimum<int>(), 0);
+    }
+
+    return 0;
+  }
+
+The use of `mpi::minimum<int>` indicates that the minimum value
+should be computed. `mpi::minimum<int>` is a binary function object
+that compares its two parameters via `<` and returns the smaller
+value. Any associative binary function or function object will
+work provided it's stateless. For instance, to concatenate strings with `reduce` one could use
+the function object `std::plus<std::string>` (`string_cat.cpp`):
+
+  #include <boost/mpi.hpp>
+  #include <iostream>
+  #include <string>
+  #include <functional>
+  #include <boost/serialization/string.hpp>
+  namespace mpi = boost::mpi;
+
+  int main()
+  {
+    mpi::environment env;
+    mpi::communicator world;
+
+    std::string names[10] = { "zero ", "one ", "two ", "three ", 
+                              "four ", "five ", "six ", "seven ", 
+                              "eight ", "nine " };
+
+    std::string result;
+    reduce(world, 
+           world.rank() < 10? names[world.rank()] 
+                            : std::string("many "),
+           result, std::plus<std::string>(), 0);
+
+    if (world.rank() == 0)
+      std::cout << "The result is " << result << std::endl;
+
+    return 0;
+  } 
+
+In this example, we compute a string for each process and then perform
+a reduction that concatenates all of the strings together into one,
+long string. Executing this program with seven processors yields the
+following output:
+
+[pre
+The result is zero one two three four five six
+]
+
+[h4 Binary operations for reduce]
+Any kind of binary function objects can be used with `reduce`. For
+instance, and there are many such function objects in the C++ standard
+`<functional>` header and the Boost.MPI header
+`<boost/mpi/operations.hpp>`. Or, you can create your own
+function object. Function objects used with `reduce` must be
+associative, i.e. `f(x, f(y, z))` must be equivalent to `f(f(x, y),
+z)`. If they are also commutative (i..e, `f(x, y) == f(y, x)`),
+Boost.MPI can use a more efficient implementation of `reduce`. To
+state that a function object is commutative, you will need to
+specialize the class [classref boost::mpi::is_commutative
+`is_commutative`]. For instance, we could modify the previous example
+by telling Boost.MPI that string concatenation is commutative:
+
+  namespace boost { namespace mpi {
+
+    template<>
+    struct is_commutative<std::plus<std::string>, std::string> 
+      : mpl::true_ { };
+
+  } } // end namespace boost::mpi
+
+By adding this code prior to `main()`, Boost.MPI will assume that
+string concatenation is commutative and employ a different parallel
+algorithm for the `reduce` operation. Using this algorithm, the
+program outputs the following when run with seven processes:
+
+[pre
+The result is zero one four five six two three
+]
+
+Note how the numbers in the resulting string are in a different order:
+this is a direct result of Boost.MPI reordering operations. The result
+in this case differed from the non-commutative result because string
+concatenation is not commutative: `f("x", "y")` is not the same as
+`f("y", "x")`, because argument order matters. For truly commutative
+operations (e.g., integer addition), the more efficient commutative
+algorithm will produce the same result as the non-commutative
+algorithm. Boost.MPI also performs direct mappings from function
+objects in `<functional>` to `MPI_Op` values predefined by MPI (e.g.,
+`MPI_SUM`, `MPI_MAX`); if you have your own function objects that can
+take advantage of this mapping, see the class template [classref
+boost::mpi::is_mpi_op `is_mpi_op`].
+
+[warning Due to the underlying MPI limitations, it is important to note that the operation must be stateless.]
+
+[h4 All process variant]
+
+Like [link mpi.tutorial.collectives.gather `gather`], `reduce` has an "all"
+variant called [funcref boost::mpi::all_reduce `all_reduce`]
+that performs the reduction operation and broadcasts the result to all
+processes. This variant is useful, for instance, in establishing
+global minimum or maximum values.
+
+The following code (`global_min.cpp`) shows a broadcasting version of 
+the `random_min.cpp` example:
+
+  #include <boost/mpi.hpp>
+  #include <iostream>
+  #include <cstdlib>
+  namespace mpi = boost::mpi;
+  
+  int main(int argc, char* argv[])
+  {
+    mpi::environment env(argc, argv);
+    mpi::communicator world;
+  
+    std::srand(world.rank());
+    int my_number = std::rand();
+    int minimum;
+  
+    mpi::all_reduce(world, my_number, minimum, mpi::minimum<int>());
+    
+    if (world.rank() == 0) {
+        std::cout << "The minimum value is " << minimum << std::endl;
+    }
+  
+    return 0;
+  }
+
+In that example we provide both input and output values, requiring
+twice as much space, which can be a problem depending on the size 
+of the transmitted data. 
+If there  is no need to preserve the input value, the output value 
+can be omitted. In that case the input value will be overridden with 
+the output value and Boost.MPI is able, in some situation, to implement
+the operation with a more space efficient solution (using the `MPI_IN_PLACE`
+flag of the MPI C mapping), as in the following example (`in_place_global_min.cpp`):
+
+  #include <boost/mpi.hpp>
+  #include <iostream>
+  #include <cstdlib>
+  namespace mpi = boost::mpi;
+  
+  int main(int argc, char* argv[])
+  {
+    mpi::environment env(argc, argv);
+    mpi::communicator world;
+  
+    std::srand(world.rank());
+    int my_number = std::rand();
+  
+    mpi::all_reduce(world, my_number, mpi::minimum<int>());
+    
+    if (world.rank() == 0) {
+        std::cout << "The minimum value is " << my_number << std::endl;
+    }
+  
+    return 0;
+  }
+
+
+[endsect:reduce]
+
+[endsect:collectives]

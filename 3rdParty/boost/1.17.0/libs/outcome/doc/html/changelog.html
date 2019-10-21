@@ -1,0 +1,213 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html><meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Changelog - Boost.Outcome documentation</title>
+<link rel="stylesheet" href="./css/boost.css" type="text/css">
+<meta name="generator" content="Hugo 0.52 with Boostdoc theme">
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+
+<link rel="icon" href="./images/favicon.ico" type="image/ico"/>
+<body><div class="spirit-nav">
+<a accesskey="p" href="./videos.html"><img src="./images/prev.png" alt="Prev"></a>
+    <a accesskey="u" href="./index.html"><img src="./images/up.png" alt="Up"></a>
+    <a accesskey="h" href="./index.html"><img src="./images/home.png" alt="Home"></a><a accesskey="n" href="./history.html"><img src="./images/next.png" alt="Next"></a></div><div id="content">
+
+  <div class="titlepage"><div><div><h1 style="clear: both">Changelog</h1></div></div></div>
+
+
+<hr />
+
+<h2 id="v2-1-1-xxth-july-2019-boost-1-71-release-https-github-com-ned14-outcome-releases-tag-v2-1-1">v2.1.1 XXth July 2019 (Boost 1.71) <a href="https://github.com/ned14/outcome/releases/tag/v2.1.1">[release]</a></h2>
+
+<h3 id="enhancements">Enhancements:</h3>
+
+<dl>
+<dt><a href="https://github.com/ned14/outcome/issues/184">#184</a></dt>
+<dd>As per request from Boost release managers, relocated <code>version.hpp</code> and
+<code>revision.hpp</code> into detail, and added the Boost licence boilerplate to the top
+of every source file which was missing one (I think). Also took the opportunity
+to run the licence restamping script over all Outcome, so copyright dates are now
+up to date.</dd>
+<dt><a href="https://github.com/ned14/outcome/issues/185">#185</a></dt>
+<dd>Add FAQ item explaining issue #185, and why we will do nothing to
+fix it right now.</dd>
+<dt><a href="https://github.com/ned14/outcome/issues/189">#189</a></dt>
+<dd>Refactored the <code>BOOST_OUTCOME_TRY</code> implementation to use more clarified
+customisation points capable of accepting very foreign inputs. Removed the
+<code>std::experimental::expected&lt;T, E&gt;</code> specialisations, as those are no longer
+necessary. Fixed the documentation for the customisation points which
+previously claimed that they are ADL discovered, which they are not. Added
+a recipe describing how to add in support for foreign input types.</dd>
+<dt><a href="https://github.com/ned14/outcome/issues/183">#183</a></dt>
+<dd>Added a separate <code>motivation/plug_error_code</code> specifically for Boost.</dd>
+</dl>
+
+<h3 id="bug-fixes">Bug fixes:</h3>
+
+<dl>
+<dt>-</dt>
+<dd><code>BOOST_OUTCOME_VERSION_MINOR</code> hadn&rsquo;t been updated to 1.</dd>
+<dt><a href="https://github.com/ned14/outcome/issues/181">#181</a></dt>
+<dd>Fix issue #181 where Outcome didn&rsquo;t actually implement the strong swap guarantee,
+despite being documented as doing so.</dd>
+<dt><a href="https://github.com/ned14/outcome/issues/190">#190</a></dt>
+<dd>Fix issue #190 in Boost edition where unit test suite was not runnable from
+the Boost release distro.</dd>
+<dt><a href="https://github.com/ned14/outcome/issues/182">#182</a></dt>
+<dd>Fix issue #182 where <code>trait::is_exception_ptr_available&lt;T&gt;</code> was always true,
+thus causing much weirdness, like not printing diagnostics and trying to feed
+everything to <code>make_exception_ptr()</code>.</dd>
+<dt><a href="https://github.com/ned14/outcome/issues/192">#194</a></dt>
+<dd>Fix issue #192 where the <code>std::basic_outcome_failure_exception_from_error()</code>
+was being defined twice for translation units which combine standalone and
+Boost Outcome&rsquo;s.</dd>
+</dl>
+
+<hr />
+
+<h2 id="v2-1-12th-apr-2019-boost-1-70-release-https-github-com-ned14-outcome-releases-tag-v2-1">v2.1 12th Apr 2019 (Boost 1.70) <a href="https://github.com/ned14/outcome/releases/tag/v2.1">[release]</a></h2>
+
+<ul>
+<li><p><a href="https://github.com/ned14/outcome/issues/180">#180</a></p>
+
+<ul>
+<li><code>success()</code> and <code>failure()</code> now produce types marked <code>[[nodiscard]]</code>.</li>
+</ul></li>
+
+<li><p><code>include/outcome/outcome.natvis</code> is now namespace permuted like the rest of
+Outcome, so debugging Outcome based code in Visual Studio should look much
+prettier than before.</p></li>
+
+<li><p><a href="https://github.com/ned14/outcome/issues/162">#162</a></p>
+
+<ul>
+<li><code>.has_failure()</code> was returning false at times when it should have returned true.</li>
+</ul></li>
+
+<li><p><a href="https://github.com/ned14/outcome/issues/152">#152</a></p>
+
+<ul>
+<li>GCC 5 no longer can compile Outcome at all due to <a href="https://stackoverflow.com/questions/45607450/gcc5-nested-variable-template-is-not-a-function-template">https://stackoverflow.com/questions/45607450/gcc5-nested-variable-template-is-not-a-function-template</a>.
+Added explicit version trap for GCC 5 to say it can not work. Note this is not a
+breaking change, GCC 5 was never supported officially in any v2 Outcome.</li>
+</ul></li>
+
+<li><p><a href="https://github.com/ned14/outcome/issues/150">#150</a></p>
+
+<ul>
+<li><strong>BREAKING CHANGE</strong> <code>result&lt;T, E&gt;</code>, <code>boost_result&lt;T, E&gt;</code> and <code>std_result&lt;T, E&gt;</code>
+no longer implement hard UB on fetching a value from a valueless instance if <code>E</code> is
+a UDT, they now fail to compile with a useful error message. If you wish hard UB,
+use <code>unchecked&lt;T, E&gt;</code>, <code>boost_unchecked&lt;T, E&gt;</code> or <code>std_unchecked&lt;T, E&gt;</code> instead.</li>
+</ul></li>
+
+<li><p><a href="https://github.com/ned14/outcome/issues/140">#140</a></p>
+
+<ul>
+<li>Fixed a nasty corner case bug where value type&rsquo;s without a copy constructor
+but with a move constructor would indicate via traits that copy construction
+was available. Thanks to Microsoft&rsquo;s compiler team for reporting this issue.</li>
+</ul></li>
+
+<li><p>Added experimental <code>status_result</code> and <code>status_outcome</code> based on experimental
+<code>status_code</code>.</p></li>
+
+<li><p>Boost edition is now 100% Boost, so defaults for <code>result</code> and <code>outcome</code> are
+<code>boost::system::error_code::errc_t</code> and <code>boost::exception_ptr</code>. Moreover,
+the test suite in the Boost edition now exclusively tests the Boost edition.
+One can, of course, freely use the standalone edition with Boost, and the Boost
+edition with <code>std</code> types.</p></li>
+
+<li><p>Renamed ADL discovered customisation point <code>throw_as_system_error_with_payload()</code>
+to <code>outcome_throw_as_system_error_with_payload()</code>.</p></li>
+
+<li><p><a href="https://github.com/ned14/outcome/issues/135">#135</a></p>
+
+<ul>
+<li>Added much clearer compile failure when user tries <code>result&lt;T, T&gt;</code> or <code>outcome</code>
+where two or more types are identical. Thanks to Andrzej Krzemieński
+for suggesting a technique which combines SFINAE correctness with
+the remaining ability for <code>result&lt;T, T&gt;</code> etc to be a valid type, but
+not constructible.</li>
+</ul></li>
+
+<li><p><a href="https://github.com/ned14/outcome/issues/67">#67</a></p>
+
+<ul>
+<li>Fixed one of the oldest long open bugs in Outcome, that the noexcept
+unit tests failed on OS X for an unknown reason.</li>
+</ul></li>
+
+<li><p><a href="https://github.com/ned14/outcome/issues/115">#115</a></p>
+
+<ul>
+<li>Outcome did not construct correctly from <code>failure_type</code>.</li>
+</ul></li>
+
+<li><p>Inexplicably outcome&rsquo;s error + exception constructor had been removed.
+Nobody noticed during the Boost peer review, which is worrying seeing as that
+constructor is needed for one of the main advertised features to Boost!</p></li>
+
+<li><p><a href="https://github.com/ned14/outcome/issues/107">#107</a> and <a href="https://github.com/ned14/outcome/issues/116">#116</a></p>
+
+<ul>
+<li><code>operator==</code> and <code>operator!=</code> now become disabled if the value, error and
+exception types do not implement the same operator.</li>
+<li>Relatedly, both comparison operators simply didn&rsquo;t work right. Fixed.</li>
+</ul></li>
+
+<li><p><a href="https://github.com/ned14/outcome/issues/109">#109</a></p>
+
+<ul>
+<li><code>swap()</code> now has correct <code>noexcept</code> calculation and now correctly orders
+the swaps to be whichever is the throwing swap first.</li>
+</ul></li>
+
+<li><p>Added reference dump of v2.1 ABI so we can check if ABI breakage detection
+works in the next set of changes, plus Travis job to check ABI and API compatibility
+per commit.</p></li>
+
+<li><p><a href="https://github.com/ned14/outcome/issues/124">#124</a></p>
+
+<ul>
+<li><code>BOOST_OUTCOME_TRY</code> is now overloaded and selects <code>void</code> or <code>auto</code> edition
+according to input parameter count.</li>
+</ul></li>
+
+<li><p><a href="https://github.com/ned14/outcome/issues/120">#120</a></p>
+
+<ul>
+<li>Fix generation of double underscored temporary variables in
+<code>BOOST_OUTCOME_UNIQUE_NAME</code>, which is UB.</li>
+</ul></li>
+
+<li><p><a href="https://github.com/ned14/outcome/issues/110">#110</a></p>
+
+<ul>
+<li>Separated <code>result</code> from its hard coded dependency on the <code>&lt;system_error&gt;</code> header.</li>
+<li>Renamed <code>result</code> and <code>outcome</code> to <code>basic_result</code> and <code>basic_outcome</code>.</li>
+<li>Renamed <code>result.hpp</code> into <code>basic_result.hpp</code>.</li>
+<li>Moved <code>&lt;system_error&gt;</code> and <code>&lt;exception&gt;</code> dependent code into new
+<code>std_result.hpp</code> and <code>std_outcome.hpp</code> header files.</li>
+<li>Added <code>boost_result.hpp</code> and <code>boost_outcome.hpp</code> which use Boost.System
+and Boost.Exception (these are <code>result.hpp</code> and <code>outcome.hpp</code> in the Boost edition).</li>
+</ul></li>
+</ul>
+
+<hr />
+
+<h2 id="v2-0-18th-jan-2018-release-https-github-com-ned14-outcome-releases-tag-v2-0-boost-peer-review">v2.0 18th Jan 2018 <a href="https://github.com/ned14/outcome/releases/tag/v2.0-boost-peer-review">[release]</a></h2>
+
+<ul>
+<li>Boost peer review edition. This is what was reviewed.</li>
+<li>Changelog from v1 can be found in the release notes for this release.</li>
+</ul>
+
+
+
+        </div><p><small>Last revised: June 25, 2019 at 17:01:21 &#43;0100</small></p>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="./videos.html"><img src="./images/prev.png" alt="Prev"></a>
+    <a accesskey="u" href="./index.html"><img src="./images/up.png" alt="Up"></a>
+    <a accesskey="h" href="./index.html"><img src="./images/home.png" alt="Home"></a><a accesskey="n" href="./history.html"><img src="./images/next.png" alt="Next"></a></div></body>
+</html>

@@ -1,0 +1,33 @@
+[section:overview Overview]
+
+[section:introduction Introduction]
+
+[@https://en.wikipedia.org/wiki/Histogram Histograms] are a basic tool in statistical analysis. A histogram consists of a number of non-overlapping cells in data space. When an input value is passed to the histogram, the corresponding cell that envelopes the value is found and an associated counter is incremented.
+
+When analyzing a large low-dimensional data set, it is more convenient to work with a histogram of the input values than the original values. Keeping the cell counts in memory for analysis and/or processing the counts  requires far fewer resources than keeping the original values in memory and processing them. Information present in the original can also be extracted from the histogram[footnote Parameters of interest, like the center of a distribution, can be extracted from the histogram instead of the original data set; likewise, statistical models can be fitted to histograms.]. Some information is lost in this way, but if the cells are small enough[footnote What small enough means has to be decided case by case.], the loss is often negligible. A histogram is a kind of lossy data-compression. It is also often used as a simple estimator for the [@https://en.wikipedia.org/wiki/Probability_density_function probability density function] of the input data. More complex density estimators exist, but histograms remain attractive because they are easy to reason about.
+
+This library provides a histogram for multi-dimensional data. In the multi-dimensional case, the input consist of tuples of values which belong together and describing different aspects of the same entity. A point in space is a good example. You need three coordinate values to describe a point. The entity is the point, and to fully characterize a point distribution in space you need three values and therefore a three-dimensional histogram. A three-dimensional histogram collects more information than three separate one-dimensional histograms, one for each coordinate. For example, you could have a point distribution that looks like a checker board in three dimensions (a checker cube): high and low densities are alternating along each coordinate. Then, the one-dimensional histograms along each coordinate would look like flat distributions, completely hiding the complex structure, while the three-dimensional histogram would retain the structure for further analysis.
+
+The term /histogram/ is usually strictly used for something with cells over discrete or continuous data. This histogram class can also process categorical variables and it even allows for non-consecutive cells if that is desired. There is no restriction to numbers as input. Any C++ type can be fed into the histogram, if the user provides a specialized axis class that maps values of this type to a cell index. The only remaining restriction is that cells are non-overlapping, since there must be a unique mapping from input value to cell. The library is not able to automatically ensure this for user-provided axis classes, so the responsibly is on the user.
+
+Furthermore, the histogram can handle weighted input. Normally, the cell counter which is connected to an input tuple is incremented by one, but sometimes it is useful to increment by a weight, an integral or floating point number.
+
+Finally, the histogram can be configured to store an accumulator in each cell. Arbitrary samples can be passed to this accumulator, which may compute the mean, variance, median, or other interesting statistics from the samples that are sorted into its cell. When the accumulator computes a mean, the result is called a /profile/.
+
+[endsect]
+
+[section:motivation Motivation]
+
+C++ lacks a widely-used, free multi-dimensional histogram class. While it is easy to write a one-dimensional histogram, writing a general multi-dimensional histogram poses more of a challenge. If you add a few more features required by scientific professionals onto the wish-list, then the implementation becomes non-trivial and a well-tested library solution desirable.
+
+The [@https://www.gnu.org/software/gsl GNU Scientific Library (GSL)] and the [@https://root.cern.ch ROOT framework] from CERN have histogram implementations. The GSL has histograms for one and two dimensions in C. The implementations are not customizable. ROOT has well-tested implementations of histograms, but they are not customizable and they are not easy to use correctly. ROOT also has new implementations in beta-stage similar to this one, but they cannot be used without the rest of ROOT, which is a huge library to install just to get histograms.
+
+The templated histogram class in this library has a minimalistic interface, which strives to be as elegant as the GSL implementations. In addition, it is very customizable and extensible through user-provided classes. A single implementation is used for one and multi-dimensional histograms. While being safe, customizable, and convenient, the histogram is also very fast. The static version, which has an axis configuration that is hard-coded at compile-time, is faster than any tested competitor.
+
+One of the central design goals was to provide an abstract interface to the internal bin counters. The internal counting mechanism is encapsulated in a storage class, which can be replaced at compile-time. The default storage uses an adaptive memory management which is safe to use, memory-efficient, and fast. The safety comes from the guarantee, that counts cannot overflow or be capped. This is a rare guarantee, hardly found in other libraries. In the standard configuration, the histogram /just works/ under any circumstance. Yet, users with unusual requirements can implement their own custom storage class or use an alternative builtin array-based storage.
+
+[endsect]
+
+[include rationale.qbk]
+
+[endsect]

@@ -1,0 +1,204 @@
+#
+# Copyright (c) 2013-2017 Vinnie Falco (vinnie dot falco at gmail dot com)
+#
+# Distributed under the Boost Software License, Version 1.0. (See accompanying
+# file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+#
+
+project beast/doc ;
+
+import os ;
+import path ;
+import boostbook ;
+import quickbook ;
+import xsltproc ;
+import doxygen ;
+import modules ;
+import saxonhe ;
+
+#-------------------------------------------------------------------------------
+#
+# Build the list of header files that Doxygen will scan. We need
+# this list to inform the build system of the dependencies so the
+# docs can be rebuild if any of the header files change.
+#
+
+local sources = [ path.glob-tree ../include/boost/beast : *.hpp *.ipp : detail impl ] ;
+
+# Get the configured paths to doxygen and xsltproc
+
+.doxygen = [ doxygen.name ] ;
+.doxygen ?= doxygen ;
+
+#ECHO Using doxygen from "$(.doxygen)" ;
+
+.xsltproc = [ xsltproc.name ] ;
+.xsltproc ?= xsltproc ;
+
+#ECHO Using xsltproc from "$(.xsltproc)" ;
+
+#-------------------------------------------------------------------------------
+#
+# Generate transform.xsl. This xsl transfomration takes as input
+# the Doxygen-generated XML and produces QuickBook output.
+#
+make transform.xsl
+    :
+        docca/include/docca/doxygen.xsl
+        xsl/config.xsl
+        xsl/class_detail.xsl
+        xsl/includes.xsl
+        xsl/includes_foot.xsl
+    :
+        @make_transform
+    ;
+
+# Make a copy of the docca transform. Then, insert our
+# customizations into the speciall marked locations using sed.
+#
+actions make_transform
+{
+    cp $(2[1]) $(1)
+    sed -i -e "/<!-- CONFIG_TEMPLATE -->/{r $(2[2])" -e "d}" $(1)
+    sed -i -e "/<!-- CLASS_DETAIL_TEMPLATE -->/{r $(2[3])" -e "d}" $(1)
+    sed -i -e "/<!-- INCLUDES_TEMPLATE -->/{r $(2[4])" -e "d}" $(1)
+    sed -i -e "/<!-- INCLUDES_FOOT_TEMPLATE -->/{r $(2[5])" -e "d}" $(1)
+}
+
+#-------------------------------------------------------------------------------
+#
+# Invoke Doxygen to process the header files and produce the XML
+# containing the description of the C++ declarations and extracted
+# Javadoc comments.
+#
+make index.xml
+    :
+        ./source.dox
+    :
+        @make_doxygen_xml
+    :
+        <dependency>$(sources)
+    ;
+
+rule make_doxygen_xml ( targets * : sources * : properties * )
+{
+    LIB_DIR on $(targets) =
+        [ path.native [ path.parent [ path.root
+        [ on $(sources[1]) return $(SEARCH) ] [ path.pwd ] ] ] ] ;
+}
+
+if [ os.name ] = NT
+{
+    actions make_doxygen_xml
+    {
+        SET LIB_DIR=$(LIB_DIR)
+        SET XML_OUTPUT=$(1:D)
+        "$(.doxygen)" $(2)
+    }
+}
+else
+{
+    actions make_doxygen_xml
+    {
+        export LIB_DIR=$(LIB_DIR)
+        export XML_OUTPUT=$(1:D)
+        "$(.doxygen)" $(2)
+    }
+}
+
+make combine.xslt : index.xml : @null_action ;
+
+actions null_action
+{
+    touch -c $(1) ;
+}
+
+make reference.xml
+    :
+        combine.xslt
+        index.xml
+    :
+        @call-xsltproc
+    ;
+
+actions call-xsltproc
+{
+    "$(.xsltproc)" $(2) > $(1)
+}
+
+#-------------------------------------------------------------------------------
+#
+# Produce the reference.qbk file by running
+# the reference xml through the transform.
+#
+make reference.qbk
+    :
+        reference.xml
+        transform.xsl
+    :
+        saxonhe.saxonhe
+    ;
+
+# We have to make a copy of reference.qbk and put it
+# in a place where the static .qbk files can find it
+#
+install qbk : reference.qbk ;
+
+#-------------------------------------------------------------------------------
+#
+# Produce the Boost.Book XML from the QuickBook
+#
+
+install images
+    :
+        images/message.png
+    :
+        <location>html/beast/images
+    ;
+
+explicit images ;
+
+xml beast_doc
+    :
+        qbk/main.qbk
+    :
+        <dependency>images
+        <dependency>qbk
+    ;
+
+explicit beast_doc ;
+
+#-------------------------------------------------------------------------------
+#
+# HTML documentation for $(BOOST_ROOT)/doc/html
+#
+#-------------------------------------------------------------------------------
+
+boostbook beast
+    :
+        beast_doc
+    :
+        <xsl:param>boost.root=../../../..
+        <xsl:param>chapter.autolabel=1
+        <xsl:param>chunk.section.depth=8                # Depth to which sections should be chunked
+        <xsl:param>chunk.first.sections=1               # Chunk the first top-level section?
+        <xsl:param>toc.section.depth=8                  # How deep should recursive sections appear in the TOC?
+        <xsl:param>toc.max.depth=8                      # How many levels should be created for each TOC?
+        <xsl:param>generate.section.toc.level=8         # Control depth of TOC generation in sections
+        <xsl:param>generate.toc="chapter toc,title section nop reference nop"
+        <include>../../../tools/boostbook/dtd
+    :
+        <dependency>images
+    ;
+
+#-------------------------------------------------------------------------------
+#
+# These are used to inform the build system of the
+# means to build the integrated and stand-alone docs.
+#
+
+alias boostdoc ;
+explicit boostdoc ;
+
+alias boostrelease : beast ;
+explicit boostrelease ;

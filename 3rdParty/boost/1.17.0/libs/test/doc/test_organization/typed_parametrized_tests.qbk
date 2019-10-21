@@ -1,0 +1,157 @@
+[/
+ / Copyright (c) 2003 Boost.Test contributors 
+ /
+ / Distributed under the Boost Software License, Version 1.0. (See accompanying
+ / file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+ /]
+ 
+[section:test_organization_templates Template test cases]
+
+In order to test a template based component, it is frequently necessary to perform the same set of checks for a
+component instantiated with different template parameters. 
+
+One way to perform the same set of checks for a component instantiated with different template parameters would be:
+
+``
+template <typename T>
+void single_test()
+{
+  BOOST_CHECK( /* test assertion */ );
+}
+
+void combined_test()
+{
+  single_test<int>();
+  single_test<float>();
+  single_test<unsigned char>();
+}
+``
+
+There several problems/inconveniences with above approach, including:
+
+* Fatal error in one of the invocation will stop whole test case and will skip invocations with different types
+* You need to repeat function invocation manually for all the parameters you are interested in
+* You need two functions to implement the test
+
+The __UTF__ provides a facility, the *template test case*, to create a series of
+test cases based on a list of desired types and /nullary/ function. This facility comes with an 
+[link ref_BOOST_AUTO_TEST_CASE_TEMPLATE automatic] and
+[link ref_BOOST_TEST_CASE_TEMPLATE manual] registration interface.
+
+[tip The test case template facility is preferable to the approach in example above, since execution of each sub test
+case is guarded and counted separately. It produces a better test log/results report (in example above in case of
+failure you can't say which type is at fault) and allows you to test all types even if one of them causes termination of
+the sub test case.]
+
+[#ref_BOOST_AUTO_TEST_CASE_TEMPLATE][h4 Template test case with automated registration]
+
+A template test case, registered automatically and in place of its implementation, is declared through the macro
+__BOOST_AUTO_TEST_CASE_TEMPLATE__:
+
+``
+BOOST_AUTO_TEST_CASE_TEMPLATE(test_case_name, formal_type_parameter_name, collection_of_types);
+``
+
+The arguments are as follow:
+
+# `test_case_name`: the test case template name: unique test cases template identifier
+# `formal_type_parameter_name`: the name of a formal template parameter:
+         name of the type the test case template is instantiated with
+# `collection_of_types`: the collection of types to instantiate test case template with. 
+  This is an *arbitrary MPL sequence* or a sequence of types wrapped in a `std::tuple`
+  (since [link ref_CHANGE_LOG_3_7 __UTF__ v3.7], if supported by the compiler) 
+
+[bt_example example10..Test case template with automated registration..run-fail]
+
+[warning Since [link ref_CHANGE_LOG_3_7 __UTF__ v3.7], the __UTF__ does not allow for duplicate test case name
+ under the same test suite. As test names are derived from the types in the `collection_of_types`,
+ this indirectly means that *having a duplicate type* in the
+ `collection_of_types` *yields an error*.]
+
+[note If you prefer having the template parameter list directly in the declaration of __BOOST_AUTO_TEST_CASE_TEMPLATE__,
+  you may use the macro [@www.boost.org/doc/libs/release/libs/utility/identity_type/doc/html/index.html `BOOST_IDENTITY_TYPE`].
+  The previous example gives (note the double parenthesis around the MPL list):
+
+  ``
+  #include <boost/utility/identity_type.hpp>
+
+  BOOST_AUTO_TEST_CASE_TEMPLATE( 
+    my_test,
+    T,
+    BOOST_IDENTITY_TYPE((boost::mpl::list<
+      int,
+      long,
+      unsigned char
+    >)) )
+  {
+    BOOST_TEST( sizeof(T) == (unsigned)4 );
+  }
+  ``
+]
+
+[#ref_BOOST_TEST_CASE_TEMPLATE][h4 Test case template with manual registration]
+To manually register template test cases, two macros should be used:
+
+* __BOOST_TEST_CASE_TEMPLATE_FUNCTION__ to define the template test case body
+* __BOOST_TEST_CASE_TEMPLATE__ to register the test case based on the previous declaration
+
+The macro __BOOST_TEST_CASE_TEMPLATE_FUNCTION__ requires two arguments: 
+
+# the name of the test case template and 
+# the name of the format type parameter
+
+``
+  BOOST_TEST_CASE_TEMPLATE_FUNCTION(test_case_name, type_name);
+``
+
+``
+BOOST_TEST_CASE_TEMPLATE_FUNCTION( test_case_name, type_name )
+{
+  // test case template body
+}
+``
+
+The macro __BOOST_TEST_CASE_TEMPLATE_FUNCTION__ is intended to be used in place of nullary function template
+signature:
+
+``
+template <typename type_name>
+void test_case_name()
+{
+  // test case template body
+}
+``
+
+The only difference is that the __BOOST_TEST_CASE_TEMPLATE_FUNCTION__ makes the test case template name usable in
+the template argument list.
+
+__BOOST_TEST_CASE_TEMPLATE__ requires two arguments: 
+
+# the name of the test case template and 
+# Boost.MPL compatible collection of types to instantiate it with. 
+
+The names passed to both macros should be the same.
+
+``
+  BOOST_TEST_CASE_TEMPLATE(test_case_name, collection_of_types);
+``
+
+[bt_example example09..Manually registered test case template..run-fail]
+
+__BOOST_TEST_CASE_TEMPLATE__ creates an instance of the test case generator. When passed to the method [memberref
+boost::unit_test::test_suite::add `test_suite::add`], the generator produces a separate sub test case for each type in
+the supplied collection of types and registers it immediately in the test suite. Each test case is based on the test
+case template body instantiated with a particular test type.
+
+The names for the ['sub test cases] are deduced from the macro argument `test_case_name`. If you prefer to assign
+different test case names, you need to use the underlying [headerref boost/test/tree/test_unit.hpp `make_test_case`] interface instead. 
+Both test cases creation and registration is performed in the test module initialization function.
+
+[warning Since [link ref_CHANGE_LOG_3_7 __UTF__ v3.7], the __UTF__ does not allow for duplicate test case name
+ under the same test suite. As test names are derived from the types in the `collection_of_types`,
+ this indirectly means that having a duplicate of types in the
+ `collection_of_types` will yield an error.]
+
+[endsect] [/template test cases]
+
+[/EOF]

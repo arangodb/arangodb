@@ -1,0 +1,14 @@
+{
+    "key": "msm",
+    "name": "Meta State Machine",
+    "authors": [
+        "Christophe Henry"
+    ],
+    "description": "A very high-performance library for expressive UML2 finite state machines.",
+    "category": [
+        "State"
+    ],
+    "maintainers": [
+        "Christophe Henry <christophe.j.henry -at-  googlemail.com>"
+    ]
+}

@@ -1,0 +1,92 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=US-ASCII">
+<title>HolderGenerator</title>
+<link rel="stylesheet" href="../../boostbook.css" type="text/css">
+<meta name="generator" content="DocBook XSL Stylesheets V1.79.1">
+<link rel="home" href="../index.html" title="Boost.Python Reference Manual">
+<link rel="up" href="../concepts.html" title="Chapter&#160;1.&#160;Concepts">
+<link rel="prev" href="extractor.html" title="Extractor">
+<link rel="next" href="resultconverter.html" title="ResultConverter">
+</head>
+<body bgcolor="white" text="black" link="#0000FF" vlink="#840084" alink="#0000FF">
+<table cellpadding="2" width="100%"><tr><td valign="top"><img alt="" width="" height="" src="../../images/boost.png"></td></tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="extractor.html"><img src="../../images/prev.png" alt="Prev"></a><a accesskey="u" href="../concepts.html"><img src="../../images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../images/home.png" alt="Home"></a><a accesskey="n" href="resultconverter.html"><img src="../../images/next.png" alt="Next"></a>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h2 class="title" style="clear: both">
+<a name="concepts.holdergenerator"></a><a class="link" href="holdergenerator.html" title="HolderGenerator">HolderGenerator</a>
+</h2></div></div></div>
+<div class="toc"><dl class="toc">
+<dt><span class="section"><a href="holdergenerator.html#concepts.holdergenerator.introduction">Introduction</a></span></dt>
+<dt><span class="section"><a href="holdergenerator.html#concepts.holdergenerator.concept_requirements">Concept
+        Requirements</a></span></dt>
+</dl></div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="concepts.holdergenerator.introduction"></a><a class="link" href="holdergenerator.html#concepts.holdergenerator.introduction" title="Introduction">Introduction</a>
+</h3></div></div></div>
+<p>
+          A HolderGenerator is a unary metafunction class which returns types suitable
+          for holding instances of its argument in a wrapped C++ class instance.
+        </p>
+</div>
+<div class="section">
+<div class="titlepage"><div><div><h3 class="title">
+<a name="concepts.holdergenerator.concept_requirements"></a><a class="link" href="holdergenerator.html#concepts.holdergenerator.concept_requirements" title="Concept Requirements">Concept
+        Requirements</a>
+</h3></div></div></div>
+<p>
+          In the table below, <code class="computeroutput"><span class="identifier">G</span></code> denotes
+          an type which models <code class="computeroutput"><span class="identifier">HolderGenerator</span></code>,
+          and <code class="computeroutput"><span class="identifier">X</span></code> denotes a class type.
+        </p>
+<div class="informaltable"><table class="table">
+<colgroup>
+<col>
+<col>
+</colgroup>
+<thead><tr>
+<th>
+                  <p>
+                    Expression
+                  </p>
+                </th>
+<th>
+                  <p>
+                    Requirements
+                  </p>
+                </th>
+</tr></thead>
+<tbody><tr>
+<td>
+                  <p>
+                    <code class="computeroutput"><span class="identifier">G</span><span class="special">::</span><span class="identifier">apply</span><span class="special">&lt;</span><span class="identifier">X</span><span class="special">&gt;::</span><span class="identifier">type</span></code>
+                  </p>
+                </td>
+<td>
+                  <p>
+                    A concrete subclass of <code class="computeroutput"><span class="identifier">instance_holder</span></code>
+                    which can hold objects of type <code class="computeroutput"><span class="identifier">X</span></code>.
+                  </p>
+                </td>
+</tr></tbody>
+</table></div>
+</div>
+</div>
+<table xmlns:rev="http://www.cs.rpi.edu/~gregod/boost/tools/doc/revision" width="100%"><tr>
+<td align="left"></td>
+<td align="right"><div class="copyright-footer">Copyright &#169; 2002-2005, 2015 David Abrahams, Stefan Seefeld<p>
+        Distributed under the Boost Software License, Version 1.0. (See accompanying
+        file LICENSE_1_0.txt or copy at <a href="http://www.boost.org/LICENSE_1_0.txt" target="_top">http://www.boost.org/LICENSE_1_0.txt</a>
+      </p>
+</div></td>
+</tr></table>
+<hr>
+<div class="spirit-nav">
+<a accesskey="p" href="extractor.html"><img src="../../images/prev.png" alt="Prev"></a><a accesskey="u" href="../concepts.html"><img src="../../images/up.png" alt="Up"></a><a accesskey="h" href="../index.html"><img src="../../images/home.png" alt="Home"></a><a accesskey="n" href="resultconverter.html"><img src="../../images/next.png" alt="Next"></a>
+</div>
+</body>
+</html>

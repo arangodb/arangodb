@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+  <head></head>
+  <body>
+    <h3>
+      Import Quickbook Test
+    </h3>
+    <p>
+      Macro 1: import-basic-inc1.quickbook Template 1: import-basic-1.6.quickbook
+    </p>
+    <p>
+      Macro 2: import-basic-inc2.quickbook Template 2: import-basic-1.6.quickbook
+    </p>
+  </body>
+</html>

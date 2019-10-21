@@ -1,0 +1,60 @@
+[/
+  Copyright 2014 Adam Wulkiewicz
+
+  Distributed under the Boost Software License, Version 1.0.
+
+  See accompanying file LICENSE_1_0.txt
+  or copy at http://boost.org/LICENSE_1_0.txt
+]
+
+[section:ignore_unused ignore_unused]
+
+[simplesect Authors]
+
+* Adam Wulkiewicz
+
+[endsimplesect]
+
+[section Header <boost/core/ignore_unused.hpp>]
+
+The header `<boost/core/ignore_unused.hpp>` defines the function template
+`boost::ignore_unused()`. It may be used to suppress the "unused variable" or
+"unused local typedefs" compiler warnings when the variable or typedef
+can't be removed or commented out, e.g. when some blocks of the code are
+conditionally activated. C++11 variadic templates are used if they're supported,
+otherwise they're emulated with overloads.
+
+[section Usage]
+
+``
+boost::ignore_unused(v1, v2, v3);
+boost::ignore_unused<T1, T2, T3>();
+``
+
+[endsect]
+
+[section Example]
+
+``
+int fun( int foo, int bar )
+{
+    boost::ignore_unused(bar);
+#ifdef ENABLE_DEBUG_OUTPUT
+    if ( foo < bar )
+        std::cerr << "warning! foo < bar";
+#endif
+    return foo + 2;
+}
+``
+
+[endsect]
+
+[endsect]
+
+[section Acknowledgments]
+
+`boost::ignore_unused()` was contributed by Adam Wulkiewicz.
+
+[endsect]
+
+[endsect]
