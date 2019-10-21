@@ -432,7 +432,7 @@ message(${V8_GYP_ARGS})
   list(APPEND LINK_DIRECTORIES "${V8_LIBRARY_DIR}")
 
   set(V8_LIBS
-    "v8_base_without_compiler;torque_base;v8_compiler;v8_libplatform;v8_libsampler;v8_libbase;v8_init;v8_initializers;v8_nosnapshot"
+    "v8_compiler;v8_base_without_compiler;v8_compiler;v8_base_without_compiler;torque_base;v8_libplatform;v8_libsampler;v8_libbase;v8_init;v8_initializers;v8_nosnapshot"
     CACHE INTERNAL
     "${PROJECT_NAME}: Libraries"
   )
