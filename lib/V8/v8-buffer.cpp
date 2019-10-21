@@ -1690,7 +1690,7 @@ void TRI_InitV8Buffer(v8::Isolate* isolate) {
   TRI_V8_AddProtoMethod(isolate, ft, TRI_V8_ASCII_STRING(isolate, "fill"), JS_Fill);
   TRI_V8_AddProtoMethod(isolate, ft, TRI_V8_ASCII_STRING(isolate, "copy"), JS_Copy);
 
-  ///   TRI_V8_AddMethod(isolate, ft, TRI_V8_ASCII_STRING(isolate, "byteLength"), JS_ByteLength);
+  TRI_V8_AddMethod(isolate, ft, TRI_V8_ASCII_STRING(isolate, "byteLength"), JS_ByteLength);
 
   // create the exports
   v8::Handle<v8::ObjectTemplate> exports = v8::ObjectTemplate::New(isolate);

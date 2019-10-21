@@ -97,7 +97,7 @@ static void ProcessCsvEnd(TRI_csv_parser_t* parser, char const* field, size_t,
   v8::Handle<v8::Number> r = v8::Integer::New(isolate, (int)row);
 
   v8::Handle<v8::Value> args[] = {*array, r};
-  auto ret = (*cb)->Call(TRI_IGETC, *cb, 2, args); // TODO retval?
+  (*cb)->Call(TRI_IGETC, *cb, 2, args).FromMaybe(v8::Local<v8::Value>());
 }
 
 }  // namespace
@@ -323,7 +323,7 @@ static void JS_ProcessJsonFile(v8::FunctionCallbackInfo<v8::Value> const& args) 
 
       v8::Handle<v8::Number> r = v8::Integer::New(isolate, (int)row);
       v8::Handle<v8::Value> args[] = {object, r};
-      cb->Call(TRI_IGETC, cb, 2, args);
+      cb->Call(TRI_IGETC, cb, 2, args).FromMaybe(v8::Local<v8::Value>());
 
       row++;
     }
