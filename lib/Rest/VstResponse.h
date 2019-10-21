@@ -34,6 +34,9 @@ class VstResponse : public GeneralResponse {
  public:
   VstResponse(ResponseCode code, uint64_t mid);
 
+ bool isResponseEmpty() const override {
+    return _payload.empty();
+ }
   // required by base
   uint64_t messageId() const override { return _messageId; }
   void setMessageId(uint64_t msgId) override { _messageId = msgId; }
