@@ -542,7 +542,7 @@
         var url = 'statistics/coordshort';
 
         if (frontendConfig.react) {
-          url = arangoHelper.databaseUrl('/_admin/aardvark/statistics/coordshort');
+          url = arangoHelper.databaseUrl('/_admin/aardvark/' + url);
         }
 
         $.ajax({
