@@ -28,7 +28,6 @@
 #include <fuerte/jwt.h>
 #include <fuerte/requests.h>
 #include <v8.h>
-#include <iostream>
 
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
@@ -44,9 +43,13 @@
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "Ssl/SslInterface.h"
 #include "V8/v8-conv.h"
-#include "V8/v8-json.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Parser.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
 
 #include <iostream>
 
@@ -1747,12 +1750,15 @@ v8::Local<v8::Value> V8ClientConnection::handleResult(v8::Isolate* isolate,
     char const* str = reinterpret_cast<char const*>(sb.data());
 
     if (res->isContentTypeJSON()) {
-      char* error = nullptr;
-      v8::Local<v8::Value> ret = TRI_FromJsonString(isolate, str, sb.size(), &error);
-      if (error != nullptr) {
+      v8::Local<v8::Value> ret;
+      auto builder = std::make_shared<VPackBuilder>();
+      VPackParser parser(builder);
+      try {
+        parser.parse(str, sb.size());
+        ret = TRI_VPackToV8(isolate, builder->slice(), parser.options, nullptr); 
+      } catch (std::exception const& ex) {
         std::string err("Error parsing the server JSON reply: ");
-        err += error;
-        free(error);
+        err += ex.what();
         TRI_CreateErrorObject(isolate, TRI_ERROR_HTTP_CORRUPTED_JSON, err, true);
       }
       return ret;
