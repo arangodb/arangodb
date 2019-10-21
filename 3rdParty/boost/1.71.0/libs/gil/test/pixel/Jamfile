@@ -1,0 +1,25 @@
+# Boost.GIL (Generic Image Library) - tests
+#
+# Copyright (c) 2019 Mateusz Loskot <mateusz@loskot.net>
+#
+# Distributed under the Boost Software License, Version 1.0.
+# (See accompanying file LICENSE_1_0.txt or
+# copy at http://www.boost.org/LICENSE_1_0.txt)
+
+import testing ;
+
+project
+    : requirements
+    <include>..
+    ;
+
+compile bit_aligned_pixel_reference.cpp ;
+compile concepts.cpp ;
+compile is_pixel.cpp ;
+compile is_planar.cpp ;
+compile num_channels.cpp ;
+compile packed_pixel.cpp ;
+compile pixel_reference_is_mutable.cpp ;
+compile pixels_are_compatible.cpp ;
+
+run test_fixture.cpp /boost/test//boost_unit_test_framework : : : <link>shared:<define>BOOST_TEST_DYN_LINK=1 ;

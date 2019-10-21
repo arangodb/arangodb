@@ -1,0 +1,31 @@
+# Boost.GIL (Generic Image Library) - tests
+#
+# Copyright (c) 2007-2015 Andrey Semashev
+# Copyright (c) 2008 Lubomir Bourdev, Hailin Jin
+# Copyright (c) 2018-2019 Mateusz Loskot <mateusz@loskot.net>
+# Copyright (c) 2018 Dmitry Arkhipov
+#
+# Distributed under the Boost Software License, Version 1.0.
+# (See accompanying file LICENSE_1_0.txt or
+# copy at http://www.boost.org/LICENSE_1_0.txt)
+
+import testing ;
+
+project
+  : requirements
+    <include>.
+    <define>BOOST_GIL_USE_CONCEPT_CHECK
+  ;
+
+build-project point ;
+build-project channel ;
+build-project color ;
+build-project pixel ;
+build-project iterator ;
+build-project locator ;
+build-project image ;
+build-project image_view ;
+build-project algorithm ;
+build-project legacy ;
+
+run promote_integral.cpp /boost/test//boost_unit_test_framework : : : <link>shared:<define>BOOST_TEST_DYN_LINK=1 ;

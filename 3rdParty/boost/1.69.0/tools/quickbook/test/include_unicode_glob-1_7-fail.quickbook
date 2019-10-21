@@ -1,5 +1,0 @@
-[article Unicode glob
-[quickbook 1.7]
-]
-
-[include £*.quickbook]

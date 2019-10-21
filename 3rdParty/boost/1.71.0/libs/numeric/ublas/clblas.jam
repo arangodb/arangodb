@@ -1,0 +1,114 @@
+# Copyright (c) 2018 Stefan Seefeld
+#
+# Use, modification and distribution is subject to the Boost Software
+# License Version 1.0. (See accompanying file LICENSE_1_0.txt or
+# http://www.boost.org/LICENSE_1_0.txt)
+
+# Supports the clblas library
+#
+# After 'using clblas', the following targets are available:
+#
+# /clblas//clblas -- The clblas library
+
+import project ;
+import ac ;
+import errors ;
+import feature ;
+import "class" : new ;
+import targets ; 
+import modules ;
+import property-set ;
+import toolset : using ;
+
+using opencl ;
+
+header = clBLAS.h ;
+names = clBLAS ;
+
+library-id = 0 ;
+
+if --debug-configuration in [ modules.peek : ARGV ]
+{
+    .debug =  true ;
+}
+
+# Initializes the clblas library.
+#
+# Options for configuring clblas::
+#
+#   <search>
+#       The directory containing the clblas library.
+#   <name>
+#       Overrides the default library name.
+#   <include>
+#       The directory containing the clblas headers.
+#
+# Examples::
+#
+#   # Find clblas in the default system location
+#   using clblas ;
+#   # Find clblas in /usr/local
+#   using clblas : 1.2.7
+#     : <include>/usr/local/include <search>/usr/local/lib ;
+#
+rule init ( version ? :      # The clblas version (currently ignored)
+            options * :      # A list of the options to use
+            requirements * ) # The requirements for the clblas target
+{
+    local caller = [ project.current ] ;
+
+    if ! $(.initialized)
+    {
+        .initialized = true ;
+
+        project.initialize $(__name__) ;
+        .project = [ project.current ] ;
+        project clblas ;
+    }
+
+    local library-path = [ feature.get-values <search> : $(options) ] ;
+    local include-path = [ feature.get-values <include> : $(options) ] ;
+    local library-name = [ feature.get-values <name> : $(options) ] ;
+
+    if ! $(library-path) && ! $(include-path) && ! $(library-name)
+    {
+        is-default = true ;
+    }
+
+    condition = [ property-set.create $(requirements) ] ;
+    condition = [ property-set.create [ $(condition).base ] ] ;
+
+    if $(.configured.$(condition))
+    {
+        if $(is-default)
+        {
+            if $(.debug)
+            {
+                ECHO "notice: [clblas] clblas is already configured" ;
+            }
+        }
+        else
+        {
+            errors.user-error "clblas is already configured" ;
+        }
+        return ;
+    }
+    else
+    {
+        if $(.debug)
+        {
+            ECHO "notice: [clblas] Using pre-installed library" ;
+            if $(condition)
+            {
+                ECHO "notice: [clblas] Condition" [ $(condition).raw ] ;
+            }
+        }
+
+        local mt = [ new ac-library clblas : $(.project) : $(condition) :
+            $(include-path) : $(library-path) : $(library-name) ] ;
+        $(mt).set-header $(header) ;
+        $(mt).set-default-names $(names) ;
+        targets.main-target-alternative $(mt) ;
+    }
+    .configured.$(condition) = true ;
+}

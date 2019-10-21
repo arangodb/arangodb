@@ -1,0 +1,112 @@
+# Copyright 2016-2017 Klemens David Morgenstern
+# Copyright 2018 Mateusz Loskot <mateusz@loskot.net>
+# Copyright 2018-2019 Hans Dembinski
+#
+# Use, modification and distribution is subject to the Boost Software License,
+# Version 1.0. (See accompanying file LICENSE_1_0.txt or copy at
+# http://www.boost.org/LICENSE_1_0.txt)
+
+import os ;
+import regex ;
+import testing ;
+import ../../config/checks/config : requires ;
+
+path-constant THIS_PATH : . ;
+
+project
+    : requirements
+    [ requires
+      cxx14_constexpr cxx14_decltype_auto cxx14_generic_lambdas cxx14_return_type_deduction cxx11_user_defined_literals
+      # list could go on...
+    ]
+    ;
+
+alias cxx14 :
+    [ run algorithm_project_test.cpp ]
+    [ run algorithm_reduce_test.cpp ]
+    [ run algorithm_sum_test.cpp ]
+    [ run axis_category_test.cpp ]
+    [ run axis_integer_test.cpp ]
+    [ run axis_option_test.cpp ]
+    [ run axis_regular_test.cpp ]
+    [ run axis_size.cpp ]
+    [ run axis_traits_test.cpp ]
+    [ run axis_variable_test.cpp ]
+    [ run axis_variant_test.cpp ]
+    [ run detail_args_type_test.cpp ]
+    [ run detail_axes_test.cpp ]
+    [ run detail_convert_integer_test.cpp ]
+    [ run detail_compressed_pair_test.cpp ]
+    [ run detail_detect_test.cpp ]
+    [ run detail_limits_test.cpp ]
+    [ run detail_make_default_test.cpp ]
+    [ run detail_meta_test.cpp ]
+    [ run detail_misc_test.cpp ]
+    [ run detail_iterator_adaptor_test.cpp ]
+    [ run detail_large_int_test.cpp ]
+    [ run detail_linearize_test.cpp ]
+    [ run detail_operators_test.cpp ]
+    [ run detail_relaxed_equal_test.cpp ]
+    [ run detail_replace_default_test.cpp ]
+    [ run detail_safe_comparison_test.cpp ]
+    [ run detail_tuple_slice_test.cpp ]
+    [ run histogram_dynamic_test.cpp ]
+    [ run histogram_growing_test.cpp ]
+    [ run histogram_mixed_test.cpp ]
+    [ run histogram_operators_test.cpp ]
+    [ run histogram_test.cpp ]
+    [ run indexed_test.cpp ]
+    [ run internal_accumulators_test.cpp ]
+    [ run storage_adaptor_test.cpp ]
+    [ run unlimited_storage_test.cpp ]
+    [ run utility_test.cpp ]
+    ;
+
+alias cxx17 :
+    [ run deduction_guides_test.cpp ] :
+    [ requires cpp_deduction_guides ]
+    ;
+
+# check that useful error messages are produced when library is used incorrectly
+alias failure :
+    [ compile-fail make_histogram_fail0.cpp ]
+    [ compile-fail make_histogram_fail1.cpp ]
+    ;
+
+alias threading :
+    [ run histogram_threaded_test.cpp ]
+    [ run storage_adaptor_threaded_test.cpp ]
+    :
+    <threading>multi
+    ;
+
+# warnings are off for these other boost libraries, which tend to be not warning-free
+alias accumulators : [ run boost_accumulators_support_test.cpp ] : <warnings>off ;
+alias range : [ run boost_range_support_test.cpp ] : <warnings>off ;
+alias units : [ run boost_units_support_test.cpp ] : <warnings>off ;
+alias serialization :
+    [ run axis_variant_serialization_test.cpp libserial : $(THIS_PATH) ]
+    [ run histogram_serialization_test.cpp libserial : $(THIS_PATH) ]
+    [ run storage_adaptor_serialization_test.cpp libserial : $(THIS_PATH) ]
+    [ run unlimited_storage_serialization_test.cpp libserial : $(THIS_PATH) ]
+    ;
+
+alias libserial :
+    /boost/serialization//boost_serialization
+    :
+    <link>static <warnings>off <rtti>on
+    ;
+
+# "failure" not included in "all", because it is distracting
+alias all : cxx14 cxx17 threading accumulators range units serialization ;
+alias minimal : cxx14 cxx17 threading ;
+
+explicit cxx14 ;
+explicit cxx17 ;
+explicit failure ;
+explicit threading ;
+explicit accumulators ;
+explicit range ;
+explicit units ;
+explicit serialization ;
+explicit libserial ;
