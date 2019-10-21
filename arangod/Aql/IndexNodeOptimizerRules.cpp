@@ -99,16 +99,18 @@ namespace {
   // traversal state
   struct TraversalState {
     arangodb::aql::Variable const* variable;
+    arangodb::aql::Variable const* expansionVariable;
     NodeWithAttrs& nodeAttrs;
-    bool isSafeForOptimization;
+    bool optimize;
     bool wasAccess;
+    bool isExpansion;
   };
 
   // determines attributes referenced in an expression for the specified out variable
   bool getReferencedAttributes(arangodb::aql::AstNode* node,
                                arangodb::aql::Variable const* variable,
                                NodeWithAttrs& nodeAttrs) {
-    TraversalState state{variable, nodeAttrs, true, false};
+    TraversalState state{variable, nullptr, nodeAttrs, true, false, false};
 
     auto preVisitor = [&state](arangodb::aql::AstNode const* node,
         arangodb::aql::AstNode* parentNode, size_t childNumber) {
@@ -116,47 +118,83 @@ namespace {
         return false;
       }
 
-      if (node->type == arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
-        if (!state.wasAccess) {
-          state.nodeAttrs.attrs.emplace_back(
-            NodeWithAttrs::AttributeAndField{std::vector<arangodb::basics::AttributeName>{
-              {std::string(node->getStringValue(), node->getStringLength()), false}}, parentNode, childNumber, 0, 0, nullptr});
-          state.wasAccess = true;
-        } else {
-          state.nodeAttrs.attrs.back().attr.emplace_back(std::string(node->getStringValue(), node->getStringLength()), false);
+      switch (node->type) {
+        case arangodb::aql::NODE_TYPE_VARIABLE: {
+          if (state.isExpansion && state.expansionVariable == nullptr) {
+            state.expansionVariable = static_cast<arangodb::aql::Variable const*>(node->getData());
+            return true;
+          }
+          break;
         }
-        return true;
-      }
-
-      if (node->type == arangodb::aql::NODE_TYPE_REFERENCE) {
-        // reference to a variable
-        auto v = static_cast<arangodb::aql::Variable const*>(node->getData());
-        if (v == state.variable) {
+        case arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS:
           if (!state.wasAccess) {
-            // we haven't seen an attribute access directly before...
-            // this may have been an access to an indexed property, e.g. value[0]
-            // or a reference to the complete value, e.g. FUNC(value) note that
-            // this is unsafe to optimize this away
-            state.isSafeForOptimization = false;
+            state.nodeAttrs.attrs.emplace_back(
+              NodeWithAttrs::AttributeAndField{std::vector<arangodb::basics::AttributeName>{
+                {std::string(node->getStringValue(), node->getStringLength()), false}}, parentNode, childNumber, 0, 0, nullptr});
+            state.wasAccess = true;
+          } else {
+            state.nodeAttrs.attrs.back().attr.emplace_back(std::string(node->getStringValue(), node->getStringLength()), false);
+          }
+          return true;
+        case arangodb::aql::NODE_TYPE_EXPANSION: {
+          TRI_ASSERT(!state.wasAccess);
+          TRI_ASSERT(node->numMembers() >= 2);
+          auto left = node->getMemberUnchecked(0);
+          TRI_ASSERT(left->type == arangodb::aql::NODE_TYPE_ITERATOR);
 
-            return false;
-          }
-        } else {
-          if (state.wasAccess) {
-            state.wasAccess = false;
-            state.nodeAttrs.attrs.pop_back();
-          }
+          auto right = node->getMemberUnchecked(1);
+          TRI_ASSERT(right->type == arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS ||
+                     right->type == arangodb::aql::NODE_TYPE_REFERENCE);
+          state.isExpansion = true;
+
+          return true;
         }
-        // finish an attribute path
-        state.wasAccess = false;
-        return true;
+        case arangodb::aql::NODE_TYPE_ITERATOR:
+          if (!state.wasAccess && state.isExpansion) {
+            return true;
+          }
+          break;
+        case arangodb::aql::NODE_TYPE_REFERENCE: {
+          // reference to a variable
+          auto v = static_cast<arangodb::aql::Variable const*>(node->getData());
+          auto isExp = state.isExpansion && v == state.expansionVariable;
+          if (v == state.variable || isExp) {
+            if (!(isExp || state.wasAccess)) {
+              // we haven't seen an attribute access directly before
+              state.optimize = false;
+
+              return false;
+            }
+            if (state.wasAccess) {
+              std::reverse(state.nodeAttrs.attrs.back().attr.begin(), state.nodeAttrs.attrs.back().attr.end());
+              if (isExp) {
+                TRI_ASSERT(state.nodeAttrs.attrs.size() > 1);
+                auto attrAndField = state.nodeAttrs.attrs.end();
+                std::advance(attrAndField, -2);
+                attrAndField->attr.insert(attrAndField->attr.end(), state.nodeAttrs.attrs.back().attr.cbegin(), state.nodeAttrs.attrs.back().attr.cend());
+                state.isExpansion = false;
+                state.expansionVariable = nullptr;
+                state.nodeAttrs.attrs.pop_back();
+              }
+            }
+          } else {
+            if (state.wasAccess) {
+              state.wasAccess = false;
+              state.nodeAttrs.attrs.pop_back();
+            }
+          }
+          // finish an attribute path
+          state.wasAccess = false;
+          return true;
+        }
+        default:
+          break;
       }
 
       if (state.wasAccess) {
-        // must be access or reference
-        // TODO: arrays
+        // not appropriate node type
         state.wasAccess = false;
-        state.isSafeForOptimization = false;
+        state.optimize = false;
 
         return false;
       }
@@ -167,7 +205,7 @@ namespace {
 
     traverseReadOnly(node, nullptr, 0, preVisitor);
 
-    return state.isSafeForOptimization;
+    return state.optimize;
   }
 }
 

@@ -171,7 +171,7 @@ IndexExecutorInfos::IndexExecutorInfos(
       _expInRegs(std::move(expInRegs)),
       _nonConstExpression(std::move(nonConstExpression)),
       _outputRegisterId(outputRegister),
-      _outNonMaterializedIndRegs(outNonMaterializedIndRegs),
+      _outNonMaterializedIndRegs(std::move(outNonMaterializedIndRegs)),
       _hasMultipleExpansions(false),
       _useRawDocumentPointers(useRawDocumentPointers),
       _produceResult(produceResult),
