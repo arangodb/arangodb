@@ -861,6 +861,10 @@ function BaseTestConfig () {
     testSyncView: function () {
       connectToMaster();
 
+      // create custom analyzer
+      let analyzers = require('@arangodb/analyzers');
+      let analyzer = analyzers.save('custom', 'delimiter', { delimiter: ' ' }, ['frequency']);
+
       //  create view & collection on master
       db._flushCache();
       db._create(cn);
@@ -891,7 +895,7 @@ function BaseTestConfig () {
         links[cn] = {
           includeAllFields: true,
           fields: {
-            text: { analyzers: ['text_en'] }
+              text: { analyzers: ['text_en', 'custom' ] }
           }
         };
         view.properties({ links });
@@ -901,6 +905,15 @@ function BaseTestConfig () {
       connectToSlave();
 
       replication.sync({ endpoint: masterEndpoint });
+
+      // check replicated analyzer
+      {
+        let analyzerSlave = analyzers.analyzer('custom');
+        assertEqual(analyzer.name, analyzerSlave.name());
+        assertEqual(analyzer.type, analyzerSlave.type());
+        assertEqual(analyzer.properties, analyzerSlave.properties());
+        assertEqual(analyzer.features, analyzerSlave.features());
+      }
 
       {
         let view = db._view(cn + 'View');
