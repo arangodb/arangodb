@@ -40,10 +40,11 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestBatchHandler::RestBatchHandler(GeneralRequest* request, GeneralResponse* response)
-    : RestVocbaseBaseHandler(request, response), _errors(0) {}
+RestBatchHandler::RestBatchHandler(application_features::ApplicationServer& server,
+                                   GeneralRequest* request, GeneralResponse* response)
+    : RestVocbaseBaseHandler(server, request, response), _errors(0) {}
 
-RestBatchHandler::~RestBatchHandler() {}
+RestBatchHandler::~RestBatchHandler() = default;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock JSF_batch_processing
@@ -209,9 +210,8 @@ bool RestBatchHandler::executeNextHandler() {
   {
     auto response = std::make_unique<HttpResponse>(rest::ResponseCode::SERVER_ERROR,
                                                    std::make_unique<StringBuffer>(false));
-    handler.reset(
-        GeneralServerFeature::HANDLER_FACTORY->createHandler(std::move(request),
-                                                             std::move(response)));
+    handler.reset(GeneralServerFeature::HANDLER_FACTORY->createHandler(
+        server(), std::move(request), std::move(response)));
 
     if (handler == nullptr) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,

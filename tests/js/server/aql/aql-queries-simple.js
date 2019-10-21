@@ -41,20 +41,6 @@ var assertQueryError = helper.assertQueryError;
 function ahuacatlQuerySimpleTestSuite () {
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
-
-    setUp : function () {
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
-
-    tearDown : function () {
-    },
-    
     testNoArraySorting1 : function () {
       let query = "LET values = [9,16,8,15,7,14,6,13,5,12,4,11,3,10,2,1] RETURN values";
       assertEqual([9, 16, 8, 15, 7, 14, 6, 13, 5, 12, 4, 11, 3, 10, 2, 1], AQL_EXECUTE(query).json[0]);
@@ -1338,7 +1324,16 @@ function ahuacatlQuerySimpleTestSuite () {
         var actual = getQueryResults(query[0]);
         assertEqual(query[1], actual);
       });
-    }
+    },
+
+    testForWithoutArray : function () {
+      let values = [ null, false, true, -1, 0, 1.5, 9999, {} ];
+      values.forEach(function(value) {
+        assertQueryError(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "LET a = @value FOR x IN a RETURN 1", { value }); 
+      
+        assertQueryError(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "LET a = NOOPT(@value) FOR x IN a RETURN 1", { value }); 
+      });
+    },
 
   };
 }

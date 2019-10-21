@@ -46,17 +46,12 @@ struct MessageHeader {
   short version() const { return _version; }
   void setVersion(short v) { _version = v; }
 
-  /// Header meta data (equivalent to HTTP headers)
-  StringMap meta;
-
-#ifdef FUERTE_DEBUG
-  std::size_t byteSize;  // for debugging
-#endif
-
  public:
   // Header metadata helpers
-  void addMeta(std::string const& key, std::string const& value);
+  void addMeta(std::string key, std::string value);
   void addMeta(StringMap const&);
+  void setMeta(StringMap);
+  StringMap const& meta() const { return _meta; }
 
   // Get value for header metadata key, returns empty string if not found.
   std::string const& metaByKey(std::string const& key) const {
@@ -66,25 +61,20 @@ struct MessageHeader {
   std::string const& metaByKey(std::string const& key, bool& found) const;
 
   // content type accessors
-  inline std::string const& contentTypeString() const {
-    return metaByKey(fu_content_type_key);
-  }
-
-  inline ContentType contentType() const {
-    return to_ContentType(contentTypeString());
-  }
-
+  inline ContentType contentType() const { return _contentType; }
   void contentType(std::string const& type);
-  void contentType(ContentType type);
+  void contentType(ContentType type) {
+    _contentType = type;
+  }
 
  protected:
+  StringMap _meta;  /// Header meta data (equivalent to HTTP headers)
   short _version;
+  ContentType _contentType = ContentType::Unset;
+  ContentType _acceptType = ContentType::Unset;
 };
 
 struct RequestHeader final : public MessageHeader {
-  /// HTTP method
-  RestVerb restVerb = RestVerb::Illegal;
-
   /// Database that is the target of the request
   std::string database;
 
@@ -94,12 +84,14 @@ struct RequestHeader final : public MessageHeader {
   /// Query parameters
   StringMap parameters;
 
+  /// HTTP method
+  RestVerb restVerb = RestVerb::Illegal;
+
  public:
   // accept header accessors
-  std::string acceptTypeString() const;
-  ContentType acceptType() const;
-  void acceptType(std::string const& type);
-  void acceptType(ContentType type);
+  ContentType acceptType() const { return _acceptType; }
+  void acceptType(ContentType type) { _acceptType = type; }
+  void acceptType(std::string const& type) { _acceptType = to_ContentType(type); }
 
   // query parameter helpers
   void addParameter(std::string const& key, std::string const& value);
@@ -157,7 +149,6 @@ class Message {
   }
 
   /// content-type header accessors
-  std::string contentTypeString() const;
   ContentType contentType() const;
 
   bool isContentTypeJSON() const;
@@ -172,11 +163,8 @@ class Request final : public Message {
   static constexpr std::chrono::milliseconds defaultTimeout =
       std::chrono::milliseconds(300 * 1000);
 
-  Request(RequestHeader&& messageHeader = RequestHeader())
+  Request(RequestHeader messageHeader = RequestHeader())
       : header(std::move(messageHeader)), _timeout(defaultTimeout) {}
-
-  Request(RequestHeader const& messageHeader)
-      : header(messageHeader), _timeout(defaultTimeout) {}
 
   /// @brief request header
   RequestHeader header;
@@ -189,13 +177,12 @@ class Request final : public Message {
   ///////////////////////////////////////////////
 
   // accept header accessors
-  std::string acceptTypeString() const;
   ContentType acceptType() const;
 
   ///////////////////////////////////////////////
   // add payload
   ///////////////////////////////////////////////
-  void addVPack(velocypack::Slice const& slice);
+  void addVPack(velocypack::Slice const slice);
   void addVPack(velocypack::Buffer<uint8_t> const& buffer);
   void addVPack(velocypack::Buffer<uint8_t>&& buffer);
   void addBinary(uint8_t const* data, std::size_t length);
@@ -221,10 +208,13 @@ class Request final : public Message {
 };
 
 // Response contains the message resulting from a request to a server.
-class Response final : public Message {
+class Response : public Message {
  public:
-  Response(ResponseHeader&& reqHeader = ResponseHeader())
+  Response(ResponseHeader reqHeader = ResponseHeader())
       : header(std::move(reqHeader)), _payloadOffset(0) {}
+
+  Response(Response const&) = delete;
+  Response& operator=(Response const&) = delete;
 
   /// @brief request header
   ResponseHeader header;
@@ -236,13 +226,15 @@ class Response final : public Message {
   ///////////////////////////////////////////////
 
   // statusCode returns the (HTTP) status code for the request (200==OK).
-  StatusCode statusCode() { return header.responseCode; }
+  StatusCode statusCode() const noexcept { return header.responseCode; }
   // checkStatus returns true if the statusCode equals one of the given valid
   // code, false otherwise.
-  bool checkStatus(std::initializer_list<StatusCode> validStatusCodes) {
+  bool checkStatus(std::initializer_list<StatusCode> validStatusCodes) const {
     auto actual = statusCode();
     for (auto code : validStatusCodes) {
-      if (code == actual) return true;
+      if (code == actual) {
+        return true;
+      }
     }
     return false;
   }

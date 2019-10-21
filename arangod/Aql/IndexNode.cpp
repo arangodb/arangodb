@@ -22,18 +22,21 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IndexNode.h"
+
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
 #include "Aql/Condition.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/Expression.h"
 #include "Aql/IndexExecutor.h"
 #include "Aql/Query.h"
+#include "Aql/RegisterPlan.h"
+#include "Aql/SingleRowFetcher.h"
 #include "Basics/AttributeNameParser.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -105,7 +108,7 @@ IndexNode::IndexNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
         TRI_ERROR_BAD_PARAMETER, "\"condition\" attribute should be an object");
   }
 
-  _condition.reset(Condition::fromVPack(plan, condition));
+  _condition = Condition::fromVPack(plan, condition);
 
   TRI_ASSERT(_condition != nullptr);
 
@@ -171,15 +174,16 @@ void IndexNode::initIndexCoversProjections() {
 }
 
 /// @brief toVelocyPack, for IndexNode
-void IndexNode::toVelocyPackHelper(VPackBuilder& builder, unsigned flags) const {
+void IndexNode::toVelocyPackHelper(VPackBuilder& builder, unsigned flags,
+                                   std::unordered_set<ExecutionNode const*>& seen) const {
   // call base class method
-  ExecutionNode::toVelocyPackHelperGeneric(builder, flags);
+  ExecutionNode::toVelocyPackHelperGeneric(builder, flags, seen);
 
   // add outvariable and projections
-  DocumentProducingNode::toVelocyPack(builder);
+  DocumentProducingNode::toVelocyPack(builder, flags);
 
   // add collection information
-  CollectionAccessingNode::toVelocyPack(builder);
+  CollectionAccessingNode::toVelocyPack(builder, flags);
 
   // Now put info about vocbase and cid in there
   builder.add("needsGatherNodeSort", VPackValue(_needsGatherNodeSort));
@@ -249,7 +253,7 @@ void IndexNode::initializeOnce(bool hasV8Expression, std::vector<Variable const*
 
     hasV8Expression |= e->willUseV8();
 
-    arangodb::HashSet<Variable const*> innerVars;
+    ::arangodb::containers::HashSet<Variable const*> innerVars;
     e->variables(innerVars);
 
     nonConstExpressions.emplace_back(
@@ -259,7 +263,7 @@ void IndexNode::initializeOnce(bool hasV8Expression, std::vector<Variable const*
       inVars.emplace_back(v);
       auto it = getRegisterPlan()->varInfo.find(v->id);
       TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
-      TRI_ASSERT(it->second.registerId < ExecutionNode::MaxRegisterId);
+      TRI_ASSERT(it->second.registerId < RegisterPlan::MaxRegisterId);
       inRegs.emplace_back(it->second.registerId);
     }
   };
@@ -381,8 +385,9 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
                            getRegisterPlan()->nrRegs[previousNode->getDepth()],
                            getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
                            calcRegsToKeep(), &engine, this->_collection, _outVariable,
-                           this->isVarUsedLater(_outVariable), this->projections(),
-                           trxPtr, this->coveringIndexAttributePositions(),
+                           (this->isVarUsedLater(_outVariable) || this->_filter != nullptr),
+                           this->_filter.get(), this->projections(),
+                           this->coveringIndexAttributePositions(),
                            EngineSelectorFeature::ENGINE->useRawDocumentPointers(),
                            std::move(nonConstExpressions), std::move(inVars),
                            std::move(inRegs), hasV8Expression, _condition->root(),
@@ -407,14 +412,12 @@ ExecutionNode* IndexNode::clone(ExecutionPlan* plan, bool withDependencies,
   c->projections(_projections);
   c->needsGatherNodeSort(_needsGatherNodeSort);
   c->initIndexCoversProjections();
-  c->_prototypeCollection = _prototypeCollection;
-  c->_prototypeOutVariable = _prototypeOutVariable;
-
+  CollectionAccessingNode::cloneInto(*c);
   return cloneHelper(std::move(c), withDependencies, withProperties);
 }
 
 /// @brief destroy the IndexNode
-IndexNode::~IndexNode() {}
+IndexNode::~IndexNode() = default;
 
 /// @brief the cost of an index node is a multiple of the cost of
 /// its unique dependency
@@ -435,7 +438,8 @@ CostEstimate IndexNode::estimateCost() const {
 
     if (root != nullptr && root->numMembers() > i) {
       arangodb::aql::AstNode const* condition = root->getMember(i);
-      costs = _indexes[i].getIndex()->supportsFilterCondition(std::vector<std::shared_ptr<Index>>(), condition, _outVariable, itemsInCollection);
+      costs = _indexes[i].getIndex()->supportsFilterCondition(
+          std::vector<std::shared_ptr<Index>>(), condition, _outVariable, itemsInCollection);
     }
 
     totalItems += costs.estimatedItems;
@@ -448,8 +452,33 @@ CostEstimate IndexNode::estimateCost() const {
 }
 
 /// @brief getVariablesUsedHere, modifying the set in-place
-void IndexNode::getVariablesUsedHere(arangodb::HashSet<Variable const*>& vars) const {
+void IndexNode::getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& vars) const {
   Ast::getReferencedVariables(_condition->root(), vars);
 
   vars.erase(_outVariable);
 }
+ExecutionNode::NodeType IndexNode::getType() const { return INDEX; }
+
+Condition* IndexNode::condition() const { return _condition.get(); }
+
+IndexIteratorOptions IndexNode::options() const { return _options; }
+
+void IndexNode::setAscending(bool value) { _options.ascending = value; }
+
+bool IndexNode::needsGatherNodeSort() const { return _needsGatherNodeSort; }
+
+void IndexNode::needsGatherNodeSort(bool value) {
+  _needsGatherNodeSort = value;
+}
+
+std::vector<Variable const*> IndexNode::getVariablesSetHere() const {
+  return std::vector<Variable const*>{_outVariable};
+}
+
+std::vector<transaction::Methods::IndexHandle> const& IndexNode::getIndexes() const {
+  return _indexes;
+}
+
+NonConstExpression::NonConstExpression(std::unique_ptr<Expression> exp,
+                                       std::vector<size_t>&& idxPath)
+    : expression(std::move(exp)), indexPath(std::move(idxPath)) {}

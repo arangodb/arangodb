@@ -67,18 +67,36 @@ function NewAqlReplaceORWithINTestSuite () {
 /// @brief set up
 ////////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
+    setUpAll : function () {
       internal.debugClearFailAt();
       internal.db._drop("UnitTestsNewAqlReplaceORWithINTestSuite");
       replace = internal.db._create("UnitTestsNewAqlReplaceORWithINTestSuite");
 
+      let docs = [];
       for (var i = 1; i <= 10; ++i) {
-        replace.save({ "value" : i, x: [i]});
-        replace.save({"a" : {"b" : i}});
-        replace.save({"value": i + 10, "bb": i, "cc": 10 - i });
-
+        docs.push({ "value" : i, x: [i]});
+        docs.push({"a" : {"b" : i}});
+        docs.push({"value": i + 10, "bb": i, "cc": 10 - i });
       }
+      replace.insert(docs);
+    },
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tear down
+////////////////////////////////////////////////////////////////////////////////
+
+    tearDownAll : function () {
+      internal.debugClearFailAt();
+      internal.db._drop("UnitTestsNewAqlReplaceORWithINTestSuite");
+      replace = null;
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set up
+////////////////////////////////////////////////////////////////////////////////
+
+    setUp : function () {
+      internal.debugClearFailAt();
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -87,8 +105,6 @@ function NewAqlReplaceORWithINTestSuite () {
 
     tearDown : function () {
       internal.debugClearFailAt();
-      internal.db._drop("UnitTestsNewAqlReplaceORWithINTestSuite");
-      replace = null;
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -96,7 +112,7 @@ function NewAqlReplaceORWithINTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testOom : function () {
-      if (! internal.debugCanUseFailAt()) {
+      if (!internal.debugCanUseFailAt()) {
         return;
       }
       internal.debugSetFailAt("OptimizerRules::replaceOrWithInRuleOom");

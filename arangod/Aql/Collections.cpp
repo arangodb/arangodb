@@ -96,3 +96,5 @@ std::map<std::string, Collection*>* Collections::collections() {
 std::map<std::string, Collection*> const* Collections::collections() const {
   return &_collections;
 }
+
+bool Collections::empty() const { return _collections.empty(); }

@@ -27,12 +27,16 @@
 #include "Basics/Common.h"
 
 #include "GeneralServer/RequestLane.h"
+#include "Network/Methods.h"
 #include "Rest/GeneralResponse.h"
 
 #include <atomic>
 #include <thread>
 
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
 namespace basics {
 class Exception;
 }
@@ -61,7 +65,7 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   static thread_local RestHandler const* CURRENT_HANDLER;
 
  public:
-  RestHandler(GeneralRequest*, GeneralResponse*);
+  RestHandler(application_features::ApplicationServer&, GeneralRequest*, GeneralResponse*);
   virtual ~RestHandler();
 
  public:
@@ -75,6 +79,8 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   std::unique_ptr<GeneralResponse> stealResponse() {
     return std::move(_response);
   }
+
+  application_features::ApplicationServer& server() { return _server; };
 
   RequestStatistics* statistics() const { return _statistics.load(); }
   RequestStatistics* stealStatistics() { return _statistics.exchange(nullptr); }
@@ -92,8 +98,8 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   void continueHandlerExecution();
 
   /// @brief forwards the request to the appropriate server
-  bool forwardRequest();
-  
+  futures::Future<Result> forwardRequest(bool& forwarded);
+
   void handleExceptionPtr(std::exception_ptr) noexcept;
 
  public:
@@ -133,10 +139,10 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   ///
   /// This method will be called to determine if the request should be
   /// forwarded to another server, and if so, which server. If it should be
-  /// handled by this server, the method should return 0. Otherwise, this
-  /// method should return a valid (non-zero) short ID (TransactionID) for the
+  /// handled by this server, the method should return an empty string.
+  /// Otherwise, this method should return a valid short name for the
   /// target server.
-  virtual uint32_t forwardingTarget() { return 0; }
+  virtual std::string forwardingTarget() { return ""; }
 
   void resetResponse(rest::ResponseCode);
 
@@ -155,12 +161,12 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
       return RestStatus::DONE;
     }
     bool done = false;
-    auto self = shared_from_this();
-    std::move(f).thenFinal([self, this, &done](futures::Try<T>) -> void {
-      if (std::this_thread::get_id() == _executionMutexOwner.load()) {
+    std::move(f).thenFinal([self = shared_from_this(), &done](futures::Try<T>) -> void {
+      auto thisPtr = self.get();
+      if (std::this_thread::get_id() == thisPtr->_executionMutexOwner.load()) {
         done = true;
       } else {
-        this->continueHandlerExecution();
+        thisPtr->continueHandlerExecution();
       }
     });
     return done ? RestStatus::DONE : RestStatus::WAITING;
@@ -190,10 +196,9 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   };
 
   std::atomic<bool> _canceled;
-
   std::unique_ptr<GeneralRequest> _request;
   std::unique_ptr<GeneralResponse> _response;
-
+  application_features::ApplicationServer& _server;
   std::atomic<RequestStatistics*> _statistics;
   HandlerState _state;
 

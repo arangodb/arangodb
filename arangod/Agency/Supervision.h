@@ -90,7 +90,7 @@ class Supervision : public arangodb::CriticalThread {
   };
 
   /// @brief Construct sanity checking
-  Supervision();
+  explicit Supervision(application_features::ApplicationServer& server);
 
   /// @brief Default dtor
   ~Supervision();

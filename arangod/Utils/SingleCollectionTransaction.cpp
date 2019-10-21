@@ -22,12 +22,16 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "SingleCollectionTransaction.h"
+#include "Basics/StringUtils.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalDataSource.h"
+
+#include "Logger/Logger.h"
+#include "Logger/LogMacros.h"
 
 namespace arangodb {
 
@@ -59,7 +63,7 @@ SingleCollectionTransaction::SingleCollectionTransaction(
       _accessType(accessType) {
   // add the (sole) collection
   _cid = resolver()->getCollectionId(name);
-  Result res = addCollection(_cid, name.c_str(), _accessType);
+  Result res = addCollection(_cid, name, _accessType);
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }
@@ -86,13 +90,24 @@ TransactionCollection* SingleCollectionTransaction::resolveTrxCollection() {
 /// note that we have two identical versions because this is called
 /// in two different situations
 LogicalCollection* SingleCollectionTransaction::documentCollection() {
-  if (_documentCollection != nullptr) {
-    return _documentCollection;
+  if (_documentCollection == nullptr) {
+    resolveTrxCollection();
   }
-
-  resolveTrxCollection();
   TRI_ASSERT(_documentCollection != nullptr);
   return _documentCollection;
+}
+  
+TRI_voc_cid_t SingleCollectionTransaction::addCollectionAtRuntime(std::string const& name,
+                                                                  AccessMode::Type type) {
+  // sanity check
+  TRI_ASSERT(!name.empty());
+  if ((name[0] < '0' || name[0] > '9') && 
+      name != resolveTrxCollection()->collectionName()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION, 
+                                   std::string(TRI_errno_string(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION)) + ": " + name);
+  }
+
+  return _cid;
 }
 
 /// @brief get the underlying collection's name

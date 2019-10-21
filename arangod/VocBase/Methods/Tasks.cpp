@@ -85,8 +85,12 @@ std::shared_ptr<Task> Task::createTask(std::string const& id, std::string const&
 
     return nullptr;
   }
-  
-  if (application_features::ApplicationServer::isStopping()) {
+
+  TRI_ASSERT(nullptr != vocbase);  // this check was previously in the
+  // DatabaseGuard constructor which on failure
+  // would fail Task constructor
+
+  if (vocbase->server().isStopping()) {
     ec = TRI_ERROR_SHUTTING_DOWN;
     return nullptr;
   }
@@ -242,7 +246,7 @@ Task::Task(std::string const& id, std::string const& name, TRI_vocbase_t& vocbas
       _offset(0),
       _interval(0) {}
 
-Task::~Task() {}
+Task::~Task() = default;
 
 void Task::setOffset(double offset) {
   _offset = std::chrono::milliseconds(static_cast<long long>(offset * 1000));
@@ -290,7 +294,7 @@ std::function<void(bool cancelled)> Task::callbackFunction() {
     }
 
     // permissions might have changed since starting this task
-    if (application_features::ApplicationServer::isStopping() || !allowContinue) {
+    if (_dbGuard->database().server().isStopping() || !allowContinue) {
       Task::unregisterTask(_id, true);
       return;
     }
@@ -303,7 +307,7 @@ std::function<void(bool cancelled)> Task::callbackFunction() {
                                                  : execContext.get());
             work(execContext.get());
 
-            if (_periodic.load() && !application_features::ApplicationServer::isStopping()) {
+            if (_periodic.load() && !_dbGuard->database().server().isStopping()) {
               // requeue the task
               bool queued = basics::function_utils::retryUntilTimeout(
                   [this]() -> bool { return queue(_interval); }, Logger::FIXME,

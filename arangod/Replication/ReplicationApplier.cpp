@@ -46,12 +46,15 @@ using namespace arangodb;
 /// @brief common replication applier
 struct ApplierThread : public Thread {
  public:
-  ApplierThread(ReplicationApplier* applier, std::shared_ptr<Syncer> syncer)
-      : Thread("ReplicationApplier"), _applier(applier), _syncer(std::move(syncer)) {
+  ApplierThread(application_features::ApplicationServer& server,
+                ReplicationApplier* applier, std::shared_ptr<Syncer> syncer)
+      : Thread(server, "ReplicationApplier"),
+        _applier(applier),
+        _syncer(std::move(syncer)) {
     TRI_ASSERT(_syncer);
   }
 
-  ~ApplierThread() {} // shutdown is called by derived implementations!
+  ~ApplierThread() = default; // shutdown is called by derived implementations!
 
   void run() override {
     TRI_ASSERT(_syncer != nullptr);
@@ -102,8 +105,9 @@ struct ApplierThread : public Thread {
 
 /// @brief sync thread class
 struct FullApplierThread final : public ApplierThread {
-  FullApplierThread(ReplicationApplier* applier, std::shared_ptr<InitialSyncer>&& syncer)
-      : ApplierThread(applier, std::move(syncer)) {}
+  FullApplierThread(application_features::ApplicationServer& server,
+                    ReplicationApplier* applier, std::shared_ptr<InitialSyncer>&& syncer)
+      : ApplierThread(server, applier, std::move(syncer)) {}
 
   ~FullApplierThread() { shutdown(); }
 
@@ -138,8 +142,9 @@ struct FullApplierThread final : public ApplierThread {
 
 /// @brief applier thread class. run only the tailing code
 struct TailingApplierThread final : public ApplierThread {
-  TailingApplierThread(ReplicationApplier* applier, std::shared_ptr<TailingSyncer>&& syncer)
-      : ApplierThread(applier, std::move(syncer)) {}
+  TailingApplierThread(application_features::ApplicationServer& server,
+                       ReplicationApplier* applier, std::shared_ptr<TailingSyncer>&& syncer)
+      : ApplierThread(server, applier, std::move(syncer)) {}
 
   ~TailingApplierThread() { shutdown(); }
 
@@ -306,7 +311,7 @@ void ReplicationApplier::doStart(std::function<void()>&& cb,
     writeLocker.unlock();
   }
 
-  if (application_features::ApplicationServer::isStopping()) {
+  if (_configuration._server.isStopping()) {
     // dont build a new applier if we shutting down
     THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
   }
@@ -342,7 +347,7 @@ void ReplicationApplier::startReplication() {
   doStart(
       [&]() {
         std::shared_ptr<InitialSyncer> syncer = buildInitialSyncer();
-        _thread.reset(new FullApplierThread(this, std::move(syncer)));
+        _thread.reset(new FullApplierThread(_configuration._server, this, std::move(syncer)));
       },
       ReplicationApplierState::ActivityPhase::INITIAL);
 }
@@ -360,7 +365,8 @@ void ReplicationApplier::startTailing(TRI_voc_tick_t initialTick, bool useTick,
             << ". initialTick: " << initialTick << ", useTick: " << useTick;
         std::shared_ptr<TailingSyncer> syncer =
             buildTailingSyncer(initialTick, useTick, barrierId);
-        _thread.reset(new TailingApplierThread(this, std::move(syncer)));
+        _thread.reset(new TailingApplierThread(_configuration._server, this,
+                                               std::move(syncer)));
       },
       ReplicationApplierState::ActivityPhase::TAILING);
 
@@ -616,7 +622,7 @@ Result ReplicationApplier::persistStateResult(bool doSync) {
 void ReplicationApplier::toVelocyPack(arangodb::velocypack::Builder& result) const {
   TRI_ASSERT(!result.isClosed());
 
-  ReplicationApplierConfiguration configuration;
+  ReplicationApplierConfiguration configuration(_configuration._server);
   ReplicationApplierState state;
 
   {
@@ -737,7 +743,6 @@ void ReplicationApplier::doStop(Result const& r, bool joinThread) {
             << "replication applier is not stopping";
         TRI_ASSERT(false);
         start = std::chrono::steady_clock::now();
-        ;
       }
       writeLocker.lock();
     }

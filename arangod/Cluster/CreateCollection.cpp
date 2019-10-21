@@ -103,7 +103,7 @@ CreateCollection::CreateCollection(MaintenanceFeature& feature, ActionDescriptio
   }
 }
 
-CreateCollection::~CreateCollection() {}
+CreateCollection::~CreateCollection() = default;
 
 bool CreateCollection::first() {
   auto const& database = _description.get(DATABASE);
@@ -121,12 +121,12 @@ bool CreateCollection::first() {
     DatabaseGuard guard(database);
     auto& vocbase = guard.database();
 
-    auto cluster = ApplicationServer::getFeature<ClusterFeature>("Cluster");
+    auto& cluster = _feature.server().getFeature<ClusterFeature>();
 
     bool waitForRepl =
         (props.hasKey(WAIT_FOR_SYNC_REPL) && props.get(WAIT_FOR_SYNC_REPL).isBool())
             ? props.get(WAIT_FOR_SYNC_REPL).getBool()
-            : cluster->createWaitsForSyncReplication();
+            : cluster.createWaitsForSyncReplication();
 
     bool enforceReplFact =
         (props.hasKey(ENF_REPL_FACT) && props.get(ENF_REPL_FACT).isBool())

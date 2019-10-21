@@ -26,28 +26,23 @@
 #ifndef ARANGOD_AQL_EXECUTION_BLOCK_IMPL_H
 #define ARANGOD_AQL_EXECUTION_BLOCK_IMPL_H 1
 
-#include <functional>
-#include <queue>
-
-#include "Aql/AllRowsFetcher.h"
 #include "Aql/ConstFetcher.h"
 #include "Aql/DependencyProxy.h"
 #include "Aql/ExecutionBlock.h"
-#include "Aql/ExecutionState.h"
-#include "Aql/ExecutionStats.h"
-#include "Aql/ExecutorInfos.h"
-#include "Aql/MultiDependencySingleRowFetcher.h"
-#include "Aql/SingleRowFetcher.h"
-#include "Aql/Stats.h"
-#include "OutputAqlItemRow.h"
+
+#include <functional>
+#include <memory>
+#include <queue>
 
 namespace arangodb {
 namespace aql {
 
 class AqlItemBlock;
-class InputAqlItemRow;
-class ExecutionNode;
 class ExecutionEngine;
+class ExecutionNode;
+class InputAqlItemRow;
+class OutputAqlItemRow;
+class Query;
 
 /**
  * @brief This is the implementation class of AqlExecutionBlocks.
@@ -103,7 +98,7 @@ class ExecutionBlockImpl final : public ExecutionBlock {
       typename aql::DependencyProxy<Executor::Properties::allowsBlockPassthrough>;
 
   static_assert(
-      !Executor::Properties::allowsBlockPassthrough || Executor::Properties::preservesOrder,
+    Executor::Properties::allowsBlockPassthrough == BlockPassthrough::Disable || Executor::Properties::preservesOrder,
       "allowsBlockPassthrough must imply preservesOrder, but does not!");
 
  public:
@@ -119,7 +114,7 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   ExecutionBlockImpl(ExecutionEngine* engine, ExecutionNode const* node,
                      typename Executor::Infos&&);
 
-  ~ExecutionBlockImpl();
+  ~ExecutionBlockImpl() override;
 
   /**
    * @brief Produce atMost many output rows, or less.
@@ -171,7 +166,7 @@ class ExecutionBlockImpl final : public ExecutionBlock {
 
   std::pair<ExecutionState, Result> initializeCursor(InputAqlItemRow const& input) override;
 
-  Infos const& infos() const { return _infos; }
+  Infos const& infos() const;
 
   /// @brief shutdown, will be called exactly once for the whole query
   /// Special implementation for all Executors that need to implement Shutdown
@@ -184,6 +179,11 @@ class ExecutionBlockImpl final : public ExecutionBlock {
    * @brief Inner getSome() part, without the tracing calls.
    */
   std::pair<ExecutionState, SharedAqlItemBlockPtr> getSomeWithoutTrace(size_t atMost);
+
+  /**
+   * @brief Inner getSome() part, without the tracing calls.
+   */
+  std::pair<ExecutionState, size_t> skipSomeOnceWithoutTrace(size_t atMost);
 
   /**
    * @brief Allocates a new AqlItemBlock and returns it, with the specified
@@ -203,9 +203,9 @@ class ExecutionBlockImpl final : public ExecutionBlock {
 
   std::unique_ptr<OutputAqlItemRow> createOutputRow(SharedAqlItemBlockPtr& newBlock) const;
 
-  Query const& getQuery() const { return _query; }
+  Query const& getQuery() const;
 
-  Executor& executor() { return _executor; }
+  Executor& executor();
 
   /// @brief request an AqlItemBlock from the memory manager
   SharedAqlItemBlockPtr requestBlock(size_t nrItems, RegisterCount nrRegs);
@@ -235,6 +235,8 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   std::unique_ptr<OutputAqlItemRow> _outputItemRow;
 
   Query const& _query;
+
+  size_t _skipped{};
 };
 
 }  // namespace aql

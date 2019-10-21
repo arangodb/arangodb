@@ -45,8 +45,9 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestImportHandler::RestImportHandler(GeneralRequest* request, GeneralResponse* response)
-    : RestVocbaseBaseHandler(request, response),
+RestImportHandler::RestImportHandler(application_features::ApplicationServer& server,
+                                     GeneralRequest* request, GeneralResponse* response)
+    : RestVocbaseBaseHandler(server, request, response),
       _onDuplicateAction(DUPLICATE_ERROR),
       _ignoreMissing(false) {}
 
@@ -939,7 +940,7 @@ Result RestImportHandler::performImport(SingleCollectionTransaction& trx,
           VPackSlice resultSlice = opResult.slice();
           if (resultSlice.isArray()) {
             size_t pos = 0;
-            for (auto const& it : VPackArrayIterator(resultSlice)) {
+            for (VPackSlice it : VPackArrayIterator(resultSlice)) {
               if (!it.hasKey(StaticStrings::Error) ||
                   !it.get(StaticStrings::Error).getBool()) {
                 ++result._numUpdated;

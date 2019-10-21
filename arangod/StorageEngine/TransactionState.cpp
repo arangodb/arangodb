@@ -86,6 +86,24 @@ TransactionCollection* TransactionState::collection(TRI_voc_cid_t cid,
   return trxCollection;
 }
 
+/// @brief return the collection from a transaction
+TransactionCollection* TransactionState::collection(std::string const& name,
+                                                    AccessMode::Type accessType) const {
+  TRI_ASSERT(_status == transaction::Status::CREATED ||
+             _status == transaction::Status::RUNNING);
+
+  auto it = std::find_if(_collections.begin(), _collections.end(), [&name](TransactionCollection const* trxColl) {
+    return trxColl->collectionName() == name;
+  });
+
+  if (it == _collections.end() || !(*it)->canAccess(accessType)) {
+    // not found or not accessible in the requested mode
+    return nullptr;
+  }
+
+  return (*it);
+}
+
 TransactionState::Cookie* TransactionState::cookie(void const* key) noexcept {
   auto itr = _cookies.find(key);
 
@@ -202,7 +220,7 @@ void TransactionState::allCollections(                     // iterate
     }
   }
 }
-
+  
 /// @brief use all participating collections of a transaction
 Result TransactionState::useCollections(int nestingLevel) {
   Result res;

@@ -27,11 +27,13 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
+#include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "Transaction/Helpers.h"
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"
-#include "Transaction/Helpers.h"
 #include "Transaction/Status.h"
 #include "V8/JavaScriptSecurityContext.h"
 #include "V8Server/V8Context.h"
@@ -46,8 +48,10 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestTransactionHandler::RestTransactionHandler(GeneralRequest* request, GeneralResponse* response)
-    : RestVocbaseBaseHandler(request, response), _v8Context(nullptr), _lock() {}
+RestTransactionHandler::RestTransactionHandler(application_features::ApplicationServer& server,
+                                               GeneralRequest* request,
+                                               GeneralResponse* response)
+    : RestVocbaseBaseHandler(server, request, response), _v8Context(nullptr), _lock() {}
 
 RestStatus RestTransactionHandler::execute() {
     
@@ -134,7 +138,7 @@ void RestTransactionHandler::executeBegin() {
   // figure out the transaction ID
   TRI_voc_tid_t tid = 0;
   bool found = false;
-  std::string value = _request->header(StaticStrings::TransactionId, found);
+  std::string const& value = _request->header(StaticStrings::TransactionId, found);
   ServerState::RoleEnum role = ServerState::instance()->getRole();
   if (found) {
     if (!ServerState::isDBServer(role)) {
@@ -323,20 +327,24 @@ bool RestTransactionHandler::cancel() {
 }
 
 /// @brief returns the short id of the server which should handle this request
-uint32_t RestTransactionHandler::forwardingTarget() {
+std::string RestTransactionHandler::forwardingTarget() {
   rest::RequestType const type = _request->requestType();
   if (type != rest::RequestType::GET && type != rest::RequestType::PUT &&
       type != rest::RequestType::DELETE_REQ) {
-    return 0;
+    return "";
   }
 
   std::vector<std::string> const& suffixes = _request->suffixes();
   if (suffixes.size() < 1) {
-    return 0;
+    return "";
   }
 
   uint64_t tick = arangodb::basics::StringUtils::uint64(suffixes[0]);
   uint32_t sourceServer = TRI_ExtractServerIdFromTick(tick);
 
-  return (sourceServer == ServerState::instance()->getShortId()) ? 0 : sourceServer;
+  if (sourceServer == ServerState::instance()->getShortId()) {
+    return "";
+  }
+  auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+  return ci.getCoordinatorByShortID(sourceServer);
 }

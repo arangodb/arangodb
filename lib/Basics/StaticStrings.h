@@ -196,6 +196,8 @@ class StaticStrings {
   static std::string const XArangoFrontend;
 
   // mime types
+  static std::string const MimeTypeDump;
+  static std::string const MimeTypeHtml;
   static std::string const MimeTypeJson;
   static std::string const MimeTypeText;
   static std::string const MimeTypeVPack;
@@ -217,6 +219,8 @@ class StaticStrings {
   static std::string const ShardKeys;
   static std::string const ShardingStrategy;
   static std::string const SmartJoinAttribute;
+  static std::string const Sharding;
+  static std::string const Satellite;
 
   // graph attribute names
   static std::string const GraphCollection;

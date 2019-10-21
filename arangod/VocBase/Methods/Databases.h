@@ -27,39 +27,17 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 #include "Basics/Result.h"
+#include "Basics/debugging.h"
 #include "VocBase/voc-types.h"
-
+#include "VocBase/VocbaseInfo.h"
 
 struct TRI_vocbase_t;
 
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
 namespace methods {
-
-
-class CreateDatabaseInfo {
- public:
-  CreateDatabaseInfo() = default;
-  Result load(std::string const& name,
-              VPackSlice const& options,
-              VPackSlice const& users);
-
-  Result buildSlice(VPackBuilder& builder) const;
-
-  uint64_t getId() const { return _id; };
-  std::string getName() const { return _name; };
-  VPackSlice const& getUsers() const { return _userSlice; }
-
- private:
-  Result sanitizeUsers(VPackSlice const& users, VPackBuilder& sanitizedUsers);
-  Result sanitizeOptions(VPackSlice const& options, VPackBuilder& sanitizedOptions);
-
- private:
-  uint64_t _id;
-  std::string _name;
-  VPackBuilder _options;
-  VPackBuilder _users;
-  VPackSlice _userSlice;
-};
 
 /// Common code for the db._database(),
 struct Databases {
@@ -67,13 +45,15 @@ struct Databases {
   static TRI_vocbase_t* lookup(TRI_voc_tick_t);
   static std::vector<std::string> list(std::string const& user = "");
   static arangodb::Result info(TRI_vocbase_t* vocbase, VPackBuilder& result);
-  static arangodb::Result create(std::string const& dbName,
-                                 VPackSlice const& users,
+  static arangodb::Result create(application_features::ApplicationServer& server,
+                                 std::string const& dbName, VPackSlice const& users,
                                  VPackSlice const& options);
   static arangodb::Result drop(TRI_vocbase_t* systemVocbase, std::string const& dbName);
 
  private:
-  static arangodb::Result grantCurrentUser(CreateDatabaseInfo const& info);
+  /// @brief will retry for at most <timeout> seconds
+  static arangodb::Result grantCurrentUser(CreateDatabaseInfo const& info, int64_t timeout);
+
   static arangodb::Result createCoordinator(CreateDatabaseInfo const& info);
   static arangodb::Result createOther(CreateDatabaseInfo const& info);
 };

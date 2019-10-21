@@ -32,8 +32,12 @@
 #include <mutex>
 
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
 class Endpoint;
 class EndpointList;
+class GeneralServerFeature;
 
 namespace rest {
 class Acceptor;
@@ -44,7 +48,7 @@ class GeneralServer {
   GeneralServer const& operator=(GeneralServer const&) = delete;
 
  public:
-  explicit GeneralServer(uint64_t numIoThreads);
+  explicit GeneralServer(GeneralServerFeature&, uint64_t numIoThreads);
   ~GeneralServer();
 
  public:
@@ -58,10 +62,13 @@ class GeneralServer {
   IoContext& selectIoContext();
   asio_ns::ssl::context& sslContext();
 
+  application_features::ApplicationServer& server() const;
+
  protected:
   bool openEndpoint(IoContext& ioContext, Endpoint* endpoint);
 
  private:
+  GeneralServerFeature& _feature;
   EndpointList const* _endpointList;
   std::vector<IoContext> _contexts;
 

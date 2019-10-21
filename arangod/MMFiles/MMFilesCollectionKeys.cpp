@@ -32,6 +32,7 @@
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/ExecContext.h"
+#include "Utils/OperationCursor.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
@@ -107,15 +108,18 @@ void MMFilesCollectionKeys::create(TRI_voc_tick_t maxTick) {
 
     ManagedDocumentResult mdr;
     MMFilesCollection* mmColl = MMFilesCollection::toMMFilesCollection(_collection);
-
-    trx.invokeOnAllElements(_collection->name(), [this, &trx, &maxTick, &mdr,
-                                                  &mmColl](LocalDocumentId const& token) {
+    
+    TRI_ASSERT(trx.isLocked(_collection, AccessMode::Type::READ));
+    trx.transactionContextPtr()->pinData(_collection);
+    
+    ManagedDocumentResult mmdr;
+    mmColl->invokeOnAllElements(&trx, [this, &trx, &maxTick, &mdr, &mmColl](LocalDocumentId const& token) {
       if (mmColl->readDocumentConditional(&trx, token, maxTick, mdr)) {
         _vpack.emplace_back(mdr.vpack());
       }
       return true;
     });
-
+    
     trx.finish(res);
   }
 
@@ -200,7 +204,7 @@ void MMFilesCollectionKeys::dumpDocs(arangodb::velocypack::Builder& result,
   auto buffer = result.buffer();
   size_t offset = 0;
 
-  for (auto const& it : VPackArrayIterator(ids)) {
+  for (VPackSlice it : VPackArrayIterator(ids)) {
     if (!it.isNumber()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
     }

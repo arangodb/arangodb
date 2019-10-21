@@ -52,7 +52,7 @@ struct ServerStatistics {
   double _startTime;
   std::atomic<double> _uptime;
 
-  ServerStatistics(double start) : _transactionsStatistics(), _startTime(start), _uptime(0.0) {}
+  explicit ServerStatistics(double start) : _transactionsStatistics(), _startTime(start), _uptime(0.0) {}
 };
 
 #endif

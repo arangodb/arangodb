@@ -22,13 +22,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "StorageEngineMock.h"
-
 #include "Aql/AstNode.h"
 #include "Basics/LocalTaskQueue.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/asio_ns.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchLinkCoordinator.h"
@@ -40,6 +40,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Manager.h"
+#include "Transaction/ManagerFeature.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
@@ -251,7 +252,7 @@ class EdgeIndexMock final : public arangodb::Index {
   Index::FilterCosts supportsFilterCondition(
       std::vector<std::shared_ptr<arangodb::Index>> const& /*allIndexes*/,
       arangodb::aql::AstNode const* node, arangodb::aql::Variable const* reference,
-      size_t itemsInIndex) const override {
+                                             size_t itemsInIndex) const override {
     arangodb::SimpleAttributeEqualityMatcher matcher(IndexAttributes);
     return matcher.matchOne(this, node, reference, itemsInIndex);
   }
@@ -310,7 +311,7 @@ class EdgeIndexMock final : public arangodb::Index {
 
   std::unique_ptr<arangodb::IndexIterator> createEqIterator(
       arangodb::transaction::Methods* trx, arangodb::aql::AstNode const* attrNode,
-      arangodb::aql::AstNode const* valNode) const {
+                                                            arangodb::aql::AstNode const* valNode) const {
     // lease builder, but immediately pass it to the unique_ptr so we don't leak
     arangodb::transaction::BuilderLeaser builder(trx);
     std::unique_ptr<VPackBuilder> keys(builder.steal());
@@ -333,7 +334,7 @@ class EdgeIndexMock final : public arangodb::Index {
   /// @brief create the iterator
   std::unique_ptr<arangodb::IndexIterator> createInIterator(
       arangodb::transaction::Methods* trx, arangodb::aql::AstNode const* attrNode,
-      arangodb::aql::AstNode const* valNode) const {
+                                                            arangodb::aql::AstNode const* valNode) const {
     // lease builder, but immediately pass it to the unique_ptr so we don't leak
     arangodb::transaction::BuilderLeaser builder(trx);
     std::unique_ptr<VPackBuilder> keys(builder.steal());
@@ -490,8 +491,9 @@ std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(
         index = arangodb::iresearch::IResearchMMFilesLink::factory().instantiate(
             _logicalCollection, info, id, false);
       }
-    } catch (std::exception const&) {
+    } catch (std::exception const& ex) {
       // ignore the details of all errors here
+      LOG_DEVEL << "caught: " << ex.what();
     }
   }
 
@@ -646,20 +648,6 @@ arangodb::Result PhysicalCollectionMock::insert(
   return arangodb::Result();
 }
 
-void PhysicalCollectionMock::invokeOnAllElements(
-    arangodb::transaction::Methods*,
-    std::function<bool(arangodb::LocalDocumentId const&)> callback) {
-  before();
-
-  for (size_t i = 0, count = documents.size(); i < count; ++i) {
-    arangodb::LocalDocumentId token(i + 1);  // '_data' always > 0
-
-    if (documents[i].second && !callback(token)) {
-      return;
-    }
-  }
-}
-
 arangodb::LocalDocumentId PhysicalCollectionMock::lookupKey(
     arangodb::transaction::Methods*, arangodb::velocypack::Slice const&) const {
   before();
@@ -716,7 +704,7 @@ void PhysicalCollectionMock::prepareIndexes(arangodb::velocypack::Slice indexesS
   auto* engine = arangodb::EngineSelectorFeature::ENGINE;
   auto& idxFactory = engine->indexFactory();
 
-  for (auto const& v : VPackArrayIterator(indexesSlice)) {
+  for (VPackSlice v : VPackArrayIterator(indexesSlice)) {
     if (arangodb::basics::VelocyPackHelper::getBooleanValue(v, "error", false)) {
       // We have an error here.
       // Do not add index.
@@ -956,7 +944,7 @@ std::function<void()> StorageEngineMock::recoveryTickCallback = []() -> void {};
 StorageEngineMock::StorageEngineMock(arangodb::application_features::ApplicationServer& server)
     : StorageEngine(server, "Mock", "",
                     std::unique_ptr<arangodb::IndexFactory>(new IndexFactoryMock())),
-      vocbaseCount(0),
+      vocbaseCount(1),
       _releasedTick(0) {}
 
 arangodb::WalAccess const* StorageEngineMock::walAccess() const {
@@ -964,7 +952,7 @@ arangodb::WalAccess const* StorageEngineMock::walAccess() const {
   return nullptr;
 }
 
-void StorageEngineMock::addOptimizerRules() {
+void StorageEngineMock::addOptimizerRules(arangodb::aql::OptimizerRulesFeature& /*feature*/) {
   before();
   // NOOP
 }
@@ -1009,20 +997,12 @@ std::string StorageEngineMock::createCollection(TRI_vocbase_t& vocbase,
 }
 
 std::unique_ptr<TRI_vocbase_t> StorageEngineMock::createDatabase(
-    TRI_voc_tick_t id, arangodb::velocypack::Slice const& args, int& status) {
-  if (!args.get("name").isString()) {
-    status = TRI_ERROR_BAD_PARAMETER;
-  }
+    arangodb::CreateDatabaseInfo&& info, int& status) {
 
-  status = TRI_ERROR_NO_ERROR;
-
-  std::string cname = args.get("name").copyString();
   if (arangodb::ServerState::instance()->isCoordinator()) {
-    return std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR,
-                                           id, cname);
+    return std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR, std::move(info));
   }
-  return std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                                         id, cname);
+  return std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, std::move(info));
 }
 
 arangodb::Result StorageEngineMock::createLoggerState(TRI_vocbase_t*, VPackBuilder&) {
@@ -1053,8 +1033,9 @@ std::unique_ptr<arangodb::transaction::ContextData> StorageEngineMock::createTra
   return std::unique_ptr<arangodb::transaction::ContextData>();
 }
 
-std::unique_ptr<arangodb::transaction::Manager> StorageEngineMock::createTransactionManager() {
-  return std::make_unique<arangodb::transaction::Manager>(/*keepData*/ false);
+std::unique_ptr<arangodb::transaction::Manager> StorageEngineMock::createTransactionManager(
+    arangodb::transaction::ManagerFeature& feature) {
+  return std::make_unique<arangodb::transaction::Manager>(feature, /*keepData*/ false);
 }
 
 std::unique_ptr<arangodb::TransactionState> StorageEngineMock::createTransactionState(
@@ -1227,19 +1208,16 @@ arangodb::Result StorageEngineMock::lastLogger(
 }
 
 std::unique_ptr<TRI_vocbase_t> StorageEngineMock::openDatabase(
-    arangodb::velocypack::Slice const& args, bool isUpgrade, int& status) {
+    arangodb::CreateDatabaseInfo&& info, bool isUpgrade) {
   before();
 
-  if (!args.isObject() || !args.hasKey("name") || !args.get("name").isString()) {
-    status = TRI_ERROR_ARANGO_DATABASE_NAME_INVALID;
+  auto new_info = info;
+  new_info.setId(++vocbaseCount);
 
-    return nullptr;
-  }
-
-  status = TRI_ERROR_NO_ERROR;
-
-  return std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                                         vocbaseCount++, args.get("name").copyString());
+  return std::make_unique<TRI_vocbase_t>(
+    TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+    std::move(new_info)
+  );
 }
 
 arangodb::Result StorageEngineMock::persistCollection(TRI_vocbase_t& vocbase,
@@ -1396,10 +1374,12 @@ int TransactionCollectionMock::use(int nestingLevel) {
 
   if (!_collection) {
     if (arangodb::ServerState::instance()->isCoordinator()) {
-      auto* ci = arangodb::ClusterInfo::instance();
-      TRI_ASSERT(ci);
+      auto& ci = _transaction->vocbase()
+                     .server()
+                     .getFeature<arangodb::ClusterFeature>()
+                     .clusterInfo();
       _collection =
-          ci->getCollectionNT(_transaction->vocbase().name(), std::to_string(_cid));
+          ci.getCollectionNT(_transaction->vocbase().name(), std::to_string(_cid));
     } else {
       _collection = _transaction->vocbase().useCollection(_cid, status);
     }

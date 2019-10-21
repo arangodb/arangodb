@@ -47,7 +47,11 @@
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
 class ClusterCommThread;
+class ClusterInfo;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief type of a coordinator transaction ID
@@ -215,7 +219,7 @@ struct ClusterCommResult {
   /// @brief routine to set the destination
   //////////////////////////////////////////////////////////////////////////////
 
-  void setDestination(std::string const& dest, bool logConnectionErrors);
+  void setDestination(ClusterInfo& ci, std::string const& dest, bool logConnectionErrors);
 
   /// @brief stringify the internal error state
   std::string stringifyErrorMessage() const;
@@ -238,10 +242,10 @@ struct ClusterCommResult {
   /// @brief stringify a cluster comm status
   static char const* stringifyStatus(ClusterCommOpStatus status);
 
-  void fromError(int errorCode, std::unique_ptr<GeneralResponse> response) {
-    errorMessage = TRI_errno_string(errorCode);
-    this->errorCode = errorCode;
-    switch (errorCode) {
+  void fromError(int errCode, std::unique_ptr<GeneralResponse> response) {
+    errorMessage = TRI_errno_string(errCode);
+    this->errorCode = errCode;
+    switch (errCode) {
       case TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT:
         status = CL_COMM_BACKEND_UNAVAILABLE;
         break;
@@ -349,7 +353,7 @@ struct ClusterCommResult {
 
 struct ClusterCommCallback {
   ClusterCommCallback() {}
-  virtual ~ClusterCommCallback() {}
+  virtual ~ClusterCommCallback() = default;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the actual callback function
@@ -461,8 +465,8 @@ class ClusterComm {
   /// new instances or copy them, except we ourselves.
   //////////////////////////////////////////////////////////////////////////////
 
-  ClusterComm();
-  ClusterComm(ClusterComm const&);     // not implemented
+  ClusterComm(application_features::ApplicationServer&);
+  explicit ClusterComm(ClusterComm const&);     // not implemented
   void operator=(ClusterComm const&);  // not implemented
 
   //////////////////////////////////////////////////////////////////////////////
@@ -606,7 +610,7 @@ class ClusterComm {
 
  protected:  // protected members are for unit test purposes
   /// @brief Constructor for test cases.
-  explicit ClusterComm(bool);
+  explicit ClusterComm(application_features::ApplicationServer&, bool);
 
   std::string createCommunicatorDestination(std::string const& destination,
                                             std::string const& path) const;
@@ -681,6 +685,9 @@ class ClusterComm {
   static void logConnectionError(bool useErrorLogLevel, ClusterCommResult const* result,
                                  double timeout, int line);
 
+  /// underlying application server
+  application_features::ApplicationServer& _server;
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief our background communications thread
   //////////////////////////////////////////////////////////////////////////////
@@ -710,7 +717,7 @@ class ClusterCommThread : public Thread {
   ClusterCommThread& operator=(ClusterCommThread const&);
 
  public:
-  ClusterCommThread();
+  explicit ClusterCommThread(application_features::ApplicationServer&);
   ~ClusterCommThread();
  public:
   void beginShutdown() override;

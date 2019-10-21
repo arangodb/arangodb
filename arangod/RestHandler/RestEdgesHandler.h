@@ -31,7 +31,9 @@
 
 namespace arangodb {
 class LocalDocumentId;
-class SingleCollectionTransaction;
+namespace transaction {
+class Methods;
+}
 
 namespace aql {
 struct AstNode;
@@ -40,7 +42,8 @@ struct Variable;
 
 class RestEdgesHandler : public RestVocbaseBaseHandler {
  public:
-  explicit RestEdgesHandler(GeneralRequest*, GeneralResponse*);
+  explicit RestEdgesHandler(application_features::ApplicationServer&,
+                            GeneralRequest*, GeneralResponse*);
 
  public:
   RestStatus execute() override final;
@@ -61,19 +64,12 @@ class RestEdgesHandler : public RestVocbaseBaseHandler {
   bool readEdgesForMultipleVertices();
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief find the index and read it completely with the given callback
-  //////////////////////////////////////////////////////////////////////////////
-
-  void readCursor(aql::AstNode* condition, aql::Variable const* var,
-                  std::string const& collectionName, SingleCollectionTransaction& trx,
-                  std::function<void(LocalDocumentId const&)> const& cb);
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief get all edges for a given vertex. Independent from the request
   //////////////////////////////////////////////////////////////////////////////
 
-  bool getEdgesForVertex(std::string const& id, std::string const& collectionName,
-                         TRI_edge_direction_e direction, SingleCollectionTransaction& trx,
+  bool getEdgesForVertex(std::string const& id, TRI_voc_cid_t cid,
+                         std::string const& collectionName,
+                         TRI_edge_direction_e direction, transaction::Methods& trx,
                          std::function<void(LocalDocumentId const&)> const& cb);
 
   //////////////////////////////////////////////////////////////////////////////

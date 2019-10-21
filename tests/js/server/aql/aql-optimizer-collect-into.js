@@ -52,7 +52,7 @@ function optimizerCollectExpressionTestSuite () {
   var c;
 
   return {
-    setUp : function () {
+    setUpAll : function () {
       db._drop("UnitTestsCollection");
       c = db._create("UnitTestsCollection");
 
@@ -61,7 +61,7 @@ function optimizerCollectExpressionTestSuite () {
       }
     },
 
-    tearDown : function () {
+    tearDownAll : function () {
       db._drop("UnitTestsCollection");
     },
 

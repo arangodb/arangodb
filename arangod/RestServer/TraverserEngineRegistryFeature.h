@@ -24,12 +24,9 @@
 #define APPLICATION_FEATURES_TRAVERSER_ENGINE_REGISTRY_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "Cluster/TraverserEngineRegistry.h"
 
 namespace arangodb {
-
-namespace traverser {
-class TraverserEngineRegistry;
-}
 
 class TraverserEngineRegistryFeature final : public application_features::ApplicationFeature {
  public:

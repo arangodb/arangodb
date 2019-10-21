@@ -27,6 +27,8 @@
 
 #include <stddef.h>
 #include <cstdint>
+#include <cstring>
+#include <functional>
 #include <string>
 #include <vector>
 
@@ -35,10 +37,10 @@
 #if __cpp_lib_to_chars >= 201611
 // use non-throwing, non-allocating std::from_chars etc. from standard library
 #include <charconv>
-#define TRI_STRING_UTILS_USE_FROM_CHARS 1
+#define ARANGODB_STRING_UTILS_USE_FROM_CHARS 1
 #else
 // use own functionality
-#undef TRI_STRING_UTILS_USE_FROM_CHARS
+#undef ARANGODB_STRING_UTILS_USE_FROM_CHARS
 #endif
 
 /// @brief helper macro for calculating strlens for static strings at
@@ -64,11 +66,10 @@ namespace StringUtils {
 std::string escapeUnicode(std::string const& name, bool escapeSlash = true);
 
 /// @brief splits a string
-std::vector<std::string> split(std::string const& source, char delim = ',', char quote = '\\');
+std::vector<std::string> split(std::string const& source, char delim = ',');
 
 /// @brief splits a string
-std::vector<std::string> split(std::string const& source,
-                               std::string const& delim, char quote = '\\');
+std::vector<std::string> split(std::string const& source, std::string const& delim);
 
 /// @brief joins a string
 template <typename C>
@@ -102,6 +103,26 @@ std::string join(C const& source, char delim = ',') {
     }
 
     result += c;
+  }
+
+  return result;
+}
+
+/// @brief joins a string
+template <typename C, typename T>
+std::string join(C const& source, std::string const& delim,
+                 std::function<std::string(T)> const& cb) {
+  std::string result;
+  bool first = true;
+
+  for (auto const& c : source) {
+    if (first) {
+      first = false;
+    } else {
+      result += delim;
+    }
+
+    result += cb(c);
   }
 
   return result;
@@ -165,19 +186,19 @@ std::string urlDecode(std::string const& str);
 std::string urlEncode(char const* src);
 
 /// @brief url encodes the string
-std::string urlEncode(char const* src, size_t const len);
+std::string urlEncode(char const* src, size_t len);
 
 /// @brief uri encodes the component string
 std::string encodeURIComponent(std::string const& str);
 
 /// @brief uri encodes the component string
-std::string encodeURIComponent(char const* src, size_t const len);
+std::string encodeURIComponent(char const* src, size_t len);
 
 /// @brief converts input string to soundex code
 std::string soundex(std::string const& str);
 
 /// @brief converts input string to soundex code
-std::string soundex(char const* src, size_t const len);
+std::string soundex(char const* src, size_t len);
 
 /// @brief converts input string to vector of character codes
 std::vector<uint32_t> characterCodes(std::string const& str);
@@ -255,7 +276,7 @@ inline int hex2int(char ch, int errorValue = 0) {
 bool boolean(std::string const& str);
 
 /// @brief parses an integer
-#ifdef TRI_STRING_UTILS_USE_FROM_CHARS
+#ifdef ARANGODB_STRING_UTILS_USE_FROM_CHARS
 // use functionality provided by c++17
 inline int64_t int64(char const* value, size_t size) noexcept {
   int64_t result = 0;
@@ -273,7 +294,7 @@ inline int64_t int64(char const* value, size_t size) {
 #endif
 
 /// @brief parses an unsigned integer
-#ifdef TRI_STRING_UTILS_USE_FROM_CHARS
+#ifdef ARANGODB_STRING_UTILS_USE_FROM_CHARS
 // use functionality provided by c++17
 inline uint64_t uint64(char const* value, size_t size) noexcept {
   uint64_t result = 0;
@@ -301,7 +322,7 @@ inline uint64_t uint64_trusted(std::string const& value) {
 }
 
 /// @brief parses an integer
-#ifdef TRI_STRING_UTILS_USE_FROM_CHARS
+#ifdef ARANGODB_STRING_UTILS_USE_FROM_CHARS
 // use functionality provided by c++17
 inline int32_t int32(char const* value, size_t size) noexcept {
   int32_t result = 0;
@@ -317,7 +338,7 @@ int32_t int32(char const* value, size_t size);
 #endif
 
 /// @brief parses an unsigned integer
-#ifdef TRI_STRING_UTILS_USE_FROM_CHARS
+#ifdef ARANGODB_STRING_UTILS_USE_FROM_CHARS
 // use functionality provided by c++17
 inline uint32_t uint32(char const* value, size_t size) noexcept {
   uint32_t result = 0;
@@ -349,6 +370,7 @@ float floatDecimal(char const* value, size_t size);
 // -----------------------------------------------------------------------------
 
 /// @brief converts to base64
+std::string encodeBase64(char const* value, size_t length);
 std::string encodeBase64(std::string const&);
 
 /// @brief converts from base64

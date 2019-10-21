@@ -24,15 +24,13 @@
 #ifndef ARANGOD_HTTP_SERVER_ENDPOINT_FEATURE_H
 #define ARANGOD_HTTP_SERVER_ENDPOINT_FEATURE_H 1
 
-#include "ApplicationFeatures/ApplicationFeature.h"
 #include "ApplicationFeatures/HttpEndpointProvider.h"
 
 #include "Endpoint/EndpointList.h"
 
 namespace arangodb {
 
-class EndpointFeature final : public application_features::ApplicationFeature,
-                              public HttpEndpointProvider {
+class EndpointFeature final : public HttpEndpointProvider {
  public:
   explicit EndpointFeature(application_features::ApplicationServer& server);
 

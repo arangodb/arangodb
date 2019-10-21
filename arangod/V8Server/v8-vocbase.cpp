@@ -51,6 +51,7 @@
 #include "Basics/application-exit.h"
 #include "Basics/conversions.h"
 #include "Basics/tri-strings.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
@@ -91,7 +92,7 @@
 #include "VocBase/Methods/Databases.h"
 #include "VocBase/Methods/Transactions.h"
 
-#if USE_ENTERPRISE
+#ifdef USE_ENTERPRISE
 #include "Enterprise/Ldap/LdapFeature.h"
 #endif
 
@@ -141,7 +142,6 @@ static void JS_Transaction(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // filled by function
   v8::Handle<v8::Value> result;
   v8::TryCatch tryCatch(isolate);
-  ;
   Result rv = executeTransactionJS(isolate, args[0], result, tryCatch);
 
   // do not rethrow if already canceled
@@ -168,17 +168,17 @@ static void JS_Transaction(v8::FunctionCallbackInfo<v8::Value> const& args) {
 static void JS_Transactions(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-  
+
   auto& vocbase = GetContextVocBase(isolate);
 
   // check if we have some transaction object
   if (args.Length() != 0) {
     TRI_V8_THROW_EXCEPTION_USAGE("TRANSACTIONS()");
   }
-    
+
   VPackBuilder builder;
   builder.openArray();
-    
+
   bool const fanout = ServerState::instance()->isCoordinator();
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
   std::string user;
@@ -186,9 +186,9 @@ static void JS_Transactions(v8::FunctionCallbackInfo<v8::Value> const& args) {
     user = ExecContext::current().user();
   }
   mgr->toVelocyPack(builder, vocbase.name(), user, fanout);
- 
+
   builder.close();
-  
+
   v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, builder.slice());
 
   TRI_V8_RETURN(result);
@@ -1125,17 +1125,13 @@ static void JS_ThrowCollectionNotLoaded(v8::FunctionCallbackInfo<v8::Value> cons
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
+  auto& server = application_features::ApplicationServer::server();
+  auto& databaseFeature = server.getFeature<DatabaseFeature>();
   if (args.Length() == 0) {
-    auto databaseFeature =
-        application_features::ApplicationServer::getFeature<DatabaseFeature>(
-            "Database");
-    bool const value = databaseFeature->throwCollectionNotLoadedError();
+    bool const value = databaseFeature.throwCollectionNotLoadedError();
     TRI_V8_RETURN(v8::Boolean::New(isolate, value));
   } else if (args.Length() == 1) {
-    auto databaseFeature =
-        application_features::ApplicationServer::getFeature<DatabaseFeature>(
-            "Database");
-    databaseFeature->throwCollectionNotLoadedError(TRI_ObjectToBoolean(isolate, args[0]));
+    databaseFeature.throwCollectionNotLoadedError(TRI_ObjectToBoolean(isolate, args[0]));
   } else {
     TRI_V8_THROW_EXCEPTION_USAGE("THROW_COLLECTION_NOT_LOADED(<value>)");
   }
@@ -1245,7 +1241,7 @@ static void MapGetVocBase(v8::Local<v8::Name> const name,
       // with that transaction. if we now lock again, we may deadlock!
       auto status = collection->status();
       auto cid = collection->id();
-      auto internalVersion = collection->internalVersion();
+      auto internalVersion = collection->v8CacheVersion();
 
       // check if the collection is still alive
       if (status != TRI_VOC_COL_STATUS_DELETED && cid > 0 &&
@@ -1284,9 +1280,9 @@ static void MapGetVocBase(v8::Local<v8::Name> const name,
   std::shared_ptr<arangodb::LogicalCollection> collection;
 
   if (ServerState::instance()->isCoordinator()) {
-    auto* ci = arangodb::ClusterInfo::instance();
-    if (ci) {
-      collection = ci->getCollectionNT(vocbase.name(), std::string(key));
+    if (vocbase.server().hasFeature<ClusterFeature>()) {
+      collection = vocbase.server().getFeature<ClusterFeature>().clusterInfo().getCollectionNT(
+          vocbase.name(), std::string(key));
     }
   } else {
     collection = vocbase.lookupCollection(std::string(key));
@@ -1473,9 +1469,8 @@ static void JS_UseDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
-  auto databaseFeature =
-      application_features::ApplicationServer::getFeature<DatabaseFeature>(
-          "Database");
+  auto& server = application_features::ApplicationServer::server();
+  auto& databaseFeature = server.getFeature<DatabaseFeature>();
   std::string const name = TRI_ObjectToString(isolate, args[0]);
   auto* vocbase = &GetContextVocBase(isolate);
 
@@ -1486,7 +1481,7 @@ static void JS_UseDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   // check if the other database exists, and increase its refcount
-  vocbase = databaseFeature->useDatabase(name);
+  vocbase = databaseFeature.useDatabase(name);
 
   if (vocbase == nullptr) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
@@ -1591,7 +1586,8 @@ static void JS_CreateDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   std::string const dbName = TRI_ObjectToString(isolate, args[0]);
-  Result res = methods::Databases::create(dbName, users.slice(), options.slice());
+  Result res = methods::Databases::create(vocbase.server(), dbName,
+                                          users.slice(), options.slice());
 
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);
@@ -1638,6 +1634,31 @@ static void JS_DropDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief was docuBlock databaseListDatabase
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_DBProperties(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  uint32_t const argc = args.Length();
+  if (argc > 0) {
+    TRI_V8_THROW_EXCEPTION_USAGE("db._properties()");
+  }
+
+  auto& vocbase = GetContextVocBase(isolate);
+
+  VPackBuilder builder;
+  vocbase.toVelocyPack(builder);
+
+  auto result = TRI_VPackToV8(isolate, builder.slice());
+
+  TRI_V8_RETURN(result);
+  TRI_V8_TRY_CATCH_END
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a list of all endpoints
 ///
 /// @FUN{ENDPOINTS}
@@ -1651,8 +1672,9 @@ static void JS_Endpoints(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("db._endpoints()");
   }
 
-  auto server = application_features::ApplicationServer::getFeature<HttpEndpointProvider>(
-      "Endpoint");
+  auto& server = application_features::ApplicationServer::server();
+  TRI_ASSERT(server.hasFeature<HttpEndpointProvider>());
+  auto& endpoints = server.getFeature<HttpEndpointProvider>();
   auto& vocbase = GetContextVocBase(isolate);
 
   if (!vocbase.isSystem()) {
@@ -1662,7 +1684,7 @@ static void JS_Endpoints(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Handle<v8::Array> result = v8::Array::New(isolate);
   uint32_t j = 0;
 
-  for (auto const& it : server->httpEndpoints()) {
+  for (auto const& it : endpoints.httpEndpoints()) {
     v8::Handle<v8::Object> item = v8::Object::New(isolate);
     item->Set(TRI_V8_ASCII_STRING(isolate, "endpoint"), TRI_V8_STD_STRING(isolate, it));
 
@@ -1699,13 +1721,10 @@ static void JS_AuthenticationEnabled(v8::FunctionCallbackInfo<v8::Value> const& 
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  auto authentication =
-      application_features::ApplicationServer::getFeature<AuthenticationFeature>(
-          "Authentication");
+  auto& server = application_features::ApplicationServer::server();
+  auto& authentication = server.getFeature<AuthenticationFeature>();
 
-  TRI_ASSERT(authentication != nullptr);
-
-  v8::Handle<v8::Boolean> result = v8::Boolean::New(isolate, authentication->isActive());
+  v8::Handle<v8::Boolean> result = v8::Boolean::New(isolate, authentication.isActive());
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
@@ -1716,10 +1735,10 @@ static void JS_LdapEnabled(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::HandleScope scope(isolate);
 
 #ifdef USE_ENTERPRISE
-  auto ldap =
-      application_features::ApplicationServer::getFeature<LdapFeature>("Ldap");
-  TRI_ASSERT(ldap != nullptr);
-  TRI_V8_RETURN(v8::Boolean::New(isolate, ldap->isEnabled()));
+  auto& server = application_features::ApplicationServer::server();
+  TRI_ASSERT(server.hasFeature<LdapFeature>());
+  auto& ldap = server.getFeature<LdapFeature>();
+  TRI_V8_RETURN(v8::Boolean::New(isolate, ldap.isEnabled()));
 #else
   // LDAP only enabled in enterprise mode
   TRI_V8_RETURN(v8::False(isolate));
@@ -1908,6 +1927,8 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   TRI_AddMethodVocbase(isolate, ArangoNS,
                        TRI_V8_ASCII_STRING(isolate, "_useDatabase"), JS_UseDatabase);
   TRI_AddMethodVocbase(isolate, ArangoNS,
+                       TRI_V8_ASCII_STRING(isolate, "_properties"), JS_DBProperties);
+  TRI_AddMethodVocbase(isolate, ArangoNS,
                        TRI_V8_ASCII_STRING(isolate, "_flushCache"),
                        JS_FakeFlushCache, true);
 
@@ -2066,6 +2087,36 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
                           v8::Boolean::New(isolate,
                                            StatisticsFeature::enabled()))
       .FromMaybe(false);  // ignore result  //, v8::ReadOnly);
+
+  // replication factors
+  context->Global()
+      ->DefineOwnProperty(TRI_IGETC,
+                          TRI_V8_ASCII_STRING(isolate, "DEFAULT_REPLICATION_FACTOR"),
+                          v8::Number::New(isolate,
+                                          vocbase.server().getFeature<ClusterFeature>().defaultReplicationFactor()), v8::ReadOnly)
+      .FromMaybe(false);  // ignore result
+
+  context->Global()
+      ->DefineOwnProperty(TRI_IGETC,
+                          TRI_V8_ASCII_STRING(isolate, "MIN_REPLICATION_FACTOR"),
+                          v8::Number::New(isolate,
+                                          vocbase.server().getFeature<ClusterFeature>().minReplicationFactor()), v8::ReadOnly)
+      .FromMaybe(false);  // ignore result
+
+  context->Global()
+      ->DefineOwnProperty(TRI_IGETC,
+                          TRI_V8_ASCII_STRING(isolate, "MAX_REPLICATION_FACTOR"),
+                          v8::Number::New(isolate,
+                                          vocbase.server().getFeature<ClusterFeature>().maxReplicationFactor()), v8::ReadOnly)
+      .FromMaybe(false);  // ignore result
+
+  // max number of shards
+  context->Global()
+      ->DefineOwnProperty(TRI_IGETC,
+                          TRI_V8_ASCII_STRING(isolate, "MAX_NUMBER_OF_SHARDS"),
+                          v8::Number::New(isolate,
+                                          vocbase.server().getFeature<ClusterFeature>().maxNumberOfShards()), v8::ReadOnly)
+      .FromMaybe(false);  // ignore result
 
   // a thread-global variable that will is supposed to contain the AQL module
   // do not remove this, otherwise AQL queries will break
