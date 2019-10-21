@@ -60,7 +60,7 @@ MessageID VstConnection<ST>::sendRequest(std::unique_ptr<Request> req,
   // it does not matter if IDs are reused on different connections
   uint64_t mid = vstMessageId.fetch_add(1, std::memory_order_relaxed);
   // Create RequestItem from parameters
-  std::unique_ptr<RequestItem> item(new RequestItem());
+  auto item = std::make_unique<RequestItem>();
   item->_messageID = mid;
   item->_request = std::move(req);
   item->_callback = cb;
@@ -485,7 +485,7 @@ std::unique_ptr<fu::Response> VstConnection<ST>::createResponse(
 
   ResponseHeader header =
       parser::responseHeaderFromSlice(VPackSlice(itemCursor));
-  std::unique_ptr<Response> response(new Response(std::move(header)));
+  auto response = std::make_unique<Response>(std::move(header));
   response->setPayload(std::move(*responseBuffer), /*offset*/ headerLength);
 
   return response;
