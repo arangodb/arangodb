@@ -89,7 +89,7 @@ static int ExtractCurrentFile(unzFile uf, void* buffer, size_t const bufferSize,
   // adjust file name
   p = filenameInZip;
   while (*p != '\0') {
-#ifdef WIN32
+#ifdef _WIN32
     if (*p == '/') {
       *p = '\\';
     }

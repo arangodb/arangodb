@@ -198,7 +198,7 @@ class TraversalNode : public GraphNode {
   void prepareOptions() override;
 
  private:
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   void checkConditionsDefined() const;
 #endif
 
