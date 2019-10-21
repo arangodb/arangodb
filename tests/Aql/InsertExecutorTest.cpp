@@ -65,7 +65,15 @@ class InsertExecutorTest : public ::testing::Test {
 };
 
 class InsertExecutorTestCount : public InsertExecutorTest,
-                                public ::testing::WithParamInterface<size_t> {};
+                                public ::testing::WithParamInterface<size_t> {
+ public:
+  size_t nDocs;
+  std::string nDocsString;
+
+ public:
+  InsertExecutorTestCount()
+      : nDocs(GetParam()), nDocsString(std::to_string(GetParam())) {}
+};
 
 class InsertExecutorTestCounts
     : public InsertExecutorTest,
@@ -189,7 +197,8 @@ INSTANTIATE_TEST_CASE_P(
                     std::vector<size_t>{10, 10, 10, 10, 10, 100, 100, 10, 100,
                                         1000, 1000, 900, 10, 100}));
 
-// OLD is a keyword, but only sometimes. In particular in insert queries it isnt.
+// OLD is a keyword, but only sometimes. In particular in insert queries it
+// isn't unless overwrite: true. Yes, really.
 TEST_F(InsertExecutorTest, insert_return_old) {
   std::string query = std::string("FOR i IN 1..1 INSERT { value: i } INTO ") +
                       collectionName + " RETURN OLD";
@@ -197,15 +206,15 @@ TEST_F(InsertExecutorTest, insert_return_old) {
   AssertQueryFailsWith(vocbase, query, 1203);
 }
 
-TEST_F(InsertExecutorTest, insert_with_key) {
+TEST_P(InsertExecutorTestCount, insert_with_key) {
   std::string query =
-      std::string(
-          "FOR i IN 1..100 INSERT { _key: TO_STRING(i), value: i } INTO ") +
+      std::string("FOR i IN 1.." + nDocsString +
+                  " INSERT { _key: TO_STRING(i), value: i } INTO ") +
       collectionName + " SORT NEW.value RETURN NEW.value";
 
   VPackBuilder builder;
   builder.openArray();
-  for (size_t i = 1; i <= 100; i++) {
+  for (size_t i = 1; i <= nDocs; i++) {
     builder.add(VPackValue(i));
   }
   builder.close();
@@ -213,18 +222,18 @@ TEST_F(InsertExecutorTest, insert_with_key) {
   AssertQueryHasResult(vocbase, query, builder.slice());
 }
 
-TEST_F(InsertExecutorTest, insert_with_key_and_overwrite) {
+TEST_P(InsertExecutorTestCount, insert_with_key_and_overwrite) {
   // Write
   {
     std::string query =
-        std::string(
-            "FOR i IN 1..100 INSERT { _key: TO_STRING(i), value: i } INTO ") +
+        std::string("FOR i IN 1.." + nDocsString +
+                    " INSERT { _key: TO_STRING(i), value: i } INTO ") +
         collectionName +
         " OPTIONS { overwrite: true } SORT NEW.value RETURN NEW.value";
 
     VPackBuilder builder;
     builder.openArray();
-    for (size_t i = 1; i <= 100; i++) {
+    for (size_t i = 1; i <= nDocs; i++) {
       builder.add(VPackValue(i));
     }
     builder.close();
@@ -234,14 +243,14 @@ TEST_F(InsertExecutorTest, insert_with_key_and_overwrite) {
   // Overwrite
   {
     std::string query =
-        std::string(
-            "FOR i IN 1..100 INSERT { _key: TO_STRING(i), value: -i } INTO ") +
+        std::string("FOR i IN 1.." + nDocsString +
+                    " INSERT { _key: TO_STRING(i), value: -i } INTO ") +
         collectionName +
         " OPTIONS { overwrite: true } SORT NEW.value RETURN NEW.value";
 
     VPackBuilder builder;
     builder.openArray();
-    for (int i = -100; i <= -1; i++) {
+    for (int i = -nDocs; i <= -1; i++) {
       builder.add(VPackValue(i));
     }
     builder.close();
@@ -249,15 +258,15 @@ TEST_F(InsertExecutorTest, insert_with_key_and_overwrite) {
   }
 }
 
-TEST_F(InsertExecutorTest, insert_with_key_and_no_overwrite) {
+TEST_P(InsertExecutorTestCount, insert_with_key_and_no_overwrite) {
   std::string query =
-      std::string(
-          "FOR i IN 1..100 INSERT { _key: TO_STRING(i), value: i } INTO ") +
+      std::string("FOR i IN 1.." + nDocsString +
+                  " INSERT { _key: TO_STRING(i), value: i } INTO ") +
       collectionName + " SORT NEW.value RETURN NEW.value";
 
   VPackBuilder builder;
   builder.openArray();
-  for (size_t i = 1; i <= 100; i++) {
+  for (size_t i = 1; i <= nDocs; i++) {
     builder.add(VPackValue(i));
   }
   builder.close();
@@ -268,16 +277,16 @@ TEST_F(InsertExecutorTest, insert_with_key_and_no_overwrite) {
   AssertQueryFailsWith(vocbase, query, 1210);
 }
 
-TEST_F(InsertExecutorTest, insert_with_key_and_no_overwrite_ignore_errors) {
+TEST_P(InsertExecutorTestCount, insert_with_key_and_no_overwrite_ignore_errors) {
   std::string query =
-      std::string(
-          "FOR i IN 1..100 INSERT { _key: TO_STRING(i), value: i } INTO ") +
+      std::string("FOR i IN 1.." + nDocsString +
+                  " INSERT { _key: TO_STRING(i), value: i } INTO ") +
       collectionName +
       " OPTIONS { ignoreErrors: true } SORT NEW.value RETURN NEW.value";
 
   VPackBuilder builder;
   builder.openArray();
-  for (size_t i = 1; i <= 100; i++) {
+  for (size_t i = 1; i <= nDocs; i++) {
     builder.add(VPackValue(i));
   }
   builder.close();
@@ -286,6 +295,50 @@ TEST_F(InsertExecutorTest, insert_with_key_and_no_overwrite_ignore_errors) {
   // The second query should fail with a uniqueness violation on _key
   AssertQueryHasResult(vocbase, query, builder.slice());
   AssertQueryHasResult(vocbase, query, VPackSlice::emptyArraySlice());
+}
+
+TEST_P(InsertExecutorTestCount, insert_inside_subquery) {
+  std::string query = "FOR i IN 1.." + nDocsString +
+                      " LET x = (INSERT { value: i } INTO " + collectionName +
+                      " RETURN NEW)"
+                      " SORT x[0].value"
+                      " LIMIT 10, null "
+                      " RETURN x[0].value";
+
+  // TODO: is this correct?
+  {
+    VPackBuilder builder;
+    builder.openArray();
+    for (size_t i = 11; i <= nDocs; i++) {
+      builder.add(VPackValue(i));
+    }
+    builder.close();
+    AssertQueryHasResult(vocbase, query, builder.slice());
+  }
+
+  {
+    VPackBuilder builder;
+    builder.openArray();
+    for (size_t i = 1; i <= nDocs; i++) {
+      builder.add(VPackValue(i));
+    }
+    builder.close();
+    AssertQueryHasResult(vocbase, checkQuery, builder.slice());
+  }
+}
+
+TEST_P(InsertExecutorTestCount, aggregate_insert_inside_subquery) {
+  std::string query = "FOR i IN 1.." + nDocsString +
+                      " LET x = (INSERT { value: i } INTO " + collectionName +
+                      " RETURN NEW)"
+                      " COLLECT AGGREGATE sum = SUM(x[0].value)"
+                      " RETURN sum";
+
+  VPackBuilder builder;
+  builder.openArray();
+  builder.add(VPackValue(nDocs * (nDocs + 1) / 2));
+  builder.close();
+  AssertQueryHasResult(vocbase, query, builder.slice());
 }
 
 }  // namespace aql
