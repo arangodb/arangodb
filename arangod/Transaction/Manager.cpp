@@ -972,8 +972,8 @@ Result Manager::abortAllManagedWriteTrx(std::string const& username, bool fanout
     auto queryList = vocbase->queryList();
     TRI_ASSERT(queryList != nullptr);
     // we are only interested in killed write queries
-    queryList->kill([](aql::Query* query) {
-      return !query->trx()->state()->isReadOnlyTransaction();
+    queryList->kill([](aql::Query& query) {
+      return !query.trx()->state()->isReadOnlyTransaction();
     }, false); 
   });
 

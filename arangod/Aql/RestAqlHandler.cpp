@@ -392,6 +392,12 @@ bool RestAqlHandler::registerTraverserEngines(VPackSlice const traverserEngines,
   return true;
 }
 
+// DELETE method for /_api/aql/kill/<queryId>, (internal)
+bool RestAqlHandler::killQuery(std::string const& idString) {
+  _qId = arangodb::basics::StringUtils::uint64(idString);
+  return _queryRegistry->kill(&_vocbase, _qId);
+}
+
 // PUT method for /_api/aql/<operation>/<queryId>, (internal)
 // this is using the part of the cursor API with side effects.
 // <operation>: can be "lock" or "getSome" or "skip" or "initializeCursor" or
@@ -533,7 +539,27 @@ RestStatus RestAqlHandler::execute() {
       }
       break;
     }
-    case rest::RequestType::DELETE_REQ:
+    case rest::RequestType::DELETE_REQ: {
+      if (suffixes.size() != 2) {
+        std::string msg("Unknown DELETE API: ");
+        msg += arangodb::basics::StringUtils::join(suffixes, '/');
+        LOG_TOPIC("f1993", ERR, arangodb::Logger::AQL) << msg;
+        generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
+                      std::move(msg));
+      } else {
+        if (killQuery(suffixes[1])) {
+          VPackBuilder answerBody;
+          {
+            VPackObjectBuilder guard(&answerBody);
+            answerBody.add("error", VPackValue(false));
+          }
+          sendResponse(rest::ResponseCode::OK, answerBody.slice());
+        } else {
+          generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_QUERY_NOT_FOUND);
+        }
+      }
+      break;
+    }
     case rest::RequestType::HEAD:
     case rest::RequestType::PATCH:
     case rest::RequestType::OPTIONS:
