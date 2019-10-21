@@ -78,11 +78,11 @@ if (USE_JEMALLOC)
   add_dependencies(arangobench jemalloc)
 endif ()
 
-if(MSVC AND FAIL_ON_WARNINGS)
+if(MSVC AND USE_FAIL_ON_WARNINGS)
   target_compile_options(arangobench PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
 endif()
 
-if (DARWIN AND FAIL_ON_WARNINGS)
+if (DARWIN AND USE_FAIL_ON_WARNINGS)
   target_compile_options(arangobench PRIVATE -Werror)
 endif()
 
@@ -137,11 +137,11 @@ if (USE_JEMALLOC)
   add_dependencies(arangobackup jemalloc)
 endif ()
 
-if(MSVC AND FAIL_ON_WARNINGS)
+if(MSVC AND USE_FAIL_ON_WARNINGS)
   target_compile_options(arangobackup PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
 endif()
 
-if (DARWIN AND FAIL_ON_WARNINGS)
+if (DARWIN AND USE_FAIL_ON_WARNINGS)
   target_compile_options(arangobackup PRIVATE -Werror)
 endif()
 
@@ -196,11 +196,11 @@ if (USE_JEMALLOC)
   add_dependencies(arangodump jemalloc)
 endif ()
 
-if(MSVC AND FAIL_ON_WARNINGS)
+if(MSVC AND USE_FAIL_ON_WARNINGS)
   target_compile_options(arangodump PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
 endif()
 
-if (DARWIN AND FAIL_ON_WARNINGS)
+if (DARWIN AND USE_FAIL_ON_WARNINGS)
   target_compile_options(arangodump PRIVATE -Werror)
 endif()
 
@@ -252,11 +252,11 @@ if (USE_JEMALLOC)
   add_dependencies(arangoexport jemalloc)
 endif ()
 
-if(MSVC AND FAIL_ON_WARNINGS)
+if(MSVC AND USE_FAIL_ON_WARNINGS)
   target_compile_options(arangoexport PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
 endif()
 
-if (DARWIN AND FAIL_ON_WARNINGS)
+if (DARWIN AND USE_FAIL_ON_WARNINGS)
   target_compile_options(arangoexport PRIVATE -Werror)
 endif()
 
@@ -320,11 +320,11 @@ install_command_alias(arangoimport
   arangoimp
 )
 
-if(MSVC AND FAIL_ON_WARNINGS)
+if(MSVC AND USE_FAIL_ON_WARNINGS)
   target_compile_options(arangoimport PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
 endif()
 
-if (DARWIN AND FAIL_ON_WARNINGS)
+if (DARWIN AND USE_FAIL_ON_WARNINGS)
   target_compile_options(arangoimport PRIVATE -Werror)
 endif()
 
@@ -377,11 +377,11 @@ if (USE_JEMALLOC)
   add_dependencies(arangorestore jemalloc)
 endif ()
 
-if(MSVC AND FAIL_ON_WARNINGS)
+if(MSVC AND USE_FAIL_ON_WARNINGS)
   target_compile_options(arangorestore PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
 endif()
 
-if (DARWIN AND FAIL_ON_WARNINGS)
+if (DARWIN AND USE_FAIL_ON_WARNINGS)
   target_compile_options(arangorestore PRIVATE -Werror)
 endif()
 
@@ -442,11 +442,11 @@ if (USE_JEMALLOC)
   add_dependencies(arangosh jemalloc)
 endif ()
 
-if(MSVC AND FAIL_ON_WARNINGS)
+if(MSVC AND USE_FAIL_ON_WARNINGS)
   target_compile_options(arangosh PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
 endif()
 
-if (DARWIN AND FAIL_ON_WARNINGS)
+if (DARWIN AND USE_FAIL_ON_WARNINGS)
   target_compile_options(arangosh PRIVATE -Werror)
 endif()
 
@@ -498,11 +498,11 @@ if (USE_JEMALLOC)
   add_dependencies(arangovpack jemalloc)
 endif ()
 
-if(MSVC AND FAIL_ON_WARNINGS)
+if(MSVC AND USE_FAIL_ON_WARNINGS)
   target_compile_options(arangovpack PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
 endif()
 
-if (DARWIN AND FAIL_ON_WARNINGS)
+if (DARWIN AND USE_FAIL_ON_WARNINGS)
   target_compile_options(arangovpack PRIVATE -Werror)
 endif()
 

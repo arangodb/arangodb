@@ -46,7 +46,7 @@ option(SKIP_PACKAGING "" OFF)
 option(VERBOSE "be verbose about flags used" OFF)
 
 # treat warnings as errors on some platforms
-option(FAIL_ON_WARNINGS "treat warnings as errors" OFF)
+option(USE_FAIL_ON_WARNINGS "treat warnings as errors (MSVC and MacOS only)" ON)
 
 # don't use standalone boost asio
 # use this when asio is included outside of Boost

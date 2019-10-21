@@ -141,9 +141,9 @@ void waitImpl(Future<T>& f) {
   
   Promise<T> p;
   Future<T> ret = p.getFuture();
-  f.thenFinal([&p, &cv, &m](Try<T>&& t) {
-    p.setTry(std::move(t));
+  f.thenFinal([p(std::move(p)), &cv, &m](Try<T>&& t) mutable {
     std::lock_guard<std::mutex> guard(m);
+    p.setTry(std::move(t));
     cv.notify_one();
   });
   std::unique_lock<std::mutex> lock(m);
