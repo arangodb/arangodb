@@ -449,10 +449,10 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(fuerte::RestVerb typ
   std::lock_guard<std::mutex> guard(_communicationMutex);
   auto ticket = generateRequestTicket();
   conn->sendRequest(std::move(req),
-                    [this, ticket, spec, sqs = _query.sharedState(), conn]
-                    (fuerte::Error err,
-                     std::unique_ptr<fuerte::Request>,
-                     std::unique_ptr<fuerte::Response> res) {
+                    [this, ticket, spec,
+                     sqs = _query.sharedState()](fuerte::Error err,
+                                                 std::unique_ptr<fuerte::Request>,
+                                                 std::unique_ptr<fuerte::Response> res) {
                       // `this` is only valid as long as sharedState is valid.
                       // So we must execute this under sharedState's mutex.
                       sqs->execute([&] {

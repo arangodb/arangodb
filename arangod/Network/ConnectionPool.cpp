@@ -103,8 +103,8 @@ void ConnectionPool::removeBrokenConnections(Bucket& buck) {
 void ConnectionPool::pruneConnections() {
   READ_LOCKER(guard, _lock);
 
-  const auto ttl = std::chrono::milliseconds(_config.idleConnectionMilli * 2);
-  
+  const auto ttl = std::chrono::milliseconds(_config.idleConnectionMilli);
+
   for (auto& pair : _connections) {
     Bucket& buck = *(pair.second);
     std::lock_guard<std::mutex> lock(buck.mutex);
@@ -191,7 +191,8 @@ size_t ConnectionPool::numOpenConnections() const {
 }
 
 std::shared_ptr<fuerte::Connection> ConnectionPool::createConnection(fuerte::ConnectionBuilder& builder) {
-  builder.idleTimeout(std::chrono::milliseconds(_config.idleConnectionMilli));
+  auto idle = std::chrono::milliseconds(_config.idleConnectionMilli);
+  builder.idleTimeout(idle);
   AuthenticationFeature* af = AuthenticationFeature::instance();
   if (af != nullptr && af->isActive()) {
     std::string const& token = af->tokenCache().jwtToken();

@@ -4563,9 +4563,9 @@ void arangodb::aql::distributeSortToClusterRule(Optimizer* opt,
           // ready to rumble!
           break;
         }
-        // late-materialization should be set only after sort nodes are distributed
-        // in cluster as it accounts this disctribution. So we should not encounter this
-        // kind of nodes for now
+        // late-materialization should be set only after sort nodes are
+        // distributed in cluster as it accounts this disctribution. So we
+        // should not encounter this kind of nodes for now
         case EN::MATERIALIZE:
         case EN::SUBQUERY_START:
         case EN::SUBQUERY_END:
@@ -7248,8 +7248,7 @@ void arangodb::aql::moveFiltersIntoEnumerateRule(Optimizer* opt, std::unique_ptr
 
         found.clear();
         Ast::getReferencedVariables(expr->node(), found);
-        if (found.size() == 1 &&
-            found.find(outVariable) != found.end()) {
+        if (found.size() == 1 && found.find(outVariable) != found.end()) {
           calculations.emplace(calculationNode->outVariable(), calculationNode);
         }
       }
