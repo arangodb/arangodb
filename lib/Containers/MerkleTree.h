@@ -176,6 +176,31 @@ class MerkleTree {
   }
 
   /**
+   * @brief Returns the number of hashed keys contained in the tree
+   */
+  std::size_t count() const {
+    std::shared_lock<std::shared_timed_mutex> guard(_bufferLock);
+    std::unique_lock<std::mutex> lock(this->lock(0));
+    return node(0).count;
+  }
+
+  /**
+   * @brief Returns the current range of the tree
+   */
+  std::pair<std::size_t, std::size_t> range() const {
+    std::shared_lock<std::shared_timed_mutex> guard(_bufferLock);
+    return {meta().rangeMin, meta().rangeMax};
+  }
+
+  /**
+   * @brief Returns the maximum depth of the tree
+   */
+  std::size_t maxDepth() const {
+    std::shared_lock<std::shared_timed_mutex> guard(_bufferLock);
+    return meta().maxDepth;
+  }
+
+  /**
    * @brief Insert a value into the tree. May trigger a resize.
    *
    * @param key   The key for the item. If it is less than the minimum specified
@@ -214,31 +239,6 @@ class MerkleTree {
     }
 
     modify(key, value, /* isInsert */ false);
-  }
-
-  /**
-   * @brief Returns the number of hashed keys contained in the tree
-   */
-  std::size_t count() const {
-    std::shared_lock<std::shared_timed_mutex> guard(_bufferLock);
-    std::unique_lock<std::mutex> lock(this->lock(0));
-    return node(0).count;
-  }
-
-  /**
-   * @brief Returns the current range of the tree
-   */
-  std::pair<std::size_t, std::size_t> range() const {
-    std::shared_lock<std::shared_timed_mutex> guard(_bufferLock);
-    return {meta().rangeMin, meta().rangeMax};
-  }
-
-  /**
-   * @brief Returns the maximum depth of the tree
-   */
-  std::size_t maxDepth() const {
-    std::shared_lock<std::shared_timed_mutex> guard(_bufferLock);
-    return meta().maxDepth;
   }
 
  protected:
@@ -302,16 +302,21 @@ class MerkleTree {
 
     std::size_t rangeMin = meta().rangeMin;
     std::size_t rangeMax = meta().rangeMax;
+    if (key < rangeMax) {
+      // someone else resized already while we were waiting for the lock
+      return;
+    }
 
     std::size_t factor = minimumFactorFor(rangeMax - rangeMin, key - rangeMin);
 
     for (std::size_t depth = 1; depth <= meta().maxDepth; ++depth) {
       // iterate over all nodes and left-combine, (skipping the first, identity)
+      std::size_t offset = nodeCountUpToDepth(depth - 1);
       for (std::size_t index = 1; index < nodeCountAtDepth(depth); ++index) {
-        Node& src = this->node(index);
-        Node& dst = this->node(index / factor);
+        Node& src = this->node(offset + index);
+        Node& dst = this->node(offset + (index / factor));
         dst.count += src.count;
-        dst.hash &= src.hash;
+        dst.hash ^= src.hash;
         src = Node{0, 0};
       }
     }

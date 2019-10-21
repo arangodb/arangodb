@@ -268,20 +268,20 @@ TEST_F(InternalMerkleTreeTest, test_grow) {
       hash1[i / 8] ^= i + 1024;
       hash2[i] ^= i + 1024;
     }
-    for (std::size_t i = 0; i < 64; ++i) {
-      Node& node = this->node(this->index(i, 2));
-      ASSERT_EQ(node.count, 1);
-      ASSERT_EQ(node.hash, hash2[i]);
+    {
+      Node& node = this->node(0);
+      ASSERT_EQ(node.count, 64);
+      ASSERT_EQ(node.hash, hash0);
     }
     for (std::size_t i = 0; i < 8; ++i) {
       Node& node = this->node(i + 1);
       ASSERT_EQ(node.count, 8);
       ASSERT_EQ(node.hash, hash1[i]);
     }
-    {
-      Node& node = this->node(0);
-      ASSERT_EQ(node.count, 64);
-      ASSERT_EQ(node.hash, hash0);
+    for (std::size_t i = 0; i < 64; ++i) {
+      Node& node = this->node(this->index(i, 2));
+      ASSERT_EQ(node.count, 1);
+      ASSERT_EQ(node.hash, hash2[i]);
     }
   }
 
@@ -300,23 +300,23 @@ TEST_F(InternalMerkleTreeTest, test_grow) {
     std::size_t hash2[64] = {0};
     for (std::size_t i = 0; i < 128; ++i) {
       hash0 ^= i + 1024;
-      hash1[i / 8] ^= i + 1024;
+      hash1[i / 16] ^= i + 1024;
       hash2[i / 2] ^= i + 1024;
+    }
+    {
+      Node& node = this->node(0);
+      ASSERT_EQ(node.count, 128);
+      ASSERT_EQ(node.hash, hash0);
+    }
+    for (std::size_t i = 0; i < 8; ++i) {
+      Node& node = this->node(i + 1);
+      ASSERT_EQ(node.count, 16);
+      ASSERT_EQ(node.hash, hash1[i]);
     }
     for (std::size_t i = 0; i < 64; ++i) {
       Node& node = this->node(this->index(i, 2));
       ASSERT_EQ(node.count, 2);
       ASSERT_EQ(node.hash, hash2[i]);
-    }
-    for (std::size_t i = 0; i < 8; ++i) {
-      Node& node = this->node(i + 1);
-      ASSERT_EQ(node.count, 8);
-      ASSERT_EQ(node.hash, hash1[i]);
-    }
-    {
-      Node& node = this->node(0);
-      ASSERT_EQ(node.count, 64);
-      ASSERT_EQ(node.hash, hash0);
     }
   }
 }
