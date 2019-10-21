@@ -333,7 +333,7 @@ if (MSVC AND USE_FAIL_ON_WARNINGS)
   target_compile_options(arango PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
 endif()
 
-if (DARWIN AND USE_FAIL_ON_WARNINGS)
+if (USE_FAIL_ON_WARNINGS)
   target_compile_options(arango_v8 PRIVATE -Werror)
   target_compile_options(arango_geo PRIVATE -Werror)
   target_compile_options(arango PRIVATE -Werror)
