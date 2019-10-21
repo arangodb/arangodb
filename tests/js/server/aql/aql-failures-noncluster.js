@@ -222,7 +222,14 @@ function ahuacatlFailureSuite () {
 
     testReturnBlock : function () {
       internal.debugSetFailAt("ReturnBlock::getSome");
-      assertFailingQuery("FOR year IN [ 2010, 2011, 2012 ] LET quarters = ((FOR q IN [ 'jhaskdjhjkasdhkjahsd', 2, 3, 4 ] RETURN CONCAT('xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx', q))) RETURN UNIQUE(quarters)");
+      assertFailingQuery(`
+        FOR year IN [ 2010, 2011, 2012 ]
+          LET quarters = ( (
+            FOR q IN [ 'jhaskdjhjkasdhkjahsd', 2, 3, 4 ]
+              RETURN CONCAT('xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx', q)
+          ) )
+          RETURN UNIQUE(quarters)
+      `, ['-splice-subqueries']);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
