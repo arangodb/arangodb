@@ -341,7 +341,7 @@ RestStatus RestAdminClusterHandler::handleCreateSingleServerJob(std::string cons
           VPackBuilder builder(payload);
           VPackObjectBuilder ob(&builder);
           builder.add("error", VPackValue(false));
-          builder.add("code", VPackValue(ResponseCode::ACCEPTED));
+          builder.add("code", VPackValue(int(ResponseCode::ACCEPTED)));
           builder.add("job", VPackValue(jobId));
         }
 
