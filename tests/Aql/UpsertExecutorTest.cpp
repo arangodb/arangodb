@@ -24,6 +24,8 @@
 #include "QueryHelper.h"
 #include "gtest/gtest.h"
 
+#include "Basics/StringUtils.h"
+
 using namespace arangodb;
 using namespace arangodb::aql;
 
@@ -269,6 +271,387 @@ TEST_P(UpsertExecutorTest, DISABLED_option_ignoreRevs_false) {
 
 INSTANTIATE_TEST_CASE_P(UpsertExecutorTestBasics, UpsertExecutorTest,
                         ::testing::Values(UpsertType::UPDATE, UpsertType::REPLACE));
+
+/*
+ * SECTION: Integration tests
+ */
+
+class UpsertExecutorIntegrationTest
+    : public testing::TestWithParam<std::tuple<UpsertType, size_t>> {
+ protected:
+  mocks::MockAqlServer server{};
+  TRI_vocbase_t& vocbase{server.getSystemDatabase()};
+
+  void SetUp() override {
+    SCOPED_TRACE("Setup");
+    auto info = VPackParser::fromJson(R"({"name":"UnitTestCollection"})");
+    auto collection = vocbase.createCollection(info->slice());
+    ASSERT_NE(collection.get(), nullptr) << "Failed to create collection";
+    // Insert Documents
+    std::string insertQuery =
+        R"aql(FOR i IN 1..)aql" + basics::StringUtils::itoa(numDocs()) +
+        R"aql( INSERT {_key: TO_STRING(i), value: i, sortValue: i} INTO UnitTestCollection)aql";
+    SCOPED_TRACE(insertQuery);
+    AssertQueryHasResult(vocbase, insertQuery, VPackSlice::emptyArraySlice());
+    VPackBuilder expected;
+    {
+      VPackArrayBuilder a{&expected};
+      for (size_t i = 1; i <= numDocs(); ++i) {
+        expected.add(VPackValue(i));
+      }
+    }
+    AssertQueryHasResult(vocbase, GetAllDocs, expected.slice());
+  }
+
+  size_t numDocs() const {
+    auto const& [type, numDocs] = GetParam();
+    return numDocs;
+  }
+
+  UpsertType type() const {
+    auto const& [type, numDocs] = GetParam();
+    return type;
+  }
+
+  std::string const action() const {
+    if (type() == UpsertType::UPDATE) {
+      return "UPDATE";
+    }
+    return "REPLACE";
+  }
+};
+
+// This is disallowed in the parser (TRI_ERROR_QUERY_PARSE)
+TEST_P(UpsertExecutorIntegrationTest, DISABLED_upsert_all) {
+  std::string query = R"aql(
+      FOR doc IN UnitTestCollection
+      UPSERT doc 
+      INSERT {value: "invalid"}
+      )aql" + action() +
+                      R"aql( {value: "foo"} IN UnitTestCollection)aql";
+  VPackBuilder expected;
+  {
+    VPackArrayBuilder a{&expected};
+    for (size_t i = 1; i <= numDocs(); ++i) {
+      expected.add(VPackValue("foo"));
+    }
+  }
+  AssertQueryHasResult(vocbase, query, VPackSlice::emptyArraySlice());
+  AssertQueryHasResult(vocbase, GetAllDocs, expected.slice());
+}
+
+TEST_P(UpsertExecutorIntegrationTest, upsert_all_by_key) {
+  std::string query = R"aql(FOR doc IN 1..)aql" + basics::StringUtils::itoa(numDocs()) +
+                      R"aql( UPSERT {_key: TO_STRING(doc)} 
+                             INSERT {value: "invalid"} )aql" +
+                      action() + R"aql( {value: 'foo'} IN UnitTestCollection)aql";
+  VPackBuilder expected;
+  {
+    VPackArrayBuilder a{&expected};
+    for (size_t i = 1; i <= numDocs(); ++i) {
+      expected.add(VPackValue("foo"));
+    }
+  }
+  AssertQueryHasResult(vocbase, query, VPackSlice::emptyArraySlice());
+  AssertQueryHasResult(vocbase, GetAllDocs, expected.slice());
+}
+
+TEST_P(UpsertExecutorIntegrationTest, upsert_all_by_id) {
+  std::string query =
+      R"aql(FOR doc IN 1..)aql" + basics::StringUtils::itoa(numDocs()) +
+      R"aql( UPSERT {_id: CONCAT("UnitTestCollection/", TO_STRING(doc)) } 
+                             INSERT {value: "invalid"} )aql" +
+      action() + R"aql( {value: 'foo'} IN UnitTestCollection)aql";
+  VPackBuilder expected;
+  {
+    VPackArrayBuilder a{&expected};
+    for (size_t i = 1; i <= numDocs(); ++i) {
+      expected.add(VPackValue("foo"));
+    }
+  }
+  AssertQueryHasResult(vocbase, query, VPackSlice::emptyArraySlice());
+  AssertQueryHasResult(vocbase, GetAllDocs, expected.slice());
+}
+
+TEST_P(UpsertExecutorIntegrationTest, upsert_only_even) {
+  std::string query = R"aql(
+    FOR sortValue IN 1..)aql" +
+                      basics::StringUtils::itoa(numDocs()) +
+                      R"aql(
+      FILTER sortValue % 2 == 0
+      UPSERT {sortValue}
+      INSERT {value: "invalid"} )aql" +
+                      action() + R"aql(
+      {value: 'foo', sortValue} IN UnitTestCollection)aql";
+  VPackBuilder expected;
+  {
+    VPackArrayBuilder a{&expected};
+    for (size_t i = 1; i <= numDocs(); ++i) {
+      if (i % 2 == 0) {
+        expected.add(VPackValue("foo"));
+      } else {
+        expected.add(VPackValue(i));
+      }
+    }
+  }
+  AssertQueryHasResult(vocbase, query, VPackSlice::emptyArraySlice());
+  AssertQueryHasResult(vocbase, GetAllDocs, expected.slice());
+}
+
+TEST_P(UpsertExecutorIntegrationTest, upsert_all_but_skip) {
+  std::string query = R"aql(
+    FOR doc IN UnitTestCollection
+    SORT doc.sortValue
+    UPSERT {_key: doc._key}
+    INSERT {value: 'invalid'} )aql" +
+                      action() + R"aql(
+    {value: 'foo', sortValue: doc.sortValue } IN UnitTestCollection
+    LIMIT 526, null
+    RETURN 1
+  )aql";
+  VPackBuilder expectedUpdateResponse;
+  VPackBuilder expected;
+  {
+    VPackArrayBuilder a{&expected};
+    VPackArrayBuilder b{&expectedUpdateResponse};
+
+    for (size_t i = 1; i <= numDocs(); ++i) {
+      expected.add(VPackValue("foo"));
+      if (i > 526) {
+        expectedUpdateResponse.add(VPackValue(1));
+      }
+    }
+  }
+  AssertQueryHasResult(vocbase, query, expectedUpdateResponse.slice());
+  AssertQueryHasResult(vocbase, GetAllDocs, expected.slice());
+}
+
+TEST_P(UpsertExecutorIntegrationTest, upsert_all_return_old) {
+  std::string query = R"aql(
+    FOR doc IN UnitTestCollection
+    SORT doc.sortValue
+    UPSERT {_key: doc._key}
+    INSERT {value: 'invalid'} )aql" +
+                      action() + R"aql(
+    {value: 'foo', sortValue: doc.sortValue } IN UnitTestCollection
+    RETURN OLD.value
+  )aql";
+  VPackBuilder expectedUpdateResponse;
+  VPackBuilder expected;
+  {
+    VPackArrayBuilder a{&expected};
+    VPackArrayBuilder b{&expectedUpdateResponse};
+
+    for (size_t i = 1; i <= numDocs(); ++i) {
+      expected.add(VPackValue("foo"));
+      expectedUpdateResponse.add(VPackValue(i));
+    }
+  }
+  AssertQueryHasResult(vocbase, query, expectedUpdateResponse.slice());
+  AssertQueryHasResult(vocbase, GetAllDocs, expected.slice());
+}
+
+TEST_P(UpsertExecutorIntegrationTest, upsert_all_return_new) {
+  std::string query = R"aql(
+    FOR doc IN UnitTestCollection
+    SORT doc.sortValue
+    UPSERT {_key: doc._key}
+    INSERT {value: 'invalid'} )aql" +
+                      action() + R"aql(
+    {value: 'foo', sortValue: doc.sortValue } IN UnitTestCollection
+    RETURN NEW.value
+  )aql";
+
+  VPackBuilder expected;
+  {
+    VPackArrayBuilder a{&expected};
+
+    for (size_t i = 1; i <= numDocs(); ++i) {
+      expected.add(VPackValue("foo"));
+    }
+  }
+  AssertQueryHasResult(vocbase, query, expected.slice());
+  AssertQueryHasResult(vocbase, GetAllDocs, expected.slice());
+}
+
+TEST_P(UpsertExecutorIntegrationTest, upsert_all_return_old_and_new) {
+  std::string query = R"aql(
+    FOR doc IN UnitTestCollection
+    SORT doc.sortValue
+    UPSERT {_key: doc._key}
+    INSERT {value: 'invalid'} )aql" +
+                      action() + R"aql(
+    {value: 'foo', sortValue: doc.sortValue } IN UnitTestCollection
+    RETURN {old: OLD.value, new: NEW.value}
+  )aql";
+
+  VPackBuilder expectedUpdateResponse;
+  VPackBuilder expected;
+  {
+    VPackArrayBuilder a{&expected};
+    VPackArrayBuilder b{&expectedUpdateResponse};
+
+    for (size_t i = 1; i <= numDocs(); ++i) {
+      expected.add(VPackValue("foo"));
+      {
+        VPackObjectBuilder c{&expectedUpdateResponse};
+        expectedUpdateResponse.add("old", VPackValue(i));
+        expectedUpdateResponse.add("new", VPackValue("foo"));
+      }
+    }
+  }
+  AssertQueryHasResult(vocbase, query, expectedUpdateResponse.slice());
+  AssertQueryHasResult(vocbase, GetAllDocs, expected.slice());
+}
+
+TEST_P(UpsertExecutorIntegrationTest, upsert_handling_old_attributes) {
+  std::string query = R"aql(
+      FOR doc IN UnitTestCollection
+      UPSERT {_key: doc._key}
+      INSERT {value: "invalid"} )aql" +
+                      action() + R"aql(
+      {foo: 'foo'} IN UnitTestCollection)aql";
+  VPackBuilder expected;
+  {
+    VPackArrayBuilder a{&expected};
+    if (type() == UpsertType::UPDATE) {
+      for (size_t i = 1; i <= numDocs(); ++i) {
+        expected.add(VPackValue(i));
+      }
+    } else {
+      for (size_t i = 1; i <= numDocs(); ++i) {
+        expected.add(VPackSlice::nullSlice());
+      }
+    }
+  }
+  AssertQueryHasResult(vocbase, query, VPackSlice::emptyArraySlice());
+  AssertQueryHasResult(vocbase, GetAllDocs, expected.slice());
+}
+
+TEST_P(UpsertExecutorIntegrationTest, upsert_in_subquery_multi_access) {
+  std::string query = R"aql(
+    FOR doc IN UnitTestCollection
+    SORT doc.sortValue
+    LET updated = (UPSERT {_key: doc._key}
+      INSERT {value: "invalid"} )aql" +
+                      action() + R"aql(
+      {value: 'foo'} IN UnitTestCollection)
+    RETURN updated
+  )aql";
+  VPackBuilder expected;
+  {
+    VPackArrayBuilder a{&expected};
+    for (size_t i = 1; i <= numDocs(); ++i) {
+      expected.add(VPackValue(i));
+    }
+  }
+  AssertQueryFailsWith(vocbase, query, TRI_ERROR_QUERY_ACCESS_AFTER_MODIFICATION);
+  AssertQueryHasResult(vocbase, GetAllDocs, expected.slice());
+}
+
+TEST_P(UpsertExecutorIntegrationTest, upsert_in_subquery) {
+  std::string query = R"aql(
+    FOR x IN ["foo", "bar"]
+    FILTER x != "foo" /* The storage engine mock does NOT support multiple edits */
+    LET updated = (
+      FOR doc IN UnitTestCollection
+        UPSERT {_key: doc._key} 
+        INSERT {value: "invalid"})aql" +
+                      action() +
+                      R"aql( {value: x} IN UnitTestCollection
+    )
+    RETURN updated
+  )aql";
+  // Both subqueries do not return anything
+  auto expectedUpdateResponse = VPackParser::fromJson(R"([[]])");
+  VPackBuilder expected;
+  {
+    VPackArrayBuilder a{&expected};
+    for (size_t i = 1; i <= numDocs(); ++i) {
+      expected.add(VPackValue("bar"));
+    }
+  }
+  AssertQueryHasResult(vocbase, query, expectedUpdateResponse->slice());
+  AssertQueryHasResult(vocbase, GetAllDocs, expected.slice());
+}
+
+TEST_P(UpsertExecutorIntegrationTest, upsert_in_subquery_with_outer_skip) {
+  std::string query = R"aql(
+    FOR x IN 1..2
+      LET updated = (
+        FILTER x < 2
+        FOR doc IN UnitTestCollection
+          UPSERT {_key: doc._key} 
+          INSERT {value: "invalid"})aql" +
+                      action() +
+                      R"aql( {value: "foo"} IN UnitTestCollection)
+    LIMIT 1, null
+    RETURN updated
+  )aql";
+  VPackBuilder expectedUpdateResponse;
+  VPackBuilder expected;
+  {
+    // [ [] ]
+    VPackArrayBuilder b{&expectedUpdateResponse};
+    VPackArrayBuilder c{&expectedUpdateResponse};
+
+    VPackArrayBuilder a{&expected};
+    for (size_t i = 1; i <= numDocs(); ++i) {
+      expected.add(VPackValue("foo"));
+    }
+  }
+  AssertQueryHasResult(vocbase, query, expectedUpdateResponse.slice());
+  AssertQueryHasResult(vocbase, GetAllDocs, expected.slice());
+}
+
+TEST_P(UpsertExecutorIntegrationTest, upsert_in_subquery_with_inner_skip) {
+  std::string query = R"aql(
+    FOR x IN 1..2
+    LET updated = (
+      FILTER x < 2
+      FOR doc IN UnitTestCollection
+        UPSERT {_key: doc._key} 
+        INSERT {value: "invalid"})aql" +
+                      action() +
+                      R"aql(  {value: CONCAT('foo', TO_STRING(x))} IN UnitTestCollection
+        LIMIT 526, null
+      RETURN 1
+    )
+    RETURN LENGTH(updated)
+  )aql";
+
+  VPackBuilder expectedUpdateResponse;
+  {
+    VPackArrayBuilder a{&expectedUpdateResponse};
+    if (numDocs() < 526) {
+      expectedUpdateResponse.add(VPackValue(0));
+    } else {
+      expectedUpdateResponse.add(VPackValue(numDocs() - 526));
+    }
+    // Second subquery is fully filtered
+    expectedUpdateResponse.add(VPackValue(0));
+  }
+
+  VPackBuilder expected;
+  {
+    VPackArrayBuilder a{&expected};
+    for (size_t i = 1; i <= numDocs(); ++i) {
+      expected.add(VPackValue("foo1"));
+    }
+  }
+  AssertQueryHasResult(vocbase, query, expectedUpdateResponse.slice());
+  AssertQueryHasResult(vocbase, GetAllDocs, expected.slice());
+}
+
+INSTANTIATE_TEST_CASE_P(UpsertExecutorIntegration, UpsertExecutorIntegrationTest,
+                        ::testing::Combine(::testing::Values(UpsertType::UPDATE, UpsertType::REPLACE),
+                                           ::testing::Values(1, 1001)));
+
+/* This works as well, but takes considerably more time to pass.
+INSTANTIATE_TEST_CASE_P(UpsertExecutorIntegration, UpsertExecutorIntegrationTest,
+                        ::testing::Combine(::testing::Values(UpsertType::UPDATE, UpsertType::REPLACE),
+                                           ::testing::Values(1, 999, 1000, 1001, 2001)));
+*/
 
 }  // namespace aql
 }  // namespace tests
