@@ -185,7 +185,8 @@
       if (typeof value === 'number') {
         $(id).html(value);
       } else if ($.isArray(value)) {
-        var a = value[0]; var b = value[1];
+        var a = value[0]; 
+        var b = value[1];
 
         var percent = 1 / (b / a) * 100;
         if (percent > 90) {
@@ -193,7 +194,11 @@
         } else if (percent > 70 && percent < 90) {
           warning = true;
         }
-        $(id).html(percent.toFixed(1) + ' %');
+        if (isNaN(percent)) {
+          $(id).html('n/a');
+        } else {
+          $(id).html(percent.toFixed(1) + ' %');
+        }
       } else if (typeof value === 'string') {
         $(id).html(value);
       }

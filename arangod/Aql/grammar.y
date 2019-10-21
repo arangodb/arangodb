@@ -569,7 +569,6 @@ prune_and_options:
       node->addMember($2);
       // Options
       node->addMember($4);
-
     }
   ;
 
@@ -711,6 +710,15 @@ for_statement:
     } prune_and_options {
       auto graphInfoNode = static_cast<AstNode*>(parser->popStack());
       auto variablesNode = static_cast<AstNode*>(parser->popStack());
+
+      auto prune = graphInfoNode->getMember(3);
+      if (prune != nullptr) {
+        Ast::traverseReadOnly(prune, [&](AstNode const* node) {
+          if (node->type == NODE_TYPE_REFERENCE && node->hasFlag(AstNodeFlagType::FLAG_SUBQUERY_REFERENCE)) {
+            parser->registerParseError(TRI_ERROR_QUERY_PARSE, "prune condition must not use a subquery", yylloc.first_line, yylloc.first_column);
+          }
+        });
+      }
       auto node = parser->ast()->createNodeTraversal(variablesNode, graphInfoNode);
       parser->ast()->addOperation(node);
     }
@@ -1488,7 +1496,7 @@ expression_or_query:
       auto subQuery = parser->ast()->createNodeLet(variableName.c_str(), variableName.size(), node, false);
       parser->ast()->addOperation(subQuery);
 
-      $$ = parser->ast()->createNodeReference(variableName);
+      $$ = parser->ast()->createNodeSubqueryReference(variableName);
     }
   ;
 

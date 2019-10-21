@@ -980,7 +980,7 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt, std::unique_ptr<ExecutionPl
 
     auto outVar = ast->variables()->createTemporaryVariable();
     auto expression = std::make_unique<Expression>(plan.get(), ast, sorted);
-    ExecutionNode* calculationNode = 
+    ExecutionNode* calculationNode =
         new CalculationNode(plan.get(), plan->nextId(), std::move(expression), outVar);
     plan->registerNode(calculationNode);
 
@@ -1747,25 +1747,22 @@ void arangodb::aql::moveCalculationsDownRule(Optimizer* opt,
           // collection/index/view, it probably makes sense to not move it,
           // because the result set may be huge
           if (::accessesCollectionVariable(plan.get(), nn, vars)) {
-            done = true;
             break;
           }
         }
 
-        if (!done) {
-          lastNode = current;
-        }
+        lastNode = current;
+
       } else if (currentType == EN::INDEX || currentType == EN::ENUMERATE_COLLECTION ||
                  currentType == EN::ENUMERATE_IRESEARCH_VIEW ||
                  currentType == EN::ENUMERATE_LIST || currentType == EN::TRAVERSAL ||
                  currentType == EN::SHORTEST_PATH || currentType == EN::K_SHORTEST_PATHS ||
                  currentType == EN::COLLECT || currentType == EN::NORESULTS) {
         // we will not push further down than such nodes
-        done = true;
         break;
       }
 
-      if (done || !current->hasParent()) {
+      if (!current->hasParent()) {
         break;
       }
 
@@ -4567,9 +4564,9 @@ void arangodb::aql::distributeSortToClusterRule(Optimizer* opt,
           break;
         }
         // late-materialization should be set only after sort nodes are distributed
-        // in cluster as it accounts this disctribution. So we should not encounter this 
+        // in cluster as it accounts this disctribution. So we should not encounter this
         // kind of nodes for now
-        case EN::MATERIALIZE: 
+        case EN::MATERIALIZE:
         case EN::SUBQUERY_START:
         case EN::SUBQUERY_END:
         case EN::DISTRIBUTE_CONSUMER:
@@ -5541,7 +5538,7 @@ struct RemoveRedundantOr {
       }
       // if hasRedundantConditionWalker(lhs) and
       // hasRedundantConditionWalker(rhs), then one of the conditions in the OR
-      // statement is of the form x == x intentionally falls through
+      // statement is of the form x == x intentionally falls through if
     } else if (type == NODE_TYPE_REFERENCE || type == NODE_TYPE_ATTRIBUTE_ACCESS ||
                type == NODE_TYPE_INDEXED_ACCESS) {
       // get a string representation of the node for comparisons
@@ -7144,7 +7141,6 @@ void arangodb::aql::optimizeSubqueriesRule(Optimizer* opt,
         auto calcNode = new CalculationNode(plan.get(), plan->nextId(),
                                             std::move(expr), outVariable);
         plan->registerNode(calcNode);
-        expr.release();
         plan->insertAfter(f, calcNode);
         // change the result value of the existing Return node
         TRI_ASSERT(root->getType() == EN::RETURN);
@@ -7187,7 +7183,7 @@ void arangodb::aql::moveFiltersIntoEnumerateRule(Optimizer* opt, std::unique_ptr
     }
 
     Variable const* outVariable = en->outVariable();
-        
+
     if (!n->isVarUsedLater(outVariable)) {
       // e.g. FOR doc IN collection RETURN 1
       continue;
@@ -7201,14 +7197,14 @@ void arangodb::aql::moveFiltersIntoEnumerateRule(Optimizer* opt, std::unique_ptr
       if (current->getType() != EN::FILTER && current->getType() != EN::CALCULATION) {
         break;
       }
-      
+
       if (current->getType() == EN::FILTER) {
         if (calculations.empty()) {
           break;
         }
         auto filterNode = ExecutionNode::castTo<FilterNode*>(current);
         Variable const* inVariable = filterNode->inVariable();
-        
+
         auto it = calculations.find(inVariable);
         if (it == calculations.end()) {
           break;
@@ -7221,7 +7217,7 @@ void arangodb::aql::moveFiltersIntoEnumerateRule(Optimizer* opt, std::unique_ptr
           // node already has a filter, now AND-merge it with what we found!
           AstNode* merged = plan->getAst()->createNodeBinaryOperator(
             NODE_TYPE_OPERATOR_BINARY_AND, existingFilter->node(), expr->node());
-        
+
           en->setFilter(std::make_unique<Expression>(plan.get(), plan->getAst(), merged));
         } else {
           // node did not yet have a filter
@@ -7252,11 +7248,11 @@ void arangodb::aql::moveFiltersIntoEnumerateRule(Optimizer* opt, std::unique_ptr
 
         found.clear();
         Ast::getReferencedVariables(expr->node(), found);
-        if (found.size() == 1 && 
+        if (found.size() == 1 &&
             found.find(outVariable) != found.end()) {
           calculations.emplace(calculationNode->outVariable(), calculationNode);
         }
-      } 
+      }
 
       current = current->getFirstParent();
     }

@@ -351,7 +351,7 @@ namespace boost
 
 #ifndef BOOST_NO_CXX11_RVALUE_REFERENCES
   template <class T>
-  typename decay<T>::type
+  ::std::decay_t<T>
   decay_copy(T&& t)
   {
       return boost::forward<T>(t);

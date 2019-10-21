@@ -201,7 +201,7 @@ MessageID HttpConnection<ST>::sendRequest(std::unique_ptr<Request> req,
   static std::atomic<uint64_t> ticketId(1);
 
   // construct RequestItem
-  std::unique_ptr<RequestItem> item(new RequestItem());
+  auto item = std::make_unique<RequestItem>();
   // requestItem->_response later
   uint64_t mid = ticketId.fetch_add(1, std::memory_order_relaxed);
   item->requestHeader = buildRequestBody(*req);
@@ -288,7 +288,7 @@ std::string HttpConnection<ST>::buildRequestBody(Request const& req) {
   } else {
     header.append(req.header.path);
     header.push_back('?');
-    for (auto p : req.header.parameters) {
+    for (auto const& p : req.header.parameters) {
       if (header.back() != '?') {
         header.push_back('&');
       }
