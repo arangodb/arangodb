@@ -1148,29 +1148,16 @@ int RocksDBEngine::saveReplicationApplierConfiguration(RocksDBKey const& key,
 // database, collection and index management
 // -----------------------------------------
 
-std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openDatabase(arangodb::velocypack::Slice const& args,
-                                                           bool isUpgrade, int& status) {
-  VPackSlice idSlice = args.get("id");
-  TRI_voc_tick_t id =
-      static_cast<TRI_voc_tick_t>(basics::StringUtils::uint64(idSlice.copyString()));
-  status = TRI_ERROR_NO_ERROR;
-
-  return openExistingDatabase(id, args, true, isUpgrade);
+std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openDatabase(arangodb::CreateDatabaseInfo && info,
+                                                           bool isUpgrade) {
+  return openExistingDatabase(std::move(info), true, isUpgrade);
 }
 
 // TODO -- should take info
 std::unique_ptr<TRI_vocbase_t> RocksDBEngine::createDatabase(
-    TRI_voc_tick_t id, arangodb::velocypack::Slice const& args, int& status) {
-  status = TRI_ERROR_INTERNAL;
-
-  arangodb::CreateDatabaseInfo info(server());
-  auto rv = info.load(id, args, VPackSlice::emptyArraySlice());
-  if (rv.fail()) {
-    THROW_ARANGO_EXCEPTION(rv);
-  }
-
+    arangodb::CreateDatabaseInfo&& info, int& status) {
   status = TRI_ERROR_NO_ERROR;
-  return std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_NORMAL, info);
+  return std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_NORMAL, std::move(info));
 }
 
 int RocksDBEngine::writeCreateDatabaseMarker(TRI_voc_tick_t id, VPackSlice const& slice) {
@@ -1943,7 +1930,7 @@ Result RocksDBEngine::dropDatabase(TRI_voc_tick_t id) {
     // remove indexes
     VPackSlice indexes = value.slice().get("indexes");
     if (indexes.isArray()) {
-      for (auto const& it : VPackArrayIterator(indexes)) {
+      for (VPackSlice it : VPackArrayIterator(indexes)) {
         // delete index documents
         uint64_t objectId =
             basics::VelocyPackHelper::stringUInt64(it, "objectId");
@@ -2068,17 +2055,9 @@ void RocksDBEngine::addSystemDatabase() {
 
 /// @brief open an existing database. internal function
 std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
-    TRI_voc_tick_t id, VPackSlice args, bool wasCleanShutdown, bool isUpgrade) {
-  arangodb::CreateDatabaseInfo info(server());
-  TRI_ASSERT(args.get("name").isString());
-  // when loading we allow system database names
-  info.allowSystemDB(TRI_vocbase_t::IsSystemName(args.get("name").copyString()));
-  auto res = info.load(id, args, VPackSlice::emptyArraySlice());
-  if (res.fail()) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
+    arangodb::CreateDatabaseInfo&& info, bool wasCleanShutdown, bool isUpgrade) {
 
-  auto vocbase = std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_NORMAL, info);
+  auto vocbase = std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_NORMAL, std::move(info));
 
   // scan the database path for views
   try {
@@ -2092,7 +2071,7 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
     VPackSlice const slice = builder.slice();
     TRI_ASSERT(slice.isArray());
 
-    for (auto const& it : VPackArrayIterator(slice)) {
+    for (VPackSlice it : VPackArrayIterator(slice)) {
       // we found a view that is still active
 
       TRI_ASSERT(!it.get("id").isNone());

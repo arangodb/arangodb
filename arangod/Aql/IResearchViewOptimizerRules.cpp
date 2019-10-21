@@ -196,11 +196,10 @@ bool optimizeSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
       sorts.emplace_back(it.var, it.ascending);
     }
 
-    SortCondition sortCondition(plan,
-                                sorts,
-                                std::vector<std::vector<arangodb::basics::AttributeName>>(),
-                                arangodb::HashSet<std::vector<arangodb::basics::AttributeName>>(),
-                                variableDefinitions);
+    SortCondition sortCondition(
+        plan, sorts, std::vector<std::vector<arangodb::basics::AttributeName>>(),
+        ::arangodb::containers::HashSet<std::vector<arangodb::basics::AttributeName>>(),
+        variableDefinitions);
 
     if (sortCondition.isEmpty() || !sortCondition.isOnlyAttributeAccess()) {
       // unusable sort condition
@@ -286,8 +285,8 @@ void lateDocumentMaterializationRule(arangodb::aql::Optimizer* opt,
     return;
   }
 
-  SmallVector<ExecutionNode*>::allocator_type::arena_type a;
-  SmallVector<ExecutionNode*> nodes{a};
+  ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type a;
+  ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
   plan->findNodesOfType(nodes, EN::LIMIT, true);
   for (auto limitNode : nodes) {
     auto loop = const_cast<ExecutionNode*>(limitNode->getLoop());
@@ -323,7 +322,7 @@ void lateDocumentMaterializationRule(arangodb::aql::Optimizer* opt,
             break;
         }
         if (sortNode != nullptr) {
-          arangodb::HashSet<Variable const*> currentUsedVars;
+          ::arangodb::containers::HashSet<Variable const*> currentUsedVars;
           current->getVariablesUsedHere(currentUsedVars);
           if (currentUsedVars.find(&viewNode.outVariable()) != currentUsedVars.end()) {
             // we have a doc body used before selected SortNode. Forget it, let`s look for better sort to use
@@ -382,8 +381,8 @@ void handleViewsRule(arangodb::aql::Optimizer* opt,
     return;
   }
 
-  SmallVector<ExecutionNode*>::allocator_type::arena_type a;
-  SmallVector<ExecutionNode*> nodes{a};
+  ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type a;
+  ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
 
   // replace scorers in all calculation nodes with references
   plan->findNodesOfType(nodes, EN::CALCULATION, true);
@@ -442,8 +441,8 @@ void scatterViewInClusterRule(arangodb::aql::Optimizer* opt,
                               arangodb::aql::OptimizerRule const& rule) {
   TRI_ASSERT(arangodb::ServerState::instance()->isCoordinator());
   bool wasModified = false;
-  SmallVector<ExecutionNode*>::allocator_type::arena_type a;
-  SmallVector<ExecutionNode*> nodes{a};
+  ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type a;
+  ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
 
   // find subqueries
   std::unordered_map<ExecutionNode*, ExecutionNode*> subqueries;

@@ -65,7 +65,7 @@ using VelocyPackHelper = basics::VelocyPackHelper;
 namespace {
 static bool ArrayContainsCollection(VPackSlice array, std::string const& colName) {
   TRI_ASSERT(array.isArray());
-  for (auto const& it : VPackArrayIterator(array)) {
+  for (VPackSlice it : VPackArrayIterator(array)) {
     if (it.copyString() == colName) {
       return true;
     }
@@ -454,7 +454,7 @@ Result GraphManager::applyOnAllGraphs(std::function<Result(std::unique_ptr<Graph
             "Cannot read graphs from _graphs collection"};
   }
   Result res;
-  for (auto const& it : VPackArrayIterator(graphsSlice)) {
+  for (VPackSlice it : VPackArrayIterator(graphsSlice)) {
     std::unique_ptr<Graph> graph;
     try {
       graph = Graph::fromPersistence(it.resolveExternals(), _vocbase);

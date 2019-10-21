@@ -32,8 +32,6 @@
 #include "Futures/Utilities.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/LogMacros.h"
-#include "Logger/Logger.h"
-#include "Logger/LoggerStream.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -72,7 +70,7 @@ std::string currentUser() {
 namespace arangodb {
 namespace transaction {
 
-const size_t Manager::maxTransactionSize;  // 128 MiB
+size_t constexpr Manager::maxTransactionSize;
 
 namespace {
 struct MGMethods final : arangodb::transaction::Methods {
@@ -484,7 +482,7 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(TRI_voc_tid_t tid
   if (_disallowInserts.load(std::memory_order_acquire)) {
     return nullptr;
   }
-  
+
   size_t const bucket = getBucket(tid);
   int i = 0;
   TransactionState* state = nullptr;
@@ -602,7 +600,7 @@ transaction::Status Manager::getManagedTrxStatus(TRI_voc_tid_t tid) const {
     return transaction::Status::ABORTED;
   }
 }
-  
+
 
 Result Manager::statusChangeWithTimeout(TRI_voc_tid_t tid, transaction::Status status) {
   double startTime = 0.0;
@@ -764,8 +762,8 @@ void Manager::iterateManagedTrx(std::function<void(TRI_voc_tid_t, ManagedTrx con
 /// @brief collect forgotten transactions
 bool Manager::garbageCollect(bool abortAll) {
   bool didWork = false;
-  SmallVector<TRI_voc_tid_t, 64>::allocator_type::arena_type arena;
-  SmallVector<TRI_voc_tid_t, 64> toAbort{arena};
+  ::arangodb::containers::SmallVector<TRI_voc_tid_t, 64>::allocator_type::arena_type arena;
+  ::arangodb::containers::SmallVector<TRI_voc_tid_t, 64> toAbort{arena};
 
   READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
 
@@ -775,7 +773,7 @@ bool Manager::garbageCollect(bool abortAll) {
     auto it = _transactions[bucket]._managed.begin();
     while (it != _transactions[bucket]._managed.end()) {
       ManagedTrx& mtrx = it->second;
-      
+
       if (mtrx.type == MetaType::Managed) {
         TRI_ASSERT(mtrx.state != nullptr);
         if (abortAll || mtrx.expired()) {
@@ -813,7 +811,7 @@ bool Manager::garbageCollect(bool abortAll) {
     // we can also get the TRI_ERROR_LOCKED error in case we cannot
     // immediately acquire the lock on the transaction. this _can_ happen
     // infrequently, but is not an error
-    if (res.fail() && 
+    if (res.fail() &&
         !res.is(TRI_ERROR_TRANSACTION_ABORTED) &&
         !res.is(TRI_ERROR_LOCKED)) {
       LOG_TOPIC("0a07f", INFO, Logger::TRANSACTIONS) << "error while aborting "
@@ -833,8 +831,8 @@ bool Manager::garbageCollect(bool abortAll) {
 
 /// @brief abort all transactions matching
 bool Manager::abortManagedTrx(std::function<bool(TransactionState const&)> cb) {
-  SmallVector<TRI_voc_tid_t, 64>::allocator_type::arena_type arena;
-  SmallVector<TRI_voc_tid_t, 64> toAbort{arena};
+  ::arangodb::containers::SmallVector<TRI_voc_tid_t, 64>::allocator_type::arena_type arena;
+  ::arangodb::containers::SmallVector<TRI_voc_tid_t, 64> toAbort{arena};
 
   READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
   for (size_t bucket = 0; bucket < numBuckets; ++bucket) {
@@ -897,12 +895,12 @@ void Manager::toVelocyPack(VPackBuilder& builder, std::string const& database,
       network::Headers headers;
       if (auth != nullptr && auth->isActive()) {
         if (!username.empty()) {
-          VPackBuilder builder;
+          VPackBuilder authBuilder;
           {
-            VPackObjectBuilder payload{&builder};
+            VPackObjectBuilder payload{&authBuilder};
             payload->add("preferred_username", VPackValue(username));
           }
-          VPackSlice slice = builder.slice();
+          VPackSlice slice = authBuilder.slice();
           headers.emplace(StaticStrings::Authorization,
                           "bearer " + auth->tokenCache().generateJwt(slice));
         } else {
@@ -932,7 +930,7 @@ void Manager::toVelocyPack(VPackBuilder& builder, std::string const& database,
             if (slice.isObject()) {
               slice = slice.get("transactions");
               if (slice.isArray()) {
-                for (auto const& it : VPackArrayIterator(slice)) {
+                for (VPackSlice it : VPackArrayIterator(slice)) {
                   builder.add(it);
                 }
               }

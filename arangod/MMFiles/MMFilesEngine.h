@@ -171,13 +171,13 @@ class MMFilesEngine final : public StorageEngine {
 
   void waitForEstimatorSync(std::chrono::milliseconds maxWaitTime) override {}
 
-  virtual std::unique_ptr<TRI_vocbase_t> openDatabase(arangodb::velocypack::Slice const& parameters,
-                                                      bool isUpgrade, int&) override;
-  std::unique_ptr<TRI_vocbase_t> createDatabase(TRI_voc_tick_t id,
-                                                velocypack::Slice const& args,
+  virtual std::unique_ptr<TRI_vocbase_t> openDatabase(arangodb::CreateDatabaseInfo&& ,
+                                                      bool isUpgrade) override;
+
+  std::unique_ptr<TRI_vocbase_t> createDatabase(arangodb::CreateDatabaseInfo&& info,
                                                 int& status) override {
-    status = TRI_ERROR_NO_ERROR;
-    return createDatabaseMMFiles(id, args);
+    status = TRI_ERROR_NO_ERROR; //lol
+    return createDatabaseMMFiles(std::move(info));
   }
   int writeCreateDatabaseMarker(TRI_voc_tick_t id, VPackSlice const& slice) override;
 
@@ -206,8 +206,7 @@ class MMFilesEngine final : public StorageEngine {
 
  private:
   int dropDatabaseMMFiles(TRI_vocbase_t* vocbase);
-  std::unique_ptr<TRI_vocbase_t> createDatabaseMMFiles(TRI_voc_tick_t id,
-                                                       velocypack::Slice const& data);
+  std::unique_ptr<TRI_vocbase_t> createDatabaseMMFiles(arangodb::CreateDatabaseInfo&&);
 
  public:
   // asks the storage engine to create a collection as specified in the VPack
@@ -412,8 +411,7 @@ class MMFilesEngine final : public StorageEngine {
   std::string indexFilename(TRI_idx_iid_t indexId) const;
 
   /// @brief open an existing database. internal function
-  std::unique_ptr<TRI_vocbase_t> openExistingDatabase(TRI_voc_tick_t id,
-                                                      VPackSlice args,
+  std::unique_ptr<TRI_vocbase_t> openExistingDatabase(arangodb::CreateDatabaseInfo&&,
                                                       bool wasCleanShutdown, bool isUpgrade);
 
   /// @brief note the maximum local tick

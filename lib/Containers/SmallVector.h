@@ -21,19 +21,20 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_SMALL_VECTOR_H
-#define ARANGODB_BASICS_SMALL_VECTOR_H 1
+#ifndef ARANGODB_CONTAINERS_SMALL_VECTOR_H
+#define ARANGODB_CONTAINERS_SMALL_VECTOR_H 1
 
 #include <vector>
 
-#include "Basics/Common.h"
-#include "Basics/short_alloc.h"
+#include "Containers/details/short_alloc.h"
 
 namespace arangodb {
+namespace containers {
 
 template <class T, std::size_t BufSize = 64>
 using SmallVector = std::vector<T, short_alloc<T, BufSize, alignof(T)>>;
 
+}  // namespace containers
 }  // namespace arangodb
 
 #endif

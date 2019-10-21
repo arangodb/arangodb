@@ -999,7 +999,7 @@ TEST_F(IResearchViewTest, test_drop_database) {
   TRI_vocbase_t* vocbase; // will be owned by DatabaseFeature
   arangodb::CreateDatabaseInfo testDBInfo(server.server());
   testDBInfo.load("testDatabase" TOSTRING(__LINE__), 3);
-  ASSERT_TRUE(databaseFeature.createDatabase(testDBInfo, vocbase).ok());
+  ASSERT_TRUE(databaseFeature.createDatabase(std::move(testDBInfo), vocbase).ok());
   ASSERT_TRUE((nullptr != vocbase));
 
   beforeCount = 0; // reset before call to StorageEngine::createView(...)

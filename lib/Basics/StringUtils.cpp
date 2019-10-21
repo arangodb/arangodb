@@ -444,86 +444,45 @@ std::string escapeUnicode(std::string const& name, bool escapeSlash) {
   return result;
 }
 
-std::vector<std::string> split(std::string const& source, char delim, char quote) {
+std::vector<std::string> split(std::string const& source, char delim) {
   std::vector<std::string> result;
 
-  if (source.empty()) {
-    return result;
-  }
+  char const* q = source.data();
+  char const* e = q + source.size();
 
-  auto buffer = std::make_unique<char[]>(source.size() + 1);
-  char* p = buffer.get();
+  if (q != e) {
+    char const* last = q;
 
-  char const* q = source.c_str();
-  char const* e = source.c_str() + source.size();
-
-  if (quote == '\0') {
     for (; q < e; ++q) {
       if (*q == delim) {
-        result.emplace_back(buffer.get(), p - buffer.get());
-        p = buffer.get();
-      } else {
-        *p++ = *q;
+        result.emplace_back(last, q - last);
+        last = q + 1;
       }
     }
-  } else {
-    for (; q < e; ++q) {
-      if (*q == quote) {
-        if (q + 1 < e) {
-          *p++ = *++q;
-        }
-      } else if (*q == delim) {
-        result.emplace_back(buffer.get(), p - buffer.get());
-        p = buffer.get();
-      } else {
-        *p++ = *q;
-      }
-    }
+    result.emplace_back(last, q - last);
   }
 
-  result.emplace_back(buffer.get(), p - buffer.get());
   return result;
 }
 
-std::vector<std::string> split(std::string const& source,
-                               std::string const& delim, char quote) {
+std::vector<std::string> split(std::string const& source, std::string const& delim) {
   std::vector<std::string> result;
 
-  if (source.empty()) {
-    return result;
-  }
+  char const* q = source.data();
+  char const* e = source.data() + source.size();
 
-  auto buffer = std::make_unique<char[]>(source.size() + 1);
-  char* p = buffer.get();
+  if (q != e) {
+    char const* last = q;
 
-  char const* q = source.c_str();
-  char const* e = source.c_str() + source.size();
-
-  if (quote == '\0') {
     for (; q < e; ++q) {
       if (delim.find(*q) != std::string::npos) {
-        result.emplace_back(buffer.get(), p - buffer.get());
-        p = buffer.get();
-      } else {
-        *p++ = *q;
+        result.emplace_back(last, q - last);
+        last = q + 1;
       }
     }
-  } else {
-    for (; q < e; ++q) {
-      if (*q == quote) {
-        if (q + 1 < e) {
-          *p++ = *++q;
-        }
-      } else if (delim.find(*q) != std::string::npos) {
-        result.emplace_back(buffer.get(), p - buffer.get());
-        p = buffer.get();
-      } else {
-        *p++ = *q;
-      }
-    }
+    result.emplace_back(last, q - last);
   }
 
-  result.emplace_back(buffer.get(), p - buffer.get());
   return result;
 }
 
@@ -896,7 +855,7 @@ std::string urlEncode(char const* src, size_t const len) {
                               '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
 
   char const* end = src + len;
-  
+
   // cppcheck-suppress unsignedPositive
   if (len >= (SIZE_MAX - 1) / 3) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -936,11 +895,7 @@ std::string urlEncode(char const* src, size_t const len) {
   return result;
 }
 
-std::string encodeURIComponent(std::string const& str) {
-  return encodeURIComponent(str.c_str(), str.size());
-}
-
-std::string encodeURIComponent(char const* src, size_t const len) {
+std::string encodeURIComponent(char const* src, size_t len) {
   char const* end = src + len;
 
   // cppcheck-suppress unsignedPositive
@@ -970,11 +925,11 @@ std::string encodeURIComponent(char const* src, size_t const len) {
   return result;
 }
 
-std::string soundex(std::string const& str) {
-  return soundex(str.c_str(), str.size());
+std::string encodeURIComponent(std::string const& str) {
+  return encodeURIComponent(str.data(), str.size());
 }
 
-std::string soundex(char const* src, size_t const len) {
+std::string soundex(char const* src, size_t len) {
   char const* end = src + len;
 
   while (src < end) {
@@ -1013,6 +968,10 @@ std::string soundex(char const* src, size_t const len) {
   }
 
   return result;
+}
+
+std::string soundex(std::string const& str) {
+  return soundex(str.data(), str.size());
 }
 
 unsigned int levenshteinDistance(std::string const& str1, std::string const& str2) {
@@ -1475,61 +1434,61 @@ uint64_t uint64_trusted(char const* value, size_t length) {
   switch (length) {
     case 20:
       result += (value[length - 20] - '0') * 10000000000000000000ULL;
-    // intentionally falls through
+    [[fallthrough]];
     case 19:
       result += (value[length - 19] - '0') * 1000000000000000000ULL;
-    // intentionally falls through
+    [[fallthrough]];
     case 18:
       result += (value[length - 18] - '0') * 100000000000000000ULL;
-    // intentionally falls through
+    [[fallthrough]];
     case 17:
       result += (value[length - 17] - '0') * 10000000000000000ULL;
-    // intentionally falls through
+    [[fallthrough]];
     case 16:
       result += (value[length - 16] - '0') * 1000000000000000ULL;
-    // intentionally falls through
+    [[fallthrough]];
     case 15:
       result += (value[length - 15] - '0') * 100000000000000ULL;
-    // intentionally falls through
+    [[fallthrough]];
     case 14:
       result += (value[length - 14] - '0') * 10000000000000ULL;
-    // intentionally falls through
+    [[fallthrough]];
     case 13:
       result += (value[length - 13] - '0') * 1000000000000ULL;
-    // intentionally falls through
+    [[fallthrough]];
     case 12:
       result += (value[length - 12] - '0') * 100000000000ULL;
-    // intentionally falls through
+    [[fallthrough]];
     case 11:
       result += (value[length - 11] - '0') * 10000000000ULL;
-    // intentionally falls through
+    [[fallthrough]];
     case 10:
       result += (value[length - 10] - '0') * 1000000000ULL;
-    // intentionally falls through
+    [[fallthrough]];
     case 9:
       result += (value[length - 9] - '0') * 100000000ULL;
-    // intentionally falls through
+    [[fallthrough]];
     case 8:
       result += (value[length - 8] - '0') * 10000000ULL;
-    // intentionally falls through
+    [[fallthrough]];
     case 7:
       result += (value[length - 7] - '0') * 1000000ULL;
-    // intentionally falls through
+    [[fallthrough]];
     case 6:
       result += (value[length - 6] - '0') * 100000ULL;
-    // intentionally falls through
+    [[fallthrough]];
     case 5:
       result += (value[length - 5] - '0') * 10000ULL;
-    // intentionally falls through
+    [[fallthrough]];
     case 4:
       result += (value[length - 4] - '0') * 1000ULL;
-    // intentionally falls through
+    [[fallthrough]];
     case 3:
       result += (value[length - 3] - '0') * 100ULL;
-    // intentionally falls through
+    [[fallthrough]];
     case 2:
       result += (value[length - 2] - '0') * 10ULL;
-    // intentionally falls through
+    [[fallthrough]];
     case 1:
       result += (value[length - 1] - '0');
   }
@@ -1709,20 +1668,16 @@ float floatDecimal(char const* value, size_t size) {
 // BASE64
 // .............................................................................
 
-std::string encodeBase64(std::string const& in) {
+std::string encodeBase64(char const* in, size_t len) {
+  std::string ret;
+  ret.reserve((len * 4 / 3) + 2);
+
   unsigned char charArray3[3];
   unsigned char charArray4[4];
-
-  std::string ret;
-  ret.reserve((in.size() * 4 / 3) + 2);
+  unsigned char const* bytesToEncode = reinterpret_cast<unsigned char const*>(in);
 
   int i = 0;
-
-  unsigned char const* bytesToEncode =
-      reinterpret_cast<unsigned char const*>(in.c_str());
-  size_t in_len = in.size();
-
-  while (in_len--) {
+  while (len--) {
     charArray3[i++] = *(bytesToEncode++);
 
     if (i == 3) {
@@ -1761,16 +1716,19 @@ std::string encodeBase64(std::string const& in) {
   return ret;
 }
 
+std::string encodeBase64(std::string const& str) {
+  return encodeBase64(str.data(), str.size());
+}
+
 std::string decodeBase64(std::string const& source) {
   unsigned char charArray4[4];
   unsigned char charArray3[3];
-
-  std::string ret;
 
   int i = 0;
   int inp = 0;
 
   int in_len = (int)source.size();
+  std::string ret;
   ret.reserve((source.size() / 4 * 3) + 1);
 
   while (in_len-- && (source[inp] != '=') && isBase64(source[inp])) {

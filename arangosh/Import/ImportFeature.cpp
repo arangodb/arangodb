@@ -224,7 +224,7 @@ void ImportFeature::validateOptions(std::shared_ptr<options::ProgramOptions> opt
   }
 
   for (auto const& it : _translations) {
-    auto parts = StringUtils::split(it, "=");
+    auto parts = StringUtils::split(it, '=');
     if (parts.size() != 2) {
       LOG_TOPIC("e322b", FATAL, arangodb::Logger::FIXME) << "invalid translation '" << it << "'";
       FATAL_ERROR_EXIT();
@@ -390,7 +390,7 @@ void ImportFeature::start() {
 
   std::unordered_map<std::string, std::string> translations;
   for (auto const& it : _translations) {
-    auto parts = StringUtils::split(it, "=");
+    auto parts = StringUtils::split(it, '=');
     TRI_ASSERT(parts.size() == 2);  // already validated before
     StringUtils::trimInPlace(parts[0]);
     StringUtils::trimInPlace(parts[1]);

@@ -21,8 +21,11 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_MMFILES_SKIP_LIST_H
-#define ARANGOD_MMFILES_SKIP_LIST_H 1
+#ifndef ARANGOD_CONTAINERS_SKIP_LIST_H
+#define ARANGOD_CONTAINERS_SKIP_LIST_H 1
+
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
 
 #include "Basics/Common.h"
 
@@ -30,33 +33,31 @@
 #include "Basics/memory.h"
 #include "Random/RandomGenerator.h"
 
-#include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
-
 // We will probably never see more than 2^48 documents in a skip list
 #define TRI_SKIPLIST_MAX_HEIGHT 48
 
 namespace arangodb {
+namespace containers {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief type of a skiplist node
 ////////////////////////////////////////////////////////////////////////////////
 
 template <class Key, class Element>
-class MMFilesSkiplist;
+class Skiplist;
 
 template <class Key, class Element>
-class MMFilesSkiplistNode {
-  friend class MMFilesSkiplist<Key, Element>;
-  MMFilesSkiplistNode<Key, Element>** _next;
-  MMFilesSkiplistNode<Key, Element>* _prev;
+class SkiplistNode {
+  friend class Skiplist<Key, Element>;
+  SkiplistNode<Key, Element>** _next;
+  SkiplistNode<Key, Element>* _prev;
   Element* _doc;
   int _height;
 
  public:
-  MMFilesSkiplistNode<Key, Element>(int height, char* ptr)
-      : _next(reinterpret_cast<MMFilesSkiplistNode<Key, Element>**>(
-            ptr + sizeof(MMFilesSkiplistNode<Key, Element>))),
+  SkiplistNode<Key, Element>(int height, char* ptr)
+      : _next(reinterpret_cast<SkiplistNode<Key, Element>**>(
+            ptr + sizeof(SkiplistNode<Key, Element>))),
         _prev(nullptr),
         _doc(nullptr),
         _height(height) {
@@ -67,7 +68,7 @@ class MMFilesSkiplistNode {
 
   Element* document() const { return _doc; }
 
-  MMFilesSkiplistNode<Key, Element>* nextNode() const {
+  SkiplistNode<Key, Element>* nextNode() const {
     if (_height == 0) {
       // _next[0] is uninitialized
       return nullptr;
@@ -77,15 +78,15 @@ class MMFilesSkiplistNode {
 
   // Note that the prevNode of the first data node is the artificial
   // _start node not containing data. This is contrary to the prevNode
-  // method of the MMFilesSkiplist class, which returns nullptr in that case.
-  MMFilesSkiplistNode<Key, Element>* prevNode() const { return _prev; }
+  // method of the Skiplist class, which returns nullptr in that case.
+  SkiplistNode<Key, Element>* prevNode() const { return _prev; }
 };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief two possibilities for comparison, see below
 ////////////////////////////////////////////////////////////////////////////////
 
-enum MMFilesSkiplistCmpType { SKIPLIST_CMP_PREORDER, SKIPLIST_CMP_TOTORDER };
+enum SkiplistCmpType { PREORDER, TOTORDER };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief type of a skiplist
@@ -95,8 +96,8 @@ enum MMFilesSkiplistCmpType { SKIPLIST_CMP_PREORDER, SKIPLIST_CMP_TOTORDER };
 ////////////////////////////////////////////////////////////////////////////////
 
 template <class Key, class Element>
-class MMFilesSkiplist {
-  typedef MMFilesSkiplistNode<Key, Element> Node;
+class Skiplist {
+  typedef SkiplistNode<Key, Element> Node;
 
  public:
   //////////////////////////////////////////////////////////////////////////////
@@ -116,7 +117,7 @@ class MMFilesSkiplist {
   /// to the key and the third is a pointer to an element.
   //////////////////////////////////////////////////////////////////////////////
 
-  typedef std::function<int(void*, Element const*, Element const*, MMFilesSkiplistCmpType)> CmpElmElmFuncType;
+  typedef std::function<int(void*, Element const*, Element const*, SkiplistCmpType)> CmpElmElmFuncType;
   typedef std::function<int(void*, Key const*, Element const*)> CmpKeyElmFuncType;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -147,8 +148,8 @@ class MMFilesSkiplist {
   /// otherwise.
   //////////////////////////////////////////////////////////////////////////////
 
-  MMFilesSkiplist(CmpElmElmFuncType cmp_elm_elm, CmpKeyElmFuncType cmp_key_elm,
-                  FreeElementFuncType freefunc, bool unique, bool isArray)
+  Skiplist(CmpElmElmFuncType cmp_elm_elm, CmpKeyElmFuncType cmp_key_elm,
+           FreeElementFuncType freefunc, bool unique, bool isArray)
       : _cmp_elm_elm(cmp_elm_elm),
         _cmp_key_elm(cmp_key_elm),
         _free(freefunc),
@@ -156,7 +157,7 @@ class MMFilesSkiplist {
         _nrUsed(0),
         _isArray(isArray) {
     // Set the initial memory
-    _memoryUsed = sizeof(MMFilesSkiplist);
+    _memoryUsed = sizeof(Skiplist);
 
     _start = allocNode(TRI_SKIPLIST_MAX_HEIGHT);
     // Note that this can throw
@@ -171,7 +172,7 @@ class MMFilesSkiplist {
   /// @brief frees a skiplist and all its documents
   //////////////////////////////////////////////////////////////////////////////
 
-  ~MMFilesSkiplist() {
+  ~Skiplist() {
     try {
       truncate(false);
     } catch (...) {
@@ -194,7 +195,7 @@ class MMFilesSkiplist {
     }
     freeNode(_start);
 
-    _memoryUsed = sizeof(MMFilesSkiplist);
+    _memoryUsed = sizeof(Skiplist);
     _nrUsed = 0;
 
     if (createStartNode) {
@@ -258,7 +259,7 @@ class MMFilesSkiplist {
     Node* newNode;
     int cmp;
 
-    cmp = lookupLess(userData, doc, &pos, &next, SKIPLIST_CMP_TOTORDER);
+    cmp = lookupLess(userData, doc, &pos, &next, SkiplistCmpType::TOTORDER);
     // Now pos[0] points to the largest node whose document is less than
     // doc. next is the next node and can be nullptr if there is none. doc is
     // in the skiplist iff next != nullptr and cmp == 0 and in this case it
@@ -270,9 +271,10 @@ class MMFilesSkiplist {
 
     // Uniqueness test if wanted:
     if (_unique) {
-      if ((pos[0] != _start && 0 == _cmp_elm_elm(userData, doc, pos[0]->_doc, SKIPLIST_CMP_PREORDER)) ||
+      if ((pos[0] != _start && 0 == _cmp_elm_elm(userData, doc, pos[0]->_doc,
+                                                 SkiplistCmpType::PREORDER)) ||
           (nullptr != next &&
-           0 == _cmp_elm_elm(userData, doc, next->_doc, SKIPLIST_CMP_PREORDER))) {
+           0 == _cmp_elm_elm(userData, doc, next->_doc, SkiplistCmpType::PREORDER))) {
         return TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
       }
     }
@@ -333,7 +335,7 @@ class MMFilesSkiplist {
     Node* next = nullptr;  // to please the compiler
     int cmp;
 
-    cmp = lookupLess(userData, doc, &pos, &next, SKIPLIST_CMP_TOTORDER);
+    cmp = lookupLess(userData, doc, &pos, &next, SkiplistCmpType::TOTORDER);
     // Now pos[0] points to the largest node whose document is less than
     // doc. next points to the next node and can be nullptr if there is none.
     // doc is in the skiplist iff next != nullptr and cmp == 0 and in this
@@ -408,7 +410,7 @@ class MMFilesSkiplist {
     Node* next = nullptr;  // to please the compiler
     int cmp;
 
-    cmp = lookupLess(userData, doc, &pos, &next, SKIPLIST_CMP_TOTORDER);
+    cmp = lookupLess(userData, doc, &pos, &next, SkiplistCmpType::TOTORDER);
     // Now pos[0] points to the largest node whose document is less than
     // doc. next points to the next node and can be nullptr if there is none.
     // doc is in the skiplist iff next != nullptr and cmp == 0 and in this
@@ -431,7 +433,7 @@ class MMFilesSkiplist {
     Node* next;
 
     pos[0] = nullptr;  // initialize to satisfy scan-build
-    lookupLess(userData, doc, &pos, &next, SKIPLIST_CMP_PREORDER);
+    lookupLess(userData, doc, &pos, &next, SkiplistCmpType::PREORDER);
     // Now pos[0] points to the largest node whose document is less than
     // doc in the preorder. next points to the next node and can be nullptr
     // if there is none. doc is in the skiplist iff next != nullptr and cmp
@@ -451,7 +453,7 @@ class MMFilesSkiplist {
     Node* next;
 
     pos[0] = nullptr;  // initialize to satisfy scan-build
-    lookupLessOrEq(userData, doc, &pos, &next, SKIPLIST_CMP_PREORDER);
+    lookupLessOrEq(userData, doc, &pos, &next, SkiplistCmpType::PREORDER);
     // Now pos[0] points to the largest node whose document is less than
     // or equal to doc in the preorder. next points to the next node and
     // can be nullptr if there is none. doc is in the skiplist iff next !=
@@ -501,7 +503,7 @@ class MMFilesSkiplist {
 
  private:
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief allocate a new MMFilesSkiplistNode of a certain height. If height
+  /// @brief allocate a new SkiplistNode of a certain height. If height
   /// is 0, then a random height is taken.
   //////////////////////////////////////////////////////////////////////////////
 
@@ -554,8 +556,8 @@ class MMFilesSkiplist {
   /// a tiny variation which is used in the right lookup function.
   /// This function does the following:
   /// The skiplist sl is searched for the largest document m that is less
-  /// than doc. It uses preorder comparison if cmp is SKIPLIST_CMP_PREORDER
-  /// and proper order comparison if cmp is SKIPLIST_CMP_TOTORDER. At the end,
+  /// than doc. It uses preorder comparison if cmp is SkiplistCmpType::PREORDER
+  /// and proper order comparison if cmp is SkiplistCmpType::TOTORDER. At the end,
   /// (*pos)[0] points to the node containing m and *next points to the
   /// node following (*pos)[0], or is nullptr if there is no such node. The
   /// array *pos contains for each level lev in 0..sl->start->height-1
@@ -565,7 +567,7 @@ class MMFilesSkiplist {
   //////////////////////////////////////////////////////////////////////////////
 
   int lookupLess(void* userData, Element const* doc, Node* (*pos)[TRI_SKIPLIST_MAX_HEIGHT],
-                 Node** next, MMFilesSkiplistCmpType cmptype) const {
+                 Node** next, SkiplistCmpType cmptype) const {
     int lev;
     int cmp = 0;  // just in case to avoid undefined values
 
@@ -594,8 +596,8 @@ class MMFilesSkiplist {
   /// @brief lookupLessOrEq
   /// The following function is nearly as LookupScript above, but
   /// finds the largest document m that is less than or equal to doc.
-  /// It uses preorder comparison if cmp is SKIPLIST_CMP_PREORDER
-  /// and proper order comparison if cmp is SKIPLIST_CMP_TOTORDER. At the end,
+  /// It uses preorder comparison if cmp is SkiplistCmpType::PREORDER
+  /// and proper order comparison if cmp is SkiplistCmpType::TOTORDER. At the end,
   /// (*pos)[0] points to the node containing m and *next points to the
   /// node following (*pos)[0], or is nullptr if there is no such node. The
   /// array *pos contains for each level lev in 0.._start->_height-1
@@ -606,7 +608,7 @@ class MMFilesSkiplist {
 
   int lookupLessOrEq(void* userData, Element const* doc,
                      Node* (*pos)[TRI_SKIPLIST_MAX_HEIGHT], Node** next,
-                     MMFilesSkiplistCmpType cmptype) const {
+                     SkiplistCmpType cmptype) const {
     int lev;
     int cmp = 0;  // just in case to avoid undefined values
 
@@ -715,8 +717,9 @@ class MMFilesSkiplist {
     }
   }
 
-};  // class MMFilesSkiplist
+};  // class Skiplist
 
+}  // namespace containers
 }  // namespace arangodb
 
 #endif

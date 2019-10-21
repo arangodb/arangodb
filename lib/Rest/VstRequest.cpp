@@ -147,10 +147,10 @@ void VstRequest::parseHeaderInformation() {
       return;
     }
 
-    for (auto const& it : VPackObjectIterator(params, true)) {
+    for (auto it : VPackObjectIterator(params, true)) {
       if (it.value.isArray()) {
         vector<string> tmp;
-        for (auto const& itInner : VPackArrayIterator(it.value)) {
+        for (auto itInner : VPackArrayIterator(it.value)) {
           tmp.emplace_back(itInner.copyString());
         }
         _arrayValues.emplace(it.key.copyString(), move(tmp));
@@ -159,7 +159,7 @@ void VstRequest::parseHeaderInformation() {
       }
     }
 
-    for (auto const& it : VPackObjectIterator(meta, true)) {
+    for (auto it : VPackObjectIterator(meta, true)) {
       setHeader(it.key, it.value);
     }
 

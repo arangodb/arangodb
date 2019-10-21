@@ -18,12 +18,27 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
+/// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/Common.h"
+#ifndef ARANGODB_CONTAINERS_ASSOC_HELPERS_H
+#define ARANGODB_CONTAINERS_ASSOC_HELPERS_H 1
 
-#include "V8/v8-globals.h"
+#include <cstdint>
 
-v8::Handle<v8::Value> TRI_FromJsonString(v8::Isolate* isolate, char const* text,
-                                         size_t len, char** error);
+/// @brief incrementing a uint64_t modulo a number with wraparound
+static inline uint64_t TRI_IncModU64(uint64_t i, uint64_t len) {
+  // Note that the dummy variable gives the compiler a (good) chance to
+  // use a conditional move instruction instead of a branch. This actually
+  // works on modern gcc.
+  uint64_t dummy;
+  dummy = (++i) - len;
+  return i < len ? i : dummy;
+}
+
+/// @brief a trivial hash function for uint64_t to uint32_t
+static inline uint32_t TRI_64To32(uint64_t x) {
+  return static_cast<uint32_t>(x >> 32) ^ static_cast<uint32_t>(x);
+}
+
+#endif

@@ -400,7 +400,7 @@ void RocksDBIndexFactory::prepareIndexes(
 
           from.openObject();
 
-          for (auto const& f : VPackObjectIterator(v)) {
+          for (auto f : VPackObjectIterator(v)) {
             if (arangodb::velocypack::StringRef(f.key) == StaticStrings::IndexFields) {
               from.add(VPackValue(StaticStrings::IndexFields));
               from.openArray();
@@ -417,7 +417,7 @@ void RocksDBIndexFactory::prepareIndexes(
           VPackBuilder to;
 
           to.openObject();
-          for (auto const& f : VPackObjectIterator(v)) {
+          for (auto f : VPackObjectIterator(v)) {
             if (arangodb::velocypack::StringRef(f.key) == StaticStrings::IndexFields) {
               to.add(VPackValue(StaticStrings::IndexFields));
               to.openArray();
