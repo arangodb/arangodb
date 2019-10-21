@@ -73,6 +73,14 @@ struct VstInputMessage {
     return _buffer.size() - len;
   }
 
+  uint64_t id() const {
+    return _id;
+  }
+
+  uint64_t totalSize() const {
+    return _buffer.size();
+  }
+
  private:
   uint64_t _id;  // id zero signals invalid state
   velocypack::Buffer<uint8_t> _buffer;

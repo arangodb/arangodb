@@ -91,10 +91,18 @@ class StatisticsFeature final : public application_features::ApplicationFeature 
     return nullptr;
   }
 
+  static bool ignoreSuperuser() {
+    if (STATISTICS != nullptr) {
+      return STATISTICS->_statisticsIgnoreSuperuser;
+    }
+    return false;
+  }
+
  private:
   bool _statistics;
   bool _statisticsHistory;
   bool _statisticsHistoryTouched;
+  bool _statisticsIgnoreSuperuser;
 
   std::unique_ptr<stats::Descriptions> _descriptions;
   std::unique_ptr<StatisticsThread> _statisticsThread;
