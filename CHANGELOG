@@ -1,6 +1,9 @@
 v3.5.2 (XXXX-XX-XX)
 -------------------
 
+* Added option --server.statistics-ignore-superuser to ignore superuser
+  traffic. This is needed for Oasis.
+
 * Fix a problem with AQL constrained sort in the cluster, which might abort
   queries. The AQL sort-limit optimization rule may now also speed up fullCount
   with sorted indexes and a limit in the cluster.
