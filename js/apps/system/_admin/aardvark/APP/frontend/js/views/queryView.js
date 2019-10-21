@@ -1823,8 +1823,8 @@
             if (xhr.getResponseHeader('x-arango-async-id')) {
               self.queryCallbackFunction(xhr.getResponseHeader('x-arango-async-id'), counter);
             }
-           // $.noty.clearQueue();
-           // $.noty.closeAll();
+            Noty.clearQueue();
+            Noty.closeAll();
             self.handleResult(counter);
           },
           error: function (data) {
