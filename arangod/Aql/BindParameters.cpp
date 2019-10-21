@@ -60,7 +60,7 @@ void BindParameters::process() {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_BIND_PARAMETERS_INVALID);
   }
 
-  for (auto const& it : VPackObjectIterator(slice, false)) {
+  for (auto it : VPackObjectIterator(slice, false)) {
     std::string const key(it.key.copyString());
     VPackSlice const value(it.value);
 
@@ -88,7 +88,7 @@ void BindParameters::stripCollectionNames(VPackSlice const& keys,
 
   TRI_ASSERT(keys.isArray());
   result.openArray();
-  for (auto const& element : VPackArrayIterator(keys)) {
+  for (VPackSlice element : VPackArrayIterator(keys)) {
     if (element.isString()) {
       VPackValueLength l;
       char const* s = element.getString(l);
