@@ -104,11 +104,11 @@ DocumentProducingFunction getCallback(DocumentProducingFunctionContext& context,
     TRI_ASSERT(slice.isArray());
     auto indexId = index.getIndex()->id();
     auto const indRegs = outNonMaterializedIndRegs.find(indexId);
-    TRI_ASSERT(indRegs != outNonMaterializedIndRegs.end());
+    TRI_ASSERT(indRegs != outNonMaterializedIndRegs.cend());
     size_t i = 0;
     for (auto const s : arangodb::velocypack::ArrayIterator(slice)) {
-      auto const& indReg = indRegs->second.find(i++);
-      if (indReg == indRegs->second.end()) {
+      auto indReg = indRegs->second.find(i++);
+      if (indReg == indRegs->second.cend()) {
         continue;
       }
       AqlValue v(s);

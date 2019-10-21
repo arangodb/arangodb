@@ -368,7 +368,7 @@ void IndexNode::initializeOnce(bool hasV8Expression, std::vector<Variable const*
     for (auto const& v : innerVars) {
       inVars.emplace_back(v);
       auto it = getRegisterPlan()->varInfo.find(v->id);
-      TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
+      TRI_ASSERT(it != getRegisterPlan()->varInfo.cend());
       TRI_ASSERT(it->second.registerId < RegisterPlan::MaxRegisterId);
       inRegs.emplace_back(it->second.registerId);
     }
@@ -465,13 +465,6 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
 
-  // TODO: remove!
-  /*bool const materialized = !isLateMaterialized();
-  auto id = materialized ? _outVariable->id : _outNonMaterializedDocId->id;
-  auto it = getRegisterPlan()->varInfo.find(id);
-  TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
-  RegisterId outputRegister = it->second.registerId;*/
-
   transaction::Methods* trxPtr = _plan->getAst()->query()->trx();
 
   trxPtr->pinData(_collection->id());
@@ -524,7 +517,7 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
     indRegs.reserve(indVars.second.size());
     for (auto const& indVar : indVars.second) {
       auto it = varInfos.find(indVar.second->id);
-      TRI_ASSERT(it != varInfos.end());
+      TRI_ASSERT(it != varInfos.cend());
       RegisterId registerId = it->second.registerId;
       indRegs.emplace(indVar.first, registerId);
     }
@@ -643,9 +636,9 @@ std::vector<Variable const*> IndexNode::getVariablesSetHere() const {
   vars.reserve(1 + _outNonMaterializedIndVars.size());
   vars.emplace_back(_outNonMaterializedDocId);
   for (auto& indsVars : _outNonMaterializedIndVars) {
-    for (auto& indVar : indsVars.second) {
-      vars.emplace_back(indVar.second);
-    }
+    std::transform(indsVars.second.cbegin(), indsVars.second.cend(), std::back_inserter(vars), [] (auto const& indVar) {
+      return indVar.second;
+    });
   }
 
   return vars;
@@ -660,7 +653,7 @@ void IndexNode::setLateMaterialized(aql::Variable const* docIdVariable,
   _outNonMaterializedDocId = docIdVariable;
   for (auto& indVars : indexVariables) {
     auto const& indexInfo = _outNonMaterializedIndVars.find(indVars.second.indexId);
-    if (indexInfo == _outNonMaterializedIndVars.end()) {
+    if (indexInfo == _outNonMaterializedIndVars.cend()) {
       _outNonMaterializedIndVars[indVars.second.indexId] =
         std::unordered_map<size_t, Variable const*>{{indVars.second.indexFieldNum, indVars.second.var}};
     } else {

@@ -33,8 +33,6 @@
 using EN = arangodb::aql::ExecutionNode;
 
 namespace {
-  auto doNothingVisitor = [](arangodb::aql::AstNode const*) {};
-
   struct NodeWithAttrs {
     struct AttributeAndField {
       std::vector<arangodb::basics::AttributeName> attr;
@@ -45,8 +43,8 @@ namespace {
       std::vector<arangodb::basics::AttributeName> const* indexField = nullptr;
     };
 
-    arangodb::aql::CalculationNode* node;
     std::vector<AttributeAndField> attrs;
+    arangodb::aql::CalculationNode* node;
   };
 
   bool namesMatch(arangodb::aql::IndexNode const* indexNode, NodeWithAttrs& node) {
@@ -273,7 +271,7 @@ void arangodb::aql::lateDocumentMaterializationRule(arangodb::aql::Optimizer* op
         for (auto& node : nodesToChange) {
           for (auto& attr : node.attrs) {
             auto it = uniqueVariables.find(attr.indexField);
-            TRI_ASSERT(it != uniqueVariables.end());
+            TRI_ASSERT(it != uniqueVariables.cend());
             auto newNode = ast->createNodeReference((*it).second.var);
             if (attr.astNode != nullptr) {
               TEMPORARILY_UNLOCK_NODE(attr.astNode);
@@ -291,9 +289,9 @@ void arangodb::aql::lateDocumentMaterializationRule(arangodb::aql::Optimizer* op
         // 2. We need to add materializer after limit node to do materialization
         // insert a materialize node
         auto materializeNode =
-            plan->registerNode(std::make_unique<MaterializeNode>(
-              plan.get(), plan->nextId(), indexNode->collection()->name(),
-              *localDocIdTmp, *indexNode->outVariable()));
+          plan->registerNode(std::make_unique<MaterializeNode>(
+            plan.get(), plan->nextId(), indexNode->collection()->name(),
+            *localDocIdTmp, *indexNode->outVariable()));
 
         // on cluster we need to materialize node stay close to sort node on db server (to avoid network hop for materialization calls)
         // however on single server we move it to limit node to make materialization as lazy as possible

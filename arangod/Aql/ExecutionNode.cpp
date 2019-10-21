@@ -2343,7 +2343,7 @@ std::unique_ptr<ExecutionBlock> MaterializeNode::createBlock(
                                  calcRegsToKeep(), inNmColPtrRegId, inNmDocIdRegId,
                                  outDocumentRegId, engine.getQuery()->trx()));
   }
-  // if (!_inNonMaterializedColName.empty())
+  TRI_ASSERT(!_inNonMaterializedColName.empty());
   return std::make_unique<ExecutionBlockImpl<MaterializeExecutor>>(&engine, this,
      MaterializerExecutorInfos(getRegisterPlan()->nrRegs[previousNode->getDepth()],
                                getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
