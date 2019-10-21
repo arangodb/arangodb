@@ -22,7 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "src/api/api.h"  // must inclide V8 _before_ "catch.cpp' or CATCH() macro will be broken
-#include "src/objects-inl.h"  // (required to avoid compile warnings) must inclide V8 _before_ "catch.cpp' or CATCH() macro will be broken
+// #include "src/objects-inl.h"  // (required to avoid compile warnings) must inclide V8 _before_ "catch.cpp' or CATCH() macro will be broken
 #include "src/objects/scope-info.h"  // must inclide V8 _before_ "catch.cpp' or CATCH() macro will be broken
 
 #include "gtest/gtest.h"
@@ -135,6 +135,22 @@ class V8AnalyzersTest
   }
 };
 
+v8::Local<v8::Object> getAnazylersInstance(TRI_v8_global_t *v8g,
+                                           v8::Isolate *isolate) {
+  return v8::Local<v8::ObjectTemplate>::New(isolate, v8g->IResearchAnalyzerTempl)->NewInstance(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
+}
+
+v8::Local<v8::Function> getAnalyzersMethodFunction(TRI_v8_global_t *v8g,
+                                                   v8::Isolate *isolate,
+                                                   v8::Local<v8::Object>& analyzerObj,
+                                                   const char* name) {
+    auto fn = analyzerObj->Get
+      (TRI_IGETC,
+       TRI_V8_ASCII_STRING(isolate, name)).FromMaybe(v8::Local<v8::Value>());
+    EXPECT_TRUE(fn->IsFunction());
+    return v8::Local<v8::Function>::Cast(fn);
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
@@ -189,10 +205,8 @@ TEST_F(V8AnalyzersTest, test_accessors) {
     v8g->_vocbase = &vocbase;
     arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
-    auto v8Analyzer = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzerTempl)
-                          ->NewInstance();
-    auto fn_name = v8Analyzer->Get(TRI_V8_ASCII_STRING(isolate.get(), "name"));
-    EXPECT_TRUE(fn_name->IsFunction());
+    auto v8Analyzer = getAnazylersInstance(v8g.get(), isolate.get());
+    auto fn_name = getAnalyzersMethodFunction(v8g.get(), isolate.get(), v8Analyzer, "name");
 
     v8Analyzer->SetInternalField(SLOT_CLASS_TYPE,
                                  v8::Integer::New(isolate.get(), WRP_IRESEARCH_ANALYZER_TYPE));
@@ -208,8 +222,7 @@ TEST_F(V8AnalyzersTest, test_accessors) {
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
-    auto result =
-        v8::Function::Cast(*fn_name)->CallAsFunction(context, v8Analyzer,
+    auto result = fn_name->CallAsFunction(context, v8Analyzer,
                                                      static_cast<int>(args.size()),
                                                      args.data());
     EXPECT_FALSE(result.IsEmpty());
@@ -238,10 +251,8 @@ TEST_F(V8AnalyzersTest, test_accessors) {
     v8g->_vocbase = &vocbase;
     arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
-    auto v8Analyzer = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzerTempl)
-                          ->NewInstance();
-    auto fn_name = v8Analyzer->Get(TRI_V8_ASCII_STRING(isolate.get(), "name"));
-    EXPECT_TRUE(fn_name->IsFunction());
+    auto v8Analyzer = getAnazylersInstance(v8g.get(), isolate.get());
+    auto fn_name = getAnalyzersMethodFunction(v8g.get(), isolate.get(), v8Analyzer, "name");
 
     v8Analyzer->SetInternalField(SLOT_CLASS_TYPE,
                                  v8::Integer::New(isolate.get(), WRP_IRESEARCH_ANALYZER_TYPE));
@@ -259,8 +270,7 @@ TEST_F(V8AnalyzersTest, test_accessors) {
 
     arangodb::velocypack::Builder responce;
     v8::TryCatch tryCatch(isolate.get());
-    auto result =
-        v8::Function::Cast(*fn_name)->CallAsFunction(context, v8Analyzer,
+    auto result = fn_name->CallAsFunction(context, v8Analyzer,
                                                      static_cast<int>(args.size()),
                                                      args.data());
     EXPECT_TRUE(result.IsEmpty());
@@ -295,10 +305,8 @@ TEST_F(V8AnalyzersTest, test_accessors) {
     v8g->_vocbase = &vocbase;
     arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
-    auto v8Analyzer = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzerTempl)
-                          ->NewInstance();
-    auto fn_type = v8Analyzer->Get(TRI_V8_ASCII_STRING(isolate.get(), "type"));
-    EXPECT_TRUE(fn_type->IsFunction());
+    auto v8Analyzer = getAnazylersInstance(v8g.get(), isolate.get());
+    auto fn_type = getAnalyzersMethodFunction(v8g.get(), isolate.get(), v8Analyzer, "type");
 
     v8Analyzer->SetInternalField(SLOT_CLASS_TYPE,
                                  v8::Integer::New(isolate.get(), WRP_IRESEARCH_ANALYZER_TYPE));
@@ -314,8 +322,7 @@ TEST_F(V8AnalyzersTest, test_accessors) {
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
-    auto result =
-        v8::Function::Cast(*fn_type)->CallAsFunction(context, v8Analyzer,
+    auto result = fn_type->CallAsFunction(context, v8Analyzer,
                                                      static_cast<int>(args.size()),
                                                      args.data());
     EXPECT_FALSE(result.IsEmpty());
@@ -344,10 +351,8 @@ TEST_F(V8AnalyzersTest, test_accessors) {
     v8g->_vocbase = &vocbase;
     arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
-    auto v8Analyzer = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzerTempl)
-                          ->NewInstance();
-    auto fn_type = v8Analyzer->Get(TRI_V8_ASCII_STRING(isolate.get(), "type"));
-    EXPECT_TRUE(fn_type->IsFunction());
+    auto v8Analyzer = getAnazylersInstance(v8g.get(), isolate.get());
+    auto fn_type = getAnalyzersMethodFunction(v8g.get(), isolate.get(), v8Analyzer, "type");
 
     v8Analyzer->SetInternalField(SLOT_CLASS_TYPE,
                                  v8::Integer::New(isolate.get(), WRP_IRESEARCH_ANALYZER_TYPE));
@@ -365,8 +370,7 @@ TEST_F(V8AnalyzersTest, test_accessors) {
 
     arangodb::velocypack::Builder responce;
     v8::TryCatch tryCatch(isolate.get());
-    auto result =
-        v8::Function::Cast(*fn_type)->CallAsFunction(context, v8Analyzer,
+    auto result = fn_type->CallAsFunction(context, v8Analyzer,
                                                      static_cast<int>(args.size()),
                                                      args.data());
     EXPECT_TRUE(result.IsEmpty());
@@ -401,11 +405,8 @@ TEST_F(V8AnalyzersTest, test_accessors) {
     v8g->_vocbase = &vocbase;
     arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
-    auto v8Analyzer = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzerTempl)
-                          ->NewInstance();
-    auto fn_properties =
-        v8Analyzer->Get(TRI_V8_ASCII_STRING(isolate.get(), "properties"));
-    EXPECT_TRUE(fn_properties->IsFunction());
+    auto v8Analyzer = getAnazylersInstance(v8g.get(), isolate.get());
+    auto fn_properties = getAnalyzersMethodFunction(v8g.get(), isolate.get(), v8Analyzer, "properties");
 
     v8Analyzer->SetInternalField(SLOT_CLASS_TYPE,
                                  v8::Integer::New(isolate.get(), WRP_IRESEARCH_ANALYZER_TYPE));
@@ -421,8 +422,7 @@ TEST_F(V8AnalyzersTest, test_accessors) {
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
-    auto result = v8::Function::Cast(*fn_properties)
-                      ->CallAsFunction(context, v8Analyzer,
+    auto result = fn_properties->CallAsFunction(context, v8Analyzer,
                                        static_cast<int>(args.size()), args.data());
 
     EXPECT_FALSE(result.IsEmpty());
@@ -454,11 +454,8 @@ TEST_F(V8AnalyzersTest, test_accessors) {
     v8g->_vocbase = &vocbase;
     arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
-    auto v8Analyzer = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzerTempl)
-                          ->NewInstance();
-    auto fn_properties =
-        v8Analyzer->Get(TRI_V8_ASCII_STRING(isolate.get(), "properties"));
-    EXPECT_TRUE(fn_properties->IsFunction());
+    auto v8Analyzer = getAnazylersInstance(v8g.get(), isolate.get());
+    auto fn_properties = getAnalyzersMethodFunction(v8g.get(), isolate.get(), v8Analyzer, "properties");
 
     v8Analyzer->SetInternalField(SLOT_CLASS_TYPE,
                                  v8::Integer::New(isolate.get(), WRP_IRESEARCH_ANALYZER_TYPE));
@@ -476,8 +473,7 @@ TEST_F(V8AnalyzersTest, test_accessors) {
 
     arangodb::velocypack::Builder responce;
     v8::TryCatch tryCatch(isolate.get());
-    auto result = v8::Function::Cast(*fn_properties)
-                      ->CallAsFunction(context, v8Analyzer,
+    auto result = fn_properties->CallAsFunction(context, v8Analyzer,
                                        static_cast<int>(args.size()), args.data());
     EXPECT_TRUE(result.IsEmpty());
     EXPECT_TRUE(tryCatch.HasCaught());
@@ -511,11 +507,8 @@ TEST_F(V8AnalyzersTest, test_accessors) {
     v8g->_vocbase = &vocbase;
     arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
-    auto v8Analyzer = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzerTempl)
-                          ->NewInstance();
-    auto fn_features =
-        v8Analyzer->Get(TRI_V8_ASCII_STRING(isolate.get(), "features"));
-    EXPECT_TRUE(fn_features->IsFunction());
+    auto v8Analyzer = getAnazylersInstance(v8g.get(), isolate.get());
+    auto fn_features = getAnalyzersMethodFunction(v8g.get(), isolate.get(), v8Analyzer, "features");
 
     v8Analyzer->SetInternalField(SLOT_CLASS_TYPE,
                                  v8::Integer::New(isolate.get(), WRP_IRESEARCH_ANALYZER_TYPE));
@@ -531,8 +524,7 @@ TEST_F(V8AnalyzersTest, test_accessors) {
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
-    auto result = v8::Function::Cast(*fn_features)
-                      ->CallAsFunction(context, v8Analyzer,
+    auto result = fn_features->CallAsFunction(context, v8Analyzer,
                                        static_cast<int>(args.size()), args.data());
     EXPECT_FALSE(result.IsEmpty());
     EXPECT_TRUE(result.ToLocalChecked()->IsArray());
@@ -560,11 +552,8 @@ TEST_F(V8AnalyzersTest, test_accessors) {
     v8g->_vocbase = &vocbase;
     arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
-    auto v8Analyzer = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzerTempl)
-                          ->NewInstance();
-    auto fn_features =
-        v8Analyzer->Get(TRI_V8_ASCII_STRING(isolate.get(), "features"));
-    EXPECT_TRUE(fn_features->IsFunction());
+    auto v8Analyzer = getAnazylersInstance(v8g.get(), isolate.get());
+    auto fn_features = getAnalyzersMethodFunction(v8g.get(), isolate.get(), v8Analyzer, "featuers");
 
     v8Analyzer->SetInternalField(SLOT_CLASS_TYPE,
                                  v8::Integer::New(isolate.get(), WRP_IRESEARCH_ANALYZER_TYPE));
@@ -582,8 +571,7 @@ TEST_F(V8AnalyzersTest, test_accessors) {
 
     arangodb::velocypack::Builder responce;
     v8::TryCatch tryCatch(isolate.get());
-    auto result = v8::Function::Cast(*fn_features)
-                      ->CallAsFunction(context, v8Analyzer,
+    auto result = fn_features->CallAsFunction(context, v8Analyzer,
                                        static_cast<int>(args.size()), args.data());
     EXPECT_TRUE(result.IsEmpty());
     EXPECT_TRUE(tryCatch.HasCaught());
@@ -655,11 +643,8 @@ TEST_F(V8AnalyzersTest, test_create) {
     v8g->_vocbase = &vocbase;
     arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
-    auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)
-                           ->NewInstance();
-    auto fn_create =
-        v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "save"));
-    EXPECT_TRUE(fn_create->IsFunction());
+    auto v8Analyzer = getAnazylersInstance(v8g.get(), isolate.get());
+    auto fn_save = getAnalyzersMethodFunction(v8g.get(), isolate.get(), v8Analyzer, "save");
 
     std::vector<v8::Local<v8::Value>> args = {};
 
@@ -673,8 +658,7 @@ TEST_F(V8AnalyzersTest, test_create) {
 
     arangodb::velocypack::Builder responce;
     v8::TryCatch tryCatch(isolate.get());
-    auto result = v8::Function::Cast(*fn_create)
-                      ->CallAsFunction(context, fn_create,
+    auto result = fn_save->CallAsFunction(context, fn_save,
                                        static_cast<int>(args.size()), args.data());
     EXPECT_TRUE(result.IsEmpty());
     EXPECT_TRUE(tryCatch.HasCaught());
@@ -708,11 +692,8 @@ TEST_F(V8AnalyzersTest, test_create) {
     v8g->_vocbase = &vocbase;
     arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
-    auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)
-                           ->NewInstance();
-    auto fn_create =
-        v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "save"));
-    EXPECT_TRUE(fn_create->IsFunction());
+    auto v8Analyzer = getAnazylersInstance(v8g.get(), isolate.get());
+    auto fn_save = getAnalyzersMethodFunction(v8g.get(), isolate.get(), v8Analyzer, "save");
 
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_STD_STRING(isolate.get(), arangodb::StaticStrings::SystemDatabase + "::testAnalyzer2"),
@@ -729,8 +710,7 @@ TEST_F(V8AnalyzersTest, test_create) {
 
     arangodb::velocypack::Builder responce;
     v8::TryCatch tryCatch(isolate.get());
-    auto result = v8::Function::Cast(*fn_create)
-                      ->CallAsFunction(context, fn_create,
+    auto result = fn_save->CallAsFunction(context, fn_save,
                                        static_cast<int>(args.size()), args.data());
     EXPECT_TRUE(result.IsEmpty());
     EXPECT_TRUE(tryCatch.HasCaught());
@@ -764,11 +744,8 @@ TEST_F(V8AnalyzersTest, test_create) {
     v8g->_vocbase = &vocbase;
     arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
-    auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)
-                           ->NewInstance();
-    auto fn_create =
-        v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "save"));
-    EXPECT_TRUE(fn_create->IsFunction());
+    auto v8Analyzer = getAnazylersInstance(v8g.get(), isolate.get());
+    auto fn_save = getAnalyzersMethodFunction(v8g.get(), isolate.get(), v8Analyzer, "save");
 
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_STD_STRING(isolate.get(), arangodb::StaticStrings::SystemDatabase + "::test:Analyzer2"),
@@ -786,8 +763,7 @@ TEST_F(V8AnalyzersTest, test_create) {
 
     arangodb::velocypack::Builder responce;
     v8::TryCatch tryCatch(isolate.get());
-    auto result = v8::Function::Cast(*fn_create)
-                      ->CallAsFunction(context, fn_create,
+    auto result = fn_save->CallAsFunction(context, fn_save,
                                        static_cast<int>(args.size()), args.data());
     EXPECT_TRUE(result.IsEmpty());
     EXPECT_TRUE(tryCatch.HasCaught());
@@ -821,11 +797,8 @@ TEST_F(V8AnalyzersTest, test_create) {
     v8g->_vocbase = &vocbase;
     arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
-    auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)
-                           ->NewInstance();
-    auto fn_create =
-        v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "save"));
-    EXPECT_TRUE(fn_create->IsFunction());
+    auto v8Analyzer = getAnazylersInstance(v8g.get(), isolate.get());
+    auto fn_save = getAnalyzersMethodFunction(v8g.get(), isolate.get(), v8Analyzer, "save");
 
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_STD_STRING(isolate.get(), "::test:Analyzer2"s),
@@ -843,8 +816,7 @@ TEST_F(V8AnalyzersTest, test_create) {
 
     arangodb::velocypack::Builder responce;
     v8::TryCatch tryCatch(isolate.get());
-    auto result = v8::Function::Cast(*fn_create)
-                      ->CallAsFunction(context, fn_create,
+    auto result = fn_save->CallAsFunction(context, fn_save,
                                        static_cast<int>(args.size()), args.data());
     EXPECT_TRUE(result.IsEmpty());
     EXPECT_TRUE(tryCatch.HasCaught());
@@ -878,11 +850,8 @@ TEST_F(V8AnalyzersTest, test_create) {
     v8g->_vocbase = &vocbase;
     arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
-    auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)
-                           ->NewInstance();
-    auto fn_create =
-        v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "save"));
-    EXPECT_TRUE(fn_create->IsFunction());
+    auto v8Analyzer = getAnazylersInstance(v8g.get(), isolate.get());
+    auto fn_save = getAnalyzersMethodFunction(v8g.get(), isolate.get(), v8Analyzer, "save");
 
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_ASCII_STRING(isolate.get(), "unknownVocbase::testAnalyzer"),
@@ -900,8 +869,7 @@ TEST_F(V8AnalyzersTest, test_create) {
 
     arangodb::velocypack::Builder responce;
     v8::TryCatch tryCatch(isolate.get());
-    auto result = v8::Function::Cast(*fn_create)
-                      ->CallAsFunction(context, fn_create,
+    auto result = fn_save->CallAsFunction(context, fn_save,
                                        static_cast<int>(args.size()), args.data());
     EXPECT_TRUE(result.IsEmpty());
     EXPECT_TRUE(tryCatch.HasCaught());
@@ -934,11 +902,8 @@ TEST_F(V8AnalyzersTest, test_create) {
     v8g->_vocbase = &vocbase;
     arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
-    auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)
-                           ->NewInstance();
-    auto fn_create =
-        v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "save"));
-    EXPECT_TRUE(fn_create->IsFunction());
+    auto v8Analyzer = getAnazylersInstance(v8g.get(), isolate.get());
+    auto fn_save = getAnalyzersMethodFunction(v8g.get(), isolate.get(), v8Analyzer, "save");
 
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_STD_STRING(isolate.get(), "emptyAnalyzer"s),
@@ -956,8 +921,7 @@ TEST_F(V8AnalyzersTest, test_create) {
 
     arangodb::velocypack::Builder responce;
     v8::TryCatch tryCatch(isolate.get());
-    auto result = v8::Function::Cast(*fn_create)
-                      ->CallAsFunction(context, fn_create,
+    auto result = fn_save->CallAsFunction(context, fn_save,
                                        static_cast<int>(args.size()), args.data());
     EXPECT_TRUE(result.IsEmpty());
     EXPECT_TRUE(tryCatch.HasCaught());
@@ -991,11 +955,8 @@ TEST_F(V8AnalyzersTest, test_create) {
     v8g->_vocbase = &vocbase;
     arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
-    auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)
-                           ->NewInstance();
-    auto fn_create =
-        v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "save"));
-    EXPECT_TRUE(fn_create->IsFunction());
+    auto v8Analyzer = getAnazylersInstance(v8g.get(), isolate.get());
+    auto fn_save = getAnalyzersMethodFunction(v8g.get(), isolate.get(), v8Analyzer, "save");
 
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_STD_STRING(isolate.get(), "testAnalyzer1"s),
@@ -1011,21 +972,20 @@ TEST_F(V8AnalyzersTest, test_create) {
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::RW);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
-    auto result = v8::Function::Cast(*fn_create)
-                      ->CallAsFunction(context, fn_create,
+    auto result = fn_save->CallAsFunction(context, fn_save,
                                        static_cast<int>(args.size()), args.data());
     EXPECT_FALSE(result.IsEmpty());
     EXPECT_TRUE(result.ToLocalChecked()->IsObject());
-    auto* v8Analyzer = TRI_UnwrapClass<arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool>(
+    auto* v8AnalyzerWeak = TRI_UnwrapClass<arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool>(
         result.ToLocalChecked()->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()),
         WRP_IRESEARCH_ANALYZER_TYPE, TRI_IGETC);
-    EXPECT_FALSE(!v8Analyzer);
-    EXPECT_EQ(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1", v8Analyzer->name());
-    EXPECT_EQ("identity", v8Analyzer->type());
+    EXPECT_FALSE(!v8AnalyzerWeak);
+    EXPECT_EQ(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1", v8AnalyzerWeak->name());
+    EXPECT_EQ("identity", v8AnalyzerWeak->type());
     EXPECT_EQUAL_SLICES(
         VPackSlice::emptyObjectSlice(),
-        v8Analyzer->properties());
-    EXPECT_TRUE(v8Analyzer->features().empty());
+        v8AnalyzerWeak->properties());
+    EXPECT_TRUE(v8AnalyzerWeak->features().empty());
     auto analyzer = analyzers.get(arangodb::StaticStrings::SystemDatabase +
                                   "::testAnalyzer1");
     EXPECT_FALSE(!analyzer);
@@ -1051,11 +1011,8 @@ TEST_F(V8AnalyzersTest, test_create) {
     v8g->_vocbase = &vocbase;
     arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
-    auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)
-                           ->NewInstance();
-    auto fn_create =
-        v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "save"));
-    EXPECT_TRUE(fn_create->IsFunction());
+    auto v8Analyzer = getAnazylersInstance(v8g.get(), isolate.get());
+    auto fn_save = getAnalyzersMethodFunction(v8g.get(), isolate.get(), v8Analyzer, "save");
 
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_STD_STRING(isolate.get(), "testAnalyzer2"s),
@@ -1073,8 +1030,7 @@ TEST_F(V8AnalyzersTest, test_create) {
 
     arangodb::velocypack::Builder responce;
     v8::TryCatch tryCatch(isolate.get());
-    auto result = v8::Function::Cast(*fn_create)
-                      ->CallAsFunction(context, fn_create,
+    auto result = fn_save->CallAsFunction(context, fn_save,
                                        static_cast<int>(args.size()), args.data());
     EXPECT_TRUE(result.IsEmpty());
     EXPECT_TRUE(tryCatch.HasCaught());
@@ -1108,11 +1064,8 @@ TEST_F(V8AnalyzersTest, test_create) {
     v8g->_vocbase = &vocbase;
     arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
-    auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)
-                           ->NewInstance();
-    auto fn_create =
-        v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "save"));
-    EXPECT_TRUE(fn_create->IsFunction());
+    auto v8Analyzer = getAnazylersInstance(v8g.get(), isolate.get());
+    auto fn_save = getAnalyzersMethodFunction(v8g.get(), isolate.get(), v8Analyzer, "save");
 
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_STD_STRING(isolate.get(), "testAnalyzer2"s),
@@ -1128,21 +1081,20 @@ TEST_F(V8AnalyzersTest, test_create) {
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::RW);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
-    auto result = v8::Function::Cast(*fn_create)
-                      ->CallAsFunction(context, fn_create,
+    auto result = fn_save->CallAsFunction(context, fn_save,
                                        static_cast<int>(args.size()), args.data());
     EXPECT_FALSE(result.IsEmpty());
     EXPECT_TRUE(result.ToLocalChecked()->IsObject());
-    auto* v8Analyzer = TRI_UnwrapClass<arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool>(
+    auto* v8AnalyzerWeak = TRI_UnwrapClass<arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool>(
         result.ToLocalChecked()->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()),
         WRP_IRESEARCH_ANALYZER_TYPE, TRI_IGETC);
-    EXPECT_FALSE(!v8Analyzer);
-    EXPECT_EQ(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer2", v8Analyzer->name());
-    EXPECT_EQ("identity", v8Analyzer->type());
+    EXPECT_FALSE(!v8AnalyzerWeak);
+    EXPECT_EQ(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer2", v8AnalyzerWeak->name());
+    EXPECT_EQ("identity", v8AnalyzerWeak->type());
     EXPECT_EQUAL_SLICES(
         VPackSlice::emptyObjectSlice(),
-        v8Analyzer->properties());
-    EXPECT_TRUE(v8Analyzer->features().empty());
+        v8AnalyzerWeak->properties());
+    EXPECT_TRUE(v8AnalyzerWeak->features().empty());
     auto analyzer = analyzers.get(arangodb::StaticStrings::SystemDatabase +
                                   "::testAnalyzer2");
     EXPECT_FALSE(!analyzer);
@@ -1167,11 +1119,8 @@ TEST_F(V8AnalyzersTest, test_create) {
     v8g->_vocbase = &vocbase;
     arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
-    auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)
-                           ->NewInstance();
-    auto fn_create =
-        v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "save"));
-    EXPECT_TRUE(fn_create->IsFunction());
+    auto v8Analyzer = getAnazylersInstance(v8g.get(), isolate.get());
+    auto fn_save = getAnalyzersMethodFunction(v8g.get(), isolate.get(), v8Analyzer, "save");
 
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_STD_STRING(isolate.get(), vocbase.name() + "::testAnalyzer3"s),
@@ -1187,21 +1136,20 @@ TEST_F(V8AnalyzersTest, test_create) {
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::RW);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
-    auto result = v8::Function::Cast(*fn_create)
-                      ->CallAsFunction(context, fn_create,
+    auto result = fn_save->CallAsFunction(context, fn_save,
                                        static_cast<int>(args.size()), args.data());
     EXPECT_FALSE(result.IsEmpty());
     EXPECT_TRUE(result.ToLocalChecked()->IsObject());
-    auto* v8Analyzer = TRI_UnwrapClass<arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool>(
+    auto* v8AnalyzerWeak = TRI_UnwrapClass<arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool>(
         result.ToLocalChecked()->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()),
         WRP_IRESEARCH_ANALYZER_TYPE, TRI_IGETC);
-    EXPECT_FALSE(!v8Analyzer);
-    EXPECT_EQ(vocbase.name() + "::testAnalyzer3", v8Analyzer->name());
-    EXPECT_EQ("identity", v8Analyzer->type());
+    EXPECT_FALSE(!v8AnalyzerWeak);
+    EXPECT_EQ(vocbase.name() + "::testAnalyzer3", v8AnalyzerWeak->name());
+    EXPECT_EQ("identity", v8AnalyzerWeak->type());
     EXPECT_EQUAL_SLICES(
         VPackSlice::emptyObjectSlice(),
-        v8Analyzer->properties());
-    EXPECT_TRUE(v8Analyzer->features().empty());
+        v8AnalyzerWeak->properties());
+    EXPECT_TRUE(v8AnalyzerWeak->features().empty());
     auto analyzer = analyzers.get(vocbase.name() + "::testAnalyzer3");
     EXPECT_FALSE(!analyzer);
   }
@@ -1225,11 +1173,8 @@ TEST_F(V8AnalyzersTest, test_create) {
     v8g->_vocbase = &vocbase;
     arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
-    auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)
-                           ->NewInstance();
-    auto fn_create =
-        v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "save"));
-    EXPECT_TRUE(fn_create->IsFunction());
+    auto v8Analyzer = getAnazylersInstance(v8g.get(), isolate.get());
+    auto fn_save = getAnalyzersMethodFunction(v8g.get(), isolate.get(), v8Analyzer, "save");
 
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_STD_STRING(isolate.get(), "::testAnalyzer4"s),
@@ -1245,21 +1190,20 @@ TEST_F(V8AnalyzersTest, test_create) {
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::RW);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
-    auto result = v8::Function::Cast(*fn_create)
-                      ->CallAsFunction(context, fn_create,
+    auto result = fn_save->CallAsFunction(context, fn_save,
                                        static_cast<int>(args.size()), args.data());
     EXPECT_FALSE(result.IsEmpty());
     EXPECT_TRUE(result.ToLocalChecked()->IsObject());
-    auto* v8Analyzer = TRI_UnwrapClass<arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool>(
+    auto* v8AnalyzerWeak = TRI_UnwrapClass<arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool>(
         result.ToLocalChecked()->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()),
         WRP_IRESEARCH_ANALYZER_TYPE, TRI_IGETC);
-    EXPECT_FALSE(!v8Analyzer);
-    EXPECT_EQ(vocbase.name() + "::testAnalyzer4", v8Analyzer->name());
-    EXPECT_EQ("identity", v8Analyzer->type());
+    EXPECT_FALSE(!v8AnalyzerWeak);
+    EXPECT_EQ(vocbase.name() + "::testAnalyzer4", v8AnalyzerWeak->name());
+    EXPECT_EQ("identity", v8AnalyzerWeak->type());
     EXPECT_EQUAL_SLICES(
         VPackSlice::emptyObjectSlice(),
-        v8Analyzer->properties());
-    EXPECT_TRUE(v8Analyzer->features().empty());
+        v8AnalyzerWeak->properties());
+    EXPECT_TRUE(v8AnalyzerWeak->features().empty());
     auto analyzer = analyzers.get(vocbase.name() + "::testAnalyzer4");
     EXPECT_NE(nullptr, analyzer);
   }
@@ -1325,11 +1269,8 @@ TEST_F(V8AnalyzersTest, test_get) {
     v8g->_vocbase = &vocbase;
     arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
-    auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)
-                           ->NewInstance();
-    auto fn_get =
-        v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "analyzer"));
-    EXPECT_TRUE(fn_get->IsFunction());
+    auto v8Analyzer = getAnazylersInstance(v8g.get(), isolate.get());
+    auto fn_analyzer = getAnalyzersMethodFunction(v8g.get(), isolate.get(), v8Analyzer, "analyzer");
 
     std::vector<v8::Local<v8::Value>> args = {};
 
@@ -1343,8 +1284,7 @@ TEST_F(V8AnalyzersTest, test_get) {
 
     arangodb::velocypack::Builder responce;
     v8::TryCatch tryCatch(isolate.get());
-    auto result =
-        v8::Function::Cast(*fn_get)->CallAsFunction(context, fn_get,
+    auto result = fn_analyzer->CallAsFunction(context, fn_analyzer,
                                                     static_cast<int>(args.size()),
                                                     args.data());
     EXPECT_TRUE(result.IsEmpty());
@@ -1379,11 +1319,8 @@ TEST_F(V8AnalyzersTest, test_get) {
     v8g->_vocbase = &vocbase;
     arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
-    auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)
-                           ->NewInstance();
-    auto fn_get =
-        v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "analyzer"));
-    EXPECT_TRUE(fn_get->IsFunction());
+    auto v8Analyzer = getAnazylersInstance(v8g.get(), isolate.get());
+    auto fn_analyzer = getAnalyzersMethodFunction(v8g.get(), isolate.get(), v8Analyzer, "analyzer");
 
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_ASCII_STRING(isolate.get(), "identity"),
@@ -1397,22 +1334,21 @@ TEST_F(V8AnalyzersTest, test_get) {
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::NONE);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
-    auto result =
-        v8::Function::Cast(*fn_get)->CallAsFunction(context, fn_get,
+    auto result = fn_analyzer->CallAsFunction(context, fn_analyzer,
                                                     static_cast<int>(args.size()),
                                                     args.data());
     EXPECT_FALSE(result.IsEmpty());
     EXPECT_TRUE(result.ToLocalChecked()->IsObject());
-    auto* v8Analyzer = TRI_UnwrapClass<arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool>(
+    auto* v8AnalyzerWeak = TRI_UnwrapClass<arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool>(
         result.ToLocalChecked()->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()),
         WRP_IRESEARCH_ANALYZER_TYPE, TRI_IGETC);
-    EXPECT_FALSE(!v8Analyzer);
-    EXPECT_EQ(std::string("identity"), v8Analyzer->name());
-    EXPECT_EQ(std::string("identity"), v8Analyzer->type());
+    EXPECT_FALSE(!v8AnalyzerWeak);
+    EXPECT_EQ(std::string("identity"), v8AnalyzerWeak->name());
+    EXPECT_EQ(std::string("identity"), v8AnalyzerWeak->type());
     EXPECT_EQUAL_SLICES(
         VPackSlice::emptyObjectSlice(),
-        v8Analyzer->properties());
-    EXPECT_EQ(2, v8Analyzer->features().size());
+        v8AnalyzerWeak->properties());
+    EXPECT_EQ(2, v8AnalyzerWeak->features().size());
   }
 
   // get static (unknown analyzer)
@@ -1435,11 +1371,8 @@ TEST_F(V8AnalyzersTest, test_get) {
     v8g->_vocbase = &vocbase;
     arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
-    auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)
-                           ->NewInstance();
-    auto fn_get =
-        v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "analyzer"));
-    EXPECT_TRUE(fn_get->IsFunction());
+    auto v8Analyzer = getAnazylersInstance(v8g.get(), isolate.get());
+    auto fn_analyzer = getAnalyzersMethodFunction(v8g.get(), isolate.get(), v8Analyzer, "analyzer");
 
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_ASCII_STRING(isolate.get(), "unknown"),
@@ -1453,8 +1386,7 @@ TEST_F(V8AnalyzersTest, test_get) {
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
-    auto result =
-        v8::Function::Cast(*fn_get)->CallAsFunction(context, fn_get,
+    auto result = fn_analyzer->CallAsFunction(context, fn_analyzer,
                                                     static_cast<int>(args.size()),
                                                     args.data());
     EXPECT_FALSE(result.IsEmpty());
@@ -1481,11 +1413,8 @@ TEST_F(V8AnalyzersTest, test_get) {
     v8g->_vocbase = &vocbase;
     arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
-    auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)
-                           ->NewInstance();
-    auto fn_get =
-        v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "analyzer"));
-    EXPECT_TRUE(fn_get->IsFunction());
+    auto v8Analyzer = getAnazylersInstance(v8g.get(), isolate.get());
+    auto fn_analyzer = getAnalyzersMethodFunction(v8g.get(), isolate.get(), v8Analyzer, "analyzer");
 
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_STD_STRING(isolate.get(), arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1"),
@@ -1499,23 +1428,22 @@ TEST_F(V8AnalyzersTest, test_get) {
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
-    auto result =
-        v8::Function::Cast(*fn_get)->CallAsFunction(context, fn_get,
+    auto result = fn_analyzer->CallAsFunction(context, fn_analyzer,
                                                     static_cast<int>(args.size()),
                                                     args.data());
     EXPECT_FALSE(result.IsEmpty());
     EXPECT_TRUE(result.ToLocalChecked()->IsObject());
-    auto* v8Analyzer = TRI_UnwrapClass<arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool>(
+    auto* v8AnalyzerWeak = TRI_UnwrapClass<arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool>(
         result.ToLocalChecked()->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()),
         WRP_IRESEARCH_ANALYZER_TYPE, TRI_IGETC);
-    EXPECT_FALSE(!v8Analyzer);
+    EXPECT_FALSE(!v8AnalyzerWeak);
     EXPECT_TRUE((arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1" ==
-                 v8Analyzer->name()));
-    EXPECT_EQ(std::string("identity"), v8Analyzer->type());
+                 v8AnalyzerWeak->name()));
+    EXPECT_EQ(std::string("identity"), v8AnalyzerWeak->type());
     EXPECT_EQUAL_SLICES(
         VPackSlice::emptyObjectSlice(),
-        v8Analyzer->properties());
-    EXPECT_TRUE(v8Analyzer->features().empty());
+        v8AnalyzerWeak->properties());
+    EXPECT_TRUE(v8AnalyzerWeak->features().empty());
   }
 
   // get custom (known analyzer) authorized but wrong current db
@@ -1538,11 +1466,8 @@ TEST_F(V8AnalyzersTest, test_get) {
     v8g->_vocbase = &vocbase;
     arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
-    auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)
-                           ->NewInstance();
-    auto fn_get =
-        v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "analyzer"));
-    EXPECT_TRUE(fn_get->IsFunction());
+    auto v8Analyzer = getAnazylersInstance(v8g.get(), isolate.get());
+    auto fn_analyzer = getAnalyzersMethodFunction(v8g.get(), isolate.get(), v8Analyzer, "analyzer");
 
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_ASCII_STRING(isolate.get(), "testVocbase::testAnalyzer1"),
@@ -1558,8 +1483,7 @@ TEST_F(V8AnalyzersTest, test_get) {
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
     v8::TryCatch tryCatch(isolate.get());
     arangodb::velocypack::Builder responce;
-    auto result =
-        v8::Function::Cast(*fn_get)->CallAsFunction(context, fn_get,
+    auto result = fn_analyzer->CallAsFunction(context, fn_analyzer,
                                                     static_cast<int>(args.size()),
                                                     args.data());
     EXPECT_TRUE(result.IsEmpty());
@@ -1593,11 +1517,8 @@ TEST_F(V8AnalyzersTest, test_get) {
     v8g->_vocbase = &vocbase;
     arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
-    auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)
-                           ->NewInstance();
-    auto fn_get =
-        v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "analyzer"));
-    EXPECT_TRUE(fn_get->IsFunction());
+    auto v8Analyzer = getAnazylersInstance(v8g.get(), isolate.get());
+    auto fn_analyzer = getAnalyzersMethodFunction(v8g.get(), isolate.get(), v8Analyzer, "analyzer");
 
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_STD_STRING(
@@ -1613,23 +1534,22 @@ TEST_F(V8AnalyzersTest, test_get) {
     user.grantDatabase("testVocbase", arangodb::auth::Level::RO);
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
-    auto result =
-        v8::Function::Cast(*fn_get)->CallAsFunction(context, fn_get,
+    auto result = fn_analyzer->CallAsFunction(context, fn_analyzer,
                                                     static_cast<int>(args.size()),
                                                     args.data());
     EXPECT_FALSE(result.IsEmpty());
     EXPECT_TRUE(result.ToLocalChecked()->IsObject());
-    auto* v8Analyzer = TRI_UnwrapClass<arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool>(
+    auto* v8AnalyzerWeak = TRI_UnwrapClass<arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool>(
         result.ToLocalChecked()->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()),
         WRP_IRESEARCH_ANALYZER_TYPE, TRI_IGETC);
-    EXPECT_FALSE(!v8Analyzer);
+    EXPECT_FALSE(!v8AnalyzerWeak);
     EXPECT_TRUE((arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1" ==
-                 v8Analyzer->name()));
-    EXPECT_EQ(std::string("identity"), v8Analyzer->type());
+                 v8AnalyzerWeak->name()));
+    EXPECT_EQ(std::string("identity"), v8AnalyzerWeak->type());
     EXPECT_EQUAL_SLICES(
         VPackSlice::emptyObjectSlice(),
-        v8Analyzer->properties());
-    EXPECT_TRUE(v8Analyzer->features().empty());
+        v8AnalyzerWeak->properties());
+    EXPECT_TRUE(v8AnalyzerWeak->features().empty());
   }
 
   // get custom (known analyzer) not authorized
@@ -1652,11 +1572,8 @@ TEST_F(V8AnalyzersTest, test_get) {
     v8g->_vocbase = &vocbase;
     arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
-    auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)
-                           ->NewInstance();
-    auto fn_get =
-        v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "analyzer"));
-    EXPECT_TRUE(fn_get->IsFunction());
+    auto v8Analyzer = getAnazylersInstance(v8g.get(), isolate.get());
+    auto fn_analyzer = getAnalyzersMethodFunction(v8g.get(), isolate.get(), v8Analyzer, "analyzer");
 
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_STD_STRING(isolate.get(), arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1"),
@@ -1672,8 +1589,7 @@ TEST_F(V8AnalyzersTest, test_get) {
 
     arangodb::velocypack::Builder responce;
     v8::TryCatch tryCatch(isolate.get());
-    auto result =
-        v8::Function::Cast(*fn_get)->CallAsFunction(context, fn_get,
+    auto result = fn_analyzer->CallAsFunction(context, fn_analyzer,
                                                     static_cast<int>(args.size()),
                                                     args.data());
     EXPECT_TRUE(result.IsEmpty());
@@ -1708,11 +1624,8 @@ TEST_F(V8AnalyzersTest, test_get) {
     v8g->_vocbase = &vocbase;
     arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
-    auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)
-                           ->NewInstance();
-    auto fn_get =
-        v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "analyzer"));
-    EXPECT_TRUE(fn_get->IsFunction());
+    auto v8Analyzer = getAnazylersInstance(v8g.get(), isolate.get());
+    auto fn_analyzer = getAnalyzersMethodFunction(v8g.get(), isolate.get(), v8Analyzer, "analyzer");
 
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_STD_STRING(isolate.get(), arangodb::StaticStrings::SystemDatabase + "::unknown"),
@@ -1726,8 +1639,7 @@ TEST_F(V8AnalyzersTest, test_get) {
     user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
-    auto result =
-        v8::Function::Cast(*fn_get)->CallAsFunction(context, fn_get,
+    auto result = fn_analyzer->CallAsFunction(context, fn_analyzer,
                                                     static_cast<int>(args.size()),
                                                     args.data());
     EXPECT_FALSE(result.IsEmpty());
@@ -1754,11 +1666,8 @@ TEST_F(V8AnalyzersTest, test_get) {
     v8g->_vocbase = &vocbase;
     arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
-    auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)
-                           ->NewInstance();
-    auto fn_get =
-        v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "analyzer"));
-    EXPECT_TRUE(fn_get->IsFunction());
+    auto v8Analyzer = getAnazylersInstance(v8g.get(), isolate.get());
+    auto fn_analyzer = getAnalyzersMethodFunction(v8g.get(), isolate.get(), v8Analyzer, "analyzer");
 
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_STD_STRING(isolate.get(), arangodb::StaticStrings::SystemDatabase + "::unknown"),
@@ -1774,8 +1683,7 @@ TEST_F(V8AnalyzersTest, test_get) {
 
     arangodb::velocypack::Builder responce;
     v8::TryCatch tryCatch(isolate.get());
-    auto result =
-        v8::Function::Cast(*fn_get)->CallAsFunction(context, fn_get,
+    auto result = fn_analyzer->CallAsFunction(context, fn_analyzer,
                                                     static_cast<int>(args.size()),
                                                     args.data());
     EXPECT_TRUE(result.IsEmpty());
@@ -1810,11 +1718,8 @@ TEST_F(V8AnalyzersTest, test_get) {
     v8g->_vocbase = &vocbase;
     arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
-    auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)
-                           ->NewInstance();
-    auto fn_get =
-        v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "analyzer"));
-    EXPECT_TRUE(fn_get->IsFunction());
+    auto v8Analyzer = getAnazylersInstance(v8g.get(), isolate.get());
+    auto fn_analyzer = getAnalyzersMethodFunction(v8g.get(), isolate.get(), v8Analyzer, "analyzer");
 
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_ASCII_STRING(isolate.get(), "unknownVocbase::unknown"),
@@ -1828,8 +1733,7 @@ TEST_F(V8AnalyzersTest, test_get) {
     user.grantDatabase("unknownVocbase", arangodb::auth::Level::RO);  // for system collections User::collectionAuthLevel(...) returns database auth::Level
     userManager->setAuthInfo(userMap);  // set user map to avoid loading configuration from system database
 
-    auto result =
-        v8::Function::Cast(*fn_get)->CallAsFunction(context, fn_get,
+    auto result = fn_analyzer->CallAsFunction(context, fn_analyzer,
                                                     static_cast<int>(args.size()),
                                                     args.data());
     EXPECT_FALSE(result.IsEmpty());
@@ -1856,11 +1760,8 @@ TEST_F(V8AnalyzersTest, test_get) {
     v8g->_vocbase = &vocbase;
     arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
-    auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)
-                           ->NewInstance();
-    auto fn_get =
-        v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "analyzer"));
-    EXPECT_TRUE(fn_get->IsFunction());
+    auto v8Analyzer = getAnazylersInstance(v8g.get(), isolate.get());
+    auto fn_analyzer = getAnalyzersMethodFunction(v8g.get(), isolate.get(), v8Analyzer, "analyzer");
 
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_ASCII_STRING(isolate.get(), "unknownVocbase::unknown"),
@@ -1876,8 +1777,7 @@ TEST_F(V8AnalyzersTest, test_get) {
 
     arangodb::velocypack::Builder responce;
     v8::TryCatch tryCatch(isolate.get());
-    auto result =
-        v8::Function::Cast(*fn_get)->CallAsFunction(context, fn_get,
+    auto result = fn_analyzer->CallAsFunction(context, fn_analyzer,
                                                     static_cast<int>(args.size()),
                                                     args.data());
     EXPECT_TRUE(result.IsEmpty());
@@ -1951,11 +1851,8 @@ TEST_F(V8AnalyzersTest, test_list) {
     v8g->_vocbase = &vocbase;
     arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
-    auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)
-                           ->NewInstance();
-    auto fn_list =
-        v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "toArray"));
-    EXPECT_TRUE(fn_list->IsFunction());
+    auto v8Analyzer = getAnazylersInstance(v8g.get(), isolate.get());
+    auto fn_toArray = getAnalyzersMethodFunction(v8g.get(), isolate.get(), v8Analyzer, "toArray");
 
     std::vector<v8::Local<v8::Value>> args = {};
 
@@ -1973,8 +1870,7 @@ TEST_F(V8AnalyzersTest, test_list) {
       "text_ru",  "text_sv",  "text_zh",
       arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
     };
-    auto result =
-        v8::Function::Cast(*fn_list)->CallAsFunction(context, fn_list,
+    auto result = fn_toArray->CallAsFunction(context, fn_toArray,
                                                      static_cast<int>(args.size()),
                                                      args.data());
     EXPECT_FALSE(result.IsEmpty());
@@ -1985,12 +1881,12 @@ TEST_F(V8AnalyzersTest, test_list) {
       auto v8Analyzer = v8Result->Get(i);
       EXPECT_FALSE(v8Analyzer.IsEmpty());
       EXPECT_TRUE(v8Analyzer->IsObject());
-      auto* analyzer =
+      auto* v8AnalyzerWeak =
           TRI_UnwrapClass<arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool>(
               v8Analyzer->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()),
               WRP_IRESEARCH_ANALYZER_TYPE, TRI_IGETC);
-      EXPECT_FALSE(!analyzer);
-      EXPECT_EQ(1, expected.erase(analyzer->name()));
+      EXPECT_FALSE(!v8AnalyzerWeak);
+      EXPECT_EQ(1, expected.erase(v8AnalyzerWeak->name()));
     }
 
     EXPECT_TRUE(expected.empty());
@@ -2016,11 +1912,8 @@ TEST_F(V8AnalyzersTest, test_list) {
     v8g->_vocbase = &vocbase;
     arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
-    auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)
-                           ->NewInstance();
-    auto fn_list =
-        v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "toArray"));
-    EXPECT_TRUE(fn_list->IsFunction());
+    auto v8Analyzer = getAnazylersInstance(v8g.get(), isolate.get());
+    auto fn_toArray = getAnalyzersMethodFunction(v8g.get(), isolate.get(), v8Analyzer, "toArray");
 
     std::vector<v8::Local<v8::Value>> args = {};
 
@@ -2038,8 +1931,7 @@ TEST_F(V8AnalyzersTest, test_list) {
       "text_ru",  "text_sv",  "text_zh",
     };
 
-    auto result =
-        v8::Function::Cast(*fn_list)->CallAsFunction(context, fn_list,
+    auto result = fn_toArray->CallAsFunction(context, fn_toArray,
                                                      static_cast<int>(args.size()),
                                                      args.data());
     EXPECT_FALSE(result.IsEmpty());
@@ -2050,12 +1942,12 @@ TEST_F(V8AnalyzersTest, test_list) {
       auto v8Analyzer = v8Result->Get(i);
       EXPECT_FALSE(v8Analyzer.IsEmpty());
       EXPECT_TRUE(v8Analyzer->IsObject());
-      auto* analyzer =
+      auto* v8AnalyzerWeak =
           TRI_UnwrapClass<arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool>(
               v8Analyzer->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()),
               WRP_IRESEARCH_ANALYZER_TYPE, TRI_IGETC);
-      EXPECT_FALSE(!analyzer);
-      EXPECT_EQ(1, expected.erase(analyzer->name()));
+      EXPECT_FALSE(!v8AnalyzerWeak);
+      EXPECT_EQ(1, expected.erase(v8AnalyzerWeak->name()));
     }
 
     EXPECT_TRUE(expected.empty());
@@ -2081,11 +1973,8 @@ TEST_F(V8AnalyzersTest, test_list) {
     v8g->_vocbase = &vocbase;
     arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
-    auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)
-                           ->NewInstance();
-    auto fn_list =
-        v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "toArray"));
-    EXPECT_TRUE(fn_list->IsFunction());
+    auto v8Analyzer = getAnazylersInstance(v8g.get(), isolate.get());
+    auto fn_toArray = getAnalyzersMethodFunction(v8g.get(), isolate.get(), v8Analyzer, "toArray");
 
     std::vector<v8::Local<v8::Value>> args = {};
 
@@ -2105,8 +1994,7 @@ TEST_F(V8AnalyzersTest, test_list) {
       arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
       "testVocbase::testAnalyzer2",
     };
-    auto result =
-        v8::Function::Cast(*fn_list)->CallAsFunction(context, fn_list,
+    auto result = fn_toArray->CallAsFunction(context, fn_toArray,
                                                      static_cast<int>(args.size()),
                                                      args.data());
     EXPECT_FALSE(result.IsEmpty());
@@ -2117,12 +2005,12 @@ TEST_F(V8AnalyzersTest, test_list) {
       auto v8Analyzer = v8Result->Get(i);
       EXPECT_FALSE(v8Analyzer.IsEmpty());
       EXPECT_TRUE(v8Analyzer->IsObject());
-      auto* analyzer =
+      auto* v8AnalyzerWeak =
           TRI_UnwrapClass<arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool>(
               v8Analyzer->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()),
               WRP_IRESEARCH_ANALYZER_TYPE, TRI_IGETC);
-      EXPECT_FALSE(!analyzer);
-      EXPECT_EQ(1, expected.erase(analyzer->name()));
+      EXPECT_FALSE(!v8AnalyzerWeak);
+      EXPECT_EQ(1, expected.erase(v8AnalyzerWeak->name()));
     }
 
     EXPECT_TRUE(expected.empty());
@@ -2148,11 +2036,8 @@ TEST_F(V8AnalyzersTest, test_list) {
     v8g->_vocbase = &vocbase;
     arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
-    auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)
-                           ->NewInstance();
-    auto fn_list =
-        v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "toArray"));
-    EXPECT_TRUE(fn_list->IsFunction());
+    auto v8Analyzer = getAnazylersInstance(v8g.get(), isolate.get());
+    auto fn_toArray = getAnalyzersMethodFunction(v8g.get(), isolate.get(), v8Analyzer, "toArray");
 
     std::vector<v8::Local<v8::Value>> args = {};
 
@@ -2171,8 +2056,7 @@ TEST_F(V8AnalyzersTest, test_list) {
       "text_ru",  "text_sv",  "text_zh",
       arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
     };
-    auto result =
-        v8::Function::Cast(*fn_list)->CallAsFunction(context, fn_list,
+    auto result = fn_toArray->CallAsFunction(context, fn_toArray,
                                                      static_cast<int>(args.size()),
                                                      args.data());
     EXPECT_FALSE(result.IsEmpty());
@@ -2183,12 +2067,12 @@ TEST_F(V8AnalyzersTest, test_list) {
       auto v8Analyzer = v8Result->Get(i);
       EXPECT_FALSE(v8Analyzer.IsEmpty());
       EXPECT_TRUE(v8Analyzer->IsObject());
-      auto* analyzer =
+      auto* v8AnalyzerWeak =
           TRI_UnwrapClass<arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool>(
               v8Analyzer->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()),
               WRP_IRESEARCH_ANALYZER_TYPE, TRI_IGETC);
-      EXPECT_FALSE(!analyzer);
-      EXPECT_EQ(1, expected.erase(analyzer->name()));
+      EXPECT_FALSE(!v8AnalyzerWeak);
+      EXPECT_EQ(1, expected.erase(v8AnalyzerWeak->name()));
     }
 
     EXPECT_TRUE(expected.empty());
@@ -2214,11 +2098,8 @@ TEST_F(V8AnalyzersTest, test_list) {
     v8g->_vocbase = &vocbase;
     arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
-    auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)
-                           ->NewInstance();
-    auto fn_list =
-        v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "toArray"));
-    EXPECT_TRUE(fn_list->IsFunction());
+    auto v8Analyzer = getAnazylersInstance(v8g.get(), isolate.get());
+    auto fn_toArray = getAnalyzersMethodFunction(v8g.get(), isolate.get(), v8Analyzer, "toArray");
 
     std::vector<v8::Local<v8::Value>> args = {};
 
@@ -2237,8 +2118,7 @@ TEST_F(V8AnalyzersTest, test_list) {
       "text_ru",  "text_sv",  "text_zh",
       "testVocbase::testAnalyzer2",
     };
-    auto result =
-        v8::Function::Cast(*fn_list)->CallAsFunction(context, fn_list,
+    auto result = fn_toArray->CallAsFunction(context, fn_toArray,
                                                      static_cast<int>(args.size()),
                                                      args.data());
     EXPECT_FALSE(result.IsEmpty());
@@ -2249,12 +2129,12 @@ TEST_F(V8AnalyzersTest, test_list) {
       auto v8Analyzer = v8Result->Get(i);
       EXPECT_FALSE(v8Analyzer.IsEmpty());
       EXPECT_TRUE(v8Analyzer->IsObject());
-      auto* analyzer =
+      auto* v8AnalyzerWeak =
           TRI_UnwrapClass<arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool>(
               v8Analyzer->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()),
               WRP_IRESEARCH_ANALYZER_TYPE, TRI_IGETC);
-      EXPECT_FALSE(!analyzer);
-      EXPECT_EQ(1, expected.erase(analyzer->name()));
+      EXPECT_FALSE(!v8AnalyzerWeak);
+      EXPECT_EQ(1, expected.erase(v8AnalyzerWeak->name()));
     }
 
     EXPECT_TRUE(expected.empty());
@@ -2280,11 +2160,8 @@ TEST_F(V8AnalyzersTest, test_list) {
     v8g->_vocbase = &vocbase;
     arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
-    auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)
-                           ->NewInstance();
-    auto fn_list =
-        v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "toArray"));
-    EXPECT_TRUE(fn_list->IsFunction());
+    auto v8Analyzer = getAnazylersInstance(v8g.get(), isolate.get());
+    auto fn_toArray = getAnalyzersMethodFunction(v8g.get(), isolate.get(), v8Analyzer, "toArray");
 
     std::vector<v8::Local<v8::Value>> args = {};
 
@@ -2302,8 +2179,7 @@ TEST_F(V8AnalyzersTest, test_list) {
       "text_fr",  "text_it",  "text_nl",  "text_no",  "text_pt",
       "text_ru",  "text_sv",  "text_zh",
     };
-    auto result =
-        v8::Function::Cast(*fn_list)->CallAsFunction(context, fn_list,
+    auto result = fn_toArray->CallAsFunction(context, fn_toArray,
                                                      static_cast<int>(args.size()),
                                                      args.data());
     EXPECT_FALSE(result.IsEmpty());
@@ -2314,12 +2190,12 @@ TEST_F(V8AnalyzersTest, test_list) {
       auto v8Analyzer = v8Result->Get(i);
       EXPECT_FALSE(v8Analyzer.IsEmpty());
       EXPECT_TRUE(v8Analyzer->IsObject());
-      auto* analyzer =
+      auto* v8AnalyzerWeak =
           TRI_UnwrapClass<arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool>(
               v8Analyzer->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()),
               WRP_IRESEARCH_ANALYZER_TYPE, TRI_IGETC);
-      EXPECT_FALSE(!analyzer);
-      EXPECT_EQ(1, expected.erase(analyzer->name()));
+      EXPECT_FALSE(!v8AnalyzerWeak);
+      EXPECT_EQ(1, expected.erase(v8AnalyzerWeak->name()));
     }
 
     EXPECT_TRUE(expected.empty());
@@ -2401,11 +2277,8 @@ TEST_F(V8AnalyzersTest, test_remove) {
     v8g->_vocbase = &vocbase;
     arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
-    auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)
-                           ->NewInstance();
-    auto fn_remove =
-        v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "remove"));
-    EXPECT_TRUE(fn_remove->IsFunction());
+    auto v8Analyzer = getAnazylersInstance(v8g.get(), isolate.get());
+    auto fn_remove = getAnalyzersMethodFunction(v8g.get(), isolate.get(), v8Analyzer, "remove");
 
     std::vector<v8::Local<v8::Value>> args = {};
 
@@ -2454,11 +2327,8 @@ TEST_F(V8AnalyzersTest, test_remove) {
     v8g->_vocbase = &vocbase;
     arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
-    auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)
-                           ->NewInstance();
-    auto fn_remove =
-        v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "remove"));
-    EXPECT_TRUE(fn_remove->IsFunction());
+    auto v8Analyzer = getAnazylersInstance(v8g.get(), isolate.get());
+    auto fn_remove = getAnalyzersMethodFunction(v8g.get(), isolate.get(), v8Analyzer, "remove");
 
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_ASCII_STRING(isolate.get(), "unknown"),
@@ -2509,11 +2379,8 @@ TEST_F(V8AnalyzersTest, test_remove) {
     v8g->_vocbase = &vocbase;
     arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
-    auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)
-                           ->NewInstance();
-    auto fn_remove =
-        v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "remove"));
-    EXPECT_TRUE(fn_remove->IsFunction());
+    auto v8Analyzer = getAnazylersInstance(v8g.get(), isolate.get());
+    auto fn_remove = getAnalyzersMethodFunction(v8g.get(), isolate.get(), v8Analyzer, "remove");
 
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_ASCII_STRING(isolate.get(), "testAnalyzer1"),
@@ -2567,11 +2434,8 @@ TEST_F(V8AnalyzersTest, test_remove) {
     v8g->_vocbase = &vocbase;
     arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
-    auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)
-                           ->NewInstance();
-    auto fn_remove =
-        v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "remove"));
-    EXPECT_TRUE(fn_remove->IsFunction());
+    auto v8Analyzer = getAnazylersInstance(v8g.get(), isolate.get());
+    auto fn_remove = getAnalyzersMethodFunction(v8g.get(), isolate.get(), v8Analyzer, "remove");
 
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_ASCII_STRING(isolate.get(), "testAnalyzer2"),
@@ -2629,11 +2493,8 @@ TEST_F(V8AnalyzersTest, test_remove) {
     v8g->_vocbase = &vocbase;
     arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
-    auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)
-                           ->NewInstance();
-    auto fn_remove =
-        v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "remove"));
-    EXPECT_TRUE(fn_remove->IsFunction());
+    auto v8Analyzer = getAnazylersInstance(v8g.get(), isolate.get());
+    auto fn_remove = getAnalyzersMethodFunction(v8g.get(), isolate.get(), v8Analyzer, "remove");
 
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_ASCII_STRING(isolate.get(), "testAnalyzer2"),
@@ -2681,11 +2542,8 @@ TEST_F(V8AnalyzersTest, test_remove) {
     v8g->_vocbase = &vocbase;
     arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
-    auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)
-                           ->NewInstance();
-    auto fn_remove =
-        v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "remove"));
-    EXPECT_TRUE(fn_remove->IsFunction());
+    auto v8Analyzer = getAnazylersInstance(v8g.get(), isolate.get());
+    auto fn_remove = getAnalyzersMethodFunction(v8g.get(), isolate.get(), v8Analyzer, "remove");
 
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_ASCII_STRING(isolate.get(), "testAnalyzer1"),
@@ -2728,11 +2586,8 @@ TEST_F(V8AnalyzersTest, test_remove) {
     v8g->_vocbase = &vocbase;
     arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
-    auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)
-                           ->NewInstance();
-    auto fn_remove =
-        v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "remove"));
-    EXPECT_TRUE(fn_remove->IsFunction());
+    auto v8Analyzer = getAnazylersInstance(v8g.get(), isolate.get());
+    auto fn_remove = getAnalyzersMethodFunction(v8g.get(), isolate.get(), v8Analyzer, "remove");
 
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_ASCII_STRING(isolate.get(), "::testAnalyzer3"),
@@ -2778,11 +2633,8 @@ TEST_F(V8AnalyzersTest, test_remove) {
     v8g->_vocbase = &vocbase;
     arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
-    auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)
-                           ->NewInstance();
-    auto fn_remove =
-        v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "remove"));
-    EXPECT_TRUE(fn_remove->IsFunction());
+    auto v8Analyzer = getAnazylersInstance(v8g.get(), isolate.get());
+    auto fn_remove = getAnalyzersMethodFunction(v8g.get(), isolate.get(), v8Analyzer, "remove");
 
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_ASCII_STRING(isolate.get(), "testVocbase::testAnalyzer1"),
@@ -2836,11 +2688,8 @@ TEST_F(V8AnalyzersTest, test_remove) {
     v8g->_vocbase = &vocbase;
     arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
-    auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)
-                           ->NewInstance();
-    auto fn_remove =
-        v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "remove"));
-    EXPECT_TRUE(fn_remove->IsFunction());
+    auto v8Analyzer = getAnazylersInstance(v8g.get(), isolate.get());
+    auto fn_remove = getAnalyzersMethodFunction(v8g.get(), isolate.get(), v8Analyzer, "remove");
 
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_ASCII_STRING(isolate.get(), "testAnalyzer2"),
@@ -2882,11 +2731,8 @@ TEST_F(V8AnalyzersTest, test_remove) {
     v8g->_vocbase = &vocbase;
     arangodb::iresearch::TRI_InitV8Analyzers(*v8g, isolate.get());
 
-    auto v8Analyzers = v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->IResearchAnalyzersTempl)
-                           ->NewInstance();
-    auto fn_remove =
-        v8Analyzers->Get(TRI_V8_ASCII_STRING(isolate.get(), "remove"));
-    EXPECT_TRUE(fn_remove->IsFunction());
+    auto v8Analyzer = getAnazylersInstance(v8g.get(), isolate.get());
+    auto fn_remove = getAnalyzersMethodFunction(v8g.get(), isolate.get(), v8Analyzer, "remove");
 
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_ASCII_STRING(isolate.get(), "testVocbase::testAnalyzer3"),

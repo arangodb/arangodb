@@ -363,6 +363,7 @@ else ()
   list(APPEND V8_GYP_ARGS -S.${V8_TARGET_ARCH})
 
   if (LINUX)
+    set(V8_INTERNAL_INCLUDE_DIR "${V8_LIBRARY_DIR}/obj/gen/generate-bytecode-output-root;${V8_LIBRARY_DIR}/obj/gen/torque-output-root")
     set(V8_LIBRARY_DIR "${V8_LIBRARY_DIR}/obj.target/gypfiles")
     set(ICU_LIBRARY_DIR "${ICU_LIBRARY_DIR}/obj.target/third_party/icu")
   elseif (SOLARIS)
@@ -485,3 +486,4 @@ endif()
 
 
 set(V8_INCLUDE_DIR ${V8_INCLUDE_DIR} PARENT_SCOPE)
+set(V8_INTERNAL_INCLUDE_DIR ${V8_INTERNAL_INCLUDE_DIR} PARENT_SCOPE)

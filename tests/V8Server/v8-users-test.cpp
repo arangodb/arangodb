@@ -61,7 +61,7 @@
 // include mwsockdef.h. Nor did I check whether all of the following headers
 // will include V8's "src/base/win32-headers.h".
 #include "src/api/api.h"
-#include "src/objects-inl.h"
+// #include "src/objects-inl.h"
 #include "src/objects/scope-info.h"
 
 namespace {
@@ -176,7 +176,7 @@ TEST_F(V8UsersTest, test_collection_auth) {
   TRI_InitV8Users(context, vocbase, v8g.get(), isolate.get());
 
   auto arangoUsers =
-      v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->UsersTempl)->NewInstance();
+      v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->UsersTempl)->NewInstance(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
   auto fn_grantCollection =
       arangoUsers->Get(TRI_V8_ASCII_STRING(isolate.get(), "grantCollection"));
   EXPECT_TRUE(fn_grantCollection->IsFunction());
