@@ -208,7 +208,7 @@ bool IResearchLinkMeta::init( // initialize meta
         auto value = *itr;
 
         if (!value.isObject()) {
-          errorField = fieldName + "=>[" + std::to_string(itr.index()) + "]";
+          errorField = fieldName + "[" + std::to_string(itr.index()) + "]";
 
           return false;
         }
@@ -221,7 +221,7 @@ bool IResearchLinkMeta::init( // initialize meta
 
           if (!value.hasKey(subFieldName) // missing required filed
               || !value.get(subFieldName).isString()) {
-            errorField = fieldName + "=>[" + std::to_string(itr.index()) + "]=>" + subFieldName;
+            errorField = fieldName + "[" + std::to_string(itr.index()) + "]." + subFieldName;
 
             return false;
           }
@@ -248,7 +248,7 @@ bool IResearchLinkMeta::init( // initialize meta
 
           if (!value.hasKey(subFieldName) // missing required filed
               || !value.get(subFieldName).isString()) {
-            errorField = fieldName + "=>[" + std::to_string(itr.index()) + "]=>" + subFieldName;
+            errorField = fieldName + "[" + std::to_string(itr.index()) + "]." + subFieldName;
 
             return false;
           }
@@ -266,7 +266,7 @@ bool IResearchLinkMeta::init( // initialize meta
             auto subField = value.get(subFieldName);
 
             if (!subField.isObject() && !subField.isNull()) {
-              errorField = fieldName + "=>[" + std::to_string(itr.index()) + "]=>" + subFieldName;
+              errorField = fieldName + "[" + std::to_string(itr.index()) + "]." + subFieldName;
 
               return false;
             }
@@ -285,7 +285,7 @@ bool IResearchLinkMeta::init( // initialize meta
             auto subField = value.get(subFieldName);
 
             if (!subField.isArray()) {
-              errorField = fieldName + "=>[" + std::to_string(itr.index()) + "]=>" + subFieldName;
+              errorField = fieldName + "[" + std::to_string(itr.index()) + "]." + subFieldName;
 
               return false;
             }
@@ -296,7 +296,7 @@ bool IResearchLinkMeta::init( // initialize meta
               auto subValue = *subItr;
 
               if (!subValue.isString() && !subValue.isNull()) {
-                errorField = fieldName + "=>[" + std::to_string(itr.index()) + "]=>" + subFieldName + "=>[" + std::to_string(subItr.index()) +  + "]";
+                errorField = fieldName + "[" + std::to_string(itr.index()) + "]." + subFieldName + "[" + std::to_string(subItr.index()) +  + "]";
 
                 return false;
               }
@@ -305,7 +305,7 @@ bool IResearchLinkMeta::init( // initialize meta
               auto* feature = irs::attribute::type_id::get(featureName, false);
 
               if (!feature) {
-                errorField = fieldName + "=>[" + std::to_string(itr.index()) + "]=>" + subFieldName + "=>" + std::string(featureName);
+                errorField = fieldName + "[" + std::to_string(itr.index()) + "]." + subFieldName + "." + std::string(featureName);
 
                 return false;
               }
@@ -314,10 +314,13 @@ bool IResearchLinkMeta::init( // initialize meta
             }
           }
         }
+
         // get analyzer potentially creating it (e.g. on cluster)
         // @note do not use emplace(...) since it'll trigger loadAnalyzers(...)
-        if (!analyzers.get(name, type, properties, features)) {
-          errorField = fieldName + "=>[" + std::to_string(itr.index()) + "]";
+        arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult emplaceResult;
+        auto const res = analyzers.get(emplaceResult, name, type, properties, features);
+        if (res.fail()) {
+          errorField = fieldName + "[" + std::to_string(itr.index()) + "]";
 
           return false;
         }
@@ -350,7 +353,7 @@ bool IResearchLinkMeta::init( // initialize meta
         auto value = *itr;
 
         if (!value.isString()) {
-          errorField = fieldName + "=>[" + std::to_string(itr.index()) + "]";
+          errorField = fieldName + "[" + std::to_string(itr.index()) + "]";
 
           return false;
         }
@@ -380,7 +383,7 @@ bool IResearchLinkMeta::init( // initialize meta
         );
 
         if (!analyzer) {
-          errorField = fieldName + "=>" + value.copyString(); // original (non-normalized) 'name' value
+          errorField = fieldName + "." + value.copyString(); // original (non-normalized) 'name' value
 
           return false;
         }
@@ -456,7 +459,7 @@ bool IResearchLinkMeta::init( // initialize meta
       auto itr = policies.find(name);
 
       if (itr == policies.end()) {
-        errorField = fieldName + "=>" + name;
+        errorField = fieldName + "." + name;
 
         return false;
       }
@@ -496,7 +499,7 @@ bool IResearchLinkMeta::init( // initialize meta
         auto value = itr.value();
 
         if (!key.isString()) {
-          errorField = fieldName + "=>[" +
+          errorField = fieldName + "[" +
                        arangodb::basics::StringUtils::itoa(itr.index()) + "]";
 
           return false;
@@ -505,7 +508,7 @@ bool IResearchLinkMeta::init( // initialize meta
         auto name = key.copyString();
 
         if (!value.isObject()) {
-          errorField = fieldName + "=>" + name;
+          errorField = fieldName + "." + name;
 
           return false;
         }
@@ -514,7 +517,7 @@ bool IResearchLinkMeta::init( // initialize meta
 
         // false == do not read 'analyzerDefinitions' from child elements
         if (!_fields[name]->init(value, false, childErrorField, defaultVocbase, subDefaults)) {
-          errorField = fieldName + "=>" + name + "=>" + childErrorField;
+          errorField = fieldName + "." + name + "." + childErrorField;
 
           return false;
         }

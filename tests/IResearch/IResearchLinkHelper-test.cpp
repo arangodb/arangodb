@@ -240,9 +240,8 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
     }");
     arangodb::velocypack::Builder builder;
     builder.openObject();
-    EXPECT_TRUE((false == arangodb::iresearch::IResearchLinkHelper::normalize(
-                              builder, json->slice(), false, sysVocbase)
-                              .ok()));
+    EXPECT_TRUE(arangodb::iresearch::IResearchLinkHelper::normalize(
+                  builder, json->slice(), false, sysVocbase).ok());
     EXPECT_FALSE(analyzers.get(arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1"));
   }
 

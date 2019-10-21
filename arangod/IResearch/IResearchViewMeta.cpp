@@ -446,7 +446,7 @@ bool IResearchViewMeta::init(arangodb::velocypack::Slice const& slice, std::stri
       static const std::string typeFieldName("type");
 
       if (!field.hasKey(typeFieldName)) {
-        errorField = fieldName + "=>" + typeFieldName;
+        errorField = fieldName + "." + typeFieldName;
 
         return false;
       }
@@ -454,7 +454,7 @@ bool IResearchViewMeta::init(arangodb::velocypack::Slice const& slice, std::stri
       auto typeField = field.get(typeFieldName);
 
       if (!typeField.isString()) {
-        errorField = fieldName + "=>" + typeFieldName;
+        errorField = fieldName + "." + typeFieldName;
 
         return false;
       }
@@ -468,7 +468,7 @@ bool IResearchViewMeta::init(arangodb::velocypack::Slice const& slice, std::stri
         _consolidationPolicy =
             createConsolidationPolicy<irs::index_utils::consolidate_tier>(field, errorSubField);
       } else {
-        errorField = fieldName + "=>" + typeFieldName;
+        errorField = fieldName + "." + typeFieldName;
 
         return false;
       }
@@ -477,7 +477,7 @@ bool IResearchViewMeta::init(arangodb::velocypack::Slice const& slice, std::stri
         if (errorSubField.empty()) {
           errorField = fieldName;
         } else {
-          errorField = fieldName + "=>" + errorSubField;
+          errorField = fieldName + "." + errorSubField;
         }
 
         return false;
@@ -588,7 +588,7 @@ bool IResearchViewMeta::init(arangodb::velocypack::Slice const& slice, std::stri
     } else if (!_primarySort.fromVelocyPack(field, errorSubField)) {
       errorField = fieldName.toString();
       if (!errorSubField.empty()) {
-       errorField += "=>" + errorSubField;
+       errorField += errorSubField;
       }
 
       return false;
@@ -758,7 +758,7 @@ bool IResearchViewMetaState::init(arangodb::velocypack::Slice const& slice,
 
         if (!getNumber(value,
                        itr.value())) {  // [ <collectionId 1> ... <collectionId N> ]
-          errorField = fieldName + "=>[" +
+          errorField = fieldName + "[" +
                        arangodb::basics::StringUtils::itoa(itr.index()) + "]";
 
           return false;

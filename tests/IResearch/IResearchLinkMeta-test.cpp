@@ -1252,7 +1252,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
     EXPECT_FALSE(meta.init(json->slice(), true, errorField, &vocbase));
-    EXPECT_EQ(std::string("analyzers=>empty1"), errorField);
+    EXPECT_EQ(std::string("analyzers.empty1"), errorField);
   }
 
   // missing analyzer (name only) inRecovery
@@ -1268,7 +1268,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
     EXPECT_FALSE(meta.init(json->slice(), true, errorField, &vocbase));
-    EXPECT_EQ(std::string("analyzers=>empty1"), errorField);
+    EXPECT_EQ(std::string("analyzers.empty1"), errorField);
   }
 
   // missing analyzer (full) no name (fail) required
@@ -1281,7 +1281,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
     EXPECT_FALSE(meta.init(json->slice(), true, errorField, &vocbase));
-    EXPECT_EQ(std::string("analyzerDefinitions=>[0]=>name"), errorField);
+    EXPECT_EQ(std::string("analyzerDefinitions[0].name"), errorField);
   }
 
   // missing analyzer (full) no type (fail) required
@@ -1294,20 +1294,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
     EXPECT_FALSE(meta.init(json->slice(), true, errorField, &vocbase));
-    EXPECT_EQ(std::string("analyzerDefinitions=>[0]=>type"), errorField);
-  }
-
-  // missing analyzer (full) analyzer creation not allowed (fail)
-  {
-    auto json = VPackParser::fromJson(
-        "{ \
-      \"analyzerDefinitions\": [ { \"name\": \"missing0\", \"type\": \"empty\", \"properties\": {\"args\":\"ru\"}, \"features\": [ \"frequency\" ] } ], \
-      \"analyzers\": [ \"missing0\" ] \
-    }");
-    arangodb::iresearch::IResearchLinkMeta meta;
-    std::string errorField;
-    EXPECT_FALSE(meta.init(json->slice(), true, errorField, &vocbase));
-    EXPECT_EQ(std::string("analyzerDefinitions=>[0]") ,errorField);
+    EXPECT_EQ(std::string("analyzerDefinitions[0].type"), errorField);
   }
 
   // missing analyzer (full) single-server
@@ -1319,8 +1306,15 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     }");
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
-    EXPECT_FALSE(meta.init(json->slice(), true, errorField, &vocbase));
-    EXPECT_EQ(std::string("analyzerDefinitions=>[0]"), errorField);
+    EXPECT_TRUE(meta.init(json->slice(), true, errorField, &vocbase));
+    EXPECT_EQ(1, meta._analyzers.size());
+    EXPECT_EQ(std::string("testVocbase::missing0"), meta._analyzers[0]._pool->name());
+    EXPECT_EQ(std::string("empty"), meta._analyzers[0]._pool->type());
+    EXPECT_EQUAL_SLICES(VPackParser::fromJson("{\"args\" : \"ru\"}")->slice(),
+                                      meta._analyzers[0]._pool->properties());
+    EXPECT_EQ(1, meta._analyzers[0]._pool->features().size());
+    EXPECT_TRUE(meta._analyzers[0]._pool->features().check(irs::frequency::type()));
+    EXPECT_EQ(std::string("missing0"), meta._analyzers[0]._shortName);
   }
 
   // missing analyzer (full) coordinator
@@ -1339,7 +1333,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
     EXPECT_FALSE(meta.init(json->slice(), true, errorField, &vocbase));
-    EXPECT_EQ(std::string("analyzerDefinitions=>[0]"), errorField);
+    EXPECT_EQ(std::string("analyzerDefinitions[0]"), errorField);
   }
 
   // missing analyzer (full) db-server
@@ -1383,7 +1377,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
     EXPECT_FALSE(meta.init(json->slice(), true, errorField, &vocbase));
-    EXPECT_EQ(std::string("analyzers=>missing3"), errorField);  // not in the persisted collection
+    EXPECT_EQ(std::string("analyzers.missing3"), errorField);  // not in the persisted collection
   }
 
   // existing analyzer (name only)
@@ -1461,7 +1455,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
     EXPECT_FALSE(meta.init(json->slice(), false, errorField, &vocbase));
-    EXPECT_EQ(std::string("analyzers=>[0]"), errorField);
+    EXPECT_EQ(std::string("analyzers[0]"), errorField);
   }
 
   // existing analyzer (full)
@@ -1520,7 +1514,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
     EXPECT_FALSE(meta.init(json->slice(), true, errorField, &vocbase));
-    EXPECT_EQ(std::string("analyzerDefinitions=>[0]"), errorField);
+    EXPECT_EQ(std::string("analyzerDefinitions[0]"), errorField);
   }
 
   // existing analyzer (definition mismatch) inRecovery
@@ -1537,7 +1531,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string errorField;
     EXPECT_FALSE(meta.init(json->slice(), true, errorField, &vocbase));
-    EXPECT_EQ(std::string("analyzerDefinitions=>[0]"), errorField);
+    EXPECT_EQ(std::string("analyzerDefinitions[0]"), errorField);
   }
 }
 
