@@ -60,11 +60,106 @@ struct agentConfigHealthResult {
   futures::Try<network::Response> response;
 };
 
+void removePlanServers (std::unordered_set<std::string> &servers, VPackSlice plan) {
+  for (auto const& database : VPackObjectIterator(plan.get("Collections"))) {
+    for (auto const& collection : VPackObjectIterator(database.value)) {
+      VPackSlice shards = collection.value.get("shards");
+      for (auto const& shard : VPackObjectIterator(shards)) {
+        for (auto const& server : VPackArrayIterator(shard.value)) {
+          servers.erase(server.copyString());
+          if (servers.size() == 0) {
+            return ;
+          }
+        }
+      }
+    }
+  }
+}
+
+void removeCurrentServers (std::unordered_set<std::string> &servers, VPackSlice current) {
+  for (auto const& database : VPackObjectIterator(current.get("Collections"))) {
+    for (auto const& collection : VPackObjectIterator(database.value)) {
+      for (auto const& shard : VPackObjectIterator(collection.value)) {
+        for (auto const& server : VPackArrayIterator(shard.value.get("servers"))) {
+          servers.erase(server.copyString());
+          if (servers.size() == 0) {
+            return ;
+          }
+        }
+      }
+    }
+  }
+}
+
+
+template<typename T, typename F>
+struct delayedCalculator {
+  bool constructed;
+  T content;
+  F constructor;
+
+  delayedCalculator(F &&c) : constructed(false), constructor(std::forward<F>(c)) {}
+
+  T* operator->() {
+    if (!constructed) {
+      constructed = true;
+      constructor(content);
+    }
+    return &content;
+  }
+};
+
+
 void buildHealthResult(VPackBuilder &builder, std::vector<futures::Try<agentConfigHealthResult>> const& config, VPackSlice store) {
   auto rootPath = arangodb::cluster::paths::root()->arango();
 
-  builder.add("ClusterId", store.get(rootPath->cluster()->vec()));
+  using server_set = std::unordered_set<std::string>;
 
+  auto canBeDeletedConstructor = [&](server_set& set) {
+    {
+      VPackObjectIterator memberIter(store.get(rootPath->supervision()->health()->vec()));
+      for (auto member : memberIter) {
+        set.insert(member.key.copyString());
+      }
+    }
+
+    removePlanServers (set, store.get(rootPath->plan()->vec()));
+    removeCurrentServers (set, store.get(rootPath->current()->vec()));
+  };
+  delayedCalculator<server_set, decltype(canBeDeletedConstructor)> canBeDeleted(std::move(canBeDeletedConstructor));
+
+
+  struct AgentInformation {
+    bool leader;
+    double lastAcked;
+    AgentInformation() : leader(false), lastAcked(0.0) {}
+  };
+
+  std::unordered_map<std::string, AgentInformation> agents;
+
+  // gather information about the agents
+  for (auto const& agentTry : config) {
+    if (!agentTry.hasValue()) {
+      continue; // should never happen
+    }
+
+    auto& agent = agentTry.get();
+    if (agent.response.hasValue()) {
+      auto& response = agent.response.get();
+      if (response.ok() && response.response->statusCode() == fuerte::StatusOK) {
+        VPackSlice lastAcked = response.slice().get("lastAcked");
+        if (lastAcked.isNone()) {
+          continue;
+        }
+        agents[agent.name].leader = true;
+        for (const auto& agent : VPackObjectIterator(lastAcked)) {
+          agents[agent.key.copyString()].lastAcked = agent.value.get("lastAckedTime").getDouble();
+        }
+      }
+    }
+  }
+
+  builder.add("ClusterId", store.get(rootPath->cluster()->vec()));
   {
     VPackObjectBuilder ob(&builder, "Health");
 
@@ -78,7 +173,10 @@ void buildHealthResult(VPackBuilder &builder, std::vector<futures::Try<agentConf
         builder.add(VPackObjectIterator(member.value));
         if (serverId.substr(0, 4) == "PRMR") {
           builder.add("Role", VPackValue("DBServer"));
-          builder.add("CanBeDeleted", VPackValue(false)); // TODO can be deleted need to be computed
+          builder.add("CanBeDeleted", VPackValue(VPackValue(
+            member.value.get("Status").isEqualString("FAILED") &&
+            canBeDeleted->count(serverId) == 1
+          )));
         } else if (serverId.substr(0, 4) == "CRDN") {
           builder.add("Role", VPackValue("Coordinator"));
           builder.add("CanBeDeleted", VPackValue(member.value.get("Status").isEqualString("FAILED")));
@@ -100,7 +198,13 @@ void buildHealthResult(VPackBuilder &builder, std::vector<futures::Try<agentConf
         builder.add("Endpoint", VPackValue(member.endpoint));
         builder.add("CanBeDeleted", VPackValue(false));
 
-        // TODO missing LastAckedTime
+        // check for additional information
+        auto info = agents.find(member.name);
+        if (info != agents.end()) {
+          builder.add("Leading", VPackValue(info->second.leader));
+          builder.add("LastAckedTime", VPackValue(info->second.lastAcked));
+        }
+
         if (member.response.hasValue()) {
           auto& response = member.response.get();
           if (response.ok() && response.response->statusCode() == fuerte::StatusOK) {
@@ -108,9 +212,12 @@ void buildHealthResult(VPackBuilder &builder, std::vector<futures::Try<agentConf
             builder.add("Engine", config.get("engine"));
             builder.add("Version", config.get("version"));
             builder.add("Leader", config.get("leaderId"));
+            builder.add("Status", VPackValue("GOOD"));
+          } else {
+            builder.add("Status", VPackValue("BAD"));
           }
         } else {
-          builder.add("Status", VPackValue("UNKNOWN"));
+          builder.add("Status", VPackValue("BAD"));
         }
       }
     }
@@ -837,7 +944,12 @@ RestStatus RestAdminClusterHandler::handleHealth() {
 
   // query information from the store
   auto rootPath = arangodb::cluster::paths::root()->arango();
-  AgencyReadTransaction trx(std::move(std::vector<std::string>{rootPath->cluster()->str(), rootPath->supervision()->health()->str()}));
+  AgencyReadTransaction trx(std::move(std::vector<std::string>{
+    rootPath->cluster()->str(),
+    rootPath->supervision()->health()->str(),
+    rootPath->plan()->str(),
+    rootPath->current()->str()
+  }));
   auto fStore = AsyncAgencyComm().sendTransaction(60.0s, trx);
 
   return waitForFuture(futures::collect(std::move(fConfig), std::move(fStore)).thenValue(
