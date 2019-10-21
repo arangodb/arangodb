@@ -331,7 +331,7 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::shutdown(i
       VPackSlice warnings = slice.get("warnings");
       if (warnings.isArray()) {
         auto query = _engine->getQuery();
-        for (auto const& it : VPackArrayIterator(warnings)) {
+        for (VPackSlice it : VPackArrayIterator(warnings)) {
           if (it.isObject()) {
             VPackSlice code = it.get("code");
             VPackSlice message = it.get("message");

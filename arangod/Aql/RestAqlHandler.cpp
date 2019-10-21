@@ -98,7 +98,7 @@ std::pair<double, std::shared_ptr<VPackBuilder>> RestAqlHandler::getPatchedOptio
   {
     VPackObjectBuilder guard(options.get());
     TRI_ASSERT(optionsSlice.isObject());
-    for (auto const& pair : VPackObjectIterator(optionsSlice)) {
+    for (auto pair : VPackObjectIterator(optionsSlice)) {
       if (pair.key.isEqualString("ttl")) {
         ttl = VelocyPackHelper::getNumericValue<double>(optionsSlice, "ttl", ttl);
         ttl = _request->parsedValue<double>("ttl", ttl);
@@ -220,7 +220,7 @@ void RestAqlHandler::setupClusterQuery() {
                         "\" is required but not an array.");
       return;
     }
-    for (auto const& col : VPackArrayIterator(lockInf.value)) {
+    for (VPackSlice col : VPackArrayIterator(lockInf.value)) {
       if (!col.isString()) {
         LOG_TOPIC("9e29f", ERR, arangodb::Logger::AQL)
             << "Invalid VelocyPack: \"lockInfo." << lockInf.key.copyString()
@@ -278,7 +278,7 @@ bool RestAqlHandler::registerSnippets(
   answerBuilder.openObject();
   // NOTE: We need to clean up all engines if we bail out during the following
   // loop
-  for (auto const& it : VPackObjectIterator(snippetsSlice)) {
+  for (auto it : VPackObjectIterator(snippetsSlice)) {
     auto planBuilder = std::make_shared<VPackBuilder>();
     planBuilder->openObject();
     planBuilder->add(VPackValue("collections"));

@@ -604,7 +604,7 @@ void ExportFeature::graphExport(SimpleHttpClient* httpClient) {
          VPackArrayIterator(body.get("graph").get("edgeDefinitions"))) {
       collections.insert(edgeDefs.get("collection").copyString());
 
-      for (auto const& from : VPackArrayIterator(edgeDefs.get("from"))) {
+      for (VPackSlice from : VPackArrayIterator(edgeDefs.get("from"))) {
         collections.insert(from.copyString());
       }
 
@@ -705,7 +705,7 @@ void ExportFeature::writeGraphBatch(ManagedDirectory::File & fd, VPackArrayItera
         xmlTag = ">\n";
         writeToFile(fd, xmlTag);
 
-        for (auto const& it : VPackObjectIterator(doc)) {
+        for (auto it : VPackObjectIterator(doc)) {
           xgmmlWriteOneAtt(fd, it.value, it.key.copyString());
         }
 
@@ -730,7 +730,7 @@ void ExportFeature::writeGraphBatch(ManagedDirectory::File & fd, VPackArrayItera
         xmlTag = ">\n";
         writeToFile(fd, xmlTag);
 
-        for (auto const& it : VPackObjectIterator(doc)) {
+        for (auto it : VPackObjectIterator(doc)) {
           xgmmlWriteOneAtt(fd, it.value, it.key.copyString());
         }
 
@@ -810,7 +810,7 @@ void ExportFeature::xgmmlWriteOneAtt(ManagedDirectory::File & fd,
         "  <att name=\"" + encode_char_entities(name) + "\" type=\"list\">\n";
     writeToFile(fd, xmlTag);
 
-    for (auto const& it : VPackObjectIterator(slice)) {
+    for (auto it : VPackObjectIterator(slice)) {
       xgmmlWriteOneAtt(fd, it.value, it.key.copyString(), deep + 1);
     }
 

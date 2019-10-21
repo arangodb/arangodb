@@ -313,7 +313,7 @@ void ClusterIndexFactory::prepareIndexes(
     std::vector<std::shared_ptr<arangodb::Index>>& indexes) const {
   TRI_ASSERT(indexesSlice.isArray());
 
-  for (auto const& v : VPackArrayIterator(indexesSlice)) {
+  for (VPackSlice v : VPackArrayIterator(indexesSlice)) {
     if (!validateFieldsDefinition(v, 0, SIZE_MAX).ok()) {
       // We have an error here. Do not add.
       continue;

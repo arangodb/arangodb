@@ -146,5 +146,6 @@ add_library(boost_thread STATIC
     ${BOOST_THREAD_PLATFORM_SRC}
 )
 target_link_libraries(boost_thread PUBLIC boost_boost) #this will add required includes
+target_link_libraries(boost_locale PUBLIC boost_thread)
 target_compile_definitions(boost_thread PRIVATE "BOOST_SYSTEM_STATIC_LINK=1")
 target_compile_definitions(boost_thread PUBLIC  "BOOST_ALL_NO_LIB=1")

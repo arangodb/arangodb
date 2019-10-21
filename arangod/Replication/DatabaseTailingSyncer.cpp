@@ -278,7 +278,7 @@ bool DatabaseTailingSyncer::skipMarker(VPackSlice const& slice) {
         return false;
       }
 
-      for (auto const& it : VPackArrayIterator(invSlice)) {
+      for (VPackSlice it : VPackArrayIterator(invSlice)) {
         if (!it.isObject()) {
           continue;
         }

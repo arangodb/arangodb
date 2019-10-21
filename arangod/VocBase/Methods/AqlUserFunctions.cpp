@@ -375,7 +375,7 @@ Result arangodb::toArrayUserFunctions(TRI_vocbase_t& vocbase,
 
   result.openArray();
   std::string tmp;
-  for (auto const& it : VPackArrayIterator(usersFunctionsSlice)) {
+  for (VPackSlice it : VPackArrayIterator(usersFunctionsSlice)) {
     VPackSlice resolved;
     resolved = it.resolveExternal();
 
