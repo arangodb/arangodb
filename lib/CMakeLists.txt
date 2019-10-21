@@ -258,6 +258,14 @@ target_link_libraries(arango
   ${SYSTEM_LIBRARIES}
 )
 
+# Rebuild generated error files so they are up-to-date when all
+# dependent stuff is built
+if (USE_MAINTAINER_MODE)
+  add_dependencies(arango errorfiles)
+  add_dependencies(arango exitcodefiles)
+endif ()
+
+
 # Enterprise
 if (USE_ENTERPRISE)
   target_compile_definitions(arango PUBLIC "-DUSE_ENTERPRISE=1")
