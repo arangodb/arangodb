@@ -3,14 +3,10 @@ import ReactDOM from 'react-dom';
 import Overview from './views/shards/overview';
 import jsoneditor from 'jsoneditor';
 import * as d3 from 'd3';
-//import d3 from 'd3';
 import nvd3 from 'nvd3';
 import * as fs from 'fs';
 
-import './App.css';
-
 // import new react views
-
 import './views/shards/ShardsReactView';
 
 // old libraries

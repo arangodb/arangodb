@@ -1,6 +1,6 @@
 {
-  "name": "shard-distribution",
-  "version": "0.1.0",
+  "name": "aardvark",
+  "version": "3.0.0",
   "private": true,
   "dependencies": {
     "@babel/core": "7.1.0",
