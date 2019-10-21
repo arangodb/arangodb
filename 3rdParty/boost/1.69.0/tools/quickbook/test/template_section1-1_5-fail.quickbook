@@ -1,9 +1,0 @@
-[article Template should contain balanced sections
-    [quickbook 1.5]
-]
-
-[template begin_no_end[]
-[section Test]
-]
-
-[begin_no_end]

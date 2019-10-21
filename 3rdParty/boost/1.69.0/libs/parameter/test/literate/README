@@ -1,6 +1,0 @@
-These tests were extracted from the Boost.Parameter documentation
-with:
-
-python ../../../../tools/litre/tool.py \
-       ../../../../libs/parameter/doc/index.rst \
-       --dump_dir=.
