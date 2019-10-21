@@ -350,9 +350,3 @@ template void OutputAqlItemRow::moveValueInto<ShadowAqlItemRow>(RegisterId regis
                                               AqlValueGuard& guard);
 template void OutputAqlItemRow::doCopyRow<InputAqlItemRow>(InputAqlItemRow const& sourceRow, bool ignoreMissing);
 template void OutputAqlItemRow::doCopyRow<ShadowAqlItemRow>(ShadowAqlItemRow const& sourceRow, bool ignoreMissing);
-template void OutputAqlItemRow::memorizeRow<InputAqlItemRow>(InputAqlItemRow const& sourceRow);
-template void OutputAqlItemRow::memorizeRow<ShadowAqlItemRow>(ShadowAqlItemRow const& sourceRow);
-template bool OutputAqlItemRow::testIfWeMustClone<InputAqlItemRow>(InputAqlItemRow const& sourceRow) const;
-template bool OutputAqlItemRow::testIfWeMustClone<ShadowAqlItemRow>(ShadowAqlItemRow const& sourceRow) const;
-template void OutputAqlItemRow::adjustShadowRowDepth<InputAqlItemRow>(InputAqlItemRow const& sourceRow);
-template void OutputAqlItemRow::adjustShadowRowDepth<ShadowAqlItemRow>(ShadowAqlItemRow const& sourceRow);
