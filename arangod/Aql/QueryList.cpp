@@ -205,13 +205,13 @@ Result QueryList::kill(TRI_voc_tick_t id) {
 }
 
 /// @brief kills all currently running queries
-uint64_t QueryList::kill(std::function<bool(Query*)> const& filter, bool silent) {
+uint64_t QueryList::kill(std::function<bool(Query&)> const& filter, bool silent) {
   uint64_t killed = 0;
 
   WRITE_LOCKER(writeLocker, _lock);
 
   for (auto& it : _current) {
-    Query* query = it.second;
+    Query& query = *(it.second);
 
     if (!filter(query)) {
       continue;
@@ -219,13 +219,13 @@ uint64_t QueryList::kill(std::function<bool(Query*)> const& filter, bool silent)
 
     if (silent) {
       LOG_TOPIC("f7722", TRACE, arangodb::Logger::FIXME)
-          << "killing AQL query " << query->id() << " '" << query->queryString() << "'";
+          << "killing AQL query " << query.id() << " '" << query.queryString() << "'";
     } else {
       LOG_TOPIC("90113", WARN, arangodb::Logger::FIXME)
-          << "killing AQL query " << query->id() << " '" << query->queryString() << "'";
+          << "killing AQL query " << query.id() << " '" << query.queryString() << "'";
     }
 
-    query->kill();
+    query.kill();
     ++killed;
   }
 
@@ -260,7 +260,7 @@ std::vector<QueryEntryCopy> QueryList::listCurrent() {
       result.emplace_back(query->id(), extractQueryString(query, maxLength),
                           _trackBindVars ? query->bindParameters() : nullptr, started,
                           now - started, 
-                          query->killed() ? QueryExecutionState::ValueType::KILLED : QueryExecutionState::ValueType::FINISHED, 
+                          query->killed() ? QueryExecutionState::ValueType::KILLED : query->state(),
                           query->queryOptions().stream);
     }
   }

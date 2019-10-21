@@ -110,6 +110,8 @@ class Query {
 
   /// @brief whether or not the query is killed
   inline bool killed() const { return _killed; }
+  
+  void setKilled() { _killed = true; }
 
   /// @brief set the query to killed
   void kill();

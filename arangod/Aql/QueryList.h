@@ -190,7 +190,7 @@ class QueryList {
   Result kill(TRI_voc_tick_t id);
 
   /// @brief kills all currently running queries
-  uint64_t kill(std::function<bool(Query*)> const& filter, bool silent);
+  uint64_t kill(std::function<bool(Query&)> const& filter, bool silent);
 
   /// @brief return the list of running queries
   std::vector<QueryEntryCopy> listCurrent();

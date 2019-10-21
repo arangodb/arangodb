@@ -671,10 +671,13 @@ function transactionInvocationSuite () {
         trx3 = db._createTransaction(obj);
         
         let trx = db._transactions();
-        assertInList(trx, trx1);
-        assertInList(trx, trx2);
-        assertInList(trx, trx3);
-       
+        // the following assertions are not safe, as transactions have
+        // an idle timeout of 10 seconds, and we cannot guarantee any
+        // runtime performance in our test environment
+        // assertInList(trx, trx1);
+        // assertInList(trx, trx2);
+        // assertInList(trx, trx3);
+        
         let result = arango.DELETE("/_api/transaction/write");
         assertEqual(result.code, 200);
 
@@ -721,12 +724,12 @@ function transactionInvocationSuite () {
         let jobId = result.headers["x-arango-async-id"];
 
         let tries = 0;
-        while (++tries < 30) {
+        while (++tries < 60) {
           result = arango.PUT_RAW("/_api/job/" + jobId, {});
           if (result.code === 204) {
             break;
           }
-          require("internal").wait(1);
+          require("internal").wait(0.5, false);
         }
         
         let trx = db._transactions();
@@ -736,12 +739,12 @@ function transactionInvocationSuite () {
         assertEqual(result.code, 200);
 
         tries = 0;
-        while (++tries < 30) {
+        while (++tries < 60) {
           result = arango.PUT_RAW("/_api/job/" + jobId, {});
           if (result.code === 410) {
             break;
           }
-          require("internal").wait(1);
+          require("internal").wait(0.5, false);
         }
         assertEqual(410, result.code);
       } finally {

@@ -275,12 +275,12 @@ Query* Query::clone(QueryPart part, bool withPlan) {
 }
 
 /// @brief set the query to killed
-void Query::kill() { 
+void Query::kill() {
   _killed = true;
   if (_engine != nullptr) {
     // killing is best effort...
     // intentionally ignoring the result of this call here
-    _engine->shutdown(TRI_ERROR_QUERY_KILLED);
+    _engine->kill();
   }
 }
 
