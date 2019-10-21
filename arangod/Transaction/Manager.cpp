@@ -32,8 +32,6 @@
 #include "Futures/Utilities.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/LogMacros.h"
-#include "Logger/Logger.h"
-#include "Logger/LoggerStream.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -71,6 +69,8 @@ std::string currentUser() {
 
 namespace arangodb {
 namespace transaction {
+
+size_t constexpr Manager::maxTransactionSize;
 
 namespace {
 struct MGMethods final : arangodb::transaction::Methods {
@@ -895,12 +895,12 @@ void Manager::toVelocyPack(VPackBuilder& builder, std::string const& database,
       network::Headers headers;
       if (auth != nullptr && auth->isActive()) {
         if (!username.empty()) {
-          VPackBuilder builder;
+          VPackBuilder authBuilder;
           {
-            VPackObjectBuilder payload{&builder};
+            VPackObjectBuilder payload{&authBuilder};
             payload->add("preferred_username", VPackValue(username));
           }
-          VPackSlice slice = builder.slice();
+          VPackSlice slice = authBuilder.slice();
           headers.emplace(StaticStrings::Authorization,
                           "bearer " + auth->tokenCache().generateJwt(slice));
         } else {
@@ -930,7 +930,7 @@ void Manager::toVelocyPack(VPackBuilder& builder, std::string const& database,
             if (slice.isObject()) {
               slice = slice.get("transactions");
               if (slice.isArray()) {
-                for (auto const& it : VPackArrayIterator(slice)) {
+                for (VPackSlice it : VPackArrayIterator(slice)) {
                   builder.add(it);
                 }
               }

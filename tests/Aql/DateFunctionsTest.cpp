@@ -173,7 +173,7 @@ struct TestDate {
   }
 
   void buildParams(VPackFunctionParameters& input) const {
-    for (auto const& it : VPackArrayIterator(_argBuilder.slice())) {
+    for (VPackSlice it : VPackArrayIterator(_argBuilder.slice())) {
       input.emplace_back(it);
     }
   }
@@ -427,7 +427,7 @@ struct TestDate {
 
   void buildParams(VPackFunctionParameters& input) const {
     VPackSlice s = _input->slice();
-    for (auto const& it : VPackArrayIterator(s)) {
+    for (VPackSlice it : VPackArrayIterator(s)) {
       input.emplace_back(it);
     }
   }

@@ -325,8 +325,8 @@ struct OptimizerRule {
   OptimizerRule(OptimizerRule const& other) = delete;
   OptimizerRule& operator=(OptimizerRule const& other) = delete;
 
-  friend bool operator<(OptimizerRule const& lhs, int level) {
-    return lhs.level < level;
+  friend bool operator<(OptimizerRule const& lhs, int rhs) {
+    return lhs.level < rhs;
   }
 
   friend bool operator<(int lhs, OptimizerRule const& rhs) {
