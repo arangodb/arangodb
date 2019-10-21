@@ -131,13 +131,38 @@ TEST_F(StringUtilsTest, test_Split3) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test_Tolower
+/// @brief test_tolower
 ////////////////////////////////////////////////////////////////////////////////
 
-TEST_F(StringUtilsTest, test_Tolower) {
-  string lower = StringUtils::tolower("HaLlO WoRlD!");
+TEST_F(StringUtilsTest, test_tolower) {
+  EXPECT_EQ(StringUtils::tolower(""), "");
+  EXPECT_EQ(StringUtils::tolower(" "), " ");
+  EXPECT_EQ(StringUtils::tolower("12345"), "12345");
+  EXPECT_EQ(StringUtils::tolower("a"), "a");
+  EXPECT_EQ(StringUtils::tolower("A"), "a");
+  EXPECT_EQ(StringUtils::tolower("ä"), "ä");
+  EXPECT_EQ(StringUtils::tolower("Ä"), "Ä");
+  EXPECT_EQ(StringUtils::tolower("HeLlO WoRlD!"), "hello world!");
+  EXPECT_EQ(StringUtils::tolower("hello-world-nono "), "hello-world-nono ");
+  EXPECT_EQ(StringUtils::tolower("HELLo-world-NONO "), "hello-world-nono ");
+  EXPECT_EQ(StringUtils::tolower(" The quick \r\nbrown Fox"), " the quick \r\nbrown fox");
+}
 
-  EXPECT_EQ(lower,  "hallo world!");
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test_toupper
+////////////////////////////////////////////////////////////////////////////////
+
+TEST_F(StringUtilsTest, test_toupper) {
+  EXPECT_EQ(StringUtils::toupper(""), "");
+  EXPECT_EQ(StringUtils::toupper(" "), " ");
+  EXPECT_EQ(StringUtils::toupper("12345"), "12345");
+  EXPECT_EQ(StringUtils::toupper("a"), "A");
+  EXPECT_EQ(StringUtils::toupper("A"), "A");
+  EXPECT_EQ(StringUtils::toupper("ä"), "ä");
+  EXPECT_EQ(StringUtils::toupper("Ä"), "Ä");
+  EXPECT_EQ(StringUtils::toupper("HeLlO WoRlD!"), "HELLO WORLD!");
+  EXPECT_EQ(StringUtils::toupper("hello-world-nono "), "HELLO-WORLD-NONO ");
+  EXPECT_EQ(StringUtils::toupper("HELLo-world-NONO "), "HELLO-WORLD-NONO ");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
