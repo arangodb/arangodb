@@ -269,6 +269,58 @@ TEST_P(UpsertExecutorTest, DISABLED_option_ignoreRevs_false) {
   AssertNotChanged();
 }
 
+TEST_P(UpsertExecutorTest, insert_not_found) {
+  std::string query = R"aql(
+      UPSERT {_key: "keyNotThere"}
+      INSERT {value: 2, sortValue: 2})aql" +
+                      action() + R"aql({value: "invalid"}
+      INTO UnitTestCollection)aql";
+  AssertQueryHasResult(vocbase, query, VPackSlice::emptyArraySlice());
+
+  auto expected = VPackParser::fromJson(R"([1, 2])");
+  AssertQueryHasResult(vocbase, GetAllDocs, expected->slice());
+}
+
+TEST_P(UpsertExecutorTest, insert_on_value) {
+  std::string query = R"aql(
+      UPSERT {value: 2}
+      INSERT {value: 2, sortValue: 2})aql" +
+                      action() + R"aql({value: "invalid"}
+      INTO UnitTestCollection)aql";
+  AssertQueryHasResult(vocbase, query, VPackSlice::emptyArraySlice());
+
+  auto expected = VPackParser::fromJson(R"([1, 2])");
+  AssertQueryHasResult(vocbase, GetAllDocs, expected->slice());
+}
+
+TEST_P(UpsertExecutorTest, upsert_on_value) {
+  std::string query = R"aql(
+      UPSERT {value: 1}
+      INSERT {value: "invalid"})aql" +
+                      action() + R"aql({value: 2}
+      INTO UnitTestCollection)aql";
+  AssertQueryHasResult(vocbase, query, VPackSlice::emptyArraySlice());
+
+  auto expected = VPackParser::fromJson(R"([2])");
+  AssertQueryHasResult(vocbase, GetAllDocs, expected->slice());
+}
+
+TEST_P(UpsertExecutorTest, alternate_insert_update) {
+  std::string query = R"aql(
+      FOR i IN 20..30
+      UPSERT {value: 2}
+      INSERT {value: 2, sortValue: i})aql" +
+                      action() + R"aql({value: i, sortValue: i}
+      INTO UnitTestCollection)aql";
+  AssertQueryHasResult(vocbase, query, VPackSlice::emptyArraySlice());
+  // The idea of this query is, that we first insert an unknown value 2.
+  // In the next iteration we are supposed to find this value 2.
+  // and overwrite it by something else.
+  // This will in turn allow to insert a new document with value 2.
+  auto expected = VPackParser::fromJson(R"([1, 21, 23, 25, 27, 29, 2])");
+  AssertQueryHasResult(vocbase, GetAllDocs, expected->slice());
+}
+
 INSTANTIATE_TEST_CASE_P(UpsertExecutorTestBasics, UpsertExecutorTest,
                         ::testing::Values(UpsertType::UPDATE, UpsertType::REPLACE));
 
@@ -640,6 +692,107 @@ TEST_P(UpsertExecutorIntegrationTest, upsert_in_subquery_with_inner_skip) {
     }
   }
   AssertQueryHasResult(vocbase, query, expectedUpdateResponse.slice());
+  AssertQueryHasResult(vocbase, GetAllDocs, expected.slice());
+}
+
+TEST_P(UpsertExecutorIntegrationTest, upsert_all_insert_by_key) {
+  std::string from = basics::StringUtils::itoa(numDocs() + 1);
+  std::string to = basics::StringUtils::itoa(numDocs() + numDocs());
+  // The keys are out-of-range for the existing ones, so we trigger INSERT case
+  std::string query = R"aql(FOR doc IN )aql" + from + R"aql(..)aql" + to +
+                      R"aql( UPSERT {_key: TO_STRING(doc)} 
+                             INSERT {_key: TO_STRING(doc), value: "foo", sortValue: doc} )aql" +
+                      action() + R"aql( {value: 'invalid'} IN UnitTestCollection)aql";
+  VPackBuilder expected;
+  {
+    VPackArrayBuilder a{&expected};
+    // Keep first untouched
+    for (size_t i = 1; i <= numDocs(); ++i) {
+      expected.add(VPackValue(i));
+    }
+    // INSERT as many as we already have with foo
+    for (size_t i = 1; i <= numDocs(); ++i) {
+      expected.add(VPackValue("foo"));
+    }
+  }
+  AssertQueryHasResult(vocbase, query, VPackSlice::emptyArraySlice());
+  AssertQueryHasResult(vocbase, GetAllDocs, expected.slice());
+}
+
+TEST_P(UpsertExecutorIntegrationTest, upsert_first_update_then_insert) {
+  std::string from = basics::StringUtils::itoa(1);
+  std::string to = basics::StringUtils::itoa(numDocs() + numDocs());
+  // We start with updates, then hit end of keyrange and insert
+  std::string query = R"aql(FOR doc IN )aql" + from + R"aql(..)aql" + to +
+                      R"aql( UPSERT {_key: TO_STRING(doc)} 
+                             INSERT {_key: TO_STRING(doc), value: "foo", sortValue: doc} )aql" +
+                      action() + R"aql( {value: 'bar'} IN UnitTestCollection)aql";
+  VPackBuilder expected;
+  {
+    VPackArrayBuilder a{&expected};
+    // Updates result in BAR
+    for (size_t i = 1; i <= numDocs(); ++i) {
+      expected.add(VPackValue("bar"));
+    }
+    // INSERT as many as we already have with foo
+    for (size_t i = 1; i <= numDocs(); ++i) {
+      expected.add(VPackValue("foo"));
+    }
+  }
+  AssertQueryHasResult(vocbase, query, VPackSlice::emptyArraySlice());
+  AssertQueryHasResult(vocbase, GetAllDocs, expected.slice());
+}
+
+TEST_P(UpsertExecutorIntegrationTest, upsert_first_insert_then_update) {
+  std::string from = basics::StringUtils::itoa(numDocs() + numDocs());
+  std::string to = basics::StringUtils::itoa(1);
+  // We start with insert, then hit end of keyrange and start with updates.
+  // We iterate downwards
+  std::string query = R"aql(FOR doc IN )aql" + from + R"aql(..)aql" + to +
+                      R"aql( UPSERT {_key: TO_STRING(doc)} 
+                             INSERT {_key: TO_STRING(doc), value: "foo", sortValue: doc} )aql" +
+                      action() + R"aql( {value: 'bar'} IN UnitTestCollection)aql";
+  VPackBuilder expected;
+  {
+    VPackArrayBuilder a{&expected};
+    // Updates result in BAR
+    for (size_t i = 1; i <= numDocs(); ++i) {
+      expected.add(VPackValue("bar"));
+    }
+    // INSERT as many as we already have with foo
+    for (size_t i = 1; i <= numDocs(); ++i) {
+      expected.add(VPackValue("foo"));
+    }
+  }
+  AssertQueryHasResult(vocbase, query, VPackSlice::emptyArraySlice());
+  AssertQueryHasResult(vocbase, GetAllDocs, expected.slice());
+}
+
+TEST_P(UpsertExecutorIntegrationTest, upsert_alternate_insert_upsert) {
+  std::string from = basics::StringUtils::itoa(1);
+  std::string to = basics::StringUtils::itoa(numDocs() + numDocs());
+  // We alternate between inserts and updates
+  // If number is disible by two, we devide it by two. (in key range = update)
+  // If not we devide, round floor and add 1000 (out of key range = insert)
+  std::string query = R"aql(FOR preMod IN )aql" + from + R"aql(..)aql" + to +
+                      R"aql(
+                             LET doc = (preMod % 2 == 0) ? (preMod / 2) : (floor(preMod / 2) + 2000)
+                             UPSERT {_key: TO_STRING(doc)} 
+                             INSERT {_key: TO_STRING(doc), value: "foo", sortValue: preMod} )aql" +
+                      action() + R"aql( {value: 'bar', sortValue: preMod} IN UnitTestCollection)aql";
+  VPackBuilder expected;
+  {
+    VPackArrayBuilder a{&expected};
+    // Updates result in BAR
+    for (size_t i = 1; i <= numDocs() * 2; ++i) {
+      if (i % 2 == 0) {
+        expected.add(VPackValue("bar"));
+      } else {
+        expected.add(VPackValue("foo"));
+      }
+    }
+  }
+  AssertQueryHasResult(vocbase, query, VPackSlice::emptyArraySlice());
   AssertQueryHasResult(vocbase, GetAllDocs, expected.slice());
 }
 
