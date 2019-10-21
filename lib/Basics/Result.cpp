@@ -34,10 +34,10 @@
 
 using namespace arangodb;
 
-Result::Result() noexcept 
+Result::Result() noexcept(noexcept(std::allocator<char>()))
     : _errorNumber(TRI_ERROR_NO_ERROR) {}
 
-Result::Result(int errorNumber) noexcept 
+Result::Result(int errorNumber) noexcept(noexcept(std::allocator<char>()))
     : _errorNumber(errorNumber) {}
 
 Result::Result(int errorNumber, std::string const& errorMessage)
