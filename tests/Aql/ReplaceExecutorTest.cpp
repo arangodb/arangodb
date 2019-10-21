@@ -325,7 +325,7 @@ TEST_P(ReplaceExecutorIntegrationTest, replace_remove_old_attributes) {
   AssertQueryHasResult(vocbase, GetAllDocs, expected.slice());
 }
 
-TEST_P(ReplaceExecutorIntegrationTest, replace_in_subquery_muli_access) {
+TEST_P(ReplaceExecutorIntegrationTest, replace_in_subquery_multi_access) {
   std::string query = R"aql(
     FOR doc IN UnitTestCollection
     SORT doc.sortValue
