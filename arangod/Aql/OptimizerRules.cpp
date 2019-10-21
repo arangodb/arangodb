@@ -7286,7 +7286,6 @@ static bool nodeMakesThisQueryLevelUnsuitableForSubquerySplicing(ExecutionNode c
     case ExecutionNode::ENUMERATE_LIST:
     case ExecutionNode::FILTER:
     case ExecutionNode::SORT:
-    case ExecutionNode::NORESULTS:
     case ExecutionNode::TRAVERSAL:
     case ExecutionNode::INDEX:
     case ExecutionNode::SHORTEST_PATH:
@@ -7302,9 +7301,11 @@ static bool nodeMakesThisQueryLevelUnsuitableForSubquerySplicing(ExecutionNode c
     case ExecutionNode::SUBQUERY_END:
       // These nodes do not initiate a skip themselves, and thus are fine.
       return false;
+    case ExecutionNode::NORESULTS:
+      // no results currently cannot work, as they do not fetch from above.
     case ExecutionNode::LIMIT:
-      // limit blocks cannot work, both due to skipping and due to the limit
-      // and passthrough, which forbids passing shadow rows.
+      // limit blocks currently cannot work, both due to skipping and due to the
+      // limit and passthrough, which forbids passing shadow rows.
       return true;
     case ExecutionNode::COLLECT: {
       auto const collectNode = ExecutionNode::castTo<CollectNode const*>(node);
