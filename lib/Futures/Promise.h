@@ -62,6 +62,7 @@ class Promise {
       detach();
       _state = std::move(o._state);
       _retrieved = o._retrieved;
+      o._retrieved = false;
       o._state = nullptr;
     }
     return *this;
