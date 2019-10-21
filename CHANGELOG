@@ -1,6 +1,8 @@
 v3.5.2 (XXXX-XX-XX)
 -------------------
 
+* Fixed issue #10270: Query: Expecting type Array or Object (while executing).
+
 * Fix a problem with AQL constrained sort in the cluster, which might abort
   queries. The AQL sort-limit optimization rule may now also speed up fullCount
   with sorted indexes and a limit in the cluster.
@@ -9,8 +11,8 @@ v3.5.2 (XXXX-XX-XX)
   x s" from occurring when this is not the case. Due to a data race, the
   message could previously also occur if the queue was empty.
 
-* The General Graph document API is now persistent with the document API in its
-  errormessages. When attempting to create / modify edges pointing to non
+* The General Graph document API is now consistent with the document API in its
+  error messages. When attempting to create / modify edges pointing to non
   existing vertex collections HTTP 400 is returned instead of 404.
 
 * Disallow the usage of subqueries inside AQL traversal PRUNE conditions.
