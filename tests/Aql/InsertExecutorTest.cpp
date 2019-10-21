@@ -153,6 +153,14 @@ TEST_F(InsertExecutorTest, insert_ignore_error_false) {
   }
 }
 
+TEST_F(InsertExecutorTest, multi_insert_same_collection) {
+  std::string query = "LET x = (INSERT { value: 15} IN " + collectionName +
+                      ")" + "LET y (INSERT {value: 16} IN " + collectionName +
+                      ")" + " RETURN [x,y]";
+
+  AssertQueryFailsWith(vocbase, query, TRI_ERROR_QUERY_ACCESS_AFTER_MODIFICATION);
+}
+
 TEST_P(InsertExecutorTestCount, insert_without_return) {
   std::string query = std::string("FOR i IN 1..") + std::to_string(GetParam()) +
                       " INSERT { value: i } INTO " + collectionName;
