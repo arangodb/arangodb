@@ -20,11 +20,12 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Mocks/Servers.h"
+#include "../Mocks/Servers.h"
 #include "QueryHelper.h"
 #include "gtest/gtest.h"
 
 #include "Aql/Query.h"
+#include "Aql/VelocyPackHelper.h"
 #include "RestServer/QueryRegistryFeature.h"
 
 #include <velocypack/Buffer.h>
@@ -78,6 +79,79 @@ class InsertExecutorTestCount : public InsertExecutorTest,
 class InsertExecutorTestCounts
     : public InsertExecutorTest,
       public ::testing::WithParamInterface<std::vector<size_t>> {};
+
+TEST_F(InsertExecutorTest, basic) {
+  std::string query = R"(INSERT { value: 1 } IN )" + collectionName;
+  AssertQueryHasResult(vocbase, query, VPackSlice::emptyArraySlice());
+
+  auto expected = VPackParser::fromJson(R"([1])");
+  AssertQueryHasResult(vocbase, checkQuery, expected->slice());
+}
+
+TEST_F(InsertExecutorTest, insert_but_not_rev) {
+  std::string query = R"(INSERT { _key: "foo", _rev: "bar" } IN )" + collectionName;
+  AssertQueryHasResult(vocbase, query, VPackSlice::emptyArraySlice());
+
+  auto const bindParameters = VPackParser::fromJson("{ }");
+
+  auto queryResult =
+      arangodb::tests::executeQuery(vocbase,
+                                    "FOR d IN " + collectionName + " RETURN d",
+                                    bindParameters);
+  ASSERT_TRUE(queryResult.ok());
+  auto slice = queryResult.data->slice();
+  ASSERT_TRUE(slice.isArray());
+  ASSERT_EQ(slice.length(), 1);
+
+  auto doc = slice.at(0);
+  ASSERT_NE(arangodb::basics::VelocyPackHelper::getStringValue(doc, "_rev", ""),
+            "foo");
+}
+
+TEST_F(InsertExecutorTest, insert_ignore_error_default) {
+  {
+    std::string query =
+        R"(INSERT { _key: "iAmADocumentDoWhatIsay", value: 1 } IN )" + collectionName;
+    AssertQueryHasResult(vocbase, query, VPackSlice::emptyArraySlice());
+  }
+
+  {
+    std::string query = R"(INSERT { _key: "iAmADocumentDoWhatIsay", value: 1 } IN )" +
+                        collectionName + R"( OPTIONS { ignoreErrors: false } )";
+    AssertQueryFailsWith(vocbase, query, TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
+  }
+}
+
+TEST_F(InsertExecutorTest, insert_ignore_error_true) {
+  {
+    std::string query =
+        R"(INSERT { _key: "iAmADocumentDoWhatIsay", value: 1 } IN )" + collectionName;
+    AssertQueryHasResult(vocbase, query, VPackSlice::emptyArraySlice());
+  }
+
+  {
+    std::string query = R"(INSERT { _key: "iAmADocumentDoWhatIsay", value: 1 } IN )" +
+                        collectionName + R"( OPTIONS { ignoreErrors: true } )";
+    AssertQueryHasResult(vocbase, query, VPackSlice::emptyArraySlice());
+
+    auto expected = VPackParser::fromJson(R"([1])");
+    AssertQueryHasResult(vocbase, checkQuery, expected->slice());
+  }
+}
+
+TEST_F(InsertExecutorTest, insert_ignore_error_false) {
+  {
+    std::string query =
+        R"(INSERT { _key: "iAmADocumentDoWhatIsay", value: 1 } IN )" + collectionName;
+    AssertQueryHasResult(vocbase, query, VPackSlice::emptyArraySlice());
+  }
+
+  {
+    std::string query = R"(INSERT { _key: "iAmADocumentDoWhatIsay", value: 1 } IN )" +
+                        collectionName + R"( OPTIONS { ignoreErrors: false } )";
+    AssertQueryFailsWith(vocbase, query, TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
+  }
+}
 
 TEST_P(InsertExecutorTestCount, insert_without_return) {
   std::string query = std::string("FOR i IN 1..") + std::to_string(GetParam()) +
@@ -203,7 +277,7 @@ TEST_F(InsertExecutorTest, insert_return_old) {
   std::string query = std::string("FOR i IN 1..1 INSERT { value: i } INTO ") +
                       collectionName + " RETURN OLD";
 
-  AssertQueryFailsWith(vocbase, query, 1203);
+  AssertQueryFailsWith(vocbase, query, TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
 }
 
 TEST_P(InsertExecutorTestCount, insert_with_key) {
@@ -274,7 +348,7 @@ TEST_P(InsertExecutorTestCount, insert_with_key_and_no_overwrite) {
   // This is intentional: We write the entries once, then overwrite them again
   // The second query should fail with a uniqueness violation on _key
   AssertQueryHasResult(vocbase, query, builder.slice());
-  AssertQueryFailsWith(vocbase, query, 1210);
+  AssertQueryFailsWith(vocbase, query, TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
 }
 
 TEST_P(InsertExecutorTestCount, insert_with_key_and_no_overwrite_ignore_errors) {
