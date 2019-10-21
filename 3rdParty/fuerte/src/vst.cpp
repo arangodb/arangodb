@@ -623,8 +623,7 @@ std::unique_ptr<VPackBuffer<uint8_t>> RequestItem::assemble() {
   if (!reject) {
     FUERTE_LOG_VSTCHUNKTRACE
         << "RequestItem::assemble: fast-path, chunks are in order" << std::endl;
-    return std::unique_ptr<VPackBuffer<uint8_t>>(
-        new VPackBuffer<uint8_t>(std::move(_buffer)));
+    return std::make_unique<VPackBuffer<uint8_t>>(std::move(_buffer));
   }
 
   // We now have all chunks. Sort them by index.
