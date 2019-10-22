@@ -335,7 +335,8 @@ RestAdminClusterHandler::futureVoid RestAdminClusterHandler::tryDeleteServer(std
           removePlanServers(serverSet, agency.get(rootPath->plan()->vec()));
           removeCurrentServers(serverSet, agency.get(rootPath->current()->vec()));
 
-          if (serverSet.size() == 0) {
+          // if the server is still in the list, it was neither in plan nor in current
+          if (serverSet.size() == 1) {
 
             auto rootPath = arangodb::cluster::paths::root()->arango();
 
@@ -352,15 +353,12 @@ RestAdminClusterHandler::futureVoid RestAdminClusterHandler::tryDeleteServer(std
                 timepointToString(std::chrono::system_clock::now())),
             };
 
-/*
-      preconditions['/arango/Supervision/Health/' + serverId + '/Status'] = {'old': 'FAILED'};
-      preconditions["/arango/Supervision/DBServers/" + serverId]
-        = { "oldEmpty": true };
-        */
-
+            auto planVersionPath = rootPath->plan()->version();
             std::vector<AgencyPrecondition> precs{
               AgencyPrecondition(rootPath->supervision()->health()->server(ctx->server)->status()->str(), AgencyPrecondition::Type::VALUE, "FAILED"),
               AgencyPrecondition(rootPath->supervision()->dbServers()->server(ctx->server)->str(), AgencyPrecondition::Type::EMPTY, true),
+              //AgencyPrecondition(planVersionPath->str(), AgencyPrecondition::Type::VALUE, agency.get(planVersionPath->vec())),
+
             };
 
             return AsyncAgencyComm().sendTransaction(20s, AgencyWriteTransaction(ops, precs)).thenValue(
@@ -377,7 +375,7 @@ RestAdminClusterHandler::futureVoid RestAdminClusterHandler::tryDeleteServer(std
                 return futures::makeFuture();
             });
           }
-
+          LOG_DEVEL << "server still in use?";
           return retryTryDeleteServer(std::move(ctx));
         } else {
           generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
