@@ -41,8 +41,9 @@ namespace aql {
 
 SubqueryStartNode::SubqueryStartNode(ExecutionPlan* plan,
                                      arangodb::velocypack::Slice const& base)
-    : ExecutionNode(plan, base) {
+    : ExecutionNode(plan, base), _subqueryOutVariable(nullptr) {
   // On purpose exclude the _subqueryOutVariable
+  // A query cannot be explained after nodes have been serialized and deserialized
 }
 
 CostEstimate SubqueryStartNode::estimateCost() const {
@@ -97,10 +98,6 @@ bool SubqueryStartNode::isEqualTo(ExecutionNode const& other) const {
   } catch (const std::bad_cast&) {
     return false;
   }
-}
-
-Variable const* SubqueryStartNode::subqueryOutVariable() const {
-  return _subqueryOutVariable;
 }
 
 }  // namespace aql
