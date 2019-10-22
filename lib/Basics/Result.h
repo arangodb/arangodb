@@ -24,18 +24,18 @@
 #define ARANGODB_BASICS_RESULT_H 1
 
 #include <iosfwd>
+#include <memory>
 #include <string>
-#include <utility>
 
 namespace arangodb {
 class Result final {
  public:
-  Result();
-
   Result(bool /*avoidCastingErrors*/) = delete;
 
+  Result() noexcept(noexcept(std::allocator<char>()));
+
   // cppcheck-suppress noExplicitConstructor
-  /* implicit */ Result(int errorNumber);
+  /* implicit */ Result(int errorNumber) noexcept(noexcept(std::allocator<char>()));
 
   Result(int errorNumber, std::string const& errorMessage);
 

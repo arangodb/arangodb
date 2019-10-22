@@ -965,6 +965,7 @@ void Manager::toVelocyPack(VPackBuilder& builder, std::string const& database,
 }
 
 Result Manager::abortAllManagedWriteTrx(std::string const& username, bool fanout) {
+  LOG_TOPIC("bba16", INFO, Logger::QUERIES) << "aborting all " << (fanout ? "" : "local ") << "write transactions";
   Result res;
  
   DatabaseFeature& databaseFeature = _feature.server().getFeature<DatabaseFeature>();
@@ -974,7 +975,7 @@ Result Manager::abortAllManagedWriteTrx(std::string const& username, bool fanout
     // we are only interested in killed write queries
     queryList->kill([](aql::Query& query) {
       auto* state = query.trx()->state();
-      return state && state->isReadOnlyTransaction();
+      return state && !state->isReadOnlyTransaction();
     }, false); 
   });
 
