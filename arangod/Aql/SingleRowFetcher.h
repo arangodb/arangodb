@@ -55,11 +55,19 @@ class SingleRowFetcher {
   explicit SingleRowFetcher(DependencyProxy<blockPassthrough>& executionBlock);
   TEST_VIRTUAL ~SingleRowFetcher() = default;
 
+  using DataRange = AqlItemBlockInputIterator;
+
  protected:
   // only for testing! Does not initialize _dependencyProxy!
   SingleRowFetcher();
 
  public:
+  // TODO implement and document
+  std::tuple<ExecutionState, size_t, DataRange> execute(/* TODO: add"justDoIt"-style parameter */) {
+    TRI_ASSERT(false);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+
   /**
    * @brief Fetch one new AqlItemRow from upstream.
    *        **Guarantee**: the row returned is valid only

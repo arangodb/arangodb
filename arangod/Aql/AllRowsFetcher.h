@@ -92,11 +92,19 @@ class AllRowsFetcher {
 
   TEST_VIRTUAL ~AllRowsFetcher() = default;
 
+  using DataRange = std::shared_ptr<AqlItemMatrix>;
+
  protected:
   // only for testing! Does not initialize _dependencyProxy!
   AllRowsFetcher() = default;
 
  public:
+  // TODO implement and document
+  std::tuple<ExecutionState, size_t, DataRange> execute(/* TODO: add"justDoIt"-style parameter */) {
+    TRI_ASSERT(false);
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+
   /**
    * @brief Fetch one new AqlItemRow from upstream.
    *        **Guarantee**: the pointer returned is valid only
