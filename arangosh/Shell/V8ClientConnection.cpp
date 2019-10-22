@@ -1510,7 +1510,7 @@ v8::Local<v8::Value> V8ClientConnection::requestData(
   req->header.database = _databaseName;
   req->header.parseArangoPath(location.toString());
   for (auto& pair : headerFields) {
-    req->header.addMeta(std::move(pair.first), std::move(pair.second));
+    req->header.addMeta(pair.first, pair.second);
   }
   if (isFile) {
     std::string const infile = TRI_ObjectToString(isolate, body);
@@ -1588,7 +1588,7 @@ v8::Local<v8::Value> V8ClientConnection::requestDataRaw(
   req->header.database = _databaseName;
   req->header.parseArangoPath(location.toString());
   for (auto& pair : headerFields) {
-    req->header.addMeta(std::move(pair.first), std::move(pair.second));
+    req->header.addMeta(pair.first, pair.second);
   }
   if (body->IsString()) {  // assume JSON
     TRI_Utf8ValueNFC bodyString(isolate, body);

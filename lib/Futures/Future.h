@@ -277,10 +277,6 @@ class Future {
 
   /// Blocks until this Future is complete.
   void wait() {
-    unsigned i = 8;
-    while (!isReady() && i--) {
-      std::this_thread::yield();
-    }
     detail::waitImpl(*this);
   }
 

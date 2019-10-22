@@ -46,13 +46,8 @@ ConnectionPool::~ConnectionPool() { shutdown(); }
 /// @brief request a connection for a specific endpoint
 /// note: it is the callers responsibility to ensure the endpoint
 /// is always the same, we do not do any post-processing
-std::shared_ptr<network::Connection> ConnectionPool::leaseConnection(std::string const& str) {
-  fuerte::ConnectionBuilder builder;
-  builder.endpoint(str);
-  builder.protocolType(_config.protocol); // always overwrite protocol
+std::shared_ptr<network::Connection> ConnectionPool::leaseConnection(std::string const& endpoint) {
 
-  std::string endpoint = builder.normalizedEndpoint();
-  
   READ_LOCKER(guard, _lock);
   auto it = _connections.find(endpoint);
   if (it == _connections.end()) {
@@ -64,9 +59,9 @@ std::shared_ptr<network::Connection> ConnectionPool::leaseConnection(std::string
       auto it2 = _connections.emplace(endpoint, std::make_unique<Bucket>());
       it = it2.first;
     }
-    return selectConnection(*(it->second), builder);
+    return selectConnection(it->first, *(it->second));
   }
-  return selectConnection(*(it->second), builder);
+  return selectConnection(it->first,*(it->second));
 }
 
 /// @brief drain all connections
@@ -207,8 +202,8 @@ std::shared_ptr<fuerte::Connection> ConnectionPool::createConnection(fuerte::Con
   return builder.connect(_loop);
 }
 
-ConnectionPtr ConnectionPool::selectConnection(ConnectionPool::Bucket& bucket,
-                                               fuerte::ConnectionBuilder& builder) {
+ConnectionPtr ConnectionPool::selectConnection(std::string const& endpoint,
+                                               ConnectionPool::Bucket& bucket) {
   std::lock_guard<std::mutex> guard(bucket.mutex);
 
   for (Context& c : bucket.list) {
@@ -219,11 +214,15 @@ ConnectionPtr ConnectionPool::selectConnection(ConnectionPool::Bucket& bucket,
     
     size_t num = c.fuerte->requestsLeft();
     // TODO: make configurable ?
-    if ((builder.protocolType() == fuerte::ProtocolType::Http && num == 0) ||
-        (builder.protocolType() == fuerte::ProtocolType::Vst && num < 4)) {
+    if ((_config.protocol == fuerte::ProtocolType::Http && num <= 1) ||
+        (_config.protocol == fuerte::ProtocolType::Vst && num < 4)) {
       return c.fuerte;
     }
   }
+  
+  fuerte::ConnectionBuilder builder;
+  builder.endpoint(endpoint);
+  builder.protocolType(_config.protocol); // always overwrite protocol
   
   std::shared_ptr<fuerte::Connection> fuerte = createConnection(builder);
   bucket.list.push_back(Context{fuerte, std::chrono::steady_clock::now()});

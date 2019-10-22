@@ -42,37 +42,41 @@ ShortestPathFinder::ShortestPathFinder(ShortestPathOptions& options)
       _httpRequests(0) {}
 
 void ShortestPathFinder::destroyEngines() {
-  if (ServerState::instance()->isCoordinator()) {
-    NetworkFeature const& nf =
-        _options.query()->vocbase().server().getFeature<NetworkFeature>();
-    network::ConnectionPool* pool = nf.pool();
-    // We have to clean up the engines in Coordinator Case.
-    if (pool != nullptr) {
-      auto ch = reinterpret_cast<ClusterTraverserCache*>(_options.cache());
-      // nullptr only happens on controlled server shutdown
-      std::string const url(
-          "/_db/" +
-          arangodb::basics::StringUtils::urlEncode(_options.trx()->vocbase().name()) +
-          "/_internal/traverser/");
+  if (!ServerState::instance()->isCoordinator()) {
+    return;
+  }
+  NetworkFeature const& nf =
+      _options.query()->vocbase().server().getFeature<NetworkFeature>();
+  network::ConnectionPool* pool = nf.pool();
+  // We have to clean up the engines in Coordinator Case.
+  if (pool == nullptr) {
+    return;
+  }
+  // nullptr only happens on controlled server shutdown
+  
+  auto ch = reinterpret_cast<ClusterTraverserCache*>(_options.cache());
+  
+  network::RequestOptions options;
+  options.database = _options.trx()->vocbase().name();
+  options.timeout = network::Timeout(30.0);
+  options.skipScheduler = true; // hack to speed up future.get()
 
-      for (auto const& it : *ch->engines()) {
-        incHttpRequests(1);
-        network::Headers headers;
-        auto res =
-            network::sendRequest(pool, "server:" + it.first, fuerte::RestVerb::Delete,
-                                 url + arangodb::basics::StringUtils::itoa(it.second),
-                                 VPackBuffer<uint8_t>(), network::Timeout(30.0), headers)
-                .get();
+  for (auto const& it : *ch->engines()) {
+    incHttpRequests(1);
 
-        if (res.error != fuerte::Error::NoError) {
-          // Note If there was an error on server side we do not have
-          // CL_COMM_SENT
-          std::string message("Could not destroy all traversal engines");
-          message += std::string(": ") +
-                     TRI_errno_string(network::fuerteToArangoErrorCode(res));
-          LOG_TOPIC("d31a4", ERR, arangodb::Logger::FIXME) << message;
-        }
-      }
+    auto res =
+        network::sendRequest(pool, "server:" + it.first, fuerte::RestVerb::Delete,
+                             "/_internal/traverser/" + arangodb::basics::StringUtils::itoa(it.second),
+                             VPackBuffer<uint8_t>(), options)
+            .get();
+
+    if (res.error != fuerte::Error::NoError) {
+      // Note If there was an error on server side we do not have
+      // CL_COMM_SENT
+      std::string message("Could not destroy all traversal engines");
+      message += std::string(": ") +
+                 TRI_errno_string(network::fuerteToArangoErrorCode(res));
+      LOG_TOPIC("d31a4", ERR, arangodb::Logger::FIXME) << message;
     }
   }
 }

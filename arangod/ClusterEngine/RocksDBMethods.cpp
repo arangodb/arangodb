@@ -77,7 +77,7 @@ Result recalculateCountsOnAllDBServers(std::string const& dbname, std::string co
       std::string uri = baseUrl + basics::StringUtils::urlEncode(shard.first) +
                         "/recalculateCount";
       auto f = network::sendRequest(pool, "server:" + serverId, fuerte::RestVerb::Put,
-                                    std::move(uri), body, headers, options);
+                                    std::move(uri), body, options, headers);
       futures.emplace_back(std::move(f));
     }
   }

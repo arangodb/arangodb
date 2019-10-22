@@ -140,18 +140,18 @@ Future<network::Response> beginTransactionRequest(transaction::Methods const* tr
   VPackBuffer<uint8_t> buffer;
   VPackBuilder builder(buffer);
   buildTransactionBody(state, server, builder);
+  
+  network::RequestOptions reqOpts;
+  reqOpts.database = state.vocbase().name();
 
-  std::string path = std::string("/_db/")
-                         .append(StringUtils::urlEncode(state.vocbase().name()))
-                         .append("/_api/transaction/begin");
+  std::string path("/_api/transaction/begin");
 
   auto* pool = state.vocbase().server().getFeature<NetworkFeature>().pool();
   network::Headers headers;
   headers.emplace(StaticStrings::TransactionId, std::to_string(tid));
   auto body = std::make_shared<std::string>(builder.slice().toJson());
   return network::sendRequest(pool, "server:" + server, fuerte::RestVerb::Post,
-                              std::move(path), std::move(buffer),
-                              network::Timeout(::CL_DEFAULT_TIMEOUT), std::move(headers));
+                              std::move(path), std::move(buffer), reqOpts);
 }
 
 /// check the transaction cluster response with desited TID and status
@@ -215,9 +215,12 @@ Future<Result> commitAbortTransaction(transaction::Methods& trx, transaction::St
   }
   TRI_ASSERT(!state->isDBServer() || !transaction::isFollowerTransactionId(state->id()));
 
+  network::RequestOptions reqOpts;
+  reqOpts.database = state->vocbase().name();
+  reqOpts.timeout = network::Timeout(::CL_DEFAULT_TIMEOUT);
+  
   TRI_voc_tid_t tidPlus = state->id() + 1;
-  const std::string path = "/_db/" + StringUtils::urlEncode(state->vocbase().name()) +
-                           "/_api/transaction/" + std::to_string(tidPlus);
+  std::string const path = "/_api/transaction/" + std::to_string(tidPlus);
 
   fuerte::RestVerb verb;
   if (status == transaction::Status::COMMITTED) {
@@ -232,8 +235,7 @@ Future<Result> commitAbortTransaction(transaction::Methods& trx, transaction::St
   std::vector<Future<network::Response>> requests;
   for (std::string const& server : state->knownServers()) {
     requests.emplace_back(network::sendRequest(pool, "server:" + server, verb,
-                                               path, VPackBuffer<uint8_t>(),
-                                               network::Timeout(::CL_DEFAULT_TIMEOUT)));
+                                               path, VPackBuffer<uint8_t>(), reqOpts));
   }
 
   return futures::collectAll(requests).thenValue(

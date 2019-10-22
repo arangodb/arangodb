@@ -882,8 +882,10 @@ void Manager::toVelocyPack(VPackBuilder& builder, std::string const& database,
     auto auth = AuthenticationFeature::instance();
 
     network::RequestOptions options;
+    options.database = database;
     options.timeout = network::Timeout(30.0);
-
+    options.param("local", "true");
+    
     VPackBuffer<uint8_t> body;
 
     for (auto const& coordinator : ci.getCurrentCoordinators()) {
@@ -910,9 +912,7 @@ void Manager::toVelocyPack(VPackBuilder& builder, std::string const& database,
       }
 
       auto f = network::sendRequest(pool, "server:" + coordinator, fuerte::RestVerb::Get,
-                                    "/_db/" + database +
-                                        "/_api/transaction?local=true",
-                                    body, std::move(headers), options);
+                                    "/_api/transaction", body, options, std::move(headers));
       futures.emplace_back(std::move(f));
     }
 

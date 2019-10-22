@@ -278,7 +278,7 @@ std::string HttpConnection<ST>::buildRequestBody(Request const& req) {
   assert(req.header.restVerb != RestVerb::Illegal);
 
   std::string header;
-  header.reserve(230);  // TODO is there a meaningful size ?
+  header.reserve(256);  // TODO is there a meaningful size ?
   header.append(fu::to_string(req.header.restVerb));
   header.push_back(' ');
 
@@ -328,11 +328,11 @@ std::string HttpConnection<ST>::buildRequestBody(Request const& req) {
 
   bool haveAuth = false;
   for (auto const& pair : req.header.meta()) {
-    if (boost::iequals(fu_content_length_key, pair.first)) {
+    if (pair.first == fu_content_length_key) {
       continue;  // skip content-length header
     }
 
-    if (boost::iequals("authorization", pair.first)) {
+    if (pair.first == fu_authorization_key) {
       haveAuth = true;
     }
 
@@ -395,9 +395,9 @@ void HttpConnection<ST>::asyncWriteNextRequest() {
     buffers[1] = item->request->payload();
   }
 
-  auto self = Connection::shared_from_this();
-  auto cb = [self, ri = std::move(item)](asio_ns::error_code const& ec,
-                                         std::size_t transferred) mutable {
+  auto cb = [self = Connection::shared_from_this(),
+             ri = std::move(item)](asio_ns::error_code const& ec,
+                                   std::size_t transferred) mutable {
     auto* thisPtr = static_cast<HttpConnection<ST>*>(self.get());
     thisPtr->asyncWriteCb(ec, std::move(ri));
   };
@@ -525,8 +525,7 @@ void HttpConnection<ST>::setTimeout(std::chrono::milliseconds millis) {
 
   // expires_after cancels pending ops
   this->_timeout.expires_after(millis);
-  std::weak_ptr<Connection> self = Connection::shared_from_this();
-  auto cb = [self](asio_ns::error_code const& ec) {
+  auto cb = [self = Connection::weak_from_this()](asio_ns::error_code const& ec) {
     std::shared_ptr<Connection> s;
     if (ec || !(s = self.lock())) {  // was canceled / deallocated
       return;
@@ -540,7 +539,6 @@ void HttpConnection<ST>::setTimeout(std::chrono::milliseconds millis) {
       thisPtr->shutdownConnection(Error::CloseRequested);
     }
   };
-
   this->_timeout.async_wait(std::move(cb));
 }
 

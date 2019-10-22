@@ -60,7 +60,7 @@ Result getTtlStatisticsFromAllDBServers(ClusterFeature& feature, TtlStatistics& 
   for (std::string const& server : DBservers) {
     futures.emplace_back(
         network::sendRequestRetry(pool, "server:" + server, fuerte::RestVerb::Get,
-                                  url, VPackBufferUInt8(), network::Timeout(120)));
+                                  url, VPackBufferUInt8()));
   }
 
   for (Future<network::Response>& f : futures) {
@@ -94,7 +94,7 @@ Result getTtlPropertiesFromAllDBServers(ClusterFeature& feature, VPackBuilder& o
   for (std::string const& server : DBservers) {
     futures.emplace_back(
         network::sendRequestRetry(pool, "server:" + server, fuerte::RestVerb::Get,
-                                  url, VPackBufferUInt8(), network::Timeout(120)));
+                                  url, VPackBufferUInt8()));
   }
 
   for (Future<network::Response>& f : futures) {
@@ -133,7 +133,7 @@ Result setTtlPropertiesOnAllDBServers(ClusterFeature& feature,
   for (std::string const& server : DBservers) {
     futures.emplace_back(network::sendRequestRetry(pool, "server:" + server,
                                                    fuerte::RestVerb::Put, url,
-                                                   buffer, network::Timeout(120)));
+                                                   buffer));
   }
 
   for (Future<network::Response>& f : futures) {

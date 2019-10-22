@@ -494,12 +494,6 @@ std::unique_ptr<fu::Response> VstConnection<ST>::createResponse(
 // adjust the timeouts (only call from IO-Thread)
 template <SocketType ST>
 void VstConnection<ST>::setTimeout() {
-//  asio_ns::error_code ec;
-//  this->_timeout.cancel(ec);
-//  if (ec) {
-//    FUERTE_LOG_ERROR << "error on timeout cancel: " << ec.message();
-//    return;  // bail out
-//  }
 
   // set to smallest point in time
   auto expires = std::chrono::steady_clock::time_point::max();
@@ -515,8 +509,7 @@ void VstConnection<ST>::setTimeout() {
   }
 
   this->_timeout.expires_at(expires);
-  std::weak_ptr<Connection> self = Connection::shared_from_this();
-  this->_timeout.async_wait([self](asio_ns::error_code const& ec) {
+  this->_timeout.async_wait([self = Connection::weak_from_this()](asio_ns::error_code const& ec) {
     std::shared_ptr<Connection> s;
     if (ec || !(s = self.lock())) {  // was canceled / deallocated
       return;
