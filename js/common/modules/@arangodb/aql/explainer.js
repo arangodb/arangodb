@@ -821,6 +821,11 @@ function processQuery(query, explain, planIndex) {
     return variable(node.name);
   };
 
+  var lateVariableCallback = function () {
+    require("internal").print("Called");
+    return (node) => variableName(node);
+  };
+
   var buildExpression = function (node) {
     var binaryOperator = function (node, name) {
       var lhs = buildExpression(node.subNodes[0]);
@@ -1465,11 +1470,9 @@ function processQuery(query, explain, planIndex) {
       case 'SubqueryNode':
         return keyword('LET') + ' ' + variableName(node.outVariable) + ' = ...   ' + annotation('/* ' + (node.isConst ? 'const ' : '') + 'subquery */');
       case 'SubqueryStartNode':
-        // TODO
-        return `${keyword('LET')}  = ... ` ;
+        return `${keyword('LET')} ${variableName(node.subqueryOutVariable)} = ( ${annotation(`/* subquery begin */`)}` ;
       case 'SubqueryEndNode':
-        // TODO
-        return `... end` ;
+        return `) ${annotation(`/* subquery end */`)}`;
       case 'InsertNode': {
         modificationFlags = node.modificationFlags;
         let restrictString = '';
@@ -1659,7 +1662,7 @@ function processQuery(query, explain, planIndex) {
     return 'unhandled node type (' + node.type + ')';
   };
 
-  var level = 0, subqueries = [];
+  var level = 0, subqueries = [], subqueryCallbacks = [];
   var indent = function (level, isRoot) {
     return pad(1 + level + level) + (isRoot ? '* ' : '- ');
   };
