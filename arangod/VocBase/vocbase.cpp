@@ -950,9 +950,13 @@ void TRI_vocbase_t::inventory(VPackBuilder& result, TRI_voc_tick_t maxTick,
           case Index::TRI_IDX_TYPE_EDGE_INDEX:
             return Index::makeFlags(Index::Serialize::Invalid);
           case Index::TRI_IDX_TYPE_IRESEARCH_LINK:
+            LOG_DEVEL << "LINK: " << idx->name();
+            std::this_thread::sleep_for(std::chrono::seconds(10));
             return Index::makeFlags(Index::Serialize::Internals);
           default:
-            return Index::makeFlags();
+            return Index::makeFlags(idx->isHidden()
+                                    ? Index::Serialize::Invalid
+                                    : Index::Serialize::Basics);
         }
       });
       result.add("parameters", VPackValue(VPackValueType::Object));
@@ -970,9 +974,7 @@ void TRI_vocbase_t::inventory(VPackBuilder& result, TRI_voc_tick_t maxTick,
   LogicalView::enumerate(*this, [&result](LogicalView::ptr const& view) -> bool {
     if (view) {
       result.openObject();
-      view->properties(result, LogicalDataSource::makeFlags());
-      // details, !forPersistence because on  restore any datasource ids will
-      // differ, so need an end-user representation
+      view->properties(result, LogicalDataSource::makeFlags()); // view definition only
       result.close();
     }
 

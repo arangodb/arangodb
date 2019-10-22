@@ -913,10 +913,32 @@ arangodb::Result processInputDirectory(
     std::vector<std::unique_ptr<arangodb::RestoreFeature::JobData>> jobs;
     jobs.reserve(collections.size());
 
+    // Step 2: create views
+    // @note: done after collection population since views might depend on data
+    //        in restored collections
+    if (options.importStructure && !views.empty()) {
+      LOG_TOPIC("f723c", INFO, Logger::RESTORE) << "# Creating views...";
+
+      for (auto const& viewDefinition : views) {
+        LOG_TOPIC("c608d", DEBUG, Logger::RESTORE)
+          << "# Creating view: " << viewDefinition.toJson();
+
+        auto res = ::restoreView(httpClient, options, viewDefinition.slice());
+
+        if (!res.ok()) {
+          return res;
+        }
+      }
+    }
+
     bool didModifyFoxxCollection = false;
-    // Step 2: create collections
+    // Step 3: create collections
     for (VPackBuilder const& b : collections) {
       VPackSlice const collection = b.slice();
+
+      LOG_TOPIC("c601a", DEBUG, Logger::RESTORE)
+        << "# Processing collection: " << collection.toJson();
+
       VPackSlice params = collection.get("parameters");
       VPackSlice name = VPackSlice::emptyStringSlice();
       if (params.isObject()) {
@@ -1012,24 +1034,6 @@ arangodb::Result processInputDirectory(
             << "- in the cluster Foxx services will be available eventually, On single servers send "
             << "a POST to '/_api/foxx/_local/heal' on the current database, "
             << "with an empty body.";
-      }
-    }
-
-    // Step 5: create views
-    // @note: done after collection population since views might depend on data
-    //        in restored collections
-    if (options.importStructure && !views.empty()) {
-      LOG_TOPIC("f723c", INFO, Logger::RESTORE) << "# Creating views...";
-
-      for (auto const& viewDefinition : views) {
-        LOG_TOPIC("c608d", DEBUG, Logger::RESTORE)
-          << "# Creating view: " << viewDefinition.toJson();
-
-        auto res = ::restoreView(httpClient, options, viewDefinition.slice());
-
-        if (!res.ok()) {
-          return res;
-        }
       }
     }
 
