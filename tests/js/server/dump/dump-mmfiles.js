@@ -477,9 +477,25 @@ function dumpTestSuite () {
 
       res = db._query("FOR doc IN UnitTestsDumpView SEARCH PHRASE(doc.text, 'foxx jumps over', 'text_en') RETURN doc").toArray();
       assertEqual(1, res.length);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test custom analyzers restoring
+////////////////////////////////////////////////////////////////////////////////
+    testAnalyzers: function() {
+      assertEqual(1, db._analyzers.count()); // only 1 stored custom analyzer
+
+      let analyzer = analyzers.analyzer("custom");
+      assertEqual("custom", analyzer.name());
+      assertEqual("delimiter", analyzer.type());
+      assertEqual(Object.keys(analyzer.properties()).length, 1);
+      assertEqual(" ", analyzer.properties().delimiter);
+      assertEqual(1, analyzer.features().length);
+      assertEqual("frequency", analyzer.features()[0]);
     }
 
   };
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////
