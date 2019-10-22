@@ -575,6 +575,8 @@ void GeneralServerFeature::defineHandlers() {
   // redirects
   // ...........................................................................
 
+  // UGLY HACK INCOMING!
+
 #define ADD_REDIRECT(from, to) do{_handlerFactory->addPrefixHandler(from, \
                                     RestHandlerCreator<RestRedirectHandler>::createData<const char*>, \
                                     (void*) to);}while(0)

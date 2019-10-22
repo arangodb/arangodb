@@ -51,6 +51,7 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
   static std::string const ResignLeadership;
   static std::string const MoveShard;
   static std::string const QueryJobStatus;
+  static std::string const RemoveServer;
 
   RestStatus handleHealth();
   RestStatus handleNumberOfServers();
@@ -75,6 +76,8 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
   RestStatus handleMoveShard();
   RestStatus handleQueryJobStatus();
 
+  RestStatus handleRemoveServer();
+
 private:
   RestStatus handleSingleServerJob(std::string const& job);
   RestStatus handleCreateSingleServerJob(std::string const& job, std::string const& server);
@@ -85,8 +88,21 @@ private:
 
   futureVoid waitForSupervisionState(bool state, clock::time_point startTime = clock::time_point());
 
+
+  struct RemoveServerContext {
+    size_t tries;
+    std::string server;
+
+    RemoveServerContext(std::string const& s) : tries(0), server(s) {}
+  };
+
+  futureVoid tryDeleteServer(std::unique_ptr<RemoveServerContext>&& ctx);
+  futureVoid retryTryDeleteServer(std::unique_ptr<RemoveServerContext>&& ctx);
+
   RestStatus handleProxyGetRequest(std::string const& url, std::string const& serverFromParameter);
   RestStatus handleGetCollectionShardDistribution(std::string const& collection);
+
+  RestStatus handlePostRemoveServer(std::string const& server);
 
 };
 }  // namespace arangodb

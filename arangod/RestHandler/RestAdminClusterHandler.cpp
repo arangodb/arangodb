@@ -245,7 +245,7 @@ std::string const RestAdminClusterHandler::CleanoutServer = "cleanoutServer";
 std::string const RestAdminClusterHandler::ResignLeadership = "resignLeadership";
 std::string const RestAdminClusterHandler::MoveShard = "moveShard";
 std::string const RestAdminClusterHandler::QueryJobStatus = "queryAgencyJob";
-
+std::string const RestAdminClusterHandler::RemoveServer = "removeServer";
 
 RestStatus RestAdminClusterHandler::execute() {
 
@@ -286,6 +286,8 @@ RestStatus RestAdminClusterHandler::execute() {
       return handleMoveShard();
     } else if (command == QueryJobStatus) {
       return handleQueryJobStatus();
+    } else if (command == RemoveServer) {
+      return handleRemoveServer();
     } else {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     std::string("invalid command '") + command + "'");
@@ -295,6 +297,139 @@ RestStatus RestAdminClusterHandler::execute() {
 
   generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
                 "expecting URL /_admin/cluster/<command>");
+  return RestStatus::DONE;
+}
+
+
+RestAdminClusterHandler::futureVoid RestAdminClusterHandler::retryTryDeleteServer(std::unique_ptr<RemoveServerContext>&& ctx) {
+  if (++ctx->tries < 60) {
+    return SchedulerFeature::SCHEDULER->delay(1s).thenValue(
+      [this, self = shared_from_this(), ctx = std::move(ctx)] (auto) mutable {
+        return tryDeleteServer(std::move(ctx));
+    });
+  } else {
+    generateError(rest::ResponseCode::REQUEST_TIMEOUT, TRI_ERROR_HTTP_PRECONDITION_FAILED, "server may not be deleted");
+    return futures::makeFuture();
+  }
+}
+
+RestAdminClusterHandler::futureVoid RestAdminClusterHandler::tryDeleteServer(std::unique_ptr<RemoveServerContext>&& ctx) {
+
+  auto rootPath = arangodb::cluster::paths::root()->arango();
+  AgencyReadTransaction trx(std::move(std::vector<std::string>{
+    rootPath->supervision()->health()->str(),
+    rootPath->plan()->str(),
+    rootPath->current()->str()
+  }));
+
+  auto self(shared_from_this());
+  return AsyncAgencyComm().sendTransaction(20s, std::move(trx))
+    .thenValue([self, this, rootPath, ctx = std::move(ctx)](AsyncAgencyCommResult &&result) mutable {
+
+      if (result.ok() && result.statusCode() == 200) {
+        VPackSlice agency = result.slice().at(0);
+
+        VPackSlice health = agency.get(rootPath->supervision()->health()->server(ctx->server)->status()->vec());
+        if (!health.isNone()) {
+          std::unordered_set<std::string> serverSet = {ctx->server};
+          removePlanServers(serverSet, agency.get(rootPath->plan()->vec()));
+          removeCurrentServers(serverSet, agency.get(rootPath->current()->vec()));
+
+          if (serverSet.size() == 0) {
+
+            auto rootPath = arangodb::cluster::paths::root()->arango();
+
+            // do a write transaction if server is no longer used
+            std::vector<AgencyOperation> ops{
+              AgencyOperation(rootPath->plan()->coordinators()->server(ctx->server)->str(), AgencySimpleOperationType::DELETE_OP),
+              AgencyOperation(rootPath->plan()->dBServers()->server(ctx->server)->str(), AgencySimpleOperationType::DELETE_OP),
+              AgencyOperation(rootPath->current()->serversRegistered()->server(ctx->server)->str(), AgencySimpleOperationType::DELETE_OP),
+              AgencyOperation(rootPath->current()->dBServers()->server(ctx->server)->str(), AgencySimpleOperationType::DELETE_OP),
+              AgencyOperation(rootPath->supervision()->health()->server(ctx->server)->str(), AgencySimpleOperationType::DELETE_OP),
+              AgencyOperation(rootPath->target()->mapUniqueToShortID()->server(ctx->server)->str(), AgencySimpleOperationType::DELETE_OP),
+              AgencyOperation(rootPath->current()->serversKnown()->server(ctx->server)->str(), AgencySimpleOperationType::DELETE_OP),
+              AgencyOperation(rootPath->target()->removedServers()->server(ctx->server)->str(), AgencyValueOperationType::SET,
+                timepointToString(std::chrono::system_clock::now())),
+            };
+
+/*
+      preconditions['/arango/Supervision/Health/' + serverId + '/Status'] = {'old': 'FAILED'};
+      preconditions["/arango/Supervision/DBServers/" + serverId]
+        = { "oldEmpty": true };
+        */
+
+            std::vector<AgencyPrecondition> precs{
+              AgencyPrecondition(rootPath->supervision()->health()->server(ctx->server)->status()->str(), AgencyPrecondition::Type::VALUE, "FAILED"),
+              AgencyPrecondition(rootPath->supervision()->dbServers()->server(ctx->server)->str(), AgencyPrecondition::Type::EMPTY, true),
+            };
+
+            return AsyncAgencyComm().sendTransaction(20s, AgencyWriteTransaction(ops, precs)).thenValue(
+              [self, this, ctx = std::move(ctx)](AsyncAgencyCommResult &&result) mutable {
+                if (result.ok()) {
+                  if (result.statusCode() == fuerte::StatusOK) {
+                    resetResponse(rest::ResponseCode::OK);
+                    return futures::makeFuture();
+                  } else if (result.statusCode() == fuerte::StatusPreconditionFailed) {
+                    return retryTryDeleteServer(std::move(ctx));
+                  }
+                }
+                generateError(result.asResult());
+                return futures::makeFuture();
+            });
+          }
+
+          return retryTryDeleteServer(std::move(ctx));
+        } else {
+          generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
+        }
+      } else {
+        generateError(result.asResult());
+      }
+
+      return futures::makeFuture();
+    });
+}
+
+RestStatus RestAdminClusterHandler::handlePostRemoveServer(std::string const& server) {
+
+  auto ctx = std::make_unique<RemoveServerContext>(server);
+
+  auto self(shared_from_this());
+  return waitForFuture(tryDeleteServer(std::move(ctx))
+    .thenError<VPackException>([this, self](VPackException const& e) {
+      generateError(Result{e.errorCode(), e.what()});
+    }).thenError<std::exception>([this, self](std::exception const& e) {
+      generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR, e.what());
+    }));
+}
+
+RestStatus RestAdminClusterHandler::handleRemoveServer() {
+  if (!ExecContext::current().isAdminUser()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
+    return RestStatus::DONE;
+  }
+
+  if (request()->requestType() != rest::RequestType::POST) {
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+    return RestStatus::DONE;
+  }
+
+  bool parseSuccess;
+  VPackSlice body = parseVPackBody(parseSuccess);
+  if (!parseSuccess) {
+    return RestStatus::DONE;
+  }
+
+  if (body.isObject()) {
+    VPackSlice server = body.get("server");
+    if (server.isString()) {
+      std::string serverId = server.copyString();
+      // TODO translate serverId
+      return handlePostRemoveServer(serverId);
+    }
+  }
+
+  generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER, "object with key `server`");
   return RestStatus::DONE;
 }
 
@@ -414,7 +549,7 @@ RestStatus RestAdminClusterHandler::handleSingleServerJob(std::string const& job
     VPackSlice server = body.get("server");
     if (server.isString()) {
       std::string serverId = server.copyString();
-      // translate serverId
+      // TODO translate serverId
       return handleCreateSingleServerJob(job, serverId);
     }
   }

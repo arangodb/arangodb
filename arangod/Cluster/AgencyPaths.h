@@ -1256,6 +1256,19 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
         constexpr char const* component() const noexcept { return "DBServers"; }
 
         using BaseType::StaticComponent;
+
+        class Server : public DynamicComponent<Server, DbServers, ServerID> {
+         public:
+          char const* component() const noexcept {
+            return value().c_str();
+          }
+
+          using BaseType::DynamicComponent;
+        };
+
+        std::shared_ptr<Server const> server(ServerID name) const {
+          return Server::make_shared(shared_from_this(), std::move(name));
+        }
       };
 
       std::shared_ptr<DbServers const> dbServers() const {
@@ -1422,6 +1435,28 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
       constexpr char const* component() const noexcept { return "Target"; }
 
       using BaseType::StaticComponent;
+
+      class RemovedServers : public StaticComponent<RemovedServers, Target> {
+       public:
+        constexpr char const* component() const noexcept { return "RemovedServers"; }
+
+        using BaseType::StaticComponent;
+
+        class Server : public DynamicComponent<Server, RemovedServers, std::string> {
+         public:
+          char const* component() const noexcept { return value().c_str(); }
+
+          using BaseType::DynamicComponent;
+        };
+
+        std::shared_ptr<Server const> server(std::string server) const {
+          return Server::make_shared(shared_from_this(), std::move(server));
+        }
+      };
+
+      std::shared_ptr<RemovedServers const> removedServers() const {
+        return RemovedServers::make_shared(shared_from_this());
+      }
 
       class ToDo : public StaticComponent<ToDo, Target> {
        public:
