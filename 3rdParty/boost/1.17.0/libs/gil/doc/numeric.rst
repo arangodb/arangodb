@@ -1,7 +1,0 @@
-Numeric extension
-=================
-
-Overview
---------
-
-*TODO*
