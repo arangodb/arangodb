@@ -63,14 +63,14 @@ namespace {
 arangodb::velocypack::StringRef const SortModeUnset("unset");
 arangodb::velocypack::StringRef const SortModeMinElement("minelement");
 arangodb::velocypack::StringRef const SortModeHeap("heap");
+  
+std::map<arangodb::velocypack::StringRef, GatherNode::SortMode> const NameToValue{
+    {SortModeMinElement, GatherNode::SortMode::MinElement},
+    {SortModeHeap, GatherNode::SortMode::Heap},
+    {SortModeUnset, GatherNode::SortMode::Default}};
 
 bool toSortMode(arangodb::velocypack::StringRef const& str, GatherNode::SortMode& mode) noexcept {
   // std::map ~25-30% faster than std::unordered_map for small number of elements
-  static std::map<arangodb::velocypack::StringRef, GatherNode::SortMode> const NameToValue{
-      {SortModeMinElement, GatherNode::SortMode::MinElement},
-      {SortModeHeap, GatherNode::SortMode::Heap},
-      {SortModeUnset, GatherNode::SortMode::Default}};
-
   auto const it = NameToValue.find(str);
 
   if (it == NameToValue.end()) {
