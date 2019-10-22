@@ -451,7 +451,7 @@ function dumpTestSuite () {
       assertEqual(1, db._analyzers.count()); // only 1 stored custom analyzer
 
       let analyzer = analyzers.analyzer("custom");
-      assertEqual("custom", analyzer.name());
+      assertEqual(db._name() + "::custom", analyzer.name());
       assertEqual("delimiter", analyzer.type());
       assertEqual(Object.keys(analyzer.properties()).length, 1);
       assertEqual(" ", analyzer.properties().delimiter);
