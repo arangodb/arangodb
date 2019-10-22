@@ -129,11 +129,11 @@ void VstResponse::writeMessageHeader(VPackBuffer<uint8_t>& buffer) const {
     for (auto& it : tmp) {
       if (capState == 1) {
         // upper case
-        it = ::toupper(it);
+        it = StringUtils::toupper(it);
         capState = 0;
       } else if (capState == 0) {
         // normal case
-        it = ::tolower(it);
+        it = StringUtils::tolower(it);
         if (it == '-') {
           capState = 1;
         } else if (it == ':') {
