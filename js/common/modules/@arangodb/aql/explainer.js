@@ -1464,6 +1464,12 @@ function processQuery(query, explain, planIndex) {
         return keyword('RETURN') + ' ' + variableName(node.inVariable);
       case 'SubqueryNode':
         return keyword('LET') + ' ' + variableName(node.outVariable) + ' = ...   ' + annotation('/* ' + (node.isConst ? 'const ' : '') + 'subquery */');
+      case 'SubqueryStartNode':
+        // TODO
+        return `${keyword('LET')}  = ... ` ;
+      case 'SubqueryEndNode':
+        // TODO
+        return `... end` ;
       case 'InsertNode': {
         modificationFlags = node.modificationFlags;
         let restrictString = '';
@@ -1662,8 +1668,11 @@ function processQuery(query, explain, planIndex) {
     usedVariables = {};
     currentNode = node.id;
     isConst = true;
-    if (node.type === 'SubqueryNode') {
+    if (node.type === 'SubqueryNode' || node.type === 'SubqueryStartNode') {
       subqueries.push(level);
+    }
+    if (node.type === 'SubqueryEndNode' && subqueries.length > 0) {
+      level = subqueries.pop();
     }
   };
 
@@ -1676,6 +1685,7 @@ function processQuery(query, explain, planIndex) {
       'IndexRangeNode',
       'IndexNode',
       'TraversalNode',
+      'SubqueryStartNode',
       'SubqueryNode'].indexOf(node.type) !== -1) {
       level++;
     } else if (isLeafNode && subqueries.length > 0) {
