@@ -3631,8 +3631,8 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
       return arangodb::Result(TRI_ERROR_BAD_PARAMETER, BAD_PARAMS_CREATE);
     }
 
-    bool allowInconsistent = !payload.isNone() && payload.get("allowInconsistent").isTrue();
-    bool force = !payload.isNone() && payload.get("force").isTrue();
+    bool allowInconsistent = payload.get("allowInconsistent").isTrue();
+    bool force = payload.get("force").isTrue();
 
     std::string const backupId = (payload.isObject() && payload.hasKey("label"))
                                      ? payload.get("label").copyString()
@@ -3722,7 +3722,7 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
       //    the corresponding lock ids are stored int the map lockJobIds.
       // Then we continously abort all trx while checking all the above jobs
       //    for completion.
-      // If a job was completed the its id is removed from lockJobIds
+      // If a job was completed then its id is removed from lockJobIds
       //  and the server is added to the lockedServers list.
       // Once lockJobIds is empty or an error occured we exit the loop
       //  and continue on the normal path (as if all servers would have been locked or error-exit)
