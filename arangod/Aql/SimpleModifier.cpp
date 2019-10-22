@@ -78,9 +78,10 @@ Result SimpleModifier<ModifierCompletion, Enable>::transact() {
   TRI_ASSERT(_accumulator.isClosed());
   TRI_ASSERT(_accumulator.slice().isArray());
   _results = _completion.transact(_accumulator.slice());
-  if (_results.fail()) {
-    throwOperationResultException(_infos, _results);
-  }
+
+  // TODO: figure out when _results.fail() is set
+  throwOperationResultException(_infos, _results);
+
   // TODO: Either return something meaningful or make function void
   return Result{};
 }

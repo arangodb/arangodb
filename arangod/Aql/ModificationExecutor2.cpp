@@ -106,10 +106,12 @@ Result ModificationExecutorHelpers::buildKeyDocument(VPackBuilder& builder,
                                                      std::string const& rev, Revision what) {
   builder.openObject();
   builder.add(StaticStrings::KeyString, VPackValue(key));
-  if (what == Revision::Exclude && !rev.empty()) {
+
+  if (what == Revision::Include && !rev.empty()) {
     builder.add(StaticStrings::RevString, VPackValue(rev));
   } else {
-    builder.add(StaticStrings::RevString, VPackValue(VPackValueType::Null));
+    // TODO: Check that this is correct
+    //    builder.add(StaticStrings::RevString, VPackValue(VPackValueType::Null));
   }
   builder.close();
   return Result{};
@@ -125,10 +127,14 @@ bool ModificationExecutorHelpers::writeRequired(ModificationExecutorInfos& infos
 // TODO: This has to be nicer.
 void ModificationExecutorHelpers::throwOperationResultException(
     ModificationExecutorInfos& infos, OperationResult const& result) {
-  std::string message;
   auto const& errorCounter = result.countErrorCodes;
 
-  TRI_ASSERT(result.slice().isArray());
+  // Early escape if we are ignoring errors.
+  if (infos._ignoreErrors == true || errorCounter.empty()) {
+    return;
+  }
+
+  std::string message;
 
   // Find the first relevant error for which we want to throw.
   // If _ignoreDocumentNotFound is true, then this is any error other than
@@ -214,6 +220,7 @@ ModificationExecutor2<FetcherType, ModifierType>::doCollect(size_t const maxOutp
     if (row.isInitialized()) {
       // Make sure we have a valid row
       TRI_ASSERT(row.isInitialized());
+      LOG_DEVEL << row.toJson();
       _modifier.accumulate(row);
     }
   }
@@ -235,6 +242,10 @@ void ModificationExecutor2<FetcherType, ModifierType>::doOutput(OutputAqlItemRow
       std::tie(std::ignore, row, std::ignore) = _modifier.getOutput();
 
       output.copyRow(row);
+
+      if (_infos._doCount) {
+        stats.incrWritesExecuted();
+      }
 
       _modifier.advanceIterator();
       output.advanceRow();
@@ -259,6 +270,7 @@ void ModificationExecutor2<FetcherType, ModifierType>::doOutput(OutputAqlItemRow
               output.moveValueInto(_infos._outputNewRegisterId, row, guard);
             }
             if (_infos._options.returnOld) {
+              // TODO: prettier
               auto slice = elm.get(StaticStrings::Old);
               if (slice.isNone()) {
                 slice = VPackSlice::nullSlice();
@@ -270,6 +282,7 @@ void ModificationExecutor2<FetcherType, ModifierType>::doOutput(OutputAqlItemRow
             if (_infos._doCount) {
               stats.incrWritesExecuted();
             }
+            // What if we neither return old or new? we can't advance row then...
             break;
           }
           case ModOperationType::IGNORE_RETURN: {
@@ -298,10 +311,11 @@ void ModificationExecutor2<FetcherType, ModifierType>::doOutput(OutputAqlItemRow
             break;
           }
         }
+        // only advance row if we produced something
+        output.advanceRow();
       }
+      _modifier.advanceIterator();
     }
-    output.advanceRow();
-    _modifier.advanceIterator();
   }
 }
 
@@ -309,6 +323,8 @@ template <typename FetcherType, typename ModifierType>
 std::pair<ExecutionState, typename ModificationExecutor2<FetcherType, ModifierType>::Stats>
 ModificationExecutor2<FetcherType, ModifierType>::produceRows(OutputAqlItemRow& output) {
   TRI_ASSERT(_infos._trx);
+
+  LOG_DEVEL << "produce rows";
 
   ModificationExecutor2::Stats stats;
 

@@ -160,9 +160,7 @@ Result UpsertModifier::transact() {
   if (toInsert.isArray() && toInsert.length() > 0) {
     _insertResults =
         _infos._trx->insert(_infos._aqlCollection->name(), toInsert, _infos._options);
-    if (_insertResults.fail()) {
-      throwOperationResultException(_infos, _insertResults);
-    }
+    throwOperationResultException(_infos, _insertResults);
   }
 
   auto toUpdate = _updateAccumulator.slice();
@@ -174,9 +172,7 @@ Result UpsertModifier::transact() {
       _updateResults = _infos._trx->update(_infos._aqlCollection->name(),
                                            toUpdate, _infos._options);
     }
-    if (_updateResults.fail()) {
-      throwOperationResultException(_infos, _insertResults);
-    }
+    throwOperationResultException(_infos, _updateResults);
   }
 
   return Result{};
@@ -192,7 +188,7 @@ Result UpsertModifier::setupIterator(ModifierIteratorMode const mode) {
   _iteratorMode = mode;
   _operationsIterator = _operations.begin();
   if (mode == ModifierIteratorMode::Full) {
-    if (_insertResults.slice().isNone()) {
+    if (!_insertResults.hasSlice() || _insertResults.slice().isNone()) {
       _insertResultsIterator = VPackArrayIterator(VPackSlice::emptyArraySlice());
     } else if (_insertResults.slice().isArray()) {
       _insertResultsIterator = VPackArrayIterator(_insertResults.slice());
@@ -200,7 +196,7 @@ Result UpsertModifier::setupIterator(ModifierIteratorMode const mode) {
       TRI_ASSERT(false);
     }
 
-    if (_updateResults.slice().isNone()) {
+    if (!_updateResults.hasSlice() || _updateResults.slice().isNone()) {
       _updateResultsIterator = VPackArrayIterator(VPackSlice::emptyArraySlice());
     } else if (_updateResults.slice().isArray()) {
       _updateResultsIterator = VPackArrayIterator(_updateResults.slice());

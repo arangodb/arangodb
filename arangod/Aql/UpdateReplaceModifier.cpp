@@ -33,6 +33,8 @@
 #include <velocypack/Collection.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <Logger/LogMacros.h>
+
 class CollectionNameResolver;
 
 using namespace arangodb;
@@ -82,6 +84,7 @@ ModOperationType UpdateReplaceModifierCompletion::accumulate(VPackBuilder& accu,
         VPackBuilder keyDocBuilder;
 
         buildKeyDocument(keyDocBuilder, key, rev);
+
         // This deletes _rev if rev is empty or ignoreRevs is set in
         // options.
         auto merger =
