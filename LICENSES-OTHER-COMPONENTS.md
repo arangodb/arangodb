@@ -11,10 +11,10 @@
 
 ## C/C++ Libraries
 
-### Boost 1.69
+### Boost 1.71
 
 * Name: Boost
-* Version: 1.69
+* Version: 1.71
 * Project Home: http://www.boost.org/
 * License: http://www.boost.org/LICENSE_1_0.txt
 * License Name: Boost Software License 1.0
