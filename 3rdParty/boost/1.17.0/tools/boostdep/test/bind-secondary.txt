@@ -1,5 +1,0 @@
-Secondary dependencies for bind:
-
-core:
-    adds assert
-
