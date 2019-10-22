@@ -188,12 +188,12 @@ void QueryList::remove(Query* query) {
 
 /// @brief kills a query
 Result QueryList::kill(TRI_voc_tick_t id) {
-  WRITE_LOCKER(writeLocker, _lock);
+  READ_LOCKER(writeLocker, _lock);
 
   auto it = _current.find(id);
 
   if (it == _current.end()) {
-    return Result(TRI_ERROR_QUERY_NOT_FOUND);
+    return {TRI_ERROR_QUERY_NOT_FOUND};
   }
 
   Query* query = (*it).second;
@@ -209,7 +209,7 @@ Result QueryList::kill(TRI_voc_tick_t id) {
 uint64_t QueryList::kill(std::function<bool(Query&)> const& filter, bool silent) {
   uint64_t killed = 0;
 
-  WRITE_LOCKER(writeLocker, _lock);
+  READ_LOCKER(readLocker, _lock);
 
   for (auto& it : _current) {
     Query& query = *(it.second);

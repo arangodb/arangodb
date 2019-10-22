@@ -210,6 +210,7 @@ Query::~Query() {
                                               << " this: " << (uintptr_t)this;
   }
 
+  // this will reset _trx, so _trx is invalid after here
   cleanupPlanAndEngineSync(TRI_ERROR_INTERNAL);
 
   exitContext();
@@ -1442,6 +1443,10 @@ ExecutionState Query::cleanupPlanAndEngine(int errorCode, VPackBuilder* statsBui
     _sharedState->invalidate();
     _engine.reset();
   }
+
+  // as a side-effect, the following call removes the query from the list of currently
+  // running queries
+  _profile.reset();
 
   // If the transaction was not committed, it is automatically aborted
   _trx = nullptr;
