@@ -1,3 +1,0 @@
-Parser for rational numbers. The aim is to present a very simple parser,
-therefore error messages for invalid input can be improved. To see a more
-advanced version, take a look at the rational example.

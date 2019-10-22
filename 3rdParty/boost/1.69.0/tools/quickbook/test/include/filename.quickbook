@@ -1,9 +1,0 @@
-[article Filename Test
-[quickbook 1.5]
-]
-
-__FILENAME__
-
-[include sub/filename_include1.quickbook]
-
-[include filename_include2.quickbook]

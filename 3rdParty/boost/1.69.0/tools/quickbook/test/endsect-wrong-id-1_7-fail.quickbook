@@ -1,6 +1,0 @@
-[article Endsect with wrong id 1.7
-    [quickbook 1.7]
-]
-
-[section:id_test1 Quickbook section id test]
-[endsect:id_test]
