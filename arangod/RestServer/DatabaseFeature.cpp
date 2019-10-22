@@ -429,6 +429,7 @@ void DatabaseFeature::stop() {
   p.mode = arangodb::aql::QueryCacheMode::CACHE_ALWAYS_OFF;
   p.maxResultsCount = 0;
   p.maxResultsSize = 0;
+  p.maxEntrySize = 0;
   p.includeSystem = false;
   p.showBindVars = false;
 
@@ -1243,7 +1244,7 @@ int DatabaseFeature::iterateDatabases(VPackSlice const& databases) {
   ServerState::RoleEnum role = arangodb::ServerState::instance()->getRole();
 
   try {
-    for (auto const& it : VPackArrayIterator(databases)) {
+    for (VPackSlice it : VPackArrayIterator(databases)) {
       TRI_ASSERT(it.isObject());
 
       LOG_TOPIC("95f68", TRACE, Logger::FIXME) << "processing database: " << it.toJson();

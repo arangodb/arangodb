@@ -500,6 +500,11 @@ void SupervisedScheduler::sortoutLongRunningThreads() {
 }
 
 bool SupervisedScheduler::canPullFromQueue(uint64_t queueIndex) const {
+  if (queueIndex == 0) {
+    // We can always! pull from high priority
+    return true;
+  }
+
   // This function should ensure the following thread reservation:
   // 25% reserved for FastLane only
   // upto 75% of work can go on MedLane and FastLane
@@ -514,17 +519,13 @@ bool SupervisedScheduler::canPullFromQueue(uint64_t queueIndex) const {
   uint64_t jobsDequeued = _jobsDequeued.load(std::memory_order_relaxed);
   TRI_ASSERT(jobsDequeued >= jobsDone);
 
-  switch (queueIndex) {
-    case 0:
-      // We can always! pull from high priority
-      return true;
-    case 1:
-      // We can work on med if less than 75% of the workers are busy
-      return (jobsDequeued - jobsDone) < (_maxNumWorker * 3 / 4);
-    default:
-      // We can work on low if less than 50% of the workers are busy
-      return (jobsDequeued - jobsDone) < (_maxNumWorker / 2);
+  if (queueIndex == 1) {
+    // We can work on med if less than 75% of the workers are busy
+    return (jobsDequeued - jobsDone) < (_maxNumWorker * 3 / 4);
   }
+      
+  // We can work on low if less than 50% of the workers are busy
+  return (jobsDequeued - jobsDone) < (_maxNumWorker / 2);
 }
 
 std::unique_ptr<SupervisedScheduler::WorkItem> SupervisedScheduler::getWork(

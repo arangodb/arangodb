@@ -38,10 +38,15 @@
           }
         })();
       } else {
+        var basePath = frontendConfig.basePath;
+        if (frontendConfig.react) {
+          basePath = "";
+        }
+
         if (frontendConfig.authenticationEnabled && window.App.currentUser) {
-          this.url = arangoHelper.databaseUrl(frontendConfig.basePath + '/_api/user/' + encodeURIComponent(window.App.currentUser));
+          this.url = arangoHelper.databaseUrl(basePath + '/_api/user/' + encodeURIComponent(window.App.currentUser));
         } else {
-          this.url = arangoHelper.databaseUrl(frontendConfig.basePath + '/_api/user/');
+          this.url = arangoHelper.databaseUrl(basePath + '/_api/user/');
         }
         return Backbone.Collection.prototype.fetch.call(this, options);
       }

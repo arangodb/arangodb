@@ -590,7 +590,7 @@ AstNode::AstNode(Ast* ast, arangodb::velocypack::Slice const& slice)
     members.reserve(subNodes.length());
 
     try {
-      for (auto const& it : VPackArrayIterator(subNodes)) {
+      for (VPackSlice it : VPackArrayIterator(subNodes)) {
         int type = it.get("typeID").getNumericValue<int>();
         if (static_cast<AstNodeType>(type) == NODE_TYPE_NOP) {
           // special handling for nop as it is a singleton
@@ -749,7 +749,7 @@ AstNode::AstNode(std::function<void(AstNode*)> const& registerNode,
   VPackSlice subNodes = slice.get("subNodes");
 
   if (subNodes.isArray()) {
-    for (auto const& it : VPackArrayIterator(subNodes)) {
+    for (VPackSlice it : VPackArrayIterator(subNodes)) {
       addMember(new AstNode(registerNode, registerString, it));
     }
   }

@@ -11,6 +11,7 @@
         var template = $('#' + id.replace('.', '\\.')).html();
         return {
           render: function (params) {
+            id = id.replace('.ejs', '');
             return window['JST']["templates/" + id](params);
           }
         };

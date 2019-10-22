@@ -129,11 +129,11 @@ void VstResponse::writeMessageHeader(VPackBuffer<uint8_t>& buffer) const {
     for (auto& it : tmp) {
       if (capState == 1) {
         // upper case
-        it = ::toupper(it);
+        it = StringUtils::toupper(it);
         capState = 0;
       } else if (capState == 0) {
         // normal case
-        it = ::tolower(it);
+        it = StringUtils::tolower(it);
         if (it == '-') {
           capState = 1;
         } else if (it == ':') {
@@ -146,6 +146,7 @@ void VstResponse::writeMessageHeader(VPackBuffer<uint8_t>& buffer) const {
   std::string currentHeader;
   builder.openObject();  // 4 == meta
   for (auto& item : _headers) {
+
     if (_contentType != ContentType::CUSTOM &&
         item.first.compare(0, StaticStrings::ContentTypeHeader.size(),
                            StaticStrings::ContentTypeHeader) == 0) {
@@ -157,7 +158,7 @@ void VstResponse::writeMessageHeader(VPackBuffer<uint8_t>& buffer) const {
   }
   if (_contentType != ContentType::VPACK &&
       _contentType != ContentType::CUSTOM) { // fuerte uses VPack as default
-    std::string currentHeader = StaticStrings::ContentTypeHeader;
+    currentHeader = StaticStrings::ContentTypeHeader;
     fixCase(currentHeader);
     builder.add(currentHeader, VPackValue(rest::contentTypeToString(_contentType)));
   }

@@ -85,11 +85,11 @@ int HttpCommTask<T>::on_message_began(llhttp_t* p) {
   self->_lastHeaderWasValue = false;
   self->_shouldKeepAlive = false;
   self->_messageDone = false;
-  
+
   // acquire a new statistics entry for the request
   RequestStatistics* stat = self->acquireStatistics(1UL);
   RequestStatistics::SET_READ_START(stat, TRI_microtime());
-  
+
   return HPE_OK;
 }
 
@@ -103,10 +103,10 @@ int HttpCommTask<T>::on_url(llhttp_t* p, const char* at, size_t len) {
                             rest::ContentType::UNSET, 1, VPackBuffer<uint8_t>());
     return HPE_USER;
   }
-  
+
   RequestStatistics* stat = self->statistics(1UL);
   RequestStatistics::SET_REQUEST_TYPE(stat, self->_request->requestType());
-  
+
   return HPE_OK;
 }
 
@@ -120,7 +120,6 @@ template <SocketType T>
 int HttpCommTask<T>::on_header_field(llhttp_t* p, const char* at, size_t len) {
   HttpCommTask<T>* self = static_cast<HttpCommTask<T>*>(p->data);
   if (self->_lastHeaderWasValue) {
-    StringUtils::tolowerInPlace(&self->_lastHeaderField);
     self->_request->setHeaderV2(std::move(self->_lastHeaderField),
                                 std::move(self->_lastHeaderValue));
     self->_lastHeaderField.assign(at, len);
@@ -147,7 +146,6 @@ template <SocketType T>
 int HttpCommTask<T>::on_header_complete(llhttp_t* p) {
   HttpCommTask<T>* self = static_cast<HttpCommTask<T>*>(p->data);
   if (!self->_lastHeaderField.empty()) {
-    StringUtils::tolowerInPlace(&self->_lastHeaderField);
     self->_request->setHeaderV2(std::move(self->_lastHeaderField),
                                 std::move(self->_lastHeaderValue));
   }
@@ -201,12 +199,12 @@ int HttpCommTask<T>::on_body(llhttp_t* p, const char* at, size_t len) {
 template <SocketType T>
 int HttpCommTask<T>::on_message_complete(llhttp_t* p) {
   HttpCommTask<T>* self = static_cast<HttpCommTask<T>*>(p->data);
-  
+
   RequestStatistics* stat = self->statistics(1UL);
   RequestStatistics::SET_READ_END(stat);
   RequestStatistics::ADD_RECEIVED_BYTES(stat, self->_request->body().size());
   self->_messageDone = true;
-  
+
   return HPE_PAUSED;
 }
 
@@ -279,11 +277,11 @@ bool HttpCommTask<T>::readCallback(asio_ns::error_code ec) {
       err = HPE_INVALID_EOF_STATE;
     }
   } else { // Inspect the received data
-    
+
     size_t parsedBytes = 0;
     for (auto const& buffer : this->_protocol->buffer.data()) {
       const char* data = reinterpret_cast<const char*>(buffer.data());
-            
+
       err = llhttp_execute(&_parser, data, buffer.size());
       if (err != HPE_OK) {
         parsedBytes += llhttp_get_error_pos(&_parser) - data;
@@ -291,18 +289,18 @@ bool HttpCommTask<T>::readCallback(asio_ns::error_code ec) {
       }
       parsedBytes += buffer.size();
     }
-    
+
     TRI_ASSERT(parsedBytes < std::numeric_limits<size_t>::max());
     // Remove consumed data from receive buffer.
     this->_protocol->buffer.consume(parsedBytes);
-    
+
     if (err == HPE_PAUSED_UPGRADE) {
       this->addSimpleResponse(rest::ResponseCode::NOT_IMPLEMENTED,
                               rest::ContentType::UNSET, 1, VPackBuffer<uint8_t>());
       return false; // stop read loop
     }
   }
-  
+
   if (_messageDone) {
     TRI_ASSERT(err == HPE_PAUSED);
     _messageDone = false;
@@ -339,10 +337,10 @@ void HttpCommTask<T>::checkVSTPrefix() {
       return;
     }
     thisPtr->_protocol->buffer.commit(nread);
-    
+
     auto bg = asio_ns::buffers_begin(thisPtr->_protocol->buffer.data());
     if (std::equal(::vst10, ::vst10 + 11, bg, bg + 11)) {
-      
+
       thisPtr->_protocol->buffer.consume(11); // remove VST/1.0 prefix
       auto commTask =
       std::make_unique<VstCommTask<T>>(thisPtr->_server, thisPtr->_connectionInfo,
@@ -350,9 +348,9 @@ void HttpCommTask<T>::checkVSTPrefix() {
                                        fuerte::vst::VST1_0);
       thisPtr->_server.registerTask(std::move(commTask));
       return; // vst 1.0
-      
+
     } else if (std::equal(::vst11, ::vst11 + 11, bg, bg + 11)) {
-      
+
       thisPtr->_protocol->buffer.consume(11); // remove VST/1.1 prefix
       auto commTask =
       std::make_unique<VstCommTask<T>>(thisPtr->_server, thisPtr->_connectionInfo,
@@ -361,7 +359,7 @@ void HttpCommTask<T>::checkVSTPrefix() {
       thisPtr->_server.registerTask(std::move(commTask));
       return; // vst 1.1
     }
-    
+
     thisPtr->asyncReadSome(); // continue reading
   };
   auto buffs = this->_protocol->buffer.prepare(GeneralCommTask<T>::ReadBlockSize);
@@ -378,13 +376,13 @@ bool HttpCommTask<T>::checkHttpUpgrade() {
 template <SocketType T>
 void HttpCommTask<T>::processRequest() {
   TRI_ASSERT(_request);
-  
+
   // ensure there is a null byte termination. RestHandlers use
   // C functions like strchr that except a C string as input
   _request->body().push_back('\0');
   _request->body().resetTo(_request->body().size() - 1);
   this->_protocol->timer.cancel();
-  
+
   {
     LOG_TOPIC("6e770", DEBUG, Logger::REQUESTS)
         << "\"http-request-begin\",\"" << (void*)this << "\",\""
@@ -452,12 +450,12 @@ bool allowCredentials(std::string const& origin) {
   if (origin.empty()) {
     return allowCredentials;
   } // else handle origin headers
-  
+
   // if the request asks to allow credentials, we'll check against the
   // configured whitelist of origins
   std::vector<std::string> const& accessControlAllowOrigins =
   GeneralServerFeature::accessControlAllowOrigins();
-  
+
   if (!accessControlAllowOrigins.empty()) {
     if (accessControlAllowOrigins[0] == "*") {
       // special case: allow everything
@@ -642,20 +640,20 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
     // access-control-allow-origin header now
     LOG_TOPIC("ae603", DEBUG, arangodb::Logger::REQUESTS)
     << "handling CORS response";
-    
+
     // send back original value of "Origin" header
     response.setHeaderNCIfNotSet(StaticStrings::AccessControlAllowOrigin, _origin);
-    
+
     // send back "Access-Control-Allow-Credentials" header
     response.setHeaderNCIfNotSet(StaticStrings::AccessControlAllowCredentials,
                                  (::allowCredentials(_origin) ? "true" : "false"));
-    
+
     // use "IfNotSet" here because we should not override HTTP headers set
     // by Foxx applications
     response.setHeaderNCIfNotSet(StaticStrings::AccessControlExposeHeaders,
                                  StaticStrings::ExposedCorsHeaders);
   }
-  
+
   if (!ServerState::instance()->isDBServer()) {
     // DB server is not user-facing, and does not need to set this header
     // use "IfNotSet" to not overwrite an existing response header
@@ -695,11 +693,11 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
     while (p < end) {
       if (capState == 1) {
         // upper case
-        header->push_back(::toupper(*p));
+        header->push_back(StringUtils::toupper(*p));
         capState = 0;
       } else if (capState == 0) {
         // normal case
-        header->push_back(::tolower(*p));
+        header->push_back(StringUtils::tolower(*p));
         if (*p == '-') {
           capState = 1;
         } else if (*p == ':') {
@@ -721,7 +719,7 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
   if (!seenServerHeader && !HttpResponse::HIDE_PRODUCT_HEADER) {
     header->append(TRI_CHAR_LENGTH_PAIR("Server: ArangoDB\r\n"));
   }
-  
+
   // turn on the keepAlive timer
   double secs = GeneralServerFeature::keepAliveTimeout();
   if (_shouldKeepAlive && secs > 0) {
@@ -737,7 +735,7 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
       << "keep alive timeout, closing stream!";
       s->close();
     });
-    
+
     header->append(TRI_CHAR_LENGTH_PAIR("Connection: Keep-Alive\r\n"));
     header->append(TRI_CHAR_LENGTH_PAIR("Keep-Alive: timeout="));
     header->append(std::to_string(static_cast<int64_t>(secs)));
@@ -745,7 +743,7 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
   } else {
     header->append(TRI_CHAR_LENGTH_PAIR("Connection: Close\r\n"));
   }
-  
+
   // add "Content-Type" header
   switch (response.contentType()) {
     case ContentType::UNSET:
@@ -778,12 +776,12 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
     header->append(it);
     header->append("\r\n", 2);
   }
-  
+
   size_t len = response.bodySize();
   header->append(TRI_CHAR_LENGTH_PAIR("Content-Length: "));
   header->append(std::to_string(len));
   header->append("\r\n\r\n", 4);
-  
+
   std::unique_ptr<basics::StringBuffer> body = response.stealBody();
   // append write buffer and statistics
   double const totalTime = RequestStatistics::ELAPSED_SINCE_READ_START(stat);
@@ -793,21 +791,21 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
   << "\"http-request-end\",\"" << (void*)this << "\",\"" << this->_connectionInfo.clientAddress
   << "\",\"" << GeneralRequest::translateMethod(::llhttpToRequestType(&_parser)) << "\",\""
   << static_cast<int>(response.responseCode()) << "\"," << Logger::FIXED(totalTime, 6);
-  
+
   std::array<asio_ns::const_buffer, 2> buffers;
   buffers[0] = asio_ns::buffer(header->data(), header->size());
   if (HTTP_HEAD != _parser.method) {
     buffers[1] = asio_ns::buffer(body->data(), body->size());
     TRI_ASSERT(len == body->size());
   }
-  
+
   // FIXME measure performance w/o sync write
   auto cb = [self = CommTask::shared_from_this(),
              h = std::move(header),
              b = std::move(body)](asio_ns::error_code ec,
                                   size_t nwrite) {
     auto* thisPtr = static_cast<HttpCommTask<T>*>(self.get());
-    
+
     llhttp_errno_t err = llhttp_get_errno(&thisPtr->_parser);
     if (ec || !thisPtr->_shouldKeepAlive || err != HPE_PAUSED) {
       if (ec) {

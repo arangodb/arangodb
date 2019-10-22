@@ -76,7 +76,7 @@
           }
 
           self.renderDBS();
-        }).error(function () {
+        }).error(function (e) {
           if (errCallback) {
             errCallback();
           } else {
@@ -109,9 +109,17 @@
       }
 
       $('.bodyWrapper').show();
-      self.checkVersion();
+      this.setVersion();
 
       return this;
+    },
+
+    setVersion: function () {
+      if (window.frontendConfig && window.frontendConfig.isEnterprise) {
+        $('#ArangoDBLogoVersion').attr('src', 'img/ArangoDB-enterprise-edition-Web-UI.png');
+      } else {
+        $('#ArangoDBLogoVersion').attr('src', 'img/ArangoDB-community-edition-Web-UI.png');
+      }
     },
 
     sortDatabases: function (obj) {
@@ -127,26 +135,6 @@
         sorted = _.sortBy(obj, function (i) { return i.toLowerCase(); });
       }
       return sorted;
-    },
-
-    checkVersion: function () {
-      var self = this;
-      window.setTimeout(function () {
-        var a = document.getElementById('loginSVG');
-        var svgDoc = a.contentDocument;
-        var svgItem;
-
-        if (frontendConfig.isEnterprise !== undefined) {
-          if (frontendConfig.isEnterprise) {
-            svgItem = svgDoc.getElementById('logo-enterprise');
-          } else {
-            svgItem = svgDoc.getElementById('logo-community');
-          }
-          svgItem.setAttribute('visibility', 'visible');
-        } else {
-          self.checkVersion();
-        }
-      }, 150);
     },
 
     clear: function () {
@@ -300,6 +288,10 @@
 
       var path = window.location.protocol + '//' + window.location.host +
         frontendConfig.basePath + '/_db/' + database + '/_admin/aardvark/index.html';
+      if (frontendConfig.react) {
+        path = window.location.protocol + '//' + window.location.host +
+          '/_db/' + database + '/_admin/aardvark/index.html';
+      }
 
       var continueFunction = function () {
         window.location.href = path;

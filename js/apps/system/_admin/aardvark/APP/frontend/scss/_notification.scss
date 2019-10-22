@@ -1,184 +1,25 @@
-
-
-#notification_menu {
-  .innerDropdownInnerUL {
-    margin-left: 0;
-  }
-}
-
-#noty_bottom_layout_container {
-  li {
-    border: 0 !important;
-  }
-}
-
-.noty_type_error {
-  .arango_message {
-    top: 2px;
-  }
-}
-
-.noty_bar {
-
-  .noty_buttons {
-    background-color: rgba(0, 0, 0, 0) !important;
-    border: 0 !important;
-    bottom: 0;
-    height: 1px;
-    margin-bottom: 30px !important;
-    margin-top: -35px !important;
-    position: relative;
-    right: -23px;
-
-    button {
-      margin-bottom: 2px;
-      margin-right: -1px;
-    }
-  }
-
-  .arango_message {
-    font-weight: 400 !important;
-
-    div {
-      float: right;
-      width: 20px;
-    }
-  }
-
-}
-
-.fixedDropdown {
-  background: $c-white !important;
-  border-color: $c-content-border !important;
-  border-radius: 3px !important;
-  margin: 10px -3px 0 !important;
-  right: -1px !important;
-  width: 210px;
-
-  &:after {
-    visibility: hidden;
-  }
-
-  .dropdown-item {
-    border-bottom: 1px solid $c-semi-transp;
-  }
-
-  .dropdown-header {
-    border-bottom: 1px solid $c-semi-transp;
-    margin-left: -1px;
-    padding: 0 !important;
-
-    a {
-      color: $c-black;
-    }
-  }
-
-  a {
-    padding-left: 5px !important;
-  }
-
-  .notificationItemContent {
-    @extend %pull-left;
-    font-size: .9em;
-    font-weight: 300;
-    margin-left: 15px;
-    max-width: 180px;
-    min-height: 15px;
-    white-space: normal;
-    width: 180px;
-    word-wrap: break-word;
-  }
+.noty_buttons {
 
   button {
-    @extend %pull-right;
+    @extend %btn;
+    margin-top: -35px;
     margin-right: 5px;
-    margin-top: 5px;
   }
 
-  .notificationItem {
-    color: $c-black;
-
-    .notificationItemTitle {
-      color: $c-black;
-      font-weight: 400;
-      max-width: 165px;
-      overflow-wrap: break-word;
-      white-space: normal;
-      word-wrap: break-word;
-    }
-
-    .notificationItemTitle:hover {
-      background-color: $c-transp;
-      cursor: default;
-    }
-
-    i {
-      @extend %pull-right;
-      @extend %clickable;
-      color: $c-semi-transp;
-      font-size: 20px;
-      padding-left: 5px;
-      position: relative;
-      right: 2px;
-
-      &:hover {
-        color: $c-black;
-      }
-
-    }
-
+  .btn-error { /* noty */
+    @extend %negative;
+    background-image: none;
+    border: 1px solid $c-white;
+    float: right;
   }
 
+  .btn-warning { /* noty */
+    @extend %warning;
+    background-image: none;
+    border: 1px solid $c-white;
+    float: right;
+    margin-right: 145px;
+  }
+
+  padding: 0 !important;
 }
-
-.innerDropdownInnerUL {
-  @extend %pull-left;
-  border-bottom: 1px solid $c-semi-transp;
-  height: 220px !important;
-  min-height: 220px;
-  overflow-x: hidden;
-  overflow-y: auto;
-  width: 100%;
-
-  .dropdown-item:hover {
-    background-color: $c-e1grey !important;
-  }
-
-  li {
-    width: auto !important;
-  }
-
-}
-
-#stat_hd {
-  @include border-radius(3px);
-  //background-color: $c-white;
-  border: 1px solid $c-content-border;
-  height: 25px;
-  margin-left: -10px;
-  margin-top: 8px;
-  position: relative;
-  right: 3px;
-  text-align: center;
-  width: 25px;
-
-  #stat_hd_counter {
-    color: $c-c2grey;
-    line-height: 25px;
-    text-align: center;
-  }
-}
-
-.fullNotification {
-  background-color: $c-notification-red !important;
-  border: 1px solid $c-notification-red !important;
-
-  p {
-    color: $c-white !important;
-  }
-
-  &:hover {
-    @extend %clickable;
-  }
-}
-
