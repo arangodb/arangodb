@@ -76,7 +76,7 @@ void LogAppender::addAppender(std::string const& definition, std::string const& 
 
 std::pair<std::shared_ptr<LogAppender>, LogTopic*> LogAppender::buildAppender(
     std::string const& definition, std::string const& filter) {
-  std::vector<std::string> v = StringUtils::split(definition, '=', '\0');
+  std::vector<std::string> v = StringUtils::split(definition, '=');
   std::string topicName;
   std::string output;
   std::string contentFilter;

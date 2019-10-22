@@ -26,13 +26,14 @@
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/system-functions.h"
-#include "Cluster/ClusterComm.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "Futures/Utilities.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/LogMacros.h"
-#include "Logger/Logger.h"
-#include "Logger/LoggerStream.h"
+#include "Network/Methods.h"
+#include "Network/NetworkFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionState.h"
@@ -69,7 +70,7 @@ std::string currentUser() {
 namespace arangodb {
 namespace transaction {
 
-const size_t Manager::maxTransactionSize;  // 128 MiB
+size_t constexpr Manager::maxTransactionSize;
 
 namespace {
 struct MGMethods final : arangodb::transaction::Methods {
@@ -194,10 +195,10 @@ uint64_t Manager::getActiveTransactionCount() {
 
 Manager::ManagedTrx::ManagedTrx(MetaType t, TransactionState* st)
     : type(t),
+      finalStatus(Status::UNDEFINED),
       usedTimeSecs(TRI_microtime()),
       state(st),
       user(::currentUser()),
-      finalStatus(Status::UNDEFINED),
       rwlock() {}
 
 bool Manager::ManagedTrx::expired() const {
@@ -477,10 +478,11 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
 /// @brief lease the transaction, increases nesting
 std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(TRI_voc_tid_t tid,
                                                                AccessMode::Type mode) {
+  auto& server = application_features::ApplicationServer::server();
   if (_disallowInserts.load(std::memory_order_acquire)) {
     return nullptr;
   }
-  
+
   size_t const bucket = getBucket(tid);
   int i = 0;
   TransactionState* state = nullptr;
@@ -526,7 +528,7 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(TRI_voc_tid_t tid
     if (i++ > 32) {
       LOG_TOPIC("9e972", DEBUG, Logger::TRANSACTIONS) << "waiting on trx lock " << tid;
       i = 0;
-      if (application_features::ApplicationServer::isStopping()) {
+      if (server.isStopping()) {
         return nullptr;  // shutting down
       }
     }
@@ -598,7 +600,7 @@ transaction::Status Manager::getManagedTrxStatus(TRI_voc_tid_t tid) const {
     return transaction::Status::ABORTED;
   }
 }
-  
+
 
 Result Manager::statusChangeWithTimeout(TRI_voc_tid_t tid, transaction::Status status) {
   double startTime = 0.0;
@@ -709,6 +711,8 @@ Result Manager::updateTransaction(TRI_voc_tid_t tid, transaction::Status status,
                      "transaction was not running");
   }
 
+  bool const isCoordinator = state->isCoordinator();
+
   auto ctx = std::make_shared<ManagedContext>(tid, state.get(), AccessMode::Type::NONE);
   state.release();  // now owned by ctx
 
@@ -718,7 +722,7 @@ Result Manager::updateTransaction(TRI_voc_tid_t tid, transaction::Status status,
   TRI_ASSERT(trx.state()->nestingLevel() == 1);
   trx.state()->decreaseNesting();
   TRI_ASSERT(trx.state()->isTopLevelTransaction());
-  if (clearServers) {
+  if (clearServers && !isCoordinator) {
     trx.state()->clearKnownServers();
   }
   if (status == transaction::Status::COMMITTED) {
@@ -758,8 +762,8 @@ void Manager::iterateManagedTrx(std::function<void(TRI_voc_tid_t, ManagedTrx con
 /// @brief collect forgotten transactions
 bool Manager::garbageCollect(bool abortAll) {
   bool didWork = false;
-  SmallVector<TRI_voc_tid_t, 64>::allocator_type::arena_type arena;
-  SmallVector<TRI_voc_tid_t, 64> toAbort{arena};
+  ::arangodb::containers::SmallVector<TRI_voc_tid_t, 64>::allocator_type::arena_type arena;
+  ::arangodb::containers::SmallVector<TRI_voc_tid_t, 64> toAbort{arena};
 
   READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
 
@@ -769,7 +773,7 @@ bool Manager::garbageCollect(bool abortAll) {
     auto it = _transactions[bucket]._managed.begin();
     while (it != _transactions[bucket]._managed.end()) {
       ManagedTrx& mtrx = it->second;
-      
+
       if (mtrx.type == MetaType::Managed) {
         TRI_ASSERT(mtrx.state != nullptr);
         if (abortAll || mtrx.expired()) {
@@ -799,16 +803,15 @@ bool Manager::garbageCollect(bool abortAll) {
   }
 
   for (TRI_voc_tid_t tid : toAbort) {
-    LOG_TOPIC("6fbaf", DEBUG, Logger::TRANSACTIONS) << "garbage collecting "
-                                                       "transaction: '"
-                                                    << tid << "'";
+    LOG_TOPIC("6fbaf", INFO, Logger::TRANSACTIONS) << "garbage collecting "
+                                                   << "transaction: '" << tid << "'";
     Result res = updateTransaction(tid, Status::ABORTED, /*clearSrvs*/ true);
     // updateTransaction can return TRI_ERROR_TRANSACTION_ABORTED when it
     // successfully aborts, so ignore this error.
     // we can also get the TRI_ERROR_LOCKED error in case we cannot
     // immediately acquire the lock on the transaction. this _can_ happen
     // infrequently, but is not an error
-    if (res.fail() && 
+    if (res.fail() &&
         !res.is(TRI_ERROR_TRANSACTION_ABORTED) &&
         !res.is(TRI_ERROR_LOCKED)) {
       LOG_TOPIC("0a07f", INFO, Logger::TRANSACTIONS) << "error while aborting "
@@ -828,8 +831,8 @@ bool Manager::garbageCollect(bool abortAll) {
 
 /// @brief abort all transactions matching
 bool Manager::abortManagedTrx(std::function<bool(TransactionState const&)> cb) {
-  SmallVector<TRI_voc_tid_t, 64>::allocator_type::arena_type arena;
-  SmallVector<TRI_voc_tid_t, 64> toAbort{arena};
+  ::arangodb::containers::SmallVector<TRI_voc_tid_t, 64>::allocator_type::arena_type arena;
+  ::arangodb::containers::SmallVector<TRI_voc_tid_t, 64> toAbort{arena};
 
   READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
   for (size_t bucket = 0; bucket < numBuckets; ++bucket) {
@@ -867,61 +870,69 @@ void Manager::toVelocyPack(VPackBuilder& builder, std::string const& database,
 
   if (fanout) {
     TRI_ASSERT(ServerState::instance()->isCoordinator());
-    auto ci = ClusterInfo::instance();
-    if (ci == nullptr) {
+    auto& ci = _feature.server().getFeature<ClusterFeature>().clusterInfo();
+
+    NetworkFeature const& nf = _feature.server().getFeature<NetworkFeature>();
+    network::ConnectionPool* pool = nf.pool();
+    if (pool == nullptr) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
     }
 
-    std::shared_ptr<ClusterComm> cc = ClusterComm::instance();
-    if (cc == nullptr) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
-    }
-
-    std::vector<ClusterCommRequest> requests;
+    std::vector<network::FutureRes> futures;
     auto auth = AuthenticationFeature::instance();
 
-    for (auto const& coordinator : ci->getCurrentCoordinators()) {
+    network::RequestOptions options;
+    options.timeout = network::Timeout(30.0);
+
+    VPackBuffer<uint8_t> body;
+
+    for (auto const& coordinator : ci.getCurrentCoordinators()) {
       if (coordinator == ServerState::instance()->getId()) {
         // ourselves!
         continue;
       }
 
-      auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
+      network::Headers headers;
       if (auth != nullptr && auth->isActive()) {
-        // when in superuser mode, username is empty
-        // in this case ClusterComm will add the default superuser token
         if (!username.empty()) {
-          VPackBuilder builder;
+          VPackBuilder authBuilder;
           {
-            VPackObjectBuilder payload{&builder};
+            VPackObjectBuilder payload{&authBuilder};
             payload->add("preferred_username", VPackValue(username));
           }
-          VPackSlice slice = builder.slice();
-          headers->emplace(StaticStrings::Authorization,
-                           "bearer " + auth->tokenCache().generateJwt(slice));
+          VPackSlice slice = authBuilder.slice();
+          headers.emplace(StaticStrings::Authorization,
+                          "bearer " + auth->tokenCache().generateJwt(slice));
+        } else {
+          headers.emplace(StaticStrings::Authorization,
+                          "bearer " + auth->tokenCache().jwtToken());
         }
       }
 
-      requests.emplace_back("server:" + coordinator, rest::RequestType::GET,
-                            "/_db/" + database + "/_api/transaction?local=true",
-                            std::make_shared<std::string>(), std::move(headers));
+      auto f = network::sendRequest(pool, "server:" + coordinator, fuerte::RestVerb::Get,
+                                    "/_db/" + database +
+                                        "/_api/transaction?local=true",
+                                    body, std::move(headers), options);
+      futures.emplace_back(std::move(f));
     }
 
-    if (!requests.empty()) {
-      size_t nrGood = cc->performRequests(requests, 30.0, Logger::COMMUNICATION, false);
-
-      if (nrGood != requests.size()) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE);
-      }
-      for (auto const& it : requests) {
-        if (it.result.result && it.result.result->getHttpReturnCode() == 200) {
-          auto const body = it.result.result->getBodyVelocyPack();
-          VPackSlice slice = body->slice();
-          if (slice.isObject()) {
-            slice = slice.get("transactions");
-            if (slice.isArray()) {
-              for (auto const& it : VPackArrayIterator(slice)) {
-                builder.add(it);
+    if (!futures.empty()) {
+      auto responses = futures::collectAll(futures).get();
+      for (auto const& it : responses) {
+        if (!it.hasValue()) {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE);
+        }
+        auto& res = it.get();
+        if (res.response && res.response->statusCode() == fuerte::StatusOK) {
+          auto slices = res.response->slices();
+          if (!slices.empty()) {
+            VPackSlice slice = slices[0];
+            if (slice.isObject()) {
+              slice = slice.get("transactions");
+              if (slice.isArray()) {
+                for (VPackSlice it : VPackArrayIterator(slice)) {
+                  builder.add(it);
+                }
               }
             }
           }

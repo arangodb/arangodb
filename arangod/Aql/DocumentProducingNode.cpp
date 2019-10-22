@@ -22,8 +22,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "DocumentProducingNode.h"
+
+#include "Aql/AstNode.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/Expression.h"
 #include "Aql/Variable.h"
 
 #include <velocypack/Builder.h>
@@ -41,15 +44,14 @@ DocumentProducingNode::DocumentProducingNode(Variable const* outVariable)
 
 DocumentProducingNode::DocumentProducingNode(ExecutionPlan* plan,
                                              arangodb::velocypack::Slice slice)
-    : _outVariable(
-          Variable::varFromVPack(plan->getAst(), slice, "outVariable")) {
+    : _outVariable(Variable::varFromVPack(plan->getAst(), slice, "outVariable")) {
   TRI_ASSERT(_outVariable != nullptr);
 
   if (slice.hasKey("projection")) {
     // old format
     VPackSlice p = slice.get("projection");
     if (p.isArray()) {
-      for (auto const& it : VPackArrayIterator(p)) {
+      for (VPackSlice it : VPackArrayIterator(p)) {
         _projections.emplace_back(it.copyString());
         break;  // stop after first sub-attribute!
       }
@@ -58,16 +60,29 @@ DocumentProducingNode::DocumentProducingNode(ExecutionPlan* plan,
     // new format
     VPackSlice p = slice.get("projections");
     if (p.isArray()) {
-      for (auto const& it : VPackArrayIterator(p)) {
+      for (VPackSlice it : VPackArrayIterator(p)) {
         if (it.isString()) {
           _projections.emplace_back(it.copyString());
         }
       }
     }
   }
+
+  if (slice.hasKey("filter")) {
+    Ast* ast = plan->getAst();
+    // new AstNode is memory-managed by the Ast
+    setFilter(std::make_unique<Expression>(plan, ast, new AstNode(ast, slice.get("filter"))));
+  }
+}
+  
+void DocumentProducingNode::cloneInto(ExecutionPlan* plan, DocumentProducingNode& c) const {
+  if (_filter != nullptr) {
+    c.setFilter(std::unique_ptr<Expression>(_filter->clone(plan, plan->getAst())));
+  }
 }
 
-void DocumentProducingNode::toVelocyPack(arangodb::velocypack::Builder& builder) const {
+void DocumentProducingNode::toVelocyPack(arangodb::velocypack::Builder& builder,
+                                         unsigned flags) const {
   builder.add(VPackValue("outVariable"));
   _outVariable->toVelocyPack(builder);
 
@@ -76,8 +91,47 @@ void DocumentProducingNode::toVelocyPack(arangodb::velocypack::Builder& builder)
   for (auto const& it : _projections) {
     builder.add(VPackValue(it));
   }
-  builder.close();
+  builder.close(); // projections
+  
+  if (_filter != nullptr) {
+    builder.add(VPackValue("filter"));
+    _filter->toVelocyPack(builder, flags);
+  
+    builder.add("producesResult", VPackValue(true));
+  } else {
+    builder.add("producesResult", VPackValue(dynamic_cast<ExecutionNode const*>(this)->isVarUsedLater(_outVariable)));
+  }
+}
 
-  builder.add("producesResult",
-              VPackValue(dynamic_cast<ExecutionNode const*>(this)->isVarUsedLater(_outVariable)));
+Variable const* DocumentProducingNode::outVariable() const {
+  return _outVariable;
+}
+  
+/// @brief remember the condition to execute for early filtering
+void DocumentProducingNode::setFilter(std::unique_ptr<Expression> filter) {
+  _filter = std::move(filter);
+}
+
+std::vector<std::string> const& DocumentProducingNode::projections() const noexcept {
+  return _projections;
+}
+
+void DocumentProducingNode::projections(std::vector<std::string> const& projections) {
+  _projections = projections;
+}
+
+void DocumentProducingNode::projections(std::unordered_set<std::string>&& projections) {
+  _projections.clear();
+  _projections.reserve(projections.size());
+  for (auto& it : projections) {
+    _projections.push_back(std::move(it));
+  }
+}
+
+void DocumentProducingNode::projections(std::vector<std::string>&& projections) noexcept {
+  _projections = std::move(projections);
+}
+
+std::vector<size_t> const& DocumentProducingNode::coveringIndexAttributePositions() const noexcept {
+  return _coveringIndexAttributePositions;
 }

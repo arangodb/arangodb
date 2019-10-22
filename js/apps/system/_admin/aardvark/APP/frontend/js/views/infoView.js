@@ -44,8 +44,8 @@
           arangoHelper.arangoError('Figures', 'Could not get revision.');
         } else {
           var buttons = [];
-          // analyse figures in cluster
-          if (frontendConfig.isCluster) {
+          // analyze figures in cluster
+          if (frontendConfig.isCluster && figures && figures.figures) {
             if (figures.figures.alive.size === 0 &&
               figures.figures.alive.count === 0 &&
               figures.figures.datafiles.count === 0 &&

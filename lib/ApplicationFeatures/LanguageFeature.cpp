@@ -25,6 +25,7 @@
 #include "LanguageFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/FileUtils.h"
 #include "Basics/Utf8Helper.h"
@@ -89,7 +90,7 @@ LanguageFeature::LanguageFeature(application_features::ApplicationServer& server
       _icuDataPtr(nullptr) {
   Instance = this;
   setOptional(false);
-  startsAfter("GreetingsPhase");
+  startsAfter<application_features::GreetingsFeaturePhase>();
 }
 
 LanguageFeature::~LanguageFeature() {

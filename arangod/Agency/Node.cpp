@@ -112,7 +112,7 @@ Node::Node(std::string const& name, Store* store)
     : _nodeName(name), _parent(nullptr), _store(store), _vecBufDirty(true), _isArray(false) {}
 
 /// @brief Default dtor
-Node::~Node() {}
+Node::~Node() = default;
 
 /// @brief Get slice to value buffer
 Slice Node::slice() const {

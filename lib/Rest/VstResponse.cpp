@@ -124,19 +124,16 @@ void VstResponse::writeMessageHeader(VPackBuffer<uint8_t>& buffer) const {
   builder.add(VPackValue(int(2)));  // 2 == response
   builder.add(VPackValue(static_cast<int>(meta::underlyingValue(_responseCode))));  // 3 == request - return code
   
-  std::string currentHeader;
-  builder.openObject();  // 4 == meta
-  for (auto& item : _headers) {
-    currentHeader.assign(item.first);
+  auto fixCase = [](std::string& tmp) {
     int capState = 1;
-    for (auto& it : currentHeader) {
+    for (auto& it : tmp) {
       if (capState == 1) {
         // upper case
-        it = ::toupper(it);
+        it = StringUtils::toupper(it);
         capState = 0;
       } else if (capState == 0) {
         // normal case
-        it = ::tolower(it);
+        it = StringUtils::tolower(it);
         if (it == '-') {
           capState = 1;
         } else if (it == ':') {
@@ -144,7 +141,26 @@ void VstResponse::writeMessageHeader(VPackBuffer<uint8_t>& buffer) const {
         }
       }
     }
+  };
+  
+  std::string currentHeader;
+  builder.openObject();  // 4 == meta
+  for (auto& item : _headers) {
+
+    if (_contentType != ContentType::CUSTOM &&
+        item.first.compare(0, StaticStrings::ContentTypeHeader.size(),
+                           StaticStrings::ContentTypeHeader) == 0) {
+      continue;
+    }
+    currentHeader.assign(item.first);
+    fixCase(currentHeader);
     builder.add(currentHeader, VPackValue(item.second));
+  }
+  if (_contentType != ContentType::VPACK &&
+      _contentType != ContentType::CUSTOM) { // fuerte uses VPack as default
+    currentHeader = StaticStrings::ContentTypeHeader;
+    fixCase(currentHeader);
+    builder.add(currentHeader, VPackValue(rest::contentTypeToString(_contentType)));
   }
   builder.close();
   builder.close();

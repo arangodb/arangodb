@@ -54,7 +54,8 @@ class Cursor;
 
 class RestCursorHandler : public RestVocbaseBaseHandler {
  public:
-  RestCursorHandler(GeneralRequest*, GeneralResponse*, arangodb::aql::QueryRegistry*);
+  RestCursorHandler(application_features::ApplicationServer&, GeneralRequest*,
+                    GeneralResponse*, arangodb::aql::QueryRegistry*);
 
   ~RestCursorHandler();
 
@@ -87,7 +88,7 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   RestStatus processQuery();
 
   /// @brief returns the short id of the server which should handle this request
-  virtual uint32_t forwardingTarget() override;
+  virtual std::string forwardingTarget() override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief unregister the currently running query

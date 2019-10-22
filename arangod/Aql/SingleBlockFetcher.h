@@ -38,14 +38,14 @@ namespace arangodb {
 namespace aql {
 
 class AqlItemBlock;
-template <bool>
+template <BlockPassthrough>
 class DependencyProxy;
 
 /**
  * @brief Interface for all AqlExecutors that do need all
  *        rows at a time in order to make progress.
  */
-template <bool pass>
+template <BlockPassthrough pass>
 class SingleBlockFetcher {
  public:
   explicit SingleBlockFetcher(DependencyProxy<pass>& executionBlock)

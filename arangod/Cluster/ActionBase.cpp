@@ -65,14 +65,14 @@ void ActionBase::init() {
   _actionDone = std::chrono::system_clock::duration::zero();
 }
 
-ActionBase::~ActionBase() {}
+ActionBase::~ActionBase() = default;
 
 void ActionBase::notify() {
   LOG_TOPIC("df020", DEBUG, Logger::MAINTENANCE)
       << "Job " << _description << " calling syncDBServerStatusQuo";
-  auto cf = ApplicationServer::getFeature<ClusterFeature>("Cluster");
-  if (cf != nullptr) {
-    cf->syncDBServerStatusQuo();
+  auto& server = _feature.server();
+  if (server.hasFeature<ClusterFeature>()) {
+    server.getFeature<ClusterFeature>().syncDBServerStatusQuo();
   }
 }
 

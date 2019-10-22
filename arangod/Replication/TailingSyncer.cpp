@@ -314,12 +314,11 @@ Result TailingSyncer::processDBMarker(TRI_replication_operation_e type,
     return Result(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
   }
 
-  auto* sysDbFeature =
-      arangodb::application_features::ApplicationServer::lookupFeature<arangodb::SystemDatabaseFeature>();
-
-  if (!sysDbFeature) {
+  if (!_state.applier._server.hasFeature<arangodb::SystemDatabaseFeature>()) {
     return arangodb::Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
+  auto& sysDbFeature =
+      _state.applier._server.getFeature<arangodb::SystemDatabaseFeature>();
 
   if (type == REPLICATION_DATABASE_CREATE) {
     VPackSlice const data = slice.get("data");
@@ -338,7 +337,7 @@ Result TailingSyncer::processDBMarker(TRI_replication_operation_e type,
           << "seeing database creation marker "
           << "for an already existing db. Dropping db...";
 
-      auto system = sysDbFeature->use();
+      auto system = sysDbFeature.use();
       TRI_ASSERT(system.get());
       auto res = methods::Databases::drop(system.get(), name);
 
@@ -349,7 +348,8 @@ Result TailingSyncer::processDBMarker(TRI_replication_operation_e type,
     }
 
     VPackSlice users = VPackSlice::emptyArraySlice();
-    Result res = methods::Databases::create(name, users, VPackSlice::emptyObjectSlice());
+    Result res = methods::Databases::create(_state.applier._server, name, users,
+                                            VPackSlice::emptyObjectSlice());
 
     return res;
   } else if (type == REPLICATION_DATABASE_DROP) {
@@ -359,7 +359,7 @@ Result TailingSyncer::processDBMarker(TRI_replication_operation_e type,
       // abort all ongoing transactions for the database to be dropped
       abortOngoingTransactions(name);
 
-      auto system = sysDbFeature->use();
+      auto system = sysDbFeature.use();
       TRI_ASSERT(system.get());
       // delete from cache by id and name
       _state.vocbases.erase(std::to_string(vocbase->id()));
@@ -1728,7 +1728,7 @@ Result TailingSyncer::fetchOpenTransactions(TRI_voc_tick_t fromTick, TRI_voc_tic
             ": invalid response type for initial data. expecting array");
   }
 
-  for (auto const& it : VPackArrayIterator(slice)) {
+  for (VPackSlice it : VPackArrayIterator(slice)) {
     if (!it.isString()) {
       return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                     std::string("got invalid response from master at ") +

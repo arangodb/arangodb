@@ -40,10 +40,11 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestBatchHandler::RestBatchHandler(GeneralRequest* request, GeneralResponse* response)
-    : RestVocbaseBaseHandler(request, response), _errors(0) {}
+RestBatchHandler::RestBatchHandler(application_features::ApplicationServer& server,
+                                   GeneralRequest* request, GeneralResponse* response)
+    : RestVocbaseBaseHandler(server, request, response), _errors(0) {}
 
-RestBatchHandler::~RestBatchHandler() {}
+RestBatchHandler::~RestBatchHandler() = default;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock JSF_batch_processing
@@ -209,9 +210,8 @@ bool RestBatchHandler::executeNextHandler() {
   {
     auto response = std::make_unique<HttpResponse>(rest::ResponseCode::SERVER_ERROR,
                                                    std::make_unique<StringBuffer>(false));
-    handler.reset(
-        GeneralServerFeature::HANDLER_FACTORY->createHandler(std::move(request),
-                                                             std::move(response)));
+    handler.reset(GeneralServerFeature::HANDLER_FACTORY->createHandler(
+        server(), std::move(request), std::move(response)));
 
     if (handler == nullptr) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
@@ -353,7 +353,7 @@ bool RestBatchHandler::getBoundaryHeader(std::string& result) {
   // trim 2nd part and lowercase it
   StringUtils::trimInPlace(parts[1]);
   std::string p = parts[1].substr(0, boundaryLength);
-  StringUtils::tolowerInPlace(&p);
+  StringUtils::tolowerInPlace(p);
 
   if (p != "boundary=") {
     return false;
@@ -501,7 +501,7 @@ bool RestBatchHandler::extractPart(SearchHelper& helper) {
 
     if (key[0] == 'c' || key[0] == 'C') {
       // got an interesting key. now process it
-      StringUtils::tolowerInPlace(&key);
+      StringUtils::tolowerInPlace(key);
 
       // skip the colon itself
       ++colon;

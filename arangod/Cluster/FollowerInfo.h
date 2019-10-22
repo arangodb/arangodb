@@ -192,14 +192,14 @@ class FollowerInfo {
         READ_LOCKER(readLockerData, _dataLock);
         TRI_ASSERT(_followers->size() == _failoverCandidates->size());
         // Our follower list only contains followers, numFollowers + leader
-        // needs to be at least minReplicationFactor.
-        TRI_ASSERT(_followers->size() + 1 >= _docColl->minReplicationFactor());
+        // needs to be at least writeConcern.
+        TRI_ASSERT(_followers->size() + 1 >= _docColl->writeConcern());
 #endif
         return _canWrite;
       }
       READ_LOCKER(readLockerData, _dataLock);
       TRI_ASSERT(_docColl != nullptr);
-      if (_followers->size() + 1 < _docColl->minReplicationFactor()) {
+      if (_followers->size() + 1 < _docColl->writeConcern()) {
         // We know that we still do not have enough followers
         return false;
       }

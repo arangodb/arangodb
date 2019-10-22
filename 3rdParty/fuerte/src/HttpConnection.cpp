@@ -58,10 +58,11 @@ template <SocketType ST>
 int HttpConnection<ST>::on_status(http_parser* parser, const char* at,
                                   size_t len) {
   HttpConnection<ST>* self = static_cast<HttpConnection<ST>*>(parser->data);
-  self->_response->header.meta.emplace(
-      std::string("http/") + std::to_string(parser->http_major) + '.' +
-          std::to_string(parser->http_minor),
-      std::string(at, len));
+  // required for some arango shenanigans
+  self->_response->header.addMeta(std::string("http/") +
+                                      std::to_string(parser->http_major) + '.' +
+                                      std::to_string(parser->http_minor),
+                                  std::string(at, len));
   return 0;
 }
 
@@ -200,7 +201,7 @@ MessageID HttpConnection<ST>::sendRequest(std::unique_ptr<Request> req,
   static std::atomic<uint64_t> ticketId(1);
 
   // construct RequestItem
-  std::unique_ptr<RequestItem> item(new RequestItem());
+  auto item = std::make_unique<RequestItem>();
   // requestItem->_response later
   uint64_t mid = ticketId.fetch_add(1, std::memory_order_relaxed);
   item->requestHeader = buildRequestBody(*req);
@@ -226,6 +227,7 @@ MessageID HttpConnection<ST>::sendRequest(std::unique_ptr<Request> req,
     this->startConnection();
   } else if (state == Connection::State::Failed) {
     FUERTE_LOG_ERROR << "queued request on failed connection\n";
+    drainQueue(fuerte::Error::ConnectionClosed);
   }
   return mid;
 }
@@ -243,21 +245,16 @@ void HttpConnection<ST>::startWriting() {
   if (!_active) {
     FUERTE_LOG_HTTPTRACE << "startWriting: active=true, this=" << this << "\n";
     if (!_active.exchange(true)) {  // we are the only ones here now
-      auto cb = [self = Connection::shared_from_this()] {
-        auto* thisPtr = static_cast<HttpConnection<ST>*>(self.get());
-
-        // we might get in a race with shutdownConnection
-        Connection::State state = thisPtr->_state.load();
-        if (state != Connection::State::Connected) {
-          thisPtr->_active.store(false);
-          if (state == Connection::State::Disconnected) {
-            thisPtr->startConnection();
-          }
-          return;
+      // we might get in a race with shutdownConnection
+      Connection::State state = this->_state.load();
+      if (state != Connection::State::Connected) {
+        this->_active.store(false);
+        if (state == Connection::State::Disconnected) {
+          this->startConnection();
         }
-        thisPtr->asyncWriteNextRequest();
-      };
-      asio_ns::post(*this->_io_context, std::move(cb));
+        return;
+      }
+      this->asyncWriteNextRequest();
     }
   }
 }
@@ -291,24 +288,36 @@ std::string HttpConnection<ST>::buildRequestBody(Request const& req) {
   } else {
     header.append(req.header.path);
     header.push_back('?');
-    for (auto p : req.header.parameters) {
+    for (auto const& p : req.header.parameters) {
       if (header.back() != '?') {
         header.push_back('&');
       }
       header.append(http::urlEncode(p.first) + "=" + http::urlEncode(p.second));
     }
   }
-  header.append(" HTTP/1.1\r\n");
-  header.append("Host: ");
-  header.append(this->_config._host);
-  header.append("\r\n");
+  header.append(" HTTP/1.1\r\n")
+      .append("Host: ")
+      .append(this->_config._host)
+      .append("\r\n");
   if (_idleTimeout.count() > 0) {  // technically not required for http 1.1
     header.append("Connection: Keep-Alive\r\n");
   } else {
     header.append("Connection: Close\r\n");
   }
+
+  if (req.contentType() != ContentType::Custom) {
+    header.append("Content-Type: ")
+          .append(to_string(req.contentType()))
+          .append("\r\n");
+  }
+  if (req.acceptType() != ContentType::Custom) {
+    header.append("Accept: ")
+          .append(to_string(req.acceptType()))
+          .append("\r\n");
+  }
+
   bool haveAuth = false;
-  for (auto const& pair : req.header.meta) {
+  for (auto const& pair : req.header.meta()) {
     if (boost::iequals(fu_content_length_key, pair.first)) {
       continue;  // skip content-length header
     }

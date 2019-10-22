@@ -52,7 +52,7 @@ DepthFirstEnumerator::DepthFirstEnumerator(Traverser* traverser, std::string con
                                            TraverserOptions* opts)
     : PathEnumerator(traverser, startVertex, opts), _pruneNext(false) {}
 
-DepthFirstEnumerator::~DepthFirstEnumerator() {}
+DepthFirstEnumerator::~DepthFirstEnumerator() = default;
 
 bool DepthFirstEnumerator::next() {
   if (_isFirst) {

@@ -25,29 +25,33 @@
 
 #include "ExecutionBlockImpl.h"
 
-#include "Basics/Common.h"
-
+#include "Aql/AllRowsFetcher.h"
 #include "Aql/AqlItemBlock.h"
-#include "Aql/ExecutionState.h"
-#include "Aql/ExecutorInfos.h"
-#include "Aql/InputAqlItemRow.h"
-
 #include "Aql/CalculationExecutor.h"
+#include "Aql/ConstFetcher.h"
 #include "Aql/ConstrainedSortExecutor.h"
 #include "Aql/CountCollectExecutor.h"
 #include "Aql/DistinctCollectExecutor.h"
 #include "Aql/EnumerateCollectionExecutor.h"
 #include "Aql/EnumerateListExecutor.h"
+#include "Aql/ExecutionEngine.h"
+#include "Aql/ExecutionState.h"
+#include "Aql/ExecutorInfos.h"
 #include "Aql/FilterExecutor.h"
 #include "Aql/HashedCollectExecutor.h"
 #include "Aql/IResearchViewExecutor.h"
 #include "Aql/IdExecutor.h"
 #include "Aql/IndexExecutor.h"
+#include "Aql/IndexNode.h"
+#include "Aql/InputAqlItemRow.h"
 #include "Aql/KShortestPathsExecutor.h"
 #include "Aql/LimitExecutor.h"
 #include "Aql/ModificationExecutor.h"
 #include "Aql/ModificationExecutorTraits.h"
+#include "Aql/MultiDependencySingleRowFetcher.h"
 #include "Aql/NoResultsExecutor.h"
+#include "Aql/Query.h"
+#include "Aql/QueryOptions.h"
 #include "Aql/ReturnExecutor.h"
 #include "Aql/ShortestPathExecutor.h"
 #include "Aql/SingleRemoteModificationExecutor.h"
@@ -55,8 +59,11 @@
 #include "Aql/SortRegister.h"
 #include "Aql/SortedCollectExecutor.h"
 #include "Aql/SortingGatherExecutor.h"
+#include "Aql/SubqueryEndExecutor.h"
 #include "Aql/SubqueryExecutor.h"
+#include "Aql/SubqueryStartExecutor.h"
 #include "Aql/TraversalExecutor.h"
+#include "Aql/MaterializeExecutor.h"
 
 #include <type_traits>
 
@@ -72,19 +79,18 @@ using namespace arangodb::aql;
  * constexpr bool someClassHasSomeMethod = hasSomeMethod<SomeClass>::value;
  */
 
-#define CREATE_HAS_MEMBER_CHECK(methodName, checkName)  \
-  template <typename T>                                 \
-  class checkName {                                     \
-    typedef char yes[1];                                \
-    typedef char no[2];                                 \
-                                                        \
-    template <typename C>                               \
-    static yes& test(decltype(&C::methodName));         \
-    template <typename>                                 \
-    static no& test(...);                               \
-                                                        \
-   public:                                              \
-    enum { value = sizeof(test<T>(0)) == sizeof(yes) }; \
+#define CREATE_HAS_MEMBER_CHECK(methodName, checkName)     \
+  template <typename T>                                    \
+  class checkName {                                        \
+    template <typename C>                                  \
+    static std::true_type test(decltype(&C::methodName));  \
+    template <typename C>                                  \
+    static std::true_type test(decltype(&C::template methodName<>)); \
+    template <typename>                                    \
+    static std::false_type test(...);                      \
+                                                           \
+   public:                                                 \
+    static constexpr bool value = decltype(test<T>(0))::value;    \
   }
 
 CREATE_HAS_MEMBER_CHECK(initializeCursor, hasInitializeCursor);
@@ -190,7 +196,12 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::g
   TRI_ASSERT(state == ExecutionState::HASMORE);
   // When we're passing blocks through we have no control over the size of the
   // output block.
-  if /* constexpr */ (!Executor::Properties::allowsBlockPassthrough) {
+  // Plus, the ConstrainedSortExecutor will report an expectedNumberOfRows
+  // according to its heap size, thus resulting in a smaller allocated output
+  // block. However, it won't report DONE after, because a LIMIT block with
+  // fullCount must continue to count after the sorted output.
+  if /* constexpr */ (Executor::Properties::allowsBlockPassthrough == BlockPassthrough::Disable &&
+                      !std::is_same<Executor, ConstrainedSortExecutor>::value) {
     TRI_ASSERT(_outputItemRow->numRowsWritten() == atMost);
   }
 
@@ -204,7 +215,7 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::g
 template <class Executor>
 std::unique_ptr<OutputAqlItemRow> ExecutionBlockImpl<Executor>::createOutputRow(
     SharedAqlItemBlockPtr& newBlock) const {
-  if /* constexpr */ (Executor::Properties::allowsBlockPassthrough) {
+  if /* constexpr */ (Executor::Properties::allowsBlockPassthrough == BlockPassthrough::Enable) {
     return std::make_unique<OutputAqlItemRow>(newBlock, infos().getOutputRegisters(),
                                               infos().registersToKeep(),
                                               infos().registersToClear(),
@@ -214,6 +225,21 @@ std::unique_ptr<OutputAqlItemRow> ExecutionBlockImpl<Executor>::createOutputRow(
                                               infos().registersToKeep(),
                                               infos().registersToClear());
   }
+}
+
+template <class Executor>
+Executor& ExecutionBlockImpl<Executor>::executor() {
+  return _executor;
+}
+
+template <class Executor>
+Query const& ExecutionBlockImpl<Executor>::getQuery() const {
+  return _query;
+}
+
+template <class Executor>
+typename ExecutionBlockImpl<Executor>::Infos const& ExecutionBlockImpl<Executor>::infos() const {
+  return _infos;
 }
 
 namespace arangodb {
@@ -258,16 +284,17 @@ struct ExecuteSkipVariant<SkipVariants::GET_SOME> {
 
 template <class Executor>
 static SkipVariants constexpr skipType() {
-  bool constexpr useFetcher = Executor::Properties::allowsBlockPassthrough &&
-                              !std::is_same<Executor, SubqueryExecutor<true>>::value;
+  bool constexpr useFetcher =
+      Executor::Properties::allowsBlockPassthrough == BlockPassthrough::Enable &&
+      !std::is_same<Executor, SubqueryExecutor<true>>::value;
 
   bool constexpr useExecutor = hasSkipRows<Executor>::value;
 
-  // ConstFetcher and SingleRowFetcher<true> can skip, but it may not be done
-  // for modification subqueries.
+  // ConstFetcher and SingleRowFetcher<BlockPassthrough::Enable> can skip, but
+  // it may not be done for modification subqueries.
   static_assert(useFetcher ==
                     (std::is_same<typename Executor::Fetcher, ConstFetcher>::value ||
-                     (std::is_same<typename Executor::Fetcher, SingleRowFetcher<true>>::value &&
+                     (std::is_same<typename Executor::Fetcher, SingleRowFetcher<BlockPassthrough::Enable>>::value &&
                       !std::is_same<Executor, SubqueryExecutor<true>>::value)),
                 "Unexpected fetcher for SkipVariants::FETCHER");
 
@@ -276,16 +303,25 @@ static SkipVariants constexpr skipType() {
 
   static_assert(useExecutor ==
                     (std::is_same<Executor, IndexExecutor>::value ||
-                     std::is_same<Executor, IResearchViewExecutor<false>>::value ||
-                     std::is_same<Executor, IResearchViewExecutor<true>>::value ||
-                     std::is_same<Executor, IResearchViewMergeExecutor<false>>::value ||
-                     std::is_same<Executor, IResearchViewMergeExecutor<true>>::value ||
+                     std::is_same<Executor, IResearchViewExecutor<false, true>>::value ||
+                     std::is_same<Executor, IResearchViewExecutor<true, true>>::value ||
+                     std::is_same<Executor, IResearchViewMergeExecutor<false, true>>::value ||
+                     std::is_same<Executor, IResearchViewMergeExecutor<true, true>>::value ||
+                     std::is_same<Executor, IResearchViewExecutor<false, false>>::value ||
+                     std::is_same<Executor, IResearchViewExecutor<true, false>>::value ||
+                     std::is_same<Executor, IResearchViewMergeExecutor<false, false>>::value ||
+                     std::is_same<Executor, IResearchViewMergeExecutor<true, false>>::value ||
                      std::is_same<Executor, EnumerateCollectionExecutor>::value ||
-                     std::is_same<Executor, LimitExecutor>::value),
+                     std::is_same<Executor, LimitExecutor>::value ||
+                     std::is_same<Executor, IdExecutor<BlockPassthrough::Disable, SingleRowFetcher<BlockPassthrough::Disable>>>::value ||
+                     std::is_same<Executor, ConstrainedSortExecutor>::value ||
+                     std::is_same<Executor, SortingGatherExecutor>::value ||
+                     std::is_same<Executor, MaterializeExecutor>::value),
                 "Unexpected executor for SkipVariants::EXECUTOR");
 
   // The LimitExecutor will not work correctly with SkipVariants::FETCHER!
-  static_assert(!std::is_same<Executor, LimitExecutor>::value || useFetcher,
+  static_assert(
+      !std::is_same<Executor, LimitExecutor>::value || useFetcher,
       "LimitExecutor needs to implement skipRows() to work correctly");
 
   if (useExecutor) {
@@ -301,9 +337,29 @@ static SkipVariants constexpr skipType() {
 }  // namespace arangodb
 
 template <class Executor>
-std::pair<ExecutionState, size_t> ExecutionBlockImpl<Executor>::skipSome(size_t atMost) {
+std::pair<ExecutionState, size_t> ExecutionBlockImpl<Executor>::skipSome(size_t const atMost) {
   traceSkipSomeBegin(atMost);
+  auto state = ExecutionState::HASMORE;
 
+  while (state == ExecutionState::HASMORE && _skipped < atMost) {
+    auto res = skipSomeOnceWithoutTrace(atMost - _skipped);
+    TRI_ASSERT(state != ExecutionState::WAITING || res.second == 0);
+    state = res.first;
+    _skipped += res.second;
+    TRI_ASSERT(_skipped <= atMost);
+  }
+
+  size_t skipped = 0;
+  if (state != ExecutionState::WAITING) {
+    std::swap(skipped, _skipped);
+  }
+
+  TRI_ASSERT(skipped <= atMost);
+  return traceSkipSomeEnd(state, skipped);
+}
+
+template <class Executor>
+std::pair<ExecutionState, size_t> ExecutionBlockImpl<Executor>::skipSomeOnceWithoutTrace(size_t atMost) {
   constexpr SkipVariants customSkipType = skipType<Executor>();
 
   if (customSkipType == SkipVariants::GET_SOME) {
@@ -316,7 +372,7 @@ std::pair<ExecutionState, size_t> ExecutionBlockImpl<Executor>::skipSome(size_t 
     }
     TRI_ASSERT(skipped <= atMost);
 
-    return traceSkipSomeEnd({res.first, skipped});
+    return {res.first, skipped};
   }
 
   ExecutionState state;
@@ -327,8 +383,9 @@ std::pair<ExecutionState, size_t> ExecutionBlockImpl<Executor>::skipSome(size_t 
   _engine->_stats += stats;
   TRI_ASSERT(skipped <= atMost);
 
-  return traceSkipSomeEnd(state, skipped);
+  return {state, skipped};
 }
+
 
 template <bool customInit>
 struct InitializeCursor {};
@@ -362,6 +419,9 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<Executor>::initializeCursor
   // destroy and re-create the Fetcher
   _rowFetcher.~Fetcher();
   new (&_rowFetcher) Fetcher(_dependencyProxy);
+
+  TRI_ASSERT(_skipped == 0);
+  _skipped = 0;
 
   constexpr bool customInit = hasInitializeCursor<Executor>::value;
   // IndexExecutor and EnumerateCollectionExecutor have initializeCursor
@@ -400,7 +460,7 @@ namespace arangodb {
 namespace aql {
 // TODO -- remove this specialization when cpp 17 becomes available
 template <>
-std::pair<ExecutionState, Result> ExecutionBlockImpl<IdExecutor<ConstFetcher>>::initializeCursor(
+std::pair<ExecutionState, Result> ExecutionBlockImpl<IdExecutor<BlockPassthrough::Enable, ConstFetcher>>::initializeCursor(
     InputAqlItemRow const& input) {
   // reinitialize the DependencyProxy
   _dependencyProxy.reset();
@@ -408,6 +468,9 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<IdExecutor<ConstFetcher>>::
   // destroy and re-create the Fetcher
   _rowFetcher.~Fetcher();
   new (&_rowFetcher) Fetcher(_dependencyProxy);
+
+  TRI_ASSERT(_skipped == 0);
+  _skipped = 0;
 
   SharedAqlItemBlockPtr block =
       input.cloneToBlock(_engine->itemBlockManager(), *(infos().registersToKeep()),
@@ -504,6 +567,14 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<SubqueryExecutor<false>>::s
   return {state, subqueryResult};
 }
 
+template <>
+std::pair<ExecutionState, Result>
+ExecutionBlockImpl<IdExecutor<BlockPassthrough::Enable, SingleRowFetcher<BlockPassthrough::Enable>>>::shutdown(int errorCode) {
+  if (this->infos().isResponsibleForInitializeCursor()) {
+    return ExecutionBlock::shutdown(errorCode);
+  }
+  return {ExecutionState::DONE, {errorCode}};
+}
 }  // namespace aql
 }  // namespace arangodb
 
@@ -511,7 +582,11 @@ namespace arangodb {
 namespace aql {
 
 // The constant "PASSTHROUGH" is somehow reserved with MSVC.
-enum class RequestWrappedBlockVariant { DEFAULT , PASS_THROUGH , INPUTRESTRICTED };
+enum class RequestWrappedBlockVariant {
+  DEFAULT,
+  PASS_THROUGH,
+  INPUTRESTRICTED
+};
 
 // Specifying the namespace here is important to MSVC.
 template <enum arangodb::aql::RequestWrappedBlockVariant>
@@ -546,9 +621,9 @@ struct RequestWrappedBlock<RequestWrappedBlockVariant::PASS_THROUGH> {
       typename Executor::Infos const& infos,
 #endif
       Executor& executor, ExecutionEngine& engine, size_t nrItems, RegisterCount nrRegs) {
-    static_assert(
-        Executor::Properties::allowsBlockPassthrough,
-        "This function can only be used with executors supporting `allowsBlockPassthrough`");
+    static_assert(Executor::Properties::allowsBlockPassthrough == BlockPassthrough::Enable,
+                  "This function can only be used with executors supporting "
+                  "`allowsBlockPassthrough`");
     static_assert(hasFetchBlockForPassthrough<Executor>::value,
                   "An Executor with allowsBlockPassthrough must implement "
                   "fetchBlockForPassthrough");
@@ -602,9 +677,9 @@ struct RequestWrappedBlock<RequestWrappedBlockVariant::INPUTRESTRICTED> {
       typename Executor::Infos const&,
 #endif
       Executor& executor, ExecutionEngine& engine, size_t nrItems, RegisterCount nrRegs) {
-    static_assert(
-        Executor::Properties::inputSizeRestrictsOutputSize,
-        "This function can only be used with executors supporting `inputSizeRestrictsOutputSize`");
+    static_assert(Executor::Properties::inputSizeRestrictsOutputSize,
+                  "This function can only be used with executors supporting "
+                  "`inputSizeRestrictsOutputSize`");
     static_assert(hasExpectedNumberOfRows<Executor>::value,
                   "An Executor with inputSizeRestrictsOutputSize must "
                   "implement expectedNumberOfRows");
@@ -635,13 +710,13 @@ struct RequestWrappedBlock<RequestWrappedBlockVariant::INPUTRESTRICTED> {
 template <class Executor>
 std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::requestWrappedBlock(
     size_t nrItems, RegisterCount nrRegs) {
-  static_assert(!Executor::Properties::allowsBlockPassthrough ||
+  static_assert(Executor::Properties::allowsBlockPassthrough == BlockPassthrough::Disable ||
                     !Executor::Properties::inputSizeRestrictsOutputSize,
                 "At most one of Properties::allowsBlockPassthrough or "
                 "Properties::inputSizeRestrictsOutputSize should be true for "
                 "each Executor");
   static_assert(
-      Executor::Properties::allowsBlockPassthrough ==
+      (Executor::Properties::allowsBlockPassthrough == BlockPassthrough::Enable) ==
           hasFetchBlockForPassthrough<Executor>::value,
       "Executors should implement the method fetchBlockForPassthrough() iff "
       "Properties::allowsBlockPassthrough is true");
@@ -652,7 +727,7 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::r
       "Properties::inputSizeRestrictsOutputSize is true");
 
   constexpr RequestWrappedBlockVariant variant =
-      Executor::Properties::allowsBlockPassthrough
+      Executor::Properties::allowsBlockPassthrough == BlockPassthrough::Enable
           ? RequestWrappedBlockVariant::PASS_THROUGH
           : Executor::Properties::inputSizeRestrictsOutputSize
                 ? RequestWrappedBlockVariant::INPUTRESTRICTED
@@ -682,23 +757,28 @@ template class ::arangodb::aql::ExecutionBlockImpl<EnumerateCollectionExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<EnumerateListExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<FilterExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<HashedCollectExecutor>;
-template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<false>>;
-template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<true>>;
-template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<false>>;
-template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<true>>;
-template class ::arangodb::aql::ExecutionBlockImpl<IdExecutor<ConstFetcher>>;
-template class ::arangodb::aql::ExecutionBlockImpl<IdExecutor<SingleRowFetcher<true>>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<false, true>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<true, true>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<false, true>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<true, true>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<false, false>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<true, false>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<false, false>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<true, false>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IdExecutor<BlockPassthrough::Enable, ConstFetcher>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IdExecutor<BlockPassthrough::Enable, SingleRowFetcher<BlockPassthrough::Enable>>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IdExecutor<BlockPassthrough::Disable, SingleRowFetcher<BlockPassthrough::Disable>>>;
 template class ::arangodb::aql::ExecutionBlockImpl<IndexExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<LimitExecutor>;
-template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<Insert, SingleBlockFetcher<false /*allowsBlockPassthrough */>>>;
+template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<Insert, SingleBlockFetcher<BlockPassthrough::Disable>>>;
 template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<Insert, AllRowsFetcher>>;
-template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<Remove, SingleBlockFetcher<false /*allowsBlockPassthrough */>>>;
+template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<Remove, SingleBlockFetcher<BlockPassthrough::Disable>>>;
 template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<Remove, AllRowsFetcher>>;
-template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<Replace, SingleBlockFetcher<false /*allowsBlockPassthrough */>>>;
+template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<Replace, SingleBlockFetcher<BlockPassthrough::Disable>>>;
 template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<Replace, AllRowsFetcher>>;
-template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<Update, SingleBlockFetcher<false /*allowsBlockPassthrough */>>>;
+template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<Update, SingleBlockFetcher<BlockPassthrough::Disable>>>;
 template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<Update, AllRowsFetcher>>;
-template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<Upsert, SingleBlockFetcher<false /*allowsBlockPassthrough */>>>;
+template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<Upsert, SingleBlockFetcher<BlockPassthrough::Disable>>>;
 template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<Upsert, AllRowsFetcher>>;
 template class ::arangodb::aql::ExecutionBlockImpl<SingleRemoteModificationExecutor<IndexTag>>;
 template class ::arangodb::aql::ExecutionBlockImpl<SingleRemoteModificationExecutor<Insert>>;
@@ -712,7 +792,10 @@ template class ::arangodb::aql::ExecutionBlockImpl<ShortestPathExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<KShortestPathsExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<SortedCollectExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<SortExecutor>;
+template class ::arangodb::aql::ExecutionBlockImpl<SubqueryEndExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<SubqueryExecutor<true>>;
 template class ::arangodb::aql::ExecutionBlockImpl<SubqueryExecutor<false>>;
+template class ::arangodb::aql::ExecutionBlockImpl<SubqueryStartExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<TraversalExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<SortingGatherExecutor>;
+template class ::arangodb::aql::ExecutionBlockImpl<MaterializeExecutor>;

@@ -117,7 +117,7 @@ v8::Handle<v8::Object> WrapCollection( // wrap collection
   result->DefineOwnProperty( // define own property
     TRI_IGETC, // context
     VersionKeyHidden, // key
-    v8::Integer::NewFromUnsigned(isolate, 5), // value
+    v8::Integer::NewFromUnsigned(isolate, collection->v8CacheVersion()), // value
     v8::DontEnum // attributes
   ).FromMaybe(false);  // ignore return value
 

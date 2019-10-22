@@ -136,8 +136,12 @@ class GeneralResponse {
     _headers.emplace(key, value);
   }
 
+  virtual bool isResponseEmpty() const = 0;
+
  public:
   virtual uint64_t messageId() const { return 1; }
+
+  virtual void setMessageId(uint64_t msgId) { }
 
   virtual void reset(ResponseCode) = 0;
 
@@ -147,6 +151,7 @@ class GeneralResponse {
   void setPayload(Payload&& payload, bool generateBody,
                   velocypack::Options const& options = velocypack::Options::Defaults,
                   bool resolveExternals = true) {
+    TRI_ASSERT(isResponseEmpty());
     _generateBody = generateBody;
     addPayload(std::forward<Payload>(payload), &options, resolveExternals);
   }

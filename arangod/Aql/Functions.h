@@ -25,9 +25,7 @@
 #define ARANGOD_AQL_FUNCTIONS_H 1
 
 #include "Aql/AqlValue.h"
-#include "Basics/Common.h"
-#include "Basics/SmallVector.h"
-#include "Basics/datetime.h"
+#include "Containers/SmallVector.h"
 
 namespace arangodb {
 namespace transaction {
@@ -42,7 +40,7 @@ namespace aql {
 
 class ExpressionContext;
 
-typedef SmallVector<AqlValue> VPackFunctionParameters;
+typedef ::arangodb::containers::SmallVector<AqlValue> VPackFunctionParameters;
 
 typedef AqlValue (*FunctionImplementation)(arangodb::aql::ExpressionContext*,
                                            transaction::Methods*,
@@ -53,7 +51,7 @@ struct Functions {
   /// @brief helper function. not callable as a "normal" AQL function
   static void Stringify(transaction::Methods* trx,
                         arangodb::basics::VPackStringBufferAdapter& buffer,
-                        VPackSlice const& slice);
+                        arangodb::velocypack::Slice const& slice);
 
   static AqlValue IsNull(arangodb::aql::ExpressionContext*,
                          transaction::Methods*, VPackFunctionParameters const&);

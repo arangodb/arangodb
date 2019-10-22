@@ -293,7 +293,7 @@ MMFilesPersistentIndex::MMFilesPersistentIndex(TRI_idx_iid_t iid,
     : MMFilesPathBasedIndex(iid, collection, info, sizeof(LocalDocumentId), true) {}
 
 /// @brief destroy the index
-MMFilesPersistentIndex::~MMFilesPersistentIndex() {}
+MMFilesPersistentIndex::~MMFilesPersistentIndex() = default;
 
 size_t MMFilesPersistentIndex::memory() const {
   return 0;  // TODO
@@ -577,7 +577,7 @@ std::unique_ptr<MMFilesPersistentIndexIterator> MMFilesPersistentIndex::lookup(t
 
   VPackSlice lastNonEq;
   leftSearch.openArray();
-  for (auto const& it : VPackArrayIterator(searchValues)) {
+  for (VPackSlice it : VPackArrayIterator(searchValues)) {
     TRI_ASSERT(it.isObject());
     VPackSlice eq = it.get(StaticStrings::IndexEq);
     if (eq.isNone()) {

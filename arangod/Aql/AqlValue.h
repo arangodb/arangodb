@@ -25,56 +25,32 @@
 #ifndef ARANGOD_AQL_AQL_VALUE_H
 #define ARANGOD_AQL_AQL_VALUE_H 1
 
-#include "Aql/Range.h"
+#include "Aql/AqlValueFwd.h"
 #include "Aql/types.h"
-#include "Basics/Common.h"
-#include "Basics/ConditionalDeleter.h"
-#include "Basics/VelocyPackHelper.h"
 
-#include <velocypack/Buffer.h>
-#include <velocypack/Builder.h>
-#include <velocypack/Slice.h>
-#include <velocypack/StringRef.h>
+#include <vector>
 
-#include <v8.h>
-
+namespace v8 {
+template <class T>
+class Local;
+template <class T>
+using Handle = Local<T>;
+class Value;
+class Isolate;
+}
 namespace arangodb {
 namespace aql {
 class SharedAqlItemBlockPtr;
+struct Range;
+}
+namespace velocypack {
+template <typename T>
+class Buffer;
+class Builder;
+class Slice;
+class StringRef;
 }
 }  // namespace arangodb
-
-// some functionality borrowed from 3rdParty/velocypack/include/velocypack
-// this is a copy of that functionality, because the functions in velocypack
-// are not accessible from here
-namespace {
-static inline uint64_t toUInt64(int64_t v) noexcept {
-  // If v is negative, we need to add 2^63 to make it positive,
-  // before we can cast it to an uint64_t:
-  uint64_t shift2 = 1ULL << 63;
-  int64_t shift = static_cast<int64_t>(shift2 - 1);
-  return v >= 0 ? static_cast<uint64_t>(v) : static_cast<uint64_t>((v + shift) + 1) + shift2;
-  // Note that g++ and clang++ with -O3 compile this away to
-  // nothing. Further note that a plain cast from int64_t to
-  // uint64_t is not guaranteed to work for negative values!
-}
-
-// returns number of bytes required to store the value in 2s-complement
-static inline uint8_t intLength(int64_t value) noexcept {
-  if (value >= -0x80 && value <= 0x7f) {
-    // shortcut for the common case
-    return 1;
-  }
-  uint64_t x = value >= 0 ? static_cast<uint64_t>(value)
-                          : static_cast<uint64_t>(-(value + 1));
-  uint8_t xSize = 0;
-  do {
-    xSize++;
-    x >>= 8;
-  } while (x >= 0x80);
-  return xSize + 1;
-}
-}  // namespace
 
 namespace arangodb {
 
@@ -90,43 +66,43 @@ class AqlItemBlock;
 // no-op struct used only internally to indicate that we want
 // to copy the data behind the passed pointer
 struct AqlValueHintCopy {
-  explicit AqlValueHintCopy(uint8_t const* ptr) : ptr(ptr) {}
+  explicit AqlValueHintCopy(uint8_t const* ptr);
   uint8_t const* ptr;
 };
 
 // no-op struct used only internally to indicate that we want
 // to NOT copy the database document data behind the passed pointer
 struct AqlValueHintDocumentNoCopy {
-  explicit AqlValueHintDocumentNoCopy(uint8_t const* v) : ptr(v) {}
+  explicit AqlValueHintDocumentNoCopy(uint8_t const* v);
   uint8_t const* ptr;
 };
 
 struct AqlValueHintNull {
-  constexpr AqlValueHintNull() noexcept {}
+  constexpr AqlValueHintNull() noexcept = default;
 };
 
 struct AqlValueHintBool {
-  explicit AqlValueHintBool(bool v) noexcept : value(v) {}
+  explicit AqlValueHintBool(bool v) noexcept;
   bool const value;
 };
 
 struct AqlValueHintZero {
-  constexpr AqlValueHintZero() noexcept {}
+  constexpr AqlValueHintZero() noexcept = default;
 };
 
 struct AqlValueHintDouble {
-  explicit AqlValueHintDouble(double v) noexcept : value(v) {}
+  explicit AqlValueHintDouble(double v) noexcept;
   double const value;
 };
 
 struct AqlValueHintInt {
-  explicit AqlValueHintInt(int64_t v) noexcept : value(v) {}
-  explicit AqlValueHintInt(int v) noexcept : value(int64_t(v)) {}
+  explicit AqlValueHintInt(int64_t v) noexcept;
+  explicit AqlValueHintInt(int v) noexcept;
   int64_t const value;
 };
 
 struct AqlValueHintUInt {
-  explicit AqlValueHintUInt(uint64_t v) noexcept : value(v) {}
+  explicit AqlValueHintUInt(uint64_t v) noexcept;
 #ifdef TRI_OVERLOAD_FUNCS_SIZE_T
   explicit AqlValueHintUInt(size_t v) noexcept : value(uint64_t(v)) {}
 #endif
@@ -134,11 +110,11 @@ struct AqlValueHintUInt {
 };
 
 struct AqlValueHintEmptyArray {
-  constexpr AqlValueHintEmptyArray() noexcept {}
+  constexpr AqlValueHintEmptyArray() noexcept = default;
 };
 
 struct AqlValueHintEmptyObject {
-  constexpr AqlValueHintEmptyObject() noexcept {}
+  constexpr AqlValueHintEmptyObject() noexcept = default;
 };
 
 struct AqlValue final {
@@ -191,230 +167,60 @@ struct AqlValue final {
  public:
   // construct an empty AqlValue
   // note: this is the default constructor and should be as cheap as possible
-  inline AqlValue() noexcept {
-    // construct a slice of type None
-    // we will simply zero-initialize the two 64 bit words
-    _data.words[0] = 0;
-    _data.words[1] = 0;
-
-    // VPACK_INLINE must have a value of 0, and VPackSlice::None must be equal
-    // to a NUL byte too
-    static_assert(AqlValueType::VPACK_INLINE == 0,
-                  "invalid value for VPACK_INLINE");
-  }
+  AqlValue() noexcept;
 
   // construct from pointer, not copying!
-  explicit AqlValue(uint8_t const* pointer) {
-    // we must get rid of Externals first here, because all
-    // methods that use VPACK_SLICE_POINTER expect its contents
-    // to be non-Externals
-    if (*pointer == '\x1d') {
-      // an external
-      setPointer<false>(VPackSlice(pointer).resolveExternals().begin());
-    } else {
-      setPointer<false>(pointer);
-    }
-    TRI_ASSERT(!VPackSlice(_data.pointer).isExternal());
-  }
+  explicit AqlValue(uint8_t const* pointer);
 
   // construct from docvec, taking over its ownership
   explicit AqlValue(std::vector<arangodb::aql::SharedAqlItemBlockPtr>* docvec) noexcept;
 
-  explicit AqlValue(AqlValueHintNull const&) noexcept {
-    _data.internal[0] = 0x18;  // null in VPack
-    setType(AqlValueType::VPACK_INLINE);
-  }
+  explicit AqlValue(AqlValueHintNull const&) noexcept;
 
-  explicit AqlValue(AqlValueHintBool const& v) noexcept {
-    _data.internal[0] = v.value ? 0x1a : 0x19;  // true/false in VPack
-    setType(AqlValueType::VPACK_INLINE);
-  }
+  explicit AqlValue(AqlValueHintBool const& v) noexcept;
 
-  explicit AqlValue(AqlValueHintZero const&) noexcept {
-    _data.internal[0] = 0x30;  // 0 in VPack
-    setType(AqlValueType::VPACK_INLINE);
-  }
+  explicit AqlValue(AqlValueHintZero const&) noexcept;
 
   // construct from a double value
-  explicit AqlValue(AqlValueHintDouble const& v) noexcept {
-    double value = v.value;
-    if (std::isnan(value) || !std::isfinite(value) || value == HUGE_VAL || value == -HUGE_VAL) {
-      // null
-      _data.internal[0] = 0x18;
-    } else {
-      // a "real" double
-      _data.internal[0] = 0x1b;
-      uint64_t dv;
-      memcpy(&dv, &value, sizeof(double));
-      VPackValueLength vSize = sizeof(double);
-      int i = 1;
-      for (uint64_t x = dv; vSize > 0; vSize--) {
-        _data.internal[i] = x & 0xff;
-        x >>= 8;
-        ++i;
-      }
-    }
-    setType(AqlValueType::VPACK_INLINE);
-  }
+  explicit AqlValue(AqlValueHintDouble const& v) noexcept;
 
   // construct from an int64 value
-  explicit AqlValue(AqlValueHintInt const& v) noexcept {
-    int64_t value = v.value;
-    if (value >= 0 && value <= 9) {
-      // a smallint
-      _data.internal[0] = static_cast<uint8_t>(0x30U + value);
-    } else if (value < 0 && value >= -6) {
-      // a negative smallint
-      _data.internal[0] = static_cast<uint8_t>(0x40U + value);
-    } else {
-      uint8_t vSize = intLength(value);
-      uint64_t x;
-      if (vSize == 8) {
-        x = toUInt64(value);
-      } else {
-        int64_t shift = 1LL << (vSize * 8 - 1);  // will never overflow!
-        x = value >= 0 ? static_cast<uint64_t>(value)
-                       : static_cast<uint64_t>(value + shift) + shift;
-      }
-      _data.internal[0] = 0x1fU + vSize;
-      int i = 1;
-      while (vSize-- > 0) {
-        _data.internal[i] = x & 0xffU;
-        ++i;
-        x >>= 8;
-      }
-    }
-    setType(AqlValueType::VPACK_INLINE);
-  }
+  explicit AqlValue(AqlValueHintInt const& v) noexcept;
 
   // construct from a uint64 value
-  explicit AqlValue(AqlValueHintUInt const& v) noexcept {
-    uint64_t value = v.value;
-    if (value <= 9) {
-      // a smallint
-      _data.internal[0] = static_cast<uint8_t>(0x30U + value);
-    } else {
-      int i = 1;
-      uint8_t vSize = 0;
-      do {
-        vSize++;
-        _data.internal[i] = static_cast<uint8_t>(value & 0xffU);
-        ++i;
-        value >>= 8;
-      } while (value != 0);
-      _data.internal[0] = 0x27U + vSize;
-    }
-    setType(AqlValueType::VPACK_INLINE);
-  }
+  explicit AqlValue(AqlValueHintUInt const& v) noexcept;
 
   // construct from char* and length, copying the string
-  AqlValue(char const* value, size_t length) {
-    TRI_ASSERT(value != nullptr);
-    if (length == 0) {
-      // empty string
-      _data.internal[0] = 0x40;
-      setType(AqlValueType::VPACK_INLINE);
-      return;
-    }
-    if (length < sizeof(_data.internal) - 1) {
-      // short string... can store it inline
-      _data.internal[0] = static_cast<uint8_t>(0x40 + length);
-      memcpy(_data.internal + 1, value, length);
-      setType(AqlValueType::VPACK_INLINE);
-    } else if (length <= 126) {
-      // short string... cannot store inline, but we don't need to
-      // create a full-featured Builder object here
-      _data.slice = new uint8_t[length + 1];
-      _data.slice[0] = static_cast<uint8_t>(0x40U + length);
-      memcpy(&_data.slice[1], value, length);
-      setType(AqlValueType::VPACK_MANAGED_SLICE);
-    } else {
-      // long string
-      // create a big enough uint8_t buffer
-      _data.slice = new uint8_t[length + 9];
-      _data.slice[0] = static_cast<uint8_t>(0xbfU);
-      uint64_t v = length;
-      for (uint64_t i = 0; i < 8; ++i) {
-        _data.slice[i + 1] = v & 0xffU;
-        v >>= 8;
-      }
-      memcpy(&_data.slice[9], value, length);
-      setType(AqlValueType::VPACK_MANAGED_SLICE);
-    }
-  }
+  AqlValue(char const* value, size_t length);
 
   // construct from std::string
-  explicit AqlValue(std::string const& value)
-      : AqlValue(value.c_str(), value.size()) {}
+  explicit AqlValue(std::string const& value);
 
-  explicit AqlValue(AqlValueHintEmptyArray const&) noexcept {
-    _data.internal[0] = 0x01;  // empty array in VPack
-    setType(AqlValueType::VPACK_INLINE);
-  }
+  explicit AqlValue(AqlValueHintEmptyArray const&) noexcept;
 
-  explicit AqlValue(AqlValueHintEmptyObject const&) noexcept {
-    _data.internal[0] = 0x0a;  // empty object in VPack
-    setType(AqlValueType::VPACK_INLINE);
-  }
+  explicit AqlValue(AqlValueHintEmptyObject const&) noexcept;
 
   // construct from Buffer, potentially taking over its ownership
   // (by adjusting the boolean passed)
-  AqlValue(arangodb::velocypack::Buffer<uint8_t>* buffer, bool& shouldDelete) {
-    TRI_ASSERT(buffer != nullptr);
-    TRI_ASSERT(shouldDelete);  // here, the Buffer is still owned by the caller
-
-    // intentionally do not resolve externals here
-    // if (slice.isExternal()) {
-    //   // recursively resolve externals
-    //   slice = slice.resolveExternals();
-    // }
-    if (buffer->length() < sizeof(_data.internal)) {
-      // Use inline value
-      memcpy(_data.internal, buffer->data(), static_cast<size_t>(buffer->length()));
-      setType(AqlValueType::VPACK_INLINE);
-    } else {
-      // Use managed buffer, simply reuse the pointer and adjust the original
-      // Buffer's deleter
-      _data.buffer = buffer;
-      setType(AqlValueType::VPACK_MANAGED_BUFFER);
-      shouldDelete = false;  // adjust deletion control variable
-    }
-  }
+  AqlValue(arangodb::velocypack::Buffer<uint8_t>* buffer, bool& shouldDelete);
 
   // construct from pointer, not copying!
-  explicit AqlValue(AqlValueHintDocumentNoCopy const& v) noexcept {
-    setPointer<true>(v.ptr);
-    TRI_ASSERT(!VPackSlice(_data.pointer).isExternal());
-  }
+  explicit AqlValue(AqlValueHintDocumentNoCopy const& v) noexcept;
 
   // construct from pointer, copying the data behind the pointer
-  explicit AqlValue(AqlValueHintCopy const& v) {
-    TRI_ASSERT(v.ptr != nullptr);
-    initFromSlice(VPackSlice(v.ptr));
-  }
+  explicit AqlValue(AqlValueHintCopy const& v);
 
   // construct from Builder, copying contents
-  explicit AqlValue(arangodb::velocypack::Builder const& builder) {
-    TRI_ASSERT(builder.isClosed());
-    initFromSlice(builder.slice());
-  }
+  explicit AqlValue(arangodb::velocypack::Builder const& builder);
 
   // construct from Builder, copying contents
-  explicit AqlValue(arangodb::velocypack::Builder const* builder) {
-    TRI_ASSERT(builder->isClosed());
-    initFromSlice(builder->slice());
-  }
+  explicit AqlValue(arangodb::velocypack::Builder const* builder);
 
   // construct from Slice, copying contents
-  explicit AqlValue(arangodb::velocypack::Slice const& slice) {
-    initFromSlice(slice);
-  }
+  explicit AqlValue(arangodb::velocypack::Slice const& slice);
 
   // construct range type
-  AqlValue(int64_t low, int64_t high) {
-    _data.range = new Range(low, high);
-    setType(AqlValueType::RANGE);
-  }
+  AqlValue(int64_t low, int64_t high);
 
   /// @brief AqlValues can be copied and moved as required
   /// memory management is not performed via AqlValue destructor but via
@@ -427,32 +233,22 @@ struct AqlValue final {
   ~AqlValue() = default;
 
   /// @brief whether or not the value must be destroyed
-  inline bool requiresDestruction() const noexcept {
-    auto t = type();
-    return (t != VPACK_SLICE_POINTER && t != VPACK_INLINE);
-  }
+  bool requiresDestruction() const noexcept;
 
   /// @brief whether or not the value is empty / none
-  inline bool isEmpty() const noexcept {
-    return (_data.internal[0] == '\x00' &&
-            _data.internal[sizeof(_data.internal) - 1] == VPACK_INLINE);
-  }
+  bool isEmpty() const noexcept;
 
   /// @brief whether or not the value is a pointer
-  inline bool isPointer() const noexcept {
-    return type() == VPACK_SLICE_POINTER;
-  }
+  bool isPointer() const noexcept;
 
   /// @brief whether or not the value is an external manager document
-  inline bool isManagedDocument() const noexcept {
-    return isPointer() && (_data.internal[sizeof(_data.internal) - 2] == 1);
-  }
+  bool isManagedDocument() const noexcept;
 
   /// @brief whether or not the value is a range
-  inline bool isRange() const noexcept { return type() == RANGE; }
+  bool isRange() const noexcept;
 
   /// @brief whether or not the value is a docvec
-  inline bool isDocvec() const noexcept { return type() == DOCVEC; }
+  bool isDocvec() const noexcept;
 
   /// @brief hashes the value
   uint64_t hash(transaction::Methods*, uint64_t seed = 0xdeadbeef) const;
@@ -519,10 +315,7 @@ struct AqlValue final {
   bool toBoolean() const;
 
   /// @brief return the range value
-  Range const* range() const {
-    TRI_ASSERT(isRange());
-    return _data.range;
-  }
+  Range const* range() const;
 
   /// @brief return the total size of the docvecs
   size_t docvecSize() const;
@@ -552,39 +345,13 @@ struct AqlValue final {
   AqlValue clone() const;
 
   /// @brief invalidates/resets a value to None, not freeing any memory
-  inline void erase() noexcept {
-    _data.internal[0] = '\x00';
-    setType(AqlValueType::VPACK_INLINE);
-  }
+  void erase() noexcept;
 
   /// @brief destroy, explicit destruction, only when needed
   void destroy() noexcept;
 
   /// @brief returns the size of the dynamic memory allocated for the value
-  size_t memoryUsage() const noexcept {
-    auto const t = type();
-    switch (t) {
-      case VPACK_INLINE:
-      case VPACK_SLICE_POINTER:
-        return 0;
-      case VPACK_MANAGED_SLICE:
-        try {
-          return VPackSlice(_data.slice).byteSize();
-        } catch (...) {
-          return 0;
-        }
-      case VPACK_MANAGED_BUFFER:
-        return _data.buffer->size();
-      case DOCVEC:
-        // no need to count the memory usage for the item blocks in docvec.
-        // these have already been counted elsewhere (in ctors of AqlItemBlock
-        // and AqlItemBlock::setValue)
-        return sizeofDocvec();
-      case RANGE:
-        return sizeof(Range);
-    }
-    return 0;
-  }
+  size_t memoryUsage() const noexcept;
 
   /// @brief create an AqlValue from a vector of AqlItemBlock*s
   static AqlValue CreateFromBlocks(transaction::Methods*,
@@ -603,43 +370,16 @@ struct AqlValue final {
  private:
   /// @brief Returns the type of this value. If true it uses an external pointer
   /// if false it uses the internal data structure
-  inline AqlValueType type() const noexcept {
-    return static_cast<AqlValueType>(_data.internal[sizeof(_data.internal) - 1]);
-  }
+  AqlValueType type() const noexcept;
 
   /// @brief initializes value from a slice
-  void initFromSlice(arangodb::velocypack::Slice const& slice) {
-    // intentionally do not resolve externals here
-    // if (slice.isExternal()) {
-    //   // recursively resolve externals
-    //   slice = slice.resolveExternals();
-    // }
-    arangodb::velocypack::ValueLength length = slice.byteSize();
-    if (length < sizeof(_data.internal)) {
-      // Use inline value
-      memcpy(_data.internal, slice.begin(), static_cast<size_t>(length));
-      setType(AqlValueType::VPACK_INLINE);
-    } else {
-      // Use managed slice
-      _data.slice = new uint8_t[length];
-      memcpy(&_data.slice[0], slice.begin(), length);
-      setType(AqlValueType::VPACK_MANAGED_SLICE);
-    }
-  }
+  void initFromSlice(arangodb::velocypack::Slice const& slice);
 
   /// @brief sets the value type
-  inline void setType(AqlValueType type) noexcept {
-    _data.internal[sizeof(_data.internal) - 1] = type;
-  }
+  void setType(AqlValueType type) noexcept;
 
-  template <bool isManagedDocument>
-  inline void setPointer(uint8_t const* pointer) noexcept {
-    _data.pointer = pointer;
-    // we use the byte at (size - 2) to distinguish between data pointing to
-    // database documents (size[-2] == 1) and other data(size[-2] == 0)
-    _data.internal[sizeof(_data.internal) - 2] = isManagedDocument ? 1 : 0;
-    _data.internal[sizeof(_data.internal) - 1] = AqlValueType::VPACK_SLICE_POINTER;
-  }
+  template <bool isManagedDoc>
+  void setPointer(uint8_t const* pointer) noexcept;
 };
 
 class AqlValueGuard {
@@ -648,16 +388,11 @@ class AqlValueGuard {
   AqlValueGuard(AqlValueGuard const&) = delete;
   AqlValueGuard& operator=(AqlValueGuard const&) = delete;
 
-  AqlValueGuard(AqlValue& value, bool destroy)
-      : _value(value), _destroy(destroy) {}
-  ~AqlValueGuard() {
-    if (_destroy) {
-      _value.destroy();
-    }
-  }
-  void steal() { _destroy = false; }
+  AqlValueGuard(AqlValue& value, bool destroy);
+  ~AqlValueGuard();
+  void steal();
 
-  AqlValue& value() { return _value; }
+  AqlValue& value();
 
  private:
   AqlValue& _value;
@@ -665,67 +400,21 @@ class AqlValueGuard {
 };
 
 struct AqlValueMaterializer {
-  explicit AqlValueMaterializer(transaction::Methods* trx)
-      : trx(trx), materialized(), hasCopied(false) {}
+  explicit AqlValueMaterializer(transaction::Methods* trx);
 
-  AqlValueMaterializer(AqlValueMaterializer const& other)
-      : trx(other.trx), materialized(other.materialized), hasCopied(other.hasCopied) {
-    if (other.hasCopied) {
-      // copy other's slice
-      materialized = other.materialized.clone();
-    }
-  }
+  AqlValueMaterializer(AqlValueMaterializer const& other);
 
   // cppcheck-suppress operatorEqVarError
-  AqlValueMaterializer& operator=(AqlValueMaterializer const& other) {
-    if (this != &other) {
-      TRI_ASSERT(trx == other.trx);  // must be from same transaction
-      if (hasCopied) {
-        // destroy our own slice
-        materialized.destroy();
-        hasCopied = false;
-      }
-      // copy other's slice
-      materialized = other.materialized.clone();
-      hasCopied = other.hasCopied;
-    }
-    return *this;
-  }
+  AqlValueMaterializer& operator=(AqlValueMaterializer const& other);
 
-  AqlValueMaterializer(AqlValueMaterializer&& other) noexcept
-      : trx(other.trx), materialized(other.materialized), hasCopied(other.hasCopied) {
-    // reset other
-    other.hasCopied = false;
-    // cppcheck-suppress *
-    other.materialized = AqlValue();
-  }
+  AqlValueMaterializer(AqlValueMaterializer&& other) noexcept;
 
   // cppcheck-suppress operatorEqVarError
-  AqlValueMaterializer& operator=(AqlValueMaterializer&& other) noexcept {
-    if (this != &other) {
-      TRI_ASSERT(trx == other.trx);  // must be from same transaction
-      if (hasCopied) {
-        // destroy our own slice
-        materialized.destroy();
-      }
-      // reset other
-      materialized = other.materialized;
-      hasCopied = other.hasCopied;
-      other.materialized = AqlValue();
-    }
-    return *this;
-  }
+  AqlValueMaterializer& operator=(AqlValueMaterializer&& other) noexcept;
 
-  ~AqlValueMaterializer() {
-    if (hasCopied) {
-      materialized.destroy();
-    }
-  }
+  ~AqlValueMaterializer();
 
-  arangodb::velocypack::Slice slice(AqlValue const& value, bool resolveExternals) {
-    materialized = value.materialize(trx, hasCopied, resolveExternals);
-    return materialized.slice();
-  }
+  arangodb::velocypack::Slice slice(AqlValue const& value, bool resolveExternals);
 
   transaction::Methods* trx;
   AqlValue materialized;
@@ -737,53 +426,5 @@ static_assert(sizeof(AqlValue) == 16, "invalid AqlValue size");
 }  // namespace aql
 
 }  // namespace arangodb
-
-/// @brief hash function for AqlValue objects
-namespace std {
-
-template <>
-struct hash<arangodb::aql::AqlValue> {
-  size_t operator()(arangodb::aql::AqlValue const& x) const noexcept {
-    arangodb::aql::AqlValue::AqlValueType type = x.type();
-    size_t res = std::hash<uint8_t>()(type);
-    if (type == arangodb::aql::AqlValue::VPACK_INLINE) {
-      try {
-        return res ^ static_cast<size_t>(
-                         arangodb::velocypack::Slice(&x._data.internal[0]).hash());
-      } catch (...) {
-        TRI_ASSERT(false);
-      }
-      // fallthrough to default hashing
-    }
-    // treat all other pointer types the same, because they will
-    // have the same bit representations
-    return res ^ std::hash<void const*>()(x._data.pointer);
-  }
-};
-
-template <>
-struct equal_to<arangodb::aql::AqlValue> {
-  bool operator()(arangodb::aql::AqlValue const& a,
-                  arangodb::aql::AqlValue const& b) const noexcept {
-    arangodb::aql::AqlValue::AqlValueType type = a.type();
-    if (type != b.type()) {
-      return false;
-    }
-    if (type == arangodb::aql::AqlValue::VPACK_INLINE) {
-      try {
-        return arangodb::velocypack::Slice(&a._data.internal[0])
-            .binaryEquals(arangodb::velocypack::Slice(&b._data.internal[0]));
-      } catch (...) {
-        TRI_ASSERT(false);
-      }
-      // fallthrough to default comparison
-    }
-    // treat all other pointer types the same, because they will
-    // have the same bit representations
-    return a._data.pointer == b._data.pointer;
-  }
-};
-
-}  // namespace std
 
 #endif

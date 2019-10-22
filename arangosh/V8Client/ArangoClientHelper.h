@@ -27,11 +27,11 @@
 #include <string>
 
 #include "Basics/Common.h"
+#include "SimpleHttpClient/SimpleHttpClient.h"
 
 namespace arangodb {
 namespace httpclient {
 class GeneralClientConnection;
-class SimpleHttpClient;
 class SimpleHttpResult;
 }  // namespace httpclient
 

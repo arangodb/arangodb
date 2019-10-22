@@ -159,8 +159,8 @@ struct HealthRecord {
 // This is initialized in AgencyFeature:
 std::string Supervision::_agencyPrefix = "/arango";
 
-Supervision::Supervision()
-    : arangodb::CriticalThread("Supervision"),
+Supervision::Supervision(application_features::ApplicationServer& server)
+    : arangodb::CriticalThread(server, "Supervision"),
       _agent(nullptr),
       _snapshot("Supervision"),
       _transient("Transient"),
@@ -892,7 +892,7 @@ void Supervision::run() {
   }
 
   if (shutdown) {
-    ApplicationServer::server->beginShutdown();
+    _server.beginShutdown();
   }
 }
 
@@ -1532,12 +1532,12 @@ void Supervision::enforceReplication() {
       auto const& col = *(col_.second);
 
       size_t replicationFactor;
-      auto replFact = col.hasAsUInt("replicationFactor");
+      auto replFact = col.hasAsUInt(StaticStrings::ReplicationFactor);
       if (replFact.second) {
         replicationFactor = replFact.first;
       } else {
-        auto replFact2 = col.hasAsString("replicationFactor");
-        if (replFact2.second && replFact2.first == "satellite") {
+        auto replFact2 = col.hasAsString(StaticStrings::ReplicationFactor);
+        if (replFact2.second && replFact2.first == StaticStrings::Satellite) {
           // satellites => distribute to every server
           auto available = Job::availableServers(_snapshot);
           replicationFactor = Job::countGoodOrBadServersInList(_snapshot, available);
@@ -1548,7 +1548,7 @@ void Supervision::enforceReplication() {
         }
       }
 
-      bool clone = col.has("distributeShardsLike");
+      bool clone = col.has(StaticStrings::DistributeShardsLike);
 
       if (!clone) {
         for (auto const& shard_ : col.hasAsChildren("shards").first) {  // Pl shards

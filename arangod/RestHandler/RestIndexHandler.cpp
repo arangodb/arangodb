@@ -23,8 +23,10 @@
 #include "RestIndexHandler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/Events.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -49,8 +51,9 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestIndexHandler::RestIndexHandler(GeneralRequest* request, GeneralResponse* response)
-    : RestVocbaseBaseHandler(request, response) {}
+RestIndexHandler::RestIndexHandler(application_features::ApplicationServer& server,
+                                   GeneralRequest* request, GeneralResponse* response)
+    : RestVocbaseBaseHandler(server, request, response) {}
 
 RestStatus RestIndexHandler::execute() {
   // extract the request type
@@ -74,7 +77,8 @@ RestStatus RestIndexHandler::execute() {
 std::shared_ptr<LogicalCollection> RestIndexHandler::collection(std::string const& cName) {
   if (!cName.empty()) {
     if (ServerState::instance()->isCoordinator()) {
-      return ClusterInfo::instance()->getCollectionNT(_vocbase.name(), cName);
+      return server().getFeature<ClusterFeature>().clusterInfo().getCollectionNT(
+          _vocbase.name(), cName);
     } else {
       return _vocbase.lookupCollection(cName);
     }
@@ -179,7 +183,7 @@ RestStatus RestIndexHandler::getSelectivityEstimates() {
   }
 
   // transaction protects access onto selectivity estimates
-  std::unique_ptr<SingleCollectionTransaction> trx;
+  std::unique_ptr<transaction::Methods> trx;
 
   try {
     trx = createTransaction(cName, AccessMode::Type::READ);
@@ -203,7 +207,7 @@ RestStatus RestIndexHandler::getSelectivityEstimates() {
     return RestStatus::DONE;
   }
   
-  LogicalCollection* coll = trx->documentCollection();
+  LogicalCollection* coll = trx->documentCollection(cName);
   auto idxs = coll->getIndexes();
   
   VPackBuffer<uint8_t> buffer;

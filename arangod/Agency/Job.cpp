@@ -79,7 +79,7 @@ Job::Job(JOB_STATUS status, Node const& snapshot, AgentInterface* agent,
       _creator(creator),
       _jb(nullptr) {}
 
-Job::~Job() {}
+Job::~Job() = default;
 
 // this will be initialized in the AgencyFeature
 std::string Job::agencyPrefix = "arango";
@@ -317,7 +317,7 @@ bool Job::isInServerList(Node const& snap, std::string const& prefix,
     bool has;
     std::tie(slice, has) = snap.hasAsSlice(prefix);
     if (has && slice.isArray()) {
-      for (auto const& srv : VPackArrayIterator(slice)) {
+      for (VPackSlice srv : VPackArrayIterator(slice)) {
         if (srv.isEqualString(server)) {
           found = true;
           break;
@@ -355,7 +355,7 @@ std::vector<std::string> Job::availableServers(Node const& snapshot) {
       bool has;
       std::tie(slice, has) = snapshot.hasAsSlice(prefix);
       if (has) {
-        for (auto const& srv : VPackArrayIterator(slice)) {
+        for (VPackSlice srv : VPackArrayIterator(slice)) {
           ret.erase(std::remove(ret.begin(), ret.end(), srv.copyString()), ret.end());
         }
       }

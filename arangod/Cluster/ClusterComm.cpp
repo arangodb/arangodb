@@ -29,6 +29,7 @@
 #include "Basics/HybridLogicalClock.h"
 #include "Basics/StringUtils.h"
 #include "Basics/application-exit.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
@@ -115,7 +116,8 @@ std::atomic<int> arangodb::ClusterComm::_theInstanceInit(0);
 /// @brief routine to set the destination
 ////////////////////////////////////////////////////////////////////////////////
 
-void ClusterCommResult::setDestination(std::string const& dest, bool logConnectionErrors) {
+void ClusterCommResult::setDestination(ClusterInfo& ci, std::string const& dest,
+                                       bool logConnectionErrors) {
   // This sets result.shardId, result.serverId and result.endpoint,
   // depending on what dest is. Note that if a shardID is given, the
   // responsible server is looked up, if a serverID is given, the endpoint
@@ -124,8 +126,7 @@ void ClusterCommResult::setDestination(std::string const& dest, bool logConnecti
   if (dest.substr(0, 6) == "shard:") {
     shardID = dest.substr(6);
     {
-      std::shared_ptr<std::vector<ServerID>> resp =
-          ClusterInfo::instance()->getResponsibleServer(shardID);
+      std::shared_ptr<std::vector<ServerID>> resp = ci.getResponsibleServer(shardID);
       if (!resp->empty()) {
         serverID = (*resp)[0];
       } else {
@@ -164,8 +165,7 @@ void ClusterCommResult::setDestination(std::string const& dest, bool logConnecti
     return;
   }
   // Now look up the actual endpoint:
-  auto ci = ClusterInfo::instance();
-  endpoint = ci->getServerEndpoint(serverID);
+  endpoint = ci.getServerEndpoint(serverID);
   if (endpoint.empty()) {
     status = CL_COMM_BACKEND_UNAVAILABLE;
     if (serverID.find(',') != std::string::npos) {
@@ -270,15 +270,16 @@ char const* ClusterCommResult::stringifyStatus(ClusterCommOpStatus status) {
 /// @brief ClusterComm constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-ClusterComm::ClusterComm()
-    : _roundRobin(0),
+ClusterComm::ClusterComm(application_features::ApplicationServer& server)
+    : _server(server),
+      _roundRobin(0),
       _logConnectionErrors(false),
       _authenticationEnabled(false),
       _jwtAuthorization("") {
-  AuthenticationFeature* af = AuthenticationFeature::instance();
-  TRI_ASSERT(af != nullptr);
-  if (af->isActive()) {
-    std::string token = af->tokenCache().jwtToken();
+  TRI_ASSERT(server.hasFeature<AuthenticationFeature>());
+  AuthenticationFeature& af = server.getFeature<AuthenticationFeature>();
+  if (af.isActive()) {
+    std::string token = af.tokenCache().jwtToken();
     TRI_ASSERT(!token.empty());
     _authenticationEnabled = true;
     _jwtAuthorization = "bearer " + token;
@@ -286,8 +287,9 @@ ClusterComm::ClusterComm()
 }
 
 /// @brief Unit test constructor
-ClusterComm::ClusterComm(bool ignored)
-    : _roundRobin(0),
+ClusterComm::ClusterComm(application_features::ApplicationServer& server, bool ignored)
+    : _server(server),
+      _roundRobin(0),
       _logConnectionErrors(false),
       _authenticationEnabled(false),
       _jwtAuthorization("") {}  // ClusterComm::ClusterComm(bool)
@@ -318,7 +320,8 @@ std::shared_ptr<ClusterComm> ClusterComm::instance() {
     if (state == 0) {
       // we must initialize (cannot use std::make_shared here because
       // constructor is private), if we throw here, everything is broken:
-      ClusterComm* cc = new ClusterComm();
+      auto& server = application_features::ApplicationServer::server();
+      ClusterComm* cc = new ClusterComm(server);
       _theInstance = std::shared_ptr<ClusterComm>(cc);
       _theInstanceInit = 2;
     } else if (state == 1) {
@@ -364,7 +367,7 @@ void ClusterComm::cleanup() {
 
 void ClusterComm::startBackgroundThreads() {
   for (unsigned loop = 0; loop < (TRI_numberProcessors() / 8 + 1); ++loop) {
-    ClusterCommThread* thread = new ClusterCommThread();
+    ClusterCommThread* thread = new ClusterCommThread(_server);
 
     if (thread->start()) {
       _backgroundThreads.push_back(thread);
@@ -669,8 +672,7 @@ std::unique_ptr<ClusterCommResult> ClusterComm::syncRequest(
   // can't move callbacks here
   communicator()->addRequest(std::move(newRequest));
 
-  while (!sharedData->wasSignaled
-         && !application_features::ApplicationServer::isStopping()) {
+  while (!sharedData->wasSignaled && !_server.isStopping()) {
     sharedData->cv.wait(100000);
   } // while
 
@@ -907,7 +909,7 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
    size_t nrDone = 0;
     while (true) {
       now = TRI_microtime();
-      if (now > endTime || application_features::ApplicationServer::isStopping()) {
+      if (now > endTime || _server.isStopping()) {
         break;
       }
       if (nrDone >= requests.size()) {
@@ -1003,7 +1005,8 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
                  (res.status == CL_COMM_TIMEOUT && !res.sendWasComplete)) {
         // Note that this case includes the refusal of a leader to accept
         // the operation, in which we have to flush ClusterInfo:
-        ClusterInfo::instance()->loadCurrent();
+        auto& ci = _server.getFeature<ClusterFeature>().clusterInfo();
+        ci.loadCurrent();
         requests[index].result = res;
         now = TRI_microtime();
 
@@ -1074,7 +1077,8 @@ std::pair<ClusterCommResult*, HttpRequest*> ClusterComm::prepareRequest(
     std::unordered_map<std::string, std::string> const& headerFields) {
   HttpRequest* request = nullptr;
   auto result = std::make_unique<ClusterCommResult>();
-  result->setDestination(destination, logConnectionErrors());
+  auto& ci = _server.getFeature<ClusterFeature>().clusterInfo();
+  result->setDestination(ci, destination, logConnectionErrors());
   if (result->endpoint.empty()) {
     return std::make_pair(result.release(), request);
   }
@@ -1097,17 +1101,6 @@ std::pair<ClusterCommResult*, HttpRequest*> ClusterComm::prepareRequest(
       headersCopy[StaticStrings::ClusterCommSource] = "AGENT-" + agent->id();
     }
   }
-
-#ifdef DEBUG_CLUSTER_COMM
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-#if ARANGODB_ENABLE_BACKTRACE
-  std::string bt;
-  TRI_GetBacktrace(bt);
-  std::replace(bt.begin(), bt.end(), '\n', ';');  // replace all '\n' to ';'
-  headersCopy["X-Arango-BT-SYNC"] = bt;
-#endif
-#endif
-#endif
 
   if (body == nullptr) {
     request = HttpRequest::createHttpRequest(ContentType::JSON, "", 0, headersCopy);
@@ -1172,7 +1165,8 @@ void ClusterComm::logConnectionError(bool useErrorLogLevel, ClusterCommResult co
 /// Cluster Comm Thread
 ////////////////////////////////////////////////////////////////////////////////
 
-ClusterCommThread::ClusterCommThread() : Thread("ClusterComm"), _cc(nullptr) {
+ClusterCommThread::ClusterCommThread(application_features::ApplicationServer& server)
+    : Thread(server, "ClusterComm"), _cc(nullptr) {
   _cc = ClusterComm::instance().get();
   _communicator = std::make_shared<communicator::Communicator>();
 }
@@ -1197,8 +1191,8 @@ void ClusterCommThread::beginShutdown() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ClusterCommThread::abortRequestsToFailedServers() {
-  ClusterInfo* ci = ClusterInfo::instance();
-  auto failedServers = ci->getFailedServers();
+  ClusterInfo& ci = _server.getFeature<ClusterFeature>().clusterInfo();
+  auto failedServers = ci.getFailedServers();
   if (failedServers.size() > 0) {
     auto ticketIds = _cc->activeServerTickets(failedServers);
     for (auto const& ticketId : ticketIds) {
@@ -1211,7 +1205,7 @@ void ClusterCommThread::run() {
   TRI_ASSERT(_communicator != nullptr);
   LOG_TOPIC("74eda", DEBUG, Logger::CLUSTER) << "starting ClusterComm thread";
   auto lastAbortCheck = std::chrono::steady_clock::now();
-  while (!application_features::ApplicationServer::isStopping()) {
+  while (!_server.isStopping()) {
     try {
       if (std::chrono::steady_clock::now() - lastAbortCheck >
           std::chrono::duration<double>(3.0)) {

@@ -72,6 +72,8 @@ enum class Error : uint16_t {
   WriteError = 1103,
 
   Canceled = 1104,
+  
+  VstUnauthorized = 2000,
 
   ProtocolError = 3000,
 };
@@ -143,7 +145,7 @@ std::string to_string(ProtocolType type);
 // --SECTION--                                                       ContentType
 // -----------------------------------------------------------------------------
 
-enum class ContentType { Unset, Custom, VPack, Dump, Json, Html, Text };
+enum class ContentType { Unset = 0, Custom, VPack, Dump, Json, Html, Text, BatchPart, FormData };
 ContentType to_ContentType(std::string const& val);
 std::string to_string(ContentType type);
 

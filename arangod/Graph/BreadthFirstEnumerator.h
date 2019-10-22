@@ -45,7 +45,7 @@ class BreadthFirstEnumerator final : public arangodb::traverser::PathEnumerator 
   struct PathStep {
     size_t sourceIdx;
     graph::EdgeDocumentToken edge;
-    arangodb::velocypack::StringRef const vertex;
+    arangodb::velocypack::StringRef /* const */ vertex;
 
    public:
     explicit PathStep(arangodb::velocypack::StringRef const vertex);
@@ -56,7 +56,7 @@ class BreadthFirstEnumerator final : public arangodb::traverser::PathEnumerator 
     ~PathStep();
 
     PathStep(PathStep const& other) = default;
-    PathStep& operator=(PathStep const& other) = default;
+    PathStep& operator=(PathStep const& other) = delete;
   };
 
   //////////////////////////////////////////////////////////////////////////////

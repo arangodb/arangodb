@@ -416,7 +416,7 @@ RocksDBEdgeIndex::RocksDBEdgeIndex(TRI_idx_iid_t iid, arangodb::LogicalCollectio
   TRI_ASSERT(_objectId != 0);
 }
 
-RocksDBEdgeIndex::~RocksDBEdgeIndex() {}
+RocksDBEdgeIndex::~RocksDBEdgeIndex() = default;
 
 std::vector<std::vector<arangodb::basics::AttributeName>> const& RocksDBEdgeIndex::coveredFields() const {
   TRI_ASSERT(_coveredFields.size() == 2);  // _from/_to or _to/_from
@@ -695,7 +695,7 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx, rocksdb::Slice 
   size_t n = 0;
   cache::Cache* cc = _cache.get();
   for (it->Seek(lower); it->Valid(); it->Next()) {
-    if (application_features::ApplicationServer::isStopping()) {
+    if (collection().vocbase().server().isStopping()) {
       return;
     }
     n++;

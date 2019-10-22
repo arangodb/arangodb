@@ -24,6 +24,8 @@
 #ifndef ARANGOD_CLUSTER_SHARDING_INFO_H
 #define ARANGOD_CLUSTER_SHARDING_INFO_H 1
 
+#include "Basics/Result.h"
+
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 #include <unordered_map>
@@ -32,6 +34,10 @@
 namespace arangodb {
 class LogicalCollection;
 class ShardingStrategy;
+
+namespace application_features {
+class ApplicationServer;
+}
 
 typedef std::string ServerID;  // ID of a server
 typedef std::string ShardID;   // ID of a shard
@@ -60,10 +66,10 @@ class ShardingInfo {
   size_t replicationFactor() const;
   void replicationFactor(size_t);
 
-  size_t minReplicationFactor() const;
-  void minReplicationFactor(size_t);
+  size_t writeConcern() const;
+  void writeConcern(size_t);
 
-  void setMinAndMaxReplicationFactor(size_t minimal, size_t maximal);
+  void setWriteConcernAndReplicationFactor(size_t writeConcern, size_t replicationFactor);
 
   bool isSatellite() const;
 
@@ -75,6 +81,11 @@ class ShardingInfo {
   /// class hierarchy. VirtualSmartEdgeCollection calls this function
   /// in its constructor, after the shardingInfo has been set up already
   void numberOfShards(size_t numberOfShards);
+
+  /// @brief validates the number of shards and the replication factor
+  /// in slice against the minimum and maximum configured values
+  static Result validateShardsAndReplicationFactor(arangodb::velocypack::Slice slice,
+                                                   application_features::ApplicationServer& server);
 
   bool usesDefaultShardKeys() const;
   std::vector<std::string> const& shardKeys() const;
@@ -90,7 +101,7 @@ class ShardingInfo {
 
   int getResponsibleShard(arangodb::velocypack::Slice, bool docComplete,
                           ShardID& shardID, bool& usesDefaultShardKeys,
-                          std::string const& key = "");
+                          arangodb::velocypack::StringRef const&);
 
  private:
   // @brief the logical collection we are working for
@@ -102,9 +113,9 @@ class ShardingInfo {
   // @brief replication factor (1 = no replication, 0 = smart edge collection)
   size_t _replicationFactor;
 
-  // @brief min replication factor (_minReplicationFactor <= _replicationFactor)
+  // @brief write concern (_writeConcern <= _replicationFactor)
   // Writes will be disallowed if we know we cannot fulfill minReplicationFactor.
-  size_t _minReplicationFactor;
+  size_t _writeConcern;
 
   // @brief name of other collection this collection's shards should be
   // distributed like

@@ -29,12 +29,17 @@
 
 #include "gtest/gtest.h"
 
+#include "Mocks/Servers.h"
+
 //#include "Basics/Exceptions.h"
 //#include "Basics/VelocyPackHelper.h"
 #include <velocypack/velocypack-aliases.h>
+
 #ifdef USE_ENTERPRISE
 #include "Enterprise/RocksDBEngine/RocksDBHotBackup.h"
+#include "Enterprise/StorageEngine/HotBackupFeature.h"
 #endif
+
 #include "Rest/Version.h"
 
 using namespace arangodb;
@@ -51,10 +56,9 @@ static uint64_t counter = 0;
 
 class RocksDBHotBackupTest : public RocksDBHotBackup {
 public:
-
   RocksDBHotBackupTest() = delete;
-  RocksDBHotBackupTest(const VPackSlice body, VPackBuilder& report)
-    : RocksDBHotBackup(body, report) {};
+  RocksDBHotBackupTest(HotBackupFeature& feature, const VPackSlice body, VPackBuilder& report)
+      : RocksDBHotBackup(feature, body, report){};
 
   std::string getDatabasePath() override {return "/var/db";};
 
@@ -75,10 +79,14 @@ class RocksDBHotBackupPathTests : public ::testing::Test {
 protected:
   VPackSlice config;
   VPackBuilder report;
+  tests::mocks::MockAqlServer server;
+  HotBackupFeature& feature;
   RocksDBHotBackupTest testee;
 
-  RocksDBHotBackupPathTests() : testee(config, report) {
-  }
+  RocksDBHotBackupPathTests()
+      : server(),
+        feature(server.getFeature<HotBackupFeature>()),
+        testee(feature, config, report) {}
 };
 
 
@@ -140,7 +148,9 @@ TEST_F(RocksDBHotBackupPathTests, test_getRocksDBPath) {
 TEST(RocksDBHotBackupOperationParameters, test_defaults) {
   const VPackSlice slice;
   VPackBuilder report;
-  RocksDBHotBackupCreate testee(slice, report, true);
+  tests::mocks::MockAqlServer server;
+  HotBackupFeature& feature = server.getFeature<HotBackupFeature>();
+  RocksDBHotBackupCreate testee(feature, slice, report, true);
 
   EXPECT_TRUE(testee.isCreate());
   EXPECT_EQ(testee.getTimestamp(), "");
@@ -157,7 +167,9 @@ TEST(RocksDBHotBackupOperationParameters, test_simple) {
   }
 
   VPackBuilder report;
-  RocksDBHotBackupCreate testee(opBuilder.slice(), report, false);
+  tests::mocks::MockAqlServer server;
+  HotBackupFeature& feature = server.getFeature<HotBackupFeature>();
+  RocksDBHotBackupCreate testee(feature, opBuilder.slice(), report, false);
   testee.parseParameters();
 
   EXPECT_TRUE(testee.valid());
@@ -176,11 +188,13 @@ TEST(RocksDBHotBackupOperationParameters, test_timestamp_exception) {
   }
 
   VPackBuilder report;
-  RocksDBHotBackupCreate testee(opBuilder.slice(), report, false);
+  tests::mocks::MockAqlServer server;
+  HotBackupFeature& feature = server.getFeature<HotBackupFeature>();
+  RocksDBHotBackupCreate testee(feature, opBuilder.slice(), report, false);
   testee.parseParameters();
 
   EXPECT_FALSE(testee.valid());
-  EXPECT_TRUE((testee.resultSlice().isObject() && testee.resultSlice().hasKey("timeout")));
+  EXPECT_TRUE(testee.resultSlice().isObject() && testee.resultSlice().hasKey("timeout"));
 }
 
 
@@ -189,27 +203,30 @@ TEST(RocksDBHotBackupOperationParameters, test_timestamp_exception) {
 ////////////////////////////////////////////////////////////////////////////////
 class RocksDBHotBackupRestoreTest : public RocksDBHotBackupRestore {
 public:
-  RocksDBHotBackupRestoreTest(VPackSlice const slice, VPackBuilder& report) :
-    RocksDBHotBackupRestore(slice, report), _pauseRocksDBReturn(true),
-    _restartRocksDBReturn(true), _holdTransactionsReturn(true) {
+ RocksDBHotBackupRestoreTest(HotBackupFeature& feature, VPackSlice const slice,
+                             VPackBuilder& report)
+     : RocksDBHotBackupRestore(feature, slice, report),
+       _pauseRocksDBReturn(true),
+       _restartRocksDBReturn(true),
+       _holdTransactionsReturn(true) {
+   long systemError;
+   std::string errorMessage;
 
-    long systemError;
-    std::string errorMessage;
+   if (!Initialized) {
+     Initialized = true;
+     arangodb::RandomGenerator::initialize(arangodb::RandomGenerator::RandomType::MERSENNE);
+   }
 
-    if (!Initialized) {
-      Initialized = true;
-      arangodb::RandomGenerator::initialize(arangodb::RandomGenerator::RandomType::MERSENNE);
-    }
+   _id = TRI_GetTempPath();
+   _id += TRI_DIR_SEPARATOR_CHAR;
+   _id += "arangotest-";
+   _id += std::to_string(TRI_microtime());
+   _id += std::to_string(arangodb::RandomGenerator::interval(UINT32_MAX));
 
-    _id = TRI_GetTempPath();
-    _id += TRI_DIR_SEPARATOR_CHAR;
-    _id += "arangotest-";
-    _id += std::to_string(TRI_microtime());
-    _id += std::to_string(arangodb::RandomGenerator::interval(UINT32_MAX));
+   TRI_CreateDirectory(_id.c_str(), systemError, errorMessage);
 
-    TRI_CreateDirectory(_id.c_str(), systemError, errorMessage);
-
-    _idRestore = "SNGL-9231534b-e1aa-4eb6-881a-0b6c798c6677_2019-02-15T20.51.13Z";
+   _idRestore =
+       "SNGL-9231534b-e1aa-4eb6-881a-0b6c798c6677_2019-02-15T20.51.13Z";
   }
 
   //RocksDBHotBackupRestoreTest(const VPackSlice body) : RocksDBHotBackup(body) {};
@@ -349,7 +366,9 @@ TEST(RocksDBHotBackupRestoreDirectories, test_createRestoringDirectory) {
   bool retBool;
 
   VPackBuilder report;
-  RocksDBHotBackupRestoreTest testee(VPackSlice(), report);
+  tests::mocks::MockAqlServer server;
+  HotBackupFeature& feature = server.getFeature<HotBackupFeature>();
+  RocksDBHotBackupRestoreTest testee(feature, VPackSlice(), report);
   testee.createHotDirectory();
 
   retBool = testee.createRestoringDirectory(restoringDir);
@@ -392,7 +411,9 @@ TEST(RocksDBHotBackupRestoreDirectories, test_createRestoringDirectory) {
 
 TEST(RocksDBHotBackupRestoreTest, test_execute_normal_directory_path) {
   VPackBuilder report;
-  RocksDBHotBackupRestoreTest testee(VPackSlice(), report);
+  tests::mocks::MockAqlServer server;
+  HotBackupFeature& feature = server.getFeature<HotBackupFeature>();
+  RocksDBHotBackupRestoreTest testee(feature, VPackSlice(), report);
 
   testee.createDBDirectory();
   testee.createHotDirectory();

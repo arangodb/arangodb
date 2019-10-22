@@ -58,23 +58,24 @@ class SharedQueryState {
   /// continues its execution where it left off.
   template <typename F>
   bool execute(F&& cb) {
+    // guards _valid to make sure the callback cannot be called after the query
+    // is destroyed
     std::lock_guard<std::mutex> guard(_mutex);
     if (!_valid) {
       return false;
     }
 
-    bool res = std::forward<F>(cb)();
+    std::forward<F>(cb)();
     if (_hasHandler) {
       if (ADB_UNLIKELY(!executeContinueCallback())) {
         return false;  // likely shutting down
       }
     } else {
       _wasNotified = true;
-      // simon: bad experience on macOS guard.unloack();
+      // simon: bad experience on macOS guard.unlock();
       _condition.notify_one();
     }
-
-    return res;
+    return true;
   }
 
   /// this has to stay for a backwards-compatible AQL HTTP API (hasMore).

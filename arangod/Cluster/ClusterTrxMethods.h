@@ -24,6 +24,7 @@
 #define ARANGOD_CLUSTER_CLUSTER_TRX_METHODS_H 1
 
 #include "Basics/Common.h"
+#include "Futures/Future.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/voc-types.h"
 
@@ -35,21 +36,17 @@ struct OperationOptions;
 class TransactionState;
 
 namespace ClusterTrxMethods {
+using arangodb::futures::Future;
 
 /// @brief begin a transaction on all followers
-arangodb::Result beginTransactionOnLeaders(TransactionState&,
-                                           std::vector<ServerID> const& leaders);
-
-/// @brief begin a transaction on all followers
-arangodb::Result beginTransactionOnFollowers(transaction::Methods& trx,
-                                             arangodb::FollowerInfo& info,
-                                             std::vector<ServerID> const& followers);
+Future<arangodb::Result> beginTransactionOnLeaders(TransactionState&,
+                                                   std::vector<ServerID> const& leaders);
 
 /// @brief commit a transaction on a subordinate
-arangodb::Result commitTransaction(transaction::Methods& trx);
+Future<arangodb::Result> commitTransaction(transaction::Methods& trx);
 
 /// @brief commit a transaction on a subordinate
-arangodb::Result abortTransaction(transaction::Methods& trx);
+Future<arangodb::Result> abortTransaction(transaction::Methods& trx);
 
 /// @brief add the transaction ID header for servers
 template <typename MapT>
@@ -57,10 +54,11 @@ void addTransactionHeader(transaction::Methods const& trx,
                           ServerID const& server, MapT& headers);
 
 /// @brief add transaction ID header for setting up AQL snippets
-void addAQLTransactionHeader(transaction::Methods const& trx, ServerID const& server,
-                             std::unordered_map<std::string, std::string>& headers);
+template <typename MapT>
+void addAQLTransactionHeader(transaction::Methods const& trx,
+                             ServerID const& server, MapT& headers);
 
-/// @brief check whether this is any kind el cheapo transaction
+/// @brief check whether this is a kind el cheapo transaction
 bool isElCheapo(transaction::Methods const& trx);
 bool isElCheapo(TransactionState const& state);
 }  // namespace ClusterTrxMethods

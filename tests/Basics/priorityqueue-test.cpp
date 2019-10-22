@@ -48,84 +48,84 @@ struct MyValue {
 TEST(CPriorityQueueTest, tst_deque_case) {
   arangodb::graph::ShortestPathPriorityQueue<std::string, MyValue, unsigned int> pq;
 
-  EXPECT_TRUE(0 == (int)pq.size());
-  EXPECT_TRUE(true == pq.empty());
+  EXPECT_EQ(0, (int)pq.size());
+  EXPECT_TRUE(pq.empty());
 
   bool b;
   MyValue* v = nullptr;
 
   b = pq.insert("a", std::make_unique<MyValue>("a", 1));
-  EXPECT_TRUE(b == true);
+  EXPECT_TRUE(b);
   b = pq.insert("b", std::make_unique<MyValue>("b", 2));
-  EXPECT_TRUE(b == true);
+  EXPECT_TRUE(b);
   b = pq.insert("c", std::make_unique<MyValue>("c", 2));
-  EXPECT_TRUE(b == true);
+  EXPECT_TRUE(b);
   b = pq.insert("d", std::make_unique<MyValue>("d", 4));
-  EXPECT_TRUE(b == true);
+  EXPECT_TRUE(b);
   b = pq.insert("c", std::make_unique<MyValue>("c", 5));
-  EXPECT_TRUE(b == false);
+  EXPECT_FALSE(b);
 
-  EXPECT_TRUE(4 == (int)pq.size());
-  EXPECT_TRUE(false == pq.empty());
+  EXPECT_EQ(4, (int)pq.size());
+  EXPECT_FALSE(pq.empty());
 
   MyValue const* p;
 
   p = pq.find("a");
-  EXPECT_TRUE((int)p->_weight == 1);
+  EXPECT_EQ((int)p->_weight, 1);
   p = pq.find("b");
-  EXPECT_TRUE((int)p->_weight == 2);
+  EXPECT_EQ((int)p->_weight, 2);
   p = pq.find("c");
-  EXPECT_TRUE((int)p->_weight == 2);
+  EXPECT_EQ((int)p->_weight, 2);
   p = pq.find("d");
-  EXPECT_TRUE((int)p->_weight == 4);
+  EXPECT_EQ((int)p->_weight, 4);
   p = pq.find("abc");
-  EXPECT_TRUE(p == nullptr);
+  EXPECT_EQ(p, nullptr);
 
   std::string k;
 
   p = pq.getMinimal();
-  EXPECT_TRUE(p->_key == "a");
+  EXPECT_EQ(p->_key, "a");
   b = pq.popMinimal(k, v);
-  EXPECT_TRUE(b == true);
-  EXPECT_TRUE(k == "a");
-  ASSERT_TRUE(v != nullptr);
-  EXPECT_TRUE(v->_key == "a");
-  EXPECT_TRUE((int)v->_weight == 1);
+  EXPECT_TRUE(b);
+  EXPECT_EQ(k, "a");
+  ASSERT_NE(v, nullptr);
+  EXPECT_EQ(v->_key, "a");
+  EXPECT_EQ((int)v->_weight, 1);
 
   p = pq.getMinimal();
-  EXPECT_TRUE(p->_key == "b");
+  EXPECT_EQ(p->_key, "b");
   b = pq.popMinimal(k, v);
-  EXPECT_TRUE(b == true);
-  EXPECT_TRUE(k == "b");
-  EXPECT_TRUE(v->_key == "b");
-  EXPECT_TRUE((int)v->_weight == 2);
+  EXPECT_TRUE(b);
+  EXPECT_EQ(k, "b");
+  EXPECT_EQ(v->_key, "b");
+  EXPECT_EQ((int)v->_weight, 2);
 
   p = pq.getMinimal();
-  EXPECT_TRUE(p->_key == "c");
+  EXPECT_EQ(p->_key, "c");
   b = pq.popMinimal(k, v);
-  EXPECT_TRUE(b == true);
-  EXPECT_TRUE(k == "c");
-  EXPECT_TRUE(v->_key == "c");
-  EXPECT_TRUE((int)v->_weight == 2);
+  EXPECT_TRUE(b);
+  EXPECT_EQ(k, "c");
+  EXPECT_EQ(v->_key, "c");
+  EXPECT_EQ((int)v->_weight, 2);
 
-  EXPECT_TRUE((int)pq.size() == 1);
-  EXPECT_TRUE(pq.empty() == false);
+  EXPECT_EQ((int)pq.size(), 1);
+  EXPECT_FALSE(pq.empty());
 
   p = pq.getMinimal();
-  EXPECT_TRUE(p->_key == "d");
+  EXPECT_EQ(p->_key, "d");
   b = pq.popMinimal(k, v);
-  EXPECT_TRUE(b == true);
-  EXPECT_TRUE(k == "d");
-  EXPECT_TRUE(v->_key == "d");
-  EXPECT_TRUE((int)v->_weight == 4);
+  EXPECT_TRUE(b);
+  EXPECT_EQ(k, "d");
+  EXPECT_EQ(v->_key, "d");
+  EXPECT_EQ((int)v->_weight, 4);
 
-  EXPECT_TRUE((int)pq.size() == 0);
-  EXPECT_TRUE(pq.empty() == true);
+  EXPECT_EQ((int)pq.size(), 0);
+  EXPECT_TRUE(pq.empty());
 
   p = pq.getMinimal();
-  EXPECT_TRUE(p == nullptr);
+  EXPECT_EQ(p, nullptr);
   b = pq.popMinimal(k, v);
-  EXPECT_TRUE(b == false);
+  EXPECT_FALSE(b);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -135,83 +135,83 @@ TEST(CPriorityQueueTest, tst_deque_case) {
 TEST(CPriorityQueueTest, tst_heap_case) {
   arangodb::graph::ShortestPathPriorityQueue<std::string, MyValue, unsigned int> pq;
 
-  EXPECT_TRUE(0 == (int)pq.size());
-  EXPECT_TRUE(true == pq.empty());
+  EXPECT_EQ(0, (int)pq.size());
+  EXPECT_TRUE(pq.empty());
 
   bool b;
   MyValue* v = nullptr;
 
   b = pq.insert("a", std::make_unique<MyValue>("a", 4));
-  EXPECT_TRUE(b == true);
+  EXPECT_TRUE(b);
   b = pq.insert("b", std::make_unique<MyValue>("b", 1));
-  EXPECT_TRUE(b == true);
+  EXPECT_TRUE(b);
   b = pq.insert("c", std::make_unique<MyValue>("c", 2));
-  EXPECT_TRUE(b == true);
+  EXPECT_TRUE(b);
   b = pq.insert("d", std::make_unique<MyValue>("d", 2));
-  EXPECT_TRUE(b == true);
+  EXPECT_TRUE(b);
   b = pq.insert("c", std::make_unique<MyValue>("c", 5));
-  EXPECT_TRUE(b == false);
+  EXPECT_FALSE(b);
 
-  EXPECT_TRUE(4 == (int)pq.size());
-  EXPECT_TRUE(false == pq.empty());
+  EXPECT_EQ(4, (int)pq.size());
+  EXPECT_FALSE(pq.empty());
 
   MyValue const* p;
 
   p = pq.find("a");
-  EXPECT_TRUE((int)p->_weight == 4);
+  EXPECT_EQ((int)p->_weight, 4);
   p = pq.find("b");
-  EXPECT_TRUE((int)p->_weight == 1);
+  EXPECT_EQ((int)p->_weight, 1);
   p = pq.find("c");
-  EXPECT_TRUE((int)p->_weight == 2);
+  EXPECT_EQ((int)p->_weight, 2);
   p = pq.find("d");
-  EXPECT_TRUE((int)p->_weight == 2);
+  EXPECT_EQ((int)p->_weight, 2);
   p = pq.find("abc");
-  EXPECT_TRUE(p == nullptr);
+  EXPECT_EQ(p, nullptr);
 
   std::string k;
 
   p = pq.getMinimal();
-  EXPECT_TRUE(p->_key == "b");
+  EXPECT_EQ(p->_key, "b");
   b = pq.popMinimal(k, v);
-  EXPECT_TRUE(b == true);
-  EXPECT_TRUE(k == "b");
-  EXPECT_TRUE(v->_key == "b");
-  EXPECT_TRUE((int)v->_weight == 1);
+  EXPECT_TRUE(b);
+  EXPECT_EQ(k, "b");
+  EXPECT_EQ(v->_key, "b");
+  EXPECT_EQ((int)v->_weight, 1);
 
   p = pq.getMinimal();
-  EXPECT_TRUE(p->_key == "d");
+  EXPECT_EQ(p->_key, "d");
   b = pq.popMinimal(k, v);
-  EXPECT_TRUE(b == true);
-  EXPECT_TRUE(k == "d");
-  EXPECT_TRUE(v->_key == "d");
-  EXPECT_TRUE((int)v->_weight == 2);
+  EXPECT_TRUE(b);
+  EXPECT_EQ(k, "d");
+  EXPECT_EQ(v->_key, "d");
+  EXPECT_EQ((int)v->_weight, 2);
 
   p = pq.getMinimal();
-  EXPECT_TRUE(p->_key == "c");
+  EXPECT_EQ(p->_key, "c");
   b = pq.popMinimal(k, v);
-  EXPECT_TRUE(b == true);
-  EXPECT_TRUE(k == "c");
-  EXPECT_TRUE(v->_key == "c");
-  EXPECT_TRUE((int)v->_weight == 2);
+  EXPECT_TRUE(b);
+  EXPECT_EQ(k, "c");
+  EXPECT_EQ(v->_key, "c");
+  EXPECT_EQ((int)v->_weight, 2);
 
-  EXPECT_TRUE((int)pq.size() == 1);
-  EXPECT_TRUE(pq.empty() == false);
+  EXPECT_EQ((int)pq.size(), 1);
+  EXPECT_FALSE(pq.empty());
 
   p = pq.getMinimal();
-  EXPECT_TRUE(p->_key == "a");
+  EXPECT_EQ(p->_key, "a");
   b = pq.popMinimal(k, v);
-  EXPECT_TRUE(b == true);
-  EXPECT_TRUE(k == "a");
-  EXPECT_TRUE(v->_key == "a");
-  EXPECT_TRUE((int)v->_weight == 4);
+  EXPECT_TRUE(b);
+  EXPECT_EQ(k, "a");
+  EXPECT_EQ(v->_key, "a");
+  EXPECT_EQ((int)v->_weight, 4);
 
-  EXPECT_TRUE((int)pq.size() == 0);
-  EXPECT_TRUE(pq.empty() == true);
+  EXPECT_EQ((int)pq.size(), 0);
+  EXPECT_TRUE(pq.empty());
 
   p = pq.getMinimal();
-  EXPECT_TRUE(p == nullptr);
+  EXPECT_EQ(p, nullptr);
   b = pq.popMinimal(k, v);
-  EXPECT_TRUE(b == false);
+  EXPECT_FALSE(b);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -221,85 +221,85 @@ TEST(CPriorityQueueTest, tst_heap_case) {
 TEST(CPriorityQueueTest, tst_deque_case_with_lowering) {
   arangodb::graph::ShortestPathPriorityQueue<std::string, MyValue, unsigned int> pq;
 
-  EXPECT_TRUE(0 == (int)pq.size());
-  EXPECT_TRUE(true == pq.empty());
+  EXPECT_EQ(0, (int)pq.size());
+  EXPECT_TRUE(pq.empty());
 
   bool b;
   MyValue* v = nullptr;
 
   b = pq.insert("a", std::make_unique<MyValue>("a", 1));
-  EXPECT_TRUE(b == true);
+  EXPECT_TRUE(b);
   b = pq.insert("b", std::make_unique<MyValue>("b", 2));
-  EXPECT_TRUE(b == true);
+  EXPECT_TRUE(b);
   b = pq.insert("c", std::make_unique<MyValue>("c", 2));
-  EXPECT_TRUE(b == true);
+  EXPECT_TRUE(b);
   b = pq.insert("d", std::make_unique<MyValue>("d", 4));
-  EXPECT_TRUE(b == true);
+  EXPECT_TRUE(b);
   b = pq.insert("c", std::make_unique<MyValue>("c", 5));
-  EXPECT_TRUE(b == false);
+  EXPECT_FALSE(b);
 
-  EXPECT_TRUE(4 == (int)pq.size());
-  EXPECT_TRUE(false == pq.empty());
+  EXPECT_EQ(4, (int)pq.size());
+  EXPECT_FALSE(pq.empty());
 
   pq.lowerWeight("d", 1);  // This moves "d" before "b" and "c"
 
   MyValue const* p;
 
   p = pq.find("a");
-  EXPECT_TRUE((int)p->_weight == 1);
+  EXPECT_EQ((int)p->_weight, 1);
   p = pq.find("b");
-  EXPECT_TRUE((int)p->_weight == 2);
+  EXPECT_EQ((int)p->_weight, 2);
   p = pq.find("c");
-  EXPECT_TRUE((int)p->_weight == 2);
+  EXPECT_EQ((int)p->_weight, 2);
   p = pq.find("d");
-  EXPECT_TRUE((int)p->_weight == 1);
+  EXPECT_EQ((int)p->_weight, 1);
   p = pq.find("abc");
-  EXPECT_TRUE(p == nullptr);
+  EXPECT_EQ(p, nullptr);
 
   std::string k;
 
   p = pq.getMinimal();
-  EXPECT_TRUE(p->_key == "a");
+  EXPECT_EQ(p->_key, "a");
   b = pq.popMinimal(k, v);
-  EXPECT_TRUE(b == true);
-  EXPECT_TRUE(k == "a");
-  EXPECT_TRUE(v->_key == "a");
-  EXPECT_TRUE((int)v->_weight == 1);
+  EXPECT_TRUE(b);
+  EXPECT_EQ(k, "a");
+  EXPECT_EQ(v->_key, "a");
+  EXPECT_EQ((int)v->_weight, 1);
 
   p = pq.getMinimal();
-  EXPECT_TRUE(p->_key == "d");
+  EXPECT_EQ(p->_key, "d");
   b = pq.popMinimal(k, v);
-  EXPECT_TRUE(b == true);
-  EXPECT_TRUE(k == "d");
-  EXPECT_TRUE(v->_key == "d");
-  EXPECT_TRUE((int)v->_weight == 1);
+  EXPECT_TRUE(b);
+  EXPECT_EQ(k, "d");
+  EXPECT_EQ(v->_key, "d");
+  EXPECT_EQ((int)v->_weight, 1);
 
   p = pq.getMinimal();
-  EXPECT_TRUE(p->_key == "c");
+  EXPECT_EQ(p->_key, "c");
   b = pq.popMinimal(k, v);
-  EXPECT_TRUE(b == true);
-  EXPECT_TRUE(k == "c");
-  EXPECT_TRUE(v->_key == "c");
-  EXPECT_TRUE((int)v->_weight == 2);
+  EXPECT_TRUE(b);
+  EXPECT_EQ(k, "c");
+  EXPECT_EQ(v->_key, "c");
+  EXPECT_EQ((int)v->_weight, 2);
 
-  EXPECT_TRUE((int)pq.size() == 1);
-  EXPECT_TRUE(pq.empty() == false);
+  EXPECT_EQ((int)pq.size(), 1);
+  EXPECT_FALSE(pq.empty());
 
   p = pq.getMinimal();
-  EXPECT_TRUE(p->_key == "b");
+  EXPECT_EQ(p->_key, "b");
   b = pq.popMinimal(k, v);
-  EXPECT_TRUE(b == true);
-  EXPECT_TRUE(k == "b");
-  EXPECT_TRUE(v->_key == "b");
-  EXPECT_TRUE((int)v->_weight == 2);
+  EXPECT_TRUE(b);
+  EXPECT_EQ(k, "b");
+  EXPECT_EQ(v->_key, "b");
+  EXPECT_EQ((int)v->_weight, 2);
 
-  EXPECT_TRUE((int)pq.size() == 0);
-  EXPECT_TRUE(pq.empty() == true);
+  EXPECT_EQ((int)pq.size(), 0);
+  EXPECT_TRUE(pq.empty());
 
   p = pq.getMinimal();
-  EXPECT_TRUE(p == nullptr);
+  EXPECT_EQ(p, nullptr);
   b = pq.popMinimal(k, v);
-  EXPECT_TRUE(b == false);
+  EXPECT_FALSE(b);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -309,84 +309,84 @@ TEST(CPriorityQueueTest, tst_deque_case_with_lowering) {
 TEST(CPriorityQueueTest, tst_heap_case_with_lowering) {
   arangodb::graph::ShortestPathPriorityQueue<std::string, MyValue, unsigned int> pq;
 
-  EXPECT_TRUE(0 == (int)pq.size());
-  EXPECT_TRUE(true == pq.empty());
+  EXPECT_EQ(0, (int)pq.size());
+  EXPECT_TRUE(pq.empty());
 
   bool b;
   MyValue* v = nullptr;
 
   b = pq.insert("a", std::make_unique<MyValue>("a", 4));
-  EXPECT_TRUE(b == true);
+  EXPECT_TRUE(b);
   b = pq.insert("b", std::make_unique<MyValue>("b", 2));
-  EXPECT_TRUE(b == true);
+  EXPECT_TRUE(b);
   b = pq.insert("c", std::make_unique<MyValue>("c", 3));
-  EXPECT_TRUE(b == true);
+  EXPECT_TRUE(b);
   b = pq.insert("d", std::make_unique<MyValue>("d", 3));
-  EXPECT_TRUE(b == true);
+  EXPECT_TRUE(b);
   b = pq.insert("c", std::make_unique<MyValue>("c", 5));
-  EXPECT_TRUE(b == false);
+  EXPECT_FALSE(b);
   delete v;
 
-  EXPECT_TRUE(4 == (int)pq.size());
-  EXPECT_TRUE(false == pq.empty());
+  EXPECT_EQ(4, (int)pq.size());
+  EXPECT_FALSE(pq.empty());
 
   pq.lowerWeight("a", 1);  // This moves "a" before all others
 
   MyValue const* p;
 
   p = pq.find("a");
-  EXPECT_TRUE((int)p->_weight == 1);
+  EXPECT_EQ((int)p->_weight, 1);
   p = pq.find("b");
-  EXPECT_TRUE((int)p->_weight == 2);
+  EXPECT_EQ((int)p->_weight, 2);
   p = pq.find("c");
-  EXPECT_TRUE((int)p->_weight == 3);
+  EXPECT_EQ((int)p->_weight, 3);
   p = pq.find("d");
-  EXPECT_TRUE((int)p->_weight == 3);
+  EXPECT_EQ((int)p->_weight, 3);
   p = pq.find("abc");
-  EXPECT_TRUE(p == nullptr);
+  EXPECT_EQ(p, nullptr);
 
   std::string k;
 
   p = pq.getMinimal();
-  EXPECT_TRUE(p->_key == "a");
+  EXPECT_EQ(p->_key, "a");
   b = pq.popMinimal(k, v);
-  EXPECT_TRUE(b == true);
-  EXPECT_TRUE(k == "a");
-  EXPECT_TRUE(v->_key == "a");
-  EXPECT_TRUE((int)v->_weight == 1);
+  EXPECT_TRUE(b);
+  EXPECT_EQ(k, "a");
+  EXPECT_EQ(v->_key, "a");
+  EXPECT_EQ((int)v->_weight, 1);
 
   p = pq.getMinimal();
-  EXPECT_TRUE(p->_key == "b");
+  EXPECT_EQ(p->_key, "b");
   b = pq.popMinimal(k, v);
-  EXPECT_TRUE(b == true);
-  EXPECT_TRUE(k == "b");
-  EXPECT_TRUE(v->_key == "b");
-  EXPECT_TRUE((int)v->_weight == 2);
+  EXPECT_TRUE(b);
+  EXPECT_EQ(k, "b");
+  EXPECT_EQ(v->_key, "b");
+  EXPECT_EQ((int)v->_weight, 2);
 
   p = pq.getMinimal();
-  EXPECT_TRUE(p->_key == "c");
+  EXPECT_EQ(p->_key, "c");
   b = pq.popMinimal(k, v);
-  EXPECT_TRUE(b == true);
-  EXPECT_TRUE(k == "c");
-  EXPECT_TRUE(v->_key == "c");
-  EXPECT_TRUE((int)v->_weight == 3);
+  EXPECT_TRUE(b);
+  EXPECT_EQ(k, "c");
+  EXPECT_EQ(v->_key, "c");
+  EXPECT_EQ((int)v->_weight, 3);
 
-  EXPECT_TRUE((int)pq.size() == 1);
-  EXPECT_TRUE(pq.empty() == false);
+  EXPECT_EQ((int)pq.size(), 1);
+  EXPECT_FALSE(pq.empty());
 
   p = pq.getMinimal();
-  EXPECT_TRUE(p->_key == "d");
+  EXPECT_EQ(p->_key, "d");
   b = pq.popMinimal(k, v);
-  EXPECT_TRUE(b == true);
-  EXPECT_TRUE(k == "d");
-  EXPECT_TRUE(v->_key == "d");
-  EXPECT_TRUE((int)v->_weight == 3);
+  EXPECT_TRUE(b);
+  EXPECT_EQ(k, "d");
+  EXPECT_EQ(v->_key, "d");
+  EXPECT_EQ((int)v->_weight, 3);
 
-  EXPECT_TRUE((int)pq.size() == 0);
-  EXPECT_TRUE(pq.empty() == true);
+  EXPECT_EQ((int)pq.size(), 0);
+  EXPECT_TRUE(pq.empty());
 
   p = pq.getMinimal();
-  EXPECT_TRUE(p == nullptr);
+  EXPECT_EQ(p, nullptr);
   b = pq.popMinimal(k, v);
-  EXPECT_TRUE(b == false);
+  EXPECT_FALSE(b);
 }

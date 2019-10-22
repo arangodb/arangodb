@@ -60,7 +60,6 @@
 #include "Transaction/Hints.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
-#include "Utils/CollectionNameResolver.h"
 #include "Utils/Events.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -654,7 +653,7 @@ MMFilesCollection::MMFilesCollection(LogicalCollection& logical,
   //  _revisionsCache;
 }
 
-MMFilesCollection::~MMFilesCollection() {}
+MMFilesCollection::~MMFilesCollection() = default;
 
 TRI_voc_rid_t MMFilesCollection::revision(arangodb::transaction::Methods*) const {
   return _lastRevision;
@@ -687,9 +686,7 @@ int MMFilesCollection::close() {
       // save new "count" value
       StorageEngine* engine = EngineSelectorFeature::ENGINE;
       bool const doSync =
-          application_features::ApplicationServer::getFeature<DatabaseFeature>(
-              "Database")
-              ->forceSyncProperties();
+          _logicalCollection.vocbase().server().getFeature<DatabaseFeature>().forceSyncProperties();
 
       engine->changeCollection(_logicalCollection.vocbase(), _logicalCollection, doSync);
     }
@@ -1756,7 +1753,7 @@ int MMFilesCollection::fillIndexes(transaction::Methods& trx,
     };
 
     if (nrUsed > 0) {
-      arangodb::basics::BucketPosition position;
+      arangodb::containers::BucketPosition position;
       uint64_t total = 0;
 
       while (true) {
@@ -2089,7 +2086,7 @@ void MMFilesCollection::prepareIndexes(VPackSlice indexesSlice) {
   bool foundPrimary = false;
   bool foundEdge = false;
 
-  for (auto const& it : VPackArrayIterator(indexesSlice)) {
+  for (VPackSlice it : VPackArrayIterator(indexesSlice)) {
     auto const& s = it.get(arangodb::StaticStrings::IndexType);
 
     if (s.isString()) {
@@ -2840,7 +2837,7 @@ LocalDocumentId MMFilesCollection::reuseOrCreateLocalDocumentId(OperationOptions
     if (marker->hasLocalDocumentId()) {
       return marker->getLocalDocumentId();
     }
-    // falls through intentionally
+    // intentionally falls through
   }
 
   // new operation, no recovery -> generate a new LocalDocumentId
@@ -3166,9 +3163,8 @@ Result MMFilesCollection::persistLocalDocumentIdsForDatafile(MMFilesCollection& 
 }
 
 Result MMFilesCollection::persistLocalDocumentIds() {
-  if (_logicalCollection.version() >= LogicalCollection::CollectionVersions::VERSION_34) {
-    // already good, just continue
-    return Result();
+  if (_logicalCollection.version() >= LogicalCollection::Version::v34) {
+    return Result();  // already good, just continue
   }
 
   WRITE_LOCKER(dataLocker, _dataLock);
@@ -3203,12 +3199,11 @@ Result MMFilesCollection::persistLocalDocumentIds() {
 }
 
 void MMFilesCollection::setCurrentVersion() {
-  _logicalCollection.setVersion(static_cast<LogicalCollection::CollectionVersions>(
+  _logicalCollection.setVersion(static_cast<LogicalCollection::Version>(
       LogicalCollection::currentVersion()));
 
-  bool const doSync = application_features::ApplicationServer::getFeature<DatabaseFeature>(
-                          "Database")
-                          ->forceSyncProperties();
+  bool const doSync =
+      _logicalCollection.vocbase().server().getFeature<DatabaseFeature>().forceSyncProperties();
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
 
   engine->changeCollection(_logicalCollection.vocbase(), _logicalCollection, doSync);
@@ -3326,7 +3321,7 @@ int MMFilesCollection::detectIndexes(transaction::Methods& trx) {
                             _logicalCollection.id(), builder, true, UINT64_MAX);
 
   // iterate over all index files
-  for (auto const& it : VPackArrayIterator(builder.slice().get("indexes"))) {
+  for (VPackSlice it : VPackArrayIterator(builder.slice().get("indexes"))) {
     bool ok = openIndex(it, trx);
 
     if (!ok) {
@@ -4063,7 +4058,7 @@ void MMFilesCollection::lockKey(KeyLockInfo& keyLockInfo, VPackSlice const& key)
       }
     }
     std::this_thread::yield();
-  } while (!application_features::ApplicationServer::isStopping());
+  } while (!_logicalCollection.vocbase().server().isStopping());
 
   // we can only get here on shutdown
   THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);

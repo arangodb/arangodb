@@ -44,7 +44,8 @@ class RestGraphHandler : public arangodb::RestVocbaseBaseHandler {
   enum class VertexDefinitionAction { CREATE, REMOVE };
 
  public:
-  RestGraphHandler(GeneralRequest* request, GeneralResponse* response);
+  RestGraphHandler(application_features::ApplicationServer& server,
+                   GeneralRequest* request, GeneralResponse* response);
 
   ~RestGraphHandler() = default;
 
@@ -55,6 +56,11 @@ class RestGraphHandler : public arangodb::RestVocbaseBaseHandler {
   RequestLane lane() const override;
 
  private:
+
+  Result returnError(int errorNumber);
+
+  Result returnError(int errorNumber, char const* message);
+  
   arangodb::Result executeGharial();
 
   // /_api/gharial

@@ -137,6 +137,7 @@ These flags can be set in the first call to `cmake`:
 - `-DUSE_BACKTRACE=1` - Add backtraces to native code asserts & exceptions
 - `-DUSE_FAILURE_TESTS=1` - Adds JavaScript hook to crash the server for data integrity tests
 - `-DUSE_GOOGLE_TESTS=On` (default is On so this is set unless you explicitly disable it)
+- `-DUSE_IPO=AUTO` (Toggles interprocedural optimization; see below)
 
 Example flags for Windows:
 
@@ -170,6 +171,14 @@ At runtime arangod needs to be started with these options:
 ### Build with AddressSanitizer (or ASan)
 
     -DUSE_JEMALLOC=Off -DBASE_LD_FLAGS="-fsanitize=address" -DBASE_CXX_FLAGS="-fsanitize=address -fno-omit-frame-pointer"
+
+### Toggle interprocedural optimization
+
+    -DUSE_IPO=AUTO
+
+AUTO, which is the default, enables IPO for release builds without google tests.
+Look for `IPO_ENABLED` in the cmake output to see the result of the decision!
+Besides AUTO, it can be set to any cmake true/false value (e.g. ON or OFF).
 
 ### Debugging the build process
 
@@ -206,28 +215,20 @@ To remove all available node modules and start a clean installation run:
 
 The frontend can also be built using these commands:
 
-    cd <SourceRoot>/js/apps/system/_admin/aardvark/APP/
+    cd <SourceRoot>/js/apps/system/_admin/aardvark/APP/react
     npm install
-    grunt deploy
+    npm run build
 
-For development purposes, go to `js/apps/system/_admin/aardvark/APP/` and open
-`manifest.json`. Then apply the following change:
+For development purposes, go to `js/apps/system/_admin/aardvark/APP/react` and
+run: 
 
-```
-     "/app.js": {
-     -      "path": "frontend/build/app.min.js",
-     -      "gzip": true
-     +      "path": "frontend/build/app.js",
-     +      "gzip": false
-          },
-```
+    npm start
 
-Then run `grunt`, `grunt deploy` and `grunt watch`. This should make every
-change in the code available after a reload for the browser. It is faster this
-way because the minification step is skipped.
+This will deploy a development server (Port: 3000) and automatically start your
+favorite browser and open the web UI.
 
-Note: You might need to do the same for other files.
-Usually the change for `app` should suffice however.
+All changes to any source will automatically re-build and reload your browser.
+Enjoy :)
 
 #### NPM Dependencies
 
@@ -425,6 +426,26 @@ You can also generate core dumps from running processes without killing them by 
     Detaching from program: /bin/sleep, process 6942
     # ls -l core*
     -rw-r--r--  1 me users  352664 Nov 27 10:48  core.6942
+
+##### Installing GDB 8 on RedHat7 or Centos7
+
+RedHat7 and Centos7 have a package called `devtoolset-7` which contains
+a complete set of relative modern development tools. It can be installed
+by doing
+
+```
+sudo yum install devtoolset-7
+```
+
+These will be installed under some path under `/opt`. To actually use
+these tools, run
+
+```
+scl enable devtoolset-7 bash
+```
+
+to start a shell in which these are used. For example, you can pull a
+core dump with `gcore` using this version, even for ArangoDB >= 3.4.
 
 ##### Analyzing Core Dumps on Linux
 
@@ -794,3 +815,21 @@ Choose the `Npcap Loopback Adapter` number - 1:
       --sniffProgram c:/Programm Files/wireshark/tshark.exe
 
 You can later on use Wireshark to inpsect the capture files.
+
+
+### Evaluating json test reports from previous testruns
+
+All test results of testruns are dumped to a json file named `UNITTEST_RESULT.json` which can be used 
+for later analyzing of timings etc. 
+
+Currently available analyzers are: 
+
+  - unitTestPrettyPrintResults - Prints a pretty summary and writes an ASCII representation into `out/testfailures.txt` (if any errors)
+  - saveToJunitXML - saves jUnit compatible XML files
+  - locateLongRunning - searches the 10 longest running tests from a testsuite
+  - locateShortServerLife - whether the servers lifetime for the tests isn't at least 10 times as long as startup/shutdown
+  - locateLongSetupTeardown - locate tests that may use a lot of time in setup/teardown
+  - yaml - dumps the json file as a yaml file
+
+
+    ./scripts/examine_results.js -- 'yaml,locateLongRunning' --readFile out/UNITTEST_RESULT.json

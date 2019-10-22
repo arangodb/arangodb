@@ -47,7 +47,6 @@ class IResearchViewMetaTest : public ::testing::Test {
   }
 
   ~IResearchViewMetaTest() {
-    arangodb::application_features::ApplicationServer::server = nullptr;
     arangodb::EngineSelectorFeature::ENGINE = nullptr;
   }
 };

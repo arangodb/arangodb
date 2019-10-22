@@ -210,6 +210,9 @@ std::string const StaticStrings::XContentTypeOptions("x-content-type-options");
 std::string const StaticStrings::XArangoFrontend("x-arango-frontend");
 
 // mime types
+std::string const StaticStrings::MimeTypeDump(
+    "application/x-arango-dump; charset=utf-8");
+std::string const StaticStrings::MimeTypeHtml("text/html; charset=utf-8");
 std::string const StaticStrings::MimeTypeJson(
     "application/json; charset=utf-8");
 std::string const StaticStrings::MimeTypeText("text/plain; charset=utf-8");
@@ -232,6 +235,8 @@ std::string const StaticStrings::MinReplicationFactor("minReplicationFactor");
 std::string const StaticStrings::ShardKeys("shardKeys");
 std::string const StaticStrings::ShardingStrategy("shardingStrategy");
 std::string const StaticStrings::SmartJoinAttribute("smartJoinAttribute");
+std::string const StaticStrings::Sharding("sharding");
+std::string const StaticStrings::Satellite("satellite");
 
 // graph attribute names
 std::string const StaticStrings::GraphCollection("_graphs");

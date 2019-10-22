@@ -27,15 +27,17 @@
 
 #include "Basics/RecursiveLocker.h"
 #include "Basics/StringUtils.h"
-#include "Cluster/ClusterComm.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
 #include "Futures/Utilities.h"
 #include "GeneralServer/AuthenticationFeature.h"
-#include "Logger/Logger.h"
+#include "Logger/LogMacros.h"
+#include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
 #include "Rest/GeneralRequest.h"
+#include "Rest/HttpResponse.h"
 #include "Statistics/RequestStatistics.h"
 #include "Utils/ExecContext.h"
 #include "VocBase/ticks.h"
@@ -50,10 +52,12 @@ thread_local RestHandler const* RestHandler::CURRENT_HANDLER = nullptr;
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
-RestHandler::RestHandler(GeneralRequest* request, GeneralResponse* response)
+RestHandler::RestHandler(application_features::ApplicationServer& server,
+                         GeneralRequest* request, GeneralResponse* response)
     : _canceled(false),
       _request(request),
       _response(response),
+      _server(server),
       _statistics(nullptr),
       _state(HandlerState::PREPARE),
       _handlerId(0) {}
@@ -103,29 +107,20 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
     return futures::makeFuture(Result());
   }
 
-  // TODO refactor into a more general/customizable method
-  //
-  // The below is mostly copied and only lightly modified from
-  // RestReplicationHandler::handleTrampolineCoordinator; however, that method
-  // needs some more specific checks regarding headers and param values, so we
-  // can't just reuse this method there. Maybe we just need to implement some
-  // virtual methods to handle param/header filtering?
-
-  // TODO verify that vst -> http -> vst conversion works correctly
-
-  uint32_t shortId = forwardingTarget();
-  if (shortId == 0) {
+  std::string serverId = forwardingTarget();
+  if (serverId.empty()) {
     // no need to actually forward
     return futures::makeFuture(Result());
   }
 
-  std::string serverId = ClusterInfo::instance()->getCoordinatorByShortID(shortId);
-
-  if (serverId.empty()) {
-    // no mapping in agency, try to handle the request here
-    return futures::makeFuture(Result());
+  NetworkFeature const& nf = server().getFeature<NetworkFeature>();
+  network::ConnectionPool* pool = nf.pool();
+  if (pool == nullptr) {
+    // nullptr happens only during controlled shutdown
+    generateError(rest::ResponseCode::SERVICE_UNAVAILABLE,
+                  TRI_ERROR_SHUTTING_DOWN, "shutting down server");
+    return futures::makeFuture(Result(TRI_ERROR_SHUTTING_DOWN));
   }
-
   LOG_TOPIC("38d99", DEBUG, Logger::REQUESTS)
       << "forwarding request " << _request->messageId() << " to " << serverId;
 
@@ -153,13 +148,22 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
     params.append(StringUtils::urlEncode(i.second));
   }
 
+  network::RequestOptions options;
+  options.timeout = network::Timeout(300);
+  options.contentType = rest::contentTypeToString(_request->contentType());
+  options.acceptType = rest::contentTypeToString(_request->contentTypeResponse());
+
   auto requestType =
       fuerte::from_string(GeneralRequest::translateMethod(_request->requestType()));
-  auto payload = _request->toVelocyPackBuilderPtr()->steal();
-  auto future = network::sendRequest("server:" + serverId, requestType,
+
+  VPackStringRef resPayload = _request->rawPayload();
+  VPackBuffer<uint8_t> payload(resPayload.size());
+  payload.append(resPayload.data(), resPayload.size());
+
+  auto future = network::sendRequest(pool, "server:" + serverId, requestType,
                                      "/_db/" + StringUtils::urlEncode(dbname) +
                                          _request->requestPath() + params,
-                                     std::move(*payload), network::Timeout(300), headers);
+                                     std::move(payload), std::move(headers), options);
   auto cb = [this, serverId, useVst,
              self = shared_from_this()](network::Response&& response) -> Result {
     int res = network::fuerteToArangoErrorCode(response);
@@ -181,8 +185,9 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
     } else {
       _response->setPayload(std::move(*response.response->stealPayload()), true);
     }
+    
 
-    auto const& resultHeaders = response.response->messageHeader().meta;
+    auto const& resultHeaders = response.response->messageHeader().meta();
     for (auto const& it : resultHeaders) {
       _response->setHeader(it.first, it.second);
     }
@@ -201,7 +206,7 @@ void RestHandler::handleExceptionPtr(std::exception_ptr eptr) noexcept {
   } catch (Exception const& ex) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     LOG_TOPIC("11929", WARN, arangodb::Logger::FIXME)
-    << "caught exception in " << name() << ": " << DIAGNOSTIC_INFORMATION(ex);
+    << "caught exception in " << name() << ": " << ex.what();
 #endif
     RequestStatistics::SET_EXECUTE_ERROR(_statistics);
     handleError(ex);
@@ -209,7 +214,7 @@ void RestHandler::handleExceptionPtr(std::exception_ptr eptr) noexcept {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     LOG_TOPIC("fdcbc", WARN, arangodb::Logger::FIXME)
     << "caught velocypack exception in " << name() << ": "
-    << DIAGNOSTIC_INFORMATION(ex);
+    << ex.what();
 #endif
     RequestStatistics::SET_EXECUTE_ERROR(_statistics);
     bool const isParseError =
@@ -222,7 +227,7 @@ void RestHandler::handleExceptionPtr(std::exception_ptr eptr) noexcept {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     LOG_TOPIC("5c9f6", WARN, arangodb::Logger::FIXME)
     << "caught memory exception in " << name() << ": "
-    << DIAGNOSTIC_INFORMATION(ex);
+    << ex.what();
 #endif
     RequestStatistics::SET_EXECUTE_ERROR(_statistics);
     Exception err(TRI_ERROR_OUT_OF_MEMORY, ex.what(), __FILE__, __LINE__);
@@ -230,7 +235,7 @@ void RestHandler::handleExceptionPtr(std::exception_ptr eptr) noexcept {
   } catch (std::exception const& ex) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     LOG_TOPIC("252ea", WARN, arangodb::Logger::FIXME)
-    << "caught exception in " << name() << ": " << DIAGNOSTIC_INFORMATION(ex);
+    << "caught exception in " << name() << ": " << ex.what();
 #endif
     RequestStatistics::SET_EXECUTE_ERROR(_statistics);
     Exception err(TRI_ERROR_INTERNAL, ex.what(), __FILE__, __LINE__);
@@ -401,7 +406,7 @@ void RestHandler::executeEngine(bool isContinue) {
   } catch (Exception const& ex) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     LOG_TOPIC("11928", WARN, arangodb::Logger::FIXME)
-        << "caught exception in " << name() << ": " << DIAGNOSTIC_INFORMATION(ex);
+        << "caught exception in " << name() << ": " << ex.what();
 #endif
     RequestStatistics::SET_EXECUTE_ERROR(_statistics);
     handleError(ex);
@@ -409,7 +414,7 @@ void RestHandler::executeEngine(bool isContinue) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     LOG_TOPIC("fdcbb", WARN, arangodb::Logger::FIXME)
         << "caught velocypack exception in " << name() << ": "
-        << DIAGNOSTIC_INFORMATION(ex);
+        << ex.what();
 #endif
     RequestStatistics::SET_EXECUTE_ERROR(_statistics);
     bool const isParseError =
@@ -422,7 +427,7 @@ void RestHandler::executeEngine(bool isContinue) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     LOG_TOPIC("5c9f5", WARN, arangodb::Logger::FIXME)
         << "caught memory exception in " << name() << ": "
-        << DIAGNOSTIC_INFORMATION(ex);
+        << ex.what();
 #endif
     RequestStatistics::SET_EXECUTE_ERROR(_statistics);
     Exception err(TRI_ERROR_OUT_OF_MEMORY, ex.what(), __FILE__, __LINE__);
@@ -430,7 +435,7 @@ void RestHandler::executeEngine(bool isContinue) {
   } catch (std::exception const& ex) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     LOG_TOPIC("252e9", WARN, arangodb::Logger::FIXME)
-        << "caught exception in " << name() << ": " << DIAGNOSTIC_INFORMATION(ex);
+        << "caught exception in " << name() << ": " << ex.what();
 #endif
     RequestStatistics::SET_EXECUTE_ERROR(_statistics);
     Exception err(TRI_ERROR_INTERNAL, ex.what(), __FILE__, __LINE__);
@@ -452,27 +457,29 @@ void RestHandler::generateError(rest::ResponseCode code, int errorNumber,
                                 std::string const& message) {
   resetResponse(code);
 
-  VPackBuffer<uint8_t> buffer;
-  VPackBuilder builder(buffer);
-  try {
-    builder.add(VPackValue(VPackValueType::Object));
-    builder.add(StaticStrings::Code, VPackValue(static_cast<int>(code)));
-    builder.add(StaticStrings::Error, VPackValue(true));
-    builder.add(StaticStrings::ErrorMessage, VPackValue(message));
-    builder.add(StaticStrings::ErrorNum, VPackValue(errorNumber));
-    builder.close();
+  if (_request->requestType() != rest::RequestType::HEAD) {
+    VPackBuffer<uint8_t> buffer;
+    VPackBuilder builder(buffer);
+    try {
+      builder.add(VPackValue(VPackValueType::Object));
+      builder.add(StaticStrings::Code, VPackValue(static_cast<int>(code)));
+      builder.add(StaticStrings::Error, VPackValue(true));
+      builder.add(StaticStrings::ErrorMessage, VPackValue(message));
+      builder.add(StaticStrings::ErrorNum, VPackValue(errorNumber));
+      builder.close();
 
-    VPackOptions options(VPackOptions::Defaults);
-    options.escapeUnicode = true;
+      VPackOptions options(VPackOptions::Defaults);
+      options.escapeUnicode = true;
 
-    TRI_ASSERT(options.escapeUnicode);
-    if (_request != nullptr) {
-      _response->setContentType(_request->contentTypeResponse());
+      TRI_ASSERT(options.escapeUnicode);
+      if (_request != nullptr) {
+        _response->setContentType(_request->contentTypeResponse());
+      }
+      _response->setPayload(std::move(buffer), true, options,
+                            /*resolveExternals*/false);
+    } catch (...) {
+      // exception while generating error
     }
-    _response->setPayload(std::move(buffer), true, options,
-                          /*resolveExternals*/false);
-  } catch (...) {
-    // exception while generating error
   }
 }
 

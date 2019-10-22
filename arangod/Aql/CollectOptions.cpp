@@ -24,6 +24,8 @@
 #include "CollectOptions.h"
 #include "Basics/Exceptions.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb::aql;
@@ -92,3 +94,5 @@ std::string CollectOptions::methodToString(CollectOptions::CollectMethod method)
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                  "cannot stringify unknown aggregation method");
 }
+
+CollectOptions::CollectOptions() : method(CollectMethod::UNDEFINED) {}

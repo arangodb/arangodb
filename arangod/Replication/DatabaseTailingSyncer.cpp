@@ -118,7 +118,7 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(std::string const& c
   auto startTime = clock.now();
 
   while (true) {
-    if (application_features::ApplicationServer::isStopping()) {
+    if (vocbase()->server().isStopping()) {
       return Result(TRI_ERROR_SHUTTING_DOWN);
     }
 
@@ -278,7 +278,7 @@ bool DatabaseTailingSyncer::skipMarker(VPackSlice const& slice) {
         return false;
       }
 
-      for (auto const& it : VPackArrayIterator(invSlice)) {
+      for (VPackSlice it : VPackArrayIterator(invSlice)) {
         if (!it.isObject()) {
           continue;
         }

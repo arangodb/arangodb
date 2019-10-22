@@ -1,0 +1,148 @@
+
+  <div id="shardsContent" class="innerContent">
+      <% var genClass1 = 'pure-u-6-24'; %>
+      <% var genClass2 = 'pure-u-6-24'; %>
+      <% var disabled = ' '; %>
+      <% var collectionName; %>
+      <% var first = 0; %>
+
+      <%
+      var collectionInSync = function(name) {
+        var result = false;
+        if (_.isEqual(collections[name].Current, collections[name].Plan)) {
+          return true;
+        }
+        return result;
+      };
+      %>
+
+      <% _.each(collections, function(collection, name) { %>
+        <div class="sectionShard" id="<%=name%>">
+        <% collectionName = name%>
+
+          <% if (first === 0) { %>
+            <div class="sectionHeader pure-g" style="margin-top: -20px;">
+            <% first++; %>
+          <% } else { %>
+            <div class="sectionHeader pure-g">
+          <% } %>
+
+          <div class="pure-u-22-24">
+            <div class="title" style="position: relative; top: -4px;">
+              <%= name %>
+            </div>
+          </div>
+          <div class="pure-u-2-24 shardSyncIcons">
+              <% if (visible === name) { %>
+                <i style="margin-left: 10px; color: #fff;" class="fa fa-arrow-down"></i>
+              <% } else { %>
+                <i style="margin-left: 10px; color: #fff;" class="fa fa-arrow-right"></i>
+              <% } %>
+            <% if (collectionInSync(name)) { %>
+              <i style="margin-left: 10px;" class="fa fa-check-circle"></i>
+            <% } else { %>
+              <i style="margin-left: 10px;" class="fa fa-times-circle"></i>
+            <% } %>
+          </div>
+        </div>
+
+        <% if (visible === name) { %>
+          <div class="sectionShardContent">
+        <% } else { %>
+          <div class="sectionShardContent" style="display: none">
+        <% } %>
+        <div class="pure-g pure-table pure-table-header pure-title" style="clear: both">
+          <div class="pure-table-row">
+            <div class="<%= genClass1 %> left">Shard</div>
+            <div class="<%= genClass1 %> left">Leader</div>
+            <div class="<%= genClass2 %> left">Followers</div>
+            <div class="<%= genClass1 %> right">Sync</div>
+          </div>
+        </div>
+
+        <% var counter = 0; var shardClass; %>
+        <% _.each(collection.Plan, function(shard, name) { %>
+          <div class="pure-g pure-table pure-table-body">
+
+            <% if (shard.progress) { %>
+            <%   shardClass = 'disabled';%>
+            <% } %>
+
+            <div id="<%=collectionName%>-<%=name%>" class="pure-table-row noHover <%= shardClass %>" collection="<%= collectionName %>" shard="<%= name %>" leader="<%= shard.leader%>">
+
+              <% if (shard.leader.substring(0,1) === '_') { %>
+              <%   shard.leader = shard.leader.slice(1) %>
+              <% } %>
+
+              <div class="<%= genClass1 %> left"><%= name %></div>
+              <div class="shardLeader <%= genClass1 %> positive left"><span><%= shard.leader %></span></div>
+
+              <% var found = null;  %>
+              <% _.each(shard.followers, function(db) {  %>
+                <% if (db === shard.leader) { %>
+                  <% found = true; %>
+                <% } %>
+              <% }); %>
+
+              <% if (found) { %>
+                <div class="<%= genClass2 %> mid"><i class="fa fa-circle-o-notch fa-spin"></i></div>
+              <% } else { %>
+                <% if (shard.followers.length === 0) { %>
+                  <div class="<%= genClass2 %> left"> no followers </div>
+                <% } else { %>
+                  <% var string = ''; %>
+                  <% var counter2 = 0; %>
+                  <% var shardCssClass = 'inSync'; %>
+
+                  <% var shardsNotInSync = 0; %>
+                  <% _.each(shard.followers, function(db) {  %>
+
+                    <% if (collections[collectionName].Current[name].followers.indexOf(db) > -1) { %>
+                      <% shardCssClass = 'inSync'; %>
+                    <% } else { %>
+                      <% shardCssClass = 'notInSync'; %>
+                      <% shardsNotInSync++; %>
+                    <% } %>
+
+                    <% if (shard.followers.length === 1) { %>
+                      <% string += '<span class="' + shardCssClass + '">' + db + '</span> '; %>
+                    <% } else { %>
+                      <% if (counter2 === 0) { %>
+                        <% string += '<span class="' + shardCssClass + '">' + db + '</span>'; counter2++; %>
+                      <% } else { %>
+                        <% string += ", " + '<span class="' + shardCssClass + '">' + db + '</span>'; %>
+                      <% } %>
+                    <% } %>
+                  <% });  %>
+                  
+                  <div class="shardFollowers <%= genClass2 %> left"><%= string %></div>
+                <% } %>
+
+                <% if (collectionInSync(collectionName)) { %>
+                  <div class="<%= genClass1 %> left progressWrapper"><i class="fa fa-check-circle"></i></div>
+                <% } else { %>
+                  <% if (shardsNotInSync > 0) { %>
+                    <div class="<%= genClass1 %> left progressWrapper"><span class="shardProgress"><i class="fa fa-circle-o-notch fa-spin fa-fw"></i></span></div>
+                  <% } else { %>
+                    <div class="<%= genClass1 %> left progressWrapper"><i class="fa fa-check-circle"></i></div>
+                  <% } %>
+                <% } %>
+
+              <% } %>
+
+            </div>
+          </div>
+
+          <% counter++; %>
+        <% }); %>
+        </div>
+
+      </div>
+      <% }); %>
+    <div style="width: 100%; height: 70px;">
+      <% if (frontendConfig.db === '_system') { %>
+        <button id="rebalanceShards" style="margin-top: 20px; margin-bottom: 20px;  margin-right: 10px;" class="button-success pull-right">Rebalance Shards</button>
+      <% } %>
+    </div>
+  </div>
+

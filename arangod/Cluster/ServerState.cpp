@@ -146,7 +146,7 @@ void ServerState::findHost(std::string const& fallback) {
   _host = fallback;
 }
 
-ServerState::~ServerState() {}
+ServerState::~ServerState() = default;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create the (sole) instance
@@ -438,7 +438,7 @@ bool ServerState::integrateIntoCluster(ServerState::RoleEnum role,
     if (valueSlice.isObject()) {
       // map from server UUID to endpoint
       std::unordered_map<std::string, std::string> endpoints;
-      for (auto const& it : VPackObjectIterator(valueSlice)) {
+      for (auto it : VPackObjectIterator(valueSlice)) {
         std::string const serverId = it.key.copyString();
 
         if (!isUuid(serverId)) {
@@ -499,10 +499,9 @@ std::string ServerState::roleToAgencyKey(ServerState::RoleEnum role) {
 }
 
 std::string ServerState::getUuidFilename() const {
-  auto dbpath = application_features::ApplicationServer::getFeature<DatabasePathFeature>(
-      "DatabasePath");
-  TRI_ASSERT(dbpath != nullptr);
-  return FileUtils::buildFilename(dbpath->directory(), "UUID");
+  auto& server = application_features::ApplicationServer::server();
+  auto& dbpath = server.getFeature<DatabasePathFeature>();
+  return FileUtils::buildFilename(dbpath.directory(), "UUID");
 }
 
 bool ServerState::hasPersistedId() {
@@ -752,7 +751,8 @@ bool ServerState::registerAtAgencyPhase2(AgencyComm& comm, bool const hadPersist
     pre.emplace_back(AgencyPrecondition(rebootIdPath, AgencyPrecondition::Type::EMPTY, true));
   }
 
-  while (!application_features::ApplicationServer::isStopping()) {
+  auto& server = application_features::ApplicationServer::server();
+  while (!server.isStopping()) {
     VPackBuilder builder;
     {
       VPackObjectBuilder b(&builder);
@@ -787,7 +787,7 @@ bool ServerState::registerAtAgencyPhase2(AgencyComm& comm, bool const hadPersist
 
   // if we left the above retry loop because the server is stopping
   // we'll skip this and return false right away.
-  while (!application_features::ApplicationServer::isStopping()) {
+  while (!server.isStopping()) {
     auto result = readRebootIdFromAgency(comm);
 
     if (result) {

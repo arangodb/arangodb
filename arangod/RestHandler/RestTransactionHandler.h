@@ -38,7 +38,8 @@ class RestTransactionHandler : public arangodb::RestVocbaseBaseHandler {
   basics::ReadWriteLock _lock;
 
  public:
-  RestTransactionHandler(GeneralRequest*, GeneralResponse*);
+  RestTransactionHandler(application_features::ApplicationServer&,
+                         GeneralRequest*, GeneralResponse*);
 
  public:
   char const* name() const override final { return "RestTransactionHandler"; }
@@ -47,7 +48,7 @@ class RestTransactionHandler : public arangodb::RestVocbaseBaseHandler {
   bool cancel() override final;
 
  protected:
-  virtual uint32_t forwardingTarget() override;
+  virtual std::string forwardingTarget() override;
 
  private:
   void executeGetState();

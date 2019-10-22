@@ -299,14 +299,11 @@ IResearchView::IResearchView(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice
       _meta(std::move(meta)),
       _inRecovery(false) {
   // set up in-recovery insertion hooks
-  auto* databaseFeature = arangodb::application_features::ApplicationServer::lookupFeature< // find feature
-    arangodb::DatabaseFeature // type
-  >("Database");
-
-  if (databaseFeature) {
+  if (vocbase.server().hasFeature<arangodb::DatabaseFeature>()) {
+    auto& databaseFeature = vocbase.server().getFeature<arangodb::DatabaseFeature>();
     auto view = _asyncSelf; // create copy for lambda
 
-    databaseFeature->registerPostRecoveryCallback([view]()->arangodb::Result {
+    databaseFeature.registerPostRecoveryCallback([view]() -> arangodb::Result {
       auto& viewMutex = view->mutex();
       SCOPED_LOCK(viewMutex); // ensure view does not get deallocated before call back finishes
       auto* viewPtr = view->get();
@@ -810,7 +807,7 @@ arangodb::Result IResearchView::renameImpl(std::string const& oldName) {
 IResearchView::Snapshot const* IResearchView::snapshot(
     transaction::Methods& trx,
     IResearchView::SnapshotMode mode /*= IResearchView::SnapshotMode::Find*/,
-    arangodb::HashSet<TRI_voc_cid_t> const* shards /*= nullptr*/,
+    ::arangodb::containers::HashSet<TRI_voc_cid_t> const* shards /*= nullptr*/,
     void const* key /*= nullptr*/) const {
   if (!trx.state()) {
     LOG_TOPIC("47098", WARN, arangodb::iresearch::TOPIC)
@@ -820,7 +817,7 @@ IResearchView::Snapshot const* IResearchView::snapshot(
     return nullptr;
   }
 
-  arangodb::HashSet<TRI_voc_cid_t> restrictedCollections;  // use set to avoid duplicate iteration of same link
+  ::arangodb::containers::HashSet<TRI_voc_cid_t> restrictedCollections;  // use set to avoid duplicate iteration of same link
   auto const* collections = &restrictedCollections;
 
   if (shards) {  // set requested shards

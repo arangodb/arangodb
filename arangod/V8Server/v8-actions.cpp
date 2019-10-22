@@ -33,11 +33,16 @@
 #include "Basics/conversions.h"
 #include "Basics/files.h"
 #include "Basics/tri-strings.h"
-#include "Cluster/ClusterComm.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "Futures/Utilities.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/ServerSecurityFeature.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Network/Methods.h"
+#include "Network/NetworkFeature.h"
+#include "Network/Utils.h"
 #include "Rest/GeneralRequest.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
@@ -1009,12 +1014,10 @@ static void JS_DefineAction(v8::FunctionCallbackInfo<v8::Value> const& args) {
         "defineAction(<name>, <callback>, <parameter>)");
   }
 
-  V8SecurityFeature* v8security =
-      application_features::ApplicationServer::getFeature<V8SecurityFeature>(
-          "V8Security");
-  TRI_ASSERT(v8security != nullptr);
+  auto& server = application_features::ApplicationServer::server();
+  V8SecurityFeature& v8security = server.getFeature<V8SecurityFeature>();
 
-  if (!v8security->isAllowedToDefineHttpAction(isolate)) {
+  if (!v8security.isAllowedToDefineHttpAction(isolate)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, "operation only allowed for internal scripts");
   }
 
@@ -1415,41 +1418,43 @@ static int clusterSendToAllServers(std::string const& dbname,
                                    std::string const& path,  // Note: Has to be properly encoded!
                                    arangodb::rest::RequestType const& method,
                                    std::string const& body) {
-  ClusterInfo* ci = ClusterInfo::instance();
-  auto cc = ClusterComm::instance();
-  if (cc == nullptr) {
+  auto& server = application_features::ApplicationServer::server();
+  network::ConnectionPool* pool = server.getFeature<NetworkFeature>().pool();
+  if (!pool || !pool->config().clusterInfo) {
+    LOG_TOPIC("98fc7", ERR, Logger::COMMUNICATION) << "Network pool unavailable.";
     return TRI_ERROR_SHUTTING_DOWN;
   }
+  ClusterInfo& ci = *pool->config().clusterInfo;
+
+  network::Headers headers;
+  fuerte::RestVerb verb = network::arangoRestVerbToFuerte(method);
   std::string url = "/_db/" + StringUtils::urlEncode(dbname) + "/" + path;
+  auto timeout = std::chrono::seconds(3600);
+
+  std::vector<futures::Future<network::Response>> futures;
 
   // Have to propagate to DB Servers
-  std::vector<ServerID> DBServers;
-  CoordTransactionID coordTransactionID = TRI_NewTickServer();
-  auto reqBodyString = std::make_shared<std::string>(body);
-
-  DBServers = ci->getCurrentDBServers();
-  std::unordered_map<std::string, std::string> headers;
+  std::vector<ServerID> DBServers = ci.getCurrentDBServers();
   for (auto const& sid : DBServers) {
-    cc->asyncRequest(coordTransactionID, "server:" + sid, method, url,
-                     reqBodyString, headers, nullptr, 3600.0);
+    VPackBuffer<uint8_t> buffer(body.size());
+    buffer.append(body);
+    auto f = network::sendRequest(pool, "server:" + sid, verb, url,
+                                  std::move(buffer), timeout, headers);
+    futures.emplace_back(std::move(f));
   }
 
-  // Now listen to the results:
-  size_t count = DBServers.size();
-
-  for (; count > 0; count--) {
-    auto res = cc->wait(coordTransactionID, 0, "", 0.0);
-    if (res.status == CL_COMM_TIMEOUT) {
-      cc->drop(coordTransactionID, 0, "");
-      return TRI_ERROR_CLUSTER_TIMEOUT;
-    }
-    if (res.status == CL_COMM_ERROR || res.status == CL_COMM_DROPPED ||
-        res.status == CL_COMM_BACKEND_UNAVAILABLE) {
-      cc->drop(coordTransactionID, 0, "");
-      return TRI_ERROR_INTERNAL;
-    }
-  }
-  return TRI_ERROR_NO_ERROR;
+  return futures::collectAll(futures)
+      .thenValue([](std::vector<futures::Try<network::Response>>&& responses) -> int {
+        for (futures::Try<network::Response> const& tryRes : responses) {
+          network::Response const& res = tryRes.get();  // throws exceptions upwards
+          int commError = network::fuerteToArangoErrorCode(res);
+          if (commError != TRI_ERROR_NO_ERROR) {
+            return commError;
+          }
+        }
+        return TRI_ERROR_NO_ERROR;
+      })
+      .get();
 }
 #endif
 
@@ -1647,11 +1652,9 @@ static void JS_IsFoxxApiDisabled(v8::FunctionCallbackInfo<v8::Value> const& args
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
 
-  ServerSecurityFeature* security =
-      application_features::ApplicationServer::getFeature<ServerSecurityFeature>(
-          "ServerSecurity");
-  TRI_ASSERT(security != nullptr);
-  TRI_V8_RETURN_BOOL(security->isFoxxApiDisabled());
+  auto& server = application_features::ApplicationServer::server();
+  ServerSecurityFeature& security = server.getFeature<ServerSecurityFeature>();
+  TRI_V8_RETURN_BOOL(security.isFoxxApiDisabled());
 
   TRI_V8_TRY_CATCH_END
 }
@@ -1660,11 +1663,9 @@ static void JS_IsFoxxStoreDisabled(v8::FunctionCallbackInfo<v8::Value> const& ar
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
 
-  ServerSecurityFeature* security =
-      application_features::ApplicationServer::getFeature<ServerSecurityFeature>(
-          "ServerSecurity");
-  TRI_ASSERT(security != nullptr);
-  TRI_V8_RETURN_BOOL(security->isFoxxStoreDisabled());
+  auto& server = application_features::ApplicationServer::server();
+  ServerSecurityFeature& security = server.getFeature<ServerSecurityFeature>();
+  TRI_V8_RETURN_BOOL(security.isFoxxStoreDisabled());
 
   TRI_V8_TRY_CATCH_END
 }
@@ -1738,13 +1739,13 @@ void TRI_InitV8ServerUtils(v8::Isolate* isolate) {
 #endif
   
   // poll interval for Foxx queues
-  FoxxQueuesFeature* foxxQueuesFeature =
-      application_features::ApplicationServer::getFeature<FoxxQueuesFeature>(
-          "FoxxQueues");
+  auto& server = application_features::ApplicationServer::server();
+  FoxxQueuesFeature& foxxQueuesFeature = server.getFeature<FoxxQueuesFeature>();
 
-  isolate->GetCurrentContext()->Global()
-      ->DefineOwnProperty(TRI_IGETC,
-                          TRI_V8_ASCII_STRING(isolate, "FOXX_QUEUES_POLL_INTERVAL"),
-                          v8::Number::New(isolate, foxxQueuesFeature->pollInterval()), v8::ReadOnly)
+  isolate->GetCurrentContext()
+      ->Global()
+      ->DefineOwnProperty(
+          TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "FOXX_QUEUES_POLL_INTERVAL"),
+          v8::Number::New(isolate, foxxQueuesFeature.pollInterval()), v8::ReadOnly)
       .FromMaybe(false);  // ignore result
 }
