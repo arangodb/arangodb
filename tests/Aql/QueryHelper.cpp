@@ -25,6 +25,7 @@
 
 #include "../IResearch/IResearchQueryCommon.h"
 #include "Aql/QueryResult.h"
+#include "Basics/StringUtils.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Slice.h>
@@ -52,10 +53,14 @@ void arangodb::tests::aql::AssertQueryResultToSlice(QueryResult const& result,
 
 void arangodb::tests::aql::AssertQueryHasResult(TRI_vocbase_t& database,
                                                 std::string const& query,
-                                                VPackSlice expected) {
+                                                VPackSlice expected, size_t profileLevel) {
   auto const bindParameters = VPackParser::fromJson("{ }");
+
   SCOPED_TRACE("Query: " + query);
-  auto queryResult = arangodb::tests::executeQuery(database, query, bindParameters);
+  auto queryResult =
+      arangodb::tests::executeQuery(database, query, bindParameters,
+                                    R"({"profile": )" +
+                                        basics::StringUtils::itoa(profileLevel) + R"(})");
   AssertQueryResultToSlice(queryResult, expected);
 }
 

@@ -213,7 +213,7 @@ ModificationExecutor2<FetcherType, ModifierType>::doCollect(size_t const maxOutp
   // TODO: If we SKIP_IGNORE, then we'd be able to output more;
   //       this would require some counting to happen in the modifier
   while (_modifier.nrOfOperations() < maxOutputs && state != ExecutionState::DONE) {
-    std::tie(state, row) = _fetcher.fetchRow();
+    std::tie(state, row) = _fetcher.fetchRow(maxOutputs);
     if (state == ExecutionState::WAITING) {
       return {ExecutionState::WAITING, ModificationStats{}};
     }
