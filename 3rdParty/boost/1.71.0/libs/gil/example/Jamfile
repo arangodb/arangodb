@@ -1,0 +1,38 @@
+# Boost.GIL (Generic Image Library) - examples
+#
+# Copyright (c) 2018 Mateusz Loskot <mateusz@loskot.net>
+#
+# Use, modification and distribution is subject to the Boost Software License,
+# Version 1.0. (See accompanying file LICENSE_1_0.txt or copy at
+# http://www.boost.org/LICENSE_1_0.txt)
+
+import ac ;
+import regex ;
+import testing ;
+
+using libjpeg : : : : true ; # work around bug on master
+
+project
+    : # requirements
+    ;
+
+# TODO: Add missing examples
+
+local sources =
+    affine.cpp
+    dynamic_image.cpp
+    histogram.cpp
+    ;
+
+local targets ;
+
+for local s in $(sources)
+{
+    targets +=
+        [ compile $(s) :
+            [ ac.check-library /libjpeg//libjpeg : <library>/libjpeg//libjpeg : <build>no ]
+        ]
+        ;
+}
+
+alias examples : $(targets) ;

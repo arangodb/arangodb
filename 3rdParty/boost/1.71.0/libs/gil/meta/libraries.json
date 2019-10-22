@@ -1,0 +1,21 @@
+{
+    "key": "gil",
+    "name": "GIL",
+    "authors": [
+        "Lubomir Bourdev",
+        "Hailin Jin",
+        "Christian Henning"
+    ],
+    "description": "Generic Image Library",
+    "category": [
+        "Algorithms",
+        "Containers",
+        "Generic",
+        "Image-processing",
+        "Iterators"
+    ],
+    "maintainers": [
+        "Stefan Seefeld <stefan -at- seefeld.name>",
+        "Mateusz Loskot <mateusz -at- loskot.net>"
+    ]
+}

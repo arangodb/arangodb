@@ -100,7 +100,7 @@ class SortLimitTest
     EXPECT_TRUE(nodes.isArray());
 
     std::string strategy;
-    for (auto const& it : VPackArrayIterator(nodes)) {
+    for (VPackSlice it : VPackArrayIterator(nodes)) {
       if (!it.get("type").isEqualString("SortNode")) {
         continue;
       }

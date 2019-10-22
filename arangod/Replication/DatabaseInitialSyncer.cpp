@@ -351,7 +351,7 @@ Result DatabaseInitialSyncer::parseCollectionDumpMarker(transaction::Methods& tr
   TRI_replication_operation_e type = REPLICATION_INVALID;
   VPackSlice doc;
 
-  for (auto const& it : VPackObjectIterator(marker, true)) {
+  for (auto it : VPackObjectIterator(marker, true)) {
     if (it.key.isEqualString(kTypeString)) {
       if (it.value.isNumber()) {
         type = static_cast<TRI_replication_operation_e>(it.value.getNumber<int>());

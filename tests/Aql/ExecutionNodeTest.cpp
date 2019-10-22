@@ -59,7 +59,7 @@ TEST_F(ExecutionNodeTest, start_node_velocypack_roundtrip) {
   std::unique_ptr<SubqueryStartNode> node, nodeFromVPack;
   std::unordered_set<ExecutionNode const*> seen{};
 
-  node = std::make_unique<SubqueryStartNode>(&plan, 0);
+  node = std::make_unique<SubqueryStartNode>(&plan, 0, nullptr);
 
   builder.openArray();
   node->toVelocyPackHelper(builder, ExecutionNode::SERIALIZE_DETAILS, seen);
@@ -75,8 +75,8 @@ TEST_F(ExecutionNodeTest, start_node_velocypack_roundtrip) {
 TEST_F(ExecutionNodeTest, start_node_not_equal_different_id) {
   std::unique_ptr<SubqueryStartNode> node1, node2;
 
-  node1 = std::make_unique<SubqueryStartNode>(&plan, 0);
-  node2 = std::make_unique<SubqueryStartNode>(&plan, 1);
+  node1 = std::make_unique<SubqueryStartNode>(&plan, 0, nullptr);
+  node2 = std::make_unique<SubqueryStartNode>(&plan, 1, nullptr);
 
   ASSERT_FALSE(node1->isEqualTo(*node2));
 }

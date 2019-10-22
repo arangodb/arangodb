@@ -1,0 +1,57 @@
+# Boost.Geometry (aka GGL, Generic Geometry Library)
+#
+# Copyright (c) 2007-2012 Barend Gehrels, Amsterdam, the Netherlands.
+# Copyright (c) 2008-2012 Bruno Lalande, Paris, France.
+# Copyright (c) 2009-2018 Mateusz Loskot, London, UK.
+#
+# This file was modified by Oracle on 2017, 2018, 2019.
+# Modifications copyright (c) 2017-2019 Oracle and/or its affiliates.
+# Contributed and/or modified by Adam Wulkiewicz, on behalf of Oracle
+#
+# Use, modification and distribution is subject to the Boost Software License,
+# Version 1.0. (See accompanying file LICENSE_1_0.txt or copy at
+# http://www.boost.org/LICENSE_1_0.txt)
+
+import os ;
+import testing ;
+
+project boost-geometry-test
+    :
+    requirements
+        <include>.
+        <include>../../../boost/geometry/extensions/contrib/ttmath
+        <toolset>msvc:<asynch-exceptions>on
+        <toolset>msvc:<cxxflags>/bigobj
+        <toolset>clang:<cxxflags>-Wno-unneeded-internal-declaration # supress warning by Boost.None
+		<toolset>intel:<define>BOOST_GEOMETRY_TEST_ONLY_ONE_TYPE
+        <host-os>windows,<toolset>intel:<cxxflags>/bigobj
+        <define>BOOST_NO_AUTO_PTR # disable the deprecated std::auto_ptr support in SmartPtr and Core
+    ;
+
+# Run minimal testset
+test-suite boost-geometry-minimal
+    :
+    [ run minimal.cpp : : : : minimal ]
+    ;
+
+# If not on Travis run all of the tests
+if ! [ os.environ TRAVIS ]
+{
+
+build-project core ;
+build-project concepts ; 
+build-project geometries ;
+build-project arithmetic ;
+build-project algorithms ;
+build-project formulas ;
+build-project iterators ;
+build-project strategies ;
+build-project policies ;
+build-project io ;
+build-project srs ;
+build-project cs_undefined ;
+build-project util ;
+build-project views ;
+
+}
+
