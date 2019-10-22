@@ -3482,7 +3482,6 @@ arangodb::Result hotbackupAsyncLockDBServersTransactions(std::string const& back
           std::string("lock was denied from ") + req.destination +
           " when trying to check for lockId for hot backup " + backupId);
     }
-    LOG_DEVEL << res.serverID << " with job id " << jobId;
     dbserverLockIds[res.serverID] = jobId;
   }
 
@@ -3567,8 +3566,6 @@ arangodb::Result hotbackupWaitForLockDBServersTransactions(
                   ": " + slc.toJson() + ", msg: " + e.what());
     }
 
-
-    LOG_DEVEL << "lock hold on " << res.serverID;
     lockedServers.push_back(res.serverID);
     dbserverLockIds.erase(res.serverID);
   }
@@ -3731,7 +3728,6 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
       std::unordered_map<std::string, std::string> lockJobIds;
 
       auto releaseLocks = scopeGuard([&]{
-        LOG_DEVEL << "running clean up scope guard";
         hotbackupCancelAsyncLocks(lockJobIds, lockedServers);
         unlockDBServerTransactions(backupId, lockedServers);
         ci.agencyHotBackupUnlock(backupId, timeout, supervisionOff);
@@ -3747,7 +3743,6 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
 
       while (lockJobIds.size() > 0) {
         // kill all transactions
-        LOG_DEVEL << "aborting trx";
         result = mgr->abortAllManagedWriteTrx(ExecContext::current().user(), true);
         if (result.fail()) {
           return result;
@@ -3756,7 +3751,6 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
         // wait for locks, servers that got the lock are removed from lockJobIds
         result = hotbackupWaitForLockDBServersTransactions(backupId, lockJobIds, lockedServers, lockWait);
         if (result.fail()) {
-          LOG_DEVEL << "had error on one dbserver: " << result.errorMessage();
           return result;
         }
 
