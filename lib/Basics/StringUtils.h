@@ -159,17 +159,33 @@ std::vector<std::string> wrap(std::string const& sourceStr, size_t size,
 std::string replace(std::string const& sourceStr, std::string const& fromString,
                     std::string const& toString);
 
-/// @brief converts string to lower case in place
-void tolowerInPlace(std::string* str);
+static inline char tolower(char c) {
+  return c + ((static_cast<unsigned char>(c - 65) < 26U) << 5);
+}
 
-/// @brief converts string to lower case
+static inline unsigned char tolower(unsigned char c) {
+  return c + ((c - 65U < 26U) << 5);
+}
+
+static inline char toupper(char c) {
+  return c - ((static_cast<unsigned char>(c - 97) < 26U) << 5);
+}
+
+static inline unsigned char toupper(unsigned char c) {
+  return c - ((c - 97U < 26U) << 5);
+}
+
+/// @brief converts string to lower case in place - locale-independent, ASCII only!
+void tolowerInPlace(std::string& str);
+
+/// @brief converts string to lower case - locale-independent, ASCII only!
 std::string tolower(std::string&& str);
 std::string tolower(std::string const& str);
 
-/// @brief converts string to upper case in place
-void toupperInPlace(std::string* str);
+/// @brief converts string to upper case in place - locale-independent, ASCII only!
+void toupperInPlace(std::string& str);
 
-/// @brief converts string to upper case
+/// @brief converts string to upper case - locale-independent, ASCII only!
 std::string toupper(std::string const& str);
 
 /// @brief checks for a prefix
@@ -181,9 +197,6 @@ bool isSuffix(std::string const& str, std::string const& postfix);
 /// @brief url decodes the string
 std::string urlDecodePath(std::string const& str);
 std::string urlDecode(std::string const& str);
-
-/// @brief url encodes the string
-std::string urlEncode(char const* src);
 
 /// @brief url encodes the string
 std::string urlEncode(char const* src, size_t len);
