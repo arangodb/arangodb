@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global document, frontendConfig, arangoHelper, _, $, window, arangoHelper, templateEngine, Joi, btoa */
+/* global arangoHelper, _, $, window, arangoHelper, templateEngine, Joi, btoa */
 /* global numeral */
 
 (function () {
@@ -1066,12 +1066,15 @@
       this.tableView.setElement($('#docPureTable')).render();
       // we added some icons, so we need to fix their tooltips
       arangoHelper.fixTooltips('.icon_arangodb, .arangoicon', 'top');
-      this.resize();
 
-      // enable hljs for entries
-      document.querySelectorAll('code').forEach((block) => {
-        window.hljs.highlightBlock(block);
+      $('.prettify').snippet('javascript', {
+        style: 'nedit',
+        menu: false,
+        startText: false,
+        transparent: true,
+        showNum: false
       });
+      this.resize();
     },
 
     checkCollectionState: function () {

@@ -1,5 +1,5 @@
 /* jshint unused: false */
-/* global window, $, Backbone, document, d3, ReactDOM */
+/* global window, $, Backbone, document, d3 */
 /* global $, arangoHelper, btoa, atob, _, frontendConfig */
 
 (function () {
@@ -101,9 +101,6 @@
             this.loggerView.logTopicView.remove();
           }
         }
-
-        // react unmounting
-        ReactDOM.unmountComponentAtNode(document.getElementById("content"));
       }
 
       this.lastRoute = window.location.hash;
@@ -410,9 +407,6 @@
         this.navigate('#dashboard', {trigger: true});
         return;
       }
-      // TODO re-enable React View, for now use old view:
-      // window.ShardsReactView.render();
-      // Below code needs to be removed then again.
       if (this.shardsView) {
         this.shardsView.remove();
       }
@@ -420,7 +414,6 @@
         dbServers: this.dbServers
       });
       this.shardsView.render();
-
     },
 
     nodes: function (initialized) {
@@ -612,7 +605,7 @@
             collection: this.userCollection
           });
         }
-        if (error || user === null || user === undefined) {
+        if (error || user === null) {
           this.loginView.render();
         } else {
           this.loginView.render(true);
