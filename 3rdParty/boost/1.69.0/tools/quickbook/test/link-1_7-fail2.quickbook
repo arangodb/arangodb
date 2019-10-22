@@ -1,6 +1,0 @@
-[article Link fail test
-[quickbook 1.7]
-]
-
-[/ Escapes aren't allowed in links.]
-[link '''escaped stuff''']

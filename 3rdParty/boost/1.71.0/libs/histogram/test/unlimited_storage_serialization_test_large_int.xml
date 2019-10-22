@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<!DOCTYPE boost_serialization>
+<boost_serialization signature="serialization::archive" version="17">
+<item class_id="0" tracking_level="0" version="0">
+	<type>4</type>
+	<size>1</size>
+	<buffer>
+		<item class_id="1" tracking_level="0" version="0">
+			<data>
+				<count>1</count>
+				<item_version>0</item_version>
+				<item>1</item>
+			</data>
+		</item>
+	</buffer>
+</item>
+</boost_serialization>

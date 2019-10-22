@@ -1,8 +1,0 @@
-
-import feature ;
-
-feature.feature tblgen : : dependency free ;
-
-project built_tool ;
-
-build-project core ;

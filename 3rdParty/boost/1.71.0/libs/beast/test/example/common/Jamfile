@@ -1,0 +1,27 @@
+#
+# Copyright (c) 2016-2017 Vinnie Falco (vinnie dot falco at gmail dot com)
+#
+# Distributed under the Boost Software License, Version 1.0. (See accompanying
+# file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+#
+# Official repository: https://github.com/boostorg/beast
+#
+
+local SOURCES =
+    root_certificates.cpp
+    server_certificate.cpp
+    ;
+
+local RUN_TESTS ;
+
+local libs =
+    /boost/beast//lib-asio-ssl
+    /boost/beast/test//lib-test
+    ;
+
+for local f in $(SOURCES)
+{
+    RUN_TESTS += [ run $(f) $(libs) ] ;
+}
+
+alias run-tests : $(RUN_TESTS) ;

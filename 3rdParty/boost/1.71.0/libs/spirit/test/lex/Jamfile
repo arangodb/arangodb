@@ -1,0 +1,101 @@
+#==============================================================================
+#   Copyright (c) 2001-2011 Joel de Guzman
+#   Copyright (c) 2001-2012 Hartmut Kaiser
+#   Copyright (c)      2011 Bryce Lelbach
+#   Copyright (c) 2016-2019 Nikita Kniazev
+#
+#   Use, modification and distribution is subject to the Boost Software
+#   License, Version 1.0. (See accompanying file LICENSE_1_0.txt or copy at
+#   http://www.boost.org/LICENSE_1_0.txt)
+#==============================================================================
+
+import modules ;
+import path ;
+import testing ;
+
+###############################################################################
+
+project spirit-lex
+    : requirements
+        <include>.
+        <c++-template-depth>512
+    ;
+
+###############################################################################
+
+cpp-pch pch : pch.hpp : : : <include>. <toolset>msvc:<cxxflags>"/FIpch.hpp" ;
+
+explicit pch ;
+
+###############################################################################
+
+local subproject-name = lex ;
+
+rule run ( sources + : args * : input-files *
+         : requirements * : target-name ? : default-build * )
+{
+    target-name ?= $(subproject-name)_$(sources[1]:D=:S=) ;
+    return [ testing.run $(sources) : $(args) : $(input-files)
+           : $(requirements) <pch>on-spirit:<source>pch : $(target-name) : $(default-build) ] ;
+}
+
+rule compile ( sources + : requirements * : target-name ? )
+{
+    target-name ?= $(subproject-name)_$(sources[1]:D=:S=) ;
+    return [ testing.compile $(sources)
+           : $(requirements) <pch>on-spirit:<source>pch : $(target-name) ] ;
+}
+
+rule compile-fail ( sources + : requirements * : target-name ? )
+{
+    target-name ?= $(subproject-name)_$(sources[1]:D=:S=) ;
+    return [ testing.compile-fail $(sources)
+           : $(requirements) <pch>on-spirit:<source>pch : $(target-name) ] ;
+}
+
+###############################################################################
+
+rule location ( name )		
+{		
+    local this = [ modules.binding $(__name__) ] ;		
+    local here = [ path.parent [ path.make $(this) ] ] ;		
+    return [ path.join $(here) $(name) ] ;		
+}		
+		
+###############################################################################
+
+run auto_switch_lexerstate.cpp ;
+run dedent_handling_phoenix.cpp ;
+run id_type_enum.cpp ;
+run lexertl1.cpp ;
+run lexertl2.cpp ;
+run lexertl3.cpp ;
+run lexertl4.cpp ;
+run lexertl5.cpp ;
+run lexer_state_switcher.cpp ;
+run semantic_actions.cpp ;
+run set_token_value.cpp ;
+run set_token_value_phoenix.cpp ;
+run state_switcher.cpp ;
+run string_token_id.cpp ;
+run token_iterpair.cpp ;
+run token_moretypes.cpp ;
+run token_omit.cpp ;
+run token_onetype.cpp ;
+run plain_token.cpp ;
+
+run regression_basic_lexer.cpp ;
+run regression_matlib_dynamic.cpp ;
+run regression_matlib_generate.cpp         : [ location matlib_static.h ] ;
+run regression_matlib_static.cpp           : : : <dependency>lex_regression_matlib_generate ;
+run regression_matlib_generate_switch.cpp  : [ location matlib_static_switch.h ] ;
+run regression_matlib_switch.cpp           : : : <dependency>lex_regression_matlib_generate_switch ;
+run regression_word_count.cpp ;
+run regression_syntax_error.cpp ;
+run regression_wide.cpp ;
+run regression_file_iterator1.cpp ;
+run regression_file_iterator2.cpp ;
+run regression_file_iterator3.cpp : : : <pch>off ;
+run regression_file_iterator4.cpp ;
+run regression_static_wide_6253.cpp ;
+run regression_less_8563.cpp ;

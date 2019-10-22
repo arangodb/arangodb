@@ -1,0 +1,76 @@
+#
+# Copyright (c) 2016-2017 Vinnie Falco (vinnie dot falco at gmail dot com)
+#
+# Distributed under the Boost Software License, Version 1.0. (See accompanying
+# file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+#
+# Official repository: https://github.com/boostorg/beast
+#
+
+import testing ;
+import ../../config/checks/config : requires ;
+
+lib lib-test
+    : lib_test.cpp
+    : requirements
+    <link>static
+    $(defines)
+    : usage-requirements
+    <include>./extras/include
+    $(defines)
+    ;
+
+project /boost/beast/test
+    : requirements
+    [ requires
+        cxx11_constexpr
+        cxx11_decltype
+        cxx11_hdr_tuple
+        #cxx11_sfinae_expr # Every MSVC fails this
+        cxx11_template_aliases
+        cxx11_variadic_templates
+    ]
+    <include>./extern
+    <define>BOOST_BEAST_TESTS
+    <library>/boost/beast//lib-asio/<link>static
+    <boost.beast.separate-compilation>on:<library>/boost/beast//lib-beast/<link>static
+    <library>/boost/filesystem//boost_filesystem
+    <library>/boost/coroutine//boost_coroutine
+    ;
+
+path-constant ZLIB_SOURCES :
+    extern/zlib-1.2.11/adler32.c
+    extern/zlib-1.2.11/compress.c
+    extern/zlib-1.2.11/crc32.c
+    extern/zlib-1.2.11/deflate.c
+    extern/zlib-1.2.11/infback.c
+    extern/zlib-1.2.11/inffast.c
+    extern/zlib-1.2.11/inflate.c
+    extern/zlib-1.2.11/inftrees.c
+    extern/zlib-1.2.11/trees.c
+    extern/zlib-1.2.11/uncompr.c
+    extern/zlib-1.2.11/zutil.c
+    ;
+
+alias run-tests :
+    beast//run-tests
+    bench//run-tests
+    doc//run-tests
+    example//run-tests
+    ;
+
+alias fat-tests :
+    beast//fat-tests
+    doc//fat-tests
+    example//fat-tests
+    ;
+
+explicit fat-tests ;
+
+alias run-fat-tests :
+    beast//run-fat-tests
+    doc//run-fat-tests
+    example//run-fat-tests
+    ;
+
+explicit run-fat-tests ;

@@ -1,0 +1,80 @@
+# Boost.GIL (Generic Image Library)
+#
+# Copyright (c) 2013-2017 Vinnie Falco (vinnie dot falco at gmail dot com)
+# Copyright (c) 2018-2019 Mateusz Loskot <mateusz@loskot.net>
+#
+# Use, modification and distribution is subject to the Boost Software License,
+# Version 1.0. (See accompanying file LICENSE_1_0.txt or copy at
+# http://www.boost.org/LICENSE_1_0.txt)
+
+import ../config/checks/config : requires ;
+import os ;
+
+# Avoid warnings flood on Travis CI, AppVeyor, CircleCI, Azure Pipelines
+if ! [ os.environ CI ] && ! [ os.environ AGENT_JOBSTATUS ]
+{
+    DEVELOPMENT_EXTRA_WARNINGS =
+      <toolset>msvc:<cxxflags>/W4
+      <toolset>gcc:<cxxflags>"-pedantic -Wcast-align -Wconversion -Wfloat-equal -Wshadow -Wsign-promo -Wstrict-aliasing -Wunused-parameter"
+      <toolset>clang,<variant>debug:<cxxflags>"-pedantic -Wcast-align -Wconversion -Wfloat-equal -Wshadow -Wsign-promo -Wstrict-aliasing -Wunused-parameter -Wsign-conversion"
+      <toolset>clang,<variant>release:<cxxflags>"-pedantic -Wcast-align -Wconversion -Wfloat-equal -Wshadow -Wsign-promo -Wstrict-aliasing -Wunused-parameter -Wsign-conversion"
+      <toolset>darwin:<cxxflags>"-pedantic -Wcast-align -Wconversion -Wfloat-equal -Wshadow -Wsign-promo -Wstrict-aliasing -Wunused-parameter"
+      ;
+}
+
+project
+    :
+    requirements
+        <toolset>msvc:<asynch-exceptions>on
+        <toolset>msvc:<cxxflags>/bigobj
+        <toolset>msvc:<define>_SCL_SECURE_NO_DEPRECATE
+        <toolset>msvc:<define>_CRT_SECURE_NO_WARNINGS
+        <toolset>msvc:<define>_CRT_NONSTDC_NO_DEPRECATE
+        <toolset>msvc:<define>NOMINMAX
+        <toolset>intel:<debug-symbols>off
+        <toolset>gcc:<cxxflags>"-fstrict-aliasing -Wextra"
+        <toolset>darwin:<cxxflags>"-fstrict-aliasing -Wextra"
+        # variant filter for clang is necessary to allow ubsan_* variants declare distinct set of <cxxflags>
+        <toolset>clang,<variant>debug:<cxxflags>"-fstrict-aliasing -Wextra"
+        <toolset>clang,<variant>release:<cxxflags>"-fstrict-aliasing -Wextra"
+        $(DEVELOPMENT_EXTRA_WARNINGS)
+        [ requires
+            cxx11_constexpr
+            cxx11_defaulted_functions
+            cxx11_template_aliases
+            cxx11_trailing_result_types  # implies decltype and auto
+            cxx11_variadic_templates
+        ]
+    ;
+
+variant gil_ubsan_integer
+    : release
+    :
+    <cxxflags>"-Wno-unused -fstrict-aliasing -fno-omit-frame-pointer -fsanitize=integer -fno-sanitize-recover=integer -fsanitize-blacklist=libs/gil/.ci/blacklist.supp"
+    <linkflags>"-fsanitize=integer"
+    <debug-symbols>on
+    <define>BOOST_USE_ASAN=1
+    ;
+
+variant gil_ubsan_nullability
+    : release
+    :
+    <cxxflags>"-Wno-unused -fstrict-aliasing -fno-omit-frame-pointer -fsanitize=nullability -fno-sanitize-recover=nullability -fsanitize-blacklist=libs/gil/.ci/blacklist.supp"
+    <linkflags>"-fsanitize=nullability"
+    <debug-symbols>on
+    <define>BOOST_USE_ASAN=1
+    ;
+
+variant gil_ubsan_undefined
+    : release
+    :
+    <cxxflags>"-Wno-unused -fstrict-aliasing -fno-omit-frame-pointer -fsanitize=undefined -fno-sanitize-recover=undefined -fsanitize-blacklist=libs/gil/.ci/blacklist.supp"
+    <linkflags>"-fsanitize=undefined"
+    <debug-symbols>on
+    <define>BOOST_USE_ASAN=1
+    ;
+
+build-project test ;
+build-project numeric/test ;
+build-project toolbox/test ;
+build-project io/test ;
