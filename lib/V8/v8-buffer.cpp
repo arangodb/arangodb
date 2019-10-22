@@ -1643,6 +1643,10 @@ void TRI_InitV8Buffer(v8::Isolate* isolate) {
 
   TRI_v8_global_t* v8g = TRI_GetV8Globals(isolate);
 
+
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate, "BYTELENGTH"), JS_ByteLength);
+
   // .............................................................................
   // generate the general SlowBuffer template
   // .............................................................................
@@ -1650,7 +1654,9 @@ void TRI_InitV8Buffer(v8::Isolate* isolate) {
   v8::Handle<v8::ObjectTemplate> rt;
 
   ft = v8::FunctionTemplate::New(isolate, V8Buffer::New);
+
   ft->SetClassName(TRI_V8_ASCII_STRING(isolate, "SlowBuffer"));
+
   rt = ft->InstanceTemplate();
   rt->SetInternalFieldCount(1);
 
@@ -1690,7 +1696,6 @@ void TRI_InitV8Buffer(v8::Isolate* isolate) {
   TRI_V8_AddProtoMethod(isolate, ft, TRI_V8_ASCII_STRING(isolate, "fill"), JS_Fill);
   TRI_V8_AddProtoMethod(isolate, ft, TRI_V8_ASCII_STRING(isolate, "copy"), JS_Copy);
 
-  TRI_V8_AddMethod(isolate, ft, TRI_V8_ASCII_STRING(isolate, "byteLength"), JS_ByteLength);
 
   // create the exports
   v8::Handle<v8::ObjectTemplate> exports = v8::ObjectTemplate::New(isolate);
@@ -1700,6 +1705,7 @@ void TRI_InitV8Buffer(v8::Isolate* isolate) {
   TRI_AddGlobalVariableVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "EXPORTS_SLOW_BUFFER"),
                                exports->NewInstance(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()));
+
 
   //   v8::HeapProfiler* heap_profiler = isolate->GetHeapProfiler();
   /// TODO  heap_profiler->SetWrapperClassInfoProvider(TRI_V8_BUFFER_CID, WrapperInfo);

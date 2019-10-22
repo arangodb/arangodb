@@ -17,7 +17,12 @@ global.DEFINE_MODULE('buffer', (function () {
   const exports = {};
 
   var SlowBuffer = require('internal').SlowBuffer;
-      
+/*
+  if (global.BYTELENGTH) {
+    SlowBuffer.prototype.byteLength = global.BYTELENGTH;
+    delete global.BYTELENGTH;
+  }
+*/
   SlowBuffer.prototype._PRINT = function(context) {
     context.output += '<SlowBuffer';
     for (let i = 0; i < Math.min(this.length, 50); i++) {
@@ -202,7 +207,7 @@ global.DEFINE_MODULE('buffer', (function () {
 
   function createBufferFromString(subject, encoding) {
     const buffer = Object.create(Buffer.prototype);
-    const length = Buffer.byteLength(subject, encoding);
+    const length = BYTELENGTH(subject, encoding);
     buffer.parent = new SlowBuffer(length);
     buffer.offset = 0;
     buffer.length = buffer.parent.write(subject, encoding);
@@ -481,7 +486,7 @@ global.DEFINE_MODULE('buffer', (function () {
   };
 
   // byteLength
-  Buffer.byteLength = SlowBuffer.byteLength;
+  Buffer.byteLength = BYTELENGTH;
 
   // fill(value, start=0, end=buffer.length)
   Buffer.prototype.fill = function fill (value, start, end) {
