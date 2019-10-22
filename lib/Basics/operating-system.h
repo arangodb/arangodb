@@ -730,7 +730,10 @@
 #define TRI_random ::rand
 #define TRI_srandom ::srand
 
+#if ( defined(_MSC_VER) && _MSC_VER < 1900 ) || ( defined(__MINGW32__) && !defined(__MINGW64_VERSION_MAJOR) )
 #define snprintf _snprintf
+#endif
+
 #define strcasecmp _stricmp
 #define strncasecmp _strnicmp
 
