@@ -189,11 +189,11 @@ void HttpResponse::writeHeader(StringBuffer* output) {
     while (p < end) {
       if (capState == 1) {
         // upper case
-        output->appendCharUnsafe(::toupper(*p));
+        output->appendCharUnsafe(StringUtils::toupper(*p));
         capState = 0;
       } else if (capState == 0) {
         // normal case
-        output->appendCharUnsafe(::tolower(*p));
+        output->appendCharUnsafe(StringUtils::tolower(*p));
         if (*p == '-') {
           capState = 1;
         } else if (*p == ':') {
