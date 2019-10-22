@@ -35,7 +35,7 @@ inline char const * unknown_message_win32( int ev, char * buffer, std::size_t le
 #  pragma warning( disable: 4996 )
 # endif
 
-    std::snprintf( buffer, len - 1, "Unknown error (%d)", ev );
+    _snprintf( buffer, len - 1, "Unknown error (%d)", ev );
 
     buffer[ len - 1 ] = 0;
     return buffer;
