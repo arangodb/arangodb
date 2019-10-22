@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen:4000 */
-/*global assertEqual, assertTrue, assertFalse */
+/*global assertEqual, assertNotEqual, assertTrue, assertFalse */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for dump/reload
@@ -404,8 +404,9 @@ function dumpTestSuite () {
       }
 
       let view = db._view("UnitTestsDumpView");
-      assertTrue(view !== null);
+      assertNotEqual(null, view);
       let props = view.properties();
+      assertEqual("UnitTestsDumpView", view.name());
       assertEqual(Object.keys(props.links).length, 1);
       assertTrue(props.hasOwnProperty("links"));
       assertTrue(props.links.hasOwnProperty("UnitTestsDumpViewCollection"));

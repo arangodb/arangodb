@@ -869,7 +869,7 @@ function BaseTestConfig () {
         //  create view & collection on master
         db._flushCache();
         db._create(cn);
-        db._createView(cn + 'View', 'arangosearch');
+        db._createView(cn + 'View', 'arangosearch', {consolidationIntervalMsec:0});
 
         db._flushCache();
         connectToSlave();
@@ -884,6 +884,7 @@ function BaseTestConfig () {
           assertTrue(view !== null);
           let props = view.properties();
           assertTrue(props.hasOwnProperty('links'));
+          assertEqual(0, props.consolidationIntervalMsec);
           assertEqual(Object.keys(props.links).length, 0);
         }
 
@@ -920,6 +921,7 @@ function BaseTestConfig () {
           let view = db._view(cn + 'View');
           assertNotEqual(view, null);
           let props = view.properties();
+          assertEqual(0, props.consolidationIntervalMsec);
           assertTrue(props.hasOwnProperty('links'));
           assertEqual(Object.keys(props.links).length, 1);
           assertTrue(props.links.hasOwnProperty(cn));
