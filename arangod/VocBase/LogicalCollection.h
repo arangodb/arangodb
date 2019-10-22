@@ -207,9 +207,8 @@ class LogicalCollection : public LogicalDataSource {
   /// @brief return all indexes of the collection
   std::vector<std::shared_ptr<Index>> getIndexes() const;
 
-  void getIndexesVPack(velocypack::Builder&, uint8_t,
-                       std::function<bool(arangodb::Index const*)> const& filter =
-                           [](arangodb::Index const*) -> bool { return true; }) const;
+  void getIndexesVPack(velocypack::Builder&,
+                       std::function<std::underlying_type<Serialize>::type(arangodb::Index const*)> const& filter) const;
 
   /// @brief a method to skip certain documents in AQL write operations,
   /// this is only used in the enterprise edition for smart graphs

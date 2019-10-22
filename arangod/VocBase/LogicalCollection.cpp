@@ -450,9 +450,9 @@ std::vector<std::shared_ptr<arangodb::Index>> LogicalCollection::getIndexes() co
 }
 
 void LogicalCollection::getIndexesVPack(
-    VPackBuilder& result, std::underlying_type<Index::Serialize>::type flags,
-    std::function<bool(arangodb::Index const*)> const& filter) const {
-  getPhysical()->getIndexesVPack(result, flags, filter);
+    VPackBuilder& result,
+    std::function<std::underlying_type<Index::Serialize>::type(arangodb::Index const*)> const& filter) const {
+  getPhysical()->getIndexesVPack(result, filter);
 }
 
 bool LogicalCollection::allowUserKeys() const { return _allowUserKeys; }
@@ -595,13 +595,17 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
   }
 
   result.add(VPackValue("indexes"));
-  getIndexesVPack(result, Index::makeFlags(), [](arangodb::Index const* idx) {
+  getIndexesVPack(result, [](arangodb::Index const* idx) {
     // we have to exclude the primary and the edge index here, because otherwise
     // at least the MMFiles engine will try to create it
     // AND exclude hidden indexes
-    return (idx->type() != arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX &&
-            idx->type() != arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX &&
-            !idx->isHidden() && !idx->inProgress());
+    if (idx->type() != arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX &&
+        idx->type() != arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX &&
+        !idx->isHidden() && !idx->inProgress()) {
+      return Index::makeFlags();
+    }
+
+    return Index::makeFlags(Index::Serialize::Invalid);
   });
   result.add("planVersion", VPackValue(planVersion()));
   result.add("isReady", VPackValue(isReady));
@@ -649,14 +653,18 @@ arangodb::Result LogicalCollection::appendVelocyPack(arangodb::velocypack::Build
   auto indexFlags = Index::makeFlags();
   // hide hidden indexes. In effect hides unfinished indexes,
   // and iResearch links (only on a single-server and coordinator)
-  auto filter = [&](arangodb::Index const* idx) {
-    return (hasFlag(flags, Serialize::IncludeInProgress) || !idx->inProgress()) &&
-           (hasFlag(flags, Serialize::ForPersistence) || !idx->isHidden());
-  };
   if (hasFlag(flags, Serialize::ForPersistence)) {
     indexFlags = Index::makeFlags(Index::Serialize::Internals);
   }
-  getIndexesVPack(result, indexFlags, filter);
+  auto filter = [&](arangodb::Index const* idx) {
+    if ((hasFlag(flags, Serialize::IncludeInProgress) || !idx->inProgress()) &&
+       (hasFlag(flags, Serialize::ForPersistence) || !idx->isHidden())) {
+      return indexFlags;
+    }
+
+    return Index::makeFlags(Index::Serialize::Invalid);
+  };
+  getIndexesVPack(result, filter);
 
   // Cluster Specific
   result.add(StaticStrings::IsSmart, VPackValue(isSmart()));

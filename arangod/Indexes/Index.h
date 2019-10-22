@@ -348,6 +348,8 @@ class Index {
     Estimates = 4,
     /// @brief serialize object ids for persistence
     Internals = 8,
+    /// @brief invalid mark
+    Invalid = std::numeric_limits<uint8_t>::max()
   };
 
   /// @brief helper for building flags

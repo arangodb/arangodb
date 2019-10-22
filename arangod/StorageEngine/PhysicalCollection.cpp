@@ -532,14 +532,17 @@ std::vector<std::shared_ptr<arangodb::Index>> PhysicalCollection::getIndexes() c
   return { _indexes.begin(), _indexes.end() };
 }
 
-void PhysicalCollection::getIndexesVPack(VPackBuilder& result, unsigned flags,
-                                         std::function<bool(arangodb::Index const*)> const& filter) const {
+void PhysicalCollection::getIndexesVPack(VPackBuilder& result,
+                                         std::function<std::underlying_type<Index::Serialize>::type(arangodb::Index const*)> const& filter) const {
   READ_LOCKER(guard, _indexesLock);
   result.openArray();
   for (std::shared_ptr<Index> const& idx : _indexes) {
-    if (!filter(idx.get())) {
+    auto const flags = filter(idx.get());
+
+    if (0 != (flags & Index::makeFlags(Index::Serialize::Invalid))) {
       continue;
     }
+
     idx->toVelocyPack(result, flags);
   }
   result.close();

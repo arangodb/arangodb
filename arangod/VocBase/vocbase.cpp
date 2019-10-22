@@ -943,11 +943,17 @@ void TRI_vocbase_t::inventory(VPackBuilder& result, TRI_voc_tick_t maxTick,
       // why are indexes added separately, when they are added by
       //  collection->toVelocyPackIgnore !?
       result.add(VPackValue("indexes"));
-      collection->getIndexesVPack(result, Index::makeFlags(Index::Serialize::Internals), [](arangodb::Index const* idx) {
-        // we have to exclude the primary, edge index and links for dump /
-        // restore
-        return (idx->type() != arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX &&
-                idx->type() != arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX);
+      collection->getIndexesVPack(result, [](arangodb::Index const* idx) {
+        // we have to exclude the primary and edge index for dump / restore
+        switch (idx->type()) {
+          case Index::TRI_IDX_TYPE_PRIMARY_INDEX:
+          case Index::TRI_IDX_TYPE_EDGE_INDEX:
+            return Index::makeFlags(Index::Serialize::Invalid);
+          case Index::TRI_IDX_TYPE_IRESEARCH_LINK:
+            return Index::makeFlags(Index::Serialize::Internals);
+          default:
+            return Index::makeFlags();
+        }
       });
       result.add("parameters", VPackValue(VPackValueType::Object));
       collection->toVelocyPackIgnore(

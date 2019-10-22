@@ -1426,7 +1426,7 @@ Result DatabaseInitialSyncer::handleCollectionsAndViews(VPackSlice const& collSl
     Result r = handleViewCreation(viewSlices);  // no requests to master
     if (r.fail()) {
       LOG_TOPIC("96cda", ERR, Logger::REPLICATION)
-          << "Error during intial sync view creation: " << r.errorMessage() << '\n' << viewSlices.toString();
+          << "Error during intial sync view creation: " << r.errorMessage();
       return r;
     }
   } else {
