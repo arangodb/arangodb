@@ -26,7 +26,6 @@
 
 #include "Basics/Common.h"
 #include "Basics/Result.h"
-#include "Basics/asio_ns.h"
 #include "Replication/ReplicationApplierConfiguration.h"
 #include "Replication/Syncer.h"
 #include "Replication/utilities.h"
