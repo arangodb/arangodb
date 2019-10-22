@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused: false */
-/* global arango, assertEqual, assertTrue, assertFalse, ARGUMENTS */
+/* global arango, assertEqual, assertNotEqual, assertTrue, assertFalse, ARGUMENTS */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief test the sync method of the replication
@@ -865,63 +865,67 @@ function BaseTestConfig () {
       let analyzers = require('@arangodb/analyzers');
       let analyzer = analyzers.save('custom', 'delimiter', { delimiter: ' ' }, ['frequency']);
 
-      //  create view & collection on master
-      db._flushCache();
-      db._create(cn);
-      db._createView(cn + 'View', 'arangosearch');
+      try {
+        //  create view & collection on master
+        db._flushCache();
+        db._create(cn);
+        db._createView(cn + 'View', 'arangosearch');
 
-      db._flushCache();
-      connectToSlave();
-      internal.wait(0.1, false);
-      //  sync on slave
-      replication.sync({ endpoint: masterEndpoint });
+        db._flushCache();
+        connectToSlave();
+        internal.wait(0.1, false);
+        //  sync on slave
+        replication.sync({ endpoint: masterEndpoint });
 
-      db._flushCache();
-      {
-        //  check state is the same
-        let view = db._view(cn + 'View');
-        assertTrue(view !== null);
-        let props = view.properties();
-        assertTrue(props.hasOwnProperty('links'));
-        assertEqual(Object.keys(props.links).length, 0);
-      }
+        db._flushCache();
+        {
+          //  check state is the same
+          let view = db._view(cn + 'View');
+          assertTrue(view !== null);
+          let props = view.properties();
+          assertTrue(props.hasOwnProperty('links'));
+          assertEqual(Object.keys(props.links).length, 0);
+        }
 
-      connectToMaster();
+        connectToMaster();
 
-      //  update view properties
-      {
-        let view = db._view(cn + 'View');
-        let links = {};
-        links[cn] = {
-          includeAllFields: true,
-          fields: {
-              text: { analyzers: ['text_en', 'custom' ] }
-          }
-        };
-        view.properties({ links });
-      }
+        //  update view properties
+        {
+          let view = db._view(cn + 'View');
+          let links = {};
+          links[cn] = {
+            includeAllFields: true,
+            fields: {
+                text: { analyzers: ['text_en', 'custom' ] }
+            }
+          };
+          view.properties({ links });
+        }
 
-      db._flushCache();
-      connectToSlave();
+        db._flushCache();
+        connectToSlave();
 
-      replication.sync({ endpoint: masterEndpoint });
+        replication.sync({ endpoint: masterEndpoint });
 
-      // check replicated analyzer
-      {
-        let analyzerSlave = analyzers.analyzer('custom');
-        assertEqual(analyzer.name, analyzerSlave.name());
-        assertEqual(analyzer.type, analyzerSlave.type());
-        assertEqual(analyzer.properties, analyzerSlave.properties());
-        assertEqual(analyzer.features, analyzerSlave.features());
-      }
+        // check replicated analyzer
+        {
+          let analyzerSlave = analyzers.analyzer('custom');
+          assertEqual(analyzer.name, analyzerSlave.name());
+          assertEqual(analyzer.type, analyzerSlave.type());
+          assertEqual(analyzer.properties, analyzerSlave.properties());
+          assertEqual(analyzer.features, analyzerSlave.features());
+        }
 
-      {
-        let view = db._view(cn + 'View');
-        assertTrue(view !== null);
-        let props = view.properties();
-        assertTrue(props.hasOwnProperty('links'));
-        assertEqual(Object.keys(props.links).length, 1);
-        assertTrue(props.links.hasOwnProperty(cn));
+        {
+          let view = db._view(cn + 'View');
+          assertNotEqual(view, null);
+          let props = view.properties();
+          assertTrue(props.hasOwnProperty('links'));
+          assertEqual(Object.keys(props.links).length, 1);
+          assertTrue(props.links.hasOwnProperty(cn));
+        }
+      } finally {
+        analyzers.remove(analyzer.name); // cleanup
       }
     },
 
