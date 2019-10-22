@@ -923,6 +923,11 @@ function BaseTestConfig () {
           assertTrue(props.hasOwnProperty('links'));
           assertEqual(Object.keys(props.links).length, 1);
           assertTrue(props.links.hasOwnProperty(cn));
+          assertTrue(props.links[cn].includeAllFields);
+          assertEqual(Object.keys(props.links[cn].fields).length, 1);
+          assertEqual(props.links[cn].fields.text.analyzers.length, 2);
+          assertEqual(props.links[cn].fields.text.analyzers[0], 'text_en');
+          assertEqual(props.links[cn].fields.text.analyzers[1], cn+'::custom');
         }
       } finally {
         analyzers.remove(analyzer.name); // cleanup

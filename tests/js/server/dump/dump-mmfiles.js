@@ -460,6 +460,10 @@ function dumpTestSuite () {
       assertTrue(props.links.UnitTestsDumpViewCollection.hasOwnProperty("includeAllFields"));
       assertTrue(props.links.UnitTestsDumpViewCollection.hasOwnProperty("fields"));
       assertTrue(props.links.UnitTestsDumpViewCollection.includeAllFields);
+      assertEqual(Object.keys(props.links.UnitTestsDumpViewCollection.fields).length, 1);
+      assertTrue(props.links.UnitTestsDumpViewCollection.fields.text.analyzers.length, 2);
+      assertTrue("text_en", props.links.UnitTestsDumpViewCollection.fields.text.analyzers[0]);
+      assertTrue("UnitTestsDumpView::custom", props.links.UnitTestsDumpViewCollection.fields.text.analyzers[1]);
 
       assertEqual(props.consolidationIntervalMsec, 0);
       assertEqual(props.cleanupIntervalStep, 456);
