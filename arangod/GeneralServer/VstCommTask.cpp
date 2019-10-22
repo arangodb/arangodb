@@ -36,7 +36,6 @@
 #include "Logger/LoggerFeature.h"
 #include "Meta/conversion.h"
 #include "RestServer/ServerFeature.h"
-#include "Statistics/StatisticsFeature.h"
 
 #include <stdexcept>
 
@@ -378,9 +377,9 @@ bool VstCommTask::processRead(double startTime) {
     // handle request types
     if (type == 1000) {  // auth
       handleAuthHeader(header, chunkHeader._messageID);
-      if (StatisticsFeature::ignoreSuperuser() &&
-          (_authToken._username.empty() || _authToken.forwarded())) {
-        RequestStatistics::SET_IGNORE(stat);
+      // Separate superuser traffic:
+      if (_authToken._username.empty() || _authToken.forwarded()) {
+        RequestStatistics::SET_SUPERUSER(stat);
       }
     } else if (type == 1) {  // request
 
@@ -395,11 +394,10 @@ bool VstCommTask::processRead(double startTime) {
         _auth->userManager()->refreshUser(_authToken._username);
       }
 
-      // Ignore superuser traffic:
-      if (StatisticsFeature::ignoreSuperuser() &&
-          _authorized &&
+      // Separate superuser traffic:
+      if (_authorized &&
           (_authToken._username.empty() || _authToken.forwarded())) {
-        RequestStatistics::SET_IGNORE(stat);
+        RequestStatistics::SET_SUPERUSER(stat);
       }
 
       RequestFlow cont = prepareExecution(*req.get());

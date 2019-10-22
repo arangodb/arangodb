@@ -36,7 +36,6 @@
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
 #include "Statistics/ConnectionStatistics.h"
-#include "Statistics/StatisticsFeature.h"
 #include "Utils/Events.h"
 
 using namespace arangodb;
@@ -588,11 +587,10 @@ bool HttpCommTask::processRead(double startTime) {
 
   // authenticated
   if (authResult != rest::ResponseCode::SERVER_ERROR) {
-    // We want to ignore superuser token traffic:
-    if (StatisticsFeature::ignoreSuperuser() &&
-        _incompleteRequest->authenticated() &&
+    // We want to separate superuser token traffic:
+    if (_incompleteRequest->authenticated() &&
         (_incompleteRequest->user().empty() || _authToken.forwarded())) {
-      RequestStatistics::SET_IGNORE(stat);
+      RequestStatistics::SET_SUPERUSER(stat);
     }
     // prepare execution will send an error message
     RequestFlow cont = prepareExecution(*_incompleteRequest.get());

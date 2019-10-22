@@ -70,6 +70,12 @@ StatisticsDistribution TRI_IoTimeDistributionStatistics(TRI_RequestTimeDistribut
 StatisticsDistribution TRI_QueueTimeDistributionStatistics(TRI_RequestTimeDistributionVectorStatistics);
 StatisticsDistribution TRI_RequestTimeDistributionStatistics(TRI_RequestTimeDistributionVectorStatistics);
 StatisticsDistribution TRI_TotalTimeDistributionStatistics(TRI_RequestTimeDistributionVectorStatistics);
+StatisticsDistribution TRI_BytesReceivedDistributionStatisticsUser(TRI_BytesReceivedDistributionVectorStatistics);
+StatisticsDistribution TRI_BytesSentDistributionStatisticsUser(TRI_BytesSentDistributionVectorStatistics);
+StatisticsDistribution TRI_IoTimeDistributionStatisticsUser(TRI_RequestTimeDistributionVectorStatistics);
+StatisticsDistribution TRI_QueueTimeDistributionStatisticsUser(TRI_RequestTimeDistributionVectorStatistics);
+StatisticsDistribution TRI_RequestTimeDistributionStatisticsUser(TRI_RequestTimeDistributionVectorStatistics);
+StatisticsDistribution TRI_TotalTimeDistributionStatisticsUser(TRI_RequestTimeDistributionVectorStatistics);
 
 }  // namespace basics
 }  // namespace arangodb
@@ -130,7 +136,6 @@ StatisticsFeature::StatisticsFeature(application_features::ApplicationServer& se
       _statistics(true),
       _statisticsHistory(true),
       _statisticsHistoryTouched(false),
-      _statisticsIgnoreSuperuser(false),
       _descriptions(new stats::Descriptions()) {
   startsAfter("AQLPhase");
   setOptional(true);
@@ -151,11 +156,6 @@ void StatisticsFeature::collectOptions(std::shared_ptr<ProgramOptions> options) 
                      arangodb::options::makeFlags(arangodb::options::Flags::Hidden))
     .setIntroducedIn(30409)
     .setIntroducedIn(30501);
-  options->addOption("--server.statistics-ignore-superuser",
-                     "ignore requests by superuser (JWT token with empty user) in statistics",
-                     new BooleanParameter(&_statisticsIgnoreSuperuser))
-    .setIntroducedIn(30502);
-
 }
 
 void StatisticsFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {

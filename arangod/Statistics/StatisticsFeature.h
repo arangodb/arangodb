@@ -56,6 +56,12 @@ extern StatisticsDistribution TRI_IoTimeDistributionStatistics;
 extern StatisticsDistribution TRI_QueueTimeDistributionStatistics;
 extern StatisticsDistribution TRI_RequestTimeDistributionStatistics;
 extern StatisticsDistribution TRI_TotalTimeDistributionStatistics;
+extern StatisticsDistribution TRI_BytesReceivedDistributionStatisticsUser;
+extern StatisticsDistribution TRI_BytesSentDistributionStatisticsUser;
+extern StatisticsDistribution TRI_IoTimeDistributionStatisticsUser;
+extern StatisticsDistribution TRI_QueueTimeDistributionStatisticsUser;
+extern StatisticsDistribution TRI_RequestTimeDistributionStatisticsUser;
+extern StatisticsDistribution TRI_TotalTimeDistributionStatisticsUser;
 }  // namespace basics
 namespace stats {
 class Descriptions;
@@ -91,18 +97,10 @@ class StatisticsFeature final : public application_features::ApplicationFeature 
     return nullptr;
   }
 
-  static bool ignoreSuperuser() {
-    if (STATISTICS != nullptr) {
-      return STATISTICS->_statisticsIgnoreSuperuser;
-    }
-    return false;
-  }
-
  private:
   bool _statistics;
   bool _statisticsHistory;
   bool _statisticsHistoryTouched;
-  bool _statisticsIgnoreSuperuser;
 
   std::unique_ptr<stats::Descriptions> _descriptions;
   std::unique_ptr<StatisticsThread> _statisticsThread;
