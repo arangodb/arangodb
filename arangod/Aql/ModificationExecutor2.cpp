@@ -220,7 +220,6 @@ ModificationExecutor2<FetcherType, ModifierType>::doCollect(size_t const maxOutp
     if (row.isInitialized()) {
       // Make sure we have a valid row
       TRI_ASSERT(row.isInitialized());
-      LOG_DEVEL << row.toJson();
       _modifier.accumulate(row);
     }
   }
@@ -323,8 +322,6 @@ template <typename FetcherType, typename ModifierType>
 std::pair<ExecutionState, typename ModificationExecutor2<FetcherType, ModifierType>::Stats>
 ModificationExecutor2<FetcherType, ModifierType>::produceRows(OutputAqlItemRow& output) {
   TRI_ASSERT(_infos._trx);
-
-  LOG_DEVEL << "produce rows";
 
   ModificationExecutor2::Stats stats;
 
