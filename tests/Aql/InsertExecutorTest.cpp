@@ -89,7 +89,9 @@ TEST_F(InsertExecutorTest, basic) {
 }
 
 TEST_F(InsertExecutorTest, insert_but_not_rev) {
-  std::string query = R"(INSERT { _key: "foo", _rev: "bar" } IN )" + collectionName;
+  std::string const invalidRev = "IAmAnInvalidRev";
+  std::string query = R"(INSERT { _key: "IAmAKey", _rev: ")" + invalidRev +
+                      R"(" } IN )" + collectionName;
   AssertQueryHasResult(vocbase, query, VPackSlice::emptyArraySlice());
 
   auto const bindParameters = VPackParser::fromJson("{ }");
@@ -104,8 +106,7 @@ TEST_F(InsertExecutorTest, insert_but_not_rev) {
   ASSERT_EQ(slice.length(), 1);
 
   auto doc = slice.at(0);
-  ASSERT_NE(arangodb::basics::VelocyPackHelper::getStringValue(doc, "_rev", ""),
-            "foo");
+  ASSERT_NE(arangodb::basics::VelocyPackHelper::getStringValue(doc, "_rev", ""), invalidRev);
 }
 
 TEST_F(InsertExecutorTest, insert_ignore_error_default) {
