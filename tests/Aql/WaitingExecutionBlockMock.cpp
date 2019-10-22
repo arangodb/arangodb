@@ -22,6 +22,7 @@
 
 #include "WaitingExecutionBlockMock.h"
 
+#include "Aql/AqlCallStack.h"
 #include "Aql/AqlItemBlock.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionState.h"
@@ -112,4 +113,10 @@ std::pair<arangodb::aql::ExecutionState, size_t> WaitingExecutionBlockMock::skip
     traceSkipSomeEnd(ExecutionState::HASMORE, skipped);
     return {ExecutionState::HASMORE, skipped};
   }
+}
+
+std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> WaitingExecutionBlockMock::execute(AqlCallStack stack) {
+  // TODO implement!
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }

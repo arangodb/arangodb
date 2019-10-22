@@ -93,6 +93,8 @@ class ExecutionBlockImpl<IdExecutor<BlockPassthrough::Enable, void>> : public Ex
 
   RegisterId getOutputRegisterId() const noexcept;
 
+  std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> execute(AqlCallStack stack) override;
+
  private:
   bool isDone() const noexcept;
 

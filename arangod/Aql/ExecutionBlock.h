@@ -39,6 +39,7 @@ class Methods;
 }
 
 namespace aql {
+class AqlCallStack;
 class InputAqlItemRow;
 class ExecutionEngine;
 class ExecutionNode;
@@ -96,8 +97,8 @@ class ExecutionBlock {
   void traceGetSomeBegin(size_t atMost);
 
   // Trace the end of a getSome call, potentially with result
-  std::pair<ExecutionState, SharedAqlItemBlockPtr> traceGetSomeEnd(
-      ExecutionState state, SharedAqlItemBlockPtr result);
+  std::pair<ExecutionState, SharedAqlItemBlockPtr> traceGetSomeEnd(ExecutionState state,
+                                                                   SharedAqlItemBlockPtr result);
 
   void traceSkipSomeBegin(size_t atMost);
 
@@ -121,6 +122,19 @@ class ExecutionBlock {
 
   /// @brief add a dependency
   void addDependency(ExecutionBlock* ep);
+
+  /// @brief main function to produce data in this ExecutionBlock.
+  ///        It gets the AqlCallStack defining the operations required in every
+  ///        subquery level. It will then perform the requested amount of offset, data and fullcount.
+  ///        The AqlCallStack is copied on purpose, so this block can modify it.
+  ///        Will return
+  ///        1. state:
+  ///          * WAITING: We have async operation going on, nothing happend, please call again
+  ///          * HASMORE: Here is some data in the request range, there is still more, if required call again
+  ///          * DONE: Here is some data, and there will be no further data available.
+  ///        2. size_t: Amount of documents skipped.
+  ///        3. SharedAqlItemBlockPtr: The next data block.
+  virtual std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> execute(AqlCallStack stack) = 0;
 
  protected:
   /// @brief the execution engine

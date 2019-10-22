@@ -26,6 +26,7 @@
 #include "ExecutionBlockImpl.h"
 
 #include "Aql/AllRowsFetcher.h"
+#include "Aql/AqlCallStack.h"
 #include "Aql/AqlItemBlock.h"
 #include "Aql/CalculationExecutor.h"
 #include "Aql/ConstFetcher.h"
@@ -46,6 +47,7 @@
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/KShortestPathsExecutor.h"
 #include "Aql/LimitExecutor.h"
+#include "Aql/MaterializeExecutor.h"
 #include "Aql/ModificationExecutor.h"
 #include "Aql/ModificationExecutorTraits.h"
 #include "Aql/MultiDependencySingleRowFetcher.h"
@@ -63,7 +65,6 @@
 #include "Aql/SubqueryExecutor.h"
 #include "Aql/SubqueryStartExecutor.h"
 #include "Aql/TraversalExecutor.h"
-#include "Aql/MaterializeExecutor.h"
 
 #include <type_traits>
 
@@ -79,18 +80,18 @@ using namespace arangodb::aql;
  * constexpr bool someClassHasSomeMethod = hasSomeMethod<SomeClass>::value;
  */
 
-#define CREATE_HAS_MEMBER_CHECK(methodName, checkName)     \
-  template <typename T>                                    \
-  class checkName {                                        \
-    template <typename C>                                  \
-    static std::true_type test(decltype(&C::methodName));  \
-    template <typename C>                                  \
+#define CREATE_HAS_MEMBER_CHECK(methodName, checkName)               \
+  template <typename T>                                              \
+  class checkName {                                                  \
+    template <typename C>                                            \
+    static std::true_type test(decltype(&C::methodName));            \
+    template <typename C>                                            \
     static std::true_type test(decltype(&C::template methodName<>)); \
-    template <typename>                                    \
-    static std::false_type test(...);                      \
-                                                           \
-   public:                                                 \
-    static constexpr bool value = decltype(test<T>(0))::value;    \
+    template <typename>                                              \
+    static std::false_type test(...);                                \
+                                                                     \
+   public:                                                           \
+    static constexpr bool value = decltype(test<T>(0))::value;       \
   }
 
 CREATE_HAS_MEMBER_CHECK(initializeCursor, hasInitializeCursor);
@@ -301,23 +302,24 @@ static SkipVariants constexpr skipType() {
   static_assert(!useFetcher || hasSkipRows<typename Executor::Fetcher>::value,
                 "Fetcher is chosen for skipping, but has not skipRows method!");
 
-  static_assert(useExecutor ==
-                    (std::is_same<Executor, IndexExecutor>::value ||
-                     std::is_same<Executor, IResearchViewExecutor<false, true>>::value ||
-                     std::is_same<Executor, IResearchViewExecutor<true, true>>::value ||
-                     std::is_same<Executor, IResearchViewMergeExecutor<false, true>>::value ||
-                     std::is_same<Executor, IResearchViewMergeExecutor<true, true>>::value ||
-                     std::is_same<Executor, IResearchViewExecutor<false, false>>::value ||
-                     std::is_same<Executor, IResearchViewExecutor<true, false>>::value ||
-                     std::is_same<Executor, IResearchViewMergeExecutor<false, false>>::value ||
-                     std::is_same<Executor, IResearchViewMergeExecutor<true, false>>::value ||
-                     std::is_same<Executor, EnumerateCollectionExecutor>::value ||
-                     std::is_same<Executor, LimitExecutor>::value ||
-                     std::is_same<Executor, IdExecutor<BlockPassthrough::Disable, SingleRowFetcher<BlockPassthrough::Disable>>>::value ||
-                     std::is_same<Executor, ConstrainedSortExecutor>::value ||
-                     std::is_same<Executor, SortingGatherExecutor>::value ||
-                     std::is_same<Executor, MaterializeExecutor>::value),
-                "Unexpected executor for SkipVariants::EXECUTOR");
+  static_assert(
+      useExecutor ==
+          (std::is_same<Executor, IndexExecutor>::value ||
+           std::is_same<Executor, IResearchViewExecutor<false, true>>::value ||
+           std::is_same<Executor, IResearchViewExecutor<true, true>>::value ||
+           std::is_same<Executor, IResearchViewMergeExecutor<false, true>>::value ||
+           std::is_same<Executor, IResearchViewMergeExecutor<true, true>>::value ||
+           std::is_same<Executor, IResearchViewExecutor<false, false>>::value ||
+           std::is_same<Executor, IResearchViewExecutor<true, false>>::value ||
+           std::is_same<Executor, IResearchViewMergeExecutor<false, false>>::value ||
+           std::is_same<Executor, IResearchViewMergeExecutor<true, false>>::value ||
+           std::is_same<Executor, EnumerateCollectionExecutor>::value ||
+           std::is_same<Executor, LimitExecutor>::value ||
+           std::is_same<Executor, IdExecutor<BlockPassthrough::Disable, SingleRowFetcher<BlockPassthrough::Disable>>>::value ||
+           std::is_same<Executor, ConstrainedSortExecutor>::value ||
+           std::is_same<Executor, SortingGatherExecutor>::value ||
+           std::is_same<Executor, MaterializeExecutor>::value),
+      "Unexpected executor for SkipVariants::EXECUTOR");
 
   // The LimitExecutor will not work correctly with SkipVariants::FETCHER!
   static_assert(
@@ -386,7 +388,6 @@ std::pair<ExecutionState, size_t> ExecutionBlockImpl<Executor>::skipSomeOnceWith
   return {state, skipped};
 }
 
-
 template <bool customInit>
 struct InitializeCursor {};
 
@@ -451,6 +452,13 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<Executor>::initializeCursor
 template <class Executor>
 std::pair<ExecutionState, Result> ExecutionBlockImpl<Executor>::shutdown(int errorCode) {
   return ExecutionBlock::shutdown(errorCode);
+}
+
+template <class Executor>
+std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::execute(AqlCallStack stack) {
+  // TODO implement!
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 // Work around GCC bug: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=56480
@@ -568,8 +576,8 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<SubqueryExecutor<false>>::s
 }
 
 template <>
-std::pair<ExecutionState, Result>
-ExecutionBlockImpl<IdExecutor<BlockPassthrough::Enable, SingleRowFetcher<BlockPassthrough::Enable>>>::shutdown(int errorCode) {
+std::pair<ExecutionState, Result> ExecutionBlockImpl<
+    IdExecutor<BlockPassthrough::Enable, SingleRowFetcher<BlockPassthrough::Enable>>>::shutdown(int errorCode) {
   if (this->infos().isResponsibleForInitializeCursor()) {
     return ExecutionBlock::shutdown(errorCode);
   }
@@ -766,8 +774,10 @@ template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<true, f
 template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<false, false>>;
 template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<true, false>>;
 template class ::arangodb::aql::ExecutionBlockImpl<IdExecutor<BlockPassthrough::Enable, ConstFetcher>>;
-template class ::arangodb::aql::ExecutionBlockImpl<IdExecutor<BlockPassthrough::Enable, SingleRowFetcher<BlockPassthrough::Enable>>>;
-template class ::arangodb::aql::ExecutionBlockImpl<IdExecutor<BlockPassthrough::Disable, SingleRowFetcher<BlockPassthrough::Disable>>>;
+template class ::arangodb::aql::ExecutionBlockImpl<
+    IdExecutor<BlockPassthrough::Enable, SingleRowFetcher<BlockPassthrough::Enable>>>;
+template class ::arangodb::aql::ExecutionBlockImpl<
+    IdExecutor<BlockPassthrough::Disable, SingleRowFetcher<BlockPassthrough::Disable>>>;
 template class ::arangodb::aql::ExecutionBlockImpl<IndexExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<LimitExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<Insert, SingleBlockFetcher<BlockPassthrough::Disable>>>;

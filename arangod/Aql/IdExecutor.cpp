@@ -22,6 +22,7 @@
 
 #include "IdExecutor.h"
 
+#include "Aql/AqlCallStack.h"
 #include "Aql/AqlValue.h"
 #include "Aql/ConstFetcher.h"
 #include "Aql/ExecutionEngine.h"
@@ -43,9 +44,8 @@ constexpr BlockPassthrough IdExecutor<usePassThrough, T>::Properties::allowsBloc
 template <BlockPassthrough usePassThrough, class T>
 constexpr bool IdExecutor<usePassThrough, T>::Properties::inputSizeRestrictsOutputSize;
 
-ExecutionBlockImpl<IdExecutor<BlockPassthrough::Enable, void>>::ExecutionBlockImpl(ExecutionEngine* engine,
-                                                         ExecutionNode const* node,
-                                                         RegisterId outputRegister, bool doCount)
+ExecutionBlockImpl<IdExecutor<BlockPassthrough::Enable, void>>::ExecutionBlockImpl(
+    ExecutionEngine* engine, ExecutionNode const* node, RegisterId outputRegister, bool doCount)
     : ExecutionBlock(engine, node),
       _currentDependency(0),
       _outputRegister(outputRegister),
@@ -56,7 +56,8 @@ ExecutionBlockImpl<IdExecutor<BlockPassthrough::Enable, void>>::ExecutionBlockIm
   }
 }
 
-std::pair<ExecutionState, size_t> ExecutionBlockImpl<IdExecutor<BlockPassthrough::Enable, void>>::skipSome(size_t atMost) {
+std::pair<ExecutionState, size_t>
+ExecutionBlockImpl<IdExecutor<BlockPassthrough::Enable, void>>::skipSome(size_t atMost) {
   traceSkipSomeBegin(atMost);
   if (isDone()) {
     return traceSkipSomeEnd(ExecutionState::DONE, 0);
@@ -73,7 +74,8 @@ std::pair<ExecutionState, size_t> ExecutionBlockImpl<IdExecutor<BlockPassthrough
   return traceSkipSomeEnd(state, skipped);
 }
 
-std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<IdExecutor<BlockPassthrough::Enable, void>>::getSome(size_t atMost) {
+std::pair<ExecutionState, SharedAqlItemBlockPtr>
+ExecutionBlockImpl<IdExecutor<BlockPassthrough::Enable, void>>::getSome(size_t atMost) {
   traceGetSomeBegin(atMost);
   if (isDone()) {
     return traceGetSomeEnd(ExecutionState::DONE, nullptr);
@@ -99,8 +101,16 @@ bool aql::ExecutionBlockImpl<IdExecutor<BlockPassthrough::Enable, void>>::isDone
   return _currentDependency >= _dependencies.size();
 }
 
-RegisterId ExecutionBlockImpl<IdExecutor<BlockPassthrough::Enable, void>>::getOutputRegisterId() const noexcept {
+RegisterId ExecutionBlockImpl<IdExecutor<BlockPassthrough::Enable, void>>::getOutputRegisterId() const
+    noexcept {
   return _outputRegister;
+}
+
+std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr>
+ExecutionBlockImpl<IdExecutor<BlockPassthrough::Enable, void>>::execute(AqlCallStack stack) {
+  // TODO Implement me
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 ExecutionBlock& ExecutionBlockImpl<IdExecutor<BlockPassthrough::Enable, void>>::currentDependency() const {
@@ -209,10 +219,13 @@ template class ::arangodb::aql::IdExecutor<BlockPassthrough::Enable, SingleRowFe
 template class ::arangodb::aql::IdExecutor<BlockPassthrough::Disable, SingleRowFetcher<BlockPassthrough::Disable>>;
 
 template std::tuple<ExecutionState, typename IdExecutor<BlockPassthrough::Enable, ConstFetcher>::Stats, SharedAqlItemBlockPtr>
-IdExecutor<BlockPassthrough::Enable, ConstFetcher>::fetchBlockForPassthrough<BlockPassthrough::Enable, void>(size_t atMost);
+IdExecutor<BlockPassthrough::Enable, ConstFetcher>::fetchBlockForPassthrough<BlockPassthrough::Enable, void>(
+    size_t atMost);
 
 template std::tuple<ExecutionState, typename IdExecutor<BlockPassthrough::Enable, SingleRowFetcher<BlockPassthrough::Enable>>::Stats, SharedAqlItemBlockPtr>
-IdExecutor<BlockPassthrough::Enable, SingleRowFetcher<BlockPassthrough::Enable>>::fetchBlockForPassthrough<BlockPassthrough::Enable, void>(size_t atMost);
+IdExecutor<BlockPassthrough::Enable, SingleRowFetcher<BlockPassthrough::Enable>>::fetchBlockForPassthrough<
+    BlockPassthrough::Enable, void>(size_t atMost);
 
 template std::tuple<ExecutionState, NoStats, size_t>
-IdExecutor<BlockPassthrough::Disable, SingleRowFetcher<BlockPassthrough::Disable>>::skipRows<BlockPassthrough::Disable, void>(size_t atMost);
+IdExecutor<BlockPassthrough::Disable, SingleRowFetcher<BlockPassthrough::Disable>>::skipRows<
+    BlockPassthrough::Disable, void>(size_t atMost);

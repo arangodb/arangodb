@@ -22,6 +22,7 @@
 
 #include "RemoteExecutor.h"
 
+#include "Aql/AqlCallStack.h"
 #include "Aql/ClusterNodes.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutorInfos.h"
@@ -141,8 +142,6 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<RemoteExecut
 
   auto res = sendAsyncRequest(fuerte::RestVerb::Put, "/_api/aql/getSome/",
                               std::move(buffer));
-
-
 
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
@@ -373,6 +372,12 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::shutdown(i
   return {ExecutionState::WAITING, TRI_ERROR_NO_ERROR};
 }
 
+std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> ExecutionBlockImpl<RemoteExecutor>::execute(
+    AqlCallStack stack) {
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
 namespace {
 Result handleErrorResponse(network::EndpointSpec const& spec, fuerte::Error err,
                            fuerte::Response* response) {
@@ -390,7 +395,7 @@ Result handleErrorResponse(network::EndpointSpec const& spec, fuerte::Error err,
         .append(spec.serverId)
         .append("': ");
   }
-  
+
   int res = TRI_ERROR_INTERNAL;
   if (err != fuerte::Error::NoError) {
     res = network::fuerteToArangoErrorCode(err);

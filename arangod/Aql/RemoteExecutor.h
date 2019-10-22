@@ -24,8 +24,8 @@
 #define ARANGOD_AQL_REMOTE_EXECUTOR_H
 
 #include "Aql/ClusterNodes.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/ExecutionBlockImpl.h"
+#include "Aql/ExecutorInfos.h"
 
 #include <mutex>
 
@@ -61,6 +61,8 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
   std::pair<ExecutionState, Result> initializeCursor(InputAqlItemRow const& input) override;
 
   std::pair<ExecutionState, Result> shutdown(int errorCode) override;
+
+  std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> execute(AqlCallStack stack) override;
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // only for asserts:
@@ -109,16 +111,16 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
 
   /// @brief the last remote response Result object, may contain an error.
   arangodb::Result _lastError;
-  
+
   std::mutex _communicationMutex;
-  
+
   unsigned _lastTicket;  /// used to check for canceled requests
-  
+
   bool _hasTriggeredShutdown;
 
   // _communicationMutex *must* be locked for this!
   unsigned generateNewTicket();
-  
+
   bool _didSendShutdownRequest = false;
 
   void traceGetSomeRequest(velocypack::Slice slice, size_t atMost);

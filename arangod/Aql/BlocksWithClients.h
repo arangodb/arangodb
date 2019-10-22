@@ -80,6 +80,8 @@ class BlocksWithClients : public ExecutionBlock {
   virtual std::pair<ExecutionState, size_t> skipSomeForShard(size_t atMost,
                                                              std::string const& shardId) = 0;
 
+  std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> execute(AqlCallStack stack) override;
+
  protected:
   /// @brief getClientId: get the number <clientId> (used internally)
   /// corresponding to <shardId>

@@ -23,6 +23,7 @@
 
 #include "BlocksWithClients.h"
 
+#include "Aql/AqlCallStack.h"
 #include "Aql/AqlItemBlock.h"
 #include "Aql/AqlTransaction.h"
 #include "Aql/AqlValue.h"
@@ -134,6 +135,12 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> BlocksWithClients::getSome(size
 }
 
 std::pair<ExecutionState, size_t> BlocksWithClients::skipSome(size_t) {
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
+std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> BlocksWithClients::execute(AqlCallStack stack) {
+  // This will not be implemented here!
   TRI_ASSERT(false);
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
