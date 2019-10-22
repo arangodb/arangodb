@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global window, _, Backbone, arangoHelper */
+/* global window, _, Backbone */
 (function () {
   'use strict';
   window.FoxxRepository = Backbone.Collection.extend({
@@ -10,7 +10,7 @@
       desc: false
     },
 
-    url: arangoHelper.databaseUrl('/_admin/aardvark/foxxes/fishbowl'),
+    url: 'foxxes/fishbowl',
 
     parse: function (response) {
       var foxxes = [];

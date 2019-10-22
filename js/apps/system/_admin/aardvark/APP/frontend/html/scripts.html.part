@@ -1,0 +1,3 @@
+<script src="libs.js?version=__VERSION"></script>
+<script src="app.js?version=__VERSION"></script>
+<script src="templates.js?version=__VERSION"></script>

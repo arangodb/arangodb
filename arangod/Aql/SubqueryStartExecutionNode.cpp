@@ -41,7 +41,10 @@ namespace aql {
 
 SubqueryStartNode::SubqueryStartNode(ExecutionPlan* plan,
                                      arangodb::velocypack::Slice const& base)
-    : ExecutionNode(plan, base) {}
+    : ExecutionNode(plan, base), _subqueryOutVariable(nullptr) {
+  // On purpose exclude the _subqueryOutVariable
+  // A query cannot be explained after nodes have been serialized and deserialized
+}
 
 CostEstimate SubqueryStartNode::estimateCost() const {
   TRI_ASSERT(!_dependencies.empty());
@@ -53,6 +56,11 @@ CostEstimate SubqueryStartNode::estimateCost() const {
 void SubqueryStartNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
                                            std::unordered_set<ExecutionNode const*>& seen) const {
   ExecutionNode::toVelocyPackHelperGeneric(nodes, flags, seen);
+  // We need this for the Explainer
+  if (_subqueryOutVariable != nullptr) {
+    nodes.add(VPackValue("subqueryOutVariable"));
+    _subqueryOutVariable->toVelocyPack(nodes);
+  }
   nodes.close();
 }
 
@@ -70,17 +78,20 @@ std::unique_ptr<ExecutionBlock> SubqueryStartNode::createBlock(
                       getRegisterPlan()->nrRegs[previousNode->getDepth()],
                       getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
                       calcRegsToKeep());
+  // On purpose exclude the _subqueryOutVariable
   return std::make_unique<ExecutionBlockImpl<SubqueryStartExecutor>>(&engine, this,
                                                                      std::move(infos));
 }
 
 ExecutionNode* SubqueryStartNode::clone(ExecutionPlan* plan, bool withDependencies,
                                         bool withProperties) const {
-  auto c = std::make_unique<SubqueryStartNode>(plan, _id);
+  // On purpose exclude the _subqueryOutVariable
+  auto c = std::make_unique<SubqueryStartNode>(plan, _id, nullptr);
   return cloneHelper(std::move(c), withDependencies, withProperties);
 }
 
 bool SubqueryStartNode::isEqualTo(ExecutionNode const& other) const {
+  // On purpose exclude the _subqueryOutVariable
   try {
     SubqueryStartNode const& p = dynamic_cast<SubqueryStartNode const&>(other);
     return ExecutionNode::isEqualTo(p);

@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global _, Backbone, frontendConfig, document, templateEngine, $, arangoHelper, window, Noty */
+/* global _, Backbone, frontendConfig, document, templateEngine, $, arangoHelper, window */
 
 (function () {
   'use strict';
@@ -68,8 +68,8 @@
           $('#offlinePlaceholder').show();
 
           // remove error messages
-          Noty.clearQueue();
-          Noty.closeAll();
+          $.noty.clearQueue();
+          $.noty.closeAll();
 
           this.reconnectAnimation(0);
         }

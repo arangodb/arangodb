@@ -40,6 +40,13 @@ else
     exit 1
 fi
 
+if grunt --version; then
+    echo "grunt found."
+else
+    echo "grunt missing from your system"
+    exit 1
+fi
+
 if gitbook --version; then
     echo "gitbook found."
 else
@@ -328,12 +335,12 @@ if [ "$SWAGGER" == "1" ];  then
     ./utils/generateSwagger.sh
 fi
 
-echo "REACT"
+echo "GRUNT"
 (
-    cd js/apps/system/_admin/aardvark/APP/react
+    cd js/apps/system/_admin/aardvark/APP
     rm -rf node_modules
     npm install
-    npm run build
+    grunt deploy
 )
 
 git add -f Documentation/Examples/*.generated
