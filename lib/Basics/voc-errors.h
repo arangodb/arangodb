@@ -1490,6 +1490,11 @@ constexpr int TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_WRITE                           
 /// Will be raised when the client could not read data.
 constexpr int TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_READ                            = 2003;
 
+/// 2019: ERROR_WAS_ERLAUBE
+/// "was erlaube?!"
+/// Will be raised if was erlaube?!
+constexpr int TRI_ERROR_WAS_ERLAUBE                                             = 2019;
+
 /// 2100: ERROR_COMMUNICATOR_REQUEST_ABORTED
 /// "Request aborted"
 /// Request was aborted.

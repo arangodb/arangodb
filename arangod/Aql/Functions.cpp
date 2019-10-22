@@ -351,7 +351,7 @@ DateSelectionModifier parseDateModifierFlag(VPackSlice flag) {
   }
   TRI_ASSERT(flagStr.size() >= 1);
 
-  std::transform(flagStr.begin(), flagStr.end(), flagStr.begin(), ::tolower);
+  basics::StringUtils::tolowerInPlace(flagStr);
   switch (flagStr.front()) {
     case 'y':
       if (flagStr == "years" || flagStr == "year" || flagStr == "y") {
@@ -3401,7 +3401,7 @@ AqlValue Functions::DateTrunc(ExpressionContext* expressionContext,
   }
 
   std::string duration = durationType.slice().copyString();
-  std::transform(duration.begin(), duration.end(), duration.begin(), ::tolower);
+  basics::StringUtils::tolowerInPlace(duration);
 
   year_month_day ymd{floor<days>(tp)};
   auto day_time = make_time(tp - sys_days(ymd));

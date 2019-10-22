@@ -24,6 +24,7 @@
 
 #include "Result.h"
 
+#include "Basics/StaticStrings.h"
 #include "Basics/error.h"
 #include "Basics/voc-errors.h"
 
@@ -33,9 +34,11 @@
 
 using namespace arangodb;
 
-Result::Result() : _errorNumber(TRI_ERROR_NO_ERROR) {}
+Result::Result() noexcept(noexcept(std::allocator<char>()))
+    : _errorNumber(TRI_ERROR_NO_ERROR) {}
 
-Result::Result(int errorNumber) : _errorNumber(errorNumber) {}
+Result::Result(int errorNumber) noexcept(noexcept(std::allocator<char>()))
+    : _errorNumber(errorNumber) {}
 
 Result::Result(int errorNumber, std::string const& errorMessage)
     : _errorNumber(errorNumber), _errorMessage(errorMessage) {}
@@ -128,8 +131,8 @@ std::ostream& operator<<(std::ostream& out, arangodb::Result const& result) {
   VPackBuilder dump;
   {
     VPackObjectBuilder b(&dump);
-    dump.add("errorNumber", VPackValue(result.errorNumber()));
-    dump.add("errorMessage", VPackValue(result.errorMessage()));
+    dump.add(StaticStrings::ErrorNum, VPackValue(result.errorNumber()));
+    dump.add(StaticStrings::ErrorMessage, VPackValue(result.errorMessage()));
   }
   out << dump.slice().toJson();
   return out;
