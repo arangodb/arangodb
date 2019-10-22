@@ -450,7 +450,7 @@ void GatherNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
     }
   }
   
-  nodes.add("isParallizable", VPackValue(isParallelizable()));
+  nodes.add("isParallelizable", VPackValue(isParallelizable()));
 
   // And close it:
   nodes.close();
