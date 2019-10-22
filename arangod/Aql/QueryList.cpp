@@ -205,6 +205,7 @@ Result QueryList::kill(TRI_voc_tick_t id) {
 }
 
 /// @brief kills all currently running queries that match the filter function
+/// (i.e. the filter should return true for a queries to be killed)
 uint64_t QueryList::kill(std::function<bool(Query&)> const& filter, bool silent) {
   uint64_t killed = 0;
 
