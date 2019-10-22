@@ -155,7 +155,7 @@ TEST_F(InsertExecutorTest, insert_ignore_error_false) {
 
 TEST_F(InsertExecutorTest, multi_insert_same_collection) {
   std::string query = "LET x = (INSERT { value: 15} IN " + collectionName +
-                      ")" + "LET y (INSERT {value: 16} IN " + collectionName +
+                      ")" + "LET y = (INSERT {value: 16} IN " + collectionName +
                       ")" + " RETURN [x,y]";
 
   AssertQueryFailsWith(vocbase, query, TRI_ERROR_QUERY_ACCESS_AFTER_MODIFICATION);
