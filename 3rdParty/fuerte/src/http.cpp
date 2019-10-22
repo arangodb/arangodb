@@ -35,71 +35,49 @@ static inline int hex2int(char ch, int errorValue = 0) {
   return errorValue;
 }
 
-std::string urlEncode(char const* src, size_t const len) {
+void urlEncode(std::string& out, char const* src, size_t len) {
   static char hexChars[16] = {'0', '1', '2', '3', '4', '5', '6', '7',
                               '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
-
-  char const* end = src + len;
 
   if (len >= (SIZE_MAX - 1) / 3) {
     throw std::overflow_error("out of memory");
   }
 
-  std::string result;
-  result.reserve(3 * len);
+  out.reserve(out.size() + 3 * len);
 
+  char const* end = src + len;
   for (; src < end; ++src) {
     if ('0' <= *src && *src <= '9') {
-      result.push_back(*src);
-    }
-
-    else if ('a' <= *src && *src <= 'z') {
-      result.push_back(*src);
-    }
-
-    else if ('A' <= *src && *src <= 'Z') {
-      result.push_back(*src);
-    }
-
-    else if (*src == '-' || *src == '_' || *src == '~') {
-      result.push_back(*src);
-    }
-
-    else {
+      out.push_back(*src);
+    } else if ('a' <= *src && *src <= 'z') {
+      out.push_back(*src);
+    } else if ('A' <= *src && *src <= 'Z') {
+      out.push_back(*src);
+    } else if (*src == '-' || *src == '_' || *src == '~') {
+      out.push_back(*src);
+    } else {
       uint8_t n = (uint8_t)(*src);
       uint8_t n1 = n >> 4;
       uint8_t n2 = n & 0x0F;
 
-      result.push_back('%');
-      result.push_back(hexChars[n1]);
-      result.push_back(hexChars[n2]);
+      out.push_back('%');
+      out.push_back(hexChars[n1]);
+      out.push_back(hexChars[n2]);
     }
   }
-
-  return result;
 }
 
-std::string urlEncode(char const* src) {
-  if (src != nullptr) {
-    size_t len = strlen(src);
-    return urlEncode(src, len);
-  }
-  return "";
-}
-
-std::string urlDecode(std::string const& str) {
-  std::string result;
+void urlDecode(std::string& out, char const* src, size_t len) {
   // reserve enough room so we do not need to re-alloc
-  result.reserve(str.size() + 16);
+  out.reserve(out.size() + len + 16);
 
-  char const* src = str.c_str();
-  char const* end = src + str.size();
+  char const* end = src + len;
 
   for (; src < end && *src != '%'; ++src) {
     if (*src == '+') {
-      result.push_back(' ');
+      out.push_back(' ');
     } else {
-      result.push_back(*src);
+      out.push_back(*src);
     }
   }
 
@@ -112,10 +90,10 @@ std::string urlDecode(std::string const& str) {
         src += 1;
       } else {
         if (h2 == -1) {
-          result.push_back(h1);
+          out.push_back(h1);
           src += 2;
         } else {
-          result.push_back(h1 << 4 | h2);
+          out.push_back(h1 << 4 | h2);
           src += 3;
         }
       }
@@ -125,7 +103,7 @@ std::string urlDecode(std::string const& str) {
       if (h1 == -1) {
         src += 1;
       } else {
-        result.push_back(h1);
+        out.push_back(h1);
         src += 2;
       }
     } else {
@@ -134,13 +112,11 @@ std::string urlDecode(std::string const& str) {
 
     for (; src < end && *src != '%'; ++src) {
       if (*src == '+') {
-        result.push_back(' ');
+        out.push_back(' ');
       } else {
-        result.push_back(*src);
+        out.push_back(*src);
       }
     }
   }
-
-  return result;
 }
 }}}}  // namespace arangodb::fuerte::v1::http
