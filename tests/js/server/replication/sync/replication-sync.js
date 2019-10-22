@@ -862,77 +862,72 @@ function BaseTestConfig () {
       connectToMaster();
 
       // create custom analyzer
-      let analyzers = require('@arangodb/analyzers');
       let analyzer = analyzers.save('custom', 'delimiter', { delimiter: ' ' }, ['frequency']);
 
-      try {
-        //  create view & collection on master
-        db._flushCache();
-        db._create(cn);
-        db._createView(cn + 'View', 'arangosearch', {consolidationIntervalMsec:0});
+      //  create view & collection on master
+      db._flushCache();
+      db._create(cn);
+      db._createView(cn + 'View', 'arangosearch', {consolidationIntervalMsec:0});
 
-        db._flushCache();
-        connectToSlave();
-        internal.wait(0.1, false);
-        //  sync on slave
-        replication.sync({ endpoint: masterEndpoint });
+      db._flushCache();
+      connectToSlave();
+      internal.wait(0.1, false);
+      //  sync on slave
+      replication.sync({ endpoint: masterEndpoint });
 
-        db._flushCache();
-        {
-          //  check state is the same
-          let view = db._view(cn + 'View');
-          assertTrue(view !== null);
-          let props = view.properties();
-          assertTrue(props.hasOwnProperty('links'));
-          assertEqual(0, props.consolidationIntervalMsec);
-          assertEqual(Object.keys(props.links).length, 0);
-        }
+      db._flushCache();
+      {
+        //  check state is the same
+        let view = db._view(cn + 'View');
+        assertTrue(view !== null);
+        let props = view.properties();
+        assertTrue(props.hasOwnProperty('links'));
+        assertEqual(0, props.consolidationIntervalMsec);
+        assertEqual(Object.keys(props.links).length, 0);
+      }
 
-        connectToMaster();
+      connectToMaster();
 
-        //  update view properties
-        {
-          let view = db._view(cn + 'View');
-          let links = {};
-          links[cn] = {
-            includeAllFields: true,
-            fields: {
-                text: { analyzers: ['text_en', 'custom' ] }
-            }
-          };
-          view.properties({ links });
-        }
+      //  update view properties
+      {
+        let view = db._view(cn + 'View');
+        let links = {};
+        links[cn] = {
+          includeAllFields: true,
+          fields: {
+              text: { analyzers: ['text_en', 'custom' ] }
+          }
+        };
+        view.properties({ links });
+      }
 
-        db._flushCache();
-        connectToSlave();
+      db._flushCache();
+      connectToSlave();
 
-        replication.sync({ endpoint: masterEndpoint });
+      replication.sync({ endpoint: masterEndpoint });
 
-        // check replicated analyzer
-        {
-          let analyzerSlave = analyzers.analyzer('custom');
-          assertEqual(analyzer.name, analyzerSlave.name());
-          assertEqual(analyzer.type, analyzerSlave.type());
-          assertEqual(analyzer.properties, analyzerSlave.properties());
-          assertEqual(analyzer.features, analyzerSlave.features());
-        }
+      // check replicated analyzer
+      {
+        let analyzerSlave = analyzers.analyzer('custom');
+        assertEqual(analyzer.name, analyzerSlave.name());
+        assertEqual(analyzer.type, analyzerSlave.type());
+        assertEqual(analyzer.properties, analyzerSlave.properties());
+        assertEqual(analyzer.features, analyzerSlave.features());
+      }
 
-        {
-          let view = db._view(cn + 'View');
-          assertNotEqual(view, null);
-          let props = view.properties();
-          assertEqual(0, props.consolidationIntervalMsec);
-          assertTrue(props.hasOwnProperty('links'));
-          assertEqual(Object.keys(props.links).length, 1);
-          assertTrue(props.links.hasOwnProperty(cn));
-          assertTrue(props.links[cn].includeAllFields);
-          assertEqual(Object.keys(props.links[cn].fields).length, 1);
-          assertEqual(props.links[cn].fields.text.analyzers.length, 2);
-          assertEqual(props.links[cn].fields.text.analyzers[0], 'text_en');
-          assertEqual(props.links[cn].fields.text.analyzers[1], cn+'::custom');
-        }
-      } finally {
-        analyzers.remove(analyzer.name); // cleanup
+      {
+        let view = db._view(cn + 'View');
+        assertNotEqual(view, null);
+        let props = view.properties();
+        assertEqual(0, props.consolidationIntervalMsec);
+        assertTrue(props.hasOwnProperty('links'));
+        assertEqual(Object.keys(props.links).length, 1);
+        assertTrue(props.links.hasOwnProperty(cn));
+        assertTrue(props.links[cn].includeAllFields);
+        assertEqual(Object.keys(props.links[cn].fields).length, 1);
+        assertEqual(props.links[cn].fields.text.analyzers.length, 2);
+        assertEqual(props.links[cn].fields.text.analyzers[0], 'text_en');
+        assertEqual(props.links[cn].fields.text.analyzers[1], 'custom');
       }
     },
 
@@ -1788,6 +1783,7 @@ function ReplicationSuite () {
       } catch (ignored) {}
       db._drop(cn);
       db._drop(sysCn, {isSystem: true});
+      analyzers.remove('custom');
 
       connectToSlave();
       try {
@@ -1795,6 +1791,7 @@ function ReplicationSuite () {
       } catch (ignored) {}
       db._drop(cn);
       db._drop(sysCn, {isSystem: true});
+      analyzers.remove('custom');
     }
   };
   deriveTestSuite(BaseTestConfig(), suite, '_Repl');
