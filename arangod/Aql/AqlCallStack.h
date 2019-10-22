@@ -23,12 +23,12 @@
 #ifndef ARANGOD_AQL_AQL_CALLSTACK_H
 #define ARANGOD_AQL_AQL_CALLSTACK_H 1
 
+#include "Aql/AqlCall.h"
+
 #include <stack>
 
 namespace arangodb {
 namespace aql {
-
-struct AqlCall;
 
 class AqlCallStack {
   // Initial
@@ -52,6 +52,12 @@ class AqlCallStack {
   // e.g. every Modification Executor needs to call this functionality, as modifictions need to be
   // performed even if skipped.
   void stackUpMissingCalls();
+
+  // Pops one subquery level.
+  // if this isRelevent it pops the top-most call from the stack.
+  // if this is not revelent it reduces the depth by 1.
+  // Can be savely called on every subquery Start.
+  void pop();
 
  private:
   // The list of operations, stacked by depth (e.g. bottom element is from main query)

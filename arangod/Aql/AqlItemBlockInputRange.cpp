@@ -26,13 +26,14 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 AqlItemBlockInputRange::AqlItemBlockInputRange(AqlItemBlockInputRange::State state,
-                                               SharedAqlItemBlockPtr const& block, std::size_t index)
-    : _finalState{state}, _block{block}, _rowIndex{index} {}
+                                               SharedAqlItemBlockPtr const& block,
+                                               std::size_t index)
+    : _block{block}, _rowIndex{index}, _finalState{state} {}
 
 AqlItemBlockInputRange::AqlItemBlockInputRange(AqlItemBlockInputRange::State state,
                                                SharedAqlItemBlockPtr&& block,
                                                std::size_t index) noexcept
-    : _finalState{state}, _block{std::move(block)}, _rowIndex{index} {}
+    : _block{std::move(block)}, _rowIndex{index}, _finalState{state} {}
 
 std::pair<AqlItemBlockInputRange::State, InputAqlItemRow> AqlItemBlockInputRange::peek() {
   if (indexIsValid()) {

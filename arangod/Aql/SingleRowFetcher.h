@@ -26,6 +26,7 @@
 #ifndef ARANGOD_AQL_SINGLE_ROW_FETCHER_H
 #define ARANGOD_AQL_SINGLE_ROW_FETCHER_H
 
+#include "Aql/AqlItemBlockInputRange.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/InputAqlItemRow.h"
@@ -55,7 +56,7 @@ class SingleRowFetcher {
   explicit SingleRowFetcher(DependencyProxy<blockPassthrough>& executionBlock);
   TEST_VIRTUAL ~SingleRowFetcher() = default;
 
-  using DataRange = AqlItemBlockInputIterator;
+  using DataRange = AqlItemBlockInputRange;
 
  protected:
   // only for testing! Does not initialize _dependencyProxy!
