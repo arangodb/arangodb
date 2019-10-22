@@ -1,5 +1,5 @@
 /* jshint unused: false */
-/* global window, $, Backbone, document, d3 */
+/* global window, $, Backbone, document, d3, ReactDOM */
 /* global $, arangoHelper, btoa, atob, _, frontendConfig */
 
 (function () {
