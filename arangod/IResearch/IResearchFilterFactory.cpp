@@ -1739,7 +1739,7 @@ arangodb::Result fromFuncExists(irs::boolean_filter* filter, QueryContext const&
       }
 
       std::string strArg(arg);
-      arangodb::basics::StringUtils::tolowerInPlace(&strArg);  // normalize user input
+      arangodb::basics::StringUtils::tolowerInPlace(strArg);  // normalize user input
       irs::string_ref const TypeAnalyzer("analyzer");
 
       typedef bool (*TypeHandler)(std::string&, arangodb::iresearch::IResearchLinkMeta::Analyzer const&);
