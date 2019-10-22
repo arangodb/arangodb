@@ -7265,7 +7265,9 @@ void arangodb::aql::moveFiltersIntoEnumerateRule(Optimizer* opt, std::unique_ptr
   opt->addPlan(std::move(plan), rule, modified);
 }
 
-static bool nodeMakesThisQueryLevelUnsuitableForSubquerySplicing(ExecutionNode const* const node) {
+namespace {
+
+bool nodeMakesThisQueryLevelUnsuitableForSubquerySplicing(ExecutionNode const* const node) {
   // TODO Enable modification nodes again, as soon as the corresponding branch
   //  is merged.
   if (node->isModificationNode()) {
@@ -7330,11 +7332,11 @@ static bool nodeMakesThisQueryLevelUnsuitableForSubquerySplicing(ExecutionNode c
 
 void findSubqueriesSuitableForSplicing(ExecutionPlan const& plan,
                                        containers::SmallVector<SubqueryNode*>& result) {
+  TRI_ASSERT(result.empty());
   using ResultVector = decltype(result);
-  using BoolVec = std::vector<bool, short_alloc<bool, 64, sizeof(size_t)>>;
-  using BoolAlloc = BoolVec::allocator_type;
-  using BoolArena = BoolAlloc::arena_type;
-  using BoolStack = std::stack<bool, BoolVec>;
+  using BoolVec = std::vector<bool, short_alloc<bool, 64, alignof(size_t)>>;
+
+  using SuitableNodeSet = std::set<SubqueryNode*, std::less<SubqueryNode*>, short_alloc<SubqueryNode*, 128, alignof(SubqueryNode*)>>;
 
   // This finder adds subqueries that are suitable for splicing. That means that
   // neither the containing subquery skips - at least not in an ancestor of the
@@ -7348,18 +7350,27 @@ void findSubqueriesSuitableForSplicing(ExecutionPlan const& plan,
   // inspecting the two topmost bools in the stack - the one belonging to the
   // insides of the subquery, which we're going to pop right now, and the one
   // belonging to the containing subquery.
+  //
+  // *All* subquery nodes will be added to &result in pre-order, and all
+  // *suitable* subquery nodes will be added to &suitableNodes. The latter can
+  // be omitted later, as soon as support for spliced subqueries / shadow rows
+  // is complete.
 
   class Finder final : public WalkerWorker<ExecutionNode> {
    public:
-    explicit Finder(ResultVector& result)
-        : _result{result}, _isSuitableArena{}, _isSuitable{BoolVec{_isSuitableArena}} {
+    explicit Finder(ResultVector& result, SuitableNodeSet& suitableNodes)
+        : _result{result}, _suitableNodes{suitableNodes}, _isSuitableArena{}, _isSuitableLevel{BoolVec{_isSuitableArena}} {
       // push the top-level query
-      _isSuitable.emplace(true);
+      _isSuitableLevel.emplace(true);
     }
 
     bool before(ExecutionNode* node) final {
       if (nodeMakesThisQueryLevelUnsuitableForSubquerySplicing(node)) {
-        _isSuitable.top() = false;
+        _isSuitableLevel.top() = false;
+      }
+
+      if (node->getType() == ExecutionNode::SUBQUERY) {
+        _result.emplace_back(ExecutionNode::castTo<SubqueryNode*>(node));
       }
 
       // We could set
@@ -7372,34 +7383,69 @@ void findSubqueriesSuitableForSplicing(ExecutionPlan const& plan,
     }
 
     bool enterSubquery(ExecutionNode* subq, ExecutionNode* root) final {
-      _isSuitable.emplace(true);
+      _isSuitableLevel.emplace(true);
 
       constexpr bool enterSubqueries = true;
       return enterSubqueries;
     }
 
     void leaveSubquery(ExecutionNode* subqueryNode, ExecutionNode*) final {
-      TRI_ASSERT(!_isSuitable.empty());
+      TRI_ASSERT(!_isSuitableLevel.empty());
 
-      const bool subqueryDoesNotSkipInside = _isSuitable.top();
-      _isSuitable.pop();
-      const bool containingSubqueryDoesNotSkip = _isSuitable.top();
+      const bool subqueryDoesNotSkipInside = _isSuitableLevel.top();
+      _isSuitableLevel.pop();
+      const bool containingSubqueryDoesNotSkip = _isSuitableLevel.top();
 
       if (subqueryDoesNotSkipInside && containingSubqueryDoesNotSkip) {
-        _result.emplace_back(ExecutionNode::castTo<SubqueryNode*>(subqueryNode));
+        _suitableNodes.emplace(ExecutionNode::castTo<SubqueryNode*>(subqueryNode));
       }
     }
 
    private:
+    // all subquery nodes will be added to _result in pre-order
     ResultVector& _result;
+    // only suitable subquery nodes will be added to this set
+    SuitableNodeSet& _suitableNodes;
+
+    using BoolArena = BoolVec::allocator_type::arena_type;
+    using BoolStack = std::stack<bool, BoolVec>;
+
     BoolArena _isSuitableArena;
     // _isSuitable.top() says whether there is a node that skips in the current
     // (sub)query level.
-    BoolStack _isSuitable;
+    BoolStack _isSuitableLevel;
   };
 
-  Finder finder(result);
+  using SuitableNodeArena = SuitableNodeSet::allocator_type::arena_type;
+  SuitableNodeArena suitableNodeArena{};
+  SuitableNodeSet suitableNodes{suitableNodeArena};
+
+  auto finder = Finder{result, suitableNodes};
   plan.root()->walkSubqueriesFirst(finder);
+
+
+  { // remove unsuitable nodes from result
+    auto i = size_t{0};
+    auto j = size_t{0};
+    for(; j < result.size(); ++j) {
+      TRI_ASSERT(i <= j);
+      if (suitableNodes.count(result[j]) > 0) {
+        if (i != j) {
+          TRI_ASSERT(suitableNodes.count(result[i]) == 0);
+          result[i] = result[j];
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+          // To allow for the assert above
+          result[j] = nullptr;
+#endif
+        }
+        ++i;
+      }
+    }
+    TRI_ASSERT(i <= result.size());
+    result.resize(i);
+  }
+}
+
 }
 
 // Splices in subqueries by replacing subquery nodes by
@@ -7413,56 +7459,121 @@ void arangodb::aql::spliceSubqueriesRule(Optimizer* opt, std::unique_ptr<Executi
   containers::SmallVector<SubqueryNode*> subqueryNodes{a};
   findSubqueriesSuitableForSplicing(*plan, subqueryNodes);
 
+  // Note that we rely on the order `subqueryNodes` in the sense that, for
+  // nested subqueries, the outer subquery must come before the inner, so we
+  // don't iterate over spliced queries here.
   auto forAllDeps = [](ExecutionNode* node, auto cb) {
     for (; node != nullptr; node = node->getFirstDependency()) {
+      TRI_ASSERT(node->getType() != ExecutionNode::SUBQUERY_START);
+      TRI_ASSERT(node->getType() != ExecutionNode::SUBQUERY_END);
       cb(node);
     }
   };
 
   for (auto const& sq : subqueryNodes) {
     modified = true;
+    auto evenNumberOfRemotes = true;
 
-    // Create new start and end nodes
-    auto start = plan->createNode<SubqueryStartNode>(plan.get(), plan->nextId());
+    forAllDeps(sq->getSubquery(), [&](auto node) {
+      node->setIsInSplicedSubquery(true);
+      if (node->getType() == ExecutionNode::REMOTE) {
+        evenNumberOfRemotes = !evenNumberOfRemotes;
+      }
+    });
 
-    // Note that we rely on `subqueryNodes` being in pre-order. Otherwise, we
-    // would set the wrong nodes.
-    forAllDeps(sq->getSubquery(),
-               [](auto node) { node->setIsInSplicedSubquery(true); });
-    // start and end inherit this propery from the subquery node
-    start->setIsInSplicedSubquery(sq->isInSplicedSubquery());
+    auto const addClusterNodes = !evenNumberOfRemotes;
 
-    // insert a SubqueryStartNode before the SubqueryNode
-    plan->insertBefore(sq, start);
+    { // insert SubqueryStartNode
 
-    // All parents of the Singleton of the subquery become parents of the
-    // SubqueryStartNode The singleton will be deleted after.
-    ExecutionNode* singleton = sq->getSubquery()->getSingleton();
-    std::vector<ExecutionNode*> deps = singleton->getParents();
-    for (auto* x : deps) {
-      TRI_ASSERT(x != nullptr);
-      x->replaceDependency(singleton, start);
+      // Create new start node
+      auto start = plan->createNode<SubqueryStartNode>(plan.get(), plan->nextId());
+
+      // start and end inherit this property from the subquery node
+      start->setIsInSplicedSubquery(sq->isInSplicedSubquery());
+
+      // insert a SubqueryStartNode before the SubqueryNode
+      plan->insertBefore(sq, start);
+      // remove parent/dependency relation between sq and start
+      TRI_ASSERT(start->getParents().size() == 1);
+      sq->removeDependency(start);
+      TRI_ASSERT(start->getParents().size() == 0);
+      TRI_ASSERT(start->getDependencies().size() == 1);
+      TRI_ASSERT(sq->getDependencies().size() == 0);
+      TRI_ASSERT(sq->getParents().size() == 1);
+
+      {  // remove singleton
+        ExecutionNode* const singleton = sq->getSubquery()->getSingleton();
+        std::vector<ExecutionNode*> const parents = singleton->getParents();
+        TRI_ASSERT(parents.size() == 1);
+        auto oldSingletonParent = parents[0];
+        TRI_ASSERT(oldSingletonParent->getDependencies().size() == 1);
+        // All parents of the Singleton of the subquery become parents of the
+        // SubqueryStartNode. The singleton will be deleted after.
+        for (auto* x : parents) {
+          TRI_ASSERT(x != nullptr);
+          x->replaceDependency(singleton, start);
+        }
+        TRI_ASSERT(oldSingletonParent->getDependencies().size() == 1);
+        TRI_ASSERT(start->getParents().size() == 1);
+
+        if (addClusterNodes) {
+          auto const scatterNode =
+              plan->createNode<ScatterNode>(plan.get(), plan->nextId(), ScatterNode::SHARD);
+          auto const remoteNode =
+              plan->createNode<RemoteNode>(plan.get(), plan->nextId(),
+                                           &plan->getAst()->query()->vocbase(),
+                                           "", "", "");
+          plan->insertAfter(start, scatterNode);
+          plan->insertAfter(scatterNode, remoteNode);
+
+          TRI_ASSERT(remoteNode->getDependencies().size() == 1);
+          TRI_ASSERT(scatterNode->getDependencies().size() == 1);
+          TRI_ASSERT(remoteNode->getParents().size() == 1);
+          TRI_ASSERT(scatterNode->getParents().size() == 1);
+          TRI_ASSERT(oldSingletonParent->getFirstDependency() == remoteNode);
+          TRI_ASSERT(remoteNode->getFirstDependency() == scatterNode);
+          TRI_ASSERT(scatterNode->getFirstDependency() == start);
+          TRI_ASSERT(start->getFirstParent() == scatterNode);
+          TRI_ASSERT(scatterNode->getFirstParent() == remoteNode);
+          TRI_ASSERT(remoteNode->getFirstParent() == oldSingletonParent);
+        } else {
+          TRI_ASSERT(oldSingletonParent->getFirstDependency() == start);
+          TRI_ASSERT(start->getFirstParent() == oldSingletonParent);
+        }
+      }
     }
 
-    ExecutionNode* subqueryRoot = sq->getSubquery();
-    Variable const* inVariable = nullptr;
+    { // insert SubqueryEndNode
 
-    if (subqueryRoot->getType() == ExecutionNode::RETURN) {
-      // The SubqueryEndExecutor can read the input from the return Node.
-      auto subqueryReturn = ExecutionNode::castTo<ReturnNode*>(subqueryRoot);
-      inVariable = subqueryReturn->inVariable();
-      // Every return can only have a single dependency
-      TRI_ASSERT(subqueryReturn->getDependencies().size() == 1);
-      subqueryRoot = subqueryReturn->getFirstDependency();
+      ExecutionNode* subqueryRoot = sq->getSubquery();
+      Variable const* inVariable = nullptr;
+
+      if (subqueryRoot->getType() == ExecutionNode::RETURN) {
+        // The SubqueryEndExecutor can read the input from the return Node.
+        auto subqueryReturn = ExecutionNode::castTo<ReturnNode*>(subqueryRoot);
+        inVariable = subqueryReturn->inVariable();
+        // Every return can only have a single dependency
+        TRI_ASSERT(subqueryReturn->getDependencies().size() == 1);
+        subqueryRoot = subqueryReturn->getFirstDependency();
+        TRI_ASSERT(!plan->isRoot(subqueryReturn));
+        plan->unlinkNode(subqueryReturn, true);
+      }
+
+      // Create new end node
+      auto end = plan->createNode<SubqueryEndNode>(plan.get(), plan->nextId(),
+          inVariable, sq->outVariable());
+      // start and end inherit this property from the subquery node
+      end->setIsInSplicedSubquery(sq->isInSplicedSubquery());
+      // insert a SubqueryEndNode after the SubqueryNode sq
+      plan->insertAfter(sq, end);
+
+      end->replaceDependency(sq, subqueryRoot);
+
+      TRI_ASSERT(end->getDependencies().size() == 1);
+      TRI_ASSERT(end->getParents().size() == 1);
     }
-
-    auto end = plan->createNode<SubqueryEndNode>(plan.get(), plan->nextId(),
-                                                 inVariable, sq->outVariable());
-    end->setIsInSplicedSubquery(sq->isInSplicedSubquery());
-    // insert a SubqueryEndNode after the SubqueryNode sq
-    plan->insertAfter(sq, end);
-
-    end->replaceDependency(sq, subqueryRoot);
+    TRI_ASSERT(sq->getDependencies().empty());
+    TRI_ASSERT(sq->getParents().empty());
   }
 
   opt->addPlan(std::move(plan), rule, modified);

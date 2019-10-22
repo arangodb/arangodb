@@ -513,6 +513,9 @@ TEST_F(SpliceSubqueryNodeOptimizerRuleTest,
   verifyQueryResult(query, expected->slice());
 }
 
+// TODO Check isInSplicedSubquery
+// TODO Test cluster rules
+
 }  // namespace aql
 }  // namespace tests
 }  // namespace arangodb
