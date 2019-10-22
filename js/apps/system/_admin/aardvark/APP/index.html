@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/html">
+  <head>
+      <!-- ArangoDB web interface -->
+      <meta charset="utf-8">
+      <title>ArangoDB Web Interface</title>
+      <meta name="description" content="ArangoDB Admin Web Interface">
+      <meta name="author" content="Heiko Kernbach, Michael Hackstein, Guido Schwab">
+      <link href="css/style.css" rel="stylesheet">
+      <link href="css/sass.css" rel="stylesheet">
+  </head>
+
+  <body>
+    <nav class="navbar">
+      <div class="resizecontainer">
+        <div class="navlogo">
+          <a class="logo" href="#"><img src="img/logo_arangodb_white.png"/></a>
+        </div>
+	<div class="statmenu" id="statisticBar">
+	</div>
+        <div class="navmenu" id="navigationBar">
+        </div>
+	<div class="usermenu" id="userBar">
+	</div>
+      </div>
+    </nav>
+
+    <div class="centralRow resizecontainer">
+      <div id="content" class="span12"></div>
+    </div>
+
+    <div id="modalPlaceholder">
+    </div>
+
+    </div>
+
+    <footer class="footer">
+      <div class="resizecontainer" id="footerBar">
+      </div>
+    </footer>
+
+    <!-- libs -->
+    <script src="config.js"></script>
+    <script src="libs.js"></script>
+    <script src="ace.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>

@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global frontendConfig, Backbone, templateEngine, $, window, noty, arangoHelper, Noty */
+/* global frontendConfig, Backbone, templateEngine, $, window, noty, arangoHelper */
 (function () {
   'use strict';
 
@@ -39,8 +39,8 @@
     },
 
     removeAllNotifications: function () {
-      Noty.clearQueue();
-      Noty.closeAll();
+      $.noty.clearQueue();
+      $.noty.closeAll();
       this.collection.reset();
       $('#notification_menu').hide();
     },
@@ -66,39 +66,57 @@
           if (latestModel.get('type') === 'error') {
             time = false;
             closeWidth = ['button'];
-
-            buttons = [
-              Noty.button('Close', 'btn btn-error', function (n) {
-                console.log('button 1 clicked');
-                n.close();
-              }, {id: 'button1', 'data-status': 'ok'})
-            ];
+            buttons = [{
+              addClass: 'button-danger',
+              text: 'Close',
+              onClick: function ($noty) {
+                $noty.close();
+              }
+            }];
           } else if (latestModel.get('type') === 'warning') {
             time = 15000;
-
             buttons = [
-              Noty.button('Close', 'btn btn-warning', function (n) {
-                n.close();
-              }, {id: 'button2', 'data-status': 'true'}),
-
-              Noty.button('Do not show again.', 'btn btn-error', function (n) {
-                window.arangoHelper.doNotShowAgain();
-                n.close();
-              }, {id: 'button3', 'data-status': 'false'})
+              {
+                addClass: 'button-warning',
+                text: 'Close',
+                onClick: function ($noty) {
+                  $noty.close();
+                }
+              },
+              {
+                addClass: 'button-danger',
+                text: "Don't show again.",
+                onClick: function ($noty) {
+                  $noty.close();
+                  window.arangoHelper.doNotShowAgain();
+                }
+              }
             ];
           }
 
-          arangoHelper.hideArangoNotifications();
+          $.noty.clearQueue();
+          $.noty.closeAll();
 
-          new Noty({
+          noty({
+            theme: 'relax',
+            text: message,
+            template: '<div class="noty_message arango_message">' +
+              '<div><i class="fa fa-close"></i></div><span class="noty_text arango_text"></span>' +
+              '<div class="noty_close arango_close"></div></div>',
+            maxVisible: 1,
+            closeWith: ['click'],
             type: latestModel.get('type'),
             layout: 'bottom',
-            theme: 'sunset',
-            text: message,
-            buttons: buttons,
             timeout: time,
-            closeWidth: closeWidth
-          }).show();
+            buttons: buttons,
+            animation: {
+              open: {height: 'show'},
+              close: {height: 'hide'},
+              easing: 'swing',
+              speed: 200,
+              closeWith: closeWidth
+            }
+          });
 
           if (latestModel.get('type') === 'success') {
             latestModel.destroy();
@@ -106,6 +124,24 @@
           }
         }
       }
+
+      $('#stat_hd_counter').text(this.collection.length);
+      if (this.collection.length === 0) {
+        $('#stat_hd').removeClass('fullNotification');
+        $('#notification_menu').hide();
+      } else {
+        $('#stat_hd').addClass('fullNotification');
+      }
+
+      $('.innerDropdownInnerUL').html(this.notificationItem.render({
+        notifications: this.collection
+      }));
+      $('.notificationInfoIcon').tooltip({
+        position: {
+          my: 'left top',
+          at: 'right+55 top-1'
+        }
+      });
     },
 
     render: function () {

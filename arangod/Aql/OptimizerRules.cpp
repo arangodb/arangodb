@@ -7486,7 +7486,7 @@ void arangodb::aql::spliceSubqueriesRule(Optimizer* opt, std::unique_ptr<Executi
     { // insert SubqueryStartNode
 
       // Create new start node
-      auto start = plan->createNode<SubqueryStartNode>(plan.get(), plan->nextId());
+      auto start = plan->createNode<SubqueryStartNode>(plan.get(), plan->nextId(), sq->outVariable());
 
       // start and end inherit this property from the subquery node
       start->setIsInSplicedSubquery(sq->isInSplicedSubquery());

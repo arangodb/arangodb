@@ -1,0 +1,11 @@
+<head>
+    <!-- ArangoDB web interface -->
+    <meta charset="utf-8">
+    <title>ArangoDB Web Interface</title>
+    <meta name="description" content="ArangoDB Admin Web Interface">
+    <meta name="author" content="Heiko Kernbach, Michael Hackstein">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="css/style.css" rel="stylesheet">
+    <link href="css/sass.css" rel="stylesheet">
+    <link rel="shortcut icon" type="image/x-icon" href="favicon.ico">
+    <script src="config.js"></script>
