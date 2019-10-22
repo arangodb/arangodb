@@ -38,6 +38,12 @@ uint64_t TRI_FnvHashPointer(void const*, size_t);
 /// @brief computes a FNV hash for strings
 uint64_t TRI_FnvHashString(char const*);
 
+/// @brief computes a FNV hash for POD types
+template <typename T>
+uint64_t TRI_FnvHashPod(T input) {
+  return TRI_FnvHashPointer(&input, sizeof(T));
+}
+
 /// @brief computes a initial FNV for blocks
 static constexpr uint64_t TRI_FnvHashBlockInitial() {
   return 0xcbf29ce484222325ULL;

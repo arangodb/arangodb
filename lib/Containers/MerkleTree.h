@@ -23,6 +23,7 @@
 #ifndef ARANGODB_CONTAINERS_MERKLE_TREE_H
 #define ARANGODB_CONTAINERS_MERKLE_TREE_H 1
 
+#include <algorithm>
 #include <atomic>
 #include <cmath>
 #include <cstddef>
@@ -30,12 +31,15 @@
 #include <limits>
 #include <memory>
 #include <mutex>
+#include <queue>
 #include <shared_mutex>
 #include <stdexcept>
 #include <type_traits>
 #include <utility>
+#include <vector>
 
 #include "Basics/debugging.h"
+#include "Basics/hashes.h"
 
 #include "Logger/LogMacros.h"
 
@@ -54,7 +58,9 @@ class MerkleTree {
     std::size_t hash;
     std::size_t count;
 
-    // Node(std::size_t h, std::size_t c) : hash(h), count(c) {}
+    bool operator==(Node const& other) {
+      return ((this->count == other.count) && (this->hash == other.hash));
+    }
   };
   static_assert(sizeof(Node) > CacheLineSize / 8,
                 "Node size assumptions invalid.");
@@ -138,6 +144,7 @@ class MerkleTree {
    *
    * @param maxDepth The depth of the tree. This determines how much memory The
    *                 tree will consume, and how fine-grained the hash is.
+   *                 Constructor will throw if a value less than 2 is specified.
    * @param rangeMin The minimum key that can be stored in the tree over its
    *                 lifetime. An attempt to insert a smaller key will result
    *                 in an exception.
@@ -148,9 +155,13 @@ class MerkleTree {
    *                 is inserted into the tree, it will be dynamically resized
    *                 so that a larger rangeMax is chosen, and adjacent nodes
    *                 merged as necessary.
+   * @throws std::invalid_argument  If maxDepth is less than 2
    */
   MerkleTree(std::size_t maxDepth, std::size_t rangeMin, std::size_t rangeMax = 0)
       : _buffer(new uint8_t[MetaSize + (NodeSize * nodeCountUpToDepth(maxDepth))]) {
+    if (maxDepth < 2) {
+      throw std::invalid_argument("Must specify a maxDepth >= 2.");
+    }
     if (rangeMax == 0) {
       rangeMax = rangeMin + defaultRange(maxDepth);
     }
@@ -208,6 +219,7 @@ class MerkleTree {
    *              greater than the current max, it will trigger a (potentially
    *              expensive) growth operation to ensure the key can be inserted.
    * @param value The hashed value associated with the key
+   * @throws std::out_of_range  If key is less than rangeMin
    */
   void insert(std::size_t key, std::size_t value) {
     std::shared_lock<std::shared_mutex> guard(_bufferLock);
@@ -231,6 +243,8 @@ class MerkleTree {
    * @param key   The key for the item. If it is outside the current tree range,
    *              then it will trigger an exception.
    * @param value The hashed value associated with the key
+   * @throws std::out_of_range  If key is outside current range
+   * @throws std::invalid_argument  If remove hits a node with 0 count
    */
   void remove(std::size_t key, std::size_t value) {
     std::shared_lock<std::shared_mutex> guard(_bufferLock);
@@ -246,9 +260,10 @@ class MerkleTree {
    *
    * @param other The other tree to compare
    * @return  Vector of (inclusive) ranges of keys over which trees differ
+   * @throws std::invalid_argument  If trees do not have different depth or
+   *                                rangeMin
    */
-  std::vector<std::pair<std::size_t, std::size_t>> diff(
-      MerkleTree<BranchingBits, LockStripes> const& other) const {
+  std::vector<std::pair<std::size_t, std::size_t>> diff(MerkleTree<BranchingBits, LockStripes>& other) {
     std::shared_lock<std::shared_mutex> guard1(_bufferLock);
     std::shared_lock<std::shared_mutex> guard2(other._bufferLock);
 
@@ -276,15 +291,62 @@ class MerkleTree {
       // switched between shared/exclusive locks
     }
 
-    // check special case
-    {
-      if (equalAtIndex(other, 0)) {
-        // trees should be the same, no need to check deeper
-        return {};
+    std::vector<std::pair<std::size_t, std::size_t>> result;
+    std::queue<std::size_t> candidates;
+    candidates.emplace(0);
+
+    while (!candidates.empty()) {
+      std::size_t index = candidates.front();
+      candidates.pop();
+      if (!equalAtIndex(other, index)) {
+        bool leaves = childrenAreLeaves(index);
+        for (std::size_t child = (BranchingFactor * index) + 1;
+             child < (BranchingFactor * (index + 1) + 1); ++child) {
+          if (!leaves) {
+            // internal children, queue them all up for further investigation
+            candidates.emplace(child);
+          } else {
+            if (!equalAtIndex(other, child)) {
+              // actually work with key ranges now
+              std::size_t chunk = child - nodeCountUpToDepth(meta().maxDepth - 1);
+              std::pair<std::size_t, std::size_t> range =
+                  chunkRange(chunk, meta().maxDepth);
+              if (!result.empty() && result.back().second >= range.first - 1) {
+                // we are in a continuous range here, just extend it
+                result.back().second = range.second;
+              } else {
+                // discontinuous range, add a new entry
+                result.emplace_back(range);
+              }
+            }
+          }
+        }
       }
     }
 
-    return diffInternal(other);
+    return result;
+  }
+
+  std::string toString() const {
+    std::shared_lock<std::shared_mutex> guard(_bufferLock);
+    std::string output("{");
+    for (std::size_t depth = 0; depth <= meta().maxDepth; ++depth) {
+      output.append(std::to_string(depth));
+      output.append(": [");
+      for (std::size_t chunk = 0; chunk < nodeCountAtDepth(depth); ++chunk) {
+        std::size_t index = this->index(chunk, depth);
+        std::unique_lock<std::mutex> guard(this->lock(index));
+        Node& node = this->node(index);
+        output.append("[");
+        output.append(std::to_string(node.count));
+        output.append(",");
+        output.append(std::to_string(node.hash));
+        output.append("],");
+      }
+      output.append("],");
+    }
+    output.append("}");
+    return output;
   }
 
  protected:
@@ -301,10 +363,10 @@ class MerkleTree {
   }
 
   std::mutex& lock(std::size_t index) const {
-    return _nodeLocks[_hasher(index) % LockStripes];
+    return _nodeLocks[TRI_FnvHashPod(index) % LockStripes];
   }
 
-  std::size_t index(std::size_t key, std::size_t depth) {
+  std::size_t index(std::size_t key, std::size_t depth) const {
     // not thread-safe, lock buffer from outside
     TRI_ASSERT(depth <= meta().maxDepth);
     TRI_ASSERT(key >= meta().rangeMin);
@@ -375,84 +437,36 @@ class MerkleTree {
     // not fully thread-safe, lock buffer from outside
     std::unique_lock<std::mutex> lock1(this->lock(index));
     std::unique_lock<std::mutex> lock2(other.lock(index));
-    return this->node(index) == other.node(index);
+    return (this->node(index) == other.node(index));
   }
 
-  std::vector<std::pair<std::size_t, std::size_t>> diffInternal(
-      MerkleTree<BranchingBits, LockStripes> const& other) const {
-    std::vector<std::pair<std::size_t, std::size_t>> ranges;
-    bool openRange = false;
-    std::size_t left = 0;
-    std::size_t depth = 1;
-    std::size_t chunkAt[meta().maxDepth + 1] = {0};
-
-    auto range = [this](std::size_t index,
-                        std::size_t depth) -> std::pair<std::size_t, std::size_t> {
-      std::size_t rangeMin = meta().rangeMin;
-      std::size_t rangeMax = meta().rangeMax;
-      std::size_t chunkSizeAtDepth =
-          (rangeMax - rangeMin) / (1 << (BranchingBits * depth));
-      return std::make_pair(rangeMin + (chunkSizeAtDepth * index),
-                            rangeMin + (chunkSizeAtDepth * (index + 1)) - 1);
-    };
-    auto doneWithSiblingSet = [&chunkAt, &depth, BranchingFactor]() -> bool {
-      return chunkAt[depth] >= BranchingFactor * (chunkAt[depth - 1] + 1);
-    };
-    auto alreadyHandledChildren = [&chunkAt, &depth, BranchingFactor]() -> bool {
-      return chunkAt[depth + 1] >= BranchingFactor * (chunkAt[depth] + 1);
-    };
-    auto advance = [&depth, &chunkAt, &doneWithSiblingSet] -> void {
-      ++chunkAt[depth];
-      if (doneWithSiblingSet()) {
-        // finished all the chunks at this depth for our parent
-        --depth;
-      }
-    };
-    auto stepDown = [&chunkAt, &depth, BranchingFactor]() -> void {
-      if (chunkAt[depth + 1] < chunkAt[depth] * BranchingFactor) {
-        chunkAt[depth + 1] = chunkAt[depth] * BranchingFactor;
-      }
-      ++depth;
-    };
-
-    while (depth > 0) {
-      if (!alreadyHandledChildren()) {
-        if (openRange) {
-          if (equalAtIndex(other, this->index(chunkAt[depth], depth))) {
-            // we can close the range, everything here matches
-            std::size_t right = range(chunkAt[depth], depth).second;
-            ranges.emplace_back(left, right);
-            openRange = false;
-          } else if (depth < meta().maxDepth) {
-            // still have potential differences, drop down to next level
-            stepDown();
-          }
-        }  // else we are at max depth, and extend the range
-      } else {
-        if (!equalAtIndex(other, this->index(chunkAt[depth], depth))) {
-          // new range to investigate
-          if (depth < meta().maxDepth) {
-            stepDown();
-          } else {
-            left = range(chunkAt[depth], depth).first;
-            openRange = true;
-          }
-        }
-        // else continue to skip over whatever keys we can
-      }
-    }
-    advance();
+  bool childrenAreLeaves(std::size_t index) {
+    // not thread-safe, lock buffer from outside
+    std::size_t maxDepth = meta().maxDepth;
+    return index >= nodeCountUpToDepth(maxDepth - 2) &&
+           index < nodeCountUpToDepth(maxDepth - 1);
   }
 
-  return ranges;
-}
+  std::pair<std::size_t, std::size_t> chunkRange(std::size_t chunk, std::size_t depth) {
+    // not thread-safe, lock buffer from outside
+    std::size_t rangeMin = meta().rangeMin;
+    std::size_t rangeMax = meta().rangeMax;
+    std::size_t chunkSizeAtDepth = (rangeMax - rangeMin) / (1 << (BranchingBits * depth));
+    return std::make_pair(rangeMin + (chunkSizeAtDepth * chunk),
+                          rangeMin + (chunkSizeAtDepth * (chunk + 1)) - 1);
+  }
 
-private : std::unique_ptr<uint8_t[]>
-              _buffer;
-mutable std::shared_mutex _bufferLock;
-std::hash<std::size_t> _hasher;
-mutable std::mutex _nodeLocks[LockStripes];
+ private:
+  std::unique_ptr<uint8_t[]> _buffer;
+  mutable std::shared_mutex _bufferLock;
+  mutable std::mutex _nodeLocks[LockStripes];
 };
+
+template <std::size_t const BranchingBits, std::size_t const LockStripes>
+std::ostream& operator<<(std::ostream& stream,
+                         MerkleTree<BranchingBits, LockStripes> const& tree) {
+  return stream << tree.toString();
+}
 
 }  // namespace containers
 }  // namespace arangodb
