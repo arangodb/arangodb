@@ -421,6 +421,15 @@ void HttpCommTask<T>::processRequest() {
     return;
   }
 
+  // We want to separate superuser token traffic:
+  if (_request->authenticated()) {
+    bool found;
+    _request.header(StaticStrings::RequestForwarded, found);
+    if (found || _request->user().empty()) {
+      RequestStatistics::SET_SUPERUSER(statistics(1UL));
+    }
+  }
+
   // first check whether we allow the request to continue
   CommTask::Flow cont = this->prepareExecution(*_request);
   if (cont != CommTask::Flow::Continue) {

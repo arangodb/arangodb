@@ -41,6 +41,8 @@ std::string stats::fromGroupType(stats::GroupType gt) {
       return "system";
     case stats::GroupType::Client:
       return "client";
+    case stats::GroupType::ClientUser:
+      return "clientUser";
     case stats::GroupType::Http:
       return "http";
     case stats::GroupType::Vst:
@@ -113,6 +115,9 @@ stats::Descriptions::Descriptions()
   _groups.emplace_back(Group{stats::GroupType::Client,
                              "Client Connection Statistics",
                              "Statistics about the connections."});
+  _groups.emplace_back(Group{stats::GroupType::ClientUser,
+                             "Client Connection Statistics (user traffic)",
+                             "Statistics about the connections, only user traffic (ignoring superuser JWT traffic)."});
   _groups.emplace_back(Group{stats::GroupType::Http, "HTTP Request Statistics",
                              "Statistics about the HTTP requests."});
   _groups.emplace_back(Group{stats::GroupType::Server, "Server Statistics",
@@ -245,6 +250,60 @@ stats::Descriptions::Descriptions()
   _figures.emplace_back(
       Figure{stats::GroupType::Client, "connectionTime", "Connection Time",
              "Total connection time of a client.", stats::FigureType::Distribution,
+             // cuts: internal.connectionTimeDistribution,
+             stats::Unit::Seconds, _connectionTimeCuts});
+
+  // Only user traffic:
+
+  _figures.emplace_back(
+      Figure{stats::GroupType::ClientUser,
+             "httpConnections",
+             "Client Connections (user)",
+             "The number of connections that are currently open (only user traffic).",
+             stats::FigureType::Current,
+             stats::Unit::Number,
+             {}});
+
+  _figures.emplace_back(
+      Figure{stats::GroupType::ClientUser, "totalTime", "Total Time (user)",
+             "Total time needed to answer a request (only user traffic).",
+             stats::FigureType::Distribution,
+             // cuts: internal.requestTimeDistribution,
+             stats::Unit::Seconds, _requestTimeCuts});
+
+  _figures.emplace_back(
+      Figure{stats::GroupType::ClientUser, "requestTime", "Request Time (user)",
+             "Request time needed to answer a request (only user traffic).",
+             stats::FigureType::Distribution,
+             // cuts: internal.requestTimeDistribution,
+             stats::Unit::Seconds, _requestTimeCuts});
+
+  _figures.emplace_back(
+      Figure{stats::GroupType::ClientUser, "queueTime", "Queue Time (user)",
+             "Queue time needed to answer a request (only user traffic).",
+             stats::FigureType::Distribution,
+             // cuts: internal.requestTimeDistribution,
+             stats::Unit::Seconds, _requestTimeCuts});
+
+  _figures.emplace_back(Figure{stats::GroupType::ClientUser, "bytesSent",
+                               "Bytes Sent (user)",
+                               "Bytes sents for a request (only user traffic).",
+                               stats::FigureType::Distribution,
+                               // cuts: internal.bytesSentDistribution,
+                               stats::Unit::Bytes, _bytesSendCuts});
+
+  _figures.emplace_back(Figure{stats::GroupType::ClientUser, "bytesReceived",
+                               "Bytes Received (user)",
+                               "Bytes received for a request (only user traffic).",
+                               stats::FigureType::Distribution,
+                               // cuts: internal.bytesReceivedDistribution,
+                               stats::Unit::Bytes, _bytesReceivedCuts});
+
+  _figures.emplace_back(
+      Figure{stats::GroupType::ClientUser, "connectionTime",
+             "Connection Time (user)",
+             "Total connection time of a client (only user traffic).",
+             stats::FigureType::Distribution,
              // cuts: internal.connectionTimeDistribution,
              stats::Unit::Seconds, _connectionTimeCuts});
 
@@ -411,7 +470,7 @@ static void FillDistribution(VPackBuilder& b, std::string const& name,
   b.close();
 }
 
-void stats::Descriptions::clientStatistics(velocypack::Builder& b) const {
+void stats::Descriptions::clientStatistics(velocypack::Builder& b, RequestStatistics::Source source) const {
   basics::StatisticsCounter httpConnections;
   basics::StatisticsCounter totalRequests;
   std::array<basics::StatisticsCounter, basics::MethodRequestsStatisticsSize> methodRequests;
@@ -432,7 +491,7 @@ void stats::Descriptions::clientStatistics(velocypack::Builder& b) const {
   basics::StatisticsDistribution bytesSent;
   basics::StatisticsDistribution bytesReceived;
 
-  RequestStatistics::fill(totalTime, requestTime, queueTime, ioTime, bytesSent, bytesReceived);
+  RequestStatistics::fill(totalTime, requestTime, queueTime, ioTime, bytesSent, bytesReceived, source);
 
   FillDistribution(b, "totalTime", totalTime);
   FillDistribution(b, "requestTime", requestTime);

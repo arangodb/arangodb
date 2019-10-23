@@ -219,11 +219,20 @@ bool VstCommTask<T>::processMessage(velocypack::Buffer<uint8_t> buffer,
     // error is handled below
   }
 
-  RequestStatistics::SET_READ_END(this->statistics(messageId));
+  RequestStatistics* stat = this->statistics(messageId);
+  RequestStatistics::SET_READ_END(stat);
+  RequestStatistics::ADD_RECEIVED_BYTES(stat, buffer.size());
   
   // handle request types
   if (mt == MessageType::Authentication) {  // auth
     handleAuthHeader(VPackSlice(buffer.data()), messageId);
+    // Separate superuser traffic:
+    // Note that currently, velocystream traffic will never come from
+    // a forwarding, since we always forward with HTTP.
+    if (_authMethod != AuthenticationMethod::NONE && _authorized &&
+        _authToken._username.empty()) {
+      RequestStatistics::SET_SUPERUSER(stat);
+    }
   } else if (mt == MessageType::Request) {  // request
     
     VPackSlice header(buffer.data());
@@ -240,6 +249,14 @@ bool VstCommTask<T>::processMessage(velocypack::Buffer<uint8_t> buffer,
       this->_auth->userManager()->refreshUser(this->_authToken._username);
     }
     
+    // Separate superuser traffic:
+    // Note that currently, velocystream traffic will never come from
+    // a forwarding, since we always forward with HTTP.
+    if (_authMethod != AuthenticationMethod::NONE && _authorized &&
+        _authToken._username.empty()) {
+      RequestStatistics::SET_SUPERUSER(stat);
+    }
+
     LOG_TOPIC("92fd6", DEBUG, Logger::REQUESTS)
     << "\"vst-request-begin\",\"" << (void*)this << "\",\""
     << this->_connectionInfo.clientAddress << "\",\""

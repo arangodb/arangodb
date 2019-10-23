@@ -196,6 +196,8 @@ std::string const StaticStrings::NoSniff("nosniff");
 std::string const StaticStrings::Origin("origin");
 std::string const StaticStrings::PotentialDirtyRead(
     "x-arango-potential-dirty-read");
+std::string const StaticStrings::RequestForwarded(
+    "x-arango-forwarded");
 std::string const StaticStrings::RequestForwardedTo(
     "x-arango-request-forwarded-to");
 std::string const StaticStrings::ResponseCode("x-arango-response-code");
