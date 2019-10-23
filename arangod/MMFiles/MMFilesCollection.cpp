@@ -181,7 +181,11 @@ Result persistLocalDocumentIdIterator(MMFilesMarker const* marker, void* data,
         localDocumentId = LocalDocumentId(
             encoding::readNumber<LocalDocumentId::BaseType>(ptr, sizeof(LocalDocumentId::BaseType)));
       } else {
-        localDocumentId = LocalDocumentId::create();
+        VPackSlice keySlice;
+        TRI_voc_rid_t revisionId;
+        transaction::helpers::extractKeyAndRevFromDocument(slice, keySlice, revisionId);
+
+        localDocumentId = LocalDocumentId::create(revisionId);
       }
 
       MMFilesCrudMarker updatedMarker(TRI_DF_MARKER_VPACK_DOCUMENT,
@@ -338,6 +342,11 @@ int MMFilesCollection::OpenIteratorHandleDocumentMarker(MMFilesMarker const* mar
                          MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
   uint8_t const* vpack = slice.begin();
 
+  VPackSlice keySlice;
+  TRI_voc_rid_t revisionId;
+
+  transaction::helpers::extractKeyAndRevFromDocument(slice, keySlice, revisionId);
+
   LocalDocumentId localDocumentId;
   if (marker->getSize() == MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT) +
                                slice.byteSize() + sizeof(LocalDocumentId::BaseType)) {
@@ -346,14 +355,10 @@ int MMFilesCollection::OpenIteratorHandleDocumentMarker(MMFilesMarker const* mar
     localDocumentId = LocalDocumentId(
         encoding::readNumber<LocalDocumentId::BaseType>(ptr, sizeof(LocalDocumentId::BaseType)));
   } else {
-    localDocumentId = LocalDocumentId::create();
+    localDocumentId = LocalDocumentId::create(revisionId);
     state->_hasAllPersistentLocalIds = false;
   }
 
-  VPackSlice keySlice;
-  TRI_voc_rid_t revisionId;
-
-  transaction::helpers::extractKeyAndRevFromDocument(slice, keySlice, revisionId);
 
   physical->setRevision(revisionId, false);
 
@@ -2782,10 +2787,9 @@ Result MMFilesCollection::truncate(transaction::Methods& trx, OperationOptions& 
       builder->clear();
       VPackSlice oldDoc(vpack);
 
-      LocalDocumentId const documentId = LocalDocumentId::create();
       TRI_voc_rid_t revisionId;
-
       newObjectForRemove(&trx, oldDoc, *builder.get(), options.isRestore, revisionId);
+      LocalDocumentId const documentId = LocalDocumentId::create(revisionId);
 
       Result res = removeFastPath(trx, revisionId, oldDocumentId, VPackSlice(vpack),
                                   options, documentId, builder->slice());
@@ -2831,7 +2835,8 @@ Result MMFilesCollection::compact() {
   return {};
 }
 
-LocalDocumentId MMFilesCollection::reuseOrCreateLocalDocumentId(OperationOptions const& options) const {
+LocalDocumentId MMFilesCollection::reuseOrCreateLocalDocumentId(
+    OperationOptions const& options, velocypack::Slice const& slice) const {
   if (options.recoveryData != nullptr) {
     auto marker = static_cast<MMFilesWalMarker*>(options.recoveryData);
     if (marker->hasLocalDocumentId()) {
@@ -2840,15 +2845,25 @@ LocalDocumentId MMFilesCollection::reuseOrCreateLocalDocumentId(OperationOptions
     // intentionally falls through
   }
 
-  // new operation, no recovery -> generate a new LocalDocumentId
-  return LocalDocumentId::create();
+  // new operation, no recovery -> get revision from slice
+  TRI_voc_rid_t revisionId = 0;
+  VPackSlice revSlice = slice.get(StaticStrings::RevString);
+  if (revSlice.isString()) {
+    VPackValueLength l;
+    char const* p = revSlice.getStringUnchecked(l);
+    TRI_ASSERT(p != nullptr);
+    revisionId = TRI_StringToRid(p, l, false);
+  }
+  TRI_ASSERT(revisionId != 0);
+
+  return LocalDocumentId::create(revisionId);
 }
 
 Result MMFilesCollection::insert(arangodb::transaction::Methods* trx, VPackSlice const slice,
                                  arangodb::ManagedDocumentResult& resultMdr,
                                  OperationOptions& options, bool lock, KeyLockInfo* keyLockInfo,
                                  std::function<void()> const& callbackDuringLock) {
-  LocalDocumentId const documentId = reuseOrCreateLocalDocumentId(options);
+  LocalDocumentId const documentId = reuseOrCreateLocalDocumentId(options, slice);
   auto isEdgeCollection = (TRI_COL_TYPE_EDGE == _logicalCollection.type());
   transaction::BuilderLeaser builder(trx);
   VPackSlice newSlice;
@@ -3400,7 +3415,7 @@ Result MMFilesCollection::update(arangodb::transaction::Methods* trx,
     return Result(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
   }
 
-  LocalDocumentId const documentId = reuseOrCreateLocalDocumentId(options);
+  LocalDocumentId const documentId = reuseOrCreateLocalDocumentId(options, newSlice);
   auto isEdgeCollection = (TRI_COL_TYPE_EDGE == _logicalCollection.type());
 
   TRI_IF_FAILURE("UpdateDocumentNoLock") { return Result(TRI_ERROR_DEBUG); }
@@ -3531,7 +3546,7 @@ Result MMFilesCollection::update(arangodb::transaction::Methods* trx,
 Result MMFilesCollection::replace(transaction::Methods* trx, VPackSlice const newSlice,
                                   ManagedDocumentResult& resultMdr, OperationOptions& options,
                                   bool lock, ManagedDocumentResult& previousMdr) {
-  LocalDocumentId const documentId = reuseOrCreateLocalDocumentId(options);
+  LocalDocumentId const documentId = reuseOrCreateLocalDocumentId(options, newSlice);
   auto isEdgeCollection = (TRI_COL_TYPE_EDGE == _logicalCollection.type());
 
   TRI_IF_FAILURE("ReplaceDocumentNoLock") { return Result(TRI_ERROR_DEBUG); }
@@ -3658,10 +3673,10 @@ Result MMFilesCollection::remove(transaction::Methods& trx, velocypack::Slice sl
                                  ManagedDocumentResult& previousMdr,
                                  OperationOptions& options, bool lock, KeyLockInfo* keyLockInfo,
                                  std::function<void()> const& callbackDuringLock) {
-  LocalDocumentId const documentId = LocalDocumentId::create();
   transaction::BuilderLeaser builder(&trx);
   TRI_voc_rid_t revisionId;
   newObjectForRemove(&trx, slice, *builder.get(), options.isRestore, revisionId);
+  LocalDocumentId const documentId = LocalDocumentId::create(revisionId);
 
   TRI_IF_FAILURE("RemoveDocumentNoMarker") {
     // test what happens when no marker can be created

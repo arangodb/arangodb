@@ -451,7 +451,8 @@ class MMFilesCollection final : public PhysicalCollection {
                         MMFilesWalMarker const* marker,
                         OperationOptions& options, bool& waitForSync);
 
-  LocalDocumentId reuseOrCreateLocalDocumentId(OperationOptions const& options) const;
+  LocalDocumentId reuseOrCreateLocalDocumentId(OperationOptions const& options,
+                                               velocypack::Slice const& slice) const;
 
   static Result persistLocalDocumentIdsForDatafile(MMFilesCollection& collection,
                                                    MMFilesDatafile& file);
