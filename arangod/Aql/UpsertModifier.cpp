@@ -179,7 +179,7 @@ Result UpsertModifier::transact() {
   return Result{};
 }
 
-size_t UpsertModifier::size() const {
+size_t UpsertModifier::nrOfDocuments() const {
   return _insertAccumulator.slice().length() + _updateAccumulator.slice().length();
 }
 
@@ -210,15 +210,10 @@ Result UpsertModifier::setupIterator(ModifierIteratorMode const mode) {
 }
 
 bool UpsertModifier::isFinishedIterator() {
-  // TODO: Spray in some assserts
   return _operationsIterator == _operations.end();
 }
 
 void UpsertModifier::advanceIterator() {
-  // TODO: wat?
-  TRI_ASSERT(_operationsIterator->first == ModOperationType::APPLY_UPDATE ||
-             _operationsIterator->first == ModOperationType::APPLY_INSERT);
-
   if (_iteratorMode == ModifierIteratorMode::Full) {
     if (_operationsIterator->first == ModOperationType::APPLY_UPDATE) {
       _updateResultsIterator++;
@@ -229,14 +224,11 @@ void UpsertModifier::advanceIterator() {
   _operationsIterator++;
 }
 
-// TODO: This is a bit ugly, explain at least what's going on
-//       can we use local variables and just rely on the compiler not doing
-//       anything silly?
-// Super ugly pointer/iterator shenanigans
+// When we get the output of our iterator, we have to check whether the
+// operation in question was APPLY_UPDATE or APPLY_INSERT to determine which
+// of the results slices (UpdateReplace or Insert) we have to look in and
+// increment.
 UpsertModifier::OutputTuple UpsertModifier::getOutput() {
-  TRI_ASSERT(_operationsIterator->first == ModOperationType::APPLY_UPDATE ||
-             _operationsIterator->first == ModOperationType::APPLY_INSERT);
-
   switch (_iteratorMode) {
     case ModifierIteratorMode::Full: {
       if (_operationsIterator->first == ModOperationType::APPLY_UPDATE) {
@@ -246,11 +238,8 @@ UpsertModifier::OutputTuple UpsertModifier::getOutput() {
         return OutputTuple{ModOperationType::APPLY_RETURN,
                            _operationsIterator->second, *_insertResultsIterator};
       } else {
-        TRI_ASSERT(false);
-        // TODO: Warning about control reaches end of non-void function
-        return OutputTuple{ModOperationType::IGNORE_SKIP,
-                           InputAqlItemRow{CreateInvalidInputRowHint()},
-                           VPackSlice::noneSlice()};
+        return OutputTuple{_operationsIterator->first,
+                           _operationsIterator->second, VPackSlice::noneSlice()};
       }
     }
     case ModifierIteratorMode::OperationsOnly: {
@@ -258,7 +247,7 @@ UpsertModifier::OutputTuple UpsertModifier::getOutput() {
                          _operationsIterator->second, VPackSlice::noneSlice()};
     }
   }
-  // Shut up compiler
+  // shut up compiler
   TRI_ASSERT(false);
   return OutputTuple{ModOperationType::IGNORE_SKIP,
                      InputAqlItemRow{CreateInvalidInputRowHint()},

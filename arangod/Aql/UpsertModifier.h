@@ -49,8 +49,8 @@ class UpsertModifier {
   Result accumulate(InputAqlItemRow& row);
   Result transact();
 
-  size_t size() const;
   size_t nrOfOperations() const;
+  size_t nrOfDocuments() const;
 
   // TODO: Make this a real iterator
   Result setupIterator(ModifierIteratorMode mode);

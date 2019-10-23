@@ -119,7 +119,7 @@ void ModificationExecutor2<FetcherType, ModifierType>::doOutput(OutputAqlItemRow
   // If we have made no modifications or are silent,
   // we can just copy rows; this is an optimisation for silent
   // queries
-  if (_modifier.size() == 0 || _infos._options.silent) {
+  if (_modifier.nrOfDocuments() == 0 || _infos._options.silent) {
     _modifier.setupIterator(ModifierIteratorMode::OperationsOnly);
     InputAqlItemRow row{CreateInvalidInputRowHint{}};
     while (!_modifier.isFinishedIterator()) {

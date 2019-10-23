@@ -85,12 +85,15 @@ class SimpleModifier {
   void close();
 
   Result accumulate(InputAqlItemRow& row);
-  Result transact();
+  void transact();
 
+  // The two numbers below may not be the same: Operations
+  // can skip or ignore documents.
+
+  // The number of operations
   size_t nrOfOperations() const;
-
-  // TODO: Rename
-  size_t size() const;
+  // The number of documents in the accumulator
+  size_t nrOfDocuments() const;
 
   // TODO: Make this a real iterator
   Result setupIterator(ModifierIteratorMode const mode);

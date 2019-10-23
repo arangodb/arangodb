@@ -74,16 +74,12 @@ Result SimpleModifier<ModifierCompletion, Enable>::accumulate(InputAqlItemRow& r
 }
 
 template <typename ModifierCompletion, typename Enable>
-Result SimpleModifier<ModifierCompletion, Enable>::transact() {
+void SimpleModifier<ModifierCompletion, Enable>::transact() {
   TRI_ASSERT(_accumulator.isClosed());
   TRI_ASSERT(_accumulator.slice().isArray());
   _results = _completion.transact(_accumulator.slice());
 
-  // TODO: figure out when _results.fail() is set
   throwOperationResultException(_infos, _results);
-
-  // TODO: Either return something meaningful or make function void
-  return Result{};
 }
 
 template <typename ModifierCompletion, typename Enable>
@@ -92,8 +88,7 @@ size_t SimpleModifier<ModifierCompletion, Enable>::nrOfOperations() const {
 }
 
 template <typename ModifierCompletion, typename Enable>
-size_t SimpleModifier<ModifierCompletion, Enable>::size() const {
-  // TODO: spray around some asserts
+size_t SimpleModifier<ModifierCompletion, Enable>::nrOfDocuments() const {
   TRI_ASSERT(_accumulator.slice().isArray());
   return _accumulator.slice().length();
 }

@@ -106,7 +106,6 @@ void ModificationNode::cloneCommon(ModificationNode* c) const {
 ///////////////////////////////////////////////////////////////////////////////
 /// REMOVE
 ///
-/// TODO: better home for this?
 using AllRowsRemoveExecutionBlock =
     ExecutionBlockImpl<ModificationExecutor2<AllRowsFetcher, RemoveModifier>>;
 using SingleRowRemoveExecutionBlock =
@@ -183,7 +182,6 @@ ExecutionNode* RemoveNode::clone(ExecutionPlan* plan, bool withDependencies,
 ///////////////////////////////////////////////////////////////////////////////
 /// INSERT
 ///
-/// TODO: better home for this?
 using AllRowsInsertExecutionBlock =
     ExecutionBlockImpl<ModificationExecutor2<AllRowsFetcher, InsertModifier>>;
 using SingleRowInsertExecutionBlock =
@@ -268,7 +266,6 @@ ExecutionNode* InsertNode::clone(ExecutionPlan* plan, bool withDependencies,
 ///////////////////////////////////////////////////////////////////////////////
 /// REMOVE
 ///
-/// TODO: better home for this?
 using AllRowsUpdateReplaceExecutionBlock =
     ExecutionBlockImpl<ModificationExecutor2<AllRowsFetcher, UpdateReplaceModifier>>;
 using SingleRowUpdateReplaceExecutionBlock =
@@ -449,7 +446,6 @@ ExecutionNode* ReplaceNode::clone(ExecutionPlan* plan, bool withDependencies,
 ///////////////////////////////////////////////////////////////////////////////
 /// UPSERT
 ///
-/// TODO: better home for this?
 using AllRowsUpsertExecutionBlock =
     ExecutionBlockImpl<ModificationExecutor2<AllRowsFetcher, UpsertModifier>>;
 using SingleRowUpsertExecutionBlock =

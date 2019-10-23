@@ -99,8 +99,6 @@ ModOperationType UpdateReplaceModifierCompletion::accumulate(VPackBuilder& accu,
     }
   } else {
     // error happened extracting key, record in operations map
-    // TODO: This is still a tad ugly. Also, what happens if there's no
-    //       error message?
     if (!_infos._ignoreErrors) {
       THROW_ARANGO_EXCEPTION_MESSAGE(result.errorNumber(), result.errorMessage());
     }
