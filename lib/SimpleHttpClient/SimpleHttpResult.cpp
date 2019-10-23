@@ -133,7 +133,7 @@ void SimpleHttpResult::addHeaderField(char const* key, size_t keyLength,
 
   // lower-case key
   std::string keyString(key, keyLength);
-  StringUtils::tolowerInPlace(&keyString);
+  StringUtils::tolowerInPlace(keyString);
 
   // trim value
   {

@@ -1,0 +1,13 @@
+{
+  "key": "outcome",
+  "name": "Outcome",
+  "authors": [ "Niall Douglas" ],
+  "maintainers": [ "Niall Douglas" ],
+  "description": "A deterministic failure handling library partially simulating lightweight exceptions.",
+  "std": [ "proposal" ],
+  "category": [
+    "Patterns",
+    "Emulation",
+    "Programming"
+  ]
+}
