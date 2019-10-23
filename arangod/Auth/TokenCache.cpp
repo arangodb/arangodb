@@ -369,12 +369,6 @@ auth::TokenCache::Entry auth::TokenCache::validateJwtBody(std::string const& bod
     authResult._expiry = 0;
   }
 
-  if (bodySlice.hasKey("forwarded")) {
-    if (bodySlice.get("forwarded").isTrue()) {
-      authResult.forwarded(true);
-    }
-  }
-
   authResult._authenticated = true;
   return authResult;
 }

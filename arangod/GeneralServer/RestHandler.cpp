@@ -154,7 +154,6 @@ bool RestHandler::forwardRequest() {
       {
         VPackObjectBuilder payload{&builder};
         payload->add("preferred_username", VPackValue(username));
-        payload->add("forwarded", VPackValue(true));
       }
       VPackSlice slice = builder.slice();
       headers.emplace(StaticStrings::Authorization,

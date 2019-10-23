@@ -379,7 +379,7 @@ bool VstCommTask::processRead(double startTime) {
       handleAuthHeader(header, chunkHeader._messageID);
       // Separate superuser traffic:
       if (_authMethod != AuthenticationMethod::NONE && _authorized &&
-          (_authToken._username.empty() || _authToken.forwarded())) {
+          _authToken._username.empty()) {
         RequestStatistics::SET_SUPERUSER(stat);
       }
     } else if (type == 1) {  // request
@@ -397,7 +397,7 @@ bool VstCommTask::processRead(double startTime) {
 
       // Separate superuser traffic:
       if (_authMethod != AuthenticationMethod::NONE && _authorized &&
-          (_authToken._username.empty() || _authToken.forwarded())) {
+          _authToken._username.empty()) {
         RequestStatistics::SET_SUPERUSER(stat);
       }
 
