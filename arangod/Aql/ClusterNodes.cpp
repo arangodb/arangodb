@@ -551,7 +551,8 @@ std::unique_ptr<ExecutionBlock> SingleRemoteOperationNode::createBlock(
   RegisterId outputNew = variableToRegisterOptionalId(_outVariableNew);
   RegisterId outputOld = variableToRegisterOptionalId(_outVariableOld);
 
-  OperationOptions options = convertOptions(_options, _outVariableNew, _outVariableOld);
+  OperationOptions options =
+      ModificationExecutorHelpers::convertOptions(_options, _outVariableNew, _outVariableOld);
 
   SingleRemoteModificationInfos infos(
       in, outputNew, outputOld, out,

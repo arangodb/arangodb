@@ -24,10 +24,10 @@
 
 #include "Aql/AqlValue.h"
 #include "Aql/Collection.h"
+#include "Aql/ExecutionBlock.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Basics/Common.h"
 #include "ModificationExecutor2.h"
-#include "ModificationExecutorTraits.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Collection.h>

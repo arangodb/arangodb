@@ -22,16 +22,17 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ModificationNodes.h"
+#include "Aql/AllRowsFetcher.h"
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionPlan.h"
-#include "Aql/ModificationExecutor.h"
-#include "Aql/ModificationExecutorTraits.h"
 #include "Aql/Query.h"
+#include "Aql/SingleRowFetcher.h"
 #include "Aql/VariableGenerator.h"
 
 #include "Aql/ModificationExecutor2.h"
+#include "Aql/ModificationExecutorHelpers.h"
 #include "Aql/SimpleModifier.h"
 #include "Aql/UpsertModifier.h"
 
@@ -137,7 +138,8 @@ std::unique_ptr<ExecutionBlock> RemoveNode::createBlock(
   RegisterId outputNew = variableToRegisterOptionalId(_outVariableNew);
   RegisterId outputOld = variableToRegisterOptionalId(_outVariableOld);
 
-  OperationOptions options = convertOptions(_options, _outVariableNew, _outVariableOld);
+  OperationOptions options =
+      ModificationExecutorHelpers::convertOptions(_options, _outVariableNew, _outVariableOld);
 
   ModificationExecutorInfos infos(
       inDocRegister, RegisterPlan::MaxRegisterId, RegisterPlan::MaxRegisterId,
@@ -217,7 +219,8 @@ std::unique_ptr<ExecutionBlock> InsertNode::createBlock(
   RegisterId outputNew = variableToRegisterOptionalId(_outVariableNew);
   RegisterId outputOld = variableToRegisterOptionalId(_outVariableOld);
 
-  OperationOptions options = convertOptions(_options, _outVariableNew, _outVariableOld);
+  OperationOptions options =
+      ModificationExecutorHelpers::convertOptions(_options, _outVariableNew, _outVariableOld);
 
   ModificationExecutorInfos infos(
       inputRegister, RegisterPlan::MaxRegisterId, RegisterPlan::MaxRegisterId,
@@ -317,7 +320,8 @@ std::unique_ptr<ExecutionBlock> UpdateNode::createBlock(
   RegisterId outputNew = variableToRegisterOptionalId(_outVariableNew);
   RegisterId outputOld = variableToRegisterOptionalId(_outVariableOld);
 
-  OperationOptions options = convertOptions(_options, _outVariableNew, _outVariableOld);
+  OperationOptions options =
+      ModificationExecutorHelpers::convertOptions(_options, _outVariableNew, _outVariableOld);
 
   ModificationExecutorInfos infos(
       inDocRegister, inKeyRegister, RegisterPlan::MaxRegisterId, outputNew,
@@ -392,7 +396,8 @@ std::unique_ptr<ExecutionBlock> ReplaceNode::createBlock(
 
   RegisterId outputOld = variableToRegisterOptionalId(_outVariableOld);
 
-  OperationOptions options = convertOptions(_options, _outVariableNew, _outVariableOld);
+  OperationOptions options =
+      ModificationExecutorHelpers::convertOptions(_options, _outVariableNew, _outVariableOld);
 
   ModificationExecutorInfos infos(
       inDocRegister, inKeyRegister, RegisterPlan::MaxRegisterId, outputNew,
@@ -494,7 +499,8 @@ std::unique_ptr<ExecutionBlock> UpsertNode::createBlock(
 
   RegisterId outputOld = variableToRegisterOptionalId(_outVariableOld);
 
-  OperationOptions options = convertOptions(_options, _outVariableNew, _outVariableOld);
+  OperationOptions options =
+      ModificationExecutorHelpers::convertOptions(_options, _outVariableNew, _outVariableOld);
 
   ModificationExecutorInfos infos(
       inDoc, insert, update, outputNew, outputOld, RegisterPlan::MaxRegisterId /*output*/,

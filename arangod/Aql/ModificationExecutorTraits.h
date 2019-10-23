@@ -23,7 +23,14 @@
 #ifndef ARANGOD_AQL_MODIFICATION_EXECUTOR_TRAITS_H
 #define ARANGOD_AQL_MODIFICATION_EXECUTOR_TRAITS_H
 
-#include "Aql/ModificationExecutor.h"
+// #include "Aql/ModificationExecutor.h"
+#include "Aql/ExecutionBlock.h"
+#include "Aql/InputAqlItemRow.h"
+#include "Aql/ModificationExecutorHelpers.h"
+#include "Aql/ModificationExecutorInfos.h"
+#include "Aql/OutputAqlItemRow.h"
+#include "Aql/SharedAqlItemBlockPtr.h"
+#include "Aql/Stats.h"
 #include "Transaction/Methods.h"
 #include "Utils/OperationResult.h"
 
@@ -45,6 +52,12 @@ enum class ModOperationType : uint8_t {
   APPLY_UPDATE = 3,  // apply it and return the result, used only used for UPSERT
   APPLY_INSERT = 4,  // apply it and return the result, used only used for UPSERT
 };
+
+struct Insert;
+struct Remove;
+struct Upsert;
+struct Update;
+struct Replace;
 
 inline std::string toString(Insert&) { return "Insert"; };
 inline std::string toString(Remove&) { return "Remove"; };

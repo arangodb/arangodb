@@ -23,8 +23,9 @@
 #ifndef ARANGOD_AQL_REMOVE_MODIFIER_H
 #define ARANGOD_AQL_REMOVE_MODIFIER_H
 
-#include "Aql/ModificationExecutor.h"
-#include "Aql/ModificationExecutorTraits.h"
+#include "Aql/ModificationExecutor2.h"
+#include "Aql/ModificationExecutorHelpers.h"
+#include "Aql/ModificationExecutorInfos.h"
 
 namespace arangodb {
 namespace aql {

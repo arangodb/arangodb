@@ -23,9 +23,7 @@
 #ifndef ARANGOD_AQL_SIMPLE_MODIFIER_H
 #define ARANGOD_AQL_SIMPLE_MODIFIER_H
 
-#include "Aql/ModificationExecutor.h"
-#include "Aql/ModificationExecutor2.h"
-#include "Aql/ModificationExecutorTraits.h"
+#include "Aql/ModificationExecutorInfos.h"
 
 #include "Aql/InsertModifier.h"
 #include "Aql/RemoveModifier.h"
