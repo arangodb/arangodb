@@ -240,8 +240,14 @@ UpsertModifier::ModifierOutput UpsertModifier::getOutput() {
       }
     }
     case ModifierIteratorMode::OperationsOnly: {
-      return ModifierOutput{_operationsIterator->first,
-                            _operationsIterator->second, VPackSlice::noneSlice()};
+      if (_operationsIterator->first == ModOperationType::APPLY_UPDATE ||
+          _operationsIterator->first == ModOperationType::APPLY_INSERT) {
+        return ModifierOutput{ModOperationType::APPLY_RETURN,
+                              _operationsIterator->second, VPackSlice::noneSlice()};
+      } else {
+        return ModifierOutput{_operationsIterator->first,
+                              _operationsIterator->second, VPackSlice::noneSlice()};
+      }
     }
   }
   // shut up compiler

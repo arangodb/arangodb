@@ -118,81 +118,102 @@ void ModificationExecutor<FetcherType, ModifierType>::doOutput(OutputAqlItemRow&
   // If we have made no modifications or are silent,
   // we can just copy rows; this is an optimisation for silent
   // queries
-  if (_modifier.nrOfDocuments() == 0 || _infos._options.silent) {
-    _modifier.setupIterator(ModifierIteratorMode::OperationsOnly);
-    InputAqlItemRow row{CreateInvalidInputRowHint{}};
-    while (!_modifier.isFinishedIterator()) {
-      std::tie(std::ignore, row, std::ignore) = _modifier.getOutput();
+  // if (_modifier.nrOfDocuments() == 0 || _infos._options.silent) {
+  //   ModOperationType modOp;
+  //   InputAqlItemRow row{CreateInvalidInputRowHint{}};
 
-      output.copyRow(row);
+  //   _modifier.setupIterator(ModifierIteratorMode::OperationsOnly);
+  //   while (!_modifier.isFinishedIterator()) {
+  //     std::tie(modOp, row, std::ignore) = _modifier.getOutput();
 
-      if (_infos._doCount) {
-        stats.incrWritesExecuted();
-      }
+  //     output.copyRow(row);
 
-      _modifier.advanceIterator();
-      output.advanceRow();
-    }
-  } else {
-    ModOperationType modOp;
-    InputAqlItemRow row{CreateInvalidInputRowHint{}};
-    VPackSlice elm;
+  //     if (_infos._doCount) {
+  //       switch (modOp) {
+  //         case ModOperationType::APPLY_RETURN: {
+  //           stats.incrWritesExecuted();
+  //           break;
+  //         }
+  //         case ModOperationType::IGNORE_RETURN: {
+  //           stats.incrWritesIgnored();
+  //           break;
+  //         }
+  //         case ModOperationType::IGNORE_SKIP: {
+  //           stats.incrWritesIgnored();
+  //           break;
+  //         }
+  //         default: {
+  //           TRI_ASSERT(false);
+  //         }
+  //       }
+  //     }
+  //     _modifier.advanceIterator();
+  //     output.advanceRow();
+  //   }
+  // } else {
+  ModOperationType modOp;
+  InputAqlItemRow row{CreateInvalidInputRowHint{}};
+  VPackSlice elm;
 
-    _modifier.setupIterator(ModifierIteratorMode::Full);
-    while (!_modifier.isFinishedIterator()) {
-      std::tie(modOp, row, elm) = _modifier.getOutput();
+  _modifier.setupIterator(ModifierIteratorMode::Full);
+  while (!_modifier.isFinishedIterator()) {
+    std::tie(modOp, row, elm) = _modifier.getOutput();
 
-      bool error = VelocyPackHelper::getBooleanValue(elm, StaticStrings::Error, false);
-      if (!error) {
-        switch (modOp) {
-          case ModOperationType::APPLY_RETURN: {
-            if (_infos._options.returnNew) {
-              AqlValue value(elm.get(StaticStrings::New));
-              AqlValueGuard guard(value, true);
-              output.moveValueInto(_infos._outputNewRegisterId, row, guard);
-            }
-            if (_infos._options.returnOld) {
-              AqlValue value(elm.get(StaticStrings::Old));
-              AqlValueGuard guard(value, true);
-              output.moveValueInto(_infos._outputOldRegisterId, row, guard);
-            }
-            if (_infos._doCount) {
-              stats.incrWritesExecuted();
-            }
-            break;
+    bool error = VelocyPackHelper::getBooleanValue(elm, StaticStrings::Error, false);
+    if (!error) {
+      switch (modOp) {
+        case ModOperationType::APPLY_RETURN: {
+          if (_infos._options.returnNew) {
+            AqlValue value(elm.get(StaticStrings::New));
+            AqlValueGuard guard(value, true);
+            output.moveValueInto(_infos._outputNewRegisterId, row, guard);
           }
-          case ModOperationType::IGNORE_RETURN: {
-            output.copyRow(row);
-            if (_infos._doCount) {
-              stats.incrWritesIgnored();
-            }
-            break;
+          if (_infos._options.returnOld) {
+            AqlValue value(elm.get(StaticStrings::Old));
+            AqlValueGuard guard(value, true);
+            output.moveValueInto(_infos._outputOldRegisterId, row, guard);
           }
-          case ModOperationType::IGNORE_SKIP: {
-            output.copyRow(row);
-            if (_infos._doCount) {
-              stats.incrWritesIgnored();
-            }
-            break;
+          if (_infos._doCount) {
+            stats.incrWritesExecuted();
           }
-          case ModOperationType::APPLY_UPDATE:
-          case ModOperationType::APPLY_INSERT: {
-            // These values should not appear here anymore
-            // As we handle them in the UPSERT modifier and translate them
-            // into APPLY_RETURN
-            TRI_ASSERT(false);
-          }
-          default: {
-            TRI_ASSERT(false);
-            break;
-          }
+          break;
         }
-        // only advance row if we produced something
-        output.advanceRow();
+        case ModOperationType::IGNORE_RETURN: {
+          output.copyRow(row);
+          if (_infos._doCount) {
+            stats.incrWritesIgnored();
+          }
+          break;
+        }
+        case ModOperationType::IGNORE_SKIP: {
+          output.copyRow(row);
+          if (_infos._doCount) {
+            stats.incrWritesIgnored();
+          }
+          break;
+        }
+        case ModOperationType::APPLY_UPDATE:
+        case ModOperationType::APPLY_INSERT: {
+          // These values should not appear here anymore
+          // As we handle them in the UPSERT modifier and translate them
+          // into APPLY_RETURN
+          TRI_ASSERT(false);
+        }
+        default: {
+          TRI_ASSERT(false);
+          break;
+        }
       }
-      _modifier.advanceIterator();
+      // only advance row if we produced something
+      output.advanceRow();
+    } else {
+      if (_infos._doCount) {
+        stats.incrWritesIgnored();
+      }
     }
+    _modifier.advanceIterator();
   }
+  // }
 }
 
 template <typename FetcherType, typename ModifierType>
