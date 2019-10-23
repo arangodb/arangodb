@@ -2863,7 +2863,6 @@ Result MMFilesCollection::insert(arangodb::transaction::Methods* trx, VPackSlice
                                  arangodb::ManagedDocumentResult& resultMdr,
                                  OperationOptions& options, bool lock, KeyLockInfo* keyLockInfo,
                                  std::function<void()> const& callbackDuringLock) {
-  LocalDocumentId const documentId = reuseOrCreateLocalDocumentId(options, slice);
   auto isEdgeCollection = (TRI_COL_TYPE_EDGE == _logicalCollection.type());
   transaction::BuilderLeaser builder(trx);
   VPackSlice newSlice;
@@ -2904,6 +2903,7 @@ Result MMFilesCollection::insert(arangodb::transaction::Methods* trx, VPackSlice
       revisionId = TRI_StringToRid(p, l, false);
     }
   }
+  LocalDocumentId const documentId = reuseOrCreateLocalDocumentId(options, newSlice);
   TRI_ASSERT(revisionId != 0);
 
   // create marker
@@ -3415,7 +3415,6 @@ Result MMFilesCollection::update(arangodb::transaction::Methods* trx,
     return Result(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD);
   }
 
-  LocalDocumentId const documentId = reuseOrCreateLocalDocumentId(options, newSlice);
   auto isEdgeCollection = (TRI_COL_TYPE_EDGE == _logicalCollection.type());
 
   TRI_IF_FAILURE("UpdateDocumentNoLock") { return Result(TRI_ERROR_DEBUG); }
@@ -3496,6 +3495,9 @@ Result MMFilesCollection::update(arangodb::transaction::Methods* trx,
         static_cast<MMFilesMarkerEnvelope*>(options.recoveryData)->vpack()));
   }
 
+  LocalDocumentId const documentId =
+      reuseOrCreateLocalDocumentId(options, builder->slice());
+
   // create marker
   MMFilesCrudMarker updateMarker(
       TRI_DF_MARKER_VPACK_DOCUMENT,
@@ -3546,7 +3548,6 @@ Result MMFilesCollection::update(arangodb::transaction::Methods* trx,
 Result MMFilesCollection::replace(transaction::Methods* trx, VPackSlice const newSlice,
                                   ManagedDocumentResult& resultMdr, OperationOptions& options,
                                   bool lock, ManagedDocumentResult& previousMdr) {
-  LocalDocumentId const documentId = reuseOrCreateLocalDocumentId(options, newSlice);
   auto isEdgeCollection = (TRI_COL_TYPE_EDGE == _logicalCollection.type());
 
   TRI_IF_FAILURE("ReplaceDocumentNoLock") { return Result(TRI_ERROR_DEBUG); }
@@ -3608,6 +3609,9 @@ Result MMFilesCollection::replace(transaction::Methods* trx, VPackSlice const ne
   if (res.fail()) {
     return res;
   }
+
+  LocalDocumentId const documentId =
+      reuseOrCreateLocalDocumentId(options, builder->slice());
 
   if (options.recoveryData == nullptr) {
     if (_isDBServer) {
