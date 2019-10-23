@@ -174,6 +174,21 @@ IResearchViewCoordinator::~IResearchViewCoordinator() {
 
 arangodb::Result IResearchViewCoordinator::appendVelocyPackImpl(
     arangodb::velocypack::Builder& builder, Serialization context) const {
+  auto flags = makeFlags();
+  switch (context) {
+    case Serialization::List:
+    break;
+    case Serialization::Properties:
+    flags = makeFlags(Serialize::Detailed);
+    break;
+    case Serialization::Persistence:
+    flags = makeFlags(Serialize::Detailed, Serialize::ForPersistence, Serialize::IncludeInProgress);
+    break;
+    case Serialization::Replication:
+    TRI_ASSERT(false);
+    break;
+  }
+
   if (hasFlag(flags, Serialize::ForPersistence)) {
     auto res = arangodb::LogicalViewHelperClusterInfo::properties(builder, *this);
 

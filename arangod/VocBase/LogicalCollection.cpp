@@ -576,7 +576,7 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
   std::unordered_set<std::string> ignoreKeys{
       "allowUserKeys",        "cid",      "count",  "statusString", "version",
       "distributeShardsLike", "objectId", "indexes"};
-  VPackBuilder params = toVelocyPackIgnore(ignoreKeys, LogicalDataSource::makeFlags());
+  VPackBuilder params = toVelocyPackIgnore(ignoreKeys, Serialization::List);
   {
     VPackObjectBuilder guard(&result);
 
@@ -615,6 +615,21 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
 
 arangodb::Result LogicalCollection::appendVelocyPack(arangodb::velocypack::Builder& result,
                                                      Serialization context) const {
+  auto flags = makeFlags();
+  switch (context) {
+    case Serialization::List:
+    break;
+    case Serialization::Properties:
+    flags = makeFlags(Serialize::Detailed);
+    break;
+    case Serialization::Persistence:
+    flags = makeFlags(Serialize::Detailed, Serialize::ForPersistence, Serialize::IncludeInProgress);
+    break;
+    case Serialization::Replication:
+    TRI_ASSERT(false);
+    break;
+  }
+
   // We write into an open object
   TRI_ASSERT(result.isOpenObject());
 

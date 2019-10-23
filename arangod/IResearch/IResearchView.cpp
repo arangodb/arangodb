@@ -348,6 +348,21 @@ IResearchView::~IResearchView() {
 arangodb::Result IResearchView::appendVelocyPackImpl(  // append JSON
     arangodb::velocypack::Builder& builder,            // destrination
     Serialization context) const {
+  auto flags = makeFlags();
+  switch (context) {
+    case Serialization::List:
+    break;
+    case Serialization::Properties:
+    flags = makeFlags(Serialize::Detailed);
+    break;
+    case Serialization::Persistence:
+    flags = makeFlags(Serialize::Detailed, Serialize::ForPersistence, Serialize::IncludeInProgress);
+    break;
+    case Serialization::Replication:
+    TRI_ASSERT(false);
+    break;
+  }
+
   if (hasFlag(flags, Serialize::ForPersistence) &&
       arangodb::ServerState::instance()->isSingleServer()) {
     auto res = arangodb::LogicalViewHelperStorageEngine::properties( // storage engine properties

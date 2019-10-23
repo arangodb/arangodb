@@ -2557,7 +2557,7 @@ TEST_F(IResearchViewTest, test_register_link) {
     {
       arangodb::velocypack::Builder builder;
       builder.openObject();
-      view->properties(builder, arangodb::LogicalDataSource::makeFlags());
+      view->properties(builder, arangodb::LogicalDataSource::Serialization::List);
       builder.close();
 
       auto slice = builder.slice();
@@ -2619,7 +2619,7 @@ TEST_F(IResearchViewTest, test_register_link) {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      view->properties(builder, arangodb::LogicalDataSource::makeFlags());
+      view->properties(builder, arangodb::LogicalDataSource::Serialization::List);
       builder.close();
 
       auto slice = builder.slice();
@@ -5258,7 +5258,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      view->properties(builder, arangodb::LogicalDataSource::Serialization::Peristence);
+      view->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence);
       builder.close();
 
       auto slice = builder.slice();
@@ -5320,7 +5320,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      logicalView->properties(builder, arangodb::LogicalDataSource::Serialization::Peristence);
+      logicalView->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence);
       builder.close();
 
       auto slice = builder.slice();

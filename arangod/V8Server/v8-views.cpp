@@ -661,7 +661,7 @@ static void JS_RenameViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args
 
     viewBuilder.openObject();
 
-    auto const res = view->properties(viewBuilder, LogicalDataSource::Serialization::Properties));
+    auto const res = view->properties(viewBuilder, LogicalDataSource::Serialization::Properties);
 
     if (!res.ok()) {
       TRI_V8_THROW_EXCEPTION(res);  // skip view

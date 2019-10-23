@@ -315,29 +315,6 @@ TEST_F(IResearchViewCoordinatorTest, test_defaults) {
       EXPECT_TRUE((!slice.hasKey("deleted")));
       EXPECT_TRUE((!slice.hasKey("properties")));
     }
-
-    // persistence
-    {
-      arangodb::velocypack::Builder builder;
-      builder.openObject();
-      view->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence);
-      builder.close();
-      auto slice = builder.slice();
-
-      EXPECT_TRUE((7 == slice.length()));
-      EXPECT_TRUE((slice.hasKey("globallyUniqueId") &&
-                   slice.get("globallyUniqueId").isString() &&
-                   false == slice.get("globallyUniqueId").copyString().empty()));
-      EXPECT_TRUE((slice.get("id").copyString() == "1"));
-      EXPECT_TRUE((slice.hasKey("isSystem") && slice.get("isSystem").isBoolean() &&
-                   false == slice.get("isSystem").getBoolean()));
-      EXPECT_TRUE((slice.get("name").copyString() == "testView"));
-      EXPECT_TRUE((slice.get("type").copyString() ==
-                   arangodb::iresearch::DATA_SOURCE_TYPE.name()));
-      EXPECT_TRUE((false == slice.get("deleted").getBool()));
-      EXPECT_TRUE((slice.hasKey("planId")));
-      EXPECT_TRUE((!slice.hasKey("properties")));
-    }
   }
 
   // new view definition with links to missing collections
