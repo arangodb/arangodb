@@ -152,19 +152,13 @@ class RequestStatistics {
 
   double requestStart() const { return _requestStart; }
 
-  enum Source {
-    USER,
-    SUPERUSER,
-    ALL
-  };
-
   static void fill(basics::StatisticsDistribution& totalTime,
                    basics::StatisticsDistribution& requestTime,
                    basics::StatisticsDistribution& queueTime,
                    basics::StatisticsDistribution& ioTime,
                    basics::StatisticsDistribution& bytesSent,
                    basics::StatisticsDistribution& bytesReceived,
-                   Source source);
+                   stats::RequestStatisticsSource source);
 
   std::string timingsCsv();
   std::string to_string();

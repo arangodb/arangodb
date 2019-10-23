@@ -834,7 +834,7 @@ void StatisticsWorker::generateRawStatistics(VPackBuilder& builder, double const
   StatisticsDistribution bytesSent;
   StatisticsDistribution bytesReceived;
 
-  RequestStatistics::fill(totalTime, requestTime, queueTime, ioTime, bytesSent, bytesReceived, RequestStatistics::Source::ALL);
+  RequestStatistics::fill(totalTime, requestTime, queueTime, ioTime, bytesSent, bytesReceived, RequestStatisticsSource::ALL);
 
   ServerStatistics const& serverInfo = ServerStatistics::statistics();
 

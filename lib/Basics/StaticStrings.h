@@ -184,7 +184,6 @@ class StaticStrings {
   static std::string const NoSniff;
   static std::string const Origin;
   static std::string const PotentialDirtyRead;
-  static std::string const RequestForwarded;
   static std::string const RequestForwardedTo;
   static std::string const ResponseCode;
   static std::string const Server;

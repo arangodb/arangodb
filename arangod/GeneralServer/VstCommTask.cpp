@@ -230,7 +230,7 @@ bool VstCommTask<T>::processMessage(velocypack::Buffer<uint8_t> buffer,
     // Note that currently, velocystream traffic will never come from
     // a forwarding, since we always forward with HTTP.
     if (_authMethod != AuthenticationMethod::NONE && _authorized &&
-        _authToken._username.empty()) {
+        this->_authToken._username.empty()) {
       RequestStatistics::SET_SUPERUSER(stat);
     }
   } else if (mt == MessageType::Request) {  // request
@@ -253,7 +253,7 @@ bool VstCommTask<T>::processMessage(velocypack::Buffer<uint8_t> buffer,
     // Note that currently, velocystream traffic will never come from
     // a forwarding, since we always forward with HTTP.
     if (_authMethod != AuthenticationMethod::NONE && _authorized &&
-        _authToken._username.empty()) {
+        this->_authToken._username.empty()) {
       RequestStatistics::SET_SUPERUSER(stat);
     }
 

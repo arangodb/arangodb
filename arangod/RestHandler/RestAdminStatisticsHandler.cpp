@@ -86,11 +86,11 @@ void RestAdminStatisticsHandler::getStatistics() {
   tmp.close();  // system
 
   tmp.add("client", VPackValue(VPackValueType::Object, true));
-  desc->clientStatistics(tmp, RequestStatistics::Source::ALL);
+  desc->clientStatistics(tmp, stats::RequestStatisticsSource::ALL);
   tmp.close();  // client
 
   tmp.add("clientUser", VPackValue(VPackValueType::Object, true));
-  desc->clientStatistics(tmp, RequestStatistics::Source::USER);
+  desc->clientStatistics(tmp, stats::RequestStatisticsSource::USER);
   tmp.close();  // clientUser
 
   tmp.add("http", VPackValue(VPackValueType::Object, true));

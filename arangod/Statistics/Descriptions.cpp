@@ -470,7 +470,7 @@ static void FillDistribution(VPackBuilder& b, std::string const& name,
   b.close();
 }
 
-void stats::Descriptions::clientStatistics(velocypack::Builder& b, RequestStatistics::Source source) const {
+void stats::Descriptions::clientStatistics(velocypack::Builder& b, RequestStatisticsSource source) const {
   basics::StatisticsCounter httpConnections;
   basics::StatisticsCounter totalRequests;
   std::array<basics::StatisticsCounter, basics::MethodRequestsStatisticsSize> methodRequests;

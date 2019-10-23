@@ -134,7 +134,6 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
 
   std::map<std::string, std::string> headers{_request->headers().begin(),
                                              _request->headers().end()};
-  headers.emplace(StaticStrings::RequestForwarded, "forwarded");
 
   auto& values = _request->values();
   std::string params;

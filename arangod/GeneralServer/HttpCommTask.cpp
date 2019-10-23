@@ -422,12 +422,8 @@ void HttpCommTask<T>::processRequest() {
   }
 
   // We want to separate superuser token traffic:
-  if (_request->authenticated()) {
-    bool found;
-    _request.header(StaticStrings::RequestForwarded, found);
-    if (found || _request->user().empty()) {
-      RequestStatistics::SET_SUPERUSER(statistics(1UL));
-    }
+  if (_request->authenticated() && _request->user().empty()) {
+    RequestStatistics::SET_SUPERUSER(this->statistics(1UL));
   }
 
   // first check whether we allow the request to continue
