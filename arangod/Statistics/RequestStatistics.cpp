@@ -215,13 +215,13 @@ void RequestStatistics::fill(StatisticsDistribution& totalTime,
                              StatisticsDistribution& queueTime,
                              StatisticsDistribution& ioTime, StatisticsDistribution& bytesSent,
                              StatisticsDistribution& bytesReceived,
-                             RequestStatisticsSource source) {
+                             stats::RequestStatisticsSource source) {
   if (!StatisticsFeature::enabled()) {
     // all the below objects may be deleted if we don't have statistics enabled
     return;
   }
 
-  if (source == RequestStatisticsSource::USER) {
+  if (source == stats::RequestStatisticsSource::USER) {
     totalTime = TRI_TotalTimeDistributionStatisticsUser;
     requestTime = TRI_RequestTimeDistributionStatisticsUser;
     queueTime = TRI_QueueTimeDistributionStatisticsUser;
@@ -236,7 +236,7 @@ void RequestStatistics::fill(StatisticsDistribution& totalTime,
     bytesSent = TRI_BytesSentDistributionStatistics;
     bytesReceived = TRI_BytesReceivedDistributionStatistics;
   }
-  if (source == RequestStatisticsSource::ALL) {
+  if (source == stats::RequestStatisticsSource::ALL) {
     totalTime.add(TRI_TotalTimeDistributionStatisticsUser);
     requestTime.add(TRI_RequestTimeDistributionStatisticsUser);
     queueTime.add(TRI_QueueTimeDistributionStatisticsUser);
