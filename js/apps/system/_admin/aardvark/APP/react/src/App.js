@@ -1,48 +1,48 @@
 import React, { Component } from 'react';
 import ReactDOM from 'react-dom';
-import Overview from './views/shards/overview';
-import jsoneditor from 'jsoneditor';
-import * as d3 from 'd3';
-import nvd3 from 'nvd3';
-import * as fs from 'fs';
+
+// import Overview from './views/shards/overview';
+const jsoneditor = require('jsoneditor');
+const d3 = require('d3');
+const nvd3 = require('nvd3');
+// import * as fs from 'fs';
 
 // import new react views
-import './views/shards/ShardsReactView';
+require('./views/shards/ShardsReactView');
 
 // old libraries
-// import $ from 'jquery';
-import jQuery from 'jquery';
+const jQuery = require('jquery');
 
-import Backbone from 'backbone';
-import _ from 'underscore';
-import Sigma from 'sigma';
-import Noty from 'noty';
+const Backbone = require('backbone');
+const _ = require('underscore');
+const Sigma = require('sigma');
+const Noty = require('noty');
 
 // highlight.js
-import hljs from 'highlight.js/lib/highlight';
-import json from 'highlight.js/lib/languages/json';
+const hljs = require('highlight.js/lib/highlight');
+const json = require('highlight.js/lib/languages/json');
 
 // import old based css files
-import '../../frontend/css/pure-min.css';
-import '../../frontend/ttf/arangofont/style.css';
-import '../../frontend/css/bootstrap.css';
-import '../../frontend/css/jquery.contextmenu.css';
-import '../../frontend/css/select2.css';
-import '../../frontend/css/highlightjs.css';
-import '../../frontend/css/jsoneditor.css';
-import '../../frontend/css/tippy.css';
-import '../../frontend/css/dygraph.css';
-import '../../frontend/css/leaflet.css';
-import '../../frontend/css/nv.d3.css';
-import '../../frontend/css/grids-responsive-min.css';
+require('../../frontend/css/pure-min.css');
+require('../../frontend/ttf/arangofont/style.css');
+require('../../frontend/css/bootstrap.css');
+require('../../frontend/css/jquery.contextmenu.css');
+require('../../frontend/css/select2.css');
+require('../../frontend/css/highlightjs.css');
+require('../../frontend/css/jsoneditor.css');
+require('../../frontend/css/tippy.css');
+require('../../frontend/css/dygraph.css');
+require('../../frontend/css/leaflet.css');
+require('../../frontend/css/nv.d3.css');
+require('../../frontend/css/grids-responsive-min.css');
 
 // import sass files
-import '../../frontend/scss/style.scss';
-import 'highlight.js/styles/github.css';
+require('../../frontend/scss/style.scss');
+require('highlight.js/styles/github.css');
 
 // noty css
-import "../node_modules/noty/lib/noty.css";
-import "../node_modules/noty/lib/themes/sunset.css";  
+require("../node_modules/noty/lib/noty.css");
+require("../node_modules/noty/lib/themes/sunset.css");
 
 window.JST = {};
 
@@ -126,8 +126,6 @@ window.d3 = d3;
 require('../../frontend/js/lib/leaflet.js')
 require('../../frontend/js/lib/tile.stamen.js')
 
-// require('../../frontend/js/lib/nv.d3.min.js');
-
 window.prettyBytes = require('../../frontend/js/lib/pretty-bytes.js');
 window.Dygraph = require('../../frontend/js/lib/dygraph-combined.min.js');
 require('../../frontend/js/config/dygraphConfig.js');
@@ -137,27 +135,27 @@ window.moment = require('../../frontend/js/lib/moment.min.js');
 window.sigma = Sigma;
 
 // import additional sigma plugins
-import('sigma/build/plugins/sigma.layout.forceAtlas2.min'); // workaround to work with webpack
+require('sigma/build/plugins/sigma.layout.forceAtlas2.min'); // workaround to work with webpack
 
 // additional sigma plugins
-import('../../frontend/js/lib/sigma.canvas.edges.autoCurve.js');
-import('../../frontend/js/lib/sigma.canvas.edges.curve.js');
-import('../../frontend/js/lib/sigma.canvas.edges.dashed.js');
-import('../../frontend/js/lib/sigma.canvas.edges.dotted.js');
-import('../../frontend/js/lib/sigma.canvas.edges.labels.curve.js');
-import('../../frontend/js/lib/sigma.canvas.edges.labels.curvedArrow.js');
-import('../../frontend/js/lib/sigma.canvas.edges.labels.def.js');
-import('../../frontend/js/lib/sigma.canvas.edges.tapered.js');
-import('../../frontend/js/lib/sigma.exporters.image.js');
-import('../../frontend/js/lib/sigma.layout.fruchtermanReingold.js');
-import('../../frontend/js/lib/sigma.layout.noverlap.js');
-import('../../frontend/js/lib/sigma.plugins.animate.js');
-import('../../frontend/js/lib/sigma.plugins.dragNodes.js');
-import('../../frontend/js/lib/sigma.plugins.filter.js');
-import('../../frontend/js/lib/sigma.plugins.fullScreen.js');
-import('../../frontend/js/lib/sigma.plugins.lasso.js');
-import('../../frontend/js/lib/sigma.renderers.halo.js');
-import('../../frontend/js/lib/jquery.csv.min.js');
+require('../../frontend/js/lib/sigma.canvas.edges.autoCurve.js');
+require('../../frontend/js/lib/sigma.canvas.edges.curve.js');
+require('../../frontend/js/lib/sigma.canvas.edges.dashed.js');
+require('../../frontend/js/lib/sigma.canvas.edges.dotted.js');
+require('../../frontend/js/lib/sigma.canvas.edges.labels.curve.js');
+require('../../frontend/js/lib/sigma.canvas.edges.labels.curvedArrow.js');
+require('../../frontend/js/lib/sigma.canvas.edges.labels.def.js');
+require('../../frontend/js/lib/sigma.canvas.edges.tapered.js');
+require('../../frontend/js/lib/sigma.exporters.image.js');
+require('../../frontend/js/lib/sigma.layout.fruchtermanReingold.js');
+require('../../frontend/js/lib/sigma.layout.noverlap.js');
+require('../../frontend/js/lib/sigma.plugins.animate.js');
+require('../../frontend/js/lib/sigma.plugins.dragNodes.js');
+require('../../frontend/js/lib/sigma.plugins.filter.js');
+require('../../frontend/js/lib/sigma.plugins.fullScreen.js');
+require('../../frontend/js/lib/sigma.plugins.lasso.js');
+require('../../frontend/js/lib/sigma.renderers.halo.js');
+require('../../frontend/js/lib/jquery.csv.min.js');
 
 require('../../frontend/js/lib/wheelnav.slicePath.js');
 require('../../frontend/js/lib/wheelnav.min.js');
