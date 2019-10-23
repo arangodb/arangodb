@@ -1,6 +1,10 @@
 devel
 -----
 
+* Added "smart joins for views" to the ArangoDB Enterprise Edition that allows running
+  cluster joins between two certain sharded collections or views with performance close
+  to that of a local join operation.
+
 * Upgraded bundled Boost library version to 1.71.
 
 * The General Graph document API is now consistent with the document API in its error messages.
