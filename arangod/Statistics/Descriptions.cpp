@@ -42,7 +42,7 @@ std::string stats::fromGroupType(stats::GroupType gt) {
     case stats::GroupType::Client:
       return "client";
     case stats::GroupType::ClientUser:
-      return "clientuser";
+      return "clientUser";
     case stats::GroupType::Http:
       return "http";
     case stats::GroupType::Vst:
@@ -250,6 +250,60 @@ stats::Descriptions::Descriptions()
   _figures.emplace_back(
       Figure{stats::GroupType::Client, "connectionTime", "Connection Time",
              "Total connection time of a client.", stats::FigureType::Distribution,
+             // cuts: internal.connectionTimeDistribution,
+             stats::Unit::Seconds, _connectionTimeCuts});
+
+  // Only user traffic:
+
+  _figures.emplace_back(
+      Figure{stats::GroupType::ClientUser,
+             "httpConnections",
+             "Client Connections (user)",
+             "The number of connections that are currently open (only user traffic).",
+             stats::FigureType::Current,
+             stats::Unit::Number,
+             {}});
+
+  _figures.emplace_back(
+      Figure{stats::GroupType::ClientUser, "totalTime", "Total Time (user)",
+             "Total time needed to answer a request (only user traffic).",
+             stats::FigureType::Distribution,
+             // cuts: internal.requestTimeDistribution,
+             stats::Unit::Seconds, _requestTimeCuts});
+
+  _figures.emplace_back(
+      Figure{stats::GroupType::ClientUser, "requestTime", "Request Time (user)",
+             "Request time needed to answer a request (only user traffic).",
+             stats::FigureType::Distribution,
+             // cuts: internal.requestTimeDistribution,
+             stats::Unit::Seconds, _requestTimeCuts});
+
+  _figures.emplace_back(
+      Figure{stats::GroupType::ClientUser, "queueTime", "Queue Time (user)",
+             "Queue time needed to answer a request (only user traffic).",
+             stats::FigureType::Distribution,
+             // cuts: internal.requestTimeDistribution,
+             stats::Unit::Seconds, _requestTimeCuts});
+
+  _figures.emplace_back(Figure{stats::GroupType::ClientUser, "bytesSent",
+                               "Bytes Sent (user)",
+                               "Bytes sents for a request (only user traffic).",
+                               stats::FigureType::Distribution,
+                               // cuts: internal.bytesSentDistribution,
+                               stats::Unit::Bytes, _bytesSendCuts});
+
+  _figures.emplace_back(Figure{stats::GroupType::ClientUser, "bytesReceived",
+                               "Bytes Received (user)",
+                               "Bytes received for a request (only user traffic).",
+                               stats::FigureType::Distribution,
+                               // cuts: internal.bytesReceivedDistribution,
+                               stats::Unit::Bytes, _bytesReceivedCuts});
+
+  _figures.emplace_back(
+      Figure{stats::GroupType::ClientUser, "connectionTime",
+             "Connection Time (user)",
+             "Total connection time of a client (only user traffic).",
+             stats::FigureType::Distribution,
              // cuts: internal.connectionTimeDistribution,
              stats::Unit::Seconds, _connectionTimeCuts});
 
