@@ -41,6 +41,8 @@ std::string stats::fromGroupType(stats::GroupType gt) {
       return "system";
     case stats::GroupType::Client:
       return "client";
+    case stats::GroupType::ClientUser:
+      return "clientuser";
     case stats::GroupType::Http:
       return "http";
     case stats::GroupType::Vst:
@@ -113,6 +115,9 @@ stats::Descriptions::Descriptions()
   _groups.emplace_back(Group{stats::GroupType::Client,
                              "Client Connection Statistics",
                              "Statistics about the connections."});
+  _groups.emplace_back(Group{stats::GroupType::ClientUser,
+                             "Client Connection Statistics (user traffic)",
+                             "Statistics about the connections, only user traffic (ignoring superuser JWT traffic)."});
   _groups.emplace_back(Group{stats::GroupType::Http, "HTTP Request Statistics",
                              "Statistics about the HTTP requests."});
   _groups.emplace_back(Group{stats::GroupType::Server, "Server Statistics",

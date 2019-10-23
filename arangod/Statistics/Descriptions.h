@@ -33,7 +33,7 @@
 namespace arangodb {
 namespace stats {
 
-enum class GroupType { System, Client, Http, Vst, Server };
+enum class GroupType { System, Client, ClientUser, Http, Vst, Server };
 
 std::string fromGroupType(stats::GroupType);
 
