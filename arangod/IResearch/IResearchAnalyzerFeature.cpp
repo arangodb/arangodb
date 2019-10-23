@@ -1337,7 +1337,7 @@ arangodb::Result IResearchAnalyzerFeature::ensure( // ensure analyzer existence 
 
       if (res.ok()) {
         result = std::make_pair(pool, itr.second);
-	// cppcheck-suppress unreadVariable
+        // cppcheck-suppress unreadVariable
         erase = false; // successful pool creation, cleanup not required
       }
 
