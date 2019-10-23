@@ -174,65 +174,31 @@ IResearchViewCoordinator::~IResearchViewCoordinator() {
 
 arangodb::Result IResearchViewCoordinator::appendVelocyPackImpl(
     arangodb::velocypack::Builder& builder, Serialization context) const {
-  auto flags = makeFlags();
-  switch (context) {
-    case Serialization::List:
-    break;
-    case Serialization::Properties:
-    flags = makeFlags(Serialize::Detailed);
-    break;
-    case Serialization::Persistence:
-    flags = makeFlags(Serialize::Detailed, Serialize::ForPersistence, Serialize::IncludeInProgress);
-    break;
-    case Serialization::Replication:
-    TRI_ASSERT(false);
-    break;
+  if (Serialization::List == context) {
+    // nothing more to output
+    return {};
   }
 
-  if (hasFlag(flags, Serialize::ForPersistence)) {
+  static const std::function<bool(irs::string_ref const& key)> propertiesAcceptor =
+      [](irs::string_ref const& key) -> bool {
+    return key != StaticStrings::VersionField; // ignored fields
+  };
+  static const std::function<bool(irs::string_ref const& key)> persistenceAcceptor =
+    [](irs::string_ref const&) -> bool { return true; };
+
+  auto* acceptor = &propertiesAcceptor;
+
+  if (context == Serialization::Persistence) {
     auto res = arangodb::LogicalViewHelperClusterInfo::properties(builder, *this);
 
     if (!res.ok()) {
       return res;
     }
-  }
 
-  if (!hasFlag(flags, Serialize::Detailed)) {
-    return arangodb::Result();  // nothing more to output
-  }
-
-  if (!builder.isOpenObject()) {
-    return arangodb::Result(TRI_ERROR_BAD_PARAMETER,
-                            std::string("invalid builder provided for "
-                                        "IResearchViewCoordinator definition"));
-  }
-
-  static const std::function<bool(irs::string_ref const& key)> acceptor =
-      [](irs::string_ref const& key) -> bool {
-    return key != StaticStrings::VersionField;  // ignored fields
-  };
-  static const std::function<bool(irs::string_ref const& key)> persistenceAcceptor =
-      [](irs::string_ref const&) -> bool { return true; };
-  arangodb::velocypack::Builder sanitizedBuilder;
-
-  sanitizedBuilder.openObject();
-
-  if (!_meta.json(sanitizedBuilder) ||
-      !mergeSliceSkipKeys(builder, sanitizedBuilder.close().slice(),
-                          hasFlag(flags, Serialize::ForPersistence) ? persistenceAcceptor
-                                                                    : acceptor)) {
-    return arangodb::Result(
-        TRI_ERROR_INTERNAL,
-        std::string("failure to generate definition while generating "
-                    "properties jSON for IResearch View in database '") +
-            vocbase().name() + "'");
-  }
-
-  arangodb::velocypack::Builder links;
-
-  // links are not persisted, their definitions are part of the corresponding
-  // collections
-  if (!hasFlag(flags, Serialize::ForPersistence)) {
+    acceptor = &persistenceAcceptor;
+    // links are not persisted, their definitions are part of the corresponding
+    // collections
+  } else if (context == Serialization::Properties) {
     // verify that the current user has access on all linked collections
     ExecContext const& exec = ExecContext::current();
     if (!exec.isSuperuser()) {
@@ -246,6 +212,7 @@ arangodb::Result IResearchViewCoordinator::appendVelocyPackImpl(
     ReadMutex mutex(_mutex);
     SCOPED_LOCK(mutex);  // '_collections' can be asynchronously modified
 
+    VPackBuilder links;
     links.openObject();
 
     for (auto& entry : _collections) {
@@ -256,7 +223,25 @@ arangodb::Result IResearchViewCoordinator::appendVelocyPackImpl(
     builder.add(StaticStrings::LinksField, links.slice());
   }
 
-  return arangodb::Result();
+  if (!builder.isOpenObject()) {
+    return { TRI_ERROR_BAD_PARAMETER,
+             "invalid builder provided for "
+             "IResearchViewCoordinator definition" };
+  }
+
+  VPackBuilder sanitizedBuilder;
+  sanitizedBuilder.openObject();
+
+  if (!_meta.json(sanitizedBuilder) ||
+      !mergeSliceSkipKeys(builder, sanitizedBuilder.close().slice(), *acceptor)) {
+    return { TRI_ERROR_INTERNAL,
+             std::string("failure to generate definition while generating "
+                         "properties jSON for IResearch View in database '")
+            .append(vocbase().name())
+            .append("'") };
+  }
+
+  return {};
 }
 
 /*static*/ arangodb::ViewFactory const& IResearchViewCoordinator::factory() {

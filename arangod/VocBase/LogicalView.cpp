@@ -261,8 +261,6 @@ Result LogicalView::rename(std::string&& newName) {
     builder.openObject();
     // include links so that Agency will always have a full definition
     res = impl->properties(builder, LogicalDataSource::Serialization::Persistence);
-//                           LogicalDataSource::makeFlags(LogicalDataSource::Serialize::Detailed,
-//                                                        LogicalDataSource::Serialize::ForPersistence));
 
     if (!res.ok()) {
       return res;
@@ -344,8 +342,6 @@ Result LogicalView::rename(std::string&& newName) {
     builder.openObject();
 
     auto res = view.properties(builder, LogicalDataSource::Serialization::Persistence);
-    //                    LogicalDataSource::makeFlags(LogicalDataSource::Serialize::Detailed,
-    //                                                 LogicalDataSource::Serialize::ForPersistence));
 
     if (!res.ok()) {
       return res;

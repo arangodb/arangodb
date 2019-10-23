@@ -296,9 +296,6 @@ arangodb::Result MMFilesCollection::persistProperties() {
     auto infoBuilder = _logicalCollection.toVelocyPackIgnore(
         {"path", "statusString"},
         LogicalDataSource::Serialization::Persistence);
-//        LogicalDataSource::makeFlags(LogicalDataSource::Serialize::Detailed,
-//                                     LogicalDataSource::Serialize::ForPersistence,
-//                                     LogicalDataSource::Serialize::IncludeInProgress));
     MMFilesCollectionMarker marker(TRI_DF_MARKER_VPACK_CHANGE_COLLECTION,
                                    _logicalCollection.vocbase().id(),
                                    _logicalCollection.id(), infoBuilder.slice());
@@ -2285,9 +2282,6 @@ std::shared_ptr<Index> MMFilesCollection::createIndex(transaction::Methods& trx,
     auto builder = _logicalCollection.toVelocyPackIgnore(
         {"path", "statusString"},
         LogicalDataSource::Serialization::Persistence);
-//        LogicalDataSource::makeFlags(LogicalDataSource::Serialize::Detailed,
-//                                     LogicalDataSource::Serialize::ForPersistence,
-//                                     LogicalDataSource::Serialize::IncludeInProgress));
     _logicalCollection.properties(builder.slice(),
                                   false);  // always a full-update
   }
@@ -2426,9 +2420,6 @@ bool MMFilesCollection::dropIndex(TRI_idx_iid_t iid) {
     auto builder = _logicalCollection.toVelocyPackIgnore(
         {"path", "statusString"},
         LogicalDataSource::Serialization::Persistence);
-        //LogicalDataSource::makeFlags(LogicalDataSource::Serialize::Detailed,
-        //                             LogicalDataSource::Serialize::ForPersistence,
-        //                             LogicalDataSource::Serialize::IncludeInProgress));
 
     _logicalCollection.properties(builder.slice(),
                                   false);  // always a full-update

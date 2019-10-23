@@ -403,9 +403,6 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
       auto builder = _logicalCollection.toVelocyPackIgnore(
           {"path", "statusString"},
           LogicalDataSource::Serialization::Persistence);
-         // LogicalDataSource::makeFlags(LogicalDataSource::Serialize::Detailed,
-         //                              LogicalDataSource::Serialize::ForPersistence,
-         //                              LogicalDataSource::Serialize::IncludeInProgress));
       VPackBuilder indexInfo;
       idx->toVelocyPack(indexInfo, Index::makeFlags(Index::Serialize::Internals));
       res = engine->writeCreateCollectionMarker(_logicalCollection.vocbase().id(),
@@ -488,9 +485,6 @@ bool RocksDBCollection::dropIndex(TRI_idx_iid_t iid) {
       _logicalCollection.toVelocyPackIgnore(
           {"path", "statusString"},
           LogicalDataSource::Serialization::Persistence);
-          //LogicalDataSource::makeFlags(LogicalDataSource::Serialize::Detailed,
-          //                             LogicalDataSource::Serialize::ForPersistence,
-          //                             LogicalDataSource::Serialize::IncludeInProgress));
 
   // log this event in the WAL and in the collection meta-data
   res = engine->writeCreateCollectionMarker( // write marker

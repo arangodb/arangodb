@@ -671,7 +671,7 @@ arangodb::Result LogicalCollection::appendVelocyPack(arangodb::velocypack::Build
   if (hasFlag(flags, Serialize::ForPersistence)) {
     indexFlags = Index::makeFlags(Index::Serialize::Internals);
   }
-  auto filter = [&](arangodb::Index const* idx) {
+  auto filter = [indexFlags, flags](arangodb::Index const* idx) {
     if ((hasFlag(flags, Serialize::IncludeInProgress) || !idx->inProgress()) &&
        (hasFlag(flags, Serialize::ForPersistence) || !idx->isHidden())) {
       return indexFlags;

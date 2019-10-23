@@ -264,10 +264,7 @@ bool upgradeSingleServerArangoSearchView0_1(
     arangodb::Result res;
 
     builder.openObject();
-    res = view->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence);
-//                           arangodb::LogicalDataSource::makeFlags(
-//                               arangodb::LogicalDataSource::Serialize::Detailed,
-//                               arangodb::LogicalDataSource::Serialize::ForPersistence));  // get JSON with meta + 'version'
+    res = view->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence); // get JSON with meta + 'version'
     builder.close();
 
     if (!res.ok()) {
@@ -297,9 +294,7 @@ bool upgradeSingleServerArangoSearchView0_1(
 
     builder.clear();
     builder.openObject();
-    res = view->properties(builder, arangodb::LogicalDataSource::Serialization::Properties);
-    //res = view->properties(builder, arangodb::LogicalDataSource::makeFlags(
-    //                                    arangodb::LogicalDataSource::Serialize::Detailed));  // get JSON with end-user definition
+    res = view->properties(builder, arangodb::LogicalDataSource::Serialization::Properties); // get JSON with end-user definition
     builder.close();
 
     if (!res.ok()) {

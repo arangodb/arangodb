@@ -348,34 +348,30 @@ IResearchView::~IResearchView() {
 arangodb::Result IResearchView::appendVelocyPackImpl(  // append JSON
     arangodb::velocypack::Builder& builder,            // destrination
     Serialization context) const {
-  auto flags = makeFlags();
-  switch (context) {
-    case Serialization::List:
-    break;
-    case Serialization::Properties:
-    flags = makeFlags(Serialize::Detailed);
-    break;
-    case Serialization::Persistence:
-    flags = makeFlags(Serialize::Detailed, Serialize::ForPersistence, Serialize::IncludeInProgress);
-    break;
-    case Serialization::Replication:
-    TRI_ASSERT(false);
-    break;
+  if (Serialization::List == context) {
+    // nothing more to output
+    return {};
   }
 
-  if (hasFlag(flags, Serialize::ForPersistence) &&
-      arangodb::ServerState::instance()->isSingleServer()) {
-    auto res = arangodb::LogicalViewHelperStorageEngine::properties( // storage engine properties
-      builder, *this // args
-    );
+  static const std::function<bool(irs::string_ref const& key)> propertiesAcceptor =
+      [](irs::string_ref const& key) -> bool {
+    return key != StaticStrings::VersionField; // ignored fields
+  };
+  static const std::function<bool(irs::string_ref const& key)> persistenceAcceptor =
+    [](irs::string_ref const&) -> bool { return true; };
 
-    if (!res.ok()) {
-      return res;
+  auto* acceptor = &propertiesAcceptor;
+
+  if (context == Serialization::Persistence) {
+    if (arangodb::ServerState::instance()->isSingleServer()) {
+      auto res = arangodb::LogicalViewHelperStorageEngine::properties(builder, *this);
+
+      if (!res.ok()) {
+        return res;
+      }
     }
-  }
 
-  if (!hasFlag(flags, Serialize::Detailed)) {
-    return arangodb::Result();  // nothing more to output
+    acceptor = &persistenceAcceptor;
   }
 
   if (!builder.isOpenObject()) {
@@ -385,13 +381,6 @@ arangodb::Result IResearchView::appendVelocyPackImpl(  // append JSON
   std::vector<std::string> collections;
 
   {
-    static const std::function<bool(irs::string_ref const& key)> acceptor =
-        [](irs::string_ref const& key) -> bool {
-      return key != StaticStrings::VersionField;  // ignored fields
-    };
-    static const std::function<bool(irs::string_ref const& key)> persistenceAcceptor =
-        [](irs::string_ref const&) -> bool { return true; };
-
     ReadMutex mutex(_mutex);  // '_meta'/'_links' can be asynchronously modified
     SCOPED_LOCK(mutex);
     arangodb::velocypack::Builder sanitizedBuilder;
@@ -399,9 +388,7 @@ arangodb::Result IResearchView::appendVelocyPackImpl(  // append JSON
     sanitizedBuilder.openObject();
 
     if (!_meta.json(sanitizedBuilder) ||
-        !mergeSliceSkipKeys(builder, sanitizedBuilder.close().slice(),
-                            hasFlag(flags, Serialize::ForPersistence) ? persistenceAcceptor
-                                                                      : acceptor)) {
+        !mergeSliceSkipKeys(builder, sanitizedBuilder.close().slice(), *acceptor)) {
       return arangodb::Result(
           TRI_ERROR_INTERNAL,
           std::string("failure to generate definition while generating "
@@ -409,7 +396,7 @@ arangodb::Result IResearchView::appendVelocyPackImpl(  // append JSON
               vocbase().name() + "'");
     }
 
-    if (hasFlag(flags, Serialize::ForPersistence)) {
+    if (context == Serialization::Persistence) {
       IResearchViewMetaState metaState;
 
       for (auto& entry : _links) {
@@ -418,8 +405,8 @@ arangodb::Result IResearchView::appendVelocyPackImpl(  // append JSON
 
       metaState.json(builder);
 
-      return arangodb::Result();  // nothing more to output (persistent
-                                  // configuration does not need links)
+      return {};  // nothing more to output (persistent
+                  // configuration does not need links)
     }
 
     // add CIDs of known collections to list
