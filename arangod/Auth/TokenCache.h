@@ -55,8 +55,7 @@ class TokenCache {
 
    public:
     explicit Entry(std::string const& username, bool a, double t)
-        : _username(username), _authenticated(a), _forwarded(false),
-          _expiry(t), _allowedPaths() {}
+        : _username(username), _authenticated(a), _expiry(t), _allowedPaths() {}
 
     static Entry Unauthenticated() { return Entry("", false, 0); }
 
@@ -65,16 +64,12 @@ class TokenCache {
     void authenticated(bool value) { _authenticated = value; }
     void setExpiry(double expiry) { _expiry = expiry; }
     bool expired() const { return _expiry != 0 && _expiry < TRI_microtime(); }
-    bool forwarded() const { return _forwarded; }
-    void forwarded(bool value) { _forwarded = value; }
 
    public:
     /// username
     std::string _username;
     /// User exists and password was checked
     bool _authenticated;
-    /// Token was used for forwarding:
-    bool _forwarded;
     /// expiration time (in seconds since epoch) of this entry
     double _expiry;
     // paths that are valid for this token
