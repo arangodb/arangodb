@@ -181,11 +181,24 @@ function ahuacatlSubqueryTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSubqueryOutVariableName : function () {
-      var XPResult = AQL_EXPLAIN("FOR u IN _users LET theLetVariable = (FOR j IN _users RETURN j) RETURN theLetVariable");
+      const explainResult = AQL_EXPLAIN("FOR u IN _users LET theLetVariable = (FOR j IN _users RETURN j) RETURN theLetVariable",
+        {}, {optimizer: {rules: ['-splice-subqueries']}});
 
-      var SubqueryNode = findExecutionNodes(XPResult, "SubqueryNode")[0];
+      const subqueryNode = findExecutionNodes(explainResult, "SubqueryNode")[0];
 
-      assertEqual(SubqueryNode.outVariable.name, "theLetVariable");
+      assertEqual(subqueryNode.outVariable.name, "theLetVariable");
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test splice-subqueries optimization
+////////////////////////////////////////////////////////////////////////////////
+
+    testSpliceSubqueryOutVariableName : function () {
+      const explainResult = AQL_EXPLAIN("FOR u IN _users LET theLetVariable = (FOR j IN _users RETURN j) RETURN theLetVariable");
+
+      const subqueryEndNode = findExecutionNodes(explainResult, "SubqueryEndNode")[0];
+
+      assertEqual(subqueryEndNode.outVariable.name, "theLetVariable");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
