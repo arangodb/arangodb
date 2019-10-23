@@ -1,0 +1,85 @@
+# Boost.Geometry (aka GGL, Generic Geometry Library)
+#
+# Copyright (c) 2007-2015 Barend Gehrels, Amsterdam, the Netherlands.
+# Copyright (c) 2008-2015 Bruno Lalande, Paris, France.
+# Copyright (c) 2009-2015 Mateusz Loskot, London, UK.
+# Copyright (c) 2018 Adam Wulkiewicz, Lodz, Poland.
+#
+# This file was modified by Oracle on 2014, 2015, 2016, 2017.
+# Modifications copyright (c) 2014-2017, Oracle and/or its affiliates.
+#
+# Contributed and/or modified by Vissarion Fisikopoulos, on behalf of Oracle
+# Contributed and/or modified by Menelaos Karavelas, on behalf of Oracle
+# Contributed and/or modified by Adam Wulkiewicz, on behalf of Oracle
+#
+# Use, modification and distribution is subject to the Boost Software License,
+# Version 1.0. (See accompanying file LICENSE_1_0.txt or copy at
+# http://www.boost.org/LICENSE_1_0.txt)
+
+test-suite boost-geometry-algorithms
+    :
+    [ run append.cpp                   : : : : algorithms_append ]
+    [ run assign.cpp                   : : : : algorithms_assign ]
+    [ run centroid.cpp                 : : : : algorithms_centroid ]
+    [ run centroid_multi.cpp           : : : : algorithms_centroid_multi ]
+    [ run comparable_distance.cpp      : : : : algorithms_comparable_distance ]
+    [ run convert.cpp                  : : : : algorithms_convert ]
+    [ run convert_multi.cpp            : : : : algorithms_convert_multi ]
+    [ run convex_hull.cpp              : : : : algorithms_convex_hull ]
+    [ run convex_hull_multi.cpp        : : : : algorithms_convex_hull_multi ]
+    [ run correct.cpp                  : : : : algorithms_correct ]
+    [ run correct_multi.cpp            : : : : algorithms_correct_multi ]
+    [ run correct_closure.cpp          : : : : algorithms_correct_closure ]
+    [ run densify.cpp                  : : : : algorithms_densify ]
+    [ run for_each.cpp                 : : : : algorithms_for_each ]
+    [ run for_each_multi.cpp           : : : : algorithms_for_each_multi ]
+    [ run is_convex.cpp                : : : : algorithms_is_convex ]
+    [ run is_empty.cpp                 : : : : algorithms_is_empty ]
+    [ run is_simple.cpp                : : : : algorithms_is_simple ]
+    [ run is_simple_geo.cpp            : : : : algorithms_is_simple_geo ]
+    [ run is_valid.cpp                 : : : : algorithms_is_valid ]
+    [ run is_valid_failure.cpp         : : : : algorithms_is_valid_failure ]
+    [ run is_valid_geo.cpp             : : : : algorithms_is_valid_geo ]
+    [ run line_interpolate.cpp         : : : : algorithms_line_interpolate ]
+    [ run make.cpp                     : : : : algorithms_make ]
+    [ run maximum_gap.cpp              : : : : algorithms_maximum_gap ]
+    [ run num_geometries.cpp           : : : : algorithms_num_geometries ]
+    [ run num_geometries_multi.cpp     : : : : algorithms_num_geometries_multi ]
+    [ run num_interior_rings.cpp       : : : : algorithms_num_interior_rings ]
+    [ run num_interior_rings_multi.cpp : : : : algorithms_num_interior_rings_multi ]
+    [ run num_points.cpp               : : : : algorithms_num_points ]
+    [ run num_points_multi.cpp         : : : : algorithms_num_points_multi ]
+    [ run num_segments.cpp             : : : : algorithms_segments ]
+    [ run perimeter.cpp                : : : : algorithms_perimeter ]
+    [ run perimeter_multi.cpp          : : : : algorithms_perimeter_multi ]
+    [ run point_on_surface.cpp         : : : : algorithms_point_on_surface ]
+    [ run remove_spikes.cpp            : : : : algorithms_remove_spikes ]
+    [ run reverse.cpp                  : : : : algorithms_reverse ]
+    [ run reverse_multi.cpp            : : : : algorithms_reverse_multi ]
+    [ run simplify.cpp                 : : : : algorithms_simplify ]
+    [ run simplify_multi.cpp           : : : : algorithms_simplify_multi ]
+    [ run transform.cpp                : : : : algorithms_transform ]
+    [ run transform_multi.cpp          : : : : algorithms_transform_multi ]
+    [ run unique.cpp                   : : : : algorithms_unique ]
+    [ run unique_multi.cpp             : : : : algorithms_unique_multi ]
+    ;
+
+build-project area ;
+build-project buffer ;
+build-project covered_by ;
+build-project crosses ;
+build-project detail ;
+build-project disjoint ;
+build-project distance ;
+build-project envelope_expand ;
+build-project equals ;
+build-project intersects ;
+build-project length ;
+build-project overlaps ;
+build-project overlay ;
+build-project perimeter ;
+build-project relate ;
+build-project set_operations ;
+build-project similarity ;
+build-project touches ;
+build-project within ;

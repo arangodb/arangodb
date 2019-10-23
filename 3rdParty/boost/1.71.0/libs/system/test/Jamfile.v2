@@ -1,0 +1,71 @@
+# Boost System Library test Jamfile
+
+# Copyright Beman Dawes 2003, 2006
+# Copyright 2017-2019 Peter Dimov
+
+# Distributed under the Boost Software License, Version 1.0.
+# See accompanying file LICENSE_1_0.txt or http://www.boost.org/LICENSE_1_0.txt
+
+# See library home page at http://www.boost.org/libs/system
+
+import testing ;
+
+rule system-run ( sources + )
+{
+    local result ;
+
+    result += [ run $(sources) ] ;
+    result += [ run $(sources) : : : <library>/boost/system//boost_system <link>static : $(sources[1]:B)_static ] ;
+    result += [ run $(sources) : : : <library>/boost/system//boost_system <link>shared : $(sources[1]:B)_shared ] ;
+    result += [ run $(sources) : : : <define>BOOST_NO_ANSI_APIS : $(sources[1]:B)_no_ansi ] ;
+    result += [ run $(sources) : : : <define>BOOST_SYSTEM_USE_UTF8 : $(sources[1]:B)_utf8 ] ;
+
+    return $(result) ;
+}
+
+system-run error_code_test.cpp ;
+system-run error_code_user_test.cpp ;
+system-run system_error_test.cpp ;
+
+lib throw_test : throw_test.cpp : <link>shared:<define>THROW_DYN_LINK=1 ;
+
+run dynamic_link_test.cpp throw_test : : : <link>shared : throw_test_shared ;
+
+system-run initialization_test.cpp ;
+system-run header_only_test.cpp ;
+
+run config_test.cpp : : : <test-info>always_show_run_output ;
+
+system-run std_interop_test.cpp ;
+system-run std_mismatch_test.cpp ;
+
+lib single_instance_lib1 : single_instance_1.cpp : <link>shared:<define>SINGLE_INSTANCE_DYN_LINK ;
+lib single_instance_lib2 : single_instance_2.cpp : <link>shared:<define>SINGLE_INSTANCE_DYN_LINK ;
+
+system-run single_instance_test.cpp single_instance_1.cpp single_instance_2.cpp ;
+run single_instance_test.cpp single_instance_lib1 single_instance_lib2 : : : <link>static : single_instance_lib_static ;
+run single_instance_test.cpp single_instance_lib1 single_instance_lib2 : : : <link>shared : single_instance_lib_shared ;
+
+system-run before_main_test.cpp ;
+run-fail throws_assign_fail.cpp ;
+system-run constexpr_test.cpp ;
+system-run win32_hresult_test.cpp ;
+
+system-run error_category_test.cpp ;
+system-run generic_category_test.cpp ;
+system-run system_category_test.cpp ;
+system-run after_main_test.cpp ;
+system-run failed_test.cpp ;
+system-run failed_constexpr_test.cpp ;
+
+# Quick (CI) test
+run quick.cpp ;
+
+run warnings_test.cpp : : : <warnings>all <warnings-as-errors>on <toolset>gcc:<cxxflags>-Wnon-virtual-dtor <toolset>clang:<cxxflags>-Wnon-virtual-dtor ;
+
+lib std_single_instance_lib1 : std_single_instance_1.cpp : <link>shared:<define>STD_SINGLE_INSTANCE_DYN_LINK ;
+lib std_single_instance_lib2 : std_single_instance_2.cpp : <link>shared:<define>STD_SINGLE_INSTANCE_DYN_LINK ;
+
+system-run std_single_instance_test.cpp std_single_instance_1.cpp std_single_instance_2.cpp ;
+run std_single_instance_test.cpp std_single_instance_lib1 std_single_instance_lib2 : : : <link>static : std_single_instance_lib_static ;
+run std_single_instance_test.cpp std_single_instance_lib1 std_single_instance_lib2 : : : <link>shared <define>STD_SINGLE_INSTANCE_SHARED : std_single_instance_lib_shared ;
