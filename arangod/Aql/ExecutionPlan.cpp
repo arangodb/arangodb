@@ -1275,7 +1275,8 @@ ExecutionNode* ExecutionPlan::fromNodeLet(ExecutionNode* previous, AstNode const
       // the LET. and don't create the LET
 
       subquery->replaceOutVariable(v);
-      return subquery;
+      // TODO Local fix of #10304. Remove this note after #10304 is merged back.
+      return previous;
     }
     // otherwise fall-through to normal behavior
 
