@@ -106,14 +106,17 @@ Result SimpleModifier<ModifierCompletion, Enable>::setupIterator(ModifierIterato
 
 template <typename ModifierCompletion, typename Enable>
 bool SimpleModifier<ModifierCompletion, Enable>::isFinishedIterator() {
-  // TODO: Spray in some assserts
   return _operationsIterator == _operations.end();
 }
 
 template <typename ModifierCompletion, typename Enable>
 void SimpleModifier<ModifierCompletion, Enable>::advanceIterator() {
+  // Only move results on if there has been a document
+  // submitted to the transaction
+  if (_operationsIterator->first == ModOperationType::APPLY_RETURN) {
+    _resultsIterator++;
+  }
   _operationsIterator++;
-  _resultsIterator++;
 }
 
 template <typename ModifierCompletion, typename Enable>
@@ -126,11 +129,6 @@ size_t SimpleModifier<ModifierCompletion, Enable>::getBatchSize() const {
   return _batchSize;
 }
 
-// TODO: This is a bit ugly, explain at least what's going on
-//       can we use local variables and just rely on the compiler not doing
-//       anything silly?
-// The ModifierOuptut is a triple consisting of the ModOperationType, the InputRow,
-// and the result returned by the transaction method called in transact.
 template <typename ModifierCompletion, typename Enable>
 ModifierOutput SimpleModifier<ModifierCompletion, Enable>::getOutput() {
   switch (_iteratorMode) {

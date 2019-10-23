@@ -64,7 +64,7 @@ std::ostream& operator<<(std::ostream& ostream, ModifierIteratorMode mode) {
 
 template <typename FetcherType, typename ModifierType>
 ModificationExecutor<FetcherType, ModifierType>::ModificationExecutor(Fetcher& fetcher,
-                                                                        Infos& infos)
+                                                                      Infos& infos)
     : _lastState(ExecutionState::HASMORE), _infos(infos), _fetcher(fetcher), _modifier(infos) {
   // In MMFiles we need to make sure that the data is not moved in memory or collected
   // for this collection as soon as we start writing to it.
@@ -115,7 +115,7 @@ ModificationExecutor<FetcherType, ModifierType>::doCollect(size_t const maxOutpu
 // Outputs accumulated results, and counts the statistics
 template <typename FetcherType, typename ModifierType>
 void ModificationExecutor<FetcherType, ModifierType>::doOutput(OutputAqlItemRow& output,
-                                                                Stats& stats) {
+                                                               Stats& stats) {
   // If we have made no modifications or are silent,
   // we can just copy rows; this is an optimisation for silent
   // queries
@@ -139,7 +139,6 @@ void ModificationExecutor<FetcherType, ModifierType>::doOutput(OutputAqlItemRow&
     InputAqlItemRow row{CreateInvalidInputRowHint{}};
     VPackSlice elm;
 
-    // TODO: Make this a proper iterator
     _modifier.setupIterator(ModifierIteratorMode::Full);
     while (!_modifier.isFinishedIterator()) {
       std::tie(modOp, row, elm) = _modifier.getOutput();
@@ -154,19 +153,13 @@ void ModificationExecutor<FetcherType, ModifierType>::doOutput(OutputAqlItemRow&
               output.moveValueInto(_infos._outputNewRegisterId, row, guard);
             }
             if (_infos._options.returnOld) {
-              // TODO: prettier
-              auto slice = elm.get(StaticStrings::Old);
-              if (slice.isNone()) {
-                slice = VPackSlice::nullSlice();
-              }
-              AqlValue value(slice);
+              AqlValue value(elm.get(StaticStrings::Old));
               AqlValueGuard guard(value, true);
               output.moveValueInto(_infos._outputOldRegisterId, row, guard);
             }
             if (_infos._doCount) {
               stats.incrWritesExecuted();
             }
-            // What if we neither return old or new? we can't advance row then...
             break;
           }
           case ModOperationType::IGNORE_RETURN: {

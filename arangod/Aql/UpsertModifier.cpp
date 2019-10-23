@@ -220,6 +220,8 @@ void UpsertModifier::advanceIterator() {
     } else if (_operationsIterator->first == ModOperationType::APPLY_INSERT) {
       _insertResultsIterator++;
     }
+    // If IGNORE_SKIP or IGNORE_RETURN the transaction results will
+    // not have an entry for this, so do not move any iterator.
   }
   _operationsIterator++;
 }
