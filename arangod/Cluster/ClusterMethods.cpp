@@ -2248,9 +2248,10 @@ Future<OperationResult> modifyDocumentOnCoordinator(
       std::string url;
       if (!useMultiple) { // send to single API
         VPackStringRef const key(slice.get(StaticStrings::KeyString));
-        url = StringUtils::urlEncode(shard) + "/" + StringUtils::urlEncode(key.data(), key.size());
+        url = "/_api/document/" + StringUtils::urlEncode(shard) + "/" +
+              StringUtils::urlEncode(key.data(), key.size());
       } else {
-        url = StringUtils::urlEncode(shard);
+        url = "/_api/document/" + StringUtils::urlEncode(shard);
       }
       futures.emplace_back(
           network::sendRequestRetry(pool, "shard:" + shard, restVerb,
