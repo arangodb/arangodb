@@ -20,7 +20,7 @@ devel
   `distributeShardsLike` in case the prototype is a system collection, and the prototype
   should be moved to another server.
 
-* RClone URL normalization.
+* Rclone URL normalization.
 
 * Fixed unintended multiple unlock commands from coordinator to
   transaction locked db servers.
