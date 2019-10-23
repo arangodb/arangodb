@@ -21,6 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <algorithm>
+#include <random>
 #include <vector>
 
 #include "gtest/gtest.h"
@@ -37,7 +38,9 @@ std::vector<std::size_t> permutation(std::size_t n) {
     v.emplace_back(i);
   }
 
-  std::random_shuffle(v.begin(), v.end());
+  std::random_device rd;
+  std::mt19937_64 g(rd());
+  std::shuffle(v.begin(), v.end(), g);
 
   return v;
 }
