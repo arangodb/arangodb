@@ -40,14 +40,9 @@ using namespace arangodb;
 using namespace arangodb::pregel;
 
 RecoveryManager::RecoveryManager(ClusterInfo& ci)
-    : _ci(ci) {}  //(AgencyCallbackRegistry* registry){}
-// : _agencyCallbackRegistry(registry)
+    : _ci(ci) {} 
 
 RecoveryManager::~RecoveryManager() {
-  //  for (auto const& call : _agencyCallbacks) {
-  //    _agencyCallbackRegistry->unregisterCallback(call.second);
-  //  }
-  //  _agencyCallbacks.clear();
   _listeners.clear();
 }
 
@@ -58,12 +53,6 @@ void RecoveryManager::stopMonitoring(Conductor* listener) {
     if (pair.second.find(listener) != pair.second.end()) {
       pair.second.erase(listener);
     }
-    //    if (pair.second.size() == 0) {
-    //      std::shared_ptr<AgencyCallback> callback =
-    //      _agencyCallbacks[pair.first];
-    //      _agencyCallbackRegistry->unregisterCallback(callback);
-    //      _agencyCallbacks.erase(pair.first);
-    //    }
   }
 }
 
