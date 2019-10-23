@@ -25,6 +25,8 @@
 #include "Aql/AqlValue.h"
 #include "Aql/Collection.h"
 #include "Aql/ModificationExecutor.h"
+#include "Aql/ModificationExecutorAccumulator.h"
+#include "Aql/ModificationExecutorHelpers.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Basics/Common.h"
 #include "Transaction/Methods.h"
@@ -46,7 +48,7 @@ UpdateReplaceModifierCompletion::UpdateReplaceModifierCompletion(ModificationExe
 
 UpdateReplaceModifierCompletion::~UpdateReplaceModifierCompletion() = default;
 
-ModOperationType UpdateReplaceModifierCompletion::accumulate(VPackBuilder& accu,
+ModOperationType UpdateReplaceModifierCompletion::accumulate(ModificationExecutorAccumulator& accu,
                                                              InputAqlItemRow& row) {
   std::string key, rev;
   Result result;

@@ -24,7 +24,7 @@
 #define ARANGOD_AQL_INSERT_MODIFIER_H
 
 #include "Aql/ModificationExecutor.h"
-#include "Aql/ModificationExecutorHelpers.h"
+#include "Aql/ModificationExecutorAccumulator.h"
 #include "Aql/ModificationExecutorInfos.h"
 
 namespace arangodb {
@@ -37,7 +37,7 @@ class InsertModifierCompletion {
   InsertModifierCompletion(ModificationExecutorInfos& infos);
   ~InsertModifierCompletion();
 
-  ModOperationType accumulate(VPackBuilder& accu, InputAqlItemRow& row);
+  ModOperationType accumulate(ModificationExecutorAccumulator& accu, InputAqlItemRow& row);
   OperationResult transact(VPackSlice const& data);
 
  private:

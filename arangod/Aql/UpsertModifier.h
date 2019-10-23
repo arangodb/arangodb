@@ -24,6 +24,7 @@
 #define ARANGOD_AQL_UPSERT_MODIFIER_H
 
 #include "Aql/ModificationExecutor.h"
+#include "Aql/ModificationExecutorAccumulator.h"
 #include "Aql/ModificationExecutorInfos.h"
 
 #include "Aql/InsertModifier.h"
@@ -44,7 +45,6 @@ class UpsertModifier {
   ~UpsertModifier();
 
   void reset();
-  void close();
 
   Result accumulate(InputAqlItemRow& row);
   Result transact();
@@ -61,14 +61,14 @@ class UpsertModifier {
   size_t getBatchSize() const;
 
  private:
-  ModOperationType updateReplaceCase(VPackBuilder& accu, AqlValue const& inDoc,
-                                     AqlValue const& updateDoc);
-  ModOperationType insertCase(VPackBuilder& accu, AqlValue const& insertDoc);
+  ModOperationType updateReplaceCase(ModificationExecutorAccumulator& accu,
+                                     AqlValue const& inDoc, AqlValue const& updateDoc);
+  ModOperationType insertCase(ModificationExecutorAccumulator& accu, AqlValue const& insertDoc);
 
   ModificationExecutorInfos& _infos;
   std::vector<ModOp> _operations;
-  VPackBuilder _insertAccumulator;
-  VPackBuilder _updateAccumulator;
+  std::unique_ptr<ModificationExecutorAccumulator> _insertAccumulator;
+  std::unique_ptr<ModificationExecutorAccumulator> _updateAccumulator;
 
   OperationResult _updateResults;
   OperationResult _insertResults;

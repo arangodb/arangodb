@@ -24,9 +24,11 @@
 
 #include "Aql/AqlValue.h"
 #include "Aql/Collection.h"
+#include "Aql/ModificationExecutor.h"
+#include "Aql/ModificationExecutorAccumulator.h"
+#include "Aql/ModificationExecutorHelpers.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Basics/Common.h"
-#include "ModificationExecutor.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -44,7 +46,7 @@ RemoveModifierCompletion::RemoveModifierCompletion(ModificationExecutorInfos& in
 
 RemoveModifierCompletion::~RemoveModifierCompletion() = default;
 
-ModOperationType RemoveModifierCompletion::accumulate(VPackBuilder& accu,
+ModOperationType RemoveModifierCompletion::accumulate(ModificationExecutorAccumulator& accu,
                                                       InputAqlItemRow& row) {
   std::string key, rev;
   Result result;

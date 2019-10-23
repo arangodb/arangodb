@@ -25,9 +25,10 @@
 #include "Aql/AqlValue.h"
 #include "Aql/Collection.h"
 #include "Aql/ExecutionBlock.h"
+#include "Aql/ModificationExecutor.h"
+#include "Aql/ModificationExecutorHelpers.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Basics/Common.h"
-#include "ModificationExecutor.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Collection.h>
@@ -45,6 +46,7 @@ template <class ModifierCompletion, typename Enable>
 SimpleModifier<ModifierCompletion, Enable>::SimpleModifier(ModificationExecutorInfos& infos)
     : _infos(infos),
       _completion(infos),
+      _accumulator(nullptr),
       _resultsIterator(VPackSlice::emptyArraySlice()),
       _batchSize(ExecutionBlock::DefaultBatchSize()) {}
 
@@ -53,31 +55,22 @@ SimpleModifier<ModifierCompletion, Enable>::~SimpleModifier() = default;
 
 template <typename ModifierCompletion, typename Enable>
 void SimpleModifier<ModifierCompletion, Enable>::reset() {
-  _accumulator.clear();
+  _accumulator.reset(new ModificationExecutorAccumulator());
   _operations.clear();
   _results = OperationResult{};
-  _accumulator.openArray();
-}
-
-template <typename ModifierCompletion, typename Enable>
-void SimpleModifier<ModifierCompletion, Enable>::close() {
-  _accumulator.close();
-  TRI_ASSERT(_accumulator.isClosed());
 }
 
 template <typename ModifierCompletion, typename Enable>
 Result SimpleModifier<ModifierCompletion, Enable>::accumulate(InputAqlItemRow& row) {
-  auto result = _completion.accumulate(_accumulator, row);
-  TRI_ASSERT(!_accumulator.isClosed());
+  TRI_ASSERT(_accumulator != nullptr);
+  auto result = _completion.accumulate(*_accumulator.get(), row);
   _operations.push_back({result, row});
   return Result{};
 }
 
 template <typename ModifierCompletion, typename Enable>
 void SimpleModifier<ModifierCompletion, Enable>::transact() {
-  TRI_ASSERT(_accumulator.isClosed());
-  TRI_ASSERT(_accumulator.slice().isArray());
-  _results = _completion.transact(_accumulator.slice());
+  _results = _completion.transact(_accumulator->closeAndGetContents());
 
   throwOperationResultException(_infos, _results);
 }
@@ -89,8 +82,7 @@ size_t SimpleModifier<ModifierCompletion, Enable>::nrOfOperations() const {
 
 template <typename ModifierCompletion, typename Enable>
 size_t SimpleModifier<ModifierCompletion, Enable>::nrOfDocuments() const {
-  TRI_ASSERT(_accumulator.slice().isArray());
-  return _accumulator.slice().length();
+  return _accumulator->nrOfDocuments();
 }
 
 template <typename ModifierCompletion, typename Enable>

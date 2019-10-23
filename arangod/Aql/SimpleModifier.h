@@ -23,6 +23,7 @@
 #ifndef ARANGOD_AQL_SIMPLE_MODIFIER_H
 #define ARANGOD_AQL_SIMPLE_MODIFIER_H
 
+#include "Aql/ModificationExecutorAccumulator.h"
 #include "Aql/ModificationExecutorInfos.h"
 
 #include "Aql/InsertModifier.h"
@@ -82,7 +83,6 @@ class SimpleModifier {
   ~SimpleModifier();
 
   void reset();
-  void close();
 
   Result accumulate(InputAqlItemRow& row);
   void transact();
@@ -109,7 +109,7 @@ class SimpleModifier {
   ModifierCompletion _completion;
 
   std::vector<ModOp> _operations;
-  VPackBuilder _accumulator;
+  std::unique_ptr<ModificationExecutorAccumulator> _accumulator;
 
   OperationResult _results;
 

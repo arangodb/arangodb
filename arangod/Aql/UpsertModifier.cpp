@@ -25,6 +25,7 @@
 #include "Aql/AqlValue.h"
 #include "Aql/Collection.h"
 #include "Aql/ModificationExecutor.h"
+#include "Aql/ModificationExecutorAccumulator.h"
 #include "Aql/ModificationExecutorHelpers.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Basics/Common.h"
@@ -56,25 +57,17 @@ UpsertModifier::UpsertModifier(ModificationExecutorInfos& infos)
 UpsertModifier::~UpsertModifier() = default;
 
 void UpsertModifier::reset() {
-  _insertAccumulator.clear();
-  _insertAccumulator.openArray();
+  _insertAccumulator.reset(new ModificationExecutorAccumulator());
   _insertResults = OperationResult{};
 
-  _updateAccumulator.clear();
-  _updateAccumulator.openArray();
+  _updateAccumulator.reset(new ModificationExecutorAccumulator());
   _updateResults = OperationResult{};
 
   _operations.clear();
 }
 
-void UpsertModifier::close() {
-  _insertAccumulator.close();
-  _updateAccumulator.close();
-  TRI_ASSERT(_insertAccumulator.isClosed());
-  TRI_ASSERT(_updateAccumulator.isClosed());
-}
-
-ModOperationType UpsertModifier::updateReplaceCase(VPackBuilder& accu, AqlValue const& inDoc,
+ModOperationType UpsertModifier::updateReplaceCase(ModificationExecutorAccumulator& accu,
+                                                   AqlValue const& inDoc,
                                                    AqlValue const& updateDoc) {
   std::string key, rev;
   Result result;
@@ -92,7 +85,8 @@ ModOperationType UpsertModifier::updateReplaceCase(VPackBuilder& accu, AqlValue 
 
         buildKeyDocument(keyDocBuilder, key, rev);
 
-        VPackCollection::merge(accu, toUpdate, keyDocBuilder.slice(), false, false);
+        auto merger = VPackCollection::merge(toUpdate, keyDocBuilder.slice(), false, false);
+        accu.add(merger.slice());
 
         return ModOperationType::APPLY_UPDATE;
       } else {
@@ -113,7 +107,8 @@ ModOperationType UpsertModifier::updateReplaceCase(VPackBuilder& accu, AqlValue 
   }
 }
 
-ModOperationType UpsertModifier::insertCase(VPackBuilder& accu, AqlValue const& insertDoc) {
+ModOperationType UpsertModifier::insertCase(ModificationExecutorAccumulator& accu,
+                                            AqlValue const& insertDoc) {
   if (insertDoc.isObject()) {
     auto const& toInsert = insertDoc.slice();
     if (writeRequired(_infos, toInsert, StaticStrings::Empty)) {
@@ -147,24 +142,24 @@ Result UpsertModifier::accumulate(InputAqlItemRow& row) {
   // update that document, otherwise, we insert
   if (inDoc.isObject()) {
     auto updateDoc = row.getValue(updateReg);
-    result = updateReplaceCase(_updateAccumulator, inDoc, updateDoc);
+    result = updateReplaceCase(*_updateAccumulator.get(), inDoc, updateDoc);
   } else {
     auto insertDoc = row.getValue(insertReg);
-    result = insertCase(_insertAccumulator, insertDoc);
+    result = insertCase(*_insertAccumulator.get(), insertDoc);
   }
   _operations.push_back({result, row});
   return Result{};
 }
 
 Result UpsertModifier::transact() {
-  auto toInsert = _insertAccumulator.slice();
+  auto toInsert = _insertAccumulator->closeAndGetContents();
   if (toInsert.isArray() && toInsert.length() > 0) {
     _insertResults =
         _infos._trx->insert(_infos._aqlCollection->name(), toInsert, _infos._options);
     throwOperationResultException(_infos, _insertResults);
   }
 
-  auto toUpdate = _updateAccumulator.slice();
+  auto toUpdate = _updateAccumulator->closeAndGetContents();
   if (toUpdate.isArray() && toUpdate.length() > 0) {
     if (_infos._isReplace) {
       _updateResults = _infos._trx->replace(_infos._aqlCollection->name(),
@@ -180,7 +175,7 @@ Result UpsertModifier::transact() {
 }
 
 size_t UpsertModifier::nrOfDocuments() const {
-  return _insertAccumulator.slice().length() + _updateAccumulator.slice().length();
+  return _insertAccumulator->nrOfDocuments() + _updateAccumulator->nrOfDocuments();
 }
 
 size_t UpsertModifier::nrOfOperations() const { return _operations.size(); }

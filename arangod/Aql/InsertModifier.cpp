@@ -24,6 +24,7 @@
 
 #include "Aql/AqlValue.h"
 #include "Aql/Collection.h"
+#include "Aql/ModificationExecutorHelpers.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Basics/Common.h"
 #include "ModificationExecutor.h"
@@ -44,7 +45,7 @@ InsertModifierCompletion::InsertModifierCompletion(ModificationExecutorInfos& in
 
 InsertModifierCompletion::~InsertModifierCompletion() = default;
 
-ModOperationType InsertModifierCompletion::accumulate(VPackBuilder& accu,
+ModOperationType InsertModifierCompletion::accumulate(ModificationExecutorAccumulator& accu,
                                                       InputAqlItemRow& row) {
   RegisterId const inDocReg = _infos._input1RegisterId;
 

@@ -85,7 +85,6 @@ ModificationExecutor<FetcherType, ModifierType>::~ModificationExecutor() = defau
 
 // Fetches as many rows as possible from upstream using the fetcher's fetchRow
 // method and accumulates results through the modifier
-// TODO: Perhaps we can remove stats here?
 template <typename FetcherType, typename ModifierType>
 std::pair<ExecutionState, typename ModificationExecutor<FetcherType, ModifierType>::Stats>
 ModificationExecutor<FetcherType, ModifierType>::doCollect(size_t const maxOutputs) {
@@ -220,7 +219,6 @@ ModificationExecutor<FetcherType, ModifierType>::produceRows(OutputAqlItemRow& o
 
   TRI_ASSERT(_lastState == ExecutionState::DONE || _lastState == ExecutionState::HASMORE);
 
-  _modifier.close();
   _modifier.transact();
 
   doOutput(output, stats);
