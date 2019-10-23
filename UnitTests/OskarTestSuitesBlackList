@@ -12,3 +12,4 @@ resilience_transactions
 paths_server
 wal_cleanup
 hot_backup
+http_webif
