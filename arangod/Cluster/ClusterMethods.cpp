@@ -1928,8 +1928,7 @@ int fetchEdgesFromEngines(
       // Response has invalid format
       return TRI_ERROR_HTTP_CORRUPTED_JSON;
     }
-    read += Helper::getNumericValue<size_t>(resSlice,
-                                                              "readIndex", 0);
+    read += Helper::getNumericValue<size_t>(resSlice, "readIndex", 0);
 
     bool allCached = true;
     VPackSlice edges = resSlice.get("edges");
@@ -1974,14 +1973,14 @@ void fetchVerticesFromEngines(
     std::unordered_map<arangodb::velocypack::StringRef, VPackSlice>& result,
     std::vector<std::shared_ptr<VPackBufferUInt8>>& datalake,
     bool forShortestPath) {
+
   // TODO map id => ServerID if possible
   // And go fast-path
 
   // slow path, sharding not deducable from _id
   transaction::BuilderLeaser leased(&trx);
   leased->openObject();
-  leased->add(VPackValue("keys"));
-  leased->openArray();
+  leased->add("keys", VPackValue(VPackValueType::Array));
   for (auto const& v : vertexIds) {
     leased->add(VPackValuePair(v.data(), v.length(), VPackValueType::String));
   }
@@ -2025,7 +2024,7 @@ void fetchVerticesFromEngines(
     }
     
     bool cached = false;
-    for (auto pair : VPackObjectIterator(resSlice)) {
+    for (auto pair : VPackObjectIterator(resSlice, true)) {
       arangodb::velocypack::StringRef key(pair.key);
       if (vertexIds.erase(key) == 0) {
         // We either found the same vertex twice,
