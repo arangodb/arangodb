@@ -23,7 +23,7 @@
 #ifndef ARANGOD_AQL_INSERT_MODIFIER_H
 #define ARANGOD_AQL_INSERT_MODIFIER_H
 
-#include "Aql/ModificationExecutor2.h"
+#include "Aql/ModificationExecutor.h"
 #include "Aql/ModificationExecutorHelpers.h"
 #include "Aql/ModificationExecutorInfos.h"
 

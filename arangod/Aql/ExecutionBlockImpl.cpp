@@ -47,7 +47,7 @@
 #include "Aql/KShortestPathsExecutor.h"
 #include "Aql/LimitExecutor.h"
 #include "Aql/MaterializeExecutor.h"
-#include "Aql/ModificationExecutor2.h"
+#include "Aql/ModificationExecutor.h"
 #include "Aql/MultiDependencySingleRowFetcher.h"
 #include "Aql/NoResultsExecutor.h"
 #include "Aql/Query.h"

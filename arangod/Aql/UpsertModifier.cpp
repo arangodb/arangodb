@@ -24,7 +24,7 @@
 
 #include "Aql/AqlValue.h"
 #include "Aql/Collection.h"
-#include "Aql/ModificationExecutor2.h"
+#include "Aql/ModificationExecutor.h"
 #include "Aql/ModificationExecutorHelpers.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Basics/Common.h"

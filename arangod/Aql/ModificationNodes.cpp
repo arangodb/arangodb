@@ -31,7 +31,7 @@
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/VariableGenerator.h"
 
-#include "Aql/ModificationExecutor2.h"
+#include "Aql/ModificationExecutor.h"
 #include "Aql/ModificationExecutorHelpers.h"
 #include "Aql/SimpleModifier.h"
 #include "Aql/UpsertModifier.h"
