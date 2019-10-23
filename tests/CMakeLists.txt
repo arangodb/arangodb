@@ -255,6 +255,7 @@ target_link_libraries(arangodbtests
   rocksdb
   snappy
   gtest
+  boost_boost
 )
 
 if (USE_ENTERPRISE)

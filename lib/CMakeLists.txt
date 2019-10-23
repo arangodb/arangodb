@@ -230,6 +230,14 @@ target_link_libraries(arango
   ${SYSTEM_LIBRARIES}
 )
 
+# Rebuild generated error files so they are up-to-date when all
+# dependent stuff is built
+if (USE_MAINTAINER_MODE)
+  add_dependencies(arango errorfiles)
+  add_dependencies(arango exitcodefiles)
+endif ()
+
+
 # Enterprise
 if (USE_ENTERPRISE)
   target_compile_definitions(arango PUBLIC "-DUSE_ENTERPRISE=1")
@@ -298,14 +306,14 @@ if (USE_ENTERPRISE)
   target_include_directories(arango_v8 PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
 endif()
 
-if (MSVC AND USE_FAIL_ON_WARNINGS)
-  target_compile_options(arango_v8 PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
-  target_compile_options(arango_geo PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
-  target_compile_options(arango PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
-endif()
-
-if (DARWIN AND USE_FAIL_ON_WARNINGS)
-  target_compile_options(arango_v8 PRIVATE -Werror)
-  target_compile_options(arango_geo PRIVATE -Werror)
-  target_compile_options(arango PRIVATE -Werror)
-endif()
+if (USE_FAIL_ON_WARNINGS)
+  if (MSVC)
+    target_compile_options(arango_v8 PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+    target_compile_options(arango_geo PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+    target_compile_options(arango PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+  else ()
+    target_compile_options(arango_v8 PRIVATE -Werror)
+    target_compile_options(arango_geo PRIVATE -Werror)
+    target_compile_options(arango PRIVATE -Werror)
+  endif ()
+endif ()

@@ -120,7 +120,6 @@ template <SocketType T>
 int HttpCommTask<T>::on_header_field(llhttp_t* p, const char* at, size_t len) {
   HttpCommTask<T>* self = static_cast<HttpCommTask<T>*>(p->data);
   if (self->_lastHeaderWasValue) {
-    StringUtils::tolowerInPlace(&self->_lastHeaderField);
     self->_request->setHeaderV2(std::move(self->_lastHeaderField),
                                 std::move(self->_lastHeaderValue));
     self->_lastHeaderField.assign(at, len);
@@ -147,7 +146,6 @@ template <SocketType T>
 int HttpCommTask<T>::on_header_complete(llhttp_t* p) {
   HttpCommTask<T>* self = static_cast<HttpCommTask<T>*>(p->data);
   if (!self->_lastHeaderField.empty()) {
-    StringUtils::tolowerInPlace(&self->_lastHeaderField);
     self->_request->setHeaderV2(std::move(self->_lastHeaderField),
                                 std::move(self->_lastHeaderValue));
   }
@@ -696,11 +694,11 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
     while (p < end) {
       if (capState == 1) {
         // upper case
-        header->push_back(::toupper(*p));
+        header->push_back(StringUtils::toupper(*p));
         capState = 0;
       } else if (capState == 0) {
         // normal case
-        header->push_back(::tolower(*p));
+        header->push_back(StringUtils::tolower(*p));
         if (*p == '-') {
           capState = 1;
         } else if (*p == ':') {

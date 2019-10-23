@@ -284,7 +284,7 @@ std::string HttpConnection<ST>::buildRequestBody(Request const& req) {
   // construct request path ("/_db/<name>/" prefix)
   if (!req.header.database.empty()) {
     header.append("/_db/");
-    header.append(http::urlEncode(req.header.database));
+    http::urlEncode(header, req.header.database);
   }
   // must start with /, also turns /_db/abc into /_db/abc/
   if (req.header.path.empty() || req.header.path[0] != '/') {
@@ -299,7 +299,9 @@ std::string HttpConnection<ST>::buildRequestBody(Request const& req) {
       if (header.back() != '?') {
         header.push_back('&');
       }
-      header.append(http::urlEncode(p.first) + "=" + http::urlEncode(p.second));
+      http::urlEncode(header, p.first);
+      header.push_back('=');
+      http::urlEncode(header, p.second);
     }
   }
   header.append(" HTTP/1.1\r\n")
