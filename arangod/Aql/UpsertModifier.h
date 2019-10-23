@@ -36,7 +36,7 @@ struct ModificationExecutorInfos;
 
 class UpsertModifier {
  public:
-  using OutputTuple = std::tuple<ModOperationType, InputAqlItemRow, VPackSlice>;
+  using ModifierOutput = std::tuple<ModOperationType, InputAqlItemRow, VPackSlice>;
   using ModOp = std::pair<ModOperationType, InputAqlItemRow>;
 
  public:
@@ -55,7 +55,7 @@ class UpsertModifier {
   // TODO: Make this a real iterator
   Result setupIterator(ModifierIteratorMode mode);
   bool isFinishedIterator();
-  OutputTuple getOutput();
+  ModifierOutput getOutput();
   void advanceIterator();
 
   size_t getBatchSize() const;

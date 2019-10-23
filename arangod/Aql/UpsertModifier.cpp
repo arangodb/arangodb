@@ -230,30 +230,30 @@ void UpsertModifier::advanceIterator() {
 // operation in question was APPLY_UPDATE or APPLY_INSERT to determine which
 // of the results slices (UpdateReplace or Insert) we have to look in and
 // increment.
-UpsertModifier::OutputTuple UpsertModifier::getOutput() {
+UpsertModifier::ModifierOutput UpsertModifier::getOutput() {
   switch (_iteratorMode) {
     case ModifierIteratorMode::Full: {
       if (_operationsIterator->first == ModOperationType::APPLY_UPDATE) {
-        return OutputTuple{ModOperationType::APPLY_RETURN,
-                           _operationsIterator->second, *_updateResultsIterator};
+        return ModifierOutput{ModOperationType::APPLY_RETURN,
+                              _operationsIterator->second, *_updateResultsIterator};
       } else if (_operationsIterator->first == ModOperationType::APPLY_INSERT) {
-        return OutputTuple{ModOperationType::APPLY_RETURN,
-                           _operationsIterator->second, *_insertResultsIterator};
+        return ModifierOutput{ModOperationType::APPLY_RETURN,
+                              _operationsIterator->second, *_insertResultsIterator};
       } else {
-        return OutputTuple{_operationsIterator->first,
-                           _operationsIterator->second, VPackSlice::noneSlice()};
+        return ModifierOutput{_operationsIterator->first,
+                              _operationsIterator->second, VPackSlice::noneSlice()};
       }
     }
     case ModifierIteratorMode::OperationsOnly: {
-      return OutputTuple{_operationsIterator->first,
-                         _operationsIterator->second, VPackSlice::noneSlice()};
+      return ModifierOutput{_operationsIterator->first,
+                            _operationsIterator->second, VPackSlice::noneSlice()};
     }
   }
   // shut up compiler
   TRI_ASSERT(false);
-  return OutputTuple{ModOperationType::IGNORE_SKIP,
-                     InputAqlItemRow{CreateInvalidInputRowHint()},
-                     VPackSlice::noneSlice()};
+  return ModifierOutput{ModOperationType::IGNORE_SKIP,
+                        InputAqlItemRow{CreateInvalidInputRowHint()},
+                        VPackSlice::noneSlice()};
 }
 
 size_t UpsertModifier::getBatchSize() const { return _batchSize; }

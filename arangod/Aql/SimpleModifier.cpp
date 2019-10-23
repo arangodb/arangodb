@@ -140,10 +140,11 @@ ModifierOutput SimpleModifier<ModifierCompletion, Enable>::getOutput() {
       return ModifierOutput{_operationsIterator->first,
                             _operationsIterator->second, VPackSlice::noneSlice()};
     }
-    default: {
-      TRI_ASSERT(false);
-    }
   }
+  TRI_ASSERT(false);
+  return ModifierOutput{ModOperationType::IGNORE_SKIP,
+                        InputAqlItemRow{CreateInvalidInputRowHint()},
+                        VPackSlice::noneSlice()};
 }
 
 template class ::arangodb::aql::SimpleModifier<InsertModifierCompletion>;

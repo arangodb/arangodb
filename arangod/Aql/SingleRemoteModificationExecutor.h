@@ -67,6 +67,8 @@ struct SingleRemoteModificationInfos : ModificationExecutorInfos {
   constexpr static double const defaultTimeOut = 3600.0;
 };
 
+// These tags are used to instantiate SingleRemoteModificationExecutor
+// for the different use cases
 struct IndexTag {};
 struct Insert {};
 struct Remove {};
