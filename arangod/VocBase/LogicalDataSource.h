@@ -130,24 +130,6 @@ class LogicalDataSource {
   TRI_voc_cid_t planId() const noexcept { return _planId; }
   uint64_t planVersion() const noexcept { return _planVersion; }
 
-  enum class Serialize : uint8_t {
-    // Include the basics for any given data source. Setting additonal flags
-    // will only add additional information.
-    Basics = 0,
-    // Make output more detailed, e.g. for collections this will resolve CIDs
-    // for 'distributeShardsLike', for views this will add view-specific
-    // properties
-    Detailed = 1,
-    // This definition is meant to be persisted; will typically include
-    // otherwise hidden internal properties
-    ForPersistence = 2,
-    // This will include any information about in-progress operations, such as
-    // an index definition for an index being built in the background, which
-    // would otherwise not be exposed yet
-    IncludeInProgress = 4,
-    Replication = 8
-  };
-
   enum class Serialization {
     // Include all necessary properties to show object as an entry in the list
     List = 0,
@@ -158,22 +140,6 @@ class LogicalDataSource {
     // Include all necessary properties to replicate object definition
     Replication
   };
-
-  /// @brief helper for building flags
-  template <typename... Args>
-  static inline constexpr std::underlying_type<Serialize>::type makeFlags(Serialize flag,
-                                                                          Args... args) {
-    return static_cast<std::underlying_type<Serialize>::type>(flag) + makeFlags(args...);
-  }
-
-  static inline constexpr std::underlying_type<Serialize>::type makeFlags() {
-    return static_cast<std::underlying_type<Serialize>::type>(Serialize::Basics);
-  }
-
-  static inline constexpr bool hasFlag(std::underlying_type<Serialize>::type flags,
-                                       Serialize aflag) {
-    return (flags & static_cast<std::underlying_type<Serialize>::type>(aflag)) != 0;
-  }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief append a jSON definition of the data-source to the 'builder'
