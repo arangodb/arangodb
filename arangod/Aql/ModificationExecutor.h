@@ -20,8 +20,8 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_MODIFICATION_EXECUTOR2_H
-#define ARANGOD_AQL_MODIFICATION_EXECUTOR2_H
+#ifndef ARANGOD_AQL_MODIFICATION_EXECUTOR_H
+#define ARANGOD_AQL_MODIFICATION_EXECUTOR_H
 
 #include "Aql/ExecutionState.h"
 #include "Aql/InputAqlItemRow.h"
