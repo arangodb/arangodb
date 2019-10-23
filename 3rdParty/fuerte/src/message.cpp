@@ -25,7 +25,6 @@
 
 #include <velocypack/Validator.h>
 #include <velocypack/velocypack-aliases.h>
-#include <boost/algorithm/string.hpp>
 #include <sstream>
 
 #include <iostream>

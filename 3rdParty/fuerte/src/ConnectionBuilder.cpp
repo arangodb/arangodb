@@ -80,8 +80,8 @@ void parseSchema(std::string const& schema,
   std::string::size_type pos = schema.find('+');
   if (pos != std::string::npos && pos + 1 < proto.length()) {
     // got something like "http+tcp://"
-    proto = schema.substr(0, pos);
     velocypack::StringRef socket = proto.substr(pos + 1);
+    proto = proto.substr(0, pos);
     if (socket == "tcp" || socket == "srv") {
       conf._socketType = SocketType::Tcp;
     } else if (socket == "ssl") {

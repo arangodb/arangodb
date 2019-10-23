@@ -135,8 +135,6 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
   std::map<std::string, std::string> headers{_request->headers().begin(),
                                              _request->headers().end()};
 
-
-
   network::RequestOptions options;
   options.database = dbname;
   options.timeout = network::Timeout(300);

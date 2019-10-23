@@ -3185,6 +3185,7 @@ Future<Result> Methods::replicateOperations(
   if (operation != TRI_VOC_DOCUMENT_OPERATION_INSERT && !value.isArray()) {
     TRI_ASSERT(value.isObject());
     TRI_ASSERT(value.hasKey(StaticStrings::KeyString));
+    url.push_back('/');
     VPackValueLength len;
     const char* ptr = value.get(StaticStrings::KeyString).getString(len);
     url.append(ptr, len);

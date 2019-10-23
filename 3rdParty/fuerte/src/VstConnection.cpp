@@ -443,23 +443,18 @@ void VstConnection<ST>::processChunk(Chunk const& chunk) {
     // Remove message from store
     _messageStore.removeByID(item->_messageID);
 
-    // Create response
-    auto response = createResponse(*item, completeBuffer);
-    if (response == nullptr) {
-      item->_callback(Error::ProtocolError, std::move(item->_request), nullptr);
-      // Notify listeners
-      FUERTE_LOG_VSTTRACE
-          << "processChunk: notifying RequestItem error callback"
-          << "\n";
-      return;
+    try {
+      // Create response
+      auto response = createResponse(*item, completeBuffer);
+      if (response == nullptr) {
+        item->_callback(Error::ProtocolError, std::move(item->_request), nullptr);
+      } else {
+        item->_callback(Error::NoError, std::move(item->_request),
+                        std::move(response));
+      }
+    } catch(...) {
+      FUERTE_LOG_ERROR << "unhandled exception in fuerte callback\n";
     }
-
-    // Notify listeners
-    FUERTE_LOG_VSTTRACE
-        << "processChunk: notifying RequestItem success callback"
-        << "\n";
-    item->_callback(Error::NoError, std::move(item->_request),
-                    std::move(response));
 
     setTimeout();  // readjust timeout
   }

@@ -125,6 +125,7 @@ std::string GeneralResponse::responseString(ResponseCode code) {
     case ResponseCode::SERVER_ERROR:
       return "500 Internal Server Error";
     case ResponseCode::NOT_IMPLEMENTED:
+      TRI_ASSERT(false);
       return "501 Not Implemented";
     case ResponseCode::BAD_GATEWAY:
       return "502 Bad Gateway";

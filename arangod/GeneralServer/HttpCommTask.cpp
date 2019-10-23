@@ -386,10 +386,11 @@ void HttpCommTask<T>::processRequest() {
   this->_protocol->timer.cancel();
 
   {
-    LOG_TOPIC("6e770", DEBUG, Logger::REQUESTS)
+    LOG_TOPIC("6e770", INFO, Logger::REQUESTS)
         << "\"http-request-begin\",\"" << (void*)this << "\",\""
         << this->_connectionInfo.clientAddress << "\",\""
         << HttpRequest::translateMethod(_request->requestType()) << "\",\""
+        << (_request->databaseName().empty() ? "" : "/_db/" + _request->databaseName())
         << (Logger::logRequestParameters() ? _request->fullUrl() : _request->requestPath())
         << "\"";
 
@@ -789,7 +790,7 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
   double const totalTime = RequestStatistics::ELAPSED_SINCE_READ_START(stat);
 
   // and give some request information
-  LOG_TOPIC("8f555", INFO, Logger::REQUESTS)
+  LOG_TOPIC("8f555", DEBUG, Logger::REQUESTS)
   << "\"http-request-end\",\"" << (void*)this << "\",\"" << this->_connectionInfo.clientAddress
   << "\",\"" << GeneralRequest::translateMethod(::llhttpToRequestType(&_parser)) << "\",\""
   << static_cast<int>(response.responseCode()) << "\"," << Logger::FIXED(totalTime, 6);

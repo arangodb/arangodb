@@ -356,7 +356,10 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
   if (_disallowInserts.load(std::memory_order_acquire)) {
     return res.reset(TRI_ERROR_SHUTTING_DOWN);
   }
-
+  
+  LOG_TOPIC("7bd2d", DEBUG, Logger::TRANSACTIONS)
+    << "managed trx creating: '" << tid << "'";
+  
   const size_t bucket = getBucket(tid);
 
   {  // quick check whether ID exists

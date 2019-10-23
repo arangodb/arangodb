@@ -214,8 +214,8 @@ ConnectionPtr ConnectionPool::selectConnection(std::string const& endpoint,
     
     size_t num = c.fuerte->requestsLeft();
     // TODO: make configurable ?
-    if ((_config.protocol == fuerte::ProtocolType::Http && num <= 1) ||
-        (_config.protocol == fuerte::ProtocolType::Vst && num < 4)) {
+    if ((_config.protocol == fuerte::ProtocolType::Http && num == 0) ||
+        (_config.protocol == fuerte::ProtocolType::Vst && num <= 4)) {
       return c.fuerte;
     }
   }

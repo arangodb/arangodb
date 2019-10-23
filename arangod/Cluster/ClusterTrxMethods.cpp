@@ -131,8 +131,7 @@ void buildTransactionBody(TransactionState& state, ServerID const& server,
 }
 
 /// @brief lazy begin a transaction on subordinate servers
-Future<network::Response> beginTransactionRequest(transaction::Methods const* trx,
-                                                  TransactionState& state,
+Future<network::Response> beginTransactionRequest(TransactionState& state,
                                                   ServerID const& server) {
   TRI_voc_tid_t tid = state.id() + 1;
   TRI_ASSERT(!transaction::isLegacyTransactionId(tid));
@@ -144,14 +143,12 @@ Future<network::Response> beginTransactionRequest(transaction::Methods const* tr
   network::RequestOptions reqOpts;
   reqOpts.database = state.vocbase().name();
 
-  std::string path("/_api/transaction/begin");
-
   auto* pool = state.vocbase().server().getFeature<NetworkFeature>().pool();
   network::Headers headers;
   headers.emplace(StaticStrings::TransactionId, std::to_string(tid));
   auto body = std::make_shared<std::string>(builder.slice().toJson());
   return network::sendRequest(pool, "server:" + server, fuerte::RestVerb::Post,
-                              std::move(path), std::move(buffer), reqOpts);
+                              "/_api/transaction/begin", std::move(buffer), reqOpts, std::move(headers));
 }
 
 /// check the transaction cluster response with desited TID and status
@@ -217,10 +214,9 @@ Future<Result> commitAbortTransaction(transaction::Methods& trx, transaction::St
 
   network::RequestOptions reqOpts;
   reqOpts.database = state->vocbase().name();
-  reqOpts.timeout = network::Timeout(::CL_DEFAULT_TIMEOUT);
-  
+
   TRI_voc_tid_t tidPlus = state->id() + 1;
-  std::string const path = "/_api/transaction/" + std::to_string(tidPlus);
+  const std::string path = "/_api/transaction/" + std::to_string(tidPlus);
 
   fuerte::RestVerb verb;
   if (status == transaction::Status::COMMITTED) {
@@ -233,6 +229,7 @@ Future<Result> commitAbortTransaction(transaction::Methods& trx, transaction::St
 
   auto* pool = trx.vocbase().server().getFeature<NetworkFeature>().pool();
   std::vector<Future<network::Response>> requests;
+  requests.reserve(state->knownServers().size());
   for (std::string const& server : state->knownServers()) {
     requests.emplace_back(network::sendRequest(pool, "server:" + server, verb,
                                                path, VPackBuffer<uint8_t>(), reqOpts));
@@ -311,7 +308,7 @@ Future<Result> beginTransactionOnLeaders(TransactionState& state,
       continue;  // already send a begin transaction there
     }
     state.addKnownServer(leader);
-    requests.emplace_back(::beginTransactionRequest(nullptr, state, leader));
+    requests.emplace_back(::beginTransactionRequest(state, leader));
   }
 
   if (requests.empty()) {

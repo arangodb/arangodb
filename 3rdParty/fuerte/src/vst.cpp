@@ -159,7 +159,7 @@ void message::requestHeader(RequestHeader const& header,
       builder.add(fu_content_type_key,
                   VPackValue(to_string(header.contentType())));
     }
-    for (auto const& pair : header.meta()) {
+    for (auto const& pair : header.meta()) {  // iequals for data from server
       if (boost::iequals(fu_content_type_key, pair.first) ||
           boost::iequals(fu_accept_key, pair.first)) {
         continue;
@@ -473,9 +473,6 @@ MessageType validateAndExtractMessageType(uint8_t const* const vpStart,
 RequestHeader requestHeaderFromSlice(VPackSlice const& headerSlice) {
   assert(headerSlice.isArray());
   RequestHeader header;
-#ifdef FUERTE_DEBUG
-  header.byteSize = headerSlice.byteSize();  // for debugging
-#endif
 
   header.setVersion(headerSlice.at(0).getNumber<short>());  // version
   assert(headerSlice.at(1).getNumber<int>() ==
@@ -488,7 +485,9 @@ RequestHeader requestHeaderFromSlice(VPackSlice const& headerSlice) {
     header.parameters.emplace(it.key.copyString(), it.value.copyString());
   }
   for (auto it : VPackObjectIterator(headerSlice.at(6))) {  // meta (headers)
-    header.addMeta(it.key.copyString(), it.value.copyString());
+    std::string key = it.key.copyString();
+    toLowerInPlace(key);
+    header.addMeta(std::move(key), it.value.copyString());
   }
   return header;
 };
@@ -510,7 +509,7 @@ ResponseHeader responseHeaderFromSlice(VPackSlice const& headerSlice) {
     if (meta.isObject()) {
       for (auto it : VPackObjectIterator(meta)) {
         std::string key = it.key.copyString();
-        boost::algorithm::to_lower(key);  // in-place
+        toLowerInPlace(key);
         header.addMeta(std::move(key), it.value.copyString());
       }
     }

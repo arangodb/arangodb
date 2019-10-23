@@ -61,12 +61,12 @@ int rotateActiveJournalOnAllDBServers(std::string const& dbname, std::string con
     return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
 
-  std::string const baseUrl =
-      "/_db/" + basics::StringUtils::urlEncode(dbname) + "/_api/collection/";
+  std::string const baseUrl = "/_api/collection/";
 
   VPackBuffer<uint8_t> body;
   network::Headers headers;
   network::RequestOptions options;
+  options.database = dbname;
   options.timeout = network::Timeout(600.0);
 
   // now we notify all leader and follower shards

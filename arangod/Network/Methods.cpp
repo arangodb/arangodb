@@ -62,10 +62,9 @@ std::string Response::serverId() const {
   return StaticStrings::Empty;
 }
 
-template <typename T>
-auto prepareRequest(RestVerb type, std::string const& path, T&& payload,
+auto prepareRequest(RestVerb type, std::string path, VPackBufferUInt8 payload,
                     RequestOptions const& options, Headers headers) {
-  auto req = fuerte::createRequest(type, path, options.parameters, std::forward<T>(payload));
+  auto req = fuerte::createRequest(type, path, options.parameters, std::move(payload));
 
   if (req->header.database.empty()) {
     if (options.database.empty()) {
@@ -101,67 +100,58 @@ auto prepareRequest(RestVerb type, std::string const& path, T&& payload,
 
   return req;
 }
-//
-///// @brief send a request to a given destination
-//FutureRes sendRequest(ConnectionPool* pool, DestinationId const& destination, RestVerb type,
-//                      std::string const& path, velocypack::Buffer<uint8_t> payload,
-//                      Timeout timeout, Headers headers) {
-//  RequestOptions options;
-//  options.timeout = timeout;
-//  return sendRequest(pool, std::move(destination), type, std::move(path),
-//                     std::move(payload), std::move(headers), options);
-//}
 
 /// @brief send a request to a given destination
-FutureRes sendRequest(ConnectionPool* pool, DestinationId const& destination, RestVerb type,
-                      std::string const& path, velocypack::Buffer<uint8_t> payload,
+FutureRes sendRequest(ConnectionPool* pool, DestinationId dest, RestVerb type,
+                      std::string path, velocypack::Buffer<uint8_t> payload,
                       RequestOptions const& options, Headers headers) {
   // FIXME build future.reset(..)
 
   if (!pool || !pool->config().clusterInfo) {
     LOG_TOPIC("59b95", ERR, Logger::COMMUNICATION)
         << "connection pool unavailable";
-    return futures::makeFuture(Response{destination, Error::Canceled, nullptr});
+    return futures::makeFuture(Response{std::move(dest), Error::Canceled, nullptr});
   }
 
   arangodb::network::EndpointSpec spec;
-  int res = resolveDestination(*pool->config().clusterInfo, destination, spec);
+  int res = resolveDestination(*pool->config().clusterInfo, dest, spec);
   if (res != TRI_ERROR_NO_ERROR) {  // FIXME return an error  ?!
-    return futures::makeFuture(Response{destination, Error::Canceled, nullptr});
+    return futures::makeFuture(Response{std::move(dest), Error::Canceled, nullptr});
   }
   TRI_ASSERT(!spec.endpoint.empty());
 
-  auto req = prepareRequest(type, path, std::move(payload), options, std::move(headers));
+  auto req = prepareRequest(type, std::move(path), std::move(payload),
+                            options, std::move(headers));
   struct Pack {
-    DestinationId destination;
+    DestinationId dest;
     futures::Promise<network::Response> promise;
     std::unique_ptr<fuerte::Response> tmp;
     bool skipScheduler;
-    Pack(DestinationId const& dest, bool skip)
-        : destination(dest), promise(), skipScheduler(skip) {}
+    Pack(DestinationId&& dest, bool skip)
+        : dest(std::move(dest)), promise(), skipScheduler(skip) {}
   };
   // fits in SSO of std::function
   static_assert(sizeof(std::shared_ptr<Pack>) <= 2 * sizeof(void*), "");
   auto conn = pool->leaseConnection(spec.endpoint);
-  auto p = std::make_shared<Pack>(destination, options.skipScheduler);
+  auto p = std::make_shared<Pack>(std::move(dest), options.skipScheduler);
 
   FutureRes f = p->promise.getFuture();
   conn->sendRequest(std::move(req), [p(std::move(p))](fuerte::Error err,
                                                       std::unique_ptr<fuerte::Request> req,
                                                       std::unique_ptr<fuerte::Response> res) {
     Scheduler* sch = SchedulerFeature::SCHEDULER;
-    if (p->skipScheduler || ADB_UNLIKELY(sch == nullptr)) {
-      p->promise.setValue(network::Response{std::move(p->destination), err, std::move(res)});
+    if (p->skipScheduler || sch == nullptr) {
+      p->promise.setValue(network::Response{std::move(p->dest), err, std::move(res)});
       return;
     }
 
     p->tmp = std::move(res);
 
     bool queued = sch->queue(RequestLane::CLUSTER_INTERNAL, [p, err]() {
-      p->promise.setValue(Response{std::move(p->destination), err, std::move(p->tmp)});
+      p->promise.setValue(Response{std::move(p->dest), err, std::move(p->tmp)});
     });
     if (ADB_UNLIKELY(!queued)) {
-      p->promise.setValue(Response{std::move(p->destination), fuerte::Error::Canceled, nullptr});
+      p->promise.setValue(Response{std::move(p->dest), fuerte::Error::Canceled, nullptr});
     }
   });
   return f;
@@ -171,9 +161,9 @@ FutureRes sendRequest(ConnectionPool* pool, DestinationId const& destination, Re
 /// a request until an overall timeout is hit (or the request succeeds)
 class RequestsState final : public std::enable_shared_from_this<RequestsState> {
  public:
-  RequestsState(ConnectionPool* pool, DestinationId destination, RestVerb type,
-                std::string path, velocypack::Buffer<uint8_t> payload,
-                Headers headers, RequestOptions const& options)
+  RequestsState(ConnectionPool* pool, DestinationId&& destination, RestVerb type,
+                std::string&& path, velocypack::Buffer<uint8_t>&& payload,
+                Headers&& headers, RequestOptions const& options)
       : _payload(std::move(payload)),
         _destination(std::move(destination)),
         _path(std::move(path)),
@@ -302,7 +292,7 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
   /// @broef schedule calling the response promise
   void callResponse(Error err, std::unique_ptr<fuerte::Response> res) {
     Scheduler* sch = SchedulerFeature::SCHEDULER;
-    if (_options.skipScheduler || ADB_UNLIKELY(sch == nullptr)) {
+    if (_options.skipScheduler || sch == nullptr) {
       _promise.setValue(Response{std::move(_destination), err, std::move(res)});
       return;
     }
@@ -314,7 +304,7 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
                                            std::move(self->_response)});
         });
     if (ADB_UNLIKELY(!queued)) {
-      _promise.setValue(Response{std::move(_destination), fuerte::Error::Canceled, nullptr});
+      _promise.setValue(Response{std::move(_destination), fuerte::Error::QueueCapacityExceeded, nullptr});
     }
   }
 
@@ -337,26 +327,14 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
         });
     if (ADB_UNLIKELY(!queued)) {
       // scheduler queue is full, cannot requeue
-      _promise.setValue(Response{_destination, Error::QueueCapacityExceeded, nullptr});
+      _promise.setValue(Response{std::move(_destination), Error::QueueCapacityExceeded, nullptr});
     }
   }
 };
 
 /// @brief send a request to a given destination, retry until timeout is exceeded
-//FutureRes sendRequestRetry(ConnectionPool* pool, DestinationId const& destination,
-//                           arangodb::fuerte::RestVerb type, std::string const& path,
-//                           velocypack::Buffer<uint8_t> payload, Timeout timeout,
-//                           Headers headers, bool retryNotFound) {
-//  RequestOptions options;
-//  options.timeout = timeout;
-//  options.retryNotFound = retryNotFound;
-//  return sendRequestRetry(pool, std::move(destination), type, std::move(path),
-//                          std::move(payload), std::move(headers), options);
-//}
-
-/// @brief send a request to a given destination, retry until timeout is exceeded
-FutureRes sendRequestRetry(ConnectionPool* pool, DestinationId const& destination,
-                           arangodb::fuerte::RestVerb type, std::string const& path,
+FutureRes sendRequestRetry(ConnectionPool* pool, DestinationId destination,
+                           arangodb::fuerte::RestVerb type, std::string path,
                            velocypack::Buffer<uint8_t> payload,
                            RequestOptions const& options,
                            Headers headers) {
@@ -367,7 +345,8 @@ FutureRes sendRequestRetry(ConnectionPool* pool, DestinationId const& destinatio
   }
 
   //  auto req = prepareRequest(type, path, std::move(payload), timeout, headers);
-  auto rs = std::make_shared<RequestsState>(pool, destination, type, path,
+  auto rs = std::make_shared<RequestsState>(pool, std::move(destination),
+                                            type, std::move(path),
                                             std::move(payload),
                                             std::move(headers), options);
   rs->startRequest();  // will auto reference itself

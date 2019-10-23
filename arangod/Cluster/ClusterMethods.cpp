@@ -933,9 +933,7 @@ futures::Future<OperationResult> revisionOnCoordinator(ClusterFeature& feature,
   for (auto const& p : *shards) {
     auto future =
         network::sendRequest(pool, "shard:" + p.first, fuerte::RestVerb::Get,
-                             "/_db/" + StringUtils::urlEncode(dbname) +
-                                 "/_api/collection/" +
-                                 StringUtils::urlEncode(p.first) + "/revision",
+                             "/_api/collection/" + StringUtils::urlEncode(p.first) + "/revision",
                              VPackBuffer<uint8_t>(), reqOpts);
     futures.emplace_back(std::move(future));
   }
@@ -1109,7 +1107,6 @@ futures::Future<OperationResult> countOnCoordinator(transaction::Methods& trx,
   
   network::RequestOptions reqOpts;
   reqOpts.database = dbname;
-  reqOpts.timeout = network::Timeout(CL_DEFAULT_TIMEOUT);
   reqOpts.retryNotFound = true;
 
   std::vector<Future<network::Response>> futures;
@@ -1180,8 +1177,8 @@ int selectivityEstimatesOnCoordinator(ClusterFeature& feature, std::string const
   
   network::RequestOptions reqOpts;
   reqOpts.database = dbname;
-  reqOpts.timeout = network::Timeout(CL_DEFAULT_TIMEOUT);
   reqOpts.retryNotFound = true;
+  reqOpts.skipScheduler = true;
 
   std::vector<Future<network::Response>> futures;
   futures.reserve(shards->size());
@@ -1412,12 +1409,6 @@ Future<OperationResult> removeDocumentOnCoordinator(arangodb::transaction::Metho
          .param(StaticStrings::ReturnOldString, (options.returnOld ? "true" : "false"))
          .param(StaticStrings::IgnoreRevsString, (options.ignoreRevs ? "true" : "false"));
 
-//  std::string const baseUrl = "/_api/document/";
-//  std::string const optsUrlPart =
-//      std::string("?waitForSync=") + (options.waitForSync ? "true" : "false") +
-//      "&returnOld=" + (options.returnOld ? "true" : "false") +
-//      "&ignoreRevs=" + (options.ignoreRevs ? "true" : "false");
-
   const bool isManaged = trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED);
 
   if (canUseFastPath) {
@@ -1643,13 +1634,8 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
   
   network::RequestOptions reqOpts;
   reqOpts.database = trx.vocbase().name();
-  reqOpts.timeout = network::Timeout(CL_DEFAULT_TIMEOUT);
   reqOpts.retryNotFound = true;
   reqOpts.param(StaticStrings::IgnoreRevsString, (options.ignoreRevs ? "true" : "false"));
-
-//  std::string baseUrl = "/_api/document/";
-//  std::string optsUrlPart =
-//      std::string("?ignoreRevs=") + (options.ignoreRevs ? "true" : "false");
 
   fuerte::RestVerb restVerb;
   if (!useMultiple) {
@@ -1658,10 +1644,8 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
     restVerb = fuerte::RestVerb::Put;
     if (options.silent) {
       reqOpts.param(StaticStrings::SilentString, "true");
-//      optsUrlPart += std::string("&silent=true");
     }
     reqOpts.param("onlyget", "true");
-//    optsUrlPart += std::string("&onlyget=true");
   }
 
   if (canUseFastPath) {
@@ -1832,7 +1816,6 @@ int fetchEdgesFromEngines(transaction::Methods& trx,
   
   network::RequestOptions reqOpts;
   reqOpts.database = trx.vocbase().name();
-  reqOpts.timeout = network::Timeout(CL_DEFAULT_TIMEOUT);
   reqOpts.skipScheduler = true; // hack to avoid scheduler queue
 
   std::vector<Future<network::Response>> futures;
@@ -1924,7 +1907,6 @@ int fetchEdgesFromEngines(
   
   network::RequestOptions reqOpts;
   reqOpts.database = trx.vocbase().name();
-  reqOpts.timeout = network::Timeout(CL_DEFAULT_TIMEOUT);
   reqOpts.skipScheduler = true; // hack to avoid scheduler queue
 
   std::vector<Future<network::Response>> futures;
@@ -2016,7 +1998,6 @@ void fetchVerticesFromEngines(
   
   network::RequestOptions reqOpts;
   reqOpts.database = trx.vocbase().name();
-  reqOpts.timeout = network::Timeout(CL_DEFAULT_TIMEOUT);
   reqOpts.skipScheduler = true; // hack to avoid scheduler queue
 
   std::vector<Future<network::Response>> futures;
@@ -2294,17 +2275,10 @@ int flushWalOnAllDBServers(ClusterFeature& feature, bool waitForSync,
   ClusterInfo& ci = feature.clusterInfo();
 
   std::vector<ServerID> DBservers = ci.getCurrentDBServers();
-//  std::string url = std::string("/_admin/wal/flush?waitForSync=") +
-//                    (waitForSync ? "true" : "false") +
-//                    "&waitForCollector=" + (waitForCollector ? "true" : "false");
-//  if (maxWaitTime >= 0.0) {
-//    url += "&maxWaitTime=" + std::to_string(maxWaitTime);
-//  }
 
   auto* pool = feature.server().getFeature<NetworkFeature>().pool();
   
   network::RequestOptions reqOpts;
-  reqOpts.timeout = network::Timeout(CL_DEFAULT_TIMEOUT);
   reqOpts.skipScheduler = true; // hack to avoid scheduler queue
   reqOpts.param(StaticStrings::WaitForSyncString, (waitForSync ? "true" : "false"))
          .param("waitForCollector", (waitForCollector ? "true" : "false"));

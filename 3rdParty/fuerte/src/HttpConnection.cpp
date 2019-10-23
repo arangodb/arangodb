@@ -25,7 +25,6 @@
 #include "Basics/cpu-relax.h"
 
 #include <atomic>
-#include <boost/algorithm/string.hpp>
 #include <cassert>
 
 #include <fuerte/FuerteLogger.h>
@@ -71,7 +70,7 @@ int HttpConnection<ST>::on_header_field(http_parser* parser, const char* at,
                                         size_t len) {
   HttpConnection<ST>* self = static_cast<HttpConnection<ST>*>(parser->data);
   if (self->_lastHeaderWasValue) {
-    boost::algorithm::to_lower(self->_lastHeaderField);  // in-place
+    toLowerInPlace(self->_lastHeaderField);  // in-place
     self->_response->header.addMeta(std::move(self->_lastHeaderField),
                                     std::move(self->_lastHeaderValue));
     self->_lastHeaderField.assign(at, len);
@@ -101,7 +100,7 @@ int HttpConnection<ST>::on_header_complete(http_parser* parser) {
   self->_response->header.responseCode =
       static_cast<StatusCode>(parser->status_code);
   if (!self->_lastHeaderField.empty()) {
-    boost::algorithm::to_lower(self->_lastHeaderField);  // in-place
+    toLowerInPlace(self->_lastHeaderField);  // in-place
     self->_response->header.addMeta(std::move(self->_lastHeaderField),
                                     std::move(self->_lastHeaderValue));
   }
@@ -292,10 +291,9 @@ std::string HttpConnection<ST>::buildRequestBody(Request const& req) {
     header.push_back('/');
   }
 
-  if (req.header.parameters.empty()) {
-    header.append(req.header.path);
-  } else {
-    header.append(req.header.path);
+  header.append(req.header.path);
+  
+  if (!req.header.parameters.empty()) {
     header.push_back('?');
     for (auto const& p : req.header.parameters) {
       if (header.back() != '?') {
@@ -496,8 +494,14 @@ void HttpConnection<ST>::asyncReadCallback(asio_ns::error_code const& ec) {
       if (!_responseBuffer.empty()) {
         _response->setPayload(std::move(_responseBuffer), 0);
       }
-      _item->callback(Error::NoError, std::move(_item->request),
-                      std::move(_response));
+      
+      try {
+        _item->callback(Error::NoError, std::move(_item->request),
+                        std::move(_response));
+      } catch(...) {
+        FUERTE_LOG_ERROR << "unhandled exception in fuerte callback\n";
+      }
+
       _item.reset();
       FUERTE_LOG_HTTPTRACE << "asyncReadCallback: completed parsing "
                               "response this="
