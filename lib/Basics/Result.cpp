@@ -31,15 +31,11 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include "Basics/debugging.h"
-
 using namespace arangodb;
 
 Result::Result() : _errorNumber(TRI_ERROR_NO_ERROR) {}
 
-Result::Result(int errorNumber) : _errorNumber(errorNumber) {
-  TRI_ASSERT(errorNumber != TRI_ERROR_NOT_IMPLEMENTED);
-}
+Result::Result(int errorNumber) : _errorNumber(errorNumber) {}
 
 Result::Result(int errorNumber, std::string const& errorMessage)
     : _errorNumber(errorNumber), _errorMessage(errorMessage) {}
