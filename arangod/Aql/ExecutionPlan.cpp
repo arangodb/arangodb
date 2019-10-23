@@ -1280,7 +1280,10 @@ ExecutionNode* ExecutionPlan::fromNodeLet(ExecutionNode* previous, AstNode const
       // the LET. and don't create the LET
 
       subquery->replaceOutVariable(v);
-      // TODO Local fix of #10304. Remove this note after #10304 is merged back.
+
+      // We do not create a new node here, just return the last dependency.
+      // Note that we *do not* want to return `subquery`, as we might leave a
+      // dangling branch of ExecutionNodes from it.
       return previous;
     }
     // otherwise fall-through to normal behavior
