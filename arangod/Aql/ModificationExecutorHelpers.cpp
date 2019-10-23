@@ -39,16 +39,6 @@ using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::basics;
 
-// Extracts key, and rev in from input AqlValue value.
-//
-// value can either be an object or a string.
-//
-// * if value is an object, we extract the entry _key into key if it is a string,
-//   or signal an error otherwise.
-//   if ignoreRev is false, we also extract the entry _rev and assign its contents
-//   to rev if it is a string, or signal an error otherise.
-// * if value is a string, this string is assigned to key, and rev is emptied.
-// * if value is anything else, we return an error.
 Result ModificationExecutorHelpers::getKeyAndRevision(CollectionNameResolver const& resolver,
                                                       AqlValue const& value,
                                                       std::string& key,
@@ -92,11 +82,9 @@ Result ModificationExecutorHelpers::getKeyAndRevision(CollectionNameResolver con
   return Result{};
 }
 
-// Builds an object "{ _key: key, _rev: rev }" if rev is nonempty and ignoreRevs is false, and
-// "{ _key: key, _rev: null }" otherwise.
-Result ModificationExecutorHelpers::buildKeyDocument(VPackBuilder& builder,
-                                                     std::string const& key,
-                                                     std::string const& rev, Revision what) {
+void ModificationExecutorHelpers::buildKeyDocument(VPackBuilder& builder,
+                                                   std::string const& key,
+                                                   std::string const& rev, Revision what) {
   builder.openObject();
   builder.add(StaticStrings::KeyString, VPackValue(key));
 
@@ -107,7 +95,6 @@ Result ModificationExecutorHelpers::buildKeyDocument(VPackBuilder& builder,
     //    builder.add(StaticStrings::RevString, VPackValue(VPackValueType::Null));
   }
   builder.close();
-  return Result{};
 }
 
 bool ModificationExecutorHelpers::writeRequired(ModificationExecutorInfos& infos,

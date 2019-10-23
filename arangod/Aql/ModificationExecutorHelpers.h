@@ -45,16 +45,42 @@ namespace ModificationExecutorHelpers {
 
 enum class Revision { Include, Exclude };
 
+// Extracts key, and rev in from input AqlValue value.
+//
+// value can either be an object or a string.
+//
+// * if value is an object, we extract the entry _key into key if it is a string,
+//   or signal an error otherwise.
+//   if the parameter `what` is Revision::Include, we also extract the entry
+//   _rev and assign its contents to rev if it is a string, or signal an error
+//   otherise.
+// * if value is a string, this string is assigned to key, and rev is emptied.
+// * if value is anything else, we return an error.
 Result getKeyAndRevision(CollectionNameResolver const& resolver,
                          AqlValue const& value, std::string& key,
                          std::string& rev, Revision what = Revision::Include);
-Result buildKeyDocument(VPackBuilder& builder, std::string const& key,
-                        std::string const& rev, Revision what = Revision::Include);
+
+// Builds an object "{ _key: key, _rev: rev }" if rev is nonempty and the
+// parameter `what` is Revision::Include , and "{ _key: key, _rev: null }"
+// otherwise.
+void buildKeyDocument(VPackBuilder& builder, std::string const& key,
+                      std::string const& rev, Revision what = Revision::Include);
+
+// Establishes whether a write is necessary. This is only relevant for
+// SmartGraphs in the enterprise edition. Refer to skipForAqlWrite in
+// Enterprise Edition
 bool writeRequired(ModificationExecutorInfos& infos, VPackSlice const& doc,
                    std::string const& key);
+
+// Throws an exception if a transaction resulted in an error, and errors
+// are not ignored.
+// This function includes special handling for ignoreDocumentNotFound cases,
+// which are needed in the cluster where a document not found error can happen
+// but not be fatal.
 void throwOperationResultException(ModificationExecutorInfos& infos,
                                    OperationResult const& result);
 
+// Converts ModificationOptions to OperationOptions
 OperationOptions convertOptions(ModificationOptions const& in, Variable const* outVariableNew,
                                 Variable const* outVariableOld);
 
