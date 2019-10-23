@@ -54,7 +54,7 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
       _shardIds(new ShardMap()) {
   bool const isSmart =
       basics::VelocyPackHelper::readBooleanValue(info, StaticStrings::IsSmart, false);
-
+      
   if (isSmart && _collection->type() == TRI_COL_TYPE_EDGE) {
     // smart edge collection
     _numberOfShards = 0;
@@ -89,19 +89,17 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
                                    "invalid number of shards");
   }
 
-  if (info.hasKey("avoidServers")) {
-    auto avoidServersSlice = info.get("avoidServers");
-    if (avoidServersSlice.isArray()) {
-      for (const auto& i : VPackArrayIterator(avoidServersSlice)) {
-        if (i.isString()) {
-          _avoidServers.push_back(i.copyString());
-        } else {
-          LOG_TOPIC("e5bc6", ERR, arangodb::Logger::FIXME)
-              << "avoidServers must be a vector of strings, we got "
-              << avoidServersSlice.toJson() << ". discarding!";
-          _avoidServers.clear();
-          break;
-        }
+  auto avoidServersSlice = info.get("avoidServers");
+  if (avoidServersSlice.isArray()) {
+    for (const auto& i : VPackArrayIterator(avoidServersSlice)) {
+      if (i.isString()) {
+        _avoidServers.push_back(i.copyString());
+      } else {
+        LOG_TOPIC("e5bc6", ERR, arangodb::Logger::FIXME)
+            << "avoidServers must be a vector of strings, we got "
+            << avoidServersSlice.toJson() << ". discarding!";
+        _avoidServers.clear();
+        break;
       }
     }
   }
@@ -164,7 +162,7 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
       }
     }
   }
-
+  
   // replicationFactor == 0 -> satellite collection
   if (shardKeysSlice.isNone() || _replicationFactor == 0) {
     // Use default.
@@ -246,6 +244,7 @@ ShardingInfo::ShardingInfo(ShardingInfo const& other, LogicalCollection* collect
     : _collection(collection),
       _numberOfShards(other.numberOfShards()),
       _replicationFactor(other.replicationFactor()),
+      _writeConcern(other.writeConcern()),
       _distributeShardsLike(other.distributeShardsLike()),
       _avoidServers(other.avoidServers()),
       _shardKeys(other.shardKeys()),
@@ -363,6 +362,7 @@ void ShardingInfo::distributeShardsLike(std::string const& cid, ShardingInfo con
   }
 
   _replicationFactor = other->replicationFactor();
+  _writeConcern = other->writeConcern();
   _numberOfShards = other->numberOfShards();
 }
 
