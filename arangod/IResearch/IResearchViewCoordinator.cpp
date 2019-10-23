@@ -173,7 +173,7 @@ IResearchViewCoordinator::~IResearchViewCoordinator() {
 }
 
 arangodb::Result IResearchViewCoordinator::appendVelocyPackImpl(
-    arangodb::velocypack::Builder& builder, std::underlying_type<Serialize>::type flags) const {
+    arangodb::velocypack::Builder& builder, Serialization context) const {
   if (hasFlag(flags, Serialize::ForPersistence)) {
     auto res = arangodb::LogicalViewHelperClusterInfo::properties(builder, *this);
 

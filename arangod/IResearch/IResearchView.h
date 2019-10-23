@@ -189,9 +189,9 @@ class IResearchView final: public arangodb::LogicalView {
   /// @brief fill and return a JSON description of a IResearchView object
   ///        only fields describing the view itself, not 'link' descriptions
   //////////////////////////////////////////////////////////////////////////////
-  virtual arangodb::Result appendVelocyPackImpl(  // append definition
-      arangodb::velocypack::Builder& builder,     // definition destination
-      std::underlying_type<Serialize>::type flags) const override;
+  virtual arangodb::Result appendVelocyPackImpl(
+      arangodb::velocypack::Builder& builder,
+      Serialization context) const override;
 
   ///////////////////////////////////////////////////////////////////////////////
   /// @brief drop this IResearch View

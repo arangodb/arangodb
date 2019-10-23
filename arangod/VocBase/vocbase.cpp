@@ -962,7 +962,8 @@ void TRI_vocbase_t::inventory(VPackBuilder& result, TRI_voc_tick_t maxTick,
       result.add("parameters", VPackValue(VPackValueType::Object));
       collection->toVelocyPackIgnore(
           result, {"objectId", "path", "statusString", "indexes"},
-          LogicalDataSource::makeFlags(LogicalDataSource::Serialize::Detailed));
+          LogicalDataSource::Serialization::Properties);
+          //LogicalDataSource::makeFlags(LogicalDataSource::Serialize::Detailed));
       result.close();
 
       result.close();
@@ -974,7 +975,7 @@ void TRI_vocbase_t::inventory(VPackBuilder& result, TRI_voc_tick_t maxTick,
   LogicalView::enumerate(*this, [&result](LogicalView::ptr const& view) -> bool {
     if (view) {
       result.openObject();
-      view->properties(result, LogicalDataSource::makeFlags()); // view definition only
+      view->properties(result, LogicalDataSource::Serialization::List /*LogicalDataSource::makeFlags()*/); // view definition only
       result.close();
     }
 

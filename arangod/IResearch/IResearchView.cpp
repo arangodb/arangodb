@@ -347,7 +347,7 @@ IResearchView::~IResearchView() {
 
 arangodb::Result IResearchView::appendVelocyPackImpl(  // append JSON
     arangodb::velocypack::Builder& builder,            // destrination
-    std::underlying_type<Serialize>::type flags) const {
+    Serialization context) const {
   if (hasFlag(flags, Serialize::ForPersistence) &&
       arangodb::ServerState::instance()->isSingleServer()) {
     auto res = arangodb::LogicalViewHelperStorageEngine::properties( // storage engine properties

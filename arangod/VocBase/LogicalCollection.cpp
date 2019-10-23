@@ -614,7 +614,7 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
 }
 
 arangodb::Result LogicalCollection::appendVelocyPack(arangodb::velocypack::Builder& result,
-                                                     std::underlying_type<Serialize>::type flags) const {
+                                                     Serialization context) const {
   // We write into an open object
   TRI_ASSERT(result.isOpenObject());
 
@@ -691,17 +691,17 @@ arangodb::Result LogicalCollection::appendVelocyPack(arangodb::velocypack::Build
 
 void LogicalCollection::toVelocyPackIgnore(VPackBuilder& result,
                                            std::unordered_set<std::string> const& ignoreKeys,
-                                           std::underlying_type<Serialize>::type flags) const {
+                                           Serialization context) const {
   TRI_ASSERT(result.isOpenObject());
-  VPackBuilder b = toVelocyPackIgnore(ignoreKeys, flags);
+  VPackBuilder b = toVelocyPackIgnore(ignoreKeys, context);
   result.add(VPackObjectIterator(b.slice()));
 }
 
 VPackBuilder LogicalCollection::toVelocyPackIgnore(std::unordered_set<std::string> const& ignoreKeys,
-                                                   std::underlying_type<Serialize>::type flags) const {
+                                                   Serialization context) const {
   VPackBuilder full;
   full.openObject();
-  properties(full, flags);
+  properties(full, context);
   full.close();
   if (ignoreKeys.empty()) {
     return full;
