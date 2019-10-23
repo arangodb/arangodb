@@ -1124,6 +1124,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
                              getRegisterPlan()->nrRegs[getDepth()],
                              getRegsToClear(), calcRegsToKeep());
 
+
     return std::make_unique<aql::ExecutionBlockImpl<aql::NoResultsExecutor>>(&engine, this,
                                                                              std::move(infos));
   }
@@ -1275,14 +1276,6 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
       &engine, this, std::move(executorInfos));
   }
 }
-
-//aql::Collection const* IResearchViewNode::collection() const {
-//  auto collections = this->collections();
-//  if (collections.empty()) {
-//    return nullptr;
-//  }
-//  return &(collections[0].get());
-//}
 
 }  // namespace iresearch
 }  // namespace arangodb
