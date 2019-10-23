@@ -1,6 +1,9 @@
 v3.5.3 (XXXX-XX-XX)
 -------------------
 
+* Bugfix: An AQL ternary expression with the condition being true at query
+  compile time would not execute its false branch.
+
 * Fixed issue #10470: The WebUI now shows potential errors and details which
   occured using _api/import (e.g. unique constraint violated).
 
