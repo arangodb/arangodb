@@ -91,8 +91,7 @@ void ModificationExecutorHelpers::buildKeyDocument(VPackBuilder& builder,
   if (what == Revision::Include && !rev.empty()) {
     builder.add(StaticStrings::RevString, VPackValue(rev));
   } else {
-    // TODO: Check that this is correct
-    //    builder.add(StaticStrings::RevString, VPackValue(VPackValueType::Null));
+    builder.add(StaticStrings::RevString, VPackValue(VPackValueType::Null));
   }
   builder.close();
 }
@@ -104,7 +103,6 @@ bool ModificationExecutorHelpers::writeRequired(ModificationExecutorInfos& infos
           !infos._aqlCollection->getCollection()->skipForAqlWrite(doc, key));
 }
 
-// TODO: This has to be nicer.
 void ModificationExecutorHelpers::throwOperationResultException(
     ModificationExecutorInfos& infos, OperationResult const& result) {
   auto const& errorCounter = result.countErrorCodes;
