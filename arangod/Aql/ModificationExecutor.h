@@ -65,7 +65,15 @@ namespace aql {
 //
 // The FetcherType has to provide the function fetchRow with the parameter atMost
 //
-
+// The two types of modifiers (Simple and Upsert) follow a similar design. The main
+// data is held in
+//   * an operations vector which stores the type of operation
+//     (APPLY_RETURN, IGNORE_RETURN, IGNORE_SKIP) that was performed by the
+//     modifier. The Upsert modifier internally uses APPLY_UPDATE and APPLY_INSERT
+//     to distinguish between the insert and UpdateReplace branches.
+//   * an accumulator that stores the documents that are committed in the
+//     transaction.
+//
 enum class ModOperationType : uint8_t {
   // do not apply, do not produce a result - used for skipping over suppressed
   // errors
@@ -101,7 +109,7 @@ enum class ModifierIteratorMode { OperationsOnly, Full };
 std::ostream& operator<<(std::ostream& ostream, ModifierIteratorMode mode);
 
 template <typename FetcherType, typename ModifierType>
-class ModificationExecutor2 {
+class ModificationExecutor {
  public:
   struct Properties {
     static constexpr bool preservesOrder = true;
@@ -112,8 +120,8 @@ class ModificationExecutor2 {
   using Infos = ModificationExecutorInfos;
   using Stats = ModificationStats;
 
-  ModificationExecutor2(FetcherType&, Infos&);
-  ~ModificationExecutor2();
+  ModificationExecutor(FetcherType&, Infos&);
+  ~ModificationExecutor();
 
   std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
 

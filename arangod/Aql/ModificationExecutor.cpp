@@ -63,7 +63,7 @@ std::ostream& operator<<(std::ostream& ostream, ModifierIteratorMode mode) {
 }
 
 template <typename FetcherType, typename ModifierType>
-ModificationExecutor2<FetcherType, ModifierType>::ModificationExecutor2(Fetcher& fetcher,
+ModificationExecutor<FetcherType, ModifierType>::ModificationExecutor(Fetcher& fetcher,
                                                                         Infos& infos)
     : _lastState(ExecutionState::HASMORE), _infos(infos), _fetcher(fetcher), _modifier(infos) {
   // In MMFiles we need to make sure that the data is not moved in memory or collected
@@ -81,14 +81,14 @@ ModificationExecutor2<FetcherType, ModifierType>::ModificationExecutor2(Fetcher&
 }
 
 template <typename FetcherType, typename ModifierType>
-ModificationExecutor2<FetcherType, ModifierType>::~ModificationExecutor2() = default;
+ModificationExecutor<FetcherType, ModifierType>::~ModificationExecutor() = default;
 
 // Fetches as many rows as possible from upstream using the fetcher's fetchRow
 // method and accumulates results through the modifier
 // TODO: Perhaps we can remove stats here?
 template <typename FetcherType, typename ModifierType>
-std::pair<ExecutionState, typename ModificationExecutor2<FetcherType, ModifierType>::Stats>
-ModificationExecutor2<FetcherType, ModifierType>::doCollect(size_t const maxOutputs) {
+std::pair<ExecutionState, typename ModificationExecutor<FetcherType, ModifierType>::Stats>
+ModificationExecutor<FetcherType, ModifierType>::doCollect(size_t const maxOutputs) {
   // for fetchRow
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
   ExecutionState state = ExecutionState::HASMORE;
@@ -114,7 +114,7 @@ ModificationExecutor2<FetcherType, ModifierType>::doCollect(size_t const maxOutp
 
 // Outputs accumulated results, and counts the statistics
 template <typename FetcherType, typename ModifierType>
-void ModificationExecutor2<FetcherType, ModifierType>::doOutput(OutputAqlItemRow& output,
+void ModificationExecutor<FetcherType, ModifierType>::doOutput(OutputAqlItemRow& output,
                                                                 Stats& stats) {
   // If we have made no modifications or are silent,
   // we can just copy rows; this is an optimisation for silent
@@ -204,11 +204,11 @@ void ModificationExecutor2<FetcherType, ModifierType>::doOutput(OutputAqlItemRow
 }
 
 template <typename FetcherType, typename ModifierType>
-std::pair<ExecutionState, typename ModificationExecutor2<FetcherType, ModifierType>::Stats>
-ModificationExecutor2<FetcherType, ModifierType>::produceRows(OutputAqlItemRow& output) {
+std::pair<ExecutionState, typename ModificationExecutor<FetcherType, ModifierType>::Stats>
+ModificationExecutor<FetcherType, ModifierType>::produceRows(OutputAqlItemRow& output) {
   TRI_ASSERT(_infos._trx);
 
-  ModificationExecutor2::Stats stats;
+  ModificationExecutor::Stats stats;
 
   const size_t maxOutputs = std::min(output.numRowsLeft(), _modifier.getBatchSize());
 
@@ -237,14 +237,14 @@ ModificationExecutor2<FetcherType, ModifierType>::produceRows(OutputAqlItemRow& 
 
 using NoPassthroughSingleRowFetcher = SingleRowFetcher<BlockPassthrough::Disable>;
 
-template class ::arangodb::aql::ModificationExecutor2<NoPassthroughSingleRowFetcher, InsertModifier>;
-template class ::arangodb::aql::ModificationExecutor2<AllRowsFetcher, InsertModifier>;
-template class ::arangodb::aql::ModificationExecutor2<NoPassthroughSingleRowFetcher, RemoveModifier>;
-template class ::arangodb::aql::ModificationExecutor2<AllRowsFetcher, RemoveModifier>;
-template class ::arangodb::aql::ModificationExecutor2<NoPassthroughSingleRowFetcher, UpdateReplaceModifier>;
-template class ::arangodb::aql::ModificationExecutor2<AllRowsFetcher, UpdateReplaceModifier>;
-template class ::arangodb::aql::ModificationExecutor2<NoPassthroughSingleRowFetcher, UpsertModifier>;
-template class ::arangodb::aql::ModificationExecutor2<AllRowsFetcher, UpsertModifier>;
+template class ::arangodb::aql::ModificationExecutor<NoPassthroughSingleRowFetcher, InsertModifier>;
+template class ::arangodb::aql::ModificationExecutor<AllRowsFetcher, InsertModifier>;
+template class ::arangodb::aql::ModificationExecutor<NoPassthroughSingleRowFetcher, RemoveModifier>;
+template class ::arangodb::aql::ModificationExecutor<AllRowsFetcher, RemoveModifier>;
+template class ::arangodb::aql::ModificationExecutor<NoPassthroughSingleRowFetcher, UpdateReplaceModifier>;
+template class ::arangodb::aql::ModificationExecutor<AllRowsFetcher, UpdateReplaceModifier>;
+template class ::arangodb::aql::ModificationExecutor<NoPassthroughSingleRowFetcher, UpsertModifier>;
+template class ::arangodb::aql::ModificationExecutor<AllRowsFetcher, UpsertModifier>;
 
 }  // namespace aql
 }  // namespace arangodb

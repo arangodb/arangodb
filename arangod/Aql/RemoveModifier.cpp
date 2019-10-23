@@ -64,13 +64,10 @@ ModOperationType RemoveModifierCompletion::accumulate(VPackBuilder& accu,
     if (result.ok()) {
       VPackBuilder keyDocBuilder;
       buildKeyDocument(keyDocBuilder, key, rev);
-      // This deletes _rev if rev is empty or
-      //  ignoreRevs is set in options.
+      // This deletes _rev if rev is empty or ignoreRevs is set in options.
       accu.add(keyDocBuilder.slice());
       return ModOperationType::APPLY_RETURN;
     } else {
-      // TODO: This is still a tad ugly. Also, what happens if there's no
-      //       error message?
       if (!_infos._ignoreErrors) {
         THROW_ARANGO_EXCEPTION_MESSAGE(result.errorNumber(), result.errorMessage());
       }

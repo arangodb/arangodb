@@ -107,9 +107,9 @@ void ModificationNode::cloneCommon(ModificationNode* c) const {
 /// REMOVE
 ///
 using AllRowsRemoveExecutionBlock =
-    ExecutionBlockImpl<ModificationExecutor2<AllRowsFetcher, RemoveModifier>>;
+    ExecutionBlockImpl<ModificationExecutor<AllRowsFetcher, RemoveModifier>>;
 using SingleRowRemoveExecutionBlock =
-    ExecutionBlockImpl<ModificationExecutor2<SingleRowFetcher<BlockPassthrough::Disable>, RemoveModifier>>;
+    ExecutionBlockImpl<ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, RemoveModifier>>;
 
 RemoveNode::RemoveNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ModificationNode(plan, base),
@@ -183,9 +183,9 @@ ExecutionNode* RemoveNode::clone(ExecutionPlan* plan, bool withDependencies,
 /// INSERT
 ///
 using AllRowsInsertExecutionBlock =
-    ExecutionBlockImpl<ModificationExecutor2<AllRowsFetcher, InsertModifier>>;
+    ExecutionBlockImpl<ModificationExecutor<AllRowsFetcher, InsertModifier>>;
 using SingleRowInsertExecutionBlock =
-    ExecutionBlockImpl<ModificationExecutor2<SingleRowFetcher<BlockPassthrough::Disable>, InsertModifier>>;
+    ExecutionBlockImpl<ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, InsertModifier>>;
 
 InsertNode::InsertNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ModificationNode(plan, base),
@@ -267,9 +267,9 @@ ExecutionNode* InsertNode::clone(ExecutionPlan* plan, bool withDependencies,
 /// REMOVE
 ///
 using AllRowsUpdateReplaceExecutionBlock =
-    ExecutionBlockImpl<ModificationExecutor2<AllRowsFetcher, UpdateReplaceModifier>>;
+    ExecutionBlockImpl<ModificationExecutor<AllRowsFetcher, UpdateReplaceModifier>>;
 using SingleRowUpdateReplaceExecutionBlock =
-    ExecutionBlockImpl<ModificationExecutor2<SingleRowFetcher<BlockPassthrough::Disable>, UpdateReplaceModifier>>;
+    ExecutionBlockImpl<ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, UpdateReplaceModifier>>;
 
 UpdateReplaceNode::UpdateReplaceNode(ExecutionPlan* plan,
                                      arangodb::velocypack::Slice const& base)
@@ -447,9 +447,9 @@ ExecutionNode* ReplaceNode::clone(ExecutionPlan* plan, bool withDependencies,
 /// UPSERT
 ///
 using AllRowsUpsertExecutionBlock =
-    ExecutionBlockImpl<ModificationExecutor2<AllRowsFetcher, UpsertModifier>>;
+    ExecutionBlockImpl<ModificationExecutor<AllRowsFetcher, UpsertModifier>>;
 using SingleRowUpsertExecutionBlock =
-    ExecutionBlockImpl<ModificationExecutor2<SingleRowFetcher<BlockPassthrough::Disable>, UpsertModifier>>;
+    ExecutionBlockImpl<ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, UpsertModifier>>;
 
 UpsertNode::UpsertNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ModificationNode(plan, base),
