@@ -1,9 +1,0 @@
-<!DOCTYPE html>
-<html>
-  <head></head>
-  <body>
-    <h3>
-      Macro shouldn't expand: __DATE__
-    </h3>
-  </body>
-</html>
