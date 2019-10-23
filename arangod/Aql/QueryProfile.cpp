@@ -44,12 +44,20 @@ QueryProfile::QueryProfile(Query* query)
     it = 0.0;  // reset timers
   }
 
-  auto queryList = query->vocbase().queryList();
-  _tracked = queryList->insert(query);
+  registerInQueryList(query);
 }
 
 /// @brief destroy a profile
 QueryProfile::~QueryProfile() {
+  unregisterFromQueryList();
+}
+
+void QueryProfile::registerInQueryList(Query* query) {
+  auto queryList = query->vocbase().queryList();
+  _tracked = queryList->insert(query);
+}
+
+void QueryProfile::unregisterFromQueryList() noexcept {
   // only remove from list when the query was inserted into it...
   if (_tracked) {
     auto queryList = _query->vocbase().queryList();
@@ -58,6 +66,8 @@ QueryProfile::~QueryProfile() {
       queryList->remove(_query);
     } catch (...) {
     }
+
+    _tracked = false;
   }
 }
 
