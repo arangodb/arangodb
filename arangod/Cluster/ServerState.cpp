@@ -438,7 +438,7 @@ bool ServerState::integrateIntoCluster(ServerState::RoleEnum role,
     if (valueSlice.isObject()) {
       // map from server UUID to endpoint
       std::unordered_map<std::string, std::string> endpoints;
-      for (auto const& it : VPackObjectIterator(valueSlice)) {
+      for (auto it : VPackObjectIterator(valueSlice)) {
         std::string const serverId = it.key.copyString();
 
         if (!isUuid(serverId)) {

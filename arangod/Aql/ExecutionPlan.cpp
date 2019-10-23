@@ -2319,7 +2319,7 @@ ExecutionNode* ExecutionPlan::fromSlice(VPackSlice const& slice) {
 
   // first, re-create all nodes from the Slice, using the node ids
   // no dependency links will be set up in this step
-  for (auto const& it : VPackArrayIterator(nodes)) {
+  for (VPackSlice it : VPackArrayIterator(nodes)) {
     if (!it.isObject()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                      "node entry in plan is not an object");
@@ -2352,7 +2352,7 @@ ExecutionNode* ExecutionPlan::fromSlice(VPackSlice const& slice) {
   }
 
   // all nodes have been created. now add the dependencies
-  for (auto const& it : VPackArrayIterator(nodes)) {
+  for (VPackSlice it : VPackArrayIterator(nodes)) {
     // read the node's own id
     auto thisId = it.get("id").getNumericValue<size_t>();
     auto thisNode = getNodeById(thisId);

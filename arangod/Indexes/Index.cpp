@@ -78,7 +78,7 @@ std::vector<std::vector<arangodb::basics::AttributeName>> parseFields(VPackSlice
   size_t const n = static_cast<size_t>(fields.length());
   result.reserve(n);
 
-  for (auto const& name : VPackArrayIterator(fields)) {
+  for (VPackSlice name : VPackArrayIterator(fields)) {
     if (!name.isString()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED,
                                      "invalid index description");
@@ -290,7 +290,7 @@ void Index::validateFields(VPackSlice const& slice) {
     return;
   }
 
-  for (auto const& name : VPackArrayIterator(fields)) {
+  for (VPackSlice name : VPackArrayIterator(fields)) {
     if (!name.isString()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED,
                                      "invalid index description");
@@ -860,11 +860,11 @@ void Index::expandInSearchValues(VPackSlice const base, VPackBuilder& result) co
   TRI_ASSERT(base.isArray());
 
   VPackArrayBuilder baseGuard(&result);
-  for (auto const& oneLookup : VPackArrayIterator(base)) {
+  for (VPackSlice oneLookup : VPackArrayIterator(base)) {
     TRI_ASSERT(oneLookup.isArray());
 
     bool usesIn = false;
-    for (auto const& it : VPackArrayIterator(oneLookup)) {
+    for (VPackSlice it : VPackArrayIterator(oneLookup)) {
       if (it.hasKey(StaticStrings::IndexIn)) {
         usesIn = true;
         break;
@@ -906,7 +906,7 @@ void Index::expandInSearchValues(VPackSlice const base, VPackBuilder& result) co
                 arangodb::basics::VelocyPackHelper::VPackHash(),
                 arangodb::basics::VelocyPackHelper::VPackEqual());
 
-        for (auto const& el : VPackArrayIterator(inList)) {
+        for (VPackSlice el : VPackArrayIterator(inList)) {
           tmp.emplace(el);
         }
         auto& vector = elements[i];

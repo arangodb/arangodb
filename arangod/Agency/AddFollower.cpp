@@ -275,7 +275,7 @@ bool AddFollower::start(bool&) {
                        trx.add(VPackValue(planPath));
                        {
                          VPackArrayBuilder serverList(&trx);
-                         for (auto const& srv : VPackArrayIterator(plan)) {
+                         for (VPackSlice srv : VPackArrayIterator(plan)) {
                            trx.add(srv);
                          }
                          for (auto const& srv : chosen) {

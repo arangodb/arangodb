@@ -634,7 +634,7 @@ ExecutionState Query::execute(QueryRegistry* registry, QueryResult& queryResult)
         _resultBuilder->openArray();
         _executionPhase = ExecutionPhase::EXECUTE;
       }
-      // intentionally falls through
+      [[fallthrough]];
       case ExecutionPhase::EXECUTE: {
         TRI_ASSERT(_resultBuilder != nullptr);
         TRI_ASSERT(_resultBuilder->isOpenArray());
@@ -713,7 +713,7 @@ ExecutionState Query::execute(QueryRegistry* registry, QueryResult& queryResult)
         _executionPhase = ExecutionPhase::FINALIZE;
       }
 
-      // intentionally falls through
+      [[fallthrough]];
       case ExecutionPhase::FINALIZE: {
         // will set warnings, stats, profile and cleanup plan and engine
         return finalize(queryResult);

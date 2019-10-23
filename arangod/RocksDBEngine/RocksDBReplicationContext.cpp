@@ -642,7 +642,7 @@ arangodb::Result RocksDBReplicationContext::dumpDocuments(
   size_t oldPos = from;
   size_t offset = 0;
 
-  for (auto const& it : VPackArrayIterator(ids)) {
+  for (VPackSlice it : VPackArrayIterator(ids)) {
     if (!it.isNumber()) {
       return rv.reset(TRI_ERROR_BAD_PARAMETER);
     }

@@ -242,10 +242,10 @@ struct ClusterCommResult {
   /// @brief stringify a cluster comm status
   static char const* stringifyStatus(ClusterCommOpStatus status);
 
-  void fromError(int errorCode, std::unique_ptr<GeneralResponse> response) {
-    errorMessage = TRI_errno_string(errorCode);
-    this->errorCode = errorCode;
-    switch (errorCode) {
+  void fromError(int errCode, std::unique_ptr<GeneralResponse> response) {
+    errorMessage = TRI_errno_string(errCode);
+    this->errorCode = errCode;
+    switch (errCode) {
       case TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT:
         status = CL_COMM_BACKEND_UNAVAILABLE;
         break;

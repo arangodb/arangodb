@@ -190,7 +190,7 @@ void ExecutionNode::getSortElements(SortElementVector& elements, ExecutionPlan* 
 
   elements.reserve(elementsSlice.length());
 
-  for (auto const& it : VPackArrayIterator(elementsSlice)) {
+  for (VPackSlice it : VPackArrayIterator(elementsSlice)) {
     bool ascending = it.get("ascending").getBoolean();
     Variable* v = Variable::varFromVPack(plan->getAst(), it, "inVariable");
     elements.emplace_back(v, ascending);
@@ -244,7 +244,7 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan, VPackSlice c
       std::vector<Variable const*> keepVariables;
       VPackSlice keepVariablesSlice = slice.get("keepVariables");
       if (keepVariablesSlice.isArray()) {
-        for (auto const& it : VPackArrayIterator(keepVariablesSlice)) {
+        for (VPackSlice it : VPackArrayIterator(keepVariablesSlice)) {
           Variable const* variable =
               Variable::varFromVPack(plan->getAst(), it, "variable");
           keepVariables.emplace_back(variable);
@@ -261,7 +261,7 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan, VPackSlice c
       std::vector<std::pair<Variable const*, Variable const*>> groupVariables;
       {
         groupVariables.reserve(groupsSlice.length());
-        for (auto const& it : VPackArrayIterator(groupsSlice)) {
+        for (VPackSlice it : VPackArrayIterator(groupsSlice)) {
           Variable* outVar =
               Variable::varFromVPack(plan->getAst(), it, "outVariable");
           Variable* inVar =
@@ -281,7 +281,7 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan, VPackSlice c
       std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>> aggregateVariables;
       {
         aggregateVariables.reserve(aggregatesSlice.length());
-        for (auto const& it : VPackArrayIterator(aggregatesSlice)) {
+        for (VPackSlice it : VPackArrayIterator(aggregatesSlice)) {
           Variable* outVar =
               Variable::varFromVPack(plan->getAst(), it, "outVariable");
           Variable* inVar =
@@ -382,7 +382,7 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan, VPackSlice const& slice)
 
   _registerPlan->varInfo.reserve(varInfoList.length());
 
-  for (auto const& it : VPackArrayIterator(varInfoList)) {
+  for (VPackSlice it : VPackArrayIterator(varInfoList)) {
     if (!it.isObject()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_NOT_IMPLEMENTED,
@@ -402,7 +402,7 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan, VPackSlice const& slice)
   }
 
   _registerPlan->nrRegs.reserve(nrRegsList.length());
-  for (auto const& it : VPackArrayIterator(nrRegsList)) {
+  for (VPackSlice it : VPackArrayIterator(nrRegsList)) {
     _registerPlan->nrRegs.emplace_back(it.getNumericValue<RegisterId>());
   }
 
@@ -413,7 +413,7 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan, VPackSlice const& slice)
   }
 
   _registerPlan->nrRegsHere.reserve(nrRegsHereList.length());
-  for (auto const& it : VPackArrayIterator(nrRegsHereList)) {
+  for (VPackSlice it : VPackArrayIterator(nrRegsHereList)) {
     _registerPlan->nrRegsHere.emplace_back(it.getNumericValue<RegisterId>());
   }
 
@@ -424,7 +424,7 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan, VPackSlice const& slice)
   }
 
   _regsToClear.reserve(regsToClearList.length());
-  for (auto const& it : VPackArrayIterator(regsToClearList)) {
+  for (VPackSlice it : VPackArrayIterator(regsToClearList)) {
     _regsToClear.insert(it.getNumericValue<RegisterId>());
   }
 
@@ -437,7 +437,7 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan, VPackSlice const& slice)
   }
 
   _varsUsedLater.reserve(varsUsedLater.length());
-  for (auto const& it : VPackArrayIterator(varsUsedLater)) {
+  for (VPackSlice it : VPackArrayIterator(varsUsedLater)) {
     Variable oneVarUsedLater(it);
     Variable* oneVariable = allVars->getVariable(oneVarUsedLater.id);
 
@@ -457,7 +457,7 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan, VPackSlice const& slice)
   }
 
   _varsValid.reserve(varsValidList.length());
-  for (auto const& it : VPackArrayIterator(varsValidList)) {
+  for (VPackSlice it : VPackArrayIterator(varsValidList)) {
     Variable oneVarValid(it);
     Variable* oneVariable = allVars->getVariable(oneVarValid.id);
 

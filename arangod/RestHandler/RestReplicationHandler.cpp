@@ -171,7 +171,7 @@ static Result restoreDataParser(char const* ptr, char const* pos,
 
   type = REPLICATION_INVALID;
 
-  for (auto const& pair : VPackObjectIterator(slice, true)) {
+  for (auto pair : VPackObjectIterator(slice, true)) {
     if (!pair.key.isString()) {
       return Result{TRI_ERROR_HTTP_CORRUPTED_JSON,
                     "received invalid JSON data for collection '" +
@@ -1416,7 +1416,7 @@ Result RestReplicationHandler::processRestoreUsersBatch(std::string const& colle
       TRI_ASSERT(doc.isObject());
       // In the _users case we silently remove the _key value.
       bindVars->openObject();
-      for (auto const& it : VPackObjectIterator(doc)) {
+      for (auto it : VPackObjectIterator(doc)) {
         if (arangodb::velocypack::StringRef(it.key) != StaticStrings::KeyString &&
             arangodb::velocypack::StringRef(it.key) != StaticStrings::IdString) {
           bindVars->add(it.key);
@@ -1555,7 +1555,7 @@ Result RestReplicationHandler::processRestoreDataBatch(transaction::Methods& trx
         if (isUsersOnCoordinator) {
           // In the _users case we silently remove the _key value.
           builder.openObject();
-          for (auto const& it : VPackObjectIterator(doc)) {
+          for (auto it : VPackObjectIterator(doc)) {
             if (arangodb::velocypack::StringRef(it.key) != StaticStrings::KeyString &&
                 arangodb::velocypack::StringRef(it.key) != StaticStrings::IdString) {
               builder.add(it.key);
@@ -1902,8 +1902,8 @@ void RestReplicationHandler::handleCommandRestoreView() {
     if (view) {
       if (!overwrite) {
         generateError(GeneralResponse::responseCode(TRI_ERROR_ARANGO_DUPLICATE_NAME),
-                      TRI_ERROR_ARANGO_DUPLICATE_NAME, 
-                      std::string("unable to restore view '") + nameSlice.copyString() + ": " + 
+                      TRI_ERROR_ARANGO_DUPLICATE_NAME,
+                      std::string("unable to restore view '") + nameSlice.copyString() + ": " +
                       TRI_errno_string(TRI_ERROR_ARANGO_DUPLICATE_NAME));
         return;
       }

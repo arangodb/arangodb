@@ -191,7 +191,7 @@ TEST_F(FailedFollowerTest, if_collection_is_missing_job_should_just_finish) {
     builder.reset(new VPackBuilder());
     if (s.isObject()) {
       builder->add(VPackValue(VPackValueType::Object));
-      for (auto const& it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {
@@ -246,7 +246,7 @@ TEST_F(FailedFollowerTest, distributeshardslike_should_fail_immediately) {
     builder.reset(new VPackBuilder());
     if (s.isObject()) {
       builder->add(VPackValue(VPackValueType::Object));
-      for (auto const& it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {
@@ -305,7 +305,7 @@ TEST_F(FailedFollowerTest, if_follower_is_healthy_again_we_fail_the_job) {
     builder.reset(new VPackBuilder());
     if (s.isObject()) {
       builder->add(VPackValue(VPackValueType::Object));
-      for (auto const& it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {
@@ -368,7 +368,7 @@ TEST_F(FailedFollowerTest, if_there_is_no_healthy_free_server_at_start_just_fini
     builder.reset(new VPackBuilder());
     if (s.isObject()) {
       builder->add(VPackValue(VPackValueType::Object));
-      for (auto const& it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {
@@ -431,7 +431,7 @@ TEST_F(FailedFollowerTest, abort_any_moveshard_job_blocking) {
     std::unique_ptr<Builder> builder(new Builder());
     if (s.isObject()) {
       VPackObjectBuilder b(builder.get());
-      for (auto const& it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {
@@ -487,7 +487,7 @@ TEST_F(FailedFollowerTest, successfully_started_jbo_should_finish_immediately) {
     std::unique_ptr<Builder> builder(new Builder());
     if (s.isObject()) {
       VPackObjectBuilder b(builder.get());
-      for (auto const& it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {
@@ -572,7 +572,7 @@ TEST_F(FailedFollowerTest, job_should_handle_distributeshardslike) {
     std::unique_ptr<Builder> builder(new Builder());
     if (s.isObject()) {
       VPackObjectBuilder b(builder.get());
-      for (auto const& it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {
@@ -717,7 +717,7 @@ TEST_F(FailedFollowerTest, job_should_timeout_after_a_while) {
     std::unique_ptr<Builder> builder(new Builder());
     if (s.isObject()) {
       VPackObjectBuilder b(builder.get());
-      for (auto const& it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {
@@ -730,7 +730,7 @@ TEST_F(FailedFollowerTest, job_should_timeout_after_a_while) {
         VPackBuilder timedOutJob;
         {
           VPackObjectBuilder a(&timedOutJob);
-          for (auto const& it : VPackObjectIterator(todoJob.slice())) {
+          for (auto it : VPackObjectIterator(todoJob.slice())) {
             if (it.key.copyString() == "timeCreated") {
               timedOutJob.add("timeCreated",
                               VPackValue("2015-01-01T00:00:00Z"));
@@ -780,7 +780,7 @@ TEST_F(FailedFollowerTest, job_should_be_abortable_in_todo) {
     std::unique_ptr<Builder> builder(new Builder());
     if (s.isObject()) {
       VPackObjectBuilder b(builder.get());
-      for (auto const& it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {

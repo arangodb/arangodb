@@ -1679,7 +1679,7 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
   std::unordered_map<int, size_t> errorCounter;
   if (value.isArray()) {
     VPackArrayBuilder b(&resultBuilder);
-    for (auto const& s : VPackArrayIterator(value)) {
+    for (VPackSlice s : VPackArrayIterator(value)) {
       res = workForOneDocument(s, true);
       if (res.fail()) {
         createBabiesError(resultBuilder, errorCounter, res);
@@ -2257,7 +2257,7 @@ Future<OperationResult> transaction::Methods::removeLocal(std::string const& col
   std::unordered_map<int, size_t> errorCounter;
   if (value.isArray()) {
     VPackArrayBuilder guard(&resultBuilder);
-    for (auto const& s : VPackArrayIterator(value)) {
+    for (VPackSlice s : VPackArrayIterator(value)) {
       res = workForOneDocument(s, true);
       if (res.fail()) {
         createBabiesError(resultBuilder, errorCounter, res);

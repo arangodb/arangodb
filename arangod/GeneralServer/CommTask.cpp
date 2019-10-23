@@ -201,7 +201,7 @@ CommTask::Flow CommTask::prepareExecution(GeneralRequest& req) {
         break;  // continue with auth check
       }
     }
-    // intentionally falls through
+    [[fallthrough]];
     case ServerState::Mode::TRYAGAIN: {
       if (!::startsWith(path, "/_admin/shutdown") &&
           !::startsWith(path, "/_admin/cluster/health") &&
@@ -305,7 +305,7 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
   bool found;
   // check for an async request (before the handler steals the request)
   std::string const& asyncExec = request->header(StaticStrings::Async, found);
-  
+
   // store the message id for error handling
   uint64_t messageId = 0UL;
   if (request) {
@@ -476,7 +476,7 @@ void CommTask::addErrorResponse(rest::ResponseCode code, rest::ContentType respT
 bool CommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
 
   RequestStatistics::SET_QUEUE_START(handler->statistics(), SchedulerFeature::SCHEDULER->queueStatistics()._queued);
-  
+
   RequestLane lane = handler->getRequestLane();
   ContentType respType = handler->request()->contentTypeResponse();
   uint64_t mid = handler->messageId();

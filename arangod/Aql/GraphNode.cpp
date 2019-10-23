@@ -274,7 +274,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
 
   // Directions
   VPackSlice dirList = base.get("directions");
-  for (auto const& it : VPackArrayIterator(dirList)) {
+  for (VPackSlice it : VPackArrayIterator(dirList)) {
     uint64_t dir = arangodb::basics::VelocyPackHelper::stringUInt64(it);
     TRI_edge_direction_e d = uint64ToDirection(dir);
     // Only TRI_EDGE_IN and TRI_EDGE_OUT allowed here
@@ -313,7 +313,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
                                    "graph needs an array of edge collections.");
   }
 
-  for (auto const& it : VPackArrayIterator(currentSlice)) {
+  for (VPackSlice it : VPackArrayIterator(currentSlice)) {
     std::string e = arangodb::basics::VelocyPackHelper::getStringValue(it, "");
     _edgeColls.emplace_back(
         std::make_unique<aql::Collection>(e, _vocbase, AccessMode::Type::READ));
@@ -327,7 +327,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
         "graph needs an array of vertex collections.");
   }
 
-  for (auto const& it : VPackArrayIterator(currentSlice)) {
+  for (VPackSlice it : VPackArrayIterator(currentSlice)) {
     std::string v = arangodb::basics::VelocyPackHelper::getStringValue(it, "");
     _vertexColls.emplace_back(
         std::make_unique<aql::Collection>(v, _vocbase, AccessMode::Type::READ));

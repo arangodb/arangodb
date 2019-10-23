@@ -2086,7 +2086,7 @@ void MMFilesCollection::prepareIndexes(VPackSlice indexesSlice) {
   bool foundPrimary = false;
   bool foundEdge = false;
 
-  for (auto const& it : VPackArrayIterator(indexesSlice)) {
+  for (VPackSlice it : VPackArrayIterator(indexesSlice)) {
     auto const& s = it.get(arangodb::StaticStrings::IndexType);
 
     if (s.isString()) {
@@ -2837,7 +2837,7 @@ LocalDocumentId MMFilesCollection::reuseOrCreateLocalDocumentId(OperationOptions
     if (marker->hasLocalDocumentId()) {
       return marker->getLocalDocumentId();
     }
-    // falls through intentionally
+    // intentionally falls through
   }
 
   // new operation, no recovery -> generate a new LocalDocumentId
@@ -3321,7 +3321,7 @@ int MMFilesCollection::detectIndexes(transaction::Methods& trx) {
                             _logicalCollection.id(), builder, true, UINT64_MAX);
 
   // iterate over all index files
-  for (auto const& it : VPackArrayIterator(builder.slice().get("indexes"))) {
+  for (VPackSlice it : VPackArrayIterator(builder.slice().get("indexes"))) {
     bool ok = openIndex(it, trx);
 
     if (!ok) {

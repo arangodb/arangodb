@@ -704,7 +704,7 @@ void PhysicalCollectionMock::prepareIndexes(arangodb::velocypack::Slice indexesS
   auto* engine = arangodb::EngineSelectorFeature::ENGINE;
   auto& idxFactory = engine->indexFactory();
 
-  for (auto const& v : VPackArrayIterator(indexesSlice)) {
+  for (VPackSlice v : VPackArrayIterator(indexesSlice)) {
     if (arangodb::basics::VelocyPackHelper::getBooleanValue(v, "error", false)) {
       // We have an error here.
       // Do not add index.

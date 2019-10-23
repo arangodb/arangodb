@@ -942,13 +942,13 @@ bool VelocyPackHelper::hasNonClientTypes(VPackSlice input, bool checkExternals, 
   } else if (input.isCustom()) {
     return checkCustom;
   } else if (input.isObject()) {
-    for (auto const& it : VPackObjectIterator(input, true)) {
+    for (auto it : VPackObjectIterator(input, true)) {
       if (hasNonClientTypes(it.value, checkExternals, checkCustom)) {
         return true;
       }
     }
   } else if (input.isArray()) {
-    for (auto const& it : VPackArrayIterator(input)) {
+    for (VPackSlice it : VPackArrayIterator(input)) {
       if (hasNonClientTypes(it, checkExternals, checkCustom)) {
         return true;
       }
@@ -975,7 +975,7 @@ void VelocyPackHelper::sanitizeNonClientTypes(VPackSlice input, VPackSlice base,
     output.add(VPackValue(custom));
   } else if (input.isObject()) {
     output.openObject(allowUnindexed);
-    for (auto const& it : VPackObjectIterator(input, true)) {
+    for (auto it : VPackObjectIterator(input, true)) {
       VPackValueLength l;
       char const* p = it.key.getString(l);
       output.add(VPackValuePair(p, l, VPackValueType::String));
@@ -985,7 +985,7 @@ void VelocyPackHelper::sanitizeNonClientTypes(VPackSlice input, VPackSlice base,
     output.close();
   } else if (input.isArray()) {
     output.openArray(allowUnindexed);
-    for (auto const& it : VPackArrayIterator(input)) {
+    for (VPackSlice it : VPackArrayIterator(input)) {
       sanitizeNonClientTypes(it, input, output, options, sanitizeExternals,
                              sanitizeCustom, allowUnindexed);
     }

@@ -236,7 +236,7 @@ bool CleanOutServer::start(bool& aborts) {
   }
   VPackSlice cleanedServers = cleanedServersBuilder.slice();
   if (cleanedServers.isArray()) {
-    for (auto const& x : VPackArrayIterator(cleanedServers)) {
+    for (VPackSlice x : VPackArrayIterator(cleanedServers)) {
       if (x.isString() && x.copyString() == _server) {
         finish("", "", false, "server must not be in `Target/CleanedServers`");
         return false;
@@ -382,7 +382,7 @@ bool CleanOutServer::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
         // Only shards, which are affected
         int found = -1;
         int count = 0;
-        for (auto const& dbserver : VPackArrayIterator(shard.second->slice())) {
+        for (VPackSlice dbserver : VPackArrayIterator(shard.second->slice())) {
           if (dbserver.copyString() == _server) {
             found = count;
             break;
@@ -418,7 +418,7 @@ bool CleanOutServer::scheduleMoveShards(std::shared_ptr<Builder>& trx) {
           decltype(servers) serversCopy(servers);  // a copy
 
           // Only destinations, which are not already holding this shard
-          for (auto const& dbserver : VPackArrayIterator(shard.second->slice())) {
+          for (VPackSlice dbserver : VPackArrayIterator(shard.second->slice())) {
             serversCopy.erase(std::remove(serversCopy.begin(), serversCopy.end(),
                                           dbserver.copyString()),
                               serversCopy.end());
@@ -488,7 +488,7 @@ bool CleanOutServer::checkFeasibility() {
     std::stringstream collections;
     std::stringstream factors;
 
-    for (auto const collection : tooLargeCollections) {
+    for (auto const& collection : tooLargeCollections) {
       collections << collection << " ";
     }
     for (auto const factor : tooLargeFactors) {
