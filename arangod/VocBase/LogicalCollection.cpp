@@ -615,20 +615,7 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
 
 arangodb::Result LogicalCollection::appendVelocyPack(arangodb::velocypack::Builder& result,
                                                      Serialization context) const {
-  auto flags = makeFlags();
-  switch (context) {
-    case Serialization::List:
-    break;
-    case Serialization::Properties:
-    flags = makeFlags(Serialize::Detailed);
-    break;
-    case Serialization::Persistence:
-    flags = makeFlags(Serialize::Detailed, Serialize::ForPersistence, Serialize::IncludeInProgress);
-    break;
-    case Serialization::Replication:
-    TRI_ASSERT(false);
-    break;
-  }
+  bool const forPersistence = (context == Serialization::Persistence);
 
   // We write into an open object
   TRI_ASSERT(result.isOpenObject());
@@ -643,7 +630,7 @@ arangodb::Result LogicalCollection::appendVelocyPack(arangodb::velocypack::Build
   // Collection Flags
   result.add("waitForSync", VPackValue(_waitForSync));
 
-  if (!hasFlag(flags, Serialize::ForPersistence)) {
+  if (!forPersistence) {
     // with 'forPersistence' added by LogicalDataSource::toVelocyPack
     // FIXME TODO is this needed in !forPersistence???
     result.add(StaticStrings::DataSourceDeleted, VPackValue(deleted()));
@@ -668,12 +655,11 @@ arangodb::Result LogicalCollection::appendVelocyPack(arangodb::velocypack::Build
   auto indexFlags = Index::makeFlags();
   // hide hidden indexes. In effect hides unfinished indexes,
   // and iResearch links (only on a single-server and coordinator)
-  if (hasFlag(flags, Serialize::ForPersistence)) {
+  if (forPersistence) {
     indexFlags = Index::makeFlags(Index::Serialize::Internals);
   }
-  auto filter = [indexFlags, flags](arangodb::Index const* idx) {
-    if ((hasFlag(flags, Serialize::IncludeInProgress) || !idx->inProgress()) &&
-       (hasFlag(flags, Serialize::ForPersistence) || !idx->isHidden())) {
+  auto filter = [indexFlags, forPersistence](arangodb::Index const* idx) {
+    if (forPersistence || (!idx->inProgress() && !idx->isHidden())) {
       return indexFlags;
     }
 
@@ -688,13 +674,13 @@ arangodb::Result LogicalCollection::appendVelocyPack(arangodb::velocypack::Build
     result.add(StaticStrings::SmartJoinAttribute, VPackValue(_smartJoinAttribute));
   }
 
-  if (!hasFlag(flags, Serialize::ForPersistence)) {
+  if (!forPersistence) {
     // with 'forPersistence' added by LogicalDataSource::toVelocyPack
     // FIXME TODO is this needed in !forPersistence???
     result.add(StaticStrings::DataSourcePlanId, VPackValue(std::to_string(planId())));
   }
 
-  _sharding->toVelocyPack(result, hasFlag(flags, Serialize::Detailed));
+  _sharding->toVelocyPack(result, (context == Serialization::Properties) || forPersistence);
 
   includeVelocyPackEnterprise(result);
 
