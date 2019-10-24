@@ -491,8 +491,8 @@ struct TRI_v8_global_t {
   /// @brief stream query cursor templace
   v8::Persistent<v8::FunctionTemplate> StreamQueryCursorTempl;
 
-  v8::Persistent<v8::ObjectTemplate> IResearchAnalyzerTempl; // IResearch analyzer instance template
-  v8::Persistent<v8::ObjectTemplate> IResearchAnalyzersTempl; // IResearch analyzers feature template
+  v8::Persistent<v8::ObjectTemplate> IResearchAnalyzerInstanceTempl;
+  v8::Persistent<v8::ObjectTemplate> IResearchAnalyzerManagerTempl;
 
   /// @brief "Buffer" constant
   v8::Persistent<v8::String> BufferConstant;

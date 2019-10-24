@@ -63,8 +63,8 @@ v8::Handle<v8::Object> WrapAnalyzer( // wrap analyzer
 ) {
   v8::EscapableHandleScope scope(isolate);
   TRI_GET_GLOBALS();
-  TRI_GET_GLOBAL(IResearchAnalyzerTempl, v8::ObjectTemplate);
-  auto result = IResearchAnalyzerTempl->NewInstance(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
+  TRI_GET_GLOBAL(IResearchAnalyzerInstanceTempl, v8::ObjectTemplate);
+  auto result = IResearchAnalyzerInstanceTempl->NewInstance(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
 
   if (result.IsEmpty()) {
     return scope.Escape<v8::Object>(result);
@@ -681,7 +681,7 @@ void TRI_InitV8Analyzers(TRI_v8_global_t& v8g, v8::Isolate* isolate) {
     TRI_AddMethodVocbase(isolate, objTemplate, TRI_V8_ASCII_STRING(isolate, "save"), JS_Create);
     TRI_AddMethodVocbase(isolate, objTemplate, TRI_V8_ASCII_STRING(isolate, "toArray"), JS_List);
 
-    v8g.IResearchAnalyzersTempl.Reset(isolate, objTemplate);
+    v8g.IResearchAnalyzerManagerTempl.Reset(isolate, objTemplate);
 
     auto instance = objTemplate->NewInstance(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
 
@@ -705,7 +705,7 @@ void TRI_InitV8Analyzers(TRI_v8_global_t& v8g, v8::Isolate* isolate) {
     TRI_AddMethodVocbase(isolate, objTemplate, TRI_V8_ASCII_STRING(isolate, "properties"), JS_AnalyzerProperties);
     TRI_AddMethodVocbase(isolate, objTemplate, TRI_V8_ASCII_STRING(isolate, "type"), JS_AnalyzerType);
 
-    v8g.IResearchAnalyzerTempl.Reset(isolate, objTemplate);
+    v8g.IResearchAnalyzerInstanceTempl.Reset(isolate, objTemplate);
     TRI_AddGlobalFunctionVocbase( // required only for pretty-printing via JavaScript (must to be defined AFTER v8g.IResearchAnalyzerTempl.Reset(...))
       isolate, // isolate
       TRI_V8_ASCII_STRING(isolate, "ArangoAnalyzer"), // name
