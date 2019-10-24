@@ -10,6 +10,7 @@
   */
 /*jshint ignore:start */
 /*eslint-disable */
+/* global BYTELENGTH */
 global.DEFINE_MODULE('buffer', (function () {
   'use strict'
   /*eslint-enable */
@@ -17,12 +18,7 @@ global.DEFINE_MODULE('buffer', (function () {
   const exports = {};
 
   var SlowBuffer = require('internal').SlowBuffer;
-/*
-  if (global.BYTELENGTH) {
-    SlowBuffer.prototype.byteLength = global.BYTELENGTH;
-    delete global.BYTELENGTH;
-  }
-*/
+
   SlowBuffer.prototype._PRINT = function(context) {
     context.output += '<SlowBuffer';
     for (let i = 0; i < Math.min(this.length, 50); i++) {
