@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual */
+/*global assertEqual, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the statement class
