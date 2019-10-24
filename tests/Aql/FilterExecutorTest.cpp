@@ -375,7 +375,70 @@ TEST_F(FilterExecutorTest, test_produce_datarange) {
   EXPECT_FALSE(input.hasMore());
 }
 
-TEST_F(FilterExecutorTest, test_skip_datarange) {
+TEST_F(FilterExecutorTest, test_produce_datarange_need_more) {
+  // This fetcher will not be called!
+  // After Execute is done this fetcher shall be removed, the Executor does not need it anymore!
+  auto fakeUnusedBlock = VPackParser::fromJson("[  ]");
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
+      itemBlockManager, fakeUnusedBlock->steal(), false);
+
+  // This is the relevant part of the test
+  FilterExecutor testee(fetcher, infos);
+  SharedAqlItemBlockPtr inBlock =
+      buildBlock<1>(itemBlockManager,
+                    {{R"(true)"}, {R"(false)"}, {R"(true)"}, {R"(false)"}, {R"(true)"}});
+
+  AqlItemBlockInputRange input{ExecutorState::HASMORE, inBlock, 0, inBlock->size()};
+
+  OutputAqlItemRow output(std::move(block), outputRegisters, registersToKeep,
+                          infos.registersToClear());
+  EXPECT_EQ(output.numRowsWritten(), 0);
+  auto const [state, stats, call] = testee.produceRows(1000, input, output);
+  EXPECT_EQ(state, ExecutorState::HASMORE);
+  EXPECT_EQ(stats.getFiltered(), 2);
+  EXPECT_EQ(output.numRowsWritten(), 3);
+  EXPECT_FALSE(input.hasMore());
+  // Test the Call we send to upstream
+  EXPECT_EQ(call.offset, 0);
+  EXPECT_TRUE(std::holds_alternative<AqlCall::Infinity>(call.limit));
+  // Avoid overfetching. I do not have a strong requirement on this
+  // test, however this is what we do right now.
+  ASSERT_TRUE(std::holds_alternative<size_t>(call.batchSize));
+  EXPECT_EQ(std::get<size_t>(call.batchSize), 997);
+  EXPECT_FALSE(call.fullCount);
+}
+
+TEST_F(FilterExecutorTest, test_skip_datarange_need_more) {
+  // This fetcher will not be called!
+  // After Execute is done this fetcher shall be removed, the Executor does not need it anymore!
+  auto fakeUnusedBlock = VPackParser::fromJson("[  ]");
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
+      itemBlockManager, fakeUnusedBlock->steal(), false);
+
+  // This is the relevant part of the test
+  FilterExecutor testee(fetcher, infos);
+  SharedAqlItemBlockPtr inBlock =
+      buildBlock<1>(itemBlockManager,
+                    {{R"(true)"}, {R"(false)"}, {R"(true)"}, {R"(false)"}, {R"(true)"}});
+
+  AqlItemBlockInputRange input{ExecutorState::HASMORE, inBlock, 0, inBlock->size()};
+
+  auto const [state, skipped, call] = testee.skipRowsRange(1000, input);
+  EXPECT_EQ(state, ExecutorState::HASMORE);
+  EXPECT_EQ(skipped, 3);
+  EXPECT_FALSE(input.hasMore());
+
+  // Test the Call we send to upstream
+  EXPECT_EQ(call.offset, 0);
+  EXPECT_TRUE(std::holds_alternative<AqlCall::Infinity>(call.limit));
+  // Avoid overfetching. I do not have a strong requirement on this
+  // test, however this is what we do right now.
+  ASSERT_TRUE(std::holds_alternative<size_t>(call.batchSize));
+  EXPECT_EQ(std::get<size_t>(call.batchSize), 997);
+  EXPECT_FALSE(call.fullCount);
+}
+
+TEST_F(FilterExecutorTest, test_produce_datarange_has_more) {
   // This fetcher will not be called!
   // After Execute is done this fetcher shall be removed, the Executor does not need it anymore!
   auto fakeUnusedBlock = VPackParser::fromJson("[  ]");
@@ -389,10 +452,60 @@ TEST_F(FilterExecutorTest, test_skip_datarange) {
                     {{R"(true)"}, {R"(false)"}, {R"(true)"}, {R"(false)"}, {R"(true)"}});
 
   AqlItemBlockInputRange input{ExecutorState::DONE, inBlock, 0, inBlock->size()};
+  OutputAqlItemRow output(std::move(block), outputRegisters, registersToKeep,
+                          infos.registersToClear());
+  auto const [state, stats, call] = testee.produceRows(2, input, output);
+  EXPECT_EQ(state, ExecutorState::HASMORE);
+  EXPECT_EQ(stats.getFiltered(), 1);
+  EXPECT_EQ(output.numRowsWritten(), 2);
+  EXPECT_TRUE(input.hasMore());
+  // We still have two values in block: false and true
+  {
+    // pop false
+    auto const [state, row] = input.next();
+    EXPECT_EQ(state, ExecutorState::HASMORE);
+    EXPECT_FALSE(row.getValue(0).toBoolean());
+  }
+  {
+    // pop true
+    auto const [state, row] = input.next();
+    EXPECT_EQ(state, ExecutorState::DONE);
+    EXPECT_TRUE(row.getValue(0).toBoolean());
+  }
+  EXPECT_FALSE(input.hasMore());
+}
 
-  auto const [state, skipped, call] = testee.skipRowsRange(1000, input);
-  EXPECT_EQ(state, ExecutorState::DONE);
-  EXPECT_EQ(skipped, 3);
+TEST_F(FilterExecutorTest, test_skip_datarange_has_more) {
+  // This fetcher will not be called!
+  // After Execute is done this fetcher shall be removed, the Executor does not need it anymore!
+  auto fakeUnusedBlock = VPackParser::fromJson("[  ]");
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
+      itemBlockManager, fakeUnusedBlock->steal(), false);
+
+  // This is the relevant part of the test
+  FilterExecutor testee(fetcher, infos);
+  SharedAqlItemBlockPtr inBlock =
+      buildBlock<1>(itemBlockManager,
+                    {{R"(true)"}, {R"(false)"}, {R"(true)"}, {R"(false)"}, {R"(true)"}});
+
+  AqlItemBlockInputRange input{ExecutorState::DONE, inBlock, 0, inBlock->size()};
+  auto const [state, skipped, call] = testee.skipRowsRange(2, input);
+  EXPECT_EQ(state, ExecutorState::HASMORE);
+  EXPECT_EQ(skipped, 2);
+  EXPECT_TRUE(input.hasMore());
+  // We still have two values in block: false and true
+  {
+    // pop false
+    auto const [state, row] = input.next();
+    EXPECT_EQ(state, ExecutorState::HASMORE);
+    EXPECT_FALSE(row.getValue(0).toBoolean());
+  }
+  {
+    // pop true
+    auto const [state, row] = input.next();
+    EXPECT_EQ(state, ExecutorState::DONE);
+    EXPECT_TRUE(row.getValue(0).toBoolean());
+  }
   EXPECT_FALSE(input.hasMore());
 }
 
