@@ -320,7 +320,10 @@ void GeneralCommTask::executeRequest(std::unique_ptr<GeneralRequest>&& request,
   // forward to correct server if necessary
   bool forwarded = handler->forwardRequest();
   if (forwarded) {
-    addResponse(*handler->response(), handler->stealStatistics());
+    RequestStatistics::SET_SUPERUSER(statistics(messageId));
+    // At this point the handler does not yet have the statistics objects,
+    // so we have to take it from the CommTask.
+    addResponse(*handler->response(), stealStatistics(messageId));
     return;
   }
 

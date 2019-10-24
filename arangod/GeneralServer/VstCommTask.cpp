@@ -325,8 +325,6 @@ bool VstCommTask::processRead(double startTime) {
     RequestStatistics::SET_READ_START(stat, startTime);
   }
 
-  RequestStatistics::SET_READ_END(statistics(chunkHeader._messageID));
-
   if (chunkHeader._isFirst && chunkHeader._chunk == 1) {
     // CASE 1: message is in one chunk
     if (!getMessageFromSingleChunk(chunkHeader, message, doExecute, vpackBegin, chunkEnd)) {
@@ -349,6 +347,12 @@ bool VstCommTask::processRead(double startTime) {
   }
 
   if (doExecute) {
+    // A message is complete! Now we need to do the accounting, first let's
+    // set the "read-end time":
+    RequestStatistics* stat = statistics(message.id());
+    RequestStatistics::SET_READ_END(stat);
+    RequestStatistics::ADD_RECEIVED_BYTES(stat, message.totalSize());
+
     VPackSlice header = message.header();
 
     if (Logger::logRequestParameters()) {
@@ -373,6 +377,11 @@ bool VstCommTask::processRead(double startTime) {
     // handle request types
     if (type == 1000) {  // auth
       handleAuthHeader(header, chunkHeader._messageID);
+      // Separate superuser traffic:
+      if (_authMethod != AuthenticationMethod::NONE && _authorized &&
+          _authToken._username.empty()) {
+        RequestStatistics::SET_SUPERUSER(stat);
+      }
     } else if (type == 1) {  // request
 
       // the handler will take ownership of this pointer
@@ -384,6 +393,12 @@ bool VstCommTask::processRead(double startTime) {
       if (_authorized && _auth->userManager() != nullptr) {
         // if we don't call checkAuthentication we need to refresh
         _auth->userManager()->refreshUser(_authToken._username);
+      }
+
+      // Separate superuser traffic:
+      if (_authMethod != AuthenticationMethod::NONE && _authorized &&
+          _authToken._username.empty()) {
+        RequestStatistics::SET_SUPERUSER(stat);
       }
 
       RequestFlow cont = prepareExecution(*req.get());
