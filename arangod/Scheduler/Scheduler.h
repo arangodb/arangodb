@@ -91,7 +91,7 @@ class Scheduler {
 
     explicit WorkItem(std::function<void(bool canceled)>&& handler,
                       RequestLane lane, Scheduler* scheduler)
-        : _handler(std::move(handler)), _lane(lane), _disable(false), _scheduler(scheduler){};
+        : _handler(std::move(handler)), _lane(lane), _disable(false), _scheduler(scheduler) {}
 
    private:
     // This is not copyable or movable
