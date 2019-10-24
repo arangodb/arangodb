@@ -388,8 +388,11 @@ function roundCost (obj) {
     var result = {};
     for (var key in obj) {
       if (obj.hasOwnProperty(key)) {
-        if (key === "estimatedCost" ) {
+        if (key === "estimatedCost") {
           result[key] = Math.round(obj[key]);
+        } else if (key === "selectivityEstimate") {
+          // Round the estimate to 3 digits after ,
+          result[key] = obj[key].toFixed(3);
         } else {
           result[key] = roundCost(obj[key]);
         }
