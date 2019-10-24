@@ -510,8 +510,8 @@ OperationResult GraphOperations::getDocument(std::string const& collectionName,
   return result;
 }
 
-GraphOperations::VPackBufferPtr GraphOperations::_getSearchSlice(
-    const std::string& key, boost::optional<TRI_voc_rid_t>& rev) const {
+GraphOperations::VPackBufferPtr GraphOperations::_getSearchSlice(std::string const& key, 
+                                                                 boost::optional<TRI_voc_rid_t>& rev) const {
   VPackBuilder builder;
   {
     VPackObjectBuilder guard(&builder);
@@ -521,11 +521,11 @@ GraphOperations::VPackBufferPtr GraphOperations::_getSearchSlice(
     }
   }
 
-  return builder.buffer();
+  return builder.steal();
 }
 
-OperationResult GraphOperations::removeEdge(const std::string& definitionName,
-                                            const std::string& key,
+OperationResult GraphOperations::removeEdge(std::string const& definitionName,
+                                            std::string const& key,
                                             boost::optional<TRI_voc_rid_t> rev,
                                             bool waitForSync, bool returnOld) {
   return removeEdgeOrVertex(definitionName, key, rev, waitForSync, returnOld);

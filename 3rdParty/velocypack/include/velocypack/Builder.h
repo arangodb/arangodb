@@ -113,13 +113,23 @@ class Builder {
   Builder(Builder&& that) noexcept;
   Builder& operator=(Builder&& that) noexcept;
 
-  // get a const reference to the Builder's Buffer object
+  // get a reference to the Builder's Buffer object
   // note: this object may be a nullptr if the buffer was already stolen
   // from the Builder, or if the Builder has no ownership for the Buffer
-  std::shared_ptr<Buffer<uint8_t>> const& buffer() const { return _buffer; }
+  std::shared_ptr<Buffer<uint8_t>> const& buffer() const { 
+    return _buffer; 
+  }
+
+  Buffer<uint8_t>& bufferRef() const { 
+    if (_bufferPtr == nullptr) {
+      throw Exception(Exception::InternalError, "Builder has no Buffer");
+    }
+    return *_bufferPtr; 
+  }
 
   // steal the Builder's Buffer object. afterwards the Builder
-  // is unusable
+  // is unusable - note: this may return a nullptr if the Builder does not
+  // own the Buffer!
   std::shared_ptr<Buffer<uint8_t>> steal() {
     // After a steal the Builder is broken!
     std::shared_ptr<Buffer<uint8_t>> res(std::move(_buffer));
@@ -579,8 +589,8 @@ class Builder {
   uint8_t* addInternal(char const* attrName, std::size_t attrLength, T const& sub) {
     bool haveReported = false;
     if (!_stack.empty()) {
-      ValueLength& tos = _stack.back();
-      if (VELOCYPACK_UNLIKELY(_start[tos] != 0x0b && _start[tos] != 0x14)) {
+      ValueLength const to = _stack.back();
+      if (VELOCYPACK_UNLIKELY(_start[to] != 0x0b && _start[to] != 0x14)) {
         throw Exception(Exception::BuilderNeedOpenObject);
       }
       if (VELOCYPACK_UNLIKELY(_keyWritten)) {
@@ -636,9 +646,9 @@ class Builder {
   void openCompoundValue(uint8_t type) {
     bool haveReported = false;
     if (!_stack.empty()) {
-      ValueLength& tos = _stack.back();
+      ValueLength const to = _stack.back();
       if (!_keyWritten) {
-        if (VELOCYPACK_UNLIKELY(_start[tos] != 0x06 && _start[tos] != 0x13)) {
+        if (VELOCYPACK_UNLIKELY(_start[to] != 0x06 && _start[to] != 0x13)) {
           throw Exception(Exception::BuilderNeedOpenArray);
         }
         reportAdd();
