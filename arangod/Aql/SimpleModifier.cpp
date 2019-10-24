@@ -29,6 +29,7 @@
 #include "Aql/ModificationExecutorHelpers.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Basics/Common.h"
+#include "Basics/VelocyPackHelper.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Collection.h>
@@ -41,6 +42,7 @@ class CollectionNameResolver;
 using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::aql::ModificationExecutorHelpers;
+using namespace arangodb::basics;
 
 template <class ModifierCompletion, typename Enable>
 SimpleModifier<ModifierCompletion, Enable>::SimpleModifier(ModificationExecutorInfos& infos)
@@ -86,14 +88,32 @@ size_t SimpleModifier<ModifierCompletion, Enable>::nrOfDocuments() const {
 }
 
 template <typename ModifierCompletion, typename Enable>
-Result SimpleModifier<ModifierCompletion, Enable>::setupIterator(ModifierIteratorMode const mode) {
-  _iteratorMode = mode;
-  _operationsIterator = _operations.begin();
-  if (mode == ModifierIteratorMode::Full) {
-    TRI_ASSERT(_results.slice().isArray());
-    _resultsIterator = VPackArrayIterator{_results.slice()};
+size_t SimpleModifier<ModifierCompletion, Enable>::nrOfResults() const {
+  if (_results.hasSlice() && _results.slice().isArray()) {
+    return _results.slice().length();
   }
-  return Result{};
+  return 0;
+}
+
+template <typename ModifierCompletion, typename Enable>
+size_t SimpleModifier<ModifierCompletion, Enable>::nrOfWritesExecuted() const {
+  return 0;
+}
+
+template <typename ModifierCompletion, typename Enable>
+size_t SimpleModifier<ModifierCompletion, Enable>::nrOfWritesIgnored() const {
+  return 0;
+}
+
+template <typename ModifierCompletion, typename Enable>
+void SimpleModifier<ModifierCompletion, Enable>::setupIterator() {
+  _operationsIterator = _operations.begin();
+  if (resultAvailable()) {
+    TRI_ASSERT(_results.hasSlice() && _results.slice().isArray());
+    _resultsIterator = VPackArrayIterator{_results.slice()};
+  } else {
+    _resultsIterator = VPackArrayIterator{VPackSlice::emptyArraySlice()};
+  }
 }
 
 template <typename ModifierCompletion, typename Enable>
@@ -122,21 +142,25 @@ size_t SimpleModifier<ModifierCompletion, Enable>::getBatchSize() const {
 }
 
 template <typename ModifierCompletion, typename Enable>
+
+bool SimpleModifier<ModifierCompletion, Enable>::resultAvailable() const {
+  return (nrOfDocuments() > 0 && !_infos._options.silent);
+}
+
+template <typename ModifierCompletion, typename Enable>
 ModifierOutput SimpleModifier<ModifierCompletion, Enable>::getOutput() {
-  switch (_iteratorMode) {
-    case ModifierIteratorMode::Full: {
-      return ModifierOutput{_operationsIterator->first,
-                            _operationsIterator->second, *_resultsIterator};
-    }
-    case ModifierIteratorMode::OperationsOnly: {
-      return ModifierOutput{_operationsIterator->first,
-                            _operationsIterator->second, VPackSlice::noneSlice()};
-    }
+  if (_operationsIterator->first == ModOperationType::APPLY_RETURN && resultAvailable()) {
+    VPackSlice elm = *_resultsIterator;
+
+    bool error = VelocyPackHelper::getBooleanValue(elm, StaticStrings::Error, false);
+    return ModifierOutput{_operationsIterator->second, error,
+                          std::make_unique<AqlValue>(elm.get(StaticStrings::Old)),
+                          std::make_unique<AqlValue>(elm.get(StaticStrings::New))};
+  } else {
+    return ModifierOutput{_operationsIterator->second, false};
   }
   TRI_ASSERT(false);
-  return ModifierOutput{ModOperationType::IGNORE_SKIP,
-                        InputAqlItemRow{CreateInvalidInputRowHint()},
-                        VPackSlice::noneSlice()};
+  return ModifierOutput{InputAqlItemRow{CreateInvalidInputRowHint{}}, true};
 }
 
 template class ::arangodb::aql::SimpleModifier<InsertModifierCompletion>;

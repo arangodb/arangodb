@@ -35,6 +35,8 @@
 
 #include <string>
 
+#include "Logger/LogMacros.h"
+
 using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::basics;
@@ -106,6 +108,11 @@ bool ModificationExecutorHelpers::writeRequired(ModificationExecutorInfos& infos
 void ModificationExecutorHelpers::throwOperationResultException(
     ModificationExecutorInfos& infos, OperationResult const& result) {
   auto const& errorCounter = result.countErrorCodes;
+
+  // LOG_DEVEL << "ok, here's the shit";
+  // if (result.hasSlice()) {
+  //   LOG_DEVEL << result.slice().toJson();
+  // }
 
   // Early escape if we are ignoring errors.
   if (infos._ignoreErrors == true || errorCounter.empty()) {

@@ -50,17 +50,23 @@ using namespace arangodb::basics;
 namespace arangodb {
 namespace aql {
 
-std::ostream& operator<<(std::ostream& ostream, ModifierIteratorMode mode) {
-  switch (mode) {
-    case ModifierIteratorMode::Full:
-      ostream << "Full";
-      break;
-    case ModifierIteratorMode::OperationsOnly:
-      ostream << "OperationsOnly";
-      break;
-  }
-  return ostream;
-}
+ModifierOutput::ModifierOutput(InputAqlItemRow const inputRow, bool const error)
+    : _inputRow(inputRow), _error(error), _oldValue(nullptr), _newValue(nullptr) {}
+
+ModifierOutput::ModifierOutput(InputAqlItemRow const inputRow, bool const error,
+                               std::unique_ptr<AqlValue>&& oldValue,
+                               std::unique_ptr<AqlValue>&& newValue)
+    : _inputRow(inputRow),
+      _error(error),
+      _oldValue(std::move(oldValue)),
+      _newValue(std::move(newValue)) {}
+
+InputAqlItemRow ModifierOutput::getInputRow() const { return _inputRow; }
+bool ModifierOutput::isError() const { return _error; }
+bool ModifierOutput::hasOldValue() const { return _oldValue != nullptr; }
+AqlValue&& ModifierOutput::getOldValue() const { return std::move(*_oldValue); }
+bool ModifierOutput::hasNewValue() const { return _newValue != nullptr; }
+AqlValue&& ModifierOutput::getNewValue() const { return std::move(*_newValue); }
 
 template <typename FetcherType, typename ModifierType>
 ModificationExecutor<FetcherType, ModifierType>::ModificationExecutor(Fetcher& fetcher,
@@ -115,105 +121,32 @@ ModificationExecutor<FetcherType, ModifierType>::doCollect(size_t const maxOutpu
 template <typename FetcherType, typename ModifierType>
 void ModificationExecutor<FetcherType, ModifierType>::doOutput(OutputAqlItemRow& output,
                                                                Stats& stats) {
-  // If we have made no modifications or are silent,
-  // we can just copy rows; this is an optimisation for silent
-  // queries
-  // if (_modifier.nrOfDocuments() == 0 || _infos._options.silent) {
-  //   ModOperationType modOp;
-  //   InputAqlItemRow row{CreateInvalidInputRowHint{}};
-
-  //   _modifier.setupIterator(ModifierIteratorMode::OperationsOnly);
-  //   while (!_modifier.isFinishedIterator()) {
-  //     std::tie(modOp, row, std::ignore) = _modifier.getOutput();
-
-  //     output.copyRow(row);
-
-  //     if (_infos._doCount) {
-  //       switch (modOp) {
-  //         case ModOperationType::APPLY_RETURN: {
-  //           stats.incrWritesExecuted();
-  //           break;
-  //         }
-  //         case ModOperationType::IGNORE_RETURN: {
-  //           stats.incrWritesIgnored();
-  //           break;
-  //         }
-  //         case ModOperationType::IGNORE_SKIP: {
-  //           stats.incrWritesIgnored();
-  //           break;
-  //         }
-  //         default: {
-  //           TRI_ASSERT(false);
-  //         }
-  //       }
-  //     }
-  //     _modifier.advanceIterator();
-  //     output.advanceRow();
-  //   }
-  // } else {
-  ModOperationType modOp;
-  InputAqlItemRow row{CreateInvalidInputRowHint{}};
-  VPackSlice elm;
-
-  _modifier.setupIterator(ModifierIteratorMode::Full);
+  _modifier.setupIterator();
   while (!_modifier.isFinishedIterator()) {
-    std::tie(modOp, row, elm) = _modifier.getOutput();
+    ModifierOutput modifierOutput{_modifier.getOutput()};
 
-    bool error = VelocyPackHelper::getBooleanValue(elm, StaticStrings::Error, false);
-    if (!error) {
-      switch (modOp) {
-        case ModOperationType::APPLY_RETURN: {
-          if (_infos._options.returnNew) {
-            AqlValue value(elm.get(StaticStrings::New));
-            AqlValueGuard guard(value, true);
-            output.moveValueInto(_infos._outputNewRegisterId, row, guard);
-          }
-          if (_infos._options.returnOld) {
-            AqlValue value(elm.get(StaticStrings::Old));
-            AqlValueGuard guard(value, true);
-            output.moveValueInto(_infos._outputOldRegisterId, row, guard);
-          }
-          if (_infos._doCount) {
-            stats.incrWritesExecuted();
-          }
-          break;
-        }
-        case ModOperationType::IGNORE_RETURN: {
-          output.copyRow(row);
-          if (_infos._doCount) {
-            stats.incrWritesIgnored();
-          }
-          break;
-        }
-        case ModOperationType::IGNORE_SKIP: {
-          output.copyRow(row);
-          if (_infos._doCount) {
-            stats.incrWritesIgnored();
-          }
-          break;
-        }
-        case ModOperationType::APPLY_UPDATE:
-        case ModOperationType::APPLY_INSERT: {
-          // These values should not appear here anymore
-          // As we handle them in the UPSERT modifier and translate them
-          // into APPLY_RETURN
-          TRI_ASSERT(false);
-        }
-        default: {
-          TRI_ASSERT(false);
-          break;
-        }
+    if (!modifierOutput.isError()) {
+      if (_infos._options.returnOld) {
+        output.cloneValueInto(_infos._outputOldRegisterId, modifierOutput.getInputRow(),
+                              modifierOutput.getOldValue());
+      }
+      if (_infos._options.returnNew) {
+        output.cloneValueInto(_infos._outputNewRegisterId, modifierOutput.getInputRow(),
+                              modifierOutput.getNewValue());
+      }
+      if (!_infos._options.returnOld && !_infos._options.returnNew) {
+        output.copyRow(modifierOutput.getInputRow());
       }
       // only advance row if we produced something
       output.advanceRow();
-    } else {
-      if (_infos._doCount) {
-        stats.incrWritesIgnored();
-      }
     }
     _modifier.advanceIterator();
   }
-  // }
+
+  if (_infos._doCount) {
+    stats.addWritesExecuted(_modifier.nrOfWritesExecuted());
+    stats.addWritesIgnored(_modifier.nrOfWritesIgnored());
+  }
 }
 
 template <typename FetcherType, typename ModifierType>
@@ -241,6 +174,13 @@ ModificationExecutor<FetcherType, ModifierType>::produceRows(OutputAqlItemRow& o
   TRI_ASSERT(_lastState == ExecutionState::DONE || _lastState == ExecutionState::HASMORE);
 
   _modifier.transact();
+
+  // If the query is silent, there is no way to relate
+  // the results slice contents and the submitted documents
+  // If the query is *not* silent, we should get one result
+  // for every document.
+  // Yes. Really.
+  TRI_ASSERT(_infos._options.silent || _modifier.nrOfDocuments() == _modifier.nrOfResults());
 
   doOutput(output, stats);
 

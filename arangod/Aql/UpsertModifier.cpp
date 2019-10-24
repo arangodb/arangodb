@@ -29,6 +29,7 @@
 #include "Aql/ModificationExecutorHelpers.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Basics/Common.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -42,6 +43,7 @@ class CollectionNameResolver;
 using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::aql::ModificationExecutorHelpers;
+using namespace arangodb::basics;
 
 UpsertModifier::UpsertModifier(ModificationExecutorInfos& infos)
     : _infos(infos),
@@ -128,6 +130,10 @@ ModOperationType UpsertModifier::insertCase(ModificationExecutorAccumulator& acc
   }
 }
 
+bool UpsertModifier::resultAvailable() const {
+  return (nrOfDocuments() > 0 && !_infos._options.silent);
+}
+
 Result UpsertModifier::accumulate(InputAqlItemRow& row) {
   RegisterId const inDocReg = _infos._input1RegisterId;
   RegisterId const insertReg = _infos._input2RegisterId;
@@ -180,28 +186,39 @@ size_t UpsertModifier::nrOfDocuments() const {
 
 size_t UpsertModifier::nrOfOperations() const { return _operations.size(); }
 
-Result UpsertModifier::setupIterator(ModifierIteratorMode const mode) {
-  _iteratorMode = mode;
-  _operationsIterator = _operations.begin();
-  if (mode == ModifierIteratorMode::Full) {
-    if (!_insertResults.hasSlice() || _insertResults.slice().isNone()) {
-      _insertResultsIterator = VPackArrayIterator(VPackSlice::emptyArraySlice());
-    } else if (_insertResults.slice().isArray()) {
-      _insertResultsIterator = VPackArrayIterator(_insertResults.slice());
-    } else {
-      TRI_ASSERT(false);
-    }
+size_t UpsertModifier::nrOfResults() const {
+  size_t n{0};
 
-    if (!_updateResults.hasSlice() || _updateResults.slice().isNone()) {
-      _updateResultsIterator = VPackArrayIterator(VPackSlice::emptyArraySlice());
-    } else if (_updateResults.slice().isArray()) {
-      _updateResultsIterator = VPackArrayIterator(_updateResults.slice());
-    } else {
-      TRI_ASSERT(false);
-    }
+  if (_insertResults.hasSlice() && _insertResults.slice().isArray()) {
+    n += _insertResults.slice().length();
+  }
+  if (_updateResults.hasSlice() && _updateResults.slice().isArray()) {
+    n += _updateResults.slice().length();
+  }
+  return n;
+}
+
+size_t UpsertModifier::nrOfWritesExecuted() const { return 0; }
+size_t UpsertModifier::nrOfWritesIgnored() const { return 0; }
+
+void UpsertModifier::setupIterator() {
+  _operationsIterator = _operations.begin();
+
+  if (!_insertResults.hasSlice() || _insertResults.slice().isNone()) {
+    _insertResultsIterator = VPackArrayIterator(VPackSlice::emptyArraySlice());
+  } else if (_insertResults.slice().isArray()) {
+    _insertResultsIterator = VPackArrayIterator(_insertResults.slice());
+  } else {
+    TRI_ASSERT(false);
   }
 
-  return Result{};
+  if (!_updateResults.hasSlice() || _updateResults.slice().isNone()) {
+    _updateResultsIterator = VPackArrayIterator(VPackSlice::emptyArraySlice());
+  } else if (_updateResults.slice().isArray()) {
+    _updateResultsIterator = VPackArrayIterator(_updateResults.slice());
+  } else {
+    TRI_ASSERT(false);
+  }
 }
 
 bool UpsertModifier::isFinishedIterator() {
@@ -209,14 +226,10 @@ bool UpsertModifier::isFinishedIterator() {
 }
 
 void UpsertModifier::advanceIterator() {
-  if (_iteratorMode == ModifierIteratorMode::Full) {
-    if (_operationsIterator->first == ModOperationType::APPLY_UPDATE) {
-      _updateResultsIterator++;
-    } else if (_operationsIterator->first == ModOperationType::APPLY_INSERT) {
-      _insertResultsIterator++;
-    }
-    // If IGNORE_SKIP or IGNORE_RETURN the transaction results will
-    // not have an entry for this, so do not move any iterator.
+  if (_operationsIterator->first == ModOperationType::APPLY_UPDATE) {
+    _updateResultsIterator++;
+  } else if (_operationsIterator->first == ModOperationType::APPLY_INSERT) {
+    _insertResultsIterator++;
   }
   _operationsIterator++;
 }
@@ -225,36 +238,31 @@ void UpsertModifier::advanceIterator() {
 // operation in question was APPLY_UPDATE or APPLY_INSERT to determine which
 // of the results slices (UpdateReplace or Insert) we have to look in and
 // increment.
-UpsertModifier::ModifierOutput UpsertModifier::getOutput() {
-  switch (_iteratorMode) {
-    case ModifierIteratorMode::Full: {
-      if (_operationsIterator->first == ModOperationType::APPLY_UPDATE) {
-        return ModifierOutput{ModOperationType::APPLY_RETURN,
-                              _operationsIterator->second, *_updateResultsIterator};
-      } else if (_operationsIterator->first == ModOperationType::APPLY_INSERT) {
-        return ModifierOutput{ModOperationType::APPLY_RETURN,
-                              _operationsIterator->second, *_insertResultsIterator};
-      } else {
-        return ModifierOutput{_operationsIterator->first,
-                              _operationsIterator->second, VPackSlice::noneSlice()};
-      }
+ModifierOutput UpsertModifier::getOutput() {
+  if (resultAvailable()) {
+    VPackSlice elm;
+
+    switch (_operationsIterator->first) {
+      case ModOperationType::APPLY_UPDATE:
+        elm = *_updateResultsIterator;
+        break;
+      case ModOperationType::APPLY_INSERT:
+        elm = *_insertResultsIterator;
+        break;
+      default:
+        TRI_ASSERT(false);
     }
-    case ModifierIteratorMode::OperationsOnly: {
-      if (_operationsIterator->first == ModOperationType::APPLY_UPDATE ||
-          _operationsIterator->first == ModOperationType::APPLY_INSERT) {
-        return ModifierOutput{ModOperationType::APPLY_RETURN,
-                              _operationsIterator->second, VPackSlice::noneSlice()};
-      } else {
-        return ModifierOutput{_operationsIterator->first,
-                              _operationsIterator->second, VPackSlice::noneSlice()};
-      }
-    }
+    bool error = VelocyPackHelper::getBooleanValue(elm, StaticStrings::Error, false);
+    return ModifierOutput{_operationsIterator->second, error,
+                          std::make_unique<AqlValue>(elm.get(StaticStrings::Old)),
+                          std::make_unique<AqlValue>(elm.get(StaticStrings::New))};
+  } else {
+    return ModifierOutput{_operationsIterator->second, false};
   }
+
   // shut up compiler
   TRI_ASSERT(false);
-  return ModifierOutput{ModOperationType::IGNORE_SKIP,
-                        InputAqlItemRow{CreateInvalidInputRowHint()},
-                        VPackSlice::noneSlice()};
+  return ModifierOutput{InputAqlItemRow{CreateInvalidInputRowHint{}}, true};
 }
 
 size_t UpsertModifier::getBatchSize() const { return _batchSize; }

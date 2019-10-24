@@ -94,9 +94,14 @@ class SimpleModifier {
   size_t nrOfOperations() const;
   // The number of documents in the accumulator
   size_t nrOfDocuments() const;
+  // The number of entries in the results slice
+  size_t nrOfResults() const;
+
+  size_t nrOfWritesExecuted() const;
+  size_t nrOfWritesIgnored() const;
 
   // TODO: Make this a real iterator
-  Result setupIterator(ModifierIteratorMode const mode);
+  void setupIterator();
   bool isFinishedIterator();
   ModifierOutput getOutput();
   void advanceIterator();
@@ -105,6 +110,8 @@ class SimpleModifier {
   size_t getBatchSize() const;
 
  private:
+  bool resultAvailable() const;
+
   ModificationExecutorInfos& _infos;
   ModifierCompletion _completion;
 
@@ -115,7 +122,6 @@ class SimpleModifier {
 
   std::vector<ModOp>::const_iterator _operationsIterator;
   VPackArrayIterator _resultsIterator;
-  ModifierIteratorMode _iteratorMode;
 
   size_t const _batchSize;
 };

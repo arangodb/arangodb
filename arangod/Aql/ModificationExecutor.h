@@ -99,14 +99,35 @@ enum class ModOperationType : uint8_t {
 // The first component has to be the operation type, the second an
 // InputAqlItemRow, and the third is a VPackSlice containing the result of the
 // transaction for this row.
-using ModifierOutput = std::tuple<ModOperationType, InputAqlItemRow, VPackSlice>;
+// using ModifierOutput = std::tuple<ModOperationType, InputAqlItemRow, VPackSlice>;
 
-// We have to switch between "Full" and "OperationsOnly" iterator mode because
-// if the transaction is silent we do not actually have a Velocypack to iterate
-// over This can go away once iterating over results of the operation is done
-// with a bespoke iterator class
-enum class ModifierIteratorMode { OperationsOnly, Full };
-std::ostream& operator<<(std::ostream& ostream, ModifierIteratorMode mode);
+class ModifierOutput {
+ public:
+  ModifierOutput() = delete;
+  ModifierOutput(InputAqlItemRow const inputRow, bool const error);
+  ModifierOutput(InputAqlItemRow const inputRow, bool const error,
+                 std::unique_ptr<AqlValue>&& oldValue, std::unique_ptr<AqlValue>&& newValue);
+
+  ModifierOutput(ModifierOutput&& o);
+  ModifierOutput& operator=(ModifierOutput&& o);
+
+  InputAqlItemRow getInputRow() const;
+  bool isError() const;
+  bool hasOldValue() const;
+  AqlValue&& getOldValue() const;
+  bool hasNewValue() const;
+  AqlValue&& getNewValue() const;
+
+ private:
+  // No copying or copy assignment allowed of this class or any derived class
+  ModifierOutput(ModifierOutput const&);
+  ModifierOutput& operator=(ModifierOutput const&);
+
+  InputAqlItemRow const _inputRow;
+  bool const _error;
+  std::unique_ptr<AqlValue> _oldValue;
+  std::unique_ptr<AqlValue> _newValue;
+};
 
 template <typename FetcherType, typename ModifierType>
 class ModificationExecutor {
