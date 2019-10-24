@@ -1030,7 +1030,7 @@ Result Manager::abortAllManagedWriteTrx(std::string const& username, bool fanout
 
       auto f = network::sendRequest(pool, "server:" + coordinator, fuerte::RestVerb::Delete,
                                     "/_db/_system/_api/transaction/write?local=true",
-                                    body, std::move(headers), options);
+                                    body, options, std::move(headers));
       futures.emplace_back(std::move(f));
     }
 
