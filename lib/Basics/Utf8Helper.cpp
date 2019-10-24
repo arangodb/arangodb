@@ -69,7 +69,7 @@ std::wstring arangodb::basics::toWString(std::string const& validUTF8String) {
   // using bufferType = std::remove_pointer_t<decltype(utf16.getTerminatedBuffer())>;
   // static_assert(sizeof(std::wchar_t) == sizeof(bufferType), "sizes do not match");
   // return std::wstring(reinterpret_cast<wchar_t const*>(utf16.getTerminatedBuffer()), utf16.length());
-  return std::wstring(utf16.getTerminatedBuffer(), utf16.length());
+  return std::wstring(reinterpret_cast<wchar_t const*>(utf16.getTerminatedBuffer()), utf16.length());
 }
 
 std::string arangodb::basics::fromWString(wchar_t const* validUTF16String, std::size_t size) {

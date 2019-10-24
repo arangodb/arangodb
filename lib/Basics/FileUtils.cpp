@@ -434,7 +434,7 @@ bool copyDirectoryRecursive(std::string const& source, std::string const& target
 
   icu::UnicodeString f(flt.c_str());
 
-  handle = _wfindfirst(f.getTerminatedBuffer(), &oneItem);
+  handle = _wfindfirst(reinterpret_cast<wchar_t const*>(f.getTerminatedBuffer()), &oneItem);
 
   if (handle == -1) {
     error = "directory " + source + " not found";
@@ -539,7 +539,7 @@ std::vector<std::string> listFiles(std::string const& directory) {
 
   std::string filter = directory + "\\*";
   icu::UnicodeString f(filter.c_str());
-  handle = _wfindfirst(f.getTerminatedBuffer(), &oneItem);
+  handle = _wfindfirst(reinterpret_cast<wchar_t const*>(f.getTerminatedBuffer()), &oneItem);
 
   if (handle == -1) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
@@ -732,7 +732,7 @@ static void throwProgramError(std::string const& filename) {
 std::string slurpProgram(std::string const& program) {
 #ifdef _WIN32
   icu::UnicodeString uprog(program.c_str(), static_cast<int32_t>(program.length()));
-  FILE* fp = _wpopen(uprog.getTerminatedBuffer(), L"r");
+  FILE* fp = _wpopen(reinterpret_cast<wchar_t const*>(uprog.getTerminatedBuffer()), L"r");
 #else
   FILE* fp = popen(program.c_str(), "r");
 #endif
@@ -766,7 +766,7 @@ std::string slurpProgram(std::string const& program) {
 int slurpProgramWithExitcode(std::string const& program, std::string& output) {
 #ifdef _WIN32
   icu::UnicodeString uprog(program.c_str(), static_cast<int32_t>(program.length()));
-  FILE* fp = _wpopen(uprog.getTerminatedBuffer(), L"r");
+  FILE* fp = _wpopen(reinterpret_cast<wchar_t const*>(uprog.getTerminatedBuffer()), L"r");
 #else
   FILE* fp = popen(program.c_str(), "r");
 #endif
