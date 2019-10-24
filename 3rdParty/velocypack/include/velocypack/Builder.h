@@ -91,37 +91,48 @@ class Builder {
  public:
   Options const* options;
 
-  // create an empty Builder, using default Options
-  Builder();
-
-  explicit Builder(Options const* options);
+  // create an empty Builder, using Options
+  explicit Builder(Options const* options = &Options::Defaults);
+  
+  // create an empty Builder, using an existing buffer
   explicit Builder(std::shared_ptr<Buffer<uint8_t>> const& buffer,
                    Options const* options = &Options::Defaults);
+
+  // create a Builder that uses an existing Buffer. the Builder will not
+  // claim ownership for this Buffer
   explicit Builder(Buffer<uint8_t>& buffer,
                    Options const* options = &Options::Defaults);
+
+  // populate a Builder from a Slice
   explicit Builder(Slice slice, Options const* options = &Options::Defaults);
+
   ~Builder() = default;
 
   Builder(Builder const& that);
   Builder& operator=(Builder const& that);
-  Builder(Builder&& that);
-  Builder& operator=(Builder&& that);
+  Builder(Builder&& that) noexcept;
+  Builder& operator=(Builder&& that) noexcept;
 
   // get a const reference to the Builder's Buffer object
+  // note: this object may be a nullptr if the buffer was already stolen
+  // from the Builder, or if the Builder has no ownership for the Buffer
   std::shared_ptr<Buffer<uint8_t>> const& buffer() const { return _buffer; }
 
   // steal the Builder's Buffer object. afterwards the Builder
   // is unusable
   std::shared_ptr<Buffer<uint8_t>> steal() {
     // After a steal the Builder is broken!
-    std::shared_ptr<Buffer<uint8_t>> res = _buffer;
-    _buffer.reset();
+    std::shared_ptr<Buffer<uint8_t>> res(std::move(_buffer));
     _bufferPtr = nullptr;
-    _pos = 0;
+    _start = nullptr;
+    clear();
     return res;
   }
 
-  uint8_t const* data() const noexcept { return _bufferPtr->data(); }
+  uint8_t const* data() const noexcept {
+    VELOCYPACK_ASSERT(_bufferPtr != nullptr);
+    return _bufferPtr->data(); 
+  }
 
   std::string toString() const;
 
@@ -153,6 +164,7 @@ class Builder {
     (void) checkOverflow(_pos + len);
 #endif
 
+    VELOCYPACK_ASSERT(_bufferPtr != nullptr);
     _bufferPtr->reserve(len);
     _start = _bufferPtr->data();
   }
@@ -161,8 +173,11 @@ class Builder {
   void clear() noexcept {
     _pos = 0;
     _stack.clear();
-    VELOCYPACK_ASSERT(_bufferPtr != nullptr);
-    _bufferPtr->reset();
+    _index.clear();
+    if (_bufferPtr != nullptr) {
+      _bufferPtr->reset();
+      _start = _bufferPtr->data();
+    }
     _keyWritten = false;
   }
 
@@ -797,11 +812,13 @@ struct ObjectBuilder final : public BuilderContainer,
   }
   ~ObjectBuilder() {
     try {
-      builder->close();
+      if (!builder->isClosed()) {
+        builder->close();
+      }
     } catch (...) {
       // destructors must not throw. however, we can at least
       // signal something is very wrong in debug mode
-      VELOCYPACK_ASSERT(false);
+      VELOCYPACK_ASSERT(builder->isClosed());
     }
   }
 };
@@ -826,11 +843,13 @@ struct ArrayBuilder final : public BuilderContainer,
   }
   ~ArrayBuilder() {
     try {
-      builder->close();
+      if (!builder->isClosed()) {
+        builder->close();
+      }
     } catch (...) {
       // destructors must not throw. however, we can at least
       // signal something is very wrong in debug mode
-      VELOCYPACK_ASSERT(false);
+      VELOCYPACK_ASSERT(builder->isClosed());
     }
   }
 };
