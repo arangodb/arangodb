@@ -28,10 +28,12 @@
 #include <velocypack/Builder.h>
 #include <string>
 
+#include "Statistics/RequestStatistics.h"
+
 namespace arangodb {
 namespace stats {
 
-enum class GroupType { System, Client, Http, Vst, Server };
+enum class GroupType { System, Client, ClientUser, Http, Vst, Server };
 
 std::string fromGroupType(stats::GroupType);
 
@@ -75,7 +77,7 @@ class Descriptions final {
   std::vector<stats::Figure> const& figures() const { return _figures; }
 
   void serverStatistics(velocypack::Builder&) const;
-  void clientStatistics(velocypack::Builder&) const;
+  void clientStatistics(velocypack::Builder&, RequestStatistics::Source source) const;
   void httpStatistics(velocypack::Builder&) const;
   void processStatistics(velocypack::Builder&) const;
 

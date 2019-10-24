@@ -587,6 +587,11 @@ bool HttpCommTask::processRead(double startTime) {
 
   // authenticated
   if (authResult != rest::ResponseCode::SERVER_ERROR) {
+    // We want to separate superuser token traffic:
+    if (_incompleteRequest->authenticated() &&
+        _incompleteRequest->user().empty()) {
+      RequestStatistics::SET_SUPERUSER(stat);
+    }
     // prepare execution will send an error message
     RequestFlow cont = prepareExecution(*_incompleteRequest.get());
     if (cont == RequestFlow::Continue) {
