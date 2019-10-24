@@ -96,13 +96,23 @@ size_t SimpleModifier<ModifierCompletion, Enable>::nrOfResults() const {
 }
 
 template <typename ModifierCompletion, typename Enable>
+size_t SimpleModifier<ModifierCompletion, Enable>::nrOfErrors() const {
+  size_t nrOfErrors{0};
+
+  for (auto const& pair : _results.countErrorCodes) {
+    nrOfErrors += pair.second;
+  }
+  return nrOfErrors;
+}
+
+template <typename ModifierCompletion, typename Enable>
 size_t SimpleModifier<ModifierCompletion, Enable>::nrOfWritesExecuted() const {
-  return 0;
+  return nrOfDocuments() - nrOfErrors();
 }
 
 template <typename ModifierCompletion, typename Enable>
 size_t SimpleModifier<ModifierCompletion, Enable>::nrOfWritesIgnored() const {
-  return 0;
+  return nrOfErrors();
 }
 
 template <typename ModifierCompletion, typename Enable>
@@ -142,7 +152,6 @@ size_t SimpleModifier<ModifierCompletion, Enable>::getBatchSize() const {
 }
 
 template <typename ModifierCompletion, typename Enable>
-
 bool SimpleModifier<ModifierCompletion, Enable>::resultAvailable() const {
   return (nrOfDocuments() > 0 && !_infos._options.silent);
 }

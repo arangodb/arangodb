@@ -97,6 +97,8 @@ class SimpleModifier {
   // The number of entries in the results slice
   size_t nrOfResults() const;
 
+  size_t nrOfErrors() const;
+
   size_t nrOfWritesExecuted() const;
   size_t nrOfWritesIgnored() const;
 

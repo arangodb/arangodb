@@ -51,6 +51,7 @@ class UpsertModifier {
   size_t nrOfOperations() const;
   size_t nrOfDocuments() const;
   size_t nrOfResults() const;
+  size_t nrOfErrors() const;
   size_t nrOfWritesExecuted() const;
   size_t nrOfWritesIgnored() const;
 

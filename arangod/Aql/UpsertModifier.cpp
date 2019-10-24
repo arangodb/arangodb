@@ -198,8 +198,23 @@ size_t UpsertModifier::nrOfResults() const {
   return n;
 }
 
-size_t UpsertModifier::nrOfWritesExecuted() const { return 0; }
-size_t UpsertModifier::nrOfWritesIgnored() const { return 0; }
+size_t UpsertModifier::nrOfErrors() const {
+  size_t nrOfErrors{0};
+
+  for (auto const& pair : _insertResults.countErrorCodes) {
+    nrOfErrors += pair.second;
+  }
+  for (auto const& pair : _updateResults.countErrorCodes) {
+    nrOfErrors += pair.second;
+  }
+  return nrOfErrors;
+}
+
+size_t UpsertModifier::nrOfWritesExecuted() const {
+  return nrOfDocuments() - nrOfErrors();
+}
+
+size_t UpsertModifier::nrOfWritesIgnored() const { return nrOfErrors(); }
 
 void UpsertModifier::setupIterator() {
   _operationsIterator = _operations.begin();
