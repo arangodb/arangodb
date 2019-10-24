@@ -46,12 +46,34 @@ struct RequestItem {
   }
 };
 
-std::string urlDecode(std::string const& str);
-std::string urlEncode(char const* src, size_t const len);
-std::string urlEncode(char const* src);
+/// url-decodes [src, src+len) into out
+void urlDecode(std::string& out, char const* src, size_t len);
 
+/// url-decodes str into out - convenience function
+inline void urlDecode(std::string& out, std::string const& str) {
+  return urlDecode(out, str.data(), str.size());
+}
+
+/// url-decodes str and returns it - convenience function
+inline std::string urlDecode(std::string const& str) {
+  std::string result;
+  urlDecode(result, str.c_str(), str.size());
+  return result;
+}
+
+/// url-encodes [src, src+len) into out
+void urlEncode(std::string& out, char const* src, size_t len);
+
+/// url-encodes str into out - convenience function
+inline void urlEncode(std::string& out, std::string const& str) {
+  return urlEncode(out, str.data(), str.size());
+}
+
+/// url-encodes str and returns it - convenience function
 inline std::string urlEncode(std::string const& str) {
-  return urlEncode(str.c_str(), str.size());
+  std::string result;
+  urlEncode(result, str.c_str(), str.size());
+  return result;
 }
 }}}}  // namespace arangodb::fuerte::v1::http
 #endif
