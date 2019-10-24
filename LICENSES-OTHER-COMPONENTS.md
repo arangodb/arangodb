@@ -74,6 +74,15 @@
 * License Name: MIT License
 * License Id: MIT
 
+### function2
+
+* Name: function2
+* Version: v4.0.0
+* Project Home: https://github.com/Naios/function2
+* License: https://raw.githubusercontent.com/Naios/function2/master/LICENSE.txt
+* License Name: Boost Software License 1.0
+* License Id: BSL-1.0
+
 ### Google V8 7.1.302.28
 
 * Name: V8

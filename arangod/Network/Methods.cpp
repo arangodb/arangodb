@@ -66,13 +66,7 @@ auto prepareRequest(RestVerb type, std::string path, VPackBufferUInt8 payload,
                     RequestOptions const& options, Headers headers) {
   auto req = fuerte::createRequest(type, path, options.parameters, std::move(payload));
 
-  if (req->header.database.empty()) {
-    if (options.database.empty()) {
-      req->header.database = StaticStrings::SystemDatabase;
-    } else {
-      req->header.database = options.database;
-    }
-  }
+  req->header.database = options.database;
   req->header.setMeta(std::move(headers));
 
   if (!options.contentType.empty()) {

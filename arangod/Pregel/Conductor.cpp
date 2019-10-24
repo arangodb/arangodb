@@ -654,9 +654,11 @@ int Conductor::_initializeWorkers(std::string const& suffix, VPackSlice addition
   futures::collectAll(responses).thenValue([&nrGood](auto const& results) {
     for (auto const& tryRes : results) {
       network::Response const& r = tryRes.get();  // throws exceptions upwards
-      if (r.ok() &&
-          r.response->statusCode() < 400) {
+      if (r.ok() && r.response->statusCode() < 400) {
         nrGood++;
+      } else {
+        LOG_TOPIC("6ae67", ERR, Logger::PREGEL) << "received error from worker: '"
+          << (r.ok() ? r.slice().toJson() : fuerte::to_string(r.error)) << "'";
       }
     }
   }).wait();

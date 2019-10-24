@@ -242,7 +242,7 @@ void CombiningOutCache<M>::flushMessages() {
     ShardID const& shardId = this->_config->globalShardIDs()[shard];
     
     network::RequestOptions reqOpts;
-    reqOpts.timeout = network::Timeout(1280);
+    reqOpts.timeout = network::Timeout(180);
     reqOpts.skipScheduler = true;
     
     responses.emplace_back(network::sendRequest(pool, "shard:" + shardId, fuerte::RestVerb::Post,
