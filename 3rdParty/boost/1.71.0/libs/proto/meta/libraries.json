@@ -1,0 +1,14 @@
+{
+    "key": "proto",
+    "name": "Proto",
+    "authors": [
+        "Eric Niebler"
+    ],
+    "description": "Expression template library and compiler construction toolkit for domain-specific embedded languages.",
+    "category": [
+        "Metaprogramming"
+    ],
+    "maintainers": [
+        "Eric Niebler <eric -at- boostpro.com>"
+    ]
+}
