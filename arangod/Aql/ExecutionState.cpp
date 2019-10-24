@@ -42,5 +42,17 @@ std::ostream& operator<<(std::ostream& ostream, ExecutionState state) {
   return ostream;
 }
 
+std::ostream& operator<<(std::ostream& ostream, ExecutorState state) {
+  switch (state) {
+    case ExecutorState::DONE:
+      ostream << "DONE";
+      break;
+    case ExecutorState::HASMORE:
+      ostream << "HASMORE";
+      break;
+  }
+  return ostream;
+}
+
 }  // namespace aql
 }  // namespace arangodb

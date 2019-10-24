@@ -583,6 +583,45 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<
   }
   return {ExecutionState::DONE, {errorCode}};
 }
+
+// TODO this is only temporary, remove me
+// Just to make sure everything compiles!
+template <>
+std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr>
+ExecutionBlockImpl<FilterExecutor>::execute(AqlCallStack stack) {
+  // TODO make this a member variable
+  Fetcher::DataRange emptyRange{};
+  // TODO: pop this from the stack instead of modify.
+  // TODO: Need to make this member variable for waiting?
+  AqlCall& myCall = stack.myCall();
+  // Skipping path
+  while (myCall.offset > 0) {
+    // Execute skipSome
+    auto const [state, skipped, call] = _executor.skipRowsRange(myCall.offset, emptyRange);
+    if (state == ExecutorState::DONE) {
+      // We are done with this subquery
+      // TODO Implement me properly, we would need to fill shadowRows into the block
+      return {ExecutionState::DONE, skipped, nullptr};
+    }
+    TRI_ASSERT(skipped <= myCall.offset);
+    myCall.offset -= skipped;
+    if (myCall.offset > 0) {
+      // Need to fetch more
+      // TODO: we need to push the returned call into the stack, pop our call of.
+      size_t skipped = 0;
+      std::tie(_upstreamState, skipped, emptyRange) = _rowFetcher.execute(stack);
+      TRI_ASSERT(skipped <= myCall.offset);
+      myCall.offset -= skipped;
+    }
+  }
+
+  // TODO add GetSome path
+
+  // TODO implement!
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
 }  // namespace aql
 }  // namespace arangodb
 

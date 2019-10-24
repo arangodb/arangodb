@@ -31,6 +31,7 @@ namespace arangodb {
 namespace aql {
 
 class AqlCallStack {
+ public:
   // Initial
   AqlCallStack(AqlCall call);
   // Used in subquery

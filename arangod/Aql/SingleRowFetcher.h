@@ -64,7 +64,7 @@ class SingleRowFetcher {
 
  public:
   // TODO implement and document
-  std::tuple<ExecutionState, size_t, DataRange> execute(/* TODO: add"justDoIt"-style parameter */) {
+  std::tuple<ExecutionState, size_t, DataRange> execute(AqlCallStack& stack) {
     TRI_ASSERT(false);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }

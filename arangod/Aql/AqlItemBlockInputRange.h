@@ -23,6 +23,7 @@
 #ifndef ARANGOD_AQL_AQLITEMBLOCKINPUTITERATOR_H
 #define ARANGOD_AQL_AQLITEMBLOCKINPUTITERATOR_H
 
+#include "Aql/ExecutionState.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
 
@@ -30,26 +31,31 @@ namespace arangodb::aql {
 
 class AqlItemBlockInputRange {
  public:
-  enum class State : uint8_t { HASMORE, DONE };
+  AqlItemBlockInputRange();
 
-  AqlItemBlockInputRange(State, arangodb::aql::SharedAqlItemBlockPtr const&, std::size_t);
-  AqlItemBlockInputRange(State, arangodb::aql::SharedAqlItemBlockPtr&&, std::size_t) noexcept;
+  AqlItemBlockInputRange(ExecutorState, arangodb::aql::SharedAqlItemBlockPtr const&,
+                         std::size_t, std::size_t endIndex);
+  AqlItemBlockInputRange(ExecutorState, arangodb::aql::SharedAqlItemBlockPtr&&,
+                         std::size_t, std::size_t endIndex) noexcept;
 
-  std::pair<State, arangodb::aql::InputAqlItemRow> peek();
+  bool hasMore() const noexcept;
 
-  std::pair<State, arangodb::aql::InputAqlItemRow> next();
+  ExecutorState state() const noexcept;
+
+  std::pair<ExecutorState, arangodb::aql::InputAqlItemRow> peek();
+
+  std::pair<ExecutorState, arangodb::aql::InputAqlItemRow> next();
 
  private:
-  State state() const noexcept;
   bool indexIsValid() const noexcept;
-  bool moreRowsAfterThis() const noexcept;
 
  private:
   arangodb::aql::SharedAqlItemBlockPtr _block;
   std::size_t _rowIndex;
-  State _finalState;
+  std::size_t _endIndex;
+  ExecutorState _finalState;
 };
 
-}
+}  // namespace arangodb::aql
 
 #endif  // ARANGOD_AQL_AQLITEMBLOCKINPUTITERATOR_H

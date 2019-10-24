@@ -25,6 +25,9 @@
 
 #include "FilterExecutor.h"
 
+#include "Aql/AqlCall.h"
+#include "Aql/AqlCallStack.h"
+#include "Aql/AqlItemBlockInputRange.h"
 #include "Aql/AqlValue.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
@@ -52,9 +55,12 @@ FilterExecutorInfos::FilterExecutorInfos(RegisterId inputRegister, RegisterId nr
                     std::move(registersToClear), std::move(registersToKeep)),
       _inputRegister(inputRegister) {}
 
-RegisterId FilterExecutorInfos::getInputRegister() const noexcept { return _inputRegister; }
+RegisterId FilterExecutorInfos::getInputRegister() const noexcept {
+  return _inputRegister;
+}
 
-FilterExecutor::FilterExecutor(Fetcher& fetcher, Infos& infos) : _infos(infos), _fetcher(fetcher) {}
+FilterExecutor::FilterExecutor(Fetcher& fetcher, Infos& infos)
+    : _infos(infos), _fetcher(fetcher) {}
 
 FilterExecutor::~FilterExecutor() = default;
 
@@ -99,3 +105,69 @@ std::pair<ExecutionState, size_t> FilterExecutor::expectedNumberOfRows(size_t at
   return _fetcher.preFetchNumberOfRows(atMost);
 }
 
+std::tuple<ExecutorState, size_t, AqlCall> FilterExecutor::skipRowsRange(
+    size_t offset, AqlItemBlockInputRange& inputRange) {
+  ExecutorState state = ExecutorState::HASMORE;
+  InputAqlItemRow input{CreateInvalidInputRowHint{}};
+  size_t skipped = 0;
+  while (inputRange.hasMore() && skipped < offset) {
+    std::tie(state, input) = inputRange.next();
+    if (!input) {
+      TRI_ASSERT(!inputRange.hasMore());
+      break;
+    }
+    if (input.getValue(_infos.getInputRegister()).toBoolean()) {
+      skipped++;
+    }
+  }
+
+  AqlCall upstreamCall{};
+  upstreamCall.batchSize = offset - skipped;
+  return {state, skipped, upstreamCall};
+}
+
+std::tuple<ExecutorState, FilterStats, AqlCall> FilterExecutor::produceRows(
+    size_t limit, AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output) {
+  TRI_IF_FAILURE("FilterExecutor::produceRows") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+  FilterStats stats{};
+  ExecutorState state = ExecutorState::HASMORE;
+  InputAqlItemRow input{CreateInvalidInputRowHint{}};
+
+  while (inputRange.hasMore() && limit > 0) {
+    TRI_ASSERT(!output.isFull());
+    std::tie(state, input) = inputRange.next();
+    if (!input) {
+      TRI_ASSERT(!inputRange.hasMore());
+      break;
+    }
+    if (input.getValue(_infos.getInputRegister()).toBoolean()) {
+      output.copyRow(input);
+      output.advanceRow();
+      limit--;
+    } else {
+      stats.incrFiltered();
+    }
+  }
+
+  AqlCall upstreamCall{};
+  upstreamCall.batchSize = limit;
+  return {state, stats, upstreamCall};
+}
+
+/*
+skipSome(x) = > AqlCall{
+  offset : x,
+  batchSize : 0,
+  limit : AqlCall::Infinity{},
+  fullCount : <egal> | false
+}
+
+getSome(x) = > {
+  offset: 0,
+  batchSize : x,
+  limit : AqlCall::Infinity{},
+  fullCount : <egal> | false
+}
+*/
