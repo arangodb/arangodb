@@ -712,16 +712,18 @@ static void JS_TypeViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) 
 }
 
 void TRI_InitV8Views( // init views
-    TRI_v8_global_t& v8g, // V8 globals
-    v8::Isolate* isolate, // V8 isolate
-                     v8::Handle<v8::ObjectTemplate> ArangoDBNS) {
-  TRI_AddMethodVocbase(isolate, ArangoDBNS,
+                     TRI_v8_global_t& v8g, // V8 globals 
+                     v8::Isolate* isolate) {
+  auto db = v8::Local<v8::ObjectTemplate>::New(isolate, v8g.VocbaseTempl);
+
+  //  v8::Handle<v8::ObjectTemplate> VocbaseTempl = v8g.VocbaseTempl;
+  TRI_AddMethodVocbase(isolate, db,
                        TRI_V8_ASCII_STRING(isolate, "_createView"), JS_CreateViewVocbase);
-  TRI_AddMethodVocbase(isolate, ArangoDBNS,
+  TRI_AddMethodVocbase(isolate, db,
                        TRI_V8_ASCII_STRING(isolate, "_dropView"), JS_DropViewVocbase);
-  TRI_AddMethodVocbase(isolate, ArangoDBNS,
+  TRI_AddMethodVocbase(isolate, db,
                        TRI_V8_ASCII_STRING(isolate, "_view"), JS_ViewVocbase);
-  TRI_AddMethodVocbase(isolate, ArangoDBNS,
+  TRI_AddMethodVocbase(isolate, db,
                        TRI_V8_ASCII_STRING(isolate, "_views"), JS_ViewsVocbase);
 
   v8::Handle<v8::ObjectTemplate> rt;

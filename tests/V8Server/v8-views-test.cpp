@@ -116,31 +116,43 @@ struct ViewFactory : public arangodb::ViewFactory {
 
 }  // namespace
 
-v8::Local<v8::Function> getViewDBMemberFunction(TRI_v8_global_t *v8g,
-                                                v8::Isolate *isolate,
-                                                const char* name) {
-    auto arangoDBNS = v8::ObjectTemplate::New(isolate);
-    TRI_InitV8Views(*v8g, isolate, arangoDBNS);
-
-    auto fn = arangoDBNS->NewInstance(TRI_IGETC).FromMaybe(v8::Local<v8::Object>())->Get
-      (TRI_IGETC,
-       TRI_V8_ASCII_STRING(isolate, name)).FromMaybe(v8::Local<v8::Value>());
-    EXPECT_TRUE(fn->IsFunction());
-    return v8::Local<v8::Function>::Cast(fn);
+v8::Local<v8::Object> getDbInstance(TRI_v8_global_t *v8g,
+                                    v8::Isolate *isolate) {
+  auto views = v8::ObjectTemplate::New(isolate);
+  v8g->VocbaseViewTempl.Reset(isolate, views);
+  auto db = v8::ObjectTemplate::New(isolate);
+  v8g->VocbaseTempl.Reset(isolate, db);
+  TRI_InitV8Views(*v8g, isolate);
+  return v8::Local<v8::ObjectTemplate>::New(isolate, v8g->VocbaseTempl)->NewInstance(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
 }
 
-v8::Local<v8::Object> newView(TRI_v8_global_t *v8g,
-                              v8::Isolate *isolate) {
+v8::Local<v8::Object> getViewInstance(TRI_v8_global_t *v8g,
+                                      v8::Isolate *isolate) {
+  auto views = v8::ObjectTemplate::New(isolate);
+  v8g->VocbaseViewTempl.Reset(isolate, views);
+  auto db = v8::ObjectTemplate::New(isolate);
+  v8g->VocbaseTempl.Reset(isolate, db);
+  TRI_InitV8Views(*v8g, isolate);
   return v8::Local<v8::ObjectTemplate>::New(isolate, v8g->VocbaseViewTempl)->NewInstance(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
 }
+
+
+v8::Local<v8::Function> getViewDBMemberFunction(TRI_v8_global_t *v8g,
+                                                v8::Isolate *isolate,
+                                                v8::Local<v8::Object> db,
+                                                const char* name) {
+  auto fn = db->Get(TRI_IGETC,
+                    TRI_V8_ASCII_STRING(isolate, name)).FromMaybe(v8::Local<v8::Value>());
+  EXPECT_TRUE(fn->IsFunction());
+  return v8::Local<v8::Function>::Cast(fn);
+}
+
 
 v8::Local<v8::Function> getViewMethodFunction(TRI_v8_global_t *v8g,
                                               v8::Isolate *isolate,
                                               v8::Local<v8::Object>& arangoViewObj,
                                               const char* name) {
-  /*    auto arangoDBNS = v8::ObjectTemplate::New(isolate);
-    TRI_InitV8Views(*v8g, isolate, arangoDBNS);
-*/
+
     auto fn = arangoViewObj->Get
       (TRI_IGETC,
        TRI_V8_ASCII_STRING(isolate, name)).FromMaybe(v8::Local<v8::Value>());
@@ -192,16 +204,9 @@ TEST_F(V8ViewsTest, test_auth) {
     std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get(), 0));  // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
     v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get()));  // otherwise v8:-utils::CreateErrorObject(...) will fail
     v8g->_vocbase = &vocbase;
+    auto db = getDbInstance(v8g.get(), isolate.get());
+    auto fn_createView = getViewDBMemberFunction(v8g.get(), isolate.get(), db, "_createView");
 
-    auto fn_createView = getViewDBMemberFunction(v8g.get(), isolate.get(), "_createView");
-    /*
-    auto arangoDBNS = v8::ObjectTemplate::New(isolate.get());
-    TRI_InitV8Views(*v8g, isolate.get(), arangoDBNS);
-    auto fn_createView = arangoDBNS->NewInstance(TRI_IGETC).FromMaybe(v8::Local<v8::Object>())->Get
-      (TRI_IGETC,
-       TRI_V8_ASCII_STRING(isolate.get(), "_createView")).FromMaybe(v8::Local<v8::Function>());
-    EXPECT_TRUE(fn_createView->IsFunction());
-    */
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_ASCII_STRING(isolate.get(), "testView"),
         TRI_V8_ASCII_STRING(isolate.get(), "testViewType"),
@@ -326,8 +331,8 @@ TEST_F(V8ViewsTest, test_auth) {
     std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get(), 0));  // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
     v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get()));  // otherwise v8:-utils::CreateErrorObject(...) will fail
     v8g->_vocbase = &vocbase;
-
-    auto fn_dropView = getViewDBMemberFunction(v8g.get(), isolate.get(), "_dropView");
+    auto db = getDbInstance(v8g.get(), isolate.get());
+    auto fn_dropView = getViewDBMemberFunction(v8g.get(), isolate.get(), db, "_dropView");
 
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_ASCII_STRING(isolate.get(), "testView"),
@@ -444,7 +449,8 @@ TEST_F(V8ViewsTest, test_auth) {
     std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get(), 0));  // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
     v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get()));  // otherwise v8:-utils::CreateErrorObject(...) will fail
     v8g->_vocbase = &vocbase;
-    auto arangoView = newView(v8g.get(), isolate.get());
+
+    auto arangoView = getViewInstance(v8g.get(), isolate.get());
     auto fn_drop = getViewMethodFunction(v8g.get(), isolate.get(), arangoView, "drop");
 
     arangoView->SetInternalField(SLOT_CLASS_TYPE,
@@ -567,10 +573,7 @@ TEST_F(V8ViewsTest, test_auth) {
     std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get(), 0));  // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
     v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get()));  // otherwise v8:-utils::CreateErrorObject(...) will fail
     v8g->_vocbase = &vocbase;
-    auto arangoDBNS = v8::ObjectTemplate::New(isolate.get());
-    TRI_InitV8Views(*v8g, isolate.get(), arangoDBNS);
-
-    auto arangoView = newView(v8g.get(), isolate.get());
+    auto arangoView = getViewInstance(v8g.get(), isolate.get());
     auto fn_rename = getViewMethodFunction(v8g.get(), isolate.get(), arangoView, "rename");
 
     arangoView->SetInternalField(SLOT_CLASS_TYPE,
@@ -741,10 +744,7 @@ TEST_F(V8ViewsTest, test_auth) {
     std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get(), 0));  // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
     v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get()));  // otherwise v8:-utils::CreateErrorObject(...) will fail
     v8g->_vocbase = &vocbase;
-    auto arangoDBNS = v8::ObjectTemplate::New(isolate.get());
-    TRI_InitV8Views(*v8g, isolate.get(), arangoDBNS);
-
-    auto arangoView = newView(v8g.get(), isolate.get());
+    auto arangoView = getViewInstance(v8g.get(), isolate.get());
     auto fn_properties = getViewMethodFunction(v8g.get(), isolate.get(), arangoView, "properties");
 
     arangoView->SetInternalField(SLOT_CLASS_TYPE,
@@ -924,7 +924,8 @@ TEST_F(V8ViewsTest, test_auth) {
     std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get(), 0));  // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
     v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get()));  // otherwise v8:-utils::CreateErrorObject(...) will fail
     v8g->_vocbase = &vocbase;
-    auto fn_view = getViewDBMemberFunction(v8g.get(), isolate.get(), "_view");
+    auto db = getDbInstance(v8g.get(), isolate.get());
+    auto fn_view = getViewDBMemberFunction(v8g.get(), isolate.get(), db, "_view");
 
     std::vector<v8::Local<v8::Value>> args = {
         TRI_V8_ASCII_STRING(isolate.get(), "testView"),
@@ -1062,10 +1063,8 @@ TEST_F(V8ViewsTest, test_auth) {
     std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get(), 0));  // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
     v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get()));  // otherwise v8:-utils::CreateErrorObject(...) will fail
     v8g->_vocbase = &vocbase;
-    auto arangoDBNS = v8::ObjectTemplate::New(isolate.get());
-    TRI_InitV8Views(*v8g, isolate.get(), arangoDBNS);
 
-    auto arangoView = newView(v8g.get(), isolate.get());
+    auto arangoView = getViewInstance(v8g.get(), isolate.get());
     auto fn_properties = getViewMethodFunction(v8g.get(), isolate.get(), arangoView, "properties");
 
     arangoView->SetInternalField(SLOT_CLASS_TYPE,
@@ -1206,7 +1205,8 @@ TEST_F(V8ViewsTest, test_auth) {
     std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get(), 0));  // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
     v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get()));  // otherwise v8:-utils::CreateErrorObject(...) will fail
     v8g->_vocbase = &vocbase;
-    auto fn_views = getViewDBMemberFunction(v8g.get(), isolate.get(), "_view");
+    auto db = getDbInstance(v8g.get(), isolate.get());
+    auto fn_views = getViewDBMemberFunction(v8g.get(), isolate.get(), db, "_views");
 
     std::vector<v8::Local<v8::Value>> args = {};
 
