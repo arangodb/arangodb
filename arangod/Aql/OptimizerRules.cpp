@@ -7276,8 +7276,6 @@ bool nodeMakesThisQueryLevelUnsuitableForSubquerySplicing(ExecutionNode const* c
   switch (node->getType()) {
     case ExecutionNode::CALCULATION:
     case ExecutionNode::SUBQUERY:
-    case ExecutionNode::REMOTE:
-    case ExecutionNode::GATHER:
     case ExecutionNode::SINGLETON:
     case ExecutionNode::ENUMERATE_COLLECTION:
     case ExecutionNode::ENUMERATE_LIST:
@@ -7298,6 +7296,10 @@ bool nodeMakesThisQueryLevelUnsuitableForSubquerySplicing(ExecutionNode const* c
     case ExecutionNode::SUBQUERY_END:
       // These nodes do not initiate a skip themselves, and thus are fine.
       return false;
+    // UnsortingGather currently does not work. Also, as we would possibly add
+    // them with remote nodes in the query, we exclude these here, too.
+    case ExecutionNode::REMOTE:
+    case ExecutionNode::GATHER:
     case ExecutionNode::NORESULTS:
       // no results currently cannot work, as they do not fetch from above.
     case ExecutionNode::LIMIT:
