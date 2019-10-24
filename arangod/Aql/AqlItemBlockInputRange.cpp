@@ -68,10 +68,12 @@ bool AqlItemBlockInputRange::indexIsValid() const noexcept {
   return _block != nullptr && _rowIndex < _endIndex;
 }
 
-bool AqlItemBlockInputRange::hasMore() const noexcept {
+bool AqlItemBlockInputRange::hasMore() const noexcept { return indexIsValid(); }
+
+bool AqlItemBlockInputRange::hasMoreAfterThis() const noexcept {
   return indexIsValid() && _rowIndex + 1 < _endIndex;
 }
 
 ExecutorState AqlItemBlockInputRange::state() const noexcept {
-  return hasMore() ? ExecutorState::HASMORE : _finalState;
+  return hasMoreAfterThis() ? ExecutorState::HASMORE : _finalState;
 }

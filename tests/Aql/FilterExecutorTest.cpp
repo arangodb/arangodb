@@ -23,9 +23,11 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "AqlItemBlockHelper.h"
 #include "RowFetcherHelper.h"
 #include "gtest/gtest.h"
 
+#include "Aql/AqlCall.h"
 #include "Aql/AqlItemBlock.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/FilterExecutor.h"
@@ -64,7 +66,8 @@ class FilterExecutorTest : public ::testing::Test {
 
 TEST_F(FilterExecutorTest, there_are_no_rows_upstream_the_producer_does_not_wait) {
   VPackBuilder input;
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input.steal(), false);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
+      itemBlockManager, input.steal(), false);
   FilterExecutor testee(fetcher, infos);
   FilterStats stats{};
 
@@ -77,7 +80,8 @@ TEST_F(FilterExecutorTest, there_are_no_rows_upstream_the_producer_does_not_wait
 
 TEST_F(FilterExecutorTest, there_are_no_rows_upstream_the_producer_waits) {
   VPackBuilder input;
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input.steal(), true);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
+      itemBlockManager, input.steal(), true);
   FilterExecutor testee(fetcher, infos);
   FilterStats stats{};
 
@@ -97,7 +101,8 @@ TEST_F(FilterExecutorTest, there_are_no_rows_upstream_the_producer_waits) {
 TEST_F(FilterExecutorTest, there_are_rows_in_the_upstream_the_producer_does_not_wait) {
   auto input = VPackParser::fromJson(
       "[ [true], [false], [true], [false], [false], [true] ]");
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input->steal(), false);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
+      itemBlockManager, input->steal(), false);
   FilterExecutor testee(fetcher, infos);
   FilterStats stats{};
 
@@ -134,7 +139,8 @@ TEST_F(FilterExecutorTest, there_are_rows_in_the_upstream_the_producer_does_not_
 TEST_F(FilterExecutorTest, there_are_rows_in_the_upstream_the_producer_waits) {
   auto input = VPackParser::fromJson(
       "[ [true], [false], [true], [false], [false], [true] ]");
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input->steal(), true);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
+      itemBlockManager, input->steal(), true);
   FilterExecutor testee(fetcher, infos);
   FilterStats stats{};
 
@@ -216,7 +222,8 @@ TEST_F(FilterExecutorTest,
        there_are_rows_in_the_upstream_and_the_last_one_has_to_be_filtered_the_producer_does_not_wait) {
   auto input = VPackParser::fromJson(
       "[ [true], [false], [true], [false], [false], [true], [false] ]");
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input->steal(), false);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
+      itemBlockManager, input->steal(), false);
   FilterExecutor testee(fetcher, infos);
   FilterStats stats{};
 
@@ -259,7 +266,8 @@ TEST_F(FilterExecutorTest,
        there_are_rows_in_the_upstream_and_the_last_one_has_to_be_filtered_the_producer_waits) {
   auto input = VPackParser::fromJson(
       "[ [true], [false], [true], [false], [false], [true], [false] ]");
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input->steal(), true);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
+      itemBlockManager, input->steal(), true);
   FilterExecutor testee(fetcher, infos);
   FilterStats stats{};
 
@@ -340,6 +348,52 @@ TEST_F(FilterExecutorTest,
   ASSERT_EQ(state, ExecutionState::DONE);
   ASSERT_FALSE(result.produced());
   ASSERT_EQ(stats.getFiltered(), 1);
+}
+
+TEST_F(FilterExecutorTest, test_produce_datarange) {
+  // This fetcher will not be called!
+  // After Execute is done this fetcher shall be removed, the Executor does not need it anymore!
+  auto fakeUnusedBlock = VPackParser::fromJson("[  ]");
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
+      itemBlockManager, fakeUnusedBlock->steal(), false);
+
+  // This is the relevant part of the test
+  FilterExecutor testee(fetcher, infos);
+  SharedAqlItemBlockPtr inBlock =
+      buildBlock<1>(itemBlockManager,
+                    {{R"(true)"}, {R"(false)"}, {R"(true)"}, {R"(false)"}, {R"(true)"}});
+
+  AqlItemBlockInputRange input{ExecutorState::DONE, inBlock, 0, inBlock->size()};
+
+  OutputAqlItemRow output(std::move(block), outputRegisters, registersToKeep,
+                          infos.registersToClear());
+  EXPECT_EQ(output.numRowsWritten(), 0);
+  auto const [state, stats, call] = testee.produceRows(1000, input, output);
+  EXPECT_EQ(state, ExecutorState::DONE);
+  EXPECT_EQ(stats.getFiltered(), 2);
+  EXPECT_EQ(output.numRowsWritten(), 3);
+  EXPECT_FALSE(input.hasMore());
+}
+
+TEST_F(FilterExecutorTest, test_skip_datarange) {
+  // This fetcher will not be called!
+  // After Execute is done this fetcher shall be removed, the Executor does not need it anymore!
+  auto fakeUnusedBlock = VPackParser::fromJson("[  ]");
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
+      itemBlockManager, fakeUnusedBlock->steal(), false);
+
+  // This is the relevant part of the test
+  FilterExecutor testee(fetcher, infos);
+  SharedAqlItemBlockPtr inBlock =
+      buildBlock<1>(itemBlockManager,
+                    {{R"(true)"}, {R"(false)"}, {R"(true)"}, {R"(false)"}, {R"(true)"}});
+
+  AqlItemBlockInputRange input{ExecutorState::DONE, inBlock, 0, inBlock->size()};
+
+  auto const [state, skipped, call] = testee.skipRowsRange(1000, input);
+  EXPECT_EQ(state, ExecutorState::DONE);
+  EXPECT_EQ(skipped, 3);
+  EXPECT_FALSE(input.hasMore());
 }
 
 }  // namespace aql

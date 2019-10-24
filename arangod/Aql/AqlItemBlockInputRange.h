@@ -49,6 +49,8 @@ class AqlItemBlockInputRange {
  private:
   bool indexIsValid() const noexcept;
 
+  bool hasMoreAfterThis() const noexcept;
+
  private:
   arangodb::aql::SharedAqlItemBlockPtr _block;
   std::size_t _rowIndex;
