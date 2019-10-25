@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RegexCache.h"
-#include "Basics/Exceptions.h"
 #include "Basics/Utf8Helper.h"
 #include <Basics/StringUtils.h>
 
@@ -104,10 +103,6 @@ icu::RegexMatcher* RegexCache::fromCache(
   auto matcher = arangodb::basics::Utf8Helper::DefaultUtf8Helper.buildMatcher(pattern);
 
   auto p = matcher.get();
-
-  if (p == nullptr) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to build regex matcher");
-  }
 
   // insert into cache, no matter if pattern is valid or not
   cache.emplace(pattern, std::move(matcher));
