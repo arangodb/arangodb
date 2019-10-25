@@ -479,6 +479,7 @@ class HashIndexMap {
   void insert(arangodb::LocalDocumentId const& documentId, arangodb::velocypack::Slice const& doc) {
     VPackBuilder builder;
     builder.openArray();
+    bool toClose = true;
     for (size_t i = 0; i < _fields.size(); ++i) {
       auto slice = doc;
       bool isExpansion = false;
@@ -492,9 +493,8 @@ class HashIndexMap {
         } else {
           isExpansion = slice.isArray();
           TRI_ASSERT(isExpansion);
-          auto sliceIt = arangodb::velocypack::ArrayIterator(slice);
           bool found = false;
-          while (sliceIt != sliceIt.end()) {
+          for (auto sliceIt = arangodb::velocypack::ArrayIterator(slice); sliceIt != sliceIt.end(); ++sliceIt) {
             auto subSlice = sliceIt.value();
             if (!(subSlice.isNone() || subSlice.isNull())) {
               for (auto fieldItForArray = fieldIt; fieldItForArray != _fields[i].end(); ++fieldItForArray) {
@@ -511,7 +511,6 @@ class HashIndexMap {
                 break;
               }
             }
-            ++sliceIt;
           }
           if (!found) {
             insertSlice(documentId, VPackSlice::nullSlice(), i);
@@ -521,11 +520,32 @@ class HashIndexMap {
         }
       }
       if (!isExpansion) {
-        insertSlice(documentId, slice, i);
-        builder.add(slice);
+        // if last expansion
+        if (slice.isArray() && i == _fields.size() - 1) {
+          bool found = false;
+          bool wasNull = false;
+          for (auto sliceIt = arangodb::velocypack::ArrayIterator(slice); sliceIt != sliceIt.end(); ++sliceIt) {
+            auto subSlice = sliceIt.value();
+            if (!(subSlice.isNone() || subSlice.isNull())) {
+              insertSlice(documentId, subSlice, i);
+              found = true;
+            } else {
+              wasNull = true;
+            }
+          }
+          if (!found || wasNull) {
+            insertSlice(documentId, VPackSlice::nullSlice(), i);
+          }
+          toClose = false;
+        } else {
+          insertSlice(documentId, slice, i);
+          builder.add(slice);
+        }
       }
     }
-    builder.close();
+    if (toClose) {
+      builder.close();
+    }
     _docIndexMap.emplace(documentId, std::move(builder));
   }
 
@@ -561,6 +581,7 @@ class HashIndexMap {
     if (!(sliceIt != sliceIt.end())) {
       return std::unordered_map<arangodb::LocalDocumentId, VPackBuilder>();
     }
+    auto lastSliceIt = sliceIt;
     for (auto const& map : _valueMaps) {
       ValueMap::const_iterator begin;
       ValueMap::const_iterator end;
@@ -585,6 +606,7 @@ class HashIndexMap {
         }
         found.swap(tmpFound);
       }
+      lastSliceIt = sliceIt;
       if (!(++sliceIt != sliceIt.end())) {
         break;
       }
@@ -593,7 +615,12 @@ class HashIndexMap {
     for (auto const& d : found) {
       auto doc = _docIndexMap.find(d);
       TRI_ASSERT(doc != _docIndexMap.cend());
-      foundWithCovering.emplace(doc->first, doc->second);
+      auto builder = doc->second;
+      if (doc->second.isOpenArray()) {
+        builder.add(lastSliceIt.value());
+        builder.close();
+      }
+      foundWithCovering.emplace(doc->first, std::move(builder));
     }
     return foundWithCovering;
   }
