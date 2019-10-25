@@ -174,6 +174,11 @@ IResearchViewCoordinator::~IResearchViewCoordinator() {
 
 arangodb::Result IResearchViewCoordinator::appendVelocyPackImpl(
     arangodb::velocypack::Builder& builder, Serialization context) const {
+  if (Serialization::Inventory == context) {
+    TRI_ASSERT(false);
+    return {TRI_ERROR_NOT_IMPLEMENTED};
+  }
+
   if (Serialization::List == context) {
     // nothing more to output
     return {};

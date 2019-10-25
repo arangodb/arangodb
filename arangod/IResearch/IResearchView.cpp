@@ -360,7 +360,9 @@ arangodb::Result IResearchView::appendVelocyPackImpl(  // append JSON
   static const std::function<bool(irs::string_ref const& key)> persistenceAcceptor =
     [](irs::string_ref const&) -> bool { return true; };
 
-  auto* acceptor = &propertiesAcceptor;
+  auto& acceptor = context == Serialization::Persistence || context == Serialization::Inventory
+    ? persistenceAcceptor
+    : propertiesAcceptor;
 
   if (context == Serialization::Persistence) {
     if (arangodb::ServerState::instance()->isSingleServer()) {
@@ -370,8 +372,6 @@ arangodb::Result IResearchView::appendVelocyPackImpl(  // append JSON
         return res;
       }
     }
-
-    acceptor = &persistenceAcceptor;
   }
 
   if (!builder.isOpenObject()) {
@@ -388,12 +388,17 @@ arangodb::Result IResearchView::appendVelocyPackImpl(  // append JSON
     sanitizedBuilder.openObject();
 
     if (!_meta.json(sanitizedBuilder) ||
-        !mergeSliceSkipKeys(builder, sanitizedBuilder.close().slice(), *acceptor)) {
+        !mergeSliceSkipKeys(builder, sanitizedBuilder.close().slice(), acceptor)) {
       return arangodb::Result(
           TRI_ERROR_INTERNAL,
           std::string("failure to generate definition while generating "
                       "properties jSON for arangosearch View in database '") +
               vocbase().name() + "'");
+    }
+
+    if (context == Serialization::Inventory) {
+      // nothing more to output
+      return {};
     }
 
     if (context == Serialization::Persistence) {
@@ -405,8 +410,8 @@ arangodb::Result IResearchView::appendVelocyPackImpl(  // append JSON
 
       metaState.json(builder);
 
-      return {};  // nothing more to output (persistent
-                  // configuration does not need links)
+      // nothing more to output (persistent configuration does not need links)
+      return {};
     }
 
     // add CIDs of known collections to list

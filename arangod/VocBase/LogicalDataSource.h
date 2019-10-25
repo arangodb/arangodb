@@ -131,14 +131,14 @@ class LogicalDataSource {
   uint64_t planVersion() const noexcept { return _planVersion; }
 
   enum class Serialization {
-    // Include all necessary properties to show object as an entry in the list
+    // object properties will be shown in a list
     List = 0,
-    // Include all necessary properties to show object to a user
+    // object properties will be shown
     Properties,
-    // Include all necessary properties to store object definition in storage engine
+    // object will be saved in storage engine
     Persistence,
-    // Include all necessary properties to replicate object definition
-    Replication
+    // object will be replicated or dumped/restored
+    Inventory
   };
 
   //////////////////////////////////////////////////////////////////////////////
