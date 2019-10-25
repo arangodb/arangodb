@@ -782,7 +782,8 @@ int64_t Constituent::countRecentElectionEvents(double threshold) {
 }
 
 // Notify about heartbeat being sent out:
-void Constituent::notifyHeartbeatSent(std::string followerId) {
+void Constituent::notifyHeartbeatSent(std::string const& followerId) {
+  double now = TRI_microtime();
   MUTEX_LOCKER(guard, _heartBeatMutex);
-  _lastHeartbeatSent[followerId] = TRI_microtime();
+  _lastHeartbeatSent[followerId] = now;
 }

@@ -418,9 +418,9 @@ GraphNode::GraphNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
 GraphNode::~GraphNode() = default;
 
 std::string const& GraphNode::collectionToShardName(std::string const& collName) const {
-  if(_collectionToShard.empty()){
+  if (_collectionToShard.empty()) {
     return collName;
-  };
+  }
 
   auto found = _collectionToShard.find(collName);
   TRI_ASSERT(found != _collectionToShard.cend());
