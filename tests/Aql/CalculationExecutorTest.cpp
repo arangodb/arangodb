@@ -314,6 +314,44 @@ TEST_F(CalculationExecutorTest, test_produce_datarange_need_more) {
   EXPECT_FALSE(call.fullCount);
 }
 
+TEST_F(CalculationExecutorTest, test_produce_datarange_has_more) {
+  // This fetcher will not be called!
+  // After Execute is done this fetcher shall be removed, the Executor does not need it anymore!
+  auto fakeUnusedBlock = VPackParser::fromJson("[  ]");
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> fetcher(
+      itemBlockManager, fakeUnusedBlock->steal(), false);
+
+  // This is the relevant part of the test
+  SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 2)};
+  CalculationExecutor<CalculationType::Condition> testee(fetcher, infos);
+  SharedAqlItemBlockPtr inBlock =
+      buildBlock<1>(itemBlockManager, {{R"(0)"}, {R"(1)"}, {R"(2)"}, {R"(3)"}, {R"(4)"}});
+
+  AqlItemBlockInputRange input{ExecutorState::DONE, inBlock, 0, inBlock->size()};
+  OutputAqlItemRow output(std::move(block), infos.getOutputRegisters(),
+                          infos.registersToKeep(), infos.registersToClear());
+  EXPECT_EQ(output.numRowsWritten(), 0);
+  auto const [state, stats, call] = testee.produceRows(3, input, output);
+  EXPECT_EQ(output.numRowsWritten(), 3);
+
+  EXPECT_EQ(state, ExecutorState::HASMORE);
+  EXPECT_TRUE(input.hasMore());
+  // We still have two values in block: 3 and 4
+  {
+    // pop 3
+    auto const [state, row] = input.next();
+    EXPECT_EQ(state, ExecutorState::HASMORE);
+    EXPECT_EQ(row.getValue(0).toInt64(), 3);
+  }
+  {
+    // pop 4
+    auto const [state, row] = input.next();
+    EXPECT_EQ(state, ExecutorState::DONE);
+    EXPECT_EQ(row.getValue(0).toInt64(), 4);
+  }
+  EXPECT_FALSE(input.hasMore());
+}
+
 }  // namespace aql
 }  // namespace tests
 }  // namespace arangodb
