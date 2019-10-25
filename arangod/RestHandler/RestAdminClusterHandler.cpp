@@ -459,11 +459,13 @@ std::unique_ptr<RestAdminClusterHandler::MoveShardContext> RestAdminClusterHandl
     auto fromServer = slice.get("fromServer");
     auto toServer = slice.get("toServer");
 
-    bool valid = database.isString() && collection.isString() && shard.isString()
+    bool valid = collection.isString() && shard.isString()
       && fromServer.isString() && toServer.isString();
+
+    std::string databaseStr = database.isString() ? database.copyString() : std::string{};
     if (valid) {
       MoveShardContext ctx{
-        database.copyString(),
+        std::move(databaseStr),
         collection.copyString(),
         shard.copyString(),
         fromServer.copyString(),
@@ -496,17 +498,20 @@ RestStatus RestAdminClusterHandler::handleMoveShard() {
   }
 
   std::unique_ptr<MoveShardContext> ctx = MoveShardContext::fromVelocyPack(body);
-  auto const& exec = ExecContext::current();
-  bool canAccess = exec.isAdminUser() || exec.collectionAuthLevel(ctx->database, ctx->collection) == auth::Level::RW;
-  if (!canAccess) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN, "insufficent permissions on database to move shard");
-    return RestStatus::DONE;
-  }
-
   if (ctx) {
+    if (ctx->database.empty()) {
+      ctx->database = _vocbase.name();
+    }
+
+    auto const& exec = ExecContext::current();
+    bool canAccess = exec.isAdminUser() || exec.collectionAuthLevel(ctx->database, ctx->collection) == auth::Level::RW;
+    if (!canAccess) {
+      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN, "insufficent permissions on database to move shard");
+      return RestStatus::DONE;
+    }
+
     ctx->fromServer = resolveServerNameID(ctx->fromServer);
     ctx->toServer = resolveServerNameID(ctx->toServer);
-
     return handlePostMoveShard(std::move(ctx));
   }
 
