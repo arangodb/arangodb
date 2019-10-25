@@ -420,7 +420,7 @@ bool RestAqlHandler::killQuery(std::string const& idString) {
 //   "number": must be a positive integer, the cursor skips as many items,
 //             possibly exhausting the cursor.
 //             The result is a JSON with the attributes "error" (boolean),
-//             "errorMessage" (if applicable) and done" (boolean)
+//             "errorMessage" (if applicable) and "done" (boolean)
 //             to indicate whether or not the cursor is exhausted.
 //             If "number" is not given it defaults to 1.
 // For the "initializeCursor" operation, one has to bind the following
