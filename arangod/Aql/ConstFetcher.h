@@ -23,6 +23,7 @@
 #ifndef ARANGOD_AQL_CONST_FETCHER_H
 #define ARANGOD_AQL_CONST_FETCHER_H
 
+#include "Aql/AqlItemBlockInputRange.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/InputAqlItemRow.h"
 
@@ -47,6 +48,7 @@ class ConstFetcher {
   using DependencyProxy = aql::DependencyProxy<BlockPassthrough::Enable>;
 
  public:
+  using DataRange = AqlItemBlockInputRange;
   explicit ConstFetcher(DependencyProxy& executionBlock);
   TEST_VIRTUAL ~ConstFetcher() = default;
 

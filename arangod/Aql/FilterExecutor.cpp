@@ -122,7 +122,7 @@ std::tuple<ExecutorState, size_t, AqlCall> FilterExecutor::skipRowsRange(
   }
 
   AqlCall upstreamCall{};
-  upstreamCall.batchSize = offset - skipped;
+  upstreamCall.softLimit = offset - skipped;
   return {state, skipped, upstreamCall};
 }
 
@@ -138,10 +138,7 @@ std::tuple<ExecutorState, FilterStats, AqlCall> FilterExecutor::produceRows(
   while (inputRange.hasMore() && limit > 0) {
     TRI_ASSERT(!output.isFull());
     std::tie(state, input) = inputRange.next();
-    if (!input) {
-      TRI_ASSERT(!inputRange.hasMore());
-      break;
-    }
+    TRI_ASSERT(input.isInitialized());
     if (input.getValue(_infos.getInputRegister()).toBoolean()) {
       output.copyRow(input);
       output.advanceRow();
@@ -152,22 +149,6 @@ std::tuple<ExecutorState, FilterStats, AqlCall> FilterExecutor::produceRows(
   }
 
   AqlCall upstreamCall{};
-  upstreamCall.batchSize = limit;
+  upstreamCall.softLimit = limit;
   return {state, stats, upstreamCall};
 }
-
-/*
-skipSome(x) = > AqlCall{
-  offset : x,
-  batchSize : 0,
-  limit : AqlCall::Infinity{},
-  fullCount : <egal> | false
-}
-
-getSome(x) = > {
-  offset: 0,
-  batchSize : x,
-  limit : AqlCall::Infinity{},
-  fullCount : <egal> | false
-}
-*/

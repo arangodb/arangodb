@@ -24,6 +24,7 @@
 #define ARANGOD_AQL_SINGLE_BLOCK_FETCHER_H
 
 #include "Aql/AqlItemBlock.h"
+#include "Aql/AqlItemBlockInputRange.h"
 #include "Aql/AqlItemMatrix.h"
 #include "Aql/DependencyProxy.h"
 #include "Aql/ExecutionState.h"
@@ -48,6 +49,8 @@ class DependencyProxy;
 template <BlockPassthrough pass>
 class SingleBlockFetcher {
  public:
+  using DataRange = AqlItemBlockInputRange;
+
   explicit SingleBlockFetcher(DependencyProxy<pass>& executionBlock)
       : _prefetched(false),
         _dependencyProxy(&executionBlock),

@@ -23,6 +23,7 @@
 #ifndef ARANGOD_AQL_MULTI_DEPENDENCY_SINGLE_ROW_FETCHER_H
 #define ARANGOD_AQL_MULTI_DEPENDENCY_SINGLE_ROW_FETCHER_H
 
+#include "Aql/AqlItemBlockInputRange.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/InputAqlItemRow.h"
@@ -84,6 +85,7 @@ class MultiDependencySingleRowFetcher {
   };
 
  public:
+  using DataRange = AqlItemBlockInputRange;
   explicit MultiDependencySingleRowFetcher(DependencyProxy<BlockPassthrough::Disable>& executionBlock);
   TEST_VIRTUAL ~MultiDependencySingleRowFetcher() = default;
 
@@ -157,9 +159,9 @@ class MultiDependencySingleRowFetcher {
   bool isLastRowInBlock(DependencyInfo const& info) const;
 
   /**
-  * @brief If it returns true, there are no more data row in the current subquery
-  * level. If it returns false, there may or may not be more.
-  */
+   * @brief If it returns true, there are no more data row in the current
+   * subquery level. If it returns false, there may or may not be more.
+   */
   bool noMoreDataRows(DependencyInfo const& info) const;
 
   std::pair<ExecutionState, size_t> preFetchNumberOfRowsForDependency(size_t dependency,

@@ -110,7 +110,8 @@ ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine,
       _infos(std::move(infos)),
       _executor(_rowFetcher, _infos),
       _outputItemRow(),
-      _query(*engine->getQuery()) {
+      _query(*engine->getQuery()),
+      _lastRange{} {
   // already insert ourselves into the statistics results
   if (_profile >= PROFILE_LEVEL_BLOCKS) {
     _engine->_stats.nodes.emplace(node->id(), ExecutionStats::Node());
@@ -122,6 +123,14 @@ ExecutionBlockImpl<Executor>::~ExecutionBlockImpl() = default;
 
 template <class Executor>
 std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::getSome(size_t atMost) {
+  /*
+  getSome(x) = > {
+    offset: 0,
+    batchSize : x,
+    limit : AqlCall::Infinity{},
+    fullCount : <egal> | false
+  }
+  */
   traceGetSomeBegin(atMost);
   auto result = getSomeWithoutTrace(atMost);
   return traceGetSomeEnd(result.first, std::move(result.second));
@@ -340,6 +349,14 @@ static SkipVariants constexpr skipType() {
 
 template <class Executor>
 std::pair<ExecutionState, size_t> ExecutionBlockImpl<Executor>::skipSome(size_t const atMost) {
+  /*
+  skipSome(x) = > AqlCall{
+    offset : x,
+    batchSize : 0,
+    limit : AqlCall::Infinity{},
+    fullCount : <egal> | false
+  }
+  */
   traceSkipSomeBegin(atMost);
   auto state = ExecutionState::HASMORE;
 
@@ -589,15 +606,13 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<
 template <>
 std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr>
 ExecutionBlockImpl<FilterExecutor>::execute(AqlCallStack stack) {
-  // TODO make this a member variable
-  Fetcher::DataRange emptyRange{};
   // TODO: pop this from the stack instead of modify.
   // TODO: Need to make this member variable for waiting?
   AqlCall& myCall = stack.myCall();
   // Skipping path
   while (myCall.offset > 0) {
     // Execute skipSome
-    auto const [state, skipped, call] = _executor.skipRowsRange(myCall.offset, emptyRange);
+    auto const [state, skipped, call] = _executor.skipRowsRange(myCall.offset, _lastRange);
     if (state == ExecutorState::DONE) {
       // We are done with this subquery
       // TODO Implement me properly, we would need to fill shadowRows into the block
@@ -609,7 +624,8 @@ ExecutionBlockImpl<FilterExecutor>::execute(AqlCallStack stack) {
       // Need to fetch more
       // TODO: we need to push the returned call into the stack, pop our call of.
       size_t skipped = 0;
-      std::tie(_upstreamState, skipped, emptyRange) = _rowFetcher.execute(stack);
+      TRI_ASSERT(!_lastRange.hasMore());
+      std::tie(_upstreamState, skipped, _lastRange) = _rowFetcher.execute(stack);
       TRI_ASSERT(skipped <= myCall.offset);
       myCall.offset -= skipped;
     }

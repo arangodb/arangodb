@@ -400,11 +400,10 @@ TEST_F(FilterExecutorTest, test_produce_datarange_need_more) {
   EXPECT_FALSE(input.hasMore());
   // Test the Call we send to upstream
   EXPECT_EQ(call.offset, 0);
-  EXPECT_TRUE(std::holds_alternative<AqlCall::Infinity>(call.limit));
+  EXPECT_FALSE(call.hasHardLimit());
   // Avoid overfetching. I do not have a strong requirement on this
   // test, however this is what we do right now.
-  ASSERT_TRUE(std::holds_alternative<size_t>(call.batchSize));
-  EXPECT_EQ(std::get<size_t>(call.batchSize), 997);
+  EXPECT_EQ(call.getLimit(), 997);
   EXPECT_FALSE(call.fullCount);
 }
 
@@ -430,11 +429,10 @@ TEST_F(FilterExecutorTest, test_skip_datarange_need_more) {
 
   // Test the Call we send to upstream
   EXPECT_EQ(call.offset, 0);
-  EXPECT_TRUE(std::holds_alternative<AqlCall::Infinity>(call.limit));
+  EXPECT_FALSE(call.hasHardLimit());
   // Avoid overfetching. I do not have a strong requirement on this
   // test, however this is what we do right now.
-  ASSERT_TRUE(std::holds_alternative<size_t>(call.batchSize));
-  EXPECT_EQ(std::get<size_t>(call.batchSize), 997);
+  EXPECT_EQ(call.getLimit(), 997);
   EXPECT_FALSE(call.fullCount);
 }
 

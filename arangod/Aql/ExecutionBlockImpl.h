@@ -251,6 +251,8 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   Query const& _query;
 
   size_t _skipped{};
+
+  typename Fetcher::DataRange _lastRange;
 };
 
 }  // namespace aql
