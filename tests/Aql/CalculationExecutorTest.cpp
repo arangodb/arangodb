@@ -25,12 +25,13 @@
 
 #include "gtest/gtest.h"
 
+#include "Aql/AqlCall.h"
+#include "AqlItemBlockHelper.h"
 #include "RowFetcherHelper.h"
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/Ast.h"
 #include "Aql/CalculationExecutor.h"
-#include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Aql/OutputAqlItemRow.h"
@@ -109,7 +110,8 @@ class CalculationExecutorTest : public ::testing::Test {
 TEST_F(CalculationExecutorTest, there_are_no_rows_upstream_the_producer_does_not_wait) {
   SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 2)};
   VPackBuilder input;
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> fetcher(itemBlockManager, input.steal(), false);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> fetcher(
+      itemBlockManager, input.steal(), false);
   CalculationExecutor<CalculationType::Condition> testee(fetcher, infos);
   // Use this instead of std::ignore, so the tests will be noticed and
   // updated when someone changes the stats type in the return value of
@@ -126,7 +128,8 @@ TEST_F(CalculationExecutorTest, there_are_no_rows_upstream_the_producer_does_not
 TEST_F(CalculationExecutorTest, there_are_no_rows_upstream_the_producer_waits) {
   SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 2)};
   VPackBuilder input;
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> fetcher(itemBlockManager, input.steal(), true);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> fetcher(
+      itemBlockManager, input.steal(), true);
   CalculationExecutor<CalculationType::Condition> testee(fetcher, infos);
   // Use this instead of std::ignore, so the tests will be noticed and
   // updated when someone changes the stats type in the return value of
@@ -147,7 +150,8 @@ TEST_F(CalculationExecutorTest, there_are_no_rows_upstream_the_producer_waits) {
 TEST_F(CalculationExecutorTest, there_are_rows_in_the_upstream_the_producer_does_not_wait) {
   SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 2)};
   auto input = VPackParser::fromJson("[ [0], [1], [2] ]");
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> fetcher(itemBlockManager, input->steal(), false);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> fetcher(
+      itemBlockManager, input->steal(), false);
   CalculationExecutor<CalculationType::Condition> testee(fetcher, infos);
   NoStats stats{};
 
@@ -191,7 +195,8 @@ TEST_F(CalculationExecutorTest, there_are_rows_in_the_upstream_the_producer_does
 TEST_F(CalculationExecutorTest, there_are_rows_in_the_upstream_the_producer_waits) {
   SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 2)};
   auto input = VPackParser::fromJson("[ [0], [1], [2] ]");
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> fetcher(itemBlockManager, input->steal(), true);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> fetcher(
+      itemBlockManager, input->steal(), true);
   CalculationExecutor<CalculationType::Condition> testee(fetcher, infos);
   NoStats stats{};
 
@@ -234,6 +239,38 @@ TEST_F(CalculationExecutorTest, there_are_rows_in_the_upstream_the_producer_wait
   std::tie(state, stats) = testee.produceRows(row);
   ASSERT_EQ(state, ExecutionState::DONE);
   ASSERT_FALSE(row.produced());
+}
+
+TEST_F(CalculationExecutorTest, test_produce_datarange) {
+  // This fetcher will not be called!
+  // After Execute is done this fetcher shall be removed, the Executor does not need it anymore!
+  auto fakeUnusedBlock = VPackParser::fromJson("[  ]");
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> fetcher(
+      itemBlockManager, fakeUnusedBlock->steal(), false);
+
+  // This is the relevant part of the test
+  SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 2)};
+  CalculationExecutor<CalculationType::Condition> testee(fetcher, infos);
+  SharedAqlItemBlockPtr inBlock =
+      buildBlock<1>(itemBlockManager, {{R"(0)"}, {R"(1)"}, {R"(2)"}});
+
+  AqlItemBlockInputRange input{ExecutorState::DONE, inBlock, 0, inBlock->size()};
+  OutputAqlItemRow output(std::move(block), infos.getOutputRegisters(),
+                          infos.registersToKeep(), infos.registersToClear());
+  EXPECT_EQ(output.numRowsWritten(), 0);
+  auto const [state, stats, call] = testee.produceRows(1000, input, output);
+
+  EXPECT_EQ(state, ExecutorState::DONE);
+  // verify calculation
+  {
+    AqlValue value;
+    auto block = output.stealBlock();
+    for (std::size_t index = 0; index < 3; index++) {
+      value = block->getValue(index, outRegID);
+      ASSERT_TRUE(value.isNumber());
+      ASSERT_EQ(value.toInt64(), static_cast<int64_t>(index + 1));
+    }
+  }
 }
 
 }  // namespace aql
