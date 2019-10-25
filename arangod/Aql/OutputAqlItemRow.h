@@ -85,8 +85,8 @@ class OutputAqlItemRow {
     TRI_ASSERT(isOutputRegister(registerId));
     // This is already implicitly asserted by isOutputRegister:
     TRI_ASSERT(registerId < getNrRegisters());
-    TRI_ASSERT(_numValuesWritten < numRegistersToWrite());
     TRI_ASSERT(block().getValueReference(_baseIndex, registerId).isNone());
+    TRI_ASSERT(_numValuesWritten < numRegistersToWrite());
 
     block().setValue(_baseIndex, registerId, guard.value());
     guard.steal();
