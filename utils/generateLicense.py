@@ -1,5 +1,9 @@
 #!/usr/bin/python
-import csv, sys, os.path, re, urllib2
+import csv, sys, os.path, re
+try:
+    from urllib.request import urlopen
+except ImportError:
+    from urllib2 import urlopen
 
 filepath = 'LICENSES-OTHER-COMPONENTS.md'  
 
@@ -16,10 +20,10 @@ ccomment = re.compile(r"([^#]+)\n(#|\()", re.MULTILINE)
 
 def generateLine():
     global name, version, license, licenseName, licenseId
-    print name
+    print(name)
 
     if licenseName != "" and licenseId == "":
-        print "license id missing"
+        print("license id missing")
         sys.exit(1)
         
     html = ""
@@ -33,8 +37,8 @@ def generateLine():
             if license.startswith("see "):
                 html = license[4:]
             else:
-                response = urllib2.urlopen(license)
-                html = unicode(response.read(), "utf-8", "ignore").replace("\\", "").encode('latin-1','replace')
+                response = urlopen(license)
+                html = str(response.read(), "utf-8", "ignore").replace("\\", "").encode('latin-1','replace')
 
                 if html.startswith("/*"):
                     m = ccomment.match(html)
@@ -49,7 +53,7 @@ def generateLine():
                         html = m.groups()[0]
 
         except:
-            print "cannot load %s" % license
+            print("cannot load %s" % license)
 
     writer.writerow([name, version, licenseId, html])
 
