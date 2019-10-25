@@ -1,7 +1,7 @@
 devel
 -----
 
-* Added "smart joins for views" to the ArangoDB Enterprise Edition that allows running
+* Added "SmartJoins for Views" to the ArangoDB Enterprise Edition that allows running
   cluster joins between two certain sharded collections or views with performance close
   to that of a local join operation.
 
