@@ -259,6 +259,7 @@ TEST_F(CalculationExecutorTest, test_produce_datarange) {
                           infos.registersToKeep(), infos.registersToClear());
   EXPECT_EQ(output.numRowsWritten(), 0);
   auto const [state, stats, call] = testee.produceRows(1000, input, output);
+  EXPECT_EQ(output.numRowsWritten(), 3);
 
   EXPECT_EQ(state, ExecutorState::DONE);
   // verify calculation
@@ -271,6 +272,46 @@ TEST_F(CalculationExecutorTest, test_produce_datarange) {
       ASSERT_EQ(value.toInt64(), static_cast<int64_t>(index + 1));
     }
   }
+}
+
+TEST_F(CalculationExecutorTest, test_produce_datarange_need_more) {
+  // This fetcher will not be called!
+  // After Execute is done this fetcher shall be removed, the Executor does not need it anymore!
+  auto fakeUnusedBlock = VPackParser::fromJson("[  ]");
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Enable> fetcher(
+      itemBlockManager, fakeUnusedBlock->steal(), false);
+
+  // This is the relevant part of the test
+  SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 2)};
+  CalculationExecutor<CalculationType::Condition> testee(fetcher, infos);
+  SharedAqlItemBlockPtr inBlock =
+      buildBlock<1>(itemBlockManager, {{R"(0)"}, {R"(1)"}, {R"(2)"}});
+
+  AqlItemBlockInputRange input{ExecutorState::HASMORE, inBlock, 0, inBlock->size()};
+  OutputAqlItemRow output(std::move(block), infos.getOutputRegisters(),
+                          infos.registersToKeep(), infos.registersToClear());
+  EXPECT_EQ(output.numRowsWritten(), 0);
+  auto const [state, stats, call] = testee.produceRows(1000, input, output);
+  EXPECT_EQ(output.numRowsWritten(), 3);
+
+  EXPECT_EQ(state, ExecutorState::HASMORE);
+  // verify calculation
+  {
+    AqlValue value;
+    auto block = output.stealBlock();
+    for (std::size_t index = 0; index < 3; index++) {
+      value = block->getValue(index, outRegID);
+      ASSERT_TRUE(value.isNumber());
+      ASSERT_EQ(value.toInt64(), static_cast<int64_t>(index + 1));
+    }
+  }
+  // Test the Call we send to upstream
+  EXPECT_EQ(call.offset, 0);
+  EXPECT_FALSE(call.hasHardLimit());
+  // Avoid overfetching. I do not have a strong requirement on this
+  // test, however this is what we do right now.
+  EXPECT_EQ(call.getLimit(), 997);
+  EXPECT_FALSE(call.fullCount);
 }
 
 }  // namespace aql
