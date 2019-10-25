@@ -1,6 +1,15 @@
 v3.5.2 (XXXX-XX-XX)
 -------------------
 
+* When starting a coordinator, wait up to 15 seconds for it to appear 
+  in the agency under key `Supervision/Health` before reporting as "ready".
+  This is necessary because if the coordinator reports ready beforehand
+  and is used to create databases etc., the supervision may remove all 
+  of the jobs started by non-ready coordinators, considering them to be
+  from a failed coordinator.
+  To avoid huge startup delays, the startup will proceed after waiting 
+  futilely for 15 seconds and log a message.
+
 * Fixed issue #10270: Query: Expecting type Array or Object (while executing).
 
 * Fix a problem with AQL constrained sort in the cluster, which might abort
