@@ -79,6 +79,20 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
   RestStatus handleRemoveServer();
 
 private:
+
+  struct MoveShardContext {
+    std::string database;
+    std::string collection;
+    std::string shard;
+    std::string fromServer;
+    std::string toServer;
+    std::string collectionID;
+
+    static std::unique_ptr<MoveShardContext> fromVelocyPack(VPackSlice slice);
+  };
+
+  RestStatus handlePostMoveShard(std::unique_ptr<MoveShardContext>&& ctx);
+
   RestStatus handleSingleServerJob(std::string const& job);
   RestStatus handleCreateSingleServerJob(std::string const& job, std::string const& server);
 
@@ -98,6 +112,7 @@ private:
 
   futureVoid tryDeleteServer(std::unique_ptr<RemoveServerContext>&& ctx);
   futureVoid retryTryDeleteServer(std::unique_ptr<RemoveServerContext>&& ctx);
+  futureVoid createMoveShard(std::unique_ptr<MoveShardContext>&& ctx, VPackSlice plan);
 
   RestStatus handleProxyGetRequest(std::string const& url, std::string const& serverFromParameter);
   RestStatus handleGetCollectionShardDistribution(std::string const& collection);

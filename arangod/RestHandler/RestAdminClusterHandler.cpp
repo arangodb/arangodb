@@ -31,8 +31,10 @@
 
 #include "Agency/AsyncAgencyComm.h"
 #include "Agency/TimeString.h"
+#include "Agency/TransactionBuilder.h"
 #include "Cluster/AgencyPaths.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/FollowerInfo.h"
 #include "Cluster/ResultT.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/GeneralServer.h"
@@ -46,6 +48,7 @@
 #include "Scheduler/SchedulerFeature.h"
 #include "Sharding/ShardDistributionReporter.h"
 #include "Utils/ExecContext.h"
+#include "VocBase/Methods/Databases.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -89,6 +92,13 @@ void removeCurrentServers (std::unordered_set<std::string> &servers, VPackSlice 
       }
     }
   }
+}
+
+bool isServerResponsibleForSomething(std::string const& server, VPackSlice plan, VPackSlice current) {
+  std::unordered_set<std::string> servers = {server};
+  removePlanServers(servers, plan);
+  removeCurrentServers(servers, current);
+  return servers.size() == 1;
 }
 
 
@@ -331,37 +341,39 @@ RestAdminClusterHandler::futureVoid RestAdminClusterHandler::tryDeleteServer(std
 
         VPackSlice health = agency.get(rootPath->supervision()->health()->server(ctx->server)->status()->vec());
         if (!health.isNone()) {
-          std::unordered_set<std::string> serverSet = {ctx->server};
-          removePlanServers(serverSet, agency.get(rootPath->plan()->vec()));
-          removeCurrentServers(serverSet, agency.get(rootPath->current()->vec()));
+
+          bool isResponsible = isServerResponsibleForSomething(ctx->server,
+            agency.get(rootPath->plan()->vec()), agency.get(rootPath->current()->vec()));
 
           // if the server is still in the list, it was neither in plan nor in current
-          if (serverSet.size() == 1) {
+          if (isResponsible) {
 
             auto rootPath = arangodb::cluster::paths::root()->arango();
-
-            // do a write transaction if server is no longer used
-            std::vector<AgencyOperation> ops{
-              AgencyOperation(rootPath->plan()->coordinators()->server(ctx->server)->str(), AgencySimpleOperationType::DELETE_OP),
-              AgencyOperation(rootPath->plan()->dBServers()->server(ctx->server)->str(), AgencySimpleOperationType::DELETE_OP),
-              AgencyOperation(rootPath->current()->serversRegistered()->server(ctx->server)->str(), AgencySimpleOperationType::DELETE_OP),
-              AgencyOperation(rootPath->current()->dBServers()->server(ctx->server)->str(), AgencySimpleOperationType::DELETE_OP),
-              AgencyOperation(rootPath->supervision()->health()->server(ctx->server)->str(), AgencySimpleOperationType::DELETE_OP),
-              AgencyOperation(rootPath->target()->mapUniqueToShortID()->server(ctx->server)->str(), AgencySimpleOperationType::DELETE_OP),
-              AgencyOperation(rootPath->current()->serversKnown()->server(ctx->server)->str(), AgencySimpleOperationType::DELETE_OP),
-              AgencyOperation(rootPath->target()->removedServers()->server(ctx->server)->str(), AgencyValueOperationType::SET,
-                timepointToString(std::chrono::system_clock::now())),
-            };
-
             auto planVersionPath = rootPath->plan()->version();
-            std::vector<AgencyPrecondition> precs{
-              AgencyPrecondition(rootPath->supervision()->health()->server(ctx->server)->status()->str(), AgencyPrecondition::Type::VALUE, "FAILED"),
-              AgencyPrecondition(rootPath->supervision()->dbServers()->server(ctx->server)->str(), AgencyPrecondition::Type::EMPTY, true),
-              //AgencyPrecondition(planVersionPath->str(), AgencyPrecondition::Type::VALUE, agency.get(planVersionPath->vec())),
+            // do a write transaction if server is no longer used
+            VPackBuffer<uint8_t> trx;
+            {
+              VPackBuilder builder(trx);
+              arangodb::agency::envelope<VPackBuilder>::create(builder)
+                .write()
+                  .remove(rootPath->plan()->coordinators()->server(ctx->server)->str())
+                  .remove(rootPath->plan()->dBServers()->server(ctx->server)->str())
+                  .remove(rootPath->current()->serversRegistered()->server(ctx->server)->str())
+                  .remove(rootPath->current()->dBServers()->server(ctx->server)->str())
+                  .remove(rootPath->supervision()->health()->server(ctx->server)->str())
+                  .remove(rootPath->target()->mapUniqueToShortID()->server(ctx->server)->str())
+                  .remove(rootPath->current()->serversKnown()->server(ctx->server)->str())
+                  .set(rootPath->target()->removedServers()->server(ctx->server)->str(),
+                    timepointToString(std::chrono::system_clock::now()))
+                .precs()
+                  .isEqual(rootPath->supervision()->health()->server(ctx->server)->status()->str(), "FAILED")
+                  .isEmpty(rootPath->supervision()->dbServers()->server(ctx->server)->str())
+                  .isEqual(planVersionPath->str(), agency.get(planVersionPath->vec()))
+                .done()
+              .done();
+            }
 
-            };
-
-            return AsyncAgencyComm().sendTransaction(20s, AgencyWriteTransaction(ops, precs)).thenValue(
+            return AsyncAgencyComm().sendWriteTransaction(20s, std::move(trx)).thenValue(
               [self, this, ctx = std::move(ctx)](AsyncAgencyCommResult &&result) mutable {
                 if (result.ok()) {
                   if (result.statusCode() == fuerte::StatusOK) {
@@ -375,7 +387,7 @@ RestAdminClusterHandler::futureVoid RestAdminClusterHandler::tryDeleteServer(std
                 return futures::makeFuture();
             });
           }
-          LOG_DEVEL << "server still in use?";
+
           return retryTryDeleteServer(std::move(ctx));
         } else {
           generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
@@ -439,9 +451,223 @@ RestStatus RestAdminClusterHandler::handleResignLeadership() {
   return handleSingleServerJob("resignLeadership");
 }
 
+std::unique_ptr<RestAdminClusterHandler::MoveShardContext> RestAdminClusterHandler::MoveShardContext::fromVelocyPack(VPackSlice slice) {
+
+  if (slice.isObject()) {
+    auto database = slice.get("database");
+    auto collection = slice.get("collection");
+    auto shard = slice.get("shard");
+    auto fromServer = slice.get("fromServer");
+    auto toServer = slice.get("toServer");
+
+    bool valid = database.isString() && collection.isString() && shard.isString()
+      && fromServer.isString() && toServer.isString();
+    if (valid) {
+      MoveShardContext ctx{
+        database.copyString(),
+        collection.copyString(),
+        shard.copyString(),
+        fromServer.copyString(),
+        toServer.copyString(),
+        std::string{}
+      };
+      return std::make_unique<MoveShardContext>(std::move(ctx));
+    }
+  }
+
+  return nullptr;
+}
+
 RestStatus RestAdminClusterHandler::handleMoveShard() {
-  generateError(rest::ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_NOT_IMPLEMENTED);
+
+  if (!ServerState::instance()->isCoordinator()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN, "only allowed on coordinators");
+    return RestStatus::DONE;
+  }
+
+  if (request()->requestType() != rest::RequestType::POST) {
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+    return RestStatus::DONE;
+  }
+
+  bool parseSuccess;
+  VPackSlice body = parseVPackBody(parseSuccess);
+  if (!parseSuccess) {
+    return RestStatus::DONE;
+  }
+
+  std::unique_ptr<MoveShardContext> ctx = MoveShardContext::fromVelocyPack(body);
+  if (ctx) {
+    // TODO translate serverIds
+
+
+    /* TODO
+    if (!req.isAdminUser &&
+        users.permission(req.user, body.database) !== 'rw') {
+      actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
+        'insufficent permissions on database to move shard');
+      return;
+    }
+    */
+
+    return handlePostMoveShard(std::move(ctx));
+  }
+
+  generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER, "object with keys `database`, `collection`, `shard`, `fromServer` and `toServer` (all strings) expected");
   return RestStatus::DONE;
+}
+
+RestAdminClusterHandler::futureVoid RestAdminClusterHandler::createMoveShard(std::unique_ptr<MoveShardContext>&& ctx, VPackSlice plan) {
+
+  auto planPath = arangodb::cluster::paths::root()->arango()->plan();
+
+  VPackSlice dbServers = plan.get(planPath->dBServers()->vec());
+  bool serversFound = dbServers.isObject() && dbServers.hasKey(ctx->fromServer) && dbServers.hasKey(ctx->toServer);
+  if (!serversFound) {
+    generateError(ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
+      "one or both dbserver not found");
+    return futures::makeFuture();
+  }
+
+  VPackSlice collection = plan.get(planPath->collections()
+    ->database(ctx->database)->collection(ctx->collectionID)->vec());
+  if (!collection.isObject()) {
+
+    generateError(ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
+      "database/collection not found");
+    return futures::makeFuture();
+  }
+
+  if (collection.hasKey("distributeShardsLike")) {
+    generateError(ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+      "MoveShard only allowed for collections which have distributeShardsLike unset.");
+    return futures::makeFuture();
+  }
+
+  VPackSlice shard = collection.get(std::vector<std::string>{"shards", ctx->shard});
+  if (!shard.isArray()) {
+    generateError(ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
+      "shard not found");
+    return futures::makeFuture();
+  }
+
+  bool fromFound = false, isLeader = false;
+  for(VPackArrayIterator i(shard); i != i.end(); i++) {
+    if (i.value().isEqualString(ctx->fromServer)) {
+      isLeader = i.isFirst();
+      fromFound = true;
+    }
+  }
+
+  if (!fromFound) {
+    generateError(ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
+      "shard is not located on the server");
+    return futures::makeFuture();
+  }
+
+  std::string jobId = std::to_string(server().getFeature<ClusterFeature>().clusterInfo().uniqid());
+  auto jobToDoPath = arangodb::cluster::paths::root()->arango()->target()->toDo()->job(jobId);
+
+  VPackBuffer<uint8_t> trx;
+  {
+    VPackBuilder builder(trx);
+    arangodb::agency::envelope<VPackBuilder>::create(builder)
+      .write()
+        .emplace(jobToDoPath->str(), [&](VPackBuilder &builder) {
+          builder.add("type", VPackValue("moveShard"));
+          builder.add("database", VPackValue(ctx->database));
+          builder.add("collection", collection.get("id"));
+          builder.add("jobId", VPackValue(jobId));
+          builder.add("shard", VPackValue(ctx->shard));
+          builder.add("fromServer", VPackValue(ctx->fromServer));
+          builder.add("toServer", VPackValue(ctx->toServer));
+          builder.add("toServer", VPackValue(ctx->toServer));
+          builder.add("isLeader", VPackValue(isLeader));
+          builder.add("remainsFollower", VPackValue(isLeader));
+          builder.add("creator", VPackValue(ServerState::instance()->getId()));
+          builder.add("timeCreated", VPackValue(timepointToString(std::chrono::system_clock::now())));
+        })
+        .done()
+      .done();
+  }
+
+  auto self(shared_from_this());
+
+  return AsyncAgencyComm().sendWriteTransaction(20s, std::move(trx)).thenValue(
+    [self, this, ctx = std::move(ctx), jobId = std::move(jobId)](AsyncAgencyCommResult &&result) {
+
+      if (result.ok() && result.statusCode() == fuerte::StatusOK) {
+        VPackBuffer<uint8_t> payload;
+        {
+          VPackBuilder builder(payload);
+          VPackObjectBuilder ob(&builder);
+          builder.add("error", VPackValue(false));
+          builder.add("code", VPackValue(int(ResponseCode::ACCEPTED)));
+          builder.add("job", VPackValue(jobId));
+        }
+
+        resetResponse(rest::ResponseCode::ACCEPTED);
+        response()->setPayload(std::move(payload), true);
+
+      } else {
+        generateError(result.asResult());
+      }
+    });
+}
+
+RestStatus RestAdminClusterHandler::handlePostMoveShard(std::unique_ptr<MoveShardContext>&& ctx) {
+
+
+  LOG_DEVEL << "looking for collection " << ctx->collection;
+  std::shared_ptr<LogicalCollection> collection = server().getFeature<ClusterFeature>()
+    .clusterInfo().getCollectionNT(ctx->database, ctx->collection);
+
+  if (collection == nullptr){
+    generateError(ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
+      "database/collection not found");
+    return RestStatus::DONE;
+  }
+
+  ctx->collectionID = TRI_RidToString(collection->planId());
+  auto planPath = arangodb::cluster::paths::root()->arango()->plan();
+
+  VPackBuffer<uint8_t> trx;
+  {
+    VPackBuilder builder(trx);
+    arangodb::agency::envelope<VPackBuilder>::create(builder).read()
+      .key(planPath->dBServers()->str())
+      .key(planPath->collections()->database(ctx->database)
+        ->collection(ctx->collectionID)->str())
+      .done()
+    .done();
+  }
+
+  auto self(shared_from_this());
+
+  // gather information about that shard
+  return waitForFuture(AsyncAgencyComm().getValues(planPath).thenValue(
+      [this, self, ctx = std::move(ctx)](AgencyReadResult &&result) mutable {
+
+        if (result.ok()) {
+          switch (result.statusCode()) {
+            case fuerte::StatusOK:
+              return createMoveShard(std::move(ctx), result.slice().at(0));
+            case fuerte::StatusNotFound:
+              generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND, "unknown collection");
+              return futures::makeFuture();
+            default:
+              break;
+          }
+        }
+
+        // to some checks that this shard is moveable
+        generateError(result.asResult());
+        return futures::makeFuture();
+    }).thenError<VPackException>([this, self](VPackException const& e) {
+      generateError(Result{e.errorCode(), e.what()});
+    }).thenError<std::exception>([this, self](std::exception const& e) {
+      generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR, e.what());
+    }));
 }
 
 RestStatus RestAdminClusterHandler::handleQueryJobStatus() {
@@ -1077,13 +1303,19 @@ RestStatus RestAdminClusterHandler::handleHealth() {
 
   // query information from the store
   auto rootPath = arangodb::cluster::paths::root()->arango();
-  AgencyReadTransaction trx(std::move(std::vector<std::string>{
-    rootPath->cluster()->str(),
-    rootPath->supervision()->health()->str(),
-    rootPath->plan()->str(),
-    rootPath->current()->str()
-  }));
-  auto fStore = AsyncAgencyComm().sendTransaction(60.0s, trx);
+  VPackBuffer<uint8_t> trx;
+  {
+    VPackBuilder builder(trx);
+    arangodb::agency::envelope<VPackBuilder>::create(builder)
+      .read()
+        .key(rootPath->cluster()->str())
+        .key(rootPath->supervision()->health()->str())
+        .key(rootPath->plan()->str())
+        .key(rootPath->current()->str())
+       .done()
+     .done();
+  }
+  auto fStore = AsyncAgencyComm().sendReadTransaction(60.0s, std::move(trx));
 
   return waitForFuture(futures::collect(std::move(fConfig), std::move(fStore)).thenValue(
     [this, self, rootPath] (auto&& result) {

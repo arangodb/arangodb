@@ -150,6 +150,7 @@ public:
   FutureResult deleteKey(network::Timeout timeout, std::string const& path) const;
 
   FutureResult sendWriteTransaction(network::Timeout timeout, velocypack::Buffer<uint8_t>&& body) const;
+  FutureResult sendReadTransaction(network::Timeout timeout, velocypack::Buffer<uint8_t>&& body) const;
 
   FutureResult sendTransaction(network::Timeout timeout, AgencyReadTransaction const&) const;
   FutureResult sendTransaction(network::Timeout timeout, AgencyWriteTransaction const&) const;

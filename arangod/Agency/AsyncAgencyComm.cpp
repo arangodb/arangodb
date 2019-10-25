@@ -359,6 +359,10 @@ AsyncAgencyComm::FutureResult AsyncAgencyComm::sendWriteTransaction(network::Tim
   return sendWithFailover(fuerte::RestVerb::Post, AGENCY_URL_WRITE, timeout, std::move(body));
 }
 
+AsyncAgencyComm::FutureResult AsyncAgencyComm::sendReadTransaction(network::Timeout timeout, velocypack::Buffer<uint8_t>&& body) const {
+  return sendWithFailover(fuerte::RestVerb::Post, AGENCY_URL_READ, timeout, std::move(body));
+}
+
 AsyncAgencyComm::FutureResult AsyncAgencyComm::deleteKey(network::Timeout timeout, std::shared_ptr<const arangodb::cluster::paths::Path> const& path) const {
   return deleteKey(timeout, path->str());
 }
