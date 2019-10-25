@@ -210,6 +210,8 @@ class AqlItemBlock {
   /// be used to recreate the AqlItemBlock via the Json constructor
   void toVelocyPack(transaction::Methods* trx, arangodb::velocypack::Builder&) const;
 
+  void toSimpleVPack(transaction::Methods* trx, arangodb::velocypack::Builder&) const;
+
   /// @brief test if the given row is a shadow row and conveys subquery
   /// information only. It should not be handed to any non-subquery executor.
   bool isShadowRow(size_t row) const;

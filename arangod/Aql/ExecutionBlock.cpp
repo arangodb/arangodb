@@ -190,10 +190,7 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlock::traceGetSomeEnd
               << "getSome type=" << node->getTypeString() << " result: nullptr";
         } else {
           VPackBuilder builder;
-          {
-            VPackObjectBuilder guard(&builder);
-            result->toVelocyPack(transaction(), builder);
-          }
+          result->toSimpleVPack(transaction(), builder);
           auto options = transaction()->transactionContextPtr()->getVPackOptions();
           LOG_TOPIC("fcd9c", INFO, Logger::QUERIES)
               << "[query#" << queryId << "] "
