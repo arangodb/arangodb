@@ -700,6 +700,19 @@ void AqlItemBlock::toVelocyPack(transaction::Methods* trx, VPackBuilder& result)
   result.add("raw", raw.slice());
 }
 
+void AqlItemBlock::rowToSimpleVPack(size_t const row, transaction::Methods* trx, arangodb::velocypack::Builder& builder) const {
+  VPackArrayBuilder rowBuilder{&builder};
+
+  if (isShadowRow(row)) {
+    getShadowRowDepth(row).toVelocyPack(trx, *rowBuilder, false);
+  } else {
+    AqlValue{AqlValueHintNull{}}.toVelocyPack(trx, *rowBuilder, false);
+  }
+  for (RegisterId reg = 0; reg < getNrRegs(); ++reg) {
+    getValueReference(row, reg).toVelocyPack(trx, *rowBuilder, false);
+  }
+}
+
 void AqlItemBlock::toSimpleVPack(transaction::Methods* trx, arangodb::velocypack::Builder& builder) const {
   VPackObjectBuilder block{&builder};
   block->add("nrItems", VPackValue(size()));
@@ -708,15 +721,7 @@ void AqlItemBlock::toSimpleVPack(transaction::Methods* trx, arangodb::velocypack
   {
     VPackArrayBuilder matrixBuilder{block.builder};
     for (size_t row = 0; row < size(); ++row) {
-      VPackArrayBuilder rowBuilder{matrixBuilder.builder};
-      if (isShadowRow(row)) {
-        getShadowRowDepth(row).toVelocyPack(trx, *rowBuilder, false);
-      } else {
-        AqlValue{AqlValueHintNull{}}.toVelocyPack(trx, *rowBuilder, false);
-      }
-      for (RegisterId reg = 0; reg < getNrRegs(); ++reg) {
-        getValueReference(row, reg).toVelocyPack(trx, *rowBuilder, false);
-      }
+      rowToSimpleVPack(row, trx, *matrixBuilder.builder);
     }
   }
 }

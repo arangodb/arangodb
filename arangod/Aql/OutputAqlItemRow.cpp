@@ -30,6 +30,9 @@
 #include "Aql/ExecutorInfos.h"
 #include "Aql/ShadowAqlItemRow.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
+
 using namespace arangodb;
 using namespace arangodb::aql;
 
@@ -188,6 +191,11 @@ void OutputAqlItemRow::advanceRow() {
   ++_baseIndex;
   _inputRowCopied = false;
   _numValuesWritten = 0;
+}
+
+void OutputAqlItemRow::toVelocyPack(transaction::Methods& trx, VPackBuilder& builder) {
+  TRI_ASSERT(produced());
+  block().rowToSimpleVPack(_baseIndex, &trx, builder);
 }
 
 SharedAqlItemBlockPtr OutputAqlItemRow::stealBlock() {

@@ -32,8 +32,7 @@
 
 #include <memory>
 
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
 
 struct AqlValue;
 class InputAqlItemRow;
@@ -101,7 +100,7 @@ class OutputAqlItemRow {
   void copyBlockInternalRegister(InputAqlItemRow const& sourceRow,
                                  RegisterId input, RegisterId output);
 
-  std::size_t getNrRegisters() const { return block().getNrRegs(); }
+  [[nodiscard]] std::size_t getNrRegisters() const { return block().getNrRegs(); }
 
   /**
    * @brief May only be called after all output values in the current row have
@@ -111,7 +110,7 @@ class OutputAqlItemRow {
   void advanceRow();
 
   // returns true if row was produced
-  bool produced() const { return _inputRowCopied && allValuesWritten(); }
+  [[nodiscard]] bool produced() const { return _inputRowCopied && allValuesWritten(); }
 
   /**
    * @brief Steal the AqlItemBlock held by the OutputAqlItemRow. The returned
@@ -124,12 +123,12 @@ class OutputAqlItemRow {
    */
   SharedAqlItemBlockPtr stealBlock();
 
-  bool isFull() const { return numRowsWritten() >= block().size(); }
+  [[nodiscard]] bool isFull() const { return numRowsWritten() >= block().size(); }
 
   /**
    * @brief Returns the number of rows that were fully written.
    */
-  size_t numRowsWritten() const noexcept;
+  [[nodiscard]] size_t numRowsWritten() const noexcept;
 
   /*
    * @brief Returns the number of rows left. *Always* includes the current row,
@@ -137,7 +136,7 @@ class OutputAqlItemRow {
    *        NOTE that we later want to replace this with some "atMost" value
    *        passed from ExecutionBlockImpl.
    */
-  size_t numRowsLeft() const { return block().size() - _baseIndex; }
+  [[nodiscard]] size_t numRowsLeft() const { return block().size() - _baseIndex; }
 
   // Use this function with caution! We need it only for the ConstrainedSortExecutor
   void setBaseIndex(std::size_t index);
@@ -165,23 +164,25 @@ class OutputAqlItemRow {
   // The data of this row will be copied.
   void decreaseShadowRowDepth(ShadowAqlItemRow const& sourceRow);
 
+  void toVelocyPack(transaction::Methods& trx, velocypack::Builder& builder);
+
  private:
-  std::unordered_set<RegisterId> const& outputRegisters() const {
+  [[nodiscard]] std::unordered_set<RegisterId> const& outputRegisters() const {
     TRI_ASSERT(_outputRegisters != nullptr);
     return *_outputRegisters;
   }
 
-  std::unordered_set<RegisterId> const& registersToKeep() const {
+  [[nodiscard]] std::unordered_set<RegisterId> const& registersToKeep() const {
     TRI_ASSERT(_registersToKeep != nullptr);
     return *_registersToKeep;
   }
 
-  std::unordered_set<RegisterId> const& registersToClear() const {
+  [[nodiscard]] std::unordered_set<RegisterId> const& registersToClear() const {
     TRI_ASSERT(_registersToClear != nullptr);
     return *_registersToClear;
   }
 
-  bool isOutputRegister(RegisterId registerId) const {
+  [[nodiscard]] bool isOutputRegister(RegisterId registerId) const {
     return outputRegisters().find(registerId) != outputRegisters().end();
   }
 
@@ -232,17 +233,17 @@ class OutputAqlItemRow {
   bool _allowSourceRowUninitialized;
 
  private:
-  size_t nextUnwrittenIndex() const noexcept { return numRowsWritten(); }
+  [[nodiscard]] size_t nextUnwrittenIndex() const noexcept { return numRowsWritten(); }
 
-  size_t numRegistersToWrite() const { return outputRegisters().size(); }
+  [[nodiscard]] size_t numRegistersToWrite() const { return outputRegisters().size(); }
 
-  bool allValuesWritten() const {
+  [[nodiscard]] bool allValuesWritten() const {
     // If we have a shadowRow in the output, it counts as written
     // if not it only counts is written, if we have all registers filled.
     return block().isShadowRow(_baseIndex) || _numValuesWritten == numRegistersToWrite();
   }
 
-  inline AqlItemBlock const& block() const {
+  [[nodiscard]] inline AqlItemBlock const& block() const {
     TRI_ASSERT(_block != nullptr);
     return *_block;
   }
@@ -251,6 +252,7 @@ class OutputAqlItemRow {
     TRI_ASSERT(_block != nullptr);
     return *_block;
   }
+
   template <class ItemRowType>
   void doCopyRow(ItemRowType const& sourceRow, bool ignoreMissing);
 
@@ -263,8 +265,6 @@ class OutputAqlItemRow {
   template <class ItemRowType>
   void adjustShadowRowDepth(ItemRowType const& sourceRow);
 };
-}  // namespace aql
-
 }  // namespace arangodb
 
 #endif  // ARANGOD_AQL_OUTPUT_AQL_ITEM_ROW_H
