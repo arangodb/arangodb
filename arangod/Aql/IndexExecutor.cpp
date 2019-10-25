@@ -337,19 +337,20 @@ IndexExecutor::CursorReader::CursorReader(IndexExecutorInfos const& infos,
                       : Type::Document),
       _noProduce(nullptr),
       _produce(nullptr) {
-  auto getNullCallback_ = checkUniqueness ? getNullCallback<true> : getNullCallback<false>;
-  auto buildCallback_ = checkUniqueness ? buildCallback<true> : buildCallback<false>;
   switch (_type) {
-  case Type::NoResult:
+  case Type::NoResult: {
+    auto getNullCallback_ = checkUniqueness ? getNullCallback<true> : getNullCallback<false>;
     _noProduce = getNullCallback_(context);
     _produce = nullptr;
     break;
+  }
   case Type::LateMaterialized:
     _produce = checkUniqueness ? ::getCallback<true>(context, _index, _infos.getOutNonMaterializedIndRegs()) :
                                  ::getCallback<false>(context, _index, _infos.getOutNonMaterializedIndRegs());
     _noProduce = nullptr;
     break;
   default:
+    auto buildCallback_ = checkUniqueness ? buildCallback<true> : buildCallback<false>;
     _produce = buildCallback_(context);
     _noProduce = nullptr;
     break;

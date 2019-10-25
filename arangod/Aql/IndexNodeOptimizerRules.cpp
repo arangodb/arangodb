@@ -51,10 +51,14 @@ namespace {
     // check all node attributes to be in indexes
     for (auto& nodeAttr : node.attrs) {
       for (auto& index : indexNode->getIndexes()) {
-        auto indexId = index.getIndex()->id();
+        auto const& ind = index.getIndex();
+        if (!ind->hasCoveringIterator()) {
+          continue;
+        }
+        auto indexId = ind->id();
         size_t indexFieldNum = 0;
-        for (auto& field : index.getIndex()->fields()) {
-          if (arangodb::basics::AttributeName::namesMatch(nodeAttr.attr, field)) {
+        for (auto const& field : ind->fields()) {
+          if (arangodb::basics::AttributeName::isIdentical(nodeAttr.attr, field, false)) {
             nodeAttr.indexId = indexId;
             nodeAttr.indexFieldNum = indexFieldNum;
             nodeAttr.indexField = &field;
@@ -171,6 +175,7 @@ namespace {
                 TRI_ASSERT(state.nodeAttrs.attrs.size() > 1);
                 auto attrAndField = state.nodeAttrs.attrs.end();
                 std::advance(attrAndField, -2);
+                attrAndField->attr.back().shouldExpand = true;
                 attrAndField->attr.insert(attrAndField->attr.end(), state.nodeAttrs.attrs.back().attr.cbegin(), state.nodeAttrs.attrs.back().attr.cend());
                 state.isExpansion = false;
                 state.expansionVariable = nullptr;

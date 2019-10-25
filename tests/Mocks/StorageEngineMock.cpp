@@ -446,6 +446,7 @@ class HashIndexMap {
   };
 
   using ValueMap = std::unordered_multimap<VPackBuilder, arangodb::LocalDocumentId, VPackBuilderHasher, VPackBuilderComparator>;
+  using DocumentsIndexMap = std::unordered_map<arangodb::LocalDocumentId, VPackBuilder>;
 
   arangodb::velocypack::Slice getSliceByField(arangodb::velocypack::Slice const& doc, size_t i) {
     TRI_ASSERT(i < _fields.size());
@@ -476,6 +477,8 @@ class HashIndexMap {
   }
 
   void insert(arangodb::LocalDocumentId const& documentId, arangodb::velocypack::Slice const& doc) {
+    VPackBuilder builder;
+    builder.openArray();
     for (size_t i = 0; i < _fields.size(); ++i) {
       auto slice = doc;
       bool isExpansion = false;
@@ -490,41 +493,42 @@ class HashIndexMap {
           isExpansion = slice.isArray();
           TRI_ASSERT(isExpansion);
           auto sliceIt = arangodb::velocypack::ArrayIterator(slice);
-          bool wasNull = false;
+          bool found = false;
           if (sliceIt != sliceIt.end()) {
             while (sliceIt != sliceIt.end()) {
               auto subSlice = sliceIt.value();
-              if (subSlice.isNone() || subSlice.isNull()) {
-                insertSlice(documentId, VPackSlice::nullSlice(), i);
-                ++sliceIt;
-                continue;
-              }
-              for (auto fieldItForArray = fieldIt; fieldItForArray != _fields[i].end(); ++fieldItForArray) {
-                TRI_ASSERT(subSlice.isObject());
-                subSlice = subSlice.get(fieldItForArray->name);
-                if (subSlice.isNone() || subSlice.isNull()) {
-                  wasNull = true;
+              if (!(subSlice.isNone() || subSlice.isNull())) {
+                for (auto fieldItForArray = fieldIt; fieldItForArray != _fields[i].end(); ++fieldItForArray) {
+                  TRI_ASSERT(subSlice.isObject());
+                  subSlice = subSlice.get(fieldItForArray->name);
+                  if (subSlice.isNone() || subSlice.isNull()) {
+                    break;
+                  }
+                }
+                if (!(subSlice.isNone() || subSlice.isNull())) {
+                  insertSlice(documentId, subSlice, i);
+                  builder.add(subSlice);
+                  found = true;
                   break;
                 }
               }
-              if (!(subSlice.isNone() || subSlice.isNull())) {
-                insertSlice(documentId, subSlice, i);
-              }
               ++sliceIt;
             }
-            if (wasNull) {
-              insertSlice(documentId, VPackSlice::nullSlice(), i);
-            }
-          } else {
+          }
+          if (!found) {
             insertSlice(documentId, VPackSlice::nullSlice(), i);
+            builder.add(VPackSlice::nullSlice());
           }
           break;
         }
       }
       if (!isExpansion) {
         insertSlice(documentId, slice, i);
+        builder.add(slice);
       }
     }
+    builder.close();
+    _docIndexMap.emplace(documentId, std::move(builder));
   }
 
   bool remove(arangodb::LocalDocumentId const& documentId, arangodb::velocypack::Slice const& doc) {
@@ -543,17 +547,18 @@ class HashIndexMap {
         }
       }
     }
+    _docIndexMap.erase(documentId);
     return documentRemoved;
   }
 
   void clear() {
     _valueMaps.clear();
+    _docIndexMap.clear();
   }
 
   std::unordered_map<arangodb::LocalDocumentId, VPackBuilder> find(std::unique_ptr<VPackBuilder>&& keys) const {
-    std::unordered_map<arangodb::LocalDocumentId, VPackBuilder> found;
+    std::unordered_set<arangodb::LocalDocumentId> found;
     TRI_ASSERT(keys->slice().isArray());
-
     auto sliceIt = arangodb::velocypack::ArrayIterator(keys->slice());
     if (!(sliceIt != sliceIt.end())) {
       return std::unordered_map<arangodb::LocalDocumentId, VPackBuilder>();
@@ -567,19 +572,14 @@ class HashIndexMap {
       }
       if (found.empty()) {
         std::transform(begin, end, std::inserter(found, found.end()), [] (auto const& item) {
-          VPackBuilder builder;
-          builder.openArray();
-          builder.add(item.first.slice());
-
-          return std::make_pair(item.second, std::move(builder));
+          return item.second;
         });
       } else {
-        std::unordered_map<arangodb::LocalDocumentId, VPackBuilder> tmpFound;
+        std::unordered_set<arangodb::LocalDocumentId> tmpFound;
         for (auto it = begin; it != end; ++it) {
           auto foundIt = found.find(it->second);
           if (foundIt != found.end()) {
-            foundIt->second.add(it->first.slice());
-            tmpFound.emplace(it->second, foundIt->second);
+            tmpFound.emplace(it->second);
           }
         }
         if (tmpFound.empty()) {
@@ -591,17 +591,20 @@ class HashIndexMap {
         break;
       }
     }
-    for (auto& f : found) {
-      f.second.close();
+    std::unordered_map<arangodb::LocalDocumentId, VPackBuilder> foundWithCovering;
+    for (auto const& d : found) {
+      auto doc = _docIndexMap.find(d);
+      TRI_ASSERT(doc != _docIndexMap.cend());
+      foundWithCovering.emplace(doc->first, doc->second);
     }
-    return found;
+    return foundWithCovering;
   }
 
  private:
   std::vector<std::vector<arangodb::basics::AttributeName>> const& _fields;
   std::vector<ValueMap> _valueMaps;
+  DocumentsIndexMap _docIndexMap;
 };
-
 
 class HashIndexIteratorMock final : public arangodb::IndexIterator {
  public:
@@ -683,6 +686,8 @@ class HashIndexMock final : public arangodb::Index {
   bool isPersistent() const override { return false; }
 
   bool canBeDropped() const override { return false; }
+
+  bool hasCoveringIterator() const override { return true; }
 
   bool isHidden() const override { return false; }
 
@@ -827,7 +832,7 @@ class HashIndexMock final : public arangodb::Index {
     size_t nullsCount = 0;
     for (auto const& f : _fields) {
       auto it = std::find_if(allAttributes.cbegin(), allAttributes.cend(), [&f] (auto const& attrs) {
-        return attrs.first == f;
+        return arangodb::basics::AttributeName::isIdentical(attrs.first, f, false);
       });
       if (it != allAttributes.cend()) {
         while (nullsCount > 0) {
