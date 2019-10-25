@@ -66,6 +66,11 @@ VstRequest::VstRequest(ConnectionInfo const& connectionInfo,
   parseHeaderInformation();
 }
 
+arangodb::velocypack::StringRef VstRequest::rawPayload() const {
+  return arangodb::velocypack::StringRef(reinterpret_cast<const char*>(_buffer.data() + _payloadOffset),
+                                         _buffer.size() - _payloadOffset);
+}
+
 VPackSlice VstRequest::payload(VPackOptions const* options) {
   TRI_ASSERT(options != nullptr);
 
