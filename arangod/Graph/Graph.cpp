@@ -237,7 +237,7 @@ void Graph::rebuildOrphans(EdgeDefinition const& oldEdgeDefinition) {
   }
 }
 
-Result Graph::removeOrphanCollection(std::string&& name) {
+Result Graph::removeOrphanCollection(std::string const& name) {
   TRI_ASSERT(_vertexColls.find(name) != _vertexColls.end());
   // cppcheck-suppress redundantIfRemove
   if (_orphanColls.find(name) != _orphanColls.end()) {
@@ -350,7 +350,7 @@ Result EdgeDefinition::validateEdgeDefinition(VPackSlice const& edgeDefinition) 
                     "Edge definition '" + key + "' is not an array!");
     }
 
-    for (auto const& it : VPackArrayIterator(edgeDefinition.get(key))) {
+    for (VPackSlice it : VPackArrayIterator(edgeDefinition.get(key))) {
       if (!it.isString()) {
         return Result(TRI_ERROR_GRAPH_INTERNAL_DATA_CORRUPT,
                       std::string("Edge definition '") + key +
@@ -391,10 +391,10 @@ ResultT<EdgeDefinition> EdgeDefinition::createFromVelocypack(VPackSlice edgeDefi
   std::set<std::string> toSet;
 
   // duplicates in from and to shouldn't occur, but are safely ignored here
-  for (auto const& it : VPackArrayIterator(from)) {
+  for (VPackSlice it : VPackArrayIterator(from)) {
     fromSet.emplace(it.copyString());
   }
-  for (auto const& it : VPackArrayIterator(to)) {
+  for (VPackSlice it : VPackArrayIterator(to)) {
     toSet.emplace(it.copyString());
   }
 

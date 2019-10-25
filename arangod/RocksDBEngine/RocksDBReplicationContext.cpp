@@ -636,13 +636,13 @@ arangodb::Result RocksDBReplicationContext::dumpDocuments(
   auto* rcoll = static_cast<RocksDBMetaCollection*>(cIter->logical->getPhysical());
   const uint64_t cObjectId = rcoll->objectId();
 
-  auto buffer = b.buffer();
+  auto& buffer = b.bufferRef();
   bool hasMore = true;
   b.openArray(true);
   size_t oldPos = from;
   size_t offset = 0;
 
-  for (auto const& it : VPackArrayIterator(ids)) {
+  for (VPackSlice it : VPackArrayIterator(ids)) {
     if (!it.isNumber()) {
       return rv.reset(TRI_ERROR_BAD_PARAMETER);
     }
@@ -693,7 +693,7 @@ arangodb::Result RocksDBReplicationContext::dumpDocuments(
         hasMore = cIter->hasMore();
       }
 
-      if (buffer->byteSize() > maxChunkSize) {
+      if (buffer.byteSize() > maxChunkSize) {
         // result is big enough so that we abort prematurely
         full = true;
       }

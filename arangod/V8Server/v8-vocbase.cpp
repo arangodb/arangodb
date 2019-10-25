@@ -1041,9 +1041,9 @@ static void JS_QueriesKillAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto* queryList = vocbase.queryList();
   TRI_ASSERT(queryList != nullptr);
 
-  auto res = queryList->kill(id);
+  Result res = queryList->kill(id);
 
-  if (res == TRI_ERROR_NO_ERROR) {
+  if (res.ok()) {
     TRI_V8_RETURN_TRUE();
   }
 
@@ -1241,7 +1241,7 @@ static void MapGetVocBase(v8::Local<v8::Name> const name,
       // with that transaction. if we now lock again, we may deadlock!
       auto status = collection->status();
       auto cid = collection->id();
-      auto internalVersion = collection->internalVersion();
+      auto internalVersion = collection->v8CacheVersion();
 
       // check if the collection is still alive
       if (status != TRI_VOC_COL_STATUS_DELETED && cid > 0 &&

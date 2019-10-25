@@ -63,7 +63,7 @@ icu::RegexMatcher* RegexCache::buildSplitMatcher(AqlValue const& splitExpression
   AqlValueMaterializer materializer(trx);
   VPackSlice slice = materializer.slice(splitExpression, false);
   if (splitExpression.isArray()) {
-    for (auto const& it : VPackArrayIterator(slice)) {
+    for (VPackSlice it : VPackArrayIterator(slice)) {
       if (!it.isString() || it.getStringLength() == 0) {
         // one empty string rules them all
         isEmptyExpression = true;

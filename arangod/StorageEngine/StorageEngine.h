@@ -186,15 +186,8 @@ class StorageEngine : public application_features::ApplicationFeature {
   //// operations on databases
 
   /// @brief opens a database
-  virtual std::unique_ptr<TRI_vocbase_t> openDatabase(arangodb::velocypack::Slice const& args,
-                                                      bool isUpgrade, int& status) = 0;
-  std::unique_ptr<TRI_vocbase_t> openDatabase(velocypack::Slice const& args, bool isUpgrade) {
-    int status;
-    auto rv = openDatabase(args, isUpgrade, status);
-    TRI_ASSERT(status == TRI_ERROR_NO_ERROR);
-    TRI_ASSERT(rv != nullptr);
-    return rv;
-  }
+  virtual std::unique_ptr<TRI_vocbase_t> openDatabase(arangodb::CreateDatabaseInfo&& info,
+                                                      bool isUpgrade) = 0;
 
   // asks the storage engine to create a database as specified in the VPack
   // Slice object and persist the creation info. It is guaranteed by the server
@@ -204,8 +197,7 @@ class StorageEngine : public application_features::ApplicationFeature {
   // then, so that subsequent database creation requests will not fail. the WAL
   // entry for the database creation will be written *after* the call to
   // "createDatabase" returns no way to acquire id within this function?!
-  virtual std::unique_ptr<TRI_vocbase_t> createDatabase(TRI_voc_tick_t id,
-                                                        velocypack::Slice const& args,
+  virtual std::unique_ptr<TRI_vocbase_t> createDatabase(arangodb::CreateDatabaseInfo&&,
                                                         int& status) = 0;
 
   // @brief write create marker for database
@@ -397,13 +389,13 @@ class StorageEngine : public application_features::ApplicationFeature {
     builder.add("name", velocypack::Value(typeName()));
     builder.add("supports", velocypack::Value(VPackValueType::Object));
     builder.add("dfdb", velocypack::Value(supportsDfdb()));
-    
+
     builder.add("indexes", velocypack::Value(VPackValueType::Array));
     for (auto const& it : indexFactory().supportedIndexes()) {
       builder.add(velocypack::Value(it));
     }
     builder.close();  // indexes
-    
+
     builder.add("aliases", velocypack::Value(VPackValueType::Object));
     builder.add("indexes", velocypack::Value(VPackValueType::Object));
     for (auto const& it : indexFactory().indexAliases()) {
@@ -411,7 +403,7 @@ class StorageEngine : public application_features::ApplicationFeature {
     }
     builder.close();  // indexes
     builder.close();  // aliases
-    
+
     builder.close();  // supports
     builder.close();  // object
   }

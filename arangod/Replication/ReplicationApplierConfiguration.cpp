@@ -352,7 +352,7 @@ ReplicationApplierConfiguration ReplicationApplierConfiguration::fromVelocyPack(
   if (value.isArray()) {
     configuration._restrictCollections.clear();
 
-    for (auto const& it : VPackArrayIterator(value)) {
+    for (VPackSlice it : VPackArrayIterator(value)) {
       if (it.isString()) {
         configuration._restrictCollections.emplace(it.copyString());
       }

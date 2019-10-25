@@ -77,7 +77,9 @@ void RestJobHandler::putJob() {
   uint64_t jobId = StringUtils::uint64(value);
 
   AsyncJobResult::Status status;
-  GeneralResponse* response = _jobManager->getJobResult(jobId, status, true);  // gets job and removes it from the manager
+  uint64_t messageId = _response->messageId();
+  std::unique_ptr<GeneralResponse> response;
+  response.reset(_jobManager->getJobResult(jobId, status, true));  // gets job and removes it from the manager
 
   if (status == AsyncJobResult::JOB_UNDEFINED) {
     // unknown or already fetched job
@@ -92,14 +94,13 @@ void RestJobHandler::putJob() {
   }
 
   TRI_ASSERT(status == AsyncJobResult::JOB_DONE);
-  TRI_ASSERT(response != nullptr);
-
+  TRI_ASSERT(response.get() != nullptr);
+  _response.reset(response.release());
+  _response->setMessageId(messageId);
   // return the original response
-  _response.reset(response);
 
   // plus a new header
-  static std::string const xArango = "x-arango-async-id";
-  _response->setHeaderNC(xArango, value);
+  _response->setHeaderNC(StaticStrings::AsyncId, value);
 }
 
 void RestJobHandler::putJobMethod() {

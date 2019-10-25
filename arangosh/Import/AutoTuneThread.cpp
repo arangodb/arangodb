@@ -86,7 +86,7 @@ void AutoTuneThread::run() {
       uint64_t current_max = _importHelper.getMaxUploadSize();
       current_max *= _importHelper.getThreadCount();
       uint64_t ten_second_actual = _importHelper.rotatePeriodByteCount();
-      uint64_t new_max = current_max;
+      uint64_t new_max;
 
       // is current_max way too big
       if (ten_second_actual < current_max && 10 < ten_second_actual) {

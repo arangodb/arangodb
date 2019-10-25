@@ -25,7 +25,7 @@
 #define ARANGOD_AQL_FUNCTIONS_H 1
 
 #include "Aql/AqlValue.h"
-#include "Basics/SmallVector.h"
+#include "Containers/SmallVector.h"
 
 namespace arangodb {
 namespace transaction {
@@ -40,7 +40,7 @@ namespace aql {
 
 class ExpressionContext;
 
-typedef SmallVector<AqlValue> VPackFunctionParameters;
+typedef ::arangodb::containers::SmallVector<AqlValue> VPackFunctionParameters;
 
 typedef AqlValue (*FunctionImplementation)(arangodb::aql::ExpressionContext*,
                                            transaction::Methods*,

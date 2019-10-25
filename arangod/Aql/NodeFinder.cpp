@@ -28,16 +28,16 @@ namespace aql {
 
 /// @brief node finder for one node type
 template <>
-NodeFinder<ExecutionNode::NodeType>::NodeFinder(ExecutionNode::NodeType lookingFor,
-                                                SmallVector<ExecutionNode*>& out,
-                                                bool enterSubqueries)
+NodeFinder<ExecutionNode::NodeType>::NodeFinder(
+    ExecutionNode::NodeType lookingFor,
+    ::arangodb::containers::SmallVector<ExecutionNode*>& out, bool enterSubqueries)
     : _lookingFor(lookingFor), _out(out), _enterSubqueries(enterSubqueries) {}
 
 /// @brief node finder for multiple types
 template <>
 NodeFinder<std::vector<ExecutionNode::NodeType>>::NodeFinder(
     std::vector<ExecutionNode::NodeType> lookingFor,
-    SmallVector<ExecutionNode*>& out, bool enterSubqueries)
+    ::arangodb::containers::SmallVector<ExecutionNode*>& out, bool enterSubqueries)
     : _lookingFor(lookingFor), _out(out), _enterSubqueries(enterSubqueries) {}
 
 /// @brief before method for one node type
@@ -65,7 +65,8 @@ bool NodeFinder<std::vector<ExecutionNode::NodeType>>::before(ExecutionNode* en)
 }
 
 /// @brief node finder for one node type
-EndNodeFinder::EndNodeFinder(SmallVector<ExecutionNode*>& out, bool enterSubqueries)
+EndNodeFinder::EndNodeFinder(::arangodb::containers::SmallVector<ExecutionNode*>& out,
+                             bool enterSubqueries)
     : _out(out), _found({false}), _enterSubqueries(enterSubqueries) {}
 
 /// @brief before method for one node type

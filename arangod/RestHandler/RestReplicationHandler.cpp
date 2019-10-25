@@ -171,7 +171,7 @@ static Result restoreDataParser(char const* ptr, char const* pos,
 
   type = REPLICATION_INVALID;
 
-  for (auto const& pair : VPackObjectIterator(slice, true)) {
+  for (auto pair : VPackObjectIterator(slice, true)) {
     if (!pair.key.isString()) {
       return Result{TRI_ERROR_HTTP_CORRUPTED_JSON,
                     "received invalid JSON data for collection '" +
@@ -1150,7 +1150,7 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
 
   // always use current version number when restoring a collection,
   // because the collection is effectively NEW
-  toMerge.add("version", VPackValue(LogicalCollection::VERSION_33));
+  toMerge.add("version", VPackValue(static_cast<int>(LogicalCollection::Version::v33)));
   if (!name.empty() && name[0] == '_' && !parameters.hasKey(StaticStrings::DataSourceSystem)) {
     // system collection?
     toMerge.add(StaticStrings::DataSourceSystem, VPackValue(true));
@@ -1416,7 +1416,7 @@ Result RestReplicationHandler::processRestoreUsersBatch(std::string const& colle
       TRI_ASSERT(doc.isObject());
       // In the _users case we silently remove the _key value.
       bindVars->openObject();
-      for (auto const& it : VPackObjectIterator(doc)) {
+      for (auto it : VPackObjectIterator(doc)) {
         if (arangodb::velocypack::StringRef(it.key) != StaticStrings::KeyString &&
             arangodb::velocypack::StringRef(it.key) != StaticStrings::IdString) {
           bindVars->add(it.key);
@@ -1555,7 +1555,7 @@ Result RestReplicationHandler::processRestoreDataBatch(transaction::Methods& trx
         if (isUsersOnCoordinator) {
           // In the _users case we silently remove the _key value.
           builder.openObject();
-          for (auto const& it : VPackObjectIterator(doc)) {
+          for (auto it : VPackObjectIterator(doc)) {
             if (arangodb::velocypack::StringRef(it.key) != StaticStrings::KeyString &&
                 arangodb::velocypack::StringRef(it.key) != StaticStrings::IdString) {
               builder.add(it.key);
@@ -1902,8 +1902,8 @@ void RestReplicationHandler::handleCommandRestoreView() {
     if (view) {
       if (!overwrite) {
         generateError(GeneralResponse::responseCode(TRI_ERROR_ARANGO_DUPLICATE_NAME),
-                      TRI_ERROR_ARANGO_DUPLICATE_NAME, 
-                      std::string("unable to restore view '") + nameSlice.copyString() + ": " + 
+                      TRI_ERROR_ARANGO_DUPLICATE_NAME,
+                      std::string("unable to restore view '") + nameSlice.copyString() + ": " +
                       TRI_errno_string(TRI_ERROR_ARANGO_DUPLICATE_NAME));
         return;
       }
@@ -2799,7 +2799,7 @@ int RestReplicationHandler::createCollection(VPackSlice slice,
   // because the collection is effectively NEW
   VPackBuilder patch;
   patch.openObject();
-  patch.add("version", VPackValue(LogicalCollection::VERSION_31));
+  patch.add("version", VPackValue(static_cast<int>(LogicalCollection::Version::v31)));
   if (!name.empty() && name[0] == '_' && !slice.hasKey("isSystem")) {
     // system collection?
     patch.add("isSystem", VPackValue(true));

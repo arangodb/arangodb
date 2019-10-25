@@ -73,10 +73,10 @@ int rotateActiveJournalOnAllDBServers(std::string const& dbname, std::string con
   std::shared_ptr<ShardMap> shardList = collinfo->shardIds();
   std::vector<network::FutureRes> futures;
   for (auto const& shard : *shardList) {
-    for (ServerID const& server : shard.second) {
+    for (ServerID const& serverId : shard.second) {
       std::string uri =
           baseUrl + basics::StringUtils::urlEncode(shard.first) + "/rotate";
-      auto f = network::sendRequest(pool, "server:" + server, fuerte::RestVerb::Put,
+      auto f = network::sendRequest(pool, "server:" + serverId, fuerte::RestVerb::Put,
                                     std::move(uri), body, headers, options);
       futures.emplace_back(std::move(f));
     }

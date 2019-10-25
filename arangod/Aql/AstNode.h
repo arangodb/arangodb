@@ -77,6 +77,7 @@ enum AstNodeFlagType : AstNodeFlagsType {
   FLAG_BIND_PARAMETER = 0x0020000,  // node was created from a bind parameter
   FLAG_FINALIZED = 0x0040000,  // node has been finalized and should not be modified; only
                                // set and checked in maintainer mode
+  FLAG_SUBQUERY_REFERENCE = 0x0080000,  // node references a subquery
 };
 
 /// @brief enumeration of AST node value types

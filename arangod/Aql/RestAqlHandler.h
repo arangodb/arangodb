@@ -55,6 +55,9 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
   RestStatus continueExecute() override;
 
  public:
+  // DELETE method for /_api/aql/kill/<queryId>, (internal)
+  bool killQuery(std::string const& idString);
+
   // PUT method for /_api/aql/<operation>/<queryId>, this is using
   // the part of the cursor API with side effects.
   // <operation>: can be "getSome" or "skip".
@@ -122,8 +125,7 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
   RestStatus handleUseQuery(std::string const&, Query*, arangodb::velocypack::Slice const);
 
   // parseVelocyPackBody, returns a nullptr and produces an error
-  // response if
-  // parse was not successful.
+  // response if parse was not successful.
   std::shared_ptr<arangodb::velocypack::Builder> parseVelocyPackBody();
 
  private:

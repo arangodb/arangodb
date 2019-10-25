@@ -72,24 +72,19 @@ RestStatus RestEdgesHandler::execute() {
 }
 
 bool RestEdgesHandler::parseDirection(TRI_edge_direction_e& direction) {
-  bool found;
-  std::string dir = _request->value("direction", found);
+  std::string const& dir = _request->value("direction");
 
-  if (!found || dir.empty()) {
-    dir = "any";
-  }
-
-  std::string dirString(dir);
-
-  if (dirString == "any") {
+  if (dir.empty()) {
     direction = TRI_EDGE_ANY;
-  } else if (dirString == "out" || dirString == "outbound") {
+  } else if (dir == "any") {
+    direction = TRI_EDGE_ANY;
+  } else if (dir == "out" || dir == "outbound") {
     direction = TRI_EDGE_OUT;
-  } else if (dirString == "in" || dirString == "inbound") {
+  } else if (dir == "in" || dir == "inbound") {
     direction = TRI_EDGE_IN;
   } else {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "<direction> must by any, in, or out, not: " + dirString);
+                  "<direction> must by any, in, or out, not: " + dir);
     return false;
   }
 
@@ -154,7 +149,7 @@ bool RestEdgesHandler::readEdges() {
     return false;
   }
 
-  std::string collectionName = suffixes[0];
+  std::string const& collectionName = suffixes[0];
   if (!validateCollection(collectionName)) {
     return false;
   }
@@ -197,7 +192,7 @@ bool RestEdgesHandler::readEdges() {
   resultBuilder.add(edges);
 
   resultBuilder.add(StaticStrings::Error, VPackValue(false));
-  resultBuilder.add("code", VPackValue(200));
+  resultBuilder.add(StaticStrings::Code, VPackValue(200));
   VPackSlice stats = extras.get("stats");
   if (stats.isObject()) {
     resultBuilder.add(VPackValue("stats"));
@@ -241,7 +236,7 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
     return false;
   }
 
-  std::string collectionName = suffixes[0];
+  std::string const& collectionName = suffixes[0];
   if (!validateCollection(collectionName)) {
     return false;
   }
@@ -277,10 +272,8 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
 
     VPackSlice edges = queryResult.data->slice();
     for (VPackSlice edge : VPackArrayIterator(edges)) {
-      std::string key = transaction::helpers::extractKeyFromDocument(edge).copyString();
-      if (foundEdges.find(key) == foundEdges.end()) {
+      if (foundEdges.emplace(transaction::helpers::extractKeyFromDocument(edge).copyString()).second) {
         resultBuilder.add(edge);
-        foundEdges.emplace(std::move(key));
       }
     }
     ctx = queryResult.context;
@@ -288,7 +281,7 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
   resultBuilder.close();  // </edges>
 
   resultBuilder.add(StaticStrings::Error, VPackValue(false));
-  resultBuilder.add("code", VPackValue(200));
+  resultBuilder.add(StaticStrings::Code, VPackValue(200));
   resultBuilder.close();
 
   // and generate a response

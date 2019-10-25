@@ -79,11 +79,14 @@
 #include <algorithm>
 #include <numeric>
 #include <vector>
+#include <random>
 
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::futures;
 using namespace arangodb::rest;
+
+using Helper = arangodb::basics::VelocyPackHelper;
 
 // Timeout for read operations:
 static double const CL_DEFAULT_TIMEOUT = 120.0;
@@ -214,7 +217,7 @@ Future<Result> beginTransactionOnAllLeaders(transaction::Methods& trx, ShardMap 
   TRI_ASSERT(trx.state()->isCoordinator());
   TRI_ASSERT(trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED));
   std::vector<ServerID> leaders;
-  for (std::pair<ShardID, std::vector<ServerID>> const& shardServers : shards) {
+  for (auto const& shardServers : shards) {
     ServerID const& srv = shardServers.second.at(0);
     if (!trx.state()->knowsServer(srv)) {
       leaders.emplace_back(srv);
@@ -634,7 +637,7 @@ int distributeBabyOnShards(CreateOperationCtx& opCtx,
 /// @brief compute a shard distribution for a new collection, the list
 /// dbServers must be a list of DBserver ids to distribute across.
 /// If this list is empty, the complete current list of DBservers is
-/// fetched from ClusterInfo and with random_shuffle to mix it up.
+/// fetched from ClusterInfo and with shuffle to mix it up.
 ////////////////////////////////////////////////////////////////////////////////
 
 static std::shared_ptr<std::unordered_map<std::string, std::vector<std::string>>> DistributeShardsEvenly(
@@ -649,7 +652,10 @@ static std::shared_ptr<std::unordered_map<std::string, std::vector<std::string>>
     if (dbServers.empty()) {
       return shards;
     }
-    random_shuffle(dbServers.begin(), dbServers.end());
+
+    std::random_device rd;
+    std::mt19937 g(rd());
+    std::shuffle(dbServers.begin(), dbServers.end(), g);
   }
 
   // mop: distribute satellite collections on all servers
@@ -859,7 +865,7 @@ bool shardKeysChanged(LogicalCollection const& collection, VPackSlice const& old
       n = arangodb::velocypack::Slice::nullSlice();
     }
 
-    if (!arangodb::basics::VelocyPackHelper::equal(n, o, false)) {
+    if (!Helper::equal(n, o, false)) {
       return true;
     }
   }
@@ -893,7 +899,7 @@ bool smartJoinAttributeChanged(LogicalCollection const& collection, VPackSlice c
   VPackSlice o = oldValue.get(s);
   TRI_ASSERT(o.isString());
 
-  return !arangodb::basics::VelocyPackHelper::equal(n, o, false);
+  return !Helper::equal(n, o, false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1100,7 +1106,7 @@ futures::Future<OperationResult> countOnCoordinator(transaction::Methods& trx,
   futures.reserve(shardIds->size());
 
   auto* pool = trx.vocbase().server().getFeature<NetworkFeature>().pool();
-  for (std::pair<ShardID, std::vector<ServerID>> const& p : *shardIds) {
+  for (auto const& p : *shardIds) {
     network::Headers headers;
     ClusterTrxMethods::addTransactionHeader(trx, /*leader*/ p.second[0], headers);
     auto future =
@@ -1120,7 +1126,7 @@ futures::Future<OperationResult> countOnCoordinator(transaction::Methods& trx,
         // add to the total
         VPackArrayBuilder array(&builder);
         array->add(VPackValue(shardId));
-        array->add(VPackValue(arangodb::basics::VelocyPackHelper::getNumericValue<uint64_t>(
+        array->add(VPackValue(Helper::getNumericValue<uint64_t>(
             answer, "count", 0)));
       } else {
         // didn't get the expected response
@@ -1210,12 +1216,12 @@ int selectivityEstimatesOnCoordinator(ClusterFeature& feature, std::string const
       }
 
       // add to the total
-      for (auto const& pair : VPackObjectIterator(answer.get("indexes"), true)) {
+      for (auto pair : VPackObjectIterator(answer.get("indexes"), true)) {
         velocypack::StringRef shard_index_id(pair.key);
         auto split_point =
             std::find(shard_index_id.begin(), shard_index_id.end(), '/');
         std::string index(split_point + 1, shard_index_id.end());
-        double estimate = basics::VelocyPackHelper::getNumericValue(pair.value, 0.0);
+        double estimate = Helper::getNumericValue(pair.value, 0.0);
         indexEstimates[index].push_back(estimate);
       }
     }
@@ -1430,7 +1436,7 @@ Future<OperationResult> removeDocumentOnCoordinator(arangodb::transaction::Metho
         } else {
           VPackBuilder reqBuilder(buffer);
           reqBuilder.openArray(/*unindexed*/true);
-          for (VPackSlice const value : it.second) {
+          for (VPackSlice value : it.second) {
             reqBuilder.add(value);
           }
           reqBuilder.close();
@@ -1496,7 +1502,7 @@ Future<OperationResult> removeDocumentOnCoordinator(arangodb::transaction::Metho
     VPackBuffer<uint8_t> buffer;
     buffer.append(slice.begin(), slice.byteSize());
 
-    for (std::pair<ShardID, std::vector<ServerID>> const& shardServers : *shardIds) {
+    for (auto const& shardServers : *shardIds) {
       ShardID const& shard = shardServers.first;
       network::Headers headers;
       addTransactionHeaderForShard(trx, *shardIds, shard, headers);
@@ -1573,7 +1579,7 @@ futures::Future<OperationResult> truncateCollectionOnCoordinator(transaction::Me
   auto cb = [](std::vector<Try<network::Response>>&& results) -> OperationResult {
     return handleResponsesFromAllShards(
         results, [](Result& result, VPackBuilder&, ShardID&, VPackSlice answer) -> void {
-          if (VelocyPackHelper::readBooleanValue(answer, StaticStrings::Error, false)) {
+          if (Helper::readBooleanValue(answer, StaticStrings::Error, false)) {
             result = network::resultFromBody(answer, TRI_ERROR_NO_ERROR);
           }
         });
@@ -1738,7 +1744,7 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
     VPackStringRef const key(slice.isObject() ? slice.get(StaticStrings::KeyString) : slice);
 
     const bool addMatch = !options.ignoreRevs && slice.hasKey(StaticStrings::RevString);
-    for (std::pair<ShardID, std::vector<ServerID>> const& shardServers : *shardIds) {
+    for (auto const& shardServers : *shardIds) {
       ShardID const& shard = shardServers.first;
 
       network::Headers headers;
@@ -1757,7 +1763,7 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
   } else {
     VPackBuffer<uint8_t> buffer;
     buffer.append(slice.begin(), slice.byteSize());
-    for (std::pair<ShardID, std::vector<ServerID>> const& shardServers : *shardIds) {
+    for (auto const& shardServers : *shardIds) {
       ShardID const& shard = shardServers.first;
       network::Headers headers;
       addTransactionHeaderForShard(trx, *shardIds, shard, headers);
@@ -1818,7 +1824,7 @@ int fetchEdgesFromEngines(transaction::Methods& trx,
     futures.emplace_back(
         network::sendRequestRetry(pool, "server:" + engine.first, fuerte::RestVerb::Put,
                                   url + StringUtils::itoa(engine.second),
-                                  *leased->buffer(), network::Timeout(CL_DEFAULT_TIMEOUT)));
+                                  leased->bufferRef(), network::Timeout(CL_DEFAULT_TIMEOUT)));
   }
 
   for (Future<network::Response>& f : futures) {
@@ -1834,14 +1840,12 @@ int fetchEdgesFromEngines(transaction::Methods& trx,
       // Response has invalid format
       return TRI_ERROR_HTTP_CORRUPTED_JSON;
     }
-    filtered += arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(resSlice,
-                                                                            "filtered", 0);
-    read += arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(resSlice,
-                                                                        "readIndex", 0);
+    filtered += Helper::getNumericValue<size_t>(resSlice, "filtered", 0);
+    read += Helper::getNumericValue<size_t>(resSlice, "readIndex", 0);
     VPackSlice edges = resSlice.get("edges");
     bool allCached = true;
 
-    for (auto const& e : VPackArrayIterator(edges)) {
+    for (VPackSlice e : VPackArrayIterator(edges)) {
       VPackSlice id = e.get(StaticStrings::IdString);
       if (!id.isString()) {
         // invalid id type
@@ -1908,7 +1912,7 @@ int fetchEdgesFromEngines(
     futures.emplace_back(
         network::sendRequestRetry(pool, "server:" + engine.first, fuerte::RestVerb::Put,
                                   url + StringUtils::itoa(engine.second),
-                                  *leased->buffer(), network::Timeout(CL_DEFAULT_TIMEOUT)));
+                                  leased->bufferRef(), network::Timeout(CL_DEFAULT_TIMEOUT)));
   }
 
   for (Future<network::Response>& f : futures) {
@@ -1924,12 +1928,11 @@ int fetchEdgesFromEngines(
       // Response has invalid format
       return TRI_ERROR_HTTP_CORRUPTED_JSON;
     }
-    read += basics::VelocyPackHelper::getNumericValue<size_t>(resSlice,
-                                                              "readIndex", 0);
+    read += Helper::getNumericValue<size_t>(resSlice, "readIndex", 0);
 
     bool allCached = true;
     VPackSlice edges = resSlice.get("edges");
-    for (auto const& e : VPackArrayIterator(edges)) {
+    for (VPackSlice e : VPackArrayIterator(edges)) {
       VPackSlice id = e.get(StaticStrings::IdString);
       if (!id.isString()) {
         // invalid id type
@@ -1970,14 +1973,14 @@ void fetchVerticesFromEngines(
     std::unordered_map<arangodb::velocypack::StringRef, VPackSlice>& result,
     std::vector<std::shared_ptr<VPackBufferUInt8>>& datalake,
     bool forShortestPath) {
+
   // TODO map id => ServerID if possible
   // And go fast-path
 
   // slow path, sharding not deducable from _id
   transaction::BuilderLeaser leased(&trx);
   leased->openObject();
-  leased->add(VPackValue("keys"));
-  leased->openArray();
+  leased->add("keys", VPackValue(VPackValueType::Array));
   for (auto const& v : vertexIds) {
     leased->add(VPackValuePair(v.data(), v.length(), VPackValueType::String));
   }
@@ -1996,7 +1999,7 @@ void fetchVerticesFromEngines(
     futures.emplace_back(
         network::sendRequestRetry(pool, "server:" + engine.first, fuerte::RestVerb::Put,
                                   url + StringUtils::itoa(engine.second),
-                                  *(leased->buffer()), network::Timeout(CL_DEFAULT_TIMEOUT)));
+                                  leased->bufferRef(), network::Timeout(CL_DEFAULT_TIMEOUT)));
   }
 
   for (Future<network::Response>& f : futures) {
@@ -2015,13 +2018,13 @@ void fetchVerticesFromEngines(
     if (r.response->statusCode() != fuerte::StatusOK) {
       int code = network::errorCodeFromBody(resSlice, TRI_ERROR_INTERNAL);
       // We have an error case here. Throw it.
-      THROW_ARANGO_EXCEPTION_MESSAGE(code, arangodb::basics::VelocyPackHelper::getStringValue(
+      THROW_ARANGO_EXCEPTION_MESSAGE(code, Helper::getStringValue(
                                                resSlice, StaticStrings::ErrorMessage,
                                                TRI_errno_string(code)));
     }
 
     bool cached = false;
-    for (auto const& pair : VPackObjectIterator(resSlice)) {
+    for (auto pair : VPackObjectIterator(resSlice, true)) {
       arangodb::velocypack::StringRef key(pair.key);
       if (vertexIds.erase(key) == 0) {
         // We either found the same vertex twice,
@@ -2440,9 +2443,11 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
                                          }),
                           dbServers.end());
         }
-        std::random_shuffle(dbServers.begin(), dbServers.end());
+        std::random_device rd;
+        std::mt19937 g(rd());
+        std::shuffle(dbServers.begin(), dbServers.end(), g);
         shards = DistributeShardsEvenly(ci, numberOfShards, replicationFactor,
-                                        dbServers, !col->system());
+                                      dbServers, !col->system());
       }
 
 
@@ -2606,7 +2611,7 @@ arangodb::Result hotBackupList(std::vector<ServerID> const& dbServers, VPackSlic
       plan.add(resSlice.get("agency-dump")[0]);
     }
 
-    for (auto const& backup : VPackObjectIterator(resSlice.get("list"))) {
+    for (auto backup : VPackObjectIterator(resSlice.get("list"))) {
       ResultT<BackupMeta> meta = BackupMeta::fromSlice(backup.value);
       if (meta.ok()) {
         dbsBackups[backup.key.copyString()].push_back(std::move(meta.get()));
@@ -2704,7 +2709,7 @@ arangodb::Result matchBackupServersSlice(VPackSlice const planServers,
 
   // Skip all direct matching names in pair and remove them from localCopy
   std::unordered_set<std::string>::iterator it;
-  for (auto const& planned : VPackObjectIterator(planServers)) {
+  for (auto planned : VPackObjectIterator(planServers)) {
     auto const plannedStr = planned.key.copyString();
     if ((it = std::find(localCopy.begin(), localCopy.end(), plannedStr)) !=
         localCopy.end()) {
@@ -2881,13 +2886,13 @@ arangodb::Result applyDBServerMatchesToPlan(VPackSlice const plan,
                                                  std::map<ServerID, ServerID> const& matches) {
     if (s.isObject()) {
       VPackObjectBuilder o(&newPlan);
-      for (auto const& it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s)) {
         newPlan.add(it.key);
         replaceDBServer(it.value, matches);
       }
     } else if (s.isArray()) {
       VPackArrayBuilder a(&newPlan);
-      for (auto const& it : VPackArrayIterator(s)) {
+      for (VPackSlice it : VPackArrayIterator(s)) {
         replaceDBServer(it, matches);
       }
     } else {
@@ -3305,12 +3310,12 @@ arangodb::Result hotBackupDBServers(std::string const& backupId, std::string con
     }
 
     if (resSlice.hasKey(BackupMeta::SIZEINBYTES)) {
-      totalSize += VelocyPackHelper::getNumericValue<size_t>(resSlice, BackupMeta::SIZEINBYTES, 0);
+      totalSize += Helper::getNumericValue<size_t>(resSlice, BackupMeta::SIZEINBYTES, 0);
     } else {
       sizeValid = false;
     }
     if (resSlice.hasKey(BackupMeta::NRFILES)) {
-      totalFiles += VelocyPackHelper::getNumericValue<size_t>(resSlice, BackupMeta::NRFILES, 0);
+      totalFiles += Helper::getNumericValue<size_t>(resSlice, BackupMeta::NRFILES, 0);
     } else {
       sizeValid = false;
     }
@@ -3589,8 +3594,8 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
     }
 
     try {
-      if (!basics::VelocyPackHelper::equal(agency->slice()[0].get(versionPath),
-                                           agencyCheck->slice()[0].get(versionPath), false)) {
+      if (!Helper::equal(agency->slice()[0].get(versionPath),
+                         agencyCheck->slice()[0].get(versionPath), false)) {
         result.reset(TRI_ERROR_HOT_BACKUP_INTERNAL,
                      "data definition of cluster was changed during hot "
                      "backup: backup's consistency is not guaranteed");

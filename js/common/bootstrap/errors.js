@@ -283,6 +283,7 @@
     "ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT" : { "code" : 2001, "message" : "could not connect to server" },
     "ERROR_SIMPLE_CLIENT_COULD_NOT_WRITE" : { "code" : 2002, "message" : "could not write to server" },
     "ERROR_SIMPLE_CLIENT_COULD_NOT_READ" : { "code" : 2003, "message" : "could not read from server" },
+    "ERROR_WAS_ERLAUBE"            : { "code" : 2019, "message" : "was erlaube?!" },
     "ERROR_COMMUNICATOR_REQUEST_ABORTED" : { "code" : 2100, "message" : "Request aborted" },
     "ERROR_COMMUNICATOR_DISABLED"  : { "code" : 2101, "message" : "Communication was disabled" },
     "ERROR_INTERNAL_AQL"           : { "code" : 2200, "message" : "General internal AQL error" },

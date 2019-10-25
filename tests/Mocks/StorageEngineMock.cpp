@@ -704,7 +704,7 @@ void PhysicalCollectionMock::prepareIndexes(arangodb::velocypack::Slice indexesS
   auto* engine = arangodb::EngineSelectorFeature::ENGINE;
   auto& idxFactory = engine->indexFactory();
 
-  for (auto const& v : VPackArrayIterator(indexesSlice)) {
+  for (VPackSlice v : VPackArrayIterator(indexesSlice)) {
     if (arangodb::basics::VelocyPackHelper::getBooleanValue(v, "error", false)) {
       // We have an error here.
       // Do not add index.
@@ -997,20 +997,12 @@ std::string StorageEngineMock::createCollection(TRI_vocbase_t& vocbase,
 }
 
 std::unique_ptr<TRI_vocbase_t> StorageEngineMock::createDatabase(
-    TRI_voc_tick_t id, arangodb::velocypack::Slice const& args, int& status) {
-  if (!args.get("name").isString()) {
-    status = TRI_ERROR_BAD_PARAMETER;
-  }
-
-  status = TRI_ERROR_NO_ERROR;
-
-  arangodb::CreateDatabaseInfo info(server());
-  info.load(id, args, VPackSlice::emptyArraySlice());
+    arangodb::CreateDatabaseInfo&& info, int& status) {
 
   if (arangodb::ServerState::instance()->isCoordinator()) {
-    return std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR, info);
+    return std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR, std::move(info));
   }
-  return std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, info);
+  return std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, std::move(info));
 }
 
 arangodb::Result StorageEngineMock::createLoggerState(TRI_vocbase_t*, VPackBuilder&) {
@@ -1216,28 +1208,15 @@ arangodb::Result StorageEngineMock::lastLogger(
 }
 
 std::unique_ptr<TRI_vocbase_t> StorageEngineMock::openDatabase(
-    arangodb::velocypack::Slice const& args, bool isUpgrade, int& status) {
+    arangodb::CreateDatabaseInfo&& info, bool isUpgrade) {
   before();
 
-  if (!args.isObject() || !args.hasKey("name") || !args.get("name").isString()) {
-    status = TRI_ERROR_ARANGO_DATABASE_NAME_INVALID;
-
-    return nullptr;
-  }
-
-  status = TRI_ERROR_NO_ERROR;
-
-  arangodb::CreateDatabaseInfo info(server());
-  info.allowSystemDB(true);
-  auto rv = info.load(++vocbaseCount, args, VPackSlice::emptyArraySlice());
-  if(rv.fail()) {
-    THROW_ARANGO_EXCEPTION(rv);
-  }
-
+  auto new_info = info;
+  new_info.setId(++vocbaseCount);
 
   return std::make_unique<TRI_vocbase_t>(
     TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-    info
+    std::move(new_info)
   );
 }
 

@@ -457,27 +457,29 @@ void RestHandler::generateError(rest::ResponseCode code, int errorNumber,
                                 std::string const& message) {
   resetResponse(code);
 
-  VPackBuffer<uint8_t> buffer;
-  VPackBuilder builder(buffer);
-  try {
-    builder.add(VPackValue(VPackValueType::Object));
-    builder.add(StaticStrings::Code, VPackValue(static_cast<int>(code)));
-    builder.add(StaticStrings::Error, VPackValue(true));
-    builder.add(StaticStrings::ErrorMessage, VPackValue(message));
-    builder.add(StaticStrings::ErrorNum, VPackValue(errorNumber));
-    builder.close();
+  if (_request->requestType() != rest::RequestType::HEAD) {
+    VPackBuffer<uint8_t> buffer;
+    VPackBuilder builder(buffer);
+    try {
+      builder.add(VPackValue(VPackValueType::Object));
+      builder.add(StaticStrings::Code, VPackValue(static_cast<int>(code)));
+      builder.add(StaticStrings::Error, VPackValue(true));
+      builder.add(StaticStrings::ErrorMessage, VPackValue(message));
+      builder.add(StaticStrings::ErrorNum, VPackValue(errorNumber));
+      builder.close();
 
-    VPackOptions options(VPackOptions::Defaults);
-    options.escapeUnicode = true;
+      VPackOptions options(VPackOptions::Defaults);
+      options.escapeUnicode = true;
 
-    TRI_ASSERT(options.escapeUnicode);
-    if (_request != nullptr) {
-      _response->setContentType(_request->contentTypeResponse());
+      TRI_ASSERT(options.escapeUnicode);
+      if (_request != nullptr) {
+        _response->setContentType(_request->contentTypeResponse());
+      }
+      _response->setPayload(std::move(buffer), true, options,
+                            /*resolveExternals*/false);
+    } catch (...) {
+      // exception while generating error
     }
-    _response->setPayload(std::move(buffer), true, options,
-                          /*resolveExternals*/false);
-  } catch (...) {
-    // exception while generating error
   }
 }
 

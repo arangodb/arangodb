@@ -151,6 +151,7 @@
 // these versions produce incorrect code when inlining optimizations are enabled
 // for versions @see https://github.com/lordmulder/MUtilities/blob/master/include/MUtils/Version.h
 // and https://dev.to/yumetodo/list-of-mscver-and-mscfullver-8nd
+// seems MSVC2019.0+ also have this problem
 #if defined(_MSC_VER) \
     && !defined(_DEBUG) \
     && (((_MSC_FULL_VER >= 191125506) && (_MSC_FULL_VER <= 191125508)) \
@@ -159,10 +160,11 @@
         || ((_MSC_FULL_VER >= 191326128) && (_MSC_FULL_VER <= 191326132)) \
         || ((_MSC_FULL_VER >= 191426430) && (_MSC_FULL_VER <= 191426433)) \
         || ((_MSC_FULL_VER >= 191526726) && (_MSC_FULL_VER <= 191526732)) \
-        || ((_MSC_FULL_VER >= 191627023) && (_MSC_FULL_VER <= 191627032)))
-  #define MSVC2017_3456789_OPTIMIZED_WORKAROUND(...) __VA_ARGS__
+        || ((_MSC_FULL_VER >= 191627023) && (_MSC_FULL_VER <= 191627034)) \
+        || (_MSC_FULL_VER >= 192027508))
+  #define MSVC2017_3456789_MSVC2019_OPTIMIZED_WORKAROUND(...) __VA_ARGS__
 #else
-  #define MSVC2017_3456789_OPTIMIZED_WORKAROUND(...)
+  #define MSVC2017_3456789_MSVC2019_OPTIMIZED_WORKAROUND(...)
 #endif
 
 // hook for MSVC-only code
@@ -207,8 +209,12 @@
   #define MSVC2017_ONLY(...)
 #endif
 
+// hook for MSVC2019-only code (2019.0 || 2019.1 || 2019.2 || 2019.3)
 #if defined(_MSC_VER) \
-    && (_MSC_VER == 1920)
+    && (_MSC_VER == 1920 \
+        || _MSC_VER == 1921 \
+        || _MSC_VER == 1922 \
+        || _MSC_VER == 1923)
 #define MSVC2019_ONLY(...) __VA_ARGS__
 #else
 #define MSVC2019_ONLY(...)

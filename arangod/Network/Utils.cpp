@@ -163,7 +163,7 @@ void errorCodesFromHeaders(network::Headers headers,
       return;
     }
 
-    for (auto const& code : VPackObjectIterator(codesSlice)) {
+    for (auto code : VPackObjectIterator(codesSlice)) {
       VPackValueLength codeLength;
       char const* codeString = code.key.getString(codeLength);
       int codeNr = NumberUtils::atoi_zero<int>(codeString, codeString + codeLength);

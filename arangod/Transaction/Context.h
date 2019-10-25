@@ -27,7 +27,7 @@
 #include <memory>
 
 #include "Basics/Common.h"
-#include "Basics/SmallVector.h"
+#include "Containers/SmallVector.h"
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Options.h>
@@ -142,13 +142,13 @@ class Context {
   CollectionNameResolver const* _resolver;
   std::shared_ptr<velocypack::CustomTypeHandler> _customTypeHandler;
 
-  SmallVector<arangodb::velocypack::Builder*, 32>::allocator_type::arena_type _arena;
-  SmallVector<arangodb::velocypack::Builder*, 32> _builders;
-  
+  ::arangodb::containers::SmallVector<arangodb::velocypack::Builder*, 32>::allocator_type::arena_type _arena;
+  ::arangodb::containers::SmallVector<arangodb::velocypack::Builder*, 32> _builders;
+
   std::unique_ptr<arangodb::basics::StringBuffer> _stringBuffer;
-  
-  SmallVector<std::string*, 32>::allocator_type::arena_type _strArena;
-  SmallVector<std::string*, 32> _strings;
+
+  ::arangodb::containers::SmallVector<std::string*, 32>::allocator_type::arena_type _strArena;
+  ::arangodb::containers::SmallVector<std::string*, 32> _strings;
 
   arangodb::velocypack::Options _options;
   arangodb::velocypack::Options _dumpOptions;

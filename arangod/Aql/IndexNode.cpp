@@ -253,7 +253,7 @@ void IndexNode::initializeOnce(bool hasV8Expression, std::vector<Variable const*
 
     hasV8Expression |= e->willUseV8();
 
-    arangodb::HashSet<Variable const*> innerVars;
+    ::arangodb::containers::HashSet<Variable const*> innerVars;
     e->variables(innerVars);
 
     nonConstExpressions.emplace_back(
@@ -452,7 +452,7 @@ CostEstimate IndexNode::estimateCost() const {
 }
 
 /// @brief getVariablesUsedHere, modifying the set in-place
-void IndexNode::getVariablesUsedHere(arangodb::HashSet<Variable const*>& vars) const {
+void IndexNode::getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& vars) const {
   Ast::getReferencedVariables(_condition->root(), vars);
 
   vars.erase(_outVariable);

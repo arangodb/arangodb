@@ -1,3 +1,4 @@
+/* global arango, print */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -26,6 +27,11 @@
 // / @author Simon Grätzer
 // //////////////////////////////////////////////////////////////////////////////
 
+const RED = require('internal').COLORS.COLOR_RED;
+const RESET = require('internal').COLORS.COLOR_RESET;
+
+const sleep = require('internal').sleep;
+
 exports.compareTicks = function(l, r) {
   var i;
   if (l === null) {
@@ -46,4 +52,21 @@ exports.compareTicks = function(l, r) {
   }
 
   return 0;
+};
+
+exports.reconnectRetry = function(endpoint, databaseName, user, password) {
+  let sleepTime = 0.1;
+  let ex;
+  do {
+    try {
+      arango.reconnect(endpoint, databaseName, user, password);
+      return;
+    } catch (ex) {
+      print(RED + "connecting " + endpoint + " failed - retrying (" + ex.message + ")" + RESET);
+    }
+    sleepTime *= 2;
+    sleep(sleepTime);
+  } while (sleepTime < 5);
+  print(RED + "giving up!" + RESET);
+  throw ex;
 };

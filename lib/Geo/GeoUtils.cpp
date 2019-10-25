@@ -30,10 +30,9 @@
 #include <s2/s2latlng.h>
 #include <s2/s2region_coverer.h>
 
-#include "Basics/HashSet.h"
-#include "Basics/SmallVector.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/debugging.h"
+#include "Containers/HashSet.h"
 #include "Geo/ShapeContainer.h"
 #include "Logger/Logger.h"
 
@@ -101,7 +100,7 @@ void GeoUtils::scanIntervals(QueryParams const& params, std::vector<S2CellId> co
     // not need
     // to look at [47|1|40] or [47|11|60] because these cells don't intersect,
     // but polygons indexed with exact cell id [47|11] still might.
-    arangodb::HashSet<uint64_t> parentSet;
+    ::arangodb::containers::HashSet<uint64_t> parentSet;
     for (const S2CellId& interval : cover) {
       S2CellId cell = interval;
 
