@@ -447,6 +447,23 @@ TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_nested_subquery_with_innermos
 
 // Must be changed as soon as the subquery implementation with shadow rows handle skipping,
 // and the splice-subqueries optimizer rule is changed to allow it.
+// This is a test for a specific problem where constant subqueries did not work
+// inside spliced subqueries correctly.
+TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_nested_subquery_with_innermost_constant_skip) {
+  auto const queryString = R"aql(
+    FOR a IN 1..2
+      LET b = (RETURN (FOR c IN 2..4 LIMIT 1, null RETURN c) )
+    RETURN {a, b}
+  )aql";
+  auto const expectedString = R"res([{"a": 1, "b": [[3, 4]]}, {"a": 2, "b": [[3, 4]]}])res";
+
+  verifySubquerySplicing(queryString, 1, 1);
+  auto expected = arangodb::velocypack::Parser::fromJson(expectedString);
+  verifyQueryResult(queryString, expected->slice());
+}
+
+// Must be changed as soon as the subquery implementation with shadow rows handle skipping,
+// and the splice-subqueries optimizer rule is changed to allow it.
 TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_nested_subquery_with_outermost_skip) {
   auto const queryString = R"aql(
     FOR i IN 0..1
