@@ -243,8 +243,9 @@ class ExecutionNode {
   /// @brief whether or not the node has a parent
   bool hasParent() const;
 
-  /// @brief whether or not the node has any parent of this type (at any distance)
-  bool hasParentOfType(ExecutionNode::NodeType) const;
+  /// @brief whether or not the node has any ancestor (parent at any distance)
+  /// of this type
+  bool hasParentOfType(ExecutionNode::NodeType type) const;
 
   /// @brief returns the first parent, or a nullptr if none present
   ExecutionNode* getFirstParent() const;
