@@ -133,10 +133,13 @@ void CollectionAccessingNode::toVelocyPack(arangodb::velocypack::Builder& builde
 void CollectionAccessingNode::toVelocyPackHelperPrimaryIndex(arangodb::velocypack::Builder& builder) const {
   auto col = _collection->getCollection();
   builder.add(VPackValue("indexes"));
-  col->getIndexesVPack(builder, [](arangodb::Index const* idx) {
-                         return Index::makeFlags(idx->type() == arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX
-                           ? Index::Serialize::Basics
-                           : Index::Serialize::Invalid);
+  col->getIndexesVPack(builder, [](arangodb::Index const* idx, uint8_t& flags) {
+                         if (idx->type() == arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX) {
+                           flags = Index::makeFlags(Index::Serialize::Basics);
+                           return true;
+                         }
+
+                         return false;
                        });
 }
 

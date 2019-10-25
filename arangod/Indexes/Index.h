@@ -312,7 +312,7 @@ class Index {
   virtual bool isHidden() const = 0;
 
   /// @brief if true this index should not be shown externally
-  virtual bool inProgress() const { return false; };
+  virtual bool inProgress() const { return false; }
 
   /// @brief whether or not the index has a selectivity estimate
   virtual bool hasSelectivityEstimate() const = 0;
@@ -347,9 +347,7 @@ class Index {
     /// @brief serialize selectivity estimates
     Estimates = 4,
     /// @brief serialize object ids for persistence
-    Internals = 8,
-    /// @brief invalid mark
-    Invalid = 128
+    Internals = 8
   };
 
   /// @brief helper for building flags

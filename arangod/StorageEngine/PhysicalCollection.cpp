@@ -527,19 +527,19 @@ int PhysicalCollection::checkRevision(transaction::Methods*, TRI_voc_rid_t expec
 }
 
 /// @brief hands out a list of indexes
-std::vector<std::shared_ptr<arangodb::Index>> PhysicalCollection::getIndexes() const {
+std::vector<std::shared_ptr<Index>> PhysicalCollection::getIndexes() const {
   READ_LOCKER(guard, _indexesLock);
   return { _indexes.begin(), _indexes.end() };
 }
 
 void PhysicalCollection::getIndexesVPack(VPackBuilder& result,
-                                         std::function<std::underlying_type<Index::Serialize>::type(arangodb::Index const*)> const& filter) const {
+                                         std::function<bool(Index const*, std::underlying_type<Index::Serialize>::type&)> const& filter) const {
   READ_LOCKER(guard, _indexesLock);
   result.openArray();
   for (std::shared_ptr<Index> const& idx : _indexes) {
-    auto const flags = filter(idx.get());
+    std::underlying_type<Index::Serialize>::type flags = Index::makeFlags();
 
-    if (0 != (flags & Index::makeFlags(Index::Serialize::Invalid))) {
+    if (!filter(idx.get(), flags)) {
       continue;
     }
 
@@ -549,7 +549,7 @@ void PhysicalCollection::getIndexesVPack(VPackBuilder& result,
 }
 
 /// @brief return the figures for a collection
-futures::Future<std::shared_ptr<arangodb::velocypack::Builder>> PhysicalCollection::figures() {
+futures::Future<std::shared_ptr<VPackBuilder>> PhysicalCollection::figures() {
   auto builder = std::make_shared<VPackBuilder>();
   builder->openObject();
 

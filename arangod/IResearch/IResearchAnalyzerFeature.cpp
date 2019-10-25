@@ -912,11 +912,15 @@ namespace iresearch {
 
 void IResearchAnalyzerFeature::AnalyzerPool::toVelocyPack(VPackBuilder& builder,
                                                           bool forPersistence /*= false*/) {
+  irs::string_ref const name =  forPersistence
+      ? splitAnalyzerName(this->name()).second
+      : irs::string_ref(this->name());
+
   VPackObjectBuilder rootScope(&builder);
-  arangodb::iresearch::addStringRef(builder, StaticStrings::AnalyzerNameField,
-                                    forPersistence ?
-                                        splitAnalyzerName(name()).second :
-                                        irs::string_ref(name()) );
+//  if (forPersistence) {
+//    arangodb::iresearch::addStringRef(builder, arangodb::StaticStrings::KeyString, name);
+//  }
+  arangodb::iresearch::addStringRef(builder, StaticStrings::AnalyzerNameField, name);
   arangodb::iresearch::addStringRef(builder, StaticStrings::AnalyzerTypeField, type());
   builder.add(StaticStrings::AnalyzerPropertiesField, properties());
 

@@ -451,7 +451,7 @@ std::vector<std::shared_ptr<arangodb::Index>> LogicalCollection::getIndexes() co
 
 void LogicalCollection::getIndexesVPack(
     VPackBuilder& result,
-    std::function<std::underlying_type<Index::Serialize>::type(arangodb::Index const*)> const& filter) const {
+    std::function<bool(arangodb::Index const*, std::underlying_type<Index::Serialize>::type&)> const& filter) const {
   getPhysical()->getIndexesVPack(result, filter);
 }
 
@@ -595,17 +595,18 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
   }
 
   result.add(VPackValue("indexes"));
-  getIndexesVPack(result, [](arangodb::Index const* idx) {
+  getIndexesVPack(result, [](arangodb::Index const* idx, uint8_t& flags) {
     // we have to exclude the primary and the edge index here, because otherwise
     // at least the MMFiles engine will try to create it
     // AND exclude hidden indexes
     if (idx->type() != arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX &&
         idx->type() != arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX &&
         !idx->isHidden() && !idx->inProgress()) {
-      return Index::makeFlags();
+      flags = Index::makeFlags();
+      return true;
     }
 
-    return Index::makeFlags(Index::Serialize::Invalid);
+    return true;
   });
   result.add("planVersion", VPackValue(planVersion()));
   result.add("isReady", VPackValue(isReady));
@@ -658,12 +659,13 @@ arangodb::Result LogicalCollection::appendVelocyPack(arangodb::velocypack::Build
   if (forPersistence) {
     indexFlags = Index::makeFlags(Index::Serialize::Internals);
   }
-  auto filter = [indexFlags, forPersistence](arangodb::Index const* idx) {
+  auto filter = [indexFlags, forPersistence](arangodb::Index const* idx, decltype(Index::makeFlags())& flags) {
     if (forPersistence || (!idx->inProgress() && !idx->isHidden())) {
-      return indexFlags;
+      flags = indexFlags;
+      return true;
     }
 
-    return Index::makeFlags(Index::Serialize::Invalid);
+    return false;
   };
   getIndexesVPack(result, filter);
 

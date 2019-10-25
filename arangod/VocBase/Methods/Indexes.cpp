@@ -127,12 +127,13 @@ arangodb::Result Indexes::getAll(LogicalCollection const* collection,
     VPackBuilder tmpInner;
     auto& ci = collection->vocbase().server().getFeature<ClusterFeature>().clusterInfo();
     auto c = ci.getCollection(databaseName, cid);
-    c->getIndexesVPack(tmpInner, [&](arangodb::Index const* idx) {
+    c->getIndexesVPack(tmpInner, [withHidden, flags](arangodb::Index const* idx, decltype(flags)& indexFlags) {
       if (withHidden || !idx->isHidden()) {
-        return flags;
+        indexFlags = flags;
+        return true;
       }
 
-      return Index::makeFlags(Index::Serialize::Invalid);
+      return false;
     });
 
     tmp.openArray();

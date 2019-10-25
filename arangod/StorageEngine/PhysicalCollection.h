@@ -127,7 +127,7 @@ class PhysicalCollection {
   std::vector<std::shared_ptr<Index>> getIndexes() const;
 
   void getIndexesVPack(velocypack::Builder&,
-                       std::function<std::underlying_type<Index::Serialize>::type(arangodb::Index const*)> const& filter) const;
+                       std::function<bool(arangodb::Index const*, std::underlying_type<Index::Serialize>::type&)> const& filter) const;
 
   /// @brief return the figures for a collection
   virtual futures::Future<std::shared_ptr<velocypack::Builder>> figures();
