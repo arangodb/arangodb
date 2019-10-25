@@ -130,11 +130,11 @@ class SharedState {
   ///   but the referenced result may or may not have been modified, including
   ///   possibly moved-out, depending on what the callback did; some but not
   ///   all callbacks modify (possibly move-out) the result.)
-  Try<T>& getTry() {
+  Try<T>& getTry() noexcept {
     TRI_ASSERT(hasResult());
     return _result;
   }
-  Try<T> const& getTry() const {
+  Try<T> const& getTry() const noexcept {
     TRI_ASSERT(hasResult());
     return _result;
   }
@@ -163,18 +163,15 @@ class SharedState {
             return;
           }
           TRI_ASSERT(state == State::OnlyResult);  // race with setResult
-#ifndef _MSC_VER
           [[fallthrough]];
-#endif
 
         case State::OnlyResult:
+          // acquire is actually correct here
           if (_state.compare_exchange_strong(state, State::Done, std::memory_order_acquire)) {
             doCallback();
             return;
           }
-#ifndef _MSC_VER
           [[fallthrough]];
-#endif
 
         default:
           TRI_ASSERT(false);  // unexpected state
@@ -203,18 +200,15 @@ class SharedState {
             return;
           }
           TRI_ASSERT(state == State::OnlyCallback);  // race with setCallback
-#ifndef _MSC_VER
           [[fallthrough]];
-#endif
 
         case State::OnlyCallback:
+          // acquire is actually correct here
           if (_state.compare_exchange_strong(state, State::Done, std::memory_order_acquire)) {
             doCallback();
             return;
           }
-#ifndef _MSC_VER
           [[fallthrough]];
-#endif
 
         default:
           TRI_ASSERT(false);  // unexpected state

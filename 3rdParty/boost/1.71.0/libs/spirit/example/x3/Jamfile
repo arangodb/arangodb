@@ -1,0 +1,65 @@
+#==============================================================================
+#   Copyright (c) 2001-2014 Joel de Guzman
+#
+#   Distributed under the Boost Software License, Version 1.0. (See accompanying
+#   file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+#==============================================================================
+project spirit-x3-example
+    : requirements
+        <include>.
+        <c++-template-depth>512
+        <toolset>gcc:<cxxflags>-std=c++1y
+        <toolset>clang:<cxxflags>-std=c++1y
+        <toolset>darwin:<cxxflags>-std=c++1y
+    :
+    :
+    ;
+
+exe x3_num_list1 : num_list/num_list1.cpp ;
+exe x3_num_list2 : num_list/num_list2.cpp ;
+exe x3_num_list3 : num_list/num_list3.cpp ;
+exe x3_num_list4 : num_list/num_list4.cpp ;
+
+exe x3_actions : actions.cpp ;
+exe x3_complex_number : complex_number.cpp ;
+exe x3_sum : sum.cpp ;
+exe x3_roman : roman.cpp ;
+exe x3_employee : employee.cpp ;
+
+exe x3_rexpr : rexpr/rexpr_min/rexpr.cpp ;
+
+build-project rexpr/rexpr_full ;
+
+exe x3_calc1 : calc/calc1.cpp ;
+exe x3_calc2 : calc/calc2.cpp ;
+exe x3_calc4 : calc/calc4.cpp ;
+exe x3_calc4b : calc/calc4b.cpp ;
+exe x3_calc5 : calc/calc5.cpp ;
+exe x3_calc6 : calc/calc6.cpp ;
+
+exe x3_calc7 :
+    calc/calc7/vm.cpp
+    calc/calc7/compiler.cpp
+    calc/calc7/expression.cpp
+    calc/calc7/main.cpp
+;
+
+exe x3_calc8 :
+    /boost//filesystem
+    calc/calc8/vm.cpp
+    calc/calc8/compiler.cpp
+    calc/calc8/expression.cpp
+    calc/calc8/statement.cpp
+    calc/calc8/main.cpp
+;
+
+exe x3_calc9 :
+    /boost//filesystem
+    calc/calc9/vm.cpp
+    calc/calc9/compiler.cpp
+    calc/calc9/expression.cpp
+    calc/calc9/statement.cpp
+    calc/calc9/main.cpp
+;
+
+exe x3_tuple : attributes/tuple.cpp ;

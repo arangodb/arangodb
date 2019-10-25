@@ -2837,7 +2837,7 @@ LocalDocumentId MMFilesCollection::reuseOrCreateLocalDocumentId(OperationOptions
     if (marker->hasLocalDocumentId()) {
       return marker->getLocalDocumentId();
     }
-    // falls through intentionally
+    // intentionally falls through
   }
 
   // new operation, no recovery -> generate a new LocalDocumentId

@@ -201,7 +201,7 @@ MessageID HttpConnection<ST>::sendRequest(std::unique_ptr<Request> req,
   static std::atomic<uint64_t> ticketId(1);
 
   // construct RequestItem
-  std::unique_ptr<RequestItem> item(new RequestItem());
+  auto item = std::make_unique<RequestItem>();
   // requestItem->_response later
   uint64_t mid = ticketId.fetch_add(1, std::memory_order_relaxed);
   item->requestHeader = buildRequestBody(*req);
@@ -276,23 +276,23 @@ std::string HttpConnection<ST>::buildRequestBody(Request const& req) {
   // construct request path ("/_db/<name>/" prefix)
   if (!req.header.database.empty()) {
     header.append("/_db/");
-    header.append(http::urlEncode(req.header.database));
+    http::urlEncode(header, req.header.database);
   }
   // must start with /, also turns /_db/abc into /_db/abc/
   if (req.header.path.empty() || req.header.path[0] != '/') {
     header.push_back('/');
   }
 
-  if (req.header.parameters.empty()) {
-    header.append(req.header.path);
-  } else {
-    header.append(req.header.path);
+  header.append(req.header.path);
+  if (!req.header.parameters.empty()) {
     header.push_back('?');
     for (auto const& p : req.header.parameters) {
       if (header.back() != '?') {
         header.push_back('&');
       }
-      header.append(http::urlEncode(p.first) + "=" + http::urlEncode(p.second));
+      http::urlEncode(header, p.first);
+      header.push_back('=');
+      http::urlEncode(header, p.second);
     }
   }
   header.append(" HTTP/1.1\r\n")

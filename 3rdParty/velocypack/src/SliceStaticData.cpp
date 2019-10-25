@@ -28,9 +28,10 @@
 
 using namespace arangodb::velocypack;
 
+#if __cplusplus < 201703L
 constexpr uint8_t SliceStaticData::FixedTypeLengths[256];
 constexpr ValueType SliceStaticData::TypeMap[256];
 constexpr unsigned int SliceStaticData::WidthMap[32];
 constexpr unsigned int SliceStaticData::FirstSubMap[32];
 constexpr uint64_t SliceStaticData::PrecalculatedHashesForDefaultSeed[256];
-
+#endif

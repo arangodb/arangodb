@@ -1,0 +1,170 @@
+//  Use, modification and distribution are subject to the
+//  Boost Software License, Version 1.0. (See accompanying file
+//  LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+
+// Copyright Paul A. Bristow 2013
+// Copyright Christopher Kormanyos 2013.
+// Copyright John Maddock 2013.
+
+#ifdef _MSC_VER
+#  pragma warning (disable : 4512)
+#  pragma warning (disable : 4996)
+#endif
+
+#define BOOST_TEST_MAIN
+#define BOOST_LIB_DIAGNOSTIC "on"// Show library file details.
+
+
+
+//[expression_template_1
+
+#include <limits>
+#include <iostream>
+#include <boost/multiprecision/cpp_dec_float.hpp>
+
+#include <boost/test/tools/floating_point_comparison.hpp> // Extra test tool for FP comparison.
+#include <boost/test/unit_test.hpp>
+
+
+typedef boost::multiprecision::number<
+   boost::multiprecision::cpp_dec_float<50>,
+   boost::multiprecision::et_off> cpp_dec_float_50_noet;
+
+typedef boost::multiprecision::number<
+   boost::multiprecision::cpp_dec_float<50>,
+   boost::multiprecision::et_on> cpp_dec_float_50_et;
+
+
+// there is no need for this anymore, however this could be defined by
+// the user in order to support additional types for floating point
+// comparison.
+#if 0
+namespace boost { namespace math { namespace fpc {
+
+  template <class A, boost::multiprecision::expression_template_option B>
+  struct tolerance_based< boost::multiprecision::number<
+   A,
+   B > > : boost::mpl::true_ {};
+
+  template <class tag, class Arg1, class Arg2, class Arg3, class Arg4>
+  struct tolerance_based<
+    boost::multiprecision::detail::expression<
+      tag, Arg1, Arg2, Arg3, Arg4> > : boost::mpl::true_ {};
+
+} } }
+#endif
+
+
+
+
+
+/*`To define a 50 decimal digit type using `cpp_dec_float`,
+you must pass two template parameters to `boost::multiprecision::number`.
+
+It may be more legible to use a two-staged type definition such as this:
+
+``
+typedef boost::multiprecision::cpp_dec_float<50> mp_backend;
+typedef boost::multiprecision::number<mp_backend, boost::multiprecision::et_off> cpp_dec_float_50_noet;
+``
+
+Here, we first define `mp_backend` as `cpp_dec_float` with 50 digits.
+The second step passes this backend to `boost::multiprecision::number`
+with `boost::multiprecision::et_off`, an enumerated type.
+
+  typedef boost::multiprecision::number<boost::multiprecision::cpp_dec_float<50>, boost::multiprecision::et_off>
+  cpp_dec_float_50_noet;
+
+You can reduce typing with a `using` directive `using namespace boost::multiprecision;`
+if desired, as shown below.
+*/
+
+using namespace boost::multiprecision;
+
+#if 0
+BOOST_AUTO_TEST_CASE(multiprecision_types_are_arithmetic)
+{
+  typedef number<cpp_dec_float<50>, et_off> cpp_dec_float_50_noet;
+  BOOST_TEST((std::numeric_limits<cpp_dec_float_50_noet>::is_specialized));
+}
+#endif
+
+
+/*`Now `cpp_dec_float_50_noet` or `cpp_dec_float_50_et`
+can be used as a direct replacement for built-in types like `double` etc.
+*/
+
+BOOST_AUTO_TEST_CASE(cpp_float_test_check_close_noet)
+{ // No expression templates/
+  typedef number<cpp_dec_float<50>, et_off> cpp_dec_float_50_noet;
+
+  std::cout.precision(std::numeric_limits<cpp_dec_float_50_noet>::digits10); // All significant digits.
+  std::cout << std::showpoint << std::endl; // Show trailing zeros.
+
+  cpp_dec_float_50_noet a ("1.0");
+  cpp_dec_float_50_noet b ("1.0");
+  b += std::numeric_limits<cpp_dec_float_50_noet>::epsilon(); // Increment least significant decimal digit.
+
+  cpp_dec_float_50_noet eps = std::numeric_limits<cpp_dec_float_50_noet>::epsilon();
+
+  std::cout <<"a = " << a << ",\nb = " << b << ",\neps = " << eps << std::endl;
+
+  BOOST_CHECK_CLOSE(a, b, eps * 100); // Expected to pass (because tolerance is as percent).
+  BOOST_CHECK_CLOSE_FRACTION(a, b, eps); // Expected to pass (because tolerance is as fraction).
+
+#ifndef BOOST_TEST_MACRO_LIMITED_SUPPORT
+  namespace tt = boost::test_tools;
+  BOOST_TEST( a == b, tt::tolerance( tt::fpc::percent_tolerance( eps * 100 ) ) );
+  BOOST_TEST( a == b, tt::tolerance( eps ) );
+#endif
+
+//] [/expression_template_1]git
+
+} // BOOST_AUTO_TEST_CASE(cpp_float_test_check_close)
+
+BOOST_AUTO_TEST_CASE(cpp_float_test_check_close_et)
+{ // Using expression templates.
+  typedef number<cpp_dec_float<50>, et_on> cpp_dec_float_50_et;
+
+  std::cout.precision(std::numeric_limits<cpp_dec_float_50_et>::digits10); // All significant digits.
+  std::cout << std::showpoint << std::endl; // Show trailing zeros.
+
+  cpp_dec_float_50_et a("1.0");
+  cpp_dec_float_50_et b("1.0");
+  b += std::numeric_limits<cpp_dec_float_50_et>::epsilon(); // Increment least significant decimal digit.
+
+  cpp_dec_float_50_et eps = std::numeric_limits<cpp_dec_float_50_et>::epsilon();
+
+  std::cout << "a = " << a << ",\nb = " << b << ",\neps = " << eps << std::endl;
+
+  BOOST_CHECK_CLOSE(a, b, eps * 100); // Expected to pass (because tolerance is as percent).
+  BOOST_CHECK_CLOSE_FRACTION(a, b, eps); // Expected to pass (because tolerance is as fraction).
+
+#ifndef BOOST_TEST_MACRO_LIMITED_SUPPORT
+  namespace tt = boost::test_tools;
+  BOOST_TEST( a == b, tt::tolerance( tt::fpc::percent_tolerance<cpp_dec_float_50_et>( eps * 100 ) ) );
+  BOOST_TEST( a == b, tt::tolerance( eps ) );
+#endif
+  /*`Using `cpp_dec_float_50` with the default expression template use switched on,
+  the compiler error message for `BOOST_CHECK_CLOSE_FRACTION(a, b, eps); would be:
+  */
+  // failure floating_point_comparison.hpp(59): error C2440: 'static_cast' :
+  // cannot convert from 'int' to 'boost::multiprecision::detail::expression<tag,Arg1,Arg2,Arg3,Arg4>'
+  //] [/expression_template_1]
+
+} // BOOST_AUTO_TEST_CASE(cpp_float_test_check_close)
+
+/*
+
+Output:
+
+  Description: Autorun "J:\Cpp\big_number\Debug\test_cpp_float_close_fraction.exe"
+  Running 1 test case...
+
+  a = 1.0000000000000000000000000000000000000000000000000,
+  b = 1.0000000000000000000000000000000000000000000000001,
+  eps = 1.0000000000000000000000000000000000000000000000000e-49
+
+  *** No errors detected
+
+*/

@@ -295,7 +295,7 @@ AqlValue timeAqlValue(ExpressionContext* expressionContext,
 
   year_month_day ymd{floor<days>(tp)};
   auto day_time = make_time(tp - sys_days(ymd));
-  
+
   auto y = static_cast<int>(ymd.year());
   // quick sanity check here for dates outside the allowed range
   if (y < 0 || y > 9999) {
@@ -351,7 +351,7 @@ DateSelectionModifier parseDateModifierFlag(VPackSlice flag) {
   }
   TRI_ASSERT(flagStr.size() >= 1);
 
-  std::transform(flagStr.begin(), flagStr.end(), flagStr.begin(), ::tolower);
+  basics::StringUtils::tolowerInPlace(flagStr);
   switch (flagStr.front()) {
     case 'y':
       if (flagStr == "years" || flagStr == "year" || flagStr == "y") {
@@ -439,7 +439,7 @@ AqlValue addOrSubtractUnitFromTimestamp(ExpressionContext* expressionContext,
         break;  // We are done
       }
       durationUnits *= 12;
-      // intentionally falls through
+      [[fallthrough]];
     case MONTH:
       durationUnits = std::modf(durationUnits, &intPart);
       if (isSubtract) {
@@ -451,7 +451,7 @@ AqlValue addOrSubtractUnitFromTimestamp(ExpressionContext* expressionContext,
         break;  // We are done
       }
       durationUnits *= 30;  // 1 Month ~= 30 Days
-      // intentionally falls through
+      [[fallthrough]];
     // After this fall through the date may actually a bit off
     case DAY:
       // From here on we do not need leap-day handling
@@ -499,19 +499,19 @@ AqlValue addOrSubtractUnitFromTimestamp(ExpressionContext* expressionContext,
 
 AqlValue addOrSubtractIsoDurationFromTimestamp(ExpressionContext* expressionContext,
                                                tp_sys_clock_ms const& tp,
-                                               arangodb::velocypack::StringRef duration, 
+                                               arangodb::velocypack::StringRef duration,
                                                char const* AFN, bool isSubtract) {
   year_month_day ymd{floor<days>(tp)};
   auto day_time = make_time(tp - sys_days(ymd));
-  
+
   std::match_results<char const*> durationParts;
   if (!basics::regexIsoDuration(duration, durationParts)) {
     ::registerWarning(expressionContext, AFN, TRI_ERROR_QUERY_INVALID_DATE_VALUE);
     return AqlValue(AqlValueHintNull());
   }
 
-  char const* begin; 
-  
+  char const* begin;
+
   begin = duration.data() + durationParts.position(2);
   int number = NumberUtils::atoi_unchecked<int>(begin, begin + durationParts.length(2));
   if (isSubtract) {
@@ -2498,8 +2498,8 @@ void rtrimInternal(int32_t& startOffset, int32_t& endOffset, icu::UnicodeString&
   if (unicodeStr.length() == 0) {
     return;
   }
-  for (int32_t codePos = unicodeStr.moveIndex32(endOffset, -1); 
-       startOffset <= codePos; 
+  for (int32_t codePos = unicodeStr.moveIndex32(endOffset, -1);
+       startOffset <= codePos;
        codePos = unicodeStr.moveIndex32(codePos, -1)) {
     bool found = false;
 
@@ -3401,7 +3401,7 @@ AqlValue Functions::DateTrunc(ExpressionContext* expressionContext,
   }
 
   std::string duration = durationType.slice().copyString();
-  std::transform(duration.begin(), duration.end(), duration.begin(), ::tolower);
+  basics::StringUtils::tolowerInPlace(duration);
 
   year_month_day ymd{floor<days>(tp)};
   auto day_time = make_time(tp - sys_days(ymd));
@@ -3648,7 +3648,7 @@ AqlValue Functions::DateCompare(ExpressionContext* expressionContext,
       if (ymd1.year() != ymd2.year()) {
         return AqlValue(AqlValueHintBool(false));
       }
-      // intentionally falls through
+      [[fallthrough]];
     case MONTH:
       if (rangeEnd > MONTH) {
         break;
@@ -3656,7 +3656,7 @@ AqlValue Functions::DateCompare(ExpressionContext* expressionContext,
       if (ymd1.month() != ymd2.month()) {
         return AqlValue(AqlValueHintBool(false));
       }
-      // intentionally falls through
+      [[fallthrough]];
     case DAY:
       if (rangeEnd > DAY) {
         break;
@@ -3664,7 +3664,7 @@ AqlValue Functions::DateCompare(ExpressionContext* expressionContext,
       if (ymd1.day() != ymd2.day()) {
         return AqlValue(AqlValueHintBool(false));
       }
-      // intentionally falls through
+      [[fallthrough]];
     case HOUR:
       if (rangeEnd > HOUR) {
         break;
@@ -3672,7 +3672,7 @@ AqlValue Functions::DateCompare(ExpressionContext* expressionContext,
       if (time1.hours() != time2.hours()) {
         return AqlValue(AqlValueHintBool(false));
       }
-      // intentionally falls through
+      [[fallthrough]];
     case MINUTE:
       if (rangeEnd > MINUTE) {
         break;
@@ -3680,7 +3680,7 @@ AqlValue Functions::DateCompare(ExpressionContext* expressionContext,
       if (time1.minutes() != time2.minutes()) {
         return AqlValue(AqlValueHintBool(false));
       }
-      // intentionally falls through
+      [[fallthrough]];
     case SECOND:
       if (rangeEnd > SECOND) {
         break;
@@ -3688,7 +3688,7 @@ AqlValue Functions::DateCompare(ExpressionContext* expressionContext,
       if (time1.seconds() != time2.seconds()) {
         return AqlValue(AqlValueHintBool(false));
       }
-      // intentionally falls through
+      [[fallthrough]];
     case MILLI:
       if (rangeEnd > MILLI) {
         break;
@@ -3730,15 +3730,15 @@ AqlValue Functions::DateRound(ExpressionContext* expressionContext,
     ::registerInvalidArgumentWarning(expressionContext, AFN);
     return AqlValue(AqlValueHintNull());
   }
-  
-  int64_t const m = durationUnit.toInt64(); 
+
+  int64_t const m = durationUnit.toInt64();
   if (m <= 0) {
     ::registerInvalidArgumentWarning(expressionContext, AFN);
     return AqlValue(AqlValueHintNull());
   }
-  
+
   velocypack::StringRef s = durationType.slice().stringRef();
-  
+
   int64_t factor = 1;
   if (s == "milliseconds" || s == "millisecond" || s == "f") {
     factor = 1;
@@ -3755,8 +3755,8 @@ AqlValue Functions::DateRound(ExpressionContext* expressionContext,
     return AqlValue(AqlValueHintNull());
   }
 
-  int64_t const multiplier = factor * m; 
-  
+  int64_t const multiplier = factor * m;
+
   duration<int64_t, std::milli> time = tp.time_since_epoch();
   int64_t t = time.count();
   // integer division!
@@ -4186,7 +4186,7 @@ AqlValue Functions::Sleep(ExpressionContext* expressionContext,
   }
 
   auto& server = application_features::ApplicationServer::server();
-  
+
   double const sleepValue = value.toDouble();
   auto now = std::chrono::steady_clock::now();
   auto const endTime = now + std::chrono::milliseconds(static_cast<int64_t>(sleepValue * 1000.0));
@@ -4443,7 +4443,7 @@ AqlValue Functions::Unique(ExpressionContext* expressionContext, transaction::Me
   std::unordered_set<VPackSlice, arangodb::basics::VelocyPackHelper::VPackHash, arangodb::basics::VelocyPackHelper::VPackEqual>
       values(512, arangodb::basics::VelocyPackHelper::VPackHash(),
              arangodb::basics::VelocyPackHelper::VPackEqual(options));
-  
+
   transaction::BuilderLeaser builder(trx);
   builder->openArray();
 
@@ -4458,7 +4458,7 @@ AqlValue Functions::Unique(ExpressionContext* expressionContext, transaction::Me
       builder->add(s);
     }
   }
-  
+
   builder->close();
   return AqlValue(builder.get());
 }
@@ -4845,7 +4845,7 @@ AqlValue Functions::GeoDistance(ExpressionContext* expressionContext,
     ::registerWarning(expressionContext, "GEO_DISTANCE", res);
     return AqlValue(AqlValueHintNull());
   }
-  
+
   if (parameters.size() > 2 && parameters[2].isString()) {
     VPackValueLength len;
     const char* ptr = parameters[2].slice().getStringUnchecked(len);
@@ -4911,17 +4911,17 @@ AqlValue Functions::GeoArea(ExpressionContext* expressionContext,
                               VPackFunctionParameters const& parameters) {
   AqlValue p1 = extractFunctionParameterValue(parameters, 0);
   AqlValue p2 = extractFunctionParameterValue(parameters, 1);
-  
+
   AqlValueMaterializer mat(trx);
-  
+
   geo::ShapeContainer shape;
   Result res = geo::geojson::parseRegion(mat.slice(p1, true), shape);
-  
+
   if (res.fail()) {
     ::registerWarning(expressionContext, "GEO_AREA", res);
     return AqlValue(AqlValueHintNull());
   }
-  
+
   auto detEllipsoid = [](AqlValue const& p) {
     if (p.isString()) {
       VPackValueLength len;
@@ -7038,7 +7038,7 @@ AqlValue Functions::DecodeRev(ExpressionContext* expressionContext,
   VPackValueLength l;
   char const* p = rev.slice().getString(l);
   uint64_t revInt = arangodb::basics::HybridLogicalClock::decodeTimeStamp(p, l);
- 
+
   if (revInt == 0 || revInt == UINT64_MAX) {
     ::registerInvalidArgumentWarning(expressionContext, "DECODE_REV");
     return AqlValue(AqlValueHintNull());
@@ -7050,7 +7050,7 @@ AqlValue Functions::DecodeRev(ExpressionContext* expressionContext,
   uint64_t millis = timeMilli % 1000;
   struct tm date;
   TRI_gmtime(timeSeconds, &date);
-  
+
   char buffer[32];
   strftime(buffer, 32, "%Y-%m-%dT%H:%M:%S.000Z", &date);
   // fill millisecond part not covered by strftime
