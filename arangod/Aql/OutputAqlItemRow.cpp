@@ -185,7 +185,6 @@ void OutputAqlItemRow::advanceRow() {
   TRI_ASSERT(produced());
   TRI_ASSERT(allValuesWritten());
   TRI_ASSERT(_inputRowCopied);
-  _lastBaseIndex = _baseIndex;
   ++_baseIndex;
   _inputRowCopied = false;
   _numValuesWritten = 0;
