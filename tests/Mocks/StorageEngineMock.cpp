@@ -494,26 +494,24 @@ class HashIndexMap {
           TRI_ASSERT(isExpansion);
           auto sliceIt = arangodb::velocypack::ArrayIterator(slice);
           bool found = false;
-          if (sliceIt != sliceIt.end()) {
-            while (sliceIt != sliceIt.end()) {
-              auto subSlice = sliceIt.value();
-              if (!(subSlice.isNone() || subSlice.isNull())) {
-                for (auto fieldItForArray = fieldIt; fieldItForArray != _fields[i].end(); ++fieldItForArray) {
-                  TRI_ASSERT(subSlice.isObject());
-                  subSlice = subSlice.get(fieldItForArray->name);
-                  if (subSlice.isNone() || subSlice.isNull()) {
-                    break;
-                  }
-                }
-                if (!(subSlice.isNone() || subSlice.isNull())) {
-                  insertSlice(documentId, subSlice, i);
-                  builder.add(subSlice);
-                  found = true;
+          while (sliceIt != sliceIt.end()) {
+            auto subSlice = sliceIt.value();
+            if (!(subSlice.isNone() || subSlice.isNull())) {
+              for (auto fieldItForArray = fieldIt; fieldItForArray != _fields[i].end(); ++fieldItForArray) {
+                TRI_ASSERT(subSlice.isObject());
+                subSlice = subSlice.get(fieldItForArray->name);
+                if (subSlice.isNone() || subSlice.isNull()) {
                   break;
                 }
               }
-              ++sliceIt;
+              if (!(subSlice.isNone() || subSlice.isNull())) {
+                insertSlice(documentId, subSlice, i);
+                builder.add(subSlice);
+                found = true;
+                break;
+              }
             }
+            ++sliceIt;
           }
           if (!found) {
             insertSlice(documentId, VPackSlice::nullSlice(), i);
@@ -819,11 +817,12 @@ class HashIndexMock final : public arangodb::Index {
 
         std::vector<arangodb::basics::AttributeName> attributesRight;
         attrNode = expNode->getMember(1);
-        TRI_ASSERT(attrNode->type == arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS);
-        do {
+        TRI_ASSERT(attrNode->type == arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS ||
+                   attrNode->type == arangodb::aql::NODE_TYPE_REFERENCE);
+        while (attrNode->type == arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
           attributesRight.emplace_back(std::string(attrNode->getStringValue(), attrNode->getStringLength()), false);
           attrNode = attrNode->getMember(0);
-        } while (attrNode->type == arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS);
+        }
         std::reverse(attributesRight.begin(), attributesRight.end());
         attributes.insert(attributes.end(), attributesRight.begin(), attributesRight.end());
       }
@@ -832,7 +831,7 @@ class HashIndexMock final : public arangodb::Index {
     size_t nullsCount = 0;
     for (auto const& f : _fields) {
       auto it = std::find_if(allAttributes.cbegin(), allAttributes.cend(), [&f] (auto const& attrs) {
-        return arangodb::basics::AttributeName::isIdentical(attrs.first, f, false);
+        return arangodb::basics::AttributeName::isIdentical(attrs.first, f, true);
       });
       if (it != allAttributes.cend()) {
         while (nullsCount > 0) {

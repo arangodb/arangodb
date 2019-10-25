@@ -58,7 +58,7 @@ namespace {
         auto indexId = ind->id();
         size_t indexFieldNum = 0;
         for (auto const& field : ind->fields()) {
-          if (arangodb::basics::AttributeName::isIdentical(nodeAttr.attr, field, false)) {
+          if (arangodb::basics::AttributeName::isIdentical(nodeAttr.attr, field, true)) {
             nodeAttr.indexId = indexId;
             nodeAttr.indexFieldNum = indexFieldNum;
             nodeAttr.indexField = &field;
