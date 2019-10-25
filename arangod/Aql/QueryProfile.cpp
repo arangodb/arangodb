@@ -37,21 +37,27 @@ using namespace arangodb::aql;
 
 /// @brief create a profile
 QueryProfile::QueryProfile(Query* query)
-    : _query(query), _lastStamp(query->startTime()), _tracked(false) {
+    : _query(query), 
+      _lastStamp(query->startTime()), 
+      _tracked(false) {
   for (auto& it : _timers) {
     it = 0.0;  // reset timers
   }
 
-  auto queryList = query->vocbase().queryList();
-
-  try {
-    _tracked = queryList->insert(query);
-  } catch (...) {
-  }
+  registerInQueryList(query);
 }
 
 /// @brief destroy a profile
 QueryProfile::~QueryProfile() {
+  unregisterFromQueryList();
+}
+
+void QueryProfile::registerInQueryList(Query* query) {
+  auto queryList = query->vocbase().queryList();
+  _tracked = queryList->insert(query);
+}
+
+void QueryProfile::unregisterFromQueryList() noexcept {
   // only remove from list when the query was inserted into it...
   if (_tracked) {
     auto queryList = _query->vocbase().queryList();
@@ -60,6 +66,8 @@ QueryProfile::~QueryProfile() {
       queryList->remove(_query);
     } catch (...) {
     }
+
+    _tracked = false;
   }
 }
 

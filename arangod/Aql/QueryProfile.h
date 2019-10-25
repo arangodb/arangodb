@@ -42,11 +42,14 @@ struct QueryProfile {
   QueryProfile(QueryProfile const&) = delete;
   QueryProfile& operator=(QueryProfile const&) = delete;
 
-  explicit QueryProfile(Query*);
+  explicit QueryProfile(Query* query);
 
   ~QueryProfile();
 
  public:
+  /// @brief unregister the query from the list of queries, if entered
+  void unregisterFromQueryList() noexcept;
+
   double setStateDone(QueryExecutionState::ValueType);
 
   /// @brief sets the absolute end time for an execution state
@@ -59,6 +62,9 @@ struct QueryProfile {
 
   /// @brief convert the profile to VelocyPack
   void toVelocyPack(arangodb::velocypack::Builder&) const;
+  
+ private:
+  void registerInQueryList(Query* query);
 
  private:
   Query* _query;

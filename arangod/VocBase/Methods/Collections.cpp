@@ -450,7 +450,7 @@ Result Collections::create(TRI_vocbase_t& vocbase,
   return TRI_ERROR_NO_ERROR;
 }
 
-void Collections::createSystemCollectionProperties(std::string collectionName,
+void Collections::createSystemCollectionProperties(std::string const& collectionName,
                                                    VPackBuilder& bb, TRI_vocbase_t const& vocbase) {
 
   uint32_t defaultReplicationFactor = vocbase.replicationFactor();

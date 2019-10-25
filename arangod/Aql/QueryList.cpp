@@ -110,13 +110,11 @@ void QueryList::remove(Query* query) {
   }
 
   WRITE_LOCKER(writeLocker, _lock);
-  auto it = _current.find(query->id());
 
-  if (it == _current.end()) {
+  if (_current.erase(query->id()) == 0) {
+    // not found
     return;
   }
-
-  _current.erase(it);
 
   bool const isStreaming = query->queryOptions().stream;
   double threshold = (isStreaming ? _slowStreamingQueryThreshold : _slowQueryThreshold);

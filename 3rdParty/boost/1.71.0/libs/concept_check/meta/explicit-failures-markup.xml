@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<explicit-failures-markup>
+    <!-- concept_check -->
+    <library name="concept_check">
+        <test name="class_concept_fail_expected">
+            <mark-failure>
+                <toolset name="cw-8.3*"/>
+                <note author="B. Dawes" refid="3"/>
+            </mark-failure>
+        </test>
+        <test name="class_concept_fail_expected">
+            <mark-failure>
+                <toolset name="borland-5*"/>
+                <toolset name="msvc-6.5*"/>
+                <toolset name="msvc-7.0"/>
+                <note author="Jeremy Siek"/>
+            </mark-failure>
+        </test>
+        <test name="stl_concept_check">
+          <mark-failure>
+            <toolset name="hp_cxx*"/>
+            <note author="Markus Schoepflin" date="09 Dec 2007">
+              This version of the Rogue Wave library fails to provide all
+              needed addition operators for the iterator type and the
+              difference type of std::deque.
+            </note>
+          </mark-failure>
+        </test>
+    </library>
+</explicit-failures-markup>

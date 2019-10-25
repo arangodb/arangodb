@@ -1828,7 +1828,7 @@ int fetchEdgesFromEngines(transaction::Methods& trx,
     futures.emplace_back(
         network::sendRequestRetry(pool, "server:" + engine.first, fuerte::RestVerb::Put,
                                   url + StringUtils::itoa(engine.second),
-                                  *leased->buffer(), network::Timeout(CL_DEFAULT_TIMEOUT)));
+                                  leased->bufferRef(), network::Timeout(CL_DEFAULT_TIMEOUT)));
   }
 
   for (Future<network::Response>& f : futures) {
@@ -1916,7 +1916,7 @@ int fetchEdgesFromEngines(
     futures.emplace_back(
         network::sendRequestRetry(pool, "server:" + engine.first, fuerte::RestVerb::Put,
                                   url + StringUtils::itoa(engine.second),
-                                  *leased->buffer(), network::Timeout(CL_DEFAULT_TIMEOUT)));
+                                  leased->bufferRef(), network::Timeout(CL_DEFAULT_TIMEOUT)));
   }
 
   for (Future<network::Response>& f : futures) {
@@ -2003,7 +2003,7 @@ void fetchVerticesFromEngines(
     futures.emplace_back(
         network::sendRequestRetry(pool, "server:" + engine.first, fuerte::RestVerb::Put,
                                   url + StringUtils::itoa(engine.second),
-                                  *(leased->buffer()), network::Timeout(CL_DEFAULT_TIMEOUT)));
+                                  leased->bufferRef(), network::Timeout(CL_DEFAULT_TIMEOUT)));
   }
 
   for (Future<network::Response>& f : futures) {

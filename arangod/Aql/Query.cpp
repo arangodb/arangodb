@@ -584,7 +584,7 @@ ExecutionState Query::execute(QueryRegistry* registry, QueryResult& queryResult)
     if (_killed) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
     }
-    
+
     bool useQueryCache = canUseQueryCache();
 
     switch (_executionPhase) {
@@ -910,7 +910,7 @@ ExecutionState Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry,
             }
           }
         }
-    
+
         if (_killed) {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
         }
@@ -1444,9 +1444,12 @@ ExecutionState Query::cleanupPlanAndEngine(int errorCode, VPackBuilder* statsBui
     _engine.reset();
   }
 
-  // as a side-effect, the following call removes the query from the list of currently
-  // running queries
-  _profile.reset();
+  // the following call removes the query from the list of currently
+  // running queries. so whoever fetches that list will not see a Query that
+  // is about to shut down/be destroyed
+  if (_profile != nullptr) {
+    _profile->unregisterFromQueryList();
+  }
 
   // If the transaction was not committed, it is automatically aborted
   _trx = nullptr;

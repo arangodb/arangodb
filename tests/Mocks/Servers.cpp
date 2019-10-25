@@ -82,6 +82,7 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <boost/core/demangle.hpp>
 using namespace arangodb;
 using namespace arangodb::tests;
 using namespace arangodb::tests::mocks;
