@@ -904,6 +904,15 @@ function optimizerIndexesTestSuite () {
       const subqueryStartIdx = nodeTypes.indexOf('SubqueryStartNode');
       const subqueryEndIdx = nodeTypes.indexOf('SubqueryEndNode');
       const hasSplicedSubquery = subqueryStartIdx !== -1 && subqueryEndIdx !== -1;
+      { // TODO Remove this block as soon as subquery splicing is enabled in the cluster again.
+        //  It's here so the test will fail as soon as that happens, so the actual test will not be forgotten
+        //  to be re-enabled.
+        const isCluster = require("@arangodb/cluster").isCluster();
+        if (isCluster) {
+          assertFalse(hasSplicedSubquery);
+          return;
+        }
+      }
       assertTrue(hasSplicedSubquery, JSON.stringify({
         subqueryStartIdx,
         subqueryEndIdx,
