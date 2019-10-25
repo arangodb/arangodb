@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RegexCache.h"
+#include "Basics/Exceptions.h"
 #include "Basics/Utf8Helper.h"
 #include <Basics/StringUtils.h>
 
@@ -30,9 +31,7 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
-
 using namespace arangodb::aql;
-
 
 RegexCache::~RegexCache() { clear(); }
 
@@ -102,10 +101,13 @@ icu::RegexMatcher* RegexCache::fromCache(
     return (*it).second.get();
   }
 
-  auto matcher = std::unique_ptr<icu::RegexMatcher>(
-      arangodb::basics::Utf8Helper::DefaultUtf8Helper.buildMatcher(pattern));
+  auto matcher = arangodb::basics::Utf8Helper::DefaultUtf8Helper.buildMatcher(pattern);
 
   auto p = matcher.get();
+
+  if (p == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to build regex matcher");
+  }
 
   // insert into cache, no matter if pattern is valid or not
   cache.emplace(pattern, std::move(matcher));
@@ -193,7 +195,7 @@ void RegexCache::buildLikePattern(std::string& out, char const* ptr,
 /// of its escape characters. will stop at the first wildcards found.
 /// returns a pair with the following meaning:
 /// - first: true if the inspection aborted prematurely because a
-///   wildcard was found, and false if the inspection analyzed at the
+///   wildcard was found, and false if the inspection analyzed the
 ///   complete string
 /// - second: true if the found wildcard is the last byte in the pattern,
 ///   false otherwise. can only be true if first is also true
