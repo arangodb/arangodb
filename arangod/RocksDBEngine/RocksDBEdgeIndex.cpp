@@ -125,15 +125,12 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
   template <typename F>
   inline bool nextImplementation(F&& cb, size_t limit) {
     TRI_ASSERT(_trx->state()->isRunning());
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
-#else
     // Gracefully return in production code
     // Nothing bad has happened
     if (limit == 0) {
       return false;
     }
-#endif
     
     while (limit > 0) {
       while (_builderIterator.valid()) {
