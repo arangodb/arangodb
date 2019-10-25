@@ -119,7 +119,7 @@ OperationResult GraphOperations::changeEdgeDefinitionForGraph(Graph& graph,
   return trx.update(StaticStrings::GraphCollection, builder.slice(), options);
 }
 
-OperationResult GraphOperations::eraseEdgeDefinition(bool waitForSync, std::string edgeDefinitionName,
+OperationResult GraphOperations::eraseEdgeDefinition(bool waitForSync, std::string const& edgeDefinitionName,
                                                      bool dropCollection) {
   // check if edgeCollection is available
   OperationResult result = checkEdgeCollectionAvailability(edgeDefinitionName);
@@ -189,7 +189,7 @@ OperationResult GraphOperations::eraseEdgeDefinition(bool waitForSync, std::stri
   return result;
 }
 
-OperationResult GraphOperations::checkEdgeCollectionAvailability(std::string edgeCollectionName) {
+OperationResult GraphOperations::checkEdgeCollectionAvailability(std::string const& edgeCollectionName) {
   bool found = _graph.edgeCollections().find(edgeCollectionName) !=
                _graph.edgeCollections().end();
 
@@ -200,7 +200,7 @@ OperationResult GraphOperations::checkEdgeCollectionAvailability(std::string edg
   return OperationResult(TRI_ERROR_NO_ERROR);
 }
 
-OperationResult GraphOperations::checkVertexCollectionAvailability(std::string vertexCollectionName) {
+OperationResult GraphOperations::checkVertexCollectionAvailability(std::string const& vertexCollectionName) {
   std::shared_ptr<LogicalCollection> def =
       GraphManager::getCollectionByName(_vocbase, vertexCollectionName);
 
@@ -216,7 +216,7 @@ OperationResult GraphOperations::checkVertexCollectionAvailability(std::string v
 
 OperationResult GraphOperations::editEdgeDefinition(VPackSlice edgeDefinitionSlice,
                                                     bool waitForSync,
-                                                    const std::string& edgeDefinitionName) {
+                                                    std::string const& edgeDefinitionName) {
   auto maybeEdgeDef = EdgeDefinition::createFromVelocypack(edgeDefinitionSlice);
   if (!maybeEdgeDef) {
     return OperationResult{std::move(maybeEdgeDef).result()};
@@ -356,7 +356,7 @@ OperationResult GraphOperations::addOrphanCollection(VPackSlice document, bool w
   return result;
 }
 
-OperationResult GraphOperations::eraseOrphanCollection(bool waitForSync, std::string collectionName,
+OperationResult GraphOperations::eraseOrphanCollection(bool waitForSync, std::string const& collectionName,
                                                        bool dropCollection) {
   // check if collection exists within the orphan collections
   bool found = false;
@@ -380,7 +380,7 @@ OperationResult GraphOperations::eraseOrphanCollection(bool waitForSync, std::st
     return OperationResult{TRI_ERROR_FORBIDDEN};
   }
 
-  Result res = _graph.removeOrphanCollection(std::move(collectionName));
+  Result res = _graph.removeOrphanCollection(collectionName);
   if (res.fail()) {
     return OperationResult(res);
   }
