@@ -162,7 +162,8 @@ void message::requestHeader(RequestHeader const& header,
     for (auto const& pair : header.meta()) {
       if (((header.contentType() != ContentType::Custom) &&
            boost::iequals(fu_content_type_key, pair.first)) ||
-          boost::iequals(fu_accept_key, pair.first)) {
+          ((header.acceptType() != ContentType::Custom) &&
+           boost::iequals(fu_accept_key, pair.first))) {
         continue;
       }
       builder.add(pair.first, VPackValue(pair.second));
