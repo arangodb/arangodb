@@ -122,7 +122,7 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode, public Col
                          unsigned int& totalNrRegs, unsigned int depth) const;
 
   bool isLateMaterialized() const noexcept {
-    return _outNonMaterializedIndVars.size() > 0;
+    return !_outNonMaterializedIndVars.empty();
   }
 
   struct IndexVariable {

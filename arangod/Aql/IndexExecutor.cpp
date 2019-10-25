@@ -106,7 +106,6 @@ DocumentProducingFunction getCallback(DocumentProducingFunctionContext& context,
     auto const indRegs = outNonMaterializedIndRegs.find(indexId);
     TRI_ASSERT(indRegs != outNonMaterializedIndRegs.cend());
     size_t i = 0;
-    std::cerr << slice.toString() << std::endl;
     for (auto const s : arangodb::velocypack::ArrayIterator(slice)) {
       auto indReg = indRegs->second.find(i++);
       if (indReg == indRegs->second.cend()) {

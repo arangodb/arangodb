@@ -467,7 +467,7 @@ class HashIndexMap {
     } else {
       builder.add(slice);
     }
-    _valueMaps[i].emplace(builder, documentId);
+    _valueMaps[i].emplace(std::move(builder), documentId);
   }
 
  public:
@@ -566,12 +566,13 @@ class HashIndexMap {
         return std::unordered_map<arangodb::LocalDocumentId, VPackBuilder>();
       }
       if (found.empty()) {
-        for (; begin != end; ++begin) {
+        std::transform(begin, end, std::inserter(found, found.end()), [] (auto const& item) {
           VPackBuilder builder;
           builder.openArray();
-          builder.add(begin->first.slice());
-          found.emplace(begin->second, builder);
-        }
+          builder.add(item.first.slice());
+
+          return std::make_pair(item.second, std::move(builder));
+        });
       } else {
         std::unordered_map<arangodb::LocalDocumentId, VPackBuilder> tmpFound;
         for (auto it = begin; it != end; ++it) {
@@ -829,10 +830,9 @@ class HashIndexMock final : public arangodb::Index {
         return attrs.first == f;
       });
       if (it != allAttributes.cend()) {
-        if (nullsCount > 0) {
-          while (nullsCount--) {
-            keys->add(VPackSlice::nullSlice());
-          }
+        while (nullsCount > 0) {
+          keys->add(VPackSlice::nullSlice());
+          --nullsCount;
         }
         it->second->toVelocyPackValue(*keys);
       } else {
@@ -952,7 +952,7 @@ std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(
     for (auto const& pair : docs) {
       l->insert(trx, pair.first, pair.second, arangodb::Index::OperationMode::internal);
     }
-  }else if (index->type() == arangodb::Index::TRI_IDX_TYPE_IRESEARCH_LINK) {
+  } else if (index->type() == arangodb::Index::TRI_IDX_TYPE_IRESEARCH_LINK) {
     auto* l = dynamic_cast<arangodb::iresearch::IResearchLink*>(index.get());
     TRI_ASSERT(l != nullptr);
     ;

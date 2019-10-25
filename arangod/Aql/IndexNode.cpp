@@ -515,12 +515,13 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
   for (auto const& indVars : _outNonMaterializedIndVars) {
     std::unordered_map<size_t, RegisterId> indRegs;
     indRegs.reserve(indVars.second.size());
-    for (auto const& indVar : indVars.second) {
-      auto it = varInfos.find(indVar.second->id);
-      TRI_ASSERT(it != varInfos.cend());
-      RegisterId registerId = it->second.registerId;
-      indRegs.emplace(indVar.first, registerId);
-    }
+    std::transform(indVars.second.cbegin(), indVars.second.cend(), std::inserter(indRegs, indRegs.end()),
+                   [&varInfos] (auto const& indVar) {
+                     auto it = varInfos.find(indVar.second->id);
+                     TRI_ASSERT(it != varInfos.cend());
+
+                     return std::make_pair(indVar.first, it->second.registerId);
+                   });
     outNonMaterializedIndVars[indVars.first] = std::move(indRegs);
   }
 

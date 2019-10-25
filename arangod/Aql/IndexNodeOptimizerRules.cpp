@@ -299,11 +299,11 @@ void arangodb::aql::lateDocumentMaterializationRule(arangodb::aql::Optimizer* op
         auto ast = plan->getAst();
         IndexNode::IndexVarsInfo uniqueVariables;
         for (auto& node : nodesToChange) {
-          for (auto& attr : node.attrs) {
-            if (uniqueVariables.find(attr.indexField) == uniqueVariables.cend()) {
-              uniqueVariables[attr.indexField] = {attr.indexId, attr.indexFieldNum, ast->variables()->createTemporaryVariable()};
-            }
-          }
+          std::transform(node.attrs.cbegin(), node.attrs.cend(), std::inserter(uniqueVariables, uniqueVariables.end()),
+                         [&ast] (auto const& attrAndField) {
+                           return std::make_pair(attrAndField.indexField, IndexNode::IndexVariable{attrAndField.indexId, attrAndField.indexFieldNum,
+                                                   ast->variables()->createTemporaryVariable()});
+                         });
         }
         auto localDocIdTmp = ast->variables()->createTemporaryVariable();
         for (auto& node : nodesToChange) {
