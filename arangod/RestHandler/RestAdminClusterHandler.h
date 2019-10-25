@@ -119,6 +119,9 @@ private:
 
   RestStatus handlePostRemoveServer(std::string const& server);
 
+  std::string resolveServerNameID(std::string const&);
+  std::string resolveServerNameID(VPackSlice);
+
 };
 }  // namespace arangodb
 

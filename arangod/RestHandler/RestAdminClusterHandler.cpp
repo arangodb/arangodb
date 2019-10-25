@@ -433,8 +433,7 @@ RestStatus RestAdminClusterHandler::handleRemoveServer() {
   if (body.isObject()) {
     VPackSlice server = body.get("server");
     if (server.isString()) {
-      std::string serverId = server.copyString();
-      // TODO translate serverId
+      std::string serverId = resolveServerNameID(server);
       return handlePostRemoveServer(serverId);
     }
   }
@@ -497,18 +496,16 @@ RestStatus RestAdminClusterHandler::handleMoveShard() {
   }
 
   std::unique_ptr<MoveShardContext> ctx = MoveShardContext::fromVelocyPack(body);
+  auto const& exec = ExecContext::current();
+  bool canAccess = exec.isAdminUser() || exec.collectionAuthLevel(ctx->database, ctx->collection) == auth::Level::RW;
+  if (!canAccess) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN, "insufficent permissions on database to move shard");
+    return RestStatus::DONE;
+  }
+
   if (ctx) {
-    // TODO translate serverIds
-
-
-    /* TODO
-    if (!req.isAdminUser &&
-        users.permission(req.user, body.database) !== 'rw') {
-      actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
-        'insufficent permissions on database to move shard');
-      return;
-    }
-    */
+    ctx->fromServer = resolveServerNameID(ctx->fromServer);
+    ctx->toServer = resolveServerNameID(ctx->toServer);
 
     return handlePostMoveShard(std::move(ctx));
   }
@@ -772,8 +769,7 @@ RestStatus RestAdminClusterHandler::handleSingleServerJob(std::string const& job
   if (body.isObject()) {
     VPackSlice server = body.get("server");
     if (server.isString()) {
-      std::string serverId = server.copyString();
-      // TODO translate serverId
+      std::string serverId = resolveServerNameID(server);
       return handleCreateSingleServerJob(job, serverId);
     }
   }
@@ -1341,4 +1337,28 @@ RestStatus RestAdminClusterHandler::handleHealth() {
     }).thenError<std::exception>([this, self](std::exception const& e) {
       generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR, e.what());
     }));
+}
+
+std::string RestAdminClusterHandler::resolveServerNameID(std::string const& serverName) {
+  auto servers = server().getFeature<ClusterFeature>().clusterInfo().getServerAliases();
+
+  for (auto const& pair : servers) {
+    if (pair.second == serverName) {
+      return pair.first;
+    }
+  }
+
+  return serverName;
+}
+
+std::string RestAdminClusterHandler::resolveServerNameID(VPackSlice slice) {
+  auto servers = server().getFeature<ClusterFeature>().clusterInfo().getServerAliases();
+
+  for (auto const& pair : servers) {
+    if (slice.isEqualString(pair.second)) {
+      return pair.first;
+    }
+  }
+
+  return slice.copyString();
 }

@@ -113,6 +113,8 @@ struct write_trx {
         return std::move(_buffer);
     };
 
+
+    // TODO generate inquiry ID here
     T done() && { _buffer.closeObject(); _buffer.closeArray(); return std::move(_buffer); }
     precs_trx<B, T> precs() && { _buffer.closeObject(); _buffer.openObject(); return std::move(_buffer); }
 private:
