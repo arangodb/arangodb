@@ -160,10 +160,8 @@ void message::requestHeader(RequestHeader const& header,
                   VPackValue(to_string(header.contentType())));
     }
     for (auto const& pair : header.meta()) {
-      if (((header.contentType() != ContentType::Custom) &&
-           boost::iequals(fu_content_type_key, pair.first)) ||
-          ((header.acceptType() != ContentType::Custom) &&
-           boost::iequals(fu_accept_key, pair.first))) {
+      if (boost::iequals(fu_content_type_key, pair.first) ||
+          boost::iequals(fu_accept_key, pair.first)) {
         continue;
       }
       builder.add(pair.first, VPackValue(pair.second));
