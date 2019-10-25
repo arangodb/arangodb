@@ -342,7 +342,7 @@ void BootstrapFeature::start() {
       if (result.successful()) {
         VPackSlice value = result.slice()[0].get(
           std::vector<std::string>({AgencyCommManager::path(), "Supervision", "Health", ServerState::instance()->getId(), "Status"}));
-        if (value.isString() && !value.copyString().empty()) {
+        if (value.isString() && value.getStringLength() != 0) {
           found = true;
           break;
         }
