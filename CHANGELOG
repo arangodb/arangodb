@@ -10,6 +10,9 @@ v3.5.2 (XXXX-XX-XX)
   To avoid huge startup delays, the startup will proceed after waiting 
   futilely for 15 seconds and log a message.
 
+* Separately account for superuser and user request traffic. This is
+  needed for Oasis.
+
 * Fixed issue #10270: Query: Expecting type Array or Object (while executing).
 
 * Fix a problem with AQL constrained sort in the cluster, which might abort
