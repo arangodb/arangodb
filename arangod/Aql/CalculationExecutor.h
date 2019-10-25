@@ -40,10 +40,12 @@ class Methods;
 
 namespace aql {
 
+struct AqlCall;
+class AqlItemBlockInputRange;
 class Expression;
 class OutputAqlItemRow;
 class Query;
-template<BlockPassthrough>
+template <BlockPassthrough>
 class SingleRowFetcher;
 struct Variable;
 
@@ -104,6 +106,18 @@ class CalculationExecutor {
    */
   std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
 
+  /**
+   * @brief produce the next Row of Aql Values.
+   *
+   * @return ExecutorState, the stats, and a new Call that needs to be send to the upstream
+   */
+  std::tuple<ExecutorState, Stats, AqlCall> produceRows(size_t atMost,
+                                                        AqlItemBlockInputRange& inputRange,
+                                                        OutputAqlItemRow& output);
+
+  std::tuple<ExecutorState, size_t, AqlCall> skipRowsRange(size_t atMost,
+                                                           AqlItemBlockInputRange& inputRange);
+
   std::tuple<ExecutionState, Stats, SharedAqlItemBlockPtr> fetchBlockForPassthrough(size_t atMost);
 
  private:
@@ -134,7 +148,6 @@ class CalculationExecutor {
   // exitContext; but only for assertions in maintainer mode.
   bool _hasEnteredContext;
 };
-
 
 }  // namespace aql
 }  // namespace arangodb
