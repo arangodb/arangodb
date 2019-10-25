@@ -67,8 +67,12 @@ VstRequest::VstRequest(ConnectionInfo const& connectionInfo,
 }
 
 arangodb::velocypack::StringRef VstRequest::rawPayload() const {
-  return arangodb::velocypack::StringRef(reinterpret_cast<const char*>(_buffer.data() + _payloadOffset),
-                                         _buffer.size() - _payloadOffset);
+  if (_buffer.size() < _payloadOffset) {
+    return arangodb::velocypack::StringRef();
+  } else {
+    return arangodb::velocypack::StringRef(reinterpret_cast<const char*>(_buffer.data() + _payloadOffset),
+                                           _buffer.size() - _payloadOffset);
+  }
 }
 
 VPackSlice VstRequest::payload(VPackOptions const* options) {
