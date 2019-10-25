@@ -166,9 +166,6 @@ CalculationExecutor<calculationType>::produceRows(size_t limit, AqlItemBlockInpu
                state == ExecutorState::HASMORE);
   }
 
-  TRI_ASSERT(state == ExecutorState::DONE);
-  TRI_ASSERT(!_infos.getQuery().hasEnteredContext());
-
   AqlCall upstreamCall{};
   upstreamCall.softLimit = limit;
   return {state, NoStats{}, upstreamCall};
