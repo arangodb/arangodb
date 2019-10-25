@@ -385,9 +385,7 @@ def analyzeFile(f, filename):
 
 
 def generateSetupFunction():
-    print()
-    print("(function () {\n%s}());" % ArangoshSetup)
-    print()
+    print("\n(function () {\n%s}());\n" % ArangoshSetup)
 
 ################################################################################
 ### @brief generate arangosh example
