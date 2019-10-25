@@ -525,7 +525,7 @@ void RestGraphHandler::generateResultMergedWithObject(VPackSlice obj,
     result.close();
     VPackBuilder merged = VelocyPackHelper::merge(result.slice(), obj, false, false);
 
-    writeResult(std::move(*merged.buffer().get()), options);
+    writeResult(merged.slice(), options);
   } catch (...) {
     // Building the error response failed
     generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
