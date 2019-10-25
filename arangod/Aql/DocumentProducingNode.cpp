@@ -31,11 +31,18 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/Value.h>
 #include <velocypack/ValueType.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb::aql;
+
+namespace {
+arangodb::velocypack::StringRef const filterKey("filter");
+arangodb::velocypack::StringRef const producesResultKey("producesResult");
+arangodb::velocypack::StringRef const projectionsKey("projections");
+}
 
 DocumentProducingNode::DocumentProducingNode(Variable const* outVariable)
     : _outVariable(outVariable) {
@@ -47,7 +54,7 @@ DocumentProducingNode::DocumentProducingNode(ExecutionPlan* plan,
     : _outVariable(Variable::varFromVPack(plan->getAst(), slice, "outVariable")) {
   TRI_ASSERT(_outVariable != nullptr);
 
-  VPackSlice p = slice.get("projections");
+  VPackSlice p = slice.get(::projectionsKey);
   if (p.isArray()) {
     for (VPackSlice it : VPackArrayIterator(p)) {
       if (it.isString()) {
@@ -56,10 +63,11 @@ DocumentProducingNode::DocumentProducingNode(ExecutionPlan* plan,
     }
   }
 
-  if (slice.hasKey("filter")) {
+  p = slice.get(::filterKey);
+  if (!p.isNone()) {
     Ast* ast = plan->getAst();
     // new AstNode is memory-managed by the Ast
-    setFilter(std::make_unique<Expression>(plan, ast, new AstNode(ast, slice.get("filter"))));
+    setFilter(std::make_unique<Expression>(plan, ast, new AstNode(ast, p)));
   }
 }
   
@@ -74,20 +82,20 @@ void DocumentProducingNode::toVelocyPack(arangodb::velocypack::Builder& builder,
   builder.add(VPackValue("outVariable"));
   _outVariable->toVelocyPack(builder);
 
-  builder.add("projections", VPackValue(VPackValueType::Array));
+  builder.add(::projectionsKey, VPackValue(VPackValueType::Array));
   for (auto const& it : _projections) {
     builder.add(VPackValue(it));
   }
   builder.close(); // projections
   
   if (_filter != nullptr) {
-    builder.add(VPackValue("filter"));
+    builder.add(VPackValuePair(::filterKey.data(), ::filterKey.size(), VPackValueType::String));
     _filter->toVelocyPack(builder, flags);
-  
-    builder.add("producesResult", VPackValue(true));
   } else {
-    builder.add("producesResult", VPackValue(dynamic_cast<ExecutionNode const*>(this)->isVarUsedLater(_outVariable)));
   }
+
+  // is "producesResult" actually read back somewhere?
+  builder.add(::producesResultKey, VPackValue(_filter != nullptr || dynamic_cast<ExecutionNode const*>(this)->isVarUsedLater(_outVariable)));
 }
 
 Variable const* DocumentProducingNode::outVariable() const {

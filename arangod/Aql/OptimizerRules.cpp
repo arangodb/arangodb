@@ -7208,10 +7208,10 @@ void arangodb::aql::moveFiltersIntoEnumerateRule(Optimizer* opt, std::unique_ptr
         if (calculations.empty()) {
           break;
         }
-        if (current->hasAnyParent(EN::LIMIT)) {
+        if (current->hasParentOfType(EN::LIMIT)) {
           break;
         }
-        if (current->hasAnyParent(EN::COLLECT)) {
+        if (current->hasParentOfType(EN::COLLECT)) {
           break;
         }
         
