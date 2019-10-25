@@ -1096,8 +1096,7 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
     if (!_vocbase.IsSystemName(name)) {
       // system-collections will be sharded normally. only user collections will get
       // the forced sharding
-      char const* prototype = _vocbase.shardingPrototype() == ShardingPrototype::Users ? TRI_COL_NAME_USERS : StaticStrings::GraphCollection.data();
-      toMerge.add(StaticStrings::DistributeShardsLike, VPackValue(prototype));
+      toMerge.add(StaticStrings::DistributeShardsLike, VPackValue(_vocbase.shardingPrototypeName()));
     }
   } else {
     // Number of shards. Will be overwritten if not existent
@@ -1126,8 +1125,7 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
         !_vocbase.IsSystemName(name) &&
         numberOfShards <= 1) {
       // shard like _graphs
-      char const* prototype = _vocbase.shardingPrototype() == ShardingPrototype::Users ? TRI_COL_NAME_USERS : StaticStrings::GraphCollection.data();
-      toMerge.add(StaticStrings::DistributeShardsLike, VPackValue(prototype));
+      toMerge.add(StaticStrings::DistributeShardsLike, VPackValue(_vocbase.shardingPrototypeName()));
     }
   }
 

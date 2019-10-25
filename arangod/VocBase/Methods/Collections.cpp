@@ -305,13 +305,11 @@ Result Collections::create(TRI_vocbase_t& vocbase,
         if (vocbase.server().getFeature<ClusterFeature>().forceOneShard()) {
           // force one shard, and force distributeShardsLike to be "_graphs"
           helper.add(StaticStrings::NumberOfShards, VPackValue(1));
-          char const* prototype = vocbase.shardingPrototype() == ShardingPrototype::Users ? TRI_COL_NAME_USERS : StaticStrings::GraphCollection.data();
-          helper.add(StaticStrings::DistributeShardsLike, VPackValue(prototype));
+          helper.add(StaticStrings::DistributeShardsLike, VPackValue(vocbase.shardingPrototypeName()));
         } else if (vocbase.sharding() == "single" && numberOfShards <= 1) {
           auto distributeSlice = info.properties.get(StaticStrings::DistributeShardsLike);
           if (distributeSlice.isNone()) {
-            char const* prototype = vocbase.shardingPrototype() == ShardingPrototype::Users ? TRI_COL_NAME_USERS : StaticStrings::GraphCollection.data();
-            helper.add(StaticStrings::DistributeShardsLike, VPackValue(prototype));
+            helper.add(StaticStrings::DistributeShardsLike, VPackValue(vocbase.shardingPrototypeName()));
           } else if (distributeSlice.isString() && distributeSlice.compareString("") == 0) {
             helper.add(StaticStrings::DistributeShardsLike, VPackSlice::nullSlice()); //delete empty string from info slice
           }
