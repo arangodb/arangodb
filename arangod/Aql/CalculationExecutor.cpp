@@ -214,7 +214,7 @@ void CalculationExecutor<CalculationType::V8Condition>::doEvaluation(InputAqlIte
   // upstream might send us to sleep, it is expected that we enter the context
   // exactly on the first row of every block.
   TRI_ASSERT(!shouldExitContextBetweenBlocks() ||
-             _hasEnteredContext == !input.isFirstRowInBlock());
+             _hasEnteredContext == !input.isFirstDataRowInBlock());
 
   enterContext();
   auto contextGuard = scopeGuard([this]() { exitContext(); });
@@ -235,7 +235,7 @@ void CalculationExecutor<CalculationType::V8Condition>::doEvaluation(InputAqlIte
 
   output.moveValueInto(_infos.getOutputRegisterId(), input, guard);
 
-  if (input.blockHasMoreRows()) {
+  if (input.blockHasMoreDataRowsAfterThis()) {
     // We will be called again before the fetcher needs to get a new block.
     // Thus we won't wait for upstream, nor will get a WAITING on the next
     // fetchRow().

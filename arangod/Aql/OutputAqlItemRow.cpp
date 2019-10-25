@@ -100,7 +100,7 @@ bool OutputAqlItemRow::reuseLastStoredValue(RegisterId registerId,
   if (_lastBaseIndex == _baseIndex) {
     return false;
   }
-  // Do not clone the value, we explicitly want recycle it.
+  // Do not clone the value, we explicitly want to recycle it.
   AqlValue ref = block().getValue(_lastBaseIndex, registerId);
   // The initial row is still responsible
   AqlValueGuard guard{ref, false};
@@ -185,7 +185,8 @@ void OutputAqlItemRow::advanceRow() {
   TRI_ASSERT(produced());
   TRI_ASSERT(allValuesWritten());
   TRI_ASSERT(_inputRowCopied);
-  _lastBaseIndex = _baseIndex++;
+  _lastBaseIndex = _baseIndex;
+  ++_baseIndex;
   _inputRowCopied = false;
   _numValuesWritten = 0;
 }
