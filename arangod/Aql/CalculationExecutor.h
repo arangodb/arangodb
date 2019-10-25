@@ -115,9 +115,6 @@ class CalculationExecutor {
                                                         AqlItemBlockInputRange& inputRange,
                                                         OutputAqlItemRow& output);
 
-  std::tuple<ExecutorState, size_t, AqlCall> skipRowsRange(size_t atMost,
-                                                           AqlItemBlockInputRange& inputRange);
-
   std::tuple<ExecutionState, Stats, SharedAqlItemBlockPtr> fetchBlockForPassthrough(size_t atMost);
 
  private:
