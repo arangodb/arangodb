@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import csv, sys, os.path, re
+from __future__ import print_function
 
 # wrap text after x characters
 def wrap(string, width=80, ind1=0, ind2=0, prefix=''):
@@ -144,7 +145,7 @@ with open(source) as source_fh:
         continue
 
       if e[0] == "" or e[1] == "" or e[2] == "" or e[3] == "":
-        print >> sys.stderr, "invalid error declaration file: %s" % (source)
+        print("invalid error declaration file: {}".format(source), file=sys.stderr)
         sys.exit()
 
       errorsList.append(e)
@@ -164,7 +165,7 @@ elif extension == ".h":
 elif extension == ".cpp":
   out = genCFile(errorsList, filename)
 else:
-  print >> sys.stderr, "usage: %s <sourcefile> <outfile>" % sys.argv[0]
+  print("usage: {} <sourcefile> <outfile>".format(sys.argv[0]), file=sys.stderr)
   sys.exit(1)
 
 with open(outfile, "w") as out_fh:

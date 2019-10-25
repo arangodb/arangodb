@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import csv, sys, os.path, re
+from __future__ import print_function
 
 # wrap text after x characters
 def wrap(string, width=80, ind1=0, ind2=0, prefix=''):
@@ -169,7 +170,7 @@ prologue = "/// auto-generated file generated from exitcodes.dat\n"\
          + "\n"
 
 if len(sys.argv) < 3:
-  print("usage: %s <sourcefile> <outfile>".format(sys.argv[0]), file=sys.stderr)
+  print("usage: {} <sourcefile> <outfile>".format(sys.argv[0]), file=sys.stderr)
   sys.exit(1)
 
 source = sys.argv[1]
@@ -212,7 +213,7 @@ elif extension == ".cpp":
 elif extension == ".nsh":
   out = genNSISFile(errorsList, filename)
 else:
-  print("usage: %s <sourcefile> <outfile>".format(sys.argv[0]), file=sys.stderr)
+  print("usage: {} <sourcefile> <outfile>".format(sys.argv[0]), file=sys.stderr)
   sys.exit(1)
 
 with open(outfile, "w") as out_fh:
