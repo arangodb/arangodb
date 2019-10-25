@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-import csv, sys, os.path, re
 from __future__ import print_function
+import csv, sys, os.path, re
 
 # wrap text after x characters
 def wrap(string, width=80, ind1=0, ind2=0, prefix=''):
