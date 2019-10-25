@@ -353,7 +353,7 @@ bool InputAqlItemRow::isLastRowInBlock() const noexcept {
   return _baseIndex + 1 == block().size();
 }
 
-bool InputAqlItemRow:: blockHasMoreDataRowsAfterThis() const noexcept {
+bool InputAqlItemRow::blockHasMoreDataRowsAfterThis() const noexcept {
   TRI_ASSERT(isInitialized());
   TRI_ASSERT(_baseIndex < block().size());
 

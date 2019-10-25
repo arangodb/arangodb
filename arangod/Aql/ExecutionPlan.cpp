@@ -54,6 +54,7 @@
 #include "Containers/SmallVector.h"
 #include "Graph/ShortestPathOptions.h"
 #include "Graph/TraverserOptions.h"
+#include "Logger/LoggerStream.h"
 #include "VocBase/AccessMode.h"
 
 using namespace arangodb;
@@ -2431,10 +2432,13 @@ struct Shower final : public WalkerWorker<ExecutionNode> {
       --indent;
     }
 
-    for (int i = 0; i < 2*indent; i++) {
-      std::cout << ' ';
+    auto logLn{LoggerStream()};
+    logLn << LogLevel::INFO << Logger::AQL;
+
+    for (int i = 0; i < 2 * indent; i++) {
+      logLn << ' ';
     }
-    std::cout << '[' << en->id() << ']' << en->getTypeString() << std::endl;
+    logLn << "[" << en->id() << "]" << en->getTypeString();
 
     if (en->getType() == ExecutionNode::SUBQUERY_START) {
       ++indent;
