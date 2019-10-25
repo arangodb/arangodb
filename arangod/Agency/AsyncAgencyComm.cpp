@@ -159,10 +159,8 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncSend(
 
   // check for conditions to abort
   if (agencyAsyncShouldCancel(meta)) {
-    LOG_DEVEL << "request was cancelled";
     return futures::makeFuture(AsyncAgencyCommResult{fuerte::Error::Canceled, nullptr});
   } else if (agencyAsyncShouldTimeout(meta)) {
-    LOG_DEVEL << "request timed out";
     return futures::makeFuture(AsyncAgencyCommResult{fuerte::Error::Timeout, nullptr});
   }
 
@@ -173,14 +171,10 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncSend(
     // aquire the current endpoint
     std::string endpoint = man->getCurrentEndpoint();
 
-    LOG_DEVEL << "starting request " << endpoint << meta.url;
     // and fire off the request
     return network::sendRequest(man->pool(), endpoint, meta.method, meta.url, std::move(body), meta.timeout, meta.headers)
       .thenValue(
         [meta = std::move(meta), endpoint = std::move(endpoint), man] (network::Response &&result) mutable {
-
-
-      LOG_DEVEL << "request done";
 
       auto &req = result.request;
       auto &resp = result.response;
@@ -188,7 +182,6 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncSend(
 
       switch (result.error) {
         case fuerte::Error::NoError:
-        LOG_DEVEL << "no error: " << int(resp->statusCode());
           // success
           if ((resp->statusCode() >= 200 && resp->statusCode() <= 299)) {
             break;
@@ -255,9 +248,6 @@ AsyncAgencyComm::FutureResult AsyncAgencyComm::sendWithFailover(
       }
     }
   }
-
-  LOG_DEVEL
-    << "async agency request " << fuerte::to_string(method) << " " << url << " " << VPackSlice(body.data()).toJson();
 
   network::Headers headers;
   return agencyAsyncSend(_manager, RequestMeta({timeout, method,
