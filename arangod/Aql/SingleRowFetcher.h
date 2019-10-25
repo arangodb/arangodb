@@ -64,10 +64,7 @@ class SingleRowFetcher {
 
  public:
   // TODO implement and document
-  std::tuple<ExecutionState, size_t, DataRange> execute(AqlCallStack& stack) {
-    TRI_ASSERT(false);
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  }
+  std::tuple<ExecutionState, size_t, DataRange> execute(AqlCallStack& stack);
 
   /**
    * @brief Fetch one new AqlItemRow from upstream.
