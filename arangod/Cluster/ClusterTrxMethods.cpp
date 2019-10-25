@@ -52,9 +52,6 @@ using namespace arangodb::futures;
 
 namespace {
 
-// Timeout for read operations:
-static double const CL_DEFAULT_TIMEOUT = 120.0;
-
 void buildTransactionBody(TransactionState& state, ServerID const& server,
                           VPackBuilder& builder) {
   // std::vector<ServerID> DBservers = ci->getCurrentDBServers();

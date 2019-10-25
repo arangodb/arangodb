@@ -134,7 +134,7 @@ class RocksDBCollection final : public RocksDBMetaCollection {
 
  private:
   /// @brief return engine-specific figures
-  void figuresSpecific(std::shared_ptr<velocypack::Builder>&) override;
+  void figuresSpecific(velocypack::Builder&) override;
 
   // @brief return the primary index
   // WARNING: Make sure that this instance

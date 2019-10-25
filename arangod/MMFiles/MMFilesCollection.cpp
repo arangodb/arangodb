@@ -1322,7 +1322,7 @@ void MMFilesCollection::getPropertiesVPack(velocypack::Builder& result) const {
   TRI_ASSERT(result.isOpenObject());
 }
 
-void MMFilesCollection::figuresSpecific(std::shared_ptr<arangodb::velocypack::Builder>& builder) {
+void MMFilesCollection::figuresSpecific(arangodb::velocypack::Builder& builder) {
   // fills in compaction status
   char const* lastCompactionStatus = "-";
   char lastCompactionStampString[21];
@@ -1347,81 +1347,81 @@ void MMFilesCollection::figuresSpecific(std::shared_ptr<arangodb::velocypack::Bu
     strftime(&lastCompactionStampString[0], sizeof(lastCompactionStampString),
              "%Y-%m-%dT%H:%M:%SZ", &tb);
   }
-  builder->add("documentReferences",
+  builder.add("documentReferences",
                VPackValue(_ditches.numMMFilesDocumentMMFilesDitches()));
 
   char const* waitingForDitch = _ditches.head();
-  builder->add("waitingFor", VPackValue(waitingForDitch == nullptr ? "-" : waitingForDitch));
+  builder.add("waitingFor", VPackValue(waitingForDitch == nullptr ? "-" : waitingForDitch));
 
   // add datafile statistics
   MMFilesDatafileStatisticsContainer dfi = _datafileStatistics.all();
   MMFilesDatafileStatistics::CompactionStats stats = _datafileStatistics.getStats();
 
-  builder->add("alive", VPackValue(VPackValueType::Object));
+  builder.add("alive", VPackValue(VPackValueType::Object));
   {
-    builder->add("count", VPackValue(dfi.numberAlive));
-    builder->add("size", VPackValue(dfi.sizeAlive));
-    builder->close();  // alive
+    builder.add("count", VPackValue(dfi.numberAlive));
+    builder.add("size", VPackValue(dfi.sizeAlive));
+    builder.close();  // alive
   }
 
-  builder->add("dead", VPackValue(VPackValueType::Object));
+  builder.add("dead", VPackValue(VPackValueType::Object));
   {
-    builder->add("count", VPackValue(dfi.numberDead));
-    builder->add("size", VPackValue(dfi.sizeDead));
-    builder->add("deletion", VPackValue(dfi.numberDeletions));
-    builder->close();  // dead
+    builder.add("count", VPackValue(dfi.numberDead));
+    builder.add("size", VPackValue(dfi.sizeDead));
+    builder.add("deletion", VPackValue(dfi.numberDeletions));
+    builder.close();  // dead
   }
 
-  builder->add("compactionStatus", VPackValue(VPackValueType::Object));
+  builder.add("compactionStatus", VPackValue(VPackValueType::Object));
   {
-    builder->add("message", VPackValue(lastCompactionStatus));
-    builder->add("time", VPackValue(&lastCompactionStampString[0]));
+    builder.add("message", VPackValue(lastCompactionStatus));
+    builder.add("time", VPackValue(&lastCompactionStampString[0]));
 
-    builder->add("count", VPackValue(stats._compactionCount));
-    builder->add("filesCombined", VPackValue(stats._filesCombined));
-    builder->add("bytesRead", VPackValue(stats._compactionBytesRead));
-    builder->add("bytesWritten", VPackValue(stats._compactionBytesWritten));
-    builder->close();  // compactionStatus
+    builder.add("count", VPackValue(stats._compactionCount));
+    builder.add("filesCombined", VPackValue(stats._filesCombined));
+    builder.add("bytesRead", VPackValue(stats._compactionBytesRead));
+    builder.add("bytesWritten", VPackValue(stats._compactionBytesWritten));
+    builder.close();  // compactionStatus
   }
 
   // add file statistics
   READ_LOCKER(readLocker, _filesLock);
 
   size_t sizeDatafiles = 0;
-  builder->add("datafiles", VPackValue(VPackValueType::Object));
+  builder.add("datafiles", VPackValue(VPackValueType::Object));
   for (auto const& it : _datafiles) {
     sizeDatafiles += it->initSize();
   }
 
-  builder->add("count", VPackValue(_datafiles.size()));
-  builder->add("fileSize", VPackValue(sizeDatafiles));
-  builder->close();  // datafiles
+  builder.add("count", VPackValue(_datafiles.size()));
+  builder.add("fileSize", VPackValue(sizeDatafiles));
+  builder.close();  // datafiles
 
   size_t sizeJournals = 0;
   for (auto const& it : _journals) {
     sizeJournals += it->initSize();
   }
-  builder->add("journals", VPackValue(VPackValueType::Object));
-  builder->add("count", VPackValue(_journals.size()));
-  builder->add("fileSize", VPackValue(sizeJournals));
-  builder->close();  // journals
+  builder.add("journals", VPackValue(VPackValueType::Object));
+  builder.add("count", VPackValue(_journals.size()));
+  builder.add("fileSize", VPackValue(sizeJournals));
+  builder.close();  // journals
 
   size_t sizeCompactors = 0;
   for (auto const& it : _compactors) {
     sizeCompactors += it->initSize();
   }
-  builder->add("compactors", VPackValue(VPackValueType::Object));
-  builder->add("count", VPackValue(_compactors.size()));
-  builder->add("fileSize", VPackValue(sizeCompactors));
-  builder->close();  // compactors
+  builder.add("compactors", VPackValue(VPackValueType::Object));
+  builder.add("count", VPackValue(_compactors.size()));
+  builder.add("fileSize", VPackValue(sizeCompactors));
+  builder.close();  // compactors
 
-  builder->add("revisions", VPackValue(VPackValueType::Object));
-  builder->add("count", VPackValue(_revisionsCache.size()));
-  builder->add("size", VPackValue(_revisionsCache.memoryUsage()));
-  builder->close();  // revisions
+  builder.add("revisions", VPackValue(VPackValueType::Object));
+  builder.add("count", VPackValue(_revisionsCache.size()));
+  builder.add("size", VPackValue(_revisionsCache.memoryUsage()));
+  builder.close();  // revisions
 
-  builder->add("lastTick", VPackValue(_maxTick));
-  builder->add("uncollectedLogfileEntries", VPackValue(uncollectedLogfileEntries()));
+  builder.add("lastTick", VPackValue(_maxTick));
+  builder.add("uncollectedLogfileEntries", VPackValue(uncollectedLogfileEntries()));
 }
 
 /// @brief iterate over a vector of datafiles and pick those with a specific

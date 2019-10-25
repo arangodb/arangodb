@@ -567,7 +567,7 @@ bool PhysicalCollectionMock::dropIndex(TRI_idx_iid_t iid) {
   return false;
 }
 
-void PhysicalCollectionMock::figuresSpecific(std::shared_ptr<arangodb::velocypack::Builder>&) {
+void PhysicalCollectionMock::figuresSpecific(arangodb::velocypack::Builder&) {
   before();
   TRI_ASSERT(false);
 }
