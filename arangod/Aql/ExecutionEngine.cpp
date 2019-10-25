@@ -40,8 +40,13 @@
 #include "Aql/WalkerWorker.h"
 #include "Basics/ScopeGuard.h"
 #include "Cluster/ServerState.h"
+#include "Futures/Utilities.h"
 #include "Logger/Logger.h"
+#include "Logger/LogMacros.h"
+#include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
+#include "Network/Utils.h"
+#include "RestServer/QueryRegistryFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -473,6 +478,7 @@ struct DistributedQueryInstanciator final : public WalkerWorker<ExecutionNode> {
       _dbserverParts.cleanupEngines(pool, TRI_ERROR_INTERNAL,
                                     _query.vocbase().name(), queryIds);
     });
+    
     std::unordered_map<size_t, size_t> nodeAliases;
     ExecutionEngineResult res = _dbserverParts.buildEngines(queryIds, nodeAliases);
     if (res.fail()) {
@@ -481,8 +487,10 @@ struct DistributedQueryInstanciator final : public WalkerWorker<ExecutionNode> {
 
     // The coordinator engines cannot decide on lock issues later on,
     // however every engine gets injected the list of locked shards.
+    std::vector<uint64_t> coordinatorQueryIds{};
     res = _coordinatorParts.buildEngines(_query, registry, _query.vocbase().name(),
-                                         _query.queryOptions().shardIds, queryIds);
+                                         _query.queryOptions().shardIds, queryIds,
+                                         coordinatorQueryIds);
 
     if (res.ok()) {
       TRI_ASSERT(_query.engine() != nullptr);
@@ -490,12 +498,58 @@ struct DistributedQueryInstanciator final : public WalkerWorker<ExecutionNode> {
       cleanupGuard.cancel();
     }
 
+    _query.engine()->snippetMapping(std::move(queryIds), std::move(coordinatorQueryIds));
+
     return res;
   }
 };
 
+void ExecutionEngine::kill() {
+  // kill coordinator parts
+  // TODO: this doesn't seem to be necessary and sometimes even show adverse effects
+  // so leaving this deactivated for now
+  // auto queryRegistry = QueryRegistryFeature::registry();
+  // if (queryRegistry != nullptr) {
+  //   for (auto const& id : _coordinatorQueryIds) {
+  //     queryRegistry->kill(&(_query.vocbase()), id);
+  //   }
+  // }
+
+  // kill DB server parts
+  // RemoteNodeId -> DBServerId -> [snippetId]
+  NetworkFeature const& nf = _query.vocbase().server().getFeature<NetworkFeature>();
+  network::ConnectionPool* pool = nf.pool();
+  if (pool == nullptr) {
+    return;
+  }
+
+  VPackBuffer<uint8_t> body;
+  std::vector<network::FutureRes> futures;
+  
+  for (auto const& it : _dbServerMapping) {
+    for (auto const& it2 : it.second) {
+      for (auto const& snippetId : it2.second) {
+        network::Headers headers;
+        TRI_ASSERT(it2.first.substr(0, 7) == "server:");
+        auto future = network::sendRequest(pool, it2.first, fuerte::RestVerb::Delete,
+                                         "/_api/aql/kill/" + snippetId, body, std::move(headers));
+        futures.emplace_back(std::move(future));
+      }
+    }
+  }
+  
+  if (!futures.empty()) {
+    // killing is best-effort
+    // we are ignoring all errors intentionally here
+    futures::collectAll(futures).get();
+  }
+}
+
 std::pair<ExecutionState, Result> ExecutionEngine::initializeCursor(SharedAqlItemBlockPtr&& items,
                                                                     size_t pos) {
+  if (_query.killed()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+  }
   InputAqlItemRow inputRow{CreateInvalidInputRowHint{}};
   if (items != nullptr) {
     inputRow = InputAqlItemRow{std::move(items), pos};
@@ -509,6 +563,9 @@ std::pair<ExecutionState, Result> ExecutionEngine::initializeCursor(SharedAqlIte
 }
 
 std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionEngine::getSome(size_t atMost) {
+  if (_query.killed()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+  }
   if (!_initializeCursorCalled) {
     auto res = initializeCursor(nullptr, 0);
     if (res.first == ExecutionState::WAITING) {
@@ -519,6 +576,9 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionEngine::getSome(size_t
 }
 
 std::pair<ExecutionState, size_t> ExecutionEngine::skipSome(size_t atMost) {
+  if (_query.killed()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+  }
   if (!_initializeCursorCalled) {
     auto res = initializeCursor(nullptr, 0);
     if (res.first == ExecutionState::WAITING) {

@@ -1,6 +1,8 @@
 devel
 -----
 
+* Upgraded bundled Boost library version to 1.71.
+
 * The General Graph document API is now consistent with the document API in its error messages.
   When attempting to create / modify edges pointing to non existing vertex collections
   HTTP 400 is returned instead of 404.
