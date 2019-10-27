@@ -364,7 +364,7 @@ void VstConnection<ST>::asyncReadCallback(asio_ns::error_code const& ec) {
     FUERTE_LOG_CALLBACKS
         << "asyncReadCallback: Error while reading form socket: "
         << ec.message();
-    this->restartConnection(checkEOFError(ec, Error::ReadError));
+    this->restartConnection(translateError(ec, Error::ReadError));
     return;
   }
 
