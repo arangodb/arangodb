@@ -219,7 +219,7 @@ ConnectionPtr ConnectionPool::selectConnection(std::string const& endpoint,
     size_t num = c.fuerte->requestsLeft();
     if (_config.protocol == fuerte::ProtocolType::Http) {
       auto now = std::chrono::steady_clock::now();
-      TRI_ASSERT(c.leased >= now);
+      TRI_ASSERT(now >= c.leased);
       // hack hack hack.
       if ((now - c.leased) > std::chrono::milliseconds(50)) {
         c.leased = std::chrono::steady_clock::now();
