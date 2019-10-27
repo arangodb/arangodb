@@ -47,7 +47,9 @@ template <SocketType T>
 void GeneralCommTask<T>::start() {
   asio_ns::post(_protocol->context.io_context, [self = shared_from_this()] {
     auto* thisPtr = static_cast<GeneralCommTask<T>*>(self.get());
-    thisPtr->_protocol->setNonBlocking(true);
+    if (thisPtr->_protocol->supportsMixedIO()) {
+      thisPtr->_protocol->setNonBlocking(true);
+    }
     thisPtr->asyncReadSome();
   });
 }
@@ -70,7 +72,7 @@ template <SocketType T>
 void GeneralCommTask<T>::asyncReadSome() try {
   asio_ns::error_code ec;
   // first try a sync read for performance
-  if (_protocol->supportsMixedIO()) {
+  if (false && _protocol->supportsMixedIO()) {
     std::size_t available = _protocol->available(ec);
 
     while (!ec && available > 8) {
