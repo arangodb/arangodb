@@ -213,12 +213,21 @@ ConnectionPtr ConnectionPool::selectConnection(std::string const& endpoint,
     }
     
     size_t num = c.fuerte->requestsLeft();
-    // TODO: make configurable ?
-    if ((_config.protocol == fuerte::ProtocolType::Http && num == 0) ||
-        (_config.protocol == fuerte::ProtocolType::Vst && num <= 4)) {
-      return c.fuerte;
+    if (_config.protocol == fuerte::ProtocolType::Http) {
+      auto now = std::chrono::steady_clock::now();
+      TRI_ASSERT(c.leased.time_since_epoch().count() > 0);
+      // hack hack hack.
+      if ((now - c.leased) > std::chrono::milliseconds(50)) {
+        c.leased = std::chrono::steady_clock::now();
+        return c.fuerte;
+      }
+    } else if (_config.protocol == fuerte::ProtocolType::Vst && num <= 4) {
+      c.leased = std::chrono::steady_clock::now();
+      return c.fuerte; // TODO: make configurable ?
     }
   }
+  
+  // no free connection found, so we add one
   
   fuerte::ConnectionBuilder builder;
   builder.endpoint(endpoint);
