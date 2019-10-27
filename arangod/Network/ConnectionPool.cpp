@@ -25,6 +25,7 @@
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
 #include "GeneralServer/AuthenticationFeature.h"
+#include "Logger/LogMacros.h"
 #include "Network/NetworkFeature.h"
 #include "Random/RandomGenerator.h"
 
@@ -112,7 +113,7 @@ void ConnectionPool::pruneConnections() {
     if (buck.list.size() <= _config.minOpenConnections) {
       continue;
     }
-
+    
     // first remove old connections
     auto it = buck.list.begin();
     while (it != buck.list.end()) {
@@ -137,6 +138,9 @@ void ConnectionPool::pruneConnections() {
     if (buck.list.size() <= _config.maxOpenConnections) {
       continue; // done
     }
+    
+    LOG_TOPIC("2d59a", INFO, Logger::COMMUNICATION)
+        << "pruning extra connections to '" << pair.first << "'";
     
     // remove any remaining connections, they will be closed eventually
     it = buck.list.begin();
@@ -215,7 +219,7 @@ ConnectionPtr ConnectionPool::selectConnection(std::string const& endpoint,
     size_t num = c.fuerte->requestsLeft();
     if (_config.protocol == fuerte::ProtocolType::Http) {
       auto now = std::chrono::steady_clock::now();
-      TRI_ASSERT(c.leased.time_since_epoch().count() > 0);
+      TRI_ASSERT(c.leased >= now);
       // hack hack hack.
       if ((now - c.leased) > std::chrono::milliseconds(50)) {
         c.leased = std::chrono::steady_clock::now();

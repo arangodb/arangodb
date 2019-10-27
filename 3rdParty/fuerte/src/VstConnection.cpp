@@ -277,7 +277,7 @@ void VstConnection<ST>::asyncWriteCallback(asio_ns::error_code const& ec,
     // Item has failed, remove from message store
     _messageStore.removeByID(item->_messageID);
 
-    auto err = checkEOFError(ec, Error::WriteError);
+    auto err = translateError(ec, Error::WriteError);
     // let user know that this request caused the error
     item->_callback(err, std::move(item->_request), nullptr);
     // Stop current connection and try to restart a new one.

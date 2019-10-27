@@ -143,7 +143,7 @@ void GeneralConnection<ST>::restartConnection(const Error error) {
   if (_state.compare_exchange_strong(exp, Connection::State::Disconnected)) {
     FUERTE_LOG_DEBUG << "restartConnection this=" << this << "\n";
     shutdownConnection(error);  // Terminate connection
-    if (requestsLeft() > 0) {
+    if (error != Error::Canceled && requestsLeft() > 0) {
       startConnection();  // switches state to Conneccting
     }
   }

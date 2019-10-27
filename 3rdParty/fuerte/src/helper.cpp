@@ -262,8 +262,15 @@ void toLowerInPlace(std::string& str) {
   }
 }
   
-fuerte::Error checkEOFError(asio_ns::error_code e, fuerte::Error c) {
-  return e == asio_ns::error::misc_errors::eof ? fuerte::Error::ConnectionClosed : c;
+fuerte::Error translateError(asio_ns::error_code e, fuerte::Error c) {
+  
+  if (e == asio_ns::error::misc_errors::eof) {
+    return fuerte::Error::ConnectionClosed;
+  } else if (e == asio_ns::error::operation_aborted) {
+    return fuerte::Error::Canceled;
+  }
+  
+  return c;
 }
   
 }}}  // namespace arangodb::fuerte::v1

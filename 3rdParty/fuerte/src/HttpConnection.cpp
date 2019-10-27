@@ -420,7 +420,7 @@ void HttpConnection<ST>::asyncWriteCb(asio_ns::error_code const& ec,
                      << "'\n";
     assert(item->callback);
 
-    auto err = checkEOFError(ec, Error::WriteError);
+    auto err = translateError(ec, Error::WriteError);
     // let user know that this request caused the error
     item->callback(err, std::move(item->request), nullptr);
     // Stop current connection and try to restart a new one.
@@ -456,7 +456,7 @@ void HttpConnection<ST>::asyncReadCallback(asio_ns::error_code const& ec) {
     FUERTE_LOG_DEBUG << "asyncReadCallback: Error while reading from socket: '";
 
     // Restart connection, will invoke _item cb
-    this->restartConnection(checkEOFError(ec, Error::ReadError));
+    this->restartConnection(translateError(ec, Error::ReadError));
     return;
   }
 
