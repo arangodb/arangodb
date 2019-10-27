@@ -160,10 +160,6 @@ void message::requestHeader(RequestHeader const& header,
                   VPackValue(to_string(header.contentType())));
     }
     for (auto const& pair : header.meta()) {  // iequals for data from server
-      if (boost::iequals(fu_content_type_key, pair.first) ||
-          boost::iequals(fu_accept_key, pair.first)) {
-        continue;
-      }
       builder.add(pair.first, VPackValue(pair.second));
     }
   }
