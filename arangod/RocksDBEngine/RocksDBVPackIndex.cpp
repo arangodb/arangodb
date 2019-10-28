@@ -697,9 +697,6 @@ Result RocksDBVPackIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd
     
     if (res.fail()) {
       if (res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)) {
-
-             LOG_DEVEL << collection().name();
-
         // find conflicting document
         LocalDocumentId docId = RocksDBValue::documentId(existing);
         std::string existingKey;
