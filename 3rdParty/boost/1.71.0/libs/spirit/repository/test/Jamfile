@@ -1,0 +1,56 @@
+#==============================================================================
+#   Copyright (c) 2001-2009 Joel de Guzman
+#   Copyright (c) 2001-2009 Hartmut Kaiser
+#   Copyright (c) 2017-2019 Nikita Kniazev
+#
+#   Use, modification and distribution is subject to the Boost Software
+#   License, Version 1.0. (See accompanying file LICENSE_1_0.txt or copy at
+#   http://www.boost.org/LICENSE_1_0.txt)
+#==============================================================================
+project spirit_v2_repository/test
+    : requirements
+        <include>.
+        <c++-template-depth>300
+    :
+    :
+    ;
+
+###############################################################################
+
+alias qi-pch : : <pch>on-spirit:<source>../../test/qi//pch ;
+alias ka-pch : : <pch>on-spirit:<source>../../test/karma//pch ;
+explicit qi-pch ka-pch ;
+
+###############################################################################
+
+import os ;
+
+local keywords_reqs ;
+
+if [ os.environ APPVEYOR ]
+{
+    # Workaround MSVC codegen bug. See #400 for the info.
+    keywords_reqs = <toolset>msvc-14.1:<inlining>off ;
+}
+
+# bring in rules for testing
+import testing ;
+
+{
+    test-suite spirit_v2_repository :
+
+    # run Qi repository tests
+    [ run qi-pch qi/advance.cpp             : : : : qi_repo_advance ]
+    [ run qi-pch qi/confix.cpp              : : : : qi_repo_confix ]
+    [ run qi-pch qi/distinct.cpp            : : : : qi_repo_distinct ]
+    [ run qi-pch qi/subrule.cpp             : : : : qi_repo_subrule ]
+    [ run qi-pch qi/keywords.cpp            : : : $(keywords_reqs) : qi_repo_keywords ]
+    [ run qi-pch qi/seek.cpp                : : : : qi_repo_seek ]
+
+    # run Karma repository tests
+    [ run ka-pch karma/confix.cpp           : : : : karma_repo_confix ]
+    [ run ka-pch karma/subrule.cpp          : : : : karma_repo_subrule ]
+
+    ;
+}
+

@@ -1,6 +1,11 @@
 devel
 -----
 
+* Allow collection names to be at most 256 characters long, instead of 64 characters
+  in previous versions.
+
+* Upgraded bundled Boost library version to 1.71.
+
 * The General Graph document API is now consistent with the document API in its error messages.
   When attempting to create / modify edges pointing to non existing vertex collections
   HTTP 400 is returned instead of 404.
@@ -18,7 +23,7 @@ devel
   `distributeShardsLike` in case the prototype is a system collection, and the prototype
   should be moved to another server.
 
-* RCLone URL normalization
+* RClone URL normalization
 
 * Fixed Unintended multiple unlock commands from coordinator to
   transaction locked db servers

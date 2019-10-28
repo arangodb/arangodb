@@ -758,6 +758,7 @@
           collList.push(c.id);
         }
       });
+      window.modalView.enableHotKeys = false;
       this.counter = 0;
 
       if (graph) {

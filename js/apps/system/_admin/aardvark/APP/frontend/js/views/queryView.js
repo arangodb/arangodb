@@ -1,7 +1,7 @@
 /* jshint browser: true */
 /* jshint unused: false */
 /* global Backbone, $, L, setTimeout, sessionStorage, ace, Storage, window, _, btoa */
-/* global frontendConfig, _, arangoHelper, numeral, templateEngine, Joi, Noty */
+/* global frontendConfig, _, arangoHelper, numeral, templateEngine, Joi */
 
 (function () {
   'use strict';
@@ -680,8 +680,8 @@
 
               outputEditor.setValue(data.msg, 1);
               self.deselect(outputEditor);
-              Noty.clearQueue();
-              Noty.closeAll();
+              $.noty.clearQueue();
+              $.noty.closeAll();
               self.handleResult(counter);
 
               // SCROLL TO RESULT BOX
@@ -1823,8 +1823,8 @@
             if (xhr.getResponseHeader('x-arango-async-id')) {
               self.queryCallbackFunction(xhr.getResponseHeader('x-arango-async-id'), counter);
             }
-            Noty.clearQueue();
-            Noty.closeAll();
+            $.noty.clearQueue();
+            $.noty.closeAll();
             self.handleResult(counter);
           },
           error: function (data) {
@@ -2723,10 +2723,26 @@
 
     getSystemQueries: function (callback) {
       var self = this;
-      if (callback) {
-        callback(false);
-      }
-      self.queries = window.aqltemplates;
+
+      $.ajax({
+        type: 'GET',
+        cache: false,
+        url: 'js/arango/aqltemplates.json',
+        contentType: 'application/json',
+        processData: false,
+        success: function (data) {
+          if (callback) {
+            callback(false);
+          }
+          self.queries = data;
+        },
+        error: function () {
+          if (callback) {
+            callback(true);
+          }
+          arangoHelper.arangoNotification('Query', 'Error while loading system templates');
+        }
+      });
     },
 
     updateLocalQueries: function () {

@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global frontendConfig, arangoHelper, prettyBytes, Backbone, templateEngine, $, window, _, nv, d3 */
+/* global arangoHelper, prettyBytes, Backbone, templateEngine, $, window, _, nv, d3 */
 (function () {
   'use strict';
 
@@ -539,14 +539,8 @@
     getCoordStatHistory: function (callback) {
       if (this.coordshortSuccess || this.coordshortSuccess === undefined || (Date.now() - this.coordshortTimestamp) / 1000 > 60) {
         this.coordshortSuccess = false;
-        var url = 'statistics/coordshort';
-
-        if (frontendConfig.react) {
-          url = arangoHelper.databaseUrl('/_admin/aardvark/' + url);
-        }
-
         $.ajax({
-          url: url,
+          url: 'statistics/coordshort',
           json: true
         })
           .success(function (data) {
