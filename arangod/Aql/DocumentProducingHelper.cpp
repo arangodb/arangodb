@@ -81,6 +81,9 @@ DocumentProducingFunction aql::getCallback(DocumentProducingCallbackVariant::Wit
         return;
       }
     }
+    
+    context.incrScanned();
+    
     if (context.hasFilter()) {
       if (!context.checkFilter(slice)) {
         context.incrFiltered();
@@ -106,7 +109,6 @@ DocumentProducingFunction aql::getCallback(DocumentProducingCallbackVariant::Wit
     output.moveValueInto(registerId, input, guard);
     TRI_ASSERT(output.produced());
     output.advanceRow();
-    context.incrScanned();
   };
 }
 
@@ -120,6 +122,9 @@ DocumentProducingFunction aql::getCallback(DocumentProducingCallbackVariant::Doc
         return;
       }
     }
+
+    context.incrScanned();
+
     if (context.hasFilter()) {
       if (!context.checkFilter(slice)) {
         context.incrFiltered();
@@ -138,7 +143,6 @@ DocumentProducingFunction aql::getCallback(DocumentProducingCallbackVariant::Doc
     output.moveValueInto(registerId, input, guard);
     TRI_ASSERT(output.produced());
     output.advanceRow();
-    context.incrScanned();
   };
 }
 
@@ -152,6 +156,9 @@ DocumentProducingFunction aql::getCallback(DocumentProducingCallbackVariant::Doc
         return;
       }
     }
+    
+    context.incrScanned();
+    
     if (context.hasFilter()) {
       if (!context.checkFilter(slice)) {
         context.incrFiltered();
@@ -171,7 +178,6 @@ DocumentProducingFunction aql::getCallback(DocumentProducingCallbackVariant::Doc
     output.moveValueInto(registerId, input, guard);
     TRI_ASSERT(output.produced());
     output.advanceRow();
-    context.incrScanned();
   };
 }
 
@@ -218,6 +224,8 @@ std::function<void(LocalDocumentId const& token)> aql::getNullCallback(DocumentP
         return;
       }
     }
+    
+    context.incrScanned();
 
     InputAqlItemRow const& input = context.getInputRow();
     OutputAqlItemRow& output = context.getOutputRow();
@@ -227,7 +235,6 @@ std::function<void(LocalDocumentId const& token)> aql::getNullCallback(DocumentP
     output.cloneValueInto(registerId, input, AqlValue(AqlValueHintNull()));
     TRI_ASSERT(output.produced());
     output.advanceRow();
-    context.incrScanned();
   };
 }
 
@@ -299,7 +306,9 @@ void DocumentProducingFunctionContext::setAllowCoveringIndexOptimization(bool al
 
 void DocumentProducingFunctionContext::incrScanned() noexcept { ++_numScanned; }
 
-void DocumentProducingFunctionContext::incrFiltered() noexcept { ++_numFiltered; }
+void DocumentProducingFunctionContext::incrFiltered() noexcept { 
+  ++_numFiltered; 
+}
 
 size_t DocumentProducingFunctionContext::getAndResetNumScanned() noexcept {
   size_t const numScanned = _numScanned;
@@ -379,11 +388,15 @@ DocumentProducingFunction aql::getCallback(DocumentProducingCallbackVariant::Wit
         return;
       }
     }
-    if (context.hasFilter()) {
+   
+    bool checkFilter = context.hasFilter();
+    if (checkFilter && !context.getAllowCoveringIndexOptimization()) {
       if (!context.checkFilter(slice)) {
         context.incrFiltered();
         return;
       }
+      // no need to check later again
+      checkFilter = false;
     }
 
     InputAqlItemRow const& input = context.getInputRow();
@@ -432,6 +445,12 @@ DocumentProducingFunction aql::getCallback(DocumentProducingCallbackVariant::Wit
     }
 
     b->close();
+      
+    if (checkFilter && !context.checkFilter(b->slice())) {
+      context.incrFiltered();
+      return;
+    }
+
     AqlValue v(b.get());
     AqlValueGuard guard{v, true};
     TRI_ASSERT(!output.isFull());

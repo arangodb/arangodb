@@ -896,8 +896,11 @@ static void ClientConnection_httpSendFile(v8::FunctionCallbackInfo<v8::Value> co
   }
 
   // check params
-  if (args.Length() != 2 || !args[0]->IsString() || args[1]->IsUndefined()) {
-    TRI_V8_THROW_EXCEPTION_USAGE("sendFile(<url>, <file>)");
+  if (args.Length() < 2 ||
+      args.Length() > 3 ||
+      !args[0]->IsString() ||
+      args[1]->IsUndefined()) {
+    TRI_V8_THROW_EXCEPTION_USAGE("sendFile(<url>, <file>[, <headers>])");
   }
 
   TRI_Utf8ValueNFC url(isolate, args[0]);
@@ -912,6 +915,11 @@ static void ClientConnection_httpSendFile(v8::FunctionCallbackInfo<v8::Value> co
 
   // check header fields
   std::unordered_map<std::string, std::string> headerFields;
+    // check header fields
+  if (args.Length() > 2) {
+    ObjectToMap(isolate, headerFields, args[2]);
+  }
+
   v8::Local<v8::Value> result =
       v8connection->postData(isolate, arangodb::velocypack::StringRef(*url, url.length()), args[1],
                              headerFields, false, /*isFile*/ true);
@@ -1521,6 +1529,7 @@ v8::Local<v8::Value> V8ClientConnection::requestData(
     } catch (...) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_errno(), "could not read file");
     }
+    req->header.contentType(fuerte::ContentType::Custom);
     req->addBinary(reinterpret_cast<uint8_t const*>(contents.data()), contents.length());
   } else if (body->IsString()) {  // assume JSON
     TRI_Utf8ValueNFC bodyString(isolate, body);
