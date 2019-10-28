@@ -326,14 +326,20 @@ RestAdminClusterHandler::futureVoid RestAdminClusterHandler::retryTryDeleteServe
 RestAdminClusterHandler::futureVoid RestAdminClusterHandler::tryDeleteServer(std::unique_ptr<RemoveServerContext>&& ctx) {
 
   auto rootPath = arangodb::cluster::paths::root()->arango();
-  AgencyReadTransaction trx(std::move(std::vector<std::string>{
-    rootPath->supervision()->health()->str(),
-    rootPath->plan()->str(),
-    rootPath->current()->str()
-  }));
+  VPackBuffer<uint8_t> trx;
+  {
+    VPackBuilder builder(trx);
+    arangodb::agency::envelope<VPackBuilder>::create(builder)
+      .read()
+        .key(rootPath->supervision()->health()->str())
+        .key(rootPath->plan()->str())
+        .key(rootPath->current()->str())
+        .done()
+      .done();
+  }
 
   auto self(shared_from_this());
-  return AsyncAgencyComm().sendTransaction(20s, std::move(trx))
+  return AsyncAgencyComm().sendWriteTransaction(20s, std::move(trx))
     .thenValue([self, this, rootPath, ctx = std::move(ctx)](AsyncAgencyCommResult &&result) mutable {
 
       if (result.ok() && result.statusCode() == 200) {
@@ -1014,7 +1020,7 @@ RestAdminClusterHandler::futureVoid RestAdminClusterHandler::waitForSupervisionS
   }
 
   return SchedulerFeature::SCHEDULER->delay(1s).thenValue(
-    [this, self] (auto) {
+    [self] (auto) {
       return AsyncAgencyComm()
         .getValues(arangodb::cluster::paths::root()->arango()->supervision()->state()->mode());
     })
