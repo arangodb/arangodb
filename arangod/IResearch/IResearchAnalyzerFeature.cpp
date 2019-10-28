@@ -625,7 +625,7 @@ bool equalAnalyzer(
     arangodb::iresearch::AnalyzerPool const& pool,
     irs::string_ref const& type,
     VPackSlice const properties,
-    irs::flags const& features) noexcept {
+    irs::flags const& features) {
   std::string normalizedProperties;
 
   if (!::normalize(normalizedProperties, type, properties)) {
