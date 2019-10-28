@@ -156,7 +156,10 @@ class Manager final {
   bool garbageCollect(bool abortAll);
 
   /// @brief abort all transactions matching
-  bool abortManagedTrx(std::function<bool(TransactionState const&)>);
+  bool abortManagedTrx(std::function<bool(TransactionState const&, std::string const&)>);
+
+  /// @brief abort all managed write transactions
+  Result abortAllManagedWriteTrx(std::string const& username, bool fanout);
 
   /// @brief convert the list of running transactions to a VelocyPack array
   /// the array must be opened already.

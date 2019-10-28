@@ -39,16 +39,36 @@ struct Options;
 class Slice;
 
 struct CustomTypeHandler {
-  virtual ~CustomTypeHandler() {}
+  virtual ~CustomTypeHandler() = default;
   virtual void dump(Slice const&, Dumper*, Slice const&);
   virtual std::string toString(Slice const&, Options const*, Slice const&);
 };
 
 struct Options {
+  // Behavior to be applied when dumping VelocyPack values that cannot be
+  // expressed in JSON without data loss
   enum UnsupportedTypeBehavior {
+    // convert any non-JSON-representable value to null
     NullifyUnsupportedType,
+    // emit a JSON string "(non-representable type ...)"
     ConvertUnsupportedType,
+    // throw an exception for any non-JSON-representable value
     FailOnUnsupportedType
+  };
+
+  // Behavior to be applied when building VelocyPack Array/Object values
+  // with a Builder
+  enum PaddingBehavior {
+    // use padding - fill unused head bytes with zero-bytes (ASCII NUL) in
+    // order to avoid a later memmove
+    UsePadding,
+    // don't pad and do not fill any gaps with zero-bytes (ASCII NUL). 
+    // instead, memmove data down so there is no gap between the head bytes
+    // and the payload
+    NoPadding,
+    // pad in cases the Builder considers it useful, and don't pad in other
+    // cases when the Builder doesn't consider it useful
+    Flexible
   };
 
   Options() {}
@@ -56,7 +76,11 @@ struct Options {
   // Dumper behavior when a VPack value is serialized to JSON that
   // has no JSON equivalent
   UnsupportedTypeBehavior unsupportedTypeBehavior = FailOnUnsupportedType;
+ 
+  // Builder behavior w.r.t. padding or memmoving data
+  PaddingBehavior paddingBehavior = PaddingBehavior::Flexible;
 
+  // custom attribute translator for integer keys
   AttributeTranslator* attributeTranslator = nullptr;
 
   // custom type handler used for processing custom types by Dumper and Slicer
