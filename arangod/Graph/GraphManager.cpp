@@ -108,16 +108,14 @@ OperationResult GraphManager::createCollection(std::string const& name, TRI_col_
       return OperationResult(res);
     }
 
-    uint64_t numberOfShards = 
-      arangodb::basics::VelocyPackHelper::readNumericValue<uint64_t>(options, StaticStrings::NumberOfShards, 0);
- 
-    if (vocbase.server().getFeature<ClusterFeature>().forceOneShard()) {
+    bool forceOneShard = 
+      vocbase.server().getFeature<ClusterFeature>().forceOneShard() ||
+      (vocbase.sharding() == "single" && 
+       options.get(StaticStrings::DistributeShardsLike).isNone() &&
+       arangodb::basics::VelocyPackHelper::readNumericValue<uint64_t>(options, StaticStrings::NumberOfShards, 0) <= 1);
+    
+    if (forceOneShard) {
       // force a single shard with shards distributed like "_graph"
-      helper.add(StaticStrings::NumberOfShards, VPackValue(1));
-      helper.add(StaticStrings::DistributeShardsLike, VPackValue(vocbase.shardingPrototypeName()));
-    } else if (vocbase.sharding() == "single" && 
-               options.get(StaticStrings::DistributeShardsLike).isNone() &&
-               numberOfShards <= 1) {
       helper.add(StaticStrings::NumberOfShards, VPackValue(1));
       helper.add(StaticStrings::DistributeShardsLike, VPackValue(vocbase.shardingPrototypeName()));
     }
