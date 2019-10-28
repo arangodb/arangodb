@@ -430,15 +430,15 @@ TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_nested_subquery_with_innermos
     LET js = ( // this subquery should be spliced
       FOR j IN 0..1 + FLOOR(RAND())
       LET ks = ( // this subquery should not be spliced
-        FOR k IN 0..1 + FLOOR(RAND())
-        LIMIT 1, 1
-        RETURN 4*i + 2*j + k
+        FOR k IN 0..2 + FLOOR(RAND())
+        LIMIT 1, 2
+        RETURN 6*i + 3*j + k
       )
       RETURN ks
     )
     RETURN js
   )aql";
-  auto const expectedString = R"res([[[1], [3]], [[5], [7]]])res";
+  auto const expectedString = R"res([[[1, 2], [4, 5]], [[7, 8], [10, 11]]])res";
 
   verifySubquerySplicing(queryString, 1, 1);
   auto expected = arangodb::velocypack::Parser::fromJson(expectedString);
@@ -466,7 +466,7 @@ TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_nested_subquery_with_innermos
 // and the splice-subqueries optimizer rule is changed to allow it.
 TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_nested_subquery_with_outermost_skip) {
   auto const queryString = R"aql(
-    FOR i IN 0..1
+    FOR i IN 0..2
     LET js = ( // this subquery should not be spliced
       FOR j IN 0..1 + FLOOR(RAND())
       LET ks = ( // this subquery should be spliced
@@ -475,10 +475,10 @@ TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_nested_subquery_with_outermos
       )
       RETURN ks
     )
-    LIMIT 1, 1
+    LIMIT 1, 2
     RETURN js
   )aql";
-  auto const expectedString = R"res([[[4, 5], [6, 7]]])res";
+  auto const expectedString = R"res([[[4, 5], [6, 7]], [[8, 9], [10, 11]]])res";
 
   verifySubquerySplicing(queryString, 1, 1);
   auto expected = arangodb::velocypack::Parser::fromJson(expectedString);
