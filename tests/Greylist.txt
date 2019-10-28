@@ -150,6 +150,10 @@ Mount: /unittest/paths
 
 ======================================================================
 
+- `./tests/js/server/aql/aql-graph-traverser.js` sporadically fails with crash on Windows and exceeds test execution timeout (performance regression) on Linux due to changes from PR 10137 with
+
+======================================================================
+
 # - # gtest:IResearchLinkTest
 #
 # IResearchLinkTest.test_flush_marker - unreliable on windows under high load

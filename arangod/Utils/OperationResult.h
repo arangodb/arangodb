@@ -76,7 +76,7 @@ struct OperationResult {
         buffer(std::move(buffer)),
         _options(std::move(options)),
         countErrorCodes(std::move(countErrorCodes)) {
-    if (result.ok()) {
+    if (this->result.ok()) {
       TRI_ASSERT(this->buffer != nullptr);
       TRI_ASSERT(this->buffer->data() != nullptr);
     }

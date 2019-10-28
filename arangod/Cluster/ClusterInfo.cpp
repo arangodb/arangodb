@@ -628,7 +628,7 @@ void ClusterInfo::loadPlan() {
         TRI_vocbase_t* vocbase = databaseFeature.lookupDatabase(name);
         if (vocbase == nullptr) {
           // database does not yet exist, create it now
-          
+
           // create a local database object...
           arangodb::CreateDatabaseInfo info(_server);
           Result res = info.load(database.value, VPackSlice::emptyArraySlice());
@@ -637,7 +637,7 @@ void ClusterInfo::loadPlan() {
                 << "validating data for local database '" << name
                 << "' failed: " << res.errorMessage();
           } else {
-            res = databaseFeature.createDatabase(info, vocbase);
+            res = databaseFeature.createDatabase(std::move(info), vocbase);
 
             if (res.fail()) {
               LOG_TOPIC("91870", ERR, arangodb::Logger::AGENCY)
@@ -1955,7 +1955,7 @@ Result ClusterInfo::createCollectionsCoordinator(
     }
 
     std::map<ShardID, std::vector<ServerID>> shardServers;
-    for (auto const& pair : VPackObjectIterator(info.json.get("shards"))) {
+    for (auto pair : VPackObjectIterator(info.json.get("shards"))) {
       ShardID shardID = pair.key.copyString();
       std::vector<ServerID> serverIds;
 
@@ -2979,7 +2979,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
                   // searching
         }
 
-        for (auto const& v : VPackArrayIterator(indexes)) {
+        for (VPackSlice v : VPackArrayIterator(indexes)) {
           VPackSlice const k = v.get(StaticStrings::IndexId);
           if (!k.isString() || idString != k.copyString()) {
             continue;  // this is not our index
@@ -3118,7 +3118,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
 
           bool found = false;
           if (indexes.isArray()) {
-            for (auto const& v : VPackArrayIterator(indexes)) {
+            for (VPackSlice v : VPackArrayIterator(indexes)) {
               VPackSlice const k = v.get(StaticStrings::IndexId);
               if (k.isString() && k.isEqualString(idString)) {
                 // index is still here
@@ -3369,7 +3369,7 @@ Result ClusterInfo::dropIndexCoordinator(  // drop index
         VPackSlice const indexes = shard.value.get("indexes");
 
         if (indexes.isArray()) {
-          for (auto const& v : VPackArrayIterator(indexes)) {
+          for (VPackSlice v : VPackArrayIterator(indexes)) {
             if (v.isObject()) {
               VPackSlice const k = v.get(StaticStrings::IndexId);
               if (k.isString() && k.isEqualString(idString)) {
@@ -3868,7 +3868,7 @@ void ClusterInfo::loadCurrentDBServers() {
         }
 
         if (cleanedDBServers.isArray()) {
-          bool found = false;
+          found = false;
           for (auto const& cleanedServer : VPackArrayIterator(cleanedDBServers)) {
             if (basics::VelocyPackHelper::equal(dbserver.key, cleanedServer, false)) {
               found = true;
@@ -3881,7 +3881,7 @@ void ClusterInfo::loadCurrentDBServers() {
         }
 
         if (toBeCleanedDBServers.isArray()) {
-          bool found = false;
+          found = false;
           for (auto const& toBeCleanedServer : VPackArrayIterator(toBeCleanedDBServers)) {
             if (basics::VelocyPackHelper::equal(dbserver.key, toBeCleanedServer, false)) {
               found = true;

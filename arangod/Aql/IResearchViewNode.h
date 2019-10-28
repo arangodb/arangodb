@@ -49,7 +49,7 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   /// @brief node options
   struct Options {
     /// @brief a list of data source CIDs to restrict a query
-    arangodb::HashSet<TRI_voc_cid_t> sources;
+    ::arangodb::containers::HashSet<TRI_voc_cid_t> sources;
 
     /// @brief use the list of sources to restrict a query
     bool restrictSources{false};
@@ -146,7 +146,7 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   }
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(arangodb::HashSet<aql::Variable const*>& vars) const override final;
+  void getVariablesUsedHere(::arangodb::containers::HashSet<aql::Variable const*>& vars) const override final;
 
   /// @brief returns IResearchViewNode options
   Options const& options() const noexcept { return _options; }

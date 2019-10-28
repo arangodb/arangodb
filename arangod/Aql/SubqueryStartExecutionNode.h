@@ -30,13 +30,16 @@
 namespace arangodb {
 namespace aql {
 
+struct Variable;
+
 class SubqueryStartNode : public ExecutionNode {
   friend class ExecutionNode;
   friend class ExecutionBlock;
 
  public:
   SubqueryStartNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
-  SubqueryStartNode(ExecutionPlan* plan, size_t id) : ExecutionNode(plan, id) {}
+  SubqueryStartNode(ExecutionPlan* plan, size_t id, Variable const* subqueryOutVariable)
+      : ExecutionNode(plan, id), _subqueryOutVariable(subqueryOutVariable) {}
 
   CostEstimate estimateCost() const override final;
 
@@ -53,6 +56,11 @@ class SubqueryStartNode : public ExecutionNode {
                        bool withProperties) const override final;
 
   bool isEqualTo(ExecutionNode const& other) const override final;
+
+ private:
+  /// @brief This is only required for Explain output.
+  ///        it has no practical usage other then to print this information during explain.
+  Variable const* _subqueryOutVariable;
 };
 
 }  // namespace aql

@@ -177,7 +177,7 @@ bool FailedServer::start(bool& aborts) {
             for (auto const& shard : collection.hasAsChildren("shards").first) {
               size_t pos = 0;
 
-              for (auto const& it : VPackArrayIterator(shard.second->slice())) {
+              for (VPackSlice it : VPackArrayIterator(shard.second->slice())) {
                 auto dbs = it.copyString();
 
                 if (dbs == _server || dbs == "_" + _server) {

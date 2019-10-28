@@ -181,7 +181,7 @@ class CollectNode : public ExecutionNode {
   std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>>& aggregateVariables();
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(arangodb::HashSet<Variable const*>& vars) const final;
+  void getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& vars) const final;
 
   /// @brief getVariablesSetHere
   std::vector<Variable const*> getVariablesSetHere() const final;

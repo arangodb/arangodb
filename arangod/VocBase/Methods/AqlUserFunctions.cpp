@@ -140,7 +140,7 @@ Result arangodb::unregisterUserFunctionsGroup(TRI_vocbase_t& vocbase,
   }
 
   std::string uc(functionFilterPrefix);
-  basics::StringUtils::toupperInPlace(&uc);
+  basics::StringUtils::toupperInPlace(uc);
 
   if ((uc.length() < 2) || (uc[uc.length() - 1] != ':') || (uc[uc.length() - 2] != ':')) {
     uc += "::";
@@ -279,7 +279,7 @@ Result arangodb::registerUserFunction(TRI_vocbase_t& vocbase, velocypack::Slice 
     return res;
   }
   std::string _key(name);
-  basics::StringUtils::toupperInPlace(&_key);
+  basics::StringUtils::toupperInPlace(_key);
 
   VPackBuilder oneFunctionDocument;
   oneFunctionDocument.openObject();
@@ -336,7 +336,7 @@ Result arangodb::toArrayUserFunctions(TRI_vocbase_t& vocbase,
         "@ucName RETURN function";
 
     std::string uc(functionFilterPrefix);
-    basics::StringUtils::toupperInPlace(&uc);
+    basics::StringUtils::toupperInPlace(uc);
 
     if ((uc.length() < 2) || (uc[uc.length() - 1] != ':') || (uc[uc.length() - 2] != ':')) {
       uc += "::";
@@ -375,7 +375,7 @@ Result arangodb::toArrayUserFunctions(TRI_vocbase_t& vocbase,
 
   result.openArray();
   std::string tmp;
-  for (auto const& it : VPackArrayIterator(usersFunctionsSlice)) {
+  for (VPackSlice it : VPackArrayIterator(usersFunctionsSlice)) {
     VPackSlice resolved;
     resolved = it.resolveExternal();
 

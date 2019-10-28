@@ -99,7 +99,7 @@ void HttpRequest::parseHeader(char* start, size_t length) {
       char* e = lineBegin;
 
       for (; e < end && *e != ' ' && *e != '\n'; ++e) {
-        *e = ::tolower(*e);
+        *e = ::StringUtils::tolower(*e);
       }
 
       // store key and value
@@ -325,7 +325,7 @@ void HttpRequest::parseHeader(char* start, size_t length) {
       char* e = lineBegin;
 
       for (; e < end && *e != ':' && *e != '\n'; ++e) {
-        *e = ::tolower(*e);
+        *e = StringUtils::tolower(*e);
       }
 
       // store key and value
@@ -535,7 +535,7 @@ void HttpRequest::parseUrl(const char* path, size_t length) {
 }
 
 void HttpRequest::setHeaderV2(std::string key, std::string value) {
-  StringUtils::tolowerInPlace(&key); // always lowercase key
+  StringUtils::tolowerInPlace(key); // always lowercase key
   
   if (key == StaticStrings::ContentLength) {
     _contentLength = NumberUtils::atoi_zero<int64_t>(value.c_str(), value.c_str() + value.size());
@@ -570,7 +570,7 @@ void HttpRequest::setHeaderV2(std::string key, std::string value) {
     if (key == "x-http-method" ||
         key == "x-method-override" ||
         key == "x-http-method-override") {
-      StringUtils::tolowerInPlace(&value);
+      StringUtils::tolowerInPlace(value);
       _type = findRequestType(value.c_str(), value.size());
       // don't insert this header!!
       return;
@@ -742,7 +742,7 @@ void HttpRequest::setHeader(char const* key, size_t keyLength,
         (keyLength == 17 && memcmp(key, "x-method-override", keyLength) == 0) ||
         (keyLength == 22 && memcmp(key, "x-http-method-override", keyLength) == 0)) {
       std::string overriddenType(value, valueLength);
-      StringUtils::tolowerInPlace(&overriddenType);
+      StringUtils::tolowerInPlace(overriddenType);
 
       _type = findRequestType(overriddenType.c_str(), overriddenType.size());
 

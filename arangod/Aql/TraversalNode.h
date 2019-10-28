@@ -114,7 +114,7 @@ class TraversalNode : public GraphNode {
   bool usesInVariable() const { return _inVariable != nullptr; }
 
   /// @brief getVariablesUsedHere
-  void getVariablesUsedHere(arangodb::HashSet<Variable const*>& result) const override final {
+  void getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& result) const override final {
     for (auto const& condVar : _conditionVariables) {
       if (condVar != getTemporaryVariable()) {
         result.emplace(condVar);
@@ -213,7 +213,7 @@ class TraversalNode : public GraphNode {
   std::unique_ptr<Condition> _condition;
 
   /// @brief variables that are inside of the condition
-  arangodb::HashSet<Variable const*> _conditionVariables;
+  ::arangodb::containers::HashSet<Variable const*> _conditionVariables;
 
   /// @brief The hard coded condition on _from
   AstNode* _fromCondition;
@@ -238,7 +238,7 @@ class TraversalNode : public GraphNode {
   std::unordered_map<uint64_t, AstNode*> _vertexConditions;
 
   /// @brief the hashSet for variables used in pruning
-  arangodb::HashSet<Variable const*> _pruneVariables;
+  ::arangodb::containers::HashSet<Variable const*> _pruneVariables;
 };
 
 }  // namespace aql

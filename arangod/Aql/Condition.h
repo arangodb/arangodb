@@ -26,7 +26,7 @@
 
 #include "Aql/AstNode.h"
 #include "Basics/AttributeNameParser.h"
-#include "Basics/HashSet.h"
+#include "Containers/HashSet.h"
 #include "Transaction/Methods.h"
 
 #include <string>
@@ -114,7 +114,7 @@ class Condition {
   /// @brief: note: index may be a nullptr
   static void collectOverlappingMembers(ExecutionPlan const* plan, Variable const* variable,
                                         AstNode const* andNode, AstNode const* otherAndNode,
-                                        arangodb::HashSet<size_t>& toRemove,
+                                        ::arangodb::containers::HashSet<size_t>& toRemove,
                                         Index const* index, bool isFromTraverser);
 
   /// @brief return the condition root
@@ -160,7 +160,7 @@ class Condition {
   AstNode* removeTraversalCondition(ExecutionPlan const*, Variable const*, AstNode*);
 
   /// @brief remove (now) invalid variables from the condition
-  bool removeInvalidVariables(arangodb::HashSet<Variable const*> const&);
+  bool removeInvalidVariables(::arangodb::containers::HashSet<Variable const*> const&);
 
   /// @brief locate indexes which can be used for conditions
   /// return value is a pair indicating whether the index can be used for
@@ -175,7 +175,8 @@ class Condition {
       Variable const*, bool includeNull) const;
 
   /// @brief get the attributes for a sub-condition that are not-null
-  arangodb::HashSet<std::vector<arangodb::basics::AttributeName>> getNonNullAttributes(Variable const*) const;
+  ::arangodb::containers::HashSet<std::vector<arangodb::basics::AttributeName>> getNonNullAttributes(
+      Variable const*) const;
 
  private:
   /// @brief optimize the condition expression tree

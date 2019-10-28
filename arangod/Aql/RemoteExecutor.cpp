@@ -165,6 +165,10 @@ std::pair<ExecutionState, size_t> ExecutionBlockImpl<RemoteExecutor>::skipSomeWi
     // we were called with an error need to throw it.
     THROW_ARANGO_EXCEPTION(res);
   }
+  
+  if (getQuery().killed()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+  }
 
   if (_lastResponse != nullptr) {
     TRI_ASSERT(_lastError.ok());
@@ -232,6 +236,10 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::initialize
     // we simply ignore the initialCursor request, as the remote side
     // will initialize the cursor lazily
     return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
+  }
+  
+  if (getQuery().killed()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
   }
 
   if (_lastResponse != nullptr || _lastError.fail()) {
@@ -331,7 +339,7 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::shutdown(i
       VPackSlice warnings = slice.get("warnings");
       if (warnings.isArray()) {
         auto query = _engine->getQuery();
-        for (auto const& it : VPackArrayIterator(warnings)) {
+        for (VPackSlice it : VPackArrayIterator(warnings)) {
           if (it.isObject()) {
             VPackSlice code = it.get("code");
             VPackSlice message = it.get("message");
@@ -449,19 +457,22 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(fuerte::RestVerb typ
   auto ticket = generateNewTicket();
   std::shared_ptr<fuerte::Connection> conn = ref.connection();
   conn->sendRequest(std::move(req),
-                    [=, ref(std::move(ref))](fuerte::Error err,
-                                             std::unique_ptr<fuerte::Request>,
-                                             std::unique_ptr<fuerte::Response> res) {
-                      std::lock_guard<std::mutex> guard(_communicationMutex);
+                    [this, ticket, spec, sharedState = _query.sharedState(),
+                     ref(std::move(ref))](fuerte::Error err, std::unique_ptr<fuerte::Request>,
+                                          std::unique_ptr<fuerte::Response> res) {
+                      // `this` is only valid as long as sharedState is valid.
+                      // So we must execute this under sharedState's mutex.
+                      sharedState->execute([&] {
+                        std::lock_guard<std::mutex> guard(_communicationMutex);
 
-                      if (_lastTicket == ticket) {
-                        if (err != fuerte::Error::NoError || res->statusCode() >= 400) {
-                          _lastError = handleErrorResponse(spec, err, res.get());
-                        } else {
-                          _lastResponse = std::move(res);
+                        if (_lastTicket == ticket) {
+                          if (err != fuerte::Error::NoError || res->statusCode() >= 400) {
+                            _lastError = handleErrorResponse(spec, err, res.get());
+                          } else {
+                            _lastResponse = std::move(res);
+                          }
                         }
-                        _query.sharedState()->execute();
-                      }
+                      });
                     });
 
   ++_engine->_stats.requests;

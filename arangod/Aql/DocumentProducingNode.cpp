@@ -51,7 +51,7 @@ DocumentProducingNode::DocumentProducingNode(ExecutionPlan* plan,
     // old format
     VPackSlice p = slice.get("projection");
     if (p.isArray()) {
-      for (auto const& it : VPackArrayIterator(p)) {
+      for (VPackSlice it : VPackArrayIterator(p)) {
         _projections.emplace_back(it.copyString());
         break;  // stop after first sub-attribute!
       }
@@ -60,7 +60,7 @@ DocumentProducingNode::DocumentProducingNode(ExecutionPlan* plan,
     // new format
     VPackSlice p = slice.get("projections");
     if (p.isArray()) {
-      for (auto const& it : VPackArrayIterator(p)) {
+      for (VPackSlice it : VPackArrayIterator(p)) {
         if (it.isString()) {
           _projections.emplace_back(it.copyString());
         }

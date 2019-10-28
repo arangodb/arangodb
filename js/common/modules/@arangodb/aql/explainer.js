@@ -821,6 +821,11 @@ function processQuery(query, explain, planIndex) {
     return variable(node.name);
   };
 
+  var lateVariableCallback = function () {
+    require("internal").print("Called");
+    return (node) => variableName(node);
+  };
+
   var buildExpression = function (node) {
     var binaryOperator = function (node, name) {
       var lhs = buildExpression(node.subNodes[0]);
@@ -1464,6 +1469,10 @@ function processQuery(query, explain, planIndex) {
         return keyword('RETURN') + ' ' + variableName(node.inVariable);
       case 'SubqueryNode':
         return keyword('LET') + ' ' + variableName(node.outVariable) + ' = ...   ' + annotation('/* ' + (node.isConst ? 'const ' : '') + 'subquery */');
+      case 'SubqueryStartNode':
+        return `${keyword('LET')} ${variableName(node.subqueryOutVariable)} = ( ${annotation(`/* subquery begin */`)}` ;
+      case 'SubqueryEndNode':
+        return `) ${annotation(`/* subquery end */`)}`;
       case 'InsertNode': {
         modificationFlags = node.modificationFlags;
         let restrictString = '';
@@ -1653,7 +1662,7 @@ function processQuery(query, explain, planIndex) {
     return 'unhandled node type (' + node.type + ')';
   };
 
-  var level = 0, subqueries = [];
+  var level = 0, subqueries = [], subqueryCallbacks = [];
   var indent = function (level, isRoot) {
     return pad(1 + level + level) + (isRoot ? '* ' : '- ');
   };
@@ -1662,8 +1671,11 @@ function processQuery(query, explain, planIndex) {
     usedVariables = {};
     currentNode = node.id;
     isConst = true;
-    if (node.type === 'SubqueryNode') {
+    if (node.type === 'SubqueryNode' || node.type === 'SubqueryStartNode') {
       subqueries.push(level);
+    }
+    if (node.type === 'SubqueryEndNode' && subqueries.length > 0) {
+      level = subqueries.pop();
     }
   };
 
@@ -1676,6 +1688,7 @@ function processQuery(query, explain, planIndex) {
       'IndexRangeNode',
       'IndexNode',
       'TraversalNode',
+      'SubqueryStartNode',
       'SubqueryNode'].indexOf(node.type) !== -1) {
       level++;
     } else if (isLeafNode && subqueries.length > 0) {

@@ -98,7 +98,7 @@ std::pair<double, std::shared_ptr<VPackBuilder>> RestAqlHandler::getPatchedOptio
   {
     VPackObjectBuilder guard(options.get());
     TRI_ASSERT(optionsSlice.isObject());
-    for (auto const& pair : VPackObjectIterator(optionsSlice)) {
+    for (auto pair : VPackObjectIterator(optionsSlice)) {
       if (pair.key.isEqualString("ttl")) {
         ttl = VelocyPackHelper::getNumericValue<double>(optionsSlice, "ttl", ttl);
         ttl = _request->parsedValue<double>("ttl", ttl);
@@ -220,7 +220,7 @@ void RestAqlHandler::setupClusterQuery() {
                         "\" is required but not an array.");
       return;
     }
-    for (auto const& col : VPackArrayIterator(lockInf.value)) {
+    for (VPackSlice col : VPackArrayIterator(lockInf.value)) {
       if (!col.isString()) {
         LOG_TOPIC("9e29f", ERR, arangodb::Logger::AQL)
             << "Invalid VelocyPack: \"lockInfo." << lockInf.key.copyString()
@@ -278,7 +278,7 @@ bool RestAqlHandler::registerSnippets(
   answerBuilder.openObject();
   // NOTE: We need to clean up all engines if we bail out during the following
   // loop
-  for (auto const& it : VPackObjectIterator(snippetsSlice)) {
+  for (auto it : VPackObjectIterator(snippetsSlice)) {
     auto planBuilder = std::make_shared<VPackBuilder>();
     planBuilder->openObject();
     planBuilder->add(VPackValue("collections"));
@@ -390,6 +390,12 @@ bool RestAqlHandler::registerTraverserEngines(VPackSlice const traverserEngines,
   answerBuilder.close();  // traverserEngines
   // Everything went well
   return true;
+}
+
+// DELETE method for /_api/aql/kill/<queryId>, (internal)
+bool RestAqlHandler::killQuery(std::string const& idString) {
+  _qId = arangodb::basics::StringUtils::uint64(idString);
+  return _queryRegistry->kill(&_vocbase, _qId);
 }
 
 // PUT method for /_api/aql/<operation>/<queryId>, (internal)
@@ -533,7 +539,27 @@ RestStatus RestAqlHandler::execute() {
       }
       break;
     }
-    case rest::RequestType::DELETE_REQ:
+    case rest::RequestType::DELETE_REQ: {
+      if (suffixes.size() != 2) {
+        std::string msg("Unknown DELETE API: ");
+        msg += arangodb::basics::StringUtils::join(suffixes, '/');
+        LOG_TOPIC("f1993", ERR, arangodb::Logger::AQL) << msg;
+        generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
+                      std::move(msg));
+      } else {
+        if (killQuery(suffixes[1])) {
+          VPackBuilder answerBody;
+          {
+            VPackObjectBuilder guard(&answerBody);
+            answerBody.add("error", VPackValue(false));
+          }
+          sendResponse(rest::ResponseCode::OK, answerBody.slice());
+        } else {
+          generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_QUERY_NOT_FOUND);
+        }
+      }
+      break;
+    }
     case rest::RequestType::HEAD:
     case rest::RequestType::PATCH:
     case rest::RequestType::OPTIONS:

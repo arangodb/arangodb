@@ -357,7 +357,7 @@ void DistributeNode::toVelocyPackHelper(VPackBuilder& builder, unsigned flags,
 }
 
 /// @brief getVariablesUsedHere, modifying the set in-place
-void DistributeNode::getVariablesUsedHere(arangodb::HashSet<Variable const*>& vars) const {
+void DistributeNode::getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& vars) const {
   vars.emplace(_variable);
   vars.emplace(_alternativeVariable);
 }

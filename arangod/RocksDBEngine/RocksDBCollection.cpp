@@ -342,7 +342,7 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
       
       VPackBuilder builder;
       builder.openObject();
-      for (auto const& pair : VPackObjectIterator(RocksDBValue::data(ps))) {
+      for (auto pair : VPackObjectIterator(RocksDBValue::data(ps))) {
         if (pair.key.isEqualString("indexes")) {  // append new index
           VPackArrayBuilder arrGuard(&builder, "indexes");
           builder.add(VPackArrayIterator(pair.value));
@@ -557,7 +557,7 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
     
     // delete indexes, place estimator blockers
     {
-      READ_LOCKER(guard, _indexesLock);
+      READ_LOCKER(idxGuard, _indexesLock);
       for (std::shared_ptr<Index> const& idx : _indexes) {
         RocksDBIndex* ridx = static_cast<RocksDBIndex*>(idx.get());
         bounds = ridx->getBounds();

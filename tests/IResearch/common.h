@@ -187,6 +187,11 @@ void assertFilterExecutionFail(TRI_vocbase_t& vocbase, std::string const& queryS
 void assertFilterParseFail(TRI_vocbase_t& vocbase, std::string const& queryString,
                            std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr);
 
+void buildActualFilter(TRI_vocbase_t& vocbase, std::string const& queryString, irs::filter& actual,
+                       arangodb::aql::ExpressionContext* exprCtx = nullptr,
+                       std::shared_ptr<arangodb::velocypack::Builder> bindVars = nullptr,
+                       std::string const& refName = "d");
+
 inline VPackBuilder dbArgsBuilder(std::string const& name = "_system") {
   VPackOptions options;
   VPackBuilder builder(&options);

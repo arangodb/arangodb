@@ -834,7 +834,7 @@ static void JS_BinaryDocumentVocbaseCol(v8::FunctionCallbackInfo<v8::Value> cons
   {
     VPackObjectBuilder meta(builder.get());
 
-    for (auto const& it : VPackObjectIterator(opResult.slice().resolveExternals())) {
+    for (auto it : VPackObjectIterator(opResult.slice().resolveExternals())) {
       std::string key = it.key.copyString();
 
       if (key == StaticStrings::AttachmentString) {
@@ -1005,7 +1005,7 @@ static void JS_GetResponsibleShardVocbaseCol(v8::FunctionCallbackInfo<v8::Value>
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_THROW_EXCEPTION(res);
     }
-  } 
+  }
   if (!builder.slice().isObject()) {
     TRI_V8_THROW_EXCEPTION_USAGE("getResponsibleShard(<object>)");
   }
@@ -2242,7 +2242,7 @@ static void JS_VersionVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
-  TRI_V8_RETURN(v8::Number::New(isolate, collection->version()));
+  TRI_V8_RETURN(v8::Number::New(isolate, static_cast<uint32_t>(collection->version())));
   TRI_V8_TRY_CATCH_END
 }
 

@@ -53,7 +53,7 @@ void MMFilesFulltextIndex::extractWords(std::set<std::string>& words,
     // We don't care for the result. If the result is false, words stays
     // unchanged and is not indexed
   } else if (value.isArray() && level == 0) {
-    for (auto const& v : VPackArrayIterator(value)) {
+    for (VPackSlice v : VPackArrayIterator(value)) {
       extractWords(words, v, level + 1);
     }
   } else if (value.isObject() && level == 0) {

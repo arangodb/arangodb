@@ -29,11 +29,12 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/NumberUtils.h"
+#include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
-#include "Basics/VelocyPackHelper.h"
 #include "Basics/system-functions.h"
 #include "Basics/tri-strings.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterCollectionCreationInfo.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterFeature.h"
@@ -53,8 +54,11 @@
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
+#include "Transaction/Manager.h"
+#include "Transaction/ManagerFeature.h"
 #include "Transaction/Methods.h"
 #include "Utils/CollectionNameResolver.h"
+#include "Utils/ExecContext.h"
 #include "Utils/OperationOptions.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
@@ -79,11 +83,14 @@
 #include <algorithm>
 #include <numeric>
 #include <vector>
+#include <random>
 
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::futures;
 using namespace arangodb::rest;
+
+using Helper = arangodb::basics::VelocyPackHelper;
 
 // Timeout for read operations:
 static double const CL_DEFAULT_TIMEOUT = 120.0;
@@ -214,7 +221,7 @@ Future<Result> beginTransactionOnAllLeaders(transaction::Methods& trx, ShardMap 
   TRI_ASSERT(trx.state()->isCoordinator());
   TRI_ASSERT(trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED));
   std::vector<ServerID> leaders;
-  for (std::pair<ShardID, std::vector<ServerID>> const& shardServers : shards) {
+  for (auto const& shardServers : shards) {
     ServerID const& srv = shardServers.second.at(0);
     if (!trx.state()->knowsServer(srv)) {
       leaders.emplace_back(srv);
@@ -634,7 +641,7 @@ int distributeBabyOnShards(CreateOperationCtx& opCtx,
 /// @brief compute a shard distribution for a new collection, the list
 /// dbServers must be a list of DBserver ids to distribute across.
 /// If this list is empty, the complete current list of DBservers is
-/// fetched from ClusterInfo and with random_shuffle to mix it up.
+/// fetched from ClusterInfo and with shuffle to mix it up.
 ////////////////////////////////////////////////////////////////////////////////
 
 static std::shared_ptr<std::unordered_map<std::string, std::vector<std::string>>> DistributeShardsEvenly(
@@ -649,7 +656,10 @@ static std::shared_ptr<std::unordered_map<std::string, std::vector<std::string>>
     if (dbServers.empty()) {
       return shards;
     }
-    random_shuffle(dbServers.begin(), dbServers.end());
+
+    std::random_device rd;
+    std::mt19937 g(rd());
+    std::shuffle(dbServers.begin(), dbServers.end(), g);
   }
 
   // mop: distribute satellite collections on all servers
@@ -859,7 +869,7 @@ bool shardKeysChanged(LogicalCollection const& collection, VPackSlice const& old
       n = arangodb::velocypack::Slice::nullSlice();
     }
 
-    if (!arangodb::basics::VelocyPackHelper::equal(n, o, false)) {
+    if (!Helper::equal(n, o, false)) {
       return true;
     }
   }
@@ -893,7 +903,7 @@ bool smartJoinAttributeChanged(LogicalCollection const& collection, VPackSlice c
   VPackSlice o = oldValue.get(s);
   TRI_ASSERT(o.isString());
 
-  return !arangodb::basics::VelocyPackHelper::equal(n, o, false);
+  return !Helper::equal(n, o, false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1100,7 +1110,7 @@ futures::Future<OperationResult> countOnCoordinator(transaction::Methods& trx,
   futures.reserve(shardIds->size());
 
   auto* pool = trx.vocbase().server().getFeature<NetworkFeature>().pool();
-  for (std::pair<ShardID, std::vector<ServerID>> const& p : *shardIds) {
+  for (auto const& p : *shardIds) {
     network::Headers headers;
     ClusterTrxMethods::addTransactionHeader(trx, /*leader*/ p.second[0], headers);
     auto future =
@@ -1120,7 +1130,7 @@ futures::Future<OperationResult> countOnCoordinator(transaction::Methods& trx,
         // add to the total
         VPackArrayBuilder array(&builder);
         array->add(VPackValue(shardId));
-        array->add(VPackValue(arangodb::basics::VelocyPackHelper::getNumericValue<uint64_t>(
+        array->add(VPackValue(Helper::getNumericValue<uint64_t>(
             answer, "count", 0)));
       } else {
         // didn't get the expected response
@@ -1210,12 +1220,12 @@ int selectivityEstimatesOnCoordinator(ClusterFeature& feature, std::string const
       }
 
       // add to the total
-      for (auto const& pair : VPackObjectIterator(answer.get("indexes"), true)) {
+      for (auto pair : VPackObjectIterator(answer.get("indexes"), true)) {
         velocypack::StringRef shard_index_id(pair.key);
         auto split_point =
             std::find(shard_index_id.begin(), shard_index_id.end(), '/');
         std::string index(split_point + 1, shard_index_id.end());
-        double estimate = basics::VelocyPackHelper::getNumericValue(pair.value, 0.0);
+        double estimate = Helper::getNumericValue(pair.value, 0.0);
         indexEstimates[index].push_back(estimate);
       }
     }
@@ -1430,7 +1440,7 @@ Future<OperationResult> removeDocumentOnCoordinator(arangodb::transaction::Metho
         } else {
           VPackBuilder reqBuilder(buffer);
           reqBuilder.openArray(/*unindexed*/true);
-          for (VPackSlice const value : it.second) {
+          for (VPackSlice value : it.second) {
             reqBuilder.add(value);
           }
           reqBuilder.close();
@@ -1496,7 +1506,7 @@ Future<OperationResult> removeDocumentOnCoordinator(arangodb::transaction::Metho
     VPackBuffer<uint8_t> buffer;
     buffer.append(slice.begin(), slice.byteSize());
 
-    for (std::pair<ShardID, std::vector<ServerID>> const& shardServers : *shardIds) {
+    for (auto const& shardServers : *shardIds) {
       ShardID const& shard = shardServers.first;
       network::Headers headers;
       addTransactionHeaderForShard(trx, *shardIds, shard, headers);
@@ -1573,7 +1583,7 @@ futures::Future<OperationResult> truncateCollectionOnCoordinator(transaction::Me
   auto cb = [](std::vector<Try<network::Response>>&& results) -> OperationResult {
     return handleResponsesFromAllShards(
         results, [](Result& result, VPackBuilder&, ShardID&, VPackSlice answer) -> void {
-          if (VelocyPackHelper::readBooleanValue(answer, StaticStrings::Error, false)) {
+          if (Helper::readBooleanValue(answer, StaticStrings::Error, false)) {
             result = network::resultFromBody(answer, TRI_ERROR_NO_ERROR);
           }
         });
@@ -1738,7 +1748,7 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
     VPackStringRef const key(slice.isObject() ? slice.get(StaticStrings::KeyString) : slice);
 
     const bool addMatch = !options.ignoreRevs && slice.hasKey(StaticStrings::RevString);
-    for (std::pair<ShardID, std::vector<ServerID>> const& shardServers : *shardIds) {
+    for (auto const& shardServers : *shardIds) {
       ShardID const& shard = shardServers.first;
 
       network::Headers headers;
@@ -1757,7 +1767,7 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
   } else {
     VPackBuffer<uint8_t> buffer;
     buffer.append(slice.begin(), slice.byteSize());
-    for (std::pair<ShardID, std::vector<ServerID>> const& shardServers : *shardIds) {
+    for (auto const& shardServers : *shardIds) {
       ShardID const& shard = shardServers.first;
       network::Headers headers;
       addTransactionHeaderForShard(trx, *shardIds, shard, headers);
@@ -1818,7 +1828,7 @@ int fetchEdgesFromEngines(transaction::Methods& trx,
     futures.emplace_back(
         network::sendRequestRetry(pool, "server:" + engine.first, fuerte::RestVerb::Put,
                                   url + StringUtils::itoa(engine.second),
-                                  *leased->buffer(), network::Timeout(CL_DEFAULT_TIMEOUT)));
+                                  leased->bufferRef(), network::Timeout(CL_DEFAULT_TIMEOUT)));
   }
 
   for (Future<network::Response>& f : futures) {
@@ -1834,14 +1844,12 @@ int fetchEdgesFromEngines(transaction::Methods& trx,
       // Response has invalid format
       return TRI_ERROR_HTTP_CORRUPTED_JSON;
     }
-    filtered += arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(resSlice,
-                                                                            "filtered", 0);
-    read += arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(resSlice,
-                                                                        "readIndex", 0);
+    filtered += Helper::getNumericValue<size_t>(resSlice, "filtered", 0);
+    read += Helper::getNumericValue<size_t>(resSlice, "readIndex", 0);
     VPackSlice edges = resSlice.get("edges");
     bool allCached = true;
 
-    for (auto const& e : VPackArrayIterator(edges)) {
+    for (VPackSlice e : VPackArrayIterator(edges)) {
       VPackSlice id = e.get(StaticStrings::IdString);
       if (!id.isString()) {
         // invalid id type
@@ -1908,7 +1916,7 @@ int fetchEdgesFromEngines(
     futures.emplace_back(
         network::sendRequestRetry(pool, "server:" + engine.first, fuerte::RestVerb::Put,
                                   url + StringUtils::itoa(engine.second),
-                                  *leased->buffer(), network::Timeout(CL_DEFAULT_TIMEOUT)));
+                                  leased->bufferRef(), network::Timeout(CL_DEFAULT_TIMEOUT)));
   }
 
   for (Future<network::Response>& f : futures) {
@@ -1924,12 +1932,11 @@ int fetchEdgesFromEngines(
       // Response has invalid format
       return TRI_ERROR_HTTP_CORRUPTED_JSON;
     }
-    read += basics::VelocyPackHelper::getNumericValue<size_t>(resSlice,
-                                                              "readIndex", 0);
+    read += Helper::getNumericValue<size_t>(resSlice, "readIndex", 0);
 
     bool allCached = true;
     VPackSlice edges = resSlice.get("edges");
-    for (auto const& e : VPackArrayIterator(edges)) {
+    for (VPackSlice e : VPackArrayIterator(edges)) {
       VPackSlice id = e.get(StaticStrings::IdString);
       if (!id.isString()) {
         // invalid id type
@@ -1970,14 +1977,14 @@ void fetchVerticesFromEngines(
     std::unordered_map<arangodb::velocypack::StringRef, VPackSlice>& result,
     std::vector<std::shared_ptr<VPackBufferUInt8>>& datalake,
     bool forShortestPath) {
+
   // TODO map id => ServerID if possible
   // And go fast-path
 
   // slow path, sharding not deducable from _id
   transaction::BuilderLeaser leased(&trx);
   leased->openObject();
-  leased->add(VPackValue("keys"));
-  leased->openArray();
+  leased->add("keys", VPackValue(VPackValueType::Array));
   for (auto const& v : vertexIds) {
     leased->add(VPackValuePair(v.data(), v.length(), VPackValueType::String));
   }
@@ -1996,7 +2003,7 @@ void fetchVerticesFromEngines(
     futures.emplace_back(
         network::sendRequestRetry(pool, "server:" + engine.first, fuerte::RestVerb::Put,
                                   url + StringUtils::itoa(engine.second),
-                                  *(leased->buffer()), network::Timeout(CL_DEFAULT_TIMEOUT)));
+                                  leased->bufferRef(), network::Timeout(CL_DEFAULT_TIMEOUT)));
   }
 
   for (Future<network::Response>& f : futures) {
@@ -2015,13 +2022,13 @@ void fetchVerticesFromEngines(
     if (r.response->statusCode() != fuerte::StatusOK) {
       int code = network::errorCodeFromBody(resSlice, TRI_ERROR_INTERNAL);
       // We have an error case here. Throw it.
-      THROW_ARANGO_EXCEPTION_MESSAGE(code, arangodb::basics::VelocyPackHelper::getStringValue(
+      THROW_ARANGO_EXCEPTION_MESSAGE(code, Helper::getStringValue(
                                                resSlice, StaticStrings::ErrorMessage,
                                                TRI_errno_string(code)));
     }
-    
+
     bool cached = false;
-    for (auto const& pair : VPackObjectIterator(resSlice)) {
+    for (auto pair : VPackObjectIterator(resSlice, true)) {
       arangodb::velocypack::StringRef key(pair.key);
       if (vertexIds.erase(key) == 0) {
         // We either found the same vertex twice,
@@ -2283,7 +2290,7 @@ int flushWalOnAllDBServers(ClusterFeature& feature, bool waitForSync,
   auto* pool = feature.server().getFeature<NetworkFeature>().pool();
   std::vector<Future<network::Response>> futures;
   futures.reserve(DBservers.size());
-  
+
   VPackBufferUInt8 buffer;
   buffer.append(VPackSlice::noneSlice().begin(), 1); // necessary for some reason
   for (std::string const& server : DBservers) {
@@ -2294,7 +2301,7 @@ int flushWalOnAllDBServers(ClusterFeature& feature, bool waitForSync,
 
   for (Future<network::Response>& f : futures) {
     network::Response const& r = f.get();
-    
+
     if (r.fail()) {
       return network::fuerteToArangoErrorCode(r);
     }
@@ -2440,9 +2447,11 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
                                          }),
                           dbServers.end());
         }
-        std::random_shuffle(dbServers.begin(), dbServers.end());
+        std::random_device rd;
+        std::mt19937 g(rd());
+        std::shuffle(dbServers.begin(), dbServers.end(), g);
         shards = DistributeShardsEvenly(ci, numberOfShards, replicationFactor,
-                                        dbServers, !col->system());
+                                      dbServers, !col->system());
       }
 
 
@@ -2607,7 +2616,7 @@ arangodb::Result hotBackupList(std::vector<ServerID> const& dbServers, VPackSlic
       plan.add(resSlice.get("agency-dump")[0]);
     }
 
-    for (auto const& backup : VPackObjectIterator(resSlice.get("list"))) {
+    for (auto backup : VPackObjectIterator(resSlice.get("list"))) {
       ResultT<BackupMeta> meta = BackupMeta::fromSlice(backup.value);
       if (meta.ok()) {
         dbsBackups[backup.key.copyString()].push_back(std::move(meta.get()));
@@ -2705,7 +2714,7 @@ arangodb::Result matchBackupServersSlice(VPackSlice const planServers,
 
   // Skip all direct matching names in pair and remove them from localCopy
   std::unordered_set<std::string>::iterator it;
-  for (auto const& planned : VPackObjectIterator(planServers)) {
+  for (auto planned : VPackObjectIterator(planServers)) {
     auto const plannedStr = planned.key.copyString();
     if ((it = std::find(localCopy.begin(), localCopy.end(), plannedStr)) !=
         localCopy.end()) {
@@ -2882,13 +2891,13 @@ arangodb::Result applyDBServerMatchesToPlan(VPackSlice const plan,
                                                  std::map<ServerID, ServerID> const& matches) {
     if (s.isObject()) {
       VPackObjectBuilder o(&newPlan);
-      for (auto const& it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s)) {
         newPlan.add(it.key);
         replaceDBServer(it.value, matches);
       }
     } else if (s.isArray()) {
       VPackArrayBuilder a(&newPlan);
-      for (auto const& it : VPackArrayIterator(s)) {
+      for (VPackSlice it : VPackArrayIterator(s)) {
         replaceDBServer(it, matches);
       }
     } else {
@@ -3105,50 +3114,66 @@ arangodb::Result lockDBServerTransactions(std::string const& backupId,
   }
 
   // Perform the requests
-  cc->performRequests(requests, lockWait + 1.0, Logger::BACKUP, false, false);
+  cc->performRequests(requests, lockWait + 5.0, Logger::BACKUP, false, false);
 
-  // Now listen to the results:
+  // Now listen to the results and report the aggregated final result:
+  arangodb::Result finalRes(TRI_ERROR_NO_ERROR);
+  auto reportError = [&](int c, std::string const& m) {
+    if (finalRes.ok()) {
+      finalRes = arangodb::Result(c, m);
+    } else {
+      // If we see at least one TRI_ERROR_LOCAL_LOCK_FAILED it is a failure
+      // if all errors are TRI_ERROR_LOCK_TIMEOUT, then we report this and
+      // this will lead to a retry:
+      if (finalRes.errorNumber() == TRI_ERROR_LOCAL_LOCK_FAILED) {
+        c = TRI_ERROR_LOCAL_LOCK_FAILED;
+      }
+      finalRes = arangodb::Result(c, finalRes.errorMessage() + ", " + m);
+    }
+  };
   for (auto const& req : requests) {
     auto res = req.result;
     int commError = handleGeneralCommErrors(&res);
     if (commError != TRI_ERROR_NO_ERROR) {
-      return arangodb::Result(
-          TRI_ERROR_LOCAL_LOCK_FAILED,
-          std::string("Communication error locking transactions on ") + req.destination);
+      reportError(TRI_ERROR_LOCAL_LOCK_FAILED,
+                  std::string("Communication error locking transactions on ")
+                  + req.destination);
+      continue;
     }
     TRI_ASSERT(res.answer != nullptr);
     auto resBody = res.answer->toVelocyPackBuilderPtrNoUniquenessChecks();
     VPackSlice slc = resBody->slice();
 
     if (!slc.isObject() || !slc.hasKey("error") || !slc.get("error").isBoolean()) {
-      return arangodb::Result(
-          TRI_ERROR_LOCAL_LOCK_FAILED,
-          std::string("invalid response from ") + req.destination +
-              " when trying to freeze transactions for hot backup " + backupId +
-              ": " + slc.toJson());
+      reportError(TRI_ERROR_LOCAL_LOCK_FAILED,
+                  std::string("invalid response from ") + req.destination +
+                  " when trying to freeze transactions for hot backup " +
+                  backupId + ": " + slc.toJson());
+      continue;
     }
 
     if (slc.get("error").getBoolean()) {
-      LOG_TOPIC("d7a8a", DEBUG, Logger::BACKUP)
+      LOG_TOPIC("f4b8f", DEBUG, Logger::BACKUP)
           << "failed to acquire lock from " << req.destination << ": " << slc.toJson();
       auto errorNum = slc.get("errorNum").getNumber<int>();
       if (errorNum == TRI_ERROR_LOCK_TIMEOUT) {
-        return arangodb::Result(errorNum, slc.get("errorMessage").copyString());
+        reportError(errorNum, slc.get("errorMessage").copyString());
+        continue;
       }
-      return arangodb::Result(
-          TRI_ERROR_LOCAL_LOCK_FAILED,
+      reportError(TRI_ERROR_LOCAL_LOCK_FAILED,
           std::string("lock was denied from ") + req.destination +
-              " when trying to check for lockId for hot backup " + backupId +
-              ": " + slc.toJson());
+          " when trying to check for lockId for hot backup " + backupId +
+          ": " + slc.toJson());
+      continue;
     }
 
     if (!slc.hasKey(lockPath) || !slc.get(lockPath).isNumber() ||
         !slc.hasKey("result") || !slc.get("result").isObject()) {
-      return arangodb::Result(
-          TRI_ERROR_LOCAL_LOCK_FAILED,
-          std::string("invalid response from ") + req.destination +
-              " when trying to check for lockId for hot backup " + backupId +
-              ": " + slc.toJson());
+      reportError(TRI_ERROR_LOCAL_LOCK_FAILED,
+                  std::string("invalid response from ") + req.destination +
+                  " when trying to check for lockId for hot backup " +
+                  backupId + ": " + slc.toJson());
+      continue;
     }
 
     uint64_t lockId = 0;
@@ -3158,19 +3183,22 @@ arangodb::Result lockDBServerTransactions(std::string const& backupId,
           << "acquired lock from " << req.destination << " for backupId "
           << backupId << " with lockId " << lockId;
     } catch (std::exception const& e) {
-      return arangodb::Result(TRI_ERROR_LOCAL_LOCK_FAILED,
-                              std::string("invalid response from ") + req.destination +
-                                  " when trying to get lockId for hot backup " + backupId +
-                                  ": " + slc.toJson() + ", msg: " + e.what());
+      reportError(TRI_ERROR_LOCAL_LOCK_FAILED,
+                  std::string("invalid response from ") + req.destination +
+                  " when trying to get lockId for hot backup " + backupId +
+                  ": " + slc.toJson() + ", msg: " + e.what());
+      continue;
     }
 
     lockedServers.push_back(req.destination.substr(strlen("server:"), std::string::npos));
   }
 
-  LOG_TOPIC("c1869", DEBUG, Logger::BACKUP)
-      << "acquired transaction locks on all db servers";
+  if (finalRes.ok()) {
+    LOG_TOPIC("c1869", DEBUG, Logger::BACKUP)
+        << "acquired transaction locks on all db servers";
+  }
 
-  return arangodb::Result();
+  return finalRes;
 }
 
 arangodb::Result unlockDBServerTransactions(std::string const& backupId,
@@ -3274,12 +3302,12 @@ arangodb::Result hotBackupDBServers(std::string const& backupId, std::string con
     }
 
     if (resSlice.hasKey(BackupMeta::SIZEINBYTES)) {
-      totalSize += VelocyPackHelper::getNumericValue<size_t>(resSlice, BackupMeta::SIZEINBYTES, 0);
+      totalSize += Helper::getNumericValue<size_t>(resSlice, BackupMeta::SIZEINBYTES, 0);
     } else {
       sizeValid = false;
     }
     if (resSlice.hasKey(BackupMeta::NRFILES)) {
-      totalFiles += VelocyPackHelper::getNumericValue<size_t>(resSlice, BackupMeta::NRFILES, 0);
+      totalFiles += Helper::getNumericValue<size_t>(resSlice, BackupMeta::NRFILES, 0);
     } else {
       sizeValid = false;
     }
@@ -3397,6 +3425,176 @@ arangodb::Result removeLocalBackups(std::string const& backupId,
 std::vector<std::string> const versionPath =
     std::vector<std::string>{"arango", "Plan", "Version"};
 
+arangodb::Result hotbackupAsyncLockDBServersTransactions(std::string const& backupId,
+  std::vector<ServerID> const& dbservers, double const& lockWait,
+  std::unordered_map<std::string, std::string> &dbserverLockIds)
+{
+  // Make sure all db servers have the backup with backup Id
+  auto cc = ClusterComm::instance();
+  if (cc == nullptr) {
+    // nullptr happens only during controlled shutdown
+    return arangodb::Result(TRI_ERROR_SHUTTING_DOWN, "Shutting down");
+  }
+
+  std::string const url = apiStr + "lock";
+
+  VPackBuilder lock;
+  {
+    VPackObjectBuilder o(&lock);
+    lock.add("id", VPackValue(backupId));
+    lock.add("timeout", VPackValue(lockWait));
+    lock.add("unlockTimeout", VPackValue(5.0 + lockWait));
+  }
+
+  LOG_TOPIC("707ee", DEBUG, Logger::BACKUP)
+      << "Trying to acquire async global transaction locks using body " << lock.toJson();
+
+  auto body = std::make_shared<std::string const>(lock.toJson());
+  std::vector<ClusterCommRequest> requests;
+  for (auto const& dbServer : dbservers) {
+    requests.emplace_back("server:" + dbServer, RequestType::POST, url, body);
+    requests.back().headerFields = std::make_unique<std::unordered_map<std::string, std::string>>();
+    // do a async request
+    requests.back().headerFields->operator[](StaticStrings::Async) = "store";
+  }
+
+  // Perform the requests
+  cc->performRequests(requests, lockWait + 5.0, Logger::BACKUP, false, false);
+  for (auto const& req : requests) {
+    auto res = req.result;
+    int commError = handleGeneralCommErrors(&res);
+    if (commError != TRI_ERROR_NO_ERROR) {
+      return arangodb::Result(TRI_ERROR_LOCAL_LOCK_FAILED,
+                  std::string("Communication error locking transactions on ")
+                  + req.destination);
+    }
+    auto response = res.result;
+    if (response->getHttpReturnCode() != 202) {
+      return arangodb::Result(TRI_ERROR_LOCAL_LOCK_FAILED,
+          std::string("lock was denied from ") + req.destination +
+          " when trying to check for lockId for hot backup " + backupId);
+    }
+
+    bool hasJobID;
+    std::string jobId = response->getHeaderField(StaticStrings::AsyncId, hasJobID);
+    if (!hasJobID) {
+      return arangodb::Result(TRI_ERROR_LOCAL_LOCK_FAILED,
+          std::string("lock was denied from ") + req.destination +
+          " when trying to check for lockId for hot backup " + backupId);
+    }
+    dbserverLockIds[res.serverID] = jobId;
+  }
+
+  return arangodb::Result();
+}
+
+arangodb::Result hotbackupWaitForLockDBServersTransactions(
+  std::string const& backupId,
+  std::unordered_map<std::string, std::string> &dbserverLockIds,
+  std::vector<ServerID> &lockedServers, double const& lockWait)
+{
+  // query all remaining jobs here
+  auto cc = ClusterComm::instance();
+  if (cc == nullptr) {
+    // nullptr happens only during controlled shutdown
+    return arangodb::Result(TRI_ERROR_SHUTTING_DOWN, "Shutting down");
+  }
+
+  std::vector<ClusterCommRequest> requests;
+  for (auto const& lock : dbserverLockIds) {
+    requests.emplace_back("server:" + lock.first, RequestType::PUT, "/_api/job/" + lock.second, nullptr);
+  }
+
+  // Perform the requests
+  cc->performRequests(requests, lockWait + 5.0, Logger::BACKUP, false, false);
+  for (auto const& req : requests) {
+    auto res = req.result;
+    int commError = handleGeneralCommErrors(&res);
+    if (commError != TRI_ERROR_NO_ERROR) {
+      return arangodb::Result(TRI_ERROR_LOCAL_LOCK_FAILED,
+                  std::string("Communication error locking transactions on ")
+                  + req.destination);
+    }
+
+    // continue on 204 No Content
+    if (res.result->getHttpReturnCode() == 204) {
+      continue;
+    }
+
+    TRI_ASSERT(res.answer != nullptr);
+    auto resBody = res.answer->toVelocyPackBuilderPtrNoUniquenessChecks();
+    VPackSlice slc = resBody->slice();
+
+    if (!slc.isObject() || !slc.hasKey("error") || !slc.get("error").isBoolean()) {
+      return arangodb::Result(TRI_ERROR_LOCAL_LOCK_FAILED,
+                  std::string("invalid response from ") + req.destination +
+                  " when trying to freeze transactions for hot backup " +
+                  backupId + ": " + slc.toJson());
+    }
+
+    if (slc.get("error").getBoolean()) {
+      LOG_TOPIC("d7a8a", DEBUG, Logger::BACKUP)
+          << "failed to acquire lock from " << req.destination << ": " << slc.toJson();
+      auto errorNum = slc.get("errorNum").getNumber<int>();
+      if (errorNum == TRI_ERROR_LOCK_TIMEOUT) {
+        return arangodb::Result(errorNum, slc.get("errorMessage").copyString());
+      }
+      return arangodb::Result(TRI_ERROR_LOCAL_LOCK_FAILED,
+          std::string("lock was denied from ") + req.destination +
+          " when trying to check for lockId for hot backup " + backupId +
+          ": " + slc.toJson());
+    }
+
+    if (!slc.hasKey(lockPath) || !slc.get(lockPath).isNumber() ||
+        !slc.hasKey("result") || !slc.get("result").isObject()) {
+      return arangodb::Result(TRI_ERROR_LOCAL_LOCK_FAILED,
+                  std::string("invalid response from ") + req.destination +
+                  " when trying to check for lockId for hot backup " +
+                  backupId + ": " + slc.toJson());
+    }
+
+    uint64_t lockId = 0;
+    try {
+      lockId = slc.get(lockPath).getNumber<uint64_t>();
+      LOG_TOPIC("144f5", DEBUG, Logger::BACKUP)
+          << "acquired lock from " << req.destination << " for backupId "
+          << backupId << " with lockId " << lockId;
+    } catch (std::exception const& e) {
+      return arangodb::Result(TRI_ERROR_LOCAL_LOCK_FAILED,
+                  std::string("invalid response from ") + req.destination +
+                  " when trying to get lockId for hot backup " + backupId +
+                  ": " + slc.toJson() + ", msg: " + e.what());
+    }
+
+    lockedServers.push_back(res.serverID);
+    dbserverLockIds.erase(res.serverID);
+  }
+
+  return arangodb::Result();
+}
+
+void hotbackupCancelAsyncLocks(
+  std::unordered_map<std::string, std::string> &dbserverLockIds,
+  std::vector<ServerID> &lockedServers)
+{
+  // abort all the jobs
+  // if a job can not be aborted, assume it has started and add the server to
+  // the unlock list
+  auto cc = ClusterComm::instance();
+  if (cc == nullptr) {
+    return;
+  }
+
+  // cancel all remaining jobs here
+  std::vector<ClusterCommRequest> requests;
+  for (auto const& lock : dbserverLockIds) {
+    requests.emplace_back("server:" + lock.first, RequestType::PUT, "/_api/job/" + lock.second + "/cancel", nullptr);
+  }
+
+  // Perform the requests, best effort
+  cc->performRequests(requests, 5.0, Logger::BACKUP, false, false);
+}
+
 arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const payload,
                                       VPackBuilder& report) {
   // ToDo: mode
@@ -3424,11 +3622,14 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
          (payload.hasKey("label") && !payload.get("label").isString()) ||
          (payload.hasKey("timeout") && !payload.get("timeout").isNumber()) ||
          (payload.hasKey("allowInconsistent") &&
-          !payload.get("allowInconsistent").isBoolean()))) {
+          !payload.get("allowInconsistent").isBoolean()) ||
+         (payload.hasKey("force") &&
+          !payload.get("force").isBoolean()))) {
       return arangodb::Result(TRI_ERROR_BAD_PARAMETER, BAD_PARAMS_CREATE);
     }
 
-    bool force = !payload.isNone() && payload.get("allowInconsistent").isTrue();
+    bool allowInconsistent = payload.get("allowInconsistent").isTrue();
+    bool force = payload.get("force").isTrue();
 
     std::string const backupId = (payload.isObject() && payload.hasKey("label"))
                                      ? payload.get("label").copyString()
@@ -3511,11 +3712,59 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
       std::this_thread::sleep_for(milliseconds(300));
     }
 
+    if (!result.ok() && force) {
+
+      // About this code:
+      // it first creates async requests to lock all dbservers.
+      //    the corresponding lock ids are stored int the map lockJobIds.
+      // Then we continously abort all trx while checking all the above jobs
+      //    for completion.
+      // If a job was completed then its id is removed from lockJobIds
+      //  and the server is added to the lockedServers list.
+      // Once lockJobIds is empty or an error occured we exit the loop
+      //  and continue on the normal path (as if all servers would have been locked or error-exit)
+
+      // dbserver -> jobId
+      std::unordered_map<std::string, std::string> lockJobIds;
+
+      auto releaseLocks = scopeGuard([&]{
+        hotbackupCancelAsyncLocks(lockJobIds, lockedServers);
+        unlockDBServerTransactions(backupId, lockedServers);
+        ci.agencyHotBackupUnlock(backupId, timeout, supervisionOff);
+      });
+
+      // send the locks
+      result = hotbackupAsyncLockDBServersTransactions(backupId, dbServers, lockWait, lockJobIds);
+      if (result.fail()) {
+        return result;
+      }
+
+      transaction::Manager* mgr = transaction::ManagerFeature::manager();
+
+      while (lockJobIds.size() > 0) {
+        // kill all transactions
+        result = mgr->abortAllManagedWriteTrx(ExecContext::current().user(), true);
+        if (result.fail()) {
+          return result;
+        }
+
+        // wait for locks, servers that got the lock are removed from lockJobIds
+        result = hotbackupWaitForLockDBServersTransactions(backupId, lockJobIds, lockedServers, lockWait);
+        if (result.fail()) {
+          return result;
+        }
+
+        std::this_thread::sleep_for(milliseconds(300));
+      }
+
+      releaseLocks.cancel();
+    }
+
     bool gotLocks = result.ok();
 
     // In the case we left the above loop with a negative result,
     // and we are in the case of a force backup we want to continue here
-    if (!gotLocks && !force) {
+    if (!gotLocks && !allowInconsistent) {
       unlockDBServerTransactions(backupId, dbServers);
       ci.agencyHotBackupUnlock(backupId, timeout, supervisionOff);
       result.reset(
@@ -3558,8 +3807,8 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
     }
 
     try {
-      if (!basics::VelocyPackHelper::equal(agency->slice()[0].get(versionPath),
-                                           agencyCheck->slice()[0].get(versionPath), false)) {
+      if (!Helper::equal(agency->slice()[0].get(versionPath),
+                         agencyCheck->slice()[0].get(versionPath), false)) {
         result.reset(TRI_ERROR_HOT_BACKUP_INTERNAL,
                      "data definition of cluster was changed during hot "
                      "backup: backup's consistency is not guaranteed");

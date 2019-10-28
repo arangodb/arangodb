@@ -210,6 +210,7 @@ Query::~Query() {
                                               << " this: " << (uintptr_t)this;
   }
 
+  // this will reset _trx, so _trx is invalid after here
   cleanupPlanAndEngineSync(TRI_ERROR_INTERNAL);
 
   exitContext();
@@ -275,7 +276,14 @@ Query* Query::clone(QueryPart part, bool withPlan) {
 }
 
 /// @brief set the query to killed
-void Query::kill() { _killed = true; }
+void Query::kill() {
+  _killed = true;
+  if (_engine != nullptr) {
+    // killing is best effort...
+    // intentionally ignoring the result of this call here
+    _engine->kill();
+  }
+}
 
 void Query::setExecutionTime() {
   if (_engine != nullptr) {
@@ -573,6 +581,10 @@ ExecutionState Query::execute(QueryRegistry* registry, QueryResult& queryResult)
   TRI_ASSERT(registry != nullptr);
 
   try {
+    if (_killed) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+    }
+
     bool useQueryCache = canUseQueryCache();
 
     switch (_executionPhase) {
@@ -634,7 +646,7 @@ ExecutionState Query::execute(QueryRegistry* registry, QueryResult& queryResult)
         _resultBuilder->openArray();
         _executionPhase = ExecutionPhase::EXECUTE;
       }
-      // intentionally falls through
+      [[fallthrough]];
       case ExecutionPhase::EXECUTE: {
         TRI_ASSERT(_resultBuilder != nullptr);
         TRI_ASSERT(_resultBuilder->isOpenArray());
@@ -713,7 +725,7 @@ ExecutionState Query::execute(QueryRegistry* registry, QueryResult& queryResult)
         _executionPhase = ExecutionPhase::FINALIZE;
       }
 
-      // intentionally falls through
+      [[fallthrough]];
       case ExecutionPhase::FINALIZE: {
         // will set warnings, stats, profile and cleanup plan and engine
         return finalize(queryResult);
@@ -897,6 +909,10 @@ ExecutionState Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry,
               THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
             }
           }
+        }
+
+        if (_killed) {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
         }
       }
 
@@ -1426,6 +1442,13 @@ ExecutionState Query::cleanupPlanAndEngine(int errorCode, VPackBuilder* statsBui
 
     _sharedState->invalidate();
     _engine.reset();
+  }
+
+  // the following call removes the query from the list of currently
+  // running queries. so whoever fetches that list will not see a Query that
+  // is about to shut down/be destroyed
+  if (_profile != nullptr) {
+    _profile->unregisterFromQueryList();
   }
 
   // If the transaction was not committed, it is automatically aborted

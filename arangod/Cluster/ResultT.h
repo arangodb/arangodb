@@ -99,7 +99,7 @@ class ResultT {
   /* implicit */ ResultT(Result const& other) : _result(other) {
     // .ok() is not allowed here, as _val should be expected to be initialized
     // iff .ok() is true.
-    TRI_ASSERT(other.fail());
+    TRI_ASSERT(_result.fail());
   }
 
   // This is disabled if U is implicitly convertible to Result
@@ -112,7 +112,7 @@ class ResultT {
   /* implicit */ ResultT(Result&& other) : _result(std::move(other)) {
     // .ok() is not allowed here, as _val should be expected to be initialized
     // iff .ok() is true.
-    TRI_ASSERT(other.fail());
+    TRI_ASSERT(_result.fail());
   }
 
   // This is disabled if U is implicitly convertible to Result

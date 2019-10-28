@@ -450,7 +450,7 @@ Result Collections::create(TRI_vocbase_t& vocbase,
   return TRI_ERROR_NO_ERROR;
 }
 
-void Collections::createSystemCollectionProperties(std::string collectionName,
+void Collections::createSystemCollectionProperties(std::string const& collectionName,
                                                    VPackBuilder& bb, TRI_vocbase_t const& vocbase) {
 
   uint32_t defaultReplicationFactor = vocbase.replicationFactor();
@@ -945,7 +945,7 @@ arangodb::Result Collections::checksum(LogicalCollection& collection,
       uint64_t const n = slice.length() ^ 0xf00ba44ba5;
       uint64_t seed = fasthash64_uint64(n, 0xdeadf054);
 
-      for (auto const& it : VPackObjectIterator(slice, false)) {
+      for (auto it : VPackObjectIterator(slice, false)) {
         // loop over all attributes, but exclude _rev, _id and _key
         // _id is different for each collection anyway, _rev is covered by
         // withRevisions, and _key was already handled before
