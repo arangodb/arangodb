@@ -80,7 +80,9 @@ class HttpConnection final : public fuerte::GeneralConnection<ST> {
   void asyncWriteNextRequest();
 
   // called by the async_write handler (called from IO thread)
-  void asyncWriteCb(asio_ns::error_code const&, std::unique_ptr<RequestItem>);
+  void asyncWriteCallback(asio_ns::error_code const&,
+                          std::unique_ptr<RequestItem>,
+                          size_t nwrite);
 
  private:
   static int on_message_begin(http_parser* parser);

@@ -184,7 +184,7 @@ void VstConnection<ST>::sendAuthenticationRequest() {
                                 "authorization message failed");
       this->drainQueue(Error::CouldNotConnect);
     } else {
-      asyncWriteCallback(ec, nsend, item);
+      asyncWriteCallback(ec, item, nsend);
     }
   };
   std::vector<asio_ns::const_buffer> buffers;
@@ -252,22 +252,23 @@ void VstConnection<ST>::asyncWriteNextRequest() {
   startReading();           // Make sure we're listening for a response
   setTimeout();             // prepare request / connection timeouts
 
-  auto self = Connection::shared_from_this();
-  auto cb = [self, item, this](asio_ns::error_code const& ec,
-                               std::size_t transferred) {
-    asyncWriteCallback(ec, transferred, std::move(item));
-  };
   std::vector<asio_ns::const_buffer> buffers =
       item->prepareForNetwork(_vstVersion);
-  asio_ns::async_write(this->_protocol.socket, buffers, cb);
+  asio_ns::async_write(this->_protocol.socket, buffers,
+                       [self = Connection::shared_from_this(),
+                        item](asio_ns::error_code const& ec,
+                                    std::size_t nwrite) {
+    auto& thisPtr = static_cast<VstConnection<ST>&>(*self);
+    thisPtr.asyncWriteCallback(ec, std::move(item), nwrite);
+  });
   FUERTE_LOG_VSTTRACE << "asyncWrite: done\n";
 }
 
 // callback of async_write function that is called in sendNextRequest.
 template <SocketType ST>
 void VstConnection<ST>::asyncWriteCallback(asio_ns::error_code const& ec,
-                                           std::size_t nsend,
-                                           std::shared_ptr<RequestItem> item) {
+                                           std::shared_ptr<RequestItem> item,
+                                           std::size_t nwrite) {
   // auto pendingAsyncCalls = --_connection->_async_calls;
   if (ec) {
     // Send failed
@@ -276,6 +277,8 @@ void VstConnection<ST>::asyncWriteCallback(asio_ns::error_code const& ec,
 
     // Item has failed, remove from message store
     _messageStore.removeByID(item->_messageID);
+    
+#warning handle ec == asio_ns::error::broken_pipe && nwrite == 0
 
     auto err = translateError(ec, Error::WriteError);
     // let user know that this request caused the error
@@ -286,7 +289,7 @@ void VstConnection<ST>::asyncWriteCallback(asio_ns::error_code const& ec,
   }
   // Send succeeded
   FUERTE_LOG_CALLBACKS << "asyncWriteCallback (vst): send succeeded, "
-                       << nsend << " bytes send\n";
+                       << nwrite << " bytes send\n";
 
   // request is written we no longer need data for that
   item->resetSendData();

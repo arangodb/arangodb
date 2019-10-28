@@ -143,9 +143,9 @@ struct Socket<fuerte::SocketType::Ssl> {
       ec.clear();
       socket.shutdown(ec);
       ec.clear();
-      socket.next_layer().shutdown(asio_ns::ip::tcp::socket::shutdown_both, ec);
+      socket.lowest_layer().shutdown(asio_ns::ip::tcp::socket::shutdown_both, ec);
       ec.clear();
-      socket.next_layer().close(ec);
+      socket.lowest_layer().close(ec);
     }
   }
   

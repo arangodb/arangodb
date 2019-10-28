@@ -84,8 +84,9 @@ class VstConnection final : public fuerte::GeneralConnection<ST> {
   void asyncWriteNextRequest();
 
   // called by the async_write handler (called from IO thread)
-  void asyncWriteCallback(asio_ns::error_code const& ec, size_t transferred,
-                          std::shared_ptr<RequestItem>);
+  void asyncWriteCallback(asio_ns::error_code const& ec,
+                          std::shared_ptr<RequestItem>,
+                          size_t nwrite);
 
   // Thread-Safe: activate the read loop (if needed)
   void startReading();

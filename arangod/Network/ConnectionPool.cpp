@@ -234,8 +234,9 @@ ConnectionPtr ConnectionPool::selectConnection(std::string const& endpoint,
   // no free connection found, so we add one
   
   fuerte::ConnectionBuilder builder;
-  builder.endpoint(endpoint);
+  builder.endpoint(endpoint); // picks the socket type
   builder.protocolType(_config.protocol); // always overwrite protocol
+  TRI_ASSERT(builder.socketType() != SocketType::Undefined);
   
   std::shared_ptr<fuerte::Connection> fuerte = createConnection(builder);
   bucket.list.push_back(Context{fuerte, std::chrono::steady_clock::now()});

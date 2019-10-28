@@ -106,20 +106,20 @@ int HttpConnection<ST>::on_header_complete(http_parser* parser) {
   }
   // Adjust idle timeout if necessary
   self->_shouldKeepAlive = http_should_keep_alive(parser);
-  if (self->_shouldKeepAlive) {  // check for exact idle timeout
-    std::string const& ka =
-        self->_response->header.metaByKey(fu_keep_alive_key);
-    size_t pos = ka.find("timeout=");
-    if (pos != std::string::npos) {
-      try {
-        std::chrono::milliseconds to(std::stoi(ka.substr(pos + 8)) * 1000);
-        if (to.count() > 1000) {
-          self->_idleTimeout = std::min(self->_config._idleTimeout, to);
-        }
-      } catch (...) {
-      }
-    }
-  }
+//  if (self->_shouldKeepAlive) {  // check for exact idle timeout
+//    std::string const& ka =
+//        self->_response->header.metaByKey(fu_keep_alive_key);
+//    size_t pos = ka.find("timeout=");
+//    if (pos != std::string::npos) {
+//      try {
+//        std::chrono::milliseconds to(std::stoi(ka.substr(pos + 8)) * 1000);
+//        if (to.count() > 1000) {
+//          self->_idleTimeout = std::min(self->_config._idleTimeout, to);
+//        }
+//      } catch (...) {
+//      }
+//    }
+//  }
   // head has no body, but may have a Content-Length
   if (self->_item->request->header.restVerb == RestVerb::Head) {
     return 1;  // tells the parser it should not expect a body
@@ -153,7 +153,7 @@ HttpConnection<ST>::HttpConnection(EventLoopService& loop,
       _queue(),
       _numQueued(0),
       _active(false),
-      _idleTimeout(this->_config._idleTimeout),
+      _idleTimeout(30000/*this->_config._idleTimeout*/),
       _lastHeaderWasValue(false),
       _shouldKeepAlive(false),
       _messageComplete(false) {
@@ -398,31 +398,35 @@ void HttpConnection<ST>::asyncWriteNextRequest() {
     buffers[1] = item->request->payload();
   }
 
-  auto cb = [self = Connection::shared_from_this(),
-             ri = std::move(item)](asio_ns::error_code const& ec,
-                                   std::size_t transferred) mutable {
-    auto* thisPtr = static_cast<HttpConnection<ST>*>(self.get());
-    thisPtr->asyncWriteCb(ec, std::move(ri));
-  };
-
   asio_ns::async_write(this->_protocol.socket, std::move(buffers),
-                       std::move(cb));
+                       [self = Connection::shared_from_this(),
+                        ri = std::move(item)](asio_ns::error_code const& ec,
+                                              std::size_t nwrite) mutable {
+    auto& thisPtr = static_cast<HttpConnection<ST>&>(*self);
+    thisPtr.asyncWriteCallback(ec, std::move(ri), nwrite);
+  });
   FUERTE_LOG_HTTPTRACE << "asyncWriteNextRequest: done, this=" << this << "\n";
 }
 
 // called by the async_write handler (called from IO thread)
 template <SocketType ST>
-void HttpConnection<ST>::asyncWriteCb(asio_ns::error_code const& ec,
-                                      std::unique_ptr<RequestItem> item) {
+void HttpConnection<ST>::asyncWriteCallback(asio_ns::error_code const& ec,
+                                            std::unique_ptr<RequestItem> item,
+                                            size_t nwrite) {
   if (ec) {
     // Send failed
     FUERTE_LOG_DEBUG << "asyncWriteCallback (http): error '" << ec.message()
-                     << "'\n";
-    assert(item->callback);
-
+                     << "', this=" << this << "\n";
+    
+    // keepalive timeout may have expired
     auto err = translateError(ec, Error::WriteError);
-    // let user know that this request caused the error
-    item->callback(err, std::move(item->request), nullptr);
+    if (ec == asio_ns::error::broken_pipe && nwrite == 0) { // re-queue
+      sendRequest(std::move(item->request), item->callback);
+    } else {
+      // let user know that this request caused the error
+      item->callback(err, std::move(item->request), nullptr);
+    }
+
     // Stop current connection and try to restart a new one.
     this->restartConnection(err);
     return;
