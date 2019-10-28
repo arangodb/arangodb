@@ -106,6 +106,6 @@ std::pair<ExecutionState, size_t> CountCollectExecutor::expectedNumberOfRows(siz
 
 const CountCollectExecutor::Infos& CountCollectExecutor::infos() const noexcept {
   return _infos;
-};
+}
 
 CountCollectExecutor::~CountCollectExecutor() = default;
