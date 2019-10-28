@@ -315,7 +315,7 @@ void BaseOptions::serializeVariables(VPackBuilder& builder) const {
   _ctx->serializeAllVariables(_trx, builder);
 }
 
-void BaseOptions::setCollectionToShard(std::map<std::string, std::string>const& in){
+void BaseOptions::setCollectionToShard(std::map<std::string, std::string> const& in) {
   _collectionToShard = std::move(in);
 }
 

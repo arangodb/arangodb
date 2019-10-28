@@ -1,6 +1,0 @@
-# Copyright 2012-2013 Daniel James
-# Distributed under the Boost Software License, Version 1.0.
-# (See accompanying file LICENSE_1_0.txt or http://www.boost.org/LICENSE_1_0.txt)
-include_glob.qbk
-sub1/a.qbk
-sub2/b.qbk

@@ -1,8 +1,0 @@
-[article Expect import Fail
-]
-
-[section Failure]
-
-[import this-is-not-a-file.cpp]
-
-[endsect]

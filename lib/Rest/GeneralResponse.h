@@ -94,7 +94,7 @@ class GeneralResponse {
   explicit GeneralResponse(ResponseCode);
 
  public:
-  virtual ~GeneralResponse() {}
+  virtual ~GeneralResponse() = default;
 
  public:
   // response codes are http response codes, but they are used in other
@@ -165,9 +165,9 @@ class GeneralResponse {
   virtual int reservePayload(std::size_t size) { return TRI_ERROR_NO_ERROR; }
 
   /// used for head
-  bool generateBody() const { return _generateBody; };
+  bool generateBody() const { return _generateBody; }
   /// used for head
-  virtual bool setGenerateBody(bool) { return _generateBody; };
+  virtual bool setGenerateBody(bool) { return _generateBody; }
 
   virtual int deflate(size_t size = 16384) = 0;
 
