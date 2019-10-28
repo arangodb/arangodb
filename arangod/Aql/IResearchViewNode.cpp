@@ -679,7 +679,9 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan, size_t id,
       // in case if filter is not specified
       // set it to surrogate 'RETURN ALL' node
       _filterCondition(filterCondition ? filterCondition : &ALL),
-      _scorers(std::move(scorers)) {
+      _scorers(std::move(scorers)),
+      _prototypeCollection(nullptr),
+      _prototypeOutVariable(nullptr) {
   TRI_ASSERT(_view);
   TRI_ASSERT(iresearch::DATA_SOURCE_TYPE == _view->type());
   TRI_ASSERT(LogicalView::category() == _view->category());
@@ -707,7 +709,9 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan, velocypack::Slice
       // in case if filter is not specified
       // set it to surrogate 'RETURN ALL' node
       _filterCondition(&ALL),
-      _scorers(fromVelocyPack(plan, base.get(NODE_SCORERS_PARAM))) {
+      _scorers(fromVelocyPack(plan, base.get(NODE_SCORERS_PARAM))),
+      _prototypeCollection(nullptr),
+      _prototypeOutVariable(nullptr) {
   if ((_outNonMaterializedColPtr != nullptr) != (_outNonMaterializedDocId != nullptr)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
       std::string("invalid node config, '").append(NODE_OUT_NM_DOC_PARAM)
