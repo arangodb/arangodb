@@ -24,7 +24,6 @@
 #include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/Query.h"
 #include "Aql/QueryString.h"
-// #include "Logger/LogTopic.h"
 #include "Logger/Logger.h"
 #include "Mocks/LogLevels.h"
 #include "Mocks/Servers.h"
@@ -42,10 +41,12 @@ namespace {
 class IIndexNodeTest
   : public ::testing::Test,
     public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION, arangodb::LogLevel::ERR> {
+
  protected:
   arangodb::tests::mocks::MockAqlServer server;
 
   IIndexNodeTest() : server(false) {
+    server.startFeatures();
   }
 
 };  // IIndexNodeTest
@@ -82,8 +83,7 @@ arangodb::aql::QueryResult executeQuery(TRI_vocbase_t& vocbase, std::string cons
   return result;
 }
 
-TEST_F(IIndexNodeTest, constructCollection) {
-  server.startFeatures();
+TEST_F(IIndexNodeTest, checkObjectQuery) {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, createInfo(server.server()));
   // create collection
   auto collectionJson = arangodb::velocypack::Parser::fromJson(
@@ -91,8 +91,6 @@ TEST_F(IIndexNodeTest, constructCollection) {
   auto collection = vocbase.createCollection(collectionJson->slice());
   ASSERT_TRUE(collection);
   auto indexJson = arangodb::velocypack::Parser::fromJson("{\"type\": \"hash\", \"fields\": [\"obj.a\", \"obj.b\", \"obj.c\"]}");
-  // auto indexJson = arangodb::velocypack::Parser::fromJson("{\"type\": \"hash\", \"fields\": [\"tags.hop[*].foo.fo\", \"tags.hop[*].bar.br\", \"tags.hop[*].baz.bz\"]}");
-  // auto indexJson = arangodb::velocypack::Parser::fromJson("{\"type\": \"hash\", \"fields\": [\"tags[*]\"]}");
   bool createdIndex{};
   auto index = collection->createIndex(indexJson->slice(), createdIndex);
   ASSERT_TRUE(createdIndex);
@@ -107,22 +105,100 @@ TEST_F(IIndexNodeTest, constructCollection) {
   arangodb::OperationOptions opt;
   arangodb::ManagedDocumentResult mmdoc;
   auto jsonDocument = arangodb::velocypack::Parser::fromJson("{\"obj\" : {\"a\" : \"a_val\", \"b\" : \"b_val\", \"c\" : \"c_val\"}}");
-  // auto jsonDocument = arangodb::velocypack::Parser::fromJson("{\"tags\" : {\"hop\" : [{\"foo\" : {\"fo\" : \"foo_val\"}, \"bar\": {\"br\" : \"bar_val\"}, \"baz\" : {\"bz\" : \"baz_val\"}}]}}");
-  // auto jsonDocument = arangodb::velocypack::Parser::fromJson("{\"tags\" : {\"hop\" : [{\"foo\" : {\"fo\" : \"foo_val\"}}, {\"bar\": {\"br\" : \"bar_val\"}}, {\"baz\" : {\"bz\" : \"baz_val\"}}]}}");
-  // auto jsonDocument = arangodb::velocypack::Parser::fromJson("{\"tags\": [\"foo_val\", \"bar_val\", \"baz_val\"]}");
   auto const res = collection->insert(&trx, jsonDocument->slice(), mmdoc, opt, false);
   EXPECT_TRUE(res.ok());
 
   EXPECT_TRUE(trx.commit().ok());
   auto queryString = "FOR d IN testCollection FILTER d.obj.a == 'a_val' SORT d.obj.c LIMIT 10 RETURN d";
-  // auto queryString = "FOR d IN testCollection FILTER 'foo_val' IN d.tags.hop[*].foo.fo SORT d.tags.hop[*].baz.bz LIMIT 10 RETURN d";
-  // auto queryString = "FOR d IN testCollection FILTER 'foo_val' IN d.tags[*] SORT d.tags LIMIT 10 RETURN d";
-  // auto queryString = "FOR d IN testCollection FILTER 'foo_val' IN d.tags SORT d.tags LIMIT 10 RETURN d";
   auto queryResult = ::executeQuery(vocbase, queryString);
   EXPECT_TRUE(queryResult.result.ok()); // commit
   auto result = queryResult.data->slice();
   EXPECT_TRUE(result.isArray());
   arangodb::velocypack::ArrayIterator resultIt(result);
   ASSERT_EQ(1, resultIt.size());
+}
+
+TEST_F(IIndexNodeTest, checkExpansionQuery) {
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, createInfo(server.server()));
+  // create collection
+  auto collectionJson = arangodb::velocypack::Parser::fromJson(
+    "{ \"name\": \"testCollection\", \"id\" : 42 }");
+  auto collection = vocbase.createCollection(collectionJson->slice());
+  ASSERT_TRUE(collection);
+  auto indexJson = arangodb::velocypack::Parser::fromJson("{\"type\": \"hash\", \"fields\": [\"tags.hop[*].foo.fo\", \"tags.hop[*].bar.br\", \"tags.hop[*].baz.bz\"]}");
+  bool createdIndex{};
+  auto index = collection->createIndex(indexJson->slice(), createdIndex);
+  ASSERT_TRUE(createdIndex);
+  ASSERT_FALSE(!index);
+
+  std::vector<std::string> const EMPTY;
+  arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase),
+                                     EMPTY, EMPTY, EMPTY,
+                                     arangodb::transaction::Options());
+  EXPECT_TRUE(trx.begin().ok());
+
+  arangodb::OperationOptions opt;
+  arangodb::ManagedDocumentResult mmdoc;
+  auto jsonDocument1 = arangodb::velocypack::Parser::fromJson("{\"tags\" : {\"hop\" : [{\"foo\" : {\"fo\" : \"foo_val\"}, \"bar\": {\"br\" : \"bar_val\"}, \"baz\" : {\"bz\" : \"baz_val\"}}]}}");
+  auto jsonDocument2 = arangodb::velocypack::Parser::fromJson("{\"tags\" : {\"hop\" : [{\"foo\" : {\"fo\" : \"foo_val\"}}, {\"bar\": {\"br\" : \"bar_val\"}}, {\"baz\" : {\"bz\" : \"baz_val\"}}]}}");
+  auto const res1 = collection->insert(&trx, jsonDocument1->slice(), mmdoc, opt, false);
+  EXPECT_TRUE(res1.ok());
+  auto const res2 = collection->insert(&trx, jsonDocument2->slice(), mmdoc, opt, false);
+  EXPECT_TRUE(res2.ok());
+
+  EXPECT_TRUE(trx.commit().ok());
+  auto queryString = "FOR d IN testCollection FILTER 'foo_val' IN d.tags.hop[*].foo.fo SORT d.tags.hop[*].baz.bz LIMIT 10 RETURN d";
+  auto queryResult = ::executeQuery(vocbase, queryString);
+  EXPECT_TRUE(queryResult.result.ok()); // commit
+  auto result = queryResult.data->slice();
+  EXPECT_TRUE(result.isArray());
+  arangodb::velocypack::ArrayIterator resultIt(result);
+  ASSERT_EQ(2, resultIt.size());
+}
+
+TEST_F(IIndexNodeTest, checkLastExpansionQuery) {
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, createInfo(server.server()));
+  // create collection
+  auto collectionJson = arangodb::velocypack::Parser::fromJson(
+    "{ \"name\": \"testCollection\", \"id\" : 42 }");
+  auto collection = vocbase.createCollection(collectionJson->slice());
+  ASSERT_TRUE(collection);
+  auto indexJson = arangodb::velocypack::Parser::fromJson("{\"type\": \"hash\", \"fields\": [\"tags[*]\"]}");
+  bool createdIndex{};
+  auto index = collection->createIndex(indexJson->slice(), createdIndex);
+  ASSERT_TRUE(createdIndex);
+  ASSERT_FALSE(!index);
+
+  std::vector<std::string> const EMPTY;
+  arangodb::transaction::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase),
+                                     EMPTY, EMPTY, EMPTY,
+                                     arangodb::transaction::Options());
+  EXPECT_TRUE(trx.begin().ok());
+
+  arangodb::OperationOptions opt;
+  arangodb::ManagedDocumentResult mmdoc;
+  auto jsonDocument = arangodb::velocypack::Parser::fromJson("{\"tags\": [\"foo_val\", \"bar_val\", \"baz_val\"]}");
+  auto const res = collection->insert(&trx, jsonDocument->slice(), mmdoc, opt, false);
+  EXPECT_TRUE(res.ok());
+
+  EXPECT_TRUE(trx.commit().ok());
+  {
+    auto queryString = "FOR d IN testCollection FILTER 'foo_val' IN d.tags[*] SORT d.tags LIMIT 10 RETURN d";
+    auto queryResult = ::executeQuery(vocbase, queryString);
+    EXPECT_TRUE(queryResult.result.ok()); // commit
+    auto result = queryResult.data->slice();
+    EXPECT_TRUE(result.isArray());
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    ASSERT_EQ(1, resultIt.size());
+  }
+  {
+    auto queryString = "FOR d IN testCollection FILTER 'foo_val' IN d.tags SORT d.tags LIMIT 10 RETURN d";
+    auto queryResult = ::executeQuery(vocbase, queryString);
+    EXPECT_TRUE(queryResult.result.ok()); // commit
+    auto result = queryResult.data->slice();
+    EXPECT_TRUE(result.isArray());
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    ASSERT_EQ(1, resultIt.size());
+  }
 }
 }
