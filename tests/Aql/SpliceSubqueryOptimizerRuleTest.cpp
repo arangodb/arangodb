@@ -22,6 +22,8 @@
 
 #include "gtest/gtest.h"
 
+#include "QueryHelper.h"
+
 #include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/Ast.h"
 #include "Aql/ExecutionPlan.h"
@@ -175,33 +177,16 @@ class SpliceSubqueryNodeOptimizerRuleTest : public ::testing::Test {
     splicedPlan->root()->walk(compare);
   }
 
-  void compareQueryResultToSlice(QueryResult const& result, bool ruleEnabled,
-                                 VPackSlice expected) {
-    ASSERT_TRUE(expected.isArray()) << "Invalid input";
-    ASSERT_TRUE(result.ok())
-        << "Reason: " << result.errorNumber() << " => " << result.errorMessage()
-        << " rule was on: " << std::boolalpha << ruleEnabled;
-    auto resultSlice = result.data->slice();
-    ASSERT_TRUE(resultSlice.isArray()) << " rule was on: " << std::boolalpha << ruleEnabled;
-    ASSERT_EQ(expected.length(), resultSlice.length())
-        << " rule was on: " << std::boolalpha << ruleEnabled;
-    for (VPackValueLength i = 0; i < expected.length(); ++i) {
-      EXPECT_TRUE(basics::VelocyPackHelper::equal(resultSlice.at(i), expected.at(i), false))
-          << "Line " << i << ": " << resultSlice.at(i).toJson()
-          << " (found) != " << expected.at(i).toJson()
-          << " (expected) rule was on: " << std::boolalpha << ruleEnabled;
-    }
-  }
-
   void verifyQueryResult(std::string const& query, VPackSlice expected) {
     auto const bindParameters = VPackParser::fromJson("{ }");
-
+    SCOPED_TRACE("Query: " + query);
     // First test original Query (rule-disabled)
     {
       auto queryResult =
           arangodb::tests::executeQuery(server.getSystemDatabase(), query,
                                         bindParameters, disableRuleOptions());
-      compareQueryResultToSlice(queryResult, false, expected);
+      SCOPED_TRACE("rule was disabled");
+      AssertQueryResultToSlice(queryResult, expected);
     }
 
     // Second test optimized Query (rule-enabled)
@@ -209,7 +194,8 @@ class SpliceSubqueryNodeOptimizerRuleTest : public ::testing::Test {
       auto queryResult =
           arangodb::tests::executeQuery(server.getSystemDatabase(), query,
                                         bindParameters, enableRuleOptions());
-      compareQueryResultToSlice(queryResult, true, expected);
+      SCOPED_TRACE("rule was enabled");
+      AssertQueryResultToSlice(queryResult, expected);
     }
   }
 
