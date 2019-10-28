@@ -174,11 +174,6 @@ IResearchViewCoordinator::~IResearchViewCoordinator() {
 
 arangodb::Result IResearchViewCoordinator::appendVelocyPackImpl(
     arangodb::velocypack::Builder& builder, Serialization context) const {
-  if (Serialization::Inventory == context) {
-    TRI_ASSERT(false);
-    return {TRI_ERROR_NOT_IMPLEMENTED};
-  }
-
   if (Serialization::List == context) {
     // nothing more to output
     return {};
@@ -193,7 +188,7 @@ arangodb::Result IResearchViewCoordinator::appendVelocyPackImpl(
 
   auto* acceptor = &propertiesAcceptor;
 
-  if (context == Serialization::Persistence) {
+  if (context == Serialization::Persistence || context == Serialization::Inventory) {
     auto res = arangodb::LogicalViewHelperClusterInfo::properties(builder, *this);
 
     if (!res.ok()) {

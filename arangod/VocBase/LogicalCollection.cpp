@@ -595,18 +595,21 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
   }
 
   result.add(VPackValue("indexes"));
-  getIndexesVPack(result, [](arangodb::Index const* idx, uint8_t& flags) {
+  getIndexesVPack(result, [](Index const* idx, uint8_t& flags) {
     // we have to exclude the primary and the edge index here, because otherwise
     // at least the MMFiles engine will try to create it
     // AND exclude hidden indexes
-    if (idx->type() != arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX &&
-        idx->type() != arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX &&
-        !idx->isHidden() && !idx->inProgress()) {
-      flags = Index::makeFlags();
-      return true;
+    switch (idx->type()) {
+      case Index::TRI_IDX_TYPE_PRIMARY_INDEX:
+      case Index::TRI_IDX_TYPE_EDGE_INDEX:
+        return false;
+      case Index::TRI_IDX_TYPE_IRESEARCH_LINK:
+        flags = Index::makeFlags(Index::Serialize::Internals);
+        return true;
+      default:
+        flags = Index::makeFlags();
+        return !idx->isHidden() && !idx->inProgress();
     }
-
-    return true;
   });
   result.add("planVersion", VPackValue(planVersion()));
   result.add("isReady", VPackValue(isReady));
