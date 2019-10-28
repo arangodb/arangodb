@@ -180,6 +180,26 @@ TEST_F(EnumerateCollectionExecutorTestNoRowsUpstream, the_produce_datarange) {
   ASSERT_FALSE(output.produced());
 }
 
+TEST_F(EnumerateCollectionExecutorTestNoRowsUpstream, the_skip_datarange) {
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
+      itemBlockManager, input.steal(), false);
+  EnumerateCollectionExecutor testee(fetcher, infos);
+  // Use this instead of std::ignore, so the tests will be noticed and
+  // updated when someone changes the stats type in the return value of
+  // EnumerateCollectionExecutor::produceRows().
+
+  SharedAqlItemBlockPtr inBlock =
+      buildBlock<1>(itemBlockManager,
+                    {{R"({ "cid" : "1337", "name": "UnitTestCollection" })"}});
+
+  AqlItemBlockInputRange inputRange{ExecutorState::DONE, inBlock, 0, inBlock->size()};
+  OutputAqlItemRow output(std::move(block), infos.getOutputRegisters(),
+                          infos.registersToKeep(), infos.registersToClear());
+  auto const [state, stats, call] = testee.skipRowsRange(1000, inputRange);
+  ASSERT_EQ(state, ExecutorState::DONE);
+  ASSERT_FALSE(output.produced());
+}
+
 }  // namespace aql
 }  // namespace tests
 }  // namespace arangodb
