@@ -227,7 +227,7 @@ TEST_P(UpsertExecutorTest, option_mergeObjects_false) {
 }
 
 // TODO: In current implementaiton we search for exact match of _key, _rev which is not found.
-//       So we actually do insert, this needs to be fixed althoug this seems to be no production case
+//       So we actually do insert, this needs to be fixed although this seems to be no production case
 TEST_P(UpsertExecutorTest, DISABLED_option_ignoreRevs_default) {
   std::string query = R"aql(
       UPSERT {_key: "testee", _rev: "12345"}
@@ -242,7 +242,7 @@ TEST_P(UpsertExecutorTest, DISABLED_option_ignoreRevs_default) {
 }
 
 // TODO: In current implementaiton we search for exact match of _key, _rev which is not found.
-//       So we actually do insert, this needs to be fixed althoug this seems to be no production case
+//       So we actually do insert, this needs to be fixed although this seems to be no production case
 TEST_P(UpsertExecutorTest, DISABLED_option_ignoreRevs_true) {
   std::string query = R"aql(
       UPSERT {_key: "testee", _rev: "12345"}
@@ -256,7 +256,7 @@ TEST_P(UpsertExecutorTest, DISABLED_option_ignoreRevs_true) {
   AssertQueryHasResult(vocbase, GetAllDocs, expected->slice());
 }
 // TODO: In current implementaiton we search for exact match of _key, _rev which is not found.
-//       So we actually do insert, this needs to be fixed althoug this seems to be no production case
+//       So we actually do insert, this needs to be fixed although this seems to be no production case
 TEST_P(UpsertExecutorTest, DISABLED_option_ignoreRevs_false) {
   std::string query = R"aql(
       UPSERT {_key: "testee", _rev: "12345"}
@@ -341,7 +341,7 @@ class UpsertExecutorIntegrationTest
     ASSERT_NE(collection.get(), nullptr) << "Failed to create collection";
     // Insert Documents
     std::string insertQuery =
-        R"aql(FOR i IN 1..)aql" + basics::StringUtils::itoa(numDocs()) +
+        R"aql(FOR i IN 1..)aql" + std::to_string(numDocs()) +
         R"aql( INSERT {_key: TO_STRING(i), value: i, sortValue: i} INTO UnitTestCollection)aql";
     SCOPED_TRACE(insertQuery);
     AssertQueryHasResult(vocbase, insertQuery, VPackSlice::emptyArraySlice());
@@ -772,8 +772,8 @@ TEST_P(UpsertExecutorIntegrationTest, upsert_alternate_insert_upsert) {
   std::string from = basics::StringUtils::itoa(1);
   std::string to = basics::StringUtils::itoa(numDocs() + numDocs());
   // We alternate between inserts and updates
-  // If number is disible by two, we devide it by two. (in key range = update)
-  // If not we devide, round floor and add 1000 (out of key range = insert)
+  // If number is disible by two, we divide it by two. (in key range = update)
+  // If not, we divide, round floor and add 1000 (out of key range = insert)
   std::string query = R"aql(FOR preMod IN )aql" + from + R"aql(..)aql" + to +
                       R"aql(
                              LET doc = (preMod % 2 == 0) ? (preMod / 2) : (floor(preMod / 2) + 2000)

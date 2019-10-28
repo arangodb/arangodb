@@ -50,6 +50,8 @@ class RemoveExecutorTest : public ::testing::Test {
   TRI_vocbase_t& vocbase;
 
   std::string const collectionName = "UnitTestCollection";
+  std::string const allDocumentsQuery =
+      std::string("FOR d IN " + collectionName + " RETURN d");
 
  public:
   RemoveExecutorTest() : vocbase(server.getSystemDatabase()) {}
@@ -118,8 +120,7 @@ TEST_P(RemoveExecutorTestPatterns, remove_all_without_return) {
 
   AssertQueryHasResult(vocbase, query, VPackSlice::emptyArraySlice());
 
-  std::string checkQuery = "FOR i IN " + collectionName + " RETURN i.value";
-  AssertQueryHasResult(vocbase, checkQuery, VPackSlice::emptyArraySlice());
+  AssertQueryHasResult(vocbase, allDocumentsQuery, VPackSlice::emptyArraySlice());
 }
 
 TEST_P(RemoveExecutorTestPatterns, remove_all_with_return) {
@@ -133,6 +134,8 @@ TEST_P(RemoveExecutorTestPatterns, remove_all_with_return) {
       std::string("FOR d IN " + collectionName + " REMOVE d IN " +
                   collectionName + " RETURN OLD");
   AssertQueryHasResult(vocbase, query, allDocs.data->slice());
+
+  AssertQueryHasResult(vocbase, allDocumentsQuery, VPackSlice::emptyArraySlice());
 }
 
 TEST_P(RemoveExecutorTestPatterns, remove_every_third_without_return) {

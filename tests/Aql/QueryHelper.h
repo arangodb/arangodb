@@ -50,7 +50,7 @@ void AssertQueryResultToSlice(arangodb::aql::QueryResult const& result,
 ///        return a cursor, that is transformed into an Array.
 ///        Ordering matters. Also asserts that query was successful.
 void AssertQueryHasResult(TRI_vocbase_t& database, std::string const& queryString,
-                          arangodb::velocypack::Slice expected, size_t profileLevel = 0);
+                          arangodb::velocypack::Slice expected);
 
 /// @brief Tests if executing the given query on the given database results in the given error
 ///        Requires the query to error. Testing of no-error (TRI_ERROR_NO_ERROR) is not possible.
