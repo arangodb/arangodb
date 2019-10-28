@@ -70,6 +70,7 @@ function optimizerIndexesMultiTestSuite () {
   let idx0 = null;
   let idx1 = null;
   let noProjections = { optimizer: { rules: ["-reduce-extraction-to-projection"] } };
+  let noMoveFilters = { optimizer: { rules: ["-move-filters-into-enumerate"] } };
 
   return {
     setUpAll: function (){
@@ -172,7 +173,7 @@ function optimizerIndexesMultiTestSuite () {
         var maker = makers[i];
         var filtercheck = filterchecks[i];
 
-        var plan = AQL_EXPLAIN(query).plan;
+        var plan = AQL_EXPLAIN(query, null, noMoveFilters).plan;
         var nodeTypes = plan.nodes.map(function(node) {
           return node.type;
         });
@@ -281,7 +282,7 @@ function optimizerIndexesMultiTestSuite () {
         var maker = makers[i];
         var filtercheck = filterchecks[i];
 
-        var plan = AQL_EXPLAIN(query).plan;
+        var plan = AQL_EXPLAIN(query, null, noMoveFilters).plan;
         var nodeTypes = plan.nodes.map(function(node) {
           return node.type;
         });
@@ -398,7 +399,7 @@ function optimizerIndexesMultiTestSuite () {
         var maker = makers[i];
         var filtercheck = filterchecks[i];
 
-        var plan = AQL_EXPLAIN(query).plan;
+        var plan = AQL_EXPLAIN(query, null, noMoveFilters).plan;
         var nodeTypes = plan.nodes.map(function(node) {
           return node.type;
         });
