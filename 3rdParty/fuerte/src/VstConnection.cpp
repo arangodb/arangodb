@@ -252,12 +252,10 @@ void VstConnection<ST>::asyncWriteNextRequest() {
   startReading();           // Make sure we're listening for a response
   setTimeout();             // prepare request / connection timeouts
 
-  std::vector<asio_ns::const_buffer> buffers =
-      item->prepareForNetwork(_vstVersion);
+  auto buffers = item->prepareForNetwork(_vstVersion);
   asio_ns::async_write(this->_protocol.socket, buffers,
-                       [self = Connection::shared_from_this(),
-                        item](asio_ns::error_code const& ec,
-                                    std::size_t nwrite) {
+                       [self = Connection::shared_from_this(), item]
+                       (asio_ns::error_code const& ec, std::size_t nwrite) {
     auto& thisPtr = static_cast<VstConnection<ST>&>(*self);
     thisPtr.asyncWriteCallback(ec, std::move(item), nwrite);
   });
