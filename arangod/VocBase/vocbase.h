@@ -73,7 +73,7 @@ constexpr auto TRI_COL_NAME_USERS = "_users";
 constexpr auto TRI_VOC_SYSTEM_DATABASE = "_system";
 
 /// @brief maximal name length
-constexpr size_t TRI_COL_NAME_LENGTH = 64;
+constexpr size_t TRI_COL_NAME_LENGTH = 256;
 
 /// @brief default maximal collection journal size
 constexpr size_t TRI_JOURNAL_DEFAULT_SIZE = 1024 * 1024 * 32;  // 32 MiB
