@@ -1,6 +1,8 @@
 v3.5.2 (XXXX-XX-XX)
 -------------------
 
+* Upgraded bundled version of libcurl to 7.66.0.
+
 * When starting a coordinator, wait up to 15 seconds for it to appear 
   in the agency under key `Supervision/Health` before reporting as "ready".
   This is necessary because if the coordinator reports ready beforehand
