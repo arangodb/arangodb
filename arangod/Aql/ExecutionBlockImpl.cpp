@@ -197,13 +197,12 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::g
           }
 
           if (state == ExecutionState::DONE) {
-            _state = FETCH_SHADOWROWS;
+            _state = InternalState::FETCH_SHADOWROWS;
           }
           break;
         }
         case InternalState::FETCH_SHADOWROWS: {
-          ShadowAqlItemRow shadowRow{CreateInvalidShadowRowHint{}};
-          std::tie(state, shadowRow) = fetchShadowRowInternal();
+          state = fetchShadowRowInternal();
           if (state == ExecutionState::WAITING) {
             return {state, nullptr};
           }
@@ -297,8 +296,7 @@ typename ExecutionBlockImpl<Executor>::Infos const& ExecutionBlockImpl<Executor>
   return _infos;
 }
 
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
 
 enum class SkipVariants { FETCHER, EXECUTOR, GET_SOME };
 
@@ -389,7 +387,6 @@ static SkipVariants constexpr skipType() {
   }
 }
 
-}  // namespace aql
 }  // namespace arangodb
 
 template <class Executor>
@@ -477,6 +474,8 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<Executor>::initializeCursor
 
   TRI_ASSERT(_skipped == 0);
   _skipped = 0;
+  TRI_ASSERT(_state == InternalState::DONE || _state == InternalState::FETCH_DATA);
+  _state = InternalState::FETCH_DATA;
 
   constexpr bool customInit = hasInitializeCursor<Executor>::value;
   // IndexExecutor and EnumerateCollectionExecutor have initializeCursor
@@ -511,8 +510,7 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<Executor>::shutdown(int err
 // Work around GCC bug: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=56480
 // Without the namespaces it fails with
 // error: specialization of 'template<class Executor> std::pair<arangodb::aql::ExecutionState, arangodb::Result> arangodb::aql::ExecutionBlockImpl<Executor>::initializeCursor(arangodb::aql::AqlItemBlock*, size_t)' in different namespace
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
 // TODO -- remove this specialization when cpp 17 becomes available
 template <>
 std::pair<ExecutionState, Result> ExecutionBlockImpl<IdExecutor<BlockPassthrough::Enable, ConstFetcher>>::initializeCursor(
@@ -526,6 +524,8 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<IdExecutor<BlockPassthrough
 
   TRI_ASSERT(_skipped == 0);
   _skipped = 0;
+  TRI_ASSERT(_state == InternalState::DONE || _state == InternalState::FETCH_DATA);
+  _state = InternalState::FETCH_DATA;
 
   SharedAqlItemBlockPtr block =
       input.cloneToBlock(_engine->itemBlockManager(), *(infos().registersToKeep()),
@@ -630,7 +630,6 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<
   }
   return {ExecutionState::DONE, {errorCode}};
 }
-}  // namespace aql
 }  // namespace arangodb
 
 namespace arangodb {
@@ -820,7 +819,7 @@ void ExecutionBlockImpl<Executor>::resetAfterShadowRow() {
 }
 
 template <class Executor>
-std::pair<ExecutionState, ShadowAqlItemRow> ExecutionBlockImpl<Executor>::fetchShadowRowInternal() {
+ExecutionState ExecutionBlockImpl<Executor>::fetchShadowRowInternal() {
   TRI_ASSERT(_state == InternalState::FETCH_SHADOWROWS);
   TRI_ASSERT(!_outputItemRow->isFull());
   ExecutionState state = ExecutionState::HASMORE;
@@ -829,7 +828,7 @@ std::pair<ExecutionState, ShadowAqlItemRow> ExecutionBlockImpl<Executor>::fetchS
   std::tie(state, shadowRow) = _rowFetcher.fetchShadowRow();
   if (state == ExecutionState::WAITING) {
     TRI_ASSERT(!shadowRow.isInitialized());
-    return {state, shadowRow};
+    return state;
   }
 
   if (state == ExecutionState::DONE) {
@@ -841,11 +840,11 @@ std::pair<ExecutionState, ShadowAqlItemRow> ExecutionBlockImpl<Executor>::fetchS
     _outputItemRow->advanceRow();
   } else {
     if (_state != InternalState::DONE) {
-      _state = FETCH_DATA;
+      _state = InternalState::FETCH_DATA;
       resetAfterShadowRow();
     }
   }
-  return {state, shadowRow};
+  return state;
 }
 
 template class ::arangodb::aql::ExecutionBlockImpl<CalculationExecutor<CalculationType::Condition>>;

@@ -34,8 +34,7 @@
 #include <memory>
 #include <queue>
 
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
 
 class AqlItemBlock;
 class ExecutionEngine;
@@ -104,7 +103,7 @@ class ExecutionBlockImpl final : public ExecutionBlock {
       "allowsBlockPassthrough must imply preservesOrder, but does not!");
 
  private:
-  enum InternalState { FETCH_DATA, FETCH_SHADOWROWS, DONE };
+  enum class InternalState { FETCH_DATA, FETCH_SHADOWROWS, DONE };
 
  public:
   /**
@@ -217,7 +216,7 @@ class ExecutionBlockImpl final : public ExecutionBlock {
 
   void resetAfterShadowRow();
 
-  std::pair<ExecutionState, ShadowAqlItemRow> fetchShadowRowInternal();
+  ExecutionState fetchShadowRowInternal();
 
  private:
   /**
@@ -250,6 +249,5 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   size_t _skipped{};
 };
 
-}  // namespace aql
 }  // namespace arangodb
 #endif
