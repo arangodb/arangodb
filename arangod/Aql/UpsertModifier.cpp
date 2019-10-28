@@ -216,14 +216,14 @@ bool UpsertModifier::resultAvailable() const {
 }
 
 VPackArrayIterator UpsertModifier::getUpdateResultsIterator() const {
-  if (!_updateResults.hasSlice() || _updateResults.slice().isArray()) {
+  if (_updateResults.hasSlice() && _updateResults.slice().isArray()) {
     return VPackArrayIterator(_updateResults.slice());
   }
   return VPackArrayIterator(VPackSlice::emptyArraySlice());
 }
 
 VPackArrayIterator UpsertModifier::getInsertResultsIterator() const {
-  if (!_insertResults.hasSlice() || _insertResults.slice().isArray()) {
+  if (_insertResults.hasSlice() && _insertResults.slice().isArray()) {
     return VPackArrayIterator(_insertResults.slice());
   }
   return VPackArrayIterator(VPackSlice::emptyArraySlice());
