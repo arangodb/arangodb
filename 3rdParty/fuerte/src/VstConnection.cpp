@@ -254,10 +254,10 @@ void VstConnection<ST>::asyncWriteNextRequest() {
 
   auto buffers = item->prepareForNetwork(_vstVersion);
   asio_ns::async_write(this->_protocol.socket, buffers,
-                       [self = Connection::shared_from_this(), item]
-                       (asio_ns::error_code const& ec, std::size_t nwrite) {
+                       [self = Connection::shared_from_this(), req(std::move(item))]
+                       (asio_ns::error_code const& ec, std::size_t nwrite) mutable {
     auto& thisPtr = static_cast<VstConnection<ST>&>(*self);
-    thisPtr.asyncWriteCallback(ec, std::move(item), nwrite);
+    thisPtr.asyncWriteCallback(ec, std::move(req), nwrite);
   });
   FUERTE_LOG_VSTTRACE << "asyncWrite: done\n";
 }
