@@ -43,6 +43,8 @@ class Methods;
 }
 namespace aql {
 
+struct AqlCall;
+class AqlItemBlockInputRange;
 struct Collection;
 class EnumerateCollectionStats;
 class ExecutionEngine;
@@ -129,6 +131,18 @@ class EnumerateCollectionExecutor {
   std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
   std::tuple<ExecutionState, EnumerateCollectionStats, size_t> skipRows(size_t atMost);
 
+  /**
+   * @brief produce the next Row of Aql Values.
+   *
+   * @return ExecutionState, and if successful exactly one new Row of AqlItems.
+   */
+  std::tuple<ExecutorState, Stats, AqlCall> produceRows(size_t atMost,
+                                                        AqlItemBlockInputRange& input,
+                                                        OutputAqlItemRow& output);
+
+  std::tuple<ExecutorState, size_t, AqlCall> skipRowsRange(size_t atMost,
+                                                           AqlItemBlockInputRange& input);
+
   void setProducingFunction(DocumentProducingFunction const& documentProducer);
 
   void initializeCursor();
@@ -148,6 +162,7 @@ class EnumerateCollectionExecutor {
   DocumentProducingFunction _documentProducer;
   DocumentProducingFunctionContext _documentProducingFunctionContext;
   ExecutionState _state;
+  ExecutorState _executorState;
   bool _cursorHasMore;
   InputAqlItemRow _input;
   std::unique_ptr<OperationCursor> _cursor;

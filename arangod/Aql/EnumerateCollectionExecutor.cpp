@@ -25,6 +25,8 @@
 
 #include "EnumerateCollectionExecutor.h"
 
+#include "Aql/AqlCall.h"
+#include "Aql/AqlCallStack.h"
 #include "Aql/AqlValue.h"
 #include "Aql/Collection.h"
 #include "Aql/DocumentProducingHelper.h"
@@ -35,9 +37,11 @@
 #include "Aql/Query.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/Stats.h"
+#include "AqlCall.h"
 #include "Transaction/Methods.h"
 #include "Utils/OperationCursor.h"
 
+#include <Logger/LogMacros.h>
 #include <utility>
 
 using namespace arangodb;
@@ -54,8 +58,7 @@ EnumerateCollectionExecutorInfos::EnumerateCollectionExecutorInfos(
     // cppcheck-suppress passedByValue
     std::unordered_set<RegisterId> registersToKeep, ExecutionEngine* engine,
     Collection const* collection, Variable const* outVariable, bool produceResult,
-    Expression* filter,
-    std::vector<std::string> const& projections, 
+    Expression* filter, std::vector<std::string> const& projections,
     std::vector<size_t> const& coveringIndexAttributePositions,
     bool useRawDocumentPointers, bool random)
     : ExecutorInfos(make_shared_unordered_set(),
@@ -124,12 +127,12 @@ EnumerateCollectionExecutor::EnumerateCollectionExecutor(Fetcher& fetcher, Infos
       _fetcher(fetcher),
       _documentProducer(nullptr),
       _documentProducingFunctionContext(_input, nullptr, _infos.getOutputRegisterId(),
-                                        _infos.getProduceResult(),
-                                        _infos.getQuery(), _infos.getFilter(),
-                                        _infos.getProjections(), 
+                                        _infos.getProduceResult(), _infos.getQuery(),
+                                        _infos.getFilter(), _infos.getProjections(),
                                         _infos.getCoveringIndexAttributePositions(),
                                         true, _infos.getUseRawDocumentPointers(), false),
       _state(ExecutionState::HASMORE),
+      _executorState(ExecutorState::HASMORE),
       _cursorHasMore(false),
       _input(InputAqlItemRow{CreateInvalidInputRowHint{}}) {
   _cursor = std::make_unique<OperationCursor>(
@@ -246,8 +249,62 @@ std::tuple<ExecutionState, EnumerateCollectionStats, size_t> EnumerateCollection
   return std::make_tuple(ExecutionState::HASMORE, stats, actuallySkipped);  // tupple, cannot use initializer list due to build failure
 }
 
+std::tuple<ExecutorState, EnumerateCollectionStats, AqlCall> EnumerateCollectionExecutor::produceRows(
+    size_t limit, AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output) {
+  TRI_IF_FAILURE("EnumerateCollectionExecutor::produceRows") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+  EnumerateCollectionStats stats{};
+
+  TRI_ASSERT(_documentProducingFunctionContext.getAndResetNumScanned() == 0);
+  _documentProducingFunctionContext.setOutputRow(&output);
+
+  while (inputRange.hasMore() && limit > 0) {
+    TRI_ASSERT(!output.isFull());
+    if (!_cursorHasMore) {
+      std::tie(_executorState, _input) = inputRange.next();
+      TRI_ASSERT(_input.isInitialized());
+
+      _cursor->reset();
+      _cursorHasMore = _cursor->hasMore();
+
+      if (!_cursorHasMore) {
+        continue;
+      }
+    }
+
+    TRI_ASSERT(_input.isInitialized());
+
+    TRI_IF_FAILURE("EnumerateCollectionBlock::moreDocuments") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+
+    if (_infos.getProduceResult()) {
+      // properly build up results by fetching the actual documents
+      // using nextDocument()
+      _cursorHasMore = _cursor->nextDocument(_documentProducer, limit /*atMost*/);
+    } else {
+      // performance optimization: we do not need the documents at all,
+      // so just call next()
+      TRI_ASSERT(!_documentProducingFunctionContext.hasFilter());
+      _cursorHasMore =
+          _cursor->next(getNullCallback<false>(_documentProducingFunctionContext),
+                        limit /*atMost*/);
+    }
+
+    stats.incrScanned(_documentProducingFunctionContext.getAndResetNumScanned());
+    stats.incrFiltered(_documentProducingFunctionContext.getAndResetNumFiltered());
+    limit--;
+  }
+
+  AqlCall upstreamCall{};
+  upstreamCall.softLimit = limit;
+  return {_executorState, stats, upstreamCall};
+}
+
 void EnumerateCollectionExecutor::initializeCursor() {
   _state = ExecutionState::HASMORE;
+  _executorState = ExecutorState::HASMORE;
   _input = InputAqlItemRow{CreateInvalidInputRowHint{}};
   setAllowCoveringIndexOptimization(true);
   _cursorHasMore = false;
