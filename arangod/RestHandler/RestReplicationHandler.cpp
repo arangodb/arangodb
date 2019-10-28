@@ -36,6 +36,7 @@
 #include "Cluster/ClusterHelpers.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/FollowerInfo.h"
+#include "Cluster/RebootTracker.h"
 #include "Cluster/ResignShardLeadership.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Indexes/Index.h"
@@ -70,6 +71,7 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
+using namespace arangodb::cluster;
 
 namespace {
 std::string const dataString("data");
@@ -2568,6 +2570,9 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
     return;
   }
 
+  RebootId rebootId(0);
+  std::string serverId;
+
   if (!body.isObject()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "body needs to be an object with attributes 'collection', "
@@ -2578,6 +2583,23 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
   VPackSlice const collection = body.get("collection");
   VPackSlice const ttlSlice = body.get("ttl");
   VPackSlice const idSlice = body.get("id");
+
+  if (body.hasKey(StaticStrings::RebootId)) {
+    if (body.get(StaticStrings::RebootId).isInteger()) {
+      if (body.hasKey("serverId") && body.get("serverId").isString()) {
+        rebootId = RebootId(body.get(StaticStrings::RebootId).getNumber<uint64_t>());
+        serverId = body.get("serverId").copyString();
+      } else {
+        generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                      "'rebootId' must be accompanied by string attribute 'serverId'");
+        return;
+      }
+    } else {
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                    "'rebootId' must be an integer attribute");
+      return;
+    }
+  }
 
   if (!collection.isString() || !ttlSlice.isNumber() || !idSlice.isString()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
@@ -2623,7 +2645,7 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
   LOG_TOPIC("4fac2", DEBUG, Logger::REPLICATION)
       << "Attempt to create a Lock: " << id << " for shard: " << _vocbase.name()
       << "/" << col->name() << " of type: " << (doSoftLock ? "soft" : "hard");
-  Result res = createBlockingTransaction(id, *col, ttl, lockType);
+  Result res = createBlockingTransaction(id, *col, ttl, lockType, rebootId, serverId);
   if (!res.ok()) {
     generateError(res);
     return;
@@ -2971,7 +2993,9 @@ ReplicationApplier* RestReplicationHandler::getApplier(bool& global) {
 
 Result RestReplicationHandler::createBlockingTransaction(aql::QueryId id,
                                                          LogicalCollection& col, double ttl,
-                                                         AccessMode::Type access) const {
+                                                         AccessMode::Type access,
+                                                         RebootId const& rebootId,
+                                                         std::string const& serverId) {
   // This is a constant JSON structure for Queries.
   // we actually do not need a plan, as we only want the query registry to have
   // a hold of our transaction
@@ -3003,8 +3027,30 @@ Result RestReplicationHandler::createBlockingTransaction(aql::QueryId id,
 
   TRI_ASSERT(isLockHeld(id).is(TRI_ERROR_HTTP_NOT_FOUND));
 
+    ClusterInfo& ci = *ClusterInfo::instance();
+
+  std::string vn = _vocbase.name();
+  
   try {
-    queryRegistry->insert(id, query.get(), ttl, true, true);
+    std::function<void(void)> f =
+      [=]() {
+        try {
+          // Code does not matter, read only access, so we can roll back.
+          QueryRegistryFeature::registry()->destroy(vn, id, TRI_ERROR_QUERY_KILLED, false);
+        } catch (...) {
+          // All errors that show up here can only be
+          // triggered if the query is destroyed in between.
+        }
+      };
+
+    std::string comment = std::string("SynchronizeShard from ") + serverId +
+      " for " + col.name() + " access mode " + AccessMode::typeString(access);
+    auto rGuard = std::make_unique<CallbackGuard>(
+      ci.rebootTracker().callMeOnChange(
+        RebootTracker::PeerState(serverId, rebootId), f, comment));
+
+    queryRegistry->insert(id, query.get(), ttl, true, true, std::move(rGuard));
+
   } catch (...) {
     // For compatibility we only return this error
     return {TRI_ERROR_TRANSACTION_INTERNAL, "cannot begin read transaction"};

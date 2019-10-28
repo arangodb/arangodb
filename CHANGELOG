@@ -1,13 +1,15 @@
 v3.5.2 (XXXX-XX-XX)
 -------------------
 
-* When starting a coordinator, wait up to 15 seconds for it to appear 
+* Shard synchronisation readlock aware of rebootId
+
+* When starting a coordinator, wait up to 15 seconds for it to appear
   in the agency under key `Supervision/Health` before reporting as "ready".
   This is necessary because if the coordinator reports ready beforehand
-  and is used to create databases etc., the supervision may remove all 
+  and is used to create databases etc., the supervision may remove all
   of the jobs started by non-ready coordinators, considering them to be
   from a failed coordinator.
-  To avoid huge startup delays, the startup will proceed after waiting 
+  To avoid huge startup delays, the startup will proceed after waiting
   futilely for 15 seconds and log a message.
 
 * Separately account for superuser and user request traffic. This is
@@ -29,7 +31,7 @@ v3.5.2 (XXXX-XX-XX)
 
 * Disallow the usage of subqueries inside AQL traversal PRUNE conditions.
   Using subqueries inside PRUNE conditions causes undefined behavior,
-  so such queries will now be aborted early on with a parse error 
+  so such queries will now be aborted early on with a parse error
   instead of running into undefined behavior.
 
 * Fixed available flag for hotbackup.
