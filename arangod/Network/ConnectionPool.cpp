@@ -47,7 +47,7 @@ ConnectionPool::~ConnectionPool() { shutdown(); }
 /// @brief request a connection for a specific endpoint
 /// note: it is the callers responsibility to ensure the endpoint
 /// is always the same, we do not do any post-processing
-std::shared_ptr<network::Connection> ConnectionPool::leaseConnection(std::string const& endpoint) {
+network::ConnectionPtr ConnectionPool::leaseConnection(std::string const& endpoint) {
 
   READ_LOCKER(guard, _lock);
   auto it = _connections.find(endpoint);
@@ -99,7 +99,7 @@ void ConnectionPool::removeBrokenConnections(Bucket& buck) {
 void ConnectionPool::pruneConnections() {
   READ_LOCKER(guard, _lock);
 
-  const auto ttl = std::chrono::milliseconds(_config.idleConnectionMilli);
+  const auto ttl = std::chrono::milliseconds(_config.idleConnectionMilli * 2);
 
   for (auto& pair : _connections) {
     Bucket& buck = *(pair.second);
@@ -220,14 +220,14 @@ ConnectionPtr ConnectionPool::selectConnection(std::string const& endpoint,
     if (_config.protocol == fuerte::ProtocolType::Http) {
       auto now = std::chrono::steady_clock::now();
       TRI_ASSERT(now >= c.leased);
-      // hack hack hack.
+      // hack hack hack. Avoids reusing used connections
       if ((now - c.leased) > std::chrono::milliseconds(50)) {
-        c.leased = std::chrono::steady_clock::now();
+        c.leased = now;
         return c.fuerte;
       }
-    } else if (_config.protocol == fuerte::ProtocolType::Vst && num <= 4) {
+    } else if (_config.protocol == fuerte::ProtocolType::Vst && num <= 3) {
       c.leased = std::chrono::steady_clock::now();
-      return c.fuerte; // TODO: make configurable ?
+      return c.fuerte; // TODO: make (num <= 3) configurable ?
     }
   }
   
