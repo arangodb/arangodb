@@ -413,6 +413,7 @@ ExecutionNode* IndexNode::clone(ExecutionPlan* plan, bool withDependencies,
   c->needsGatherNodeSort(_needsGatherNodeSort);
   c->initIndexCoversProjections();
   CollectionAccessingNode::cloneInto(*c);
+  DocumentProducingNode::cloneInto(plan, *c);
   return cloneHelper(std::move(c), withDependencies, withProperties);
 }
 
