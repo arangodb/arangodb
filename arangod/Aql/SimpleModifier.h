@@ -91,8 +91,6 @@ class SimpleModifier {
     OutputIterator begin() const;
     OutputIterator end() const;
 
-    bool isDone();
-
    private:
     OutputIterator& next();
 
