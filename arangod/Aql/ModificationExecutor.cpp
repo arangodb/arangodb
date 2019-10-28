@@ -127,10 +127,8 @@ ModificationExecutor<FetcherType, ModifierType>::doCollect(size_t const maxOutpu
 template <typename FetcherType, typename ModifierType>
 void ModificationExecutor<FetcherType, ModifierType>::doOutput(OutputAqlItemRow& output,
                                                                Stats& stats) {
-  _modifier.setupIterator();
-  while (!_modifier.isFinishedIterator()) {
-    ModifierOutput modifierOutput{_modifier.getOutput()};
-
+  typename ModifierType::OutputIterator modifierOutputIterator(_modifier);
+  for (auto const& modifierOutput : modifierOutputIterator) {
     bool written = false;
     switch (modifierOutput.getType()) {
       case ModifierOutput::Type::ReturnIfRequired:
@@ -155,15 +153,13 @@ void ModificationExecutor<FetcherType, ModifierType>::doOutput(OutputAqlItemRow&
         // nothing.
         break;
     }
-
-    _modifier.advanceIterator();
   }
 
   if (_infos._doCount) {
     stats.addWritesExecuted(_modifier.nrOfWritesExecuted());
     stats.addWritesIgnored(_modifier.nrOfWritesIgnored());
   }
-}  // namespace aql
+}
 
 template <typename FetcherType, typename ModifierType>
 std::pair<ExecutionState, typename ModificationExecutor<FetcherType, ModifierType>::Stats>

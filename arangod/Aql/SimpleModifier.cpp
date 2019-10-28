@@ -45,6 +45,91 @@ using namespace arangodb::aql::ModificationExecutorHelpers;
 using namespace arangodb::basics;
 
 template <class ModifierCompletion, typename Enable>
+SimpleModifier<ModifierCompletion, Enable>::OutputIterator::OutputIterator(
+    SimpleModifier<ModifierCompletion, Enable> const& modifier)
+    : _modifier(modifier),
+      _operationsIterator(modifier._operations.begin()),
+      _resultsIterator(modifier.getResultsIterator()) {}
+
+template <typename ModifierCompletion, typename Enable>
+typename SimpleModifier<ModifierCompletion, Enable>::OutputIterator&
+SimpleModifier<ModifierCompletion, Enable>::OutputIterator::next() {
+  // Only move results on if there has been a document
+  // submitted to the transaction
+  if (_operationsIterator->first == ModifierOperationType::ReturnIfAvailable) {
+    _resultsIterator++;
+  }
+  _operationsIterator++;
+  return *this;
+}
+
+template <class ModifierCompletion, typename Enable>
+typename SimpleModifier<ModifierCompletion, Enable>::OutputIterator&
+SimpleModifier<ModifierCompletion, Enable>::OutputIterator::operator++() {
+  return next();
+}
+
+template <class ModifierCompletion, typename Enable>
+typename SimpleModifier<ModifierCompletion, Enable>::OutputIterator&
+SimpleModifier<ModifierCompletion, Enable>::OutputIterator::operator++(int) {
+  return next();
+}
+
+template <class ModifierCompletion, typename Enable>
+bool SimpleModifier<ModifierCompletion, Enable>::OutputIterator::operator!=(
+    SimpleModifier<ModifierCompletion, Enable>::OutputIterator const& other) const
+    noexcept {
+  return _operationsIterator != other._operationsIterator;
+}
+
+template <class ModifierCompletion, typename Enable>
+ModifierOutput SimpleModifier<ModifierCompletion, Enable>::OutputIterator::operator*() const {
+  switch (_operationsIterator->first) {
+    case ModifierOperationType::ReturnIfAvailable: {
+      // This means the results slice is relevant
+      if (_modifier.resultAvailable()) {
+        VPackSlice elm = *_resultsIterator;
+        bool error = VelocyPackHelper::getBooleanValue(elm, StaticStrings::Error, false);
+
+        if (error) {
+          return ModifierOutput{_operationsIterator->second, ModifierOutput::Type::SkipRow};
+        } else {
+          return ModifierOutput{_operationsIterator->second,
+                                ModifierOutput::Type::ReturnIfRequired,
+                                std::make_unique<AqlValue>(elm.get(StaticStrings::Old)),
+                                std::make_unique<AqlValue>(elm.get(StaticStrings::New))};
+        }
+      } else {
+        return ModifierOutput{_operationsIterator->second, ModifierOutput::Type::CopyRow};
+      }
+      case ModifierOperationType::CopyRow:
+        return ModifierOutput{_operationsIterator->second, ModifierOutput::Type::CopyRow};
+      case ModifierOperationType::SkipRow:
+        return ModifierOutput{_operationsIterator->second, ModifierOutput::Type::SkipRow};
+    }
+  }
+
+  // Shut up compiler
+  TRI_ASSERT(false);
+  return ModifierOutput{_operationsIterator->second, ModifierOutput::Type::SkipRow};
+}
+
+template <class ModifierCompletion, typename Enable>
+typename SimpleModifier<ModifierCompletion, Enable>::OutputIterator
+SimpleModifier<ModifierCompletion, Enable>::OutputIterator::begin() const {
+  return SimpleModifier<ModifierCompletion, Enable>::OutputIterator(this->_modifier);
+}
+
+template <class ModifierCompletion, typename Enable>
+typename SimpleModifier<ModifierCompletion, Enable>::OutputIterator
+SimpleModifier<ModifierCompletion, Enable>::OutputIterator::end() const {
+  auto it = SimpleModifier<ModifierCompletion, Enable>::OutputIterator(this->_modifier);
+  it._operationsIterator = _modifier._operations.end();
+
+  return it;
+}
+
+template <class ModifierCompletion, typename Enable>
 SimpleModifier<ModifierCompletion, Enable>::SimpleModifier(ModificationExecutorInfos& infos)
     : _infos(infos),
       _completion(infos),
@@ -116,32 +201,6 @@ size_t SimpleModifier<ModifierCompletion, Enable>::nrOfWritesIgnored() const {
 }
 
 template <typename ModifierCompletion, typename Enable>
-void SimpleModifier<ModifierCompletion, Enable>::setupIterator() {
-  _operationsIterator = _operations.begin();
-  if (resultAvailable()) {
-    TRI_ASSERT(_results.hasSlice() && _results.slice().isArray());
-    _resultsIterator = VPackArrayIterator{_results.slice()};
-  } else {
-    _resultsIterator = VPackArrayIterator{VPackSlice::emptyArraySlice()};
-  }
-}
-
-template <typename ModifierCompletion, typename Enable>
-bool SimpleModifier<ModifierCompletion, Enable>::isFinishedIterator() {
-  return _operationsIterator == _operations.end();
-}
-
-template <typename ModifierCompletion, typename Enable>
-void SimpleModifier<ModifierCompletion, Enable>::advanceIterator() {
-  // Only move results on if there has been a document
-  // submitted to the transaction
-  if (_operationsIterator->first == ModifierOperationType::ReturnIfAvailable) {
-    _resultsIterator++;
-  }
-  _operationsIterator++;
-}
-
-template <typename ModifierCompletion, typename Enable>
 ModificationExecutorInfos& SimpleModifier<ModifierCompletion, Enable>::getInfos() const {
   return _infos;
 }
@@ -157,36 +216,15 @@ bool SimpleModifier<ModifierCompletion, Enable>::resultAvailable() const {
 }
 
 template <typename ModifierCompletion, typename Enable>
-ModifierOutput SimpleModifier<ModifierCompletion, Enable>::getOutput() {
-  switch (_operationsIterator->first) {
-    case ModifierOperationType::ReturnIfAvailable: {
-      // This means the results slice is relevant
-      if (resultAvailable()) {
-        VPackSlice elm = *_resultsIterator;
-        bool error = VelocyPackHelper::getBooleanValue(elm, StaticStrings::Error, false);
-
-        if (error) {
-          return ModifierOutput{_operationsIterator->second, ModifierOutput::Type::SkipRow};
-        } else {
-          return ModifierOutput{_operationsIterator->second,
-                                ModifierOutput::Type::ReturnIfRequired,
-                                std::make_unique<AqlValue>(elm.get(StaticStrings::Old)),
-                                std::make_unique<AqlValue>(elm.get(StaticStrings::New))};
-        }
-      } else {
-        return ModifierOutput{_operationsIterator->second, ModifierOutput::Type::CopyRow};
-      }
-      case ModifierOperationType::CopyRow:
-        return ModifierOutput{_operationsIterator->second, ModifierOutput::Type::CopyRow};
-      case ModifierOperationType::SkipRow:
-        return ModifierOutput{_operationsIterator->second, ModifierOutput::Type::SkipRow};
-    }
+VPackArrayIterator SimpleModifier<ModifierCompletion, Enable>::getResultsIterator() const {
+  if (resultAvailable()) {
+    TRI_ASSERT(_results.hasSlice() && _results.slice().isArray());
+    return VPackArrayIterator{_results.slice()};
+  } else {
+    return VPackArrayIterator{VPackSlice::emptyArraySlice()};
   }
-
-  // Shut up compiler
-  TRI_ASSERT(false);
-  return ModifierOutput{_operationsIterator->second, ModifierOutput::Type::SkipRow};
 }
+
 template class ::arangodb::aql::SimpleModifier<InsertModifierCompletion>;
 template class ::arangodb::aql::SimpleModifier<RemoveModifierCompletion>;
 template class ::arangodb::aql::SimpleModifier<UpdateReplaceModifierCompletion>;

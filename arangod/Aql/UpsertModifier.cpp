@@ -45,10 +45,93 @@ using namespace arangodb::aql;
 using namespace arangodb::aql::ModificationExecutorHelpers;
 using namespace arangodb::basics;
 
+UpsertModifier::OutputIterator::OutputIterator(UpsertModifier const& modifier)
+    : _modifier(modifier),
+      _operationsIterator(modifier._operations.begin()),
+      _insertResultsIterator(modifier.getInsertResultsIterator()),
+      _updateResultsIterator(modifier.getUpdateResultsIterator()) {}
+
+UpsertModifier::OutputIterator& UpsertModifier::OutputIterator::next() {
+  if (_operationsIterator->first == UpsertModifier::OperationType::UpdateReturnIfAvailable) {
+    _updateResultsIterator++;
+  } else if (_operationsIterator->first == UpsertModifier::OperationType::InsertReturnIfAvailable) {
+    _insertResultsIterator++;
+  }
+  _operationsIterator++;
+  return *this;
+}
+
+UpsertModifier::OutputIterator& UpsertModifier::OutputIterator::operator++() {
+  return next();
+}
+
+UpsertModifier::OutputIterator& UpsertModifier::OutputIterator::operator++(int) {
+  return next();
+}
+
+bool UpsertModifier::OutputIterator::operator!=(UpsertModifier::OutputIterator const& other) const
+    noexcept {
+  return _operationsIterator != other._operationsIterator;
+}
+
+ModifierOutput UpsertModifier::OutputIterator::operator*() const {
+  // When we get the output of our iterator, we have to check whether the
+  // operation in question was APPLY_UPDATE or APPLY_INSERT to determine which
+  // of the results slices (UpdateReplace or Insert) we have to look in and
+  // increment.
+  if (_modifier.resultAvailable()) {
+    VPackSlice elm;
+
+    switch (_operationsIterator->first) {
+      case UpsertModifier::OperationType::CopyRow:
+        return ModifierOutput{_operationsIterator->second, ModifierOutput::Type::CopyRow};
+      case UpsertModifier::OperationType::SkipRow:
+        return ModifierOutput{_operationsIterator->second, ModifierOutput::Type::SkipRow};
+      case UpsertModifier::OperationType::UpdateReturnIfAvailable:
+        elm = *_updateResultsIterator;
+        break;
+      case UpsertModifier::OperationType::InsertReturnIfAvailable:
+        elm = *_insertResultsIterator;
+        break;
+    }
+
+    bool error = VelocyPackHelper::getBooleanValue(elm, StaticStrings::Error, false);
+    if (error) {
+      return ModifierOutput{_operationsIterator->second, ModifierOutput::Type::SkipRow};
+    } else {
+      return ModifierOutput{_operationsIterator->second, ModifierOutput::Type::ReturnIfRequired,
+                            std::make_unique<AqlValue>(elm.get(StaticStrings::Old)),
+                            std::make_unique<AqlValue>(elm.get(StaticStrings::New))};
+    }
+  } else {
+    switch (_operationsIterator->first) {
+      case UpsertModifier::OperationType::UpdateReturnIfAvailable:
+      case UpsertModifier::OperationType::InsertReturnIfAvailable:
+      case UpsertModifier::OperationType::CopyRow:
+        return ModifierOutput{_operationsIterator->second, ModifierOutput::Type::CopyRow};
+      case UpsertModifier::OperationType::SkipRow:
+        return ModifierOutput{_operationsIterator->second, ModifierOutput::Type::SkipRow};
+    }
+  }
+
+  // shut up compiler
+  TRI_ASSERT(false);
+  return ModifierOutput{_operationsIterator->second, ModifierOutput::Type::SkipRow};
+}
+
+typename UpsertModifier::OutputIterator UpsertModifier::OutputIterator::begin() const {
+  return UpsertModifier::OutputIterator(this->_modifier);
+}
+
+typename UpsertModifier::OutputIterator UpsertModifier::OutputIterator::end() const {
+  auto it = UpsertModifier::OutputIterator(this->_modifier);
+  it._operationsIterator = _modifier._operations.end();
+
+  return it;
+}
+
 UpsertModifier::UpsertModifier(ModificationExecutorInfos& infos)
     : _infos(infos),
-      _updateResultsIterator(VPackSlice::emptyArraySlice()),
-      _insertResultsIterator(VPackSlice::emptyArraySlice()),
 
       // Batch size has to be 1 so that the upsert modifier sees its own
       // writes.
@@ -132,6 +215,26 @@ bool UpsertModifier::resultAvailable() const {
   return (nrOfDocuments() > 0 && !_infos._options.silent);
 }
 
+VPackArrayIterator UpsertModifier::getUpdateResultsIterator() const {
+  if (!_updateResults.hasSlice() || _updateResults.slice().isNone()) {
+    return VPackArrayIterator(VPackSlice::emptyArraySlice());
+  } else if (_updateResults.slice().isArray()) {
+    return VPackArrayIterator(_updateResults.slice());
+  } else {
+    TRI_ASSERT(false);
+  }
+}
+
+VPackArrayIterator UpsertModifier::getInsertResultsIterator() const {
+  if (!_insertResults.hasSlice() || _insertResults.slice().isNone()) {
+    return VPackArrayIterator(VPackSlice::emptyArraySlice());
+  } else if (_insertResults.slice().isArray()) {
+    return VPackArrayIterator(_insertResults.slice());
+  } else {
+    TRI_ASSERT(false);
+  }
+}
+
 Result UpsertModifier::accumulate(InputAqlItemRow& row) {
   RegisterId const inDocReg = _infos._input1RegisterId;
   RegisterId const insertReg = _infos._input2RegisterId;
@@ -213,83 +316,5 @@ size_t UpsertModifier::nrOfWritesExecuted() const {
 }
 
 size_t UpsertModifier::nrOfWritesIgnored() const { return nrOfErrors(); }
-
-void UpsertModifier::setupIterator() {
-  _operationsIterator = _operations.begin();
-
-  if (!_insertResults.hasSlice() || _insertResults.slice().isNone()) {
-    _insertResultsIterator = VPackArrayIterator(VPackSlice::emptyArraySlice());
-  } else if (_insertResults.slice().isArray()) {
-    _insertResultsIterator = VPackArrayIterator(_insertResults.slice());
-  } else {
-    TRI_ASSERT(false);
-  }
-
-  if (!_updateResults.hasSlice() || _updateResults.slice().isNone()) {
-    _updateResultsIterator = VPackArrayIterator(VPackSlice::emptyArraySlice());
-  } else if (_updateResults.slice().isArray()) {
-    _updateResultsIterator = VPackArrayIterator(_updateResults.slice());
-  } else {
-    TRI_ASSERT(false);
-  }
-}
-
-bool UpsertModifier::isFinishedIterator() {
-  return _operationsIterator == _operations.end();
-}
-
-void UpsertModifier::advanceIterator() {
-  if (_operationsIterator->first == UpsertModifier::OperationType::UpdateReturnIfAvailable) {
-    _updateResultsIterator++;
-  } else if (_operationsIterator->first == UpsertModifier::OperationType::InsertReturnIfAvailable) {
-    _insertResultsIterator++;
-  }
-  _operationsIterator++;
-}
-
-// When we get the output of our iterator, we have to check whether the
-// operation in question was APPLY_UPDATE or APPLY_INSERT to determine which
-// of the results slices (UpdateReplace or Insert) we have to look in and
-// increment.
-ModifierOutput UpsertModifier::getOutput() {
-  if (resultAvailable()) {
-    VPackSlice elm;
-
-    switch (_operationsIterator->first) {
-      case UpsertModifier::OperationType::CopyRow:
-        return ModifierOutput{_operationsIterator->second, ModifierOutput::Type::CopyRow};
-      case UpsertModifier::OperationType::SkipRow:
-        return ModifierOutput{_operationsIterator->second, ModifierOutput::Type::SkipRow};
-      case UpsertModifier::OperationType::UpdateReturnIfAvailable:
-        elm = *_updateResultsIterator;
-        break;
-      case UpsertModifier::OperationType::InsertReturnIfAvailable:
-        elm = *_insertResultsIterator;
-        break;
-    }
-
-    bool error = VelocyPackHelper::getBooleanValue(elm, StaticStrings::Error, false);
-    if (error) {
-      return ModifierOutput{_operationsIterator->second, ModifierOutput::Type::SkipRow};
-    } else {
-      return ModifierOutput{_operationsIterator->second, ModifierOutput::Type::ReturnIfRequired,
-                            std::make_unique<AqlValue>(elm.get(StaticStrings::Old)),
-                            std::make_unique<AqlValue>(elm.get(StaticStrings::New))};
-    }
-  } else {
-    switch (_operationsIterator->first) {
-      case UpsertModifier::OperationType::UpdateReturnIfAvailable:
-      case UpsertModifier::OperationType::InsertReturnIfAvailable:
-      case UpsertModifier::OperationType::CopyRow:
-        return ModifierOutput{_operationsIterator->second, ModifierOutput::Type::CopyRow};
-      case UpsertModifier::OperationType::SkipRow:
-        return ModifierOutput{_operationsIterator->second, ModifierOutput::Type::SkipRow};
-    }
-  }
-
-  // shut up compiler
-  TRI_ASSERT(false);
-  return ModifierOutput{_operationsIterator->second, ModifierOutput::Type::SkipRow};
-}
 
 size_t UpsertModifier::getBatchSize() const { return _batchSize; }

@@ -80,11 +80,23 @@ class SimpleModifier {
 
   class OutputIterator {
    public:
-    OutputIterator(SimpleModifier const& modifier);
+    OutputIterator() = delete;
+
+    explicit OutputIterator(SimpleModifier<ModifierCompletion, Enable> const& modifier);
+
+    OutputIterator& operator++();
+    OutputIterator& operator++(int);
+    bool operator!=(OutputIterator const& other) const noexcept;
+    ModifierOutput operator*() const;
+    OutputIterator begin() const;
+    OutputIterator end() const;
 
     bool isDone();
 
    private:
+    OutputIterator& next();
+
+    SimpleModifier<ModifierCompletion, Enable> const& _modifier;
     std::vector<ModOp>::const_iterator _operationsIterator;
     VPackArrayIterator _resultsIterator;
   };
@@ -113,17 +125,12 @@ class SimpleModifier {
   size_t nrOfWritesExecuted() const;
   size_t nrOfWritesIgnored() const;
 
-  // TODO: Make this a real iterator
-  void setupIterator();
-  bool isFinishedIterator();
-  ModifierOutput getOutput();
-  void advanceIterator();
-
   ModificationExecutorInfos& getInfos() const;
   size_t getBatchSize() const;
 
  private:
   bool resultAvailable() const;
+  VPackArrayIterator getResultsIterator() const;
 
   ModificationExecutorInfos& _infos;
   ModifierCompletion _completion;

@@ -48,6 +48,30 @@ class UpsertModifier {
   };
   using ModOp = std::pair<UpsertModifier::OperationType, InputAqlItemRow>;
 
+  class OutputIterator {
+   public:
+    OutputIterator() = delete;
+
+    explicit OutputIterator(UpsertModifier const& modifier);
+
+    OutputIterator& operator++();
+    OutputIterator& operator++(int);
+    bool operator!=(OutputIterator const& other) const noexcept;
+    ModifierOutput operator*() const;
+    OutputIterator begin() const;
+    OutputIterator end() const;
+
+    bool isDone();
+
+   private:
+    OutputIterator& next();
+
+    UpsertModifier const& _modifier;
+    std::vector<ModOp>::const_iterator _operationsIterator;
+    VPackArrayIterator _insertResultsIterator;
+    VPackArrayIterator _updateResultsIterator;
+  };
+
  public:
   UpsertModifier(ModificationExecutorInfos& infos);
   ~UpsertModifier();
@@ -64,16 +88,12 @@ class UpsertModifier {
   size_t nrOfWritesExecuted() const;
   size_t nrOfWritesIgnored() const;
 
-  // TODO: Make this a real iterator
-  void setupIterator();
-  bool isFinishedIterator();
-  ModifierOutput getOutput();
-  void advanceIterator();
-
   size_t getBatchSize() const;
 
  private:
   bool resultAvailable() const;
+  VPackArrayIterator getUpdateResultsIterator() const;
+  VPackArrayIterator getInsertResultsIterator() const;
 
   OperationType updateReplaceCase(ModificationExecutorAccumulator& accu,
                                   AqlValue const& inDoc, AqlValue const& updateDoc);
@@ -86,11 +106,6 @@ class UpsertModifier {
 
   OperationResult _updateResults;
   OperationResult _insertResults;
-
-  std::vector<ModOp>::const_iterator _operationsIterator;
-
-  VPackArrayIterator _updateResultsIterator;
-  VPackArrayIterator _insertResultsIterator;
 
   size_t const _batchSize;
 };
