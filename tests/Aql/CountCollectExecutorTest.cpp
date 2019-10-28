@@ -20,11 +20,9 @@
 /// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "AqlItemBlockHelper.h"
 #include "RowFetcherHelper.h"
 #include "gtest/gtest.h"
 
-#include "Aql/AqlCall.h"
 #include "Aql/AqlItemBlock.h"
 #include "Aql/CountCollectExecutor.h"
 #include "Aql/InputAqlItemRow.h"
@@ -62,8 +60,7 @@ class CountCollectExecutorTest : public ::testing::Test {
 TEST_F(CountCollectExecutorTest, there_are_no_rows_upstream_the_producer_doesnt_wait) {
   CountCollectExecutorInfos infos(1 /* outputRegId */, 1 /* nrIn */, nrOutputReg, {}, {});
   VPackBuilder input;
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
-      itemBlockManager, input.steal(), false);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input.steal(), false);
   CountCollectExecutor testee(fetcher, infos);
   NoStats stats{};
 
@@ -84,8 +81,7 @@ TEST_F(CountCollectExecutorTest, there_are_no_rows_upstream_the_producer_doesnt_
 TEST_F(CountCollectExecutorTest, there_are_now_rows_upstream_the_producer_waits) {
   CountCollectExecutorInfos infos(1 /* outputRegId */, 1 /* nrIn */, nrOutputReg, {}, {});
   VPackBuilder input;
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
-      itemBlockManager, input.steal(), true);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input.steal(), true);
   CountCollectExecutor testee(fetcher, infos);
   NoStats stats{};
 
@@ -110,8 +106,7 @@ TEST_F(CountCollectExecutorTest, there_are_now_rows_upstream_the_producer_waits)
 TEST_F(CountCollectExecutorTest, there_are_rows_in_the_upstream_the_producer_doesnt_wait) {
   CountCollectExecutorInfos infos(1 /* outputRegId */, 1 /* nrIn */, nrOutputReg, {}, {});
   auto input = VPackParser::fromJson("[ [1], [2], [3] ]");
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
-      itemBlockManager, input->steal(), false);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input->steal(), false);
   CountCollectExecutor testee(fetcher, infos);
   NoStats stats{};
 
@@ -132,8 +127,7 @@ TEST_F(CountCollectExecutorTest, there_are_rows_in_the_upstream_the_producer_doe
 TEST_F(CountCollectExecutorTest, there_are_rows_in_the_upstream_the_producer_waits) {
   CountCollectExecutorInfos infos(1 /* outputRegId */, 1 /* nrIn */, nrOutputReg, {}, {});
   auto input = VPackParser::fromJson("[ [1], [2], [3] ]");
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
-      itemBlockManager, input->steal(), true);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input->steal(), true);
   CountCollectExecutor testee(fetcher, infos);
   NoStats stats{};
   OutputAqlItemRow result{std::move(block), outputRegisters,
@@ -161,31 +155,6 @@ TEST_F(CountCollectExecutorTest, there_are_rows_in_the_upstream_the_producer_wai
   ASSERT_EQ(x.toInt64(), 3);
 
   ASSERT_EQ(3, fetcher.totalSkipped());
-}
-
-TEST_F(CountCollectExecutorTest, test_produce_datarange) {
-  CountCollectExecutorInfos infos(1 /* outputRegId */, 1 /* nrIn */, nrOutputReg, {}, {});
-  auto fakeUnusedBlock = VPackParser::fromJson("[  ]");
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
-      itemBlockManager, fakeUnusedBlock->steal(), false);
-  CountCollectExecutor testee(fetcher, infos);
-
-  SharedAqlItemBlockPtr inBlock = buildBlock<1>(itemBlockManager, {{}});
-  AqlItemBlockInputRange input{ExecutorState::DONE, inBlock, 0, inBlock->size()};
-
-  OutputAqlItemRow output(std::move(block), outputRegisters,
-                          infos.registersToKeep(), infos.registersToClear());
-  EXPECT_EQ(output.numRowsWritten(), 0);
-  auto const [state, stats, call] = testee.produceRows(1000, input, output);
-  ASSERT_EQ(state, ExecutorState::DONE);
-  ASSERT_TRUE(output.produced());
-
-  auto block = output.stealBlock();
-  AqlValue x = block->getValue(0, 1);
-  ASSERT_TRUE(x.isNumber());
-  ASSERT_EQ(x.toInt64(), 0);
-
-  ASSERT_EQ(0, fetcher.totalSkipped());
 }
 
 }  // namespace aql
