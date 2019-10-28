@@ -387,7 +387,7 @@ static SkipVariants constexpr skipType() {
   }
 }
 
-}  // namespace arangodb
+}  // namespace arangodb::aql
 
 template <class Executor>
 std::pair<ExecutionState, size_t> ExecutionBlockImpl<Executor>::skipSome(size_t const atMost) {
@@ -630,10 +630,9 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<
   }
   return {ExecutionState::DONE, {errorCode}};
 }
-}  // namespace arangodb
+}  // namespace arangodb::aql
 
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
 
 // The constant "PASSTHROUGH" is somehow reserved with MSVC.
 enum class RequestWrappedBlockVariant {
@@ -758,8 +757,7 @@ struct RequestWrappedBlock<RequestWrappedBlockVariant::INPUTRESTRICTED> {
   }
 };
 
-}  // namespace aql
-}  // namespace arangodb
+}  // namespace arangodb::aql
 
 template <class Executor>
 std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::requestWrappedBlock(

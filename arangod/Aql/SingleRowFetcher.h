@@ -83,24 +83,26 @@ class SingleRowFetcher {
    */
   // This is only TEST_VIRTUAL, so we ignore this lint warning:
   // NOLINTNEXTLINE google-default-arguments
-  TEST_VIRTUAL std::pair<ExecutionState, InputAqlItemRow> fetchRow(
+  [[nodiscard]] TEST_VIRTUAL std::pair<ExecutionState, InputAqlItemRow> fetchRow(
       size_t atMost = ExecutionBlock::DefaultBatchSize());
 
   // NOLINTNEXTLINE google-default-arguments
-  TEST_VIRTUAL std::pair<ExecutionState, ShadowAqlItemRow> fetchShadowRow(
+  [[nodiscard]] TEST_VIRTUAL std::pair<ExecutionState, ShadowAqlItemRow> fetchShadowRow(
       size_t atMost = ExecutionBlock::DefaultBatchSize());
 
-  TEST_VIRTUAL std::pair<ExecutionState, size_t> skipRows(size_t atMost);
+  [[nodiscard]] TEST_VIRTUAL std::pair<ExecutionState, size_t> skipRows(size_t atMost);
 
   // template methods may not be virtual, thus this #ifdef.
 #ifndef ARANGODB_USE_GOOGLE_TESTS
   template <BlockPassthrough allowPass = blockPassthrough, typename = std::enable_if_t<allowPass == BlockPassthrough::Enable>>
+  [[nodiscard]]
 #else
+  [[nodiscard]]
   TEST_VIRTUAL
 #endif
   std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlockForPassthrough(size_t atMost);
 
-  std::pair<ExecutionState, size_t> preFetchNumberOfRows(size_t atMost);
+  [[nodiscard]] std::pair<ExecutionState, size_t> preFetchNumberOfRows(size_t atMost);
 
   void setDistributeId(std::string const& id);
 
@@ -122,7 +124,7 @@ class SingleRowFetcher {
 #ifdef ARANGODB_USE_GOOGLE_TESTS
  protected:
 #endif
-  // NOLINTNEXTLINE(cppcoreguidelines-non-private-member-variables-in-classes)
+  // NOLINTNEXTLINE(cppcoreguidelines-non-private-member-variables-in-classes, misc-non-private-member-variables-in-classes)
   ExecutionState _upstreamState;
 #ifdef ARANGODB_USE_GOOGLE_TESTS
  private:
@@ -153,9 +155,9 @@ class SingleRowFetcher {
   /**
    * @brief Delegates to ExecutionBlock::fetchBlock()
    */
-  TEST_VIRTUAL std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlock(size_t atMost);
+  [[nodiscard]] TEST_VIRTUAL std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlock(size_t atMost);
 
-  bool fetchBlockIfNecessary(size_t atMost);
+  [[nodiscard]] bool fetchBlockIfNecessary(size_t atMost);
 
   /**
    * @brief Delegates to ExecutionBlock::getNrInputRegisters()
