@@ -43,7 +43,7 @@ function optimizerRuleTestSuite () {
       for (let i = 0; i < 2000; ++i) {
         c.insert({ _key: "test" + i, value1: i, value2: i });
       }
-      c.ensureIndex({ type: "hash", fields: ["value1"] });
+      c.ensureIndex({ type: "skiplist", fields: ["value1"] });
     },
     
     tearDownAll : function () {
