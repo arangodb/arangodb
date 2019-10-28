@@ -671,7 +671,7 @@ void Agent::resign(term_t otherTerm) {
 }
 
 /// Leader's append entries, empty ones for heartbeat, triggered by Constituent
-void Agent::sendEmptyAppendEntriesRPC(std::string followerId) {
+void Agent::sendEmptyAppendEntriesRPC(std::string const& followerId) {
 
   if (!leading()) {
     LOG_TOPIC("95220", DEBUG, Logger::AGENCY)

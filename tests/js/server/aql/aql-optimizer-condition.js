@@ -36,6 +36,8 @@ var db = require("@arangodb").db;
 ////////////////////////////////////////////////////////////////////////////////
 
 function optimizerConditionsTestSuite () {
+  const opt = { optimizer: { rules: ["-move-filters-into-enumerate"] } };
+
   var c;
 
   return {
@@ -55,7 +57,7 @@ function optimizerConditionsTestSuite () {
     testNegation : function () {
       var query = "FOR doc IN " + c.name() + " FILTER doc.a != null && LENGTH(doc.a) > 0 && !(doc.a == 'abc' || doc.a == 'def' || doc.a == 'xyz') RETURN doc";
 
-      var nodes = AQL_EXPLAIN(query).plan.nodes;
+      var nodes = AQL_EXPLAIN(query, null, opt).plan.nodes;
  
       var calcNode = nodes[2];
       assertEqual("CalculationNode", calcNode.type);
@@ -103,7 +105,7 @@ function optimizerConditionsTestSuite () {
 
     testOrMergeSimple : function () {
       var query = "FOR doc IN " + c.name() + " FILTER doc.b == 1 || (doc.a == 1 || doc.b == 2) RETURN doc";
-      var nodes = AQL_EXPLAIN(query).plan.nodes;
+      var nodes = AQL_EXPLAIN(query, null, opt).plan.nodes;
 
       var calcNode = nodes[2];
       assertEqual("CalculationNode", calcNode.type);
@@ -140,7 +142,7 @@ function optimizerConditionsTestSuite () {
 
     testAndMergeSimple : function () {
       var query = "FOR doc IN " + c.name() + " FILTER doc.b == 1 && (doc.a == 1 && doc.c == 2) RETURN doc";
-      var nodes = AQL_EXPLAIN(query).plan.nodes;
+      var nodes = AQL_EXPLAIN(query, null, opt).plan.nodes;
 
       var calcNode = nodes[2];
       assertEqual("CalculationNode", calcNode.type);
@@ -177,7 +179,7 @@ function optimizerConditionsTestSuite () {
 
     testAndOrMergeSimple : function () {
       var query = "FOR doc IN " + c.name() + " FILTER doc.b == 1 || (doc.a == 1 && doc.b == 2) RETURN doc";
-      var nodes = AQL_EXPLAIN(query).plan.nodes;
+      var nodes = AQL_EXPLAIN(query, null, opt).plan.nodes;
 
       var calcNode = nodes[2];
       assertEqual("CalculationNode", calcNode.type);
@@ -214,7 +216,7 @@ function optimizerConditionsTestSuite () {
 
     testAndMerge : function () {
       var query = "FOR doc IN " + c.name() + " FILTER doc.b == 1 && (doc.c == 'a' || doc.c == 'b') && doc.a IN [1,2] RETURN doc";
-      var nodes = AQL_EXPLAIN(query).plan.nodes;
+      var nodes = AQL_EXPLAIN(query, null, opt).plan.nodes;
 
       var calcNode = nodes[2];
       assertEqual("CalculationNode", calcNode.type);

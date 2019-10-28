@@ -22,6 +22,7 @@
 
 #include "VocbaseInfo.h"
 
+#include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
@@ -32,6 +33,17 @@
 namespace arangodb {
 
 CreateDatabaseInfo::CreateDatabaseInfo(application_features::ApplicationServer& server) : _server(server) {}
+  
+ShardingPrototype CreateDatabaseInfo::shardingPrototype() const { 
+  if (_name != StaticStrings::SystemDatabase) {
+    return ShardingPrototype::Graphs;
+  }
+  return _shardingPrototype; 
+}
+
+void CreateDatabaseInfo::shardingPrototype(ShardingPrototype type) {
+  _shardingPrototype = type; 
+}
 
 Result CreateDatabaseInfo::load(std::string const& name, uint64_t id) {
   Result res;
