@@ -1783,7 +1783,9 @@ function ReplicationSuite () {
       } catch (ignored) {}
       db._drop(cn);
       db._drop(sysCn, {isSystem: true});
-      analyzers.remove('custom');
+      try {
+        analyzers.remove('custom');
+      } catch (e) { }
 
       connectToSlave();
       try {
@@ -1791,7 +1793,9 @@ function ReplicationSuite () {
       } catch (ignored) {}
       db._drop(cn);
       db._drop(sysCn, {isSystem: true});
-      analyzers.remove('custom');
+      try {
+        analyzers.remove('custom');
+      } catch (e) { }
     }
   };
   deriveTestSuite(BaseTestConfig(), suite, '_Repl');
