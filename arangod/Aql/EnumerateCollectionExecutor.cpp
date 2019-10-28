@@ -291,6 +291,7 @@ std::tuple<ExecutorState, EnumerateCollectionStats, AqlCall> EnumerateCollection
   EnumerateCollectionStats stats{};
 
   TRI_ASSERT(_documentProducingFunctionContext.getAndResetNumScanned() == 0);
+  TRI_ASSERT(_documentProducingFunctionContext.getAndResetNumFiltered() == 0);
   _documentProducingFunctionContext.setOutputRow(&output);
 
   while (inputRange.hasMore() && limit > 0) {
