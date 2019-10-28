@@ -25,6 +25,8 @@
 
 #include "CountCollectExecutor.h"
 
+#include "Aql/AqlCall.h"
+#include "Aql/AqlItemBlockInputRange.h"
 #include "Aql/AqlValue.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
@@ -91,6 +93,33 @@ std::pair<ExecutionState, NoStats> CountCollectExecutor::produceRows(OutputAqlIt
                         AqlValue(AqlValueHintUInt(getCount())));
 
   return {_state, NoStats{}};
+}
+
+std::tuple<ExecutorState, NoStats, AqlCall> CountCollectExecutor::produceRows(
+    size_t limit, AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output) {
+  TRI_IF_FAILURE("CountCollectExecutor::produceRows") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+  InputAqlItemRow input{CreateInvalidInputRowHint{}};
+
+  while (inputRange.hasMore() && limit > 0) {
+    std::tie(_executorState, input) = inputRange.next();
+
+    limit--;
+    _count++;
+  }
+
+  // In general, we do not have an input row. In fact, we never fetch one.
+  output.setAllowSourceRowUninitialized();
+
+  // We must produce exactly one output row.
+  output.cloneValueInto(_infos.getOutputRegisterId(),
+                        InputAqlItemRow{CreateInvalidInputRowHint{}},
+                        AqlValue(AqlValueHintUInt(getCount())));
+
+  AqlCall upstreamCall{};
+  upstreamCall.softLimit = limit;
+  return {_executorState, NoStats{}, upstreamCall};
 }
 
 void CountCollectExecutor::incrCountBy(size_t incr) noexcept { _count += incr; }

@@ -36,6 +36,8 @@
 namespace arangodb {
 namespace aql {
 
+struct AqlCall;
+class AqlItemBlockInputRange;
 class InputAqlItemRow;
 class NoStats;
 class ExecutorInfos;
@@ -91,6 +93,15 @@ class CountCollectExecutor {
 
   std::pair<ExecutionState, NoStats> produceRows(OutputAqlItemRow& output);
 
+  /**
+   * @brief produce the next Row of Aql Values.
+   *
+   * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
+   */
+  std::tuple<ExecutorState, Stats, AqlCall> produceRows(size_t atMost,
+                                                        AqlItemBlockInputRange& input,
+                                                        OutputAqlItemRow& output);
+
   void incrCountBy(size_t incr) noexcept;
 
   uint64_t getCount() noexcept;;
@@ -104,6 +115,7 @@ class CountCollectExecutor {
   Infos const& _infos;
   Fetcher& _fetcher;
   ExecutionState _state;
+  ExecutorState _executorState;
   uint64_t _count;
 };
 
