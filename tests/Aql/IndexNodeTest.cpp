@@ -21,7 +21,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "gtest/gtest.h"
+#include "Aql/Ast.h"
 #include "Aql/AqlItemBlockSerializationFormat.h"
+#include "Aql/IndexNode.h"
 #include "Aql/Query.h"
 #include "Aql/QueryString.h"
 #include "Logger/Logger.h"
@@ -85,7 +87,7 @@ arangodb::aql::QueryResult executeQuery(TRI_vocbase_t& vocbase, std::string cons
 
 TEST_F(IIndexNodeTest, checkObjectQuery) {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, createInfo(server.server()));
-  // create collection
+  // create a collection
   auto collectionJson = arangodb::velocypack::Parser::fromJson(
     "{ \"name\": \"testCollection\", \"id\" : 42 }");
   auto collection = vocbase.createCollection(collectionJson->slice());
@@ -120,7 +122,7 @@ TEST_F(IIndexNodeTest, checkObjectQuery) {
 
 TEST_F(IIndexNodeTest, checkExpansionQuery) {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, createInfo(server.server()));
-  // create collection
+  // create a collection
   auto collectionJson = arangodb::velocypack::Parser::fromJson(
     "{ \"name\": \"testCollection\", \"id\" : 42 }");
   auto collection = vocbase.createCollection(collectionJson->slice());
@@ -158,7 +160,7 @@ TEST_F(IIndexNodeTest, checkExpansionQuery) {
 
 TEST_F(IIndexNodeTest, checkLastExpansionQuery) {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, createInfo(server.server()));
-  // create collection
+  // create a collection
   auto collectionJson = arangodb::velocypack::Parser::fromJson(
     "{ \"name\": \"testCollection\", \"id\" : 42 }");
   auto collection = vocbase.createCollection(collectionJson->slice());
@@ -201,4 +203,225 @@ TEST_F(IIndexNodeTest, checkLastExpansionQuery) {
     ASSERT_EQ(1, resultIt.size());
   }
 }
+
+TEST_F(IIndexNodeTest, checkSerializationAndDeserializationIndexNode) {
+  TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, createInfo(server.server()));
+  // create a collection
+  auto collectionJson = arangodb::velocypack::Parser::fromJson(
+    "{ \"name\": \"testCollection\", \"id\" : 42 }");
+  auto collection = vocbase.createCollection(collectionJson->slice());
+  ASSERT_TRUE(collection);
+  // create an index node
+  auto indexJson = arangodb::velocypack::Parser::fromJson("{\"type\": \"hash\", \"id\": 2086177, \"fields\": [\"obj.a\", \"obj.b\", \"obj.c\"]}");
+  bool createdIndex{};
+  auto index = collection->createIndex(indexJson->slice(), createdIndex);
+  ASSERT_TRUE(createdIndex);
+  ASSERT_FALSE(!index);
+
+  // auto jsonDocument = arangodb::velocypack::Parser::fromJson("{\"obj\" : {\"a\" : \"a_val\", \"b\" : \"b_val\", \"c\" : \"c_val\"}}");
+  auto createJson = arangodb::velocypack::Parser::fromJson(
+        "{"
+        "  \"IndexesValuesVars\" : ["
+        "    {"
+        "      \"IndexValuesVars\" : ["
+        "        {"
+        "          \"fieldNumber\" : 2,"
+        "          \"id\" : 6,"
+        "          \"name\" : \"5\""
+        "        }"
+        "      ],"
+        "      \"indexId\" : 2086177"
+        "    }"
+        "  ],"
+        "  \"ascending\" : true,"
+        "  \"collection\" : \"testCollection\","
+        "  \"condition\" : {"
+        "    \"subNodes\" : ["
+        "      {"
+        "        \"subNodes\" : ["
+        "          {"
+        "            \"excludesNull\" : false,"
+        "            \"subNodes\" : ["
+        "              {"
+        "                \"name\" : \"a\","
+        "                \"subNodes\" : ["
+        "                  {"
+        "                    \"name\" : \"obj\","
+        "                    \"subNodes\" : ["
+        "                      {"
+        "                        \"id\" : 0,"
+        "                        \"name\" : \"d\","
+        "                        \"type\" : \"reference\","
+        "                        \"typeID\" : 45"
+        "                      }"
+        "                    ],"
+        "                    \"type\" : \"attribute access\","
+        "                    \"typeID\" : 35"
+        "                  }"
+        "                ],"
+        "                \"type\" : \"attribute access\","
+        "                \"typeID\" : 35"
+        "              },"
+        "              {"
+        "                \"type\" : \"value\","
+        "                \"typeID\" : 40,"
+        "                \"vType\" : \"string\","
+        "                \"vTypeID\" : 4,"
+        "                \"value\" : \"a_val\""
+        "              }"
+        "            ],"
+        "            \"type\" : \"compare ==\","
+        "            \"typeID\" : 25"
+        "          }"
+        "        ],"
+        "        \"type\" : \"n-ary and\","
+        "        \"typeID\" : 62"
+        "      }"
+        "    ],"
+        "    \"type\" : \"n-ary or\","
+        "    \"typeID\" : 63"
+        "  },"
+        "  \"database\" : \"testVocbase\","
+        "  \"dependencies\" : ["
+        "    1"
+        "  ],"
+        "  \"depth\" : 1,"
+        "  \"evalFCalls\" : true,"
+        "  \"id\" : 9,"
+        "  \"indexCoversProjections\" : false,"
+        "  \"indexes\" : ["
+        "    {"
+        "      \"deduplicate\" : true,"
+        "      \"fields\" : ["
+        "        \"obj.a\","
+        "        \"obj.b\","
+        "        \"obj.c\""
+        "      ],"
+        "      \"id\" : \"2086177\","
+        "      \"name\" : \"idx_1648634948960124928\","
+        "      \"selectivityEstimate\" : 1,"
+        "      \"sparse\" : false,"
+        "      \"type\" : \"hash\","
+        "      \"unique\" : false"
+        "    }"
+        "  ],"
+        "  \"isSatellite\" : false,"
+        "  \"limit\" : 0,"
+        "  \"needsGatherNodeSort\" : false,"
+        "  \"nrRegs\" : ["
+        "    0,"
+        "    3,"
+        "    4"
+        "  ],"
+        "  \"nrRegsHere\" : ["
+        "    0,"
+        "    3,"
+        "    1"
+        "  ],"
+        "  \"outNmColName\" : \"testCollection\","
+        "  \"outNmDocId\" : {"
+        "    \"id\" : 8,"
+        "    \"name\" : \"7\""
+        "  },"
+        "  \"outVariable\" : {"
+        "    \"id\" : 0,"
+        "    \"name\" : \"d\""
+        "  },"
+        "  \"producesResult\" : true,"
+        "  \"projections\" : ["
+        "  ],"
+        "  \"regsToClear\" : ["
+        "  ],"
+        "  \"reverse\" : false,"
+        "  \"satellite\" : false,"
+        "  \"sorted\" : true,"
+        "  \"totalNrRegs\" : 4,"
+        "  \"type\" : \"IndexNode\","
+        "  \"typeID\" : 23,"
+        "  \"varInfoList\" : ["
+        "    {"
+        "      \"RegisterId\" : 3,"
+        "      \"VariableId\" : 0,"
+        "      \"depth\" : 2"
+        "    },"
+        "    {"
+        "      \"RegisterId\" : 2,"
+        "      \"VariableId\" : 4,"
+        "      \"depth\" : 1"
+        "    },"
+        "    {"
+        "      \"RegisterId\" : 0,"
+        "      \"VariableId\" : 8,"
+        "      \"depth\" : 1"
+        "    },"
+        "    {"
+        "      \"RegisterId\" : 1,"
+        "      \"VariableId\" : 6,"
+        "      \"depth\" : 1"
+        "    }"
+        "  ],"
+        "  \"varsUsedLater\" : ["
+        "    {"
+        "      \"id\" : 0,"
+        "      \"name\" : \"d\""
+        "    },"
+        "    {"
+        "      \"id\" : 8,"
+        "      \"name\" : \"7\""
+        "    },"
+        "    {"
+        "      \"id\" : 4,"
+        "      \"name\" : \"3\""
+        "    },"
+        "    {"
+        "      \"id\" : 6,"
+        "      \"name\" : \"5\""
+        "    }"
+        "  ],"
+        "  \"varsValid\" : ["
+        "    {"
+        "      \"id\" : 8,"
+        "      \"name\" : \"7\""
+        "    },"
+        "    {"
+        "      \"id\" : 6,"
+        "      \"name\" : \"5\""
+        "    }"
+        "  ]"
+        "}"
+  );
+
+  arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(
+                               "FOR d IN testCollection FILTER d.obj.a == 'a_val' SORT d.obj.c LIMIT 10 RETURN d"),
+                             nullptr, arangodb::velocypack::Parser::fromJson("{}"),
+                             arangodb::aql::PART_MAIN);
+  query.prepare(arangodb::QueryRegistryFeature::registry(),
+                arangodb::aql::SerializationFormat::SHADOWROWS);
+
+  // short path for a test
+  auto vars = query.plan()->getAst()->variables();
+  for (auto const& v : {std::make_unique<arangodb::aql::Variable>("d", 0),
+    std::make_unique<arangodb::aql::Variable>("3", 4),
+    std::make_unique<arangodb::aql::Variable>("5", 6),
+    std::make_unique<arangodb::aql::Variable>("7", 8)}) {
+    if (vars->getVariable(v->id) == nullptr) {
+      std::unique_ptr<arangodb::aql::Variable>(vars->createVariable(&*v));
+    }
+  }
+  // check deserialization
+  arangodb::aql::IndexNode indNode(query.plan(), createJson->slice());
+  ASSERT_TRUE(indNode.isLateMaterialized());
+
+  // check serialization and deserialization
+  VPackBuilder builder;
+  std::unordered_set<arangodb::aql::ExecutionNode const*> seen;
+  {
+    VPackArrayBuilder guard(&builder);
+    indNode.toVelocyPackHelper(builder, arangodb::aql::ExecutionNode::SERIALIZE_DETAILS, seen);
+  }
+
+  arangodb::aql::IndexNode indNodeDeserialized(query.plan(), createJson->slice());
+  ASSERT_TRUE(indNodeDeserialized.isLateMaterialized());
+}
+
 }

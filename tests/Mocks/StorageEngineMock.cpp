@@ -729,19 +729,14 @@ class HashIndexMock final : public arangodb::Index {
 
   void toVelocyPack(VPackBuilder& builder,
                     std::underlying_type<arangodb::Index::Serialize>::type flags) const override {
-    // not implemented
-    TRI_ASSERT(false);
     builder.openObject();
     Index::toVelocyPack(builder, flags);
-    // hard-coded
-    builder.add("unique", VPackValue(false));
-    builder.add("sparse", VPackValue(false));
+    builder.add("sparse", VPackValue(sparse()));
+    builder.add("unique", VPackValue(unique()));
     builder.close();
   }
 
   void toVelocyPackFigures(VPackBuilder& builder) const override {
-    // not implemented
-    TRI_ASSERT(false);
     Index::toVelocyPackFigures(builder);
   }
 
@@ -885,6 +880,7 @@ class HashIndexMock final : public arangodb::Index {
   /// @brief the hash table for data
   HashIndexMap _hashData;
 };  // HashIndexMock
+
 }  // namespace
 
 std::function<void()> PhysicalCollectionMock::before = []() -> void {};

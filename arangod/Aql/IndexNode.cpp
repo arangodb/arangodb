@@ -145,8 +145,8 @@ IndexNode::IndexNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
       }
       std::unordered_map<size_t, Variable const*> indexValuesVars;
       indexValuesVars.reserve(indexValuesVarsSlice.length());
-      for (auto const indVar : velocypack::ArrayIterator(outNonMaterializedIndVarsSlice)) {
-        auto const fieldNumberSlice = indVars.get("fieldNumber");
+      for (auto const indVar : velocypack::ArrayIterator(indexValuesVarsSlice)) {
+        auto const fieldNumberSlice = indVar.get("fieldNumber");
         if (!fieldNumberSlice.isNumber()) {
           THROW_ARANGO_EXCEPTION_FORMAT(
               TRI_ERROR_BAD_PARAMETER, "\"IndexesValuesVars[*].IndexValuesVars[*].fieldNumber\" %s should be a number",
@@ -154,14 +154,14 @@ IndexNode::IndexNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
         }
         auto const fieldNumber = fieldNumberSlice.getNumber<size_t>();
 
-        auto const varIdSlice = indVars.get("id");
+        auto const varIdSlice = indVar.get("id");
         if (!varIdSlice.isNumber()) {
           THROW_ARANGO_EXCEPTION_FORMAT(
               TRI_ERROR_BAD_PARAMETER, "\"IndexesValuesVars[*].IndexValuesVars[*].id\" variable id %s should be a number",
                 varIdSlice.toString().c_str());
         }
 
-        auto const varId = indVar.getNumber<aql::VariableId>();
+        auto const varId = varIdSlice.getNumber<aql::VariableId>();
         auto const* var = vars->getVariable(varId);
 
         if (!var) {
