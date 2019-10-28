@@ -575,13 +575,12 @@ class HashIndexMap {
   }
 
   std::unordered_map<arangodb::LocalDocumentId, VPackBuilder> find(std::unique_ptr<VPackBuilder>&& keys) const {
-    std::unordered_set<arangodb::LocalDocumentId> found;
+    std::unordered_map<arangodb::LocalDocumentId, VPackBuilder> found;
     TRI_ASSERT(keys->slice().isArray());
     auto sliceIt = arangodb::velocypack::ArrayIterator(keys->slice());
     if (!(sliceIt != sliceIt.end())) {
       return std::unordered_map<arangodb::LocalDocumentId, VPackBuilder>();
     }
-    auto lastSliceIt = sliceIt;
     for (auto const& map : _valueMaps) {
       ValueMap::const_iterator begin;
       ValueMap::const_iterator end;
@@ -591,14 +590,14 @@ class HashIndexMap {
       }
       if (found.empty()) {
         std::transform(begin, end, std::inserter(found, found.end()), [] (auto const& item) {
-          return item.second;
+          return std::make_pair(item.second, item.first);
         });
       } else {
-        std::unordered_set<arangodb::LocalDocumentId> tmpFound;
+        std::unordered_map<arangodb::LocalDocumentId, VPackBuilder> tmpFound;
         for (auto it = begin; it != end; ++it) {
           auto foundIt = found.find(it->second);
           if (foundIt != found.end()) {
-            tmpFound.emplace(it->second);
+            tmpFound.emplace(it->second, it->first);
           }
         }
         if (tmpFound.empty()) {
@@ -606,18 +605,17 @@ class HashIndexMap {
         }
         found.swap(tmpFound);
       }
-      lastSliceIt = sliceIt;
       if (!(++sliceIt != sliceIt.end())) {
         break;
       }
     }
     std::unordered_map<arangodb::LocalDocumentId, VPackBuilder> foundWithCovering;
     for (auto const& d : found) {
-      auto doc = _docIndexMap.find(d);
+      auto doc = _docIndexMap.find(d.first);
       TRI_ASSERT(doc != _docIndexMap.cend());
       auto builder = doc->second;
       if (doc->second.isOpenArray()) {
-        builder.add(lastSliceIt.value());
+        builder.add(d.second.slice());
         builder.close();
       }
       foundWithCovering.emplace(doc->first, std::move(builder));
