@@ -152,6 +152,7 @@ Builder::Builder(std::shared_ptr<Buffer<uint8_t>> const& buffer, Options const* 
     throw Exception(Exception::InternalError, "Buffer cannot be a nullptr");
   }
   _start = _bufferPtr->data();
+  _pos = _bufferPtr->size();
 
   if (VELOCYPACK_UNLIKELY(options == nullptr)) {
     throw Exception(Exception::InternalError, "Options cannot be a nullptr");

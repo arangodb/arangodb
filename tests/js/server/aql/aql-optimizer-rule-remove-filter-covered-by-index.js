@@ -84,7 +84,7 @@ function optimizerRuleTestSuite() {
       var loopto = 10;
 
       internal.db._drop(colName);
-      skiplist = internal.db._create(colName);
+      skiplist = internal.db._create(colName, { numberOfShards: 2 });
       var i, j;
       for (j = 1; j <= loopto; ++j) {
         for (i = 1; i <= loopto; ++i) {
