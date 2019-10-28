@@ -49,7 +49,6 @@ int HttpConnection<ST>::on_message_begin(http_parser* parser) {
   self->_shouldKeepAlive = false;
   self->_messageComplete = false;
   self->_response.reset(new Response());
-  self->_idleTimeout = self->_config._idleTimeout;
   return 0;
 }
 
@@ -106,20 +105,7 @@ int HttpConnection<ST>::on_header_complete(http_parser* parser) {
   }
   // Adjust idle timeout if necessary
   self->_shouldKeepAlive = http_should_keep_alive(parser);
-//  if (self->_shouldKeepAlive) {  // check for exact idle timeout
-//    std::string const& ka =
-//        self->_response->header.metaByKey(fu_keep_alive_key);
-//    size_t pos = ka.find("timeout=");
-//    if (pos != std::string::npos) {
-//      try {
-//        std::chrono::milliseconds to(std::stoi(ka.substr(pos + 8)) * 1000);
-//        if (to.count() > 1000) {
-//          self->_idleTimeout = std::min(self->_config._idleTimeout, to);
-//        }
-//      } catch (...) {
-//      }
-//    }
-//  }
+
   // head has no body, but may have a Content-Length
   if (self->_item->request->header.restVerb == RestVerb::Head) {
     return 1;  // tells the parser it should not expect a body
@@ -151,9 +137,7 @@ HttpConnection<ST>::HttpConnection(EventLoopService& loop,
                                    ConnectionConfiguration const& config)
     : GeneralConnection<ST>(loop, config),
       _queue(),
-      _numQueued(0),
       _active(false),
-      _idleTimeout(30000/*this->_config._idleTimeout*/),
       _lastHeaderWasValue(false),
       _shouldKeepAlive(false),
       _messageComplete(false) {
@@ -214,7 +198,7 @@ MessageID HttpConnection<ST>::sendRequest(std::unique_ptr<Request> req,
   }
   item.release();  // queue owns this now
 
-  _numQueued.fetch_add(1, std::memory_order_release);
+  this->_numQueued.fetch_add(1, std::memory_order_relaxed);
   FUERTE_LOG_HTTPTRACE << "queued item: this=" << this << "\n";
 
   // _state.load() after queuing request, to prevent race with connect
@@ -233,7 +217,7 @@ MessageID HttpConnection<ST>::sendRequest(std::unique_ptr<Request> req,
 
 template <SocketType ST>
 size_t HttpConnection<ST>::requestsLeft() const {
-  size_t q = this->_numQueued.load(std::memory_order_acquire);
+  size_t q = this->_numQueued.load(std::memory_order_relaxed);
   if (this->_active.load(std::memory_order_relaxed)) {
     q++;
   }
@@ -253,19 +237,18 @@ void HttpConnection<ST>::startWriting() {
   if (!_active) {
     FUERTE_LOG_HTTPTRACE << "startWriting: active=true, this=" << this << "\n";
     if (!_active.exchange(true)) {  // we are the only ones here now
-      asio_ns::post(*this->_io_context, [self = Connection::shared_from_this()] {
-        auto* thisPtr = static_cast<HttpConnection<ST>*>(self.get());
-        // we might get in a race with shutdownConnection()
-        Connection::State state = thisPtr->_state.load();
-        if (state != Connection::State::Connected) {
-          thisPtr->_active.store(false);
-          if (state == Connection::State::Disconnected) {
-            thisPtr->startConnection();
-          }
-        } else {
-          thisPtr->asyncWriteNextRequest();
+
+      // we might get in a race with shutdownConnection()
+      Connection::State state = this->_state.load();
+      if (state != Connection::State::Connected) {
+        this->_active.store(false);
+        if (state == Connection::State::Disconnected) {
+          this->startConnection();
         }
-      });
+      } else {
+        this->asyncWriteNextRequest();
+      }
+      
     }
   }
 }
@@ -311,7 +294,7 @@ std::string HttpConnection<ST>::buildRequestBody(Request const& req) {
       .append("Host: ")
       .append(this->_config._host)
       .append("\r\n");
-  if (_idleTimeout.count() > 0) {  // technically not required for http 1.1
+  if (this->_config._idleTimeout.count() > 0) {  // technically not required for http 1.1
     header.append("Connection: Keep-Alive\r\n");
   } else {
     header.append("Connection: Close\r\n");
@@ -373,10 +356,10 @@ void HttpConnection<ST>::asyncWriteNextRequest() {
     if (!_queue.pop(ptr)) {
       FUERTE_LOG_HTTPTRACE << "asyncWriteNextRequest: stopped writing, this="
                            << this << "\n";
-      if (_shouldKeepAlive && _idleTimeout.count() > 0) {
+      if (_shouldKeepAlive && this->_config._idleTimeout.count() > 0) {
         FUERTE_LOG_HTTPTRACE << "setting idle keep alive timer, this=" << this
                              << "\n";
-        setTimeout(_idleTimeout);
+        setTimeout(this->_config._idleTimeout);
       } else {
         this->shutdownConnection(Error::CloseRequested);
       }
@@ -384,7 +367,7 @@ void HttpConnection<ST>::asyncWriteNextRequest() {
     }
     _active.store(true);
   }
-  _numQueued.fetch_sub(1, std::memory_order_release);
+  this->_numQueued.fetch_sub(1, std::memory_order_relaxed);
 
   std::unique_ptr<http::RequestItem> item(ptr);
   setTimeout(item->request->timeout());
@@ -398,12 +381,12 @@ void HttpConnection<ST>::asyncWriteNextRequest() {
     buffers[1] = item->request->payload();
   }
 
-  asio_ns::async_write(this->_protocol.socket, std::move(buffers),
-                       [self = Connection::shared_from_this(),
-                        ri = std::move(item)](asio_ns::error_code const& ec,
+  asio_ns::async_write(this->_proto->socket, std::move(buffers),
+                       [self(Connection::shared_from_this()),
+                        req(std::move(item))](asio_ns::error_code const& ec,
                                               std::size_t nwrite) mutable {
     auto& thisPtr = static_cast<HttpConnection<ST>&>(*self);
-    thisPtr.asyncWriteCallback(ec, std::move(ri), nwrite);
+    thisPtr.asyncWriteCallback(ec, std::move(req), nwrite);
   });
   FUERTE_LOG_HTTPTRACE << "asyncWriteNextRequest: done, this=" << this << "\n";
 }
@@ -538,7 +521,7 @@ void HttpConnection<ST>::setTimeout(std::chrono::milliseconds millis) {
 
   // expires_after cancels pending ops
   this->_timeout.expires_after(millis);
-  auto cb = [self = Connection::weak_from_this()](asio_ns::error_code const& ec) {
+  this->_timeout.async_wait([self = Connection::weak_from_this()](auto const& ec) {
     std::shared_ptr<Connection> s;
     if (ec || !(s = self.lock())) {  // was canceled / deallocated
       return;
@@ -551,8 +534,7 @@ void HttpConnection<ST>::setTimeout(std::chrono::milliseconds millis) {
     } else {  // close an idle connection
       thisPtr->shutdownConnection(Error::CloseRequested);
     }
-  };
-  this->_timeout.async_wait(std::move(cb));
+  });
 }
 
 /// abort ongoing / unfinished requests
@@ -574,7 +556,7 @@ void HttpConnection<ST>::drainQueue(const fuerte::Error ec) {
   RequestItem* item = nullptr;
   while (_queue.pop(item)) {
     std::unique_ptr<RequestItem> guard(item);
-    _numQueued.fetch_sub(1, std::memory_order_release);
+    this->_numQueued.fetch_sub(1, std::memory_order_relaxed);
     guard->invokeOnError(ec);
   }
 }

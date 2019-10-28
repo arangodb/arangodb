@@ -102,8 +102,7 @@ struct Socket<SocketType::Tcp>  {
 
 template<>
 struct Socket<fuerte::SocketType::Ssl> {
-  Socket(EventLoopService& loop,
-         asio_ns::io_context& ctx)
+  Socket(EventLoopService& loop, asio_ns::io_context& ctx)
   : resolver(ctx), socket(ctx, loop.sslContext()) {}
   
   ~Socket() {
@@ -137,9 +136,9 @@ struct Socket<fuerte::SocketType::Ssl> {
   }
   
   void shutdown() {
-    if (socket.next_layer().is_open()) {
+    if (socket.lowest_layer().is_open()) {
       asio_ns::error_code ec; // ignored
-      socket.next_layer().cancel(ec);
+      socket.lowest_layer().cancel(ec);
       ec.clear();
       socket.shutdown(ec);
       ec.clear();

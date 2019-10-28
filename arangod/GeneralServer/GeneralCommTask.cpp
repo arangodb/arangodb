@@ -72,7 +72,7 @@ template <SocketType T>
 void GeneralCommTask<T>::asyncReadSome() try {
   asio_ns::error_code ec;
   // first try a sync read for performance
-  if (false && _protocol->supportsMixedIO()) {
+  if (_protocol->supportsMixedIO()) {
     std::size_t available = _protocol->available(ec);
 
     while (!ec && available > 8) {

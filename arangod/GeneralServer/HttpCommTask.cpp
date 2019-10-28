@@ -722,11 +722,7 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
   }
 
   // turn on the keepAlive timer
-  double secs = GeneralServerFeature::keepAliveTimeout();
-  if (ServerState::instance()->isCoordinator()) {
-    secs = 15.0;
-  }
-  
+  double secs = GeneralServerFeature::keepAliveTimeout();  
   if (_shouldKeepAlive && secs > 0) {
     int64_t millis = static_cast<int64_t>(secs * 1000);
     this->_protocol->timer.expires_after(std::chrono::milliseconds(millis));
@@ -741,9 +737,6 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
     });
 
     header->append(TRI_CHAR_LENGTH_PAIR("Connection: Keep-Alive\r\n"));
-//    header->append(TRI_CHAR_LENGTH_PAIR("Keep-Alive: timeout="));
-//    header->append(std::to_string(static_cast<int64_t>(secs)));
-//    header->append("\r\n", 2);
   } else {
     header->append(TRI_CHAR_LENGTH_PAIR("Connection: Close\r\n"));
   }

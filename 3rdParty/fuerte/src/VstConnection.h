@@ -58,11 +58,7 @@ class VstConnection final : public fuerte::GeneralConnection<ST> {
   MessageID sendRequest(std::unique_ptr<Request>, RequestCallback) override;
 
   // Return the number of unfinished requests.
-  std::size_t requestsLeft() const override {
-    return (_loopState.load(std::memory_order_acquire) &
-            WRITE_LOOP_QUEUE_MASK) +
-           _messageStore.size();
-  }
+  std::size_t requestsLeft() const override;
 
  protected:
   void finishConnect() override;
@@ -91,9 +87,6 @@ class VstConnection final : public fuerte::GeneralConnection<ST> {
   // Thread-Safe: activate the read loop (if needed)
   void startReading();
 
-  // Thread-Safe: stops read loop
-  void stopReading();
-
  private:
   // Send out the authentication message on this connection
   void sendAuthenticationRequest();
@@ -119,14 +112,8 @@ class VstConnection final : public fuerte::GeneralConnection<ST> {
 
   /// highest two bits mean read or write loops are active
   /// low 30 bit contain number of queued request items
-  std::atomic<uint32_t> _loopState;
-  static constexpr uint32_t READ_LOOP_ACTIVE = 1 << 31;
-  static constexpr uint32_t WRITE_LOOP_ACTIVE = 1 << 30;
-  static constexpr uint32_t LOOP_FLAGS = READ_LOOP_ACTIVE | WRITE_LOOP_ACTIVE;
-  static constexpr uint32_t WRITE_LOOP_QUEUE_INC = 1;
-  static constexpr uint32_t WRITE_LOOP_QUEUE_MASK = WRITE_LOOP_ACTIVE - 1;
-  static_assert((WRITE_LOOP_ACTIVE & WRITE_LOOP_QUEUE_MASK) == 0, "");
-  static_assert((WRITE_LOOP_ACTIVE & READ_LOOP_ACTIVE) == 0, "");
+  std::atomic<bool> _reading;
+  std::atomic<bool> _writing;
 };
 
 }}}}  // namespace arangodb::fuerte::v1::vst
