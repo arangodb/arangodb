@@ -249,6 +249,39 @@ std::tuple<ExecutionState, EnumerateCollectionStats, size_t> EnumerateCollection
   return std::make_tuple(ExecutionState::HASMORE, stats, actuallySkipped);  // tupple, cannot use initializer list due to build failure
 }
 
+std::tuple<ExecutorState, size_t, AqlCall> EnumerateCollectionExecutor::skipRowsRange(
+    size_t offset, AqlItemBlockInputRange& inputRange) {
+  EnumerateCollectionStats stats{};
+  TRI_IF_FAILURE("EnumerateCollectionExecutor::skipRows") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+  size_t skipped = 0;
+
+  while (inputRange.hasMore() && skipped < offset) {
+    if (!_cursorHasMore) {
+      std::tie(_executorState, _input) = inputRange.next();
+
+      _cursor->reset();
+      _cursorHasMore = _cursor->hasMore();
+
+      if (!_cursorHasMore) {
+        continue;
+      }
+    }
+
+    TRI_ASSERT(_input.isInitialized());
+
+    uint64_t actuallySkipped = 0;
+    _cursor->skip(offset, actuallySkipped);
+    _cursorHasMore = _cursor->hasMore();
+    stats.incrScanned(actuallySkipped);
+  }
+
+  AqlCall upstreamCall{};
+  upstreamCall.softLimit = offset - skipped;
+  return {_executorState, skipped, upstreamCall};
+}
+
 std::tuple<ExecutorState, EnumerateCollectionStats, AqlCall> EnumerateCollectionExecutor::produceRows(
     size_t limit, AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output) {
   TRI_IF_FAILURE("EnumerateCollectionExecutor::produceRows") {
