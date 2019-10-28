@@ -1823,6 +1823,21 @@ void TRI_vocbase_t::toVelocyPack(VPackBuilder& result) const {
     }
 }
 
+/// @brief sets prototype collection for sharding (_users or _graphs)
+void TRI_vocbase_t::setShardingPrototype(ShardingPrototype type) {
+  _info.shardingPrototype(type);
+}
+
+/// @brief gets prototype collection for sharding (_users or _graphs)
+ShardingPrototype TRI_vocbase_t::shardingPrototype() const {
+  return _info.shardingPrototype();
+}
+  
+/// @brief gets name of prototype collection for sharding (_users or _graphs)
+std::string const& TRI_vocbase_t::shardingPrototypeName() const {
+  return _info.shardingPrototype() == ShardingPrototype::Users ? StaticStrings::UsersCollection : StaticStrings::GraphCollection;
+}
+
 std::vector<std::shared_ptr<arangodb::LogicalView>> TRI_vocbase_t::views() {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   std::vector<std::shared_ptr<arangodb::LogicalView>> views;

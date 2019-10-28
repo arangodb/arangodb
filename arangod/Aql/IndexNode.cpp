@@ -570,6 +570,7 @@ ExecutionNode* IndexNode::clone(ExecutionPlan* plan, bool withDependencies,
   c->_outNonMaterializedDocId = outNonMaterializedDocId;
   c->_outNonMaterializedIndVars = std::move(outNonMaterializedIndVars);
   CollectionAccessingNode::cloneInto(*c);
+  DocumentProducingNode::cloneInto(plan, *c);
   return cloneHelper(std::move(c), withDependencies, withProperties);
 }
 
