@@ -3654,6 +3654,106 @@ TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
   }
 }
 
+TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_toVelocyPack) {
+  // create a new instance of an ApplicationServer and fill it with the required features
+  // cannot use the existing server since its features already have some state
+  arangodb::application_features::ApplicationServer newServer(nullptr, nullptr);
+  arangodb::iresearch::IResearchAnalyzerFeature feature(newServer);
+  auto& dbFeature = newServer.addFeature<arangodb::DatabaseFeature>();  // required for IResearchAnalyzerFeature::emplace(...)
+  newServer.addFeature<arangodb::QueryRegistryFeature>();  // required for constructing TRI_vocbase_t
+  auto& sysDatabase = newServer.addFeature<arangodb::SystemDatabaseFeature>();  // required for IResearchAnalyzerFeature::start()
+  newServer.addFeature<arangodb::V8DealerFeature>();  // required for DatabaseFeature::createDatabase>(std::make_unique<arangodb::V8DealerFeature(server)); // required for DatabaseFeature::createDatabase>(...)
+  auto cleanup = arangodb::scopeGuard([&dbFeature]() { dbFeature.unprepare(); });
+
+  // create system vocbase (before feature start)
+  {
+    auto databases = VPackBuilder();
+    databases.openArray();
+    databases.add(systemDatabaseArgs);
+    databases.close();
+    EXPECT_EQ(TRI_ERROR_NO_ERROR, dbFeature.loadDatabases(databases.slice()));
+    sysDatabase.start();  // get system database from DatabaseFeature
+    auto vocbase = dbFeature.useDatabase(arangodb::StaticStrings::SystemDatabase);
+    arangodb::methods::Collections::createSystem(*vocbase, arangodb::tests::AnalyzerCollectionName, false);
+  }
+
+  arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
+  auto vpack = VPackParser::fromJson(
+      "{\"locale\":\"ru_RU.utf-8\",\"case\":\"upper\",\"accent\":true}");
+  EXPECT_TRUE(feature.emplace(result,
+                              arangodb::StaticStrings::SystemDatabase + "::test_norm_analyzer4",
+                              "norm", vpack->slice()).ok());
+  EXPECT_TRUE(result.first);
+  EXPECT_EQUAL_SLICES(vpack->slice(), result.first->properties());
+
+  // for persistence
+  {
+    auto expectedVpack = VPackParser::fromJson(
+      "{ \"name\": \"test_norm_analyzer4\", \"type\": \"norm\", "
+      "\"properties\":{\"locale\":\"ru_RU.utf-8\",\"case\":\"upper\",\"accent\":true}, "
+      "\"features\": [] }");
+
+    VPackBuilder builder;
+    result.first->toVelocyPack(builder, true);
+    EXPECT_EQUAL_SLICES(expectedVpack->slice(), builder.slice());
+  }
+
+  // not for persistence
+  {
+    auto expectedVpack = VPackParser::fromJson(
+      "{ \"name\": \"" + arangodb::StaticStrings::SystemDatabase + "::test_norm_analyzer4\", "
+      "\"type\": \"norm\", "
+      "\"properties\":{\"locale\":\"ru_RU.utf-8\",\"case\":\"upper\",\"accent\":true}, "
+      "\"features\": [] }");
+
+    VPackBuilder builder;
+    result.first->toVelocyPack(builder, false);
+    EXPECT_EQUAL_SLICES(expectedVpack->slice(), builder.slice());
+  }
+
+  // for definition (same database)
+  {
+    auto expectedVpack = VPackParser::fromJson(
+      "{ \"name\": \"test_norm_analyzer4\", "
+      "\"type\": \"norm\", "
+      "\"properties\":{\"locale\":\"ru_RU.utf-8\",\"case\":\"upper\",\"accent\":true}, "
+      "\"features\": [] }");
+
+    VPackBuilder builder;
+    result.first->toVelocyPack(builder, sysDatabase.use().get());
+    EXPECT_EQUAL_SLICES(expectedVpack->slice(), builder.slice());
+  }
+
+  // for definition (different database)
+  {
+    TRI_vocbase_t* vocbase;
+    EXPECT_TRUE(dbFeature.createDatabase(createInfo(server.server(), "vocbase0", 1), vocbase).ok());
+
+    auto expectedVpack = VPackParser::fromJson(
+      "{ \"name\": \"::test_norm_analyzer4\", "
+      "\"type\": \"norm\", "
+      "\"properties\":{\"locale\":\"ru_RU.utf-8\",\"case\":\"upper\",\"accent\":true}, "
+      "\"features\": [] }");
+
+    VPackBuilder builder;
+    result.first->toVelocyPack(builder, vocbase);
+    EXPECT_EQUAL_SLICES(expectedVpack->slice(), builder.slice());
+  }
+
+  // for definition (without database)
+  {
+    auto expectedVpack = VPackParser::fromJson(
+      "{ \"name\": \"" + arangodb::StaticStrings::SystemDatabase + "::test_norm_analyzer4\", "
+      "\"type\": \"norm\", "
+      "\"properties\":{\"locale\":\"ru_RU.utf-8\",\"case\":\"upper\",\"accent\":true}, "
+      "\"features\": [] }");
+
+    VPackBuilder builder;
+    result.first->toVelocyPack(builder, nullptr);
+    EXPECT_EQUAL_SLICES(expectedVpack->slice(), builder.slice());
+  }
+}
+
 TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_vpack_create) {
   // create a new instance of an ApplicationServer and fill it with the required features
   // cannot use the existing server since its features already have some state
@@ -3940,10 +4040,9 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_vpack_create) {
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
     auto vpack = VPackParser::fromJson(
         "{\"locale\":\"ru_RU.utf-8\",\"case\":\"upper\",\"accent\":true}");
-    EXPECT_TRUE(feature
-                    .emplace(result, arangodb::StaticStrings::SystemDatabase + "::test_norm_analyzer4",
-                             "norm", vpack->slice())
-                    .ok());
+    EXPECT_TRUE(feature.emplace(result,
+                                arangodb::StaticStrings::SystemDatabase + "::test_norm_analyzer4",
+                                "norm", vpack->slice()).ok());
     EXPECT_TRUE(result.first);
     EXPECT_EQUAL_SLICES(vpack->slice(), result.first->properties());
   }
