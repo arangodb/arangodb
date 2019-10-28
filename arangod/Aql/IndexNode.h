@@ -122,6 +122,8 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode, public Col
                          unsigned int& totalNrRegs, unsigned int depth) const;
 
   bool isLateMaterialized() const noexcept {
+    TRI_ASSERT((_outNonMaterializedDocId == nullptr && _outNonMaterializedIndVars.empty()) ||
+               !(_outNonMaterializedDocId == nullptr || _outNonMaterializedIndVars.empty()));
     return !_outNonMaterializedIndVars.empty();
   }
 

@@ -117,7 +117,7 @@ IndexNode::IndexNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
 
   initIndexCoversProjections();
 
-  if (isLateMaterialized()) {
+  if (_outNonMaterializedDocId != nullptr) {
     auto const* vars = plan->getAst()->variables();
     TRI_ASSERT(vars);
     VPackSlice outNonMaterializedIndVarsSlice = base.get("IndexesValuesVars");
@@ -293,7 +293,7 @@ void IndexNode::toVelocyPackHelper(VPackBuilder& builder, unsigned flags,
   builder.add("evalFCalls", VPackValue(_options.evaluateFCalls));
   builder.add("limit", VPackValue(_options.limit));
 
-  if (_outNonMaterializedDocId != nullptr) {
+  if (isLateMaterialized()) {
     builder.add(VPackValue("outNmDocId"));
     _outNonMaterializedDocId->toVelocyPack(builder);
     builder.add("outNmColName", VPackValue(collection()->name()));
@@ -653,7 +653,7 @@ void IndexNode::setLateMaterialized(aql::Variable const* docIdVariable,
                                     IndexVarsInfo const& indexVariables) {
   _outNonMaterializedDocId = docIdVariable;
   for (auto& indVars : indexVariables) {
-    auto const& indexInfo = _outNonMaterializedIndVars.find(indVars.second.indexId);
+    auto indexInfo = _outNonMaterializedIndVars.find(indVars.second.indexId);
     if (indexInfo == _outNonMaterializedIndVars.cend()) {
       _outNonMaterializedIndVars[indVars.second.indexId] =
         std::unordered_map<size_t, Variable const*>{{indVars.second.indexFieldNum, indVars.second.var}};
