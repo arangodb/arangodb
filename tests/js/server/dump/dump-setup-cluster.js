@@ -221,6 +221,8 @@ function setupSatelliteCollections() {
     c.save({ _key: "text" + i, value: t });
   });
 
+  let analyzer = analyzers.save("custom", "delimiter", { delimiter : " " }, [ "frequency" ]);
+
   // setup a view
   try {
     c = db._create("UnitTestsDumpViewCollection");
@@ -238,7 +240,7 @@ function setupSatelliteCollections() {
         "UnitTestsDumpViewCollection": {
           includeAllFields: true,
           fields: {
-            text: { analyzers: [ "text_en" ] }
+            text: { analyzers: [ "text_en", analyzer.name ] }
           }
         }
       }
