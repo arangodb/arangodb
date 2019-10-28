@@ -718,18 +718,23 @@ static std::shared_ptr<std::unordered_map<std::string, std::vector<std::string>>
 static std::shared_ptr<std::unordered_map<std::string, std::vector<std::string>>> CloneShardDistribution(
     ClusterInfo& ci, std::shared_ptr<LogicalCollection> col,
     std::shared_ptr<LogicalCollection> const& other) {
-  auto result =
-      std::make_shared<std::unordered_map<std::string, std::vector<std::string>>>();
-
   TRI_ASSERT(col);
   TRI_ASSERT(other);
 
   if (!other->distributeShardsLike().empty()) {
+    CollectionNameResolver resolver(col->vocbase());
+    std::string name = other->distributeShardsLike();
+    TRI_voc_cid_t cid = arangodb::basics::StringUtils::uint64(name);
+    if (cid > 0) {
+      name = resolver.getCollectionNameCluster(cid);
+    }
     std::string const errorMessage = "Cannot distribute shards like '" + other->name() +
-                                     "' it is already distributed like '" +
-                                     other->distributeShardsLike() + "'.";
+                                     "' it is already distributed like '" + name + "'.";
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_CHAIN_OF_DISTRIBUTESHARDSLIKE, errorMessage);
   }
+  
+  auto result =
+      std::make_shared<std::unordered_map<std::string, std::vector<std::string>>>();
 
   // We need to replace the distribute with the cid.
   auto cidString = arangodb::basics::StringUtils::itoa(other.get()->id());

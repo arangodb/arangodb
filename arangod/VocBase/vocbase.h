@@ -273,6 +273,15 @@ struct TRI_vocbase_t {
   /// @brief closes a database and all collections
   void shutdown();
 
+  /// @brief sets prototype collection for sharding (_users or _graphs)
+  void setShardingPrototype(ShardingPrototype type);
+
+  /// @brief gets prototype collection for sharding (_users or _graphs)
+  ShardingPrototype shardingPrototype() const;
+ 
+  /// @brief gets name of prototype collection for sharding (_users or _graphs)
+  std::string const& shardingPrototypeName() const;
+
   /// @brief returns all known views
   std::vector<std::shared_ptr<arangodb::LogicalView>> views();
 
