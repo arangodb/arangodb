@@ -216,23 +216,17 @@ bool UpsertModifier::resultAvailable() const {
 }
 
 VPackArrayIterator UpsertModifier::getUpdateResultsIterator() const {
-  if (!_updateResults.hasSlice() || _updateResults.slice().isNone()) {
-    return VPackArrayIterator(VPackSlice::emptyArraySlice());
-  } else if (_updateResults.slice().isArray()) {
+  if (!_updateResults.hasSlice() || _updateResults.slice().isArray()) {
     return VPackArrayIterator(_updateResults.slice());
-  } else {
-    TRI_ASSERT(false);
   }
+  return VPackArrayIterator(VPackSlice::emptyArraySlice());
 }
 
 VPackArrayIterator UpsertModifier::getInsertResultsIterator() const {
-  if (!_insertResults.hasSlice() || _insertResults.slice().isNone()) {
-    return VPackArrayIterator(VPackSlice::emptyArraySlice());
-  } else if (_insertResults.slice().isArray()) {
+  if (!_insertResults.hasSlice() || _insertResults.slice().isArray()) {
     return VPackArrayIterator(_insertResults.slice());
-  } else {
-    TRI_ASSERT(false);
   }
+  return VPackArrayIterator(VPackSlice::emptyArraySlice());
 }
 
 Result UpsertModifier::accumulate(InputAqlItemRow& row) {

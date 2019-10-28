@@ -220,9 +220,8 @@ VPackArrayIterator SimpleModifier<ModifierCompletion, Enable>::getResultsIterato
   if (resultAvailable()) {
     TRI_ASSERT(_results.hasSlice() && _results.slice().isArray());
     return VPackArrayIterator{_results.slice()};
-  } else {
-    return VPackArrayIterator{VPackSlice::emptyArraySlice()};
   }
+  return VPackArrayIterator{VPackSlice::emptyArraySlice()};
 }
 
 template class ::arangodb::aql::SimpleModifier<InsertModifierCompletion>;
