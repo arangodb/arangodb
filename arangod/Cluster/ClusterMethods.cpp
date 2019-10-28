@@ -1201,52 +1201,66 @@ int selectivityEstimatesOnCoordinator(ClusterFeature& feature, std::string const
                                   std::move(headers), /*retryNotFound*/ true));
   }
 
-    // format of expected answer:
-    // in `indexes` is a map that has keys in the format
-    // s<shardid>/<indexid> and index information as value
-    // {"code":200
-    // ,"error":false
-    // ,"indexes":{ "s10004/0"    : 1.0,
-    //              "s10004/10005": 0.5
-    //            }
-    // }
+  // format of expected answer:
+  // in `indexes` is a map that has keys in the format
+  // s<shardid>/<indexid> and index information as value
+  // {"code":200
+  // ,"error":false
+  // ,"indexes":{ "s10004/0"    : 1.0,
+  //              "s10004/10005": 0.5
+  //            }
+  // }
 
-    std::map<std::string, std::vector<double>> indexEstimates;
-    for (Future<network::Response>& f : futures) {
-      network::Response const& r = f.get();
+  std::map<std::string, std::vector<double>> indexEstimates;
+  for (Future<network::Response>& f : futures) {
+    network::Response const& r = f.get();
 
-      if (r.fail()) {
-        return network::fuerteToArangoErrorCode(r);
+    if (r.fail()) {
+      return network::fuerteToArangoErrorCode(r);
+    }
+
+    VPackSlice answer = r.slice();
+    if (!answer.isObject()) {
+      return TRI_ERROR_INTERNAL;
+    }
+   
+    if (answer.hasKey(StaticStrings::ErrorNum)) {
+      int errorNum = answer.get(StaticStrings::ErrorNum).getNumber<int>();
+
+      if (errorNum != TRI_ERROR_NO_ERROR) {
+        return errorNum;
       }
+    }
 
-      VPackSlice answer = r.slice();
-      if (!answer.isObject()) {
-        return TRI_ERROR_INTERNAL;
-      }
+    answer = answer.get("indexes");
+    if (!answer.isObject()) {
+      return TRI_ERROR_INTERNAL;
+    }
 
-      // add to the total
-      for (auto pair : VPackObjectIterator(answer.get("indexes"), true)) {
-        velocypack::StringRef shard_index_id(pair.key);
-        auto split_point =
-            std::find(shard_index_id.begin(), shard_index_id.end(), '/');
-        std::string index(split_point + 1, shard_index_id.end());
+    // add to the total
+    for (auto pair : VPackObjectIterator(answer, true)) {
+      velocypack::StringRef shardIndexId(pair.key);
+      auto split = std::find(shardIndexId.begin(), shardIndexId.end(), '/');
+      if (split != shardIndexId.end()) {
+        std::string index(split + 1, shardIndexId.end());
         double estimate = Helper::getNumericValue(pair.value, 0.0);
         indexEstimates[index].push_back(estimate);
       }
     }
+  }
 
-    auto aggregate_indexes = [](std::vector<double> const& vec) -> double {
-      TRI_ASSERT(!vec.empty());
-      double rv = std::accumulate(vec.begin(), vec.end(), 0.0);
-      rv /= static_cast<double>(vec.size());
-      return rv;
-    };
+  auto aggregateIndexes = [](std::vector<double> const& vec) -> double {
+    TRI_ASSERT(!vec.empty());
+    double rv = std::accumulate(vec.begin(), vec.end(), 0.0);
+    rv /= static_cast<double>(vec.size());
+    return rv;
+  };
 
-    for (auto const& p : indexEstimates) {
-      result[p.first] = aggregate_indexes(p.second);
-    }
+  for (auto const& p : indexEstimates) {
+    result[p.first] = aggregateIndexes(p.second);
+  }
 
-    return TRI_ERROR_NO_ERROR;
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
