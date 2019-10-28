@@ -177,6 +177,10 @@ ModificationExecutor<FetcherType, ModifierType>::produceRows(OutputAqlItemRow& o
     _modifier.reset();
   }
 
+  TRI_IF_FAILURE("ModificationBlock::getSome") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+
   std::tie(_lastState, stats) = doCollect(maxOutputs);
 
   if (_lastState == ExecutionState::WAITING) {
