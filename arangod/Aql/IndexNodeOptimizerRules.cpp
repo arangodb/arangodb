@@ -40,14 +40,14 @@ namespace {
       size_t astNodeChildNum;
       TRI_idx_iid_t indexId;
       size_t indexFieldNum;
-      std::vector<arangodb::basics::AttributeName> const* indexField = nullptr;
+      std::vector<arangodb::basics::AttributeName> const* indexField;
     };
 
     std::vector<AttributeAndField> attrs;
     arangodb::aql::CalculationNode* node;
   };
 
-  bool namesMatch(arangodb::aql::IndexNode const* indexNode, NodeWithAttrs& node) {
+  bool attributesMatch(arangodb::aql::IndexNode const* indexNode, NodeWithAttrs& node) {
     // check all node attributes to be in indexes
     for (auto& nodeAttr : node.attrs) {
       for (auto& index : indexNode->getIndexes()) {
@@ -170,16 +170,18 @@ namespace {
               return false;
             }
             if (state.wasAccess) {
-              std::reverse(state.nodeAttrs.attrs.back().attr.begin(), state.nodeAttrs.attrs.back().attr.end());
               if (isExp) {
                 TRI_ASSERT(state.nodeAttrs.attrs.size() > 1);
                 auto attrAndField = state.nodeAttrs.attrs.end();
                 std::advance(attrAndField, -2);
                 attrAndField->attr.back().shouldExpand = true;
-                attrAndField->attr.insert(attrAndField->attr.end(), state.nodeAttrs.attrs.back().attr.cbegin(), state.nodeAttrs.attrs.back().attr.cend());
+                attrAndField->attr.insert(attrAndField->attr.end(), state.nodeAttrs.attrs.back().attr.crbegin(),
+                                          state.nodeAttrs.attrs.back().attr.crend());
                 state.isExpansion = false;
                 state.expansionVariable = nullptr;
                 state.nodeAttrs.attrs.pop_back();
+              } else {
+                std::reverse(state.nodeAttrs.attrs.back().attr.begin(), state.nodeAttrs.attrs.back().attr.end());
               }
             }
           } else {
@@ -265,7 +267,7 @@ void arangodb::aql::lateDocumentMaterializationRule(arangodb::aql::Optimizer* op
               // is not safe for optimization
               stopSearch = true;
             } else if (!node.attrs.empty()) {
-              if (!namesMatch(indexNode, node)) {
+              if (!attributesMatch(indexNode, node)) {
                 // the node uses attributes which is not in index
                 stopSearch = true;
               } else {
@@ -307,7 +309,7 @@ void arangodb::aql::lateDocumentMaterializationRule(arangodb::aql::Optimizer* op
           std::transform(node.attrs.cbegin(), node.attrs.cend(), std::inserter(uniqueVariables, uniqueVariables.end()),
                          [&ast] (auto const& attrAndField) {
                            return std::make_pair(attrAndField.indexField, IndexNode::IndexVariable{attrAndField.indexId, attrAndField.indexFieldNum,
-                                                   ast->variables()->createTemporaryVariable()});
+                                                 ast->variables()->createTemporaryVariable()});
                          });
         }
         auto localDocIdTmp = ast->variables()->createTemporaryVariable();
@@ -315,7 +317,7 @@ void arangodb::aql::lateDocumentMaterializationRule(arangodb::aql::Optimizer* op
           for (auto& attr : node.attrs) {
             auto it = uniqueVariables.find(attr.indexField);
             TRI_ASSERT(it != uniqueVariables.cend());
-            auto newNode = ast->createNodeReference((*it).second.var);
+            auto newNode = ast->createNodeReference(it->second.var);
             if (attr.astNode != nullptr) {
               TEMPORARILY_UNLOCK_NODE(attr.astNode);
               attr.astNode->changeMember(attr.astNodeChildNum, newNode);

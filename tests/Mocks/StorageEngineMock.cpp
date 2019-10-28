@@ -479,10 +479,11 @@ class HashIndexMap {
   void insert(arangodb::LocalDocumentId const& documentId, arangodb::velocypack::Slice const& doc) {
     VPackBuilder builder;
     builder.openArray();
-    bool toClose = true;
+    auto toClose = true;
+    // find fields for the index
     for (size_t i = 0; i < _fields.size(); ++i) {
       auto slice = doc;
-      bool isExpansion = false;
+      auto isExpansion = false;
       for (auto fieldIt = _fields[i].begin(); fieldIt != _fields[i].end(); ++fieldIt) {
         TRI_ASSERT(slice.isObject() || slice.isArray());
         if (slice.isObject()) {
@@ -490,10 +491,10 @@ class HashIndexMap {
           if (slice.isNone() || slice.isNull()) {
             break;
           }
-        } else {
+        } else { // expansion
           isExpansion = slice.isArray();
           TRI_ASSERT(isExpansion);
-          bool found = false;
+          auto found = false;
           for (auto sliceIt = arangodb::velocypack::ArrayIterator(slice); sliceIt != sliceIt.end(); ++sliceIt) {
             auto subSlice = sliceIt.value();
             if (!(subSlice.isNone() || subSlice.isNull())) {
@@ -520,10 +521,10 @@ class HashIndexMap {
         }
       }
       if (!isExpansion) {
-        // if last expansion
+        // if the last expansion (at the end) leave the array open
         if (slice.isArray() && i == _fields.size() - 1) {
-          bool found = false;
-          bool wasNull = false;
+          auto found = false;
+          auto wasNull = false;
           for (auto sliceIt = arangodb::velocypack::ArrayIterator(slice); sliceIt != sliceIt.end(); ++sliceIt) {
             auto subSlice = sliceIt.value();
             if (!(subSlice.isNone() || subSlice.isNull())) {
@@ -537,7 +538,7 @@ class HashIndexMap {
             insertSlice(documentId, VPackSlice::nullSlice(), i);
           }
           toClose = false;
-        } else {
+        } else { // object
           insertSlice(documentId, slice, i);
           builder.add(slice);
         }
@@ -551,7 +552,7 @@ class HashIndexMap {
 
   bool remove(arangodb::LocalDocumentId const& documentId, arangodb::velocypack::Slice const& doc) {
     size_t i = 0;
-    bool documentRemoved{};
+    auto documentRemoved = false;
     for (auto map : _valueMaps) {
       auto slice = getSliceByField(doc, i++);
       ValueMap::iterator begin;
@@ -561,7 +562,7 @@ class HashIndexMap {
         if (begin->second == documentId) {
           map.erase(begin);
           documentRemoved = true;
-          // break; expansions
+          // not break because of expansions
         }
       }
     }
@@ -575,7 +576,7 @@ class HashIndexMap {
   }
 
   std::unordered_map<arangodb::LocalDocumentId, VPackBuilder> find(std::unique_ptr<VPackBuilder>&& keys) const {
-    std::unordered_map<arangodb::LocalDocumentId, VPackBuilder> found;
+    std::unordered_map<arangodb::LocalDocumentId, VPackBuilder const*> found;
     TRI_ASSERT(keys->slice().isArray());
     auto sliceIt = arangodb::velocypack::ArrayIterator(keys->slice());
     if (!(sliceIt != sliceIt.end())) {
@@ -590,14 +591,13 @@ class HashIndexMap {
       }
       if (found.empty()) {
         std::transform(begin, end, std::inserter(found, found.end()), [] (auto const& item) {
-          return std::make_pair(item.second, item.first);
+          return std::make_pair(item.second, &item.first);
         });
       } else {
-        std::unordered_map<arangodb::LocalDocumentId, VPackBuilder> tmpFound;
-        for (auto it = begin; it != end; ++it) {
-          auto foundIt = found.find(it->second);
-          if (foundIt != found.end()) {
-            tmpFound.emplace(it->second, it->first);
+        std::unordered_map<arangodb::LocalDocumentId, VPackBuilder const*> tmpFound;
+        for (; begin != end; ++begin) {
+          if (found.find(begin->second) != found.cend()) {
+            tmpFound.emplace(begin->second, &begin->first);
           }
         }
         if (tmpFound.empty()) {
@@ -614,8 +614,9 @@ class HashIndexMap {
       auto doc = _docIndexMap.find(d.first);
       TRI_ASSERT(doc != _docIndexMap.cend());
       auto builder = doc->second;
+      // the array was left open for the last expansion (at the end)
       if (doc->second.isOpenArray()) {
-        builder.add(d.second.slice());
+        builder.add(d.second->slice());
         builder.close();
       }
       foundWithCovering.emplace(doc->first, std::move(builder));
@@ -631,11 +632,10 @@ class HashIndexMap {
 
 class HashIndexIteratorMock final : public arangodb::IndexIterator {
  public:
-
   HashIndexIteratorMock(arangodb::LogicalCollection* collection,
                         arangodb::transaction::Methods* trx, arangodb::Index const* index,
                         HashIndexMap const& map, std::unique_ptr<VPackBuilder>&& keys)
-      : IndexIterator(collection, trx), _map(map) {
+    : IndexIterator(collection, trx), _map(map) {
     _documents = _map.find(std::move(keys));
     _begin = _documents.begin();
     _end = _documents.end();
@@ -691,9 +691,8 @@ class HashIndexMock final : public arangodb::Index {
       return nullptr;
     }
 
-    auto const type =
-        arangodb::basics::VelocyPackHelper::getStringRef(typeSlice,
-                                                         arangodb::velocypack::StringRef());
+    auto const type = arangodb::basics::VelocyPackHelper::getStringRef(typeSlice,
+                                                                       arangodb::velocypack::StringRef());
 
     if (type.compare("hash") != 0) {
       return nullptr;
@@ -721,13 +720,17 @@ class HashIndexMock final : public arangodb::Index {
   size_t memory() const override { return sizeof(HashIndexMock); }
 
   void load() override {}
+
   void unload() override {}
+
   void afterTruncate(TRI_voc_tick_t) override {
     _hashData.clear();
   }
 
   void toVelocyPack(VPackBuilder& builder,
                     std::underlying_type<arangodb::Index::Serialize>::type flags) const override {
+    // not implemented
+    TRI_ASSERT(false);
     builder.openObject();
     Index::toVelocyPack(builder, flags);
     // hard-coded
@@ -737,10 +740,12 @@ class HashIndexMock final : public arangodb::Index {
   }
 
   void toVelocyPackFigures(VPackBuilder& builder) const override {
+    // not implemented
+    TRI_ASSERT(false);
     Index::toVelocyPackFigures(builder);
   }
 
-  arangodb::Result insert(arangodb::transaction::Methods& trx,
+  arangodb::Result insert(arangodb::transaction::Methods&,
                           arangodb::LocalDocumentId const& documentId,
                           arangodb::velocypack::Slice const& doc, OperationMode) {
     if (!doc.isObject()) {
@@ -825,7 +830,7 @@ class HashIndexMock final : public arangodb::Index {
           attrNode = attrNode->getMember(0);
         } while (attrNode->type == arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS);
         std::reverse(attributes.begin(), attributes.end());
-      } else {
+      } else { // expansion
         TRI_ASSERT(attrNode->type == arangodb::aql::NODE_TYPE_EXPANSION);
         auto expNode = attrNode;
         TRI_ASSERT(expNode->numMembers() >= 2);
@@ -848,8 +853,7 @@ class HashIndexMock final : public arangodb::Index {
           attributesRight.emplace_back(std::string(attrNode->getStringValue(), attrNode->getStringLength()), false);
           attrNode = attrNode->getMember(0);
         }
-        std::reverse(attributesRight.begin(), attributesRight.end());
-        attributes.insert(attributes.end(), attributesRight.begin(), attributesRight.end());
+        attributes.insert(attributes.end(), attributesRight.crbegin(), attributesRight.crend());
       }
       allAttributes.emplace_back(std::move(attributes), valNode);
     }
