@@ -221,10 +221,9 @@ class RocksDBEngine final : public StorageEngine {
   Result flushWal(bool waitForSync, bool waitForCollector, bool writeShutdownFile) override;
   void waitForEstimatorSync(std::chrono::milliseconds maxWaitTime) override;
 
-  virtual std::unique_ptr<TRI_vocbase_t> openDatabase(velocypack::Slice const& args,
-                                                      bool isUpgrade, int& status) override;
-  std::unique_ptr<TRI_vocbase_t> createDatabase(TRI_voc_tick_t id,
-                                                velocypack::Slice const& args,
+  virtual std::unique_ptr<TRI_vocbase_t> openDatabase(arangodb::CreateDatabaseInfo&& info,
+                                                      bool isUpgrade) override;
+  std::unique_ptr<TRI_vocbase_t> createDatabase(arangodb::CreateDatabaseInfo&&,
                                                 int& status) override;
   int writeCreateDatabaseMarker(TRI_voc_tick_t id, velocypack::Slice const& slice) override;
   void prepareDropDatabase(TRI_vocbase_t& vocbase, bool useWriteMarker, int& status) override;
@@ -338,8 +337,7 @@ class RocksDBEngine final : public StorageEngine {
   bool systemDatabaseExists();
   void addSystemDatabase();
   /// @brief open an existing database. internal function
-  std::unique_ptr<TRI_vocbase_t> openExistingDatabase(TRI_voc_tick_t id,
-                                                      VPackSlice args,
+  std::unique_ptr<TRI_vocbase_t> openExistingDatabase(arangodb::CreateDatabaseInfo&& info,
                                                       bool wasCleanShutdown, bool isUpgrade);
 
   std::string getCompressionSupport() const;

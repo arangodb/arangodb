@@ -143,9 +143,9 @@ static void GetDifference(std::vector<S2CellId> const& cell_ids, S2CellId id,
                     (j != cell_ids.begin() && (--j)->range_max() >= id);
     if (!contains) {
       S2CellId child = id.child_begin();
-      for (int i = 0;; ++i) {
+      for (int x = 0;; ++x) {
         GetDifference(cell_ids, child, result);
-        if (i == 3) break;  // Avoid unnecessary next() computation.
+        if (x == 3) break;  // Avoid unnecessary next() computation.
         child = child.next();
       }
     }

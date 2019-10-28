@@ -40,6 +40,7 @@ static std::string const StateNames[] = {
     "executing",            // EXECUTION
     "finalizing",           // FINALIZATION
     "finished",             // FINISHED
+    "killed",               // KILLED
 
     "invalid"  // INVALID
 };

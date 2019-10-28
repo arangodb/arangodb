@@ -205,7 +205,7 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, arangodb::velocypack::Slice co
   auto list = base.get("conditionVariables");
 
   if (list.isArray()) {
-    for (auto const& v : VPackArrayIterator(list)) {
+    for (VPackSlice v : VPackArrayIterator(list)) {
       _conditionVariables.emplace(_plan->getAst()->variables()->createVariable(v));
     }
   }
@@ -694,7 +694,7 @@ void TraversalNode::prepareOptions() {
 
 /// @brief remember the condition to execute for early traversal abortion.
 void TraversalNode::setCondition(std::unique_ptr<arangodb::aql::Condition> condition) {
-  arangodb::HashSet<Variable const*> varsUsedByCondition;
+  ::arangodb::containers::HashSet<Variable const*> varsUsedByCondition;
 
   Ast::getReferencedVariables(condition->root(), varsUsedByCondition);
 

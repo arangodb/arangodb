@@ -75,7 +75,7 @@ class PhysicalCollectionMock: public arangodb::PhysicalCollection {
                                   arangodb::OperationOptions& options, bool lock,
                                   arangodb::KeyLockInfo* /*keyLockInfo*/,
       std::function<void()> const& callbackDuringLock) override;
-  
+
   virtual arangodb::LocalDocumentId lookupKey(arangodb::transaction::Methods*,
                                               arangodb::velocypack::Slice const&) const override;
   virtual size_t memory() const override;
@@ -180,8 +180,7 @@ class StorageEngineMock: public arangodb::StorageEngine {
   virtual std::string collectionPath(TRI_vocbase_t const& vocbase, TRI_voc_cid_t id) const override;
   virtual std::string createCollection(TRI_vocbase_t& vocbase,
                                        arangodb::LogicalCollection const& collection) override;
-  virtual std::unique_ptr<TRI_vocbase_t> createDatabase(TRI_voc_tick_t id,
-                                                        arangodb::velocypack::Slice const& args,
+  virtual std::unique_ptr<TRI_vocbase_t> createDatabase(arangodb::CreateDatabaseInfo&&,
                                                         int& status) override;
   virtual arangodb::Result createLoggerState(TRI_vocbase_t*, VPackBuilder&) override;
   virtual std::unique_ptr<arangodb::PhysicalCollection> createPhysicalCollection(
@@ -237,8 +236,8 @@ class StorageEngineMock: public arangodb::StorageEngine {
                                       std::shared_ptr<arangodb::transaction::Context> transactionContext,
                                       uint64_t tickStart, uint64_t tickEnd,
                                       std::shared_ptr<VPackBuilder>& builderSPtr) override;
-  virtual std::unique_ptr<TRI_vocbase_t> openDatabase(arangodb::velocypack::Slice const& args,
-                                                      bool isUpgrade, int& status) override;
+  virtual std::unique_ptr<TRI_vocbase_t> openDatabase(arangodb::CreateDatabaseInfo && ,
+                                                      bool isUpgrade) override;
   virtual arangodb::Result persistCollection(TRI_vocbase_t& vocbase,
                                              arangodb::LogicalCollection const& collection) override;
   virtual void prepareDropDatabase(TRI_vocbase_t& vocbase, bool useWriteMarker,

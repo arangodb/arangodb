@@ -75,7 +75,7 @@ void WorkerConfig::updateConfig(VPackSlice params) {
   }
 
   // To access information based on a user defined collection name we need the
-  for (auto const& it : VPackObjectIterator(collectionPlanIdMap)) {
+  for (auto it : VPackObjectIterator(collectionPlanIdMap)) {
     _collectionPlanIdMap.emplace(it.key.copyString(), it.value.copyString());
   }
 
@@ -83,7 +83,7 @@ void WorkerConfig::updateConfig(VPackSlice params) {
   // Order matters because the for example the third vertex shard, will only
   // every have
   // edges in the third edge shard. This should speed up the startup
-  for (auto const& pair : VPackObjectIterator(vertexShardMap)) {
+  for (auto pair : VPackObjectIterator(vertexShardMap)) {
     CollectionID cname = pair.key.copyString();
     
     std::vector<ShardID> shards;
@@ -99,7 +99,7 @@ void WorkerConfig::updateConfig(VPackSlice params) {
   }
 
   // Ordered list of edge shards for each collection
-  for (auto const& pair : VPackObjectIterator(edgeShardMap)) {
+  for (auto pair : VPackObjectIterator(edgeShardMap)) {
     CollectionID cname = pair.key.copyString();
     
     std::vector<ShardID> shards;

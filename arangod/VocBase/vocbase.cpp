@@ -431,8 +431,8 @@ std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::createCollectionWork
 
   try {
     collection->setStatus(TRI_VOC_COL_STATUS_LOADED);
-    // set collection version to 3.1, as the collection is just created
-    collection->setVersion(LogicalCollection::VERSION_33);
+    // set collection version to latest version, as the collection is just created
+    collection->setVersion(LogicalCollection::currentVersion());
 
     // Let's try to persist it.
     collection->persistPhysicalCollection();
@@ -1703,12 +1703,10 @@ arangodb::Result TRI_vocbase_t::dropView(TRI_voc_cid_t cid, bool allowDropSystem
   return TRI_ERROR_NO_ERROR;
 }
 
-/// todo add tick od
-/// @brief create a vocbase object
 TRI_vocbase_t::TRI_vocbase_t(TRI_vocbase_type_e type,
-                           arangodb::CreateDatabaseInfo const& info)
+                           arangodb::CreateDatabaseInfo&& info)
   : _server(info.server()),
-    _info(info),
+    _info(std::move(info)),
     _type(type),
     _refCount(0),
     _state(TRI_vocbase_t::State::NORMAL),
@@ -1728,6 +1726,7 @@ TRI_vocbase_t::TRI_vocbase_t(TRI_vocbase_type_e type,
 
   TRI_CreateUserStructuresVocBase(this);
 }
+
 
 /// @brief destroy a vocbase object
 TRI_vocbase_t::~TRI_vocbase_t() {
@@ -1814,22 +1813,14 @@ void TRI_vocbase_t::addReplicationApplier() {
   _replicationApplier.reset(applier);
 }
 
-arangodb::Result TRI_vocbase_t::toVelocyPack(VPackBuilder& result) const {
-  {
+void TRI_vocbase_t::toVelocyPack(VPackBuilder& result) const {
     VPackObjectBuilder b(&result);
-
-    result.add(StaticStrings::DataSourceName, VPackValue(_info.getName()));
-    result.add(StaticStrings::DataSourceId, VPackValue(std::to_string(_info.getId())));
-    result.add(StaticStrings::DataSourceSystem, VPackValue(isSystem()));
-
+    _info.toVelocyPack(result);
     if (ServerState::instance()->isCoordinator()) {
       result.add("path", VPackValue(path()));
-      arangodb::addVocbaseOptionsToOpenObject(result, _info.sharding(), _info.replicationFactor(), _info.writeConcern());
     } else {
       result.add("path", VPackValue("none"));
     }
-  }
-  return Result();
 }
 
 std::vector<std::shared_ptr<arangodb::LogicalView>> TRI_vocbase_t::views() {

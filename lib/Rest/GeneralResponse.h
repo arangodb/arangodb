@@ -94,7 +94,7 @@ class GeneralResponse {
   explicit GeneralResponse(ResponseCode);
 
  public:
-  virtual ~GeneralResponse() {}
+  virtual ~GeneralResponse() = default;
 
  public:
   // response codes are http response codes, but they are used in other
@@ -136,8 +136,12 @@ class GeneralResponse {
     _headers.emplace(key, value);
   }
 
+  virtual bool isResponseEmpty() const = 0;
+
  public:
   virtual uint64_t messageId() const { return 1; }
+
+  virtual void setMessageId(uint64_t msgId) { }
 
   virtual void reset(ResponseCode) = 0;
 
@@ -147,6 +151,7 @@ class GeneralResponse {
   void setPayload(Payload&& payload, bool generateBody,
                   velocypack::Options const& options = velocypack::Options::Defaults,
                   bool resolveExternals = true) {
+    TRI_ASSERT(isResponseEmpty());
     _generateBody = generateBody;
     addPayload(std::forward<Payload>(payload), &options, resolveExternals);
   }
@@ -160,9 +165,9 @@ class GeneralResponse {
   virtual int reservePayload(std::size_t size) { return TRI_ERROR_NO_ERROR; }
 
   /// used for head
-  bool generateBody() const { return _generateBody; };
+  bool generateBody() const { return _generateBody; }
   /// used for head
-  virtual bool setGenerateBody(bool) { return _generateBody; };
+  virtual bool setGenerateBody(bool) { return _generateBody; }
 
   virtual int deflate(size_t size = 16384) = 0;
 

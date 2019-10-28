@@ -283,6 +283,7 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT, "could not connect to server");
   REG_ERROR(ERROR_SIMPLE_CLIENT_COULD_NOT_WRITE, "could not write to server");
   REG_ERROR(ERROR_SIMPLE_CLIENT_COULD_NOT_READ, "could not read from server");
+  REG_ERROR(ERROR_WAS_ERLAUBE, "was erlaube?!");
   REG_ERROR(ERROR_COMMUNICATOR_REQUEST_ABORTED, "Request aborted");
   REG_ERROR(ERROR_COMMUNICATOR_DISABLED, "Communication was disabled");
   REG_ERROR(ERROR_INTERNAL_AQL, "General internal AQL error");

@@ -423,7 +423,7 @@ TEST_F(IResearchViewDBServerTest, test_query) {
         std::vector<std::string>{logicalCollection->name()}, EMPTY, EMPTY,
         arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
-    arangodb::HashSet<TRI_voc_cid_t> collections;
+    arangodb::containers::HashSet<TRI_voc_cid_t> collections;
     collections.insert(logicalCollection->id());
     auto* snapshot =
         wiewImpl->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate,
@@ -484,7 +484,7 @@ TEST_F(IResearchViewDBServerTest, test_query) {
         std::vector<std::string>{logicalCollection->name()}, EMPTY, EMPTY,
         arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
-    arangodb::HashSet<TRI_voc_cid_t> collections;
+    arangodb::containers::HashSet<TRI_voc_cid_t> collections;
     collections.insert(logicalCollection->id());
     auto* snapshot =
         wiewImpl->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::FindOrCreate,
@@ -540,7 +540,7 @@ TEST_F(IResearchViewDBServerTest, test_query) {
     arangodb::transaction::Methods trx0(arangodb::transaction::StandaloneContext::Create(*vocbase),
                                         collections, EMPTY, EMPTY, trxOptions);
     EXPECT_TRUE(trx0.begin().ok());
-    arangodb::HashSet<TRI_voc_cid_t> collectionIds;
+    arangodb::containers::HashSet<TRI_voc_cid_t> collectionIds;
     collectionIds.insert(logicalCollection->id());
     EXPECT_TRUE((nullptr == wiewImpl->snapshot(trx0, arangodb::iresearch::IResearchView::SnapshotMode::Find,
                                                &collectionIds)));
@@ -635,7 +635,7 @@ TEST_F(IResearchViewDBServerTest, test_query) {
             std::vector<std::string>{logicalCollection->name()}, EMPTY, EMPTY,
             arangodb::transaction::Options{});
         EXPECT_TRUE(trx.begin().ok());
-        arangodb::HashSet<TRI_voc_cid_t> collections;
+        arangodb::containers::HashSet<TRI_voc_cid_t> collections;
         collections.insert(logicalCollection->id());
         auto* snapshot =
             wiewImpl->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::SyncAndReplace,
@@ -914,7 +914,7 @@ TEST_F(IResearchViewDBServerTest, test_transaction_snapshot) {
         std::vector<std::string>{logicalCollection->name()}, EMPTY, EMPTY,
         arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
-    arangodb::HashSet<TRI_voc_cid_t> collections;
+    arangodb::containers::HashSet<TRI_voc_cid_t> collections;
     collections.insert(logicalCollection->id());
     auto* snapshot =
         wiewImpl->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::Find,
@@ -930,7 +930,7 @@ TEST_F(IResearchViewDBServerTest, test_transaction_snapshot) {
         std::vector<std::string>{logicalCollection->name()}, EMPTY, EMPTY,
         arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
-    arangodb::HashSet<TRI_voc_cid_t> collections;
+    arangodb::containers::HashSet<TRI_voc_cid_t> collections;
     collections.insert(logicalCollection->id());
     EXPECT_TRUE((nullptr == wiewImpl->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::Find,
                                                &collections)));
@@ -951,7 +951,7 @@ TEST_F(IResearchViewDBServerTest, test_transaction_snapshot) {
         arangodb::transaction::StandaloneContext::Create(*vocbase),
         std::vector<std::string>{logicalCollection->name()}, EMPTY, EMPTY, opts);
     EXPECT_TRUE(trx.begin().ok());
-    arangodb::HashSet<TRI_voc_cid_t> collections;
+    arangodb::containers::HashSet<TRI_voc_cid_t> collections;
     collections.insert(logicalCollection->id());
     auto* snapshot =
         wiewImpl->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::Find,
@@ -967,7 +967,7 @@ TEST_F(IResearchViewDBServerTest, test_transaction_snapshot) {
         arangodb::transaction::StandaloneContext::Create(*vocbase),
         std::vector<std::string>{logicalCollection->name()}, EMPTY, EMPTY, opts);
     EXPECT_TRUE(trx.begin().ok());
-    arangodb::HashSet<TRI_voc_cid_t> collections;
+    arangodb::containers::HashSet<TRI_voc_cid_t> collections;
     collections.insert(logicalCollection->id());
     EXPECT_TRUE((nullptr == wiewImpl->snapshot(trx, arangodb::iresearch::IResearchView::SnapshotMode::Find,
                                                &collections)));

@@ -906,6 +906,10 @@ target_link_libraries(arangoserver
   ${MSVC_LIBS}
 )
 
+if (MSVC)
+  target_link_libraries(arangoserver Bcrypt.lib)
+endif()
+
 if (USE_ENTERPRISE)
   add_library(arango_rclone STATIC
     ${LIB_RCLONE_SOURCES}
@@ -958,7 +962,7 @@ endif ()
 if (USE_JEMALLOC)
   add_dependencies(arangod jemalloc)
 endif ()
-
+  
 foreach(TARGET
   arango_agency
   arango_aql
@@ -982,11 +986,13 @@ foreach(TARGET
 )
   target_include_directories(${TARGET} PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
 
-  if(MSVC)
-    target_compile_options(${TARGET} PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
-  elseif(DARWIN)
-    target_compile_options(${TARGET} PRIVATE -Werror)
-endif()
+  if (USE_FAIL_ON_WARNINGS)
+    if (MSVC)
+      target_compile_options(${TARGET} PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+    else ()
+      target_compile_options(${TARGET} PRIVATE -Werror)
+    endif ()
+  endif ()
 endforeach()
 
 ################################################################################

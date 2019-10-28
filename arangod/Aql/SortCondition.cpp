@@ -58,7 +58,7 @@ SortCondition::SortCondition()
 SortCondition::SortCondition(
     ExecutionPlan* plan, std::vector<std::pair<Variable const*, bool>> const& sorts,
     std::vector<std::vector<arangodb::basics::AttributeName>> const& constAttributes,
-    arangodb::HashSet<std::vector<arangodb::basics::AttributeName>> const& nonNullAttributes,
+    ::arangodb::containers::HashSet<std::vector<arangodb::basics::AttributeName>> const& nonNullAttributes,
     std::unordered_map<VariableId, AstNode const*> const& variableDefinitions)
     : _plan(plan),
       _constAttributes(constAttributes),

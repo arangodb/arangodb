@@ -803,7 +803,7 @@ Store& Store::operator=(VPackSlice const& s) {
   }
 
   TRI_ASSERT(slice[2].isArray());
-  for (auto const& entry : VPackArrayIterator(slice[2])) {
+  for (VPackSlice entry : VPackArrayIterator(slice[2])) {
     TRI_ASSERT(entry.isObject());
     _observerTable.emplace(
         std::pair<std::string, std::string>(entry.keyAt(0).copyString(),
@@ -811,7 +811,7 @@ Store& Store::operator=(VPackSlice const& s) {
   }
 
   TRI_ASSERT(slice[3].isArray());
-  for (auto const& entry : VPackArrayIterator(slice[3])) {
+  for (VPackSlice entry : VPackArrayIterator(slice[3])) {
     TRI_ASSERT(entry.isObject());
     _observedTable.emplace(
         std::pair<std::string, std::string>(entry.keyAt(0).copyString(),

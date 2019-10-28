@@ -536,7 +536,7 @@ void PhysicalCollection::getIndexesVPack(VPackBuilder& result, unsigned flags,
                                          std::function<bool(arangodb::Index const*)> const& filter) const {
   READ_LOCKER(guard, _indexesLock);
   result.openArray();
-  for (auto const& idx : _indexes) {
+  for (std::shared_ptr<Index> const& idx : _indexes) {
     if (!filter(idx.get())) {
       continue;
     }

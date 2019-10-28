@@ -186,7 +186,7 @@ bool RemoveFollower::start(bool&) {
                                                   // -1 : not "GOOD", can be in sync, or leader, or not
                                                   // >=0: number of servers for which it is in sync or confirmed leader
   bool leaderBad = false;
-  for (auto const& srv : VPackArrayIterator(planned)) {
+  for (VPackSlice srv : VPackArrayIterator(planned)) {
     std::string serverName = srv.copyString();
     if (checkServerHealth(_snapshot, serverName) == "GOOD") {
       overview.emplace(serverName, 0);
@@ -333,7 +333,7 @@ bool RemoveFollower::start(bool&) {
     }
   }
   std::vector<std::string> kept;
-  for (auto const& srv : VPackArrayIterator(planned)) {
+  for (VPackSlice srv : VPackArrayIterator(planned)) {
     std::string serverName = srv.copyString();
     if (chosenToRemove.find(serverName) == chosenToRemove.end()) {
       kept.push_back(serverName);
@@ -387,7 +387,7 @@ bool RemoveFollower::start(bool&) {
                        trx.add(VPackValue(planPath));
                        {
                          VPackArrayBuilder serverList(&trx);
-                         for (auto const& srv : VPackArrayIterator(plan)) {
+                         for (VPackSlice srv : VPackArrayIterator(plan)) {
                            if (chosenToRemove.find(srv.copyString()) ==
                                chosenToRemove.end()) {
                              trx.add(srv);

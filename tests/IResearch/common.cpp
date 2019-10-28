@@ -492,8 +492,8 @@ void assertFilterOptimized(TRI_vocbase_t& vocbase, std::string const& queryStrin
   EXPECT_TRUE(query.plan());
   auto& plan = *query.plan();
 
-  arangodb::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
-  arangodb::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
+  arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*>::allocator_type::arena_type a;
+  arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*> nodes{a};
   plan.findNodesOfType(nodes, arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW, true);
 
   EXPECT_EQ(nodes.size(), 1);
@@ -624,6 +624,71 @@ void assertFilterBoost(irs::filter const& expected, irs::filter const& actual) {
     assertFilterBoost(*expectedNegationFilter->filter(), *actualNegationFilter->filter());
 
     return;  // we're done
+  }
+}
+
+void buildActualFilter(TRI_vocbase_t& vocbase,
+                  std::string const& queryString, irs::filter& actual,
+                  arangodb::aql::ExpressionContext* exprCtx /*= nullptr*/,
+                  std::shared_ptr<arangodb::velocypack::Builder> bindVars /*= nullptr*/,
+                  std::string const& refName /*= "d"*/
+) {
+  auto options = std::make_shared<arangodb::velocypack::Builder>();
+
+  arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString),
+                             bindVars, options, arangodb::aql::PART_MAIN);
+
+  auto const parseResult = query.parse();
+  ASSERT_TRUE(parseResult.result.ok());
+
+  auto* ast = query.ast();
+  ASSERT_TRUE(ast);
+
+  auto* root = ast->root();
+  ASSERT_TRUE(root);
+
+  // find first FILTER node
+  arangodb::aql::AstNode* filterNode = nullptr;
+  for (size_t i = 0; i < root->numMembers(); ++i) {
+    auto* node = root->getMemberUnchecked(i);
+    ASSERT_TRUE(node);
+
+    if (arangodb::aql::NODE_TYPE_FILTER == node->type) {
+      filterNode = node;
+      break;
+    }
+  }
+  ASSERT_TRUE(filterNode);
+
+  // find referenced variable
+  auto* allVars = ast->variables();
+  ASSERT_TRUE(allVars);
+  arangodb::aql::Variable* ref = nullptr;
+  for (auto entry : allVars->variables(true)) {
+    if (entry.second == refName) {
+      ref = allVars->getVariable(entry.first);
+      break;
+    }
+  }
+  ASSERT_TRUE(ref);
+
+  // optimization time
+  {
+    arangodb::transaction ::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase),
+                                        {}, {}, {}, arangodb::transaction::Options());
+
+    arangodb::iresearch::QueryContext const ctx{&trx, nullptr, nullptr, nullptr, ref};
+    ASSERT_TRUE(arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok());
+  }
+
+  // execution time
+  {
+    arangodb::transaction ::Methods trx(arangodb::transaction::StandaloneContext::Create(vocbase),
+                                        {}, {}, {}, arangodb::transaction::Options());
+
+    auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
+    arangodb::iresearch::QueryContext const ctx{&trx, dummyPlan.get(), ast, exprCtx, ref};
+    ASSERT_TRUE(arangodb::iresearch::FilterFactory::filter(dynamic_cast<irs::boolean_filter*>(&actual), ctx, *filterNode).ok());
   }
 }
 

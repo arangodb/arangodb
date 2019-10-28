@@ -23,10 +23,10 @@
 #ifndef ARANGOD_AQL_AST_HELPER_H
 #define ARANGOD_AQL_AST_HELPER_H 1
 
-#include "Basics/SmallVector.h"
-
 #include <string>
 #include <unordered_set>
+
+#include "Containers/SmallVector.h"
 
 namespace arangodb {
 namespace aql {
@@ -36,7 +36,7 @@ namespace ast {
 
 /// @brief determines the to-be-kept attribute of an INTO expression
 std::unordered_set<std::string> getReferencedAttributesForKeep(
-    AstNode const* node, SmallVector<Variable const*> searchVariables,
+    AstNode const* node, ::arangodb::containers::SmallVector<Variable const*> searchVariables,
     bool& isSafeForOptimization);
 
 }  // namespace ast

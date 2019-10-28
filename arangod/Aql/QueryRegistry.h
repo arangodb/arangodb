@@ -45,6 +45,10 @@ class QueryRegistry {
   TEST_VIRTUAL ~QueryRegistry();
 
  public:
+  /// @brief kills a query by id - returns true if the query was found and
+  /// false otherwise
+  bool kill(TRI_vocbase_t* vocbase, QueryId id);
+
   /// @brief insert, this inserts the query <query> for the vocbase <vocbase>
   /// and the id <id> into the registry. It is in error if there is already
   /// a query for this <vocbase> and <id> combination and an exception will

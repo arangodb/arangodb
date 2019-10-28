@@ -41,6 +41,7 @@
 #include "Logger/LogMacros.h"
 
 using namespace arangodb::aql;
+using namespace arangodb::containers;
 
 namespace {
 struct Comparator final : public WalkerWorker<ExecutionNode> {

@@ -24,9 +24,9 @@
 #ifndef ARANGOD_MMFILES_MMFILES_EDGE_INDEX_H
 #define ARANGOD_MMFILES_MMFILES_EDGE_INDEX_H 1
 
-#include "Basics/AssocMulti.h"
 #include "Basics/Common.h"
 #include "Basics/fasthash.h"
+#include "Containers/AssocMulti.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
 #include "MMFiles/MMFilesIndex.h"
@@ -43,7 +43,7 @@ namespace basics {
 class LocalTaskQueue;
 }
 
-class MMFilesEdgeIndex;
+class MMFilesEdgeIndexIterator;
 
 struct MMFilesEdgeIndexHelper {
   /// @brief hashes an edge key
@@ -105,39 +105,12 @@ struct MMFilesEdgeIndexHelper {
   }
 };
 
-typedef arangodb::basics::AssocMulti<arangodb::velocypack::Slice, MMFilesSimpleIndexElement, uint32_t, false, MMFilesEdgeIndexHelper> TRI_MMFilesEdgeIndexHash_t;
-
-class MMFilesEdgeIndexIterator final : public IndexIterator {
- public:
-  MMFilesEdgeIndexIterator(LogicalCollection* collection,
-                           transaction::Methods* trx,
-                           arangodb::MMFilesEdgeIndex const* index,
-                           TRI_MMFilesEdgeIndexHash_t const* indexImpl,
-                           std::unique_ptr<VPackBuilder> keys);
-
-  ~MMFilesEdgeIndexIterator();
-
-  char const* typeName() const override { return "edge-index-iterator"; }
-
-  bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
-  bool nextDocument(DocumentCallback const& cb, size_t limit) override;
-
-  void reset() override;
-
- private:
-  TRI_MMFilesEdgeIndexHash_t const* _index;
-  MMFilesIndexLookupContext _context;
-  std::unique_ptr<arangodb::velocypack::Builder> _keys;
-  arangodb::velocypack::ArrayIterator _iterator;
-  std::vector<MMFilesSimpleIndexElement> _buffer;
-  size_t _posInBuffer;
-  size_t _batchSize;
-  MMFilesSimpleIndexElement _lastElement;
-  std::vector<std::pair<LocalDocumentId, uint8_t const*>> _documentIds;
-};
-
 class MMFilesEdgeIndex final : public MMFilesIndex {
  public:
+  using ImplType =
+      ::arangodb::containers::AssocMulti<arangodb::velocypack::Slice, MMFilesSimpleIndexElement,
+                                         uint32_t, false, MMFilesEdgeIndexHelper>;
+
   MMFilesEdgeIndex() = delete;
 
   MMFilesEdgeIndex(TRI_idx_iid_t iid, arangodb::LogicalCollection& collection);
@@ -176,9 +149,9 @@ class MMFilesEdgeIndex final : public MMFilesIndex {
 
   Result sizeHint(transaction::Methods& trx, size_t size) override;
 
-  TRI_MMFilesEdgeIndexHash_t* from() const { return _edgesFrom.get(); }
+  MMFilesEdgeIndex::ImplType* from() const { return _edgesFrom.get(); }
 
-  TRI_MMFilesEdgeIndexHash_t* to() const { return _edgesTo.get(); }
+  MMFilesEdgeIndex::ImplType* to() const { return _edgesTo.get(); }
 
   Index::FilterCosts supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
                                              arangodb::aql::AstNode const* node,
@@ -213,11 +186,40 @@ class MMFilesEdgeIndex final : public MMFilesIndex {
 
  private:
   /// @brief the hash table for _from
-  std::unique_ptr<TRI_MMFilesEdgeIndexHash_t> _edgesFrom;
+  std::unique_ptr<MMFilesEdgeIndex::ImplType> _edgesFrom;
 
   /// @brief the hash table for _to
-  std::unique_ptr<TRI_MMFilesEdgeIndexHash_t> _edgesTo;
+  std::unique_ptr<MMFilesEdgeIndex::ImplType> _edgesTo;
 };
+
+class MMFilesEdgeIndexIterator final : public IndexIterator {
+ public:
+  MMFilesEdgeIndexIterator(LogicalCollection* collection, transaction::Methods* trx,
+                           arangodb::MMFilesEdgeIndex const* index,
+                           MMFilesEdgeIndex::ImplType const* indexImpl,
+                           std::unique_ptr<VPackBuilder> keys);
+
+  ~MMFilesEdgeIndexIterator();
+
+  char const* typeName() const override { return "edge-index-iterator"; }
+
+  bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
+  bool nextDocument(DocumentCallback const& cb, size_t limit) override;
+
+  void reset() override;
+
+ private:
+  MMFilesEdgeIndex::ImplType const* _index;
+  MMFilesIndexLookupContext _context;
+  std::unique_ptr<arangodb::velocypack::Builder> _keys;
+  arangodb::velocypack::ArrayIterator _iterator;
+  std::vector<MMFilesSimpleIndexElement> _buffer;
+  size_t _posInBuffer;
+  size_t _batchSize;
+  MMFilesSimpleIndexElement _lastElement;
+  std::vector<std::pair<LocalDocumentId, uint8_t const*>> _documentIds;
+};
+
 }  // namespace arangodb
 
 #endif

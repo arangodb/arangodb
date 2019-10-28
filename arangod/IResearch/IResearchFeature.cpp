@@ -35,22 +35,22 @@
 #include "Aql/AqlValue.h"
 #include "Aql/Function.h"
 #include "Basics/ConditionLocker.h"
-#include "Basics/SmallVector.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "ClusterEngine/ClusterEngine.h"
-#include "Containers.h"
+#include "Containers/SmallVector.h"
 #include "FeaturePhases/V8FeaturePhase.h"
-#include "IResearchCommon.h"
-#include "IResearchFeature.h"
-#include "IResearchLinkCoordinator.h"
-#include "IResearchLinkHelper.h"
-#include "IResearchMMFilesLink.h"
-#include "IResearchRocksDBLink.h"
-#include "IResearchRocksDBRecoveryHelper.h"
-#include "IResearchView.h"
-#include "IResearchViewCoordinator.h"
+#include "IResearch/Containers.h"
+#include "IResearch/IResearchCommon.h"
+#include "IResearch/IResearchFeature.h"
+#include "IResearch/IResearchLinkCoordinator.h"
+#include "IResearch/IResearchLinkHelper.h"
+#include "IResearch/IResearchMMFilesLink.h"
+#include "IResearch/IResearchRocksDBLink.h"
+#include "IResearch/IResearchRocksDBRecoveryHelper.h"
+#include "IResearch/IResearchView.h"
+#include "IResearch/IResearchViewCoordinator.h"
 #include "Logger/LogMacros.h"
 #include "MMFiles/MMFilesEngine.h"
 #include "RestServer/DatabaseFeature.h"
@@ -136,10 +136,9 @@ class IResearchLogTopic final : public arangodb::LogTopic {
   }
 };  // IResearchLogTopic
 
-
-arangodb::aql::AqlValue dummyFilterFunc(arangodb::aql::ExpressionContext*,
-                                        arangodb::transaction::Methods*,
-                                        arangodb::SmallVector<arangodb::aql::AqlValue> const&) {
+arangodb::aql::AqlValue dummyFilterFunc(
+    arangodb::aql::ExpressionContext*, arangodb::transaction::Methods*,
+    ::arangodb::containers::SmallVector<arangodb::aql::AqlValue> const&) {
   THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_NOT_IMPLEMENTED,
       "ArangoSearch filter functions EXISTS, STARTS_WITH, IN_RANGE, PHRASE, MIN_MATCH, "
@@ -152,18 +151,18 @@ arangodb::aql::AqlValue dummyFilterFunc(arangodb::aql::ExpressionContext*,
 /// function body for ArangoSearchContext functions ANALYZER/BOOST. 
 /// Just returns its first argument as outside ArangoSearch context
 /// there is nothing to do with search stuff, but optimization could roll.
-arangodb::aql::AqlValue dummyContextFunc(arangodb::aql::ExpressionContext*,
-                                        arangodb::transaction::Methods*,
-                                        arangodb::SmallVector<arangodb::aql::AqlValue> const& args) {
+arangodb::aql::AqlValue dummyContextFunc(
+    arangodb::aql::ExpressionContext*, arangodb::transaction::Methods*,
+    ::arangodb::containers::SmallVector<arangodb::aql::AqlValue> const& args) {
   TRI_ASSERT(!args.empty()); //ensured by function signature
   return args[0];
 }
 
 /// Executes MIN_MATCH function with const parameters locally the same way it will be done in ArangoSearch on runtime
 /// This will allow optimize out MIN_MATCH call if all arguments are const
-arangodb::aql::AqlValue dummyMinMatchContextFunc(arangodb::aql::ExpressionContext*,
-                                        arangodb::transaction::Methods*,
-                                        arangodb::SmallVector<arangodb::aql::AqlValue> const& args) {
+arangodb::aql::AqlValue dummyMinMatchContextFunc(
+    arangodb::aql::ExpressionContext*, arangodb::transaction::Methods*,
+    ::arangodb::containers::SmallVector<arangodb::aql::AqlValue> const& args) {
   TRI_ASSERT(args.size() > 1); // ensured by function signature
   auto& minMatchValue = args.back();
   if (ADB_LIKELY(minMatchValue.isNumber())) {
@@ -187,9 +186,9 @@ arangodb::aql::AqlValue dummyMinMatchContextFunc(arangodb::aql::ExpressionContex
   }
 }
 
-arangodb::aql::AqlValue dummyScorerFunc(arangodb::aql::ExpressionContext*,
-                                        arangodb::transaction::Methods*,
-                                        arangodb::SmallVector<arangodb::aql::AqlValue> const&) {
+arangodb::aql::AqlValue dummyScorerFunc(
+    arangodb::aql::ExpressionContext*, arangodb::transaction::Methods*,
+    ::arangodb::containers::SmallVector<arangodb::aql::AqlValue> const&) {
   THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_NOT_IMPLEMENTED,
       "ArangoSearch scorer functions BM25() and TFIDF() are designed to "

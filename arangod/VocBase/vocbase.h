@@ -73,7 +73,7 @@ constexpr auto TRI_COL_NAME_USERS = "_users";
 constexpr auto TRI_VOC_SYSTEM_DATABASE = "_system";
 
 /// @brief maximal name length
-constexpr size_t TRI_COL_NAME_LENGTH = 64;
+constexpr size_t TRI_COL_NAME_LENGTH = 256;
 
 /// @brief default maximal collection journal size
 constexpr size_t TRI_JOURNAL_DEFAULT_SIZE = 1024 * 1024 * 32;  // 32 MiB
@@ -138,7 +138,7 @@ struct TRI_vocbase_t {
   /// @brief database state
   enum class State { NORMAL = 0, SHUTDOWN_COMPACTOR = 1, SHUTDOWN_CLEANUP = 2 };
 
-  TRI_vocbase_t(TRI_vocbase_type_e type, arangodb::CreateDatabaseInfo const&);
+  TRI_vocbase_t(TRI_vocbase_type_e type, arangodb::CreateDatabaseInfo&&);
   TEST_VIRTUAL ~TRI_vocbase_t();
 
  private:
@@ -220,7 +220,7 @@ struct TRI_vocbase_t {
   State state() const { return _state; }
   void setState(State state) { _state = state; }
 
-  arangodb::Result toVelocyPack(arangodb::velocypack::Builder& result) const;
+  void toVelocyPack(arangodb::velocypack::Builder& result) const;
   arangodb::ReplicationClientsProgressTracker& replicationClients() {
     return *_replicationClients;
   }

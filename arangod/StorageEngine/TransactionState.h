@@ -26,9 +26,9 @@
 
 #include "Basics/Common.h"
 #include "Basics/Result.h"
-#include "Basics/HashSet.h"
-#include "Basics/SmallVector.h"
 #include "Cluster/ServerState.h"
+#include "Containers/HashSet.h"
+#include "Containers/SmallVector.h"
 #include "Transaction/Hints.h"
 #include "Transaction/Options.h"
 #include "Transaction/Status.h"
@@ -200,7 +200,7 @@ class TransactionState {
   bool isOnlyExclusiveTransaction() const;
 
   /// @brief servers already contacted
-  arangodb::HashSet<std::string> const& knownServers() const {
+  ::arangodb::containers::HashSet<std::string> const& knownServers() const {
     return _knownServers;
   }
 
@@ -257,8 +257,9 @@ class TransactionState {
   /// @brief current status
   transaction::Status _status;
 
-  SmallVector<TransactionCollection*>::allocator_type::arena_type _arena;  // memory for collections
-  SmallVector<TransactionCollection*> _collections;  // list of participating collections
+  using ListType = arangodb::containers::SmallVector<TransactionCollection*>;
+  ListType::allocator_type::arena_type _arena;  // memory for collections
+  ListType _collections;  // list of participating collections
 
   ServerState::RoleEnum const _serverRole;  /// role of the server
 
@@ -271,7 +272,7 @@ class TransactionState {
   std::map<void const*, Cookie::ptr> _cookies;
 
   /// @brief servers we already talked to for this transactions
-  arangodb::HashSet<std::string> _knownServers;
+  ::arangodb::containers::HashSet<std::string> _knownServers;
 
   /// @brief reference counter of # of 'Methods' instances using this object
   std::atomic<int> _nestingLevel;
