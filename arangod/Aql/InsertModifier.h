@@ -37,7 +37,8 @@ class InsertModifierCompletion {
   InsertModifierCompletion(ModificationExecutorInfos& infos);
   ~InsertModifierCompletion();
 
-  ModOperationType accumulate(ModificationExecutorAccumulator& accu, InputAqlItemRow& row);
+  ModifierOperationType accumulate(ModificationExecutorAccumulator& accu,
+                                   InputAqlItemRow& row);
   OperationResult transact(VPackSlice const& data);
 
  private:

@@ -34,6 +34,8 @@
 #include <velocypack/Collection.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "Logger/LogMacros.h"
+
 class CollectionNameResolver;
 
 using namespace arangodb;
@@ -45,8 +47,8 @@ InsertModifierCompletion::InsertModifierCompletion(ModificationExecutorInfos& in
 
 InsertModifierCompletion::~InsertModifierCompletion() = default;
 
-ModOperationType InsertModifierCompletion::accumulate(ModificationExecutorAccumulator& accu,
-                                                      InputAqlItemRow& row) {
+ModifierOperationType InsertModifierCompletion::accumulate(ModificationExecutorAccumulator& accu,
+                                                           InputAqlItemRow& row) {
   RegisterId const inDocReg = _infos._input1RegisterId;
 
   // The document to be INSERTed
@@ -54,9 +56,9 @@ ModOperationType InsertModifierCompletion::accumulate(ModificationExecutorAccumu
 
   if (writeRequired(_infos, inDoc.slice(), StaticStrings::Empty)) {
     accu.add(inDoc.slice());
-    return ModOperationType::APPLY_RETURN;
+    return ModifierOperationType::ReturnIfAvailable;
   } else {
-    return ModOperationType::IGNORE_RETURN;
+    return ModifierOperationType::CopyRow;
   }
 }
 

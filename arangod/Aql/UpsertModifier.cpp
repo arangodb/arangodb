@@ -68,9 +68,8 @@ void UpsertModifier::reset() {
   _operations.clear();
 }
 
-ModOperationType UpsertModifier::updateReplaceCase(ModificationExecutorAccumulator& accu,
-                                                   AqlValue const& inDoc,
-                                                   AqlValue const& updateDoc) {
+UpsertModifier::OperationType UpsertModifier::updateReplaceCase(
+    ModificationExecutorAccumulator& accu, AqlValue const& inDoc, AqlValue const& updateDoc) {
   std::string key, rev;
   Result result;
 
@@ -78,46 +77,45 @@ ModOperationType UpsertModifier::updateReplaceCase(ModificationExecutorAccumulat
     TRI_ASSERT(_infos._trx->resolver() != nullptr);
     CollectionNameResolver const& collectionNameResolver{*_infos._trx->resolver()};
 
-    result = getKeyAndRevision(collectionNameResolver, inDoc, key, rev, Revision::Exclude);
+    // We are only interested in the key from `inDoc`
+    result = getKey(collectionNameResolver, inDoc, key);
 
-    if (result.ok()) {
-      if (updateDoc.isObject()) {
-        VPackSlice toUpdate = updateDoc.slice();
-        VPackBuilder keyDocBuilder;
-
-        buildKeyDocument(keyDocBuilder, key, rev);
-
-        auto merger = VPackCollection::merge(toUpdate, keyDocBuilder.slice(), false, false);
-        accu.add(merger.slice());
-
-        return ModOperationType::APPLY_UPDATE;
-      } else {
-        THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID,
-            std::string("expecting 'Object', got: ") + updateDoc.slice().typeName() +
-                std::string(" while handling: UPSERT"));
-        return ModOperationType::IGNORE_SKIP;
-      }
-    } else {
+    if (!result.ok()) {
       if (!_infos._ignoreErrors) {
         THROW_ARANGO_EXCEPTION_MESSAGE(result.errorNumber(), result.errorMessage());
       }
-      return ModOperationType::IGNORE_SKIP;
+      return UpsertModifier::OperationType::SkipRow;
+    }
+
+    if (updateDoc.isObject()) {
+      VPackSlice toUpdate = updateDoc.slice();
+      VPackBuilder keyDocBuilder;
+
+      buildKeyDocument(keyDocBuilder, key);
+      auto merger = VPackCollection::merge(toUpdate, keyDocBuilder.slice(), false, false);
+      accu.add(merger.slice());
+
+      return UpsertModifier::OperationType::UpdateReturnIfAvailable;
+    } else {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID,
+                                     std::string("expecting 'Object', got: ") +
+                                         updateDoc.slice().typeName() + std::string(" while handling: UPSERT"));
+      return UpsertModifier::OperationType::SkipRow;
     }
   } else {
-    return ModOperationType::IGNORE_RETURN;
+    return UpsertModifier::OperationType::CopyRow;
   }
 }
 
-ModOperationType UpsertModifier::insertCase(ModificationExecutorAccumulator& accu,
-                                            AqlValue const& insertDoc) {
+UpsertModifier::OperationType UpsertModifier::insertCase(ModificationExecutorAccumulator& accu,
+                                                         AqlValue const& insertDoc) {
   if (insertDoc.isObject()) {
     auto const& toInsert = insertDoc.slice();
     if (writeRequired(_infos, toInsert, StaticStrings::Empty)) {
       accu.add(toInsert);
-      return ModOperationType::APPLY_INSERT;
+      return UpsertModifier::OperationType::InsertReturnIfAvailable;
     } else {
-      return ModOperationType::IGNORE_RETURN;
+      return UpsertModifier::OperationType::CopyRow;
     }
   } else {
     if (!_infos._ignoreErrors) {
@@ -126,7 +124,7 @@ ModOperationType UpsertModifier::insertCase(ModificationExecutorAccumulator& acc
                                          insertDoc.slice().typeName() +
                                          " while handling: UPSERT");
     }
-    return ModOperationType::IGNORE_SKIP;
+    return UpsertModifier::OperationType::SkipRow;
   }
 }
 
@@ -139,7 +137,7 @@ Result UpsertModifier::accumulate(InputAqlItemRow& row) {
   RegisterId const insertReg = _infos._input2RegisterId;
   RegisterId const updateReg = _infos._input3RegisterId;
 
-  ModOperationType result;
+  UpsertModifier::OperationType result;
 
   // The document to be UPSERTed
   AqlValue const& inDoc = row.getValue(inDocReg);
@@ -241,9 +239,9 @@ bool UpsertModifier::isFinishedIterator() {
 }
 
 void UpsertModifier::advanceIterator() {
-  if (_operationsIterator->first == ModOperationType::APPLY_UPDATE) {
+  if (_operationsIterator->first == UpsertModifier::OperationType::UpdateReturnIfAvailable) {
     _updateResultsIterator++;
-  } else if (_operationsIterator->first == ModOperationType::APPLY_INSERT) {
+  } else if (_operationsIterator->first == UpsertModifier::OperationType::InsertReturnIfAvailable) {
     _insertResultsIterator++;
   }
   _operationsIterator++;
@@ -258,26 +256,40 @@ ModifierOutput UpsertModifier::getOutput() {
     VPackSlice elm;
 
     switch (_operationsIterator->first) {
-      case ModOperationType::APPLY_UPDATE:
+      case UpsertModifier::OperationType::CopyRow:
+        return ModifierOutput{_operationsIterator->second, ModifierOutput::Type::CopyRow};
+      case UpsertModifier::OperationType::SkipRow:
+        return ModifierOutput{_operationsIterator->second, ModifierOutput::Type::SkipRow};
+      case UpsertModifier::OperationType::UpdateReturnIfAvailable:
         elm = *_updateResultsIterator;
         break;
-      case ModOperationType::APPLY_INSERT:
+      case UpsertModifier::OperationType::InsertReturnIfAvailable:
         elm = *_insertResultsIterator;
         break;
-      default:
-        TRI_ASSERT(false);
     }
+
     bool error = VelocyPackHelper::getBooleanValue(elm, StaticStrings::Error, false);
-    return ModifierOutput{_operationsIterator->second, error,
-                          std::make_unique<AqlValue>(elm.get(StaticStrings::Old)),
-                          std::make_unique<AqlValue>(elm.get(StaticStrings::New))};
+    if (error) {
+      return ModifierOutput{_operationsIterator->second, ModifierOutput::Type::SkipRow};
+    } else {
+      return ModifierOutput{_operationsIterator->second, ModifierOutput::Type::ReturnIfRequired,
+                            std::make_unique<AqlValue>(elm.get(StaticStrings::Old)),
+                            std::make_unique<AqlValue>(elm.get(StaticStrings::New))};
+    }
   } else {
-    return ModifierOutput{_operationsIterator->second, false};
+    switch (_operationsIterator->first) {
+      case UpsertModifier::OperationType::UpdateReturnIfAvailable:
+      case UpsertModifier::OperationType::InsertReturnIfAvailable:
+      case UpsertModifier::OperationType::CopyRow:
+        return ModifierOutput{_operationsIterator->second, ModifierOutput::Type::CopyRow};
+      case UpsertModifier::OperationType::SkipRow:
+        return ModifierOutput{_operationsIterator->second, ModifierOutput::Type::SkipRow};
+    }
   }
 
   // shut up compiler
   TRI_ASSERT(false);
-  return ModifierOutput{InputAqlItemRow{CreateInvalidInputRowHint{}}, true};
+  return ModifierOutput{_operationsIterator->second, ModifierOutput::Type::SkipRow};
 }
 
 size_t UpsertModifier::getBatchSize() const { return _batchSize; }

@@ -35,7 +35,7 @@
 #include <velocypack/Collection.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include <Logger/LogMacros.h>
+#include "Logger/LogMacros.h"
 
 class CollectionNameResolver;
 
@@ -48,8 +48,8 @@ UpdateReplaceModifierCompletion::UpdateReplaceModifierCompletion(ModificationExe
 
 UpdateReplaceModifierCompletion::~UpdateReplaceModifierCompletion() = default;
 
-ModOperationType UpdateReplaceModifierCompletion::accumulate(ModificationExecutorAccumulator& accu,
-                                                             InputAqlItemRow& row) {
+ModifierOperationType UpdateReplaceModifierCompletion::accumulate(
+    ModificationExecutorAccumulator& accu, InputAqlItemRow& row) {
   std::string key, rev;
   Result result;
 
@@ -60,6 +60,15 @@ ModOperationType UpdateReplaceModifierCompletion::accumulate(ModificationExecuto
   // The document to be REPLACE/UPDATEd
   AqlValue const& inDoc = row.getValue(inDocReg);
 
+  if (!inDoc.isObject()) {
+    if (!_infos._ignoreErrors) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID,
+                                     std::string("expecting 'Object', got: ") +
+                                         inDoc.slice().typeName() + std::string(" while handling: UPDATE or REPLACE"));
+    }
+    return ModifierOperationType::SkipRow;
+  }
+
   // A separate register for the key/rev is available
   // so we use that
   //
@@ -69,42 +78,39 @@ ModOperationType UpdateReplaceModifierCompletion::accumulate(ModificationExecuto
   // expression.
   TRI_ASSERT(_infos._trx->resolver() != nullptr);
   CollectionNameResolver const& collectionNameResolver{*_infos._trx->resolver()};
-  if (hasKeyVariable) {
-    AqlValue const& keyDoc = row.getValue(keyReg);
-    result = getKeyAndRevision(collectionNameResolver, keyDoc, key, rev,
-                               _infos._options.ignoreRevs ? Revision::Exclude
-                                                          : Revision::Include);
-  } else {
-    result = getKeyAndRevision(collectionNameResolver, inDoc, key, rev,
-                               _infos._options.ignoreRevs ? Revision::Exclude
-                                                          : Revision::Include);
-  }
 
-  if (result.ok()) {
-    if (writeRequired(_infos, inDoc.slice(), key)) {
-      if (hasKeyVariable) {
-        VPackBuilder keyDocBuilder;
+  if (writeRequired(_infos, inDoc.slice(), key)) {
+    if (hasKeyVariable) {
+      VPackBuilder keyDocBuilder;
+      AqlValue const& keyDoc = row.getValue(keyReg);
 
-        buildKeyDocument(keyDocBuilder, key, rev);
+      result = getKeyAndRevision(collectionNameResolver, keyDoc, key, rev);
 
-        // This deletes _rev if rev is empty or ignoreRevs is set in
-        // options.
-        auto merger =
-            VPackCollection::merge(inDoc.slice(), keyDocBuilder.slice(), false, true);
-        accu.add(merger.slice());
-      } else {
-        accu.add(inDoc.slice());
+      if (!result.ok()) {
+        // error happened extracting key, record in operations map
+        if (!_infos._ignoreErrors) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(result.errorNumber(), result.errorMessage());
+        }
+        return ModifierOperationType::SkipRow;
       }
-      return ModOperationType::APPLY_RETURN;
+
+      if (_infos._options.ignoreRevs) {
+        rev.clear();
+      }
+
+      buildKeyAndRevDocument(keyDocBuilder, key, rev);
+
+      // This deletes _rev if rev is empty or ignoreRevs is set in
+      // options.
+      auto merger =
+          VPackCollection::merge(inDoc.slice(), keyDocBuilder.slice(), false, true);
+      accu.add(merger.slice());
     } else {
-      return ModOperationType::IGNORE_RETURN;
+      accu.add(inDoc.slice());
     }
+    return ModifierOperationType::ReturnIfAvailable;
   } else {
-    // error happened extracting key, record in operations map
-    if (!_infos._ignoreErrors) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(result.errorNumber(), result.errorMessage());
-    }
-    return ModOperationType::IGNORE_SKIP;
+    return ModifierOperationType::CopyRow;
   }
 }
 

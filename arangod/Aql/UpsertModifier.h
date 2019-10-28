@@ -37,7 +37,16 @@ struct ModificationExecutorInfos;
 
 class UpsertModifier {
  public:
-  using ModOp = std::pair<ModOperationType, InputAqlItemRow>;
+  enum class OperationType {
+    // Return the OLD and/or NEW value, if requested, otherwise CopyRow
+    InsertReturnIfAvailable,
+    UpdateReturnIfAvailable,
+    // Just copy the InputAqlItemRow to the OutputAqlItemRow
+    CopyRow,
+    // Do not produce any output
+    SkipRow
+  };
+  using ModOp = std::pair<UpsertModifier::OperationType, InputAqlItemRow>;
 
  public:
   UpsertModifier(ModificationExecutorInfos& infos);
@@ -66,9 +75,9 @@ class UpsertModifier {
  private:
   bool resultAvailable() const;
 
-  ModOperationType updateReplaceCase(ModificationExecutorAccumulator& accu,
-                                     AqlValue const& inDoc, AqlValue const& updateDoc);
-  ModOperationType insertCase(ModificationExecutorAccumulator& accu, AqlValue const& insertDoc);
+  OperationType updateReplaceCase(ModificationExecutorAccumulator& accu,
+                                  AqlValue const& inDoc, AqlValue const& updateDoc);
+  OperationType insertCase(ModificationExecutorAccumulator& accu, AqlValue const& insertDoc);
 
   ModificationExecutorInfos& _infos;
   std::vector<ModOp> _operations;

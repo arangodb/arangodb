@@ -41,59 +41,103 @@ using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::basics;
 
-Result ModificationExecutorHelpers::getKeyAndRevision(CollectionNameResolver const& resolver,
-                                                      AqlValue const& value,
-                                                      std::string& key,
-                                                      std::string& rev, Revision what) {
+Result ModificationExecutorHelpers::getKey(CollectionNameResolver const& resolver,
+                                           AqlValue const& value, std::string& key) {
   TRI_ASSERT(key.empty());
-  TRI_ASSERT(rev.empty());
-  if (value.isObject()) {
-    bool mustDestroy;
-    AqlValue sub = value.get(resolver, StaticStrings::KeyString, mustDestroy, false);
-    AqlValueGuard guard(sub, mustDestroy);
 
-    if (sub.isString()) {
-      key.assign(sub.slice().copyString());
-
-      if (what == Revision::Include) {
-        bool mustDestroyToo;
-        AqlValue subTwo =
-            value.get(resolver, StaticStrings::RevString, mustDestroyToo, false);
-        AqlValueGuard guard(subTwo, mustDestroyToo);
-        if (subTwo.isString()) {
-          rev.assign(subTwo.slice().copyString());
-        } else {
-          return Result(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID,
-                        std::string{"Expected _rev as string, but got "} +
-                            value.slice().typeName());
-        }
-      }
-    } else {
-      return Result(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID,
-                    std::string{"Expected _key as string, but got "} +
-                        value.slice().typeName());
-    }
-  } else if (value.isString()) {
+  // If `value` is a string, this is our _key entry, so we use that.
+  if (value.isString()) {
     key.assign(value.slice().copyString());
-    rev.clear();
-  } else {
-    return Result(TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING,
+    return Result{};
+  }
+
+  if (!value.isObject()) {
+    return Result(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID,
                   std::string{"Expected object or string, but got "} +
                       value.slice().typeName());
   }
+
+  if (!value.hasKey(StaticStrings::KeyString)) {
+    return Result{TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING,
+                  std::string{"Expected _key to be present in document."}};
+  }
+
+  // Extract key from `value`, and make sure it is a string
+  bool mustDestroyKey;
+  AqlValue keyEntry = value.get(resolver, StaticStrings::KeyString, mustDestroyKey, false);
+  AqlValueGuard keyGuard(keyEntry, mustDestroyKey);
+
+  if (!keyEntry.isString()) {
+    return Result{TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING,
+                  std::string{"Expected _key to be present in document."}};
+  }
+
+  // Key found and assigned, note rev is empty by assertion
+  key.assign(keyEntry.slice().copyString());
+
   return Result{};
 }
 
+Result ModificationExecutorHelpers::getRevision(CollectionNameResolver const& resolver,
+                                                AqlValue const& value, std::string& rev) {
+  TRI_ASSERT(rev.empty());
+
+  if (!value.isObject()) {
+    return Result(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID,
+                  std::string{"Expected object, but got "} + value.slice().typeName());
+  }
+
+  if (value.hasKey(StaticStrings::RevString)) {
+    bool mustDestroyRev;
+    AqlValue revEntry =
+        value.get(resolver, StaticStrings::RevString, mustDestroyRev, false);
+    AqlValueGuard revGuard(revEntry, mustDestroyRev);
+
+    if (!revEntry.isString()) {
+      return Result(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID,
+                    std::string{"Expected _rev as string, but got "} +
+                        value.slice().typeName());
+    }
+
+    // Rev found and assigned
+    rev.assign(revEntry.slice().copyString());
+  }  // else we leave rev empty
+  return Result{};
+}
+
+Result ModificationExecutorHelpers::getKeyAndRevision(CollectionNameResolver const& resolver,
+                                                      AqlValue const& value,
+                                                      std::string& key, std::string& rev) {
+  Result result;
+
+  result = getKey(resolver, value, key);
+  // The key can either be a string, or contained in an object
+  // If it is passed in as a string, then there is no revision
+  // and there is no point in extracting it further on.
+  if (!result.ok() || value.isString()) {
+    return result;
+  }
+  return getRevision(resolver, value, rev);
+}
+
 void ModificationExecutorHelpers::buildKeyDocument(VPackBuilder& builder,
-                                                   std::string const& key,
-                                                   std::string const& rev, Revision what) {
+                                                   std::string const& key) {
+  builder.openObject();
+  builder.add(StaticStrings::KeyString, VPackValue(key));
+  builder.close();
+}
+
+void ModificationExecutorHelpers::buildKeyAndRevDocument(VPackBuilder& builder,
+                                                         std::string const& key,
+                                                         std::string const& rev) {
   builder.openObject();
   builder.add(StaticStrings::KeyString, VPackValue(key));
 
-  if (what == Revision::Include && !rev.empty()) {
-    builder.add(StaticStrings::RevString, VPackValue(rev));
-  } else {
+  if (rev.empty()) {
+    // Necessary to sometimes remove _rev entries
     builder.add(StaticStrings::RevString, VPackValue(VPackValueType::Null));
+  } else {
+    builder.add(StaticStrings::RevString, VPackValue(rev));
   }
   builder.close();
 }
@@ -108,11 +152,6 @@ bool ModificationExecutorHelpers::writeRequired(ModificationExecutorInfos& infos
 void ModificationExecutorHelpers::throwOperationResultException(
     ModificationExecutorInfos& infos, OperationResult const& result) {
   auto const& errorCounter = result.countErrorCodes;
-
-  // LOG_DEVEL << "ok, here's the shit";
-  // if (result.hasSlice()) {
-  //   LOG_DEVEL << result.slice().toJson();
-  // }
 
   // Early escape if we are ignoring errors.
   if (infos._ignoreErrors == true || errorCounter.empty()) {
@@ -140,8 +179,8 @@ void ModificationExecutorHelpers::throwOperationResultException(
           }
         }
       }
-      // if we did not find a message, we still throw something, because we know
-      // that a relevant error has happened
+      // if we did not find a message, we still throw something, because we
+      // know that a relevant error has happened
       THROW_ARANGO_EXCEPTION(errorCode);
     }
   }

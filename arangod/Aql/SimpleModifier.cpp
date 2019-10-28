@@ -135,7 +135,7 @@ template <typename ModifierCompletion, typename Enable>
 void SimpleModifier<ModifierCompletion, Enable>::advanceIterator() {
   // Only move results on if there has been a document
   // submitted to the transaction
-  if (_operationsIterator->first == ModOperationType::APPLY_RETURN) {
+  if (_operationsIterator->first == ModifierOperationType::ReturnIfAvailable) {
     _resultsIterator++;
   }
   _operationsIterator++;
@@ -158,20 +158,35 @@ bool SimpleModifier<ModifierCompletion, Enable>::resultAvailable() const {
 
 template <typename ModifierCompletion, typename Enable>
 ModifierOutput SimpleModifier<ModifierCompletion, Enable>::getOutput() {
-  if (_operationsIterator->first == ModOperationType::APPLY_RETURN && resultAvailable()) {
-    VPackSlice elm = *_resultsIterator;
+  switch (_operationsIterator->first) {
+    case ModifierOperationType::ReturnIfAvailable: {
+      // This means the results slice is relevant
+      if (resultAvailable()) {
+        VPackSlice elm = *_resultsIterator;
+        bool error = VelocyPackHelper::getBooleanValue(elm, StaticStrings::Error, false);
 
-    bool error = VelocyPackHelper::getBooleanValue(elm, StaticStrings::Error, false);
-    return ModifierOutput{_operationsIterator->second, error,
-                          std::make_unique<AqlValue>(elm.get(StaticStrings::Old)),
-                          std::make_unique<AqlValue>(elm.get(StaticStrings::New))};
-  } else {
-    return ModifierOutput{_operationsIterator->second, false};
+        if (error) {
+          return ModifierOutput{_operationsIterator->second, ModifierOutput::Type::SkipRow};
+        } else {
+          return ModifierOutput{_operationsIterator->second,
+                                ModifierOutput::Type::ReturnIfRequired,
+                                std::make_unique<AqlValue>(elm.get(StaticStrings::Old)),
+                                std::make_unique<AqlValue>(elm.get(StaticStrings::New))};
+        }
+      } else {
+        return ModifierOutput{_operationsIterator->second, ModifierOutput::Type::CopyRow};
+      }
+      case ModifierOperationType::CopyRow:
+        return ModifierOutput{_operationsIterator->second, ModifierOutput::Type::CopyRow};
+      case ModifierOperationType::SkipRow:
+        return ModifierOutput{_operationsIterator->second, ModifierOutput::Type::SkipRow};
+    }
   }
-  TRI_ASSERT(false);
-  return ModifierOutput{InputAqlItemRow{CreateInvalidInputRowHint{}}, true};
-}
 
+  // Shut up compiler
+  TRI_ASSERT(false);
+  return ModifierOutput{_operationsIterator->second, ModifierOutput::Type::SkipRow};
+}
 template class ::arangodb::aql::SimpleModifier<InsertModifierCompletion>;
 template class ::arangodb::aql::SimpleModifier<RemoveModifierCompletion>;
 template class ::arangodb::aql::SimpleModifier<UpdateReplaceModifierCompletion>;

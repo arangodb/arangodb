@@ -37,7 +37,8 @@ class UpdateReplaceModifierCompletion {
   UpdateReplaceModifierCompletion(ModificationExecutorInfos& infos);
   ~UpdateReplaceModifierCompletion();
 
-  ModOperationType accumulate(ModificationExecutorAccumulator& accu, InputAqlItemRow& row);
+  ModifierOperationType accumulate(ModificationExecutorAccumulator& accu,
+                                   InputAqlItemRow& row);
   OperationResult transact(VPackSlice const& data);
 
  private:

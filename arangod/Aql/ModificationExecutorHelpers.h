@@ -43,28 +43,34 @@ struct ModificationExecutorInfos;
 
 namespace ModificationExecutorHelpers {
 
-enum class Revision { Include, Exclude };
-
-// Extracts key, and rev in from input AqlValue value.
+// Extracts key from input AqlValue value.
 //
-// value can either be an object or a string.
-//
+// * if value is a string, this string is assigned to key
 // * if value is an object, we extract the entry _key into key if it is a string,
 //   or signal an error otherwise.
-//   if the parameter `what` is Revision::Include, we also extract the entry
-//   _rev and assign its contents to rev if it is a string, or signal an error
-//   otherise.
-// * if value is a string, this string is assigned to key, and rev is emptied.
 // * if value is anything else, we return an error.
-Result getKeyAndRevision(CollectionNameResolver const& resolver,
-                         AqlValue const& value, std::string& key,
-                         std::string& rev, Revision what = Revision::Include);
+Result getKey(CollectionNameResolver const& resolver, AqlValue const& value,
+              std::string& key);
 
-// Builds an object "{ _key: key, _rev: rev }" if rev is nonempty and the
-// parameter `what` is Revision::Include , and "{ _key: key, _rev: null }"
-// otherwise.
-void buildKeyDocument(VPackBuilder& builder, std::string const& key,
-                      std::string const& rev, Revision what = Revision::Include);
+// Extracts rev from input AqlValue value.
+//
+// * value has to be an objectis a string, this string is assigned to key
+// * if value is an object, we extract the entry _key into key if it is a string,
+//   or signal an error otherwise.
+// * if value is anything else, we return an error.
+Result getRevision(CollectionNameResolver const& resolver,
+                   AqlValue const& value, std::string& key);
+
+Result getKeyAndRevision(CollectionNameResolver const& resolver,
+                         AqlValue const& value, std::string& key, std::string& rev);
+
+// Builds an object "{ _key: key }"
+void buildKeyDocument(VPackBuilder& builder, std::string const& key);
+
+// Builds an object "{ _key: key, _rev: rev }" if rev is not empty, otherwise
+// "{ _key: key, _rev: null }"
+void buildKeyAndRevDocument(VPackBuilder& builder, std::string const& key,
+                            std::string const& rev);
 
 // Establishes whether a write is necessary. This is only relevant for
 // SmartGraphs in the enterprise edition. Refer to skipForAqlWrite in

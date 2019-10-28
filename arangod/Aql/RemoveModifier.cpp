@@ -35,6 +35,8 @@
 #include <velocypack/Collection.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "Logger/LogMacros.h"
+
 class CollectionNameResolver;
 
 using namespace arangodb;
@@ -46,9 +48,9 @@ RemoveModifierCompletion::RemoveModifierCompletion(ModificationExecutorInfos& in
 
 RemoveModifierCompletion::~RemoveModifierCompletion() = default;
 
-ModOperationType RemoveModifierCompletion::accumulate(ModificationExecutorAccumulator& accu,
-                                                      InputAqlItemRow& row) {
-  std::string key, rev;
+ModifierOperationType RemoveModifierCompletion::accumulate(ModificationExecutorAccumulator& accu,
+                                                           InputAqlItemRow& row) {
+  std::string key{}, rev{};
   Result result;
 
   RegisterId const inDocReg = _infos._input1RegisterId;
@@ -59,24 +61,26 @@ ModOperationType RemoveModifierCompletion::accumulate(ModificationExecutorAccumu
   if (writeRequired(_infos, inDoc.slice(), StaticStrings::Empty)) {
     TRI_ASSERT(_infos._trx->resolver() != nullptr);
     CollectionNameResolver const& collectionNameResolver{*_infos._trx->resolver()};
-    result = getKeyAndRevision(collectionNameResolver, inDoc, key, rev,
-                               _infos._options.ignoreRevs ? Revision::Exclude
-                                                          : Revision::Include);
 
-    if (result.ok()) {
-      VPackBuilder keyDocBuilder;
-      buildKeyDocument(keyDocBuilder, key, rev);
-      // This deletes _rev if rev is empty or ignoreRevs is set in options.
-      accu.add(keyDocBuilder.slice());
-      return ModOperationType::APPLY_RETURN;
-    } else {
+    result = getKeyAndRevision(collectionNameResolver, inDoc, key, rev);
+    if (!result.ok()) {
       if (!_infos._ignoreErrors) {
         THROW_ARANGO_EXCEPTION_MESSAGE(result.errorNumber(), result.errorMessage());
       }
-      return ModOperationType::IGNORE_SKIP;
+      return ModifierOperationType::SkipRow;
     }
+
+    if (_infos._options.ignoreRevs) {
+      rev.clear();
+    }
+
+    VPackBuilder keyDocBuilder;
+    buildKeyAndRevDocument(keyDocBuilder, key, rev);
+    // This deletes _rev if rev is empty or ignoreRevs is set in options.
+    accu.add(keyDocBuilder.slice());
+    return ModifierOperationType::ReturnIfAvailable;
   } else {
-    return ModOperationType::IGNORE_RETURN;
+    return ModifierOperationType::CopyRow;
   }
 }
 

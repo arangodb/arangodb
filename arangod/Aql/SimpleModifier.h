@@ -76,7 +76,18 @@ class SimpleModifier {
   friend class UpdateReplaceModifierCompletion;
 
  public:
-  using ModOp = std::pair<ModOperationType, InputAqlItemRow>;
+  using ModOp = std::pair<ModifierOperationType, InputAqlItemRow>;
+
+  class OutputIterator {
+   public:
+    OutputIterator(SimpleModifier const& modifier);
+
+    bool isDone();
+
+   private:
+    std::vector<ModOp>::const_iterator _operationsIterator;
+    VPackArrayIterator _resultsIterator;
+  };
 
  public:
   SimpleModifier(ModificationExecutorInfos& infos);

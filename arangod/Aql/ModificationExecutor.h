@@ -74,45 +74,55 @@ namespace aql {
 //   * an accumulator that stores the documents that are committed in the
 //     transaction.
 //
-enum class ModOperationType : uint8_t {
-  // do not apply, do not produce a result - used for skipping over suppressed
-  // errors
-  IGNORE_SKIP = 0,
-  // do not apply, but pass the row to the next block - used for smart graphs
-  // and such
-  IGNORE_RETURN = 1,
-  // apply it and return the result
-  APPLY_RETURN = 2,
-  // TODO: These next two should be moved into the upsert modifier, as they
-  //       are internal to it
-  // apply it and return the result, used only used *internally* in the UPSERT
-  // modifier
-  APPLY_UPDATE = 3,
-  // apply it and return the result, used only used *internally* in the UPSERT
-  // modifier
-  APPLY_INSERT = 4,
-};
-
-// The tuple ModifierOutput is what is returned by the result iterator of a
+// The class ModifierOutput is what is returned by the result iterator of a
 // modifier, and represents the results of the modification operation on the
 // input row.
-// The first component has to be the operation type, the second an
-// InputAqlItemRow, and the third is a VPackSlice containing the result of the
-// transaction for this row.
-// using ModifierOutput = std::tuple<ModOperationType, InputAqlItemRow, VPackSlice>;
+// It contains the operation type, an InputAqlItemRow, and sometimes (if there
+// have been results specific for the InputAqlItemRow) a VPackSlice containing
+// the result of the transaction for this row.
+
+// Note that ModifierOperationType is *subtly* different from
+// ModifierOutput::Type.
+// ModifierOperationType is used internally in the Modifiers (and the UPSERT
+// modifier has its own ModifierOperationType that includes a case for Update
+// and a case for Insert).
+enum class ModifierOperationType {
+  // Return result of operation if available (i.e. the query was not silent),
+  // this in particular includes values OLD and NEW or errors specific to the
+  // InputAqlItemRow under consideration
+  ReturnIfAvailable,
+  // Just copy the InputAqlItemRow to the OutputAqlItemRow. We do this if there
+  // are no results available specific to this row (for example because the query was
+  // silent).
+  CopyRow,
+  // Skip the InputAqlItemRow entirely. This happens in case an error happens at
+  // verification stage, for example when a key document does not contain a key or
+  // isn't a document.
+  SkipRow
+};
 
 class ModifierOutput {
  public:
+  enum class Type {
+    // Return the row if requested by the query
+    ReturnIfRequired,
+    // Just copy the InputAqlItemRow to the OutputAqlItemRow
+    CopyRow,
+    // Skip the InputAqlItemRow entirely
+    SkipRow
+  };
+
   ModifierOutput() = delete;
-  ModifierOutput(InputAqlItemRow const inputRow, bool const error);
-  ModifierOutput(InputAqlItemRow const inputRow, bool const error,
+  ModifierOutput(InputAqlItemRow const inputRow, Type const type);
+  ModifierOutput(InputAqlItemRow const inputRow, Type const type,
                  std::unique_ptr<AqlValue>&& oldValue, std::unique_ptr<AqlValue>&& newValue);
 
   ModifierOutput(ModifierOutput&& o);
   ModifierOutput& operator=(ModifierOutput&& o);
 
   InputAqlItemRow getInputRow() const;
-  bool isError() const;
+  // If the output should be returned or skipped
+  Type getType() const;
   bool hasOldValue() const;
   AqlValue&& getOldValue() const;
   bool hasNewValue() const;
@@ -124,7 +134,7 @@ class ModifierOutput {
   ModifierOutput& operator=(ModifierOutput const&);
 
   InputAqlItemRow const _inputRow;
-  bool const _error;
+  Type const _type;
   std::unique_ptr<AqlValue> _oldValue;
   std::unique_ptr<AqlValue> _newValue;
 };

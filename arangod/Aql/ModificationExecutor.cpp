@@ -50,23 +50,29 @@ using namespace arangodb::basics;
 namespace arangodb {
 namespace aql {
 
-ModifierOutput::ModifierOutput(InputAqlItemRow const inputRow, bool const error)
-    : _inputRow(inputRow), _error(error), _oldValue(nullptr), _newValue(nullptr) {}
+ModifierOutput::ModifierOutput(InputAqlItemRow const inputRow, Type const type)
+    : _inputRow(inputRow), _type(type), _oldValue(nullptr), _newValue(nullptr) {}
 
-ModifierOutput::ModifierOutput(InputAqlItemRow const inputRow, bool const error,
+ModifierOutput::ModifierOutput(InputAqlItemRow const inputRow, Type const type,
                                std::unique_ptr<AqlValue>&& oldValue,
                                std::unique_ptr<AqlValue>&& newValue)
     : _inputRow(inputRow),
-      _error(error),
+      _type(type),
       _oldValue(std::move(oldValue)),
       _newValue(std::move(newValue)) {}
 
 InputAqlItemRow ModifierOutput::getInputRow() const { return _inputRow; }
-bool ModifierOutput::isError() const { return _error; }
+ModifierOutput::Type ModifierOutput::getType() const { return _type; }
 bool ModifierOutput::hasOldValue() const { return _oldValue != nullptr; }
-AqlValue&& ModifierOutput::getOldValue() const { return std::move(*_oldValue); }
+AqlValue&& ModifierOutput::getOldValue() const {
+  TRI_ASSERT(_oldValue != nullptr);
+  return std::move(*_oldValue);
+}
 bool ModifierOutput::hasNewValue() const { return _newValue != nullptr; }
-AqlValue&& ModifierOutput::getNewValue() const { return std::move(*_newValue); }
+AqlValue&& ModifierOutput::getNewValue() const {
+  TRI_ASSERT(_newValue != nullptr);
+  return std::move(*_newValue);
+}
 
 template <typename FetcherType, typename ModifierType>
 ModificationExecutor<FetcherType, ModifierType>::ModificationExecutor(Fetcher& fetcher,
@@ -125,21 +131,31 @@ void ModificationExecutor<FetcherType, ModifierType>::doOutput(OutputAqlItemRow&
   while (!_modifier.isFinishedIterator()) {
     ModifierOutput modifierOutput{_modifier.getOutput()};
 
-    if (!modifierOutput.isError()) {
-      if (_infos._options.returnOld) {
-        output.cloneValueInto(_infos._outputOldRegisterId, modifierOutput.getInputRow(),
-                              modifierOutput.getOldValue());
-      }
-      if (_infos._options.returnNew) {
-        output.cloneValueInto(_infos._outputNewRegisterId, modifierOutput.getInputRow(),
-                              modifierOutput.getNewValue());
-      }
-      if (!_infos._options.returnOld && !_infos._options.returnNew) {
-        output.copyRow(modifierOutput.getInputRow());
-      }
-      // only advance row if we produced something
-      output.advanceRow();
+    bool written = false;
+    switch (modifierOutput.getType()) {
+      case ModifierOutput::Type::ReturnIfRequired:
+        if (_infos._options.returnOld) {
+          output.cloneValueInto(_infos._outputOldRegisterId, modifierOutput.getInputRow(),
+                                modifierOutput.getOldValue());
+          written = true;
+        }
+        if (_infos._options.returnNew) {
+          output.cloneValueInto(_infos._outputNewRegisterId, modifierOutput.getInputRow(),
+                                modifierOutput.getNewValue());
+          written = true;
+        }
+        [[fallthrough]];
+      case ModifierOutput::Type::CopyRow:
+        if (!written) {
+          output.copyRow(modifierOutput.getInputRow());
+        }
+        output.advanceRow();
+        break;
+      case ModifierOutput::Type::SkipRow:
+        // nothing.
+        break;
     }
+
     _modifier.advanceIterator();
   }
 
@@ -147,7 +163,7 @@ void ModificationExecutor<FetcherType, ModifierType>::doOutput(OutputAqlItemRow&
     stats.addWritesExecuted(_modifier.nrOfWritesExecuted());
     stats.addWritesIgnored(_modifier.nrOfWritesIgnored());
   }
-}
+}  // namespace aql
 
 template <typename FetcherType, typename ModifierType>
 std::pair<ExecutionState, typename ModificationExecutor<FetcherType, ModifierType>::Stats>

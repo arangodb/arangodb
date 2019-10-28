@@ -37,7 +37,8 @@ class RemoveModifierCompletion {
   RemoveModifierCompletion(ModificationExecutorInfos& infos);
   ~RemoveModifierCompletion();
 
-  ModOperationType accumulate(ModificationExecutorAccumulator& accu, InputAqlItemRow& row);
+  ModifierOperationType accumulate(ModificationExecutorAccumulator& accu,
+                                   InputAqlItemRow& row);
   OperationResult transact(VPackSlice const& data);
 
  private:
