@@ -72,6 +72,52 @@ class ApplicationServer;
 namespace arangodb {
 namespace iresearch {
 
+// thread-safe analyzer pool
+class AnalyzerPool : private irs::util::noncopyable {
+ public:
+  typedef std::shared_ptr<AnalyzerPool> ptr;
+  explicit AnalyzerPool(irs::string_ref const& name);
+  irs::flags const& features() const noexcept { return _features; }
+  irs::analysis::analyzer::ptr get() const noexcept;  // nullptr == error creating analyzer
+  std::string const& name() const noexcept { return _name; }
+  VPackSlice properties() const noexcept { return _properties; }
+  irs::string_ref const& type() const noexcept { return _type; }
+
+  // definition to be stored in _analyzers collection or shown to the end user
+  void toVelocyPack(arangodb::velocypack::Builder& builder,
+                    bool forPersistence = false);
+
+  // definition to be stored/shown in a link definition
+  void toVelocyPack(arangodb::velocypack::Builder& builder,
+                    TRI_vocbase_t const* vocbase = nullptr);
+
+ private:
+  friend class IResearchAnalyzerFeature; // required for calling AnalyzerPool::init(...) and AnalyzerPool::setKey(...)
+
+  // 'make(...)' method wrapper for irs::analysis::analyzer types
+  struct Builder {
+    typedef irs::analysis::analyzer::ptr ptr;
+    DECLARE_FACTORY(irs::string_ref const& type, VPackSlice properties);
+  };
+
+  void toVelocyPack(arangodb::velocypack::Builder& builder,
+                    irs::string_ref const& name);
+
+  bool init(irs::string_ref const& type,
+            VPackSlice const properties,
+            irs::flags const& features = irs::flags::empty_instance());
+  void setKey(irs::string_ref const& type);
+
+  mutable irs::unbounded_object_pool<Builder> _cache;  // cache of irs::analysis::analyzer (constructed via
+                                                       // AnalyzerBuilder::make(...))
+  std::string _config;   // non-null type + non-null properties + key
+  irs::flags _features;  // cached analyzer features
+  irs::string_ref _key; // the key of the persisted configuration for this pool, null == static analyzer
+  std::string _name;  // ArangoDB alias for an IResearch analyzer configuration
+  VPackSlice _properties;  // IResearch analyzer configuration
+  irs::string_ref _type;        // IResearch analyzer name
+}; // AnalyzerPool
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a cache of IResearch analyzer instances
 ///        and a provider of AQL TOKENS(<data>, <analyzer>) function
@@ -81,43 +127,6 @@ namespace iresearch {
 ////////////////////////////////////////////////////////////////////////////////
 class IResearchAnalyzerFeature final : public arangodb::application_features::ApplicationFeature {
  public:
-  // thread-safe analyzer pool
-  class AnalyzerPool : private irs::util::noncopyable {
-   public:
-    typedef std::shared_ptr<AnalyzerPool> ptr;
-    explicit AnalyzerPool(irs::string_ref const& name);
-    irs::flags const& features() const noexcept { return _features; }
-    irs::analysis::analyzer::ptr get() const noexcept;  // nullptr == error creating analyzer
-    std::string const& name() const noexcept { return _name; }
-    VPackSlice properties() const noexcept { return _properties; }
-    irs::string_ref const& type() const noexcept { return _type; }
-
-    void toVelocyPack(arangodb::velocypack::Builder& builder, bool forPersistence = false);
-
-   private:
-    friend class IResearchAnalyzerFeature; // required for calling AnalyzerPool::init(...) and AnalyzerPool::setKey(...)
-
-    // 'make(...)' method wrapper for irs::analysis::analyzer types
-    struct Builder {
-      typedef irs::analysis::analyzer::ptr ptr;
-      DECLARE_FACTORY(irs::string_ref const& type, VPackSlice properties);
-    };
-
-    mutable irs::unbounded_object_pool<Builder> _cache;  // cache of irs::analysis::analyzer (constructed via
-                                                         // AnalyzerBuilder::make(...))
-    std::string _config;   // non-null type + non-null properties + key
-    irs::flags _features;  // cached analyzer features
-    irs::string_ref _key; // the key of the persisted configuration for this pool, null == static analyzer
-    std::string _name;  // ArangoDB alias for an IResearch analyzer configuration
-    VPackSlice _properties;  // IResearch analyzer configuration
-    irs::string_ref _type;        // IResearch analyzer name
-
-    bool init(irs::string_ref const& type,
-              VPackSlice const properties,
-              irs::flags const& features = irs::flags::empty_instance());
-    void setKey(irs::string_ref const& type);
-  };
-
   explicit IResearchAnalyzerFeature(arangodb::application_features::ApplicationServer& server);
 
   //////////////////////////////////////////////////////////////////////////////

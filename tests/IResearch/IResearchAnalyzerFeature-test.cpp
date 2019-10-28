@@ -1578,7 +1578,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_persistence_invalid_missing_attributes
     feature.start();  // load persisted analyzers
 
     feature.visit(
-        [&expected](arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool::ptr const& analyzer) -> bool {
+        [&expected](arangodb::iresearch::AnalyzerPool::ptr const& analyzer) -> bool {
           if (staticAnalyzers().find(analyzer->name()) != staticAnalyzers().end()) {
             return true;  // skip static analyzers
           }
@@ -1700,7 +1700,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_persistence_valid_different_parameters
     feature.start();  // load persisted analyzers
 
     feature.visit(
-        [&expected](arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool::ptr const& analyzer) -> bool {
+        [&expected](arangodb::iresearch::AnalyzerPool::ptr const& analyzer) -> bool {
           if (staticAnalyzers().find(analyzer->name()) != staticAnalyzers().end()) {
             return true;  // skip static analyzers
           }
@@ -1758,7 +1758,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_persistence_add_new_records) {
       feature.start();  // load persisted analyzers
 
       feature.visit(
-          [&expected](arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool::ptr const& analyzer) -> bool {
+          [&expected](arangodb::iresearch::AnalyzerPool::ptr const& analyzer) -> bool {
             if (staticAnalyzers().find(analyzer->name()) != staticAnalyzers().end()) {
               return true;  // skip static analyzers
             }
@@ -1860,7 +1860,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_persistence_remove_existing_records) {
       feature.prepare();  // load static analyzers
       feature.start();    // load persisted analyzers
 
-      feature.visit([&expected](arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool::ptr const& analyzer) -> bool {
+      feature.visit([&expected](arangodb::iresearch::AnalyzerPool::ptr const& analyzer) -> bool {
         if ((analyzer->name() != "identity" &&
              !irs::starts_with(irs::string_ref(analyzer->name()), "text_")) &&
             staticAnalyzers().find(analyzer->name()) != staticAnalyzers().end()) {
@@ -1901,7 +1901,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_persistence_remove_existing_records) {
       feature.start();  // load persisted analyzers
 
       feature.visit(
-          [&expected](arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool::ptr const& analyzer) -> bool {
+          [&expected](arangodb::iresearch::AnalyzerPool::ptr const& analyzer) -> bool {
             if (staticAnalyzers().find(analyzer->name()) != staticAnalyzers().end()) {
               return true;  // skip static analyzers
             }
@@ -2254,7 +2254,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_prepare) {
   // check static analyzers
   auto expected = staticAnalyzers();
   feature.visit([&expected, &feature](
-                    arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool::ptr const& analyzer) -> bool {
+                    arangodb::iresearch::AnalyzerPool::ptr const& analyzer) -> bool {
     auto itr = expected.find(analyzer->name());
     EXPECT_NE(itr, expected.end());
     EXPECT_EQ(itr->second.type, analyzer->type());
@@ -2308,7 +2308,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_start) {
 
     feature.visit(
         [&expected, &feature](
-            arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool::ptr const& analyzer) -> bool {
+            arangodb::iresearch::AnalyzerPool::ptr const& analyzer) -> bool {
           auto itr = expected.find(analyzer->name());
           EXPECT_NE(itr, expected.end());
           EXPECT_EQ(itr->second.type, analyzer->type());
@@ -2373,7 +2373,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_start) {
                      std::forward_as_tuple("identity", "\"abc\""));
     feature.visit(
         [&expected, &feature](
-            arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool::ptr const& analyzer) -> bool {
+            arangodb::iresearch::AnalyzerPool::ptr const& analyzer) -> bool {
           auto itr = expected.find(analyzer->name());
           EXPECT_NE(itr, expected.end());
           EXPECT_EQ(itr->second.type, analyzer->type());
@@ -2417,7 +2417,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_start) {
 
     feature.visit(
         [&expected, &feature](
-            arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool::ptr const& analyzer) -> bool {
+            arangodb::iresearch::AnalyzerPool::ptr const& analyzer) -> bool {
           auto itr = expected.find(analyzer->name());
           EXPECT_NE(itr, expected.end());
           EXPECT_EQ(itr->second.type, analyzer->type());
@@ -2478,7 +2478,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_start) {
                      std::forward_as_tuple("identity", "{}"));
     feature.visit(
         [&expected, &feature](
-            arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool::ptr const& analyzer) -> bool {
+            arangodb::iresearch::AnalyzerPool::ptr const& analyzer) -> bool {
           auto itr = expected.find(analyzer->name());
           EXPECT_NE(itr, expected.end());
           EXPECT_EQ(itr->second.type, analyzer->type());
@@ -3451,7 +3451,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
     };
     auto expectedSet = makeVPackPropExpectedSet(expected);
     auto result = feature.visit(
-        [&expectedSet](arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool::ptr const& analyzer) -> bool {
+        [&expectedSet](arangodb::iresearch::AnalyzerPool::ptr const& analyzer) -> bool {
           if (staticAnalyzers().find(analyzer->name()) != staticAnalyzers().end()) {
             return true;  // skip static analyzers
           }
@@ -3485,7 +3485,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
     };
     auto expectedSet = makeVPackPropExpectedSet(expected);
     auto result = feature.visit(
-        [&expectedSet](arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool::ptr const& analyzer) -> bool {
+        [&expectedSet](arangodb::iresearch::AnalyzerPool::ptr const& analyzer) -> bool {
           if (staticAnalyzers().find(analyzer->name()) != staticAnalyzers().end()) {
             return true;  // skip static analyzers
           }
@@ -3534,7 +3534,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
   {
     std::set<ExpectedType> expected = {};
     auto result = feature.visit(
-        [&expected](arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool::ptr const& analyzer) -> bool {
+        [&expected](arangodb::iresearch::AnalyzerPool::ptr const& analyzer) -> bool {
           EXPECT_EQ(analyzer->type(), "TestAnalyzer");
           EXPECT_EQ(1, expected.erase(
                            ExpectedType(analyzer->name(),
@@ -3555,7 +3555,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
     };
     auto expectedSet = makeVPackPropExpectedSet(expected);
     auto result = feature.visit(
-        [&expectedSet](arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool::ptr const& analyzer) -> bool {
+        [&expectedSet](arangodb::iresearch::AnalyzerPool::ptr const& analyzer) -> bool {
           EXPECT_EQ(analyzer->type(), "TestAnalyzer");
           EXPECT_EQ(1, expectedSet.erase(
                            ExpectedType(analyzer->name(),
@@ -3641,7 +3641,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
     ASSERT_EQ(expected.size(), expectedSet.size());
 
     auto result = feature.visit(
-        [&expectedSet](arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool::ptr const& analyzer) -> bool {
+        [&expectedSet](arangodb::iresearch::AnalyzerPool::ptr const& analyzer) -> bool {
           EXPECT_EQ(1, expectedSet.erase(
                            ExpectedType(analyzer->name(),
                                         arangodb::iresearch::ref<char>(analyzer->properties()),

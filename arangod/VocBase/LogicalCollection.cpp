@@ -682,7 +682,7 @@ arangodb::Result LogicalCollection::appendVelocyPack(arangodb::velocypack::Build
     result.add(StaticStrings::DataSourcePlanId, VPackValue(std::to_string(planId())));
   }
 
-  _sharding->toVelocyPack(result, (context == Serialization::Properties) || forPersistence);
+  _sharding->toVelocyPack(result, Serialization::List != context);
 
   includeVelocyPackEnterprise(result);
 

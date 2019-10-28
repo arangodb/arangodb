@@ -436,7 +436,7 @@ arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* expression
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, message);
   }
 
-  arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool::ptr pool;
+  arangodb::iresearch::AnalyzerPool::ptr pool;
   // identity now is default analyzer
   auto const name = args.size() > 1 ?
     arangodb::iresearch::getStringRef(args[1].slice()) :
@@ -622,11 +622,10 @@ void addFunctions(arangodb::aql::AqlFunctionFeature& functions) {
 /// @return pool will generate analyzers as per supplied parameters
 ////////////////////////////////////////////////////////////////////////////////
 bool equalAnalyzer(
-    arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool const& pool,
+    arangodb::iresearch::AnalyzerPool const& pool,
     irs::string_ref const& type,
     VPackSlice const properties,
-    irs::flags const& features
-) noexcept {
+    irs::flags const& features) noexcept {
   std::string normalizedProperties;
 
   if (!::normalize(normalizedProperties, type, properties)) {
@@ -910,13 +909,10 @@ typedef irs::async_utils::read_write_mutex::write_mutex WriteMutex;
 namespace arangodb {
 namespace iresearch {
 
-void IResearchAnalyzerFeature::AnalyzerPool::toVelocyPack(VPackBuilder& builder,
-                                                          bool forPersistence /*= false*/) {
-  irs::string_ref const name =  forPersistence
-      ? splitAnalyzerName(this->name()).second
-      : irs::string_ref(this->name());
-
-  VPackObjectBuilder rootScope(&builder);
+void AnalyzerPool::toVelocyPack(
+    VPackBuilder& builder,
+    irs::string_ref const& name) {
+  TRI_ASSERT(builder.isOpenObject());
 //  if (forPersistence) {
 //    arangodb::iresearch::addStringRef(builder, arangodb::StaticStrings::KeyString, name);
 //  }
@@ -932,8 +928,37 @@ void IResearchAnalyzerFeature::AnalyzerPool::toVelocyPack(VPackBuilder& builder,
   }
 }
 
-/*static*/ IResearchAnalyzerFeature::AnalyzerPool::Builder::ptr
-IResearchAnalyzerFeature::AnalyzerPool::Builder::make(
+void AnalyzerPool::toVelocyPack(VPackBuilder& builder,
+                                TRI_vocbase_t const* vocbase /*= nullptr*/) {
+  irs::string_ref name = this->name();
+  if (vocbase) {
+    auto const split = IResearchAnalyzerFeature::splitAnalyzerName(name);
+    if (!split.first.null()) {
+      if (split.first == vocbase->name()) {
+        name = split.second;
+      } else {
+        name = irs::string_ref(split.second.c_str()-2, split.second.size()+2);
+      }
+    }
+  }
+
+  VPackObjectBuilder rootScope(&builder);
+  toVelocyPack(builder, name);
+}
+
+void AnalyzerPool::toVelocyPack(VPackBuilder& builder,
+                                bool forPersistence /*= false*/) {
+  irs::string_ref name = this->name();
+  if (forPersistence) {
+    name = IResearchAnalyzerFeature::splitAnalyzerName(name).second;
+  }
+
+  VPackObjectBuilder rootScope(&builder);
+  toVelocyPack(builder, name);
+}
+
+/*static*/ AnalyzerPool::Builder::ptr
+AnalyzerPool::Builder::make(
     irs::string_ref const& type,
     VPackSlice properties) {
   if (type.empty()) {
@@ -946,12 +971,12 @@ IResearchAnalyzerFeature::AnalyzerPool::Builder::make(
     type, irs::text_format::vpack, iresearch::ref<char>(properties), false);
 }
 
-IResearchAnalyzerFeature::AnalyzerPool::AnalyzerPool(irs::string_ref const& name)
+AnalyzerPool::AnalyzerPool(irs::string_ref const& name)
   : _cache(DEFAULT_POOL_SIZE),
     _name(name) {
 }
 
-bool IResearchAnalyzerFeature::AnalyzerPool::init(
+bool AnalyzerPool::init(
     irs::string_ref const& type,
     VPackSlice const properties,
     irs::flags const& features /*= irs::flags::empty_instance()*/) {
@@ -1021,7 +1046,7 @@ bool IResearchAnalyzerFeature::AnalyzerPool::init(
   return false;
 }
 
-void IResearchAnalyzerFeature::AnalyzerPool::setKey(irs::string_ref const& key) {
+void AnalyzerPool::setKey(irs::string_ref const& key) {
   if (key.null()) {
     _key = irs::string_ref::NIL;
 
@@ -1054,7 +1079,7 @@ void IResearchAnalyzerFeature::AnalyzerPool::setKey(irs::string_ref const& key) 
   _key = irs::string_ref(_config.c_str() + keyOffset, key.size());
 }
 
-irs::analysis::analyzer::ptr IResearchAnalyzerFeature::AnalyzerPool::get() const noexcept {
+irs::analysis::analyzer::ptr AnalyzerPool::get() const noexcept {
   try {
     // FIXME do not use shared_ptr
     return _cache.emplace(_type, _properties).release();
@@ -1360,7 +1385,7 @@ arangodb::Result IResearchAnalyzerFeature::ensure( // ensure analyzer existence 
   return arangodb::Result();
 }
 
-IResearchAnalyzerFeature::AnalyzerPool::ptr IResearchAnalyzerFeature::get( // find analyzer
+AnalyzerPool::ptr IResearchAnalyzerFeature::get( // find analyzer
     irs::string_ref const& name, // analyzer name
     TRI_vocbase_t const& activeVocbase, // fallback vocbase if not part of name
     TRI_vocbase_t const& systemVocbase, // the system vocbase for use with empty prefix
@@ -1436,7 +1461,7 @@ IResearchAnalyzerFeature::AnalyzerPool::ptr IResearchAnalyzerFeature::get( // fi
   return nullptr;
 }
 
-IResearchAnalyzerFeature::AnalyzerPool::ptr IResearchAnalyzerFeature::get( // find analyzer
+AnalyzerPool::ptr IResearchAnalyzerFeature::get( // find analyzer
     irs::string_ref const& name, // analyzer name
     bool onlyCached /*= false*/ // check only locally cached analyzers
 ) const noexcept {
@@ -1587,7 +1612,7 @@ IResearchAnalyzerFeature::AnalyzerPool::ptr IResearchAnalyzerFeature::get( // fi
   return instance.analyzers;
 }
 
-/*static*/ IResearchAnalyzerFeature::AnalyzerPool::ptr IResearchAnalyzerFeature::identity() noexcept {
+/*static*/ AnalyzerPool::ptr IResearchAnalyzerFeature::identity() noexcept {
   struct Identity {
     AnalyzerPool::ptr instance;
     Identity() {

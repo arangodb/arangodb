@@ -234,7 +234,7 @@ bool IResearchLinkMeta::init( // initialize meta
                                   : nullptr;
             if (sysVocbase) {
               name = IResearchAnalyzerFeature::normalize( // normalize
-                name, *defaultVocbase, *sysVocbase // args
+                name, *defaultVocbase, *sysVocbase, true// args
               );
             }
           }
@@ -363,24 +363,20 @@ bool IResearchLinkMeta::init( // initialize meta
 
         if (defaultVocbase) {
           auto sysVocbase = server.hasFeature<SystemDatabaseFeature>()
-                                ? server.getFeature<SystemDatabaseFeature>().use()
-                                : nullptr;
+                              ? server.getFeature<SystemDatabaseFeature>().use()
+                              : nullptr;
 
           if (sysVocbase) {
-            name = IResearchAnalyzerFeature::normalize( // normalize
-              name, *defaultVocbase, *sysVocbase // args
-            );
-            shortName = IResearchAnalyzerFeature::normalize( // normalize
-              name, *defaultVocbase, *sysVocbase, false // args
-            );
+            name = IResearchAnalyzerFeature::normalize(
+              name, *defaultVocbase, *sysVocbase);
+            shortName = IResearchAnalyzerFeature::normalize(
+              name, *defaultVocbase, *sysVocbase, false);
           }
         }
 
         // for cluster only check cache to avoid ClusterInfo locking issues
         // analyzer should have been populated via 'analyzerDefinitions' above
-        auto analyzer = analyzers.get(  // get analyzer
-            name, arangodb::ServerState::instance()->isClusterRole()  // args
-        );
+        auto analyzer = analyzers.get(name, arangodb::ServerState::instance()->isClusterRole());
 
         if (!analyzer) {
           errorField = fieldName + "." + value.copyString(); // original (non-normalized) 'name' value
@@ -534,7 +530,7 @@ bool IResearchLinkMeta::json( // append meta jSON
     IResearchLinkMeta const* ignoreEqual /*= nullptr*/, // values to ignore if equal
     TRI_vocbase_t const* defaultVocbase /*= nullptr*/, // fallback vocbase
     Mask const* mask /*= nullptr*/, // values to ignore always
-    std::map<std::string, IResearchAnalyzerFeature::AnalyzerPool::ptr>* usedAnalyzers /*= nullptr*/ // append analyzers used in definition
+    std::map<std::string, AnalyzerPool::ptr>* usedAnalyzers /*= nullptr*/ // append analyzers used in definition
 ) const {
   if (!builder.isOpenObject()) {
     return false;
@@ -549,7 +545,7 @@ bool IResearchLinkMeta::json( // append meta jSON
     }
   }
 
-  std::map<std::string, IResearchAnalyzerFeature::AnalyzerPool::ptr> analyzers;
+  std::map<std::string, AnalyzerPool::ptr> analyzers;
 
   if ((!ignoreEqual || !equalAnalyzers(_analyzers, ignoreEqual->_analyzers)) &&
       (!mask || mask->_analyzers)) {
@@ -589,7 +585,7 @@ bool IResearchLinkMeta::json( // append meta jSON
           entry._pool->name(), // analyzer name
           *defaultVocbase, // active vocbase
           *sysVocbase, // system vocbase
-          writeAnalyzerDefinition // expand vocbase prefix
+          false // expand vocbase prefix
         );
       } else {
         name = entry._pool->name(); // verbatim (assume already normalized)
@@ -668,7 +664,7 @@ bool IResearchLinkMeta::json( // append meta jSON
 
     for (auto& entry: analyzers) {
       TRI_ASSERT(entry.second); // ensured by emplace into 'analyzers' above
-      entry.second->toVelocyPack(builder);
+      entry.second->toVelocyPack(builder, defaultVocbase);
     }
   }
 
