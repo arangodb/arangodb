@@ -584,7 +584,7 @@ ExecutionState Query::execute(QueryRegistry* registry, QueryResult& queryResult)
     if (_killed) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
     }
-    
+
     bool useQueryCache = canUseQueryCache();
 
     switch (_executionPhase) {
@@ -908,7 +908,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
             }
           }
         }
-    
+
         if (_killed) {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
         }

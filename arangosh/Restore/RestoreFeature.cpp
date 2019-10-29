@@ -68,11 +68,11 @@ uint64_t getReplicationFactor(arangodb::RestoreFeature::Options const& options,
   uint64_t result = options.defaultReplicationFactor;
   isSatellite = false;
 
-  arangodb::velocypack::Slice s = slice.get("replicationFactor");
+  arangodb::velocypack::Slice s = slice.get(arangodb::StaticStrings::ReplicationFactor);
   if (s.isInteger()) {
     result = s.getNumericValue<uint64_t>();
   } else if (s.isString()) {
-    if (s.copyString() == "satellite") {
+    if (s.copyString() == arangodb::StaticStrings::Satellite) {
       isSatellite = true;
     }
   }
@@ -90,7 +90,7 @@ uint64_t getReplicationFactor(arangodb::RestoreFeature::Options const& options,
       auto parts = arangodb::basics::StringUtils::split(it, '=');
       if (parts.size() == 1) {
         // this is the default value, e.g. `--replicationFactor 2`
-        if (parts[0] == "satellite") {
+        if (parts[0] == arangodb::StaticStrings::Satellite) {
           isSatellite = true;
         } else {
           result = arangodb::basics::StringUtils::uint64(parts[0]);
@@ -102,7 +102,7 @@ uint64_t getReplicationFactor(arangodb::RestoreFeature::Options const& options,
         // somehow invalid or different collection
         continue;
       }
-      if (parts[1] == "satellite") {
+      if (parts[1] == arangodb::StaticStrings::Satellite) {
         isSatellite = true;
       } else {
         result = arangodb::basics::StringUtils::uint64(parts[1]);
@@ -416,11 +416,11 @@ arangodb::Result sendRestoreCollection(arangodb::httpclient::SimpleHttpClient& h
   bool isSatellite = false;
   uint64_t replicationFactor = getReplicationFactor(options, parameters, isSatellite);
   if (isSatellite) {
-    newOptions.add("replicationFactor", VPackValue("satellite"));
+    newOptions.add(arangodb::StaticStrings::ReplicationFactor, VPackValue(arangodb::StaticStrings::Satellite));
   } else {
-    newOptions.add("replicationFactor", VPackValue(replicationFactor));
+    newOptions.add(arangodb::StaticStrings::ReplicationFactor, VPackValue(replicationFactor));
   }
-  newOptions.add("numberOfShards", VPackValue(getNumberOfShards(options, parameters)));
+  newOptions.add(arangodb::StaticStrings::NumberOfShards, VPackValue(getNumberOfShards(options, parameters)));
   newOptions.close();
 
   VPackBuilder b;
@@ -913,10 +913,32 @@ arangodb::Result processInputDirectory(
     std::vector<std::unique_ptr<arangodb::RestoreFeature::JobData>> jobs;
     jobs.reserve(collections.size());
 
+    // Step 2: create views
+    // @note: done after collection population since views might depend on data
+    //        in restored collections
+    if (options.importStructure && !views.empty()) {
+      LOG_TOPIC("f723c", INFO, Logger::RESTORE) << "# Creating views...";
+
+      for (auto const& viewDefinition : views) {
+        LOG_TOPIC("c608d", DEBUG, Logger::RESTORE)
+          << "# Creating view: " << viewDefinition.toJson();
+
+        auto res = ::restoreView(httpClient, options, viewDefinition.slice());
+
+        if (!res.ok()) {
+          return res;
+        }
+      }
+    }
+
     bool didModifyFoxxCollection = false;
-    // Step 2: create collections
+    // Step 3: create collections
     for (VPackBuilder const& b : collections) {
       VPackSlice const collection = b.slice();
+
+      LOG_TOPIC("c601a", DEBUG, Logger::RESTORE)
+        << "# Processing collection: " << collection.toJson();
+
       VPackSlice params = collection.get("parameters");
       VPackSlice name = VPackSlice::emptyStringSlice();
       if (params.isObject()) {
@@ -1012,24 +1034,6 @@ arangodb::Result processInputDirectory(
             << "- in the cluster Foxx services will be available eventually, On single servers send "
             << "a POST to '/_api/foxx/_local/heal' on the current database, "
             << "with an empty body.";
-      }
-    }
-
-    // Step 5: create views
-    // @note: done after collection population since views might depend on data
-    //        in restored collections
-    if (options.importStructure && !views.empty()) {
-      LOG_TOPIC("f723c", INFO, Logger::RESTORE) << "# Creating views...";
-
-      for (auto const& viewDefinition : views) {
-        LOG_TOPIC("c608d", DEBUG, Logger::RESTORE)
-          << "# Creating view: " << viewDefinition.toJson();
-
-        auto res = ::restoreView(httpClient, options, viewDefinition.slice());
-
-        if (!res.ok()) {
-          return res;
-        }
       }
     }
 

@@ -295,8 +295,7 @@ TEST_F(IResearchQueryJoinTest, DuplicateDataSource) {
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
-    view->properties(builder, arangodb::LogicalDataSource::makeFlags(
-                                  arangodb::LogicalDataSource::Serialize::Detailed));
+    view->properties(builder, arangodb::LogicalDataSource::Serialization::Properties);
     builder.close();
 
     auto slice = builder.slice();
@@ -454,8 +453,7 @@ TEST_F(IResearchQueryJoinTest, test) {
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
-    view->properties(builder, arangodb::LogicalDataSource::makeFlags(
-                                  arangodb::LogicalDataSource::Serialize::Detailed));
+    view->properties(builder, arangodb::LogicalDataSource::Serialization::Properties);
     builder.close();
 
     auto slice = builder.slice();
@@ -779,8 +777,8 @@ TEST_F(IResearchQueryJoinTest, test) {
   // RETURN d;
   {
     std::string const query =
-        "FOR x IN collection_3 FOR d IN testView SEARCH x.seq == d.seq RETURN "
-        "d";
+        "FOR x IN collection_3 SORT x._key FOR d IN testView SEARCH x.seq == "
+        "d.seq RETURN d";
 
     EXPECT_TRUE(arangodb::tests::assertRules(vocbase, query,
                                              {
@@ -811,9 +809,9 @@ TEST_F(IResearchQueryJoinTest, test) {
     for (; resultIt.valid(); resultIt.next(), ++expectedDoc) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
-
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
-                            arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+      EXPECT_TRUE(arangodb::basics::VelocyPackHelper::equal(arangodb::velocypack::Slice(*expectedDoc), resolved, true))
+          << arangodb::velocypack::Slice(*expectedDoc).toJson() << " vs. "
+          << resolved.toJson();
     }
     EXPECT_EQ(expectedDoc, expectedDocs.end());
   }
