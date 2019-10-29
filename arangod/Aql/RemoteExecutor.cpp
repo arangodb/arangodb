@@ -173,6 +173,10 @@ std::pair<ExecutionState, size_t> ExecutionBlockImpl<RemoteExecutor>::skipSomeWi
     // we were called with an error need to throw it.
     THROW_ARANGO_EXCEPTION(res);
   }
+  
+  if (getQuery().killed()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+  }
 
   if (_lastResponse != nullptr) {
     TRI_ASSERT(_lastError.ok());
@@ -244,6 +248,10 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::initialize
     // we simply ignore the initialCursor request, as the remote side
     // will initialize the cursor lazily
     return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
+  }
+  
+  if (getQuery().killed()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
   }
 
   if (_lastResponse != nullptr || _lastError.fail()) {

@@ -1974,14 +1974,14 @@ void fetchVerticesFromEngines(
     std::unordered_map<arangodb::velocypack::StringRef, VPackSlice>& result,
     std::vector<std::shared_ptr<VPackBufferUInt8>>& datalake,
     bool forShortestPath) {
+
   // TODO map id => ServerID if possible
   // And go fast-path
 
   // slow path, sharding not deducable from _id
   transaction::BuilderLeaser leased(&trx);
   leased->openObject();
-  leased->add(VPackValue("keys"));
-  leased->openArray();
+  leased->add("keys", VPackValue(VPackValueType::Array));
   for (auto const& v : vertexIds) {
     leased->add(VPackValuePair(v.data(), v.length(), VPackValueType::String));
   }
@@ -2022,7 +2022,7 @@ void fetchVerticesFromEngines(
     }
     
     bool cached = false;
-    for (auto pair : VPackObjectIterator(resSlice, /*seqential*/true)) {
+    for (auto pair : VPackObjectIterator(resSlice, /*sequential*/true)) {
       arangodb::velocypack::StringRef key(pair.key);
       if (vertexIds.erase(key) == 0) {
         // We either found the same vertex twice,

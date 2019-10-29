@@ -45,12 +45,17 @@
 
 namespace {
 static std::string const FEATURE_NAME("Bootstrap");
+static std::string const boostrapKey = "Bootstrap";
+}
+
+namespace arangodb {
+namespace aql {
+class Query;
+}
 }
 
 using namespace arangodb;
 using namespace arangodb::options;
-
-static std::string const boostrapKey = "Bootstrap";
 
 BootstrapFeature::BootstrapFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, ::FEATURE_NAME), _isReady(false), _bark(false) {
@@ -90,7 +95,7 @@ void raceForClusterBootstrap(BootstrapFeature& feature) {
   AgencyComm agency;
   auto& ci = feature.server().getFeature<ClusterFeature>().clusterInfo();
   while (true) {
-    AgencyCommResult result = agency.getValues(boostrapKey);
+    AgencyCommResult result = agency.getValues(::boostrapKey);
     if (!result.successful()) {
       // Error in communication, note that value not found is not an error
       LOG_TOPIC("2488f", TRACE, Logger::STARTUP)
@@ -100,7 +105,7 @@ void raceForClusterBootstrap(BootstrapFeature& feature) {
     }
 
     VPackSlice value = result.slice()[0].get(
-        std::vector<std::string>({AgencyCommManager::path(), boostrapKey}));
+        std::vector<std::string>({AgencyCommManager::path(), ::boostrapKey}));
     if (value.isString()) {
       // key was found and is a string
       std::string boostrapVal = value.copyString();
@@ -110,7 +115,7 @@ void raceForClusterBootstrap(BootstrapFeature& feature) {
             << "raceForClusterBootstrap: bootstrap already done";
         return;
       } else if (boostrapVal == ServerState::instance()->getId()) {
-        agency.removeValues(boostrapKey, false);
+        agency.removeValues(::boostrapKey, false);
       }
       LOG_TOPIC("49437", DEBUG, Logger::STARTUP)
           << "raceForClusterBootstrap: somebody else does the bootstrap";
@@ -121,7 +126,7 @@ void raceForClusterBootstrap(BootstrapFeature& feature) {
     // No value set, we try to do the bootstrap ourselves:
     VPackBuilder b;
     b.add(VPackValue(arangodb::ServerState::instance()->getId()));
-    result = agency.casValue(boostrapKey, b.slice(), false, 300, 15);
+    result = agency.casValue(::boostrapKey, b.slice(), false, 300, 15);
     if (!result.successful()) {
       LOG_TOPIC("a1ecb", DEBUG, Logger::STARTUP)
           << "raceForClusterBootstrap: lost race, somebody else will bootstrap";
@@ -141,7 +146,7 @@ void raceForClusterBootstrap(BootstrapFeature& feature) {
     if (dbservers.size() == 0) {
       LOG_TOPIC("0ad1c", TRACE, Logger::STARTUP)
           << "raceForClusterBootstrap: no DBservers, waiting";
-      agency.removeValues(boostrapKey, false);
+      agency.removeValues(::boostrapKey, false);
       std::this_thread::sleep_for(std::chrono::seconds(1));
       continue;
     }
@@ -156,7 +161,7 @@ void raceForClusterBootstrap(BootstrapFeature& feature) {
     if (upgradeRes.fail()) {
       LOG_TOPIC("8903f", ERR, Logger::STARTUP) << "Problems with cluster bootstrap, "
                                       << "marking as not successful.";
-      agency.removeValues(boostrapKey, false);
+      agency.removeValues(::boostrapKey, false);
       std::this_thread::sleep_for(std::chrono::seconds(1));
       continue;
     }
@@ -177,7 +182,7 @@ void raceForClusterBootstrap(BootstrapFeature& feature) {
 
     b.clear();
     b.add(VPackValue(arangodb::ServerState::instance()->getId() + ": done"));
-    result = agency.setValue(boostrapKey, b.slice(), 0);
+    result = agency.setValue(::boostrapKey, b.slice(), 0);
     if (result.successful()) {
       return;
     }
@@ -355,7 +360,7 @@ void BootstrapFeature::unprepare() {
     TRI_vocbase_t* vocbase = databaseFeature.useDatabase(name);
 
     if (vocbase != nullptr) {
-      vocbase->queryList()->killAll(true);
+      vocbase->queryList()->kill([](aql::Query&) { return true; }, true);
       vocbase->release();
     }
   }

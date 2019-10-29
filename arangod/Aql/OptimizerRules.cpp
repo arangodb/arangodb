@@ -7277,7 +7277,7 @@ void arangodb::aql::spliceSubqueriesRule(Optimizer* opt, std::unique_ptr<Executi
     auto sq = ExecutionNode::castTo<SubqueryNode*>(n);
 
     // insert a SubqueryStartNode before the SubqueryNode
-    SubqueryStartNode* start = new SubqueryStartNode(plan.get(), plan->nextId());
+    SubqueryStartNode* start = new SubqueryStartNode(plan.get(), plan->nextId(), sq->outVariable());
     plan->registerNode(start);
     plan->insertBefore(sq, start);
 
