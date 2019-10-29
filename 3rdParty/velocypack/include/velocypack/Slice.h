@@ -47,13 +47,12 @@
 namespace arangodb {
 namespace velocypack {
 
+// This class provides read only access to a VPack value, it is
+// intentionally light-weight (only one pointer value), such that
+// it can easily be used to traverse larger VPack values.
+
+// A Slice does not own the VPack data it points to!
 class Slice {
-  // This class provides read only access to a VPack value, it is
-  // intentionally light-weight (only one pointer value), such that
-  // it can easily be used to traverse larger VPack values.
-
-  // A Slice does not own the VPack data it points to!
-
   friend class Builder;
   friend class ArrayIterator;
   friend class ObjectIterator;
@@ -1104,6 +1103,9 @@ class Slice {
     return value;
   }
 };
+
+static_assert(!std::is_polymorphic<Slice>::value, "Slice must not be polymorphic");
+static_assert(!std::has_virtual_destructor<Slice>::value, "Slice must not have virtual dtor");
 
 }  // namespace arangodb::velocypack
 }  // namespace arangodb

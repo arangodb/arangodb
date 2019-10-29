@@ -151,7 +151,7 @@ class GraphOperations {
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief remove an orphan collection from an existing graph
   ////////////////////////////////////////////////////////////////////////////////
-  OperationResult eraseOrphanCollection(bool waitForSync, std::string collectionName,
+  OperationResult eraseOrphanCollection(bool waitForSync, std::string const& collectionName,
                                         bool dropCollection);
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -162,14 +162,14 @@ class GraphOperations {
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief remove an edge definition from an existing graph
   ////////////////////////////////////////////////////////////////////////////////
-  OperationResult eraseEdgeDefinition(bool waitForSync, std::string edgeDefinitionName,
+  OperationResult eraseEdgeDefinition(bool waitForSync, std::string const& edgeDefinitionName,
                                       bool dropCollection);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief create edge definition in an existing graph
   ////////////////////////////////////////////////////////////////////////////////
   OperationResult editEdgeDefinition(VPackSlice edgeDefinitionSlice, bool waitForSync,
-                                     const std::string& edgeDefinitionName);
+                                     std::string const& edgeDefinitionName);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief change the edge definition for a specified graph
@@ -203,8 +203,8 @@ class GraphOperations {
   OperationResult createDocument(transaction::Methods* trx, const std::string& collectionName,
                                  VPackSlice document, bool waitForSync, bool returnNew);
 
-  OperationResult checkEdgeCollectionAvailability(std::string edgeCollectionName);
-  OperationResult checkVertexCollectionAvailability(std::string vertexCollectionName);
+  OperationResult checkEdgeCollectionAvailability(std::string const& edgeCollectionName);
+  OperationResult checkVertexCollectionAvailability(std::string const& vertexCollectionName);
 
   bool hasROPermissionsFor(std::string const& collection) const;
   bool hasRWPermissionsFor(std::string const& collection) const;
