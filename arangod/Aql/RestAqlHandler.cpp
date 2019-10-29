@@ -392,6 +392,12 @@ bool RestAqlHandler::registerTraverserEngines(VPackSlice const traverserEngines,
   return true;
 }
 
+// DELETE method for /_api/aql/kill/<queryId>, (internal)
+bool RestAqlHandler::killQuery(std::string const& idString) {
+  _qId = arangodb::basics::StringUtils::uint64(idString);
+  return _queryRegistry->kill(&_vocbase, _qId);
+}
+
 // PUT method for /_api/aql/<operation>/<queryId>, (internal)
 // this is using the part of the cursor API with side effects.
 // <operation>: can be "lock" or "getSome" or "skip" or "initializeCursor" or
@@ -414,7 +420,7 @@ bool RestAqlHandler::registerTraverserEngines(VPackSlice const traverserEngines,
 //   "number": must be a positive integer, the cursor skips as many items,
 //             possibly exhausting the cursor.
 //             The result is a JSON with the attributes "error" (boolean),
-//             "errorMessage" (if applicable) and "exhausted" (boolean)
+//             "errorMessage" (if applicable) and "done" (boolean)
 //             to indicate whether or not the cursor is exhausted.
 //             If "number" is not given it defaults to 1.
 // For the "initializeCursor" operation, one has to bind the following
@@ -509,31 +515,28 @@ RestStatus RestAqlHandler::execute() {
       }
       break;
     }
-    case rest::RequestType::GET: {
-      // in 3.3, the only GET API was /_api/aql/hasMore. Now, there is none
-      // in 3.4. we need to keep the old route for compatibility with 3.3
-      // however.
-      if (suffixes.size() != 2 || suffixes[0] != "hasMore") {
-        std::string msg("Unknown GET API: ");
+    case rest::RequestType::DELETE_REQ: {
+      if (suffixes.size() != 2) {
+        std::string msg("Unknown DELETE API: ");
         msg += arangodb::basics::StringUtils::join(suffixes, '/');
-        LOG_TOPIC("68e57", ERR, arangodb::Logger::AQL) << msg;
+        LOG_TOPIC("f1993", ERR, arangodb::Logger::AQL) << msg;
         generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
                       std::move(msg));
       } else {
-        // for /_api/aql/hasMore, now always return with a hard-coded response
-        // that contains  "hasMore" : true. This seems good enough to ensure
-        // compatibility with 3.3.
-        VPackBuilder answerBody;
-        {
-          VPackObjectBuilder guard(&answerBody);
-          answerBody.add("hasMore", VPackValue(true));
-          answerBody.add("error", VPackValue(false));
+        if (killQuery(suffixes[1])) {
+          VPackBuilder answerBody;
+          {
+            VPackObjectBuilder guard(&answerBody);
+            answerBody.add("error", VPackValue(false));
+          }
+          sendResponse(rest::ResponseCode::OK, answerBody.slice());
+        } else {
+          generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_QUERY_NOT_FOUND);
         }
-        sendResponse(rest::ResponseCode::OK, answerBody.slice());
       }
       break;
     }
-    case rest::RequestType::DELETE_REQ:
+    case rest::RequestType::GET: 
     case rest::RequestType::HEAD:
     case rest::RequestType::PATCH:
     case rest::RequestType::OPTIONS:
@@ -672,7 +675,6 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation, Query* q
         answerBuilder.add("done", VPackValue(state == ExecutionState::DONE));
         if (items.get() == nullptr) {
           // Backwards Compatibility
-          answerBuilder.add("exhausted", VPackValue(true));
           answerBuilder.add(StaticStrings::Error, VPackValue(false));
         } else {
           items->toVelocyPack(query->trx(), answerBuilder);
@@ -712,7 +714,7 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation, Query* q
       } else if (operation == "initializeCursor") {
         auto pos = VelocyPackHelper::getNumericValue<size_t>(querySlice, "pos", 0);
         Result res;
-        if (VelocyPackHelper::getBooleanValue(querySlice, "exhausted", true)) {
+        if (VelocyPackHelper::getBooleanValue(querySlice, "done", true)) {
           auto tmpRes = query->engine()->initializeCursor(nullptr, 0);
           if (tmpRes.first == ExecutionState::WAITING) {
             return RestStatus::WAITING;

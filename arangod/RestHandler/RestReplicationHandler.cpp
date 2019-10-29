@@ -730,8 +730,7 @@ void RestReplicationHandler::handleCommandClusterInventory() {
   LogicalView::enumerate(_vocbase, [&resultBuilder](LogicalView::ptr const& view) -> bool {
     if (view) {
       resultBuilder.openObject();
-      view->properties(resultBuilder, LogicalDataSource::makeFlags(
-                                          LogicalDataSource::Serialize::Detailed));
+      view->properties(resultBuilder, LogicalDataSource::Serialization::Inventory);
       // details, !forPersistence because on restore any datasource ids will
       // differ, so need an end-user representation
       resultBuilder.close();
@@ -1090,23 +1089,43 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
   std::string newId = StringUtils::itoa(newIdTick);
   toMerge.add("id", VPackValue(newId));
 
-  // Number of shards. Will be overwritten if not existent
-  VPackSlice const numberOfShardsSlice = parameters.get(StaticStrings::NumberOfShards);
-  if (!numberOfShardsSlice.isInteger()) {
-    // The information does not contain numberOfShards. Overwrite it.
-    VPackSlice const shards = parameters.get("shards");
-    if (shards.isObject()) {
-      numberOfShards = static_cast<uint64_t>(shards.length());
-    } else {
-      // "shards" not specified
-      // now check if numberOfShards property was given
-      if (numberOfShards == 0) {
-        // We take one shard if no value was given
-        numberOfShards = 1;
-      }
+  if (_vocbase.server().getFeature<ClusterFeature>().forceOneShard()) {
+    // force one shard, and force distributeShardsLike to be "_graphs"
+    toMerge.add(StaticStrings::NumberOfShards, VPackValue(1));
+    if (!_vocbase.IsSystemName(name)) {
+      // system-collections will be sharded normally. only user collections will get
+      // the forced sharding
+      toMerge.add(StaticStrings::DistributeShardsLike, VPackValue(_vocbase.shardingPrototypeName()));
     }
-    TRI_ASSERT(numberOfShards > 0);
-    toMerge.add(StaticStrings::NumberOfShards, VPackValue(numberOfShards));
+  } else {
+    // Number of shards. Will be overwritten if not existent
+    VPackSlice const numberOfShardsSlice = parameters.get(StaticStrings::NumberOfShards);
+    if (!numberOfShardsSlice.isInteger()) {
+      // The information does not contain numberOfShards. Overwrite it.
+      VPackSlice const shards = parameters.get("shards");
+      if (shards.isObject()) {
+        numberOfShards = static_cast<uint64_t>(shards.length());
+      } else {
+        // "shards" not specified
+        // now check if numberOfShards property was given
+        if (numberOfShards == 0) {
+          // We take one shard if no value was given
+          numberOfShards = 1;
+        }
+      }
+      TRI_ASSERT(numberOfShards > 0);
+      toMerge.add(StaticStrings::NumberOfShards, VPackValue(numberOfShards));
+    } else {
+      numberOfShards = numberOfShardsSlice.getUInt();
+    }
+    
+    if (_vocbase.sharding() == "single" && 
+        parameters.get(StaticStrings::DistributeShardsLike).isNone() &&
+        !_vocbase.IsSystemName(name) &&
+        numberOfShards <= 1) {
+      // shard like _graphs
+      toMerge.add(StaticStrings::DistributeShardsLike, VPackValue(_vocbase.shardingPrototypeName()));
+    }
   }
 
   // Replication Factor. Will be overwritten if not existent

@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual */
+/*global assertEqual, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the statement class
@@ -35,10 +35,7 @@ var ArangoStatement = require("@arangodb/arango-statement").ArangoStatement;
 var db = arangodb.db;
 var ERRORS = arangodb.errors;
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
+const options = { optimizer: { rules: ["-cluster-one-shard"] } };
 
 function ExplainSuite () {
   'use strict';
@@ -46,20 +43,12 @@ function ExplainSuite () {
 
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
-
-    setUp : function () {
+    setUpAll : function () {
       db._drop(cn);
       db._create(cn);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
-
-    tearDown : function () {
+    tearDownAll : function () {
       db._drop(cn);
     },
 
@@ -71,8 +60,8 @@ function ExplainSuite () {
       var st = new ArangoStatement(db, { query : "for u in" });
       try {
         st.explain();
-      }
-      catch (e) {
+        fail();
+      } catch (e) {
         assertEqual(ERRORS.ERROR_QUERY_PARSE.code, e.errorNum);
       }
     },
@@ -82,11 +71,11 @@ function ExplainSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testExplainNoBindError : function () {
-      var st = new ArangoStatement(db, { query : "for i in [ 1 ] return @f" });
+      var st = new ArangoStatement(db, { query : "for i in [ 1 ] return @f", options });
       try {
         st.explain();
-      }
-      catch (e) {
+        fail();
+      } catch (e) {
         assertEqual(ERRORS.ERROR_QUERY_BIND_PARAMETER_MISSING.code, e.errorNum);
       }
     },
@@ -96,7 +85,7 @@ function ExplainSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testExplainWithBind : function () {
-      var st = new ArangoStatement(db, { query : "for i in [ 1 ] return @f", bindVars: { f : 99 } });
+      var st = new ArangoStatement(db, { query : "for i in [ 1 ] return @f", bindVars: { f : 99 }, options });
       var nodes = st.explain().plan.nodes, node;
 
       node = nodes[0];
@@ -146,7 +135,7 @@ function ExplainSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testExplainOk1 : function () {
-      var st = new ArangoStatement(db, { query : "for u in [ 1, 2, 3 ] return u" });
+      var st = new ArangoStatement(db, { query : "for u in [ 1, 2, 3 ] return u", options });
       var nodes = st.explain().plan.nodes, node;
 
       node = nodes[0];
@@ -168,7 +157,7 @@ function ExplainSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testExplainOk2 : function () {
-      var st = new ArangoStatement(db, { query : "for u in [ 1, 2, 3 ] filter u != 1 for f in u return f" });
+      var st = new ArangoStatement(db, { query : "for u in [ 1, 2, 3 ] filter u != 1 for f in u return f", options });
       var nodes = st.explain().plan.nodes, node;
 
       node = nodes[0];
@@ -198,7 +187,7 @@ function ExplainSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testExplainRemove1 : function () {
-      var st = new ArangoStatement(db, { query : "for u in " + cn + " remove u in " + cn });
+      var st = new ArangoStatement(db, { query : "for u in " + cn + " remove u in " + cn, options });
       var nodes = st.explain().plan.nodes, node;
 
       node = nodes[0];
@@ -223,7 +212,7 @@ function ExplainSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testExplainRemove2 : function () {
-      var st = new ArangoStatement(db, { query : "for u in @@cn remove u in @@cn", bindVars: { "@cn" : cn } });
+      var st = new ArangoStatement(db, { query : "for u in @@cn remove u in @@cn", bindVars: { "@cn" : cn }, options });
       var nodes = st.explain().plan.nodes, node;
 
       node = nodes[0];
@@ -248,7 +237,7 @@ function ExplainSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testExplainInsert1 : function () {
-      var st = new ArangoStatement(db, { query : "for u in @@cn insert u in @@cn", bindVars: { "@cn": cn } });
+      var st = new ArangoStatement(db, { query : "for u in @@cn insert u in @@cn", bindVars: { "@cn": cn }, options });
       var nodes = st.explain().plan.nodes, node;
 
       node = nodes[0];
@@ -287,7 +276,7 @@ function ExplainSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testExplainInsert2 : function () {
-      var st = new ArangoStatement(db, { query : "for u in " + cn + " insert u in " + cn });
+      var st = new ArangoStatement(db, { query : "for u in " + cn + " insert u in " + cn, options });
       var nodes = st.explain().plan.nodes, node;
 
       node = nodes[0];
@@ -328,7 +317,7 @@ function ExplainSuite () {
     testExplainUpdate1 : function () {
       var st = new ArangoStatement(db, {
         query : "for u in @@cn update u._key with u in @@cn",
-        bindVars: { "@cn": cn }
+        bindVars: { "@cn": cn }, options
       });
       var nodes = st.explain().plan.nodes, node;
 
@@ -371,7 +360,7 @@ function ExplainSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testExplainUpdate2 : function () {
-      var st = new ArangoStatement(db, { query : "for u in " + cn + " update u._key with u in " + cn });
+      var st = new ArangoStatement(db, { query : "for u in " + cn + " update u._key with u in " + cn, options });
       var nodes = st.explain().plan.nodes, node;
 
       node = nodes[0];
@@ -413,7 +402,7 @@ function ExplainSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testExplainUpdate3 : function () {
-      var st = new ArangoStatement(db, { query : "for u in @@cn update u in @@cn", bindVars: { "@cn": cn } });
+      var st = new ArangoStatement(db, { query : "for u in @@cn update u in @@cn", bindVars: { "@cn": cn }, options });
       var nodes = st.explain().plan.nodes, node;
 
       node = nodes[0];
@@ -452,7 +441,7 @@ function ExplainSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testExplainUpdate4 : function () {
-      var st = new ArangoStatement(db, { query : "for u in " + cn + " update u in " + cn });
+      var st = new ArangoStatement(db, { query : "for u in " + cn + " update u in " + cn, options });
       var nodes = st.explain().plan.nodes, node;
 
       node = nodes[0];
@@ -494,7 +483,7 @@ function ExplainSuite () {
     testExplainReplace1 : function () {
       var st = new ArangoStatement(db, {
         query : "for u in @@cn replace u._key with u in @@cn",
-        bindVars: { "@cn": cn }
+        bindVars: { "@cn": cn }, options
       });
       var nodes = st.explain().plan.nodes, node;
 
@@ -537,7 +526,7 @@ function ExplainSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testExplainReplace2 : function () {
-      var st = new ArangoStatement(db, { query : "for u in " + cn + " replace u._key with u in " + cn });
+      var st = new ArangoStatement(db, { query : "for u in " + cn + " replace u._key with u in " + cn, options });
       var nodes = st.explain().plan.nodes, node;
 
       node = nodes[0];
@@ -580,7 +569,7 @@ function ExplainSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testExplainReplace3 : function () {
-      var st = new ArangoStatement(db, { query : "for u in @@cn replace u in @@cn", bindVars: { "@cn": cn } });
+      var st = new ArangoStatement(db, { query : "for u in @@cn replace u in @@cn", bindVars: { "@cn": cn }, options });
       var nodes = st.explain().plan.nodes, node;
 
       node = nodes[0];
@@ -619,7 +608,7 @@ function ExplainSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testExplainReplace4 : function () {
-      var st = new ArangoStatement(db, { query : "for u in " + cn + " replace u in " + cn });
+      var st = new ArangoStatement(db, { query : "for u in " + cn + " replace u in " + cn, options });
       var nodes = st.explain().plan.nodes, node;
 
       node = nodes[0];
@@ -656,11 +645,5 @@ function ExplainSuite () {
   };
 }
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
-
 jsunity.run(ExplainSuite);
 return jsunity.done();
-

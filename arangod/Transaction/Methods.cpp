@@ -2609,7 +2609,7 @@ futures::Future<OperationResult> transaction::Methods::countCoordinatorHelper(
   // return number from cache
   VPackBuilder resultBuilder;
   resultBuilder.add(VPackValue(documents));
-  return OperationResult(Result(), resultBuilder.buffer());
+  return OperationResult(Result(), resultBuilder.steal());
 }
 
 /// @brief count the number of documents in a collection
