@@ -42,9 +42,16 @@ bool agencyAsyncShouldCancel(RequestMeta &meta) {
   return false;
 }
 
-bool agencyAsyncShouldTimeout(RequestMeta &meta) {
+bool agencyAsyncShouldTimeout(RequestMeta const& meta) {
   auto now = clock::now();
   return (now > meta.startTime + meta.timeout);
+}
+
+auto agencyAsyncWaitTime(RequestMeta const& meta) {
+  if (meta.tries > 0) {
+    return 250ms;
+  }
+  return 0ms;
 }
 
 std::string extractEndpointFromUrl(std::string const& location) {
@@ -96,7 +103,8 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncInquiry(
   }
 
   // after a possible small delay (if required) TODO
-  return SchedulerFeature::SCHEDULER->delay(0s).thenValue(
+  auto waitTime = agencyAsyncWaitTime(meta);
+  return SchedulerFeature::SCHEDULER->delay(waitTime).thenValue(
     [meta = std::move(meta), man, body = std::move(body)](auto){
 
 
@@ -171,7 +179,8 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncSend(
   }
 
   // after a possible small delay (if required)
-  return SchedulerFeature::SCHEDULER->delay(0s).thenValue(
+  auto waitTime = agencyAsyncWaitTime(meta);
+  return SchedulerFeature::SCHEDULER->delay(waitTime).thenValue(
     [meta = std::move(meta), man, body = std::move(body)](auto) {
 
     // aquire the current endpoint
