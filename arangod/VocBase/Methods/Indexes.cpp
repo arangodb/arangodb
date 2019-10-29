@@ -116,9 +116,9 @@ arangodb::Result Indexes::getAll(LogicalCollection const* collection,
     std::unordered_map<std::string, double> estimates;
 
     auto& feature = collection->vocbase().server().getFeature<ClusterFeature>();
-    int rv = selectivityEstimatesOnCoordinator(feature, databaseName, cid, estimates);
-    if (rv != TRI_ERROR_NO_ERROR) {
-      return Result(rv, "could not retrieve estimates");
+    Result rv = selectivityEstimatesOnCoordinator(feature, databaseName, cid, estimates);
+    if (rv.fail()) {
+      return Result(rv.errorNumber(), "could not retrieve estimates" + rv.errorMessage());
     }
 
     // we will merge in the index estimates later
