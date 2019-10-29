@@ -584,9 +584,7 @@ class HashIndexMap {
       return std::unordered_map<arangodb::LocalDocumentId, VPackBuilder>();
     }
     for (auto const& map : _valueMaps) {
-      ValueMap::const_iterator begin;
-      ValueMap::const_iterator end;
-      std::tie(begin, end) = map.equal_range(VPackBuilder(sliceIt.value()));
+      auto [begin, end] = map.equal_range(VPackBuilder(sliceIt.value()));
       if (begin == end) {
         return std::unordered_map<arangodb::LocalDocumentId, VPackBuilder>();
       }
@@ -1115,7 +1113,8 @@ arangodb::Result PhysicalCollectionMock::insert(
       continue;
     } else if (index->type() == arangodb::Index::TRI_IDX_TYPE_HASH_INDEX) {
       auto* l = static_cast<HashIndexMock*>(index.get());
-      if (!l->insert(*trx, docId, arangodb::velocypack::Slice(result.vpack()),
+      if (!l->insert(*trx, ref->second.docId(),
+                     arangodb::velocypack::Slice(result.vpack()),
                      arangodb::Index::OperationMode::normal)
                .ok()) {
         return arangodb::Result(TRI_ERROR_BAD_PARAMETER);
