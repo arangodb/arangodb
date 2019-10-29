@@ -38,7 +38,7 @@ class GeneralConnection : public fuerte::Connection {
  public:
   explicit GeneralConnection(EventLoopService& loop,
                              detail::ConnectionConfiguration const&);
-  virtual ~GeneralConnection() {}
+  virtual ~GeneralConnection() = default;
 
   /// @brief connection state
   Connection::State state() const override final {

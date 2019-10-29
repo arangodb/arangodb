@@ -91,7 +91,10 @@ void GeneralConnection<ST>::shutdownConnection(const Error err,
 
   abortOngoingRequests(err);
   
-  onFailure(err, msg);
+  // cancel was triggered externally, no need to notify
+  if (err != Error::Canceled) {
+    onFailure(err, msg);
+  }
 
   // clear buffer of received messages
   _receiveBuffer.consume(_receiveBuffer.size());
@@ -111,7 +114,7 @@ void GeneralConnection<ST>::tryConnect(unsigned retries) {
     FUERTE_LOG_ERROR << "error on timeout cancel: " << ec.message();
   }
 
-  auto self = shared_from_this();
+  auto self = Connection::shared_from_this();
   if (_config._connectTimeout.count() > 0) {
     _timeout.expires_after(_config._connectTimeout);
     _timeout.async_wait([self, this](asio_ns::error_code const& ec) {

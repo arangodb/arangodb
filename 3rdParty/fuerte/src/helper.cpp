@@ -67,11 +67,6 @@ std::string to_string(Message& message) {
   ss << "Header:\n";
   if (message.type() == MessageType::Request) {
     Request const& req = static_cast<Request const&>(message);
-#ifdef FUERTE_DEBUG
-    if (req.header.byteSize) {
-      ss << "byteSize: " << req.header.byteSize << std::endl;
-    }
-#endif
     
     if (req.header.version()) {
       ss << "version: " << req.header.version() << std::endl;
@@ -110,11 +105,6 @@ std::string to_string(Message& message) {
     }
   } else if (message.type() == MessageType::Response) {
     Response const& res = static_cast<Response const&>(message);
-#ifdef FUERTE_DEBUG
-    if (res.header.byteSize) {
-      ss << "byteSize: " << res.header.byteSize << std::endl;
-    }
-#endif
     
     if (res.header.version()) {
       ss << "version: " << res.header.version() << std::endl;

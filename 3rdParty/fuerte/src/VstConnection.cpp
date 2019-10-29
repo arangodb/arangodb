@@ -47,10 +47,10 @@ VstConnection<ST>::VstConnection(
       _writing(false) {}
 
 template <SocketType ST>
-VstConnection<ST>::~VstConnection() {
+VstConnection<ST>::~VstConnection() try {
   this->shutdownConnection(Error::Canceled);
   drainQueue(Error::Canceled);
-}
+} catch(...) {}
 
 static std::atomic<MessageID> vstMessageId(1);
 // sendRequest prepares a RequestItem for the given parameters
@@ -307,8 +307,10 @@ void VstConnection<ST>::asyncWriteCallback(asio_ns::error_code const& ec,
     _messageStore.removeByID(item->_messageID);
     
     auto err = translateError(ec, Error::WriteError);
-    // let user know that this request caused the error
-    item->_callback(err, std::move(item->_request), nullptr);
+    try {
+      // let user know that this request caused the error
+      item->_callback(err, std::move(item->_request), nullptr);
+    } catch(...) {}
     // Stop current connection and try to restart a new one.
     this->restartConnection(err);
     return;
@@ -398,7 +400,7 @@ void VstConnection<ST>::asyncReadCallback(asio_ns::error_code const& ec) {
     return;  // write-loop restarts read-loop if necessary
   }
 
-  assert((_loopState.load(std::memory_order_acquire) & READ_LOOP_ACTIVE));
+  assert(_reading.load());
   this->asyncReadSome();  // Continue read loop
 }
 
@@ -430,13 +432,9 @@ void VstConnection<ST>::processChunk(Chunk const& chunk) {
 
     try {
       // Create response
-      auto response = createResponse(*item, completeBuffer);
-      if (response == nullptr) {
-        item->_callback(Error::ProtocolError, std::move(item->_request), nullptr);
-      } else {
-        item->_callback(Error::NoError, std::move(item->_request),
-                        std::move(response));
-      }
+      auto resp = createResponse(*item, completeBuffer);
+      auto err = resp != nullptr ? Error::NoError : Error::ProtocolError;
+      item->_callback(err, std::move(item->_request), std::move(resp));
     } catch(...) {
       FUERTE_LOG_ERROR << "unhandled exception in fuerte callback\n";
     }

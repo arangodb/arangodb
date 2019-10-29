@@ -491,9 +491,6 @@ RequestHeader requestHeaderFromSlice(VPackSlice const& headerSlice) {
 ResponseHeader responseHeaderFromSlice(VPackSlice const& headerSlice) {
   assert(headerSlice.isArray());
   ResponseHeader header;
-#ifdef FUERTE_DEBUG
-  header.byteSize = headerSlice.byteSize();  // for debugging
-#endif
 
   header.setVersion(headerSlice.at(0).getNumber<short>());  // version
   assert(headerSlice.at(1).getNumber<int>() ==

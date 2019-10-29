@@ -172,10 +172,10 @@ HttpConnection<ST>::HttpConnection(EventLoopService& loop,
 }
 
 template <SocketType ST>
-HttpConnection<ST>::~HttpConnection() {
+HttpConnection<ST>::~HttpConnection() try {
   this->shutdownConnection(Error::Canceled);
   drainQueue(Error::Canceled);
-}
+} catch(...) {}
 
 // Start an asynchronous request.
 template <SocketType ST>
