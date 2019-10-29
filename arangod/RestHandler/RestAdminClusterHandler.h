@@ -25,6 +25,7 @@
 
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
+
 namespace arangodb {
 
 class RestAdminClusterHandler : public RestVocbaseBaseHandler {
@@ -52,6 +53,7 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
   static std::string const MoveShard;
   static std::string const QueryJobStatus;
   static std::string const RemoveServer;
+  static std::string const RebalanceShards;
 
   RestStatus handleHealth();
   RestStatus handleNumberOfServers();
@@ -77,6 +79,7 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
   RestStatus handleQueryJobStatus();
 
   RestStatus handleRemoveServer();
+  RestStatus handleRebalanceShards();
 
 private:
 
@@ -119,8 +122,22 @@ private:
 
   RestStatus handlePostRemoveServer(std::string const& server);
 
+  futureVoid handlePostRebalanceShards();
+
   std::string resolveServerNameID(std::string const&);
   std::string resolveServerNameID(VPackSlice);
+
+
+public:
+
+  struct CollectionShardPair {
+    std::string collection;
+    std::string shard;
+    bool isLeader;
+
+    bool operator==(CollectionShardPair const& other) const { return collection == other.collection && shard == other.shard && isLeader == other.isLeader; };
+  };
+  void getShardDistribution(std::map<std::string, std::unordered_set<CollectionShardPair>> &distr);
 
 };
 }  // namespace arangodb

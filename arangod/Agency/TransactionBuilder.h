@@ -117,6 +117,7 @@ struct write_trx {
     // TODO generate inquiry ID here
     T done() && { _buffer.closeObject(); _buffer.closeArray(); return std::move(_buffer); }
     precs_trx<B, T> precs() && { _buffer.closeObject(); _buffer.openObject(); return std::move(_buffer); }
+    write_trx& operator=(write_trx&&) = default;
 private:
     friend T;
 
@@ -132,7 +133,7 @@ struct envelope {
 
     read_trx<B, envelope> read() && { _buffer.openArray(); return std::move(_buffer); };
     write_trx<B, envelope> write() && { _buffer.openArray(); _buffer.openObject(); return std::move(_buffer); };
-    B done() && { _buffer.closeArray(); return std::move(_buffer).stealBuffer(); };
+    void done() && { _buffer.closeArray(); /* return std::move(_buffer).stealBuffer();*/ };
 
     /*template<typename... Ts>
     static envelope create(Ts... t) {
@@ -173,26 +174,25 @@ struct value_adder<VPackSlice> {
 template<>
 struct buffer_mapper<VPackBuilder> {
 
-    buffer_mapper(VPackBuilder& builder) : _builder(builder) {};
+    buffer_mapper(VPackBuilder& builder) : _builder(&builder) {};
 
     template<typename K, typename V>
     void setKey(K k, V v) {
-        detail::value_adder<K>::add(&_builder, std::forward<K>(k));
-        detail::value_adder<V>::add(&_builder, std::forward<V>(v));
+        detail::value_adder<K>::add(_builder, std::forward<K>(k));
+        detail::value_adder<V>::add(_builder, std::forward<V>(v));
     }
 
     template<typename K>
-    void setValue(K k) { detail::value_adder<K>::add(&_builder, std::forward<K>(k)); }
+    void setValue(K k) { detail::value_adder<K>::add(_builder, std::forward<K>(k)); }
 
-    void openArray() { _builder.openArray(); }
-    void closeArray() { _builder.close(); }
-    void openObject() { _builder.openObject(); }
-    void closeObject() { _builder.close(); }
+    void openArray() { _builder->openArray(); }
+    void closeArray() { _builder->close(); }
+    void openObject() { _builder->openObject(); }
+    void closeObject() { _builder->close(); }
 
-    VPackBuilder& userObject() { return _builder; };
-    VPackBuilder stealBuffer() && { return _builder; };
+    VPackBuilder& userObject() { return *_builder; };
 
-    VPackBuilder &_builder;
+    VPackBuilder *_builder;
 };
 
 

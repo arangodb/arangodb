@@ -256,6 +256,7 @@ std::string const RestAdminClusterHandler::ResignLeadership = "resignLeadership"
 std::string const RestAdminClusterHandler::MoveShard = "moveShard";
 std::string const RestAdminClusterHandler::QueryJobStatus = "queryAgencyJob";
 std::string const RestAdminClusterHandler::RemoveServer = "removeServer";
+std::string const RestAdminClusterHandler::RebalanceShards = "rebalanceShards";
 
 RestStatus RestAdminClusterHandler::execute() {
 
@@ -298,6 +299,8 @@ RestStatus RestAdminClusterHandler::execute() {
       return handleQueryJobStatus();
     } else if (command == RemoveServer) {
       return handleRemoveServer();
+    } else if (command == RebalanceShards) {
+      return handleRebalanceShards();
     } else {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     std::string("invalid command '") + command + "'");
@@ -589,7 +592,6 @@ RestAdminClusterHandler::futureVoid RestAdminClusterHandler::createMoveShard(std
           builder.add("shard", VPackValue(ctx->shard));
           builder.add("fromServer", VPackValue(ctx->fromServer));
           builder.add("toServer", VPackValue(ctx->toServer));
-          builder.add("toServer", VPackValue(ctx->toServer));
           builder.add("isLeader", VPackValue(isLeader));
           builder.add("remainsFollower", VPackValue(isLeader));
           builder.add("creator", VPackValue(ServerState::instance()->getId()));
@@ -625,8 +627,6 @@ RestAdminClusterHandler::futureVoid RestAdminClusterHandler::createMoveShard(std
 
 RestStatus RestAdminClusterHandler::handlePostMoveShard(std::unique_ptr<MoveShardContext>&& ctx) {
 
-
-  LOG_DEVEL << "looking for collection " << ctx->collection;
   std::shared_ptr<LogicalCollection> collection = server().getFeature<ClusterFeature>()
     .clusterInfo().getCollectionNT(ctx->database, ctx->collection);
 
@@ -828,9 +828,6 @@ RestStatus RestAdminClusterHandler::handleCreateSingleServerJob(std::string cons
     }).thenError<std::exception>([this, self](std::exception const& e) {
       generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR, e.what());
     }));
-
-  generateError(rest::ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_NOT_IMPLEMENTED);
-  return RestStatus::DONE;
 }
 
 RestStatus RestAdminClusterHandler::handleProxyGetRequest(std::string const& url, std::string const& serverFromParameter) {
@@ -1372,4 +1369,183 @@ std::string RestAdminClusterHandler::resolveServerNameID(VPackSlice slice) {
   }
 
   return slice.copyString();
+}
+
+namespace std {
+template<>
+struct hash<RestAdminClusterHandler::CollectionShardPair> {
+  std::size_t operator()(RestAdminClusterHandler::CollectionShardPair const& a) const {
+    return std::hash<std::string>()(a.collection) + 33 * std::hash<std::string>()(a.shard);
+  }
+};
+}
+
+void RestAdminClusterHandler::getShardDistribution(std::map<std::string, std::unordered_set<CollectionShardPair>> &distr) {
+  auto &ci = server().getFeature<ClusterFeature>().clusterInfo();
+
+  for (auto const& server : ci.getCurrentDBServers()) {
+    distr[server].clear();
+  }
+
+  for (auto const& collection : ci.getCollections(_vocbase.name())) {
+    if (!collection->distributeShardsLike().empty()) {
+      continue;
+    }
+    std::string collectionID = TRI_RidToString(collection->planId());
+    auto shardIds = collection->shardIds();
+    for (auto const& shard : *shardIds) {
+      for (size_t i = 0; i < shard.second.size(); i++) {
+        std::string const& server = shard.second.at(i);
+        distr[server].emplace(CollectionShardPair{collectionID, shard.first, i == 0});
+      }
+    }
+  }
+}
+
+
+
+RestAdminClusterHandler::futureVoid RestAdminClusterHandler::handlePostRebalanceShards() {
+
+  struct MoveShardDescription {
+    std::string collection;
+    std::string shard;
+    std::string from;
+    std::string to;
+    bool isLeader;
+  };
+
+  std::vector<MoveShardDescription> moves;
+  std::unordered_set<std::string> movedShards;
+
+  // dbserver -> shards
+  std::map<std::string, std::unordered_set<CollectionShardPair>> shardMap;
+  getShardDistribution(shardMap);
+
+  while (moves.size() < 10) {
+    auto [emptiest, fullest] = std::minmax_element(shardMap.begin(), shardMap.end(), [](auto const& a, auto const& b) {
+      return a.second.size() < b.second.size();
+    });
+
+    if (emptiest->second.size() + 1 >= fullest->second.size()) {
+      break;
+    }
+
+    auto pair = fullest->second.begin();
+    for(; pair != fullest->second.end(); pair++) {
+      if (movedShards.count(pair->shard) != 0) {
+        continue;
+      }
+
+      auto i = std::find_if(emptiest->second.begin(), emptiest->second.end(), [&](CollectionShardPair const& p) {
+        return p.shard == pair->shard;
+      });
+      if (i == emptiest->second.end()) {
+        break;
+      }
+    }
+
+    if (pair == fullest->second.end()) {
+      break;
+    }
+
+    // move the shard
+    moves.push_back(MoveShardDescription{pair->collection, pair->shard, fullest->first, emptiest->first, pair->isLeader});
+    movedShards.insert(pair->shard);
+    emptiest->second.emplace(std::move(*pair));
+    fullest->second.erase(pair);
+  }
+
+  if (moves.size() == 0) {
+    resetResponse(rest::ResponseCode::OK);
+    return futures::makeFuture();
+  }
+
+  VPackBuffer<uint8_t> trx;
+  {
+    VPackBuilder builder(trx);
+    auto write = arangodb::agency::envelope<VPackBuilder>::create(builder).write();
+
+    auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+    std::string timestamp = timepointToString(std::chrono::system_clock::now());
+    for (auto const& move : moves) {
+      std::string jobId = std::to_string(ci.uniqid());
+      auto jobToDoPath = arangodb::cluster::paths::root()->arango()->target()->toDo()->job(jobId);
+      write = std::move(write).emplace(jobToDoPath->str(), [&](VPackBuilder &builder) {
+        builder.add("type", VPackValue("moveShard"));
+        builder.add("database", VPackValue(_vocbase.name()));
+        builder.add("collection",VPackValue(move.collection));
+        builder.add("jobId", VPackValue(jobId));
+        builder.add("shard", VPackValue(move.shard));
+        builder.add("fromServer", VPackValue(move.from));
+        builder.add("toServer", VPackValue(move.to));
+        builder.add("isLeader", VPackValue(move.isLeader));
+        builder.add("remainsFollower", VPackValue(move.isLeader));
+        builder.add("creator", VPackValue(ServerState::instance()->getId()));
+        builder.add("timeCreated", VPackValue(timestamp));
+      });
+    }
+    std::move(write).done().done();
+  }
+
+  auto self(shared_from_this());
+  return AsyncAgencyComm().sendWriteTransaction(20s, std::move(trx)).thenValue(
+    [self, this](AsyncAgencyCommResult &&result) {
+      if (result.ok() && result.statusCode() == 200) {
+
+        VPackBuffer<uint8_t> responseBody;
+        {
+          VPackBuilder builder(responseBody);
+          VPackObjectBuilder ob(&builder);
+          builder.add("error", VPackValue(false));
+          builder.add("code", VPackValue(200));
+          /*{
+            VPackArrayBuilder ab(&builder, "moves");
+            for (auto const& move : moves) {
+              VPackObjectBuilder ob(&builder);
+              builder.add("collection", VPackValue(move.collection));
+              builder.add("shard", VPackValue(move.shard));
+              builder.add("from", VPackValue(move.from));
+              builder.add("to", VPackValue(move.to));
+              builder.add("isLeader", VPackValue(move.isLeader));
+            }
+          } */
+        }
+        resetResponse(rest::ResponseCode::ACCEPTED);
+        response()->setPayload(std::move(responseBody), true);
+
+      } else {
+        generateError(result.asResult());
+      }
+    });
+}
+
+
+RestStatus RestAdminClusterHandler::handleRebalanceShards() {
+
+  if (request()->requestType() != rest::RequestType::POST) {
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+    return RestStatus::DONE;
+  }
+
+  if (!ServerState::instance()->isCoordinator()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN, "only allowed on coordinators");
+    return RestStatus::DONE;
+  }
+
+  ExecContext const& exec = ExecContext::current();
+  if (!exec.canUseDatabase(auth::Level::RW)) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN, "insufficent permissions");
+    return RestStatus::DONE;
+  }
+
+  auto self(shared_from_this());
+  return waitForFuture(handlePostRebalanceShards()
+  .thenError<VPackException>([this, self](VPackException const& e) {
+    generateError(Result{e.errorCode(), e.what()});
+  }).thenError<std::exception>([this, self](std::exception const& e) {
+    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR, e.what());
+  }));
+
+
+
 }

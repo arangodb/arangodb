@@ -6,6 +6,8 @@
 #include "Scheduler/SchedulerFeature.h"
 #include "Logger/LogMacros.h"
 
+#include <chrono>
+
 #include <velocypack/Iterator.h>
 #include <velocypack/Buffer.h>
 #include <velocypack/velocypack-aliases.h>
@@ -16,12 +18,15 @@ using namespace arangodb;
 
 using namespace std::chrono_literals;
 
+using clock = std::chrono::steady_clock;
+
 struct RequestMeta {
   network::Timeout timeout;
   fuerte::RestVerb method;
   std::string url;
   std::vector<std::string> clientIds;
   network::Headers headers;
+  clock::time_point startTime;
   unsigned tries;
 };
 
@@ -38,7 +43,8 @@ bool agencyAsyncShouldCancel(RequestMeta &meta) {
 }
 
 bool agencyAsyncShouldTimeout(RequestMeta &meta) {
-  return false;
+  auto now = clock::now();
+  return (now > meta.startTime + meta.timeout);
 }
 
 std::string extractEndpointFromUrl(std::string const& location) {
@@ -251,7 +257,7 @@ AsyncAgencyComm::FutureResult AsyncAgencyComm::sendWithFailover(
 
   network::Headers headers;
   return agencyAsyncSend(_manager, RequestMeta({timeout, method,
-    url, std::move(clientIds), std::move(headers), 0}), std::move(body));
+    url, std::move(clientIds), std::move(headers), clock::now(), 0}), std::move(body));
 }
 
 
