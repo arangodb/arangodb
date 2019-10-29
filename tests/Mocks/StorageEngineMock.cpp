@@ -489,6 +489,11 @@ class HashIndexMap {
         TRI_ASSERT(slice.isObject() || slice.isArray());
         if (slice.isObject()) {
           slice = slice.get(fieldIt->name);
+          if ((fieldIt->shouldExpand && slice.isObject()) ||
+              (!fieldIt->shouldExpand && slice.isArray())) {
+            slice = VPackSlice::nullSlice();
+            break;
+          }
           if (slice.isNone() || slice.isNull()) {
             break;
           }
@@ -556,9 +561,7 @@ class HashIndexMap {
     auto documentRemoved = false;
     for (auto map : _valueMaps) {
       auto slice = getSliceByField(doc, i++);
-      ValueMap::iterator begin;
-      ValueMap::iterator end;
-      std::tie(begin, end) = map.equal_range(VPackBuilder(slice));
+      auto [begin, end] = map.equal_range(VPackBuilder(slice));
       for (; begin != end; ++begin) {
         if (begin->second == documentId) {
           map.erase(begin);

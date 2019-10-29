@@ -33,7 +33,7 @@ let db = require("@arangodb").db;
 let isCluster = require("internal").isCluster();
 
 function lateDocumentMaterializationRuleTestSuite () {
-  const ruleName = "late-document-materialization";
+  const ruleName = "late-document-materialization-arangosearch";
   const cn = "UnitTestsCollection";
   const cn1 = "UnitTestsCollection1";
   const vn = "UnitTestsView";
