@@ -176,23 +176,6 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
            _outNonMaterializedColPtr != nullptr;
   }
 
-  // /// @brief return an arbitrary (fixed) underlying collection
-  // aql::Collection const* collection() const;
-
-  /// @brief set the prototype collection for enabling smart joins
-  void setPrototype(arangodb::aql::Collection const* prototypeCollection,
-                    arangodb::aql::Variable const* prototypeOutVariable) {
-    _prototypeCollection = prototypeCollection;
-    _prototypeOutVariable = prototypeOutVariable;
-  }
-
-  aql::Collection const* prototypeCollection() const {
-    return _prototypeCollection;
-  }
-  aql::Variable const* prototypeOutVariable() const {
-    return _prototypeOutVariable;
-  }
-
  private:
   /// @brief the database
   TRI_vocbase_t& _vocbase;
@@ -236,11 +219,6 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
 
   /// @brief IResearchViewNode options
   Options _options;
-
-  /// @brief prototype collection for enabling smart joins
-  aql::Collection const* _prototypeCollection;
-  aql::Variable const* _prototypeOutVariable;
-
 };  // IResearchViewNode
 
 }  // namespace iresearch
