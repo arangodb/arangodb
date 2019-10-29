@@ -176,7 +176,7 @@ IndexExecutorInfos::IndexExecutorInfos(
       _useRawDocumentPointers(useRawDocumentPointers),
       _produceResult(produceResult),
       _hasV8Expression(hasV8Expression) {
-  if (_condition != nullptr) { // TODO: for not materialized!!!
+  if (_condition != nullptr) {
     // fix const attribute accesses, e.g. { "a": 1 }.a
     for (size_t i = 0; i < _condition->numMembers(); ++i) {
       auto andCond = _condition->getMemberUnchecked(i);
