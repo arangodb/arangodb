@@ -77,7 +77,7 @@ void GeneralConnection<ST>::shutdownConnection(const Error err,
     state = Connection::State::Disconnected;
 #ifdef __linux__
     // hack to fix SSL streams on linux
-    if (_config._socketType == SocketType::SSL) {
+    if (_config._socketType == SocketType::Ssl) {
       state = Connection::State::Failed;
     }
 #endif
