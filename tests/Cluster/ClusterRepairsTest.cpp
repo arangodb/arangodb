@@ -235,11 +235,12 @@ class ClusterRepairsTestBrokenDistribution
  protected:
   // save old manager (may be null)
   std::unique_ptr<AgencyCommManager> oldManager;
+  arangodb::application_features::ApplicationServer server;
 
   ClusterRepairsTestBrokenDistribution()
-      : oldManager(std::move(AgencyCommManager::MANAGER)) {
+      : oldManager(std::move(AgencyCommManager::MANAGER)), server{nullptr, nullptr} {
     // get a new manager
-    AgencyCommManager::initialize("testArangoAgencyPrefix");
+    AgencyCommManager::initialize(server, "testArangoAgencyPrefix");
   }
 
   ~ClusterRepairsTestBrokenDistribution() {
@@ -445,6 +446,7 @@ class ClusterRepairsTestOperations
   std::unique_ptr<AgencyCommManager> oldManager;
   std::string const oldServerId;
   RepairOperationToTransactionVisitor conversionVisitor;
+  arangodb::application_features::ApplicationServer server;
 
   static uint64_t mockJobIdGenerator() {
     EXPECT_TRUE(false);
@@ -459,9 +461,10 @@ class ClusterRepairsTestOperations
   ClusterRepairsTestOperations()
       : oldManager(std::move(AgencyCommManager::MANAGER)),
         oldServerId(ServerState::instance()->getId()),
-        conversionVisitor(mockJobIdGenerator, mockJobCreationTimestampGenerator) {
+        conversionVisitor(mockJobIdGenerator, mockJobCreationTimestampGenerator),
+        server{nullptr, nullptr} {
     // get a new manager
-    AgencyCommManager::initialize("testArangoAgencyPrefix");
+    AgencyCommManager::initialize(server, "testArangoAgencyPrefix");
   }
 
   ~ClusterRepairsTestOperations() {

@@ -474,11 +474,11 @@ MockRestServer::MockRestServer(bool start) : MockServer() {
 
 MockClusterServer::MockClusterServer()
     : MockServer(), _agencyStore(_server, nullptr, "arango") {
-  auto* agencyCommManager = new AgencyCommManagerMock("arango");
+  auto* agencyCommManager = new AgencyCommManagerMock(_server, "arango");
   std::ignore =
-      agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(_agencyStore);
-  std::ignore = agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(
-      _agencyStore);  // need 2 connections or Agency callbacks will fail
+      agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(_server, _agencyStore);
+  std::ignore =
+      agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(_server, _agencyStore);  // need 2 connections or Agency callbacks will fail
   arangodb::AgencyCommManager::MANAGER.reset(agencyCommManager);
   _oldRole = arangodb::ServerState::instance()->getRole();
 

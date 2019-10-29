@@ -93,7 +93,7 @@ class LocalTaskQueue {
   LocalTaskQueue(LocalTaskQueue const&) = delete;
   LocalTaskQueue& operator=(LocalTaskQueue const&) = delete;
 
-  explicit LocalTaskQueue(PostFn poster);
+  explicit LocalTaskQueue(application_features::ApplicationServer& server, PostFn poster);
 
   ~LocalTaskQueue();
 
@@ -148,6 +148,11 @@ class LocalTaskQueue {
   int status();
 
  private:
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief underlying application server
+  //////////////////////////////////////////////////////////////////////////////
+  application_features::ApplicationServer& _server;
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief post task to scheduler/io_service
   //////////////////////////////////////////////////////////////////////////////

@@ -715,10 +715,12 @@ class IResearchFeatureTestCoordinator
       : server(false),
         _agencyStore(server.server(), nullptr, "arango"),
         _serverRoleBefore(arangodb::ServerState::instance()->getRole()) {
-    auto* agencyCommManager = new AgencyCommManagerMock("arango");
-    std::ignore =
-        agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(_agencyStore);
+    auto* agencyCommManager =
+        new AgencyCommManagerMock(server.server(), "arango");
     std::ignore = agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(
+        server.server(), _agencyStore);
+    std::ignore = agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(
+        server.server(),
         _agencyStore);  // need 2 connections or Agency callbacks will fail
     arangodb::AgencyCommManager::MANAGER.reset(agencyCommManager);
 
@@ -878,11 +880,12 @@ class IResearchFeatureTestDBServer
       : server(false),
         _agencyStore(server.server(), nullptr, "arango"),
         _serverRoleBefore(arangodb::ServerState::instance()->getRole()) {
-    auto* agencyCommManager = new AgencyCommManagerMock("arango");
-    std::ignore =
-        agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(_agencyStore);
+    auto* agencyCommManager =
+        new AgencyCommManagerMock(server.server(), "arango");
     std::ignore = agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(
-        _agencyStore);  // need 2 connections or Agency callbacks will fail
+        server.server(), _agencyStore);
+    std::ignore = agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(
+        server.server(), _agencyStore);  // need 2 connections or Agency callbacks will fail
     arangodb::AgencyCommManager::MANAGER.reset(agencyCommManager);
 
     arangodb::tests::init();

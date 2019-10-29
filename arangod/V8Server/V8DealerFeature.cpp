@@ -1391,7 +1391,7 @@ V8Context* V8DealerFeature::buildContext(size_t id) {
     {
       v8::Context::Scope contextScope(localContext);
 
-      TRI_CreateV8Globals(isolate, id);
+      TRI_CreateV8Globals(server(), isolate, id);
       context->_context.Reset(context->_isolate, localContext);
 
       if (context->_context.IsEmpty()) {

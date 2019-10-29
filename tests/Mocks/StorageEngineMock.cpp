@@ -526,7 +526,8 @@ std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(
     ioContext.post(fn);
     return true;
   };
-  arangodb::basics::LocalTaskQueue taskQueue(poster);
+  auto& server = _logicalCollection.vocbase().server();
+  arangodb::basics::LocalTaskQueue taskQueue(server, poster);
   std::shared_ptr<arangodb::basics::LocalTaskQueue> taskQueuePtr(
       &taskQueue, [](arangodb::basics::LocalTaskQueue*) -> void {});
 

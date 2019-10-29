@@ -530,8 +530,9 @@ std::unique_ptr<AgencyCommManager> AgencyCommManager::MANAGER;
 
 AgencyConnectionOptions AgencyCommManager::CONNECTION_OPTIONS(15.0, 120.0, 120.0, 100);
 
-void AgencyCommManager::initialize(std::string const& prefix) {
-  MANAGER.reset(new AgencyCommManager(prefix));
+void AgencyCommManager::initialize(application_features::ApplicationServer& server,
+                                   std::string const& prefix) {
+  MANAGER.reset(new AgencyCommManager(server, prefix));
 }
 
 void AgencyCommManager::shutdown() { MANAGER.reset(); }
@@ -817,7 +818,7 @@ std::unique_ptr<GeneralClientConnection> AgencyCommManager::createNewConnection(
   }
 
   return std::unique_ptr<GeneralClientConnection>(
-      GeneralClientConnection::factory(endpoint, CONNECTION_OPTIONS._requestTimeout,
+      GeneralClientConnection::factory(_server, endpoint, CONNECTION_OPTIONS._requestTimeout,
                                        CONNECTION_OPTIONS._connectTimeout,
                                        CONNECTION_OPTIONS._connectRetries, 0));
 }

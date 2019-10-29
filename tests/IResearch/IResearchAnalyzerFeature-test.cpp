@@ -1967,11 +1967,12 @@ TEST_F(IResearchAnalyzerFeatureTest, test_persistence_emplace_on_single_server) 
 
 TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
   arangodb::consensus::Store agencyStore(server.server(), nullptr, "arango");
-  auto* agencyCommManager = new AgencyCommManagerMock("arango");
+  auto* agencyCommManager =
+      new AgencyCommManagerMock(server.server(), "arango");
   std::ignore =
-      agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(agencyStore);
+      agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(server.server(), agencyStore);
   std::ignore = agencyCommManager->addConnection<GeneralClientConnectionAgencyMock>(
-      agencyStore);  // need 2 connections or Agency callbacks will fail
+      server.server(), agencyStore);  // need 2 connections or Agency callbacks will fail
   arangodb::AgencyCommManager::MANAGER.reset(agencyCommManager);
   arangodb::AgencyCommManager::MANAGER->start();  // initialize agency
 

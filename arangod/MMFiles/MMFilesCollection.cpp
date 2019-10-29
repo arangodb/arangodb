@@ -1702,7 +1702,8 @@ int MMFilesCollection::fillIndexes(transaction::Methods& trx,
   auto poster = [](std::function<void()> fn) -> bool {
     return SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW, fn);
   };
-  auto queue = std::make_shared<arangodb::basics::LocalTaskQueue>(poster);
+  auto& server = _logicalCollection.vocbase().server();
+  auto queue = std::make_shared<arangodb::basics::LocalTaskQueue>(server, poster);
 
   try {
     TRI_ASSERT(!ServerState::instance()->isCoordinator());

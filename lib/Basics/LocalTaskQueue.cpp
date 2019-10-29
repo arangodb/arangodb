@@ -92,8 +92,9 @@ void LocalCallbackTask::dispatch() {
 /// @brief create a queue
 ////////////////////////////////////////////////////////////////////////////////
 
-LocalTaskQueue::LocalTaskQueue(PostFn poster)
-    : _poster(poster),
+LocalTaskQueue::LocalTaskQueue(application_features::ApplicationServer& server, PostFn poster)
+    : _server(server),
+      _poster(poster),
       _queue(),
       _callbackQueue(),
       _condition(),
@@ -168,7 +169,6 @@ void LocalTaskQueue::join() {
 //////////////////////////////////////////////////////////////////////////////
 
 void LocalTaskQueue::dispatchAndWait() {
-  auto& server = application_features::ApplicationServer::server();
   // regular task loop
   if (!_queue.empty()) {
     while (true) {
@@ -191,7 +191,7 @@ void LocalTaskQueue::dispatchAndWait() {
         break;
       }
 
-      if (_missing > 0 && _started == 0 && server.isStopping()) {
+      if (_missing > 0 && _started == 0 && _server.isStopping()) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
       }
 
@@ -219,7 +219,7 @@ void LocalTaskQueue::dispatchAndWait() {
         break;
       }
 
-      if (_missing > 0 && _started == 0 && server.isStopping()) {
+      if (_missing > 0 && _started == 0 && _server.isStopping()) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
       }
 
