@@ -76,6 +76,7 @@ void GeneralConnection<ST>::shutdownConnection(const Error err,
   if (state != Connection::State::Failed) {
     state = Connection::State::Disconnected;
 #ifdef __linux__
+    // hack to fix SSL streams on linux
     if (_config._socketType == SocketType::SSL) {
       state = Connection::State::Failed;
     }
@@ -89,11 +90,9 @@ void GeneralConnection<ST>::shutdownConnection(const Error err,
     FUERTE_LOG_ERROR << "error on timeout cancel: " << ec.message();
   }
 
-//  if (_proto) {
-    try {
-      _proto.shutdown();  // Close socket
-    } catch (...) { }
-//  }
+  try {
+    _proto.shutdown();  // Close socket
+  } catch (...) { }
 
   abortOngoingRequests(err);
   
