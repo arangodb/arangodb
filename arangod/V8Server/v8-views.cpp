@@ -392,8 +392,7 @@ static void JS_ViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
     viewBuilder.openObject();
 
-    auto res = view->properties(viewBuilder, LogicalDataSource::makeFlags(
-                                                 LogicalDataSource::Serialize::Detailed));
+    auto const res = view->properties(viewBuilder, LogicalDataSource::Serialization::Properties);
 
     if (!res.ok()) {
       TRI_V8_THROW_EXCEPTION(res);  // skip view
@@ -460,9 +459,7 @@ static void JS_ViewsVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
       viewBuilder.openObject();
 
-      if (!view->properties(viewBuilder, LogicalDataSource::makeFlags(
-                                             LogicalDataSource::Serialize::Detailed))
-               .ok()) {
+      if (!view->properties(viewBuilder, LogicalDataSource::Serialization::Properties).ok()) {
         continue;  // skip view
       }
     } catch (...) {
@@ -569,9 +566,7 @@ static void JS_PropertiesViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& 
 
       builderCurrent.openObject();
 
-      auto resCurrent =
-          viewPtr->properties(builderCurrent, LogicalDataSource::makeFlags(
-                                                  LogicalDataSource::Serialize::Detailed));
+      auto resCurrent = viewPtr->properties(builderCurrent, LogicalDataSource::Serialization::Properties);
 
       if (!resCurrent.ok()) {
         TRI_V8_THROW_EXCEPTION(resCurrent);
@@ -610,8 +605,7 @@ static void JS_PropertiesViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& 
 
   builder.openObject();
 
-  auto res = view->properties(builder, LogicalDataSource::makeFlags(
-                                           LogicalDataSource::Serialize::Detailed));
+  auto const res = view->properties(builder, LogicalDataSource::Serialization::Properties);
 
   builder.close();
 
@@ -669,8 +663,7 @@ static void JS_RenameViewVocbase(v8::FunctionCallbackInfo<v8::Value> const& args
 
     viewBuilder.openObject();
 
-    auto res = view->properties(viewBuilder, LogicalDataSource::makeFlags(
-                                                 LogicalDataSource::Serialize::Detailed));
+    auto const res = view->properties(viewBuilder, LogicalDataSource::Serialization::Properties);
 
     if (!res.ok()) {
       TRI_V8_THROW_EXCEPTION(res);  // skip view

@@ -67,11 +67,11 @@ enum class ValueStorage : uint32_t {
 ////////////////////////////////////////////////////////////////////////////////
 struct IResearchLinkMeta {
   struct Analyzer {
-    IResearchAnalyzerFeature::AnalyzerPool::ptr _pool;
+    AnalyzerPool::ptr _pool;
     std::string _shortName; // vocbase-dependent short analyzer name
     Analyzer(); // identity analyzer
     Analyzer( // constructor
-      IResearchAnalyzerFeature::AnalyzerPool::ptr const& pool, // pool
+      AnalyzerPool::ptr const& pool, // pool
       std::string&& shortName // short name (cached for use during insert(...))
     ) noexcept: _pool(pool), _shortName(std::move(shortName)) {}
     operator bool() const noexcept { return false == !_pool; }
@@ -155,7 +155,7 @@ struct IResearchLinkMeta {
     IResearchLinkMeta const* ignoreEqual = nullptr, // values to ignore if equal
     TRI_vocbase_t const* defaultVocbase = nullptr, // fallback vocbase
     Mask const* mask = nullptr, // values to ignore always
-    std::map<std::string, IResearchAnalyzerFeature::AnalyzerPool::ptr>* usedAnalyzers = nullptr // append analyzers used in definition
+    std::map<std::string, AnalyzerPool::ptr>* usedAnalyzers = nullptr // append analyzers used in definition
   ) const;
 
   ////////////////////////////////////////////////////////////////////////////////
