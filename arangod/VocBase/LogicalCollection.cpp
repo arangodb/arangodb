@@ -131,16 +131,15 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
     : LogicalDataSource(
           LogicalCollection::category(),
           ::readType(info, StaticStrings::DataSourceType, TRI_COL_TYPE_UNKNOWN),
-          vocbase, Helper::extractIdValue(info),
-          ::readGloballyUniqueId(info),
+          vocbase, Helper::extractIdValue(info), ::readGloballyUniqueId(info),
           Helper::stringUInt64(info.get(StaticStrings::DataSourcePlanId)),
           ::readStringValue(info, StaticStrings::DataSourceName, ""), planVersion,
           TRI_vocbase_t::IsSystemName(
               ::readStringValue(info, StaticStrings::DataSourceName, "")) &&
               Helper::readBooleanValue(info, StaticStrings::DataSourceSystem, false),
           Helper::readBooleanValue(info, StaticStrings::DataSourceDeleted, false)),
-      _version(static_cast<Version>(Helper::readNumericValue<uint32_t>(info, "version",
-                                                    static_cast<uint32_t>(currentVersion())))),
+      _version(static_cast<Version>(Helper::readNumericValue<uint32_t>(
+          info, "version", static_cast<uint32_t>(currentVersion())))),
       _v8CacheVersion(0),
       _type(Helper::readNumericValue<TRI_col_type_e, int>(info, StaticStrings::DataSourceType,
                                                           TRI_COL_TYPE_UNKNOWN)),
@@ -149,6 +148,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
       _isAStub(isAStub),
 #ifdef USE_ENTERPRISE
       _isSmart(Helper::readBooleanValue(info, StaticStrings::IsSmart, false)),
+      _isSmartChild(Helper::readBooleanValue(info, StaticStrings::IsSmartChild, false)),
 #endif
       _waitForSync(Helper::readBooleanValue(info, StaticStrings::WaitForSyncString, false)),
       _allowUserKeys(Helper::readBooleanValue(info, "allowUserKeys", true)),
@@ -373,6 +373,10 @@ uint64_t LogicalCollection::numberDocuments(transaction::Methods* trx,
   }
   TRI_ASSERT(documents >= 0);
   return static_cast<uint64_t>(documents);
+}
+
+bool LogicalCollection::hasClusterWideUniqueRevs() const {
+  return isSmartChild();
 }
 
 uint32_t LogicalCollection::v8CacheVersion() const { return _v8CacheVersion; }
@@ -660,6 +664,7 @@ arangodb::Result LogicalCollection::appendVelocyPack(arangodb::velocypack::Build
 
   // Cluster Specific
   result.add(StaticStrings::IsSmart, VPackValue(isSmart()));
+  result.add(StaticStrings::IsSmartChild, VPackValue(isSmartChild()));
 
   if (hasSmartJoinAttribute()) {
     result.add(StaticStrings::SmartJoinAttribute, VPackValue(_smartJoinAttribute));

@@ -143,8 +143,10 @@ class LogicalCollection : public LogicalDataSource {
   void waitForSync(bool value) { _waitForSync = value; }
 #ifdef USE_ENTERPRISE
   bool isSmart() const { return _isSmart; }
+  bool isSmartChild() const { return _isSmartChild; }
 #else
   bool isSmart() const { return false; }
+  bool isSmartChild() const { return false; }
 #endif
   /// @brief is this a cluster-wide Plan (ClusterInfo) collection
   bool isAStub() const { return _isAStub; }
@@ -152,6 +154,8 @@ class LogicalCollection : public LogicalDataSource {
   bool isClusterGlobal() const { return _isAStub; }
 
   bool hasSmartJoinAttribute() const { return !smartJoinAttribute().empty(); }
+
+  bool hasClusterWideUniqueRevs() const;
 
   /// @brief return the name of the smart join attribute (empty string
   /// if no smart join attribute is present)
@@ -372,6 +376,8 @@ class LogicalCollection : public LogicalDataSource {
 #ifdef USE_ENTERPRISE
   // @brief Flag if this collection is a smart one. (Enterprise only)
   bool const _isSmart;
+  // @brief Flag if this collection is a child of a smart collection (Enterprise only)
+  bool const _isSmartChild;
 #endif
   
   // SECTION: Properties
