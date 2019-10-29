@@ -1165,10 +1165,10 @@ futures::Future<OperationResult> countOnCoordinator(transaction::Methods& trx,
 /// @brief gets the selectivity estimates from DBservers
 ////////////////////////////////////////////////////////////////////////////////
 
-int selectivityEstimatesOnCoordinator(ClusterFeature& feature, std::string const& dbname,
-                                      std::string const& collname,
-                                      std::unordered_map<std::string, double>& result,
-                                      TRI_voc_tick_t tid) {
+Result selectivityEstimatesOnCoordinator(ClusterFeature& feature, std::string const& dbname,
+                                         std::string const& collname,
+                                         std::unordered_map<std::string, double>& result,
+                                         TRI_voc_tick_t tid) {
   // Set a few variables needed for our work:
   ClusterInfo& ci = feature.clusterInfo();
 
@@ -1178,7 +1178,7 @@ int selectivityEstimatesOnCoordinator(ClusterFeature& feature, std::string const
   std::shared_ptr<LogicalCollection> collinfo;
   collinfo = ci.getCollectionNT(dbname, collname);
   if (collinfo == nullptr) {
-    return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
+    return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
   }
   std::shared_ptr<ShardMap> shards = collinfo->shardIds();
 
@@ -1220,25 +1220,25 @@ int selectivityEstimatesOnCoordinator(ClusterFeature& feature, std::string const
     network::Response const& r = f.get();
 
     if (r.fail()) {
-      return network::fuerteToArangoErrorCode(r);
+      return {network::fuerteToArangoErrorCode(r), network::fuerteToArangoErrorMessage(r)};
     }
 
     VPackSlice answer = r.slice();
     if (!answer.isObject()) {
-      return TRI_ERROR_INTERNAL;
+      return {TRI_ERROR_INTERNAL, "invalid response structure"};
     }
    
     if (answer.hasKey(StaticStrings::ErrorNum)) {
-      int errorNum = answer.get(StaticStrings::ErrorNum).getNumber<int>();
+      Result res = network::resultFromBody(answer, TRI_ERROR_NO_ERROR);
 
-      if (errorNum != TRI_ERROR_NO_ERROR) {
-        return errorNum;
+      if (res.fail()) {
+        return res;
       }
     }
 
     answer = answer.get("indexes");
     if (!answer.isObject()) {
-      return TRI_ERROR_INTERNAL;
+      return {TRI_ERROR_INTERNAL, "invalid response structure for 'indexes'"};
     }
 
     // add to the total
@@ -1264,7 +1264,7 @@ int selectivityEstimatesOnCoordinator(ClusterFeature& feature, std::string const
     result[p.first] = aggregateIndexes(p.second);
   }
 
-  return TRI_ERROR_NO_ERROR;
+  return {};
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1311,7 +1311,11 @@ Future<OperationResult> createDocumentOnCoordinator(transaction::Methods const& 
     f = beginTransactionOnSomeLeaders(*trx.state(), coll, opCtx.shardMap);
   }
 
-  return std::move(f).thenValue([=, &trx, &coll, opCtx(std::move(opCtx))](Result r) -> Future<OperationResult> {
+  return std::move(f).thenValue([=, &trx, &coll, opCtx(std::move(opCtx))]
+                                (Result&& r) -> Future<OperationResult> {
+    if (r.fail()) {
+      return OperationResult(std::move(r));
+    }
     
     std::string const baseUrl = "/_api/document/";
     
@@ -1325,6 +1329,7 @@ Future<OperationResult> createDocumentOnCoordinator(transaction::Methods const& 
            .param(StaticStrings::IsRestoreString, (options.isRestore ? "true" : "false"))
            .param(StaticStrings::OverWrite, (options.overwrite ? "true" : "false"));
 
+    
     // Now prepare the requests:
     auto* pool = trx.vocbase().server().getFeature<NetworkFeature>().pool();
     std::vector<Future<network::Response>> futures;
@@ -1444,9 +1449,10 @@ Future<OperationResult> removeDocumentOnCoordinator(arangodb::transaction::Metho
       f = beginTransactionOnSomeLeaders(*trx.state(), coll, opCtx.shardMap);
     }
 
-    return std::move(f).thenValue([=, &trx, opCtx(std::move(opCtx))](Result r) -> Future<OperationResult> {
+    return std::move(f).thenValue([=, &trx, opCtx(std::move(opCtx))]
+                                  (Result&& r) -> Future<OperationResult> {
       if (r.fail()) {
-        return OperationResult(r);
+        return OperationResult(std::move(r));
       }
 
       // Now prepare the requests:
@@ -1680,7 +1686,8 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
       f = beginTransactionOnSomeLeaders(*trx.state(), coll, opCtx.shardMap);
     }
 
-    return std::move(f).thenValue([=, &trx, opCtx(std::move(opCtx))](Result r) -> Future<OperationResult> {
+    return std::move(f).thenValue([=, &trx, opCtx(std::move(opCtx))]
+                                  (Result&& r) -> Future<OperationResult> {
       if (r.fail()) {
         return OperationResult(std::move(r));
       }
@@ -2488,7 +2495,7 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
           "planId",        "version", "objectId"};
       col->setStatus(TRI_VOC_COL_STATUS_LOADED);
       VPackBuilder velocy =
-          col->toVelocyPackIgnore(ignoreKeys, LogicalDataSource::makeFlags());
+          col->toVelocyPackIgnore(ignoreKeys, LogicalDataSource::Serialization::List);
 
       infos.emplace_back(ClusterCollectionCreationInfo{
           std::to_string(col->id()), col->numberOfShards(), col->replicationFactor(),

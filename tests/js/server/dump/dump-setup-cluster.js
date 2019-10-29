@@ -77,6 +77,43 @@ const setupSmartGraph = function () {
 
 /**
  * @brief Only if enterprise mode:
+ *        Creates an arangosearch over smart edge collection
+ */
+const setupSmartArangoSearch = function () {
+  if (!isEnterprise) {
+    return;
+  }
+
+  db._dropView("UnitTestsDumpSmartView");
+
+  let analyzers = require("@arangodb/analyzers");
+  try {
+    analyzers.remove("smartCustom");
+  } catch (err) { }
+  let analyzer = analyzers.save("smartCustom", "delimiter", { delimiter : "smart" }, [ "frequency" ]);
+
+  db._createView("UnitTestsDumpSmartView", "arangosearch", {
+      // choose non default values to check if they are corretly dumped and imported
+      cleanupIntervalStep: 456,
+      consolidationPolicy: {
+        threshold: 0.3,
+        type: "bytes_accum"
+      },
+      consolidationIntervalMsec: 0,
+      links : {
+        "UnitTestDumpSmartEdges": {
+          includeAllFields: true,
+          fields: {
+            text: { analyzers: [ "text_en", "smartCustom" ] }
+          }
+        }
+      }
+  });
+};
+
+
+/**
+ * @brief Only if enterprise mode:
  *        Creates a satellite collection with 100 documents
  */
 function setupSatelliteCollections() {
@@ -221,6 +258,8 @@ function setupSatelliteCollections() {
     c.save({ _key: "text" + i, value: t });
   });
 
+  let analyzer = analyzers.save("custom", "delimiter", { delimiter : " " }, [ "frequency" ]);
+
   // setup a view
   try {
     c = db._create("UnitTestsDumpViewCollection");
@@ -238,7 +277,7 @@ function setupSatelliteCollections() {
         "UnitTestsDumpViewCollection": {
           includeAllFields: true,
           fields: {
-            text: { analyzers: [ "text_en" ] }
+            text: { analyzers: [ "text_en", analyzer.name ] }
           }
         }
       }
@@ -249,6 +288,7 @@ function setupSatelliteCollections() {
   } catch (err) { }
 
   setupSmartGraph();
+  setupSmartArangoSearch();
   setupSatelliteCollections();
 
   db._create("UnitTestsDumpReplicationFactor1", { replicationFactor: 1, numberOfShards: 7 });
