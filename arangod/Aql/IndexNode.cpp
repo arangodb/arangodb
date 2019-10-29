@@ -652,6 +652,7 @@ std::vector<transaction::Methods::IndexHandle> const& IndexNode::getIndexes() co
 
 void IndexNode::setLateMaterialized(aql::Variable const* docIdVariable,
                                     IndexVarsInfo const& indexVariables) {
+  _outNonMaterializedIndVars.clear();
   _outNonMaterializedDocId = docIdVariable;
   for (auto& indVars : indexVariables) {
     auto indexInfo = _outNonMaterializedIndVars.find(indVars.second.indexId);

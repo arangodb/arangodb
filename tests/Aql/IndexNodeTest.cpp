@@ -25,15 +25,9 @@
 #include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/IndexNode.h"
 #include "Aql/Query.h"
-#include "Aql/QueryString.h"
-#include "Logger/Logger.h"
-#include "Mocks/LogLevels.h"
 #include "Mocks/Servers.h"
 #include "RestServer/QueryRegistryFeature.h"
-#include "Transaction/Methods.h"
-#include "Transaction/Options.h"
 #include "Transaction/StandaloneContext.h"
-#include "Utils/OperationOptions.h"
 #include "velocypack/Iterator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
@@ -85,7 +79,7 @@ arangodb::aql::QueryResult executeQuery(TRI_vocbase_t& vocbase, std::string cons
   return result;
 }
 
-TEST_F(IIndexNodeTest, checkObjectQuery) {
+TEST_F(IIndexNodeTest, objectQuery) {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, createInfo(server.server()));
   // create a collection
   auto collectionJson = arangodb::velocypack::Parser::fromJson(
@@ -93,7 +87,7 @@ TEST_F(IIndexNodeTest, checkObjectQuery) {
   auto collection = vocbase.createCollection(collectionJson->slice());
   ASSERT_TRUE(collection);
   auto indexJson = arangodb::velocypack::Parser::fromJson("{\"type\": \"hash\", \"fields\": [\"obj.a\", \"obj.b\", \"obj.c\"]}");
-  bool createdIndex{};
+  auto createdIndex = false;
   auto index = collection->createIndex(indexJson->slice(), createdIndex);
   ASSERT_TRUE(createdIndex);
   ASSERT_FALSE(!index);
@@ -133,7 +127,7 @@ TEST_F(IIndexNodeTest, checkObjectQuery) {
   }
 }
 
-TEST_F(IIndexNodeTest, checkExpansionQuery) {
+TEST_F(IIndexNodeTest, expansionQuery) {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, createInfo(server.server()));
   // create a collection
   auto collectionJson = arangodb::velocypack::Parser::fromJson(
@@ -171,7 +165,7 @@ TEST_F(IIndexNodeTest, checkExpansionQuery) {
   ASSERT_EQ(2, resultIt.size());
 }
 
-TEST_F(IIndexNodeTest, checkLastExpansionQuery) {
+TEST_F(IIndexNodeTest, lastExpansionQuery) {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, createInfo(server.server()));
   // create a collection
   auto collectionJson = arangodb::velocypack::Parser::fromJson(
@@ -217,7 +211,7 @@ TEST_F(IIndexNodeTest, checkLastExpansionQuery) {
   }
 }
 
-TEST_F(IIndexNodeTest, checkSerializationAndDeserializationIndexNode) {
+TEST_F(IIndexNodeTest, constructIndexNode) {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, createInfo(server.server()));
   // create a collection
   auto collectionJson = arangodb::velocypack::Parser::fromJson(
@@ -230,8 +224,9 @@ TEST_F(IIndexNodeTest, checkSerializationAndDeserializationIndexNode) {
   auto index = collection->createIndex(indexJson->slice(), createdIndex);
   ASSERT_TRUE(createdIndex);
   ASSERT_FALSE(!index);
-
   // auto jsonDocument = arangodb::velocypack::Parser::fromJson("{\"obj\": {\"a\": \"a_val\", \"b\": \"b_val\", \"c\": \"c_val\"}}");
+
+  // correct json
   auto createJson = arangodb::velocypack::Parser::fromJson(
         "{"
         "  \"IndexesValuesVars\" : ["
@@ -411,30 +406,79 @@ TEST_F(IIndexNodeTest, checkSerializationAndDeserializationIndexNode) {
   query.prepare(arangodb::QueryRegistryFeature::registry(),
                 arangodb::aql::SerializationFormat::SHADOWROWS);
 
-  // short path for a test
-  auto vars = query.plan()->getAst()->variables();
-  for (auto const& v : {std::make_unique<arangodb::aql::Variable>("d", 0),
-    std::make_unique<arangodb::aql::Variable>("3", 4),
-    std::make_unique<arangodb::aql::Variable>("5", 6),
-    std::make_unique<arangodb::aql::Variable>("7", 8)}) {
-    if (vars->getVariable(v->id) == nullptr) {
-      std::unique_ptr<arangodb::aql::Variable>(vars->createVariable(&*v));
+  {
+    // short path for a test
+    {
+      auto vars = query.plan()->getAst()->variables();
+      for (auto const& v : {std::make_unique<arangodb::aql::Variable>("d", 0),
+        std::make_unique<arangodb::aql::Variable>("3", 4),
+        std::make_unique<arangodb::aql::Variable>("5", 6),
+        std::make_unique<arangodb::aql::Variable>("7", 8)}) {
+        if (vars->getVariable(v->id) == nullptr) {
+          std::unique_ptr<arangodb::aql::Variable>(vars->createVariable(&*v));
+        }
+      }
+    }
+
+    // deserialization
+    arangodb::aql::IndexNode indNode(query.plan(), createJson->slice());
+    ASSERT_TRUE(indNode.isLateMaterialized());
+
+    // serialization and deserialization
+    {
+      VPackBuilder builder;
+      std::unordered_set<arangodb::aql::ExecutionNode const*> seen;
+      {
+        VPackArrayBuilder guard(&builder);
+        indNode.toVelocyPackHelper(builder, arangodb::aql::ExecutionNode::SERIALIZE_DETAILS, seen);
+      }
+
+      arangodb::aql::IndexNode indNodeDeserialized(query.plan(), createJson->slice());
+      ASSERT_TRUE(indNodeDeserialized.isLateMaterialized());
+    }
+
+    // clone
+    {
+      // without properties
+      {
+        auto indNodeClone = dynamic_cast<arangodb::aql::IndexNode*>(indNode.clone(query.plan(), true, false));
+
+        EXPECT_EQ(indNode.getType(), indNodeClone->getType());
+        EXPECT_EQ(indNode.outVariable(), indNodeClone->outVariable());
+        EXPECT_EQ(indNode.plan(), indNodeClone->plan());
+        EXPECT_EQ(indNode.vocbase(), indNodeClone->vocbase());
+        EXPECT_EQ(indNode.isLateMaterialized(), indNodeClone->isLateMaterialized());
+
+        ASSERT_TRUE(indNodeClone->isLateMaterialized());
+      }
+
+      // with properties
+      {
+        arangodb::aql::Query queryClone(false, vocbase, arangodb::aql::QueryString(
+                                     "RETURN 1"),
+                                   nullptr, arangodb::velocypack::Parser::fromJson("{}"),
+                                   arangodb::aql::PART_MAIN);
+        queryClone.prepare(arangodb::QueryRegistryFeature::registry(),
+                           arangodb::aql::SerializationFormat::SHADOWROWS);
+        indNode.invalidateVarUsage();
+        auto indNodeClone = dynamic_cast<arangodb::aql::IndexNode*>(indNode.clone(queryClone.plan(), true, true));
+
+        EXPECT_EQ(indNode.getType(), indNodeClone->getType());
+        EXPECT_NE(indNode.outVariable(), indNodeClone->outVariable());
+        EXPECT_NE(indNode.plan(), indNodeClone->plan());
+        EXPECT_EQ(indNode.vocbase(), indNodeClone->vocbase());
+        EXPECT_EQ(indNode.isLateMaterialized(), indNodeClone->isLateMaterialized());
+
+        ASSERT_TRUE(indNodeClone->isLateMaterialized());
+      }
+    }
+
+    // not materialized
+    {
+      indNode.setLateMaterialized(nullptr, arangodb::aql::IndexNode::IndexVarsInfo());
+      ASSERT_FALSE(indNode.isLateMaterialized());
     }
   }
-  // check deserialization
-  arangodb::aql::IndexNode indNode(query.plan(), createJson->slice());
-  ASSERT_TRUE(indNode.isLateMaterialized());
-
-  // check serialization and deserialization
-  VPackBuilder builder;
-  std::unordered_set<arangodb::aql::ExecutionNode const*> seen;
-  {
-    VPackArrayBuilder guard(&builder);
-    indNode.toVelocyPackHelper(builder, arangodb::aql::ExecutionNode::SERIALIZE_DETAILS, seen);
-  }
-
-  arangodb::aql::IndexNode indNodeDeserialized(query.plan(), createJson->slice());
-  ASSERT_TRUE(indNodeDeserialized.isLateMaterialized());
 }
 
 }
