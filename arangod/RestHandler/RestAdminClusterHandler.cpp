@@ -1127,11 +1127,11 @@ RestStatus RestAdminClusterHandler::handleMaintenance() {
 RestStatus RestAdminClusterHandler::handleGetNumberOfServers() {
 
   auto targetPath = arangodb::cluster::paths::root()->arango()->target();
-  AgencyReadTransaction trx(std::move(std::vector<std::string>{
+  AgencyReadTransaction trx(std::vector<std::string>{
     targetPath->numberOfDBServers()->str(),
     targetPath->numberOfCoordinators()->str(),
     targetPath->cleanedServers()->str()
-  }));
+  });
 
   auto self(shared_from_this());
 
