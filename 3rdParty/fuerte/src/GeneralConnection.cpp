@@ -98,8 +98,6 @@ void GeneralConnection<ST>::shutdownConnection(const Error err,
 
   // clear buffer of received messages
   _receiveBuffer.consume(_receiveBuffer.size());
-  
-  _proto.reset(); // always wait until the end
 }
 
 // Connect with a given number of retries
