@@ -125,7 +125,7 @@ void VstConnection<ST>::finishConnect() {
 
   auto self = Connection::shared_from_this();
   asio_ns::async_write(
-      this->_proto->socket, asio_ns::buffer(vstHeader, strlen(vstHeader)),
+      this->_proto.socket, asio_ns::buffer(vstHeader, strlen(vstHeader)),
       [self](asio_ns::error_code const& ec, std::size_t nsend) {
         auto* thisPtr = static_cast<VstConnection<ST>*>(self.get());
         if (ec) {
@@ -197,7 +197,7 @@ void VstConnection<ST>::sendAuthenticationRequest() {
   std::vector<asio_ns::const_buffer> buffers;
   vst::message::prepareForNetwork(_vstVersion, item->messageID(), item->_buffer,
                                   /*payload*/ asio_ns::const_buffer(), buffers);
-  asio_ns::async_write(this->_proto->socket, buffers, std::move(cb));
+  asio_ns::async_write(this->_proto.socket, buffers, std::move(cb));
   
   setTimeout();
 }
@@ -280,7 +280,7 @@ void VstConnection<ST>::asyncWriteNextRequest() {
     _messageStore.add(item);  // Add item to message store
     setTimeout();             // prepare request / connection timeouts
 
-    asio_ns::async_write(this->_proto->socket, item->prepareForNetwork(_vstVersion),
+    asio_ns::async_write(this->_proto.socket, item->prepareForNetwork(_vstVersion),
                         [self = Connection::shared_from_this(), req(std::move(item))]
                         (asio_ns::error_code const& ec, std::size_t nwrite) mutable {
      auto& thisPtr = static_cast<VstConnection<ST>&>(*self);

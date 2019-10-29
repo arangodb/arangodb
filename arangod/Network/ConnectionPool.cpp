@@ -217,7 +217,7 @@ ConnectionPtr ConnectionPool::selectConnection(std::string const& endpoint,
     }
     
     size_t num = c.fuerte->requestsLeft();
-    if (_config.protocol == fuerte::ProtocolType::Http) {
+    if (_config.protocol == fuerte::ProtocolType::Http && num == 0) {
       auto now = std::chrono::steady_clock::now();
       TRI_ASSERT(now >= c.leased);
       // hack hack hack. Avoids reusing used connections

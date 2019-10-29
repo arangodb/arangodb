@@ -381,7 +381,7 @@ void HttpConnection<ST>::asyncWriteNextRequest() {
     buffers[1] = item->request->payload();
   }
 
-  asio_ns::async_write(this->_proto->socket, std::move(buffers),
+  asio_ns::async_write(this->_proto.socket, std::move(buffers),
                        [self(Connection::shared_from_this()),
                         req(std::move(item))](asio_ns::error_code const& ec,
                                               std::size_t nwrite) mutable {
@@ -440,7 +440,8 @@ void HttpConnection<ST>::asyncWriteCallback(asio_ns::error_code const& ec,
 template <SocketType ST>
 void HttpConnection<ST>::asyncReadCallback(asio_ns::error_code const& ec) {
   if (ec) {
-    FUERTE_LOG_DEBUG << "asyncReadCallback: Error while reading from socket: '";
+    FUERTE_LOG_DEBUG << "asyncReadCallback: Error while reading from socket: '"
+    << ec.message() << "' , this=" << this << "\n";
 
     // Restart connection, will invoke _item cb
     this->restartConnection(translateError(ec, Error::ReadError));
@@ -474,7 +475,7 @@ void HttpConnection<ST>::asyncReadCallback(asio_ns::error_code const& ec) {
       /* Handle error. Usually just close the connection. */
       FUERTE_LOG_ERROR << "Invalid HTTP response in parser: '"
                        << http_errno_description(HTTP_PARSER_ERRNO(&_parser))
-                       << "'\n";
+                       << "', this=" << this << "\n";
       this->shutdownConnection(Error::ProtocolError);  // will cleanup _item
       return;
     } else if (_messageComplete) {
@@ -496,8 +497,7 @@ void HttpConnection<ST>::asyncReadCallback(asio_ns::error_code const& ec) {
 
       _item.reset();
       FUERTE_LOG_HTTPTRACE << "asyncReadCallback: completed parsing "
-                              "response this="
-                           << this << "\n";
+                              "response this=" << this << "\n";
 
       asyncWriteNextRequest();  // send next request
       return;

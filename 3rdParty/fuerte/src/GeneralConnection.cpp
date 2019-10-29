@@ -31,8 +31,7 @@ GeneralConnection<ST>::GeneralConnection(
     EventLoopService& loop, detail::ConnectionConfiguration const& config)
     : Connection(config),
       _io_context(loop.nextIOContext()),
-      _loop(loop),
-      _proto(nullptr),
+      _proto(loop, *_io_context),
       _timeout(*_io_context),
       _state(Connection::State::Disconnected),
       _numQueued(0) {}
@@ -83,11 +82,11 @@ void GeneralConnection<ST>::shutdownConnection(const Error err,
     FUERTE_LOG_ERROR << "error on timeout cancel: " << ec.message();
   }
 
-  if (_proto) {
+//  if (_proto) {
     try {
-      _proto->shutdown();  // Close socket
+      _proto.shutdown();  // Close socket
     } catch (...) { }
-  }
+//  }
 
   abortOngoingRequests(err);
   
@@ -117,13 +116,12 @@ void GeneralConnection<ST>::tryConnect(unsigned retries) {
     _timeout.expires_after(_config._connectTimeout);
     _timeout.async_wait([self, this](asio_ns::error_code const& ec) {
       if (!ec) { // someone else will retry
-        _proto->shutdown();
+        _proto.shutdown();
       }
     });
   }
   
-  _proto = std::make_unique<fuerte::Socket<ST>>(_loop, *_io_context);
-  _proto->connect(_config, [self, this, retries](auto const& ec) {
+  _proto.connect(_config, [self, this, retries](auto const& ec) {
     _timeout.cancel();
     if (!ec) {
       finishConnect();
@@ -166,7 +164,7 @@ void GeneralConnection<ST>::asyncReadSome() {
   // reserve 32kB in output buffer
   auto mutableBuff = _receiveBuffer.prepare(READ_BLOCK_SIZE);
   
-  _proto->socket.async_read_some(mutableBuff, [self = shared_from_this()]
+  _proto.socket.async_read_some(mutableBuff, [self = shared_from_this()]
                                  (auto const& ec, size_t nread) {
     FUERTE_LOG_TRACE << "received " << nread << " bytes\n";
     
