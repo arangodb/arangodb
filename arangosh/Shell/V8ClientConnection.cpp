@@ -43,6 +43,7 @@
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "Ssl/SslInterface.h"
 #include "V8/v8-conv.h"
+#include "V8/v8-buffer.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
 
@@ -1531,12 +1532,23 @@ v8::Local<v8::Value> V8ClientConnection::requestData(
     }
     req->header.contentType(fuerte::ContentType::Custom);
     req->addBinary(reinterpret_cast<uint8_t const*>(contents.data()), contents.length());
-  } else if (body->IsString()) {  // assume JSON
+  } else if (body->IsString() || body->IsStringObject()) {  // assume JSON
     TRI_Utf8ValueNFC bodyString(isolate, body);
     req->addBinary(reinterpret_cast<uint8_t const*>(*bodyString), bodyString.length());
     if (req->header.contentType() == fuerte::ContentType::Unset) {
       req->header.contentType(fuerte::ContentType::Json);
     }
+  } else if (body->IsObject() && V8Buffer::hasInstance(isolate, body)) {
+    // supplied body is a Buffer object
+    char const* data = V8Buffer::data(isolate, body.As<v8::Object>());
+    size_t size = V8Buffer::length(isolate, body.As<v8::Object>());
+
+    if (data == nullptr) {
+      TRI_V8_SET_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                   "invalid <body> buffer value");
+      return v8::Undefined(isolate);
+    }
+    req->addBinary(reinterpret_cast<uint8_t const*>(data), size);
   } else if (!body->IsNullOrUndefined()) {
     VPackBuffer<uint8_t> buffer;
     VPackBuilder builder(buffer, &_vpackOptions);
@@ -1599,12 +1611,23 @@ v8::Local<v8::Value> V8ClientConnection::requestDataRaw(
   for (auto& pair : headerFields) {
     req->header.addMeta(std::move(pair.first), std::move(pair.second));
   }
-  if (body->IsString()) {  // assume JSON
+  if (body->IsString() || body->IsStringObject()) {  // assume JSON
     TRI_Utf8ValueNFC bodyString(isolate, body);
     req->addBinary(reinterpret_cast<uint8_t const*>(*bodyString), bodyString.length());
     if (req->header.contentType() == fuerte::ContentType::Unset) {
       req->header.contentType(fuerte::ContentType::Json);
     }
+  } else if (body->IsObject() && V8Buffer::hasInstance(isolate, body)) {
+      // supplied body is a Buffer object
+      char const* data = V8Buffer::data(isolate, body.As<v8::Object>());
+      size_t size = V8Buffer::length(isolate, body.As<v8::Object>());
+
+      if (data == nullptr) {
+        TRI_V8_SET_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                     "invalid <body> buffer value");
+        return v8::Undefined(isolate);
+      }
+      req->addBinary(reinterpret_cast<uint8_t const*>(data), size);
   } else if (!body->IsNullOrUndefined()) {
     VPackBuffer<uint8_t> buffer;
     VPackBuilder builder(buffer);
