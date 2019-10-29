@@ -104,7 +104,7 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<RemoteExecut
   // For every call we simply forward via HTTP
   if (_lastError.fail()) {
     TRI_ASSERT(_lastResponse == nullptr);
-    Result res = _lastError;
+    Result res = std::move(_lastError);
     _lastError.reset();
     // we were called with an error need to throw it.
     THROW_ARANGO_EXCEPTION(res);
@@ -236,7 +236,7 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::initialize
     InputAqlItemRow const& input) {
   // For every call we simply forward via HTTP
   if (_requestInFlight.load(std::memory_order_acquire)) {
-    return {ExecutionState::WAITING, 0};
+    return {ExecutionState::WAITING, TRI_ERROR_NO_ERROR};
   }
 
   if (!_isResponsibleForInitializeCursor) {
@@ -259,11 +259,22 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::initialize
     auto response = std::move(_lastResponse);
 
     // Result is the response which is an object containing the ErrorCode
+    int errorNumber = TRI_ERROR_INTERNAL; // default error code
     VPackSlice slice = response->slice();
-    if (slice.hasKey("code")) {
-      return {ExecutionState::DONE, slice.get("code").getNumericValue<int>()};
+    VPackSlice errorSlice = slice.get(StaticStrings::ErrorNum);
+    if (!errorSlice.isNumber()) {
+      errorSlice = slice.get(StaticStrings::Code);
     }
-    return {ExecutionState::DONE, TRI_ERROR_INTERNAL};
+    if (errorSlice.isNumber()) {
+      errorNumber = errorSlice.getNumericValue<int>();
+    }
+
+    std::string errorMessage;
+    errorSlice = slice.get(StaticStrings::ErrorMessage);
+    if (errorSlice.isString()) {
+      return {ExecutionState::DONE, {errorNumber, errorSlice.copyString()}};
+    }
+    return {ExecutionState::DONE, errorNumber};
   }
 
   VPackOptions options(VPackOptions::Defaults);
@@ -274,13 +285,10 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::initialize
   VPackBuilder builder(buffer, &options);
   builder.openObject(/*unindexed*/ true);
 
-  // Backwards Compatibility 3.3
-  // NOTE: Removing this breaks tests in current devel - is this really for
-  // bc only?
-  builder.add("exhausted", VPackValue(false));
   // Used in 3.4.0 onwards
   builder.add("done", VPackValue(false));
-  builder.add("error", VPackValue(false));
+  builder.add(StaticStrings::Code, VPackValue(TRI_ERROR_NO_ERROR));
+  builder.add(StaticStrings::Error, VPackValue(false));
   // NOTE API change. Before all items have been send.
   // Now only the one output row is send.
   builder.add("pos", VPackValue(0));
@@ -338,7 +346,7 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::shutdown(i
     _didReceiveShutdownRequest = true;
     
     TRI_ASSERT(_lastResponse == nullptr);
-    Result res = _lastError;
+    Result res = std::move(_lastError);
     _lastError.reset();
 
     if (res.is(TRI_ERROR_QUERY_NOT_FOUND)) {

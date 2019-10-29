@@ -589,12 +589,11 @@ std::pair<ExecutionState, size_t> ExecutionEngine::skipSome(size_t atMost) {
 }
 
 Result ExecutionEngine::shutdownSync(int errorCode) noexcept {
-  Result res{TRI_ERROR_INTERNAL};
+  Result res{TRI_ERROR_INTERNAL, "unable to shutdown query"};
   ExecutionState state = ExecutionState::WAITING;
   try {
     std::shared_ptr<SharedQueryState> sharedState = _query.sharedState();
     if (sharedState != nullptr) {
-
       while (state == ExecutionState::WAITING) {
         std::tie(state, res) = shutdown(errorCode);
         if (state == ExecutionState::WAITING) {
@@ -602,6 +601,8 @@ Result ExecutionEngine::shutdownSync(int errorCode) noexcept {
         }
       }
     }
+  } catch (std::exception const& ex) {
+    res.reset(TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
     res.reset(TRI_ERROR_INTERNAL);
   }

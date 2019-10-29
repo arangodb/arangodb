@@ -674,6 +674,7 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation, Query* q
         }
         // Used in 3.4.0 onwards.
         answerBuilder.add("done", VPackValue(state == ExecutionState::DONE));
+        answerBuilder.add(StaticStrings::Code, VPackValue(TRI_ERROR_NO_ERROR));
         if (items.get() == nullptr) {
           // Backwards Compatibility
           answerBuilder.add(StaticStrings::Error, VPackValue(false));
@@ -734,7 +735,7 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation, Query* q
         answerBuilder.add(StaticStrings::Code, VPackValue(res.errorNumber()));
       } else if (operation == "shutdown") {
         int errorCode =
-            VelocyPackHelper::getNumericValue<int>(querySlice, "code", TRI_ERROR_INTERNAL);
+            VelocyPackHelper::readNumericValue<int>(querySlice, StaticStrings::Code, TRI_ERROR_INTERNAL);
 
         ExecutionState state;
         Result res;

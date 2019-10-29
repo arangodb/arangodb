@@ -134,8 +134,6 @@ void InputAqlItemRow::toVelocyPack(transaction::Methods* trx, VPackBuilder& resu
   result.add("nrItems", VPackValue(1));
   result.add("nrRegs", VPackValue(getNrRegisters()));
   result.add("error", VPackValue(false));
-  // Backwards compatbility 3.3
-  result.add("exhausted", VPackValue(false));
 
   enum State {
     Empty,       // saw an empty value
