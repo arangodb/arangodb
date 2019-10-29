@@ -296,6 +296,8 @@ void VstCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes, Requ
   auto resItem = std::make_unique<ResponseItem>();
   response.writeMessageHeader(resItem->metadata);
   resItem->response = std::move(baseRes);
+  RequestStatistics::SET_WRITE_START(stat);
+  resItem->stat = stat;
   
   asio_ns::const_buffer payload;
   if (response.generateBody()) {
@@ -362,12 +364,14 @@ void VstCommTask<T>::doWrite() {
     }
     TRI_ASSERT(tmp != nullptr);
     std::unique_ptr<ResponseItem> item(tmp);
-    
+
     auto& buffers = item->buffers;
     auto cb = [self = CommTask::shared_from_this(),
                item = std::move(item)](asio_ns::error_code ec,
                                        size_t transferred) {
       auto* thisPtr = static_cast<VstCommTask<T>*>(self.get());
+      RequestStatistics::SET_WRITE_END(item->stat);
+      RequestStatistics::ADD_SENT_BYTES(item->stat, item->buffers[0].size() + item->buffers[1].size());
       if (ec) {
         LOG_TOPIC("5c6b4", INFO, arangodb::Logger::REQUESTS)
         << "asio write error: '" << ec.message() << "'";
@@ -375,6 +379,7 @@ void VstCommTask<T>::doWrite() {
       } else {
         thisPtr->doWrite(); // write next one
       }
+      item->stat->release();
     };
     asio_ns::async_write(this->_protocol->socket, buffers, std::move(cb));
     

@@ -100,6 +100,7 @@ class VstCommTask final : public GeneralCommTask<T> {
   };
   
   struct ResponseItem {
+    RequestStatistics* stat;
     velocypack::Buffer<uint8_t> metadata;
     std::unique_ptr<GeneralResponse> response;
     std::vector<asio_ns::const_buffer> buffers;
