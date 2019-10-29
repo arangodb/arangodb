@@ -72,8 +72,15 @@ void GeneralConnection<ST>::shutdownConnection(const Error err,
   FUERTE_LOG_DEBUG << "shutdownConnection: '" << msg
                    << "' this=" << this << "\n";
 
-  if (_state.load() != Connection::State::Failed) {
-    _state.store(Connection::State::Disconnected);
+  auto state = _state.load();
+  if (state != Connection::State::Failed) {
+    state = Connection::State::Disconnected;
+#ifdef __linux__
+    if (_config._socketType == SocketType::SSL) {
+      state = Connection::State::Failed;
+    }
+#endif
+    _state.store(state);
   }
 
   asio_ns::error_code ec;
