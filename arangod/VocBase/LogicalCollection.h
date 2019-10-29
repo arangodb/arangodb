@@ -211,9 +211,8 @@ class LogicalCollection : public LogicalDataSource {
   /// @brief return all indexes of the collection
   std::vector<std::shared_ptr<Index>> getIndexes() const;
 
-  void getIndexesVPack(velocypack::Builder&, uint8_t,
-                       std::function<bool(arangodb::Index const*)> const& filter =
-                           [](arangodb::Index const*) -> bool { return true; }) const;
+  void getIndexesVPack(velocypack::Builder&,
+                       std::function<bool(arangodb::Index const*, uint8_t&)> const& filter) const;
 
   /// @brief a method to skip certain documents in AQL write operations,
   /// this is only used in the enterprise edition for smart graphs
@@ -232,10 +231,10 @@ class LogicalCollection : public LogicalDataSource {
   // SECTION: Serialization
   void toVelocyPackIgnore(velocypack::Builder& result,
                           std::unordered_set<std::string> const& ignoreKeys,
-                          std::underlying_type<Serialize>::type flags) const;
+                          Serialization context) const;
 
   velocypack::Builder toVelocyPackIgnore(std::unordered_set<std::string> const& ignoreKeys,
-                                         std::underlying_type<Serialize>::type flags) const;
+                                         Serialization context) const;
 
   virtual void toVelocyPackForClusterInventory(velocypack::Builder&, bool useSystem,
                                                bool isReady, bool allInSync) const;
@@ -342,7 +341,7 @@ class LogicalCollection : public LogicalDataSource {
 
  protected:
   virtual arangodb::Result appendVelocyPack(arangodb::velocypack::Builder& builder,
-                                            std::underlying_type<Serialize>::type flags) const override;
+                                           Serialization context) const override;
 
  private:
   void prepareIndexes(velocypack::Slice indexesSlice);
