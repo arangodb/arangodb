@@ -718,18 +718,23 @@ static std::shared_ptr<std::unordered_map<std::string, std::vector<std::string>>
 static std::shared_ptr<std::unordered_map<std::string, std::vector<std::string>>> CloneShardDistribution(
     ClusterInfo& ci, std::shared_ptr<LogicalCollection> col,
     std::shared_ptr<LogicalCollection> const& other) {
-  auto result =
-      std::make_shared<std::unordered_map<std::string, std::vector<std::string>>>();
-
   TRI_ASSERT(col);
   TRI_ASSERT(other);
 
   if (!other->distributeShardsLike().empty()) {
+    CollectionNameResolver resolver(col->vocbase());
+    std::string name = other->distributeShardsLike();
+    TRI_voc_cid_t cid = arangodb::basics::StringUtils::uint64(name);
+    if (cid > 0) {
+      name = resolver.getCollectionNameCluster(cid);
+    }
     std::string const errorMessage = "Cannot distribute shards like '" + other->name() +
-                                     "' it is already distributed like '" +
-                                     other->distributeShardsLike() + "'.";
+                                     "' it is already distributed like '" + name + "'.";
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_CHAIN_OF_DISTRIBUTESHARDSLIKE, errorMessage);
   }
+  
+  auto result =
+      std::make_shared<std::unordered_map<std::string, std::vector<std::string>>>();
 
   // We need to replace the distribute with the cid.
   auto cidString = arangodb::basics::StringUtils::itoa(other.get()->id());
@@ -1157,10 +1162,10 @@ futures::Future<OperationResult> countOnCoordinator(transaction::Methods& trx,
 /// @brief gets the selectivity estimates from DBservers
 ////////////////////////////////////////////////////////////////////////////////
 
-int selectivityEstimatesOnCoordinator(ClusterFeature& feature, std::string const& dbname,
-                                      std::string const& collname,
-                                      std::unordered_map<std::string, double>& result,
-                                      TRI_voc_tick_t tid) {
+Result selectivityEstimatesOnCoordinator(ClusterFeature& feature, std::string const& dbname,
+                                         std::string const& collname,
+                                         std::unordered_map<std::string, double>& result,
+                                         TRI_voc_tick_t tid) {
   // Set a few variables needed for our work:
   ClusterInfo& ci = feature.clusterInfo();
 
@@ -1170,7 +1175,7 @@ int selectivityEstimatesOnCoordinator(ClusterFeature& feature, std::string const
   std::shared_ptr<LogicalCollection> collinfo;
   collinfo = ci.getCollectionNT(dbname, collname);
   if (collinfo == nullptr) {
-    return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
+    return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
   }
   std::shared_ptr<ShardMap> shards = collinfo->shardIds();
 
@@ -1196,52 +1201,66 @@ int selectivityEstimatesOnCoordinator(ClusterFeature& feature, std::string const
                                   std::move(headers), /*retryNotFound*/ true));
   }
 
-    // format of expected answer:
-    // in `indexes` is a map that has keys in the format
-    // s<shardid>/<indexid> and index information as value
-    // {"code":200
-    // ,"error":false
-    // ,"indexes":{ "s10004/0"    : 1.0,
-    //              "s10004/10005": 0.5
-    //            }
-    // }
+  // format of expected answer:
+  // in `indexes` is a map that has keys in the format
+  // s<shardid>/<indexid> and index information as value
+  // {"code":200
+  // ,"error":false
+  // ,"indexes":{ "s10004/0"    : 1.0,
+  //              "s10004/10005": 0.5
+  //            }
+  // }
 
-    std::map<std::string, std::vector<double>> indexEstimates;
-    for (Future<network::Response>& f : futures) {
-      network::Response const& r = f.get();
+  std::map<std::string, std::vector<double>> indexEstimates;
+  for (Future<network::Response>& f : futures) {
+    network::Response const& r = f.get();
 
-      if (r.fail()) {
-        return network::fuerteToArangoErrorCode(r);
+    if (r.fail()) {
+      return {network::fuerteToArangoErrorCode(r), network::fuerteToArangoErrorMessage(r)};
+    }
+
+    VPackSlice answer = r.slice();
+    if (!answer.isObject()) {
+      return {TRI_ERROR_INTERNAL, "invalid response structure"};
+    }
+   
+    if (answer.hasKey(StaticStrings::ErrorNum)) {
+      Result res = network::resultFromBody(answer, TRI_ERROR_NO_ERROR);
+
+      if (res.fail()) {
+        return res;
       }
+    }
 
-      VPackSlice answer = r.slice();
-      if (!answer.isObject()) {
-        return TRI_ERROR_INTERNAL;
-      }
+    answer = answer.get("indexes");
+    if (!answer.isObject()) {
+      return {TRI_ERROR_INTERNAL, "invalid response structure for 'indexes'"};
+    }
 
-      // add to the total
-      for (auto pair : VPackObjectIterator(answer.get("indexes"), true)) {
-        velocypack::StringRef shard_index_id(pair.key);
-        auto split_point =
-            std::find(shard_index_id.begin(), shard_index_id.end(), '/');
-        std::string index(split_point + 1, shard_index_id.end());
+    // add to the total
+    for (auto pair : VPackObjectIterator(answer, true)) {
+      velocypack::StringRef shardIndexId(pair.key);
+      auto split = std::find(shardIndexId.begin(), shardIndexId.end(), '/');
+      if (split != shardIndexId.end()) {
+        std::string index(split + 1, shardIndexId.end());
         double estimate = Helper::getNumericValue(pair.value, 0.0);
         indexEstimates[index].push_back(estimate);
       }
     }
+  }
 
-    auto aggregate_indexes = [](std::vector<double> const& vec) -> double {
-      TRI_ASSERT(!vec.empty());
-      double rv = std::accumulate(vec.begin(), vec.end(), 0.0);
-      rv /= static_cast<double>(vec.size());
-      return rv;
-    };
+  auto aggregateIndexes = [](std::vector<double> const& vec) -> double {
+    TRI_ASSERT(!vec.empty());
+    double rv = std::accumulate(vec.begin(), vec.end(), 0.0);
+    rv /= static_cast<double>(vec.size());
+    return rv;
+  };
 
-    for (auto const& p : indexEstimates) {
-      result[p.first] = aggregate_indexes(p.second);
-    }
+  for (auto const& p : indexEstimates) {
+    result[p.first] = aggregateIndexes(p.second);
+  }
 
-    return TRI_ERROR_NO_ERROR;
+  return {};
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1288,7 +1307,7 @@ Future<OperationResult> createDocumentOnCoordinator(transaction::Methods const& 
     f = beginTransactionOnSomeLeaders(*trx.state(), coll, opCtx.shardMap);
   }
 
-  return std::move(f).thenValue([=, &trx, &coll, opCtx(std::move(opCtx))](Result r) -> Future<OperationResult> {
+  return std::move(f).thenValue([=, &trx, &coll, opCtx(std::move(opCtx))](Result) -> Future<OperationResult> {
     std::string const& dbname = trx.vocbase().name();
     std::string const baseUrl =
     "/_db/" + StringUtils::urlEncode(dbname) + "/_api/document/";
@@ -2467,7 +2486,7 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterMethods::persistCollectio
           "planId",        "version", "objectId"};
       col->setStatus(TRI_VOC_COL_STATUS_LOADED);
       VPackBuilder velocy =
-          col->toVelocyPackIgnore(ignoreKeys, LogicalDataSource::makeFlags());
+          col->toVelocyPackIgnore(ignoreKeys, LogicalDataSource::Serialization::List);
 
       infos.emplace_back(ClusterCollectionCreationInfo{
           std::to_string(col->id()), col->numberOfShards(), col->replicationFactor(),

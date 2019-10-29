@@ -140,7 +140,7 @@ class Message {
   }
 
   /// get the content as a slice
-  velocypack::Slice slice() {
+  velocypack::Slice slice() const {
     auto slices = this->slices();
     if (!slices.empty()) {
       return slices[0];

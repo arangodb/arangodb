@@ -106,7 +106,7 @@ class LogicalView : public LogicalDataSource {
   /// @brief queries properties of an existing view
   //////////////////////////////////////////////////////////////////////////////
   virtual Result appendVelocyPack(velocypack::Builder& builder,
-                                  std::underlying_type<Serialize>::type flags) const override final;
+                                  Serialization context) const override final;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @return the current view is granted 'level' access
@@ -176,7 +176,7 @@ class LogicalView : public LogicalDataSource {
   /// @brief queries properties of an existing view
   //////////////////////////////////////////////////////////////////////////////
   virtual Result appendVelocyPackImpl(velocypack::Builder& builder,
-                                      std::underlying_type<Serialize>::type flags) const = 0;
+                                     Serialization context) const = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief drop implementation-specific parts of an existing view
