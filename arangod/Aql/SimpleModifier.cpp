@@ -94,10 +94,10 @@ ModifierOutput SimpleModifier<ModifierCompletion, Enable>::OutputIterator::opera
         if (error) {
           return ModifierOutput{_operationsIterator->second, ModifierOutput::Type::SkipRow};
         } else {
-          return ModifierOutput{_operationsIterator->second,
-                                ModifierOutput::Type::ReturnIfRequired,
-                                std::make_unique<AqlValue>(elm.get(StaticStrings::Old)),
-                                std::make_unique<AqlValue>(elm.get(StaticStrings::New))};
+          return ModifierOutput{
+              _operationsIterator->second, ModifierOutput::Type::ReturnIfRequired,
+              ModificationExecutorHelpers::getDocumentOrNull(elm, StaticStrings::Old),
+              ModificationExecutorHelpers::getDocumentOrNull(elm, StaticStrings::New)};
         }
       } else {
         return ModifierOutput{_operationsIterator->second, ModifierOutput::Type::CopyRow};
@@ -201,12 +201,13 @@ size_t SimpleModifier<ModifierCompletion, Enable>::nrOfWritesIgnored() const {
 }
 
 template <typename ModifierCompletion, typename Enable>
-ModificationExecutorInfos& SimpleModifier<ModifierCompletion, Enable>::getInfos() const {
+ModificationExecutorInfos& SimpleModifier<ModifierCompletion, Enable>::getInfos() const
+    noexcept {
   return _infos;
 }
 
 template <typename ModifierCompletion, typename Enable>
-size_t SimpleModifier<ModifierCompletion, Enable>::getBatchSize() const {
+size_t SimpleModifier<ModifierCompletion, Enable>::getBatchSize() const noexcept {
   return _batchSize;
 }
 

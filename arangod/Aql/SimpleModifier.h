@@ -123,8 +123,8 @@ class SimpleModifier {
   size_t nrOfWritesExecuted() const;
   size_t nrOfWritesIgnored() const;
 
-  ModificationExecutorInfos& getInfos() const;
-  size_t getBatchSize() const;
+  ModificationExecutorInfos& getInfos() const noexcept;
+  size_t getBatchSize() const noexcept;
 
  private:
   bool resultAvailable() const;

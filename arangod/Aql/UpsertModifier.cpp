@@ -99,9 +99,10 @@ ModifierOutput UpsertModifier::OutputIterator::operator*() const {
     if (error) {
       return ModifierOutput{_operationsIterator->second, ModifierOutput::Type::SkipRow};
     } else {
-      return ModifierOutput{_operationsIterator->second, ModifierOutput::Type::ReturnIfRequired,
-                            std::make_unique<AqlValue>(elm.get(StaticStrings::Old)),
-                            std::make_unique<AqlValue>(elm.get(StaticStrings::New))};
+      return ModifierOutput{
+          _operationsIterator->second, ModifierOutput::Type::ReturnIfRequired,
+          ModificationExecutorHelpers::getDocumentOrNull(elm, StaticStrings::Old),
+          ModificationExecutorHelpers::getDocumentOrNull(elm, StaticStrings::New)};
     }
   } else {
     switch (_operationsIterator->first) {

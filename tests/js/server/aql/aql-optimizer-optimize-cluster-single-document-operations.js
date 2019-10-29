@@ -142,7 +142,7 @@ function optimizerClusterSingleDocumentTestSuite () {
         }
         pruneRevisions(r1);
         pruneRevisions(r2);
-        assertEqual(r1.json, r2.json, "results of with and without rule differ: " + queryInfo);
+        assertEqual(r1.json, r2.json, "results of with and without rule differ, queryInfo: " + queryInfo + ", set: " + set);
       }
       count += 1;
     });
