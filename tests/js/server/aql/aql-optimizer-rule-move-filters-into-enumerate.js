@@ -50,7 +50,7 @@ function optimizerRuleTestSuite () {
       db._drop(cn);
     },
     
-    testDoesNotApply : function () {
+    testDoesNotApplyBecauseOfIndexes : function () {
       let queries = [ 
         [ `FOR doc IN ${cn} FILTER doc.value1 < 1000 RETURN doc`, 1000 ],
         [ `FOR doc IN ${cn} FILTER doc.value1 >= 0 && doc.value1 < 1000 RETURN doc`, 1000 ],
@@ -71,6 +71,24 @@ function optimizerRuleTestSuite () {
         let result = AQL_EXPLAIN(query[0]);
         assertEqual(-1, result.plan.rules.indexOf(ruleName), query);
         assertNotEqual(-1, result.plan.rules.indexOf("use-indexes"), query);
+        result = AQL_EXECUTE(query[0]).json.length;
+        assertEqual(query[1], result, query);
+      });
+    },
+    
+    testDoesNotApplyBecauseOfNonDeterministic : function () {
+      let queries = [ 
+        [ `FOR doc IN ${cn} FILTER RAND() >= -1.0 && doc.value2 == 1999 RETURN doc`, 1 ],
+        [ `FOR doc IN ${cn} FILTER RAND() >= -1.0 && doc.value2 >= 1995 RETURN doc`, 5 ],
+        [ `FOR doc IN ${cn} FILTER DOCUMENT('${cn}/test0')._key == NOOPT(doc._key) RETURN doc`, 1 ],
+        [ `FOR doc IN ${cn} FILTER DOCUMENT('${cn}/test0')._key == NOOPT(doc._key) && doc.value2 == 0 RETURN doc`, 1 ],
+        [ `FOR doc IN ${cn} FILTER DOCUMENT('${cn}/test123')._key != 'test0' && doc.value1 >= 1995 RETURN doc`, 5 ],
+        [ `FOR doc IN ${cn} FILTER DOCUMENT('${cn}/test123')._key != 'test0' && doc.value2 >= 1995 RETURN doc`, 5 ],
+      ];
+
+      queries.forEach(function(query) {
+        let result = AQL_EXPLAIN(query[0]);
+        assertEqual(-1, result.plan.rules.indexOf(ruleName), query);
         result = AQL_EXECUTE(query[0]).json.length;
         assertEqual(query[1], result, query);
       });
