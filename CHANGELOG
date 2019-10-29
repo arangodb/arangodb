@@ -1,6 +1,11 @@
 devel
 -----
 
+* Added AQL optimizer rule "move-filters-into-enumerate", to allow for
+  early pruning of non-matching documents while full-scanning or index-
+  scanning documents. This optimization can help to avoid a lot of
+  temporary document copies.
+
 * Allow collection names to be at most 256 characters long, instead of 64 characters
   in previous versions.
 

@@ -719,6 +719,7 @@ bool RocksDBCollection::lookupRevision(transaction::Methods* trx, VPackSlice con
 
   return readDocumentWithCallback(trx, documentId, [&revisionId](LocalDocumentId const&, VPackSlice doc) {
     revisionId = transaction::helpers::extractRevFromDocument(doc);
+    return true;
   });
 }
 

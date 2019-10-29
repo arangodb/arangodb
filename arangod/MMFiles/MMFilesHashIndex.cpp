@@ -608,6 +608,7 @@ Result MMFilesHashIndex::insertUnique(transaction::Methods* trx,
         _collection.getPhysical()->readDocumentWithCallback(
             trx, rev, [&existingId](LocalDocumentId const&, VPackSlice doc) {
               existingId = doc.get(StaticStrings::KeyString).copyString();
+              return true; // return value does not matter here
             });
 
         if (mode == OperationMode::internal) {

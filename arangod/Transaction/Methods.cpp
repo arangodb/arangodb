@@ -1082,6 +1082,7 @@ OperationResult transaction::Methods::anyLocal(std::string const& collectionName
   cursor.nextDocument(
       [&resultBuilder](LocalDocumentId const& token, VPackSlice slice) {
         resultBuilder.add(slice);
+        return true;
       },
       1);
 
@@ -2346,6 +2347,7 @@ OperationResult transaction::Methods::allLocal(std::string const& collectionName
 
   auto cb = [&resultBuilder](LocalDocumentId const& token, VPackSlice slice) {
     resultBuilder.add(slice);
+    return true;
   };
   cursor.allDocuments(cb, 1000);
 
