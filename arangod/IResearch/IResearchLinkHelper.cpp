@@ -225,6 +225,9 @@ arangodb::Result modifyLinks( // modify links
     arangodb::velocypack::Slice const& links, // modified link definitions
     std::unordered_set<TRI_voc_cid_t> const& stale = {} // stale links
 ) {
+  LOG_TOPIC("4bdd2", DEBUG, arangodb::iresearch::TOPIC)
+      << "link modification request for view '" << view.name() << "', original definition:" << links.toString();
+
   if (!links.isObject()) {
     return arangodb::Result( // result
       TRI_ERROR_BAD_PARAMETER, // code
@@ -288,6 +291,9 @@ arangodb::Result modifyLinks( // modify links
     normalized.close();
     link = normalized.slice(); // use normalized definition for index creation
 
+    LOG_TOPIC("4bdd1", DEBUG, arangodb::iresearch::TOPIC)
+        << "link modification request for view '" << view.name() << "', normalized definition:" << link.toString();
+
     static const std::function<bool(irs::string_ref const& key)> acceptor = [](
         irs::string_ref const& key // json key
     )->bool {
@@ -319,7 +325,7 @@ arangodb::Result modifyLinks( // modify links
     std::string error;
     arangodb::iresearch::IResearchLinkMeta linkMeta;
 
-    if (!linkMeta.init(namedJson.slice(), true, error)) { // validated and normalized with 'isCreation=true' above via normalize(...)
+    if (!linkMeta.init(namedJson.slice(), true, error, &view.vocbase())) { // validated and normalized with 'isCreation=true' above via normalize(...)
       return arangodb::Result(
         TRI_ERROR_BAD_PARAMETER,
         std::string("error parsing link parameters from json for arangosearch view '") + view.name() + "' collection '" + collectionName + "' error '" + error + "'"

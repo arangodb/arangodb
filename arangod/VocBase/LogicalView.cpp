@@ -75,7 +75,7 @@ LogicalView::LogicalView(TRI_vocbase_t& vocbase, VPackSlice const& definition, u
 }
 
 Result LogicalView::appendVelocyPack(velocypack::Builder& builder,
-                                     std::underlying_type<Serialize>::type flags) const {
+                                     Serialization context) const {
   if (!builder.isOpenObject()) {
     return Result(TRI_ERROR_BAD_PARAMETER,
                   std::string(
@@ -84,7 +84,7 @@ Result LogicalView::appendVelocyPack(velocypack::Builder& builder,
 
   builder.add(StaticStrings::DataSourceType, arangodb::velocypack::Value(type().name()));
 
-  return appendVelocyPackImpl(builder, flags);
+  return appendVelocyPackImpl(builder, context);
 }
 
 bool LogicalView::canUse(arangodb::auth::Level const& level) {
@@ -260,9 +260,7 @@ Result LogicalView::rename(std::string&& newName) {
 
     builder.openObject();
     // include links so that Agency will always have a full definition
-    res = impl->properties(builder,
-                           LogicalDataSource::makeFlags(LogicalDataSource::Serialize::Detailed,
-                                                        LogicalDataSource::Serialize::ForPersistence));
+    res = impl->properties(builder, LogicalDataSource::Serialization::Persistence);
 
     if (!res.ok()) {
       return res;
@@ -343,10 +341,7 @@ Result LogicalView::rename(std::string&& newName) {
 
     builder.openObject();
 
-    auto res =
-        view.properties(builder,
-                        LogicalDataSource::makeFlags(LogicalDataSource::Serialize::Detailed,
-                                                     LogicalDataSource::Serialize::ForPersistence));
+    auto res = view.properties(builder, LogicalDataSource::Serialization::Persistence);
 
     if (!res.ok()) {
       return res;

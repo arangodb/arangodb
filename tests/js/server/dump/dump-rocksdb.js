@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen:4000 */
-/*global assertEqual, assertTrue, assertFalse */
+/*global assertEqual, assertNotEqual, assertTrue, assertFalse */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for dump/reload
@@ -404,14 +404,19 @@ function dumpTestSuite () {
       }
 
       let view = db._view("UnitTestsDumpView");
-      assertTrue(view !== null);
+      assertNotEqual(null, view);
       let props = view.properties();
+      assertEqual("UnitTestsDumpView", view.name());
       assertEqual(Object.keys(props.links).length, 1);
       assertTrue(props.hasOwnProperty("links"));
       assertTrue(props.links.hasOwnProperty("UnitTestsDumpViewCollection"));
       assertTrue(props.links.UnitTestsDumpViewCollection.hasOwnProperty("includeAllFields"));
       assertTrue(props.links.UnitTestsDumpViewCollection.hasOwnProperty("fields"));
       assertTrue(props.links.UnitTestsDumpViewCollection.includeAllFields);
+      assertEqual(Object.keys(props.links.UnitTestsDumpViewCollection.fields).length, 1);
+      assertTrue(props.links.UnitTestsDumpViewCollection.fields.text.analyzers.length, 2);
+      assertTrue("text_en", props.links.UnitTestsDumpViewCollection.fields.text.analyzers[0]);
+      assertTrue("UnitTestsDumpView::custom", props.links.UnitTestsDumpViewCollection.fields.text.analyzers[1]);
 
       assertEqual(props.consolidationIntervalMsec, 0);
       assertEqual(props.cleanupIntervalStep, 456);
@@ -442,6 +447,21 @@ function dumpTestSuite () {
 
       res = db._query("FOR doc IN UnitTestsDumpView SEARCH PHRASE(doc.text, 'foxx jumps over', 'text_en') RETURN doc").toArray();
       assertEqual(1, res.length);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test custom analyzers restoring
+////////////////////////////////////////////////////////////////////////////////
+    testAnalyzers: function() {
+      assertEqual(1, db._analyzers.count()); // only 1 stored custom analyzer
+
+      let analyzer = analyzers.analyzer("custom");
+      assertEqual(db._name() + "::custom", analyzer.name());
+      assertEqual("delimiter", analyzer.type());
+      assertEqual(Object.keys(analyzer.properties()).length, 1);
+      assertEqual(" ", analyzer.properties().delimiter);
+      assertEqual(1, analyzer.features().length);
+      assertEqual("frequency", analyzer.features()[0]);
     }
 
   };
