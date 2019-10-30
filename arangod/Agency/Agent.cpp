@@ -634,11 +634,14 @@ void Agent::sendAppendEntriesRPC() {
       }
       LOG_TOPIC("99061", DEBUG, Logger::AGENCY)
           << "Setting _earliestPackage to now + 30s for id " << followerId;
+      
+      network::RequestOptions reqOpts;
+      reqOpts.timeout = network::Timeout(150);
 
       // Send request
       auto ac = std::make_shared<AgentCallback>(this, followerId, highest, toLog);
       network::sendRequest(cp, _config.poolAt(followerId), fuerte::RestVerb::Post, path.str(),
-                           std::move(buffer), network::Timeout(150)).thenValue([=](network::Response r) {
+                           std::move(buffer), reqOpts).thenValue([=](network::Response r) {
         ac->operator()(r);
       });
       
@@ -671,7 +674,7 @@ void Agent::resign(term_t otherTerm) {
 }
 
 /// Leader's append entries, empty ones for heartbeat, triggered by Constituent
-void Agent::sendEmptyAppendEntriesRPC(std::string followerId) {
+void Agent::sendEmptyAppendEntriesRPC(std::string const& followerId) {
 
   if (!leading()) {
     LOG_TOPIC("95220", DEBUG, Logger::AGENCY)
@@ -710,9 +713,12 @@ void Agent::sendEmptyAppendEntriesRPC(std::string followerId) {
   VPackBufferUInt8 buffer;
   buffer.append(VPackSlice::emptyArraySlice().begin(), 1);
   auto ac = std::make_shared<AgentCallback>(this, followerId, 0, 0);
-  network::Timeout timeout(3 * _config.minPing() * _config.timeoutMult());
+
+  network::RequestOptions reqOpts;
+  reqOpts.timeout = network::Timeout(3 * _config.minPing() * _config.timeoutMult());
+
   network::sendRequest(cp, _config.poolAt(followerId), fuerte::RestVerb::Post, path.str(),
-                       std::move(buffer), timeout).thenValue([=](network::Response r) {
+                       std::move(buffer), reqOpts).thenValue([=](network::Response r) {
     ac->operator()(r);
   });
   

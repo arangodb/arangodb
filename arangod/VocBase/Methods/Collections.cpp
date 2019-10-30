@@ -298,29 +298,29 @@ Result Collections::create(TRI_vocbase_t& vocbase,
         helper.add(StaticStrings::ReplicationFactor, VPackValue(factor));
       }
 
-      bool hasDistribute = false;
-      auto distribute = info.properties.get(StaticStrings::DistributeShardsLike);
-      if (!distribute.isNone()) {
-        hasDistribute = true;
-      }
-
-      // system collections will be sharded normally - we avoid a self reference when creating _graphs
-      if (vocbase.sharding() == "single" && !vocbase.IsSystemName(info.name)) {
-        if(!hasDistribute) {
-          helper.add(StaticStrings::DistributeShardsLike, VPackValue(StaticStrings::GraphCollection));
-          hasDistribute = true;
-        } else if (distribute.isString() && distribute.compareString("") == 0) {
-          helper.add(StaticStrings::DistributeShardsLike, VPackSlice::nullSlice()); //delete empty string from info slice
+      if (!vocbase.IsSystemName(info.name)) {
+        uint64_t numberOfShards = arangodb::basics::VelocyPackHelper::readNumericValue<uint64_t>(info.properties, StaticStrings::NumberOfShards, 0);
+        // system-collections will be sharded normally. only user collections will get
+        // the forced sharding
+        if (vocbase.server().getFeature<ClusterFeature>().forceOneShard()) {
+          // force one shard, and force distributeShardsLike to be "_graphs"
+          helper.add(StaticStrings::NumberOfShards, VPackValue(1));
+          helper.add(StaticStrings::DistributeShardsLike, VPackValue(vocbase.shardingPrototypeName()));
+        } else if (vocbase.sharding() == "single" && numberOfShards <= 1) {
+          auto distributeSlice = info.properties.get(StaticStrings::DistributeShardsLike);
+          if (distributeSlice.isNone()) {
+            helper.add(StaticStrings::DistributeShardsLike, VPackValue(vocbase.shardingPrototypeName()));
+          } else if (distributeSlice.isString() && distributeSlice.compareString("") == 0) {
+            helper.add(StaticStrings::DistributeShardsLike, VPackSlice::nullSlice()); //delete empty string from info slice
+          }
         }
       }
 
-      if (!hasDistribute) {
-        // not an error: for historical reasons the write concern is read from the
-        // variable "minReplicationFactor"
-        auto writeConcernSlice = info.properties.get(StaticStrings::MinReplicationFactor);
-        if (writeConcernSlice.isNone()) {
-          helper.add(StaticStrings::MinReplicationFactor, VPackValue(vocbase.writeConcern()));
-        }
+      // not an error: for historical reasons the write concern is read from the
+      // variable "minReplicationFactor"
+      auto writeConcernSlice = info.properties.get(StaticStrings::MinReplicationFactor);
+      if (writeConcernSlice.isNone()) {
+        helper.add(StaticStrings::MinReplicationFactor, VPackValue(vocbase.writeConcern()));
       }
     } else  { // single server
       helper.add(StaticStrings::DistributeShardsLike, VPackSlice::nullSlice()); //delete empty string from info slice
@@ -450,7 +450,7 @@ Result Collections::create(TRI_vocbase_t& vocbase,
   return TRI_ERROR_NO_ERROR;
 }
 
-void Collections::createSystemCollectionProperties(std::string collectionName,
+void Collections::createSystemCollectionProperties(std::string const& collectionName,
                                                    VPackBuilder& bb, TRI_vocbase_t const& vocbase) {
 
   uint32_t defaultReplicationFactor = vocbase.replicationFactor();
@@ -594,9 +594,7 @@ Result Collections::properties(Context& ctxt, VPackBuilder& builder) {
 
   // note that we have an ongoing transaction here if we are in single-server
   // case
-  VPackBuilder props =
-      coll->toVelocyPackIgnore(ignoreKeys, LogicalDataSource::makeFlags(
-                                               LogicalDataSource::Serialize::Detailed));
+  VPackBuilder props = coll->toVelocyPackIgnore(ignoreKeys, LogicalDataSource::Serialization::Properties);
   TRI_ASSERT(builder.isOpenObject());
   builder.add(VPackObjectIterator(props.slice()));
 
@@ -904,9 +902,10 @@ futures::Future<OperationResult> Collections::revisionId(Context& ctxt) {
     // We directly read the entire cursor. so batchsize == limit
     OperationCursor opCursor(trx.indexScan(cname, transaction::Methods::CursorType::ALL));
 
-    opCursor.allDocuments([&](LocalDocumentId const& token,
-                              VPackSlice doc) { cb(doc.resolveExternal()); },
-                          1000);
+    opCursor.allDocuments([&](LocalDocumentId const&, VPackSlice doc) { 
+      cb(doc.resolveExternal()); 
+      return true;
+    }, 1000);
 
     return trx.finish(res);
   }
@@ -965,7 +964,7 @@ arangodb::Result Collections::checksum(LogicalCollection& collection,
     }
 
     checksum ^= localHash;
-
+    return true;
   }, 1000);
 
   return trx.finish(res);

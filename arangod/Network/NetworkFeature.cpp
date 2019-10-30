@@ -72,7 +72,7 @@ NetworkFeature::NetworkFeature(application_features::ApplicationServer& server,
     : ApplicationFeature(server, "Network"),
       _numIOThreads(config.numIOThreads),
       _maxOpenConnections(config.maxOpenConnections),
-      _connectionTtlMilli(config.connectionTtlMilli),
+      _idleTtlMilli(config.idleConnectionMilli),
       _verifyHosts(config.verifyHosts) {
   setOptional(true);
   startsAfter<ClusterFeature>();
@@ -88,9 +88,9 @@ void NetworkFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opt
   options->addOption("--network.max-open-connections",
                      "max open network connections",
                      new UInt64Parameter(&_maxOpenConnections));
-  options->addOption("--network.connection-ttl",
-                     "default time-to-live of connections (in milliseconds)",
-                     new UInt64Parameter(&_connectionTtlMilli));
+  options->addOption("--network.idle-connection-ttl",
+                     "default time-to-live of idle connections (in milliseconds)",
+                     new UInt64Parameter(&_idleTtlMilli));
   options->addOption("--network.verify-hosts", "verify hosts when using TLS",
                      new BooleanParameter(&_verifyHosts));
 
@@ -110,7 +110,7 @@ void NetworkFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opt
     }
 
     if (!server().isStopping() && !canceled) {
-      auto off = std::chrono::seconds(3);
+      std::chrono::seconds off(12);
       ::queueGarbageCollection(_workItemMutex, _workItem, _gcfunc, off);
     }
   };
@@ -121,8 +121,8 @@ void NetworkFeature::validateOptions(std::shared_ptr<options::ProgramOptions>) {
   if (_maxOpenConnections < 8) {
     _maxOpenConnections = 8;
   }
-  if (_connectionTtlMilli < 10000) {
-    _connectionTtlMilli = 10000;
+  if (_idleTtlMilli < 10000) {
+    _idleTtlMilli = 10000;
   }
 }
 
@@ -130,7 +130,7 @@ void NetworkFeature::prepare() {
   network::ConnectionPool::Config config;
   config.numIOThreads = static_cast<unsigned>(_numIOThreads);
   config.maxOpenConnections = _maxOpenConnections;
-  config.connectionTtlMilli = _connectionTtlMilli;
+  config.idleConnectionMilli = _idleTtlMilli;
   config.verifyHosts = _verifyHosts;
   if (server().hasFeature<ClusterFeature>() && server().isEnabled<ClusterFeature>()) {
     config.clusterInfo = &server().getFeature<ClusterFeature>().clusterInfo();

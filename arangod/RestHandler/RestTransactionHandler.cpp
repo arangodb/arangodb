@@ -175,7 +175,7 @@ void RestTransactionHandler::executeBegin() {
   
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
   TRI_ASSERT(mgr != nullptr);
-  
+    
   Result res = mgr->createManagedTrx(_vocbase, tid, slice);
   if (res.fail()) {
     generateError(res);
@@ -213,21 +213,36 @@ void RestTransactionHandler::executeAbort() {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER);
     return;
   }
-
-  TRI_voc_tid_t tid = basics::StringUtils::uint64(_request->suffixes()[0]);
-  if (tid == 0) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
-                  "bad transaction ID");
-    return;
-  }
+  
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
   TRI_ASSERT(mgr != nullptr);
-  
-  Result res = mgr->abortManagedTrx(tid);
-  if (res.fail()) {
-    generateError(res);
+
+  if (_request->suffixes()[0] == "write") {
+    // abort all transactions
+    bool const fanout = ServerState::instance()->isCoordinator() && !_request->parsedValue("local", false);
+    ExecContext const& exec = ExecContext::current();
+    Result res = mgr->abortAllManagedWriteTrx(exec.user(), fanout);
+        
+    if (res.ok()) {
+      generateOk(rest::ResponseCode::OK, VPackSlice::emptyObjectSlice());
+    } else {
+      generateError(res);
+    }
   } else {
-    generateTransactionResult(rest::ResponseCode::OK, tid, transaction::Status::ABORTED);
+    TRI_voc_tid_t tid = basics::StringUtils::uint64(_request->suffixes()[0]);
+    if (tid == 0) {
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+                    "bad transaction ID");
+      return;
+    }
+  
+    Result res = mgr->abortManagedTrx(tid);
+
+    if (res.fail()) {
+      generateError(res);
+    } else {
+      generateTransactionResult(rest::ResponseCode::OK, tid, transaction::Status::ABORTED);
+    }
   }
 }
 

@@ -269,23 +269,19 @@ IndexExecutor::CursorReader::CursorReader(IndexExecutorInfos const& infos,
       _index(index),
       _cursor(std::make_unique<OperationCursor>(infos.getTrxPtr()->indexScanForCondition(
           index, condition, infos.getOutVariable(), infos.getOptions()))),
+      _context(context),
       _type(!infos.getProduceResult()
                 ? Type::NoResult
                 : _cursor->hasCovering() &&
                           !infos.getCoveringIndexAttributePositions().empty()
                       ? Type::Covering
-                      : Type::Document),
-      _noProduce(nullptr),
-      _produce(nullptr) {
-  auto getNullCallback_ = checkUniqueness ? getNullCallback<true> : getNullCallback<false>;
-  auto buildCallback_ = checkUniqueness ? buildCallback<true> : buildCallback<false>;
+                      : Type::Document) {
   if (_type == Type::NoResult) {
-    _noProduce = getNullCallback_(context);
-    _produce = nullptr;
+    _documentNonProducer = checkUniqueness ? getNullCallback<true>(context) : getNullCallback<false>(context);
   } else {
-    _produce = buildCallback_(context);
-    _noProduce = nullptr;
+    _documentProducer = checkUniqueness ? buildDocumentCallback<true, false>(context) : buildDocumentCallback<false, false>(context);
   }
+  _documentSkipper = checkUniqueness ? buildDocumentCallback<true, true>(context) : buildDocumentCallback<false, true>(context);
 }
 
 IndexExecutor::CursorReader::CursorReader(CursorReader&& other) noexcept
@@ -293,9 +289,11 @@ IndexExecutor::CursorReader::CursorReader(CursorReader&& other) noexcept
       _condition(other._condition),
       _index(other._index),
       _cursor(std::move(other._cursor)),
+      _context(other._context),
       _type(other._type),
-      _noProduce(std::move(other._noProduce)),
-      _produce(std::move(other._produce)) {}
+      _documentNonProducer(std::move(other._documentNonProducer)),
+      _documentProducer(std::move(other._documentProducer)),
+      _documentSkipper(std::move(other._documentSkipper)) {}
 
 bool IndexExecutor::CursorReader::hasMore() const {
   return _cursor != nullptr && _cursor->hasMore();
@@ -317,18 +315,18 @@ bool IndexExecutor::CursorReader::readIndex(OutputAqlItemRow& output) {
   }
   switch (_type) {
     case Type::NoResult:
-      TRI_ASSERT(_noProduce != nullptr);
-      return _cursor->next(_noProduce, output.numRowsLeft());
+      TRI_ASSERT(_documentNonProducer != nullptr);
+      return _cursor->next(_documentNonProducer, output.numRowsLeft());
     case Type::Covering:
-      TRI_ASSERT(_produce != nullptr);
-      return _cursor->nextCovering(_produce, output.numRowsLeft());
+      TRI_ASSERT(_documentProducer != nullptr);
+      return _cursor->nextCovering(_documentProducer, output.numRowsLeft());
     case Type::Document:
-      TRI_ASSERT(_produce != nullptr);
-      return _cursor->nextDocument(_produce, output.numRowsLeft());
+      TRI_ASSERT(_documentProducer != nullptr);
+      return _cursor->nextDocument(_documentProducer, output.numRowsLeft());
   }
   // The switch above is covering all values and this code
   // cannot be reached
-  TRI_ASSERT(false);
+  ADB_UNREACHABLE;
   return false;
 }
 
@@ -390,7 +388,12 @@ size_t IndexExecutor::CursorReader::skipIndex(size_t toSkip) {
   }
 
   uint64_t skipped = 0;
-  _cursor->skip(toSkip, skipped);
+  if (_infos.getFilter() != nullptr) {
+    _cursor->nextDocument(_documentSkipper, toSkip);
+    skipped = _context.getAndResetNumScanned() - _context.getAndResetNumFiltered();
+  } else {
+    _cursor->skip(toSkip, skipped);
+  }
 
   TRI_ASSERT(skipped <= toSkip);
   TRI_ASSERT(skipped == toSkip || !hasMore());
@@ -557,6 +560,7 @@ std::pair<ExecutionState, IndexStats> IndexExecutor::produceRows(OutputAqlItemRo
   IndexStats stats{};
 
   TRI_ASSERT(_documentProducingFunctionContext.getAndResetNumScanned() == 0);
+  TRI_ASSERT(_documentProducingFunctionContext.getAndResetNumFiltered() == 0);
   _documentProducingFunctionContext.setOutputRow(&output);
 
   while (true) {
@@ -606,6 +610,7 @@ std::pair<ExecutionState, IndexStats> IndexExecutor::produceRows(OutputAqlItemRo
       // Or the cursor is done, so we need to advance
     }
     stats.incrScanned(_documentProducingFunctionContext.getAndResetNumScanned());
+    stats.incrFiltered(_documentProducingFunctionContext.getAndResetNumFiltered());
     if (output.isFull()) {
       if (_state == ExecutionState::DONE && !_input) {
         return {ExecutionState::DONE, stats};
@@ -635,13 +640,13 @@ std::tuple<ExecutionState, IndexExecutor::Stats, size_t> IndexExecutor::skipRows
 
         _skipped = 0;
 
-        return std::make_tuple(_state, stats, skipped);  // tupple, cannot use initializer list due to build failure
+        return std::make_tuple(_state, stats, skipped);  // tuple, cannot use initializer list due to build failure
       }
 
       std::tie(_state, _input) = _fetcher.fetchRow();
 
       if (_state == ExecutionState::WAITING) {
-        return std::make_tuple(_state, stats, 0);  // tupple, cannot use initializer list due to build failure
+        return std::make_tuple(_state, stats, 0);  // tuple, cannot use initializer list due to build failure
       }
 
       if (!_input) {
@@ -650,7 +655,7 @@ std::tuple<ExecutionState, IndexExecutor::Stats, size_t> IndexExecutor::skipRows
 
         _skipped = 0;
 
-        return std::make_tuple(_state, stats, skipped);  // tupple, cannot use initializer list due to build failure
+        return std::make_tuple(_state, stats, skipped);  // tuple, cannot use initializer list due to build failure
       }
 
       initIndexes(_input);
@@ -681,11 +686,11 @@ std::tuple<ExecutionState, IndexExecutor::Stats, size_t> IndexExecutor::skipRows
 
   if (_state == ExecutionState::DONE && !_input) {
     return std::make_tuple(ExecutionState::DONE, stats,
-                           skipped);  // tupple, cannot use initializer list due to build failure
+                           skipped);  // tuple, cannot use initializer list due to build failure
   }
 
   return std::make_tuple(ExecutionState::HASMORE, stats,
-                         skipped);  // tupple, cannot use initializer list due to build failure
+                         skipped);  // tuple, cannot use initializer list due to build failure
 }
 
 IndexExecutor::CursorReader& IndexExecutor::getCursor() {

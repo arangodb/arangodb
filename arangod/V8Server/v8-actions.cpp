@@ -141,7 +141,7 @@ class v8_action_t final : public TRI_action_t {
 
       // and execute it
       {
-	// cppcheck-suppress redundantPointerOp
+        // cppcheck-suppress redundantPointerOp
         MUTEX_LOCKER(mutexLocker, *dataLock);
 
         if (*data != nullptr) {
@@ -166,7 +166,7 @@ class v8_action_t final : public TRI_action_t {
       }
 
       {
-	// cppcheck-suppress redundantPointerOp
+        // cppcheck-suppress redundantPointerOp
         MUTEX_LOCKER(mutexLocker, *dataLock);
         *data = nullptr;
       }
@@ -1425,36 +1425,35 @@ static int clusterSendToAllServers(std::string const& dbname,
     return TRI_ERROR_SHUTTING_DOWN;
   }
   ClusterInfo& ci = *pool->config().clusterInfo;
+  std::vector<ServerID> DBServers = ci.getCurrentDBServers();
 
   network::Headers headers;
   fuerte::RestVerb verb = network::arangoRestVerbToFuerte(method);
-  std::string url = "/_db/" + StringUtils::urlEncode(dbname) + "/" + path;
-  auto timeout = std::chrono::seconds(3600);
+  
+  network::RequestOptions reqOpts;
+  reqOpts.database = dbname;
+  reqOpts.timeout = network::Timeout(3600);
 
   std::vector<futures::Future<network::Response>> futures;
-
+  futures.reserve(DBServers.size());
+  
   // Have to propagate to DB Servers
-  std::vector<ServerID> DBServers = ci.getCurrentDBServers();
   for (auto const& sid : DBServers) {
     VPackBuffer<uint8_t> buffer(body.size());
     buffer.append(body);
-    auto f = network::sendRequest(pool, "server:" + sid, verb, url,
-                                  std::move(buffer), timeout, headers);
+    auto f = network::sendRequest(pool, "server:" + sid, verb, path,
+                                  std::move(buffer), reqOpts, headers);
     futures.emplace_back(std::move(f));
   }
 
-  return futures::collectAll(futures)
-      .thenValue([](std::vector<futures::Try<network::Response>>&& responses) -> int {
-        for (futures::Try<network::Response> const& tryRes : responses) {
-          network::Response const& res = tryRes.get();  // throws exceptions upwards
-          int commError = network::fuerteToArangoErrorCode(res);
-          if (commError != TRI_ERROR_NO_ERROR) {
-            return commError;
-          }
-        }
-        return TRI_ERROR_NO_ERROR;
-      })
-      .get();
+  for (auto& f : futures) {
+    network::Response const& res = f.get();  // throws exceptions upwards
+    int commError = network::fuerteToArangoErrorCode(res);
+    if (commError != TRI_ERROR_NO_ERROR) {
+      return commError;
+    }
+  }
+  return TRI_ERROR_NO_ERROR;
 }
 #endif
 

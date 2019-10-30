@@ -66,6 +66,15 @@ VstRequest::VstRequest(ConnectionInfo const& connectionInfo,
   parseHeaderInformation();
 }
 
+arangodb::velocypack::StringRef VstRequest::rawPayload() const {
+  if (_buffer.size() <= _payloadOffset) {
+    return arangodb::velocypack::StringRef();
+  } else {
+    return arangodb::velocypack::StringRef(reinterpret_cast<const char*>(_buffer.data() + _payloadOffset),
+                                           _buffer.size() - _payloadOffset);
+  }
+}
+
 VPackSlice VstRequest::payload(VPackOptions const* options) {
   TRI_ASSERT(options != nullptr);
 
@@ -164,7 +173,8 @@ void VstRequest::parseHeaderInformation() {
     }
 
     // fullUrl should not be necessary for Vst
-    _fullUrl = _requestPath + "?";
+    _fullUrl = _requestPath;
+    _fullUrl.push_back('?'); // intentional
     for (auto const& param : _values) {
       _fullUrl.append(param.first + "=" +
                       basics::StringUtils::urlEncode(param.second) + "&");
