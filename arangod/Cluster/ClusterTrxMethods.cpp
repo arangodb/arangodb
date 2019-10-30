@@ -400,6 +400,8 @@ void addAQLTransactionHeader(transaction::Methods const& trx,
       TRI_ASSERT(false);
     }
     state.addKnownServer(server);  // remember server
+  } else if (state.hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL)) {
+     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "illegal AQL transaction state");
   }
   headers.emplace(arangodb::StaticStrings::TransactionId, std::move(value));
 }
