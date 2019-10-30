@@ -119,18 +119,18 @@ bool IResearchViewSort::fromVelocyPack(
     auto const directionSlice = sortSlice.get(directionFieldName);
     if (!directionSlice.isNone()) {
       if (!parseDirectionString(directionSlice, direction)) {
-        error = "[" + std::to_string(size()) + "]=>" + directionFieldName;
+        error = "[" + std::to_string(size()) + "]." + directionFieldName;
         return false;
       }
     } else if (!parseDirectionBool(sortSlice.get(ascFieldName), direction)) {
-      error = "[" + std::to_string(size()) + "]=>" + ascFieldName;
+      error = "[" + std::to_string(size()) + "]." + ascFieldName;
       return false;
     }
 
     auto const fieldSlice = sortSlice.get(fieldName);
 
     if (!fieldSlice.isString()) {
-      error = "[" + std::to_string(size()) + "]=>" + fieldName;
+      error = "[" + std::to_string(size()) + "]." + fieldName;
       return false;
     }
 
@@ -142,7 +142,7 @@ bool IResearchViewSort::fromVelocyPack(
       );
     } catch (...) {
       // FIXME why doesn't 'TRI_ParseAttributeString' return bool?
-      error = "[" + std::to_string(size()) + "]=>" + fieldName;
+      error = "[" + std::to_string(size()) + "]." + fieldName;
       return false;
     }
 
