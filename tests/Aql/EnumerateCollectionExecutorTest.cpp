@@ -104,7 +104,7 @@ class EnumerateCollectionExecutorTest : public ::testing::Test {
         ast(fakedQuery.get()),
         outVariable("name", 1),
         varUsedLater(false),
-        engine(fakedQuery.get()->engine()),  // TODO: put engine here
+        engine(fakedQuery.get()->engine()),
         aqlCollection("UnitTestCollection", &vocbase, arangodb::AccessMode::Type::READ),
         useRawPointers(false),
         random(false),
