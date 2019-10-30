@@ -330,13 +330,13 @@ void OptimizerRulesFeature::addRules() {
                                         OptimizerRule::Flags::ClusterOnly));
 #endif
 
-  // distribute operations in cluster
-  registerRule("scatter-in-cluster", scatterInClusterRule, OptimizerRule::scatterInClusterRule,
-               OptimizerRule::makeFlags(OptimizerRule::Flags::ClusterOnly));
-
   // distribute view queries in cluster
   registerRule("scatter-arangosearch-view-in-cluster", arangodb::iresearch::scatterViewInClusterRule,
                OptimizerRule::scatterIResearchViewInClusterRule,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::ClusterOnly));
+
+  // distribute operations in cluster
+  registerRule("scatter-in-cluster", scatterInClusterRule, OptimizerRule::scatterInClusterRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::ClusterOnly));
 
   // distribute operations in cluster
