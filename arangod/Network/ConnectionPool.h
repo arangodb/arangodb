@@ -59,7 +59,7 @@ class ConnectionPool final {
   struct Config {
     ClusterInfo* clusterInfo;
     uint64_t minOpenConnections = 1;       /// minimum number of open connections
-    uint64_t maxOpenConnections = 128;     /// max number of connections
+    uint64_t maxOpenConnections = 1024;    /// max number of connections
     uint64_t idleConnectionMilli = 60000;  /// unused connection lifetime
     unsigned int numIOThreads = 1;         /// number of IO threads
     bool verifyHosts = false;

@@ -140,7 +140,8 @@ void ConnectionPool::pruneConnections() {
     }
     
     LOG_TOPIC("2d59a", INFO, Logger::COMMUNICATION)
-        << "pruning extra connections to '" << pair.first << "'";
+        << "pruning extra connections to '" << pair.first
+        << "' (" << buck.list.size() << ")";
     
     // remove any remaining connections, they will be closed eventually
     it = buck.list.begin();
@@ -221,7 +222,7 @@ ConnectionPtr ConnectionPool::selectConnection(std::string const& endpoint,
       auto now = std::chrono::steady_clock::now();
       TRI_ASSERT(now >= c.leased);
       // hack hack hack. Avoids reusing used connections
-      if ((now - c.leased) > std::chrono::milliseconds(50)) {
+      if ((now - c.leased) > std::chrono::milliseconds(25)) {
         c.leased = now;
         return c.fuerte;
       }
