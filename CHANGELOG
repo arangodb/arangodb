@@ -1,7 +1,7 @@
 v3.5.2 (XXXX-XX-XX)
 -------------------
 
-* Fixed internal issue #647: custom analyzer provokes errors on ActiveFailover
+* Fixed internal issue #647: custom analyzer provokes errors on Active Failover
   deployment.
 
 * When starting a coordinator, wait up to 15 seconds for it to appear 
