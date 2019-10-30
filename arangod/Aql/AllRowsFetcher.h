@@ -33,6 +33,9 @@
 #include <cstddef>
 #include <memory>
 
+// TODO REMOVE ME TEMPORARY
+#include "Aql/AqlItemBlockInputRange.h"
+
 namespace arangodb {
 namespace aql {
 
@@ -92,7 +95,8 @@ class AllRowsFetcher {
 
   TEST_VIRTUAL ~AllRowsFetcher() = default;
 
-  using DataRange = std::shared_ptr<AqlItemMatrix>;
+  // TODO FIXME, this Range does not work here.
+  using DataRange = AqlItemBlockInputRange;
 
  protected:
   // only for testing! Does not initialize _dependencyProxy!

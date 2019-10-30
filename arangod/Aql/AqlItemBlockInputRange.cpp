@@ -25,10 +25,9 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-AqlItemBlockInputRange::AqlItemBlockInputRange()
-    : _block(nullptr), _rowIndex(0), _endIndex(0), _finalState(ExecutorState::HASMORE) {
+AqlItemBlockInputRange::AqlItemBlockInputRange(ExecutorState state)
+    : _block(nullptr), _rowIndex(0), _endIndex(0), _finalState(state) {
   TRI_ASSERT(!hasMore());
-  TRI_ASSERT(state() == ExecutorState::HASMORE);
 }
 
 AqlItemBlockInputRange::AqlItemBlockInputRange(ExecutorState state,

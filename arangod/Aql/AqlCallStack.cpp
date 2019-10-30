@@ -45,10 +45,18 @@ AqlCallStack::AqlCallStack(AqlCallStack const& other)
 
 bool AqlCallStack::isRelevant() const { return _depth == 0; }
 
-AqlCall& AqlCallStack::myCall() {
+AqlCall&& AqlCallStack::popCall() {
   TRI_ASSERT(isRelevant());
   TRI_ASSERT(!_operations.empty());
-  return _operations.top();
+  auto call = _operations.top();
+  _operations.pop();
+  return std::move(call);
+}
+
+void AqlCallStack::pushCall(AqlCall&& call) {
+  // TODO is this correct on subqueries?
+  TRI_ASSERT(isRelevant());
+  _operations.push(call);
 }
 
 void AqlCallStack::stackUpMissingCalls() {

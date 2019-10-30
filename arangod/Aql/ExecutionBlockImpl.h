@@ -190,12 +190,17 @@ class ExecutionBlockImpl final : public ExecutionBlock {
 
  private:
   /**
+   * @brief Inner execute() part, without the tracing calls.
+   */
+  std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> executeWithoutTrace(AqlCallStack stack);
+
+  /**
    * @brief Inner getSome() part, without the tracing calls.
    */
   std::pair<ExecutionState, SharedAqlItemBlockPtr> getSomeWithoutTrace(size_t atMost);
 
   /**
-   * @brief Inner getSome() part, without the tracing calls.
+   * @brief Inner skipSome() part, without the tracing calls.
    */
   std::pair<ExecutionState, size_t> skipSomeOnceWithoutTrace(size_t atMost);
 

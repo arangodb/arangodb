@@ -132,12 +132,10 @@ std::tuple<ExecutorState, FilterStats, AqlCall> FilterExecutor::produceRows(
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   FilterStats stats{};
-  ExecutorState state = ExecutorState::HASMORE;
-  InputAqlItemRow input{CreateInvalidInputRowHint{}};
 
   while (inputRange.hasMore() && limit > 0) {
     TRI_ASSERT(!output.isFull());
-    std::tie(state, input) = inputRange.next();
+    auto const& [state, input] = inputRange.next();
     TRI_ASSERT(input.isInitialized());
     if (input.getValue(_infos.getInputRegister()).toBoolean()) {
       output.copyRow(input);
@@ -150,5 +148,5 @@ std::tuple<ExecutorState, FilterStats, AqlCall> FilterExecutor::produceRows(
 
   AqlCall upstreamCall{};
   upstreamCall.softLimit = limit;
-  return {state, stats, upstreamCall};
+  return {inputRange.peek().first, stats, upstreamCall};
 }
