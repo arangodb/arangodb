@@ -225,8 +225,7 @@ TEST_F(IResearchQueryStartsWithTest, test) {
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
-    view->properties(builder, arangodb::LogicalDataSource::makeFlags(
-                                  arangodb::LogicalDataSource::Serialize::Detailed));
+    view->properties(builder, arangodb::LogicalDataSource::Serialization::Properties);
     builder.close();
 
     auto slice = builder.slice();

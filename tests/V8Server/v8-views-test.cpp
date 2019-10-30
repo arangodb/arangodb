@@ -72,7 +72,7 @@ struct TestView : public arangodb::LogicalView {
       : arangodb::LogicalView(vocbase, definition, planVersion) {}
   virtual arangodb::Result appendVelocyPackImpl(
       arangodb::velocypack::Builder& builder,
-      std::underlying_type<arangodb::LogicalDataSource::Serialize>::type) const override {
+      Serialization) const override {
     builder.add("properties", _properties.slice());
     return _appendVelocyPackResult;
   }

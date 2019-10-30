@@ -126,8 +126,13 @@ arangodb::Result Indexes::getAll(LogicalCollection const* collection,
 
     VPackBuilder tmpInner;
     auto c = ClusterInfo::instance()->getCollection(databaseName, cid);
-    c->getIndexesVPack(tmpInner, flags, [&](arangodb::Index const* idx) {
-      return withHidden || !idx->isHidden();
+    c->getIndexesVPack(tmpInner, [withHidden, flags](arangodb::Index const* idx, decltype(flags)& indexFlags) {
+      if (withHidden || !idx->isHidden()) {
+        indexFlags = flags;
+        return true;
+      }
+
+      return false;
     });
 
     tmp.openArray();

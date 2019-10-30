@@ -1,6 +1,9 @@
 v3.5.2 (XXXX-XX-XX)
 -------------------
 
+* Fixed internal issue #647: custom analyzer provokes errors on Active Failover
+  deployment.
+
 * Upgraded bundled version of libcurl to 7.66.0.
 
 * When starting a coordinator, wait up to 15 seconds for it to appear 
