@@ -827,7 +827,9 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
       llhttp_resume(&thisPtr->_parser);
       thisPtr->asyncReadSome();
     }
-    stat->release();
+    if (stat != nullptr) {
+      stat->release();
+    }
   };
   asio_ns::async_write(this->_protocol->socket, buffers, std::move(cb));
 }
