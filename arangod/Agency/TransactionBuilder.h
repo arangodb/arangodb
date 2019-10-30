@@ -13,7 +13,6 @@ struct envelope;
 template<typename T>
 struct buffer_mapper;
 
-
 template<typename B, typename T, typename... Vs>
 struct read_trx {
     using buffer = buffer_mapper<B>;
@@ -62,7 +61,8 @@ struct precs_trx {
         return std::move(_buffer);
     };
 
-    T done() && { _buffer.closeObject(); _buffer.closeArray(); return std::move(_buffer); };
+    T done() && { _buffer.closeObject(); _buffer.setValue(VPackValue(AgencyWriteTransaction::randomClientId()));
+        _buffer.closeArray(); return std::move(_buffer); };
 private:
     friend write_trx<B, T>;
     friend T;
@@ -115,7 +115,11 @@ struct write_trx {
 
 
     // TODO generate inquiry ID here
-    T done() && { _buffer.closeObject(); _buffer.closeArray(); return std::move(_buffer); }
+    T done() && { _buffer.closeObject();
+        _buffer.setValue(VPackSlice::emptyObjectSlice());
+        _buffer.setValue(VPackValue(AgencyWriteTransaction::randomClientId()));
+        _buffer.closeArray();
+        return std::move(_buffer); }
     precs_trx<B, T> precs() && { _buffer.closeObject(); _buffer.openObject(); return std::move(_buffer); }
     write_trx& operator=(write_trx&&) = default;
 private:
