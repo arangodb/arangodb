@@ -91,7 +91,7 @@ IndexIterator::DocumentCallback aql::getCallback(DocumentProducingCallbackVarian
       }
     }
 
-    if (skip) {
+    if constexpr (skip) {
       return true;
     }
 
