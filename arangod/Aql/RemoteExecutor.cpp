@@ -279,6 +279,8 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::initialize
 
   builder.close();
 
+  traceInitializeCursorRequest(builder.slice());
+
   auto res = sendAsyncRequest(fuerte::RestVerb::Put,
                               "/_api/aql/initializeCursor/", std::move(buffer));
   if (!res.ok()) {
@@ -490,6 +492,11 @@ void ExecutionBlockImpl<RemoteExecutor>::traceSkipSomeRequest(VPackSlice const s
                                                               size_t const atMost) {
   using namespace std::string_literals;
   traceRequest("skipSome", slice, "atMost="s + std::to_string(atMost));
+}
+
+void ExecutionBlockImpl<RemoteExecutor>::traceInitializeCursorRequest(VPackSlice const slice) {
+  using namespace std::string_literals;
+  traceRequest("initializeCursor", slice, ""s);
 }
 
 void ExecutionBlockImpl<RemoteExecutor>::traceShutdownRequest(VPackSlice const slice,

@@ -381,7 +381,7 @@ struct DistributedQueryInstanciator final : public WalkerWorker<ExecutionNode> {
   GatherNode const* _lastGatherNode;
 
  public:
-  explicit DistributedQueryInstanciator(Query& query, bool pushToSingleServer)
+  DistributedQueryInstanciator(Query& query, bool pushToSingleServer)
       : _dbserverParts(query),
         _isCoordinator(true),
         _pushToSingleServer(pushToSingleServer),
@@ -392,7 +392,7 @@ struct DistributedQueryInstanciator final : public WalkerWorker<ExecutionNode> {
   /// @brief before method for collection of pieces phase
   ///        Collects all nodes on the path and divides them
   ///        into coordinator and dbserver parts
-  bool before(ExecutionNode* en) override final {
+  bool before(ExecutionNode* en) final {
     auto const nodeType = en->getType();
     if (_isCoordinator) {
       _coordinatorParts.addNode(en);
@@ -437,7 +437,7 @@ struct DistributedQueryInstanciator final : public WalkerWorker<ExecutionNode> {
     return false;
   }
 
-  void after(ExecutionNode* en) override final {
+  void after(ExecutionNode* en) final {
     if (en->getType() == ExecutionNode::REMOTE) {
       if (_isCoordinator) {
         _lastClosed = _coordinatorParts.closeSnippet();

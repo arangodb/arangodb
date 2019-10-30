@@ -23,6 +23,7 @@
 #include "ConstFetcher.h"
 
 #include "Aql/DependencyProxy.h"
+#include "Aql/ShadowAqlItemRow.h"
 #include "Basics/Exceptions.h"
 #include "Basics/voc-errors.h"
 
@@ -94,8 +95,6 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ConstFetcher::fetchBlockForPass
   return {ExecutionState::DONE, std::move(_blockForPassThrough)};
 }
 
-std::pair<ExecutionState, size_t> ConstFetcher::preFetchNumberOfRows(size_t) {
-  // This is not implemented for this fetcher
-  TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+std::pair<ExecutionState, ShadowAqlItemRow> ConstFetcher::fetchShadowRow(size_t) const {
+  return {ExecutionState::DONE, ShadowAqlItemRow{CreateInvalidShadowRowHint{}}};
 }
