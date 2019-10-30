@@ -251,7 +251,7 @@ std::string const RestAdminClusterHandler::NodeStatistics = "nodeStatistics";
 std::string const RestAdminClusterHandler::Statistics = "statistics";
 std::string const RestAdminClusterHandler::ShardDistribution = "shardDistribution";
 std::string const RestAdminClusterHandler::CollectionShardDistribution = "collectionShardDistribution";
-std::string const RestAdminClusterHandler::CleanoutServer = "cleanoutServer";
+std::string const RestAdminClusterHandler::CleanoutServer = "cleanOutServer";
 std::string const RestAdminClusterHandler::ResignLeadership = "resignLeadership";
 std::string const RestAdminClusterHandler::MoveShard = "moveShard";
 std::string const RestAdminClusterHandler::QueryJobStatus = "queryAgencyJob";
@@ -613,7 +613,7 @@ RestAdminClusterHandler::futureVoid RestAdminClusterHandler::createMoveShard(std
           VPackObjectBuilder ob(&builder);
           builder.add("error", VPackValue(false));
           builder.add("code", VPackValue(int(ResponseCode::ACCEPTED)));
-          builder.add("job", VPackValue(jobId));
+          builder.add("id", VPackValue(jobId));
         }
 
         resetResponse(rest::ResponseCode::ACCEPTED);
@@ -815,7 +815,7 @@ RestStatus RestAdminClusterHandler::handleCreateSingleServerJob(std::string cons
           VPackObjectBuilder ob(&builder);
           builder.add("error", VPackValue(false));
           builder.add("code", VPackValue(int(ResponseCode::ACCEPTED)));
-          builder.add("job", VPackValue(jobId));
+          builder.add("id", VPackValue(jobId));
         }
 
         resetResponse(rest::ResponseCode::ACCEPTED);
@@ -1127,15 +1127,22 @@ RestStatus RestAdminClusterHandler::handleMaintenance() {
 RestStatus RestAdminClusterHandler::handleGetNumberOfServers() {
 
   auto targetPath = arangodb::cluster::paths::root()->arango()->target();
-  AgencyReadTransaction trx(std::vector<std::string>{
-    targetPath->numberOfDBServers()->str(),
-    targetPath->numberOfCoordinators()->str(),
-    targetPath->cleanedServers()->str()
-  });
+
+  VPackBuffer<uint8_t> trx;
+  {
+    VPackBuilder builder(trx);
+    arangodb::agency::envelope<VPackBuilder>::create(builder)
+      .read()
+        .key(targetPath->numberOfDBServers()->str())
+        .key(targetPath->numberOfCoordinators()->str())
+        .key(targetPath->cleanedServers()->str())
+        .done()
+      .done();
+  }
+
 
   auto self(shared_from_this());
-
-  return waitForFuture(AsyncAgencyComm().sendTransaction(10.0s, trx)
+  return waitForFuture(AsyncAgencyComm().sendReadTransaction(10.0s, std::move(trx))
     .thenValue([this, self, targetPath] (AsyncAgencyCommResult &&result) {
       if (result.ok() && result.statusCode() == fuerte::StatusOK) {
 
@@ -1182,47 +1189,64 @@ RestStatus RestAdminClusterHandler::handlePutNumberOfServers() {
 
   std::vector<AgencyOperation> ops;
   auto targetPath = arangodb::cluster::paths::root()->arango()->target();
+  bool hasThingsToDo = false;
 
-  VPackSlice numberOfCoordinators = body.get("numberOfCoordinators");
-  if (numberOfCoordinators.isNumber()) {
-    ops.emplace_back(targetPath->numberOfCoordinators()->str(), AgencyValueOperationType::SET, numberOfCoordinators);
-  } else if (!numberOfCoordinators.isNone()) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER, "numberOfCoordinators: number expected");
-    return RestStatus::DONE;
-  }
+  VPackBuffer<uint8_t> trx;
+  {
+    VPackBuilder builder(trx);
+    auto write = arangodb::agency::envelope<VPackBuilder>::create(builder).write();
 
-  VPackSlice numberOfDBServers = body.get("numberOfDBServers");
-  if (numberOfDBServers.isNumber()) {
-    ops.emplace_back(targetPath->numberOfDBServers()->str(), AgencyValueOperationType::SET, numberOfDBServers);
-  } else if (!numberOfDBServers.isNone()) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER, "numberOfDBServers: number expected");
-    return RestStatus::DONE;
-  }
-
-  VPackSlice cleanedServers = body.get("cleanedServers");
-  if (cleanedServers.isArray()) {
-
-    bool allStrings = true;
-    for (auto server : VPackArrayIterator(cleanedServers)) {
-      if (false == server.isString()) {
-        allStrings = false;
-      }
-    }
-
-    if (allStrings) {
-      ops.emplace_back(targetPath->cleanedServers()->str(), AgencyValueOperationType::SET, cleanedServers);
-    } else {
-      generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER, "cleanedServers: array of strings expected");
+    VPackSlice numberOfCoordinators = body.get("numberOfCoordinators");
+    if (numberOfCoordinators.isNumber()) {
+      write = std::move(write).set(targetPath->numberOfCoordinators()->str(), numberOfCoordinators);
+      hasThingsToDo = true;
+    } else if (!numberOfCoordinators.isNone()) {
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER, "numberOfCoordinators: number expected");
       return RestStatus::DONE;
     }
-  } else if (!cleanedServers.isNone()) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER, "cleanedServers: array expected");
+
+    VPackSlice numberOfDBServers = body.get("numberOfDBServers");
+    if (numberOfDBServers.isNumber()) {
+      write = std::move(write).set(targetPath->numberOfDBServers()->str(), numberOfDBServers);
+      hasThingsToDo = true;
+    } else if (!numberOfDBServers.isNone()) {
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER, "numberOfDBServers: number expected");
+      return RestStatus::DONE;
+    }
+
+    VPackSlice cleanedServers = body.get("cleanedServers");
+    if (cleanedServers.isArray()) {
+
+      bool allStrings = true;
+      for (auto server : VPackArrayIterator(cleanedServers)) {
+        if (false == server.isString()) {
+          allStrings = false;
+          break;
+        }
+      }
+
+      if (allStrings) {
+        write = std::move(write).set(targetPath->cleanedServers()->str(), cleanedServers);
+        hasThingsToDo = true;
+      } else {
+        generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER, "cleanedServers: array of strings expected");
+        return RestStatus::DONE;
+      }
+    } else if (!cleanedServers.isNone()) {
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER, "cleanedServers: array expected");
+      return RestStatus::DONE;
+    }
+
+    std::move(write).done().done();
+  }
+
+  if (!hasThingsToDo) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER, "missing fields");
     return RestStatus::DONE;
   }
 
   auto self(shared_from_this());
-  AgencyWriteTransaction trx(std::move(ops));
-  return waitForFuture(AsyncAgencyComm().sendTransaction(20s, std::move(trx))
+  return waitForFuture(AsyncAgencyComm().sendWriteTransaction(20s, std::move(trx))
     .thenValue([this, self](AsyncAgencyCommResult &&result) {
       if (result.ok() && result.statusCode() == fuerte::StatusOK) {
         resetResponse(rest::ResponseCode::OK);
