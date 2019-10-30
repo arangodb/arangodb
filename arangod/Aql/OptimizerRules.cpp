@@ -7534,6 +7534,8 @@ void arangodb::aql::spliceSubqueriesRule(Optimizer* opt, std::unique_ptr<Executi
               plan->createNode<RemoteNode>(plan.get(), plan->nextId(),
                                            &plan->getAst()->query()->vocbase(),
                                            "", "", "");
+          scatterNode->setIsInSplicedSubquery(true);
+          remoteNode->setIsInSplicedSubquery(true);
           plan->insertAfter(start, scatterNode);
           plan->insertAfter(scatterNode, remoteNode);
 
