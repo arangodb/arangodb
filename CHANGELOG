@@ -5,6 +5,11 @@ devel
 
 * Fixed list with id for partially available hotbackups.
 
+* Added AQL optimizer rule "move-filters-into-enumerate", to allow for
+  early pruning of non-matching documents while full-scanning or index-
+  scanning documents. This optimization can help to avoid a lot of
+  temporary document copies.
+
 * Added "SmartJoins for Views" to the ArangoDB Enterprise Edition that allows running
   cluster joins between two certain sharded collections or views with performance close
   to that of a local join operation.
