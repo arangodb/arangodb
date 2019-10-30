@@ -54,14 +54,6 @@
 
 using namespace arangodb;
 using namespace arangodb::aql;
-
-template <typename Impl, typename Traits>
-constexpr bool IResearchViewExecutorBase<Impl, Traits>::Properties::preservesOrder;
-template <typename Impl, typename Traits>
-constexpr BlockPassthrough IResearchViewExecutorBase<Impl, Traits>::Properties::allowsBlockPassthrough;
-template <typename Impl, typename Traits>
-constexpr bool IResearchViewExecutorBase<Impl, Traits>::Properties::inputSizeRestrictsOutputSize;
-
 using namespace arangodb::iresearch;
 
 namespace {

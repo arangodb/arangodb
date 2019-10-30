@@ -108,7 +108,7 @@ class SortingGatherExecutor {
   using Infos = SortingGatherExecutorInfos;
   using Stats = NoStats;
 
-  SortingGatherExecutor(Fetcher& fetcher, Infos& unused);
+  SortingGatherExecutor(Fetcher& fetcher, Infos& infos);
   ~SortingGatherExecutor();
 
   /**

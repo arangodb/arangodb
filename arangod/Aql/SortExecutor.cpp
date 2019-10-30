@@ -34,10 +34,6 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-constexpr bool SortExecutor::Properties::preservesOrder;
-constexpr BlockPassthrough SortExecutor::Properties::allowsBlockPassthrough;
-constexpr bool SortExecutor::Properties::inputSizeRestrictsOutputSize;
-
 namespace {
 
 /// @brief OurLessThan

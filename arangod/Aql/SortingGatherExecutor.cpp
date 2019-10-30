@@ -31,10 +31,6 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-constexpr bool SortingGatherExecutor::Properties::preservesOrder;
-constexpr BlockPassthrough SortingGatherExecutor::Properties::allowsBlockPassthrough;
-constexpr bool SortingGatherExecutor::Properties::inputSizeRestrictsOutputSize;
-
 namespace {
 
 /// @brief OurLessThan: comparison method for elements of SortingGatherBlock

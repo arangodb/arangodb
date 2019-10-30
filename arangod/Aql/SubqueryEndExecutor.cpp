@@ -35,10 +35,6 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-constexpr bool SubqueryEndExecutor::Properties::preservesOrder;
-constexpr BlockPassthrough SubqueryEndExecutor::Properties::allowsBlockPassthrough;
-constexpr bool SubqueryEndExecutor::Properties::inputSizeRestrictsOutputSize;
-
 SubqueryEndExecutorInfos::SubqueryEndExecutorInfos(
     std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,
     std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters,

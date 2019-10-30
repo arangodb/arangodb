@@ -36,10 +36,6 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-constexpr bool ConstrainedSortExecutor::Properties::preservesOrder;
-constexpr BlockPassthrough ConstrainedSortExecutor::Properties::allowsBlockPassthrough;
-constexpr bool ConstrainedSortExecutor::Properties::inputSizeRestrictsOutputSize;
-
 namespace {
 
 void eraseRow(SharedAqlItemBlockPtr& block, size_t row) {

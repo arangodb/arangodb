@@ -32,13 +32,6 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-template <typename FetcherType>
-constexpr bool ModificationExecutorBase<FetcherType>::Properties::preservesOrder;
-template <typename FetcherType>
-constexpr BlockPassthrough ModificationExecutorBase<FetcherType>::Properties::allowsBlockPassthrough;
-template <typename FetcherType>
-constexpr bool ModificationExecutorBase<FetcherType>::Properties::inputSizeRestrictsOutputSize;
-
 namespace arangodb {
 namespace aql {
 std::string toString(AllRowsFetcher&) { return "AllRowsFetcher"; }
