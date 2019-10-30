@@ -368,7 +368,6 @@ static SkipVariants constexpr skipType() {
            std::is_same<Executor, IResearchViewMergeExecutor<true, false>>::value ||
            std::is_same<Executor, EnumerateCollectionExecutor>::value ||
            std::is_same<Executor, LimitExecutor>::value ||
-           std::is_same<Executor, IdExecutor<BlockPassthrough::Disable, SingleRowFetcher<BlockPassthrough::Disable>>>::value ||
            std::is_same<Executor, ConstrainedSortExecutor>::value ||
            std::is_same<Executor, SortingGatherExecutor>::value ||
            // TODO enable this:
@@ -633,6 +632,7 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<
   }
   return {ExecutionState::DONE, {errorCode}};
 }
+
 }  // namespace arangodb::aql
 
 namespace arangodb::aql {
@@ -869,8 +869,6 @@ template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<tr
 template class ::arangodb::aql::ExecutionBlockImpl<IdExecutor<BlockPassthrough::Enable, ConstFetcher>>;
 template class ::arangodb::aql::ExecutionBlockImpl<
     IdExecutor<BlockPassthrough::Enable, SingleRowFetcher<BlockPassthrough::Enable>>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IdExecutor<BlockPassthrough::Disable, SingleRowFetcher<BlockPassthrough::Disable>>>;
 template class ::arangodb::aql::ExecutionBlockImpl<IndexExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<LimitExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<Insert, SingleBlockFetcher<BlockPassthrough::Disable>>>;

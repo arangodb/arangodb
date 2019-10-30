@@ -49,6 +49,7 @@ class UnsortingGatherExecutor {
     static constexpr bool inputSizeRestrictsOutputSize = false;
   };
   using Fetcher = MultiDependencySingleRowFetcher;
+  // TODO I should probably implement custom Infos, we don't need distributeId().
   using Infos = IdExecutorInfos;
   using Stats = NoStats;
 

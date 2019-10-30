@@ -31,6 +31,8 @@
 #include <tuple>
 #include <utility>
 
+// TODO Clean up unused versions
+
 namespace arangodb {
 namespace transaction {
 class Methods;
@@ -58,8 +60,9 @@ class IdExecutorInfos : public ExecutorInfos {
   IdExecutorInfos(IdExecutorInfos const&) = delete;
   ~IdExecutorInfos() = default;
 
-  std::string const& distributeId();
+  [[nodiscard]] std::string const& distributeId();
 
+  // TODO This is probably needed only for UnsortingGather now, so can be removed here.
   [[nodiscard]] bool isResponsibleForInitializeCursor() const;
 
  private:

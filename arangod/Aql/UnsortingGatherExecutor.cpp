@@ -34,20 +34,22 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-UnsortingGatherExecutor::UnsortingGatherExecutor(UnsortingGatherExecutor::Fetcher& fetcher,
-                                                 UnsortingGatherExecutor::Infos& infos)
+UnsortingGatherExecutor::UnsortingGatherExecutor(Fetcher& fetcher, Infos& infos)
     : _fetcher(fetcher) {}
 
 UnsortingGatherExecutor::~UnsortingGatherExecutor() = default;
 
 auto UnsortingGatherExecutor::produceRows(OutputAqlItemRow& output)
-    -> std::pair<ExecutionState, UnsortingGatherExecutor::Stats> {
-  LOG_DEVEL << "UnsortingGatherExecutor::produceRows";
+    -> std::pair<ExecutionState, Stats> {
   while (!output.isFull() && !done()) {
+    // Note that fetchNextRow may return DONE (because the current dependency is
+    // DONE), and also return an unitialized row in that case, but we are not
+    // DONE completely - that's what `done()` is for.
     auto [state, inputRow] = fetchNextRow(output.numRowsLeft());
     if (state == ExecutionState::WAITING) {
       return {state, {}};
     }
+    // HASMORE => inputRow.isInitialized()
     TRI_ASSERT(state == ExecutionState::DONE || inputRow.isInitialized());
     if (inputRow.isInitialized()) {
       output.copyRow(inputRow);
@@ -60,12 +62,11 @@ auto UnsortingGatherExecutor::produceRows(OutputAqlItemRow& output)
   return {state, {}};
 }
 
-auto UnsortingGatherExecutor::fetcher() const noexcept
-    -> const UnsortingGatherExecutor::Fetcher& {
+auto UnsortingGatherExecutor::fetcher() const noexcept -> const Fetcher& {
   return _fetcher;
 }
 
-auto UnsortingGatherExecutor::fetcher() noexcept -> UnsortingGatherExecutor::Fetcher& {
+auto UnsortingGatherExecutor::fetcher() noexcept -> Fetcher& {
   return _fetcher;
 }
 
