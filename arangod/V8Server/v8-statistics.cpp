@@ -121,8 +121,8 @@ static void JS_ServerStatistics(v8::FunctionCallbackInfo<v8::Value> const& args)
   result->Set(TRI_V8_ASCII_STRING(isolate, "transactions"), v8TransactionInfoObj);
 
   // v8 counters
-  auto& server = application_features::ApplicationServer::server();
-  V8DealerFeature& dealer = server.getFeature<V8DealerFeature>();
+  TRI_GET_GLOBALS();
+  V8DealerFeature& dealer = v8g->_server.getFeature<V8DealerFeature>();
   auto v8Counters = dealer.getCurrentContextNumbers();
   v8::Handle<v8::Object> v8CountersObj = v8::Object::New(isolate);
   v8CountersObj->Set(TRI_V8_ASCII_STRING(isolate, "available"),

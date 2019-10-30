@@ -1151,8 +1151,8 @@ static void JS_PropertiesVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& a
 
       TRI_ASSERT(builder.isClosed());
 
-      auto& server = application_features::ApplicationServer::server();
-      auto& ci = server.getFeature<ClusterFeature>().clusterInfo();
+      TRI_GET_GLOBALS();
+      auto& ci = v8g->_server.getFeature<ClusterFeature>().clusterInfo();
 
       // replication checks
       if (builder.slice().get(StaticStrings::ReplicationFactor).isNumber() &&
