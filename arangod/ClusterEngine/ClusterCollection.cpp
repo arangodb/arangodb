@@ -251,19 +251,13 @@ void ClusterCollection::getPropertiesVPack(velocypack::Builder& result) const {
 }
 
 /// @brief return the figures for a collection
-futures::Future<std::shared_ptr<VPackBuilder>> ClusterCollection::figures() {
+futures::Future<OperationResult> ClusterCollection::figures() {
   auto& feature = _logicalCollection.vocbase().server().getFeature<ClusterFeature>();
   return figuresOnCoordinator(feature, _logicalCollection.vocbase().name(),
-                              std::to_string(_logicalCollection.id()))
-      .thenValue([](OperationResult&& opRes) -> std::shared_ptr<VPackBuilder> {
-        if (opRes.fail()) {
-          THROW_ARANGO_EXCEPTION(opRes.result);
-        }
-        return std::make_shared<VPackBuilder>(opRes.buffer);
-      });
+                              std::to_string(_logicalCollection.id()));
 }
 
-void ClusterCollection::figuresSpecific(std::shared_ptr<arangodb::velocypack::Builder>& builder) {
+void ClusterCollection::figuresSpecific(arangodb::velocypack::Builder& builder) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);  // not used here
 }
 

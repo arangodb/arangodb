@@ -76,12 +76,12 @@ void parseSchema(std::string const& schema,
   // non exthausive list of supported url schemas
   // "http+tcp://", "http+ssl://", "tcp://", "ssl://", "unix://", "http+unix://"
   // "vsts://", "vst://", "http://", "https://", "vst+unix://", "vst+tcp://"
-  std::string proto = schema;
+  velocypack::StringRef proto(schema.data(), schema.length());
   std::string::size_type pos = schema.find('+');
-  if (pos != std::string::npos && pos + 1 < schema.length()) {
+  if (pos != std::string::npos && pos + 1 < proto.length()) {
     // got something like "http+tcp://"
-    proto = schema.substr(0, pos);
-    std::string socket = schema.substr(pos + 1);
+    velocypack::StringRef socket = proto.substr(pos + 1);
+    proto = proto.substr(0, pos);
     if (socket == "tcp" || socket == "srv") {
       conf._socketType = SocketType::Tcp;
     } else if (socket == "ssl") {
@@ -89,7 +89,7 @@ void parseSchema(std::string const& schema,
     } else if (socket == "unix") {
       conf._socketType = SocketType::Unix;
     } else if (conf._socketType == SocketType::Undefined) {
-      throw std::runtime_error(std::string("invalid socket type: ") + proto);
+      throw std::runtime_error(std::string("invalid socket type: ") + proto.toString());
     }
     
     if (proto == "vst") {
@@ -97,7 +97,7 @@ void parseSchema(std::string const& schema,
     } else if (proto == "http") {
       conf._protocolType = ProtocolType::Http;
     } else if (conf._protocolType == ProtocolType::Undefined) {
-      throw std::runtime_error(std::string("invalid protocol: ") + proto);
+      throw std::runtime_error(std::string("invalid protocol: ") + proto.toString());
     }
     
   } else { // got only protocol
@@ -118,7 +118,7 @@ void parseSchema(std::string const& schema,
       conf._protocolType = ProtocolType::Http;
     } else if (conf._socketType == SocketType::Undefined ||
                conf._protocolType == ProtocolType::Undefined) {
-      throw std::runtime_error(std::string("invalid schema: ") + proto);
+      throw std::runtime_error(std::string("invalid schema: ") + proto.toString());
     }
   }
 }

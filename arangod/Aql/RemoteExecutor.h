@@ -82,7 +82,10 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
   /// @brief internal method to send a request. Will register a callback to be
   /// reactivated
   arangodb::Result sendAsyncRequest(fuerte::RestVerb type, std::string const& urlPart,
-                                    velocypack::Buffer<uint8_t> body);
+                                    velocypack::Buffer<uint8_t>&& body);
+  
+  // _communicationMutex *must* be locked for this!
+  unsigned generateRequestTicket();
 
  private:
   ExecutorInfos _infos;
@@ -115,9 +118,6 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
   unsigned _lastTicket;  /// used to check for canceled requests
   
   bool _hasTriggeredShutdown;
-
-  // _communicationMutex *must* be locked for this!
-  unsigned generateNewTicket();
   
   bool _didSendShutdownRequest = false;
 

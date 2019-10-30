@@ -227,7 +227,6 @@ std::pair<ExecutionState, TraversalStats> TraversalExecutor::produceRows(OutputA
       }
       if (_infos.usePathOutput()) {
         transaction::BuilderLeaser tmp(_traverser.trx());
-        tmp->clear();
         AqlValue path = _traverser.pathToAqlValue(*tmp.builder());
         AqlValueGuard guard{path, true};
         output.moveValueInto(_infos.pathRegister(), _input, guard);

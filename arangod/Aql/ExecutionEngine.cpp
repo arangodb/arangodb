@@ -529,10 +529,9 @@ void ExecutionEngine::kill() {
   for (auto const& it : _dbServerMapping) {
     for (auto const& it2 : it.second) {
       for (auto const& snippetId : it2.second) {
-        network::Headers headers;
         TRI_ASSERT(it2.first.substr(0, 7) == "server:");
         auto future = network::sendRequest(pool, it2.first, fuerte::RestVerb::Delete,
-                                         "/_api/aql/kill/" + snippetId, body, std::move(headers));
+                                           "/_api/aql/kill/" + snippetId, body);
         futures.emplace_back(std::move(future));
       }
     }

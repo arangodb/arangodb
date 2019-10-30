@@ -1153,7 +1153,7 @@ Result RocksDBCollection::remove(transaction::Methods& trx, velocypack::Slice sl
 }
 
 /// @brief return engine-specific figures
-void RocksDBCollection::figuresSpecific(std::shared_ptr<arangodb::velocypack::Builder>& builder) {
+void RocksDBCollection::figuresSpecific(arangodb::velocypack::Builder& builder) {
   rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
   RocksDBKeyBounds bounds = RocksDBKeyBounds::CollectionDocuments(_objectId);
   rocksdb::Range r(bounds.start(), bounds.end());
@@ -1164,22 +1164,22 @@ void RocksDBCollection::figuresSpecific(std::shared_ptr<arangodb::velocypack::Bu
                               rocksdb::DB::SizeApproximationFlags::INCLUDE_MEMTABLES |
                               rocksdb::DB::SizeApproximationFlags::INCLUDE_FILES));
 
-  builder->add("documentsSize", VPackValue(out));
+  builder.add("documentsSize", VPackValue(out));
   bool cacheInUse = useCache();
-  builder->add("cacheInUse", VPackValue(cacheInUse));
+  builder.add("cacheInUse", VPackValue(cacheInUse));
   if (cacheInUse) {
-    builder->add("cacheSize", VPackValue(_cache->size()));
-    builder->add("cacheUsage", VPackValue(_cache->usage()));
+    builder.add("cacheSize", VPackValue(_cache->size()));
+    builder.add("cacheUsage", VPackValue(_cache->usage()));
     auto hitRates = _cache->hitRates();
     double rate = hitRates.first;
     rate = std::isnan(rate) ? 0.0 : rate;
-    builder->add("cacheLifeTimeHitRate", VPackValue(rate));
+    builder.add("cacheLifeTimeHitRate", VPackValue(rate));
     rate = hitRates.second;
     rate = std::isnan(rate) ? 0.0 : rate;
-    builder->add("cacheWindowedHitRate", VPackValue(rate));
+    builder.add("cacheWindowedHitRate", VPackValue(rate));
   } else {
-    builder->add("cacheSize", VPackValue(0));
-    builder->add("cacheUsage", VPackValue(0));
+    builder.add("cacheSize", VPackValue(0));
+    builder.add("cacheUsage", VPackValue(0));
   }
 }
 
