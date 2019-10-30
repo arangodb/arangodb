@@ -981,9 +981,7 @@ static void JS_Exit(v8::FunctionCallbackInfo<v8::Value> const& args) {
     code = TRI_ObjectToInt64(isolate, args[0]);
   }
 
-  application_features::ApplicationServer& server =
-      application_features::ApplicationServer::server();
-  ShellFeature& shell = server.getFeature<ShellFeature>();
+  ShellFeature& shell = server().getFeature<ShellFeature>();
 
   shell.setExitCode(static_cast<int>(code));
 
