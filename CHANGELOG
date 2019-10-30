@@ -1,6 +1,10 @@
 devel
 -----
 
+* Added "SmartJoins for Views" to the ArangoDB Enterprise Edition that allows running
+  cluster joins between two certain sharded collections or views with performance close
+  to that of a local join operation.
+
 * Allow collection names to be at most 256 characters long, instead of 64 characters
   in previous versions.
 
