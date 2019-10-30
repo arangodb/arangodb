@@ -577,6 +577,7 @@ bool ExecutionNode::isEqualTo(ExecutionNode const& other) const {
 
   return ((this->getType() == other.getType()) && (_id == other._id) &&
           (_depth == other._depth) &&
+          (isInSplicedSubquery() == other.isInSplicedSubquery()) &&
           (std::equal(_dependencies.begin(), _dependencies.end(),
                       other._dependencies.begin(), comparator)));
 }
@@ -1213,7 +1214,7 @@ const ::arangodb::containers::HashSet<const Variable*>& ExecutionNode::getVarsUs
   return _varsUsedLater;
 }
 
-void ExecutionNode::setVarsValid(::arangodb::containers::HashSet<const Variable*>& v) {
+void ExecutionNode::setVarsValid(::arangodb::containers::HashSet<const Variable*> const& v) {
   _varsValid = v;
 }
 
