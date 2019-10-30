@@ -29,12 +29,12 @@
 * License Name: MIT License
 * License Id: MIT
 
-### Curl 7.65.3
+### Curl 7.66.0
 
 * Name: Curl
-* Version: 7.65.3
+* Version: 7.66.0
 * Project Home: https://curl.haxx.se/
-* License: https://raw.githubusercontent.com/arangodb/arangodb/3.5/3rdParty/curl/curl-7.65.3/COPYING
+* License: https://raw.githubusercontent.com/arangodb/arangodb/3.5/3rdParty/curl/curl-7.66.0/COPYING
 * License Comment: free as-is license
 
 ### date 2.4
