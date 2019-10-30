@@ -38,7 +38,7 @@ class GeneralConnection : public fuerte::Connection {
  public:
   explicit GeneralConnection(EventLoopService& loop,
                              detail::ConnectionConfiguration const&);
-  virtual ~GeneralConnection() {}
+  virtual ~GeneralConnection() = default;
 
   /// @brief connection state
   Connection::State state() const override final {
@@ -82,7 +82,7 @@ class GeneralConnection : public fuerte::Connection {
   /// @brief io context to use
   std::shared_ptr<asio_ns::io_context> _io_context;
   /// @brief underlying socket
-  Socket<ST> _protocol;
+  Socket<ST> _proto;
   /// @brief timer to handle connection / request timeouts
   asio_ns::steady_timer _timeout;
 
@@ -92,6 +92,8 @@ class GeneralConnection : public fuerte::Connection {
 
   /// @brief is the connection established
   std::atomic<Connection::State> _state;
+  
+  std::atomic<uint32_t> _numQueued; /// queued items
 };
 
 }}  // namespace arangodb::fuerte
