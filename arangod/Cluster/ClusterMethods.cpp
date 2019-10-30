@@ -2630,8 +2630,7 @@ arangodb::Result hotBackupList(std::vector<ServerID> const& dbServers, VPackSlic
     resSlice = resSlice.get("result");
 
     if (!resSlice.hasKey("list") || !resSlice.get("list").isObject()) {
-      return arangodb::Result(TRI_ERROR_HTTP_NOT_FOUND,
-                              "result is missing backup list");
+      continue;
     }
 
     if (!payload.isNone() && plan.slice().isNone()) {
@@ -2683,7 +2682,7 @@ arangodb::Result hotBackupList(std::vector<ServerID> const& dbServers, VPackSlic
       front._sizeInBytes = totalSize;
       front._nrFiles = totalFiles;
       front._serverId = "";  // makes no sense for whole cluster
-      front._isAvailable = i.second.size() == dbServers.size();
+      front._isAvailable = i.second.size() == dbServers.size() && i.second.size() == front._nrDBServers;
       front._nrPiecesPresent = static_cast<unsigned int>(i.second.size());
       hotBackups.insert(std::make_pair(front._id, front));
     }
@@ -2986,11 +2985,25 @@ arangodb::Result hotRestoreCoordinator(ClusterFeature& feature, VPackSlice const
         << " on all db servers: " << result.errorMessage();
     return result;
   }
+  if (list.size() == 0) {
+    return arangodb::Result(TRI_ERROR_HTTP_NOT_FOUND,
+      "result is missing backup list");
+  }
+
   if (plan.slice().isNone()) {
     LOG_TOPIC("54b9a", ERR, Logger::BACKUP)
         << "failed to find agency dump for " << backupId
         << " on any db server: " << result.errorMessage();
     return result;
+  }
+
+  TRI_ASSERT(list.size() == 1);
+  BackupMeta& meta = list.begin()->second;
+  if (!meta._isAvailable) {
+    LOG_TOPIC("ed4df", ERR, Logger::BACKUP)
+        << "backup not available" << backupId;
+    return arangodb::Result(TRI_ERROR_HOT_RESTORE_INTERNAL,
+                              "backup not available for restore");
   }
 
   // Check if the version matches the current version
@@ -2999,7 +3012,6 @@ arangodb::Result hotRestoreCoordinator(ClusterFeature& feature, VPackSlice const
     using arangodb::methods::Version;
     using arangodb::methods::VersionResult;
 #ifdef USE_ENTERPRISE
-    BackupMeta& meta = list.begin()->second;
     // Will never be called in community
     if (!RocksDBHotBackup::versionTestRestore(meta._version)) {
       return arangodb::Result(TRI_ERROR_HOT_RESTORE_INTERNAL,
