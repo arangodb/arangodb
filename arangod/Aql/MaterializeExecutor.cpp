@@ -79,8 +79,8 @@ arangodb::aql::MaterializerExecutorInfos::MaterializerExecutorInfos(
       make_shared_unordered_set(std::initializer_list<RegisterId>({inNmColPtr, inNmDocId})),
       make_shared_unordered_set(std::initializer_list<RegisterId>({outDocRegId})),
       nrInputRegisters, nrOutputRegisters,
-      std::move(registersToClear), std::move(registersToKeep)),
-      _inNonMaterializedColRegId(inNmColPtr), _inNonMaterializedDocRegId(inNmDocId),
+      std::move(registersToClear), std::move(registersToKeep)), _inNonMaterializedColRegId(inNmColPtr),
+      _inNonMaterializedColName(nullptr), _inNonMaterializedDocRegId(inNmDocId),
       _outMaterializedDocumentRegId(outDocRegId), _trx(trx) {
 }
 
