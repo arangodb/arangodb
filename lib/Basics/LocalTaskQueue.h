@@ -33,6 +33,9 @@
 #include "Basics/Mutex.h"
 
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
 namespace basics {
 
 class LocalTaskQueue;

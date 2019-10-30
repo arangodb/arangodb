@@ -30,7 +30,8 @@
 #include "Basics/debugging.h"
 #include "Logger/Logger.h"
 
-using namespace arangodb::basics;
+namespace arangodb {
+namespace basics {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a task tied to the specified queue
@@ -245,3 +246,6 @@ int LocalTaskQueue::status() {
   MUTEX_LOCKER(locker, _mutex);
   return _status;
 }
+
+}  // namespace basics
+}  // namespace arangodb
