@@ -397,10 +397,8 @@ class ExecutionPlan {
 
 template <typename Node, typename... Args>
 Node* ::arangodb::aql::ExecutionPlan::createNode(Args&&... args) {
-  //auto node = std::make_unique<Node>(std::forward<Args>(args)...);
-  auto node = new Node(std::forward<Args>(args)...);
-  registerNode(node);
-  return node;
+  auto node = std::make_unique<Node>(std::forward<Args>(args)...);
+  return ExecutionNode::castTo<Node*>(registerNode(std::move(node)));
 }
 
 #endif

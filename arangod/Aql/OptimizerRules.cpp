@@ -7338,11 +7338,15 @@ void findSubqueriesSuitableForSplicing(ExecutionPlan const& plan,
   using ResultVector = decltype(result);
   using BoolVec = std::vector<bool, short_alloc<bool, 64, alignof(size_t)>>;
 
-  using SuitableNodeSet = std::set<SubqueryNode*, std::less<SubqueryNode*>, short_alloc<SubqueryNode*, 128, alignof(SubqueryNode*)>>;
+  using SuitableNodeSet = std::set<SubqueryNode*, std::less<>, short_alloc<SubqueryNode*, 128, alignof(SubqueryNode*)>>;
 
-  // This finder adds subqueries that are suitable for splicing. That means that
-  // neither the containing subquery skips - at least not in an ancestor of the
-  // subquery - nor the subquery skips inside.
+  // This finder adds all subquery nodes in pre-order to its `result` parameter,
+  // and all nodes that are suitable for splicing to `suitableNodes`. Suitable
+  // means that neither the containing subquery contains unsuitable nodes - at
+  // least not in an ancestor of the subquery - nor the subquery contains
+  // unsuitable nodes (directly, not recursively). See
+  // nodeMakesThisQueryLevelUnsuitableForSubquerySplicing() for which nodes are
+  // unsuitable.
   //
   // It will be used in a fashion where the recursive walk on subqueries is done
   // *before* the recursive walk on dependencies.

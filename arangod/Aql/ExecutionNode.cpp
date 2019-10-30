@@ -644,8 +644,11 @@ bool ExecutionNode::walk(WalkerWorker<ExecutionNode>& worker) {
 }
 
 /// @brief functionality to walk an execution plan recursively.
-/// This variant of walk() works recursively on subqueries before working
-/// recursively on dependencies.
+/// This variant of walk(), when visiting a node,
+///  - first, when at a SubqueryNode, recurses into its subquery
+///  - after that recurses on its dependencies.
+/// This is in contrast to walk(), which recurses on the dependencies before
+/// recursing into the subquery.
 bool ExecutionNode::walkSubqueriesFirst(WalkerWorker<ExecutionNode>& worker) {
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   // Only do every node exactly once

@@ -58,7 +58,7 @@ OutputAqlItemRow::OutputAqlItemRow(
       _allowSourceRowUninitialized(false) {
   TRI_ASSERT(_block != nullptr);
 }
-/*
+
 template <class ItemRowType>
 void OutputAqlItemRow::cloneValueInto(RegisterId registerId, ItemRowType const& sourceRow,
                                       AqlValue const& value) {
@@ -67,7 +67,6 @@ void OutputAqlItemRow::cloneValueInto(RegisterId registerId, ItemRowType const& 
   AqlValueGuard guard{clonedValue, mustDestroy};
   moveValueInto(registerId, sourceRow, guard);
 }
-*/
 
 template <class ItemRowType>
 void OutputAqlItemRow::moveValueInto(RegisterId registerId, ItemRowType const& sourceRow,
@@ -278,8 +277,7 @@ void OutputAqlItemRow::memorizeRow<InputAqlItemRow>(InputAqlItemRow const& sourc
 }
 
 template <>
-void OutputAqlItemRow::memorizeRow<ShadowAqlItemRow>(ShadowAqlItemRow const& sourceRow) {
-}
+void OutputAqlItemRow::memorizeRow<ShadowAqlItemRow>(ShadowAqlItemRow const& sourceRow) {}
 
 template <>
 bool OutputAqlItemRow::testIfWeMustClone<InputAqlItemRow>(InputAqlItemRow const& sourceRow) const {
@@ -349,12 +347,16 @@ template void OutputAqlItemRow::copyRow<InputAqlItemRow>(InputAqlItemRow const& 
                                                          bool ignoreMissing);
 template void OutputAqlItemRow::copyRow<ShadowAqlItemRow>(ShadowAqlItemRow const& sourceRow,
                                                           bool ignoreMissing);
-
+template void OutputAqlItemRow::cloneValueInto<InputAqlItemRow>(
+    RegisterId registerId, const InputAqlItemRow& sourceRow, AqlValue const& value);
+template void OutputAqlItemRow::cloneValueInto<ShadowAqlItemRow>(
+    RegisterId registerId, const ShadowAqlItemRow& sourceRow, AqlValue const& value);
 template void OutputAqlItemRow::moveValueInto<InputAqlItemRow>(RegisterId registerId,
-                                             InputAqlItemRow const& sourceRow,
-                                             AqlValueGuard& guard);
-template void OutputAqlItemRow::moveValueInto<ShadowAqlItemRow>(RegisterId registerId,
-                                              ShadowAqlItemRow const& sourceRow,
-                                              AqlValueGuard& guard);
-template void OutputAqlItemRow::doCopyRow<InputAqlItemRow>(InputAqlItemRow const& sourceRow, bool ignoreMissing);
-template void OutputAqlItemRow::doCopyRow<ShadowAqlItemRow>(ShadowAqlItemRow const& sourceRow, bool ignoreMissing);
+                                                               InputAqlItemRow const& sourceRow,
+                                                               AqlValueGuard& guard);
+template void OutputAqlItemRow::moveValueInto<ShadowAqlItemRow>(
+    RegisterId registerId, ShadowAqlItemRow const& sourceRow, AqlValueGuard& guard);
+template void OutputAqlItemRow::doCopyRow<InputAqlItemRow>(InputAqlItemRow const& sourceRow,
+                                                           bool ignoreMissing);
+template void OutputAqlItemRow::doCopyRow<ShadowAqlItemRow>(ShadowAqlItemRow const& sourceRow,
+                                                            bool ignoreMissing);

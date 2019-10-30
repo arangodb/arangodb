@@ -65,12 +65,7 @@ class OutputAqlItemRow {
   // Clones the given AqlValue
   template <class ItemRowType>
   void cloneValueInto(RegisterId registerId, ItemRowType const& sourceRow,
-                      AqlValue const& value) {
-    bool mustDestroy = true;
-    AqlValue clonedValue = value.clone();
-    AqlValueGuard guard{clonedValue, mustDestroy};
-    moveValueInto(registerId, sourceRow, guard);
-  }
+                      AqlValue const& value);
 
   // Copies the given AqlValue. If it holds external memory, it will be
   // destroyed when the block is destroyed.

@@ -210,6 +210,13 @@ class AqlItemBlock {
   /// be used to recreate the AqlItemBlock via the Json constructor
   void toVelocyPack(transaction::Methods* trx, arangodb::velocypack::Builder&) const;
 
+  /// @brief Creates a human-readable velocypack of the block. Adds an object
+  /// `{nrItems, nrRegs, matrix}` to the builder.
+  ///
+  // `matrix` is an array of rows (of length nrItems). Each entry is an array
+  // (of length nrRegs+1 (sic)). The first entry contains the shadow row depth,
+  // or `null` for data rows. The entries with indexes 1..nrRegs contain the
+  // registers 0..nrRegs-1, respectively.
   void toSimpleVPack(transaction::Methods* trx, arangodb::velocypack::Builder&) const;
 
   void rowToSimpleVPack(size_t row, transaction::Methods* trx,
