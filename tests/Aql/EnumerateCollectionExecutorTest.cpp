@@ -29,8 +29,8 @@
 #include "AqlItemBlockHelper.h"
 #include "IResearch/common.h"
 #include "Mocks/Servers.h"
+#include "QueryHelper.h"
 #include "RowFetcherHelper.h"
-#include "fakeit.hpp"
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/Ast.h"
@@ -45,7 +45,6 @@
 #include "RestServer/QueryRegistryFeature.h"
 #include "Sharding/ShardingFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
-#include "StorageEngine/StorageEngine.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
 #include "VocBase/AccessMode.h"
@@ -61,9 +60,12 @@ namespace arangodb {
 namespace tests {
 namespace aql {
 
+static const std::string GetAllDocs =
+    R"aql(FOR doc IN UnitTestCollection SORT doc.sortValue RETURN doc.value)aql";
+
 using CursorType = arangodb::transaction::Methods::CursorType;
 
-class EnumerateCollectionExecutorTestNoRowsUpstream : public ::testing::Test {
+class EnumerateCollectionExecutorTest : public ::testing::Test {
  protected:
   ExecutionState state;
   ResourceMonitor monitor;
@@ -92,7 +94,7 @@ class EnumerateCollectionExecutorTestNoRowsUpstream : public ::testing::Test {
   SharedAqlItemBlockPtr block;
   VPackBuilder input;
 
-  EnumerateCollectionExecutorTestNoRowsUpstream()
+  EnumerateCollectionExecutorTest()
       : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
         server(),
         vocbase(server.getSystemDatabase()),
@@ -112,7 +114,7 @@ class EnumerateCollectionExecutorTestNoRowsUpstream : public ::testing::Test {
         block(new AqlItemBlock(itemBlockManager, 1000, 2)) {}
 };
 
-TEST_F(EnumerateCollectionExecutorTestNoRowsUpstream, the_producer_does_not_wait) {
+TEST_F(EnumerateCollectionExecutorTest, the_producer_does_not_wait) {
   SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
       itemBlockManager, input.steal(), false);
   EnumerateCollectionExecutor testee(fetcher, infos);
@@ -128,7 +130,7 @@ TEST_F(EnumerateCollectionExecutorTestNoRowsUpstream, the_producer_does_not_wait
   ASSERT_FALSE(result.produced());
 }
 
-TEST_F(EnumerateCollectionExecutorTestNoRowsUpstream, the_producer_waits) {
+TEST_F(EnumerateCollectionExecutorTest, the_producer_waits) {
   SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
       itemBlockManager, input.steal(), true);
   EnumerateCollectionExecutor testee(fetcher, infos);
@@ -148,7 +150,7 @@ TEST_F(EnumerateCollectionExecutorTestNoRowsUpstream, the_producer_waits) {
   ASSERT_FALSE(result.produced());
 }
 
-TEST_F(EnumerateCollectionExecutorTestNoRowsUpstream, the_produce_datarange) {
+TEST_F(EnumerateCollectionExecutorTest, the_produce_datarange_empty) {
   SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
       itemBlockManager, input.steal(), false);
   EnumerateCollectionExecutor testee(fetcher, infos);
@@ -156,19 +158,37 @@ TEST_F(EnumerateCollectionExecutorTestNoRowsUpstream, the_produce_datarange) {
   // updated when someone changes the stats type in the return value of
   // EnumerateCollectionExecutor::produceRows().
 
-  SharedAqlItemBlockPtr inBlock =
-      buildBlock<1>(itemBlockManager,
-                    {{R"({ "cid" : "1337", "name": "UnitTestCollection" })"}});
+  SharedAqlItemBlockPtr inBlock = buildBlock<1>(itemBlockManager, {{}});
 
   AqlItemBlockInputRange inputRange{ExecutorState::DONE, inBlock, 0, inBlock->size()};
   OutputAqlItemRow output(std::move(block), infos.getOutputRegisters(),
                           infos.registersToKeep(), infos.registersToClear());
+
   auto const [state, stats, call] = testee.produceRows(1000, inputRange, output);
   ASSERT_EQ(state, ExecutorState::DONE);
   ASSERT_FALSE(output.produced());
 }
 
-TEST_F(EnumerateCollectionExecutorTestNoRowsUpstream, the_skip_datarange) {
+TEST_F(EnumerateCollectionExecutorTest, the_skip_datarange_empty) {
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
+      itemBlockManager, input.steal(), false);
+  EnumerateCollectionExecutor testee(fetcher, infos);
+  // Use this instead of std::ignore, so the tests will be noticed and
+  // updated when someone changes the stats type in the return value of
+  // EnumerateCollectionExecutor::produceRows().
+
+  SharedAqlItemBlockPtr inBlock = buildBlock<1>(itemBlockManager, {{}});
+
+  AqlItemBlockInputRange inputRange{ExecutorState::DONE, inBlock, 0, inBlock->size()};
+  OutputAqlItemRow output(std::move(block), infos.getOutputRegisters(),
+                          infos.registersToKeep(), infos.registersToClear());
+  auto const [state, skipped, call] = testee.skipRowsRange(1000, inputRange);
+  ASSERT_EQ(state, ExecutorState::DONE);
+  ASSERT_EQ(skipped, 0);
+  ASSERT_FALSE(output.produced());
+}
+
+TEST_F(EnumerateCollectionExecutorTest, the_produce_datarange) {
   SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
       itemBlockManager, input.steal(), false);
   EnumerateCollectionExecutor testee(fetcher, infos);
@@ -180,11 +200,72 @@ TEST_F(EnumerateCollectionExecutorTestNoRowsUpstream, the_skip_datarange) {
       buildBlock<1>(itemBlockManager,
                     {{R"({ "cid" : "1337", "name": "UnitTestCollection" })"}});
 
+  // insert 3x documents
+  std::string insertQuery =
+      R"aql(INSERT {_key: "testee", value: 1, sortValue: 1, nestedObject: {value: 1} } INTO UnitTestCollection)aql";
+  SCOPED_TRACE(insertQuery);
+  AssertQueryHasResult(vocbase, insertQuery, VPackSlice::emptyArraySlice());
+  auto expected = VPackParser::fromJson(R"([1])");
+  AssertQueryHasResult(vocbase, GetAllDocs, expected->slice());
+
+  std::string insertQueryB =
+      R"aql(INSERT {_key: "testeeB", value: 1, sortValue: 1, nestedObject: {value: 1} } INTO UnitTestCollection)aql";
+  SCOPED_TRACE(insertQueryB);
+  AssertQueryHasResult(vocbase, insertQueryB, VPackSlice::emptyArraySlice());
+
+  std::string insertQueryC =
+      R"aql(INSERT {_key: "testeeC", value: 1, sortValue: 1, nestedObject: {value: 1} } INTO UnitTestCollection)aql";
+  SCOPED_TRACE(insertQueryC);
+  AssertQueryHasResult(vocbase, insertQueryC, VPackSlice::emptyArraySlice());
+
   AqlItemBlockInputRange inputRange{ExecutorState::DONE, inBlock, 0, inBlock->size()};
   OutputAqlItemRow output(std::move(block), infos.getOutputRegisters(),
                           infos.registersToKeep(), infos.registersToClear());
-  auto const [state, stats, call] = testee.skipRowsRange(1000, inputRange);
+
+  auto const [state, stats, call] = testee.produceRows(1000, inputRange, output);
   ASSERT_EQ(state, ExecutorState::DONE);
+  ASSERT_EQ(stats.getFiltered(), 0);
+  ASSERT_EQ(stats.getScanned(), 3);
+  ASSERT_FALSE(output.produced());
+}
+
+TEST_F(EnumerateCollectionExecutorTest, the_skip_datarange) {
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
+      itemBlockManager, input.steal(), false);
+  EnumerateCollectionExecutor testee(fetcher, infos);
+  // Use this instead of std::ignore, so the tests will be noticed and
+  // updated when someone changes the stats type in the return value of
+  // EnumerateCollectionExecutor::produceRows().
+
+  SharedAqlItemBlockPtr inBlock =
+      buildBlock<1>(itemBlockManager,
+                    {{R"({ "cid" : "1337", "name": "UnitTestCollection" })"}});
+
+  // insert 3x documents
+  std::string insertQuery =
+      R"aql(INSERT {_key: "testee", value: 1, sortValue: 1, nestedObject: {value: 1} } INTO UnitTestCollection)aql";
+  SCOPED_TRACE(insertQuery);
+  AssertQueryHasResult(vocbase, insertQuery, VPackSlice::emptyArraySlice());
+  auto expected = VPackParser::fromJson(R"([1])");
+  AssertQueryHasResult(vocbase, GetAllDocs, expected->slice());
+
+  std::string insertQueryB =
+      R"aql(INSERT {_key: "testeeB", value: 1, sortValue: 1, nestedObject: {value: 1} } INTO UnitTestCollection)aql";
+  SCOPED_TRACE(insertQueryB);
+  AssertQueryHasResult(vocbase, insertQueryB, VPackSlice::emptyArraySlice());
+
+  std::string insertQueryC =
+      R"aql(INSERT {_key: "testeeC", value: 1, sortValue: 1, nestedObject: {value: 1} } INTO UnitTestCollection)aql";
+  SCOPED_TRACE(insertQueryC);
+  AssertQueryHasResult(vocbase, insertQueryC, VPackSlice::emptyArraySlice());
+
+  AqlItemBlockInputRange inputRange{ExecutorState::DONE, inBlock, 0, inBlock->size()};
+  OutputAqlItemRow output(std::move(block), infos.getOutputRegisters(),
+                          infos.registersToKeep(), infos.registersToClear());
+
+  auto const [state, skipped, call] = testee.skipRowsRange(1000, inputRange);
+  ASSERT_EQ(state, ExecutorState::DONE);
+  ASSERT_EQ(skipped, 3);
   ASSERT_FALSE(output.produced());
 }
 

@@ -256,9 +256,9 @@ std::tuple<ExecutorState, size_t, AqlCall> EnumerateCollectionExecutor::skipRows
   TRI_IF_FAILURE("EnumerateCollectionExecutor::skipRows") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-  size_t skipped = 0;
+  uint64_t actuallySkipped = 0;
 
-  while (inputRange.hasMore() && skipped < offset) {
+  while (inputRange.hasMore() && actuallySkipped < offset) {
     if (!_cursorHasMore) {
       std::tie(_executorState, _input) = inputRange.next();
 
@@ -272,15 +272,14 @@ std::tuple<ExecutorState, size_t, AqlCall> EnumerateCollectionExecutor::skipRows
 
     TRI_ASSERT(_input.isInitialized());
 
-    uint64_t actuallySkipped = 0;
     _cursor->skip(offset, actuallySkipped);
     _cursorHasMore = _cursor->hasMore();
     stats.incrScanned(actuallySkipped);
   }
 
   AqlCall upstreamCall{};
-  upstreamCall.softLimit = offset - skipped;
-  return {_executorState, skipped, upstreamCall};
+  upstreamCall.softLimit = offset - actuallySkipped;
+  return {_executorState, actuallySkipped, upstreamCall};
 }
 
 std::tuple<ExecutorState, EnumerateCollectionStats, AqlCall> EnumerateCollectionExecutor::produceRows(
