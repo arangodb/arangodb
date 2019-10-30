@@ -1,8 +1,9 @@
-v.3.5.1.1 (2019-10-24)
-----------------------
+v.3.5.2 (2019-XX-XX)
+--------------------
 
-* Separately account for superuser and user request traffic. This is
-  needed for Oasis.
+* !!!PLACEHOLDER FOR UPGRADE ISSUES ENTRY!!!
+
+* Separately account for superuser and user request traffic.
 
 v3.5.1 (2019-10-07)
 -------------------
