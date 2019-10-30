@@ -211,7 +211,7 @@ bool IResearchLinkMeta::init( // initialize meta
         auto value = *itr;
 
         if (!value.isObject()) {
-          errorField = fieldName + "=>[" + std::to_string(itr.index()) + "]";
+          errorField = fieldName + "[" + std::to_string(itr.index()) + "]";
 
           return false;
         }
@@ -224,7 +224,7 @@ bool IResearchLinkMeta::init( // initialize meta
 
           if (!value.hasKey(subFieldName) // missing required filed
               || !value.get(subFieldName).isString()) {
-            errorField = fieldName + "=>[" + std::to_string(itr.index()) + "]=>" + subFieldName;
+            errorField = fieldName + "[" + std::to_string(itr.index()) + "]." + subFieldName;
 
             return false;
           }
@@ -236,7 +236,7 @@ bool IResearchLinkMeta::init( // initialize meta
 
             if (sysVocbase) {
               name = IResearchAnalyzerFeature::normalize( // normalize
-                name, *defaultVocbase, *sysVocbase // args
+                name, *defaultVocbase, *sysVocbase, true// args
               );
             }
           }
@@ -250,7 +250,7 @@ bool IResearchLinkMeta::init( // initialize meta
 
           if (!value.hasKey(subFieldName) // missing required filed
               || !value.get(subFieldName).isString()) {
-            errorField = fieldName + "=>[" + std::to_string(itr.index()) + "]=>" + subFieldName;
+            errorField = fieldName + "[" + std::to_string(itr.index()) + "]." + subFieldName;
 
             return false;
           }
@@ -268,7 +268,7 @@ bool IResearchLinkMeta::init( // initialize meta
             auto subField = value.get(subFieldName);
 
             if (!subField.isObject() && !subField.isNull()) {
-              errorField = fieldName + "=>[" + std::to_string(itr.index()) + "]=>" + subFieldName;
+              errorField = fieldName + "[" + std::to_string(itr.index()) + "]." + subFieldName;
 
               return false;
             }
@@ -287,7 +287,7 @@ bool IResearchLinkMeta::init( // initialize meta
             auto subField = value.get(subFieldName);
 
             if (!subField.isArray()) {
-              errorField = fieldName + "=>[" + std::to_string(itr.index()) + "]=>" + subFieldName;
+              errorField = fieldName + "[" + std::to_string(itr.index()) + "]." + subFieldName;
 
               return false;
             }
@@ -298,7 +298,7 @@ bool IResearchLinkMeta::init( // initialize meta
               auto subValue = *subItr;
 
               if (!subValue.isString() && !subValue.isNull()) {
-                errorField = fieldName + "=>[" + std::to_string(itr.index()) + "]=>" + subFieldName + "=>[" + std::to_string(subItr.index()) +  + "]";
+                errorField = fieldName + "[" + std::to_string(itr.index()) + "]." + subFieldName + "[" + std::to_string(subItr.index()) +  + "]";
 
                 return false;
               }
@@ -307,7 +307,7 @@ bool IResearchLinkMeta::init( // initialize meta
               auto* feature = irs::attribute::type_id::get(featureName);
 
               if (!feature) {
-                errorField = fieldName + "=>[" + std::to_string(itr.index()) + "]=>" + subFieldName + "=>" + std::string(featureName);
+                errorField = fieldName + "[" + std::to_string(itr.index()) + "]." + subFieldName + "." + std::string(featureName);
 
                 return false;
               }
@@ -316,10 +316,13 @@ bool IResearchLinkMeta::init( // initialize meta
             }
           }
         }
+
         // get analyzer potentially creating it (e.g. on cluster)
         // @note do not use emplace(...) since it'll trigger loadAnalyzers(...)
-        if (!analyzers->get(name, type, properties, features)) {
-          errorField = fieldName + "=>[" + std::to_string(itr.index()) + "]";
+        arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult emplaceResult;
+        auto const res = analyzers->get(emplaceResult, name, type, properties, features);
+        if (!res.ok()) {
+          errorField = fieldName + "[" + std::to_string(itr.index()) + "]";
 
           return false;
         }
@@ -357,7 +360,7 @@ bool IResearchLinkMeta::init( // initialize meta
         auto value = *itr;
 
         if (!value.isString()) {
-          errorField = fieldName + "=>[" + std::to_string(itr.index()) + "]";
+          errorField = fieldName + "[" + std::to_string(itr.index()) + "]";
 
           return false;
         }
@@ -369,23 +372,19 @@ bool IResearchLinkMeta::init( // initialize meta
           auto sysVocbase = sysDatabase ? sysDatabase->use() : nullptr;
 
           if (sysVocbase) {
-            name = IResearchAnalyzerFeature::normalize( // normalize
-              name, *defaultVocbase, *sysVocbase // args
-            );
-            shortName = IResearchAnalyzerFeature::normalize( // normalize
-              name, *defaultVocbase, *sysVocbase, false // args
-            );
+            name = IResearchAnalyzerFeature::normalize(
+              name, *defaultVocbase, *sysVocbase);
+            shortName = IResearchAnalyzerFeature::normalize(
+              name, *defaultVocbase, *sysVocbase, false);
           }
         }
 
         // for cluster only check cache to avoid ClusterInfo locking issues
         // analyzer should have been populated via 'analyzerDefinitions' above
-        auto analyzer = analyzers->get( // get analyzer
-          name, arangodb::ServerState::instance()->isClusterRole() // args
-        );
+        auto analyzer = analyzers->get(name, arangodb::ServerState::instance()->isClusterRole());
 
         if (!analyzer) {
-          errorField = fieldName + "=>" + value.copyString(); // original (non-normalized) 'name' value
+          errorField = fieldName + "." + value.copyString(); // original (non-normalized) 'name' value
 
           return false;
         }
@@ -461,7 +460,7 @@ bool IResearchLinkMeta::init( // initialize meta
       auto itr = policies.find(name);
 
       if (itr == policies.end()) {
-        errorField = fieldName + "=>" + name;
+        errorField = fieldName + "." + name;
 
         return false;
       }
@@ -501,7 +500,7 @@ bool IResearchLinkMeta::init( // initialize meta
         auto value = itr.value();
 
         if (!key.isString()) {
-          errorField = fieldName + "=>[" +
+          errorField = fieldName + "[" +
                        arangodb::basics::StringUtils::itoa(itr.index()) + "]";
 
           return false;
@@ -510,7 +509,7 @@ bool IResearchLinkMeta::init( // initialize meta
         auto name = key.copyString();
 
         if (!value.isObject()) {
-          errorField = fieldName + "=>" + name;
+          errorField = fieldName + "." + name;
 
           return false;
         }
@@ -519,7 +518,7 @@ bool IResearchLinkMeta::init( // initialize meta
 
         // false == do not read 'analyzerDefinitions' from child elements
         if (!_fields[name]->init(value, false, childErrorField, defaultVocbase, subDefaults)) {
-          errorField = fieldName + "=>" + name + "=>" + childErrorField;
+          errorField = fieldName + "." + name + "." + childErrorField;
 
           return false;
         }
@@ -536,7 +535,7 @@ bool IResearchLinkMeta::json( // append meta jSON
     IResearchLinkMeta const* ignoreEqual /*= nullptr*/, // values to ignore if equal
     TRI_vocbase_t const* defaultVocbase /*= nullptr*/, // fallback vocbase
     Mask const* mask /*= nullptr*/, // values to ignore always
-    std::map<std::string, IResearchAnalyzerFeature::AnalyzerPool::ptr>* usedAnalyzers /*= nullptr*/ // append analyzers used in definition
+    std::map<std::string, AnalyzerPool::ptr>* usedAnalyzers /*= nullptr*/ // append analyzers used in definition
 ) const {
   if (!builder.isOpenObject()) {
     return false;
@@ -551,7 +550,7 @@ bool IResearchLinkMeta::json( // append meta jSON
     }
   }
 
-  std::map<std::string, IResearchAnalyzerFeature::AnalyzerPool::ptr> analyzers;
+  std::map<std::string, AnalyzerPool::ptr> analyzers;
 
   if ((!ignoreEqual || !equalAnalyzers(_analyzers, ignoreEqual->_analyzers)) &&
       (!mask || mask->_analyzers)) {
@@ -591,7 +590,7 @@ bool IResearchLinkMeta::json( // append meta jSON
           entry._pool->name(), // analyzer name
           *defaultVocbase, // active vocbase
           *sysVocbase, // system vocbase
-          writeAnalyzerDefinition // expand vocbase prefix
+          false // expand vocbase prefix
         );
       } else {
         name = entry._pool->name(); // verbatim (assume already normalized)
@@ -670,7 +669,7 @@ bool IResearchLinkMeta::json( // append meta jSON
 
     for (auto& entry: analyzers) {
       TRI_ASSERT(entry.second); // ensured by emplace into 'analyzers' above
-      entry.second->toVelocyPack(builder);
+      entry.second->toVelocyPack(builder, defaultVocbase);
     }
   }
 

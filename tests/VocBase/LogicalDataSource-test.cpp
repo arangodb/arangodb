@@ -31,9 +31,33 @@
 #include "VocBase/LogicalView.h"
 #include "velocypack/Parser.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 setup / tear-down
-// -----------------------------------------------------------------------------
+namespace {
+
+class LogicalViewImpl : public arangodb::LogicalView {
+ public:
+  LogicalViewImpl(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& definition)
+      : LogicalView(vocbase, definition, 0) {}
+  virtual arangodb::Result appendVelocyPackImpl(
+      arangodb::velocypack::Builder&, Serialization) const override {
+    return arangodb::Result();
+  }
+  virtual arangodb::Result dropImpl() override {
+    return arangodb::Result();
+  }
+  virtual void open() override {}
+  virtual arangodb::Result renameImpl(std::string const&) override {
+    return arangodb::Result();
+  }
+  virtual arangodb::Result properties(arangodb::velocypack::Slice const& properties,
+                                      bool partialUpdate) override {
+    return arangodb::Result();
+  }
+  virtual bool visitCollections(CollectionVisitor const& visitor) const override {
+    return true;
+  }
+};
+
+}
 
 class LogicalDataSourceTest : public ::testing::Test {
  protected:
@@ -98,31 +122,6 @@ TEST_F(LogicalDataSourceTest, test_category) {
 
   // LogicalView
   {
-    class LogicalViewImpl : public arangodb::LogicalView {
-     public:
-      LogicalViewImpl(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& definition)
-          : LogicalView(vocbase, definition, 0) {}
-      virtual arangodb::Result appendVelocyPackImpl(
-          arangodb::velocypack::Builder&,
-          std::underlying_type<arangodb::LogicalDataSource::Serialize>::type) const override {
-        return arangodb::Result();
-      }
-      virtual arangodb::Result dropImpl() override {
-        return arangodb::Result();
-      }
-      virtual void open() override {}
-      virtual arangodb::Result renameImpl(std::string const&) override {
-        return arangodb::Result();
-      }
-      virtual arangodb::Result properties(arangodb::velocypack::Slice const& properties,
-                                          bool partialUpdate) override {
-        return arangodb::Result();
-      }
-      virtual bool visitCollections(CollectionVisitor const& visitor) const override {
-        return true;
-      }
-    };
-
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
                           "testVocbase");
     auto json =
@@ -150,31 +149,6 @@ TEST_F(LogicalDataSourceTest, test_construct) {
 
   // LogicalView
   {
-    class LogicalViewImpl : public arangodb::LogicalView {
-     public:
-      LogicalViewImpl(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& definition)
-          : LogicalView(vocbase, definition, 0) {}
-      virtual arangodb::Result appendVelocyPackImpl(
-          arangodb::velocypack::Builder&,
-          std::underlying_type<arangodb::LogicalDataSource::Serialize>::type) const override {
-        return arangodb::Result();
-      }
-      virtual arangodb::Result dropImpl() override {
-        return arangodb::Result();
-      }
-      virtual void open() override {}
-      virtual arangodb::Result renameImpl(std::string const&) override {
-        return arangodb::Result();
-      }
-      virtual arangodb::Result properties(arangodb::velocypack::Slice const& properties,
-                                          bool partialUpdate) override {
-        return arangodb::Result();
-      }
-      virtual bool visitCollections(CollectionVisitor const& visitor) const override {
-        return true;
-      }
-    };
-
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
                           "testVocbase");
     auto json = arangodb::velocypack::Parser::fromJson(
@@ -204,31 +178,6 @@ TEST_F(LogicalDataSourceTest, test_defaults) {
 
   // LogicalView
   {
-    class LogicalViewImpl : public arangodb::LogicalView {
-     public:
-      LogicalViewImpl(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& definition)
-          : LogicalView(vocbase, definition, 0) {}
-      virtual arangodb::Result appendVelocyPackImpl(
-          arangodb::velocypack::Builder&,
-          std::underlying_type<arangodb::LogicalDataSource::Serialize>::type) const override {
-        return arangodb::Result();
-      }
-      virtual arangodb::Result dropImpl() override {
-        return arangodb::Result();
-      }
-      virtual void open() override {}
-      virtual arangodb::Result renameImpl(std::string const&) override {
-        return arangodb::Result();
-      }
-      virtual arangodb::Result properties(arangodb::velocypack::Slice const& properties,
-                                          bool partialUpdate) override {
-        return arangodb::Result();
-      }
-      virtual bool visitCollections(CollectionVisitor const& visitor) const override {
-        return true;
-      }
-    };
-
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1,
                           "testVocbase");
     auto json =

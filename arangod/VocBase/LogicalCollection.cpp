@@ -458,9 +458,9 @@ std::vector<std::shared_ptr<arangodb::Index>> LogicalCollection::getIndexes() co
 }
 
 void LogicalCollection::getIndexesVPack(
-    VPackBuilder& result, std::underlying_type<Index::Serialize>::type flags,
-    std::function<bool(arangodb::Index const*)> const& filter) const {
-  getPhysical()->getIndexesVPack(result, flags, filter);
+    VPackBuilder& result,
+    std::function<bool(arangodb::Index const*, std::underlying_type<Index::Serialize>::type&)> const& filter) const {
+  getPhysical()->getIndexesVPack(result, filter);
 }
 
 bool LogicalCollection::allowUserKeys() const { return _allowUserKeys; }
@@ -587,7 +587,7 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
   std::unordered_set<std::string> ignoreKeys{
       "allowUserKeys",        "cid",      "count",  "statusString", "version",
       "distributeShardsLike", "objectId", "indexes"};
-  VPackBuilder params = toVelocyPackIgnore(ignoreKeys, LogicalDataSource::makeFlags());
+  VPackBuilder params = toVelocyPackIgnore(ignoreKeys, Serialization::List);
   {
     VPackObjectBuilder guard(&result);
 
@@ -606,13 +606,21 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
   }
 
   result.add(VPackValue("indexes"));
-  getIndexesVPack(result, Index::makeFlags(), [](arangodb::Index const* idx) {
+  getIndexesVPack(result, [](Index const* idx, uint8_t& flags) {
     // we have to exclude the primary and the edge index here, because otherwise
     // at least the MMFiles engine will try to create it
     // AND exclude hidden indexes
-    return (idx->type() != arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX &&
-            idx->type() != arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX &&
-            !idx->isHidden() && !idx->inProgress());
+    switch (idx->type()) {
+      case Index::TRI_IDX_TYPE_PRIMARY_INDEX:
+      case Index::TRI_IDX_TYPE_EDGE_INDEX:
+        return false;
+      case Index::TRI_IDX_TYPE_IRESEARCH_LINK:
+        flags = Index::makeFlags(Index::Serialize::Internals);
+        return true;
+      default:
+        flags = Index::makeFlags();
+        return !idx->isHidden() && !idx->inProgress();
+    }
   });
   result.add("planVersion", VPackValue(planVersion()));
   result.add("isReady", VPackValue(isReady));
@@ -621,7 +629,9 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
 }
 
 arangodb::Result LogicalCollection::appendVelocyPack(arangodb::velocypack::Builder& result,
-                                                     std::underlying_type<Serialize>::type flags) const {
+                                                     Serialization context) const {
+  bool const forPersistence = (context == Serialization::Persistence);
+
   // We write into an open object
   TRI_ASSERT(result.isOpenObject());
 
@@ -635,7 +645,7 @@ arangodb::Result LogicalCollection::appendVelocyPack(arangodb::velocypack::Build
   // Collection Flags
   result.add("waitForSync", VPackValue(_waitForSync));
 
-  if (!hasFlag(flags, Serialize::ForPersistence)) {
+  if (!forPersistence) {
     // with 'forPersistence' added by LogicalDataSource::toVelocyPack
     // FIXME TODO is this needed in !forPersistence???
     result.add(StaticStrings::DataSourceDeleted, VPackValue(deleted()));
@@ -660,14 +670,18 @@ arangodb::Result LogicalCollection::appendVelocyPack(arangodb::velocypack::Build
   auto indexFlags = Index::makeFlags();
   // hide hidden indexes. In effect hides unfinished indexes,
   // and iResearch links (only on a single-server and coordinator)
-  auto filter = [&](arangodb::Index const* idx) {
-    return (hasFlag(flags, Serialize::IncludeInProgress) || !idx->inProgress()) &&
-           (hasFlag(flags, Serialize::ForPersistence) || !idx->isHidden());
-  };
-  if (hasFlag(flags, Serialize::ForPersistence)) {
+  if (forPersistence) {
     indexFlags = Index::makeFlags(Index::Serialize::Internals);
   }
-  getIndexesVPack(result, indexFlags, filter);
+  auto filter = [indexFlags, forPersistence](arangodb::Index const* idx, decltype(Index::makeFlags())& flags) {
+    if (forPersistence || (!idx->inProgress() && !idx->isHidden())) {
+      flags = indexFlags;
+      return true;
+    }
+
+    return false;
+  };
+  getIndexesVPack(result, filter);
 
   // Cluster Specific
   result.add(StaticStrings::IsSmart, VPackValue(_isSmart));
@@ -676,13 +690,13 @@ arangodb::Result LogicalCollection::appendVelocyPack(arangodb::velocypack::Build
     result.add(StaticStrings::SmartJoinAttribute, VPackValue(_smartJoinAttribute));
   }
 
-  if (!hasFlag(flags, Serialize::ForPersistence)) {
+  if (!forPersistence) {
     // with 'forPersistence' added by LogicalDataSource::toVelocyPack
     // FIXME TODO is this needed in !forPersistence???
     result.add(StaticStrings::DataSourcePlanId, VPackValue(std::to_string(planId())));
   }
 
-  _sharding->toVelocyPack(result, hasFlag(flags, Serialize::Detailed));
+  _sharding->toVelocyPack(result, Serialization::List != context);
 
   includeVelocyPackEnterprise(result);
 
@@ -694,17 +708,17 @@ arangodb::Result LogicalCollection::appendVelocyPack(arangodb::velocypack::Build
 
 void LogicalCollection::toVelocyPackIgnore(VPackBuilder& result,
                                            std::unordered_set<std::string> const& ignoreKeys,
-                                           std::underlying_type<Serialize>::type flags) const {
+                                           Serialization context) const {
   TRI_ASSERT(result.isOpenObject());
-  VPackBuilder b = toVelocyPackIgnore(ignoreKeys, flags);
+  VPackBuilder b = toVelocyPackIgnore(ignoreKeys, context);
   result.add(VPackObjectIterator(b.slice()));
 }
 
 VPackBuilder LogicalCollection::toVelocyPackIgnore(std::unordered_set<std::string> const& ignoreKeys,
-                                                   std::underlying_type<Serialize>::type flags) const {
+                                                   Serialization context) const {
   VPackBuilder full;
   full.openObject();
-  properties(full, flags);
+  properties(full, context);
   full.close();
   if (ignoreKeys.empty()) {
     return full;
