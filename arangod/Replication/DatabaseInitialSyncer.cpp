@@ -1415,10 +1415,28 @@ Result DatabaseInitialSyncer::handleCollectionsAndViews(VPackSlice const& collSl
     collections.emplace_back(parameters, indexes);
   }
 
-  // STEP 1: validate collection declarations from master
+  // STEP 1: now that the collections exist create the views
+  // this should be faster than re-indexing afterwards
   // ----------------------------------------------------------------------------------
 
-  // STEP 2: drop and re-create collections locally if they are also present on
+  if (!_config.applier._skipCreateDrop &&
+      _config.applier._restrictCollections.empty() &&
+      viewSlices.isArray()) {
+    // views are optional, and 3.3 and before will not send any view data
+    Result r = handleViewCreation(viewSlices);  // no requests to master
+    if (r.fail()) {
+      LOG_TOPIC("96cda", ERR, Logger::REPLICATION)
+          << "Error during intial sync view creation: " << r.errorMessage();
+      return r;
+    }
+  } else {
+    _config.progress.set("view creation skipped because of configuration");
+  }
+
+  // STEP 2: validate collection declarations from master
+  // ----------------------------------------------------------------------------------
+
+  // STEP 3: drop and re-create collections locally if they are also present on
   // the master
   //  ------------------------------------------------------------------------------------
 
@@ -1430,23 +1448,6 @@ Result DatabaseInitialSyncer::handleCollectionsAndViews(VPackSlice const& collSl
     if (r.fail()) {
       return r;
     }
-  }
-
-  // STEP 3: now that the collections exist create the views
-  // this should be faster than re-indexing afterwards
-  // ----------------------------------------------------------------------------------
-
-  if (!_config.applier._skipCreateDrop &&
-      _config.applier._restrictCollections.empty() && viewSlices.isArray()) {
-    // views are optional, and 3.3 and before will not send any view data
-    Result r = handleViewCreation(viewSlices);  // no requests to master
-    if (r.fail()) {
-      LOG_TOPIC("96cda", ERR, Logger::REPLICATION)
-          << "Error during intial sync view creation: " << r.errorMessage();
-      return r;
-    }
-  } else {
-    _config.progress.set("view creation skipped because of configuration");
   }
 
   // STEP 4: sync collection data from master and create initial indexes
