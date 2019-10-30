@@ -447,9 +447,8 @@ arangodb::Result SynchronizeShard::getReadLock(network::ConnectionPool* pool,
   // we must make sure that the read lock on the leader is not active!
   // This is done automatically below.
   
-  size_t const maxTries = std::log2(2 * 600); // 600s max
-  TRI_ASSERT(maxTries == 10);
-  double sleepTime = 0.5;
+  size_t const maxTries = 9; // 511s max
+  double sleepTime = 1.0;
   size_t count = 0;
   while (++count < maxTries) {  // wait for some time until read lock established:
 
