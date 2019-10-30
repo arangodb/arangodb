@@ -1,0 +1,102 @@
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+/// @author Tobias Gödderz
+////////////////////////////////////////////////////////////////////////////////
+
+#include "UnsortingGatherExecutor.h"
+#include <Logger/LogMacros.h>
+
+#include "Aql/IdExecutor.h"  // for IdExecutorInfos
+#include "Aql/MultiDependencySingleRowFetcher.h"
+#include "Aql/OutputAqlItemRow.h"
+#include "Aql/Stats.h"
+#include "Basics/Exceptions.h"
+#include "Basics/debugging.h"
+#include "Basics/voc-errors.h"
+
+using namespace arangodb;
+using namespace arangodb::aql;
+
+UnsortingGatherExecutor::UnsortingGatherExecutor(UnsortingGatherExecutor::Fetcher& fetcher,
+                                                 UnsortingGatherExecutor::Infos& infos)
+    : _fetcher(fetcher) {}
+
+UnsortingGatherExecutor::~UnsortingGatherExecutor() = default;
+
+auto UnsortingGatherExecutor::produceRows(OutputAqlItemRow& output)
+    -> std::pair<ExecutionState, UnsortingGatherExecutor::Stats> {
+  LOG_DEVEL << "UnsortingGatherExecutor::produceRows";
+  while (!output.isFull() && !done()) {
+    auto [state, inputRow] = fetchNextRow(output.numRowsLeft());
+    if (state == ExecutionState::WAITING) {
+      return {state, {}};
+    }
+    TRI_ASSERT(state == ExecutionState::DONE || inputRow.isInitialized());
+    if (inputRow.isInitialized()) {
+      output.copyRow(inputRow);
+      TRI_ASSERT(output.produced());
+      output.advanceRow();
+    }
+  }
+
+  auto state = done() ? ExecutionState::DONE : ExecutionState::HASMORE;
+  return {state, {}};
+}
+
+auto UnsortingGatherExecutor::fetcher() const noexcept
+    -> const UnsortingGatherExecutor::Fetcher& {
+  return _fetcher;
+}
+
+auto UnsortingGatherExecutor::fetcher() noexcept -> UnsortingGatherExecutor::Fetcher& {
+  return _fetcher;
+}
+
+auto UnsortingGatherExecutor::numDependencies() const
+    noexcept(noexcept(_fetcher.numberDependencies())) -> size_t {
+  return _fetcher.numberDependencies();
+}
+
+auto UnsortingGatherExecutor::fetchNextRow(size_t atMost)
+    -> std::pair<ExecutionState, InputAqlItemRow> {
+  auto res = fetcher().fetchRowForDependency(currentDependency(), atMost);
+  if (res.first == ExecutionState::DONE) {
+    advanceDependency();
+  }
+  return res;
+}
+
+auto UnsortingGatherExecutor::done() const noexcept -> bool {
+  return _currentDependency >= numDependencies();
+}
+
+auto UnsortingGatherExecutor::currentDependency() const noexcept -> size_t {
+  return _currentDependency;
+}
+
+auto UnsortingGatherExecutor::advanceDependency() noexcept -> void {
+  TRI_ASSERT(_currentDependency < numDependencies());
+  ++_currentDependency;
+}
+
+// std::tuple<ExecutionState, UnsortingGatherExecutor::Stats, size_t> UnsortingGatherExecutor::skipRows(size_t atMost) {
+//   TRI_ASSERT(false);
+//   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+// }
