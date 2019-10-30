@@ -1,6 +1,15 @@
 devel
 -----
 
+* Fixed available flag for hotbackup.
+
+* Fixed list with id for partially available hotbackups.
+
+* Added AQL optimizer rule "move-filters-into-enumerate", to allow for
+  early pruning of non-matching documents while full-scanning or index-
+  scanning documents. This optimization can help to avoid a lot of
+  temporary document copies.
+
 * Added "SmartJoins for Views" to the ArangoDB Enterprise Edition that allows running
   cluster joins between two certain sharded collections or views with performance close
   to that of a local join operation.
@@ -105,11 +114,11 @@ devel
 * Enabled IPO with cmake as an option, default is on for release builds without
   google tests.
 
-* Bugfix: The AQL sort-limit optimization was applied in some cases it shouldn't, 
+* Bugfix: The AQL sort-limit optimization was applied in some cases it shouldn't,
   resulting in undefined behaviour.
 
-* Remove operations for documents in the cluster will now use an optimization, 
-  if all sharding keys are specified. Should the sharding keys not match the values in 
+* Remove operations for documents in the cluster will now use an optimization,
+  if all sharding keys are specified. Should the sharding keys not match the values in
   the actual document, a not found error will be returned.
 
 * Fixed AQL constrained-heap sort in conjunction with fullCount.
@@ -138,7 +147,7 @@ devel
 
 * Allowing inconsistent rather than forcing hot backups.
 
-* Fixed adding an orphan collections as the first collection in a SmartGraph. 
+* Fixed adding an orphan collections as the first collection in a SmartGraph.
 
 * Fixed issue #9862: ServerException: RestHandler/RestCursorHandler.cpp:279.
 
@@ -188,10 +197,10 @@ devel
 * Enforced the valid date range for working with date/time in AQL. The valid date
   ranges for any AQL date/time function are:
 
-  - for string date/time values: `"0000-01-01T00:00:00.000Z"` (including) up to 
+  - for string date/time values: `"0000-01-01T00:00:00.000Z"` (including) up to
     `"9999-12-31T23:59:59.999Z"` (including)
   - for numeric date/time values: -62167219200000 (including) up to 253402300799999
-    (including). These values are the numeric equivalents of 
+    (including). These values are the numeric equivalents of
     `"0000-01-01T00:00:00.000Z"` and `"9999-12-31T23:59:59.999Z"`.
 
   Any date/time values outside the given range that are passed into an AQL date

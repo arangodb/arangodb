@@ -753,16 +753,15 @@ futures::Future<futures::Unit> RestCollectionHandler::collectionRepresentationAs
     }
   }
 
-  futures::Future<std::shared_ptr<VPackBuilder>> figures =
-      futures::makeFuture(std::shared_ptr<VPackBuilder>(nullptr));
+  futures::Future<OperationResult> figures = futures::makeFuture(OperationResult());
   if (showFigures) {
     figures = coll->figures();
   }
 
   return std::move(figures)
-      .thenValue([=, &ctxt](std::shared_ptr<VPackBuilder>&& figures) -> futures::Future<OperationResult> {
-        if (figures) {
-          _builder.add("figures", figures->slice());
+      .thenValue([=, &ctxt](OperationResult&& figures) -> futures::Future<OperationResult> {
+        if (figures.buffer) {
+          _builder.add("figures", figures.slice());
         }
 
         if (showCount) {

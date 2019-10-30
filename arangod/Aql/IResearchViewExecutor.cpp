@@ -233,6 +233,7 @@ IndexIterator::DocumentCallback IResearchViewExecutorBase<Impl, Traits>::ReadCon
           bool mustDestroy = true;
           AqlValueGuard guard{a, mustDestroy};
           ctx.outputRow.moveValueInto(ctx.docOutReg, ctx.inputRow, guard);
+          return true;
         };
       },
 
@@ -243,6 +244,7 @@ IndexIterator::DocumentCallback IResearchViewExecutorBase<Impl, Traits>::ReadCon
           bool mustDestroy = true;
           AqlValueGuard guard{a, mustDestroy};
           ctx.outputRow.moveValueInto(ctx.docOutReg, ctx.inputRow, guard);
+          return true;
         };
       }};
 

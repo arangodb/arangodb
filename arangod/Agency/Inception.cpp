@@ -123,6 +123,9 @@ void Inception::gossip() {
   auto startTime = steady_clock::now();
   seconds timeout(3600);
   long waitInterval = 250000;
+  
+  network::RequestOptions reqOpts;
+  reqOpts.timeout = network::Timeout(1);
 
   CONDITION_LOCKER(guard, _cv);
 
@@ -162,7 +165,7 @@ void Inception::gossip() {
         }
 
         network::sendRequest(cp, p, fuerte::RestVerb::Post, path,
-                             buffer, network::Timeout(1)).thenValue([=](network::Response r) {
+                             buffer, reqOpts).thenValue([=](network::Response r) {
           ::handleGossipResponse(r, &_agent, version);
         });
       }
@@ -172,7 +175,7 @@ void Inception::gossip() {
       _agent.activateAgency();
       return;
     }
-
+    
     // pool entries
     bool complete = true;
     for (auto const& pair : config.pool()) {
@@ -192,7 +195,7 @@ void Inception::gossip() {
         }
 
         network::sendRequest(cp, pair.second, fuerte::RestVerb::Post, path,
-                             buffer, network::Timeout(1)).thenValue([=](network::Response r) {
+                             buffer, reqOpts).thenValue([=](network::Response r) {
           ::handleGossipResponse(r, &_agent, version);
         });
       }
@@ -255,6 +258,10 @@ bool Inception::restartingActiveAgent() {
     VPackObjectBuilder b(&greeting);
     greeting.add(clientId, VPackValue(clientEp));
   }
+  
+  network::RequestOptions reqOpts;
+  reqOpts.timeout = network::Timeout(2);
+  reqOpts.skipScheduler = true; // hack to speed up future.get()
 
   seconds const timeout(3600);
   long waitInterval(500000);
@@ -285,7 +292,7 @@ bool Inception::restartingActiveAgent() {
       }
       
       auto comres = network::sendRequest(cp, p, fuerte::RestVerb::Post, path,
-                                         greetBuffer, network::Timeout(2)).get();
+                                         greetBuffer, reqOpts).get();
       
       if (comres.ok() && comres.response->statusCode() == fuerte::StatusOK) {
         
@@ -319,7 +326,7 @@ bool Inception::restartingActiveAgent() {
         }
         
         auto comres = network::sendRequest(cp, p.second, fuerte::RestVerb::Post, path,
-                                           greetBuffer, network::Timeout(2)).get();
+                                           greetBuffer, reqOpts).get();
         
         if (comres.ok()) {
           try {
@@ -345,7 +352,7 @@ bool Inception::restartingActiveAgent() {
                 }
                 
                 comres = network::sendRequest(cp, theirLeaderEp, fuerte::RestVerb::Post, path,
-                                              greetBuffer, network::Timeout(2)).get();
+                                              greetBuffer, reqOpts).get();
                 
                 // Failed to contact leader move on until we do. This way at
                 // least we inform everybody individually of the news.

@@ -50,7 +50,7 @@ function optimizerRuleTestSuite () {
       db._drop(cn);
     },
     
-    testDoesNotApply : function () {
+    testDoesNotApplyBecauseOfIndexes : function () {
       let queries = [ 
         [ `FOR doc IN ${cn} FILTER doc.value1 < 1000 RETURN doc`, 1000 ],
         [ `FOR doc IN ${cn} FILTER doc.value1 >= 0 && doc.value1 < 1000 RETURN doc`, 1000 ],
@@ -58,6 +58,13 @@ function optimizerRuleTestSuite () {
         [ `FOR doc IN ${cn} FILTER doc.value1 >= 1995 RETURN doc`, 5 ],
         [ `FOR doc IN ${cn} FILTER doc.value1 >= 1995 && doc.value1 < 2000 RETURN doc`, 5 ],
         [ `FOR doc IN ${cn} FILTER doc.value1 >= 100 && doc.value1 < 200 RETURN doc`, 100 ],
+        [ `FOR doc IN ${cn} FILTER doc.value1 < 1000 LIMIT 10 RETURN doc`, 10 ],
+        [ `FOR doc IN ${cn} FILTER doc.value1 < 1000 LIMIT 10, 10 RETURN doc`, 10 ],
+        [ `FOR doc IN ${cn} FILTER doc.value1 >= 0 && doc.value1 < 1000 LIMIT 100 RETURN doc`, 100 ],
+        [ `FOR doc IN ${cn} FILTER doc.value1 >= 0 && doc.value1 < 1000 LIMIT 10, 100 RETURN doc`, 100 ],
+        [ `FOR doc IN ${cn} FILTER doc.value1 >= 990 && doc.value1 < 1000 LIMIT 10, 5 RETURN doc`, 0 ],
+        [ `FOR doc IN ${cn} FILTER doc.value1 >= 990 && doc.value1 < 1000 LIMIT 5, 5 RETURN doc`, 5 ],
+        [ `FOR doc IN ${cn} FILTER doc.value1 >= 990 && doc.value1 < 1000 LIMIT 5, 10 RETURN doc`, 5 ],
       ];
 
       queries.forEach(function(query) {
@@ -69,22 +76,14 @@ function optimizerRuleTestSuite () {
       });
     },
     
-    testLimit : function () {
+    testDoesNotApplyBecauseOfNonDeterministic : function () {
       let queries = [ 
-        [ `FOR doc IN ${cn} FILTER doc.value1 < 1000 LIMIT 10 RETURN doc`, 10 ],
-        [ `FOR doc IN ${cn} FILTER doc.value1 < 1000 LIMIT 10, 10 RETURN doc`, 10 ],
-        [ `FOR doc IN ${cn} FILTER doc.value1 >= 0 && doc.value1 < 1000 LIMIT 100 RETURN doc`, 100 ],
-        [ `FOR doc IN ${cn} FILTER doc.value1 >= 0 && doc.value1 < 1000 LIMIT 10, 100 RETURN doc`, 100 ],
-        [ `FOR doc IN ${cn} FILTER doc.value1 >= 990 && doc.value1 < 1000 LIMIT 10, 5 RETURN doc`, 0 ],
-        [ `FOR doc IN ${cn} FILTER doc.value1 >= 990 && doc.value1 < 1000 LIMIT 5, 5 RETURN doc`, 5 ],
-        [ `FOR doc IN ${cn} FILTER doc.value1 >= 990 && doc.value1 < 1000 LIMIT 5, 10 RETURN doc`, 5 ],
-        [ `FOR doc IN ${cn} FILTER doc.value2 < 1000 LIMIT 10 RETURN doc`, 10 ],
-        [ `FOR doc IN ${cn} FILTER doc.value2 < 1000 LIMIT 10, 10 RETURN doc`, 10 ],
-        [ `FOR doc IN ${cn} FILTER doc.value2 >= 0 && doc.value2 < 1000 LIMIT 100 RETURN doc`, 100 ],
-        [ `FOR doc IN ${cn} FILTER doc.value2 >= 0 && doc.value2 < 1000 LIMIT 10, 100 RETURN doc`, 100 ],
-        [ `FOR doc IN ${cn} FILTER doc.value2 >= 990 && doc.value2 < 1000 LIMIT 10, 5 RETURN doc`, 0 ],
-        [ `FOR doc IN ${cn} FILTER doc.value2 >= 990 && doc.value2 < 1000 LIMIT 5, 5 RETURN doc`, 5 ],
-        [ `FOR doc IN ${cn} FILTER doc.value2 >= 990 && doc.value2 < 1000 LIMIT 5, 10 RETURN doc`, 5 ],
+        [ `FOR doc IN ${cn} FILTER RAND() >= -1.0 && doc.value2 == 1999 RETURN doc`, 1 ],
+        [ `FOR doc IN ${cn} FILTER RAND() >= -1.0 && doc.value2 >= 1995 RETURN doc`, 5 ],
+        [ `FOR doc IN ${cn} FILTER DOCUMENT('${cn}/test0')._key == NOOPT(doc._key) RETURN doc`, 1 ],
+        [ `FOR doc IN ${cn} FILTER DOCUMENT('${cn}/test0')._key == NOOPT(doc._key) && doc.value2 == 0 RETURN doc`, 1 ],
+        [ `FOR doc IN ${cn} FILTER DOCUMENT('${cn}/test123')._key != 'test0' && doc.value1 >= 1995 RETURN doc`, 5 ],
+        [ `FOR doc IN ${cn} FILTER DOCUMENT('${cn}/test123')._key != 'test0' && doc.value2 >= 1995 RETURN doc`, 5 ],
       ];
 
       queries.forEach(function(query) {
@@ -95,15 +94,41 @@ function optimizerRuleTestSuite () {
       });
     },
     
+    testLimit : function () {
+      let queries = [ 
+        [ `FOR doc IN ${cn} FILTER doc.value2 < 1000 LIMIT 10 RETURN doc`, 10 ],
+        [ `FOR doc IN ${cn} FILTER doc.value2 < 1000 LIMIT 10, 10 RETURN doc`, 10 ],
+        [ `FOR doc IN ${cn} FILTER doc.value2 >= 0 && doc.value2 < 1000 LIMIT 100 RETURN doc`, 100 ],
+        [ `FOR doc IN ${cn} FILTER doc.value2 >= 0 && doc.value2 < 1000 LIMIT 10, 100 RETURN doc`, 100 ],
+        [ `FOR doc IN ${cn} FILTER doc.value2 >= 990 && doc.value2 < 1000 LIMIT 10, 5 RETURN doc`, 0 ],
+        [ `FOR doc IN ${cn} FILTER doc.value2 >= 990 && doc.value2 < 1000 LIMIT 5, 5 RETURN doc`, 5 ],
+        [ `FOR doc IN ${cn} FILTER doc.value2 >= 990 && doc.value2 < 1000 LIMIT 5, 10 RETURN doc`, 5 ],
+      ];
+
+      queries.forEach(function(query) {
+        let result = AQL_EXPLAIN(query[0], null, { optimizer: { rules: ["-" + ruleName] } });
+        assertEqual(-1, result.plan.rules.indexOf(ruleName), query);
+        result = AQL_EXECUTE(query[0]).json.length;
+        assertEqual(query[1], result, query);
+        
+        result = AQL_EXPLAIN(query[0], null, { optimizer: { rules: ["+" + ruleName] } });
+        assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
+        assertEqual(0, result.plan.nodes.filter(function(n) { return n.type === 'FilterNode'; }).length);
+        result = AQL_EXECUTE(query[0]).json.length;
+        assertEqual(query[1], result, query);
+      });
+    },
+    
     testCollect : function () {
       let queries = [ 
-        [ `FOR doc IN ${cn} FILTER doc.value1 < 1000 COLLECT g = doc.value1 % 100 RETURN g`, 100 ],
-        [ `FOR doc IN ${cn} FILTER doc.value1 < 1000 COLLECT WITH COUNT INTO l RETURN l`, 1 ],
+        [ `FOR doc IN ${cn} FILTER doc.value2 < 1000 COLLECT g = doc.value1 % 100 RETURN g`, 100 ],
+        [ `FOR doc IN ${cn} FILTER doc.value2 < 1000 COLLECT WITH COUNT INTO l RETURN l`, 1 ],
       ];
 
       queries.forEach(function(query) {
         let result = AQL_EXPLAIN(query[0]);
-        assertEqual(-1, result.plan.rules.indexOf(ruleName), query);
+        assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
+        assertEqual(0, result.plan.nodes.filter(function(n) { return n.type === 'FilterNode'; }).length);
         result = AQL_EXECUTE(query[0]).json.length;
         assertEqual(query[1], result, query);
       });
