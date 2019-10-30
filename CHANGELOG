@@ -5,6 +5,13 @@ devel
 
 * Fixed list with id for partially available hotbackups.
 
+* Added "SmartJoins for Views" to the ArangoDB Enterprise Edition that allows running
+  cluster joins between two certain sharded collections or views with performance close
+  to that of a local join operation.
+
+* Allow collection names to be at most 256 characters long, instead of 64 characters
+  in previous versions.
+
 * Upgraded bundled Boost library version to 1.71.
 
 * The General Graph document API is now consistent with the document API in its error messages.
@@ -15,7 +22,7 @@ devel
 
 * Made the mechanism in the Web UI of replacing and upgrading a foxx app more clear.
 
-* Fixed search not working in document view while in code mode
+* Fixed search not working in document view while in code mode.
 
 * Show shards of all collections (including system collections) in the web UI's shard
   distribution view.
@@ -24,10 +31,10 @@ devel
   `distributeShardsLike` in case the prototype is a system collection, and the prototype
   should be moved to another server.
 
-* RCLone URL normalization
+* Rclone URL normalization.
 
-* Fixed Unintended multiple unlock commands from coordinator to
-  transaction locked db servers
+* Fixed unintended multiple unlock commands from coordinator to
+  transaction locked db servers.
 
 * Disallow using `_id` or `_rev` as shard keys in clustered collections.
 
@@ -47,7 +54,7 @@ devel
   in the cluster. It now also may speed up fullCount with sorted indexes and a
   limit.
 
-* Fix config directory handling, so we don't trap into UNC path lookups on windows
+* Fix config directory handling, so we don't trap into UNC path lookups on Windows.
 
 * Prevent spurious log message "Scheduler queue is filled more than 50% in last x s"
   from occurring when this is not the case. Due to a data race, the message could
@@ -69,7 +76,7 @@ devel
   The queue sizes can still be adjusted at server start using the above-
   mentioned startup options.
 
-* Fix compilation issue with clang 10
+* Fix compilation issue with clang 10.
 
 * Fixed issue #10062: AQL: Could not extract custom attribute.
 
@@ -115,7 +122,7 @@ devel
   This affected at least /_admin/cluster/health.
 
 * Fixed the removal (including a collection drop) of an orphanCollection from a
-  graph definition when using the ArangShell. The boolean
+  graph definition when using the ArangoShell. The boolean
   flag whether to drop the collection or not was not transferred properly.
 
 * Retry hot backup list in cluster for 2 minutes before reporting error.
@@ -137,7 +144,7 @@ devel
 
 * Fixed adding an orphan collections as the first collection in a SmartGraph.
 
-* Fixed issue #9862: ServerException: RestHandler/RestCursorHandler.cpp:279
+* Fixed issue #9862: ServerException: RestHandler/RestCursorHandler.cpp:279.
 
   This fixes an issue with the RocksDB primary index IN iterator not resetting its
   internal iterator after being rearmed with new lookup values (which only happens
@@ -206,9 +213,9 @@ devel
 * Fixed cut'n'pasting code from the documentation into arangosh.
 
 * Added initial support for wgs84 reference ellipsoid in GEO_DISTANCE through third
-  optional parameter to AQL function
+  optional parameter to AQL function.
 
-* Added support for area calculations with GEO_AREA AQL function
+* Added support for area calculations with GEO_AREA AQL function.
 
 * Added resign leadership job to supervision.
 
@@ -222,14 +229,16 @@ devel
 
 * Updated TOKENS function to deal with primitive types and arrays.
 
-* Fixed agency nodes to not create bogus keys on delete / observe / unobserve
+* Fixed agency nodes to not create bogus keys on delete / observe / unobserve.
 
 * Fixed an agency bug found in Windows tests.
+
 
 v3.5.0-rc.7 (2019-08-01)
 ------------------------
 
 * Upgraded arangodb starter version to 0.14.12.
+
 
 v3.5.0-rc.6 (2019-07-29)
 ------------------------

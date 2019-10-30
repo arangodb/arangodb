@@ -317,7 +317,6 @@ void OptimizerRulesFeature::addRules() {
   // must be the first cluster optimizer rule
   registerRule("cluster-one-shard", clusterOneShardRule, OptimizerRule::clusterOneShardRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
-                                        OptimizerRule::Flags::DisabledByDefault,
                                         OptimizerRule::Flags::ClusterOnly));
 #endif
 
@@ -331,13 +330,13 @@ void OptimizerRulesFeature::addRules() {
                                         OptimizerRule::Flags::ClusterOnly));
 #endif
 
-  // distribute operations in cluster
-  registerRule("scatter-in-cluster", scatterInClusterRule, OptimizerRule::scatterInClusterRule,
-               OptimizerRule::makeFlags(OptimizerRule::Flags::ClusterOnly));
-
   // distribute view queries in cluster
   registerRule("scatter-arangosearch-view-in-cluster", arangodb::iresearch::scatterViewInClusterRule,
                OptimizerRule::scatterIResearchViewInClusterRule,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::ClusterOnly));
+
+  // distribute operations in cluster
+  registerRule("scatter-in-cluster", scatterInClusterRule, OptimizerRule::scatterInClusterRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::ClusterOnly));
 
   // distribute operations in cluster
@@ -377,13 +376,9 @@ void OptimizerRulesFeature::addRules() {
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
                                         OptimizerRule::Flags::ClusterOnly));
 
-#if 0
-  // not yet enabled - we need to adjust a lot of tests in order to turn
-  // on this rule
-  registerRule("move-filters-into-enumerate", moveFiltersIntoEnumerateRule, OptimizerRule::moveFiltersIntoEnumerateCollection,
-               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
-                                        OptimizerRule::Flags::DisabledByDefault));
-#endif
+  registerRule("move-filters-into-enumerate", moveFiltersIntoEnumerateRule, 
+               OptimizerRule::moveFiltersIntoEnumerateCollection,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
 
   // Splice subqueries
   //
@@ -395,7 +390,6 @@ void OptimizerRulesFeature::addRules() {
   // subquery's nodes in between, resulting in a linear query plan. If an
   // optimizer runs after this rule, it has to be aware of SubqueryStartNode and
   // SubqueryEndNode and would likely be more complicated to write.
-  //
   registerRule("splice-subqueries", spliceSubqueriesRule, OptimizerRule::spliceSubqueriesRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
                                         OptimizerRule::Flags::DisabledByDefault));
