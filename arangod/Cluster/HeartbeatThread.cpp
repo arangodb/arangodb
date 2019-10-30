@@ -29,12 +29,11 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include "Agency/AsyncAgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/MutexLocker.h"
-#include "Basics/tri-strings.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/tri-strings.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
@@ -599,7 +598,7 @@ void HeartbeatThread::runSingleServer() {
         if (!_server.isStopping()) {
           LOG_TOPIC("229fd", WARN, Logger::HEARTBEAT)
               << "Heartbeat: Could not read from agency! status code: "
-              << result._statusCode << ", incriminating body: " << result.slice().toJson()
+              << result._statusCode << ", incriminating body: " << result.bodyRef()
               << ", timeout: " << timeout;
         }
 
@@ -877,7 +876,7 @@ void HeartbeatThread::runCoordinator() {
         if (!_server.isStopping()) {
           LOG_TOPIC("539fc", WARN, Logger::HEARTBEAT)
               << "Heartbeat: Could not read from agency! status code: "
-              << result._statusCode << ", incriminating body: " << result.slice().toJson()
+              << result._statusCode << ", incriminating body: " << result.bodyRef()
               << ", timeout: " << timeout;
         }
       } else {
@@ -1282,7 +1281,7 @@ bool HeartbeatThread::sendServerState() {
 
     LOG_TOPIC("3e2f5", WARN, Logger::HEARTBEAT)
         << "heartbeat could not be sent to agency endpoints (" << endpoints
-        << "): http code: " << result.httpCode() << ", body: " << result.slice().toJson();
+        << "): http code: " << result.httpCode() << ", body: " << result.body();
     _numFails = 0;
   }
 
@@ -1298,7 +1297,6 @@ void HeartbeatThread::updateAgentPool(VPackSlice const& agentPool) {
         values.emplace_back(pair.value.copyString());
       }
       AgencyCommManager::MANAGER->updateEndpoints(values);
-      AsyncAgencyCommManager::INSTANCE->updateEndpoints(values);
     } catch (basics::Exception const& e) {
       LOG_TOPIC("1cec6", WARN, Logger::HEARTBEAT)
           << "Error updating agency pool: " << e.message();
