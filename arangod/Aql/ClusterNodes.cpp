@@ -63,7 +63,28 @@ namespace {
 arangodb::velocypack::StringRef const SortModeUnset("unset");
 arangodb::velocypack::StringRef const SortModeMinElement("minelement");
 arangodb::velocypack::StringRef const SortModeHeap("heap");
-  
+
+char const* toString(GatherNode::Parallelism value) {
+  switch (value) {
+    case GatherNode::Parallelism::Parallel:
+      return "parallel";
+    case GatherNode::Parallelism::Serial:
+      return "serial";
+    case GatherNode::Parallelism::Undefined:
+    default:
+      return "undefined";
+  }
+}
+
+GatherNode::Parallelism parallelismFromString(std::string const& value) {
+  if (value == "parallel") {
+    return GatherNode::Parallelism::Parallel;
+  } else if (value == "serial") {
+    return GatherNode::Parallelism::Serial;
+  }
+  return GatherNode::Parallelism::Undefined;
+}
+
 std::map<arangodb::velocypack::StringRef, GatherNode::SortMode> const NameToValue{
     {SortModeMinElement, GatherNode::SortMode::MinElement},
     {SortModeHeap, GatherNode::SortMode::Heap},
@@ -400,6 +421,7 @@ GatherNode::GatherNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& b
     : ExecutionNode(plan, base),
       _elements(elements),
       _sortmode(SortMode::MinElement),
+      _parallelism(Parallelism::Undefined), 
       _limit(0) {
   if (!_elements.empty()) {
     auto const sortModeSlice = base.get("sortmode");
@@ -414,16 +436,23 @@ GatherNode::GatherNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& b
         basics::VelocyPackHelper::getNumericValue<decltype(_limit)>(base,
                                                                     "limit", 0);
   }
+    
+  setParallelism(parallelismFromString(VelocyPackHelper::getStringValue(base, "parellelism", "")));
 }
 
-GatherNode::GatherNode(ExecutionPlan* plan, size_t id, SortMode sortMode) noexcept
-    : ExecutionNode(plan, id), _sortmode(sortMode), _limit(0) {}
+GatherNode::GatherNode(ExecutionPlan* plan, size_t id, SortMode sortMode, Parallelism parallelism) noexcept
+    : ExecutionNode(plan, id), 
+      _sortmode(sortMode), 
+      _parallelism(parallelism),
+      _limit(0) {}
 
 /// @brief toVelocyPack, for GatherNode
 void GatherNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
                                     std::unordered_set<ExecutionNode const*>& seen) const {
   // call base class method
   ExecutionNode::toVelocyPackHelperGeneric(nodes, flags, seen);
+ 
+  nodes.add("parallelism", VPackValue(toString(_parallelism)));
 
   if (_elements.empty()) {
     nodes.add("sortmode", VPackValue(SortModeUnset.data()));
@@ -450,8 +479,6 @@ void GatherNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
     }
   }
   
-  nodes.add("isParallelizable", VPackValue(isParallelizable()));
-
   // And close it:
   nodes.close();
 }
@@ -467,7 +494,7 @@ std::unique_ptr<ExecutionBlock> GatherNode::createBlock(
 
     if (ServerState::instance()->isCoordinator()) {
       // In the coordinator case the GatherBlock will fetch from RemoteBlocks.
-      if (isParallelizable()) {
+      if (_parallelism == Parallelism::Parallel) {
         UnsortedGatherExecutorInfos infos(getRegisterPlan()->nrRegs[getDepth()],
                                           calcRegsToKeep(), getRegsToClear());
         return std::make_unique<ExecutionBlockImpl<UnsortedGatherExecutor>>(&engine, this, std::move(infos));
@@ -542,7 +569,15 @@ struct ParallelizableFinder final : public WalkerWorker<ExecutionNode> {
 };
 
 /// no modification nodes, ScatterNodes etc
-bool GatherNode::isParallelizable() const noexcept {
+bool GatherNode::isParallelizable() const {
+  if (_parallelism == Parallelism::Serial) {
+    // node already defined to be serial
+    return false;
+  }
+
+  if (isInSubquery()) {
+    return false;
+  }
   ParallelizableFinder finder;
   for (ExecutionNode* e : _dependencies) {
     e->walk(finder);
@@ -551,6 +586,11 @@ bool GatherNode::isParallelizable() const noexcept {
     }
   }
   return true;
+}
+
+void GatherNode::setParallelism(GatherNode::Parallelism value) {
+  TRI_ASSERT(value != Parallelism::Parallel || isParallelizable());
+  _parallelism = value;
 }
 
 SingleRemoteOperationNode::SingleRemoteOperationNode(

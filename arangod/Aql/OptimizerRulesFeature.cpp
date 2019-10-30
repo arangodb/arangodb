@@ -377,9 +377,22 @@ void OptimizerRulesFeature::addRules() {
                                         OptimizerRule::Flags::ClusterOnly));
 
   registerRule("move-filters-into-enumerate", moveFiltersIntoEnumerateRule, 
-               OptimizerRule::moveFiltersIntoEnumerateCollection,
+               OptimizerRule::moveFiltersIntoEnumerateCollectionRule,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
+  
+  registerRule("parallelize-gather", parallelizeGatherRule, 
+               OptimizerRule::parallelizeGatherRule,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
+                                        OptimizerRule::Flags::ClusterOnly));
+
+  // apply late materialization for view queries
+  registerRule("late-document-materialization",  arangodb::iresearch::lateDocumentMaterializationRule,
+               OptimizerRule::lateDocumentMaterializationRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
 
+  // add the storage-engine specific rules
+  addStorageEngineRules();
+  
   // Splice subqueries
   //
   // ***CAUTION***
@@ -394,17 +407,10 @@ void OptimizerRulesFeature::addRules() {
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
                                         OptimizerRule::Flags::DisabledByDefault));
 
-  // apply late materialization for view queries
-  registerRule("late-document-materialization",  arangodb::iresearch::lateDocumentMaterializationRule,
-               OptimizerRule::lateDocumentMaterializationRule,
-               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
-
-  // finally add the storage-engine specific rules
-  addStorageEngineRules();
 
   // finally sort all rules by their level
   std::sort(_rules.begin(), _rules.end(),
-            [](OptimizerRule const& lhs, OptimizerRule const& rhs) {
+            [](OptimizerRule const& lhs, OptimizerRule const& rhs) noexcept {
               return (lhs.level < rhs.level);
             });
 

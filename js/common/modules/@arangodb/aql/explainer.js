@@ -1650,7 +1650,7 @@ function processQuery(query, explain, planIndex) {
         return keyword('SCATTER');
       case 'GatherNode':
         let gatherAnnotations = [];
-        if (node.isParallelizable) {
+        if (node.parallelism === 'parallel') {
           gatherAnnotations.push('parallel');
         }
         if (node.sortmode !== 'unset') {

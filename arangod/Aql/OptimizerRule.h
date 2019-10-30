@@ -294,7 +294,10 @@ struct OptimizerRule {
 
     // moves filters on collection data into EnumerateCollection to
     // avoid copying large amounts of unneeded documents
-    moveFiltersIntoEnumerateCollection,
+    moveFiltersIntoEnumerateCollectionRule,
+
+    // parallelizes execution in coordinator-sided GatherNodes
+    parallelizeGatherRule,
 
     // move document materialization after SORT and LIMIT
     // this must be run AFTER all cluster rules as this rule
