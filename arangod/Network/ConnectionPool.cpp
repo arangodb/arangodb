@@ -86,7 +86,7 @@ void ConnectionPool::shutdown() {
 void ConnectionPool::removeBrokenConnections(Bucket& buck) {
   auto it = buck.list.begin();
   while (it != buck.list.end()) {
-    // lets not keep around diconnected fuerte connection objects
+    // lets not keep around disconnected fuerte connection objects
     if (it->fuerte->state() == fuerte::Connection::State::Failed) {
       it = buck.list.erase(it);
     } else {
@@ -139,7 +139,7 @@ void ConnectionPool::pruneConnections() {
       continue; // done
     }
     
-    LOG_TOPIC("2d59a", INFO, Logger::COMMUNICATION)
+    LOG_TOPIC("2d59a", DEBUG, Logger::COMMUNICATION)
         << "pruning extra connections to '" << pair.first
         << "' (" << buck.list.size() << ")";
     
