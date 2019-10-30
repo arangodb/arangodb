@@ -7208,12 +7208,6 @@ void arangodb::aql::moveFiltersIntoEnumerateRule(Optimizer* opt, std::unique_ptr
         if (calculations.empty()) {
           break;
         }
-        if (current->hasParentOfType(EN::LIMIT)) {
-          break;
-        }
-        if (current->hasParentOfType(EN::COLLECT)) {
-          break;
-        }
         
         auto filterNode = ExecutionNode::castTo<FilterNode*>(current);
         Variable const* inVariable = filterNode->inVariable();
