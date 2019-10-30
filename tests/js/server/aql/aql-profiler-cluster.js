@@ -210,7 +210,8 @@ function ahuacatlProfilerTestSuite () {
         { type : UnsortingGatherBlock, calls : coordinatorBatches(rowsPerServer), items : totalItems(rowsPerShard) },
         { type : ReturnBlock, calls : coordinatorBatches(rowsPerServer), items : totalItems(rowsPerShard) }
       ];
-      profHelper.runClusterChecks({col, exampleDocumentsByShard, query, genNodeList});
+      const options = {optimizer: { rules: ["-parallelize-gather"] } };
+      profHelper.runClusterChecks({col, exampleDocumentsByShard, query, genNodeList, options});
     },
 
 ////////////////////////////////////////////////////////////////////////////////
