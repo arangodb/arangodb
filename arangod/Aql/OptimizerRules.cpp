@@ -7276,7 +7276,7 @@ namespace {
 
 bool nodeMakesThisQueryLevelUnsuitableForSubquerySplicing(ExecutionNode const* const node) {
   // TODO Enable modification nodes again, as soon as the corresponding branch
-  //  is merged.
+  //  is merged. Fix them in the switch statement below, too!
   if (node->isModificationNode()) {
     return true;
   }
@@ -7296,6 +7296,8 @@ bool nodeMakesThisQueryLevelUnsuitableForSubquerySplicing(ExecutionNode const* c
     case ExecutionNode::RETURN:
     case ExecutionNode::DISTRIBUTE:
     case ExecutionNode::SCATTER:
+    case ExecutionNode::GATHER:
+    case ExecutionNode::REMOTE:
     case ExecutionNode::REMOTESINGLE:
     case ExecutionNode::MATERIALIZE:
     case ExecutionNode::DISTRIBUTE_CONSUMER:
@@ -7303,10 +7305,6 @@ bool nodeMakesThisQueryLevelUnsuitableForSubquerySplicing(ExecutionNode const* c
     case ExecutionNode::SUBQUERY_END:
       // These nodes do not initiate a skip themselves, and thus are fine.
       return false;
-    // UnsortingGather currently does not work. Also, as we would possibly add
-    // them with remote nodes in the query, we exclude these here, too.
-    case ExecutionNode::REMOTE:
-    case ExecutionNode::GATHER:
     case ExecutionNode::NORESULTS:
       // no results currently cannot work, as they do not fetch from above.
     case ExecutionNode::LIMIT:
