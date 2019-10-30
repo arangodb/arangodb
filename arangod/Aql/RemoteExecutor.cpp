@@ -299,7 +299,7 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::shutdown(i
 
   if (!_hasTriggeredShutdown) {
     std::lock_guard<std::mutex> guard(_communicationMutex);
-    std::ignore = generateNewTicket();
+    std::ignore = generateRequestTicket();
     _hasTriggeredShutdown = true;
   }
   if (_lastError.fail()) {
@@ -425,7 +425,8 @@ Result handleErrorResponse(network::EndpointSpec const& spec, fuerte::Error err,
 
 Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(fuerte::RestVerb type,
                                                             std::string const& urlPart,
-                                                            VPackBuffer<uint8_t> body) {
+                                                            VPackBuffer<uint8_t>&& body) {
+  
   NetworkFeature const& nf =
       _engine->getQuery()->vocbase().server().getFeature<NetworkFeature>();
   network::ConnectionPool* pool = nf.pool();
@@ -434,11 +435,6 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(fuerte::RestVerb typ
     return {TRI_ERROR_SHUTTING_DOWN};
   }
 
-  std::string url =
-      std::string("/_db/") +
-      arangodb::basics::StringUtils::urlEncode(_engine->getQuery()->vocbase().name()) +
-      urlPart + _queryId;
-
   arangodb::network::EndpointSpec spec;
   int res = network::resolveDestination(nf, _server, spec);
   if (res != TRI_ERROR_NO_ERROR) {  // FIXME return an error  ?!
@@ -446,27 +442,30 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(fuerte::RestVerb typ
   }
   TRI_ASSERT(!spec.endpoint.empty());
 
-  auto req = fuerte::createRequest(type, url, {}, std::move(body));
+  auto req = fuerte::createRequest(type, fuerte::ContentType::VPack);
+  req->header.database =_query.vocbase().name();
+  req->header.path = urlPart + _queryId;
+  req->addVPack(std::move(body));
+
   // Later, we probably want to set these sensibly:
   req->timeout(kDefaultTimeOutSecs);
   if (!_ownName.empty()) {
     req->header.addMeta("Shard-Id", _ownName);
   }
-
-  network::ConnectionPool::Ref ref = pool->leaseConnection(spec.endpoint);
-
+  
+  network::ConnectionPtr conn = pool->leaseConnection(spec.endpoint);
+    
   std::lock_guard<std::mutex> guard(_communicationMutex);
-  auto ticket = generateNewTicket();
-  std::shared_ptr<fuerte::Connection> conn = ref.connection();
+  auto ticket = generateRequestTicket();
   conn->sendRequest(std::move(req),
-                    [this, ticket, spec, sharedState = _query.sharedState(),
-                     ref(std::move(ref))](fuerte::Error err, std::unique_ptr<fuerte::Request>,
-                                          std::unique_ptr<fuerte::Response> res) {
+                    [this, ticket, spec,
+                     sqs = _query.sharedState()](fuerte::Error err,
+                                                 std::unique_ptr<fuerte::Request> req,
+                                                 std::unique_ptr<fuerte::Response> res) {
                       // `this` is only valid as long as sharedState is valid.
                       // So we must execute this under sharedState's mutex.
-                      sharedState->execute([&] {
+                      sqs->execute([&] {
                         std::lock_guard<std::mutex> guard(_communicationMutex);
-
                         if (_lastTicket == ticket) {
                           if (err != fuerte::Error::NoError || res->statusCode() >= 400) {
                             _lastError = handleErrorResponse(spec, err, res.get());
@@ -517,7 +516,7 @@ void ExecutionBlockImpl<RemoteExecutor>::traceRequest(char const* const rpc,
   }
 }
 
-unsigned ExecutionBlockImpl<RemoteExecutor>::generateNewTicket() {
+unsigned ExecutionBlockImpl<RemoteExecutor>::generateRequestTicket() {
   // Assumes that _communicationMutex is locked in the caller
   ++_lastTicket;
   _lastError.reset(TRI_ERROR_NO_ERROR);
