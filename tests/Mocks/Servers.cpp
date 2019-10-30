@@ -26,6 +26,7 @@
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Aql/AqlFunctionFeature.h"
+#include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/Query.h"
 #include "Basics/files.h"
@@ -447,7 +448,7 @@ std::shared_ptr<arangodb::transaction::Methods> MockAqlServer::createFakeTransac
                                                           noCollections, opts);
 }
 
-std::unique_ptr<arangodb::aql::Query> MockAqlServer::createFakeQuery(bool activateTracing) const {
+std::unique_ptr<arangodb::aql::Query> MockAqlServer::createFakeQuery(bool activateTracing, std::string queryString) const {
   auto bindParams = std::make_shared<VPackBuilder>();
   bindParams->openObject();
   bindParams->close();
@@ -457,12 +458,12 @@ std::unique_ptr<arangodb::aql::Query> MockAqlServer::createFakeQuery(bool activa
     queryOptions->add("profile", VPackValue(aql::PROFILE_LEVEL_TRACE_2));
   }
   queryOptions->close();
-  aql::QueryString fakeQueryString("");
+  aql::QueryString fakeQueryString(queryString);
+
   auto query =
       std::make_unique<arangodb::aql::Query>(false, getSystemDatabase(),
                                              fakeQueryString, bindParams, queryOptions,
                                              arangodb::aql::QueryPart::PART_DEPENDENT);
-  query->injectTransaction(createFakeTransaction());
   return query;
 }
 

@@ -121,16 +121,10 @@ EnumerateCollectionExecutor::EnumerateCollectionExecutor(Fetcher& fetcher, Infos
       _fetcher(fetcher),
       _documentProducer(nullptr),
       _documentProducingFunctionContext(_input, nullptr, _infos.getOutputRegisterId(),
-<<<<<<< HEAD
                                         _infos.getProduceResult(),
                                         _infos.getQuery(), _infos.getFilter(),
                                         _infos.getProjections(), 
                                         ::emptyAttributePositions,
-=======
-                                        _infos.getProduceResult(), _infos.getQuery(),
-                                        _infos.getFilter(), _infos.getProjections(),
-                                        _infos.getCoveringIndexAttributePositions(),
->>>>>>> 285382710e6... added new produceRows + test
                                         true, _infos.getUseRawDocumentPointers(), false),
       _state(ExecutionState::HASMORE),
       _executorState(ExecutorState::HASMORE),

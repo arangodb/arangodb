@@ -33,6 +33,7 @@
 #include "fakeit.hpp"
 
 #include "Aql/AqlItemBlock.h"
+#include "Aql/Ast.h"
 #include "Aql/Collection.h"
 #include "Aql/EnumerateCollectionExecutor.h"
 #include "Aql/ExecutionBlockImpl.h"
@@ -68,21 +69,25 @@ class EnumerateCollectionExecutorTestNoRowsUpstream : public ::testing::Test {
   ResourceMonitor monitor;
   AqlItemBlockManager itemBlockManager;
   arangodb::tests::mocks::MockAqlServer server;
-  TRI_vocbase_t vocbase;  // required to create collection
+  TRI_vocbase_t& vocbase;
   std::shared_ptr<VPackBuilder> json;
-  arangodb::LogicalCollection collection;
-  fakeit::Mock<ExecutionEngine> mockEngine;
-  fakeit::Mock<transaction::Methods> mockTrx;  // fake transaction::Methods
-  fakeit::Mock<Query> mockQuery;
+  std::shared_ptr<LogicalCollection> collection;
+
+  std::unique_ptr<arangodb::aql::Query> fakedQuery;
+  Ast ast;
 
   Variable outVariable;
   bool varUsedLater;
   std::unordered_set<RegisterId> const regToClear;
   std::unordered_set<RegisterId> const regToKeep;
-  ExecutionEngine& engine;
-  Collection abc;
+  ExecutionEngine* engine;
+  Collection aqlCollection;
   std::vector<std::string> const projections;
+<<<<<<< HEAD
   transaction::Methods& trx;
+=======
+  std::vector<size_t> const coveringIndexAttributePositions;
+>>>>>>> 5aa14b8cd12... adde fake query helper, one without auto trx but with prepare plan, the other one without prepare but with trx - also removed fakeit mocks from enumeratecollectionexecutor tests
   bool useRawPointers;
   bool random;
 
@@ -94,18 +99,18 @@ class EnumerateCollectionExecutorTestNoRowsUpstream : public ::testing::Test {
   EnumerateCollectionExecutorTestNoRowsUpstream()
       : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
         server(),
-        vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
-                systemDBInfo(server.server())),
-        json(arangodb::velocypack::Parser::fromJson(
-            "{ \"cid\" : \"1337\", \"name\": \"UnitTestCollection\" }")),
-        collection(vocbase, json->slice(), true),
+        vocbase(server.getSystemDatabase()),
+        json(VPackParser::fromJson(R"({"name":"UnitTestCollection"})")),
+        collection(vocbase.createCollection(json->slice())),
+        fakedQuery(server.createFakeQuery("return 1")),
+        ast(fakedQuery.get()),
         outVariable("name", 1),
         varUsedLater(false),
-        engine(mockEngine.get()),
-        abc("blabli", &vocbase, arangodb::AccessMode::Type::READ),
-        trx(mockTrx.get()),
+        engine(fakedQuery.get()->engine()),  // TODO: put engine here
+        aqlCollection("UnitTestCollection", &vocbase, arangodb::AccessMode::Type::READ),
         useRawPointers(false),
         random(false),
+<<<<<<< HEAD
         infos(0 /*outReg*/, 1 /*nrIn*/, 1 /*nrOut*/, regToClear, regToKeep,
               &engine, &abc, &outVariable, varUsedLater, nullptr, projections,
               useRawPointers, random),
@@ -121,6 +126,12 @@ class EnumerateCollectionExecutorTestNoRowsUpstream : public ::testing::Test {
     fakeit::When(Method(mockQuery, trx)).AlwaysReturn(&(mockTrx.get()));
     fakeit::When(Method(mockEngine, getQuery)).AlwaysReturn(&query);
   }
+=======
+        infos(0 /*outReg*/, 1 /*nrIn*/, 1 /*nrOut*/, regToClear, regToKeep, engine,
+              &aqlCollection, &outVariable, varUsedLater, nullptr, projections,
+              coveringIndexAttributePositions, useRawPointers, random),
+        block(new AqlItemBlock(itemBlockManager, 1000, 2)) {}
+>>>>>>> 5aa14b8cd12... adde fake query helper, one without auto trx but with prepare plan, the other one without prepare but with trx - also removed fakeit mocks from enumeratecollectionexecutor tests
 };
 
 TEST_F(EnumerateCollectionExecutorTestNoRowsUpstream, the_producer_does_not_wait) {
