@@ -485,13 +485,18 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
   initializeOnce(hasV8Expression, inVars, inRegs, nonConstExpressions, trxPtr);
 
   auto const firstOutputRegister = getNrInputRegisters();
-  auto numIndVarsRegisters = static_cast<aql::RegisterCount>(_outNonMaterializedIndVars.size());
+  auto numIndVarsRegisters = static_cast<aql::RegisterCount>(
+        std::accumulate(_outNonMaterializedIndVars.cbegin(),
+                        _outNonMaterializedIndVars.cend(), 0,
+                        [](auto const& a, auto const& b) {
+    return a + b.second.size();
+  }));
   TRI_ASSERT(0 == numIndVarsRegisters || isLateMaterialized());
 
   // We could be asked to produce only document id for later materialization or full document body at once
   aql::RegisterCount numDocumentRegs = 1;
 
-  // if not materialized
+  // if late materialized
   // We have one additional output register for each index variable which is used later, before
   // the output register for document id
   // These must of course fit in the available registers.
@@ -506,8 +511,8 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
 
   TRI_ASSERT(writableOutputRegisters->size() == numDocumentRegs + numIndVarsRegisters);
   TRI_ASSERT(writableOutputRegisters->begin() != writableOutputRegisters->end());
-  TRI_ASSERT(firstOutputRegister == *std::min_element(writableOutputRegisters->begin(),
-                                                      writableOutputRegisters->end()));
+  TRI_ASSERT(firstOutputRegister == *std::min_element(writableOutputRegisters->cbegin(),
+                                                      writableOutputRegisters->cend()));
 
   auto const& varInfos = getRegisterPlan()->varInfo;
   IndexValuesRegisters outNonMaterializedIndVars;
@@ -635,7 +640,13 @@ std::vector<Variable const*> IndexNode::getVariablesSetHere() const {
   }
 
   std::vector<arangodb::aql::Variable const*> vars;
-  vars.reserve(1 + _outNonMaterializedIndVars.size());
+  auto numIndVars = static_cast<aql::RegisterCount>(
+        std::accumulate(_outNonMaterializedIndVars.cbegin(),
+                        _outNonMaterializedIndVars.cend(), 0,
+                        [](auto const& a, auto const& b) {
+    return a + b.second.size();
+  }));
+  vars.reserve(1 + numIndVars);
   vars.emplace_back(_outNonMaterializedDocId);
   for (auto& indsVars : _outNonMaterializedIndVars) {
     std::transform(indsVars.second.cbegin(), indsVars.second.cend(), std::back_inserter(vars), [] (auto const& indVar) {
