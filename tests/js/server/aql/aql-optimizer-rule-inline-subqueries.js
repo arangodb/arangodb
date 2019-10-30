@@ -164,6 +164,7 @@ function optimizerRuleTestSuite () {
 function optimizerRuleCollectionTestSuite () {
   var c = null;
   var cn = "UnitTestsOptimizer";
+  const noMoveFilters = { optimizer: { rules: [ "-move-filters-into-enumerate" ] } };
 
   return {
 
@@ -201,7 +202,7 @@ function optimizerRuleCollectionTestSuite () {
     testSpecificPlan2 : function () {
       var query = "LET x = (FOR doc IN @@cn FILTER doc.foo == 'bar' RETURN doc) FOR doc2 IN x RETURN doc2";
 
-      var result = AQL_EXPLAIN(query, { "@cn" : cn });
+      var result = AQL_EXPLAIN(query, { "@cn" : cn }, noMoveFilters);
       assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
       var nodes = helper.removeClusterNodesFromPlan(result.plan.nodes);
       assertEqual(5, nodes.length);

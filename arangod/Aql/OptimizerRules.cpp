@@ -7186,6 +7186,12 @@ void arangodb::aql::moveFiltersIntoEnumerateRule(Optimizer* opt, std::unique_ptr
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to cast node to DocumentProducingNode");
     }
 
+    if (n->getType() == EN::INDEX && ExecutionNode::castTo<IndexNode const*>(n)->getIndexes().size() != 1) {
+      // we can only handle exactly one index right now. otherwise some IndexExecutor code
+      // may assert and fail
+      continue;
+    }
+
     Variable const* outVariable = en->outVariable();
 
     if (!n->isVarUsedLater(outVariable)) {
@@ -7206,6 +7212,13 @@ void arangodb::aql::moveFiltersIntoEnumerateRule(Optimizer* opt, std::unique_ptr
         if (calculations.empty()) {
           break;
         }
+        if (current->hasParentOfType(EN::LIMIT)) {
+          break;
+        }
+        if (current->hasParentOfType(EN::COLLECT)) {
+          break;
+        }
+        
         auto filterNode = ExecutionNode::castTo<FilterNode*>(current);
         Variable const* inVariable = filterNode->inVariable();
 

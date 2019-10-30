@@ -54,7 +54,7 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
       _shardIds(new ShardMap()) {
   bool const isSmart =
       basics::VelocyPackHelper::readBooleanValue(info, StaticStrings::IsSmart, false);
-
+      
   if (isSmart && _collection->type() == TRI_COL_TYPE_EDGE) {
     // smart edge collection
     _numberOfShards = 0;
@@ -89,19 +89,17 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
                                    "invalid number of shards");
   }
 
-  if (info.hasKey("avoidServers")) {
-    auto avoidServersSlice = info.get("avoidServers");
-    if (avoidServersSlice.isArray()) {
-      for (const auto& i : VPackArrayIterator(avoidServersSlice)) {
-        if (i.isString()) {
-          _avoidServers.push_back(i.copyString());
-        } else {
-          LOG_TOPIC("e5bc6", ERR, arangodb::Logger::FIXME)
-              << "avoidServers must be a vector of strings, we got "
-              << avoidServersSlice.toJson() << ". discarding!";
-          _avoidServers.clear();
-          break;
-        }
+  auto avoidServersSlice = info.get("avoidServers");
+  if (avoidServersSlice.isArray()) {
+    for (const auto& i : VPackArrayIterator(avoidServersSlice)) {
+      if (i.isString()) {
+        _avoidServers.push_back(i.copyString());
+      } else {
+        LOG_TOPIC("e5bc6", ERR, arangodb::Logger::FIXME)
+            << "avoidServers must be a vector of strings, we got "
+            << avoidServersSlice.toJson() << ". discarding!";
+        _avoidServers.clear();
+        break;
       }
     }
   }
@@ -164,7 +162,7 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
       }
     }
   }
-
+  
   // replicationFactor == 0 -> satellite collection
   if (shardKeysSlice.isNone() || _replicationFactor == 0) {
     // Use default.
@@ -246,6 +244,7 @@ ShardingInfo::ShardingInfo(ShardingInfo const& other, LogicalCollection* collect
     : _collection(collection),
       _numberOfShards(other.numberOfShards()),
       _replicationFactor(other.replicationFactor()),
+      _writeConcern(other.writeConcern()),
       _distributeShardsLike(other.distributeShardsLike()),
       _avoidServers(other.avoidServers()),
       _shardKeys(other.shardKeys()),
@@ -363,6 +362,7 @@ void ShardingInfo::distributeShardsLike(std::string const& cid, ShardingInfo con
   }
 
   _replicationFactor = other->replicationFactor();
+  _writeConcern = other->writeConcern();
   _numberOfShards = other->numberOfShards();
 }
 
@@ -485,8 +485,6 @@ int ShardingInfo::getResponsibleShard(arangodb::velocypack::Slice slice, bool do
 
 Result ShardingInfo::validateShardsAndReplicationFactor(arangodb::velocypack::Slice slice,
                                                         application_features::ApplicationServer& server) {
-  Result res;
-   
   if (slice.isObject()) {
     auto const& cl = server.getFeature<ClusterFeature>();
 
@@ -496,33 +494,35 @@ Result ShardingInfo::validateShardsAndReplicationFactor(arangodb::velocypack::Sl
       uint32_t numberOfShards = numberOfShardsSlice.getNumber<uint32_t>();
       if (maxNumberOfShards > 0 &&
           numberOfShards > maxNumberOfShards) {
-        res.reset(TRI_ERROR_CLUSTER_TOO_MANY_SHARDS, 
-            std::string("too many shards. maximum number of shards is ") + std::to_string(maxNumberOfShards));
+        return Result(TRI_ERROR_CLUSTER_TOO_MANY_SHARDS, 
+                      std::string("too many shards. maximum number of shards is ") + std::to_string(maxNumberOfShards));
       }
+
+      TRI_ASSERT((cl.forceOneShard() && numberOfShards <= 1) || !cl.forceOneShard()); 
     }
 
     auto replicationFactorSlice = slice.get(StaticStrings::ReplicationFactor);
     if (replicationFactorSlice.isNumber()) {
       int64_t replicationFactorProbe = replicationFactorSlice.getNumber<int64_t>();
       if (replicationFactorProbe <= 0) {
-        res.reset(TRI_ERROR_BAD_PARAMETER, "invalid value for replicationFactor");
-      } else {
-        uint32_t const minReplicationFactor = cl.minReplicationFactor();
-        uint32_t const maxReplicationFactor = cl.maxReplicationFactor();
-        uint32_t replicationFactor = replicationFactorSlice.getNumber<uint32_t>();
+        return Result(TRI_ERROR_BAD_PARAMETER, "invalid value for replicationFactor");
+      }
 
-        if (replicationFactor > maxReplicationFactor &&
-            maxReplicationFactor > 0) {
-          res.reset(TRI_ERROR_BAD_PARAMETER,
-              std::string("replicationFactor must not be higher than maximum allowed replicationFactor (") + std::to_string(maxReplicationFactor) + ")");
-        } else if (replicationFactor < minReplicationFactor &&
-            minReplicationFactor > 0) {
-          res.reset(TRI_ERROR_BAD_PARAMETER,
-              std::string("replicationFactor must not be lower than minimum allowed replicationFactor (") + std::to_string(minReplicationFactor) + ")");
-        }
+      uint32_t const minReplicationFactor = cl.minReplicationFactor();
+      uint32_t const maxReplicationFactor = cl.maxReplicationFactor();
+      uint32_t replicationFactor = replicationFactorSlice.getNumber<uint32_t>();
+
+      if (replicationFactor > maxReplicationFactor &&
+          maxReplicationFactor > 0) {
+        return Result(TRI_ERROR_BAD_PARAMETER,
+                      std::string("replicationFactor must not be higher than maximum allowed replicationFactor (") + std::to_string(maxReplicationFactor) + ")");
+      } else if (replicationFactor < minReplicationFactor &&
+          minReplicationFactor > 0) {
+        return Result(TRI_ERROR_BAD_PARAMETER,
+                      std::string("replicationFactor must not be lower than minimum allowed replicationFactor (") + std::to_string(minReplicationFactor) + ")");
       }
     }
   }
 
-  return res;
+  return Result();
 }
