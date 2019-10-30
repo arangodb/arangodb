@@ -150,7 +150,6 @@ void ConnectionPool::pruneConnections() {
       if (buck.list.size() <= _config.maxOpenConnections) {
         break;
       }
-      continue;
     }
   }
 }

@@ -110,7 +110,7 @@ void NetworkFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opt
     }
 
     if (!server().isStopping() && !canceled) {
-      auto off = std::chrono::seconds(3);
+      std::chrono::seconds off(12);
       ::queueGarbageCollection(_workItemMutex, _workItem, _gcfunc, off);
     }
   };
