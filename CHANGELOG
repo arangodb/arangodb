@@ -1,4 +1,4 @@
-v3.5.2 (XXXX-XX-XX)
+v3.5.3 (XXXX-XX-XX)
 -------------------
 
 * Fixed internal issue #647: custom analyzer provokes errors on Active Failover
@@ -14,9 +14,6 @@ v3.5.2 (XXXX-XX-XX)
   from a failed coordinator.
   To avoid huge startup delays, the startup will proceed after waiting 
   futilely for 15 seconds and log a message.
-
-* Separately account for superuser and user request traffic. This is
-  needed for Oasis.
 
 * Fixed issue #10270: Query: Expecting type Array or Object (while executing).
 
@@ -68,6 +65,14 @@ v3.5.2 (XXXX-XX-XX)
   This fixes traversal queries that are run on a static empty start vertex
   string.
 
+
+v3.5.2 (2019-XX-XX)
+-------------------
+
+* !!!PLACEHOLDER FOR UPGRADE ISSUES ENTRY!!!
+
+* Separately account for superuser and user request traffic. This is
+  needed for Oasis.
 
 v3.5.1 (2019-10-07)
 -------------------
