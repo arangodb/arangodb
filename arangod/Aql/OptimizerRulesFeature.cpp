@@ -377,7 +377,7 @@ void OptimizerRulesFeature::addRules() {
                                         OptimizerRule::Flags::ClusterOnly));
 
   registerRule("move-filters-into-enumerate", moveFiltersIntoEnumerateRule, 
-               OptimizerRule::moveFiltersIntoEnumerateCollectionRule,
+               OptimizerRule::moveFiltersIntoEnumerateRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
   
   registerRule("parallelize-gather", parallelizeGatherRule, 
