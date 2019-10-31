@@ -121,11 +121,10 @@ void RestAdminServerHandler::handleAvailability() {
     return;
   }
 
-  auto& server = application_features::ApplicationServer::server();
   bool available = false;
   switch (ServerState::mode()) {
     case ServerState::Mode::DEFAULT:
-      available = !server.isStopping();
+      available = !server().isStopping();
       break;
     case ServerState::Mode::MAINTENANCE:
     case ServerState::Mode::REDIRECT:
