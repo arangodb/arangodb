@@ -381,16 +381,22 @@ instanceRouter.post('/tests', (req, res) => {
   const filter = req.queryParams.filter || null;
   const reporter = req.queryParams.reporter || null;
   const result = FoxxManager.runTests(service.mount, {filter, reporter});
-  if (reporter === 'stream' && (idiomatic || req.accepts(LDJSON, 'json') === LDJSON)) {
+  if (reporter === 'stream' && idiomatic !== false && (
+    idiomatic || req.accepts(LDJSON, 'json') === LDJSON
+  )) {
     res.type(LDJSON);
     for (const row of result) {
       res.write(JSON.stringify(row) + '\r\n');
     }
-  } else if (reporter === 'xunit' && (idiomatic || req.accepts('xml', 'json') === 'xml')) {
+  } else if (reporter === 'xunit' && idiomatic !== false && (
+    idiomatic || req.accepts('xml', 'json') === 'xml'
+  )) {
     res.type('xml');
     res.write('<?xml version="1.0" encoding="utf-8"?>\n');
     res.write(jsonml2xml(result) + '\n');
-  } else if (reporter === 'tap' && (idiomatic || req.accepts('text', 'json') === 'text')) {
+  } else if (reporter === 'tap' && idiomatic !== false && (
+    idiomatic || req.accepts('text', 'json') === 'text'
+  )) {
     res.type('text');
     for (const row of result) {
       res.write(row + '\n');
