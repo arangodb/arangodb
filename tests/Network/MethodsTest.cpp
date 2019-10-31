@@ -199,13 +199,10 @@ TEST_F(NetworkMethodsTest, request_with_retry_after_not_found_error) {
   std::shared_ptr<VPackBuilder> b = VPackParser::fromJson("{\"errorNum\":1203}");
   auto resBuffer = b->steal();
   pool->_conn->_response->setPayload(std::move(*resBuffer), 0);
-<<<<<<< HEAD
-=======
   
   network::RequestOptions reqOpts;
   reqOpts.timeout = network::Timeout(60.0);
   reqOpts.retryNotFound = true;
->>>>>>> a2d6f7833066d918b2e395d9825d5a0edb093730
 
   VPackBuffer<uint8_t> buffer;
   auto f = network::sendRequestRetry(pool.get(), "tcp://example.org:80",
