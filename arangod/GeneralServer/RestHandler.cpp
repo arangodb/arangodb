@@ -141,24 +141,15 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
   std::map<std::string, std::string> headers{_request->headers().begin(),
                                              _request->headers().end()};
 
-  auto& values = _request->values();
-  std::string params;
-  for (auto const& i : values) {
-    if (params.empty()) {
-      params.push_back('?');
-    } else {
-      params.push_back('&');
-    }
-    params.append(StringUtils::urlEncode(i.first));
-    params.push_back('=');
-    params.append(StringUtils::urlEncode(i.second));
-  }
-
   network::RequestOptions options;
+  options.database = dbname;
   options.timeout = network::Timeout(300);
   options.contentType = rest::contentTypeToString(_request->contentType());
   options.acceptType = rest::contentTypeToString(_request->contentTypeResponse());
-
+  for (auto const& i : _request->values()) {
+    options.param(i.first, i.second);
+  }
+  
   auto requestType =
       fuerte::from_string(GeneralRequest::translateMethod(_request->requestType()));
 
@@ -167,9 +158,8 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
   payload.append(resPayload.data(), resPayload.size());
 
   auto future = network::sendRequest(pool, "server:" + serverId, requestType,
-                                     "/_db/" + StringUtils::urlEncode(dbname) +
-                                         _request->requestPath() + params,
-                                     std::move(payload), std::move(headers), options);
+                                     _request->requestPath(),
+                                     std::move(payload), options, std::move(headers));
   auto cb = [this, serverId, useVst,
              self = shared_from_this()](network::Response&& response) -> Result {
     int res = network::fuerteToArangoErrorCode(response);

@@ -355,7 +355,8 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan, VPackSlice const& slice)
     : _id(slice.get("id").getNumericValue<size_t>()),
       _depth(slice.get("depth").getNumericValue<int>()),
       _varUsageValid(true),
-      _plan(plan) {
+      _plan(plan),
+      _isInSplicedSubquery(false) {
   TRI_ASSERT(_registerPlan.get() == nullptr);
   _registerPlan.reset(new RegisterPlan());
   _registerPlan->clear();
@@ -457,6 +458,8 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan, VPackSlice const& slice)
     }
     _varsValid.insert(oneVariable);
   }
+
+  _isInSplicedSubquery = VelocyPackHelper::getBooleanValue(slice, "isInSplicedSubquery", false);
 }
 
 /// @brief toVelocyPack, export an ExecutionNode to VelocyPack
@@ -495,6 +498,7 @@ ExecutionNode* ExecutionNode::cloneHelper(std::unique_ptr<ExecutionNode> other,
   other->_regsToClear = _regsToClear;
   other->_depth = _depth;
   other->_varUsageValid = _varUsageValid;
+  other->_isInSplicedSubquery = _isInSplicedSubquery;
 
   if (withProperties) {
     auto allVars = plan->getAst()->variables();
@@ -620,6 +624,53 @@ bool ExecutionNode::walk(WalkerWorker<ExecutionNode>& worker) {
       if (shouldAbort) {
         return true;
       }
+    }
+  }
+
+  worker.after(this);
+
+  return false;
+}
+
+/// @brief functionality to walk an execution plan recursively.
+/// This variant of walk(), when visiting a node,
+///  - first, when at a SubqueryNode, recurses into its subquery
+///  - after that recurses on its dependencies.
+/// This is in contrast to walk(), which recurses on the dependencies before
+/// recursing into the subquery.
+bool ExecutionNode::walkSubqueriesFirst(WalkerWorker<ExecutionNode>& worker) {
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  // Only do every node exactly once
+  // note: this check is not required normally because execution
+  // plans do not contain cycles
+  if (worker.done(this)) {
+    return false;
+  }
+#endif
+
+  if (worker.before(this)) {
+    return true;
+  }
+
+  // Now handle a subquery:
+  if (getType() == SUBQUERY) {
+    auto p = ExecutionNode::castTo<SubqueryNode*>(this);
+    auto subquery = p->getSubquery();
+
+    if (worker.enterSubquery(this, subquery)) {
+      bool shouldAbort = subquery->walkSubqueriesFirst(worker);
+      worker.leaveSubquery(this, subquery);
+
+      if (shouldAbort) {
+        return true;
+      }
+    }
+  }
+
+  // Now the children in their natural order:
+  for (auto const& it : _dependencies) {
+    if (it->walkSubqueriesFirst(worker)) {
+      return true;
     }
   }
 
@@ -763,6 +814,8 @@ void ExecutionNode::toVelocyPackHelperGeneric(VPackBuilder& nodes, unsigned flag
         oneVar->toVelocyPack(nodes);
       }
     }
+
+    nodes.add("isInSplicedSubquery", VPackValue(_isInSplicedSubquery));
   }
   TRI_ASSERT(nodes.isOpenObject());
 }
@@ -852,6 +905,15 @@ RegisterId ExecutionNode::varToRegUnchecked(Variable const& var) const {
   RegisterId const reg = it->second.registerId;
 
   return reg;
+}
+
+
+bool ExecutionNode::isInSplicedSubquery() const noexcept {
+  return _isInSplicedSubquery;
+}
+
+void ExecutionNode::setIsInSplicedSubquery(bool const value) noexcept {
+  _isInSplicedSubquery = value;
 }
 
 /// @brief replace a dependency, returns true if the pointer was found and
@@ -1002,7 +1064,7 @@ RegisterId ExecutionNode::getNrOutputRegisters() const {
 }
 
 ExecutionNode::ExecutionNode(ExecutionPlan* plan, size_t id)
-    : _id(id), _depth(0), _varUsageValid(false), _plan(plan) {}
+    : _id(id), _depth(0), _varUsageValid(false), _plan(plan), _isInSplicedSubquery(false) {}
 
 ExecutionNode::~ExecutionNode() = default;
 
@@ -1071,6 +1133,15 @@ void ExecutionNode::parents(std::vector<ExecutionNode*>& result) const {
 }
 
 ExecutionNode const* ExecutionNode::getSingleton() const {
+  auto node = this;
+  do {
+    node = node->getFirstDependency();
+  } while (node != nullptr && node->getType() != SINGLETON);
+
+  return node;
+}
+
+ExecutionNode* ExecutionNode::getSingleton() {
   auto node = this;
   do {
     node = node->getFirstDependency();

@@ -299,6 +299,8 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::initialize
 
   builder.close();
 
+  traceInitializeCursorRequest(builder.slice());
+
   auto res = sendAsyncRequest(fuerte::RestVerb::Put,
                               "/_api/aql/initializeCursor/", std::move(buffer));
   if (!res.ok()) {
@@ -449,7 +451,7 @@ Result handleErrorResponse(network::EndpointSpec const& spec, fuerte::Error err,
 
 Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(fuerte::RestVerb type,
                                                             std::string const& urlPart,
-                                                            VPackBuffer<uint8_t> body) {
+                                                            VPackBuffer<uint8_t>&& body) {
   
   NetworkFeature const& nf =
       _engine->getQuery()->vocbase().server().getFeature<NetworkFeature>();
@@ -459,13 +461,6 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(fuerte::RestVerb typ
     return {TRI_ERROR_SHUTTING_DOWN};
   }
 
-  std::string url =
-      std::string("/_db/") +
-      arangodb::basics::StringUtils::urlEncode(_engine->getQuery()->vocbase().name()) +
-      urlPart + _queryId;
-  
-  LOG_DEVEL << this->_exeNode->id() << " sending request  " << fuerte::to_string(type) << " " << url;
-
   arangodb::network::EndpointSpec spec;
   int res = network::resolveDestination(nf, _server, spec);
   if (res != TRI_ERROR_NO_ERROR) {  // FIXME return an error  ?!
@@ -474,38 +469,41 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(fuerte::RestVerb typ
   TRI_ASSERT(!spec.endpoint.empty());
   _requestInFlight.store(true, std::memory_order_release);
 
-  auto req = fuerte::createRequest(type, url, {}, std::move(body));
+  auto req = fuerte::createRequest(type, fuerte::ContentType::VPack);
+  req->header.database =_query.vocbase().name();
+  req->header.path = urlPart + _queryId;
+  req->addVPack(std::move(body));
+  
+  LOG_DEVEL << this->_exeNode->id() << " sending request  " << fuerte::to_string(type) << " " << req->header.path;
+
   // Later, we probably want to set these sensibly:
   req->timeout(kDefaultTimeOutSecs);
   if (!_ownName.empty()) {
     req->header.addMeta("Shard-Id", _ownName);
   }
-
-  network::ConnectionPtr conn = pool->leaseConnection(spec.endpoint);
   
+  network::ConnectionPtr conn = pool->leaseConnection(spec.endpoint);
+    
   std::lock_guard<std::mutex> guard(_communicationMutex);
   auto ticket = generateRequestTicket();
-
-  auto sqs = _query.sharedState();
-  conn->sendRequest(std::move(req), [=](fuerte::Error err,
-                                        std::unique_ptr<fuerte::Request> req,
-                                        std::unique_ptr<fuerte::Response> res) {
-    (void)conn;
-    sqs->executeAndWakeup([&] {
-      std::lock_guard<std::mutex> guard(_communicationMutex);
-      if (_lastTicket == ticket) {
-        LOG_DEVEL << this->_exeNode->id() << " received request " << fuerte::to_string(req->header.restVerb) << " " << req->header.path;
-        _requestInFlight = false;
-        if (err != fuerte::Error::NoError || res->statusCode() >= 400) {
-          _lastError = handleErrorResponse(spec, err, res.get());
-        } else {
-          _lastResponse = std::move(res);
-        }
-      } else {
-        LOG_DEVEL << this->_exeNode->id() << " skipping request " << fuerte::to_string(req->header.restVerb) << " " << req->header.path;
-      }
-    });
-  });
+  conn->sendRequest(std::move(req),
+                    [this, ticket, spec,
+                     sqs = _query.sharedState()](fuerte::Error err,
+                                                 std::unique_ptr<fuerte::Request> req,
+                                                 std::unique_ptr<fuerte::Response> res) {
+                      // `this` is only valid as long as sharedState is valid.
+                      // So we must execute this under sharedState's mutex.
+                      sqs->executeAndWakeup([&] {
+                        std::lock_guard<std::mutex> guard(_communicationMutex);
+                        if (_lastTicket == ticket) {
+                          if (err != fuerte::Error::NoError || res->statusCode() >= 400) {
+                            _lastError = handleErrorResponse(spec, err, res.get());
+                          } else {
+                            _lastResponse = std::move(res);
+                          }
+                        }
+                      });
+                    });
 
   ++_engine->_stats.requests;
 
@@ -522,6 +520,11 @@ void ExecutionBlockImpl<RemoteExecutor>::traceSkipSomeRequest(VPackSlice const s
                                                               size_t const atMost) {
   using namespace std::string_literals;
   traceRequest("skipSome", slice, "atMost="s + std::to_string(atMost));
+}
+
+void ExecutionBlockImpl<RemoteExecutor>::traceInitializeCursorRequest(VPackSlice const slice) {
+  using namespace std::string_literals;
+  traceRequest("initializeCursor", slice, ""s);
 }
 
 void ExecutionBlockImpl<RemoteExecutor>::traceShutdownRequest(VPackSlice const slice,

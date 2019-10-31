@@ -59,7 +59,7 @@ class ConnectionPool final {
   struct Config {
     ClusterInfo* clusterInfo;
     uint64_t minOpenConnections = 1;       /// minimum number of open connections
-    uint64_t maxOpenConnections = 25;      /// max number of connections
+    uint64_t maxOpenConnections = 1024;    /// max number of connections
     uint64_t idleConnectionMilli = 60000;  /// unused connection lifetime
     unsigned int numIOThreads = 1;         /// number of IO threads
     bool verifyHosts = false;
@@ -110,13 +110,12 @@ class ConnectionPool final {
     //    uint64_t bytesSend;
     //    uint64_t bytesReceived;
     //    uint64_t numRequests;
-    
     containers::SmallVector<Context>::allocator_type::arena_type arena;
     containers::SmallVector<Context> list{arena};
   };
 
   TEST_VIRTUAL ConnectionPtr createConnection(fuerte::ConnectionBuilder&);
-  ConnectionPtr selectConnection(Bucket&, fuerte::ConnectionBuilder& builder);
+  ConnectionPtr selectConnection(std::string const& endpoint, Bucket& bucket);
   
   void removeBrokenConnections(Bucket&);
 

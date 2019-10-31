@@ -84,6 +84,9 @@ bool SharedQueryState::executeWakeupCallback() {
          LOG_TOPIC("e988b", WARN, Logger::QUERIES)
          << "Exception when continuing rest handler";
        }
+      if (!cntn) {
+        break;
+      }
       std::lock_guard<std::mutex> guard(self->_mutex);
       TRI_ASSERT(self->_numWakeups > 0);
       cntn = (--(self->_numWakeups) > 0);

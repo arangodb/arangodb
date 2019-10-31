@@ -112,6 +112,9 @@ struct NetworkMethodsTest
 
 TEST_F(NetworkMethodsTest, simple_request) {
   pool->_conn->_err = fuerte::Error::NoError;
+  
+  network::RequestOptions reqOpts;
+  reqOpts.timeout = network::Timeout(60.0);
 
   fuerte::ResponseHeader header;
   header.responseCode = fuerte::StatusAccepted;
@@ -123,7 +126,7 @@ TEST_F(NetworkMethodsTest, simple_request) {
 
   VPackBuffer<uint8_t> buffer;
   auto f = network::sendRequest(pool.get(), "tcp://example.org:80", fuerte::RestVerb::Get,
-                                "/", buffer, network::Timeout(60.0));
+                                "/", buffer, reqOpts);
 
   network::Response res = std::move(f).get();
   ASSERT_EQ(res.destination, "tcp://example.org:80");
@@ -134,10 +137,13 @@ TEST_F(NetworkMethodsTest, simple_request) {
 
 TEST_F(NetworkMethodsTest, request_failure) {
   pool->_conn->_err = fuerte::Error::ConnectionClosed;
+  
+  network::RequestOptions reqOpts;
+  reqOpts.timeout = network::Timeout(60.0);
 
   VPackBuffer<uint8_t> buffer;
   auto f = network::sendRequest(pool.get(), "tcp://example.org:80", fuerte::RestVerb::Get,
-                                "/", buffer, network::Timeout(60.0));
+                                "/", buffer, reqOpts);
 
   network::Response res = std::move(f).get();
   ASSERT_EQ(res.destination, "tcp://example.org:80");
@@ -148,11 +154,14 @@ TEST_F(NetworkMethodsTest, request_failure) {
 TEST_F(NetworkMethodsTest, request_with_retry_after_error) {
   // Step 1: Provoke a connection error
   pool->_conn->_err = fuerte::Error::CouldNotConnect;
+  
+  network::RequestOptions reqOpts;
+  reqOpts.timeout = network::Timeout(5.0);
 
   VPackBuffer<uint8_t> buffer;
   auto f = network::sendRequestRetry(pool.get(), "tcp://example.org:80",
                                      fuerte::RestVerb::Get, "/", buffer,
-                                     network::Timeout(5.0));
+                                     reqOpts);
 
   // the default behaviour should be to retry after 200 ms
   std::this_thread::sleep_for(std::chrono::milliseconds(5));
@@ -190,11 +199,18 @@ TEST_F(NetworkMethodsTest, request_with_retry_after_not_found_error) {
   std::shared_ptr<VPackBuilder> b = VPackParser::fromJson("{\"errorNum\":1203}");
   auto resBuffer = b->steal();
   pool->_conn->_response->setPayload(std::move(*resBuffer), 0);
+<<<<<<< HEAD
+=======
+  
+  network::RequestOptions reqOpts;
+  reqOpts.timeout = network::Timeout(60.0);
+  reqOpts.retryNotFound = true;
+>>>>>>> a2d6f7833066d918b2e395d9825d5a0edb093730
 
   VPackBuffer<uint8_t> buffer;
   auto f = network::sendRequestRetry(pool.get(), "tcp://example.org:80",
                                      fuerte::RestVerb::Get, "/", buffer,
-                                     network::Timeout(5.0), {}, true);
+                                     reqOpts);
 
   // the default behaviour should be to retry after 200 ms
   std::this_thread::sleep_for(std::chrono::milliseconds(5));

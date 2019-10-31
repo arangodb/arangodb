@@ -48,7 +48,7 @@ RestStatus RestActionHandler::execute() {
 
   // need an action
   if (_action == nullptr) {
-    generateNotImplemented(_request->requestPath());
+    generateNotImplemented(_request->fullUrl());
     return RestStatus::DONE;
   }
 

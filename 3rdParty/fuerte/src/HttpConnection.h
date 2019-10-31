@@ -80,7 +80,9 @@ class HttpConnection final : public fuerte::GeneralConnection<ST> {
   void asyncWriteNextRequest();
 
   // called by the async_write handler (called from IO thread)
-  void asyncWriteCb(asio_ns::error_code const&, std::unique_ptr<RequestItem>);
+  void asyncWriteCallback(asio_ns::error_code const&,
+                          std::unique_ptr<RequestItem>,
+                          size_t nwrite);
 
  private:
   static int on_message_begin(http_parser* parser);
@@ -104,7 +106,6 @@ class HttpConnection final : public fuerte::GeneralConnection<ST> {
   http_parser _parser;
   http_parser_settings _parserSettings;
 
-  std::atomic<uint32_t> _numQueued; /// queued items
   std::atomic<bool> _active; /// is loop active
 
   // parser state
@@ -119,7 +120,6 @@ class HttpConnection final : public fuerte::GeneralConnection<ST> {
   /// response data, may be null before response header is received
   std::unique_ptr<arangodb::fuerte::v1::Response> _response;
 
-  std::chrono::milliseconds _idleTimeout;
   bool _lastHeaderWasValue = false;
   bool _shouldKeepAlive = false;
   bool _messageComplete = false;

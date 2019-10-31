@@ -47,7 +47,7 @@ class IdExecutorInfos : public ExecutorInfos {
  public:
   IdExecutorInfos(RegisterId nrInOutRegisters, std::unordered_set<RegisterId> registersToKeep,
                   std::unordered_set<RegisterId> registersToClear,
-                  std::string const& distributeId = "",
+                  std::string distributeId = {""},
                   bool isResponsibleForInitializeCursor = true);
 
   IdExecutorInfos() = delete;
@@ -55,11 +55,9 @@ class IdExecutorInfos : public ExecutorInfos {
   IdExecutorInfos(IdExecutorInfos const&) = delete;
   ~IdExecutorInfos() = default;
 
-  std::string const& distributeId() { return _distributeId; }
+  std::string const& distributeId();
 
-  bool isResponsibleForInitializeCursor() const {
-    return _isResponsibleForInitializeCursor;
-  }
+  [[nodiscard]] bool isResponsibleForInitializeCursor() const;
 
  private:
   std::string const _distributeId;
@@ -88,16 +86,16 @@ class ExecutionBlockImpl<IdExecutor<BlockPassthrough::Enable, void>> : public Ex
 
   std::pair<ExecutionState, size_t> skipSome(size_t atMost) override;
 
-  RegisterId getOutputRegisterId() const noexcept;
+  [[nodiscard]] RegisterId getOutputRegisterId() const noexcept;
 
  private:
-  bool isDone() const noexcept;
+  [[nodiscard]] bool isDone() const noexcept;
 
-  ExecutionBlock& currentDependency() const;
+  [[nodiscard]] ExecutionBlock& currentDependency() const;
 
   void nextDependency() noexcept;
 
-  bool doCount() const noexcept;
+  [[nodiscard]] bool doCount() const noexcept;
 
   void countStats(SharedAqlItemBlockPtr& block);
 

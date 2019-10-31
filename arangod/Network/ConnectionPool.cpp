@@ -25,6 +25,7 @@
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
 #include "GeneralServer/AuthenticationFeature.h"
+#include "Logger/LogMacros.h"
 #include "Network/NetworkFeature.h"
 #include "Random/RandomGenerator.h"
 
@@ -46,13 +47,8 @@ ConnectionPool::~ConnectionPool() { shutdown(); }
 /// @brief request a connection for a specific endpoint
 /// note: it is the callers responsibility to ensure the endpoint
 /// is always the same, we do not do any post-processing
-std::shared_ptr<network::Connection> ConnectionPool::leaseConnection(std::string const& str) {
-  fuerte::ConnectionBuilder builder;
-  builder.endpoint(str);
-  builder.protocolType(_config.protocol); // always overwrite protocol
+network::ConnectionPtr ConnectionPool::leaseConnection(std::string const& endpoint) {
 
-  std::string endpoint = builder.normalizedEndpoint();
-  
   READ_LOCKER(guard, _lock);
   auto it = _connections.find(endpoint);
   if (it == _connections.end()) {
@@ -64,9 +60,9 @@ std::shared_ptr<network::Connection> ConnectionPool::leaseConnection(std::string
       auto it2 = _connections.emplace(endpoint, std::make_unique<Bucket>());
       it = it2.first;
     }
-    return selectConnection(*(it->second), builder);
+    return selectConnection(it->first, *(it->second));
   }
-  return selectConnection(*(it->second), builder);
+  return selectConnection(it->first,*(it->second));
 }
 
 /// @brief drain all connections
@@ -90,7 +86,7 @@ void ConnectionPool::shutdown() {
 void ConnectionPool::removeBrokenConnections(Bucket& buck) {
   auto it = buck.list.begin();
   while (it != buck.list.end()) {
-    // lets not keep around diconnected fuerte connection objects
+    // lets not keep around disconnected fuerte connection objects
     if (it->fuerte->state() == fuerte::Connection::State::Failed) {
       it = buck.list.erase(it);
     } else {
@@ -104,7 +100,6 @@ void ConnectionPool::pruneConnections() {
   READ_LOCKER(guard, _lock);
 
   const auto ttl = std::chrono::milliseconds(_config.idleConnectionMilli * 2);
-  
   for (auto& pair : _connections) {
     Bucket& buck = *(pair.second);
     std::lock_guard<std::mutex> lock(buck.mutex);
@@ -117,7 +112,7 @@ void ConnectionPool::pruneConnections() {
     if (buck.list.size() <= _config.minOpenConnections) {
       continue;
     }
-
+    
     // first remove old connections
     auto it = buck.list.begin();
     while (it != buck.list.end()) {
@@ -143,6 +138,10 @@ void ConnectionPool::pruneConnections() {
       continue; // done
     }
     
+    LOG_TOPIC("2d59a", DEBUG, Logger::COMMUNICATION)
+        << "pruning extra connections to '" << pair.first
+        << "' (" << buck.list.size() << ")";
+    
     // remove any remaining connections, they will be closed eventually
     it = buck.list.begin();
     while (it != buck.list.end()) {
@@ -150,7 +149,6 @@ void ConnectionPool::pruneConnections() {
       if (buck.list.size() <= _config.maxOpenConnections) {
         break;
       }
-      continue;
     }
   }
 }
@@ -191,7 +189,8 @@ size_t ConnectionPool::numOpenConnections() const {
 }
 
 std::shared_ptr<fuerte::Connection> ConnectionPool::createConnection(fuerte::ConnectionBuilder& builder) {
-  builder.idleTimeout(std::chrono::milliseconds(_config.idleConnectionMilli));
+  auto idle = std::chrono::milliseconds(_config.idleConnectionMilli);
+  builder.idleTimeout(idle);
   AuthenticationFeature* af = AuthenticationFeature::instance();
   if (af != nullptr && af->isActive()) {
     std::string const& token = af->tokenCache().jwtToken();
@@ -206,8 +205,8 @@ std::shared_ptr<fuerte::Connection> ConnectionPool::createConnection(fuerte::Con
   return builder.connect(_loop);
 }
 
-ConnectionPtr ConnectionPool::selectConnection(ConnectionPool::Bucket& bucket,
-                                               fuerte::ConnectionBuilder& builder) {
+ConnectionPtr ConnectionPool::selectConnection(std::string const& endpoint,
+                                               ConnectionPool::Bucket& bucket) {
   std::lock_guard<std::mutex> guard(bucket.mutex);
 
   for (Context& c : bucket.list) {
@@ -217,12 +216,26 @@ ConnectionPtr ConnectionPool::selectConnection(ConnectionPool::Bucket& bucket,
     }
     
     size_t num = c.fuerte->requestsLeft();
-    // TODO: make configurable ?
-    if ((builder.protocolType() == fuerte::ProtocolType::Http && num == 0) ||
-        (builder.protocolType() == fuerte::ProtocolType::Vst && num < 4)) {
-      return c.fuerte;
+    if (_config.protocol == fuerte::ProtocolType::Http && num == 0) {
+      auto now = std::chrono::steady_clock::now();
+      TRI_ASSERT(now >= c.leased);
+      // hack hack hack. Avoids reusing used connections
+      if ((now - c.leased) > std::chrono::milliseconds(25)) {
+        c.leased = now;
+        return c.fuerte;
+      }
+    } else if (_config.protocol == fuerte::ProtocolType::Vst && num <= 3) {
+      c.leased = std::chrono::steady_clock::now();
+      return c.fuerte; // TODO: make (num <= 3) configurable ?
     }
   }
+  
+  // no free connection found, so we add one
+  
+  fuerte::ConnectionBuilder builder;
+  builder.endpoint(endpoint); // picks the socket type
+  builder.protocolType(_config.protocol); // always overwrite protocol
+  TRI_ASSERT(builder.socketType() != SocketType::Undefined);
   
   std::shared_ptr<fuerte::Connection> fuerte = createConnection(builder);
   bucket.list.push_back(Context{fuerte, std::chrono::steady_clock::now()});
