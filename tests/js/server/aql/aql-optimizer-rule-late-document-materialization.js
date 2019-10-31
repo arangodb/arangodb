@@ -125,22 +125,23 @@ function lateDocumentMaterializationRuleTestSuite () {
       });
       assertEqual(0, expectedKeys.size);
     },
-    testQueryResultsWithMultiSort() {
+    testQueryResultsWithMultipleSort() {
       let query = "FOR d IN " + cn  + " FILTER d.obj.a == 'a_val' " +
                   "SORT d.obj.c LIMIT 2 SORT d.obj.b DESC LIMIT 1 RETURN d ";
       let plan = AQL_EXPLAIN(query).plan;
       assertNotEqual(-1, plan.rules.indexOf(ruleName));
       let materializeNodeFound = false;
-      let nodeDependency  = null;
+      let nodeDependency = null;
       plan.nodes.forEach(function(node) {
         if (node.type === "MaterializeNode") {
           // there should be no materializer before (e.g. double materialization)
           assertFalse(materializeNodeFound);
           materializeNodeFound = true;
-          // the other sort node should be limited but not have a materializer
+          // the other sort node should be sorted but not have a materializer
           // d.obj.c node on single and d.obj.b on cluster as for cluster
-          // only first sort will be on DBServers
-          assertEqual(nodeDependency.limit, isCluster ? 2 : 1);
+          // only first sort will be on DBServers (identified by sort ASC)
+          print(nodeDependency)
+          isCluster ? assertTrue(nodeDependency.elements[0].ascending) : assertEqual(nodeDependency.limit, 1);
         }
         nodeDependency = node; // as we walk the plan this will be next node dependency
       });
@@ -219,7 +220,7 @@ function lateDocumentMaterializationRuleTestSuite () {
       assertNotEqual(-1, plan.rules.indexOf(ruleName));
       let materializeNodeFound = false;
       let nodeDependency = null;
-      // sort by d.obj.b node`s limit must be appended with materializer (identified by limit value = 3)
+      // sort by d.obj.b node`s limit must be appended with materializer (identified by sort ASC)
       // as last SORT needs materialized document
       // and SORT by d.obj.d is not lowest possible variant
       // However in cluster only first sort suitable, as later sorts depend 
@@ -227,7 +228,7 @@ function lateDocumentMaterializationRuleTestSuite () {
       plan.nodes.forEach(function(node) {
         if (node.type === "MaterializeNode") {
           assertFalse(materializeNodeFound); // no double materialization
-          assertEqual(nodeDependency.limit, isCluster ? 6 : 3);
+          isCluster ? assertTrue(nodeDependency.elements[0].ascending) : assertEqual(nodeDependency.limit, 3);
           materializeNodeFound = true;
         }
         nodeDependency = node;
@@ -239,12 +240,12 @@ function lateDocumentMaterializationRuleTestSuite () {
       // will not create addition variable for sort 
       // value but it should not affect results especially on cluster!
       let query = " FOR d IN " + cn  + " FILTER d.obj.a == 'a_val' SORT d.obj.c " +
-                  " LIMIT 1, 5 SORT d.obj.b LIMIT 1, 3 " +
+                  " LIMIT 1, 5 SORT d.obj.b DESC LIMIT 1, 3 " +
                   " RETURN d ";
       let plan = AQL_EXPLAIN(query).plan;
       assertNotEqual(-1, plan.rules.indexOf(ruleName));
       let materializeNodeFound = false;
-      // sort by d.obj.b node`s limit must be appended with materializer (identified by limit value = 3)
+      // sort by d.obj.b node`s limit must be appended with materializer (identified by SORT ASC)
       // as SORT by d.obj.c is not lowest possible variant
       // However in cluster only first sort suitable, as later sorts depend 
       // on all db servers results and performed on coordinator
@@ -252,7 +253,7 @@ function lateDocumentMaterializationRuleTestSuite () {
       plan.nodes.forEach(function(node) {
         if (node.type === "MaterializeNode") {
           assertFalse(materializeNodeFound);
-          assertEqual(nodeDependency.limit, isCluster ? 6 : 3);
+          isCluster ? assertTrue(nodeDependency.elements[0].ascending) : assertEqual(nodeDependency.limit, 3);
           materializeNodeFound = true;
         }
         nodeDependency = node;
