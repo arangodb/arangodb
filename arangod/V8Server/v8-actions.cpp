@@ -459,7 +459,13 @@ v8::Handle<v8::Object> TRI_RequestCppToV8(v8::Isolate* isolate,
       headers[StaticStrings::ContentLength] = StringUtils::itoa(jsonString.size());
       headers[StaticStrings::ContentTypeHeader] = StaticStrings::MimeTypeJson;
     } else {
-      throw std::logic_error("unhandled request type");
+      V8Buffer* buffer;
+      auto raw = request->rawPayload();
+      headers[StaticStrings::ContentLength] =
+        StringUtils::itoa(raw.size());
+      buffer = V8Buffer::New(isolate, raw.data(), raw.size());
+      auto bufObj = v8::Local<v8::Object>::New(isolate, buffer->_handle);
+      req->Set(RequestBodyKey, bufObj);
     }
   };
 

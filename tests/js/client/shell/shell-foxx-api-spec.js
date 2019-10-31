@@ -2,18 +2,63 @@
 'use strict';
 
 const expect = require('chai').expect;
+var utils = require('@arangodb/foxx/manager-utils');
 const FoxxManager = require('@arangodb/foxx/manager');
 const request = require('@arangodb/request');
+const querystringify = request.querystringify
 const util = require('@arangodb/util');
 const fs = require('fs');
 const internal = require('internal');
 const path = require('path');
 const basePath = path.resolve(internal.pathForTesting('common'), 'test-data', 'apps', 'headers');
 const arangodb = require('@arangodb');
+const arango = require('@arangodb').arango;
 const errors = arangodb.errors;
 const db = arangodb.db;
 const aql = arangodb.aql;
-var origin = arango.getEndpoint().replace(/\+vpp/, '').replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:');
+var origin = arango.getEndpoint().replace(/\+vpp/, '').replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:').replace(/^vst:/, 'http:');
+
+
+function loadFoxxIntoZip(path) {
+  let zip = utils.zipDirectory(path);
+  let content = fs.readFileSync(zip);
+  fs.remove(zip);
+  return {
+    type: 'inlinezip',
+    buffer: content
+  };
+}
+
+function installFoxx(mountpoint, which) {
+  let headers = {};
+  let content
+  if (which.type === 'js') {
+    headers['content-type'] = 'application/javascript';
+    content = which.buffer;
+  } else if (which.type === 'dir') {
+    headers['content-type'] = 'application/zip';
+    var utils = require('@arangodb/foxx/manager-utils');
+    let zip = utils.zipDirectory(which.buffer);
+    content = fs.readFileSync(zip);
+    fs.remove(zip);
+  } else if (which.type === 'inlinezip') {
+    content = which.buffer;
+    headers['content-type'] = 'application/zip';
+  } else if (which.type === 'url') {
+    content = { source: which };
+  } else if (which.type === 'file') {
+    content = fs.readFileSync(which.buffer);
+  }
+  const crudResp = arango.POST('/_api/foxx?mount=' + mountpoint, content, headers);
+  expect(crudResp).to.have.property('manifest');
+}
+
+function deleteFox(mountpoint) {
+  const deleteResp = arango.DELETE('/_api/foxx/service?force=true&mount=' + mountpoint);
+  print( deleteResp)
+  expect(deleteResp).to.have.property('code');
+  expect(deleteResp.code).to.equal(204);
+}
 
 describe('FoxxApi commit', function () {
   const mount = '/test';
@@ -22,6 +67,7 @@ describe('FoxxApi commit', function () {
     try {
       FoxxManager.uninstall(mount, {force: true});
     } catch (e) {}
+    print(basePath)
     FoxxManager.install(basePath, mount);
   });
 
@@ -37,15 +83,22 @@ describe('FoxxApi commit', function () {
         FILTER service.mount == ${mount}
         REMOVE service IN _apps
     `);
-    let result = request.get('/test/header-echo', { headers: { origin } });
-    expect(result.statusCode).to.equal(404);
+    let result = arango.GET('/test/header-echo');
+    expect(result.code).to.equal(404);
 
-    result = request.post('/_api/foxx/commit');
-    expect(result.statusCode).to.equal(204);
+    result = arango.POST('/_api/foxx/commit', '');
+    expect(result.code).to.equal(204);
 
-    result = request.get('/test/header-echo', { headers: { origin } });
-    expect(result.statusCode).to.equal(200);
-    expect(result.headers['access-control-allow-origin']).to.equal(origin);
+    result = arango.GET_RAW('/test/header-echo', { origin: origin});
+    expect(result.code).to.equal(200);
+    if (arango.getEndpoint().match(/^vst:/)) {
+      // GeneralServer/HttpCommTask.cpp handles this, not implemented for vst
+      let body = VPACK_TO_V8(result.body);
+      expect(body['origin']).to.equal(origin);
+      
+    } else {
+      expect(result.headers['access-control-allow-origin']).to.equal(origin);
+    }
   });
 
   it('should fix missing checksum', function () {
@@ -61,8 +114,8 @@ describe('FoxxApi commit', function () {
     `).next();
     expect(checksum).to.equal(null);
 
-    const result = request.post('/_api/foxx/commit');
-    expect(result.statusCode).to.equal(204);
+    const result = arango.POST('/_api/foxx/commit', '');
+    expect(result.code).to.equal(204);
 
     checksum = db._query(aql`
       FOR service IN _apps
@@ -85,8 +138,8 @@ describe('FoxxApi commit', function () {
     `).next();
     expect(checksum).to.equal('1234');
 
-    const result = request.post('/_api/foxx/commit');
-    expect(result.statusCode).to.equal(204);
+    const result = arango.POST('/_api/foxx/commit', '');
+    expect(result.code).to.equal(204);
 
     checksum = db._query(aql`
       FOR service IN _apps
@@ -109,8 +162,8 @@ describe('FoxxApi commit', function () {
     `).next();
     expect(checksum).to.equal('1234');
 
-    const result = request.post('/_api/foxx/commit', { qs: { replace: true } });
-    expect(result.statusCode).to.equal(204);
+    const result = arango.POST('/_api/foxx/commit', { qs: { replace: true } });
+    expect(result.code).to.equal(204);
 
     checksum = db._query(aql`
       FOR service IN _apps
@@ -131,8 +184,8 @@ describe('FoxxApi commit', function () {
     `).toArray().length;
     expect(bundles).to.equal(0);
 
-    const result = request.post('/_api/foxx/commit', { qs: { replace: true } });
-    expect(result.statusCode).to.equal(204);
+    const result = arango.POST('/_api/foxx/commit', { qs: { replace: true } });
+    expect(result.code).to.equal(204);
 
     bundles = db._query(aql`
       FOR bundle IN _appbundles
@@ -143,28 +196,35 @@ describe('FoxxApi commit', function () {
 });
 
 describe('Foxx service', () => {
+
   const mount = '/foxx-crud-test';
+
   const minimalWorkingServicePath = path.resolve(internal.pathForTesting('common'), 'test-data', 'apps', 'minimal-working-service');
-  const itzpapalotlPath = path.resolve(internal.pathForTesting('common'), 'test-data', 'apps', 'itzpapalotl');
-  var utils = require('@arangodb/foxx/manager-utils');
+  const minimalWorkingZip = loadFoxxIntoZip(minimalWorkingServicePath);
   const minimalWorkingZipPath = utils.zipDirectory(minimalWorkingServicePath);
+  
+  const itzpapalotlPath = path.resolve(internal.pathForTesting('common'), 'test-data', 'apps', 'itzpapalotl');
+  const itzpapalotlZip = loadFoxxIntoZip(itzpapalotlPath);
 
   const serviceServiceMount = '/foxx-crud-test-download';
   const serviceServicePath = path.resolve(internal.pathForTesting('common'), 'test-data', 'apps', 'service-service', 'index.js');
-
+  const crudTestServiceSource = {
+    type: 'js',
+    buffer: fs.readFileSync(serviceServicePath)
+  };
   beforeEach(() => {
-    FoxxManager.install(serviceServicePath, serviceServiceMount);
+    installFoxx(serviceServiceMount, crudTestServiceSource);
   });
 
   afterEach(() => {
     try {
-      FoxxManager.uninstall(serviceServiceMount, {force: true});
+      deleteFox(serviceServiceMount);
     } catch (e) {}
   });
 
   afterEach(() => {
     try {
-      FoxxManager.uninstall(mount, {force: true});
+      deleteFox(mount);
     } catch (e) {}
   });
 
@@ -221,34 +281,45 @@ describe('Foxx service', () => {
   ];
   for (const c of cases) {
     it(`installed via ${c.name} should be available`, () => {
-      const installResp = request.post('/_api/foxx', Object.assign({qs: {mount}}, c.request));
-      expect(installResp.status).to.equal(201);
-      const resp = request.get(mount);
-      expect(resp.json).to.eql({hello: 'world'});
+      let headers = {};
+      if (c.request.hasOwnProperty('contentType')) {
+        headers['content-type'] = c.request.contentType;
+      }
+      const installResp = arango.POST('/_api/foxx?mount=' + mount + "&foo=bar", c.request.body, headers);
+      expect(installResp).to.have.property('manifest');
+      const resp = arango.GET(mount);
+      expect(resp).to.eql({hello: 'world'});
     });
-
     it(`replaced via ${c.name} should be available`, () => {
-      FoxxManager.install(itzpapalotlPath, mount);
-      const replaceResp = request.put('/_api/foxx/service', Object.assign({qs: {mount}}, c.request));
-      expect(replaceResp.status).to.equal(200);
-      const resp = request.get(mount);
-      expect(resp.json).to.eql({hello: 'world'});
+      installFoxx(mount, itzpapalotlZip);
+      let headers = {};
+      if (c.request.hasOwnProperty('contentType')) {
+        headers['content-type'] = c.request.contentType;
+      }
+      const replaceResp = arango.PUT('/_api/foxx/service?mount=' + mount, c.request.body, headers);
+      expect(replaceResp).to.have.property('manifest');
+      const resp = arango.GET(mount);
+      expect(resp).to.eql({hello: 'world'});
     });
-
     it(`upgrade via ${c.name} should be available`, () => {
-      FoxxManager.install(itzpapalotlPath, mount);
-      const upgradeResp = request.patch('/_api/foxx/service', Object.assign({qs: {mount}}, c.request));
-      expect(upgradeResp.status).to.equal(200);
-      const resp = request.get(mount);
-      expect(resp.json).to.eql({hello: 'world'});
+      installFoxx(mount, itzpapalotlZip);
+      let headers = {};
+      if (c.request.hasOwnProperty('contentType')) {
+        headers['content-type'] = c.request.contentType;
+      }
+      const upgradeResp = arango.PATCH('/_api/foxx/service?mount=' + mount, c.request.body, headers);
+      expect(upgradeResp).to.have.property('manifest');
+      const resp = arango.GET(mount);
+      expect(resp).to.eql({hello: 'world'});
     });
   }
-
+  */
   it('uninstalled should not be available', () => {
-    FoxxManager.install(minimalWorkingServicePath, mount);
+    installFoxx(mount, minimalWorkingZip);
     const delResp = request.delete('/_api/foxx/service', {qs: {mount}});
-    expect(delResp.status).to.equal(204);
-    expect(delResp.body).to.equal('');
+    print(delResp)
+    expect(delResp.code).to.equal(204);
+    expect(delResp.error).to.equal(false);
     const resp = request.get(mount);
     expect(resp.status).to.equal(404);
   });
@@ -267,7 +338,7 @@ describe('Foxx service', () => {
   });
 
   it("failing on mount should successfully upgrade", () => {
-    FoxxManager.install(minimalWorkingServicePath, mount);
+    installFoxx(mount, minimalWorkingZip);
     const upgradeResp = request.patch('/_api/foxx/service', {
       qs: {mount},
       body: {source: badMainServicePath},
@@ -281,7 +352,7 @@ describe('Foxx service', () => {
   });
 
   it("failing on mount should successfully replace", () => {
-    FoxxManager.install(minimalWorkingServicePath, mount);
+    installFoxx(mount, minimalWorkingZip);
     const upgradeResp = request.put('/_api/foxx/service', {
       qs: {mount},
       body: {source: badMainServicePath},
@@ -297,28 +368,28 @@ describe('Foxx service', () => {
   const confPath = path.resolve(internal.pathForTesting('common'), 'test-data', 'apps', 'with-configuration');
 
   it('empty configuration should be available', () => {
-    FoxxManager.install(minimalWorkingServicePath, mount);
+    installFoxx(mount, minimalWorkingZip);
     const resp = request.get('/_api/foxx/configuration', {qs: {mount}});
     expect(resp.status).to.equal(200);
     expect(resp.json).to.eql({});
   });
 
   it('empty non-minimal configuration should be available', () => {
-    FoxxManager.install(minimalWorkingServicePath, mount);
+    installFoxx(mount, minimalWorkingZip);
     const resp = request.get('/_api/foxx/configuration', {qs: {mount, minimal: false}});
     expect(resp.status).to.equal(200);
     expect(resp.json).to.eql({});
   });
 
   it('empty minimal configuration should be available', () => {
-    FoxxManager.install(minimalWorkingServicePath, mount);
+    installFoxx(mount, minimalWorkingZip);
     const resp = request.get('/_api/foxx/configuration', {qs: {mount, minimal: true}});
     expect(resp.status).to.equal(200);
     expect(resp.json).to.eql({});
   });
 
   it('configuration should be available', () => {
-    FoxxManager.install(confPath, mount);
+    installFoxx(mount, minimalWorkingZip);
     const resp = request.get('/_api/foxx/configuration', {qs: {mount}});
     expect(resp.status).to.equal(200);
     expect(resp.json).to.have.property('test1');
@@ -328,7 +399,7 @@ describe('Foxx service', () => {
   });
 
   it('non-minimal configuration should be available', () => {
-    FoxxManager.install(confPath, mount);
+    installFoxx(mount, {type: 'path', buffer: confPath});
     const resp = request.get('/_api/foxx/configuration', {qs: {mount, minimal: false}});
     expect(resp.status).to.equal(200);
     expect(resp.json).to.have.property('test1');
@@ -1140,14 +1211,14 @@ describe('Foxx service', () => {
   });
 
   it('should indicate a missing readme', () => {
-    FoxxManager.install(minimalWorkingServicePath, mount);
+    FoxxManager.install(mount, minimalWorkingZip);
     const resp = request.get('/_api/foxx/readme', {qs: {mount}});
     expect(resp.status).to.equal(204);
     expect(resp.body).to.equal('');
   });
 
   it('should provide a swagger description', () => {
-    FoxxManager.install(minimalWorkingServicePath, mount);
+    FoxxManager.install(mount, minimalWorkingZip);
     const resp = request.get('/_api/foxx/swagger', {qs: {mount}});
     expect(resp.status).to.equal(200);
     expect(resp.json).to.have.property('swagger', '2.0');
@@ -1163,7 +1234,7 @@ describe('Foxx service', () => {
   });
 
   it('list should allow excluding system services', () => {
-    FoxxManager.install(minimalWorkingServicePath, mount);
+    FoxxManager.install(mount, minimalWorkingZip);
     const withSystem = request.get('/_api/foxx');
     const withoutSystem = request.get('/_api/foxx', {qs: {excludeSystem: true}});
     const numSystemWithSystem = withSystem.json.map(service => service.mount).filter(mount => mount.startsWith('/_')).length;
@@ -1174,7 +1245,7 @@ describe('Foxx service', () => {
   });
 
   it('should be contained in service list', () => {
-    FoxxManager.install(minimalWorkingServicePath, mount);
+    FoxxManager.install(mount, minimalWorkingZip);
     const resp = request.get('/_api/foxx');
     const service = resp.json.find(service => service.mount === mount);
     expect(service).to.have.property('name', 'minimal-working-manifest');
@@ -1186,7 +1257,7 @@ describe('Foxx service', () => {
   });
 
   it('information should be returned', () => {
-    FoxxManager.install(minimalWorkingServicePath, mount);
+    FoxxManager.install(mount, minimalWorkingZip);
     const resp = request.get('/_api/foxx/service', {qs: {mount}});
     const service = resp.json;
     expect(service).to.have.property('mount', mount);
@@ -1259,7 +1330,7 @@ describe('Foxx service', () => {
   });
 
   it('set devmode should enable devmode', () => {
-    FoxxManager.install(minimalWorkingServicePath, mount);
+    FoxxManager.install(mount, minimalWorkingZip);
     const resp = request.get('/_api/foxx/service', {
       qs: {mount},
       json: true

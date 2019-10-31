@@ -137,7 +137,14 @@ router.get((req, res) => {
 
 router.post(prepareServiceRequestBody, (req, res) => {
   const mount = req.queryParams.mount;
-  FoxxManager.install(req.body.source, mount, Object.assign(
+  let newService;
+  if (req._raw.headers['content-type'] == 'application/javascript' ||
+      req._raw.headers['content-type'] == 'application/zip') {
+    newService = req._raw.requestBody;
+  } else {
+    newService = req.body.source;
+  }
+  FoxxManager.install(newService, mount, Object.assign(
     _.omit(req.queryParams, ['mount']),
     {
       configuration: req.body.configuration,
@@ -183,7 +190,14 @@ serviceRouter.get((req, res) => {
 
 serviceRouter.patch(prepareServiceRequestBody, (req, res) => {
   const mount = req.queryParams.mount;
-  FoxxManager.upgrade(req.body.source, mount, Object.assign(
+  let newService;
+  if (req._raw.headers['content-type'] == 'application/javascript' ||
+      req._raw.headers['content-type'] == 'application/zip') {
+    newService = req._raw.requestBody;
+  } else {
+    newService = req.body.source;
+  }
+  FoxxManager.upgrade(newService, mount, Object.assign(
     _.omit(req.queryParams, ['mount']),
     {
       configuration: req.body.configuration,
@@ -202,7 +216,14 @@ serviceRouter.patch(prepareServiceRequestBody, (req, res) => {
 
 serviceRouter.put(prepareServiceRequestBody, (req, res) => {
   const mount = req.queryParams.mount;
-  FoxxManager.replace(req.body.source, mount, Object.assign(
+  let newService;
+  if (req._raw.headers['content-type'] == 'application/javascript' ||
+      req._raw.headers['content-type'] == 'application/zip') {
+    newService = req._raw.requestBody;
+  } else {
+    newService = req.body.source;
+  }
+  FoxxManager.replace(newService, mount, Object.assign(
     _.omit(req.queryParams, ['mount']),
     {
       configuration: req.body.configuration,

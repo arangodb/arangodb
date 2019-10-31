@@ -34,7 +34,7 @@ const fs = require('fs');
 const db = require('internal').db;
 const basePath = fs.makeAbsolute(fs.join(require('internal').pathForTesting('common'), 'test-data', 'apps'));
 const arango = require('@arangodb').arango;
-const originalEndpoint = arango.getEndpoint().replace(/localhost/, '127.0.0.1');
+const originalEndpoint = arango.getEndpoint().replace(/\+vpp/, '').replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:').replace(/^vst:/, 'http:');
 const expect = require('chai').expect;
 
 describe('Foxx Manager', function () {

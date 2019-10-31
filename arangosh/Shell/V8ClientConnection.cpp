@@ -24,6 +24,7 @@
 
 #include "V8ClientConnection.h"
 
+#include <boost/algorithm/string.hpp>
 #include <fuerte/connection.h>
 #include <fuerte/jwt.h>
 #include <fuerte/requests.h>
@@ -1519,6 +1520,11 @@ v8::Local<v8::Value> V8ClientConnection::requestData(
   req->header.database = _databaseName;
   req->header.parseArangoPath(location.toString());
   for (auto& pair : headerFields) {
+    if (boost::iequals(StaticStrings::ContentTypeHeader, pair.first)) {
+      req->header.contentType(fuerte::ContentType::Custom);
+    } else if (boost::iequals(StaticStrings::Accept, pair.first)) {
+      req->header.acceptType(fuerte::ContentType::Custom);
+    }
     req->header.addMeta(pair.first, pair.second);
   }
   if (isFile) {
@@ -1609,6 +1615,11 @@ v8::Local<v8::Value> V8ClientConnection::requestDataRaw(
   req->header.database = _databaseName;
   req->header.parseArangoPath(location.toString());
   for (auto& pair : headerFields) {
+    if (boost::iequals(StaticStrings::ContentTypeHeader, pair.first)) {
+      req->header.contentType(fuerte::ContentType::Custom);
+    } else if (boost::iequals(StaticStrings::Accept, pair.first)) {
+      req->header.acceptType(fuerte::ContentType::Custom);
+    }
     req->header.addMeta(pair.first, pair.second);
   }
   if (body->IsString() || body->IsStringObject()) {  // assume JSON

@@ -545,9 +545,16 @@ void HttpRequest::setHeaderV2(std::string key, std::string value) {
   
   if (key == StaticStrings::Accept && value == StaticStrings::MimeTypeVPack) {
     _contentTypeResponse = ContentType::VPACK;
-  } else if (key == StaticStrings::ContentTypeHeader && value == StaticStrings::MimeTypeVPack) {
-    _contentType = ContentType::VPACK; // don't insert this header!!
-    return;
+  } else if (key == StaticStrings::ContentTypeHeader) {
+    if (value == StaticStrings::MimeTypeVPack) {
+      _contentType = ContentType::VPACK; // don't insert this header!!
+      return;
+    }
+    else if (value == StaticStrings::MimeTypeJson) {
+      _contentType = ContentType::JSON;
+      return;
+    }
+    _contentType = ContentType::UNSET;
   } else if (key == StaticStrings::AcceptEncoding) {
     // This can be much more elaborated as the can specify weights on encodings
     // However, for now just toggle on deflate if deflate is requested
@@ -721,12 +728,20 @@ void HttpRequest::setHeader(char const* key, size_t keyLength,
     // However, for now just toggle on deflate if deflate is requested
     _acceptEncoding = EncodingType::DEFLATE;
   } else if (keyLength == StaticStrings::ContentTypeHeader.size() &&
-             valueLength == StaticStrings::MimeTypeVPack.size() &&
-             memcmp(key, StaticStrings::ContentTypeHeader.c_str(), keyLength) == 0 &&
-             memcmp(value, StaticStrings::MimeTypeVPack.c_str(), valueLength) == 0) {
-    _contentType = ContentType::VPACK;
-    // don't insert this header!!
-    return;
+             (memcmp(key, StaticStrings::ContentTypeHeader.c_str(), keyLength) == 0)) {
+    if (valueLength == StaticStrings::MimeTypeVPack.size() &&
+        memcmp(value, StaticStrings::MimeTypeVPack.c_str(), valueLength) == 0) {
+      _contentType = ContentType::VPACK;
+      // don't insert this header!!
+      return;
+    }
+    if (valueLength == StaticStrings::MimeTypeJson.size() &&
+        memcmp(value, StaticStrings::MimeTypeJson.c_str(), valueLength) == 0) {
+      _contentType = ContentType::VPACK;
+      // don't insert this header!!
+      return;
+    }
+    _contentType = ContentType::UNSET;
   }
 
   if (keyLength == 6 && memcmp(key, "cookie", keyLength) == 0) {  // 6 = strlen("cookie")
