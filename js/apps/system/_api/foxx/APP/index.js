@@ -407,7 +407,7 @@ instanceRouter.post('/tests', (req, res) => {
 })
 .queryParam('filter', joi.string().allow("").optional())
 .queryParam('reporter', joi.only(...Object.keys(reporters)).optional())
-.queryParam('idiomatic', schemas.flag.default(false))
+.queryParam('idiomatic', schemas.flag.optional())
 .response(200, ['json', LDJSON, 'xml', 'text']);
 
 instanceRouter.post('/download', (req, res) => {
