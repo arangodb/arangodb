@@ -151,14 +151,6 @@ ExecutionBlockImpl<Executor>::~ExecutionBlockImpl() = default;
 
 template <class Executor>
 std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::getSome(size_t atMost) {
-  /*
-  getSome(x) = > {
-    offset: 0,
-    batchSize : x,
-    limit : AqlCall::Infinity{},
-    fullCount : <egal> | false
-  }
-  */
   traceGetSomeBegin(atMost);
   auto result = getSomeWithoutTrace(atMost);
   return traceGetSomeEnd(result.first, std::move(result.second));
@@ -377,14 +369,6 @@ static SkipVariants constexpr skipType() {
 
 template <class Executor>
 std::pair<ExecutionState, size_t> ExecutionBlockImpl<Executor>::skipSome(size_t const atMost) {
-  /*
-  skipSome(x) = > AqlCall{
-    offset : x,
-    batchSize : 0,
-    limit : AqlCall::Infinity{},
-    fullCount : <egal> | false
-  }
-  */
   traceSkipSomeBegin(atMost);
   auto state = ExecutionState::HASMORE;
 
@@ -502,15 +486,6 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<Executor>::shutdown(int err
 
 template <class Executor>
 std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::execute(AqlCallStack stack) {
-  // TODO remove this IF
-  if (std::is_same<Executor, FilterExecutor>::value) {
-    // Only this executor is fully implemented
-    traceExecuteBegin(stack);
-    auto res = executeWithoutTrace(stack);
-    traceExecuteEnd(res);
-    return res;
-  }
-
   // Fall back to getSome/skipSome
   auto myCall = stack.popCall();
   TRI_ASSERT(AqlCall::IsSkipSomeCall(myCall) || AqlCall::IsGetSomeCall(myCall));
@@ -897,146 +872,12 @@ SharedAqlItemBlockPtr ExecutionBlockImpl<Executor>::requestBlock(size_t nrItems,
   return _engine->itemBlockManager().requestBlock(nrItems, nrRegs);
 }
 
-// TODO: Remove this special implementations
-template <>
-std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<FilterExecutor>::getSome(size_t atMost) {
-  AqlCallStack stack{AqlCall::SimulateGetSome(atMost)};
-  auto const [state, skipped, block] = execute(stack);
-  return {state, block};
-}
-
-template <>
-std::pair<ExecutionState, size_t> ExecutionBlockImpl<FilterExecutor>::skipSome(size_t const toSkip) {
-  AqlCallStack stack{AqlCall::SimulateSkipSome(toSkip)};
-  auto const [state, skipped, block] = execute(stack);
-  return {state, skipped};
-}
-
 template <class Executor>
 std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr>
 ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
   // TODO implement!
   TRI_ASSERT(false);
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
-
-// TODO move me up
-enum ExecState { SKIP, PRODUCE, FULLCOUNT, UPSTREAM, SHADOWROWS, DONE };
-
-namespace {
-// This cannot return upstream call or shadowrows.
-ExecState NextState(AqlCall const& call) {
-  if (call.getOffset() > 0) {
-    // First skip
-    return ExecState::SKIP;
-  }
-  if (call.getLimit() > 0) {
-    // Then produce
-    return ExecState::PRODUCE;
-  }
-  if (call.needsFullCount()) {
-    // then fullcount
-    return ExecState::FULLCOUNT;
-  }
-  // now we are done.
-  return ExecState::DONE;
-}
-}  // namespace
-
-template <>
-std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr>
-ExecutionBlockImpl<FilterExecutor>::executeWithoutTrace(AqlCallStack stack) {
-  if (!_outputItemRow) {
-    // TODO: FIXME Hard coded size
-    SharedAqlItemBlockPtr newBlock =
-        _engine->itemBlockManager().requestBlock(1000, _infos.numberOfOutputRegisters());
-    TRI_ASSERT(newBlock != nullptr);
-    TRI_ASSERT(newBlock->size() == 1000);
-    _outputItemRow = createOutputRow(newBlock);
-  }
-  size_t skipped = 0;
-
-  // TODO: Need to make this member variable for waiting?
-  AqlCall myCall = stack.popCall();
-  ExecState execState = ::NextState(myCall);
-  AqlCall executorRequest;
-
-  while (execState != ExecState::DONE) {
-    switch (execState) {
-      case ExecState::SKIP: {
-        auto [state, skippedLocal, call] =
-            _executor.skipRowsRange(myCall.getOffset(), _lastRange);
-        myCall.didSkip(skippedLocal);
-        skipped += skippedLocal;
-
-        if (state == ExecutorState::DONE) {
-          execState = ExecState::SHADOWROWS;
-        } else if (myCall.getOffset() > 0) {
-          // We need to request more
-          executorRequest = call;
-          execState = ExecState::UPSTREAM;
-        } else {
-          // We are done with skipping. Skip is not allowed to request more
-          execState = ::NextState(myCall);
-        }
-        break;
-      }
-      case ExecState::PRODUCE: {
-        auto linesBefore = _outputItemRow->numRowsWritten();
-        TRI_ASSERT(myCall.getLimit() > 0);
-        // Execute getSome
-        auto const [state, stats, call] =
-            _executor.produceRows(myCall.getLimit(), _lastRange, *_outputItemRow);
-        auto written = _outputItemRow->numRowsWritten() - linesBefore;
-        _engine->_stats += stats;
-        myCall.didProduce(written);
-        if (state == ExecutorState::DONE) {
-          execState = ExecState::SHADOWROWS;
-        } else if (myCall.getLimit() > 0) {
-          // We need to request more
-          executorRequest = call;
-          execState = ExecState::UPSTREAM;
-        } else {
-          // We are done with skipping. Skip is not allowed to request more
-          execState = ::NextState(myCall);
-        }
-        break;
-      }
-      case ExecState::FULLCOUNT: {
-        TRI_ASSERT(false);
-      }
-      case ExecState::UPSTREAM: {
-        // If this triggers the executors produceRows function has returned
-        // HASMORE even if it new that upstream has no further rows.
-        TRI_ASSERT(_upstreamState != ExecutionState::DONE);
-        TRI_ASSERT(!_lastRange.hasMore());
-        size_t skippedLocal = 0;
-        stack.pushCall(std::move(executorRequest));
-        std::tie(_upstreamState, skippedLocal, _lastRange) = _rowFetcher.execute(stack);
-        // Do we need to call it?
-        // myCall.didSkip(skippedLocal);
-        skipped += skippedLocal;
-        execState = ::NextState(myCall);
-        break;
-      }
-      case ExecState::SHADOWROWS: {
-        // Not implemented yet
-        // TRI_ASSERT(false);
-        // execState = ::NextState(myCall);
-        execState = ExecState::DONE;
-        break;
-      }
-      default:
-        // unreachable
-        TRI_ASSERT(false);
-    }
-  }
-
-  auto outputBlock = _outputItemRow->stealBlock();
-  // This is not strictly necessary here, as we shouldn't be called again
-  // after DONE.
-  _outputItemRow.reset();
-  return {_upstreamState, skipped, std::move(outputBlock)};
 }
 
 template class ::arangodb::aql::ExecutionBlockImpl<CalculationExecutor<CalculationType::Condition>>;
