@@ -132,6 +132,9 @@ class RocksDBCollection final : public RocksDBMetaCollection {
 
   inline bool cacheEnabled() const { return _cacheEnabled; }
 
+  // will only work with collections from v3.7+
+  TRI_voc_rid_t minimumRevision() const;
+
  private:
   /// @brief return engine-specific figures
   void figuresSpecific(std::shared_ptr<velocypack::Builder>&) override;

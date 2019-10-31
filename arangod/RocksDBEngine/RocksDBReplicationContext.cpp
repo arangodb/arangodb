@@ -36,8 +36,9 @@
 #include "Replication/common-defines.h"
 #include "Replication/utilities.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RocksDBEngine/RocksDBMetaCollection.h"
+#include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
+#include "RocksDBEngine/RocksDBMetaCollection.h"
 #include "RocksDBEngine/RocksDBMethods.h"
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
 #include "Transaction/Context.h"
@@ -778,7 +779,8 @@ void RocksDBReplicationContext::extendLifetime(double ttl) {
 std::unique_ptr<RocksDBReplicationContext::RevisionTree> RocksDBReplicationContext::revisionTree(
     LogicalCollection& collection, TRI_voc_tick_t tickMax) const {
   constexpr std::size_t maxDepth = 6;
-  std::size_t rangeMin = 0;  // TODO get min from collection
+  RocksDBCollection* rcoll = static_cast<RocksDBCollection*>(collection.getPhysical());
+  std::size_t const rangeMin = rcoll->minimumRevision();  // TODO get min from collection
   std::unique_ptr<RevisionTree> tree = std::make_unique<RevisionTree>(maxDepth, rangeMin);
 
   // TODO generate tree by iterating over document data from rangeMin to tickMax

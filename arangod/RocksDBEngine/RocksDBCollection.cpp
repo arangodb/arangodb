@@ -1151,6 +1151,31 @@ Result RocksDBCollection::remove(transaction::Methods& trx, velocypack::Slice sl
   return res;
 }
 
+TRI_voc_rid_t RocksDBCollection::minimumRevision() const {
+  rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
+  RocksDBKeyBounds documentBounds = RocksDBKeyBounds::CollectionDocuments(_objectId);
+  rocksdb::Comparator const* cmp = RocksDBColumnFamily::documents()->GetComparator();
+
+  auto iter = db->NewIterator(rocksdb::ReadOptions(), documentBounds.columnFamily());
+  iter->Seek(documentBounds.start());
+  if (iter->Valid() && cmp->Compare(iter->key(), documentBounds.end()) < 0) {
+    // have at least one doc, extract from here
+    VPackSlice document(reinterpret_cast<uint8_t const*>(iter->value().data()));
+    TRI_ASSERT(document.isObject());
+
+    // To print the WAL we need key and RID
+    VPackSlice key;
+    TRI_voc_rid_t rid = 0;
+    transaction::helpers::extractKeyAndRevFromDocument(document, key, rid);
+    TRI_ASSERT(rid != 0);
+
+    return rid;
+  }
+
+  // no documents, just return junk
+  return newRevisionId();
+}
+
 /// @brief return engine-specific figures
 void RocksDBCollection::figuresSpecific(std::shared_ptr<arangodb::velocypack::Builder>& builder) {
   rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
