@@ -587,7 +587,7 @@ bool PhysicalCollectionMock::dropIndex(TRI_idx_iid_t iid) {
   return false;
 }
 
-void PhysicalCollectionMock::figuresSpecific(std::shared_ptr<arangodb::velocypack::Builder>&) {
+void PhysicalCollectionMock::figuresSpecific(arangodb::velocypack::Builder&) {
   before();
   TRI_ASSERT(false);
 }
@@ -977,9 +977,10 @@ arangodb::Result StorageEngineMock::changeView(TRI_vocbase_t& vocbase,
   arangodb::velocypack::Builder builder;
 
   builder.openObject();
-  view.properties(builder, arangodb::LogicalDataSource::makeFlags(
-                               arangodb::LogicalDataSource::Serialize::Detailed,
-                               arangodb::LogicalDataSource::Serialize::ForPersistence));
+  auto res = view.properties(builder, arangodb::LogicalDataSource::Serialization::Persistence);
+  if (!res.ok()) {
+    return res;
+  }
   builder.close();
   views[std::make_pair(vocbase.id(), view.id())] = std::move(builder);
   return {};
@@ -1052,9 +1053,10 @@ arangodb::Result StorageEngineMock::createView(TRI_vocbase_t& vocbase, TRI_voc_c
   arangodb::velocypack::Builder builder;
 
   builder.openObject();
-  view.properties(builder, arangodb::LogicalDataSource::makeFlags(
-                               arangodb::LogicalDataSource::Serialize::Detailed,
-                               arangodb::LogicalDataSource::Serialize::ForPersistence));
+  auto res = view.properties(builder, arangodb::LogicalDataSource::Serialization::Persistence);
+  if (!res.ok()) {
+    return res;
+  }
   builder.close();
   views[std::make_pair(vocbase.id(), view.id())] = std::move(builder);
 

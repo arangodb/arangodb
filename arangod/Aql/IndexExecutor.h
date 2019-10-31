@@ -179,13 +179,15 @@ class IndexExecutor {
     AstNode const* _condition;
     transaction::Methods::IndexHandle const& _index;
     std::unique_ptr<OperationCursor> _cursor;
+    DocumentProducingFunctionContext& _context;
     Type const _type;
 
-    // Only one of _produce and _noProduce is set at a time, depending on _type.
+    // Only one of _documentProducer and _documentNonProducer is set at a time, depending on _type.
     // As std::function is not trivially destructible, it's safer not to use a
     // union.
-    IndexIterator::LocalDocumentIdCallback _noProduce;
-    DocumentProducingFunction _produce;
+    IndexIterator::LocalDocumentIdCallback _documentNonProducer;
+    IndexIterator::DocumentCallback _documentProducer;
+    IndexIterator::DocumentCallback _documentSkipper;
   };
 
  public:

@@ -179,8 +179,10 @@ Result executeTransactionJS(v8::Isolate* isolate, v8::Handle<v8::Value> const& a
   std::vector<std::string> exclusiveCollections;
 
   if (TRI_HasProperty(context, isolate, collections, "allowImplicit")) {
-    trxOptions.allowImplicitCollections = TRI_ObjectToBoolean(isolate,
-        collections->Get(TRI_V8_ASCII_STRING(isolate, "allowImplicit")));
+    trxOptions.allowImplicitCollections =
+        TRI_ObjectToBoolean(isolate,
+                            collections->Get(
+                                TRI_V8_ASCII_STRING(isolate, "allowImplicit")));
   }
 
   auto getCollections =
@@ -203,8 +205,8 @@ Result executeTransactionJS(v8::Isolate* isolate, v8::Handle<v8::Value> const& a
           collections.emplace_back(TRI_ObjectToString(isolate, collection));
         }
       } else if (obj->Get(TRI_V8_ASCII_STRING(isolate, attributeName))->IsString()) {
-        collections.emplace_back(TRI_ObjectToString(isolate,
-            obj->Get(TRI_V8_ASCII_STRING(isolate, attributeName))));
+        collections.emplace_back(
+            TRI_ObjectToString(isolate, obj->Get(TRI_V8_ASCII_STRING(isolate, attributeName))));
       } else {
         collectionError +=
             std::string(" There is no array in '") + attributeName + "'";
@@ -278,8 +280,9 @@ Result executeTransactionJS(v8::Isolate* isolate, v8::Handle<v8::Value> const& a
 
     // Invoke Function constructor to create function with the given body and the
     // arguments
-    std::string body = TRI_ObjectToString(isolate,
-                                          TRI_GetProperty(context, isolate, object, "action"));
+    std::string body =
+        TRI_ObjectToString(isolate,
+                           TRI_GetProperty(context, isolate, object, "action"));
     body = "return (" + body + ")(params);";
     v8::Handle<v8::Value> args[2] = {TRI_V8_ASCII_STRING(isolate, "params"),
                                      TRI_V8_STD_STRING(isolate, body)};

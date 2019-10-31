@@ -25,6 +25,7 @@
 #define ARANGOD_AQL_DOCUMENT_PRODUCING_HELPER_H 1
 
 #include "Aql/types.h"
+#include "Indexes/IndexIterator.h"
 #include "VocBase/voc-types.h"
 
 #include <functional>
@@ -52,9 +53,6 @@ enum class ProjectionType : uint32_t {
   KeyAttribute,
   OtherAttribute
 };
-
-using DocumentProducingFunction =
-    std::function<void(LocalDocumentId const&, velocypack::Slice slice)>;
 
 void handleProjections(std::vector<std::pair<ProjectionType, std::string>> const& projections,
                        transaction::Methods const* trxPtr, velocypack::Slice slice,
@@ -97,7 +95,7 @@ struct DocumentProducingFunctionContext {
   size_t getAndResetNumScanned() noexcept;
   
   size_t getAndResetNumFiltered() noexcept;
-
+  
   InputAqlItemRow const& getInputRow() const noexcept;
 
   OutputAqlItemRow& getOutputRow() const noexcept;
@@ -146,27 +144,27 @@ struct DocumentWithRawPointer {};
 struct DocumentCopy {};
 }  // namespace DocumentProducingCallbackVariant
 
-template <bool checkUniqueness>
-DocumentProducingFunction getCallback(DocumentProducingCallbackVariant::WithProjectionsCoveredByIndex,
-                                      DocumentProducingFunctionContext& context);
+template <bool checkUniqueness, bool skip>
+IndexIterator::DocumentCallback getCallback(DocumentProducingCallbackVariant::WithProjectionsCoveredByIndex,
+                                            DocumentProducingFunctionContext& context);
+
+template <bool checkUniqueness, bool skip>
+IndexIterator::DocumentCallback getCallback(DocumentProducingCallbackVariant::WithProjectionsNotCoveredByIndex,
+                                            DocumentProducingFunctionContext& context);
+
+template <bool checkUniqueness, bool skip>
+IndexIterator::DocumentCallback getCallback(DocumentProducingCallbackVariant::DocumentWithRawPointer,
+                                            DocumentProducingFunctionContext& context);
+
+template <bool checkUniqueness, bool skip>
+IndexIterator::DocumentCallback getCallback(DocumentProducingCallbackVariant::DocumentCopy,
+                                            DocumentProducingFunctionContext& context);
 
 template <bool checkUniqueness>
-DocumentProducingFunction getCallback(DocumentProducingCallbackVariant::WithProjectionsNotCoveredByIndex,
-                                      DocumentProducingFunctionContext& context);
+IndexIterator::LocalDocumentIdCallback getNullCallback(DocumentProducingFunctionContext& context);
 
-template <bool checkUniqueness>
-DocumentProducingFunction getCallback(DocumentProducingCallbackVariant::DocumentWithRawPointer,
-                                      DocumentProducingFunctionContext& context);
-
-template <bool checkUniqueness>
-DocumentProducingFunction getCallback(DocumentProducingCallbackVariant::DocumentCopy,
-                                      DocumentProducingFunctionContext& context);
-
-template <bool checkUniqueness>
-std::function<void(LocalDocumentId const& token)> getNullCallback(DocumentProducingFunctionContext& context);
-
-template <bool checkUniqueness>
-DocumentProducingFunction buildCallback(DocumentProducingFunctionContext& context);
+template <bool checkUniqueness, bool skip>
+IndexIterator::DocumentCallback buildDocumentCallback(DocumentProducingFunctionContext& context);
 
 }  // namespace aql
 }  // namespace arangodb

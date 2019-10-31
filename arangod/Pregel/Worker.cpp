@@ -803,8 +803,7 @@ void Worker<V, E, M>::_callConductor(std::string const& path, VPackBuilder const
     network::ConnectionPool* pool = nf.pool();
     
     network::sendRequest(pool, "server:" + _config.coordinatorId(),
-                         fuerte::RestVerb::Post, baseUrl + path, std::move(buffer),
-                         network::Timeout(120));
+                         fuerte::RestVerb::Post, baseUrl + path, std::move(buffer));
     
   }
 }
@@ -827,11 +826,14 @@ void Worker<V, E, M>::_callConductorWithResponse(std::string const& path,
     
     VPackBuffer<uint8_t> buffer;
     buffer.append(message.data(), message.size());
+    
+    
+    network::RequestOptions reqOpts;
+    reqOpts.skipScheduler = true;
 
     network::Response r = network::sendRequest(pool, "server:" + _config.coordinatorId(),
                                                fuerte::RestVerb::Post,
-                                               baseUrl + path, std::move(buffer),
-                                               network::Timeout(120)).get();
+                                               baseUrl + path, std::move(buffer), reqOpts).get();
     
     if (handle) {
       handle(r.slice());

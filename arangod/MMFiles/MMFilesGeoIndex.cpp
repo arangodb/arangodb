@@ -94,11 +94,12 @@ struct NearIterator final : public IndexIterator {
                       (ft == geo::FilterType::CONTAINS && !filter.contains(&test)) ||
                       (ft == geo::FilterType::INTERSECTS && !filter.intersects(&test))) {
                     result = false;  // skip
-                    return;
+                    return false;
                   }
                 }
                 cb(gdoc.token, doc);  // return result
                 result = true;
+                return true;
               })) {
             return false;  // skip
           }
@@ -126,6 +127,7 @@ struct NearIterator final : public IndexIterator {
                   } else {
                     result = true;
                   }
+                  return result;
                 })) {
               return false;
             }

@@ -1082,6 +1082,7 @@ OperationResult transaction::Methods::anyLocal(std::string const& collectionName
   cursor.nextDocument(
       [&resultBuilder](LocalDocumentId const& token, VPackSlice slice) {
         resultBuilder.add(slice);
+        return true;
       },
       1);
 
@@ -2346,6 +2347,7 @@ OperationResult transaction::Methods::allLocal(std::string const& collectionName
 
   auto cb = [&resultBuilder](LocalDocumentId const& token, VPackSlice slice) {
     resultBuilder.add(slice);
+    return true;
   };
   cursor.allDocuments(cb, 1000);
 
@@ -2467,20 +2469,24 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
     if (pool != nullptr) {
       // nullptr only happens on controlled shutdown
       std::string path =
-          "/_db/" + arangodb::basics::StringUtils::urlEncode(vocbase().name()) +
           "/_api/collection/" + arangodb::basics::StringUtils::urlEncode(collectionName) +
-          "/truncate?isSynchronousReplication=" + ServerState::instance()->getId();
+          "/truncate";
       VPackBuffer<uint8_t> body;
 
       // Now prepare the requests:
       std::vector<network::FutureRes> futures;
       futures.reserve(followers->size());
+      
+      network::RequestOptions reqOpts;
+      reqOpts.database = vocbase().name();
+      reqOpts.timeout = network::Timeout(600);
+      reqOpts.param(StaticStrings::IsSynchronousReplicationString, ServerState::instance()->getId());
 
       for (auto const& f : *followers) {
         network::Headers headers;
         ClusterTrxMethods::addTransactionHeader(*this, f, headers);
         auto future = network::sendRequest(pool, "server:" + f, fuerte::RestVerb::Put,
-                                           path, body, std::move(headers));
+                                           path, body, reqOpts, std::move(headers));
         futures.emplace_back(std::move(future));
       }
 
@@ -3170,26 +3176,28 @@ Future<Result> Methods::replicateOperations(
   }
 
   // path and requestType are different for insert/remove/modify.
+  
+  network::RequestOptions reqOpts;
+  reqOpts.database = vocbase().name();
+  reqOpts.param(StaticStrings::IsRestoreString, "true");
+  reqOpts.param(StaticStrings::IsSynchronousReplicationString, ServerState::instance()->getId());
 
-  std::stringstream pathStream;
-  pathStream << "/_db/" << arangodb::basics::StringUtils::urlEncode(vocbase().name())
-             << "/_api/document/"
-             << arangodb::basics::StringUtils::urlEncode(collection->name());
+  std::string url = "/_api/document/";
+  url.append(arangodb::basics::StringUtils::urlEncode(collection->name()));
   if (operation != TRI_VOC_DOCUMENT_OPERATION_INSERT && !value.isArray()) {
     TRI_ASSERT(value.isObject());
     TRI_ASSERT(value.hasKey(StaticStrings::KeyString));
-    pathStream << "/" << value.get(StaticStrings::KeyString).copyString();
+    url.push_back('/');
+    VPackValueLength len;
+    const char* ptr = value.get(StaticStrings::KeyString).getString(len);
+    url.append(ptr, len);
   }
-  pathStream << "?isRestore=true&isSynchronousReplication="
-             << ServerState::instance()->getId() << "&"
-             << StaticStrings::SilentString << "=true";
 
   arangodb::fuerte::RestVerb requestType = arangodb::fuerte::RestVerb::Illegal;
   switch (operation) {
     case TRI_VOC_DOCUMENT_OPERATION_INSERT:
       requestType = arangodb::fuerte::RestVerb::Post;
-      pathStream << "&" << StaticStrings::OverWrite << "="
-                 << (options.overwrite ? "true" : "false");
+      reqOpts.param(StaticStrings::OverWrite, (options.overwrite ? "true" : "false"));
       break;
     case TRI_VOC_DOCUMENT_OPERATION_UPDATE:
       requestType = arangodb::fuerte::RestVerb::Patch;
@@ -3204,8 +3212,6 @@ Future<Result> Methods::replicateOperations(
     default:
       TRI_ASSERT(false);
   }
-
-  std::string const path{pathStream.str()};
 
   transaction::BuilderLeaser payload(this);
   auto doOneDoc = [&](VPackSlice const& doc, VPackSlice result) {
@@ -3243,23 +3249,20 @@ Future<Result> Methods::replicateOperations(
     // nothing to do
     return Result();
   }
-
+  
+  reqOpts.timeout = network::Timeout(chooseTimeout(count, payload->size()));
+  
   // Now prepare the requests:
   std::vector<Future<network::Response>> futures;
   futures.reserve(followerList->size());
-  network::Timeout const timeout(chooseTimeout(count, payload->size()));
+
   auto* pool = vocbase().server().getFeature<NetworkFeature>().pool();
   for (auto const& f : *followerList) {
-    // TODO we could steal the payload at least once
-    VPackBuffer<uint8_t> buffer;
-    buffer.append(payload->data(), payload->size());
-
     network::Headers headers;
     ClusterTrxMethods::addTransactionHeader(*this, f, headers);
-    auto future = network::sendRequestRetry(pool, "server:" + f, requestType,
-                                            path, std::move(buffer), timeout,
-                                            headers, /*retryNotFound*/ true);
-    futures.emplace_back(std::move(future));
+    futures.emplace_back(network::sendRequestRetry(pool, "server:" + f, requestType,
+                                                   url, *(payload->buffer()), reqOpts,
+                                                   std::move(headers)));
   }
 
   // If any would-be-follower refused to follow there are two possiblities:
