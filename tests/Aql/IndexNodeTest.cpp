@@ -125,6 +125,17 @@ TEST_F(IIndexNodeTest, objectQuery) {
     arangodb::velocypack::ArrayIterator resultIt(result);
     ASSERT_EQ(1, resultIt.size());
   }
+
+  // two index variables for registers
+  {
+    auto queryString = "FOR d IN testCollection FILTER d.obj.a == 'a_val' SORT d.obj.c LIMIT 2 SORT d.obj.b DESC LIMIT 1 RETURN d";
+    auto queryResult = ::executeQuery(vocbase, queryString);
+    EXPECT_TRUE(queryResult.result.ok()); // commit
+    auto result = queryResult.data->slice();
+    EXPECT_TRUE(result.isArray());
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    ASSERT_EQ(1, resultIt.size());
+  }
 }
 
 TEST_F(IIndexNodeTest, expansionQuery) {
