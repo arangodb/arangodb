@@ -62,10 +62,7 @@ function optimizerStatsTestSuite () {
 
       assertEqual(1, stats.plansCreated);
       assertNotEqual(0, stats.rulesExecuted);
-      // Temporary change as long as the Subquery Optimization is ongoing
-      // Afterwards we do not have a default disabled rule anymore
-      // assertEqual(0, stats.rulesSkipped);
-      assertEqual(1, stats.rulesSkipped);
+      assertEqual(0, stats.rulesSkipped);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -82,10 +79,7 @@ function optimizerStatsTestSuite () {
 
       assertEqual(2, stats.plansCreated);
       assertNotEqual(0, stats.rulesExecuted);
-      // Temporary change as long as the Subquery Optimization is ongoing
-      // Afterwards we do not have a default disabled rule anymore
-      // assertEqual(0, stats.rulesSkipped);
-      assertEqual(2, stats.rulesSkipped);
+      assertEqual(0, stats.rulesSkipped);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -102,10 +96,7 @@ function optimizerStatsTestSuite () {
 
       assertEqual(1, stats.plansCreated);
       assertNotEqual(0, stats.rulesExecuted);
-      // Temporary change as long as the Subquery Optimization is ongoing
-      // Afterwards we do not have a default disabled rule anymore
-      // assertEqual(1, stats.rulesSkipped);
-      assertEqual(2, stats.rulesSkipped);
+      assertEqual(1, stats.rulesSkipped);
     },
 
 ////////////////////////////////////////////////////////////////////////////////

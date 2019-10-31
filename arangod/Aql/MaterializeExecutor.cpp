@@ -48,6 +48,7 @@ arangodb::IndexIterator::DocumentCallback MaterializeExecutor::ReadContext::copy
       bool mustDestroy = true;
       arangodb::aql::AqlValueGuard guard{ a, mustDestroy };
       ctx._outputRow->moveValueInto(ctx._infos->outputMaterializedDocumentRegId(), *ctx._inputRow, guard);
+      return true;
     };
   },
 
@@ -62,6 +63,7 @@ arangodb::IndexIterator::DocumentCallback MaterializeExecutor::ReadContext::copy
       bool mustDestroy = true;
       arangodb::aql::AqlValueGuard guard{ a, mustDestroy };
       ctx._outputRow->moveValueInto(ctx._infos->outputMaterializedDocumentRegId(), *ctx._inputRow, guard);
+      return true;
     };
   } };
 

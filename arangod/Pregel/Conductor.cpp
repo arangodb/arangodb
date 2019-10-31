@@ -640,9 +640,11 @@ int Conductor::_initializeWorkers(std::string const& suffix, VPackSlice addition
       return TRI_ERROR_NO_ERROR;
     } else {
       
+      network::RequestOptions reqOpts;
+      reqOpts.timeout = network::Timeout(5.0 * 60.0);
+      
       responses.emplace_back(network::sendRequest(pool, "server:" + server, fuerte::RestVerb::Post,
-                                                  path, std::move(buffer),
-                                                  network::Timeout(5.0 * 60.0)));
+                                                  path, std::move(buffer), reqOpts));
       
       LOG_TOPIC("6ae66", DEBUG, Logger::PREGEL) << "Initializing Server " << server;
     }
@@ -652,9 +654,11 @@ int Conductor::_initializeWorkers(std::string const& suffix, VPackSlice addition
   futures::collectAll(responses).thenValue([&nrGood](auto const& results) {
     for (auto const& tryRes : results) {
       network::Response const& r = tryRes.get();  // throws exceptions upwards
-      if (r.ok() &&
-          r.response->statusCode() < 400) {
+      if (r.ok() && r.response->statusCode() < 400) {
         nrGood++;
+      } else {
+        LOG_TOPIC("6ae67", ERR, Logger::PREGEL) << "received error from worker: '"
+          << (r.ok() ? r.slice().toJson() : fuerte::to_string(r.error)) << "'";
       }
     }
   }).wait();
@@ -835,6 +839,10 @@ int Conductor::_sendToAllDBServers(std::string const& path, VPackBuilder const& 
   
   VPackBuffer<uint8_t> buffer;
   buffer.append(message.data(), message.size());
+
+  network::RequestOptions reqOpts;
+  reqOpts.timeout = network::Timeout(5.0 * 60.0);
+  reqOpts.skipScheduler = true;
   
   auto const& nf = _vocbaseGuard.database().server().getFeature<NetworkFeature>();
   network::ConnectionPool* pool = nf.pool();
@@ -842,7 +850,7 @@ int Conductor::_sendToAllDBServers(std::string const& path, VPackBuilder const& 
   
   for (auto const& server : _dbServers) {
     responses.emplace_back(network::sendRequest(pool, "server:" + server, fuerte::RestVerb::Post,
-                                                base + path, buffer, network::Timeout(5 * 60)));
+                                                base + path, buffer, reqOpts));
   }
   
   size_t nrGood = 0;

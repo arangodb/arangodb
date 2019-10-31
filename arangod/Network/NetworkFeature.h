@@ -55,7 +55,7 @@ class NetworkFeature final : public application_features::ApplicationFeature {
  private:
   uint32_t _numIOThreads;
   uint64_t _maxOpenConnections;
-  uint64_t _connectionTtlMilli;
+  uint64_t _idleTtlMilli;
   bool _verifyHosts;
 
   std::mutex _workItemMutex;

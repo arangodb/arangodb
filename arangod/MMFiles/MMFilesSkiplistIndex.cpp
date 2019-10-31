@@ -820,8 +820,9 @@ Result MMFilesSkiplistIndex::insert(transaction::Methods& trx,
     std::string existingId;
 
     _collection.getPhysical()->readDocumentWithCallback(
-        &trx, rev, [&existingId](LocalDocumentId const&, velocypack::Slice doc) -> void {
+        &trx, rev, [&existingId](LocalDocumentId const&, velocypack::Slice doc) {
           existingId = doc.get(StaticStrings::KeyString).copyString();
+          return true; // return value does not matter here
         });
 
     if (mode == OperationMode::internal) {
