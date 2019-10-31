@@ -2449,7 +2449,7 @@ std::unique_ptr<ExecutionBlock> MaterializeViewNode::createBlock(
   }
   TRI_ASSERT(engine.getQuery());
 
-  return std::make_unique<ExecutionBlockImpl<MaterializeExecutor>>(&engine, this,
+  return std::make_unique<ExecutionBlockImpl<MaterializeExecutor<decltype(inNmColPtrRegId)>>>(&engine, this,
      MaterializerExecutorInfos(getRegisterPlan()->nrRegs[previousNode->getDepth()],
                                getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
                                calcRegsToKeep(), inNmColPtrRegId, inNmDocIdRegId,
@@ -2516,11 +2516,13 @@ std::unique_ptr<ExecutionBlock> MaterializeIndexNode::createBlock(
     outDocumentRegId = it->second.registerId;
   }
   TRI_ASSERT(engine.getQuery());
-  return std::make_unique<ExecutionBlockImpl<MaterializeExecutor>>(&engine, this,
-    MaterializerExecutorInfos(getRegisterPlan()->nrRegs[previousNode->getDepth()],
-                              getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
-                              calcRegsToKeep(), _collection->name(), inNmDocIdRegId,
-                              outDocumentRegId, engine.getQuery()->trx()));
+  auto const& name = _collection->name();
+
+  return std::make_unique<ExecutionBlockImpl<MaterializeExecutor<decltype(name)>>>(&engine, this,
+    MaterializerExecutorInfos<decltype(name)>(getRegisterPlan()->nrRegs[previousNode->getDepth()],
+                                              getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
+                                              calcRegsToKeep(), _collection->name(), inNmDocIdRegId,
+                                              outDocumentRegId, engine.getQuery()->trx()));
 }
 
 ExecutionNode* MaterializeIndexNode::clone(ExecutionPlan * plan, bool withDependencies, bool withProperties) const {

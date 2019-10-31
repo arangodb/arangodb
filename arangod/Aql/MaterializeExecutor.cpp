@@ -32,7 +32,8 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-arangodb::IndexIterator::DocumentCallback MaterializeExecutor::ReadContext::copyDocumentCallback(ReadContext & ctx) {
+template<typename T>
+arangodb::IndexIterator::DocumentCallback MaterializeExecutor<T>::ReadContext::copyDocumentCallback(ReadContext & ctx) {
   auto* engine = EngineSelectorFeature::ENGINE;
   TRI_ASSERT(engine);
   typedef std::function<arangodb::IndexIterator::DocumentCallback(ReadContext&)> CallbackFactory;
@@ -70,47 +71,34 @@ arangodb::IndexIterator::DocumentCallback MaterializeExecutor::ReadContext::copy
   return callbackFactories[size_t(engine->useRawDocumentPointers())](ctx);
 }
 
-arangodb::aql::MaterializerExecutorInfos::MaterializerExecutorInfos(
+template<typename T>
+arangodb::aql::MaterializerExecutorInfos<T>::MaterializerExecutorInfos(
     RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
     // cppcheck-suppress passedByValue
     std::unordered_set<RegisterId> registersToClear,
     // cppcheck-suppress passedByValue
     std::unordered_set<RegisterId> registersToKeep,
-    RegisterId inNmColPtr, RegisterId inNmDocId, RegisterId outDocRegId, transaction::Methods* trx )
+    T collectionSource, RegisterId inNmDocId,
+    RegisterId outDocRegId, transaction::Methods* trx)
   : ExecutorInfos(
-      make_shared_unordered_set(std::initializer_list<RegisterId>({inNmColPtr, inNmDocId})),
+      getReadableInputRegisters(collectionSource, inNmDocId),
       make_shared_unordered_set(std::initializer_list<RegisterId>({outDocRegId})),
       nrInputRegisters, nrOutputRegisters,
-      std::move(registersToClear), std::move(registersToKeep)), _inNonMaterializedColRegId(inNmColPtr),
-      _inNonMaterializedColName(nullptr), _inNonMaterializedDocRegId(inNmDocId),
+      std::move(registersToClear), std::move(registersToKeep)),
+      _collectionSource(collectionSource),
+      _inNonMaterializedDocRegId(inNmDocId),
       _outMaterializedDocumentRegId(outDocRegId), _trx(trx) {
 }
 
-arangodb::aql::MaterializerExecutorInfos::MaterializerExecutorInfos(
-    RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-    // cppcheck-suppress passedByValue
-    std::unordered_set<RegisterId> registersToClear,
-    // cppcheck-suppress passedByValue
-    std::unordered_set<RegisterId> registersToKeep,
-    std::string const& inNmColName, RegisterId inNmDocId, RegisterId outDocRegId, transaction::Methods* trx)
-  : ExecutorInfos(
-      make_shared_unordered_set(std::initializer_list<RegisterId>({inNmDocId})),
-      make_shared_unordered_set(std::initializer_list<RegisterId>({outDocRegId})),
-      nrInputRegisters, nrOutputRegisters,
-      std::move(registersToClear), std::move(registersToKeep)), _inNonMaterializedColRegId(0),
-      _inNonMaterializedColName(&inNmColName), _inNonMaterializedDocRegId(inNmDocId),
-      _outMaterializedDocumentRegId(outDocRegId), _trx(trx) {
-}
-
-std::pair<ExecutionState, NoStats> arangodb::aql::MaterializeExecutor::produceRows(OutputAqlItemRow & output) {
+template<typename T>
+std::pair<ExecutionState, NoStats> arangodb::aql::MaterializeExecutor<T>::produceRows(OutputAqlItemRow & output) {
   InputAqlItemRow input{CreateInvalidInputRowHint{}};
   ExecutionState state;
   bool written = false;
   // some micro-optimization
   auto& callback = _readDocumentContext._callback;
   auto docRegId = _readDocumentContext._infos->inputNonMaterializedDocRegId();
-  auto colRegId = _readDocumentContext._infos->inputNonMaterializedColRegId();
-  auto colName = _readDocumentContext._infos->inputNonMaterializedColName();
+  T collectionSource = _readDocumentContext._infos->collectionSource();
   auto* trx = _readDocumentContext._infos->trx();
   do {
     std::tie(state, input) = _fetcher.fetchRow();
@@ -123,12 +111,12 @@ std::pair<ExecutionState, NoStats> arangodb::aql::MaterializeExecutor::produceRo
       return {state, NoStats{}};
     }
     arangodb::LogicalCollection const* collection = nullptr;
-    if (colName != nullptr) {
-      collection = trx->documentCollection(*colName);
+    if constexpr (std::is_same<T, std::string const&>::value) {
+      collection = trx->documentCollection(collectionSource);
     } else {
       collection =
         reinterpret_cast<arangodb::LogicalCollection const*>(
-          input.getValue(colRegId).slice().getUInt());
+          input.getValue(collectionSource).slice().getUInt());
     }
     TRI_ASSERT(collection != nullptr);
     _readDocumentContext._inputRow = &input;
@@ -140,9 +128,16 @@ std::pair<ExecutionState, NoStats> arangodb::aql::MaterializeExecutor::produceRo
   return {state, NoStats{}};
 }
 
-std::tuple<ExecutionState, NoStats, size_t> arangodb::aql::MaterializeExecutor::skipRows(size_t toSkipRequested) {
+template<typename T>
+std::tuple<ExecutionState, NoStats, size_t> arangodb::aql::MaterializeExecutor<T>::skipRows(size_t toSkipRequested) {
   ExecutionState state;
   size_t skipped;
   std::tie(state, skipped) = _fetcher.skipRows(toSkipRequested);
   return std::make_tuple(state, NoStats{}, skipped);
 }
+
+template class ::arangodb::aql::MaterializeExecutor<RegisterId>;
+template class ::arangodb::aql::MaterializeExecutor<std::string const&>;
+
+template class ::arangodb::aql::MaterializerExecutorInfos<RegisterId>;
+template class ::arangodb::aql::MaterializerExecutorInfos<std::string const&>;
