@@ -35,6 +35,7 @@
 #include "Statistics/RequestStatistics.h"
 #include "Statistics/ServerStatistics.h"
 #include "Statistics/StatisticsWorker.h"
+#include "V8Server/V8DealerFeature.h"
 #include "VocBase/vocbase.h"
 
 #include <chrono>
@@ -133,7 +134,7 @@ StatisticsFeature* StatisticsFeature::STATISTICS = nullptr;
 StatisticsFeature::StatisticsFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Statistics"),
       _statistics(true),
-      _descriptions(new stats::Descriptions()) {
+      _descriptions(new stats::Descriptions(server.getFeature<V8DealerFeature>())) {
   setOptional(true);
   startsAfter<AqlFeaturePhase>();
 }

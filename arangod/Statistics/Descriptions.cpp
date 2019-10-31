@@ -103,8 +103,9 @@ void stats::Figure::toVPack(velocypack::Builder& b) const {
   b.add("units", VPackValue(stats::fromUnit(units)));
 }
 
-stats::Descriptions::Descriptions()
-    : _requestTimeCuts(arangodb::basics::TRI_RequestTimeDistributionVectorStatistics),
+stats::Descriptions::Descriptions(V8DealerFeature& dealer)
+    : _dealer(dealer),
+      _requestTimeCuts(arangodb::basics::TRI_RequestTimeDistributionVectorStatistics),
       _connectionTimeCuts(arangodb::basics::TRI_ConnectionTimeDistributionVectorStatistics),
       _bytesSendCuts(arangodb::basics::TRI_BytesSentDistributionVectorStatistics),
       _bytesReceivedCuts(arangodb::basics::TRI_BytesReceivedDistributionVectorStatistics) {
@@ -362,12 +363,10 @@ void stats::Descriptions::serverStatistics(velocypack::Builder& b) const {
   b.add("intermediateCommits", VPackValue(info._transactionsStatistics._intermediateCommits));
   b.close();
 
-  auto& server = application_features::ApplicationServer::server();
-  V8DealerFeature& dealer = server.getFeature<V8DealerFeature>();
-  if (dealer.isEnabled()) {
+  if (_dealer.isEnabled()) {
     b.add("v8Context", VPackValue(VPackValueType::Object, true));
-    auto v8Counters = dealer.getCurrentContextNumbers();
-    auto memoryStatistics = dealer.getCurrentMemoryNumbers();
+    auto v8Counters = _dealer.getCurrentContextNumbers();
+    auto memoryStatistics = _dealer.getCurrentMemoryNumbers();
     b.add("available", VPackValue(v8Counters.available));
     b.add("busy", VPackValue(v8Counters.busy));
     b.add("dirty", VPackValue(v8Counters.dirty));

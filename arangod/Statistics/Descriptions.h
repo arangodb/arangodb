@@ -29,6 +29,7 @@
 #include <string>
 
 namespace arangodb {
+class V8DealerFeature;
 namespace stats {
 
 enum class GroupType { System, Client, Http, Vst, Server };
@@ -68,7 +69,7 @@ struct Figure {
 
 class Descriptions final {
  public:
-  Descriptions();
+  Descriptions(V8DealerFeature&);
 
   std::vector<stats::Group> const& groups() const { return _groups; }
 
@@ -80,6 +81,8 @@ class Descriptions final {
   void processStatistics(velocypack::Builder&) const;
 
  private:
+  V8DealerFeature& _dealer;
+
   std::vector<double> _requestTimeCuts;
   std::vector<double> _connectionTimeCuts;
   std::vector<double> _bytesSendCuts;
