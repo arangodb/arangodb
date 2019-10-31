@@ -496,6 +496,7 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(fuerte::RestVerb typ
                       sqs->executeAndWakeup([&] {
                         std::lock_guard<std::mutex> guard(_communicationMutex);
                         if (_lastTicket == ticket) {
+                          _requestInFlight.store(false, std::memory_order_release);
                           if (err != fuerte::Error::NoError || res->statusCode() >= 400) {
                             _lastError = handleErrorResponse(spec, err, res.get());
                           } else {
