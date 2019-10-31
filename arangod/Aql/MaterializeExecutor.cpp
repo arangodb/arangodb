@@ -92,13 +92,13 @@ arangodb::aql::MaterializerExecutorInfos::MaterializerExecutorInfos(
     std::unordered_set<RegisterId> registersToClear,
     // cppcheck-suppress passedByValue
     std::unordered_set<RegisterId> registersToKeep,
-    std::string const* inNmColName, RegisterId inNmDocId, RegisterId outDocRegId, transaction::Methods* trx)
+    std::string const& inNmColName, RegisterId inNmDocId, RegisterId outDocRegId, transaction::Methods* trx)
   : ExecutorInfos(
       make_shared_unordered_set(std::initializer_list<RegisterId>({inNmDocId})),
       make_shared_unordered_set(std::initializer_list<RegisterId>({outDocRegId})),
       nrInputRegisters, nrOutputRegisters,
       std::move(registersToClear), std::move(registersToKeep)), _inNonMaterializedColRegId(0),
-      _inNonMaterializedColName(inNmColName), _inNonMaterializedDocRegId(inNmDocId),
+      _inNonMaterializedColName(&inNmColName), _inNonMaterializedDocRegId(inNmDocId),
       _outMaterializedDocumentRegId(outDocRegId), _trx(trx) {
 }
 

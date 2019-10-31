@@ -334,8 +334,8 @@ void arangodb::aql::lateDocumentMaterializationRule(arangodb::aql::Optimizer* op
         // 2. We need to add materializer after limit node to do materialization
         // insert a materialize node
         auto materializeNode =
-          plan->registerNode(std::make_unique<MaterializeNode>(
-            plan.get(), plan->nextId(), indexNode->collection()->name(),
+          plan->registerNode(std::make_unique<MaterializeIndexNode>(
+            plan.get(), plan->nextId(), indexNode->collection(),
             *localDocIdTmp, *indexNode->outVariable()));
 
         // on cluster we need to materialize node stay close to sort node on db server (to avoid network hop for materialization calls)

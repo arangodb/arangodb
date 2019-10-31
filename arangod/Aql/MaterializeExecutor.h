@@ -55,7 +55,7 @@ class MaterializerExecutorInfos : public ExecutorInfos {
   MaterializerExecutorInfos(RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
                      std::unordered_set<RegisterId> registersToClear,
                      std::unordered_set<RegisterId> registersToKeep,
-                     std::string const* inNmColName, RegisterId inNmDocId,
+                     std::string const& inNmColName, RegisterId inNmDocId,
                      RegisterId outDocRegId, transaction::Methods* trx);
 
   MaterializerExecutorInfos() = delete;

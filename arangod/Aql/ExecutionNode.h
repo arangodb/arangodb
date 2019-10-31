@@ -935,66 +935,99 @@ class NoResultsNode : public ExecutionNode {
   CostEstimate estimateCost() const override final;
 };
 
-class MaterializeNode  : public ExecutionNode {
-  friend class ExecutionNode;
-  friend class ExecutionBlock;
-
- public:
-  MaterializeNode(ExecutionPlan* plan, size_t id, aql::Variable const& inColPtr,
-                  aql::Variable const& inDocId, aql::Variable const& outVariable);
-
-  MaterializeNode(ExecutionPlan* plan, size_t id, std::string const& inColName,
-                  aql::Variable const& inDocId, aql::Variable const& outVariable);
+class MaterializeNode : public ExecutionNode {
+ protected:
+  MaterializeNode(ExecutionPlan* plan, size_t id, aql::Variable const& inDocId, aql::Variable const& outVariable);
 
   MaterializeNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
 
+ public:
+  static MaterializeNode* create(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
+
   /// @brief return the type of the node
-  NodeType getType() const override final { return ExecutionNode::MATERIALIZE; }
+  NodeType getType() const final { return ExecutionNode::MATERIALIZE; }
 
   /// @brief export to VelocyPack
   void toVelocyPackHelper(arangodb::velocypack::Builder& nodes, unsigned flags,
-                          std::unordered_set<ExecutionNode const*>& seen) const override final;
+                          std::unordered_set<ExecutionNode const*>& seen) const override;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
       ExecutionEngine& engine,
-      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const override;
+      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const override = 0;
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                       bool withProperties) const override final;
+                       bool withProperties) const override = 0;
 
-  CostEstimate estimateCost() const override final;
+  CostEstimate estimateCost() const final;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& vars) const override final;
+  void getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& vars) const override;
 
   /// @brief getVariablesSetHere
-  std::vector<Variable const*> getVariablesSetHere() const override final;
+  std::vector<Variable const*> getVariablesSetHere() const final;
 
   /// @brief return out variable
   arangodb::aql::Variable const& outVariable() const noexcept {
     return *_outVariable;
   }
 
- private:
-  bool isNodeColInitedCorrectly() const noexcept {
-    return !(_inNonMaterializedColPtr == nullptr && _inNonMaterializedColName.empty()) &&
-        (_inNonMaterializedColPtr == nullptr || _inNonMaterializedColName.empty());
-  }
-
- private:
-  /// @brief input variable  non-materialized collection ids
-  aql::Variable const* _inNonMaterializedColPtr;
-
-  /// @brief non-materialized collection name
-  std::string _inNonMaterializedColName;
-
+ protected:
   /// @brief input variable non-materialized document ids
   aql::Variable const* _inNonMaterializedDocId;
 
   /// @brief the variable produced by materialization
   Variable const* _outVariable;
+};
+
+class MaterializeViewNode : public MaterializeNode {
+ public:
+  MaterializeViewNode(ExecutionPlan* plan, size_t id, aql::Variable const& inColPtr,
+                      aql::Variable const& inDocId, aql::Variable const& outVariable);
+
+  MaterializeViewNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
+
+  /// @brief export to VelocyPack
+  void toVelocyPackHelper(arangodb::velocypack::Builder& nodes, unsigned flags,
+                          std::unordered_set<ExecutionNode const*>& seen) const final;
+
+  /// @brief creates corresponding ExecutionBlock
+  std::unique_ptr<ExecutionBlock> createBlock(
+      ExecutionEngine& engine,
+      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const final;
+
+  /// @brief clone ExecutionNode recursively
+  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
+                       bool withProperties) const final;
+
+  /// @brief getVariablesUsedHere, modifying the set in-place
+  void getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& vars) const final;
+
+ private:
+  /// @brief input variable non-materialized collection ids
+  aql::Variable const* _inNonMaterializedColPtr;
+};
+
+class MaterializeIndexNode : public MaterializeNode, public CollectionAccessingNode {
+ public:
+  MaterializeIndexNode(ExecutionPlan* plan, size_t id, aql::Collection const* collection,
+                       aql::Variable const& inDocId, aql::Variable const& outVariable);
+
+  MaterializeIndexNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
+
+  /// @brief export to VelocyPack
+  void toVelocyPackHelper(arangodb::velocypack::Builder& nodes, unsigned flags,
+                          std::unordered_set<ExecutionNode const*>& seen) const final;
+
+  /// @brief creates corresponding ExecutionBlock
+  std::unique_ptr<ExecutionBlock> createBlock(
+      ExecutionEngine& engine,
+      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const final;
+
+  /// @brief clone ExecutionNode recursively
+  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
+                       bool withProperties) const final;
 };
 
 }  // namespace aql
