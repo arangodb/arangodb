@@ -82,12 +82,7 @@ class LogicalCollection : public LogicalDataSource {
   LogicalCollection& operator=(LogicalCollection const&) = delete;
   virtual ~LogicalCollection();
 
-  enum class Version {
-    v30 = 5,
-    v31 = 6,
-    v33 = 7,
-    v34 = 8
-  };
+  enum class Version { v30 = 5, v31 = 6, v33 = 7, v34 = 8, v37 = 9 };
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the category representing a logical collection
@@ -97,7 +92,7 @@ class LogicalCollection : public LogicalDataSource {
   /// @brief hard-coded minimum version number for collections
   static constexpr Version minimumVersion() { return Version::v30; }
   /// @brief current version for collections
-  static constexpr Version currentVersion() { return Version::v34; }
+  static constexpr Version currentVersion() { return Version::v37; }
 
   // SECTION: Meta Information
   Version version() const { return _version; }

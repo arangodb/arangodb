@@ -775,6 +775,17 @@ void RocksDBReplicationContext::extendLifetime(double ttl) {
   _expires = TRI_microtime() + ttl;
 }
 
+std::unique_ptr<RocksDBReplicationContext::RevisionTree> RocksDBReplicationContext::revisionTree(
+    LogicalCollection& collection, TRI_voc_tick_t tickMax) const {
+  constexpr std::size_t maxDepth = 6;
+  std::size_t rangeMin = 0;  // TODO get min from collection
+  std::unique_ptr<RevisionTree> tree = std::make_unique<RevisionTree>(maxDepth, rangeMin);
+
+  // TODO generate tree by iterating over document data from rangeMin to tickMax
+
+  return tree;
+}
+
 /// create rocksdb snapshot, must hold _contextLock
 void RocksDBReplicationContext::lazyCreateSnapshot() {
   _contextLock.assertLockedByCurrentThread();

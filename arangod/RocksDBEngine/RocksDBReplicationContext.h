@@ -27,6 +27,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
+#include "Containers/MerkleTree.h"
 #include "Indexes/IndexIterator.h"
 #include "Replication/SyncerId.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
@@ -116,6 +117,8 @@ class RocksDBReplicationContext {
   };
 
  public:
+  using RevisionTree = containers::MerkleTree<3, 64>;
+
   RocksDBReplicationContext(RocksDBReplicationContext const&) = delete;
   RocksDBReplicationContext& operator=(RocksDBReplicationContext const&) = delete;
 
@@ -214,6 +217,8 @@ class RocksDBReplicationContext {
   std::string const& clientInfo() const {
     return _clientInfo;
   }
+
+  std::unique_ptr<RevisionTree> revisionTree(LogicalCollection&, TRI_voc_tick_t) const;
 
  private:
   void lazyCreateSnapshot();

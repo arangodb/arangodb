@@ -86,6 +86,8 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   static std::string const Barrier;
   static std::string const Inventory;
   static std::string const Keys;
+  static std::string const Revisions;
+  static std::string const Tree;
   static std::string const Dump;
   static std::string const RestoreCollection;
   static std::string const RestoreIndexes;
@@ -284,6 +286,13 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   void handleCommandLoggerTickRanges();
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief return the revision tree for a given collection, if available
+  /// @response serialized revision tree, binary
+  //////////////////////////////////////////////////////////////////////////////
+
+  virtual void handleCommandRevisionTree();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief determine chunk size from request

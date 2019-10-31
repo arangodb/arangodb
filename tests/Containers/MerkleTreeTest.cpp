@@ -489,3 +489,18 @@ TEST(MerkleTreeTest, test_diff_misc) {
   expected.emplace_back(std::make_pair(32, 63));
   ASSERT_TRUE(::diffAsExpected(t1, t2, expected));
 }
+
+TEST(MerkleTreeTest, test_fromBuffer) {
+  ::arangodb::containers::MerkleTree<3, 64> t1(2, 0, 64);
+
+  for (std::size_t i = 0; i < 32; ++i) {
+    t1.insert(2 * i, TRI_FnvHashPod(2 * i));
+  }
+
+  std::string t1s = t1.serialize();
+  std::unique_ptr<::arangodb::containers::MerkleTree<3, 64>> t2 =
+      ::arangodb::containers::MerkleTree<3, 64>::fromBuffer(t1s);
+  ASSERT_NE(t2, nullptr);
+  ASSERT_TRUE(t1.diff(*t2).empty());
+  ASSERT_TRUE(t2->diff(t1).empty());
+}

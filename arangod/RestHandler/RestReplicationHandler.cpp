@@ -254,6 +254,8 @@ std::string const RestReplicationHandler::Batch = "batch";
 std::string const RestReplicationHandler::Barrier = "barrier";
 std::string const RestReplicationHandler::Inventory = "inventory";
 std::string const RestReplicationHandler::Keys = "keys";
+std::string const RestReplicationHandler::Revisions = "revisions";
+std::string const RestReplicationHandler::Tree = "tree";
 std::string const RestReplicationHandler::Dump = "dump";
 std::string const RestReplicationHandler::RestoreCollection =
     "restore-collection";
@@ -404,6 +406,23 @@ RestStatus RestReplicationHandler::execute() {
         handleCommandFetchKeys();
       } else if (type == rest::RequestType::DELETE_REQ) {
         handleCommandRemoveKeys();
+      }
+    } else if (command == Revisions) {
+      if (type != rest::RequestType::GET) {
+        goto BAD_CALL;
+      }
+
+      if (isCoordinatorError()) {
+        return RestStatus::DONE;
+      }
+
+      if (len > 1) {
+        std::string subCommand = suffixes[1];
+        if (subCommand == Tree) {
+          handleCommandRevisionTree();
+        }
+      } else {
+        goto BAD_CALL;
       }
     } else if (command == Dump) {
       // works on collections
@@ -2770,6 +2789,12 @@ void RestReplicationHandler::handleCommandLoggerTickRanges() {
   } else {
     generateError(res);
   }
+}
+
+void RestReplicationHandler::handleCommandRevisionTree() {
+  // only RocksDB supported, for now
+  generateError(rest::ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_NOT_IMPLEMENTED,
+                "revision-based protocal not supported by this storage engine");
 }
 
 ////////////////////////////////////////////////////////////////////////////////

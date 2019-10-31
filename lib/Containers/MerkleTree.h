@@ -27,6 +27,7 @@
 #include <atomic>
 #include <cmath>
 #include <cstddef>
+#include <cstring>
 #include <functional>
 #include <limits>
 #include <memory>
@@ -34,6 +35,8 @@
 #include <queue>
 #include <shared_mutex>
 #include <stdexcept>
+#include <string>
+#include <string_view>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -89,6 +92,10 @@ class MerkleTree {
            (BranchingFactor - 1);
   }
 
+  static constexpr std::size_t allocationSize(std::size_t maxDepth) {
+    return MetaSize + (NodeSize * nodeCountUpToDepth(maxDepth));
+  }
+
   static constexpr bool isPowerOf2(std::size_t n) {
     return n > 0 && (n & (n - 1)) == 0;
   }
@@ -139,6 +146,22 @@ class MerkleTree {
     return nodeCountAtDepth(maxDepth) * 64;
   }
 
+  static std::unique_ptr<MerkleTree<BranchingBits, LockStripes>> fromBuffer(std::string_view buffer) {
+    if (buffer.size() < MetaSize) {
+      // not enough space to even store the meta info, can't proceed
+      return nullptr;
+    }
+
+    Meta const& meta = *reinterpret_cast<Meta const*>(buffer.data());
+    if (buffer.size() != MetaSize + (NodeSize * nodeCountUpToDepth(meta.maxDepth))) {
+      // allocation size doesn't match meta data, can't proceed
+      return nullptr;
+    }
+
+    return std::unique_ptr<MerkleTree<BranchingBits, LockStripes>>(
+        new MerkleTree<BranchingBits, LockStripes>(buffer));
+  }
+
   /**
    * @brief Construct a Merkle tree of a given depth with a given minimum key
    *
@@ -158,7 +181,7 @@ class MerkleTree {
    * @throws std::invalid_argument  If maxDepth is less than 2
    */
   MerkleTree(std::size_t maxDepth, std::size_t rangeMin, std::size_t rangeMax = 0)
-      : _buffer(new uint8_t[MetaSize + (NodeSize * nodeCountUpToDepth(maxDepth))]) {
+      : _buffer(new uint8_t[allocationSize(maxDepth)]) {
     if (maxDepth < 2) {
       throw std::invalid_argument("Must specify a maxDepth >= 2.");
     }
@@ -349,7 +372,18 @@ class MerkleTree {
     return output;
   }
 
+  std::string serialize() const {
+    std::unique_lock<std::shared_mutex> guard(_bufferLock);
+    return std::string(reinterpret_cast<char*>(_buffer.get()),
+                       allocationSize(meta().maxDepth));
+  }
+
  protected:
+  explicit MerkleTree(std::string_view buffer)
+      : _buffer(new uint8_t[buffer.size()]) {
+    std::memcpy(_buffer.get(), buffer.data(), buffer.size());
+  }
+
   Meta& meta() const {
     // not thread-safe, lock buffer from outside
     return *reinterpret_cast<Meta*>(_buffer.get());

@@ -36,6 +36,7 @@
 #include "Logger/Logger.h"
 #include "Replication/DatabaseReplicationApplier.h"
 #include "Replication/utilities.h"
+#include "Rest/CommonDefines.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -826,6 +827,28 @@ Result DatabaseInitialSyncer::fetchCollectionDump(arangodb::LogicalCollection* c
 Result DatabaseInitialSyncer::fetchCollectionSync(arangodb::LogicalCollection* coll,
                                                   std::string const& leaderColl,
                                                   TRI_voc_tick_t maxTick) {
+  if (coll->version() >= LogicalCollection::Version::v37 &&
+      (_config.master.majorVersion > 3 ||
+       (_config.master.majorVersion = 3 && _config.master.minorVersion >= 7))) {
+    // local collection should support revisions, and master is at least aware
+    // of the revision-based protocol, so we can query it to find out if we
+    // can use the new protocol; will fall back to old one if master collection
+    // is an old variant
+    auto& server = coll->vocbase().server();
+    auto& feature = server.getFeature<EngineSelectorFeature>();
+    if (feature.isRocksDB()) {
+      // only supported with RocksDB engine, at least for now
+      return fetchCollectionSyncByRevisions(coll, leaderColl, maxTick);
+    }
+  }
+  return fetchCollectionSyncByKeys(coll, leaderColl, maxTick);
+}
+
+/// @brief incrementally fetch data from a collection using keys as the primary
+/// document identifier
+Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(arangodb::LogicalCollection* coll,
+                                                        std::string const& leaderColl,
+                                                        TRI_voc_tick_t maxTick) {
   using ::arangodb::basics::StringUtils::urlEncode;
 
   if (!_config.isChild()) {
@@ -1009,6 +1032,62 @@ Result DatabaseInitialSyncer::fetchCollectionSync(arangodb::LogicalCollection* c
   } catch (...) {
     return Result(TRI_ERROR_INTERNAL);
   }
+}
+
+/// @brief incrementally fetch data from a collection using keys as the primary
+/// document identifier
+Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCollection* coll,
+                                                             std::string const& leaderColl,
+                                                             TRI_voc_tick_t maxTick) {
+  using ::arangodb::basics::StringUtils::urlEncode;
+
+  if (!_config.isChild()) {
+    batchExtend();
+    _config.barrier.extend(_config.connection);
+  }
+
+  std::string const baseUrl = replutils::ReplicationUrl + "/revisions";
+  std::string url = baseUrl + "/tree" + "?collection=" + urlEncode(leaderColl) +
+                    "&to=" + std::to_string(maxTick) +
+                    "&serverId=" + _state.localServerIdString +
+                    "&batchId=" + std::to_string(_config.batch.id);
+
+  std::string msg = "fetching collection revisions for collection '" +
+                    coll->name() + "' from " + url;
+  _config.progress.set(msg);
+
+  auto headers = replutils::createHeaders();
+  std::unique_ptr<httpclient::SimpleHttpResult> response;
+  _config.connection.lease([&](httpclient::SimpleHttpClient* client) {
+    response.reset(client->retryRequest(rest::RequestType::GET, url, nullptr, 0, headers));
+  });
+
+  if (replutils::hasFailed(response.get())) {
+    if (response->getHttpReturnCode() == static_cast<int>(rest::ResponseCode::NOT_IMPLEMENTED)) {
+      // collection on master doesn't support revisions-based protocol, fallback
+      return fetchCollectionSyncByKeys(coll, leaderColl, maxTick);
+    }
+    return replutils::buildHttpError(response.get(), url, _config.connection);
+  }
+
+  std::unique_ptr<RevisionTree> treeMaster = RevisionTree::fromBuffer(
+      std::string_view(response->getBody().begin(), response->getBody().length()));
+  if (!treeMaster) {
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
+                  std::string("got invalid response from master at ") +
+                      _config.master.endpoint + url +
+                      ": response does not contain a valid revision tree");
+  }
+
+  // TODO generate local tree
+
+  // TODO get range differences
+
+  // TODO sync chunks of revisions using much of the same logic as in
+  // syncChunkRocksDB (RocksDBIncrementalSync.cpp); will need new APIs in
+  // replication handler to fetch revisions in a range and documents by revision
+
+  return Result{};
 }
 
 /// @brief incrementally fetch data from a collection

@@ -376,7 +376,8 @@ uint64_t LogicalCollection::numberDocuments(transaction::Methods* trx,
 }
 
 bool LogicalCollection::hasClusterWideUniqueRevs() const {
-  return isSmartChild();
+  return isSmartChild() &&
+         vocbase().server().getFeature<EngineSelectorFeature>().isRocksDB();
 }
 
 uint32_t LogicalCollection::v8CacheVersion() const { return _v8CacheVersion; }
