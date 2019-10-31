@@ -22,8 +22,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RegexCache.h"
+
+#include "Aql/AqlValueMaterializer.h"
+#include "Basics/StringUtils.h"
 #include "Basics/Utf8Helper.h"
-#include <Basics/StringUtils.h>
 
 #include <velocypack/Collection.h>
 #include <velocypack/Dumper.h>

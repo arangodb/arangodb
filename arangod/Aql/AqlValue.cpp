@@ -1608,66 +1608,8 @@ AqlValueGuard::~AqlValueGuard() {
 }
 
 void AqlValueGuard::steal() { _destroy = false; }
+
 AqlValue& AqlValueGuard::value() { return _value; }
-AqlValueMaterializer::AqlValueMaterializer(transaction::Methods* trx)
-    : trx(trx), materialized(), hasCopied(false) {}
-AqlValueMaterializer::AqlValueMaterializer(AqlValueMaterializer const& other)
-    : trx(other.trx), materialized(other.materialized), hasCopied(other.hasCopied) {
-  if (other.hasCopied) {
-    // copy other's slice
-    materialized = other.materialized.clone();
-  }
-}
-
-AqlValueMaterializer& AqlValueMaterializer::operator=(AqlValueMaterializer const& other) {
-  if (this != &other) {
-    TRI_ASSERT(trx == other.trx);  // must be from same transaction
-    if (hasCopied) {
-      // destroy our own slice
-      materialized.destroy();
-      hasCopied = false;
-    }
-    // copy other's slice
-    materialized = other.materialized.clone();
-    hasCopied = other.hasCopied;
-  }
-  return *this;
-}
-
-AqlValueMaterializer::AqlValueMaterializer(AqlValueMaterializer&& other) noexcept
-    : trx(other.trx), materialized(other.materialized), hasCopied(other.hasCopied) {
-  // reset other
-  other.hasCopied = false;
-  // cppcheck-suppress *
-  other.materialized = AqlValue();
-}
-
-AqlValueMaterializer& AqlValueMaterializer::operator=(AqlValueMaterializer&& other) noexcept {
-  if (this != &other) {
-    TRI_ASSERT(trx == other.trx);  // must be from same transaction
-    if (hasCopied) {
-      // destroy our own slice
-      materialized.destroy();
-    }
-    // reset other
-    materialized = other.materialized;
-    hasCopied = other.hasCopied;
-    other.materialized = AqlValue();
-  }
-  return *this;
-}
-
-AqlValueMaterializer::~AqlValueMaterializer() {
-  if (hasCopied) {
-    materialized.destroy();
-  }
-}
-
-arangodb::velocypack::Slice AqlValueMaterializer::slice(AqlValue const& value,
-                                                        bool resolveExternals) {
-  materialized = value.materialize(trx, hasCopied, resolveExternals);
-  return materialized.slice();
-}
 
 size_t std::hash<arangodb::aql::AqlValue>::operator()(arangodb::aql::AqlValue const& x) const
     noexcept {

@@ -223,6 +223,7 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/AqlTransaction.cpp
   Aql/AqlValue.cpp
   Aql/AqlValueGroup.cpp
+  Aql/AqlValueMaterializer.cpp
   Aql/Arithmetic.cpp
   Aql/Ast.cpp
   Aql/AstHelper.cpp

@@ -399,28 +399,6 @@ class AqlValueGuard {
   bool _destroy;
 };
 
-struct AqlValueMaterializer {
-  explicit AqlValueMaterializer(transaction::Methods* trx);
-
-  AqlValueMaterializer(AqlValueMaterializer const& other);
-
-  // cppcheck-suppress operatorEqVarError
-  AqlValueMaterializer& operator=(AqlValueMaterializer const& other);
-
-  AqlValueMaterializer(AqlValueMaterializer&& other) noexcept;
-
-  // cppcheck-suppress operatorEqVarError
-  AqlValueMaterializer& operator=(AqlValueMaterializer&& other) noexcept;
-
-  ~AqlValueMaterializer();
-
-  arangodb::velocypack::Slice slice(AqlValue const& value, bool resolveExternals);
-
-  transaction::Methods* trx;
-  AqlValue materialized;
-  bool hasCopied;
-};
-
 static_assert(sizeof(AqlValue) == 16, "invalid AqlValue size");
 
 }  // namespace aql
