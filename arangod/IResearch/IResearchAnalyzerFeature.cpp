@@ -703,9 +703,7 @@ arangodb::Result visitAnalyzers( // visit analyzers
 
       res = resultVisitor(visitor, vocbase, slice.get("result"));
 
-      if (!res.ok()) {
-        break;
-      }
+      break;
     }
 
     return res;
