@@ -46,6 +46,10 @@ class AqlCallStack {
   // This is popped of the stack and caller can take responsibility for it
   AqlCall&& popCall();
 
+  // Peek at the top most Call element (this must be relevant).
+  // The responsibility will stay at the stack
+  AqlCall const& peek() const;
+
   // Put another call on top of the stack.
   void pushCall(AqlCall&& call);
 

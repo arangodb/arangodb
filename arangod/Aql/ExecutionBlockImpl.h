@@ -94,6 +94,8 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   using Fetcher = typename Executor::Fetcher;
   using ExecutorStats = typename Executor::Stats;
   using Infos = typename Executor::Infos;
+  using DataRange = typename Executor::Fetcher::DataRange;
+
   using DependencyProxy =
       typename aql::DependencyProxy<Executor::Properties::allowsBlockPassthrough>;
 
@@ -229,6 +231,12 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   /// @brief request an AqlItemBlock from the memory manager
   SharedAqlItemBlockPtr requestBlock(size_t nrItems, RegisterCount nrRegs);
 
+  // Trace the start of a getSome call
+  void traceExecuteBegin(AqlCallStack const& stack);
+
+  // Trace the end of a getSome call, potentially with result
+  void traceExecuteEnd(std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> const& result);
+
  private:
   /**
    * @brief Used to allow the row Fetcher to access selected methods of this
@@ -257,7 +265,7 @@ class ExecutionBlockImpl final : public ExecutionBlock {
 
   size_t _skipped{};
 
-  typename Fetcher::DataRange _lastRange;
+  DataRange _lastRange;
 };
 
 }  // namespace aql
