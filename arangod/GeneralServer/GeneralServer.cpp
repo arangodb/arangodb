@@ -61,8 +61,7 @@ GeneralServer::GeneralServer(GeneralServerFeature& feature, uint64_t numIoThread
 GeneralServer::~GeneralServer() = default;
 
 void GeneralServer::registerTask(std::shared_ptr<CommTask> task) {
-  auto& server = application_features::ApplicationServer::server();
-  if (server.isStopping()) {
+  if (_feature.server().isStopping()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
   }
   auto* t = task.get();
