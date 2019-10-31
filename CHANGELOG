@@ -1,6 +1,8 @@
 devel
 -----
 
+* Foxx API now respects "idiomatic" flag being explicitly set to false
+
 * Fixed available flag for hotbackup.
 
 * Fixed list with id for partially available hotbackups.
