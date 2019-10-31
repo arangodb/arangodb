@@ -169,16 +169,10 @@ bool VstCommTask<T>::processChunk(fuerte::vst::Chunk const& chunk) {
     }
   }
   
-  Message* msg;
   // Find stored message for this chunk.
-  auto it = _messages.find(chunk.header.messageID());
-  if (it == _messages.end()) {
     auto tmp = std::make_unique<Message>();
-    msg = tmp.get();
-    _messages.emplace(chunk.header.messageID(), std::move(tmp));
-  } else {
-    msg = it->second.get();
-  }
+  auto [it, emplaced] = _messages.try_emplace(chunk.header.messageID(), std::move(tmp));
+  Message* msg = it->second.get();
   
   // returns false if message gets too big
   if (!msg->addChunk(chunk)) {
@@ -361,7 +355,6 @@ void VstCommTask<T>::doWrite() {
         thisPtr->doWrite(); // write next one
       }
     });
-    
     break; // done
   }
 }

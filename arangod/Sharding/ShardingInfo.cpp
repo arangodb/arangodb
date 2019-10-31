@@ -223,7 +223,7 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
         for (auto const& serverSlice : VPackArrayIterator(shardSlice.value)) {
           servers.push_back(serverSlice.copyString());
         }
-        _shardIds->emplace(shard, servers);
+        _shardIds->try_emplace(shard, servers);
       }
     }
   }
@@ -467,7 +467,7 @@ std::shared_ptr<ShardMap> ShardingInfo::shardIds(std::unordered_set<std::string>
       // a shard we are not interested in
       continue;
     }
-    result->emplace(it.first, it.second);
+    result->try_emplace(it.first, it.second);
   }
   return result;
 }

@@ -276,15 +276,8 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
   std::map<TRI_voc_tick_t, std::unique_ptr<MyTypeHandler>> handlers;
   VPackOptions opts = VPackOptions::Defaults;
   auto prepOpts = [&handlers, &opts](TRI_vocbase_t& vocbase) -> void {
-    auto const& it = handlers.find(vocbase.id());
-
-    if (it == handlers.end()) {
-      auto res = handlers.emplace(vocbase.id(), std::make_unique<MyTypeHandler>(vocbase));
-
-      opts.customTypeHandler = res.first->second.get();
-    } else {
+    auto [it, emplaced] = handlers.try_emplace(vocbase.id(), std::make_unique<MyTypeHandler>(vocbase));
       opts.customTypeHandler = it->second.get();
-    }
   };
 
   size_t length = 0;

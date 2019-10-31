@@ -171,7 +171,7 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlock::traceGetSomeEnd
     if (it != _engine->_stats.nodes.end()) {
       it->second += stats;
     } else {
-      _engine->_stats.nodes.emplace(en->id(), stats);
+      _engine->_stats.nodes.try_emplace(en->id(), stats);
     }
 
     if (_profile >= PROFILE_LEVEL_TRACE_1) {
@@ -238,7 +238,7 @@ std::pair<ExecutionState, size_t> ExecutionBlock::traceSkipSomeEnd(
     if (it != _engine->_stats.nodes.end()) {
       it->second += stats;
     } else {
-      _engine->_stats.nodes.emplace(en->id(), stats);
+      _engine->_stats.nodes.try_emplace(en->id(), stats);
     }
 
     if (_profile >= PROFILE_LEVEL_TRACE_1) {

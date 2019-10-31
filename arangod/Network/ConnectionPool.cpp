@@ -54,13 +54,8 @@ network::ConnectionPtr ConnectionPool::leaseConnection(std::string const& endpoi
   if (it == _connections.end()) {
     guard.unlock();
     WRITE_LOCKER(wguard, _lock);
-
-    it = _connections.find(endpoint);  // check again
-    if (it == _connections.end()) {
-      auto it2 = _connections.emplace(endpoint, std::make_unique<Bucket>());
-      it = it2.first;
-    }
-    return selectConnection(it->first, *(it->second));
+    auto [it2, emplaced] = _connections.try_emplace(endpoint, std::make_unique<Bucket>());
+    it = it2;
   }
   return selectConnection(it->first,*(it->second));
 }

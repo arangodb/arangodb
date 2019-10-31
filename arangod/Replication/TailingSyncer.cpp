@@ -1736,7 +1736,7 @@ Result TailingSyncer::fetchOpenTransactions(TRI_voc_tick_t fromTick, TRI_voc_tic
                         ": invalid response type for initial data. expecting "
                         "array of ids");
     }
-    _ongoingTransactions.emplace(StringUtils::uint64(it.copyString()), nullptr);
+    _ongoingTransactions.try_emplace(StringUtils::uint64(it.stringView()), nullptr);
   }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE

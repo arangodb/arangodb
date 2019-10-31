@@ -35,6 +35,7 @@
 #include "Basics/build.h"
 #include "Basics/encoding.h"
 #include "Basics/files.h"
+#include "Basics/tryEmplaceHelper.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "MMFiles/MMFilesCleanupThread.h"
 #include "MMFiles/MMFilesCollection.h"
@@ -99,13 +100,15 @@ static uint64_t getNumericFilenamePartFromDatafile(std::string const& filename) 
 
 /// @brief extract the numeric part from a filename
 static uint64_t getNumericFilenamePartFromDatabase(std::string const& filename) {
+  auto size = filename.size();
+  auto data = filename.data();
   char const* pos = strrchr(filename.c_str(), '-');
 
   if (pos == nullptr) {
     return 0;
   }
-
-  return basics::StringUtils::uint64(pos + 1);
+  size -= std::distance(data, pos);
+  return basics::StringUtils::uint64(pos + 1, size);
 }
 
 static uint64_t getNumericFilenamePartFromDatafile(MMFilesDatafile const* datafile) {
@@ -2591,7 +2594,7 @@ int MMFilesEngine::startCleanup(TRI_vocbase_t* vocbase) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
 
-    _cleanupThreads.emplace(vocbase, std::move(thread));
+    _cleanupThreads.try_emplace(vocbase, std::move(thread));
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -2634,21 +2637,22 @@ int MMFilesEngine::startCompactor(TRI_vocbase_t& vocbase) {
   {
     MUTEX_LOCKER(locker, _threadsLock);
 
-    auto it = _compactorThreads.find(&vocbase);
-
-    if (it != _compactorThreads.end()) {
-      return TRI_ERROR_INTERNAL;
-    }
-
+    auto [it, emplaced] = _compactorThreads.try_emplace(
+      &vocbase,
+      arangodb::lazyConstruct([&]{
     thread.reset(new MMFilesCompactorThread(vocbase));
-
     if (!thread->start()) {
       LOG_TOPIC("3addc", ERR, arangodb::Logger::COMPACTOR)
           << "could not start compactor thread";
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
+        return std::move(thread);
+      })
+    );
 
-    _compactorThreads.emplace(&vocbase, std::move(thread));
+    if (!emplaced) {
+      return TRI_ERROR_INTERNAL;
+    }
   }
 
   return TRI_ERROR_NO_ERROR;

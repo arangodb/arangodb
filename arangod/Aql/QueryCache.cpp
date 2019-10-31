@@ -646,7 +646,7 @@ void QueryCache::store(TRI_vocbase_t* vocbase, std::shared_ptr<QueryCacheResultE
   if (it == _entries[part].end()) {
     // create entry for the current database
     auto db = std::make_unique<QueryCacheDatabaseEntry>();
-    it = _entries[part].emplace(vocbase, std::move(db)).first;
+    it = _entries[part].try_emplace(vocbase, std::move(db)).first;
   }
 
   // store cache entry

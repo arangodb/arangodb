@@ -142,7 +142,7 @@ Future<network::Response> beginTransactionRequest(TransactionState& state,
 
   auto* pool = state.vocbase().server().getFeature<NetworkFeature>().pool();
   network::Headers headers;
-  headers.emplace(StaticStrings::TransactionId, std::to_string(tid));
+  headers.try_emplace(StaticStrings::TransactionId, std::to_string(tid));
   auto body = std::make_shared<std::string>(builder.slice().toJson());
   return network::sendRequest(pool, "server:" + server, fuerte::RestVerb::Post,
                               "/_api/transaction/begin", std::move(buffer), reqOpts, std::move(headers));
@@ -358,12 +358,12 @@ void addTransactionHeader(transaction::Methods const& trx,
                transaction::isLeaderTransactionId(state.id()));
     transaction::BuilderLeaser builder(trx.transactionContextPtr());
     ::buildTransactionBody(state, server, *builder.get());
-    headers.emplace(StaticStrings::TransactionBody, builder->toJson());
-    headers.emplace(arangodb::StaticStrings::TransactionId,
+    headers.try_emplace(StaticStrings::TransactionBody, builder->toJson());
+    headers.try_emplace(arangodb::StaticStrings::TransactionId,
                     std::to_string(tidPlus).append(" begin"));
     state.addKnownServer(server);  // remember server
   } else {
-    headers.emplace(arangodb::StaticStrings::TransactionId, std::to_string(tidPlus));
+    headers.try_emplace(arangodb::StaticStrings::TransactionId, std::to_string(tidPlus));
   }
 }
 template void addTransactionHeader<std::map<std::string, std::string>>(
@@ -390,14 +390,14 @@ void addAQLTransactionHeader(transaction::Methods const& trx,
     } else if (state.hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
       transaction::BuilderLeaser builder(trx.transactionContextPtr());
       ::buildTransactionBody(state, server, *builder.get());
-      headers.emplace(StaticStrings::TransactionBody, builder->toJson());
+      headers.try_emplace(StaticStrings::TransactionBody, builder->toJson());
       value.append(" begin");  // part of a managed transaction
     } else {
       TRI_ASSERT(false);
     }
     state.addKnownServer(server);  // remember server
   }
-  headers.emplace(arangodb::StaticStrings::TransactionId, std::move(value));
+  headers.try_emplace(arangodb::StaticStrings::TransactionId, std::move(value));
 }
 template void addAQLTransactionHeader<std::map<std::string, std::string>>(
     transaction::Methods const&, ServerID const&, std::map<std::string, std::string>&);

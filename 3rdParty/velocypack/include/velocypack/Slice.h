@@ -30,6 +30,7 @@
 #include <cstdint>
 #include <cstring>
 #include <string>
+#include <string_view>
 #include <vector>
 #include <iosfwd>
 #include <algorithm>
@@ -692,6 +693,23 @@ class Slice {
     throw Exception(Exception::InvalidValueType, "Expecting type String");
   }
   
+  std::string_view stringView() const {
+    uint8_t h = head();
+    if (h >= 0x40 && h <= 0xbe) {
+      // short UTF-8 String
+      ValueLength length = h - 0x40;
+      return std::string_view(reinterpret_cast<char const*>(_start + 1),
+                       static_cast<std::size_t>(length));
+    }
+
+    if (h == 0xbf) {
+      ValueLength length = readIntegerFixed<ValueLength, 8>(_start + 1);
+      return std::string_view(reinterpret_cast<char const*>(_start + 1 + 8),
+                       checkOverflow(length));
+    }
+
+    throw Exception(Exception::InvalidValueType, "Expecting type String");
+  }
   // return a copy of the value for a String object
   StringRef stringRef() const {
     uint8_t h = head();

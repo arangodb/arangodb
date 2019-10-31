@@ -873,21 +873,21 @@ void IResearchViewNode::planNodeRegisters(
   for (auto const& scorer : _scorers) {
     ++nrRegsHere[depth];
     ++nrRegs[depth];
-    varInfo.emplace(scorer.var->id, aql::VarInfo(depth, totalNrRegs++));
+    varInfo.try_emplace(scorer.var->id, aql::VarInfo(depth, totalNrRegs++));
   }
 
   // Plan register for document-id only block
   if (isLateMaterialized()) {
     ++nrRegsHere[depth];
     ++nrRegs[depth];
-    varInfo.emplace(_outNonMaterializedColPtr->id, aql::VarInfo(depth, totalNrRegs++));
+    varInfo.try_emplace(_outNonMaterializedColPtr->id, aql::VarInfo(depth, totalNrRegs++));
     ++nrRegsHere[depth];
     ++nrRegs[depth];
-    varInfo.emplace(_outNonMaterializedDocId->id, aql::VarInfo(depth, totalNrRegs++));
+    varInfo.try_emplace(_outNonMaterializedDocId->id, aql::VarInfo(depth, totalNrRegs++));
   } else {
     ++nrRegsHere[depth];
     ++nrRegs[depth];
-    varInfo.emplace(_outVariable->id, aql::VarInfo(depth, totalNrRegs++));
+    varInfo.try_emplace(_outVariable->id, aql::VarInfo(depth, totalNrRegs++));
   }
 }
 

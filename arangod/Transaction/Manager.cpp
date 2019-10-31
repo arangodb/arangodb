@@ -127,7 +127,7 @@ void Manager::registerTransaction(TRI_voc_tid_t transactionId,
 
     try {
       // insert into currently running list of transactions
-      _transactions[bucket]._activeTransactions.emplace(transactionId, std::move(data));
+      _transactions[bucket]._activeTransactions.try_emplace(transactionId, std::move(data));
     } catch (...) {
       _nrRunning.fetch_sub(1, std::memory_order_relaxed);
       if (!isReadOnlyTransaction) {
@@ -275,8 +275,7 @@ void Manager::registerAQLTrx(TransactionState* state) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_INTERNAL,
                                      std::string("transaction ID ") + std::to_string(tid) + "' already used in registerAQLTrx");
     }
-    buck._managed.emplace(std::piecewise_construct, std::forward_as_tuple(tid),
-                          std::forward_as_tuple(MetaType::StandaloneAQL, state));
+    buck._managed.try_emplace(tid, MetaType::StandaloneAQL, state);
   }
 }
 
@@ -479,10 +478,7 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
                        std::string("transaction ID '") + std::to_string(tid) + "' already used in createManagedTrx insert");
     }
     TRI_ASSERT(state->id() == tid);
-    _transactions[bucket]._managed.emplace(std::piecewise_construct,
-                                           std::forward_as_tuple(tid),
-                                           std::forward_as_tuple(MetaType::Managed,
-                                                                 state.release()));
+    _transactions[bucket]._managed.try_emplace(tid, MetaType::Managed, state.release());
   }
 
   LOG_TOPIC("d6806", DEBUG, Logger::TRANSACTIONS) << "created managed trx '" << tid << "'";
@@ -918,10 +914,10 @@ void Manager::toVelocyPack(VPackBuilder& builder, std::string const& database,
             payload->add("preferred_username", VPackValue(username));
           }
           VPackSlice slice = authBuilder.slice();
-          headers.emplace(StaticStrings::Authorization,
+          headers.try_emplace(StaticStrings::Authorization,
                           "bearer " + auth->tokenCache().generateJwt(slice));
         } else {
-          headers.emplace(StaticStrings::Authorization,
+          headers.try_emplace(StaticStrings::Authorization,
                           "bearer " + auth->tokenCache().jwtToken());
         }
       }
@@ -1020,10 +1016,10 @@ Result Manager::abortAllManagedWriteTrx(std::string const& username, bool fanout
             payload->add("preferred_username", VPackValue(username));
           }
           VPackSlice slice = builder.slice();
-          headers.emplace(StaticStrings::Authorization,
+          headers.try_emplace(StaticStrings::Authorization,
                           "bearer " + auth->tokenCache().generateJwt(slice));
         } else {
-          headers.emplace(StaticStrings::Authorization,
+          headers.try_emplace(StaticStrings::Authorization,
                           "bearer " + auth->tokenCache().jwtToken());
         }
       }

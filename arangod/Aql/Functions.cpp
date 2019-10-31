@@ -4521,9 +4521,9 @@ AqlValue Functions::Sorted(ExpressionContext* expressionContext, transaction::Me
   std::map<VPackSlice, size_t, arangodb::basics::VelocyPackHelper::VPackLess<true>> values(less);
   for (VPackSlice it : VPackArrayIterator(slice)) {
     if (!it.isNone()) {
-      auto f = values.emplace(it, 1);
-      if (!f.second) {
-        ++(*f.first).second;
+      auto [itr, emplaced] = values.try_emplace(it, 1);
+      if (!emplaced) {
+        ++itr->second;
       }
     }
   }
@@ -4671,7 +4671,7 @@ AqlValue Functions::Intersection(ExpressionContext* expressionContext,
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
 
-        values.emplace(it, 1);
+        values.try_emplace(it, 1);
       } else {
         // check if we have seen the same element before
         auto found = values.find(it);
@@ -5608,7 +5608,7 @@ AqlValue Functions::Minus(ExpressionContext* expressionContext, transaction::Met
 
   VPackArrayIterator it(arraySlice);
   while (it.valid()) {
-    contains.emplace(it.value(), it.index());
+    contains.try_emplace(it.value(), it.index());
     it.next();
   }
 

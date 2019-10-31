@@ -44,11 +44,10 @@ std::map<ShardID, DBServers, VersionSort> DistributeShardsLikeRepairer::readShar
 
     for (auto const& dbServerIterator : ArrayIterator(shardIterator.value)) {
       ServerID const dbServerId = dbServerIterator.copyString();
-
-      dbServers.emplace_back(dbServerId);
+      dbServers.emplace_back(std::move(dbServerId));
     }
 
-    shardsById.emplace(std::make_pair(shardId, std::move(dbServers)));
+    shardsById.try_emplace(std::move(shardId), std::move(dbServers));
   }
 
   return shardsById;
@@ -126,7 +125,7 @@ DistributeShardsLikeRepairer::readCollections(const Slice& collectionsByDatabase
         _shardsById = shardsById
       };
 
-      collections.emplace(std::make_pair(collectionId, std::move(collection)));
+      collections.try_emplace(std::move(collectionId), std::move(collection));
     }
   }
 
@@ -453,7 +452,7 @@ ResultT<std::map<CollectionID, ResultT<std::list<RepairOperation>>>> DistributeS
     CollectionID const& collectionId = collectionIterator.first;
     Result const& result = collectionIterator.second;
     if (result.fail()) {
-      repairOperationsByCollection.emplace(collectionId, result);
+      repairOperationsByCollection.try_emplace(collectionId, result);
       continue;
     }
     struct Collection& collection = collectionMap.at(collectionId);
@@ -483,7 +482,7 @@ ResultT<std::map<CollectionID, ResultT<std::list<RepairOperation>>>> DistributeS
       LOG_TOPIC("2b82f", ERR, arangodb::Logger::CLUSTER)
           << "DistributeShardsLikeRepairer::repairDistributeShardsLike: "
           << "(repairing)distributeShardsLike missing in " << collection.fullName();
-      repairOperationsByCollection.emplace(collection.id,
+      repairOperationsByCollection.try_emplace(collection.id,
                                            Result{TRI_ERROR_CLUSTER_REPAIRS_INCONSISTENT_ATTRIBUTES});
       continue;
     }
@@ -492,7 +491,7 @@ ResultT<std::map<CollectionID, ResultT<std::list<RepairOperation>>>> DistributeS
 
     auto beginRepairsOperation = createBeginRepairsOperation(collection, proto);
     if (beginRepairsOperation.fail()) {
-      repairOperationsByCollection.emplace(collection.id,
+      repairOperationsByCollection.try_emplace(collection.id,
                                            std::move(beginRepairsOperation).result());
       continue;
     }
@@ -503,7 +502,7 @@ ResultT<std::map<CollectionID, ResultT<std::list<RepairOperation>>>> DistributeS
         fixAllShardsOfCollection(collection, proto, availableDbServers);
 
     if (shardRepairOperationsResult.fail()) {
-      repairOperationsByCollection.emplace(
+      repairOperationsByCollection.try_emplace(
           collection.id, std::move(shardRepairOperationsResult).result());
       continue;
     }
@@ -512,13 +511,13 @@ ResultT<std::map<CollectionID, ResultT<std::list<RepairOperation>>>> DistributeS
 
     auto finishRepairsOperation = createFinishRepairsOperation(collection, proto);
     if (finishRepairsOperation.fail()) {
-      repairOperationsByCollection.emplace(collection.id,
+      repairOperationsByCollection.try_emplace(collection.id,
                                            std::move(finishRepairsOperation).result());
       continue;
     }
     repairOperations.emplace_back(std::move(finishRepairsOperation.get()));
 
-    repairOperationsByCollection.emplace(collection.id, std::move(repairOperations));
+    repairOperationsByCollection.try_emplace(collection.id, std::move(repairOperations));
   }
 
   return repairOperationsByCollection;

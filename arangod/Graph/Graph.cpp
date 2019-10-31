@@ -534,7 +534,7 @@ ResultT<EdgeDefinition const*> Graph::addEdgeDefinition(EdgeDefinition const& ed
   }
 
   _edgeColls.emplace(collection);
-  _edgeDefs.emplace(collection, edgeDefinition);
+  _edgeDefs.try_emplace(collection, edgeDefinition);
   TRI_ASSERT(hasEdgeCollection(collection));
   for (auto const& it : edgeDefinition.getFrom()) {
     addVertexCollection(it);

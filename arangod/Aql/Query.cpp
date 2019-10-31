@@ -227,7 +227,7 @@ Query::~Query() {
 void Query::addDataSource(                                  // track DataSource
     std::shared_ptr<arangodb::LogicalDataSource> const& ds  // DataSource to track
 ) {
-  _queryDataSources.emplace(ds->guid(), ds->name());
+  _queryDataSources.try_emplace(ds->guid(), ds->name());
 }
 
 /// @brief clone a query
@@ -708,7 +708,7 @@ ExecutionState Query::execute(QueryRegistry* registry, QueryResult& queryResult)
           _trx->state()->allCollections(  // collect transaction DataSources
               [&dataSources](TransactionCollection& trxCollection) -> bool {
                 auto const& c = trxCollection.collection();
-                dataSources.emplace(c->guid(), c->name());
+                dataSources.try_emplace(c->guid(), c->name());
                 return true;  // continue traversal
               });
 
@@ -934,7 +934,7 @@ ExecutionState Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry,
       _trx->state()->allCollections(  // collect transaction DataSources
           [&dataSources](TransactionCollection& trxCollection) -> bool {
             auto const& c = trxCollection.collection();
-            dataSources.emplace(c->guid(), c->name());
+            dataSources.try_emplace(c->guid(), c->name());
             return true;  // continue traversal
           });
 

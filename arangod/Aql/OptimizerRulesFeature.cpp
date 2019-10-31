@@ -116,7 +116,7 @@ void OptimizerRulesFeature::registerRule(char const* name, RuleFunction func,
     return;
   }
 
-  _ruleLookup.emplace(ruleName, level);
+  _ruleLookup.try_emplace(ruleName, level);
   _rules.push_back(std::move(rule));
 }
 

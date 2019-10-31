@@ -355,7 +355,7 @@ void mergeResultsAllShards(std::vector<VPackSlice> const& results, VPackBuilder&
   }
   resultBody.close();
   if (realNotFound > 0) {
-    errorCounter.emplace(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, realNotFound);
+    errorCounter.try_emplace(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, realNotFound);
   }
 }
 
@@ -376,9 +376,9 @@ OperationResult handleCRUDShardResponsesFast(F&& func, CT const& opCtx,
 
     int commError = network::fuerteToArangoErrorCode(res);
     if (commError != TRI_ERROR_NO_ERROR) {
-      shardError.emplace(sId, commError);
+      shardError.try_emplace(sId, commError);
     } else {
-      resultMap.emplace(sId, res.response->slice());
+      resultMap.try_emplace(sId, res.response->slice());
       network::errorCodesFromHeaders(res.response->header.meta(), errorCounter, true);
       code = res.response->statusCode();
     }
@@ -537,7 +537,7 @@ int distributeBabyOnShards(CrudOperationCtx& opCtx,
   // We found the responsible shard. Add it to the list.
   auto it = opCtx.shardMap.find(shardID);
   if (it == opCtx.shardMap.end()) {
-    opCtx.shardMap.emplace(shardID, std::vector<VPackSlice>{value});
+    opCtx.shardMap.try_emplace(shardID, std::vector<VPackSlice>{value});
     opCtx.reverseMapping.emplace_back(shardID, 0);
   } else {
     it->second.emplace_back(value);
@@ -627,7 +627,7 @@ int distributeBabyOnShards(CreateOperationCtx& opCtx,
   // We found the responsible shard. Add it to the list.
   auto it = opCtx.shardMap.find(shardID);
   if (it == opCtx.shardMap.end()) {
-    opCtx.shardMap.emplace(shardID, std::vector<std::pair<VPackSlice, std::string>>{{value, _key}});
+    opCtx.shardMap.try_emplace(shardID, std::vector<std::pair<VPackSlice, std::string>>{{value, _key}});
     opCtx.reverseMapping.emplace_back(shardID, 0);
   } else {
     it->second.emplace_back(value, _key);
@@ -705,7 +705,7 @@ static std::shared_ptr<std::unordered_map<std::string, std::vector<std::string>>
     // determine shard id
     std::string shardId = "s" + StringUtils::itoa(id + i);
 
-    shards->emplace(shardId, serverIds);
+    shards->try_emplace(shardId, serverIds);
   }
 
   return shards;
@@ -768,7 +768,7 @@ static std::shared_ptr<std::unordered_map<std::string, std::vector<std::string>>
   for (uint64_t i = 0; i < numberOfShards; ++i) {
     // determine responsible server(s)
     std::string shardId = "s" + StringUtils::itoa(id + i);
-    result->emplace(shardId, otherShardsMap->at(otherShards.at(i)));
+    result->try_emplace(std::move(shardId), otherShardsMap->at(otherShards.at(i)));
   }
   return result;
 }
@@ -821,7 +821,7 @@ network::Headers getForwardableRequestHeaders(arangodb::GeneralRequest* request)
         key != "host" && key != "origin" && key != StaticStrings::HLCHeader &&
         key != StaticStrings::ErrorCodes &&
         key.substr(0, 14) != "access-control") {
-      result.emplace(key, (*it).second);
+      result.try_emplace(key, (*it).second);
     }
     ++it;
   }
@@ -1196,7 +1196,7 @@ Result selectivityEstimatesOnCoordinator(ClusterFeature& feature, std::string co
   for (auto const& p : *shards) {
     network::Headers headers;
     if (tid != 0) {
-      headers.emplace(StaticStrings::TransactionId, std::to_string(tid));
+      headers.try_emplace(StaticStrings::TransactionId, std::to_string(tid));
     }
 
     futures.emplace_back(
@@ -1707,7 +1707,7 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
           TRI_ASSERT(it.second.size() == 1);
 
           if (!options.ignoreRevs && slice.hasKey(StaticStrings::RevString)) {
-            headers.emplace("if-match", slice.get(StaticStrings::RevString).copyString());
+            headers.try_emplace("if-match", slice.get(StaticStrings::RevString).copyString());
           }
           VPackSlice keySlice = slice;
           if (slice.isObject()) {
@@ -1780,7 +1780,7 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
       network::Headers headers;
       addTransactionHeaderForShard(trx, *shardIds, shard, headers);
       if (addMatch) {
-        headers.emplace("if-match", slice.get(StaticStrings::RevString).copyString());
+        headers.try_emplace("if-match", slice.get(StaticStrings::RevString).copyString());
       }
 
       futures.emplace_back(network::sendRequestRetry(
@@ -2075,14 +2075,14 @@ void fetchVerticesFromEngines(
         cached = true;
       }
       // Protected by datalake
-      result.emplace(key, pair.value);
+      result.try_emplace(key, pair.value);
     }
   }
 
   if (!forShortestPath) {
     // Fill everything we did not find with NULL
     for (auto const& v : vertexIds) {
-      result.emplace(v, VPackSlice::nullSlice());
+      result.try_emplace(v, VPackSlice::nullSlice());
     }
     vertexIds.clear();
   }
@@ -2747,7 +2747,7 @@ arangodb::Result matchBackupServersSlice(VPackSlice const planServers,
         localCopy.end()) {
       localCopy.erase(it);
     } else {
-      match.emplace(plannedStr, std::string());
+      match.try_emplace(plannedStr, std::string());
     }
   }
   // match all remaining

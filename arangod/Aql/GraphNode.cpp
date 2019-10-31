@@ -151,7 +151,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
         // do not re-add the same collection!
         continue;
       }
-      seenCollections.emplace(eColName, dir);
+      seenCollections.try_emplace(eColName, dir);
 
       auto collection = resolver->getCollection(eColName);
 
@@ -522,7 +522,7 @@ CostEstimate GraphNode::estimateCost() const {
 
 void GraphNode::addEngine(TraverserEngineID const& engine, ServerID const& server) {
   TRI_ASSERT(arangodb::ServerState::instance()->isCoordinator());
-  _engines.emplace(server, engine);
+  _engines.try_emplace(server, engine);
 }
 
 /// @brief Returns a reference to the engines. (CLUSTER ONLY)

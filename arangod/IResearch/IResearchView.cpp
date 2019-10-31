@@ -281,7 +281,7 @@ struct IResearchView::ViewFactory : public arangodb::ViewFactory {
                              : nullptr;  // add placeholders to links, when the
                                          // collection comes up it'll bring up the link
 
-      impl->_links.emplace(cid, link ? link->self()
+      impl->_links.try_emplace(cid, link ? link->self()
                                      : nullptr);  // add placeholders to links, when the link
                                                   // comes up it'll call link(...)
     }
@@ -676,7 +676,7 @@ arangodb::Result IResearchView::link(AsyncLinkPtr const& link) {
   auto itr = _links.find(cid);
 
   if (itr == _links.end()) {
-    _links.emplace(cid, link);
+    _links.try_emplace(cid, link);
   } else if (arangodb::ServerState::instance()->isSingleServer() // single server
              && !itr->second) {
     _links[cid] = link;
