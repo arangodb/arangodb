@@ -1350,6 +1350,22 @@ describe('Foxx service', () => {
     expect(resp.json).to.have.property('passes');
   });
 
+  it('idiomatic tests reporter should return string', () => {
+    const testPath = path.resolve(internal.pathForTesting('common'), 'test-data', 'apps', 'with-tests');
+    FoxxManager.install(testPath, mount);
+    const resp = request.post('/_api/foxx/tests', {qs: { mount, reporter: "xunit", idiomatic: true }});
+    expect(resp.status).to.equal(200);
+    expect(resp.json).to.be.a("string");
+  });
+
+  it('non-idiomatic tests reporter should not return string', () => {
+    const testPath = path.resolve(internal.pathForTesting('common'), 'test-data', 'apps', 'with-tests');
+    FoxxManager.install(testPath, mount);
+    const resp = request.post('/_api/foxx/tests', {qs: { mount, reporter: "xunit", idiomatic: false }});
+    expect(resp.status).to.equal(200);
+    expect(resp.json).to.be.an("array");
+  });
+
   it('replace on invalid mount should not be installed', () => {
     const replaceResp = request.put('/_api/foxx/service', {
       qs: {
