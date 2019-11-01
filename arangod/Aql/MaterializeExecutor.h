@@ -75,7 +75,7 @@ class MaterializerExecutorInfos : public ExecutorInfos {
   }
 
  private:
-  std::shared_ptr<std::unordered_set<RegisterId>> getReadableInputRegisters(T collectionSource, RegisterId inNmDocId) {
+  std::shared_ptr<std::unordered_set<RegisterId>> getReadableInputRegisters(T const collectionSource, RegisterId inNmDocId) {
     if constexpr (std::is_same<T, RegisterId>::value) {
       return make_shared_unordered_set(std::initializer_list<RegisterId>({collectionSource, inNmDocId}));
     } else {
@@ -84,7 +84,7 @@ class MaterializerExecutorInfos : public ExecutorInfos {
   }
 
   /// @brief register to store raw collection pointer or collection name
-  T _collectionSource;
+  T const _collectionSource;
   /// @brief register to store local document id
   RegisterId const _inNonMaterializedDocRegId;
   /// @brief register to store materialized document
