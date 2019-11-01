@@ -459,7 +459,7 @@ TEST_F(IIndexNodeTest, constructIndexNode) {
         std::make_unique<arangodb::aql::Variable>("5", 6),
         std::make_unique<arangodb::aql::Variable>("7", 8)}) {
         if (vars->getVariable(v->id) == nullptr) {
-          vars->createVariable(&*v);
+          vars->createVariable(v.get());
         }
       }
     }
@@ -543,7 +543,7 @@ TEST_F(IIndexNodeTest, invalidLateMaterializedJSON) {
   auto vars = query.plan()->getAst()->variables();
   auto const& v = std::make_unique<arangodb::aql::Variable>("5", 6);
   if (vars->getVariable(v->id) == nullptr) {
-    vars->createVariable(&*v);
+    vars->createVariable(v.get());
   }
 
   // correct json
