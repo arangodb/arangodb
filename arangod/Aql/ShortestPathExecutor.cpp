@@ -81,9 +81,9 @@ arangodb::graph::ShortestPathFinder& ShortestPathExecutorInfos::finder() const {
 
 bool ShortestPathExecutorInfos::useRegisterForInput(bool isTarget) const {
   if (isTarget) {
-    return _target.type == InputVertex::REGISTER;
+    return _target.type == InputVertex::Type::REGISTER;
   }
-  return _source.type == InputVertex::REGISTER;
+  return _source.type == InputVertex::Type::REGISTER;
 }
 
 RegisterId ShortestPathExecutorInfos::getInputRegister(bool isTarget) const {
@@ -106,8 +106,16 @@ bool ShortestPathExecutorInfos::usesOutputRegister(OutputName type) const {
   return _registerMapping.find(type) != _registerMapping.end();
 }
 
+ShortestPathExecutorInfos::InputVertex ShortestPathExecutorInfos::getSourceVertex() const noexcept {
+  return _source;
+}
+
+ShortestPathExecutorInfos::InputVertex ShortestPathExecutorInfos::getTargetVertex() const noexcept {
+  return _target;
+}
+
 static std::string typeToString(ShortestPathExecutorInfos::OutputName type) {
-  switch(type) {
+  switch (type) {
     case ShortestPathExecutorInfos::VERTEX:
       return std::string{"VERTEX"};
     case ShortestPathExecutorInfos::EDGE:
@@ -121,8 +129,8 @@ RegisterId ShortestPathExecutorInfos::findRegisterChecked(OutputName type) const
   auto const& it = _registerMapping.find(type);
   if (ADB_UNLIKELY(it == _registerMapping.end())) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
-      TRI_ERROR_INTERNAL,
-      "Logic error: requested unused register type " + typeToString(type));
+        TRI_ERROR_INTERNAL,
+        "Logic error: requested unused register type " + typeToString(type));
   }
   return it->second;
 }
@@ -284,4 +292,131 @@ bool ShortestPathExecutor::getVertexId(bool isTarget, VPackSlice& id) {
     }
     return true;
   }
+}
+
+// New executor interface
+std::tuple<ExecutorState, NoStats, AqlCall> ShortestPathExecutor::produceRows(
+    size_t atMost, AqlItemBlockInputRange& input, OutputAqlItemRow& output) {
+  auto stats = NoStats{};
+  auto upstreamCall = AqlCall{};
+  auto nrOutput = size_t{0};
+
+  // Can be length 0 but never nullptr.
+  TRI_ASSERT(_path);
+
+  // Note that we could have state (namely a partially produced path) across
+  // calls to produceRows
+  while (nrOutput < atMost) {
+    if (_posInPath < _path->length()) {
+      if (_infos.usesOutputRegister(ShortestPathExecutorInfos::VERTEX)) {
+        AqlValue vertex = _path->vertexToAqlValue(_infos.cache(), _posInPath);
+        AqlValueGuard guard{vertex, true};
+        output.moveValueInto(_infos.getOutputRegister(ShortestPathExecutorInfos::VERTEX),
+                             _input, guard);
+      }
+      if (_infos.usesOutputRegister(ShortestPathExecutorInfos::EDGE)) {
+        AqlValue edge = _path->edgeToAqlValue(_infos.cache(), _posInPath);
+        AqlValueGuard guard{edge, true};
+        output.moveValueInto(_infos.getOutputRegister(ShortestPathExecutorInfos::EDGE),
+                             _input, guard);
+      }
+      _posInPath++;
+      output.advanceRow();
+      nrOutput++;
+    }
+
+    // Try fetching a new path if we're out of path to produce
+    if (_posInPath >= _path->length()) {
+      // If we have no more paths to produce, we're done
+      if (!fetchPath(input)) {
+        TRI_ASSERT(_posInPath >= _path->length());
+        return {ExecutorState::DONE, stats, upstreamCall};
+      }
+    }
+  }
+
+  // We output atMost, so we might actually have more path to
+  // produce
+  return {ExecutorState::HASMORE, stats, upstreamCall};
+}
+
+bool ShortestPathExecutor::fetchPath(AqlItemBlockInputRange& input) {
+  VPackSlice source;
+  VPackSlice target;
+  ExecutorState state;
+  InputAqlItemRow row{CreateInvalidInputRowHint{}};
+  do {
+    // Make sure we have a valid start *and* end vertex
+    do {
+      if (!input.hasMore()) {
+        return false;
+      }
+      std::tie(state, row) = input.next();
+      TRI_ASSERT(row.isInitialized());
+    } while (!getVertexId(_infos.getSourceVertex(), row, _sourceBuilder, source) ||
+             !getVertexId(_infos.getTargetVertex(), row, _targetBuilder, target));
+    TRI_ASSERT(source.isString());
+    TRI_ASSERT(target.isString());
+    _path->clear();
+  } while (!_finder.shortestPath(source, target, *_path));
+  _posInPath = 0;
+  return true;
+}
+
+// Check this function is correct
+bool ShortestPathExecutor::getVertexId(ShortestPathExecutorInfos::InputVertex const& vertex,
+                                       InputAqlItemRow& row,
+                                       VPackBuilder& builder, VPackSlice& id) {
+  switch (vertex.type) {
+    case ShortestPathExecutorInfos::InputVertex::Type::REGISTER: {
+      AqlValue const& in = row.getValue(vertex.reg);
+      if (in.isObject()) {
+        try {
+          auto idString = _finder.options().trx()->extractIdString(in.slice());
+          builder.clear();
+          builder.add(VPackValue(idString));
+          id = builder.slice();
+          // Guranteed by extractIdValue
+          TRI_ASSERT(::isValidId(id));
+        } catch (...) {
+          // _id or _key not present... ignore this error and fall through
+          // returning no path
+          return false;
+        }
+        return true;
+      } else if (in.isString()) {
+        id = in.slice();
+        // Validation
+        if (!::isValidId(id)) {
+          _finder.options().query()->registerWarning(
+              TRI_ERROR_BAD_PARAMETER,
+              "Invalid input for Shortest Path: "
+              "Only id strings or objects with "
+              "_id are allowed");
+          return false;
+        }
+        return true;
+      } else {
+        _finder.options().query()->registerWarning(
+            TRI_ERROR_BAD_PARAMETER,
+            "Invalid input for Shortest Path: "
+            "Only id strings or objects with "
+            "_id are allowed");
+        return false;
+      }
+    }
+    case ShortestPathExecutorInfos::InputVertex::Type::CONSTANT: {
+      id = builder.slice();
+      if (!::isValidId(id)) {
+        _finder.options().query()->registerWarning(
+            TRI_ERROR_BAD_PARAMETER,
+            "Invalid input for Shortest Path: "
+            "Only id strings or objects with "
+            "_id are allowed");
+        return false;
+      }
+      return true;
+    }
+  }
+  return false;
 }

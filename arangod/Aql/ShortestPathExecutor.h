@@ -23,11 +23,15 @@
 #ifndef ARANGOD_AQL_SHORTEST_PATH_EXECUTOR_H
 #define ARANGOD_AQL_SHORTEST_PATH_EXECUTOR_H
 
+#include "Aql/AqlCall.h"
+#include "Aql/AqlItemBlockInputRange.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
 
 #include <velocypack/Builder.h>
+
+using namespace arangodb::velocypack;
 
 namespace arangodb {
 
@@ -53,16 +57,17 @@ class NoStats;
 class ShortestPathExecutorInfos : public ExecutorInfos {
  public:
   struct InputVertex {
-    enum { CONSTANT, REGISTER } type;
+    enum class Type { CONSTANT, REGISTER };
+    Type type;
     // TODO make the following two a union instead
     RegisterId reg;
     std::string value;
 
     // cppcheck-suppress passedByValue
     explicit InputVertex(std::string value)
-        : type(CONSTANT), reg(0), value(std::move(value)) {}
+        : type(Type::CONSTANT), reg(0), value(std::move(value)) {}
     explicit InputVertex(RegisterId reg)
-        : type(REGISTER), reg(reg), value("") {}
+        : type(Type::REGISTER), reg(reg), value("") {}
   };
 
   enum OutputName { VERTEX, EDGE };
@@ -122,6 +127,9 @@ class ShortestPathExecutorInfos : public ExecutorInfos {
 
   graph::TraverserCache* cache() const;
 
+  InputVertex getSourceVertex() const noexcept;
+  InputVertex getTargetVertex() const noexcept;
+
  private:
   RegisterId findRegisterChecked(OutputName type) const;
 
@@ -171,6 +179,9 @@ class ShortestPathExecutor {
    * @return ExecutionState, and if successful exactly one new Row of AqlItems.
    */
   std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
+  std::tuple<ExecutorState, Stats, AqlCall> produceRows(size_t atMost,
+                                                        AqlItemBlockInputRange& input,
+                                                        OutputAqlItemRow& output);
 
  private:
   /**
@@ -179,6 +190,7 @@ class ShortestPathExecutor {
    * @return false if we are done and no path could be found.
    */
   bool fetchPath();
+  bool fetchPath(AqlItemBlockInputRange& input);
 
   /**
    * @brief compute the correct return state
@@ -197,6 +209,11 @@ class ShortestPathExecutor {
    * @return DONE if no more is expected
    */
   bool getVertexId(bool isTarget, arangodb::velocypack::Slice& id);
+
+  bool getVertexId(ShortestPathExecutorInfos::InputVertex const& vertex,
+                   InputAqlItemRow& row, Builder& builder, Slice& id);
+  bool getStartVertexId(InputAqlItemRow& row, arangodb::velocypack::Slice& id);
+  bool getEndVertexId(InputAqlItemRow& row, arangodb::velocypack::Slice& id);
 
  private:
   Infos& _infos;
