@@ -1083,12 +1083,21 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
   std::unique_ptr<containers::RevisionTree> treeLocal =
       coll->revisionTree(range.first, range.second);
 
-  // TODO get range differences
   std::vector<std::pair<std::size_t, std::size_t>> ranges = treeMaster->diff(*treeLocal);
 
   // TODO sync chunks of revisions using much of the same logic as in
   // syncChunkRocksDB (RocksDBIncrementalSync.cpp); will need new APIs in
   // replication handler to fetch revisions in a range and documents by revision
+  // 1) Fetch actual ranges from baseUrl + "/range"
+  //    a) Can send request ranges all at once (only about 2MB max)
+  //    b) Must get response in chunks (could be whole collection)
+  //    c) Must store stome state, probably in RocksDBRevisionContext to reuse
+  //       snapshot, unfortunately
+  // 2) Trim away any documents outside tree range
+  // 3) Iterate over fetched ranges
+  //    a) Remove documents which aren't in master
+  //    b) Add documents to list which differ or aren't on local
+  // 4) Fetch documents from list that need to be synced and insert them
 
   return Result{};
 }
