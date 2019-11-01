@@ -66,7 +66,7 @@ function lateDocumentMaterializationRuleTestSuite () {
           type = "skiplist";
         }
 
-        collections[i].ensureIndex({type: type, fields: fields})
+        collections[i].ensureIndex({type: type, fields: fields});
       }
 
       for (i = 0; i < numOfCollections; ++i) {
