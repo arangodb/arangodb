@@ -484,12 +484,12 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
   initializeOnce(hasV8Expression, inVars, inRegs, nonConstExpressions, trxPtr);
 
   auto const firstOutputRegister = getNrInputRegisters();
-  auto numIndVarsRegisters = static_cast<aql::RegisterCount>(
-        std::accumulate(_outNonMaterializedIndVars.cbegin(),
-                        _outNonMaterializedIndVars.cend(), 0,
-                        [](auto sum, auto const& b) {
+  auto numIndVarsRegisters = std::accumulate(
+        _outNonMaterializedIndVars.cbegin(),
+        _outNonMaterializedIndVars.cend(), static_cast<aql::RegisterCount>(0),
+        [](auto sum, auto const& b) {
     return sum + b.second.size();
-  }));
+  });
   TRI_ASSERT(0 == numIndVarsRegisters || isLateMaterialized());
 
   // We could be asked to produce only document id for later materialization or full document body at once
