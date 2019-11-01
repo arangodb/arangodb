@@ -2156,13 +2156,6 @@ void IResearchAnalyzerFeature::start() {
              "IResearch functions";
     }
   }
-
-//  auto res = loadAnalyzers();
-//
-//  if (!res.ok()) {
-//    LOG_TOPIC("73a95", WARN, arangodb::iresearch::TOPIC)
-//      << "failure to load analyzers :" << res.errorNumber() << " " << res.errorMessage();
-//  }
 }
 
 void IResearchAnalyzerFeature::stop() {
