@@ -29,7 +29,9 @@
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
-
+namespace application_features {
+class ApplicationServer;
+}
 class Index;
 class LogicalCollection;
 
@@ -72,6 +74,7 @@ struct IndexTypeFactory {
 
 class IndexFactory {
  public:
+  IndexFactory(application_features::ApplicationServer&);
   virtual ~IndexFactory() = default;
 
   /// @brief returns if 'factory' for 'type' was added successfully
@@ -161,6 +164,7 @@ class IndexFactory {
                                      bool generateKey, bool isClusterConstructor);
 
  private:
+  application_features::ApplicationServer& _server;
   std::unordered_map<std::string, IndexTypeFactory const*> _factories;
 };
 

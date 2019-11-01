@@ -30,7 +30,7 @@ namespace arangodb {
 
 class RocksDBIndexFactory final : public IndexFactory {
  public:
-  RocksDBIndexFactory();
+  RocksDBIndexFactory(application_features::ApplicationServer&);
   ~RocksDBIndexFactory() = default;
 
   /// @brief index name aliases (e.g. "persistent" => "hash", "skiplist" => "hash")

@@ -419,6 +419,8 @@ class AllIteratorMock final : public arangodb::IndexIterator {
 };  // AllIteratorMock
 
 struct IndexFactoryMock : arangodb::IndexFactory {
+  IndexFactoryMock(arangodb::application_features::ApplicationServer& server)
+      : IndexFactory(server) {}
   virtual void fillSystemIndexes(arangodb::LogicalCollection& col,
                                  std::vector<std::shared_ptr<arangodb::Index>>& systemIndexes) const override {
     // NOOP
@@ -944,7 +946,7 @@ std::function<void()> StorageEngineMock::recoveryTickCallback = []() -> void {};
 
 StorageEngineMock::StorageEngineMock(arangodb::application_features::ApplicationServer& server)
     : StorageEngine(server, "Mock", "",
-                    std::unique_ptr<arangodb::IndexFactory>(new IndexFactoryMock())),
+                    std::unique_ptr<arangodb::IndexFactory>(new IndexFactoryMock(server))),
       vocbaseCount(1),
       _releasedTick(0) {}
 

@@ -177,7 +177,8 @@ struct PrimaryIndexFactory : public DefaultIndexFactory {
 
 namespace arangodb {
 
-ClusterIndexFactory::ClusterIndexFactory() {
+ClusterIndexFactory::ClusterIndexFactory(application_features::ApplicationServer& server)
+    : IndexFactory(server) {
   static const EdgeIndexFactory edgeIndexFactory("edge");
   static const DefaultIndexFactory fulltextIndexFactory("fulltext");
   static const DefaultIndexFactory geoIndexFactory("geo");

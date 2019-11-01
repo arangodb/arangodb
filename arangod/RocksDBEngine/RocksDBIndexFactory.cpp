@@ -319,7 +319,8 @@ struct PrimaryIndexFactory : public DefaultIndexFactory {
 
 }  // namespace
 
-RocksDBIndexFactory::RocksDBIndexFactory() {
+RocksDBIndexFactory::RocksDBIndexFactory(application_features::ApplicationServer& server)
+    : IndexFactory(server) {
   static const EdgeIndexFactory edgeIndexFactory;
   static const FulltextIndexFactory fulltextIndexFactory;
   static const GeoIndexFactory geoIndexFactory;

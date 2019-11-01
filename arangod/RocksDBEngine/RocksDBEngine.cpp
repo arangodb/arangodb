@@ -181,7 +181,7 @@ RocksDBFilePurgeEnabler::RocksDBFilePurgeEnabler(RocksDBFilePurgeEnabler&& other
 // create the storage engine
 RocksDBEngine::RocksDBEngine(application_features::ApplicationServer& server)
     : StorageEngine(server, EngineName, FeatureName,
-                    std::unique_ptr<IndexFactory>(new RocksDBIndexFactory())),
+                    std::unique_ptr<IndexFactory>(new RocksDBIndexFactory(server))),
 #ifdef USE_ENTERPRISE
       _createShaFiles(true),
 #else

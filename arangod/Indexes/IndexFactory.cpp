@@ -169,12 +169,14 @@ bool IndexTypeFactory::equal(arangodb::Index::IndexType type,
   return true;
 }
 
+IndexFactory::IndexFactory(application_features::ApplicationServer& server)
+    : _server(server), _factories() {}
+
 void IndexFactory::clear() { _factories.clear(); }
 
 Result IndexFactory::emplace(std::string const& type, IndexTypeFactory const& factory) {
-  auto& server = arangodb::application_features::ApplicationServer::server();
-  if (server.hasFeature<BootstrapFeature>()) {
-    auto& feature = server.getFeature<BootstrapFeature>();
+  if (_server.hasFeature<BootstrapFeature>()) {
+    auto& feature = _server.getFeature<BootstrapFeature>();
     // ensure new factories are not added at runtime since that would require
     // additional locks
     if (feature.isReady()) {

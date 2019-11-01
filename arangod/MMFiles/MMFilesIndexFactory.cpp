@@ -329,7 +329,8 @@ struct SkiplistIndexFactory : public DefaultIndexFactory {
 
 }  // namespace
 
-MMFilesIndexFactory::MMFilesIndexFactory() {
+MMFilesIndexFactory::MMFilesIndexFactory(application_features::ApplicationServer& server)
+    : IndexFactory(server) {
   static const EdgeIndexFactory edgeIndexFactory("edge");
   static const FulltextIndexFactory fulltextIndexFactory("fulltext");
   static const GeoIndexFactory geoIndexFactory("geo");
