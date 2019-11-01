@@ -70,8 +70,8 @@ TRI_vocbase_t* Databases::lookup(std::string const& dbname) {
   return nullptr;
 }
 
-std::vector<std::string> Databases::list(std::string const& user) {
-  auto& server = application_features::ApplicationServer::server();
+std::vector<std::string> Databases::list(application_features::ApplicationServer& server,
+                                         std::string const& user) {
   if (!server.hasFeature<DatabaseFeature>()) {
     return std::vector<std::string>();
   }
@@ -330,7 +330,6 @@ arangodb::Result Databases::create(application_features::ApplicationServer& serv
   // because the cache entry has a TTL
   if (ServerState::instance()->isSingleServerOrCoordinator()) {
     try {
-      auto& server = application_features::ApplicationServer::server();
       auto& sysDbFeature = server.getFeature<arangodb::SystemDatabaseFeature>();
       auto database = sysDbFeature.use();
 

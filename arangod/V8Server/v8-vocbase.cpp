@@ -1524,7 +1524,8 @@ static void JS_Databases(v8::FunctionCallbackInfo<v8::Value> const& args) {
     user = TRI_ObjectToString(isolate, args[0]);
   }
 
-  std::vector<std::string> names = methods::Databases::list(user);
+  TRI_GET_GLOBALS();
+  std::vector<std::string> names = methods::Databases::list(v8g->_server, user);
   v8::Handle<v8::Array> result = v8::Array::New(isolate, (int)names.size());
 
   for (size_t i = 0; i < names.size(); ++i) {
