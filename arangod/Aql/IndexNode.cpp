@@ -296,7 +296,6 @@ void IndexNode::toVelocyPackHelper(VPackBuilder& builder, unsigned flags,
   if (isLateMaterialized()) {
     builder.add(VPackValue("outNmDocId"));
     _outNonMaterializedDocId->toVelocyPack(builder);
-    builder.add("outNmColName", VPackValue(collection()->name()));
 
     VPackArrayBuilder arrayScope(&builder, "IndexesValuesVars");
     for (auto const& indVars : _outNonMaterializedIndVars) {

@@ -208,7 +208,7 @@ IndexIterator::DocumentCallback aql::buildDocumentCallback(DocumentProducingFunc
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid callback");
     };
   }
-
+    
   if (!context.getProjections().empty()) {
     // return a projection
     if (!context.getCoveringIndexAttributePositions().empty()) {

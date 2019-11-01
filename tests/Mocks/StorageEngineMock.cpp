@@ -553,7 +553,7 @@ class HashIndexMap {
     if (toClose) {
       builder.close();
     }
-    _docIndexMap.emplace(documentId, std::move(builder));
+    _docIndexMap.try_emplace(documentId, std::move(builder));
   }
 
   bool remove(arangodb::LocalDocumentId const& documentId, arangodb::velocypack::Slice const& doc) {
@@ -599,7 +599,7 @@ class HashIndexMap {
         std::unordered_map<arangodb::LocalDocumentId, VPackBuilder const*> tmpFound;
         for (; begin != end; ++begin) {
           if (found.find(begin->second) != found.cend()) {
-            tmpFound.emplace(begin->second, &begin->first);
+            tmpFound.try_emplace(begin->second, &begin->first);
           }
         }
         if (tmpFound.empty()) {
@@ -621,7 +621,7 @@ class HashIndexMap {
         builder.add(d.second->slice());
         builder.close();
       }
-      foundWithCovering.emplace(doc->first, std::move(builder));
+      foundWithCovering.try_emplace(doc->first, std::move(builder));
     }
     return foundWithCovering;
   }
