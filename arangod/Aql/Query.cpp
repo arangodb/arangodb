@@ -47,6 +47,7 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "RestServer/AqlFeature.h"
+#include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
@@ -85,6 +86,7 @@ Query::Query(bool contextOwnedByExterior, TRI_vocbase_t& vocbase,
       _queryString(queryString),
       _bindParameters(bindParameters),
       _options(options),
+      _queryOptions(vocbase.server().getFeature<QueryRegistryFeature>()),
       _collections(&vocbase),
       _trx(nullptr),
       _startTime(TRI_microtime()),
@@ -162,6 +164,7 @@ Query::Query(bool contextOwnedByExterior, TRI_vocbase_t& vocbase,
       _queryString(),
       _queryBuilder(queryStruct),
       _options(options),
+      _queryOptions(vocbase.server().getFeature<QueryRegistryFeature>()),
       _collections(&vocbase),
       _trx(nullptr),
       _startTime(TRI_microtime()),

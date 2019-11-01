@@ -34,7 +34,7 @@
 
 using namespace arangodb::aql;
 
-QueryOptions::QueryOptions()
+QueryOptions::QueryOptions(QueryRegistryFeature& feature)
     : memoryLimit(0),
       maxNumberOfPlans(0),
       maxWarningCount(10),
@@ -52,9 +52,6 @@ QueryOptions::QueryOptions()
       verboseErrors(false),
       inspectSimplePlans(true) {
   // now set some default values from server configuration options
-  auto& server = application_features::ApplicationServer::server();
-  auto& feature = server.getFeature<QueryRegistryFeature>();
-
   // use global memory limit value
   uint64_t globalLimit = feature.queryMemoryLimit();
   if (globalLimit > 0) {

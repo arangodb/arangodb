@@ -34,6 +34,7 @@ namespace velocypack {
 class Builder;
 class Slice;
 }  // namespace velocypack
+class QueryRegistryFeature;
 
 namespace aql {
 
@@ -51,7 +52,7 @@ enum ProfileLevel : uint32_t {
 };
 
 struct QueryOptions {
-  QueryOptions();
+  QueryOptions(QueryRegistryFeature&);
   TEST_VIRTUAL ~QueryOptions() = default;
 
   void fromVelocyPack(arangodb::velocypack::Slice const&);
