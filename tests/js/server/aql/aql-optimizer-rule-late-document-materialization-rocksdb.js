@@ -140,7 +140,6 @@ function lateDocumentMaterializationRuleTestSuite () {
           // the other sort node should be sorted but not have a materializer
           // d.obj.c node on single and d.obj.b on cluster as for cluster
           // only first sort will be on DBServers (identified by sort ASC)
-          print(nodeDependency)
           isCluster ? assertTrue(nodeDependency.elements[0].ascending) : assertEqual(nodeDependency.limit, 1);
         }
         nodeDependency = node; // as we walk the plan this will be next node dependency
