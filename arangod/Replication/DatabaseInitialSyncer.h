@@ -160,8 +160,6 @@ class DatabaseInitialSyncer final : public InitialSyncer {
   Result getInventory(arangodb::velocypack::Builder& builder);
 
  private:
-  using RevisionTree = containers::MerkleTree<3, 64>;
-
   /// @brief order a new chunk from the /dump API
   void fetchDumpChunk(std::shared_ptr<Syncer::JobSynchronizer> sharedStatus,
                       std::string const& baseUrl, arangodb::LogicalCollection* coll,

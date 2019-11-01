@@ -30,6 +30,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
+#include "Containers/MerkleTree.h"
 #include "Futures/Future.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
@@ -212,6 +213,9 @@ class PhysicalCollection {
   Result newObjectForInsert(transaction::Methods* trx, velocypack::Slice const& value,
                             bool isEdgeCollection, velocypack::Builder& builder,
                             bool isRestore, TRI_voc_rid_t& revisionId) const;
+
+  virtual std::unique_ptr<containers::RevisionTree> revisionTree(std::size_t rangeMin,
+                                                                 std::size_t rangeMax);
 
  protected:
   PhysicalCollection(LogicalCollection& collection, arangodb::velocypack::Slice const& info);

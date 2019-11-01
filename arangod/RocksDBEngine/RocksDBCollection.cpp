@@ -1151,31 +1151,35 @@ Result RocksDBCollection::remove(transaction::Methods& trx, velocypack::Slice sl
   return res;
 }
 
-TRI_voc_rid_t RocksDBCollection::minimumRevision() const {
+std::unique_ptr<containers::RevisionTree> RocksDBCollection::revisionTree(std::size_t rangeMin,
+                                                                          std::size_t rangeMax) {
+  std::size_t constexpr maxDepth = 6;
+  std::unique_ptr<containers::RevisionTree> tree =
+      std::make_unique<containers::RevisionTree>(maxDepth, rangeMin);
+
   rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
-  RocksDBKeyBounds documentBounds = RocksDBKeyBounds::CollectionDocuments(_objectId);
-  rocksdb::Comparator const* cmp = RocksDBColumnFamily::documents()->GetComparator();
+  RocksDBKeyBounds bounds =
+      RocksDBKeyBounds::CollectionDocumentRange(_objectId, rangeMin, rangeMax);
+  rocksdb::ColumnFamilyHandle* cf = bounds.columnFamily();
+  rocksdb::Comparator const* cmp = cf->GetComparator();
+  rocksdb::ReadOptions options;
+  options.verify_checksums = false;
+  options.fill_cache = false;
+  options.prefix_same_as_start = true;
 
-  auto iter = db->NewIterator(rocksdb::ReadOptions(), documentBounds.columnFamily());
-  iter->Seek(documentBounds.start());
-  if (iter->Valid() && cmp->Compare(iter->key(), documentBounds.end()) < 0) {
-    // have at least one doc, extract from here
-    VPackSlice document(reinterpret_cast<uint8_t const*>(iter->value().data()));
-    TRI_ASSERT(document.isObject());
+  std::unique_ptr<rocksdb::Iterator> iter(db->NewIterator(options, cf));
+  while (iter->Valid() && cmp->Compare(iter->key(), bounds.end()) <= 0) {
+    std::size_t rid = RocksDBKey::documentId(iter->key()).id();
+    VPackSlice data = RocksDBValue::data(iter->value());
+    std::size_t hash = data.hashString();
 
-    // To print the WAL we need key and RID
-    VPackSlice key;
-    TRI_voc_rid_t rid = 0;
-    transaction::helpers::extractKeyAndRevFromDocument(document, key, rid);
-    TRI_ASSERT(rid != 0);
+    tree->insert(rid, hash);
 
-    return rid;
+    iter->Next();
   }
 
-  // no documents, just return junk
-  return newRevisionId();
+  return tree;
 }
-
 /// @brief return engine-specific figures
 void RocksDBCollection::figuresSpecific(std::shared_ptr<arangodb::velocypack::Builder>& builder) {
   rocksdb::TransactionDB* db = rocksutils::globalRocksDB();

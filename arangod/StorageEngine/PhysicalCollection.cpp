@@ -528,6 +528,11 @@ Result PhysicalCollection::newObjectForReplace(transaction::Methods*,
   return Result();
 }
 
+std::unique_ptr<containers::RevisionTree> PhysicalCollection::revisionTree(std::size_t rangeMin,
+                                                                           std::size_t rangeMax) {
+  return nullptr;
+}
+
 /// @brief checks the revision of a document
 int PhysicalCollection::checkRevision(transaction::Methods*, TRI_voc_rid_t expected,
                                       TRI_voc_rid_t found) const {

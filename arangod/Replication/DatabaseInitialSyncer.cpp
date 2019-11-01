@@ -1070,7 +1070,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
     return replutils::buildHttpError(response.get(), url, _config.connection);
   }
 
-  std::unique_ptr<RevisionTree> treeMaster = RevisionTree::fromBuffer(
+  std::unique_ptr<containers::RevisionTree> treeMaster = containers::RevisionTree::fromBuffer(
       std::string_view(response->getBody().begin(), response->getBody().length()));
   if (!treeMaster) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
@@ -1079,9 +1079,12 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
                       ": response does not contain a valid revision tree");
   }
 
-  // TODO generate local tree
+  std::pair<std::size_t, std::size_t> range = treeMaster->range();
+  std::unique_ptr<containers::RevisionTree> treeLocal =
+      coll->revisionTree(range.first, range.second);
 
   // TODO get range differences
+  std::vector<std::pair<std::size_t, std::size_t>> ranges = treeMaster->diff(*treeLocal);
 
   // TODO sync chunks of revisions using much of the same logic as in
   // syncChunkRocksDB (RocksDBIncrementalSync.cpp); will need new APIs in

@@ -830,7 +830,7 @@ void RocksDBRestReplicationHandler::handleCommandRevisionTree() {
     tickEnd = static_cast<TRI_voc_tick_t>(StringUtils::uint64(value2));
   }
 
-  std::unique_ptr<RevisionTree> tree = ctx->revisionTree(*logical, tickEnd);
+  std::unique_ptr<containers::RevisionTree> tree = ctx->revisionTree(*logical, tickEnd);
   std::string result = tree->serialize();
 
   resetResponse(rest::ResponseCode::OK);

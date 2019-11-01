@@ -44,8 +44,6 @@ class RocksDBRestReplicationHandler : public RestReplicationHandler {
   }
 
  private:
-  using RevisionTree = containers::MerkleTree<3, 64>;
-
   /// @brief handle a follow command for the replication log
   void handleCommandLoggerFollow() override;
 

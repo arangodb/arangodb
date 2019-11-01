@@ -52,6 +52,12 @@ RocksDBKeyBounds RocksDBKeyBounds::CollectionDocuments(uint64_t collectionObject
   return RocksDBKeyBounds(RocksDBEntryType::Document, collectionObjectId);
 }
 
+RocksDBKeyBounds RocksDBKeyBounds::CollectionDocumentRange(uint64_t collectionObjectId,
+                                                           std::size_t min,
+                                                           std::size_t max) {
+  return RocksDBKeyBounds(RocksDBEntryType::Document, collectionObjectId, min, max);
+}
+
 RocksDBKeyBounds RocksDBKeyBounds::PrimaryIndex(uint64_t indexId) {
   return RocksDBKeyBounds(RocksDBEntryType::PrimaryIndexValue, indexId);
 }
@@ -482,6 +488,17 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
                                    uint64_t second, uint64_t third)
     : _type(type) {
   switch (_type) {
+    case RocksDBEntryType::Document: {
+      // Documents are stored as follows:
+      // Key: 8-byte object ID of collection + 8-byte document revision ID
+      _internals.reserve(4 * sizeof(uint64_t));
+      uint64ToPersistent(_internals.buffer(), first);
+      uint64ToPersistent(_internals.buffer(), second);
+      _internals.separate();
+      uint64ToPersistent(_internals.buffer(), first);
+      uint64ToPersistent(_internals.buffer(), third);
+      break;
+    }
     case RocksDBEntryType::GeoIndexValue: {
       _internals.reserve(sizeof(uint64_t) * 3 * 2);
       uint64ToPersistent(_internals.buffer(), first);

@@ -438,6 +438,11 @@ std::unique_ptr<FollowerInfo> const& LogicalCollection::followers() const {
   return _followers;
 }
 
+std::unique_ptr<containers::RevisionTree> LogicalCollection::revisionTree(std::size_t rangeMin,
+                                                                          std::size_t rangeMax) {
+  return _physical->revisionTree(rangeMin, rangeMax);
+}
+
 IndexEstMap LogicalCollection::clusterIndexEstimates(bool allowUpdating, TRI_voc_tid_t tid) {
   return getPhysical()->clusterIndexEstimates(allowUpdating, tid);
 }

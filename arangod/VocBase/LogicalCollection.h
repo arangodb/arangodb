@@ -28,6 +28,7 @@
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
+#include "Containers/MerkleTree.h"
 #include "Futures/Future.h"
 #include "Indexes/IndexIterator.h"
 #include "Transaction/CountCache.h"
@@ -333,6 +334,9 @@ class LogicalCollection : public LogicalDataSource {
   transaction::CountCache& countCache() { return _countCache; }
 
   std::unique_ptr<FollowerInfo> const& followers() const;
+
+  std::unique_ptr<containers::RevisionTree> revisionTree(std::size_t rangeMin,
+                                                         std::size_t rangeMax);
 
  protected:
   virtual arangodb::Result appendVelocyPack(arangodb::velocypack::Builder& builder,

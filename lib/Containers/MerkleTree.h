@@ -502,6 +502,8 @@ std::ostream& operator<<(std::ostream& stream,
   return stream << tree.toString();
 }
 
+using RevisionTree = MerkleTree<3, 64>;
+
 }  // namespace containers
 }  // namespace arangodb
 

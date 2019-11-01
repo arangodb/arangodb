@@ -132,8 +132,8 @@ class RocksDBCollection final : public RocksDBMetaCollection {
 
   inline bool cacheEnabled() const { return _cacheEnabled; }
 
-  // will only work with collections from v3.7+
-  TRI_voc_rid_t minimumRevision() const;
+  std::unique_ptr<containers::MerkleTree<3, 64>> revisionTree(std::size_t rangeMin,
+                                                              std::size_t rangeMax) override;
 
  private:
   /// @brief return engine-specific figures
