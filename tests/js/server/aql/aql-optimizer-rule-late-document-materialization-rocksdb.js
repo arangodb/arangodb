@@ -54,7 +54,7 @@ function lateDocumentMaterializationRuleTestSuite () {
       for (i = 0; i < numOfCollections; ++i) {
         let type;
         let fields;
-        if (i % 2 == 0) {
+        if (i % 2 === 0) {
           fields = ["obj.a", "obj.b", "obj.c"];
         } else {
           fields = ["tags.hop[*].foo.fo", "tags.hop[*].bar.br", "tags.hop[*].baz.bz"];
@@ -70,7 +70,7 @@ function lateDocumentMaterializationRuleTestSuite () {
       }
 
       for (i = 0; i < numOfCollections; ++i) {
-        if (i % 2 == 0) {
+        if (i % 2 === 0) {
           collections[i].save({ _key: 'c0',  "obj": {"a": "a_val", "b": "b_val", "c": "c_val", "d": "d_val"}});
           collections[i].save({ _key: 'c1',  "obj": {"a": "a_val_1", "b": "b_val_1", "c": "c_val_1", "d": "d_val_1"}});
           collections[i].save({ _key: 'c2',  "obj": {"a": "a_val", "b": "b_val_2", "c": "c_val_2", "d": "d_val_2"}});
@@ -91,7 +91,7 @@ function lateDocumentMaterializationRuleTestSuite () {
     },
     testNotAppliedDueToNoFilter() {
       for (i = 0; i < numOfCollections; ++i) {
-        if (i % 2 == 0) {
+        if (i % 2 === 0) {
           let query = "FOR d IN " + collectionNames[i] + " SORT d.obj.c LIMIT 10 RETURN d";
           let plan = AQL_EXPLAIN(query).plan;
           assertEqual(-1, plan.rules.indexOf(ruleName));
@@ -100,8 +100,8 @@ function lateDocumentMaterializationRuleTestSuite () {
     },
     testNotAppliedDueToSort() {
       for (i = 0; i < numOfCollections; ++i) {
-        if (i % 2 == 0) {
-          let query = "FOR d IN " + collectionNames[i] + " FILTER d.obj.a == 'a_val' SORT d.obj.b LIMIT 10 RETURN d";
+        if (i % 2 === 0) {
+          let query = "FOR d IN " + collectionNames[i] + " FILTER d.obj.a === 'a_val' SORT d.obj.b LIMIT 10 RETURN d";
           let plan = AQL_EXPLAIN(query).plan;
           assertEqual(-1, plan.rules.indexOf(ruleName));
         }
@@ -109,8 +109,8 @@ function lateDocumentMaterializationRuleTestSuite () {
     },
     testNotAppliedDueToNoSort() {
       for (i = 0; i < numOfCollections; ++i) {
-        if (i % 2 == 0) {
-          let query = "FOR d IN " + collectionNames[i] + " FILTER d.obj.a == 'a_val' LIMIT 10 RETURN d";
+        if (i % 2 === 0) {
+          let query = "FOR d IN " + collectionNames[i] + " FILTER d.obj.a === 'a_val' LIMIT 10 RETURN d";
           let plan = AQL_EXPLAIN(query).plan;
           assertEqual(-1, plan.rules.indexOf(ruleName));
         }
@@ -118,8 +118,8 @@ function lateDocumentMaterializationRuleTestSuite () {
     },
     testNotAppliedDueToUsedInInnerSort() {
       for (i = 0; i < numOfCollections; ++i) {
-        if (i % 2 == 0) {
-          let query = "FOR d IN " + collectionNames[i] + " FILTER d.obj.a == 'a_val' SORT d.obj.c ASC SORT d.obj.b LIMIT 10 RETURN d";
+        if (i % 2 === 0) {
+          let query = "FOR d IN " + collectionNames[i] + " FILTER d.obj.a === 'a_val' SORT d.obj.c ASC SORT d.obj.b LIMIT 10 RETURN d";
           let plan = AQL_EXPLAIN(query).plan;
           assertEqual(-1, plan.rules.indexOf(ruleName));
         }
@@ -127,8 +127,8 @@ function lateDocumentMaterializationRuleTestSuite () {
     },
     testNotAppliedDueToNoLimit() {
       for (i = 0; i < numOfCollections; ++i) {
-        if (i % 2 == 0) {
-          let query = "FOR d IN " + collectionNames[i] + " FILTER d.obj.a == 'a_val' SORT d.obj.c RETURN d";
+        if (i % 2 === 0) {
+          let query = "FOR d IN " + collectionNames[i] + " FILTER d.obj.a === 'a_val' SORT d.obj.c RETURN d";
           let plan = AQL_EXPLAIN(query).plan;
           assertEqual(-1, plan.rules.indexOf(ruleName));
         }
@@ -136,8 +136,8 @@ function lateDocumentMaterializationRuleTestSuite () {
     },
     testNotAppliedDueToLimitOnWrongNode() {
       for (i = 0; i < numOfCollections; ++i) {
-        if (i % 2 == 0) {
-          let query = "FOR d IN " + collectionNames[i] + " FILTER d.obj.a == 'a_val' " +
+        if (i % 2 === 0) {
+          let query = "FOR d IN " + collectionNames[i] + " FILTER d.obj.a === 'a_val' " +
                       "SORT d.obj.c LET c = CHAR_LENGTH(d.obj.d) * 2 SORT CONCAT(d.obj.c, c) LIMIT 10 RETURN { doc: d, sc: c}";
           let plan = AQL_EXPLAIN(query).plan;
           assertEqual(-1, plan.rules.indexOf(ruleName));
@@ -146,8 +146,8 @@ function lateDocumentMaterializationRuleTestSuite () {
     },
     testNotAppliedDueToNoReferences() {
       for (i = 0; i < numOfCollections; ++i) {
-        if (i % 2 == 0) {
-          let query = "FOR d IN " + collectionNames[i] + " FILTER d.obj.a == 'a_val' SORT RAND() LIMIT 10 RETURN d";
+        if (i % 2 === 0) {
+          let query = "FOR d IN " + collectionNames[i] + " FILTER d.obj.a === 'a_val' SORT RAND() LIMIT 10 RETURN d";
           let plan = AQL_EXPLAIN(query).plan;
           assertEqual(-1, plan.rules.indexOf(ruleName));
         }
@@ -155,8 +155,8 @@ function lateDocumentMaterializationRuleTestSuite () {
     },
     testQueryResultsWithCalculation() {
       for (i = 0; i < numOfCollections; ++i) {
-        if (i % 2 == 0) {
-          let query = "FOR d IN " + collectionNames[i] + " FILTER d.obj.a == 'a_val' LET c = CONCAT(d.obj.b, RAND()) SORT c LIMIT 10 RETURN d";
+        if (i % 2 === 0) {
+          let query = "FOR d IN " + collectionNames[i] + " FILTER d.obj.a === 'a_val' LET c = CONCAT(d.obj.b, RAND()) SORT c LIMIT 10 RETURN d";
           let plan = AQL_EXPLAIN(query).plan;
           assertNotEqual(-1, plan.rules.indexOf(ruleName));
           let result = AQL_EXECUTE(query);
@@ -172,8 +172,8 @@ function lateDocumentMaterializationRuleTestSuite () {
     },
     testQueryResultsWithAfterSort() {
       for (i = 0; i < numOfCollections; ++i) {
-        if (i % 2 == 0) {
-          let query = "FOR d IN " + collectionNames[i] + " FILTER d.obj.a == 'a_val' SORT d.obj.c LIMIT 10 SORT NOOPT(d.obj.a) ASC RETURN d";
+        if (i % 2 === 0) {
+          let query = "FOR d IN " + collectionNames[i] + " FILTER d.obj.a === 'a_val' SORT d.obj.c LIMIT 10 SORT NOOPT(d.obj.a) ASC RETURN d";
           let plan = AQL_EXPLAIN(query).plan;
           assertNotEqual(-1, plan.rules.indexOf(ruleName));
           let result = AQL_EXECUTE(query);
@@ -190,8 +190,8 @@ function lateDocumentMaterializationRuleTestSuite () {
     },
     testQueryResultsWithMultipleSort() {
       for (i = 0; i < numOfCollections; ++i) {
-        if (i % 2 == 0) {
-          let query = "FOR d IN " + collectionNames[i] + " FILTER d.obj.a == 'a_val' " +
+        if (i % 2 === 0) {
+          let query = "FOR d IN " + collectionNames[i] + " FILTER d.obj.a === 'a_val' " +
                       "SORT d.obj.c LIMIT 2 SORT d.obj.b DESC LIMIT 1 RETURN d";
           let plan = AQL_EXPLAIN(query).plan;
           assertNotEqual(-1, plan.rules.indexOf(ruleName));
@@ -224,8 +224,8 @@ function lateDocumentMaterializationRuleTestSuite () {
     },
     testQueryResultsWithAfterCalc() {
       for (i = 0; i < numOfCollections; ++i) {
-        if (i % 2 == 0) {
-          let query = "FOR d IN " + collectionNames[i] + " FILTER d.obj.a == 'a_val' SORT d.obj.c LIMIT 10 LET c = CONCAT(NOOPT(d._key), '-C') RETURN c";
+        if (i % 2 === 0) {
+          let query = "FOR d IN " + collectionNames[i] + " FILTER d.obj.a === 'a_val' SORT d.obj.c LIMIT 10 LET c = CONCAT(NOOPT(d._key), '-C') RETURN c";
           let plan = AQL_EXPLAIN(query).plan;
           assertNotEqual(-1, plan.rules.indexOf(ruleName));
           let result = AQL_EXECUTE(query);
@@ -241,8 +241,8 @@ function lateDocumentMaterializationRuleTestSuite () {
     },
     testQueryResultsSkipSome() {
       for (i = 0; i < numOfCollections; ++i) {
-        if (i % 2 == 0) {
-          let query = "FOR d IN " + collectionNames[i] + " FILTER d.obj.a == 'a_val' SORT d.obj.c DESC LIMIT 1, 1 RETURN d";
+        if (i % 2 === 0) {
+          let query = "FOR d IN " + collectionNames[i] + " FILTER d.obj.a === 'a_val' SORT d.obj.c DESC LIMIT 1, 1 RETURN d";
           let plan = AQL_EXPLAIN(query).plan;
           assertNotEqual(-1, plan.rules.indexOf(ruleName));
           let result = AQL_EXECUTE(query);
@@ -253,8 +253,8 @@ function lateDocumentMaterializationRuleTestSuite () {
     },
     testQueryResultsSkipAll() {
       for (i = 0; i < numOfCollections; ++i) {
-        if (i % 2 == 0) {
-          let query = "FOR d IN " + collectionNames[i] + " FILTER d.obj.a == 'a_val' SORT d.obj.c LIMIT 5, 10 RETURN d";
+        if (i % 2 === 0) {
+          let query = "FOR d IN " + collectionNames[i] + " FILTER d.obj.a === 'a_val' SORT d.obj.c LIMIT 5, 10 RETURN d";
           let plan = AQL_EXPLAIN(query).plan;
           assertNotEqual(-1, plan.rules.indexOf(ruleName));
           let result = AQL_EXECUTE(query);
@@ -264,8 +264,8 @@ function lateDocumentMaterializationRuleTestSuite () {
     },
     testQueryResultsInSubquery() {
       for (i = 0; i < numOfCollections; ++i) {
-        if (i % 2 == 0) {
-          let query = "FOR c IN " + collectionNames[i] + " FILTER c.obj.a == 'a_val_1' " +
+        if (i % 2 === 0) {
+          let query = "FOR c IN " + collectionNames[i] + " FILTER c.obj.a === 'a_val_1' " +
                       "FOR d IN " + collectionNames[i + 1] + " FILTER c.obj.a IN d.tags.hop[*].foo.fo SORT d.tags.hop[*].baz.bz LIMIT 10 RETURN d";
           let plan = AQL_EXPLAIN(query).plan;
           assertNotEqual(-1, plan.rules.indexOf(ruleName));
@@ -282,8 +282,8 @@ function lateDocumentMaterializationRuleTestSuite () {
     },
     testQueryResultsInOuterSubquery() {
       for (i = 0; i < numOfCollections; ++i) {
-        if (i % 2 == 0) {
-          let query = "FOR c IN " + collectionNames[i] + " FILTER c.obj.a == 'a_val_1' SORT c.obj.c LIMIT 10 " +
+        if (i % 2 === 0) {
+          let query = "FOR c IN " + collectionNames[i] + " FILTER c.obj.a === 'a_val_1' SORT c.obj.c LIMIT 10 " +
                       "FOR d IN " + collectionNames[i + 1] + " FILTER c.obj.a IN d.tags.hop[*].foo.fo RETURN d";
           let plan = AQL_EXPLAIN(query).plan;
           assertNotEqual(-1, plan.rules.indexOf(ruleName));
@@ -300,8 +300,8 @@ function lateDocumentMaterializationRuleTestSuite () {
     },
     testQueryResultsMultipleLimits() {
       for (i = 0; i < numOfCollections; ++i) {
-        if (i % 2 == 0) {
-          let query = "FOR d IN " + collectionNames[i] + " FILTER d.obj.a == 'a_val' SORT d.obj.c " +
+        if (i % 2 === 0) {
+          let query = "FOR d IN " + collectionNames[i] + " FILTER d.obj.a === 'a_val' SORT d.obj.c " +
                       "LIMIT 1, 5 SORT d.obj.b LIMIT 1, 3 SORT NOOPT(d.obj.d) DESC " +
                       "LIMIT 1, 1 RETURN d";
           let plan = AQL_EXPLAIN(query).plan;
@@ -327,11 +327,11 @@ function lateDocumentMaterializationRuleTestSuite () {
     },
     testQueryResultsMultipleLimits2() {
       for (i = 0; i < numOfCollections; ++i) {
-        if (i % 2 == 0) {
+        if (i % 2 === 0) {
           // almost the same as testQueryResultsMultipleLimits but without last sort - this
           // will not create addition variable for sort
           // value but it should not affect results especially on cluster!
-          let query = "FOR d IN " + collectionNames[i] + " FILTER d.obj.a == 'a_val' SORT d.obj.c " +
+          let query = "FOR d IN " + collectionNames[i] + " FILTER d.obj.a === 'a_val' SORT d.obj.c " +
                       "LIMIT 1, 5 SORT d.obj.b DESC LIMIT 1, 3 " +
                       "RETURN d";
           let plan = AQL_EXPLAIN(query).plan;
