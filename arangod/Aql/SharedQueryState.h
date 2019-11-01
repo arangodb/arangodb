@@ -79,6 +79,8 @@ class SharedQueryState final : public std::enable_shared_from_this<SharedQuerySt
   /// @brief setter for the continue handler:
   ///        We can either have a handler or a callback
   void setWakeupHandler(std::function<bool()> const& cb);
+  
+  void resetWakeupHandler();
 
  private:
   /// execute the _continueCallback. must hold _mutex

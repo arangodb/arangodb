@@ -42,6 +42,7 @@ void SharedQueryState::invalidate() {
 /// this has to stay for a backwards-compatible AQL HTTP API (hasMore).
 void SharedQueryState::waitForAsyncWakeup() {
   std::unique_lock<std::mutex> guard(_mutex);
+  TRI_ASSERT(!_wakeupCb);
   _cv.wait(guard, [&] { return _numWakeups > 0; });
   TRI_ASSERT(_numWakeups > 0);
   _numWakeups--;
@@ -52,6 +53,11 @@ void SharedQueryState::waitForAsyncWakeup() {
 void SharedQueryState::setWakeupHandler(std::function<bool()> const& cb) {
   std::lock_guard<std::mutex> guard(_mutex);
   _wakeupCb = cb;
+}
+
+void SharedQueryState::resetWakeupHandler() {
+  std::lock_guard<std::mutex> guard(_mutex);
+  _wakeupCb = nullptr;
 }
 
 /// execute the _continueCallback. must hold _mutex,

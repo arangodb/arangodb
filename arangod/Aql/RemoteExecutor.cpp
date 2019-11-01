@@ -491,17 +491,22 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(fuerte::RestVerb typ
                      sqs = _query.sharedState()](fuerte::Error err,
                                                  std::unique_ptr<fuerte::Request> req,
                                                  std::unique_ptr<fuerte::Response> res) {
+                      LOG_DEVEL << "received " << fuerte::to_string(req->header.restVerb) << " " << req->header.path;
+
                       // `this` is only valid as long as sharedState is valid.
                       // So we must execute this under sharedState's mutex.
                       sqs->executeAndWakeup([&] {
                         std::lock_guard<std::mutex> guard(_communicationMutex);
                         if (_lastTicket == ticket) {
                           _requestInFlight.store(false, std::memory_order_release);
+                          LOG_DEVEL << "handling " << fuerte::to_string(req->header.restVerb) << " " << req->header.path;
                           if (err != fuerte::Error::NoError || res->statusCode() >= 400) {
                             _lastError = handleErrorResponse(spec, err, res.get());
                           } else {
                             _lastResponse = std::move(res);
                           }
+                        } else {
+                          LOG_DEVEL << "skipping " << fuerte::to_string(req->header.restVerb) << " " << req->header.path;
                         }
                       });
                     });

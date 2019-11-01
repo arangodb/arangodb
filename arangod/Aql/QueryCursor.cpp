@@ -275,6 +275,7 @@ Result QueryStreamCursor::dumpSync(VPackBuilder& builder) {
       << _query->queryString().extract(1024) << "'";
 
   std::shared_ptr<SharedQueryState> ss = _query->sharedState();
+  ss->resetWakeupHandler();
 
   try {
     aql::ExecutionEngine* engine = _query->engine();
@@ -373,6 +374,7 @@ Result QueryStreamCursor::writeResult(VPackBuilder& builder) {
 
     if (!hasMore) {
       std::shared_ptr<SharedQueryState> ss = _query->sharedState();
+      ss->resetWakeupHandler();
 
       // cleanup before transaction is committet
       cleanupStateCallback();

@@ -132,7 +132,7 @@ StatisticsFeature* StatisticsFeature::STATISTICS = nullptr;
 
 StatisticsFeature::StatisticsFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Statistics"),
-      _statistics(false),
+      _statistics(true),
       _descriptions(new stats::Descriptions()) {
   setOptional(true);
   startsAfter<AqlFeaturePhase>();

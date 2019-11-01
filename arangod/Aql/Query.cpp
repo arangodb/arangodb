@@ -774,7 +774,8 @@ ExecutionState Query::execute(QueryRegistry* registry, QueryResult& queryResult)
  */
 QueryResult Query::executeSync(QueryRegistry* registry) {
   std::shared_ptr<SharedQueryState> ss = sharedState();
-
+  ss->resetWakeupHandler();
+  
   QueryResult queryResult;
   while (true) {
     auto state = execute(registry, queryResult);
@@ -865,6 +866,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
     
     try {
       std::shared_ptr<SharedQueryState> ss = sharedState();
+      ss->resetWakeupHandler();
 
       // iterate over result, return it and optionally store it in query cache
       builder->openArray();
@@ -943,6 +945,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
       );
     }
 
+    ss->resetWakeupHandler();
     // will set warnings, stats, profile and cleanup plan and engine
     ExecutionState state = finalize(queryResult);
     while (state == ExecutionState::WAITING) {
@@ -1406,6 +1409,7 @@ void Query::enterState(QueryExecutionState::ValueType state) {
 void Query::cleanupPlanAndEngineSync(int errorCode, VPackBuilder* statsBuilder) noexcept {
   try {
     std::shared_ptr<SharedQueryState> ss = sharedState();
+    ss->resetWakeupHandler();
 
     ExecutionState state = cleanupPlanAndEngine(errorCode, statsBuilder);
     while (state == ExecutionState::WAITING) {
