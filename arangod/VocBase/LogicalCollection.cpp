@@ -179,7 +179,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
 
   // add keyOptions from slice
   VPackSlice keyOpts = info.get("keyOptions");
-  _keyGenerator.reset(KeyGenerator::factory(keyOpts));
+  _keyGenerator.reset(KeyGenerator::factory(vocbase.server(), keyOpts));
   if (!keyOpts.isNone()) {
     _keyOptions = VPackBuilder::clone(keyOpts).steal();
   }
