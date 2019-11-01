@@ -36,6 +36,7 @@ function lateDocumentMaterializationRuleTestSuite () {
   const ruleName = "late-document-materialization";
   const numOfCollections = 4;
   let collectionNames = [];
+  var i;
   for (i = 0; i < numOfCollections; ++i) {
     collectionNames.push("UnitTestsCollection" + i);
   }
