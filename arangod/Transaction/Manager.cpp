@@ -368,7 +368,10 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
   if (_disallowInserts.load(std::memory_order_acquire)) {
     return res.reset(TRI_ERROR_SHUTTING_DOWN);
   }
-
+  
+  LOG_TOPIC("7bd2d", DEBUG, Logger::TRANSACTIONS)
+    << "managed trx creating: '" << tid << "'";
+  
   const size_t bucket = getBucket(tid);
 
   {  // quick check whether ID exists
@@ -893,8 +896,10 @@ void Manager::toVelocyPack(VPackBuilder& builder, std::string const& database,
     auto auth = AuthenticationFeature::instance();
 
     network::RequestOptions options;
+    options.database = database;
     options.timeout = network::Timeout(30.0);
-
+    options.param("local", "true");
+    
     VPackBuffer<uint8_t> body;
 
     for (auto const& coordinator : ci.getCurrentCoordinators()) {
@@ -921,9 +926,7 @@ void Manager::toVelocyPack(VPackBuilder& builder, std::string const& database,
       }
 
       auto f = network::sendRequest(pool, "server:" + coordinator, fuerte::RestVerb::Get,
-                                    "/_db/" + database +
-                                        "/_api/transaction?local=true",
-                                    body, std::move(headers), options);
+                                    "/_api/transaction", body, options, std::move(headers));
       futures.emplace_back(std::move(f));
     }
 
@@ -1026,7 +1029,7 @@ Result Manager::abortAllManagedWriteTrx(std::string const& username, bool fanout
 
       auto f = network::sendRequest(pool, "server:" + coordinator, fuerte::RestVerb::Delete,
                                     "/_db/_system/_api/transaction/write?local=true",
-                                    body, std::move(headers), options);
+                                    body, options, std::move(headers));
       futures.emplace_back(std::move(f));
     }
 

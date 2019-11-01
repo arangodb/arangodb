@@ -877,7 +877,7 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice const& slice,
 }
 
 /// @brief return the figures for a collection
-futures::Future<std::shared_ptr<arangodb::velocypack::Builder>> LogicalCollection::figures() const {
+futures::Future<OperationResult> LogicalCollection::figures() const {
   return getPhysical()->figures();
 }
 

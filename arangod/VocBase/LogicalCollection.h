@@ -31,6 +31,7 @@
 #include "Futures/Future.h"
 #include "Indexes/IndexIterator.h"
 #include "Transaction/CountCache.h"
+#include "Utils/OperationResult.h"
 #include "VocBase/LogicalDataSource.h"
 #include "VocBase/voc-types.h"
 
@@ -240,7 +241,7 @@ class LogicalCollection : public LogicalDataSource {
   virtual arangodb::Result properties(velocypack::Slice const& slice, bool partialUpdate) override;
 
   /// @brief return the figures for a collection
-  virtual futures::Future<std::shared_ptr<velocypack::Builder>> figures() const;
+  virtual futures::Future<OperationResult> figures() const;
 
   /// @brief opens an existing collection
   void open(bool ignoreErrors);

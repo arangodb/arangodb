@@ -158,36 +158,37 @@ void ClusterTraverser::destroyEngines() {
   // We have to clean up the engines in Coordinator Case.
   NetworkFeature const& nf = _trx->vocbase().server().getFeature<NetworkFeature>();
   network::ConnectionPool* pool = nf.pool();
-  if (pool != nullptr) {
-    // nullptr only happens on controlled server shutdown
-    std::string const url(
-        "/_db/" + arangodb::basics::StringUtils::urlEncode(_trx->vocbase().name()) +
-        "/_internal/traverser/");
+  if (pool == nullptr) {
+    return;
+  }
+  // nullptr only happens on controlled server shutdown
 
-    if (_enumerator != nullptr) {
-      _enumerator->incHttpRequests(_engines->size());
-    }
+  if (_enumerator != nullptr) {
+    _enumerator->incHttpRequests(_engines->size());
+  }
 
-    VPackBuffer<uint8_t> body;
-    network::Headers headers;
-    network::RequestOptions options;
-    options.timeout = network::Timeout(30.0);
+  VPackBuffer<uint8_t> body;
+  
+  network::RequestOptions options;
+  options.database = _trx->vocbase().name();
+  options.timeout = network::Timeout(30.0);
+  options.skipScheduler = true; // hack to speed up future.get()
 
-    for (auto const& it : *_engines) {
-      auto res =
-          network::sendRequest(pool, "server:" + it.first, fuerte::RestVerb::Delete,
-                               url + arangodb::basics::StringUtils::itoa(it.second),
-                               body, headers, options);
-      res.wait();
+  // TODO: use collectAll to parallelize shutdown ?
+  for (auto const& it : *_engines) {
+    auto res =
+        network::sendRequest(pool, "server:" + it.first, fuerte::RestVerb::Delete,
+                             "/_internal/traverser/" + arangodb::basics::StringUtils::itoa(it.second),
+                             body, options);
+    res.wait();
 
-      if (!res.hasValue() || res.get().fail()) {
-        // Note If there was an error on server side we do not have ok()
-        std::string message("Could not destroy all traversal engines");
-        if (res.hasValue()) {
-          message += ": " + network::fuerteToArangoErrorMessage(res.get());
-        }
-        LOG_TOPIC("8a7a0", ERR, arangodb::Logger::FIXME) << message;
+    if (!res.hasValue() || res.get().fail()) {
+      // Note If there was an error on server side we do not have ok()
+      std::string message("Could not destroy all traversal engines");
+      if (res.hasValue()) {
+        message += ": " + network::fuerteToArangoErrorMessage(res.get());
       }
+      LOG_TOPIC("8a7a0", ERR, arangodb::Logger::FIXME) << message;
     }
   }
 }

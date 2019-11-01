@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertFalse, assertTrue, assertNotEqual, AQL_EXPLAIN, AQL_EXECUTE */
+/*global AQL_EXPLAIN, AQL_EXECUTE */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for optimizer rules
@@ -28,15 +28,17 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var internal = require("internal");
-var db = internal.db;
-var jsunity = require("jsunity");
-var helper = require("@arangodb/aql-helper");
-var isEqual = helper.isEqual;
-var findExecutionNodes = helper.findExecutionNodes;
-var findReferencedNodes = helper.findReferencedNodes;
-var getQueryMultiplePlansAndExecutions = helper.getQueryMultiplePlansAndExecutions;
-var removeAlwaysOnClusterRules = helper.removeAlwaysOnClusterRules;
+const internal = require("internal");
+const db = internal.db;
+const jsunity = require("jsunity");
+const assert = require("jsunity").jsUnity.assertions;
+const {assertEqual, assertFalse, assertTrue, assertNotEqual} = assert;
+const helper = require("@arangodb/aql-helper");
+const isEqual = helper.isEqual;
+const findExecutionNodes = helper.findExecutionNodes;
+const findReferencedNodes = helper.findReferencedNodes;
+const getQueryMultiplePlansAndExecutions = helper.getQueryMultiplePlansAndExecutions;
+const removeAlwaysOnClusterRules = helper.removeAlwaysOnClusterRules;
   
 const ruleName = "use-index-for-sort";
 
@@ -1051,41 +1053,103 @@ function optimizerRuleTestSuite() {
     },
     
     testSortAscWithFilterSubquery : function () {
-      var query = "FOR i IN [123] RETURN (FOR v IN " + colName + " FILTER v.a == i SORT v.b ASC RETURN v)";
-      var rules = AQL_EXPLAIN(query).plan.rules;
+      const query = `FOR i IN [123] RETURN (FOR v IN ${colName} FILTER v.a == i SORT v.b ASC RETURN v)`;
+      const plan = AQL_EXPLAIN(query, {}, {optimizer: {rules: ['-splice-subqueries']}}).plan;
+      const rules = plan.rules;
       assertNotEqual(-1, rules.indexOf(ruleName));
       assertNotEqual(-1, rules.indexOf(secondRuleName));
       assertNotEqual(-1, rules.indexOf("remove-filter-covered-by-index"));
+      assertEqual(-1, rules.indexOf("splice-subqueries"));
 
-      var nodes = helper.findExecutionNodes(AQL_EXPLAIN(query).plan, "SubqueryNode")[0].subquery.nodes;
-      var seen = false;
-      nodes.forEach(function(node) {
-        assertNotEqual("SortNode", node.type);
-        if (node.type === "IndexNode") {
-          seen = true;
-          assertFalse(node.reverse); 
+      const nodes = helper.findExecutionNodes(plan, "SubqueryNode")[0].subquery.nodes;
+      // We expect no SortNode...
+      assertFalse(nodes.some(node => node.type === 'SortNode'));
+      const indexNodes = nodes.filter(node => node.type === 'IndexNode');
+      // ...and one IndexNode...
+      assertEqual(1, indexNodes.length);
+      // ...which is not reversed.
+      assertFalse(indexNodes[0].reverse);
+    },
+
+    testSortAscWithFilterSplicedSubquery : function () {
+      const query = `FOR i IN [123] RETURN (FOR v IN ${colName} FILTER v.a == i SORT v.b ASC RETURN v)`;
+      const plan = AQL_EXPLAIN(query, {}, {optimizer: {rules: ['+splice-subqueries']}}).plan;
+      const rules = plan.rules;
+      { // TODO Remove this block as soon as subquery splicing is enabled in the cluster again.
+        //  It's here so the test will fail as soon as that happens, so the actual test will not be forgotten
+        //  to be re-enabled.
+        const isCluster = require("@arangodb/cluster").isCluster();
+        if (isCluster) {
+          assertEqual(-1, rules.indexOf("splice-subqueries"));
+          return;
         }
-      });
-      assertTrue(seen);
+      }
+      assertNotEqual(-1, rules.indexOf(ruleName));
+      assertNotEqual(-1, rules.indexOf(secondRuleName));
+      assertNotEqual(-1, rules.indexOf("remove-filter-covered-by-index"));
+      assertNotEqual(-1, rules.indexOf("splice-subqueries"));
+
+      const subqueryStartIdx = plan.nodes.findIndex(node => node.type === 'SubqueryStartNode');
+      const subqueryEndIdx = plan.nodes.findIndex(node => node.type === 'SubqueryEndNode');
+
+      const nodes = plan.nodes.slice(subqueryStartIdx+1, subqueryEndIdx);
+      // We expect no SortNode...
+      assertFalse(nodes.some(node => node.type === 'SortNode'));
+      const indexNodes = nodes.filter(node => node.type === 'IndexNode');
+      // ...and one IndexNode...
+      assertEqual(1, indexNodes.length);
+      // ...which is not reversed.
+      assertFalse(indexNodes[0].reverse);
     },
     
     testSortDescWithFilterSubquery : function () {
-      var query = "FOR i IN [123] RETURN (FOR v IN " + colName + " FILTER v.a == i SORT v.b DESC RETURN v)";
-      var rules = AQL_EXPLAIN(query).plan.rules;
+      const query = `FOR i IN [123] RETURN (FOR v IN ${colName} FILTER v.a == i SORT v.b DESC RETURN v)`;
+      const plan = AQL_EXPLAIN(query, {}, {optimizer: {rules: ['-splice-subqueries']}}).plan;
+      const rules = plan.rules;
       assertNotEqual(-1, rules.indexOf(ruleName));
       assertNotEqual(-1, rules.indexOf(secondRuleName));
       assertNotEqual(-1, rules.indexOf("remove-filter-covered-by-index"));
+      assertEqual(-1, rules.indexOf("splice-subqueries"));
 
-      var nodes = helper.findExecutionNodes(AQL_EXPLAIN(query).plan, "SubqueryNode")[0].subquery.nodes;
-      var seen = false;
-      nodes.forEach(function(node) {
-        assertNotEqual("SortNode", node.type);
-        if (node.type === "IndexNode") {
-          seen = true;
-          assertTrue(node.reverse); 
+      const nodes = helper.findExecutionNodes(plan, "SubqueryNode")[0].subquery.nodes;
+      // We expect no SortNode...
+      assertFalse(nodes.some(node => node.type === 'SortNode'));
+      const indexNodes = nodes.filter(node => node.type === 'IndexNode');
+      // ...and one IndexNode...
+      assertTrue(indexNodes.length === 1);
+      // ...which is reversed.
+      assertTrue(indexNodes[0].reverse);
+    },
+
+    testSortDescWithFilterSplicedSubquery : function () {
+      const query = `FOR i IN [123] RETURN (FOR v IN ${colName} FILTER v.a == i SORT v.b DESC RETURN v)`;
+      const plan = AQL_EXPLAIN(query, {}, {optimizer: {rules: ['+splice-subqueries']}}).plan;
+      const rules = plan.rules;
+      { // TODO Remove this block as soon as subquery splicing is enabled in the cluster again.
+        //  It's here so the test will fail as soon as that happens, so the actual test will not be forgotten
+        //  to be re-enabled.
+        const isCluster = require("@arangodb/cluster").isCluster();
+        if (isCluster) {
+          assertEqual(-1, rules.indexOf("splice-subqueries"));
+          return;
         }
-      });
-      assertTrue(seen);
+      }
+      assertNotEqual(-1, rules.indexOf(ruleName));
+      assertNotEqual(-1, rules.indexOf(secondRuleName));
+      assertNotEqual(-1, rules.indexOf("remove-filter-covered-by-index"));
+      assertNotEqual(-1, rules.indexOf("splice-subqueries"));
+
+      const subqueryStartIdx = plan.nodes.findIndex(node => node.type === 'SubqueryStartNode');
+      const subqueryEndIdx = plan.nodes.findIndex(node => node.type === 'SubqueryEndNode');
+
+      const nodes = plan.nodes.slice(subqueryStartIdx+1, subqueryEndIdx);
+      // We expect no SortNode...
+      assertFalse(nodes.some(node => node.type === 'SortNode'));
+      const indexNodes = nodes.filter(node => node.type === 'IndexNode');
+      // ...and one IndexNode...
+      assertTrue(indexNodes.length === 1);
+      // ...which is reversed.
+      assertTrue(indexNodes[0].reverse);
     },
 
     testSortDescWithFilterNonConst : function () {
