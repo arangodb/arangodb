@@ -66,7 +66,7 @@ describe('Foxx service', () => {
       FOR queue IN _queues
       RETURN queue
     `).toArray();
-    const res = download(`${orgin}/${mount}`, '', {
+    const res = download(`${origin}/${mount}`, '', {
       method: 'post'
     });
     expect(res.code).to.equal(204);
