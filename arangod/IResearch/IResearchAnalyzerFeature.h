@@ -312,13 +312,19 @@ class IResearchAnalyzerFeature final : public arangodb::application_features::Ap
   //////////////////////////////////////////////////////////////////////////////
   /// @brief load the analyzers for the specific database, analyzers read from
   ///        the corresponding collection if they have not been loaded yet
-  /// @param database the database to load analizers for (nullptr == all)
+  /// @param database the database to load analizers for
   /// @note on coordinator and db-server reload is also done if the database has
   ///       not been reloaded in 'timeout' seconds
   //////////////////////////////////////////////////////////////////////////////
-  arangodb::Result loadAnalyzers( // load analyzers
-      irs::string_ref const& database = irs::string_ref::NIL // database to load
-  );
+  arangodb::Result loadAnalyzers(irs::string_ref const& database);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief load the analyzers for all databases, analyzers read from
+  ///        the corresponding collection if they have not been loaded yet
+  /// @note on coordinator and db-server reload is also done if the database has
+  ///       not been reloaded in 'timeout' seconds
+  //////////////////////////////////////////////////////////////////////////////
+  arangodb::Result loadAnalyzers();
 
   ////////////////////////////////////////////////////////////////////////////////
   /// removes analyzers for database from feature cache
