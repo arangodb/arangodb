@@ -59,7 +59,7 @@ void IResearchAnalyzerCollectionFeature::start() {
       if (res.first.ok()) {
         LOG_TOPIC("c2e33", DEBUG, arangodb::iresearch::TOPIC) << "successfully created '_analyzers' collection in database '" << vocbase.name() << "'";
       } else if (res.first.fail() && !res.first.is(TRI_ERROR_ARANGO_CONFLICT)) {
-        LOG_TOPIC("ecc23", WARN, arangodb::iresearch::TOPIC) << "unable to create '_analyzers' collection: " << res.first.errorMessage();
+      LOG_TOPIC("ecc23", WARN, arangodb::iresearch::TOPIC) << "unable to create '" << StaticStrings::AnalyzersCollection << "' collection: " << res.first.errorMessage();
         // don't abort startup here. the next startup may fix this
       }
     }
