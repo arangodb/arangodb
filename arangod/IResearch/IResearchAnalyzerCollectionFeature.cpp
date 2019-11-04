@@ -21,6 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ApplicationServerHelper.h"
+#include "Basics/StaticStrings.h"
 #include "Cluster/ServerState.h"
 #include "IResearch/IResearchAnalyzerCollectionFeature.h"
 #include "IResearch/IResearchCommon.h"
