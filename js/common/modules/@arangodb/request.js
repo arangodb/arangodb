@@ -208,7 +208,6 @@ function request (req) {
 module.exports = request;
 request.request = request;
 request.Response = IncomingResponse;
-module.exports.querystringify = querystringify;
 
 for (const method of ['DELETE', 'GET', 'HEAD', 'PATCH', 'POST', 'PUT']) {
   request[method.toLowerCase()] = function (url, options) {
