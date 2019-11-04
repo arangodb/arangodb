@@ -52,6 +52,7 @@ add_library(${LIB_ARANGO_IRESEARCH}
   IResearch/ApplicationServerHelper.h IResearch/ApplicationServerHelper.cpp
   IResearch/Containers.cpp IResearch/Containers.h
   IResearch/IResearchAnalyzerFeature.cpp IResearch/IResearchAnalyzerFeature.h
+  IResearch/IResearchAnalyzerCollectionFeature.cpp
   IResearch/IResearchCommon.cpp IResearch/IResearchCommon.h
   IResearch/IResearchKludge.cpp IResearch/IResearchKludge.h
   IResearch/IResearchLink.cpp IResearch/IResearchLink.h
