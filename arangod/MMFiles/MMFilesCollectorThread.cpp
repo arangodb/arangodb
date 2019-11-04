@@ -665,6 +665,7 @@ void MMFilesCollectorThread::processCollectionMarker(
               wasAdjusted = physical->updateLocalDocumentIdConditional(
                   element.localDocumentId(), walMarker, newPosition, fid, false);
             }
+            return true;
           });
     }
 
@@ -703,6 +704,7 @@ void MMFilesCollectorThread::processCollectionMarker(
               dfi.numberDead++;
               dfi.sizeDead += encoding::alignedSize<int64_t>(datafileMarkerSize);
             }
+            return true;
           });
     }
   }

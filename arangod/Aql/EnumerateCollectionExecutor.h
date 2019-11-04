@@ -129,8 +129,6 @@ class EnumerateCollectionExecutor {
   std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
   std::tuple<ExecutionState, EnumerateCollectionStats, size_t> skipRows(size_t atMost);
 
-  void setProducingFunction(DocumentProducingFunction const& documentProducer);
-
   void initializeCursor();
 
  private:
@@ -145,7 +143,8 @@ class EnumerateCollectionExecutor {
  private:
   Infos& _infos;
   Fetcher& _fetcher;
-  DocumentProducingFunction _documentProducer;
+  IndexIterator::DocumentCallback _documentProducer;
+  IndexIterator::DocumentCallback _documentSkipper;
   DocumentProducingFunctionContext _documentProducingFunctionContext;
   ExecutionState _state;
   bool _cursorHasMore;

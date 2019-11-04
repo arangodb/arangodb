@@ -402,7 +402,7 @@ void ClusterFeature::prepare() {
   network::ConnectionPool::Config config;
   config.numIOThreads = 2u;
   config.maxOpenConnections = 2;
-  config.connectionTtlMilli = 1000;
+  config.idleConnectionMilli = 1000;
   config.verifyHosts = false;
   config.clusterInfo = &clusterInfo();
 

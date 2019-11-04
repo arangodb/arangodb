@@ -848,7 +848,9 @@ RestStatus RestAdminClusterHandler::handleProxyGetRequest(std::string const& url
 
   auto* pool = server().getFeature<NetworkFeature>().pool();
 
-  auto frequest = network::sendRequestRetry(pool, "server:" + serverId, fuerte::RestVerb::Get, url, VPackBuffer<uint8_t>(), 10s);
+  network::RequestOptions opt;
+  opt.timeout = 10s;
+  auto frequest = network::sendRequestRetry(pool, "server:" + serverId, fuerte::RestVerb::Get, url, VPackBuffer<uint8_t>(), opt);
   auto self(shared_from_this());
   return waitForFuture(std::move(frequest).thenValue([this, self](network::Response &&result) {
     if (result.ok()) {
@@ -1315,7 +1317,7 @@ RestStatus RestAdminClusterHandler::handleHealth() {
         std::string memberName = member.key.copyString();
 
         auto future = network::sendRequest(pool, endpoint,
-          fuerte::RestVerb::Get, "/_api/agency/config", VPackBuffer<uint8_t>(), 5s)
+          fuerte::RestVerb::Get, "/_api/agency/config", VPackBuffer<uint8_t>())
         .then([endpoint = std::move(endpoint), memberName = std::move(memberName)](futures::Try<network::Response> &&resp) {
           return futures::makeFuture(::agentConfigHealthResult{
             std::move(endpoint), std::move(memberName), std::move(resp)});

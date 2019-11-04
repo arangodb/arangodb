@@ -86,7 +86,7 @@ function optimizerCollectInClusterSuite () {
       });
 
       assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
-      assertEqual(["SingletonNode", "EnumerateCollectionNode", "CalculationNode", "FilterNode", "RemoteNode", "GatherNode", "ScatterNode", "RemoteNode", "EnumerateCollectionNode", "CollectNode", "RemoteNode", "GatherNode", "CollectNode", "ReturnNode"], nodeTypes);
+      assertEqual(["SingletonNode", "EnumerateCollectionNode", "RemoteNode", "GatherNode", "ScatterNode", "RemoteNode", "EnumerateCollectionNode", "CollectNode", "RemoteNode", "GatherNode", "CollectNode", "ReturnNode"], nodeTypes);
     },
 
     testDistinct : function () {
@@ -122,7 +122,7 @@ function optimizerCollectInClusterSuite () {
       });
 
       assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
-      assertEqual(["SingletonNode", "EnumerateCollectionNode", "CalculationNode", "FilterNode", "RemoteNode", "GatherNode", "ScatterNode", "RemoteNode", "EnumerateCollectionNode", "CalculationNode", "SortNode", "CollectNode", "RemoteNode", "GatherNode", "CollectNode", "ReturnNode"], nodeTypes);
+      assertEqual(["SingletonNode", "EnumerateCollectionNode", "RemoteNode", "GatherNode", "ScatterNode", "RemoteNode", "EnumerateCollectionNode", "CalculationNode", "SortNode", "CollectNode", "RemoteNode", "GatherNode", "CollectNode", "ReturnNode"], nodeTypes);
     },
 
   };
@@ -176,7 +176,7 @@ function optimizerCollectInClusterSingleShardSuite () {
       });
 
       assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
-      assertEqual(["SingletonNode", "EnumerateCollectionNode", "CalculationNode", "FilterNode", "RemoteNode", "GatherNode", "ScatterNode", "RemoteNode", "EnumerateCollectionNode", "CollectNode", "RemoteNode", "GatherNode", "CollectNode", "ReturnNode"], nodeTypes);
+      assertEqual(["SingletonNode", "EnumerateCollectionNode", "RemoteNode", "GatherNode", "ScatterNode", "RemoteNode", "EnumerateCollectionNode", "CollectNode", "RemoteNode", "GatherNode", "CollectNode", "ReturnNode"], nodeTypes);
     },
 
 
@@ -213,7 +213,7 @@ function optimizerCollectInClusterSingleShardSuite () {
       });
 
       assertNotEqual(-1, plan.rules.indexOf("collect-in-cluster"));
-      assertEqual(["SingletonNode", "EnumerateCollectionNode", "CalculationNode", "FilterNode", "RemoteNode", "GatherNode", "ScatterNode", "RemoteNode", "EnumerateCollectionNode", "CalculationNode", "SortNode", "CollectNode", "RemoteNode", "GatherNode", "CollectNode", "ReturnNode"], nodeTypes);
+      assertEqual(["SingletonNode", "EnumerateCollectionNode", "RemoteNode", "GatherNode", "ScatterNode", "RemoteNode", "EnumerateCollectionNode", "CalculationNode", "SortNode", "CollectNode", "RemoteNode", "GatherNode", "CollectNode", "ReturnNode"], nodeTypes);
     },
 
   };

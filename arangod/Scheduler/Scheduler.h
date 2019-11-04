@@ -35,7 +35,6 @@
 #include "Futures/Future.h"
 #include "Futures/Unit.h"
 #include "Futures/Utilities.h"
-#include "Futures/function2/function2.hpp"
 
 #include "Basics/Exceptions.h"
 #include "Basics/system-compiler.h"
@@ -68,7 +67,7 @@ class Scheduler {
 
   // Enqueues a task - this is implemented on the specific scheduler
   // May throw.
-  virtual bool queue(RequestLane lane, fu2::function<void()>,
+  virtual bool queue(RequestLane lane, fu2::unique_function<void()>,
                      bool allowDirectHandling = false) ADB_WARN_UNUSED_RESULT = 0;
 
   // Enqueues a task after delay - this uses the queue functions above.
@@ -113,7 +112,9 @@ class Scheduler {
         // Thus any reference to class to self in the _handler will be released
         // as soon as the scheduler executed the _handler lambda.
         bool queued = _scheduler->queue(_lane, [handler = std::move(_handler),
-                                                arg]() mutable { handler(arg); });
+                                                arg]() mutable  {
+                                                  handler(arg);
+                                                });
         if (!queued) {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_QUEUE_FULL);
         }

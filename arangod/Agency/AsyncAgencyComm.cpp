@@ -120,7 +120,9 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncInquiry(
     }
 
     std::string endpoint = man.getCurrentEndpoint();
-    return network::sendRequest(man.pool(), endpoint, meta.method, "/_api/agency/inquire", std::move(query), meta.timeout, meta.headers).thenValue(
+    network::RequestOptions opts;
+    opts.timeout = meta.timeout;
+    return network::sendRequest(man.pool(), endpoint, meta.method, "/_api/agency/inquire", std::move(query), opts, meta.headers).thenValue(
       [meta = std::move(meta), endpoint = std::move(endpoint), &man, body = std::move(body)]
         (network::Response &&result) mutable {
 
@@ -186,9 +188,11 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncSend(
 
     // aquire the current endpoint
     std::string endpoint = man.getCurrentEndpoint();
+    network::RequestOptions opts;
+    opts.timeout = meta.timeout;
 
     // and fire off the request
-    return network::sendRequest(man.pool(), endpoint, meta.method, meta.url, std::move(body), meta.timeout, meta.headers)
+    return network::sendRequest(man.pool(), endpoint, meta.method, meta.url, std::move(body), opts, meta.headers)
       .thenValue(
         [meta = std::move(meta), endpoint = std::move(endpoint), &man] (network::Response &&result) mutable {
 

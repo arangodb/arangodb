@@ -188,7 +188,7 @@ SupervisedScheduler::SupervisedScheduler(application_features::ApplicationServer
 
 SupervisedScheduler::~SupervisedScheduler() = default;
 
-bool SupervisedScheduler::queue(RequestLane lane, fu2::function<void()> handler,
+bool SupervisedScheduler::queue(RequestLane lane, fu2::unique_function<void()> handler,
                                 bool allowDirectHandling) {
   if (!isDirectDeadlockLane(lane) &&
       allowDirectHandling &&
@@ -523,7 +523,7 @@ bool SupervisedScheduler::canPullFromQueue(uint64_t queueIndex) const {
     // We can work on med if less than 75% of the workers are busy
     return (jobsDequeued - jobsDone) < (_maxNumWorker * 3 / 4);
   }
-      
+
   // We can work on low if less than 50% of the workers are busy
   return (jobsDequeued - jobsDone) < (_maxNumWorker / 2);
 }
