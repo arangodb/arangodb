@@ -422,6 +422,9 @@ index_t State::logFollower(query_t const& transactions) {
       if (slice.hasKey("timestamp")) { // compatibility with older appendEntries protocol
         tstamp = slice.get("timestamp").getUInt();
       }
+      if(tstamp == 0) {
+        duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+      }
 
       bool reconfiguration = query.keyAt(0).isEqualString(RECONFIGURE);
 
