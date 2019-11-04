@@ -312,6 +312,10 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::initialize
 
 /// @brief shutdown, will be called exactly once for the whole query
 std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::shutdown(int errorCode) {
+  // For every call we simply forward via HTTP
+  if (_requestInFlight.load(std::memory_order_acquire)) {
+    return {ExecutionState::WAITING, TRI_ERROR_NO_ERROR};
+  }
   
   // this should make the whole thing idempotent
   if (!_isResponsibleForInitializeCursor || _didReceiveShutdownRequest) {
