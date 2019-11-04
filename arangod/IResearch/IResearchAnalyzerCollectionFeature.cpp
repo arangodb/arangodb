@@ -55,7 +55,7 @@ void IResearchAnalyzerCollectionFeature::start() {
 
     if (res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
       // collection does not yet exist, so let's create it now
-      auto res =  methods::Collections::createSystem(vocbase, "_analyzers", false);
+    auto res =  methods::Collections::createSystem(vocbase, StaticStrings::AnalyzersCollection, false);
       if (res.first.ok()) {
         LOG_TOPIC("c2e33", DEBUG, arangodb::iresearch::TOPIC) << "successfully created '_analyzers' collection in database '" << vocbase.name() << "'";
       } else if (res.first.fail() && !res.first.is(TRI_ERROR_ARANGO_CONFLICT)) {
