@@ -106,7 +106,7 @@ FutureRes sendRequest(ConnectionPool* pool, DestinationId dest, RestVerb type,
   if (!pool || !pool->config().clusterInfo) {
     LOG_TOPIC("59b95", ERR, Logger::COMMUNICATION)
         << "connection pool unavailable";
-    return futures::makeFuture(Response{std::move(dest), Error::Canceled, nullptr, std::move(req)});   //in this case we lost the payload buffer if it was moved in
+    return futures::makeFuture(Response{std::move(dest), Error::Canceled, nullptr, std::move(req)});
   }
 
   arangodb::network::EndpointSpec spec;
