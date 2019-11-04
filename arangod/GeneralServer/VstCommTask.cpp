@@ -372,8 +372,8 @@ void VstCommTask<T>::doWrite() {
                          (asio_ns::error_code ec, size_t transferred) {
       
       auto* thisPtr = static_cast<VstCommTask<T>*>(self.get());
-      RequestStatistics::SET_WRITE_END(item->stat);
-      RequestStatistics::ADD_SENT_BYTES(item->stat, item->buffers[0].size() + item->buffers[1].size());
+      RequestStatistics::SET_WRITE_END(rsp->stat);
+      RequestStatistics::ADD_SENT_BYTES(rsp->stat, rsp->buffers[0].size() + rsp->buffers[1].size());
       if (ec) {
         LOG_TOPIC("5c6b4", INFO, arangodb::Logger::REQUESTS)
         << "asio write error: '" << ec.message() << "'";
@@ -381,7 +381,7 @@ void VstCommTask<T>::doWrite() {
       } else {
         thisPtr->doWrite(); // write next one
       }
-      item->stat->release();
+      rsp->stat->release();
     });
     
     break; // done
