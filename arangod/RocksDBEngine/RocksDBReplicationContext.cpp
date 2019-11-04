@@ -97,6 +97,10 @@ RocksDBReplicationContext::~RocksDBReplicationContext() {
 
 TRI_voc_tick_t RocksDBReplicationContext::id() const { return _id; }
 
+rocksdb::Snapshot const* RocksDBReplicationContext::snapshot() {
+  return _snapshot;
+}
+
 uint64_t RocksDBReplicationContext::snapshotTick() {
   MUTEX_LOCKER(locker, _contextLock);
   lazyCreateSnapshot();

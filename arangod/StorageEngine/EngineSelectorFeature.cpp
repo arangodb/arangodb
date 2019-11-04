@@ -216,6 +216,14 @@ StorageEngine& EngineSelectorFeature::engine() {
   return *ENGINE;
 }
 
+template <typename As, typename std::enable_if<std::is_base_of<StorageEngine, As>::value, int>::type>
+As& EngineSelectorFeature::engine() {
+  return *static_cast<As*>(ENGINE);
+}
+template ClusterEngine& EngineSelectorFeature::engine<ClusterEngine>();
+template MMFilesEngine& EngineSelectorFeature::engine<MMFilesEngine>();
+template RocksDBEngine& EngineSelectorFeature::engine<RocksDBEngine>();
+
 std::string const& EngineSelectorFeature::engineName() {
   return ENGINE->typeName();
 }

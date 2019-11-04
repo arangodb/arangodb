@@ -50,6 +50,9 @@ class EngineSelectorFeature final : public application_features::ApplicationFeat
 
   StorageEngine& engine();
 
+  template <typename As, typename std::enable_if<std::is_base_of<StorageEngine, As>::value, int>::type = 0>
+  As& engine();
+
   static std::string const& engineName();
 
   static std::string const& defaultEngine();

@@ -34,7 +34,7 @@
 namespace arangodb {
 
 RocksDBRevisionReplicationIterator::RocksDBRevisionReplicationIterator(
-    LogicalCollection& collection, rocksdb::Snapshot* snapshot)
+    LogicalCollection& collection, rocksdb::Snapshot const* snapshot)
     : RevisionReplicationIterator(collection),
       _readOptions(),
       _bounds(RocksDBKeyBounds::CollectionDocuments(

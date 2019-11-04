@@ -44,6 +44,8 @@
 #include "RocksDBEngine/RocksDBLogValue.h"
 #include "RocksDBEngine/RocksDBMethods.h"
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
+#include "RocksDBEngine/RocksDBReplicationIterator.h"
+#include "RocksDBEngine/RocksDBReplicationManager.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -508,8 +510,20 @@ std::unique_ptr<IndexIterator> RocksDBCollection::getAnyIterator(transaction::Me
 }
 
 std::unique_ptr<ReplicationIterator> RocksDBCollection::getReplicationIterator(
-    ReplicationIterator::Ordering, uint64_t batchId) {
-  return nullptr;
+    ReplicationIterator::Ordering order, uint64_t batchId) {
+  if (order != ReplicationIterator::Ordering::Revision) {
+    // not supported
+    return nullptr;
+  }
+
+  EngineSelectorFeature& selector =
+      _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>();
+  RocksDBEngine& engine = selector.engine<RocksDBEngine>();
+  RocksDBReplicationManager* manager = engine.replicationManager();
+  RocksDBReplicationContext* ctx = manager->find(batchId);
+  rocksdb::Snapshot const* snapshot = ctx->snapshot();
+
+  return std::make_unique<RocksDBRevisionReplicationIterator>(_logicalCollection, snapshot);
 }
 
 ////////////////////////////////////

@@ -123,6 +123,7 @@ class RocksDBReplicationContext {
   ~RocksDBReplicationContext();
 
   TRI_voc_tick_t id() const;  // batchId
+  rocksdb::Snapshot const* snapshot();
   uint64_t snapshotTick();
 
   /// invalidate all iterators with that vocbase

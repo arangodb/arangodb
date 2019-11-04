@@ -36,7 +36,7 @@ class LogicalCollection;
 
 class RocksDBRevisionReplicationIterator : public RevisionReplicationIterator {
  public:
-  RocksDBRevisionReplicationIterator(LogicalCollection&, rocksdb::Snapshot*);
+  RocksDBRevisionReplicationIterator(LogicalCollection&, rocksdb::Snapshot const*);
 
   void reset();
 
