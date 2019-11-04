@@ -776,39 +776,6 @@ void RocksDBReplicationContext::extendLifetime(double ttl) {
   _expires = TRI_microtime() + ttl;
 }
 
-std::unique_ptr<containers::RevisionTree> RocksDBReplicationContext::revisionTree(
-    LogicalCollection& collection, TRI_voc_tick_t tickMax) {
-  CollectionIterator* cIter =
-      getCollectionIterator(collection.vocbase(), collection.id(), false, true);
-  if (!cIter || cIter->sorted() || !cIter->iter) {
-    return nullptr;
-  }
-
-  constexpr std::size_t maxDepth = 6;
-  std::size_t const rangeMin =
-      cIter->hasMore() ? RocksDBKey::documentId(cIter->iter->key()).id() : 0;
-  std::unique_ptr<containers::RevisionTree> tree =
-      std::make_unique<containers::RevisionTree>(maxDepth, rangeMin);
-
-  while (cIter->hasMore()) {
-    std::size_t rid = RocksDBKey::documentId(cIter->iter->key()).id();
-    if (rid > tickMax) {
-      // out of range
-      break;
-    }
-
-    VPackSlice data = RocksDBValue::data(cIter->iter->value());
-    std::size_t hash = data.hashString();
-
-    tree->insert(rid, hash);
-
-    // continue
-    cIter->iter->Next();
-  }
-
-  return tree;
-}
-
 /// create rocksdb snapshot, must hold _contextLock
 void RocksDBReplicationContext::lazyCreateSnapshot() {
   _contextLock.assertLockedByCurrentThread();

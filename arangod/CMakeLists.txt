@@ -393,6 +393,7 @@ set(LIB_ARANGO_STORAGE_ENGINE_SOURCES
   StorageEngine/EngineSelectorFeature.cpp
   StorageEngine/HotBackup.cpp
   StorageEngine/PhysicalCollection.cpp
+  StorageEngine/ReplicationIterator.cpp
   StorageEngine/RocksDBOptionFeature.cpp
   StorageEngine/TransactionCollection.cpp
   StorageEngine/TransactionState.cpp

@@ -36,6 +36,7 @@
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/ResignShardLeadership.h"
+#include "Containers/MerkleTree.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Indexes/Index.h"
 #include "Network/NetworkFeature.h"
@@ -2791,10 +2792,107 @@ void RestReplicationHandler::handleCommandLoggerTickRanges() {
   }
 }
 
+//////////////////////////////////////////////////////////////////////////////
+/// @brief return the revision tree for a given collection, if available
+/// @response serialized revision tree, binary
+//////////////////////////////////////////////////////////////////////////////
+
 void RestReplicationHandler::handleCommandRevisionTree() {
-  // only RocksDB supported, for now
-  generateError(rest::ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_NOT_IMPLEMENTED,
-                "revision-based protocal not supported by this storage engine");
+  auto& selector = server().getFeature<EngineSelectorFeature>();
+  if (!selector.isRocksDB()) {
+    generateError(
+        rest::ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_NOT_IMPLEMENTED,
+        "this storage engine does not support revision-based replication");
+    return;
+  }
+
+  LOG_TOPIC("213e2", TRACE, arangodb::Logger::REPLICATION)
+      << "enter handleCommandRevisionTree";
+
+  bool found = false;
+  uint64_t batchId = 0;
+
+  // get collection Name
+  std::string const& cname = _request->value("collection");
+  if (cname.empty()) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "invalid collection parameter");
+    return;
+  }
+
+  // get batchId
+  std::string const& batchIdString = _request->value("batchId", found);
+  if (found) {
+    batchId = StringUtils::uint64(batchIdString);
+  } else {
+    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "replication revision tree - request misses batchId");
+    return;
+  }
+
+  // print request
+  LOG_TOPIC("2b20f", TRACE, arangodb::Logger::REPLICATION)
+      << "requested revision tree for collection '" << cname
+      << "' using contextId '" << batchId << "'";
+
+  ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
+
+  if (!ExecContext::current().canUseCollection(_vocbase.name(), cname, auth::Level::RO)) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
+    return;
+  }
+
+  std::shared_ptr<LogicalCollection> logical{_vocbase.lookupCollection(cname)};
+  if (!logical) {
+    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+    return;
+  }
+  if (logical->version() < LogicalCollection::Version::v37) {
+    generateError(rest::ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_NOT_IMPLEMENTED,
+                  "this collection doesn't support revision-based replication");
+    return;
+  }
+
+  // determine end tick for dump
+  TRI_voc_tick_t tickEnd = std::numeric_limits<TRI_voc_tick_t>::max();
+  std::string const& value2 = _request->value("to", found);
+  if (found) {
+    tickEnd = static_cast<TRI_voc_tick_t>(StringUtils::uint64(value2));
+  }
+
+  std::unique_ptr<ReplicationIterator> iter =
+      logical->getPhysical()->getReplicationIterator(ReplicationIterator::Ordering::Revision,
+                                                     batchId);
+  if (!iter) {
+    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
+                  "could not get replication iterator for collection '" +
+                      cname + "'");
+    return;
+  }
+  RevisionReplicationIterator& it =
+      *static_cast<RevisionReplicationIterator*>(iter.get());
+
+  std::size_t constexpr maxDepth = 6;
+  std::size_t const rangeMin = it.hasMore() ? it.revision() : 0;
+  containers::RevisionTree tree(maxDepth, rangeMin);
+
+  auto cb = [&tree, tickEnd](TRI_voc_rid_t rid, VPackSlice doc) -> bool {
+    if (rid > tickEnd) {
+      // outside the desired range
+      return false;
+    }
+    std::size_t hash = doc.hashString();
+    tree.insert(rid, hash);
+    return true;
+  };
+  while (it.nextDocument(cb)) {
+  }
+
+  std::string result = tree.serialize();
+
+  resetResponse(rest::ResponseCode::OK);
+  _response->setContentType("application/octet-stream");
+  _response->addRawPayload(VPackStringRef(result.data(), result.size()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

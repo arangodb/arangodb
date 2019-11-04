@@ -2480,6 +2480,11 @@ std::unique_ptr<IndexIterator> MMFilesCollection::getAnyIterator(transaction::Me
   return std::unique_ptr<IndexIterator>(primaryIndex()->anyIterator(trx));
 }
 
+std::unique_ptr<ReplicationIterator> MMFilesCollection::getReplicationIterator(
+    ReplicationIterator::Ordering, uint64_t batchId) {
+  return nullptr;
+}
+
 void MMFilesCollection::invokeOnAllElements(transaction::Methods* trx,
                                             std::function<bool(LocalDocumentId const&)> callback) {
   primaryIndex()->invokeOnAllElements(callback);

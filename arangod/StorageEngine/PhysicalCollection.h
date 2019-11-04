@@ -34,6 +34,7 @@
 #include "Futures/Future.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
+#include "StorageEngine/ReplicationIterator.h"
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
@@ -142,6 +143,10 @@ class PhysicalCollection {
 
   virtual std::unique_ptr<IndexIterator> getAllIterator(transaction::Methods* trx) const = 0;
   virtual std::unique_ptr<IndexIterator> getAnyIterator(transaction::Methods* trx) const = 0;
+
+  /// @brief Get an iterator associated with the specified replication batch
+  virtual std::unique_ptr<ReplicationIterator> getReplicationIterator(
+      ReplicationIterator::Ordering, uint64_t batchId) = 0;
 
   ////////////////////////////////////
   // -- SECTION DML Operations --

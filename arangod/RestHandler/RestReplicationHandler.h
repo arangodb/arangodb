@@ -292,7 +292,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   /// @response serialized revision tree, binary
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual void handleCommandRevisionTree();
+  void handleCommandRevisionTree();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief determine chunk size from request

@@ -406,6 +406,11 @@ std::unique_ptr<IndexIterator> ClusterCollection::getAnyIterator(transaction::Me
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
+std::unique_ptr<ReplicationIterator> ClusterCollection::getReplicationIterator(
+    ReplicationIterator::Ordering, uint64_t batchId) {
+  return nullptr;
+}
+
 ////////////////////////////////////
 // -- SECTION DML Operations --
 ///////////////////////////////////

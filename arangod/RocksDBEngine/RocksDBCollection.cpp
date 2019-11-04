@@ -507,6 +507,11 @@ std::unique_ptr<IndexIterator> RocksDBCollection::getAnyIterator(transaction::Me
   return std::make_unique<RocksDBAnyIndexIterator>(&_logicalCollection, trx);
 }
 
+std::unique_ptr<ReplicationIterator> RocksDBCollection::getReplicationIterator(
+    ReplicationIterator::Ordering, uint64_t batchId) {
+  return nullptr;
+}
+
 ////////////////////////////////////
 // -- SECTION DML Operations --
 ///////////////////////////////////

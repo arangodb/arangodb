@@ -605,6 +605,11 @@ std::unique_ptr<arangodb::IndexIterator> PhysicalCollectionMock::getAnyIterator(
   return std::make_unique<AllIteratorMock>(_documents, this->_logicalCollection, trx);
 }
 
+std::unique_ptr<arangodb::ReplicationIterator> PhysicalCollectionMock::getReplicationIterator(
+    arangodb::ReplicationIterator::Ordering, uint64_t) {
+  return nullptr;
+}
+
 void PhysicalCollectionMock::getPropertiesVPack(arangodb::velocypack::Builder&) const {
   before();
 }

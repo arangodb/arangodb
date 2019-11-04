@@ -83,6 +83,9 @@ class RocksDBCollection final : public RocksDBMetaCollection {
   std::unique_ptr<IndexIterator> getAllIterator(transaction::Methods* trx) const override;
   std::unique_ptr<IndexIterator> getAnyIterator(transaction::Methods* trx) const override;
 
+  std::unique_ptr<ReplicationIterator> getReplicationIterator(ReplicationIterator::Ordering,
+                                                              uint64_t batchId) override;
+
   ////////////////////////////////////
   // -- SECTION DML Operations --
   ///////////////////////////////////

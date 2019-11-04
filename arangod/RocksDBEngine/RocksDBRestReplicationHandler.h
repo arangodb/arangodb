@@ -75,9 +75,6 @@ class RocksDBRestReplicationHandler : public RestReplicationHandler {
   /// @brief handle a dump command for a specific collection
   void handleCommandDump() override;
 
-  /// @brief handle a request for a revision tree
-  void handleCommandRevisionTree() override;
-
  private:
   /// Manage RocksDBReplicationContext containing the dump state for the initial
   /// sync and incremental sync
