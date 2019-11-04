@@ -370,8 +370,7 @@ describe('Foxx Manager', function () {
 
         { // replace it and call heal() during setup
           FoxxManager.replace(setupHealApp, mount);
-          let endpoint = arango.getEndpoint().replace('tcp://', 'http://');
-          const url = endpoint + mount;
+          const url = origin + mount;
           const res = download(url);
           expect(res.code).to.equal(200);
           expect(res.body).to.equal('true');
