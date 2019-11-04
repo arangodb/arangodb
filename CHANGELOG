@@ -1,18 +1,20 @@
 v3.5.3 (XXXX-XX-XX)
 -------------------
 
+* Assertion fail when no timestamp in agency's persistence
+
 * Fixed internal issue #647: custom analyzer provokes errors on Active Failover
   deployment.
 
 * Upgraded bundled version of libcurl to 7.66.0.
 
-* When starting a coordinator, wait up to 15 seconds for it to appear 
+* When starting a coordinator, wait up to 15 seconds for it to appear
   in the agency under key `Supervision/Health` before reporting as "ready".
   This is necessary because if the coordinator reports ready beforehand
-  and is used to create databases etc., the supervision may remove all 
+  and is used to create databases etc., the supervision may remove all
   of the jobs started by non-ready coordinators, considering them to be
   from a failed coordinator.
-  To avoid huge startup delays, the startup will proceed after waiting 
+  To avoid huge startup delays, the startup will proceed after waiting
   futilely for 15 seconds and log a message.
 
 * Fixed issue #10270: Query: Expecting type Array or Object (while executing).
@@ -31,7 +33,7 @@ v3.5.3 (XXXX-XX-XX)
 
 * Disallow the usage of subqueries inside AQL traversal PRUNE conditions.
   Using subqueries inside PRUNE conditions causes undefined behavior,
-  so such queries will now be aborted early on with a parse error 
+  so such queries will now be aborted early on with a parse error
   instead of running into undefined behavior.
 
 * Fixed available flag for hotbackup.
