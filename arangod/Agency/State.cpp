@@ -338,6 +338,7 @@ void State::logEmplaceBackNoLock(log_t&& l) {
 index_t State::logFollower(query_t const& transactions) {
   VPackSlice slices = transactions->slice();
   size_t nqs = slices.length();
+  using namespace std::chrono;
 
   while (!_ready && !_agent->isStopping()) {
     LOG_TOPIC("8dd4c", DEBUG, Logger::AGENCY) << "Waiting for state to get ready ...";
@@ -421,8 +422,13 @@ index_t State::logFollower(query_t const& transactions) {
       auto index = slice.get("index").getUInt();
 
       uint64_t tstamp = 0;
-      if (slice.hasKey("timestamp")) { // compatibility with older appendEntries protocol
+      if (slice.hasKey("timestamp")) {
+        // compatibility with older appendEntries protocol
         tstamp = slice.get("timestamp").getUInt();
+      }
+      if (tstamp == 0) {
+        tstamp = duration_cast<milliseconds>(
+          system_clock::now().time_since_epoch()).count()
       }
 
       bool reconfiguration = query.keyAt(0).isEqualString(RECONFIGURE);
