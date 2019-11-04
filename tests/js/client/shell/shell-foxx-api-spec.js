@@ -1,4 +1,4 @@
-/* global arango, describe, beforeEach, afterEach, it*/
+/* global arango, describe, beforeEach, afterEach, it VPACK_TO_V8 */
 'use strict';
 
 const expect = require('chai').expect;
@@ -1020,7 +1020,7 @@ describe('Foxx service', () => {
   ];
   for (const [reqFun, url, body] of routes) {
     it(`should return 400 when mount is omitted for ${reqFun} ${url}`, () => {
-      let bbody = body
+      let bbody = body;
       if (body === undefined) {
         bbody = '';
       }
@@ -1028,7 +1028,7 @@ describe('Foxx service', () => {
       expect(resp.code).to.equal(400);
     });
     it(`should return 400 when mount is unknown for ${reqFun} ${url}`, () => {
-      let bbody = body
+      let bbody = body;
       if (body === undefined) {
         bbody = '';
       }

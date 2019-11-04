@@ -1815,7 +1815,7 @@ function launchFinalize(options, instanceInfo, startTime) {
 
     let pcapFile = fs.join(instanceInfo.rootDir, 'out.pcap');
     let args;
-    if (prog == 'ngrep') {
+    if (prog === 'ngrep') {
       args = ['-l', '-Wbyline', '-d', device];
     } else {
       args = ['-ni', device, '-s0', '-w', pcapFile];
