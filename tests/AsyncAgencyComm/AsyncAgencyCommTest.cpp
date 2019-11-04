@@ -156,6 +156,7 @@ struct AsyncAgencyCommPoolMock final : public network::ConnectionPool {
   };
 
   AsyncAgencyCommPoolMock(network::ConnectionPool::Config const& c) : network::ConnectionPool(c) {}
+  ~AsyncAgencyCommPoolMock() { TRI_ASSERT(_requests.empty()); }
 
   std::shared_ptr<fuerte::Connection> createConnection(fuerte::ConnectionBuilder &cb) override {
     return std::make_shared<Connection>(this, cb.normalizedEndpoint());
@@ -200,8 +201,8 @@ static void compareEndpoints(std::deque<std::string> const& first, std::deque<st
 TEST_F(AsyncAgencyCommTest, send_with_failover) {
 
   AsyncAgencyCommPoolMock pool(config());
-  pool.expectRequest("http+tcp://10.0.0.1:8529", fuerte::RestVerb::Post, "/_api/agency/read", "[[\"a\"]]"_vpack)
-    .returnResponse(200, "[{\"a\":12}]"_vpack);
+  pool.expectRequest("http+tcp://10.0.0.1:8529", fuerte::RestVerb::Post, "/_api/agency/read", R"=([["a"]])="_vpack)
+    .returnResponse(200, R"=([{"a":12}])="_vpack);
 
   AsyncAgencyCommManager manager;
   manager.pool(&pool);
@@ -209,11 +210,10 @@ TEST_F(AsyncAgencyCommTest, send_with_failover) {
     "http+tcp://10.0.0.1:8529", "http+tcp://10.0.0.2:8529", "http+tcp://10.0.0.3:8529",
   });
 
-  auto result = AsyncAgencyComm(manager).sendWithFailover(fuerte::RestVerb::Post, "/_api/agency/read", 10s, "[[\"a\"]]"_vpack).get();
+  auto result = AsyncAgencyComm(manager).sendWithFailover(fuerte::RestVerb::Post, "/_api/agency/read", 10s, R"=([["a"]])="_vpack).get();
   ASSERT_EQ(result.error, fuerte::Error::NoError);
   ASSERT_EQ(result.slice().at(0).get("a").getNumber<int>(), 12);
 
-  ASSERT_EQ(pool._requests.size(), 0);
   compareEndpoints(manager.endpoints(), {
     "http+tcp://10.0.0.1:8529", "http+tcp://10.0.0.2:8529", "http+tcp://10.0.0.3:8529"
   });
@@ -222,10 +222,10 @@ TEST_F(AsyncAgencyCommTest, send_with_failover) {
 TEST_F(AsyncAgencyCommTest, send_with_failover_failover) {
 
   AsyncAgencyCommPoolMock pool(config());
-  pool.expectRequest("http+tcp://10.0.0.1:8529", fuerte::RestVerb::Post, "/_api/agency/read", "[[\"a\"]]"_vpack)
+  pool.expectRequest("http+tcp://10.0.0.1:8529", fuerte::RestVerb::Post, "/_api/agency/read", R"=([["a"]])="_vpack)
     .returnError(fuerte::Error::CouldNotConnect);
-  pool.expectRequest("http+tcp://10.0.0.2:8529", fuerte::RestVerb::Post, "/_api/agency/read", "[[\"a\"]]"_vpack)
-    .returnResponse(200, "[{\"a\":12}]"_vpack);
+  pool.expectRequest("http+tcp://10.0.0.2:8529", fuerte::RestVerb::Post, "/_api/agency/read", R"=([["a"]])="_vpack)
+    .returnResponse(200, R"=([{"a":12}])="_vpack);
 
   AsyncAgencyCommManager manager;
   manager.pool(&pool);
@@ -233,23 +233,22 @@ TEST_F(AsyncAgencyCommTest, send_with_failover_failover) {
     "http+tcp://10.0.0.1:8529", "http+tcp://10.0.0.2:8529", "http+tcp://10.0.0.3:8529",
   });
 
-  auto result = AsyncAgencyComm(manager).sendWithFailover(fuerte::RestVerb::Post, "/_api/agency/read", 10s, "[[\"a\"]]"_vpack).get();
+  auto result = AsyncAgencyComm(manager).sendWithFailover(fuerte::RestVerb::Post, "/_api/agency/read", 10s, R"=([["a"]])="_vpack).get();
   ASSERT_EQ(result.error, fuerte::Error::NoError);
   ASSERT_EQ(result.slice().at(0).get("a").getNumber<int>(), 12);
 
-  ASSERT_EQ(pool._requests.size(), 0);
   compareEndpoints(manager.endpoints(), {"http+tcp://10.0.0.2:8529", "http+tcp://10.0.0.3:8529", "http+tcp://10.0.0.1:8529"});
 }
 
 TEST_F(AsyncAgencyCommTest, send_with_failover_timeout_redirect) {
 
   AsyncAgencyCommPoolMock pool(config());
-  pool.expectRequest("http+tcp://10.0.0.1:8529", fuerte::RestVerb::Post, "/_api/agency/read", "[[\"a\"]]"_vpack)
+  pool.expectRequest("http+tcp://10.0.0.1:8529", fuerte::RestVerb::Post, "/_api/agency/read", R"=([["a"]])="_vpack)
     .returnError(fuerte::Error::CouldNotConnect);
-  pool.expectRequest("http+tcp://10.0.0.2:8529", fuerte::RestVerb::Post, "/_api/agency/read", "[[\"a\"]]"_vpack)
+  pool.expectRequest("http+tcp://10.0.0.2:8529", fuerte::RestVerb::Post, "/_api/agency/read", R"=([["a"]])="_vpack)
     .returnRedirect("http://10.0.0.3:8529/_api/agency/read");
-  pool.expectRequest("http+tcp://10.0.0.3:8529", fuerte::RestVerb::Post, "/_api/agency/read", "[[\"a\"]]"_vpack)
-    .returnResponse(200, "[{\"a\":12}]"_vpack);
+  pool.expectRequest("http+tcp://10.0.0.3:8529", fuerte::RestVerb::Post, "/_api/agency/read", R"=([["a"]])="_vpack)
+    .returnResponse(200, R"=([{"a":12}])="_vpack);
 
   AsyncAgencyCommManager manager;
   manager.pool(&pool);
@@ -257,11 +256,10 @@ TEST_F(AsyncAgencyCommTest, send_with_failover_timeout_redirect) {
     "http+tcp://10.0.0.1:8529", "http+tcp://10.0.0.2:8529", "http+tcp://10.0.0.3:8529",
   });
 
-  auto result = AsyncAgencyComm(manager).sendWithFailover(fuerte::RestVerb::Post, "/_api/agency/read", 10s, "[[\"a\"]]"_vpack).get();
+  auto result = AsyncAgencyComm(manager).sendWithFailover(fuerte::RestVerb::Post, "/_api/agency/read", 10s, R"=([["a"]])="_vpack).get();
   ASSERT_EQ(result.error, fuerte::Error::NoError);
   ASSERT_EQ(result.slice().at(0).get("a").getNumber<int>(), 12);
 
-  ASSERT_EQ(pool._requests.size(), 0);
   compareEndpoints(manager.endpoints(), {
     "http+tcp://10.0.0.3:8529", "http+tcp://10.0.0.1:8529", "http+tcp://10.0.0.2:8529"
   });
@@ -270,10 +268,10 @@ TEST_F(AsyncAgencyCommTest, send_with_failover_timeout_redirect) {
 TEST_F(AsyncAgencyCommTest, send_with_failover_redirect) {
 
   AsyncAgencyCommPoolMock pool(config());
-  pool.expectRequest("http+tcp://10.0.0.1:8529", fuerte::RestVerb::Post, "/_api/agency/read", "[[\"a\"]]"_vpack)
+  pool.expectRequest("http+tcp://10.0.0.1:8529", fuerte::RestVerb::Post, "/_api/agency/read", R"=([["a"]])="_vpack)
     .returnRedirect("http://10.0.0.3:8529/_api/agency/read");
-  pool.expectRequest("http+tcp://10.0.0.3:8529", fuerte::RestVerb::Post, "/_api/agency/read", "[[\"a\"]]"_vpack)
-    .returnResponse(200, "[{\"a\":12}]"_vpack);
+  pool.expectRequest("http+tcp://10.0.0.3:8529", fuerte::RestVerb::Post, "/_api/agency/read", R"=([["a"]])="_vpack)
+    .returnResponse(200, R"=([{"a":12}])="_vpack);
 
   AsyncAgencyCommManager manager;
   manager.pool(&pool);
@@ -281,11 +279,10 @@ TEST_F(AsyncAgencyCommTest, send_with_failover_redirect) {
     "http+tcp://10.0.0.1:8529", "http+tcp://10.0.0.2:8529", "http+tcp://10.0.0.3:8529",
   });
 
-  auto result = AsyncAgencyComm(manager).sendWithFailover(fuerte::RestVerb::Post, "/_api/agency/read", 10s, "[[\"a\"]]"_vpack).get();
+  auto result = AsyncAgencyComm(manager).sendWithFailover(fuerte::RestVerb::Post, "/_api/agency/read", 10s, R"=([["a"]])="_vpack).get();
   ASSERT_EQ(result.error, fuerte::Error::NoError);
   ASSERT_EQ(result.slice().at(0).get("a").getNumber<int>(), 12);
 
-  ASSERT_EQ(pool._requests.size(), 0);
   compareEndpoints(manager.endpoints(), {
     "http+tcp://10.0.0.3:8529", "http+tcp://10.0.0.2:8529", "http+tcp://10.0.0.1:8529"
   });
@@ -294,10 +291,10 @@ TEST_F(AsyncAgencyCommTest, send_with_failover_redirect) {
 TEST_F(AsyncAgencyCommTest, send_with_failover_redirect_new_endpoint) {
 
   AsyncAgencyCommPoolMock pool(config());
-  pool.expectRequest("http+tcp://10.0.0.1:8529", fuerte::RestVerb::Post, "/_api/agency/read", "[[\"a\"]]"_vpack)
+  pool.expectRequest("http+tcp://10.0.0.1:8529", fuerte::RestVerb::Post, "/_api/agency/read", R"=([["a"]])="_vpack)
     .returnRedirect("http://10.0.0.4:8529/_api/agency/read");
-  pool.expectRequest("http+tcp://10.0.0.4:8529", fuerte::RestVerb::Post, "/_api/agency/read", "[[\"a\"]]"_vpack)
-    .returnResponse(200, "[{\"a\":12}]"_vpack);
+  pool.expectRequest("http+tcp://10.0.0.4:8529", fuerte::RestVerb::Post, "/_api/agency/read", R"=([["a"]])="_vpack)
+    .returnResponse(200, R"=([{"a":12}])="_vpack);
 
   AsyncAgencyCommManager manager;
   manager.pool(&pool);
@@ -305,11 +302,10 @@ TEST_F(AsyncAgencyCommTest, send_with_failover_redirect_new_endpoint) {
     "http+tcp://10.0.0.1:8529", "http+tcp://10.0.0.2:8529", "http+tcp://10.0.0.3:8529",
   });
 
-  auto result = AsyncAgencyComm(manager).sendWithFailover(fuerte::RestVerb::Post, "/_api/agency/read", 10s, "[[\"a\"]]"_vpack).get();
+  auto result = AsyncAgencyComm(manager).sendWithFailover(fuerte::RestVerb::Post, "/_api/agency/read", 10s, R"=([["a"]])="_vpack).get();
   ASSERT_EQ(result.error, fuerte::Error::NoError);
   ASSERT_EQ(result.slice().at(0).get("a").getNumber<int>(), 12);
 
-  ASSERT_EQ(pool._requests.size(), 0);
   compareEndpoints(manager.endpoints(), {
     "http+tcp://10.0.0.4:8529", "http+tcp://10.0.0.2:8529", "http+tcp://10.0.0.3:8529", "http+tcp://10.0.0.1:8529"
   });
@@ -318,8 +314,8 @@ TEST_F(AsyncAgencyCommTest, send_with_failover_redirect_new_endpoint) {
 TEST_F(AsyncAgencyCommTest, send_with_failover_not_found) {
 
   AsyncAgencyCommPoolMock pool(config());
-  pool.expectRequest("http+tcp://10.0.0.1:8529", fuerte::RestVerb::Post, "/_api/agency/read", "[[\"a\"]]"_vpack)
-    .returnResponse(fuerte::StatusNotFound, "{\"error\": 412}"_vpack);
+  pool.expectRequest("http+tcp://10.0.0.1:8529", fuerte::RestVerb::Post, "/_api/agency/read", R"=([["a"]])="_vpack)
+    .returnResponse(fuerte::StatusNotFound, R"=({"error": 412})="_vpack);
 
   AsyncAgencyCommManager manager;
   manager.pool(&pool);
@@ -327,11 +323,10 @@ TEST_F(AsyncAgencyCommTest, send_with_failover_not_found) {
     "http+tcp://10.0.0.1:8529", "http+tcp://10.0.0.2:8529", "http+tcp://10.0.0.3:8529",
   });
 
-  auto result = AsyncAgencyComm(manager).sendWithFailover(fuerte::RestVerb::Post, "/_api/agency/read", 10s, "[[\"a\"]]"_vpack).get();
+  auto result = AsyncAgencyComm(manager).sendWithFailover(fuerte::RestVerb::Post, "/_api/agency/read", 10s, R"=([["a"]])="_vpack).get();
   ASSERT_EQ(result.error, fuerte::Error::NoError);
   ASSERT_EQ(result.statusCode(), fuerte::StatusNotFound);
 
-  ASSERT_EQ(pool._requests.size(), 0);
   compareEndpoints(manager.endpoints(), {
     "http+tcp://10.0.0.1:8529", "http+tcp://10.0.0.2:8529", "http+tcp://10.0.0.3:8529"
   });
@@ -340,8 +335,8 @@ TEST_F(AsyncAgencyCommTest, send_with_failover_not_found) {
 TEST_F(AsyncAgencyCommTest, send_with_failover_prec_failed) {
 
   AsyncAgencyCommPoolMock pool(config());
-  pool.expectRequest("http+tcp://10.0.0.1:8529", fuerte::RestVerb::Post, "/_api/agency/read", "[[\"a\"]]"_vpack)
-    .returnResponse(fuerte::StatusPreconditionFailed, "{\"error\": 412}"_vpack);
+  pool.expectRequest("http+tcp://10.0.0.1:8529", fuerte::RestVerb::Post, "/_api/agency/read", R"=([["a"]])="_vpack)
+    .returnResponse(fuerte::StatusPreconditionFailed, R"=({"error": 412})="_vpack);
 
   AsyncAgencyCommManager manager;
   manager.pool(&pool);
@@ -349,11 +344,10 @@ TEST_F(AsyncAgencyCommTest, send_with_failover_prec_failed) {
     "http+tcp://10.0.0.1:8529", "http+tcp://10.0.0.2:8529", "http+tcp://10.0.0.3:8529",
   });
 
-  auto result = AsyncAgencyComm(manager).sendWithFailover(fuerte::RestVerb::Post, "/_api/agency/read", 10s, "[[\"a\"]]"_vpack).get();
+  auto result = AsyncAgencyComm(manager).sendWithFailover(fuerte::RestVerb::Post, "/_api/agency/read", 10s, R"=([["a"]])="_vpack).get();
   ASSERT_EQ(result.error, fuerte::Error::NoError);
   ASSERT_EQ(result.statusCode(), fuerte::StatusPreconditionFailed);
 
-  ASSERT_EQ(pool._requests.size(), 0);
   compareEndpoints(manager.endpoints(), {
     "http+tcp://10.0.0.1:8529", "http+tcp://10.0.0.2:8529", "http+tcp://10.0.0.3:8529"
   });
@@ -362,12 +356,12 @@ TEST_F(AsyncAgencyCommTest, send_with_failover_prec_failed) {
 TEST_F(AsyncAgencyCommTest, send_with_failover_inquire_timeout_not_found) {
 
   AsyncAgencyCommPoolMock pool(config());
-  pool.expectRequest("http+tcp://10.0.0.1:8529", fuerte::RestVerb::Post, "/_api/agency/write", "[[{\"a\":12}, {}, \"cid-1\"]]"_vpack)
+  pool.expectRequest("http+tcp://10.0.0.1:8529", fuerte::RestVerb::Post, "/_api/agency/write", R"=([[{"a":12}, {}, "cid-1"]])="_vpack)
     .returnError(fuerte::Error::Timeout);
-  pool.expectRequest("http+tcp://10.0.0.2:8529", fuerte::RestVerb::Post, "/_api/agency/inquire", "[\"cid-1\"]"_vpack)
-    .returnResponse(fuerte::StatusNotFound, "{\"error\": 404, \"results\": [0]}"_vpack);
-  pool.expectRequest("http+tcp://10.0.0.2:8529", fuerte::RestVerb::Post, "/_api/agency/write", "[[{\"a\":12}, {}, \"cid-1\"]]"_vpack)
-    .returnResponse(fuerte::StatusOK, "{\"results\": [15]}"_vpack);
+  pool.expectRequest("http+tcp://10.0.0.2:8529", fuerte::RestVerb::Post, "/_api/agency/inquire", R"=(["cid-1"])="_vpack)
+    .returnResponse(fuerte::StatusNotFound, R"=({"error": 404, "results": [0]})="_vpack);
+  pool.expectRequest("http+tcp://10.0.0.2:8529", fuerte::RestVerb::Post, "/_api/agency/write", R"=([[{"a":12}, {}, "cid-1"]])="_vpack)
+    .returnResponse(fuerte::StatusOK, R"=({"results": [15]})="_vpack);
 
   AsyncAgencyCommManager manager;
   manager.pool(&pool);
@@ -375,26 +369,25 @@ TEST_F(AsyncAgencyCommTest, send_with_failover_inquire_timeout_not_found) {
     "http+tcp://10.0.0.1:8529", "http+tcp://10.0.0.2:8529", "http+tcp://10.0.0.3:8529",
   });
 
-  auto result = AsyncAgencyComm(manager).sendWithFailover(fuerte::RestVerb::Post, "/_api/agency/write", 10s, "[[{\"a\":12}, {}, \"cid-1\"]]"_vpack).get();
+  auto result = AsyncAgencyComm(manager).sendWithFailover(fuerte::RestVerb::Post, "/_api/agency/write", 10s, R"=([[{"a":12}, {}, "cid-1"]])="_vpack).get();
   ASSERT_EQ(result.error, fuerte::Error::NoError);
   ASSERT_EQ(result.statusCode(), fuerte::StatusOK);
   ASSERT_EQ(result.slice().get("results").at(0).getNumber<int>(), 15);
 
-  ASSERT_EQ(pool._requests.size(), 0);
   compareEndpoints(manager.endpoints(), {"http+tcp://10.0.0.2:8529", "http+tcp://10.0.0.3:8529", "http+tcp://10.0.0.1:8529"});
 }
 
 TEST_F(AsyncAgencyCommTest, send_with_failover_inquire_timeout_redirect_not_found) {
 
   AsyncAgencyCommPoolMock pool(config());
-  pool.expectRequest("http+tcp://10.0.0.1:8529", fuerte::RestVerb::Post, "/_api/agency/write", "[[{\"a\":12}, {}, \"cid-1\"]]"_vpack)
+  pool.expectRequest("http+tcp://10.0.0.1:8529", fuerte::RestVerb::Post, "/_api/agency/write", R"=([[{"a":12}, {}, "cid-1"]])="_vpack)
     .returnError(fuerte::Error::Timeout);
-  pool.expectRequest("http+tcp://10.0.0.2:8529", fuerte::RestVerb::Post, "/_api/agency/inquire", "[\"cid-1\"]"_vpack)
+  pool.expectRequest("http+tcp://10.0.0.2:8529", fuerte::RestVerb::Post, "/_api/agency/inquire", R"=(["cid-1"])="_vpack)
     .returnRedirect("http://10.0.0.3:8529/_api/agency/inquire");
-  pool.expectRequest("http+tcp://10.0.0.3:8529", fuerte::RestVerb::Post, "/_api/agency/inquire", "[\"cid-1\"]"_vpack)
-    .returnResponse(fuerte::StatusNotFound, "{\"error\": 404, \"results\": [0]}"_vpack);
-  pool.expectRequest("http+tcp://10.0.0.3:8529", fuerte::RestVerb::Post, "/_api/agency/write", "[[{\"a\":12}, {}, \"cid-1\"]]"_vpack)
-    .returnResponse(fuerte::StatusOK, "{\"results\": [15]}"_vpack);
+  pool.expectRequest("http+tcp://10.0.0.3:8529", fuerte::RestVerb::Post, "/_api/agency/inquire", R"=(["cid-1"])="_vpack)
+    .returnResponse(fuerte::StatusNotFound, R"=({"error": 404, "results": [0]})="_vpack);
+  pool.expectRequest("http+tcp://10.0.0.3:8529", fuerte::RestVerb::Post, "/_api/agency/write", R"=([[{"a":12}, {}, "cid-1"]])="_vpack)
+    .returnResponse(fuerte::StatusOK, R"=({"results": [15]})="_vpack);
 
   AsyncAgencyCommManager manager;
   manager.pool(&pool);
@@ -402,23 +395,22 @@ TEST_F(AsyncAgencyCommTest, send_with_failover_inquire_timeout_redirect_not_foun
     "http+tcp://10.0.0.1:8529", "http+tcp://10.0.0.2:8529", "http+tcp://10.0.0.3:8529",
   });
 
-  auto result = AsyncAgencyComm(manager).sendWithFailover(fuerte::RestVerb::Post, "/_api/agency/write", 10s, "[[{\"a\":12}, {}, \"cid-1\"]]"_vpack).get();
+  auto result = AsyncAgencyComm(manager).sendWithFailover(fuerte::RestVerb::Post, "/_api/agency/write", 10s, R"=([[{"a":12}, {}, "cid-1"]])="_vpack).get();
   ASSERT_EQ(result.error, fuerte::Error::NoError);
   ASSERT_EQ(result.statusCode(), fuerte::StatusOK);
   ASSERT_EQ(result.slice().get("results").at(0).getNumber<int>(), 15);
 
-  ASSERT_EQ(pool._requests.size(), 0);
   compareEndpoints(manager.endpoints(), {"http+tcp://10.0.0.3:8529", "http+tcp://10.0.0.1:8529", "http+tcp://10.0.0.2:8529"});
 }
 
 TEST_F(AsyncAgencyCommTest, send_with_failover_inquire_timeout_found) {
 
   AsyncAgencyCommPoolMock pool(config());
-  pool.expectRequest("http+tcp://10.0.0.1:8529", fuerte::RestVerb::Post, "/_api/agency/write", "[[{\"a\":12}, {}, \"cid-1\"]]"_vpack)
+  pool.expectRequest("http+tcp://10.0.0.1:8529", fuerte::RestVerb::Post, "/_api/agency/write", R"=([[{"a":12}, {}, "cid-1"]])="_vpack)
     .returnError(fuerte::Error::Timeout);
 
-  pool.expectRequest("http+tcp://10.0.0.2:8529", fuerte::RestVerb::Post, "/_api/agency/inquire", "[\"cid-1\"]"_vpack)
-    .returnResponse(fuerte::StatusOK, "{\"error\": 200, \"results\": [32]}"_vpack);
+  pool.expectRequest("http+tcp://10.0.0.2:8529", fuerte::RestVerb::Post, "/_api/agency/inquire", R"=(["cid-1"])="_vpack)
+    .returnResponse(fuerte::StatusOK, R"=({"error": 200, "results": [32]})="_vpack);
 
   AsyncAgencyCommManager manager;
   manager.pool(&pool);
@@ -426,26 +418,25 @@ TEST_F(AsyncAgencyCommTest, send_with_failover_inquire_timeout_found) {
     "http+tcp://10.0.0.1:8529", "http+tcp://10.0.0.2:8529", "http+tcp://10.0.0.3:8529",
   });
 
-  auto result = AsyncAgencyComm(manager).sendWithFailover(fuerte::RestVerb::Post, "/_api/agency/write", 10s, "[[{\"a\":12}, {}, \"cid-1\"]]"_vpack).get();
+  auto result = AsyncAgencyComm(manager).sendWithFailover(fuerte::RestVerb::Post, "/_api/agency/write", 10s, R"=([[{"a":12}, {}, "cid-1"]])="_vpack).get();
   ASSERT_EQ(result.error, fuerte::Error::NoError);
   ASSERT_EQ(result.statusCode(), fuerte::StatusOK);
   ASSERT_EQ(result.slice().get("results").at(0).getNumber<int>(), 32);
 
-  ASSERT_EQ(pool._requests.size(), 0);
   compareEndpoints(manager.endpoints(), {"http+tcp://10.0.0.2:8529", "http+tcp://10.0.0.3:8529", "http+tcp://10.0.0.1:8529"});
 }
 
 TEST_F(AsyncAgencyCommTest, send_with_failover_inquire_timeout_timeout_not_found) {
 
   AsyncAgencyCommPoolMock pool(config());
-  pool.expectRequest("http+tcp://10.0.0.1:8529", fuerte::RestVerb::Post, "/_api/agency/write", "[[{\"a\":12}, {}, \"cid-1\"]]"_vpack)
+  pool.expectRequest("http+tcp://10.0.0.1:8529", fuerte::RestVerb::Post, "/_api/agency/write", R"=([[{"a":12}, {}, "cid-1"]])="_vpack)
     .returnError(fuerte::Error::Timeout);
-  pool.expectRequest("http+tcp://10.0.0.2:8529", fuerte::RestVerb::Post, "/_api/agency/inquire", "[\"cid-1\"]"_vpack)
+  pool.expectRequest("http+tcp://10.0.0.2:8529", fuerte::RestVerb::Post, "/_api/agency/inquire", R"=(["cid-1"])="_vpack)
     .returnError(fuerte::Error::Timeout);
-  pool.expectRequest("http+tcp://10.0.0.3:8529", fuerte::RestVerb::Post, "/_api/agency/inquire", "[\"cid-1\"]"_vpack)
-    .returnResponse(fuerte::StatusNotFound, "{\"error\": 404, \"results\": [0]}"_vpack);
-  pool.expectRequest("http+tcp://10.0.0.3:8529", fuerte::RestVerb::Post, "/_api/agency/write", "[[{\"a\":12}, {}, \"cid-1\"]]"_vpack)
-    .returnResponse(fuerte::StatusOK, "{\"results\": [15]}"_vpack);
+  pool.expectRequest("http+tcp://10.0.0.3:8529", fuerte::RestVerb::Post, "/_api/agency/inquire", R"=(["cid-1"])="_vpack)
+    .returnResponse(fuerte::StatusNotFound, R"=({"error": 404, "results": [0]})="_vpack);
+  pool.expectRequest("http+tcp://10.0.0.3:8529", fuerte::RestVerb::Post, "/_api/agency/write", R"=([[{"a":12}, {}, "cid-1"]])="_vpack)
+    .returnResponse(fuerte::StatusOK, R"=({"results": [15]})="_vpack);
 
   AsyncAgencyCommManager manager;
   manager.pool(&pool);
@@ -453,20 +444,19 @@ TEST_F(AsyncAgencyCommTest, send_with_failover_inquire_timeout_timeout_not_found
     "http+tcp://10.0.0.1:8529", "http+tcp://10.0.0.2:8529", "http+tcp://10.0.0.3:8529",
   });
 
-  auto result = AsyncAgencyComm(manager).sendWithFailover(fuerte::RestVerb::Post, "/_api/agency/write", 10s, "[[{\"a\":12}, {}, \"cid-1\"]]"_vpack).get();
+  auto result = AsyncAgencyComm(manager).sendWithFailover(fuerte::RestVerb::Post, "/_api/agency/write", 10s, R"=([[{"a":12}, {}, "cid-1"]])="_vpack).get();
   ASSERT_EQ(result.error, fuerte::Error::NoError);
   ASSERT_EQ(result.statusCode(), fuerte::StatusOK);
   ASSERT_EQ(result.slice().get("results").at(0).getNumber<int>(), 15);
 
-  ASSERT_EQ(pool._requests.size(), 0);
   compareEndpoints(manager.endpoints(), {"http+tcp://10.0.0.3:8529", "http+tcp://10.0.0.1:8529", "http+tcp://10.0.0.2:8529"});
 }
 
 TEST_F(AsyncAgencyCommTest, get_values) {
 
   AsyncAgencyCommPoolMock pool(config());
-  pool.expectRequest("http+tcp://10.0.0.1:8529", fuerte::RestVerb::Post, "/_api/agency/read", "[[\"/arango/Plan\"]]"_vpack)
-    .returnResponse(fuerte::StatusOK, "[{\"arango\":{\"Plan\": 12}}]"_vpack);
+  pool.expectRequest("http+tcp://10.0.0.1:8529", fuerte::RestVerb::Post, "/_api/agency/read", R"=([["/arango/Plan"]])="_vpack)
+    .returnResponse(fuerte::StatusOK, R"=([{"arango":{"Plan": 12}}])="_vpack);
 
   AsyncAgencyCommManager manager;
   manager.pool(&pool);
@@ -479,6 +469,5 @@ TEST_F(AsyncAgencyCommTest, get_values) {
   ASSERT_EQ(result.statusCode(), fuerte::StatusOK);
   ASSERT_EQ(result.value().getNumber<int>(), 12);
 
-  ASSERT_EQ(pool._requests.size(), 0);
   compareEndpoints(manager.endpoints(), {"http+tcp://10.0.0.1:8529", "http+tcp://10.0.0.2:8529", "http+tcp://10.0.0.3:8529"});
 }

@@ -60,7 +60,8 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
   RestStatus handleNumberOfServers();
   RestStatus handleMaintenance();
 
-  RestStatus handlePutMaintenance(bool state);
+  RestStatus setMaintenance(bool state);
+  RestStatus handlePutMaintenance();
   RestStatus handleGetMaintenance();
 
   RestStatus handleGetNumberOfServers();
@@ -91,9 +92,9 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
     std::string fromServer;
     std::string toServer;
     std::string collectionID;
-   
-    MoveShardContext(std::string database, std::string collection, std::string shard, std::string from, std::string to, std::string collectionID) 
-      : database(std::move(database)), 
+
+    MoveShardContext(std::string database, std::string collection, std::string shard, std::string from, std::string to, std::string collectionID)
+      : database(std::move(database)),
         collection(std::move(collection)),
         shard(std::move(shard)),
         fromServer(std::move(from)),
@@ -143,8 +144,8 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
     std::string shard;
     bool isLeader;
 
-    bool operator==(CollectionShardPair const& other) const { 
-      return collection == other.collection && shard == other.shard && isLeader == other.isLeader; 
+    bool operator==(CollectionShardPair const& other) const {
+      return collection == other.collection && shard == other.shard && isLeader == other.isLeader;
     }
   };
   void getShardDistribution(std::map<std::string, std::unordered_set<CollectionShardPair>>& distr);

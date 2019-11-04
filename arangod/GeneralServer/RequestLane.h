@@ -97,6 +97,7 @@ enum class RequestLane {
   // and should have high prio. Will never block.
   // AGENCY_CALLBACK`
 
+  // Used by futures that have been delayed using Scheduler::delay.
   DELAYED_FUTURE,
 };
 
