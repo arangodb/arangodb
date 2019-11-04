@@ -88,6 +88,17 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
   unsigned generateRequestTicket();
 
  private:
+  
+  enum class ReqState {
+    None,
+    SendingGetSome,
+    GotSendSome,
+    SendingSkipSome,
+    GotSkipSome,
+    SendingShutdown,
+    GotShutdown
+  };
+  
   ExecutorInfos _infos;
 
   Query const& _query;
@@ -117,11 +128,11 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
   
   unsigned _lastTicket;  /// used to check for canceled requests
   
-  std::atomic<bool> _requestInFlight;
+  bool _requestInFlight;
   
   bool _hasTriggeredShutdown;
 
-  bool _didReceiveShutdownRequest;
+//  bool _didReceiveShutdownRequest;
 
   void traceGetSomeRequest(velocypack::Slice slice, size_t atMost);
   void traceSkipSomeRequest(velocypack::Slice slice, size_t atMost);

@@ -43,8 +43,10 @@ void SharedQueryState::invalidate() {
 void SharedQueryState::waitForAsyncWakeup() {
   std::unique_lock<std::mutex> guard(_mutex);
   TRI_ASSERT(!_wakeupCb);
+  LOG_DEVEL << "waiting " << this;
   _cv.wait(guard, [&] { return _numWakeups > 0; });
   TRI_ASSERT(_numWakeups > 0);
+  LOG_DEVEL << "continued " << this;
   _numWakeups--;
 }
 
