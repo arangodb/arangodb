@@ -27,7 +27,6 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 #include <array>
-#include <boost/variant.hpp>
 #include <utility>
 
 #include "Aql/AstNode.h"
@@ -509,7 +508,7 @@ bool Graph::removeEdgeDefinition(std::string const& edgeDefinitionName) {
     // Graph doesn't contain this edge definition, no need to do anything.
     return false;
   }
-  EdgeDefinition const oldEdgeDef = maybeOldEdgeDef.get();
+  EdgeDefinition const oldEdgeDef = maybeOldEdgeDef.value();
 
   _edgeColls.erase(edgeDefinitionName);
   _edgeDefs.erase(edgeDefinitionName);
@@ -682,11 +681,11 @@ void Graph::createCollectionOptions(VPackBuilder& builder, bool waitForSync) con
   builder.add(StaticStrings::MinReplicationFactor, VPackValue(writeConcern()));
 }
 
-boost::optional<const EdgeDefinition&> Graph::getEdgeDefinition(std::string const& collectionName) const {
+std::optional<std::reference_wrapper<const EdgeDefinition>> Graph::getEdgeDefinition(std::string const& collectionName) const {
   auto it = edgeDefinitions().find(collectionName);
   if (it == edgeDefinitions().end()) {
     TRI_ASSERT(!hasEdgeCollection(collectionName));
-    return boost::none;
+    return {std::nullopt};
   }
 
   TRI_ASSERT(hasEdgeCollection(collectionName));
