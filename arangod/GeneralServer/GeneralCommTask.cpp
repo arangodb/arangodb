@@ -47,7 +47,9 @@ template <SocketType T>
 void GeneralCommTask<T>::start() {
   asio_ns::post(_protocol->context.io_context, [self = shared_from_this()] {
     auto* thisPtr = static_cast<GeneralCommTask<T>*>(self.get());
-    thisPtr->_protocol->setNonBlocking(true);
+    if (thisPtr->_protocol->supportsMixedIO()) {
+      thisPtr->_protocol->setNonBlocking(true);
+    }
     thisPtr->asyncReadSome();
   });
 }

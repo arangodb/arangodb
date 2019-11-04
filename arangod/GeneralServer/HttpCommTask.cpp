@@ -386,10 +386,11 @@ void HttpCommTask<T>::processRequest() {
   this->_protocol->timer.cancel();
 
   {
-    LOG_TOPIC("6e770", DEBUG, Logger::REQUESTS)
+    LOG_TOPIC("6e770", INFO, Logger::REQUESTS)
         << "\"http-request-begin\",\"" << (void*)this << "\",\""
         << this->_connectionInfo.clientAddress << "\",\""
         << HttpRequest::translateMethod(_request->requestType()) << "\",\""
+        << (_request->databaseName().empty() ? "" : "/_db/" + _request->databaseName())
         << (Logger::logRequestParameters() ? _request->fullUrl() : _request->requestPath())
         << "\"";
 
@@ -728,12 +729,11 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
   }
 
   // turn on the keepAlive timer
-  double secs = GeneralServerFeature::keepAliveTimeout();
+  double secs = GeneralServerFeature::keepAliveTimeout();  
   if (_shouldKeepAlive && secs > 0) {
     int64_t millis = static_cast<int64_t>(secs * 1000);
     this->_protocol->timer.expires_after(std::chrono::milliseconds(millis));
-    std::weak_ptr<CommTask> self = CommTask::shared_from_this();
-    this->_protocol->timer.async_wait([self = std::move(self)] (asio_ns::error_code ec) {
+    this->_protocol->timer.async_wait([self = CommTask::weak_from_this()] (asio_ns::error_code ec) {
       std::shared_ptr<CommTask> s;
       if (ec || !(s = self.lock())) {  // was canceled / deallocated
         return;
@@ -744,9 +744,6 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
     });
 
     header->append(TRI_CHAR_LENGTH_PAIR("Connection: Keep-Alive\r\n"));
-    header->append(TRI_CHAR_LENGTH_PAIR("Keep-Alive: timeout="));
-    header->append(std::to_string(static_cast<int64_t>(secs)));
-    header->append("\r\n", 2);
   } else {
     header->append(TRI_CHAR_LENGTH_PAIR("Connection: Close\r\n"));
   }
@@ -794,7 +791,7 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
   double const totalTime = RequestStatistics::ELAPSED_SINCE_READ_START(stat);
 
   // and give some request information
-  LOG_TOPIC("8f555", INFO, Logger::REQUESTS)
+  LOG_TOPIC("8f555", DEBUG, Logger::REQUESTS)
   << "\"http-request-end\",\"" << (void*)this << "\",\"" << this->_connectionInfo.clientAddress
   << "\",\"" << GeneralRequest::translateMethod(::llhttpToRequestType(&_parser)) << "\",\""
   << static_cast<int>(response.responseCode()) << "\"," << Logger::FIXED(totalTime, 6);

@@ -61,12 +61,9 @@ int rotateActiveJournalOnAllDBServers(std::string const& dbname, std::string con
     return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
 
-  std::string const baseUrl =
-      "/_db/" + basics::StringUtils::urlEncode(dbname) + "/_api/collection/";
-
   VPackBuffer<uint8_t> body;
-  network::Headers headers;
   network::RequestOptions options;
+  options.database = dbname;
   options.timeout = network::Timeout(600.0);
 
   // now we notify all leader and follower shards
@@ -74,10 +71,9 @@ int rotateActiveJournalOnAllDBServers(std::string const& dbname, std::string con
   std::vector<network::FutureRes> futures;
   for (auto const& shard : *shardList) {
     for (ServerID const& serverId : shard.second) {
-      std::string uri =
-          baseUrl + basics::StringUtils::urlEncode(shard.first) + "/rotate";
+      std::string uri = "/_api/collection/" + basics::StringUtils::urlEncode(shard.first) + "/rotate";
       auto f = network::sendRequest(pool, "server:" + serverId, fuerte::RestVerb::Put,
-                                    std::move(uri), body, headers, options);
+                                    std::move(uri), body, options);
       futures.emplace_back(std::move(f));
     }
   }
