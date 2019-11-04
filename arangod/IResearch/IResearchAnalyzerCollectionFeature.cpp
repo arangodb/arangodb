@@ -21,6 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ApplicationServerHelper.h"
+#include "Basics/StaticStrings.h"
 #include "Cluster/ServerState.h"
 #include "FeaturePhases/ClusterFeaturePhase.h"
 #include "FeaturePhases/DatabaseFeaturePhase.h"
@@ -55,16 +56,16 @@ void IResearchAnalyzerCollectionFeature::start() {
   TRI_ASSERT(databaseFeature != nullptr);
 
   databaseFeature->enumerateDatabases([](TRI_vocbase_t& vocbase) {
-    Result res = methods::Collections::lookup(vocbase, "_analyzers", [](std::shared_ptr<LogicalCollection> const&) {
+    Result res = methods::Collections::lookup(vocbase, StaticStrings::AnalyzersCollection, [](std::shared_ptr<LogicalCollection> const&) {
     });
 
     if (res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
       // collection does not yet exist, so let's create it now
-      auto res =  methods::Collections::createSystem(vocbase, "_analyzers", false);
+      auto res =  methods::Collections::createSystem(vocbase, StaticStrings::AnalyzersCollection, false);
       if (res.first.ok()) {
-        LOG_TOPIC("c2e33", DEBUG, arangodb::iresearch::TOPIC) << "successfully created '_analyzers' collection in database '" << vocbase.name() << "'";
+        LOG_TOPIC("c2e33", DEBUG, arangodb::iresearch::TOPIC) << "successfully created '" << StaticStrings::AnalyzersCollection << "' collection in database '" << vocbase.name() << "'";
       } else if (res.first.fail() && !res.first.is(TRI_ERROR_ARANGO_CONFLICT)) {
-        LOG_TOPIC("ecc23", WARN, arangodb::iresearch::TOPIC) << "unable to create '_analyzers' collection: " << res.first.errorMessage();
+        LOG_TOPIC("ecc23", WARN, arangodb::iresearch::TOPIC) << "unable to create '" << StaticStrings::AnalyzersCollection << "' collection: " << res.first.errorMessage();
         // don't abort startup here. the next startup may fix this
       }
     }
