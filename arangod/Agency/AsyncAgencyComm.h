@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -18,8 +17,11 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andreas Streichardt
+/// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
+#ifndef ARANGOD_CLUSTER_ASYNC_AGENCY_COMM_H
+#define ARANGOD_CLUSTER_ASYNC_AGENCY_COMM_H 1
+
 #include <fuerte/message.h>
 
 #include <deque>
@@ -67,12 +69,12 @@ struct AsyncAgencyCommResult {
 };
 
 struct AgencyReadResult : public AsyncAgencyCommResult {
-  AgencyReadResult(AsyncAgencyCommResult &&result, std::shared_ptr<const arangodb::cluster::paths::Path> const& valuePath)
-    : AsyncAgencyCommResult(std::move(result)), _value(nullptr), _valuePath(valuePath) {}
-  VPackSlice value() { if (this->_value.start() == nullptr) { this->_value = slice().at(0).get(std::move(_valuePath->vec())); } return this->_value; }
+  AgencyReadResult(AsyncAgencyCommResult &&result, std::shared_ptr<arangodb::cluster::paths::Path const> valuePath)
+    : AsyncAgencyCommResult(std::move(result)), _value(nullptr), _valuePath(std::move(valuePath)) {}
+  VPackSlice value() { if (this->_value.start() == nullptr) { this->_value = slice().at(0).get(_valuePath->vec()); } return this->_value; }
 private:
   VPackSlice _value;
-  std::shared_ptr<const arangodb::cluster::paths::Path> _valuePath;
+  std::shared_ptr<arangodb::cluster::paths::Path const> _valuePath;
 };
 
 
@@ -89,7 +91,10 @@ public:
   void addEndpoint(std::string const& endpoint);
   void updateEndpoints(std::vector<std::string> const& endpoints);
 
-  std::deque<std::string> const& endpoints() { return _endpoints; }
+  std::deque<std::string> endpoints() const noexcept {
+    std::unique_lock<std::mutex> guard(_lock);
+    return _endpoints;
+  }
 
   std::string getCurrentEndpoint();
   void reportError(std::string const& endpoint);
@@ -99,7 +104,7 @@ public:
   void pool(network::ConnectionPool *pool) { _pool = pool; };
 
 private:
-  std::mutex _lock;
+  mutable std::mutex _lock;
   std::deque<std::string> _endpoints;
   network::ConnectionPool *_pool;
 };
@@ -110,19 +115,19 @@ public:
   using FutureReadResult = arangodb::futures::Future<AgencyReadResult>;
 
   FutureResult getValues(std::string const& path) const;
-  FutureReadResult getValues(std::shared_ptr<const arangodb::cluster::paths::Path> const& path) const;
+  FutureReadResult getValues(std::shared_ptr<arangodb::cluster::paths::Path const> const& path) const;
 
 
   template<typename T>
   FutureResult setValue(
     network::Timeout timeout,
-    std::shared_ptr<const arangodb::cluster::paths::Path> const& path,
-    T value, uint64_t ttl = 0) {
-    return setValue(timeout, path->str(), std::forward<T>(value), ttl);
+    std::shared_ptr<arangodb::cluster::paths::Path const> const& path,
+    T const& value, uint64_t ttl = 0) {
+    return setValue(timeout, path->str(), value, ttl);
   }
 
   template<typename T>
-  FutureResult setValue(network::Timeout timeout, std::string const& path, T value, uint64_t ttl = 0) {
+  FutureResult setValue(network::Timeout timeout, std::string const& path, T const& value, uint64_t ttl = 0) {
     VPackBuffer<uint8_t> transaction;
     {
       VPackBuilder trxBuilder(transaction);
@@ -146,7 +151,7 @@ public:
     return sendWriteTransaction(timeout, std::move(transaction));
   }
 
-  FutureResult deleteKey(network::Timeout timeout, std::shared_ptr<const arangodb::cluster::paths::Path> const& path) const;
+  FutureResult deleteKey(network::Timeout timeout, std::shared_ptr<arangodb::cluster::paths::Path const> const& path) const;
   FutureResult deleteKey(network::Timeout timeout, std::string const& path) const;
 
   FutureResult sendWriteTransaction(network::Timeout timeout, velocypack::Buffer<uint8_t>&& body) const;
@@ -159,12 +164,13 @@ public:
   FutureResult sendWithFailover(arangodb::fuerte::RestVerb method, std::string const& url, network::Timeout timeout, velocypack::Buffer<uint8_t>&& body) const;
   FutureResult sendWithFailover(arangodb::fuerte::RestVerb method, std::string const& url, network::Timeout timeout, AgencyTransaction const& trx) const;
 
-  AsyncAgencyComm() : _manager(AsyncAgencyCommManager::INSTANCE.get()) {}
-  AsyncAgencyComm(AsyncAgencyCommManager *manager) : _manager(manager) {}
-  AsyncAgencyComm(AsyncAgencyCommManager &manager) : _manager(&manager) {}
+  AsyncAgencyComm() : _manager(*AsyncAgencyCommManager::INSTANCE.get()) {}
+  AsyncAgencyComm(AsyncAgencyCommManager *manager) : _manager(*manager) {}
+  AsyncAgencyComm(AsyncAgencyCommManager &manager) : _manager(manager) {}
 private:
-  AsyncAgencyCommManager *_manager;
+  AsyncAgencyCommManager &_manager;
 };
 
 
 }
+#endif

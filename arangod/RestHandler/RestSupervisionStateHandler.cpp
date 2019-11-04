@@ -44,8 +44,6 @@ RestSupervisionStateHandler::RestSupervisionStateHandler(application_features::A
                                                          GeneralRequest* request, GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
-RestSupervisionStateHandler::~RestSupervisionStateHandler() {}
-
 RestStatus RestSupervisionStateHandler::execute() {
   if (!ExecContext::current().isAdminUser()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);

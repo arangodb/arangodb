@@ -49,7 +49,7 @@ bool agencyAsyncShouldTimeout(RequestMeta const& meta) {
 
 auto agencyAsyncWaitTime(RequestMeta const& meta) {
   if (meta.tries > 0) {
-    return 250ms;
+    return 250ms * (1l << meta.tries);
   }
   return 0ms;
 }
@@ -75,21 +75,21 @@ std::string extractEndpointFromUrl(std::string const& location) {
   return Endpoint::unifiedForm(specification.substr(0, delim));
 }
 
-void redirectOrError(AsyncAgencyCommManager *man, std::string const& endpoint, std::string const& location) {
+void redirectOrError(AsyncAgencyCommManager& man, std::string const& endpoint, std::string const& location) {
 
   std::string newEndpoint = extractEndpointFromUrl(location);
 
   if (newEndpoint.empty()) {
-    man->reportError(endpoint);
+    man.reportError(endpoint);
   } else {
-    man->reportRedirect(endpoint, newEndpoint);
+    man.reportRedirect(endpoint, newEndpoint);
   }
 }
 
-arangodb::AsyncAgencyComm::FutureResult agencyAsyncSend(AsyncAgencyCommManager *man, RequestMeta&& meta, VPackBuffer<uint8_t>&& body);
+arangodb::AsyncAgencyComm::FutureResult agencyAsyncSend(AsyncAgencyCommManager& man, RequestMeta&& meta, VPackBuffer<uint8_t>&& body);
 
 arangodb::AsyncAgencyComm::FutureResult agencyAsyncInquiry(
-  AsyncAgencyCommManager *man,
+  AsyncAgencyCommManager& man,
   RequestMeta&& meta,
   VPackBuffer<uint8_t>&& body
 ) {
@@ -102,10 +102,9 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncInquiry(
     return futures::makeFuture(AsyncAgencyCommResult{fuerte::Error::Timeout, nullptr});
   }
 
-  // after a possible small delay (if required) TODO
   auto waitTime = agencyAsyncWaitTime(meta);
   return SchedulerFeature::SCHEDULER->delay(waitTime).thenValue(
-    [meta = std::move(meta), man, body = std::move(body)](auto){
+    [meta = std::move(meta), &man, body = std::move(body)](auto){
 
 
     // build inquire request
@@ -120,9 +119,9 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncInquiry(
       }
     }
 
-    std::string endpoint = man->getCurrentEndpoint();
-    return network::sendRequest(man->pool(), endpoint, meta.method, "/_api/agency/inquire", std::move(query), meta.timeout, meta.headers).thenValue(
-      [meta = std::move(meta), endpoint = std::move(endpoint), man, body = std::move(body)]
+    std::string endpoint = man.getCurrentEndpoint();
+    return network::sendRequest(man.pool(), endpoint, meta.method, "/_api/agency/inquire", std::move(query), meta.timeout, meta.headers).thenValue(
+      [meta = std::move(meta), endpoint = std::move(endpoint), &man, body = std::move(body)]
         (network::Response &&result) mutable {
 
       auto &resp = result.response;
@@ -145,11 +144,13 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncInquiry(
             break;
           }
 
+
+          [[fallthrough]]
           /* fallthrough */
         case fuerte::Error::Timeout:
         case fuerte::Error::CouldNotConnect:
           // retry to send the request again
-          man->reportError(endpoint);
+          man.reportError(endpoint);
           return agencyAsyncInquiry (man, std::move(meta), std::move(body));
 
         default:
@@ -165,7 +166,7 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncInquiry(
 
 
 arangodb::AsyncAgencyComm::FutureResult agencyAsyncSend(
-  AsyncAgencyCommManager *man,
+  AsyncAgencyCommManager& man,
   RequestMeta&& meta,
   VPackBuffer<uint8_t>&& body
 ) {
@@ -181,15 +182,15 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncSend(
   // after a possible small delay (if required)
   auto waitTime = agencyAsyncWaitTime(meta);
   return SchedulerFeature::SCHEDULER->delay(waitTime).thenValue(
-    [meta = std::move(meta), man, body = std::move(body)](auto) {
+    [meta = std::move(meta), &man, body = std::move(body)](auto) {
 
     // aquire the current endpoint
-    std::string endpoint = man->getCurrentEndpoint();
+    std::string endpoint = man.getCurrentEndpoint();
 
     // and fire off the request
-    return network::sendRequest(man->pool(), endpoint, meta.method, meta.url, std::move(body), meta.timeout, meta.headers)
+    return network::sendRequest(man.pool(), endpoint, meta.method, meta.url, std::move(body), meta.timeout, meta.headers)
       .thenValue(
-        [meta = std::move(meta), endpoint = std::move(endpoint), man] (network::Response &&result) mutable {
+        [meta = std::move(meta), endpoint = std::move(endpoint), &man] (network::Response &&result) mutable {
 
       auto &req = result.request;
       auto &resp = result.response;
@@ -221,15 +222,16 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncSend(
             break;
           }
 
+          [[fallthrough]]
           /* fallthrough */
         case fuerte::Error::Timeout:
           // inquiry the request
-          man->reportError(endpoint);
+          man.reportError(endpoint);
           return ::agencyAsyncInquiry(man, std::move(meta), std::move(body).moveBuffer());
 
         case fuerte::Error::CouldNotConnect:
           // retry to send the request
-          man->reportError(endpoint);
+          man.reportError(endpoint);
           return ::agencyAsyncSend (man, std::move(meta), std::move(body).moveBuffer());
 
         default:
@@ -337,7 +339,7 @@ AsyncAgencyComm::FutureResult AsyncAgencyComm::getValues(std::string const& path
   return sendWithFailover(fuerte::RestVerb::Post, AGENCY_URL_READ, 120s, AgencyReadTransaction(path));
 }
 
-AsyncAgencyComm::FutureReadResult AsyncAgencyComm::getValues(std::shared_ptr<const arangodb::cluster::paths::Path> const& path) const {
+AsyncAgencyComm::FutureReadResult AsyncAgencyComm::getValues(std::shared_ptr<arangodb::cluster::paths::Path const> const& path) const {
 
   return sendWithFailover(fuerte::RestVerb::Post, AGENCY_URL_READ, 120s, AgencyReadTransaction(path->str()))
     .thenValue([path](AsyncAgencyCommResult &&result) {
@@ -368,7 +370,7 @@ AsyncAgencyComm::FutureResult AsyncAgencyComm::sendReadTransaction(network::Time
   return sendWithFailover(fuerte::RestVerb::Post, AGENCY_URL_READ, timeout, std::move(body));
 }
 
-AsyncAgencyComm::FutureResult AsyncAgencyComm::deleteKey(network::Timeout timeout, std::shared_ptr<const arangodb::cluster::paths::Path> const& path) const {
+AsyncAgencyComm::FutureResult AsyncAgencyComm::deleteKey(network::Timeout timeout, std::shared_ptr<arangodb::cluster::paths::Path const> const& path) const {
   return deleteKey(timeout, path->str());
 }
 

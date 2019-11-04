@@ -26,10 +26,10 @@
 
 #include "Basics/Common.h"
 
-#include "Network/NetworkFeature.h"
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "Network/NetworkFeature.h"
 
 namespace arangodb {
 

@@ -1442,14 +1442,14 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
 
         using BaseType::StaticComponent;
 
-        class Server : public DynamicComponent<Server, RemovedServers, std::string> {
+        class Server : public DynamicComponent<Server, RemovedServers, ServerID> {
          public:
           char const* component() const noexcept { return value().c_str(); }
 
           using BaseType::DynamicComponent;
         };
 
-        std::shared_ptr<Server const> server(std::string server) const {
+        std::shared_ptr<Server const> server(ServerID server) const {
           return Server::make_shared(shared_from_this(), std::move(server));
         }
       };

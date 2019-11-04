@@ -400,7 +400,7 @@ void ClusterFeature::prepare() {
   }
 
   network::ConnectionPool::Config config;
-  config.numIOThreads = static_cast<unsigned>(2);
+  config.numIOThreads = 2u;
   config.maxOpenConnections = 2;
   config.connectionTtlMilli = 1000;
   config.verifyHosts = false;

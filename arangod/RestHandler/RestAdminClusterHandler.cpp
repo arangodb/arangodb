@@ -240,8 +240,6 @@ RestAdminClusterHandler::RestAdminClusterHandler(application_features::Applicati
                                                          GeneralRequest* request, GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
-RestAdminClusterHandler::~RestAdminClusterHandler() {}
-
 std::string const RestAdminClusterHandler::Health = "health";
 std::string const RestAdminClusterHandler::NumberOfServers = "numberOfServers";
 std::string const RestAdminClusterHandler::Maintenance = "maintenance";
@@ -1522,17 +1520,6 @@ RestAdminClusterHandler::futureVoid RestAdminClusterHandler::handlePostRebalance
           VPackObjectBuilder ob(&builder);
           builder.add("error", VPackValue(false));
           builder.add("code", VPackValue(200));
-          /*{
-            VPackArrayBuilder ab(&builder, "moves");
-            for (auto const& move : moves) {
-              VPackObjectBuilder ob(&builder);
-              builder.add("collection", VPackValue(move.collection));
-              builder.add("shard", VPackValue(move.shard));
-              builder.add("from", VPackValue(move.from));
-              builder.add("to", VPackValue(move.to));
-              builder.add("isLeader", VPackValue(move.isLeader));
-            }
-          } */
         }
         resetResponse(rest::ResponseCode::ACCEPTED);
         response()->setPayload(std::move(responseBody), true);

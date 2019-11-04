@@ -779,7 +779,7 @@ bool ServerState::registerAtAgencyPhase2(AgencyComm& comm, bool const hadPersist
     } else {
       LOG_TOPIC("ba205", WARN, arangodb::Logger::CLUSTER)
           << "failed to register server in agency: http code: " << result.httpCode()
-          << ", body: '" << result.slice().toJson() << "', retrying ...";
+          << ", body: '" << result.body() << "', retrying ...";
     }
 
     std::this_thread::sleep_for(std::chrono::seconds(1));
