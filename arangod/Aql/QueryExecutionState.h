@@ -43,6 +43,7 @@ enum class ValueType {
   EXECUTION,
   FINALIZATION,
   FINISHED,
+  KILLED,
 
   INVALID_STATE
 };

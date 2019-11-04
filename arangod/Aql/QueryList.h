@@ -184,10 +184,11 @@ class QueryList {
   void remove(Query*);
 
   /// @brief kills a query
-  int kill(TRI_voc_tick_t);
+  Result kill(TRI_voc_tick_t id);
 
-  /// @brief kills all currently running queries
-  uint64_t killAll(bool silent);
+  /// @brief kills all currently running queries that match the filter function
+  /// (i.e. the filter should return true for a queries to be killed)
+  uint64_t kill(std::function<bool(Query&)> const& filter, bool silent);
 
   /// @brief return the list of running queries
   std::vector<QueryEntryCopy> listCurrent();

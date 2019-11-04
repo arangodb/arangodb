@@ -139,8 +139,9 @@ TEST(EngineInfoContainerTest, it_should_create_an_executionengine_for_the_first_
   EngineInfoContainerCoordinator testee;
   testee.addNode(&sNode);
 
+  std::vector<uint64_t> coordinatorQueryIds{};
   ExecutionEngineResult result =
-      testee.buildEngines(&query, &registry, dbname, restrictToShards, queryIds);
+      testee.buildEngines(&query, &registry, dbname, restrictToShards, queryIds, coordinatorQueryIds);
   ASSERT_TRUE(result.ok());
   ExecutionEngine* engine = result.engine();
 
@@ -296,8 +297,9 @@ TEST(EngineInfoContainerTest,
   // Close the second snippet
   testee.closeSnippet();
 
+  std::vector<uint64_t> coordinatorQueryIds{};
   ExecutionEngineResult result =
-      testee.buildEngines(&query, &registry, dbname, restrictToShards, queryIds);
+      testee.buildEngines(&query, &registry, dbname, restrictToShards, queryIds, coordinatorQueryIds);
   ASSERT_TRUE(result.ok());
   ExecutionEngine* engine = result.engine();
 
@@ -532,8 +534,9 @@ TEST(EngineInfoContainerTest, snippets_are_a_stack_insert_node_always_into_top_s
 
   testee.addNode(&tbNode);
 
+  std::vector<uint64_t> coordinatorQueryIds{};
   ExecutionEngineResult result =
-      testee.buildEngines(&query, &registry, dbname, restrictToShards, queryIds);
+      testee.buildEngines(&query, &registry, dbname, restrictToShards, queryIds, coordinatorQueryIds);
 
   ASSERT_TRUE(result.ok());
   ExecutionEngine* engine = result.engine();
@@ -699,8 +702,9 @@ TEST(EngineInfoContainerTest, error_cases_cloning_of_a_query_fails_throws_an_err
       })
       .Throw(arangodb::basics::Exception(TRI_ERROR_DEBUG, __FILE__, __LINE__));
 
+  std::vector<uint64_t> coordinatorQueryIds{};
   ExecutionEngineResult result =
-      testee.buildEngines(&query, &registry, dbname, restrictToShards, queryIds);
+      testee.buildEngines(&query, &registry, dbname, restrictToShards, queryIds, coordinatorQueryIds);
   ASSERT_TRUE(!result.ok());
   // Make sure we check the right thing here
   ASSERT_TRUE(result.errorNumber() == TRI_ERROR_DEBUG);
@@ -866,8 +870,9 @@ TEST(EngineInfoContainerTest, error_cases_cloning_of_a_query_fails_returns_a_nul
         return nullptr;
       });
 
+  std::vector<uint64_t> coordinatorQueryIds{};
   ExecutionEngineResult result =
-      testee.buildEngines(&query, &registry, dbname, restrictToShards, queryIds);
+      testee.buildEngines(&query, &registry, dbname, restrictToShards, queryIds, coordinatorQueryIds);
   ASSERT_TRUE(!result.ok());
   // Make sure we check the right thing here
   ASSERT_TRUE(result.errorNumber() == TRI_ERROR_INTERNAL);

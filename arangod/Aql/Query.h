@@ -105,12 +105,14 @@ class Query {
   /// @brief clone a query
   /// note: as a side-effect, this will also create and start a transaction for
   /// the query
-  TEST_VIRTUAL Query* clone(QueryPart, bool);
+  TEST_VIRTUAL Query* clone(QueryPart, bool withPlan);
 
   constexpr static uint64_t DontCache = 0;
 
   /// @brief whether or not the query is killed
   inline bool killed() const { return _killed; }
+  
+  void setKilled() { _killed = true; }
 
   /// @brief set the query to killed
   void kill();
