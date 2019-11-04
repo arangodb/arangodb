@@ -25,7 +25,6 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Michael Hackstein
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -42,6 +41,15 @@ function ahuacatlFailureSuite () {
   'use strict';
   const cn = "UnitTestsAhuacatlFailures";
   const en = "UnitTestsAhuacatlEdgeFailures";
+  
+  let  assertFailingQuery = function (query) {
+    try {
+      AQL_EXECUTE(query);
+      fail();
+    } catch (err) {
+      assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum, query);
+    }
+  };
         
   return {
 
@@ -82,7 +90,20 @@ function ahuacatlFailureSuite () {
       // no real test expectations here, just that the query works and doesn't fail on shutdown
       assertEqual(0, res.length);
     },
+    
+    testShutdownSyncFailInGetSome : function () {
+      internal.debugSetFailAt("ExecutionEngine::shutdownSync");
+      internal.debugSetFailAt("RestAqlHandler::getSome");
 
+      assertFailingQuery("FOR doc IN " + cn + " RETURN doc");
+    },
+
+    testShutdownSyncDiamondFailInGetSome : function () {
+      internal.debugSetFailAt("ExecutionEngine::shutdownSync");
+      internal.debugSetFailAt("RestAqlHandler::getSome");
+
+      assertFailingQuery("FOR doc1 IN " + cn + " FOR doc2 IN " + en + " FILTER doc1._key == doc2._key RETURN doc1");
+    },
   };
 }
  
