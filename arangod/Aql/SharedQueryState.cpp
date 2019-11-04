@@ -39,9 +39,7 @@ void SharedQueryState::invalidate() {
 /// this has to stay for a backwards-compatible AQL HTTP API (hasMore).
 void SharedQueryState::waitForAsyncResponse() {
   std::unique_lock<std::mutex> guard(_mutex);
-  if (!_wasNotified) {
-    _condition.wait(guard);
-  }
+  _condition.wait(guard, [&] { return _wasNotified; });
   _wasNotified = false;
 }
 

@@ -243,6 +243,10 @@ class ExecutionNode {
   /// @brief whether or not the node has a parent
   bool hasParent() const;
 
+  /// @brief whether or not the node has any ancestor (parent at any distance)
+  /// of this type
+  bool hasParentOfType(ExecutionNode::NodeType type) const;
+
   /// @brief returns the first parent, or a nullptr if none present
   ExecutionNode* getFirstParent() const;
 
@@ -251,6 +255,7 @@ class ExecutionNode {
 
   /// @brief get the singleton node of the node
   ExecutionNode const* getSingleton() const;
+  ExecutionNode* getSingleton();
 
   /// @brief get the node and its dependencies as a vector
   void getDependencyChain(std::vector<ExecutionNode*>& result, bool includeSelf);
@@ -310,6 +315,7 @@ class ExecutionNode {
 
   /// @brief walk a complete execution plan recursively
   bool walk(WalkerWorker<ExecutionNode>& worker);
+  bool walkSubqueriesFirst(WalkerWorker<ExecutionNode>& worker);
 
   /// serialize parents of each node (used in the explainer)
   static constexpr unsigned SERIALIZE_PARENTS = 1;
@@ -398,6 +404,10 @@ class ExecutionNode {
   /// @brief get the surrounding loop
   ExecutionNode const* getLoop() const;
 
+  bool isInSplicedSubquery() const noexcept;
+
+  void setIsInSplicedSubquery(bool) noexcept;
+
  protected:
   /// @brief set the id, use with care! The purpose is to use a cloned node
   /// together with the original in the same plan.
@@ -473,6 +483,8 @@ class ExecutionNode {
   /// just before this node hands on results. This is computed during
   /// the static analysis for each node using the variable usage in the plan.
   std::unordered_set<RegisterId> _regsToClear;
+
+  bool _isInSplicedSubquery;
 
  public:
   /// @brief used as "type traits" for ExecutionNodes and derived classes

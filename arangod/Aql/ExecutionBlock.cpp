@@ -73,6 +73,7 @@ ExecutionBlock::ExecutionBlock(ExecutionEngine* engine, ExecutionNode const* ep)
       _trx(engine->getQuery()->trx()),
       _shutdownResult(TRI_ERROR_NO_ERROR),
       _done(false),
+      _isInSplicedSubquery(ep != nullptr ? ep->isInSplicedSubquery() : false),
       _exeNode(ep),
       _dependencyPos(_dependencies.end()),
       _profile(engine->getQuery()->queryOptions().getProfileLevel()),
@@ -189,10 +190,7 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlock::traceGetSomeEnd
               << "getSome type=" << node->getTypeString() << " result: nullptr";
         } else {
           VPackBuilder builder;
-          {
-            VPackObjectBuilder guard(&builder);
-            result->toVelocyPack(transaction(), builder);
-          }
+          result->toSimpleVPack(transaction(), builder);
           auto options = transaction()->transactionContextPtr()->getVPackOptions();
           LOG_TOPIC("fcd9c", INFO, Logger::QUERIES)
               << "[query#" << queryId << "] "
@@ -283,4 +281,8 @@ void ExecutionBlock::addDependency(ExecutionBlock* ep) {
              _dependencies.end());
   _dependencies.emplace_back(ep);
   _dependencyPos = _dependencies.end();
+}
+
+bool ExecutionBlock::isInSplicedSubquery() const noexcept {
+  return _isInSplicedSubquery;
 }

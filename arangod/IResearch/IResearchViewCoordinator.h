@@ -90,7 +90,7 @@ class IResearchViewCoordinator final : public arangodb::LogicalView {
 
  protected:
   virtual Result appendVelocyPackImpl(arangodb::velocypack::Builder& builder,
-                                      std::underlying_type<Serialize>::type flags) const override;
+                                      Serialization context) const override;
 
   virtual arangodb::Result dropImpl() override;
 

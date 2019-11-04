@@ -109,11 +109,11 @@ class InputAqlItemRow {
 
   explicit operator bool() const noexcept;
 
-  bool isFirstRowInBlock() const noexcept;
+  bool isFirstDataRowInBlock() const noexcept;
 
   bool isLastRowInBlock() const noexcept;
 
-  bool blockHasMoreRows() const noexcept;
+  bool blockHasMoreDataRowsAfterThis() const noexcept;
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   /**

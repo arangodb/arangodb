@@ -43,6 +43,7 @@
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "Ssl/SslInterface.h"
 #include "V8/v8-conv.h"
+#include "V8/v8-buffer.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
 
@@ -160,12 +161,12 @@ std::shared_ptr<fuerte::Connection> V8ClientConnection::createConnection() {
         return newConnection;
       }
     }
+    return _connection;
   } catch (fuerte::Error const& e) {  // connection error
     _lastErrorMessage = fuerte::to_string(e);
     _lastHttpReturnCode = 503;
+    return nullptr;
   }
-  
-  return nullptr;
 }
 
 std::shared_ptr<fuerte::Connection> V8ClientConnection::acquireConnection() {
@@ -174,7 +175,9 @@ std::shared_ptr<fuerte::Connection> V8ClientConnection::acquireConnection() {
   _lastErrorMessage = "";
   _lastHttpReturnCode = 0;
   
-  if (!_connection || _connection->state() == fuerte::Connection::State::Failed) {
+  if (!_connection || 
+      (_connection->state() == fuerte::Connection::State::Disconnected ||
+       _connection->state() == fuerte::Connection::State::Failed)) {
     return createConnection();
   }
   return _connection;
@@ -185,7 +188,8 @@ void V8ClientConnection::setInterrupted(bool interrupted) {
   if (interrupted && _connection != nullptr) {
     shutdownConnection();
   } else if (!interrupted && (_connection == nullptr ||
-                              _connection->state() == fuerte::Connection::State::Failed)) {
+                              (_connection->state() == fuerte::Connection::State::Disconnected ||
+                               _connection->state() == fuerte::Connection::State::Failed))) {
     createConnection();
   }
 }
@@ -217,7 +221,6 @@ void V8ClientConnection::timeout(double value) {
 }
 
 void V8ClientConnection::connect(ClientFeature* client) {
-  
   TRI_ASSERT(client);
   std::lock_guard<std::recursive_mutex> guard(_lock);
   _forceJson = client->forceJson();
@@ -896,8 +899,11 @@ static void ClientConnection_httpSendFile(v8::FunctionCallbackInfo<v8::Value> co
   }
 
   // check params
-  if (args.Length() != 2 || !args[0]->IsString() || args[1]->IsUndefined()) {
-    TRI_V8_THROW_EXCEPTION_USAGE("sendFile(<url>, <file>)");
+  if (args.Length() < 2 ||
+      args.Length() > 3 ||
+      !args[0]->IsString() ||
+      args[1]->IsUndefined()) {
+    TRI_V8_THROW_EXCEPTION_USAGE("sendFile(<url>, <file>[, <headers>])");
   }
 
   TRI_Utf8ValueNFC url(isolate, args[0]);
@@ -912,6 +918,11 @@ static void ClientConnection_httpSendFile(v8::FunctionCallbackInfo<v8::Value> co
 
   // check header fields
   std::unordered_map<std::string, std::string> headerFields;
+    // check header fields
+  if (args.Length() > 2) {
+    ObjectToMap(isolate, headerFields, args[2]);
+  }
+
   v8::Local<v8::Value> result =
       v8connection->postData(isolate, arangodb::velocypack::StringRef(*url, url.length()), args[1],
                              headerFields, false, /*isFile*/ true);
@@ -1505,12 +1516,15 @@ v8::Local<v8::Value> V8ClientConnection::requestData(
     v8::Local<v8::Value> const& body,
     std::unordered_map<std::string, std::string> const& headerFields, bool isFile) {
 
+  bool retry = true;
+
+again:
   auto req = std::make_unique<fuerte::Request>();
   req->header.restVerb = method;
   req->header.database = _databaseName;
   req->header.parseArangoPath(location.toString());
   for (auto& pair : headerFields) {
-    req->header.addMeta(std::move(pair.first), std::move(pair.second));
+    req->header.addMeta(pair.first, pair.second);
   }
   if (isFile) {
     std::string const infile = TRI_ObjectToString(isolate, body);
@@ -1521,13 +1535,25 @@ v8::Local<v8::Value> V8ClientConnection::requestData(
     } catch (...) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_errno(), "could not read file");
     }
+    req->header.contentType(fuerte::ContentType::Custom);
     req->addBinary(reinterpret_cast<uint8_t const*>(contents.data()), contents.length());
-  } else if (body->IsString()) {  // assume JSON
+  } else if (body->IsString() || body->IsStringObject()) {  // assume JSON
     TRI_Utf8ValueNFC bodyString(isolate, body);
     req->addBinary(reinterpret_cast<uint8_t const*>(*bodyString), bodyString.length());
     if (req->header.contentType() == fuerte::ContentType::Unset) {
       req->header.contentType(fuerte::ContentType::Json);
     }
+  } else if (body->IsObject() && V8Buffer::hasInstance(isolate, body)) {
+    // supplied body is a Buffer object
+    char const* data = V8Buffer::data(isolate, body.As<v8::Object>());
+    size_t size = V8Buffer::length(isolate, body.As<v8::Object>());
+
+    if (data == nullptr) {
+      TRI_V8_SET_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                   "invalid <body> buffer value");
+      return v8::Undefined(isolate);
+    }
+    req->addBinary(reinterpret_cast<uint8_t const*>(data), size);
   } else if (!body->IsNullOrUndefined()) {
     VPackBuffer<uint8_t> buffer;
     VPackBuilder builder(buffer, &_vpackOptions);
@@ -1568,34 +1594,54 @@ v8::Local<v8::Value> V8ClientConnection::requestData(
     return v8::Undefined(isolate);
   }
 
+  fuerte::Error rc = fuerte::Error::NoError;
   std::unique_ptr<fuerte::Response> response;
   try {
     response = connection->sendRequest(std::move(req));
   } catch (fuerte::Error const& ec) {
-    return handleResult(isolate, nullptr, ec);
+    rc = ec;
+  }
+    
+  if (rc == fuerte::Error::ConnectionClosed && retry) {
+    retry = false;
+    goto again;
   }
 
-  return handleResult(isolate, std::move(response), fuerte::Error::NoError);
+  return handleResult(isolate, std::move(response), rc);
 }
 
 v8::Local<v8::Value> V8ClientConnection::requestDataRaw(
     v8::Isolate* isolate, fuerte::RestVerb method, arangodb::velocypack::StringRef const& location,
     v8::Local<v8::Value> const& body,
     std::unordered_map<std::string, std::string> const& headerFields) {
+  
+  bool retry = true;
 
+again:
   auto req = std::make_unique<fuerte::Request>();
   req->header.restVerb = method;
   req->header.database = _databaseName;
   req->header.parseArangoPath(location.toString());
   for (auto& pair : headerFields) {
-    req->header.addMeta(std::move(pair.first), std::move(pair.second));
+    req->header.addMeta(pair.first, pair.second);
   }
-  if (body->IsString()) {  // assume JSON
+  if (body->IsString() || body->IsStringObject()) {  // assume JSON
     TRI_Utf8ValueNFC bodyString(isolate, body);
     req->addBinary(reinterpret_cast<uint8_t const*>(*bodyString), bodyString.length());
     if (req->header.contentType() == fuerte::ContentType::Unset) {
       req->header.contentType(fuerte::ContentType::Json);
     }
+  } else if (body->IsObject() && V8Buffer::hasInstance(isolate, body)) {
+      // supplied body is a Buffer object
+      char const* data = V8Buffer::data(isolate, body.As<v8::Object>());
+      size_t size = V8Buffer::length(isolate, body.As<v8::Object>());
+
+      if (data == nullptr) {
+        TRI_V8_SET_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                     "invalid <body> buffer value");
+        return v8::Undefined(isolate);
+      }
+      req->addBinary(reinterpret_cast<uint8_t const*>(data), size);
   } else if (!body->IsNullOrUndefined()) {
     VPackBuffer<uint8_t> buffer;
     VPackBuilder builder(buffer);
@@ -1619,19 +1665,25 @@ v8::Local<v8::Value> V8ClientConnection::requestDataRaw(
   req->timeout(std::chrono::duration_cast<std::chrono::milliseconds>(_requestTimeout));
 
   std::shared_ptr<fuerte::Connection> connection = acquireConnection();
-  
   if (!connection || connection->state() == fuerte::Connection::State::Failed) {
     TRI_V8_SET_EXCEPTION_MESSAGE(TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT,
                                  "not connected");
     return v8::Undefined(isolate);
   }
 
+  fuerte::Error rc = fuerte::Error::NoError;
   std::unique_ptr<fuerte::Response> response;
   try {
     response = connection->sendRequest(std::move(req));
   } catch (fuerte::Error const& e) {
+    rc = e;
     _lastErrorMessage.assign(fuerte::to_string(e));
     _lastHttpReturnCode = 503;
+  }
+  
+  if (rc == fuerte::Error::ConnectionClosed && retry) {
+    retry = false;
+    goto again;
   }
 
   v8::Local<v8::Object> result = v8::Object::New(isolate);

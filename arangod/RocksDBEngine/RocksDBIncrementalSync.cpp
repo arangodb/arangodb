@@ -826,6 +826,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
             col->readDocumentWithCallback(&trx, documentId,
                                           [&docRev](LocalDocumentId const&, VPackSlice doc) {
                                             docRev = TRI_ExtractRevisionId(doc);
+                                            return true;
                                           });
           }
           compareChunk(docKey, docRev);
