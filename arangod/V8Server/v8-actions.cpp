@@ -1177,14 +1177,9 @@ static void JS_RawRequestBody(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
         case Endpoint::TransportType::VST: {
           if (request != nullptr) {
-            auto slice = request->payload();
+            auto raw = request->rawPayload();
             V8Buffer* buffer = nullptr;
-            if (slice.isNone()) {
-              buffer = V8Buffer::New(isolate, "", 0);
-            } else {
-              std::string bodyStr = slice.toJson();
-              buffer = V8Buffer::New(isolate, bodyStr.c_str(), bodyStr.size());
-            }
+            buffer = V8Buffer::New(isolate, raw.data(), raw.size());
             TRI_V8_RETURN(buffer->_handle);
           }
         } break;

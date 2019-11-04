@@ -31,7 +31,6 @@ const typeIs = require('type-is').is;
 const accepts = require('accepts');
 const parseRange = require('range-parser');
 const querystring = require('querystring');
-const getRawBodyBuffer = require('internal').rawRequestBody;
 const getTrustedProxies = require('internal').trustedProxies;
 const crypto = require('@arangodb/crypto');
 const Netmask = require('netmask').Netmask;
@@ -74,7 +73,7 @@ module.exports =
       this.path = this._url.pathname;
       this.pathParams = {};
       this.queryParams = querystring.parse(this._url.query);
-      this.body = getRawBodyBuffer(req);
+      this.body = req.requestBody;
       this.rawBody = this.body;
 
       this.trustProxy = (
