@@ -428,7 +428,7 @@ index_t State::logFollower(query_t const& transactions) {
       }
       if (tstamp == 0) {
         tstamp = duration_cast<milliseconds>(
-          system_clock::now().time_since_epoch()).count()
+          system_clock::now().time_since_epoch()).count();
       }
 
       bool reconfiguration = query.keyAt(0).isEqualString(RECONFIGURE);
