@@ -1826,8 +1826,15 @@ v8::Local<v8::Value> V8ClientConnection::handleResult(v8::Isolate* isolate,
       }
       return ret;
     }
-    // return body as string
-    return TRI_V8_PAIR_STRING(isolate, str, sb.size());
+    if (res->isContentTypeHtml() || res->isContentTypeText()) {
+      // return body as string
+      return TRI_V8_PAIR_STRING(isolate, str, sb.size());
+    }
+
+    V8Buffer* buffer;
+    buffer = V8Buffer::New(isolate, reinterpret_cast<char const*>(sb.data()), sb.size());
+    auto bufObj = v8::Local<v8::Object>::New(isolate, buffer->_handle);
+    return bufObj;
   }
 
   // no body

@@ -628,7 +628,8 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
   if (TRI_HasProperty(context, isolate, res, ContentTypeKey)) {
     contentType = TRI_ObjectToString(isolate, res->Get(ContentTypeKey));
 
-    if (contentType.find("application/json") == std::string::npos) {
+    if ((contentType.find("application/json") == std::string::npos) &&
+        (contentType.find("application/vpack") == std::string::npos)) {
       autoContent = false;
     }
     switch (response->transportType()) {
@@ -641,6 +642,9 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
         break;
 
       case Endpoint::TransportType::VST:
+        if (!autoContent) {
+          response->setContentType(contentType);
+        };
         response->setHeaderNC(arangodb::StaticStrings::ContentTypeHeader, contentType);
         break;
 
@@ -759,6 +763,7 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
               out = TRI_ObjectToString(isolate, res->Get(BodyKey));  // should get moved
             } else {
               TRI_V8ToVPack(isolate, builder, v8Body, false);
+              response->setContentType(rest::ContentType::VPACK);
             }
           } else if (V8Buffer::hasInstance(isolate,
                                            v8Body)) {  // body form buffer - could
@@ -779,6 +784,7 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
               VPackParser parser(builder);  // add json as vpack to the builder
               parser.parse(out, false);
               gotJson = true;
+              response->setContentType(rest::ContentType::VPACK);
             } catch (...) {  // do nothing
                              // json could not be converted
                              // there was no json - change content type?
@@ -789,11 +795,12 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
           }
 
           if (!gotJson) {
-            builder.add(VPackValue(out));  // add output to the builder - when not added via parser
+            // don't go via the builder - when not added via parser
+            buffer.reset();
+            buffer.append(out);
           }
         }
 
-        response->setContentType(rest::ContentType::VPACK);
         response->setPayload(std::move(buffer), true);
         break;
       }

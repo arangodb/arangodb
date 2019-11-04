@@ -160,7 +160,7 @@ describe('FoxxApi commit', function () {
     `).next();
     expect(checksum).to.equal('1234');
 
-    const result = arango.POST('/_api/foxx/commit', { qs: { replace: true } });
+    const result = arango.POST('/_api/foxx/commit?replace=true', '');
     expect(result.code).to.equal(204);
 
     checksum = db._query(aql`
@@ -168,7 +168,7 @@ describe('FoxxApi commit', function () {
         FILTER service.mount == ${mount}
         RETURN service.checksum
     `).next();
-/// TODO    expect(checksum).to.not.equal('1234');
+    expect(checksum).to.not.equal('1234');
   });
 
   it('should fix missing bundle', function () {
@@ -336,16 +336,16 @@ describe('Foxx service', () => {
     const upgradeResp = arango.PATCH('/_api/foxx/service?mount=' + mount, {source: badMainServicePath});
     expect(upgradeResp).to.have.property('manifest');
     const resp = arango.GET(mount);
+    expect(resp.code).to.equal(503);
     expect(resp).to.have.property('error', true);
     expect(resp).to.have.property('errorNum', errors.ERROR_HTTP_SERVICE_UNAVAILABLE.code);
-    expect(resp.code).to.equal(503); // TODO is 400?
   });
 
   it('failing on mount should successfully replace', () => {
     installFoxx(mount, minimalWorkingZip);
     const upgradeResp = arango.PUT('/_api/foxx/service?mount=' + mount, {source: badMainServicePath});
     expect(upgradeResp).to.have.property('manifest');
-    const resp = arango.GET(mount, {headers: {accept: 'application/json'}});
+    const resp = arango.GET(mount);
     expect(resp.code).to.equal(503);
     expect(resp).to.have.property('error', true);
     expect(resp).to.have.property('errorNum', errors.ERROR_HTTP_SERVICE_UNAVAILABLE.code);
@@ -371,15 +371,14 @@ describe('Foxx service', () => {
     expect(resp).to.eql({});
   });
 
-////  it('configuration should be available', () => {
-////    installFoxx(mount, minimalWorkingZip);
-////    const resp = arango.GET('/_api/foxx/configuration?mount=' + mount);
-////    print(resp) // TODO - empty
-////    expect(resp).to.have.property('test1');
-////    expect(resp.test1).to.not.have.property('current');
-////    expect(resp).to.have.property('test2');
-////    expect(resp.test2).to.not.have.property('current');
-////  });
+  it('configuration should be available', () => {
+    installFoxx(mount, {type: 'dir', buffer: confPath});
+    const resp = arango.GET('/_api/foxx/configuration?mount=' + mount);
+    expect(resp).to.have.property('test1');
+    expect(resp.test1).to.not.have.property('current');
+    expect(resp).to.have.property('test2');
+    expect(resp.test2).to.not.have.property('current');
+  });
 
   it('non-minimal configuration should be available', () => {
     installFoxx(mount, {type: 'dir', buffer: confPath});
@@ -861,14 +860,12 @@ describe('Foxx service', () => {
     expect(resp).to.not.have.property('test2');
   });
 
-///  it('should be downloadable', () => {
-///    installFoxx(mount, {type: 'dir', buffer: minimalWorkingServicePath});
-///    const resp = arango.POST('/_api/foxx/download?mount=' + mount, {});
-///    // expect(resp.headers['content-type']).to.equal('application/zip');
-///    print("vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv")
-///    print(resp)
-///    expect(util.isZipBuffer(resp)).to.equal(true);
-///  }); TODO: fix zip handling.
+  it('should be downloadable', () => {
+    installFoxx(mount, {type: 'dir', buffer: minimalWorkingServicePath});
+    const resp = arango.POST('/_api/foxx/download?mount=' + mount, '');
+    // expect(resp.headers['content-type']).to.equal('application/zip');
+    expect(util.isZipBuffer(resp)).to.equal(true);
+  });
 
   const readmePath = path.resolve(internal.pathForTesting('common'), 'test-data', 'apps', 'with-readme');
 
