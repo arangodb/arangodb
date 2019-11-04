@@ -299,9 +299,7 @@ void AsyncAgencyCommManager::addEndpoint(std::string const& endpoint) {
 void AsyncAgencyCommManager::updateEndpoints(std::vector<std::string> const& endpoints) {
   {
     std::unique_lock<std::mutex> guard(_lock);
-    _endpoints.clear();
-    std::copy(endpoints.begin(), endpoints.end(),
-              std::back_inserter(_endpoints));
+    _endpoints.assign(endpoints.begin(), endpoints.end());
   }
 }
 

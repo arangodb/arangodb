@@ -203,21 +203,21 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
   void startRequest() {
     auto now = std::chrono::steady_clock::now();
     if (now > _endTime || _pool->config().clusterInfo->server().isStopping()) {
-      callResponse(Error::Timeout, nullptr, nullptr);
+      callResponse(Error::Timeout, nullptr, std::move(_request));
       return;  // we are done
     }
 
     arangodb::network::EndpointSpec spec;
     int res = resolveDestination(*_pool->config().clusterInfo, _destination, spec);
     if (res != TRI_ERROR_NO_ERROR) {  // ClusterInfo did not work
-      callResponse(Error::Canceled, nullptr, nullptr);
+      callResponse(Error::Canceled, nullptr, std::move(_request));
       return;
     }
 
     if (!_pool) {
       LOG_TOPIC("5949f", ERR, Logger::COMMUNICATION)
           << "connection pool unavailable";
-      callResponse(Error::Canceled, nullptr, nullptr);
+      callResponse(Error::Canceled, nullptr, std::move(_request));
       return;
     }
 
