@@ -24,8 +24,8 @@
 
 #include <chrono>
 
-#include "Cluster/AgencyPaths.h"
 #include "Agency/AsyncAgencyComm.h"
+#include "Cluster/AgencyPaths.h"
 #include "Cluster/ResultT.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/GeneralServerFeature.h"
@@ -61,7 +61,7 @@ RestStatus RestSupervisionStateHandler::execute() {
 
   auto targetPath = arangodb::cluster::paths::root()->arango()->target();
   return waitForFuture(AsyncAgencyComm().getValues(targetPath)
-    .thenValue([this, self, targetPath = std::move(targetPath)](AgencyReadResult &&result) {
+    .thenValue([this, self, targetPath = std::move(targetPath)](AgencyReadResult&& result) {
       if (result.ok() && result.statusCode() == fuerte::StatusOK) {
 
         VPackBuffer<uint8_t> response;

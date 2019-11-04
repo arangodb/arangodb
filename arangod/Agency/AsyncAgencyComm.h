@@ -34,7 +34,6 @@
 #include "Cluster/ResultT.h"
 #include "Cluster/PathComponent.h"
 
-
 namespace arangodb {
 
 struct AsyncAgencyCommResult {
@@ -69,10 +68,16 @@ struct AsyncAgencyCommResult {
 };
 
 struct AgencyReadResult : public AsyncAgencyCommResult {
-  AgencyReadResult(AsyncAgencyCommResult &&result, std::shared_ptr<arangodb::cluster::paths::Path const> valuePath)
+  AgencyReadResult(AsyncAgencyCommResult&& result, std::shared_ptr<arangodb::cluster::paths::Path const> valuePath)
     : AsyncAgencyCommResult(std::move(result)), _value(nullptr), _valuePath(std::move(valuePath)) {}
-  VPackSlice value() { if (this->_value.start() == nullptr) { this->_value = slice().at(0).get(_valuePath->vec()); } return this->_value; }
-private:
+  VPackSlice value() { 
+    if (this->_value.start() == nullptr) { 
+      this->_value = slice().at(0).get(_valuePath->vec()); 
+    } 
+    return this->_value; 
+  }
+ 
+ private:
   VPackSlice _value;
   std::shared_ptr<arangodb::cluster::paths::Path const> _valuePath;
 };
@@ -86,12 +91,12 @@ public:
 
   static void initialize() {
     INSTANCE = std::make_unique<AsyncAgencyCommManager>();
-  };
+  }
 
   void addEndpoint(std::string const& endpoint);
   void updateEndpoints(std::vector<std::string> const& endpoints);
 
-  std::deque<std::string> endpoints() const noexcept {
+  std::deque<std::string> endpoints() const {
     std::unique_lock<std::mutex> guard(_lock);
     return _endpoints;
   }
@@ -100,8 +105,8 @@ public:
   void reportError(std::string const& endpoint);
   void reportRedirect(std::string const& endpoint, std::string const& redirectTo);
 
-  network::ConnectionPool *pool() const { return _pool; };
-  void pool(network::ConnectionPool *pool) { _pool = pool; };
+  network::ConnectionPool* pool() const { return _pool; }
+  void pool(network::ConnectionPool* pool) { _pool = pool; }
 
 private:
   mutable std::mutex _lock;
@@ -116,7 +121,6 @@ public:
 
   FutureResult getValues(std::string const& path) const;
   FutureReadResult getValues(std::shared_ptr<arangodb::cluster::paths::Path const> const& path) const;
-
 
   template<typename T>
   FutureResult setValue(
@@ -160,17 +164,17 @@ public:
   FutureResult sendTransaction(network::Timeout timeout, AgencyReadTransaction const&) const;
   FutureResult sendTransaction(network::Timeout timeout, AgencyWriteTransaction const&) const;
 
-public:
+ public:
   FutureResult sendWithFailover(arangodb::fuerte::RestVerb method, std::string const& url, network::Timeout timeout, velocypack::Buffer<uint8_t>&& body) const;
   FutureResult sendWithFailover(arangodb::fuerte::RestVerb method, std::string const& url, network::Timeout timeout, AgencyTransaction const& trx) const;
 
   AsyncAgencyComm() : _manager(*AsyncAgencyCommManager::INSTANCE.get()) {}
-  AsyncAgencyComm(AsyncAgencyCommManager *manager) : _manager(*manager) {}
-  AsyncAgencyComm(AsyncAgencyCommManager &manager) : _manager(manager) {}
-private:
+  AsyncAgencyComm(AsyncAgencyCommManager* manager) : _manager(*manager) {}
+  AsyncAgencyComm(AsyncAgencyCommManager& manager) : _manager(manager) {}
+
+ private:
   AsyncAgencyCommManager &_manager;
 };
-
 
 }
 #endif

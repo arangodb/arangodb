@@ -1,10 +1,32 @@
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+/// @author Lars Maier
+////////////////////////////////////////////////////////////////////////////////
+
 #include "Agency/AsyncAgencyComm.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Futures/Utilities.h"
 #include "Basics/StaticStrings.h"
-#include "Scheduler/SchedulerFeature.h"
+#include "Futures/Utilities.h"
 #include "Logger/LogMacros.h"
+#include "Scheduler/SchedulerFeature.h"
 
 #include <chrono>
 
@@ -55,14 +77,13 @@ auto agencyAsyncWaitTime(RequestMeta const& meta) {
 }
 
 std::string extractEndpointFromUrl(std::string const& location) {
-
   std::string specification;
   size_t delim = std::string::npos;
 
-  if (location.substr(0, 7) == "http://") {
+  if (location.compare(0, 7, "http://", 7) == 0) {
     specification = "http+tcp://" + location.substr(7);
     delim = specification.find_first_of('/', 12);
-  } else if (location.substr(0, 8) == "https://") {
+  } else if (location.compare(0, 8, "https://") == 0) {
     specification = "http+ssl://" + location.substr(8);
     delim = specification.find_first_of('/', 13);
   }
@@ -76,7 +97,6 @@ std::string extractEndpointFromUrl(std::string const& location) {
 }
 
 void redirectOrError(AsyncAgencyCommManager& man, std::string const& endpoint, std::string const& location) {
-
   std::string newEndpoint = extractEndpointFromUrl(location);
 
   if (newEndpoint.empty()) {
@@ -106,7 +126,6 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncInquiry(
   return SchedulerFeature::SCHEDULER->delay(waitTime).thenValue(
     [meta = std::move(meta), &man, body = std::move(body)](auto){
 
-
     // build inquire request
     VPackBuffer<uint8_t> query;
     {
@@ -126,7 +145,7 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncInquiry(
       [meta = std::move(meta), endpoint = std::move(endpoint), &man, body = std::move(body)]
         (network::Response &&result) mutable {
 
-      auto &resp = result.response;
+      auto& resp = result.response;
 
       switch (result.error) {
         case fuerte::Error::NoError:
@@ -146,8 +165,7 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncInquiry(
             break;
           }
 
-
-          [[fallthrough]]
+          [[fallthrough]];
           /* fallthrough */
         case fuerte::Error::Timeout:
         case fuerte::Error::CouldNotConnect:
@@ -196,9 +214,9 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncSend(
       .thenValue(
         [meta = std::move(meta), endpoint = std::move(endpoint), &man] (network::Response &&result) mutable {
 
-      auto &req = result.request;
-      auto &resp = result.response;
-      auto &body = *req;
+      auto& req = result.request;
+      auto& resp = result.response;
+      auto& body = *req;
 
       switch (result.error) {
         case fuerte::Error::NoError:
@@ -222,11 +240,11 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncSend(
           }
 
           // if we only did reads return here
-          if (meta.clientIds.size() == 0) {
+          if (meta.clientIds.empty()) {
             break;
           }
 
-          [[fallthrough]]
+          [[fallthrough]];
           /* fallthrough */
         case fuerte::Error::Timeout:
           // inquiry the request
@@ -255,7 +273,7 @@ namespace arangodb {
 
 AsyncAgencyComm::FutureResult AsyncAgencyComm::sendWithFailover(
   fuerte::RestVerb method, std::string const& url,
-  arangodb::network::Timeout timeout, VPackBuffer<uint8_t> &&body) const {
+  arangodb::network::Timeout timeout, VPackBuffer<uint8_t>&& body) const {
 
   std::vector<std::string> clientIds;
   VPackSlice bodySlice(body.data());
@@ -290,47 +308,39 @@ AsyncAgencyComm::FutureResult AsyncAgencyComm::sendWithFailover(fuerte::RestVerb
 
 
 void AsyncAgencyCommManager::addEndpoint(std::string const& endpoint) {
-  {
-    std::unique_lock<std::mutex> guard(_lock);
+  std::unique_lock<std::mutex> guard(_lock);
+  _endpoints.push_back(endpoint);
+}
+
+void AsyncAgencyCommManager::updateEndpoints(std::vector<std::string> const& endpoints) {
+  std::unique_lock<std::mutex> guard(_lock);
+  _endpoints.assign(endpoints.begin(), endpoints.end());
+}
+
+std::string AsyncAgencyCommManager::getCurrentEndpoint() {
+  std::unique_lock<std::mutex> guard(_lock);
+  TRI_ASSERT(!_endpoints.empty());
+  return _endpoints.front();
+}
+
+void AsyncAgencyCommManager::reportError(std::string const& endpoint) {
+  std::unique_lock<std::mutex> guard(_lock);
+  TRI_ASSERT(!_endpoints.empty());
+  if (endpoint == _endpoints.front()) {
+    _endpoints.pop_front();
     _endpoints.push_back(endpoint);
   }
 }
 
-void AsyncAgencyCommManager::updateEndpoints(std::vector<std::string> const& endpoints) {
-  {
-    std::unique_lock<std::mutex> guard(_lock);
-    _endpoints.assign(endpoints.begin(), endpoints.end());
-  }
-}
-
-std::string AsyncAgencyCommManager::getCurrentEndpoint() {
-  {
-    std::unique_lock<std::mutex> guard(_lock);
-    TRI_ASSERT(_endpoints.size() > 0);
-    return _endpoints.front();
-  }
-};
-
-void AsyncAgencyCommManager::reportError(std::string const& endpoint) {
-  {
-    std::unique_lock<std::mutex> guard(_lock);
-    if (endpoint == _endpoints.front()) {
-      _endpoints.pop_front();
-      _endpoints.push_back(endpoint);
-    }
-  }
-}
-
 void AsyncAgencyCommManager::reportRedirect(std::string const& endpoint, std::string const& redirectTo) {
-  {
-    std::unique_lock<std::mutex> guard(_lock);
-    if (endpoint == _endpoints.front()) {
-      _endpoints.pop_front();
-      _endpoints.erase(std::remove(_endpoints.begin(), _endpoints.end(), redirectTo),
-                      _endpoints.end());
-      _endpoints.push_back(endpoint);
-      _endpoints.push_front(redirectTo);
-    }
+  std::unique_lock<std::mutex> guard(_lock);
+  TRI_ASSERT(!_endpoints.empty());
+  if (endpoint == _endpoints.front()) {
+    _endpoints.pop_front();
+    _endpoints.erase(std::remove(_endpoints.begin(), _endpoints.end(), redirectTo),
+                    _endpoints.end());
+    _endpoints.push_back(endpoint);
+    _endpoints.push_front(redirectTo);
   }
 }
 

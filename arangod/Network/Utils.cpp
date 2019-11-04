@@ -53,12 +53,12 @@ int resolveDestination(ClusterInfo& ci, DestinationId const& dest,
                        network::EndpointSpec& spec) {
   using namespace arangodb;
 
-  if (dest.find("tcp://") == 0 || dest.find("ssl://") == 0) {
+  if (dest.compare(0, 6, "tcp://", 6) == 0 || dest.compare(0, 6, "ssl://", 6) == 0) {
     spec.endpoint = dest;
     return TRI_ERROR_NO_ERROR;  // all good
   }
 
-  if (dest.find("http+tcp://") == 0) {
+  if (dest.compare(0, 11, "http+tcp://", 11) == 0) {
     spec.endpoint = dest.substr(5);
     return TRI_ERROR_NO_ERROR;
   }

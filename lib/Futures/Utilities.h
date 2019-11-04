@@ -237,14 +237,16 @@ auto unpackAll(T&& t) {
 // returns a Future<std::tuple<Try<Ts>>...>
 template<typename... Ts>
 auto collect(Future<Ts>&&... r) {
-
   using try_tuple = std::tuple<Try<Ts>...>;
   using value_tuple = std::tuple<Ts...>;
 
   struct Context {
     Context() : hadError(false) {}
-    ~Context() { if(hadError.load(std::memory_order_acquire) == false) {
-      p.setValue(detail::collect::unpackAll(std::move(results))); } }
+    ~Context() { 
+      if (hadError.load(std::memory_order_acquire) == false) {
+        p.setValue(detail::collect::unpackAll(std::move(results))); 
+      } 
+    }
     try_tuple results;
     Promise<value_tuple> p;
     std::atomic<bool> hadError;
@@ -253,10 +255,10 @@ auto collect(Future<Ts>&&... r) {
   auto ctx = std::make_shared<Context>();
   detail::collect::thenFinalAll<0>(ctx, std::forward<Future<Ts>>(r)...);
   return ctx->p.getFuture();
-};
+}
 
 template<typename T>
-T collect(T t) { return t; };
+T collect(T t) { return t; }
 
 
 }  // namespace futures

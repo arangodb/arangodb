@@ -25,6 +25,7 @@
 
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
+#include <velocypack/Slice.h>
 
 namespace arangodb {
 
@@ -81,7 +82,7 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
   RestStatus handleRemoveServer();
   RestStatus handleRebalanceShards();
 
-private:
+ private:
 
   struct MoveShardContext {
     std::string database;
@@ -90,8 +91,16 @@ private:
     std::string fromServer;
     std::string toServer;
     std::string collectionID;
+   
+    MoveShardContext(std::string database, std::string collection, std::string shard, std::string from, std::string to, std::string collectionID) 
+      : database(std::move(database)), 
+        collection(std::move(collection)),
+        shard(std::move(shard)),
+        fromServer(std::move(from)),
+        toServer(std::move(to)),
+        collectionID(std::move(collectionID)) {}
 
-    static std::unique_ptr<MoveShardContext> fromVelocyPack(VPackSlice slice);
+    static std::unique_ptr<MoveShardContext> fromVelocyPack(arangodb::velocypack::Slice slice);
   };
 
   RestStatus handlePostMoveShard(std::unique_ptr<MoveShardContext>&& ctx);
@@ -115,7 +124,7 @@ private:
 
   futureVoid tryDeleteServer(std::unique_ptr<RemoveServerContext>&& ctx);
   futureVoid retryTryDeleteServer(std::unique_ptr<RemoveServerContext>&& ctx);
-  futureVoid createMoveShard(std::unique_ptr<MoveShardContext>&& ctx, VPackSlice plan);
+  futureVoid createMoveShard(std::unique_ptr<MoveShardContext>&& ctx, velocypack::Slice plan);
 
   RestStatus handleProxyGetRequest(std::string const& url, std::string const& serverFromParameter);
   RestStatus handleGetCollectionShardDistribution(std::string const& collection);
@@ -125,19 +134,20 @@ private:
   futureVoid handlePostRebalanceShards();
 
   std::string resolveServerNameID(std::string const&);
-  std::string resolveServerNameID(VPackSlice);
+  std::string resolveServerNameID(velocypack::Slice);
 
-
-public:
+ public:
 
   struct CollectionShardPair {
     std::string collection;
     std::string shard;
     bool isLeader;
 
-    bool operator==(CollectionShardPair const& other) const { return collection == other.collection && shard == other.shard && isLeader == other.isLeader; };
+    bool operator==(CollectionShardPair const& other) const { 
+      return collection == other.collection && shard == other.shard && isLeader == other.isLeader; 
+    }
   };
-  void getShardDistribution(std::map<std::string, std::unordered_set<CollectionShardPair>> &distr);
+  void getShardDistribution(std::map<std::string, std::unordered_set<CollectionShardPair>>& distr);
 
 };
 }  // namespace arangodb

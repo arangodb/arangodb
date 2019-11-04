@@ -136,7 +136,6 @@ class Scheduler {
   application_features::ApplicationServer& _server;
 
  public:
-
     // delay Future returns a future that will be fullfilled after the given duration
     // requires scheduler
     // If d is zero, the future is fullfilled immediatly. Throws a logic error
@@ -152,7 +151,11 @@ class Scheduler {
       auto item = queueDelay(RequestLane::DELAYED_FUTURE, d,
         [pr = std::move(p)](bool cancelled) mutable { pr.setValue(cancelled); });
 
-      return std::move(f).thenValue([item = std::move(item)](bool cancelled) { if (cancelled) { throw std::logic_error("delay was cancelled"); } });
+      return std::move(f).thenValue([item = std::move(item)](bool cancelled) { 
+        if (cancelled) { 
+          throw std::logic_error("delay was cancelled");
+        } 
+      });
     }
 
   // ---------------------------------------------------------------------------

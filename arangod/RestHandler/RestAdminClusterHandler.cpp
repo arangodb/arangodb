@@ -63,15 +63,15 @@ struct agentConfigHealthResult {
   futures::Try<network::Response> response;
 };
 
-void removePlanServers (std::unordered_set<std::string> &servers, VPackSlice plan) {
+void removePlanServers (std::unordered_set<std::string>& servers, VPackSlice plan) {
   for (auto const& database : VPackObjectIterator(plan.get("Collections"))) {
     for (auto const& collection : VPackObjectIterator(database.value)) {
       VPackSlice shards = collection.value.get("shards");
       for (auto const& shard : VPackObjectIterator(shards)) {
         for (auto const& server : VPackArrayIterator(shard.value)) {
           servers.erase(server.copyString());
-          if (servers.size() == 0) {
-            return ;
+          if (servers.empty()) {
+            return;
           }
         }
       }
@@ -79,14 +79,14 @@ void removePlanServers (std::unordered_set<std::string> &servers, VPackSlice pla
   }
 }
 
-void removeCurrentServers (std::unordered_set<std::string> &servers, VPackSlice current) {
+void removeCurrentServers (std::unordered_set<std::string>& servers, VPackSlice current) {
   for (auto const& database : VPackObjectIterator(current.get("Collections"))) {
     for (auto const& collection : VPackObjectIterator(database.value)) {
       for (auto const& shard : VPackObjectIterator(collection.value)) {
         for (auto const& server : VPackArrayIterator(shard.value.get("servers"))) {
           servers.erase(server.copyString());
-          if (servers.size() == 0) {
-            return ;
+          if (servers.empty()) {
+            return;
           }
         }
       }
@@ -181,13 +181,13 @@ void buildHealthResult(VPackBuilder &builder, std::vector<futures::Try<agentConf
         VPackObjectBuilder ob(&builder, serverId);
 
         builder.add(VPackObjectIterator(member.value));
-        if (serverId.substr(0, 4) == "PRMR") {
+        if (serverId.compare(0, 4, "PRMR", 4) == 0) {
           builder.add("Role", VPackValue("DBServer"));
           builder.add("CanBeDeleted", VPackValue(VPackValue(
             member.value.get("Status").isEqualString("FAILED") &&
             canBeDeleted->count(serverId) == 1
           )));
-        } else if (serverId.substr(0, 4) == "CRDN") {
+        } else if (serverId.compare(0, 4, "CRDN", 4) == 0) {
           builder.add("Role", VPackValue("Coordinator"));
           builder.add("CanBeDeleted", VPackValue(member.value.get("Status").isEqualString("FAILED")));
         }
@@ -408,7 +408,6 @@ RestAdminClusterHandler::futureVoid RestAdminClusterHandler::tryDeleteServer(std
 }
 
 RestStatus RestAdminClusterHandler::handlePostRemoveServer(std::string const& server) {
-
   auto ctx = std::make_unique<RemoveServerContext>(server);
 
   auto self(shared_from_this());
@@ -458,7 +457,6 @@ RestStatus RestAdminClusterHandler::handleResignLeadership() {
 }
 
 std::unique_ptr<RestAdminClusterHandler::MoveShardContext> RestAdminClusterHandler::MoveShardContext::fromVelocyPack(VPackSlice slice) {
-
   if (slice.isObject()) {
     auto database = slice.get("database");
     auto collection = slice.get("collection");
@@ -471,15 +469,14 @@ std::unique_ptr<RestAdminClusterHandler::MoveShardContext> RestAdminClusterHandl
 
     std::string databaseStr = database.isString() ? database.copyString() : std::string{};
     if (valid) {
-      MoveShardContext ctx{
-        std::move(databaseStr),
-        collection.copyString(),
-        shard.copyString(),
-        fromServer.copyString(),
-        toServer.copyString(),
-        std::string{}
-      };
-      return std::make_unique<MoveShardContext>(std::move(ctx));
+      return std::make_unique<MoveShardContext>(
+          std::move(databaseStr), 
+          collection.copyString(), 
+          shard.copyString(), 
+          fromServer.copyString(), 
+          toServer.copyString(), 
+          std::string{}
+      );
     }
   }
 
@@ -487,7 +484,6 @@ std::unique_ptr<RestAdminClusterHandler::MoveShardContext> RestAdminClusterHandl
 }
 
 RestStatus RestAdminClusterHandler::handleMoveShard() {
-
   if (!ServerState::instance()->isCoordinator()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN, "only allowed on coordinators");
     return RestStatus::DONE;
@@ -527,21 +523,19 @@ RestStatus RestAdminClusterHandler::handleMoveShard() {
 }
 
 RestAdminClusterHandler::futureVoid RestAdminClusterHandler::createMoveShard(std::unique_ptr<MoveShardContext>&& ctx, VPackSlice plan) {
-
   auto planPath = arangodb::cluster::paths::root()->arango()->plan();
 
   VPackSlice dbServers = plan.get(planPath->dBServers()->vec());
   bool serversFound = dbServers.isObject() && dbServers.hasKey(ctx->fromServer) && dbServers.hasKey(ctx->toServer);
   if (!serversFound) {
     generateError(ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
-      "one or both dbserver not found");
+      "one or both dbservers not found");
     return futures::makeFuture();
   }
 
   VPackSlice collection = plan.get(planPath->collections()
     ->database(ctx->database)->collection(ctx->collectionID)->vec());
   if (!collection.isObject()) {
-
     generateError(ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
       "database/collection not found");
     return futures::makeFuture();
@@ -560,7 +554,8 @@ RestAdminClusterHandler::futureVoid RestAdminClusterHandler::createMoveShard(std
     return futures::makeFuture();
   }
 
-  bool fromFound = false, isLeader = false;
+  bool fromFound = false;
+  bool isLeader = false;
   for(VPackArrayIterator i(shard); i != i.end(); i++) {
     if (i.value().isEqualString(ctx->fromServer)) {
       isLeader = i.isFirst();
@@ -624,7 +619,6 @@ RestAdminClusterHandler::futureVoid RestAdminClusterHandler::createMoveShard(std
 }
 
 RestStatus RestAdminClusterHandler::handlePostMoveShard(std::unique_ptr<MoveShardContext>&& ctx) {
-
   std::shared_ptr<LogicalCollection> collection = server().getFeature<ClusterFeature>()
     .clusterInfo().getCollectionNT(ctx->database, ctx->collection);
 
@@ -677,7 +671,6 @@ RestStatus RestAdminClusterHandler::handlePostMoveShard(std::unique_ptr<MoveShar
 }
 
 RestStatus RestAdminClusterHandler::handleQueryJobStatus() {
-
   if (!ExecContext::current().isAdminUser()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
     return RestStatus::DONE;
@@ -788,7 +781,6 @@ RestStatus RestAdminClusterHandler::handleSingleServerJob(std::string const& job
 }
 
 RestStatus RestAdminClusterHandler::handleCreateSingleServerJob(std::string const& job, std::string const& serverId) {
-
   std::string jobId = std::to_string(server().getFeature<ClusterFeature>().clusterInfo().uniqid());
   auto jobToDoPath = arangodb::cluster::paths::root()->arango()->target()->toDo()->job(jobId);
 
@@ -917,8 +909,8 @@ RestStatus RestAdminClusterHandler::handleShardDistribution() {
     VPackObjectBuilder body(&result);
     result.add(VPackValue("results"));
     reporter->getDistributionForDatabase(_vocbase.name(), result);
-    result.add("error", VPackValue(false));
-    result.add("code", VPackValue(200));
+    result.add(StaticStrings::Error, VPackValue(false));
+    result.add(StaticStrings::Code, VPackValue(200));
   }
   resetResponse(rest::ResponseCode::OK);
   response()->setPayload(std::move(resultBody), true);
@@ -926,7 +918,6 @@ RestStatus RestAdminClusterHandler::handleShardDistribution() {
 }
 
 RestStatus RestAdminClusterHandler::handleGetCollectionShardDistribution(std::string const& collection) {
-
   if (collection.empty()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER, "expected nonempty `collection` parameter");
     return RestStatus::DONE;
@@ -939,8 +930,8 @@ RestStatus RestAdminClusterHandler::handleGetCollectionShardDistribution(std::st
     VPackObjectBuilder body(&result);
     result.add(VPackValue("results"));
     reporter->getCollectionDistributionForDatabase(_vocbase.name(), collection, result);
-    result.add("error", VPackValue(false));
-    result.add("code", VPackValue(200));
+    result.add(StaticStrings::Error, VPackValue(false));
+    result.add(StaticStrings::Code, VPackValue(200));
   }
   resetResponse(rest::ResponseCode::OK);
   response()->setPayload(std::move(resultBody), true);
@@ -981,7 +972,6 @@ RestStatus RestAdminClusterHandler::handleCollectionShardDistribution() {
 }
 
 RestStatus RestAdminClusterHandler::handleGetMaintenance() {
-
   auto self(shared_from_this());
   auto maintenancePath = arangodb::cluster::paths::root()->arango()->supervision()->state()->mode();
 
@@ -992,7 +982,7 @@ RestStatus RestAdminClusterHandler::handleGetMaintenance() {
         {
           VPackBuilder bodyBuilder(body);
           VPackObjectBuilder ob(&bodyBuilder);
-          bodyBuilder.add("error", VPackValue(false));
+          bodyBuilder.add(StaticStrings::Error, VPackValue(false));
           bodyBuilder.add("result", result.value());
         }// use generateOk instead
 
@@ -1009,7 +999,6 @@ RestStatus RestAdminClusterHandler::handleGetMaintenance() {
 }
 
 RestAdminClusterHandler::futureVoid RestAdminClusterHandler::waitForSupervisionState(bool state, clock::time_point startTime) {
-
   auto self(shared_from_this());
 
   if (startTime == clock::time_point()) {
@@ -1041,7 +1030,7 @@ RestAdminClusterHandler::futureVoid RestAdminClusterHandler::waitForSupervisionS
           {
             VPackBuilder bodyBuilder(body);
             VPackObjectBuilder ob(&bodyBuilder);
-            bodyBuilder.add("error", VPackValue(false));
+            bodyBuilder.add(StaticStrings::Error, VPackValue(false));
             bodyBuilder.add("warning", VPackValue(msg));
           }
 
@@ -1057,7 +1046,6 @@ RestAdminClusterHandler::futureVoid RestAdminClusterHandler::waitForSupervisionS
 }
 
 RestStatus RestAdminClusterHandler::handlePutMaintenance(bool state) {
-
   auto maintenancePath = arangodb::cluster::paths::root()->arango()->supervision()->maintenance();
 
   auto sendTransaction = [&] {
@@ -1125,7 +1113,6 @@ RestStatus RestAdminClusterHandler::handleMaintenance() {
 }
 
 RestStatus RestAdminClusterHandler::handleGetNumberOfServers() {
-
   auto targetPath = arangodb::cluster::paths::root()->arango()->target();
 
   VPackBuffer<uint8_t> trx;
@@ -1153,8 +1140,8 @@ RestStatus RestAdminClusterHandler::handleGetNumberOfServers() {
           builder.add("numberOfDBServers", result.slice().at(0).get(targetPath->numberOfDBServers()->vec()));
           builder.add("numberOfCoordinators", result.slice().at(0).get(targetPath->numberOfCoordinators()->vec()));
           builder.add("cleanedServers", result.slice().at(0).get(targetPath->cleanedServers()->vec()));
-          builder.add("error", VPackValue(false));
-          builder.add("code", VPackValue(200));
+          builder.add(StaticStrings::Error, VPackValue(false));
+          builder.add(StaticStrings::Code, VPackValue(200));
         }
 
         resetResponse(rest::ResponseCode::OK);
@@ -1170,7 +1157,6 @@ RestStatus RestAdminClusterHandler::handleGetNumberOfServers() {
 }
 
 RestStatus RestAdminClusterHandler::handlePutNumberOfServers() {
-
   if (!ExecContext::current().isAdminUser()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
     return RestStatus::DONE;
@@ -1219,7 +1205,7 @@ RestStatus RestAdminClusterHandler::handlePutNumberOfServers() {
 
       bool allStrings = true;
       for (auto server : VPackArrayIterator(cleanedServers)) {
-        if (false == server.isString()) {
+        if (!server.isString()) {
           allStrings = false;
           break;
         }
@@ -1261,7 +1247,6 @@ RestStatus RestAdminClusterHandler::handlePutNumberOfServers() {
 }
 
 RestStatus RestAdminClusterHandler::handleNumberOfServers() {
-
   if (!ServerState::instance()->isCoordinator()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN, "only allowed on coordinators");
     return RestStatus::DONE;
@@ -1279,7 +1264,6 @@ RestStatus RestAdminClusterHandler::handleNumberOfServers() {
 }
 
 RestStatus RestAdminClusterHandler::handleHealth() {
-
   if (!ExecContext::current().isAdminUser()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
     return RestStatus::DONE;
@@ -1356,8 +1340,8 @@ RestStatus RestAdminClusterHandler::handleHealth() {
           VPackBuilder builder(responseBody);
           VPackObjectBuilder ob(&builder);
           ::buildHealthResult (builder, configResult, storeResult.slice().at(0));
-          builder.add("error", VPackValue(false));
-          builder.add("code", VPackValue(200));
+          builder.add(StaticStrings::Error, VPackValue(false));
+          builder.add(StaticStrings::Code, VPackValue(200));
         }
         resetResponse(rest::ResponseCode::OK);
         response()->setPayload(std::move(responseBody), true);
@@ -1404,8 +1388,8 @@ struct hash<RestAdminClusterHandler::CollectionShardPair> {
 };
 }
 
-void RestAdminClusterHandler::getShardDistribution(std::map<std::string, std::unordered_set<CollectionShardPair>> &distr) {
-  auto &ci = server().getFeature<ClusterFeature>().clusterInfo();
+void RestAdminClusterHandler::getShardDistribution(std::map<std::string, std::unordered_set<CollectionShardPair>>& distr) {
+  auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
 
   for (auto const& server : ci.getCurrentDBServers()) {
     distr[server].clear();
@@ -1427,9 +1411,7 @@ void RestAdminClusterHandler::getShardDistribution(std::map<std::string, std::un
 }
 
 
-
 RestAdminClusterHandler::futureVoid RestAdminClusterHandler::handlePostRebalanceShards() {
-
   struct MoveShardDescription {
     std::string collection;
     std::string shard;
@@ -1479,7 +1461,7 @@ RestAdminClusterHandler::futureVoid RestAdminClusterHandler::handlePostRebalance
     fullest->second.erase(pair);
   }
 
-  if (moves.size() == 0) {
+  if (moves.empty()) {
     resetResponse(rest::ResponseCode::OK);
     return futures::makeFuture();
   }
@@ -1534,7 +1516,6 @@ RestAdminClusterHandler::futureVoid RestAdminClusterHandler::handlePostRebalance
 
 
 RestStatus RestAdminClusterHandler::handleRebalanceShards() {
-
   if (request()->requestType() != rest::RequestType::POST) {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
     return RestStatus::DONE;
@@ -1558,7 +1539,5 @@ RestStatus RestAdminClusterHandler::handleRebalanceShards() {
   }).thenError<std::exception>([this, self](std::exception const& e) {
     generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR, e.what());
   }));
-
-
 
 }
