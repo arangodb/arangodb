@@ -50,7 +50,7 @@ void IResearchAnalyzerCollectionFeature::start() {
   TRI_ASSERT(databaseFeature != nullptr);
 
   databaseFeature->enumerateDatabases([](TRI_vocbase_t& vocbase) {
-    Result res = methods::Collections::lookup(vocbase, "_analyzers", [](std::shared_ptr<LogicalCollection> const&) {
+    Result res = methods::Collections::lookup(vocbase, StaticStrings::AnalyzersCollection, [](std::shared_ptr<LogicalCollection> const&) {
     });
 
     if (res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
