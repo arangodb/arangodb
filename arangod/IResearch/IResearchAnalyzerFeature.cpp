@@ -54,12 +54,14 @@
 #include <velocypack/StringRef.h>
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "ApplicationServerHelper.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/AqlValue.h"
 #include "Aql/ExpressionContext.h"
 #include "Aql/Function.h"
 #include "Aql/Functions.h"
+#include "Aql/OptimizerRulesFeature.h"
 #include "Aql/Query.h"
 #include "Aql/QueryResult.h"
 #include "Aql/QueryString.h"
@@ -86,6 +88,7 @@
 #include "Rest/CommonDefines.h"
 #include "Rest/GeneralRequest.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
+#include "RestServer/AqlFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
@@ -1117,6 +1120,10 @@ IResearchAnalyzerFeature::IResearchAnalyzerFeature(arangodb::application_feature
   // used for getting the system database
   // containing the persisted configuration
   startsAfter<arangodb::SystemDatabaseFeature>();
+  startsAfter<application_features::CommunicationFeaturePhase>();
+  startsAfter<AqlFeature>();
+  startsAfter<aql::OptimizerRulesFeature>();
+  startsAfter<QueryRegistryFeature>();
 }
 
 /*static*/ bool IResearchAnalyzerFeature::canUse( // check permissions
