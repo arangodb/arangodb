@@ -1117,6 +1117,10 @@ IResearchAnalyzerFeature::IResearchAnalyzerFeature(arangodb::application_feature
   // used for getting the system database
   // containing the persisted configuration
   startsAfter<arangodb::SystemDatabaseFeature>();
+  startsAfter<CommunicationFeaturePhase>();
+  startsAfter<AqlFeature>();
+  startsAfter<aql::OptimizerRulesFeature>();
+  startsAfter<QueryRegistryFeature>();
 }
 
 /*static*/ bool IResearchAnalyzerFeature::canUse( // check permissions
