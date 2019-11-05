@@ -651,6 +651,26 @@ void ApplicationServer::start() {
       LOG_TOPIC("4ec19", ERR, Logger::STARTUP) << res.errorMessage() << ". shutting down";
       LOG_TOPIC("51732", TRACE, Logger::STARTUP)
           << "aborting startup, now stopping and unpreparing all features";
+
+      // try to stop all feature that we just started
+      for (auto it = _orderedFeatures.rbegin(); it != _orderedFeatures.rend(); ++it) {
+        auto feature = *it;
+        if (!feature->isEnabled()) {
+          continue;
+        }
+        if (feature->state() == ApplicationFeature::State::STARTED) {
+          LOG_TOPIC("e5cfe", TRACE, Logger::STARTUP)
+          << "forcefully beginning stop of feature '" << feature->name() << "'";
+          try {
+            feature->beginShutdown();
+          } catch (...) {
+            // ignore errors on shutdown
+            LOG_TOPIC("13224", TRACE, Logger::STARTUP)
+            << "caught exception while stopping feature '" << feature->name() << "'";
+          }
+        }
+      }
+
       // try to stop all feature that we just started
       for (auto it = _orderedFeatures.rbegin(); it != _orderedFeatures.rend(); ++it) {
         ApplicationFeature& feature = (*it).get();
@@ -661,9 +681,8 @@ void ApplicationServer::start() {
           LOG_TOPIC("e5cfd", TRACE, Logger::STARTUP)
               << "forcefully stopping feature '" << feature.name() << "'";
           try {
-            feature.beginShutdown();
-            feature.stop();
-            feature.state(ApplicationFeature::State::STOPPED);
+            feature->stop();
+            feature->state(ApplicationFeature::State::STOPPED);
           } catch (...) {
             // ignore errors on shutdown
             LOG_TOPIC("13223", TRACE, Logger::STARTUP)
