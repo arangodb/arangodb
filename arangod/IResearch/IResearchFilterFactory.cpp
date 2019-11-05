@@ -62,7 +62,7 @@ namespace {
 
 struct FilterContext {
   FilterContext( // constructor
-      arangodb::iresearch::IResearchLinkMeta::Analyzer const& analyzer, // analyzer
+      arangodb::iresearch::FieldMeta::Analyzer const& analyzer, // analyzer
                 irs::boost_t boost) noexcept
       : analyzer(analyzer), boost(boost) {
     TRI_ASSERT(analyzer._pool);
@@ -72,7 +72,7 @@ struct FilterContext {
   FilterContext& operator=(FilterContext const&) = delete;
 
   // need shared_ptr since pool could be deleted from the feature
-  arangodb::iresearch::IResearchLinkMeta::Analyzer const& analyzer;
+  arangodb::iresearch::FieldMeta::Analyzer const& analyzer;
   irs::boost_t boost;
 };  // FilterContext
 
@@ -141,10 +141,10 @@ FORCE_INLINE void appendExpression(irs::boolean_filter& filter,
   exprFilter.boost(filterCtx.boost);
 }
 
-arangodb::iresearch::IResearchLinkMeta::Analyzer extractAnalyzerFromArg(
+arangodb::iresearch::FieldMeta::Analyzer extractAnalyzerFromArg(
     irs::boolean_filter const* filter, arangodb::aql::AstNode const* analyzerArg,
     QueryContext const& ctx, size_t argIdx, irs::string_ref const& functionName) {
-  static const arangodb::iresearch::IResearchLinkMeta::Analyzer invalid( // invalid analyzer
+  static const arangodb::iresearch::FieldMeta::Analyzer invalid( // invalid analyzer
     nullptr, ""
   );
 
@@ -170,7 +170,7 @@ arangodb::iresearch::IResearchLinkMeta::Analyzer extractAnalyzerFromArg(
   ScopedAqlValue analyzerValue(*analyzerArg);
 
   if (!filter && !analyzerValue.isConstant()) {
-    return arangodb::iresearch::IResearchLinkMeta::Analyzer();
+    return arangodb::iresearch::FieldMeta::Analyzer();
   }
 
   if (!analyzerValue.execute(ctx)) {
@@ -196,7 +196,7 @@ arangodb::iresearch::IResearchLinkMeta::Analyzer extractAnalyzerFromArg(
     return invalid;
   }
 
-  arangodb::iresearch::IResearchLinkMeta::Analyzer result(nullptr, analyzerId);
+  arangodb::iresearch::FieldMeta::Analyzer result(nullptr, analyzerId);
   auto& analyzer = result._pool;
   auto& shortName = result._shortName;
 
@@ -1134,7 +1134,7 @@ arangodb::Result fromFuncAnalyzer(irs::boolean_filter* filter, QueryContext cons
   }
 
   ScopedAqlValue analyzerId(*analyzerArg);
-  arangodb::iresearch::IResearchLinkMeta::Analyzer analyzerValue; // default analyzer
+  arangodb::iresearch::FieldMeta::Analyzer analyzerValue; // default analyzer
   auto& analyzer = analyzerValue._pool;
   auto& shortName = analyzerValue._shortName;
 
@@ -1349,44 +1349,44 @@ arangodb::Result fromFuncExists(irs::boolean_filter* filter, QueryContext const&
       arangodb::basics::StringUtils::tolowerInPlace(&strArg);  // normalize user input
       irs::string_ref const TypeAnalyzer("analyzer");
 
-      typedef bool (*TypeHandler)(std::string&, arangodb::iresearch::IResearchLinkMeta::Analyzer const&);
+      typedef bool (*TypeHandler)(std::string&, arangodb::iresearch::FieldMeta::Analyzer const&);
 
       static std::map<irs::string_ref, TypeHandler> const TypeHandlers{
           // any string
           {irs::string_ref("string"),
-           [](std::string& name, arangodb::iresearch::IResearchLinkMeta::Analyzer const&)->bool {
+           [](std::string& name, arangodb::iresearch::FieldMeta::Analyzer const&)->bool {
              kludge::mangleAnalyzer(name);
              return true;  // a prefix match
            }},
           // any non-string type
           {irs::string_ref("type"),
-           [](std::string& name, arangodb::iresearch::IResearchLinkMeta::Analyzer const&)->bool {
+           [](std::string& name, arangodb::iresearch::FieldMeta::Analyzer const&)->bool {
              kludge::mangleType(name);
              return true;  // a prefix match
            }},
           // concrete analyzer from the context
           {TypeAnalyzer,
-           [](std::string& name, arangodb::iresearch::IResearchLinkMeta::Analyzer const& analyzer)->bool {
+           [](std::string& name, arangodb::iresearch::FieldMeta::Analyzer const& analyzer)->bool {
              kludge::mangleStringField(name, analyzer);
              return false;  // not a prefix match
            }},
           {irs::string_ref("numeric"),
-           [](std::string& name, arangodb::iresearch::IResearchLinkMeta::Analyzer const&)->bool {
+           [](std::string& name, arangodb::iresearch::FieldMeta::Analyzer const&)->bool {
              kludge::mangleNumeric(name);
              return false;  // not a prefix match
            }},
           {irs::string_ref("bool"),
-           [](std::string& name, arangodb::iresearch::IResearchLinkMeta::Analyzer const&)->bool {
+           [](std::string& name, arangodb::iresearch::FieldMeta::Analyzer const&)->bool {
              kludge::mangleBool(name);
              return false;  // not a prefix match
            }},
           {irs::string_ref("boolean"),
-           [](std::string& name, arangodb::iresearch::IResearchLinkMeta::Analyzer const&)->bool {
+           [](std::string& name, arangodb::iresearch::FieldMeta::Analyzer const&)->bool {
              kludge::mangleBool(name);
              return false;  // not a prefix match
            }},
           {irs::string_ref("null"),
-           [](std::string& name, arangodb::iresearch::IResearchLinkMeta::Analyzer const&)->bool {
+           [](std::string& name, arangodb::iresearch::FieldMeta::Analyzer const&)->bool {
              kludge::mangleNull(name);
              return false;  // not a prefix match
            }}};
@@ -2082,7 +2082,7 @@ namespace iresearch {
                                       arangodb::aql::AstNode const& node) {
   // The analyzer is referenced in the FilterContext and used during the
   // following ::filter() call, so may not be a temporary.
-  IResearchLinkMeta::Analyzer analyzer = IResearchLinkMeta::Analyzer();
+  FieldMeta::Analyzer analyzer = FieldMeta::Analyzer();
   FilterContext const filterCtx(analyzer, irs::no_boost());
 
   return ::filter(filter, ctx, filterCtx, node);

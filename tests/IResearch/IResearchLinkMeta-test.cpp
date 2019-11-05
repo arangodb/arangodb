@@ -237,16 +237,26 @@ class IResearchLinkMetaTest : public ::testing::Test {
 TEST_F(IResearchLinkMetaTest, test_defaults) {
   arangodb::iresearch::IResearchLinkMeta meta;
 
+  {
+    ASSERT_EQ(1, meta._analyzerDefinitions.size());
+    EXPECT_TRUE("identity" == meta._analyzerDefinitions.begin()->first);
+    EXPECT_TRUE("identity" == meta._analyzerDefinitions.begin()->second->name());
+    EXPECT_TRUE(irs::flags({irs::norm::type(), irs::frequency::type()}) ==
+                 meta._analyzerDefinitions.begin()->second->features());
+    EXPECT_NE(nullptr, meta._analyzerDefinitions.begin()->second->get());
+  }
+
+  EXPECT_TRUE(meta._sort.empty());
   EXPECT_TRUE(true == meta._fields.empty());
   EXPECT_TRUE(false == meta._includeAllFields);
   EXPECT_TRUE(false == meta._trackListPositions);
-  EXPECT_TRUE((arangodb::iresearch::ValueStorage::NONE == meta._storeValues));
+  EXPECT_TRUE(arangodb::iresearch::ValueStorage::NONE == meta._storeValues);
   EXPECT_TRUE(1U == meta._analyzers.size());
-  EXPECT_TRUE((*(meta._analyzers.begin())));
-  EXPECT_TRUE(("identity" == meta._analyzers.begin()->_pool->name()));
-  EXPECT_TRUE(("identity" == meta._analyzers.begin()->_shortName));
-  EXPECT_TRUE((irs::flags({irs::norm::type(), irs::frequency::type()}) ==
-               meta._analyzers.begin()->_pool->features()));
+  EXPECT_TRUE(*(meta._analyzers.begin()));
+  EXPECT_TRUE("identity" == meta._analyzers.begin()->_pool->name());
+  EXPECT_TRUE("identity" == meta._analyzers.begin()->_shortName);
+  EXPECT_TRUE(irs::flags({irs::norm::type(), irs::frequency::type()}) ==
+               meta._analyzers.begin()->_pool->features());
   EXPECT_TRUE(false == !meta._analyzers.begin()->_pool->get());
 }
 
@@ -260,14 +270,15 @@ TEST_F(IResearchLinkMetaTest, test_inheritDefaults) {
 
   analyzers.start();
 
-  defaults._fields["abc"] = arangodb::iresearch::IResearchLinkMeta();
+  defaults._fields["abc"] = arangodb::iresearch::FieldMeta();
   defaults._includeAllFields = true;
   defaults._trackListPositions = true;
-  defaults._storeValues = arangodb::iresearch::ValueStorage::FULL;
+  defaults._storeValues = arangodb::iresearch::ValueStorage::VALUE;
   defaults._analyzers.clear();
   defaults._analyzers.emplace_back(arangodb::iresearch::IResearchLinkMeta::Analyzer(
       analyzers.get("testVocbase::empty"), "empty"));
   defaults._fields["abc"]->_fields["xyz"] = arangodb::iresearch::IResearchLinkMeta();
+  defaults._sort.emplace_back(std::vector<arangodb::basics::AttributeName>{{"foo",false}}, true);
 
   auto json = VPackParser::fromJson("{}");
   EXPECT_TRUE(true == meta.init(json->slice(), false, tmpString, nullptr, defaults));
@@ -301,7 +312,7 @@ TEST_F(IResearchLinkMetaTest, test_inheritDefaults) {
   EXPECT_TRUE(true == expectedFields.empty());
   EXPECT_TRUE(true == meta._includeAllFields);
   EXPECT_TRUE(true == meta._trackListPositions);
-  EXPECT_TRUE((arangodb::iresearch::ValueStorage::FULL == meta._storeValues));
+  EXPECT_TRUE((arangodb::iresearch::ValueStorage::VALUE == meta._storeValues));
 
   EXPECT_TRUE(1U == meta._analyzers.size());
   EXPECT_TRUE((*(meta._analyzers.begin())));
@@ -310,6 +321,8 @@ TEST_F(IResearchLinkMetaTest, test_inheritDefaults) {
   EXPECT_TRUE((irs::flags({irs::frequency::type()}) ==
                meta._analyzers.begin()->_pool->features()));
   EXPECT_TRUE(false == !meta._analyzers.begin()->_pool->get());
+
+  EXPECT_EQ(0, meta._sort.size());
 }
 
 TEST_F(IResearchLinkMetaTest, test_readDefaults) {
@@ -363,7 +376,7 @@ TEST_F(IResearchLinkMetaTest, test_readCustomizedValues) {
       \"c\": { \
         \"fields\": { \
           \"default\": { \"fields\": {}, \"includeAllFields\": false, \"trackListPositions\": false, \"storeValues\": \"none\", \"analyzers\": [ \"identity\" ] }, \
-          \"all\": { \"fields\": {\"d\": {}, \"e\": {}}, \"includeAllFields\": true, \"trackListPositions\": true, \"storeValues\": \"full\", \"analyzers\": [ \"empty\" ] }, \
+          \"all\": { \"fields\": {\"d\": {}, \"e\": {}}, \"includeAllFields\": true, \"trackListPositions\": true, \"storeValues\": \"value\", \"analyzers\": [ \"empty\" ] }, \
           \"some\": { \"trackListPositions\": true, \"storeValues\": \"id\" }, \
           \"none\": {} \
         } \
@@ -371,7 +384,7 @@ TEST_F(IResearchLinkMetaTest, test_readCustomizedValues) {
     }, \
     \"includeAllFields\": true, \
     \"trackListPositions\": true, \
-    \"storeValues\": \"full\", \
+    \"storeValues\": \"value\", \
     \"analyzers\": [ \"empty\", \"identity\" ] \
   }");
 
@@ -392,8 +405,8 @@ TEST_F(IResearchLinkMetaTest, test_readCustomizedValues) {
                           "testVocbase");
     arangodb::iresearch::IResearchLinkMeta meta;
     std::string tmpString;
-    EXPECT_TRUE((true == meta.init(json->slice(), false, tmpString, &vocbase)));
-    EXPECT_TRUE((3U == meta._fields.size()));
+    EXPECT_TRUE(meta.init(json->slice(), false, tmpString, &vocbase));
+    EXPECT_TRUE(3U == meta._fields.size());
 
     for (auto& field : meta._fields) {
       EXPECT_TRUE((1U == expectedFields.erase(field.key())));
@@ -421,7 +434,7 @@ TEST_F(IResearchLinkMetaTest, test_readCustomizedValues) {
           EXPECT_TRUE((true == (actual._fields.find("e") != actual._fields.end())));
           EXPECT_TRUE((true == actual._includeAllFields));
           EXPECT_TRUE((true == actual._trackListPositions));
-          EXPECT_TRUE((arangodb::iresearch::ValueStorage::FULL == actual._storeValues));
+          EXPECT_TRUE((arangodb::iresearch::ValueStorage::VALUE == actual._storeValues));
           EXPECT_TRUE((1U == actual._analyzers.size()));
           EXPECT_TRUE((*(actual._analyzers.begin())));
           EXPECT_TRUE(("testVocbase::empty" == actual._analyzers.begin()->_pool->name()));
@@ -452,7 +465,7 @@ TEST_F(IResearchLinkMetaTest, test_readCustomizedValues) {
           EXPECT_TRUE((true == actual._fields.empty()));      // not inherited
           EXPECT_TRUE((true == actual._includeAllFields));    // inherited
           EXPECT_TRUE((true == actual._trackListPositions));  // inherited
-          EXPECT_TRUE((arangodb::iresearch::ValueStorage::FULL == actual._storeValues));
+          EXPECT_TRUE((arangodb::iresearch::ValueStorage::VALUE == actual._storeValues));
           auto itr = actual._analyzers.begin();
           EXPECT_TRUE((*itr));
           EXPECT_TRUE(("testVocbase::empty" == itr->_pool->name()));
@@ -474,7 +487,7 @@ TEST_F(IResearchLinkMetaTest, test_readCustomizedValues) {
     EXPECT_TRUE((true == expectedFields.empty()));
     EXPECT_TRUE((true == meta._includeAllFields));
     EXPECT_TRUE((true == meta._trackListPositions));
-    EXPECT_TRUE((arangodb::iresearch::ValueStorage::FULL == meta._storeValues));
+    EXPECT_TRUE((arangodb::iresearch::ValueStorage::VALUE == meta._storeValues));
     auto itr = meta._analyzers.begin();
     EXPECT_TRUE((*itr));
     EXPECT_TRUE(("testVocbase::empty" == itr->_pool->name()));
@@ -644,13 +657,16 @@ TEST_F(IResearchLinkMetaTest, test_writeCustomizedValues) {
 
   meta._includeAllFields = true;
   meta._trackListPositions = true;
-  meta._storeValues = arangodb::iresearch::ValueStorage::FULL;
+  meta._storeValues = arangodb::iresearch::ValueStorage::VALUE;
+  meta._analyzerDefinitions.clear();
+  meta._analyzerDefinitions.emplace("identity", analyzers.get("identity"));
+  meta._analyzerDefinitions.emplace("::empty", analyzers.get(arangodb::StaticStrings::SystemDatabase + "::empty"));
   meta._analyzers.clear();
   meta._analyzers.emplace_back(arangodb::iresearch::IResearchLinkMeta::Analyzer(
       analyzers.get("identity"), "identity"));
   meta._analyzers.emplace_back(arangodb::iresearch::IResearchLinkMeta::Analyzer(
       analyzers.get(arangodb::StaticStrings::SystemDatabase + "::empty"),
-      "enmpty"));
+      "empty"));
   meta._fields["a"] = meta;            // copy from meta
   meta._fields["a"]->_fields.clear();  // do not inherit fields to match jSon inheritance
   meta._fields["b"] = meta;            // copy from meta
@@ -779,7 +795,7 @@ TEST_F(IResearchLinkMetaTest, test_writeCustomizedValues) {
     tmpSlice = slice.get("trackListPositions");
     EXPECT_TRUE((true == tmpSlice.isBool() && true == tmpSlice.getBool()));
     tmpSlice = slice.get("storeValues");
-    EXPECT_TRUE((true == tmpSlice.isString() && std::string("full") == tmpSlice.copyString()));
+    EXPECT_TRUE((true == tmpSlice.isString() && std::string("value") == tmpSlice.copyString()));
     tmpSlice = slice.get("analyzers");
     EXPECT_TRUE((true == tmpSlice.isArray() && 2 == tmpSlice.length()));
 
@@ -894,7 +910,7 @@ TEST_F(IResearchLinkMetaTest, test_writeCustomizedValues) {
     tmpSlice = slice.get("trackListPositions");
     EXPECT_TRUE((true == tmpSlice.isBool() && true == tmpSlice.getBool()));
     tmpSlice = slice.get("storeValues");
-    EXPECT_TRUE((true == tmpSlice.isString() && std::string("full") == tmpSlice.copyString()));
+    EXPECT_TRUE((true == tmpSlice.isString() && std::string("value") == tmpSlice.copyString()));
     tmpSlice = slice.get("analyzers");
     EXPECT_TRUE((true == tmpSlice.isArray() && 2 == tmpSlice.length()));
 
@@ -1036,7 +1052,7 @@ TEST_F(IResearchLinkMetaTest, test_writeCustomizedValues) {
     tmpSlice = slice.get("trackListPositions");
     EXPECT_TRUE((true == tmpSlice.isBool() && true == tmpSlice.getBool()));
     tmpSlice = slice.get("storeValues");
-    EXPECT_TRUE((true == tmpSlice.isString() && std::string("full") == tmpSlice.copyString()));
+    EXPECT_TRUE((true == tmpSlice.isString() && std::string("value") == tmpSlice.copyString()));
     tmpSlice = slice.get("analyzers");
     EXPECT_TRUE((true == tmpSlice.isArray() && 2 == tmpSlice.length()));
 
@@ -1149,7 +1165,7 @@ TEST_F(IResearchLinkMetaTest, test_writeCustomizedValues) {
     tmpSlice = slice.get("trackListPositions");
     EXPECT_TRUE((true == tmpSlice.isBool() && true == tmpSlice.getBool()));
     tmpSlice = slice.get("storeValues");
-    EXPECT_TRUE((true == tmpSlice.isString() && std::string("full") == tmpSlice.copyString()));
+    EXPECT_TRUE((true == tmpSlice.isString() && std::string("value") == tmpSlice.copyString()));
     tmpSlice = slice.get("analyzers");
     EXPECT_TRUE((true == tmpSlice.isArray() && 2 == tmpSlice.length()));
 
@@ -1219,7 +1235,7 @@ TEST_F(IResearchLinkMetaTest, test_readMaskAll) {
     \"fields\": { \"a\": {} }, \
     \"includeAllFields\": true, \
     \"trackListPositions\": true, \
-    \"storeValues\": \"full\", \
+    \"storeValues\": \"value\", \
     \"analyzers\": [] \
   }");
   EXPECT_TRUE(true == meta.init(json->slice(), false, tmpString, nullptr,
@@ -1658,7 +1674,7 @@ TEST_F(IResearchLinkMetaTest, test_addNonUniqueAnalyzers) {
         "{ \
           \"includeAllFields\": true, \
           \"trackListPositions\": true, \
-          \"storeValues\": \"full\",\
+          \"storeValues\": \"value\",\
           \"analyzers\": [ \"identity\",\"identity\""  // two built-in analyzers
         ", \"" +
         analyzerCustomInTestVocbase + "\"" +    // local analyzer by full name

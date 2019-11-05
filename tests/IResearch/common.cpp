@@ -469,7 +469,7 @@ std::string mangleString(std::string name, std::string suffix) {
 }
 
 std::string mangleStringIdentity(std::string name) {
-  arangodb::iresearch::kludge::mangleStringField(name, arangodb::iresearch::IResearchLinkMeta::Analyzer()  // args
+  arangodb::iresearch::kludge::mangleStringField(name, arangodb::iresearch::FieldMeta::Analyzer()  // args
   );
 
   return name;
