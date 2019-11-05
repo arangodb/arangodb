@@ -24,10 +24,10 @@
 #define ARANGOD_FUTURES_SHARED_STATE_H 1
 
 #include <atomic>
+#include <function2.hpp>
 
 #include "Basics/debugging.h"
 #include "Futures/Try.h"
-#include "Futures/function2/function2.hpp"
 
 namespace arangodb {
 namespace futures {

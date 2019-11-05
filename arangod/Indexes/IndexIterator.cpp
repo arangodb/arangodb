@@ -35,15 +35,6 @@ IndexIterator::IndexIterator(LogicalCollection* collection, transaction::Methods
   TRI_ASSERT(_trx != nullptr);
 }
 
-bool IndexIterator::nextDocument(DocumentCallback const& cb, size_t limit) {
-  TRI_ASSERT(_collection != nullptr);
-  return next(
-      [this, &cb](LocalDocumentId const& token) {
-        _collection->readDocumentWithCallback(_trx, token, cb);
-      },
-      limit);
-}
-  
 /// @brief default implementation for rearm
 /// specialized index iterators can implement this method with some
 /// sensible behavior
@@ -54,6 +45,15 @@ bool IndexIterator::rearm(arangodb::aql::AstNode const*,
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "requested rearming of an index iterator that does not support it");
 }
 
+bool IndexIterator::nextDocument(DocumentCallback const& cb, size_t limit) {
+  TRI_ASSERT(_collection != nullptr);
+  return next(
+      [this, &cb](LocalDocumentId const& token) {
+        return _collection->readDocumentWithCallback(_trx, token, cb);
+      },
+      limit);
+}
+  
 /// @brief default implementation for nextCovering
 /// specialized index iterators can implement this method with some
 /// sensible behavior
@@ -74,9 +74,10 @@ void IndexIterator::reset() {}
 /// @brief default implementation for skip
 void IndexIterator::skip(uint64_t count, uint64_t& skipped) {
   // Skip the first count-many entries
-  auto cb = [&skipped](LocalDocumentId const&) { ++skipped; };
-  // TODO: Can be improved
-  next(cb, count);
+  next([&skipped](LocalDocumentId const&) { 
+    ++skipped; 
+    return true; 
+  }, count);
 }
 
 /// @brief Get the next elements
@@ -85,8 +86,11 @@ void IndexIterator::skip(uint64_t count, uint64_t& skipped) {
 ///        all iterators are exhausted
 bool MultiIndexIterator::next(LocalDocumentIdCallback const& callback, size_t limit) {
   auto cb = [&limit, &callback](LocalDocumentId const& token) {
-    --limit;
-    callback(token);
+    if (callback(token)) {
+      --limit;
+      return true;
+    }
+    return false;
   };
   while (limit > 0) {
     if (_current == nullptr) {
@@ -111,8 +115,11 @@ bool MultiIndexIterator::next(LocalDocumentIdCallback const& callback, size_t li
 ///        all iterators are exhausted
 bool MultiIndexIterator::nextDocument(DocumentCallback const& callback, size_t limit) {
   auto cb = [&limit, &callback](LocalDocumentId const& token, arangodb::velocypack::Slice slice) {
-    --limit;
-    callback(token, slice);
+    if (callback(token, slice)) {
+      --limit;
+      return true;
+    }
+    return false;
   };
   while (limit > 0) {
     if (_current == nullptr) {
@@ -144,8 +151,11 @@ bool MultiIndexIterator::nextCovering(DocumentCallback const& callback, size_t l
   TRI_ASSERT(hasCovering());
   auto cb = [&limit, &callback](LocalDocumentId const& token,
                                 arangodb::velocypack::Slice slice) {
-    --limit;
-    callback(token, slice);
+    if (callback(token, slice)) {
+      --limit;
+      return true;
+    }
+    return false;
   };
   while (limit > 0) {
     if (_current == nullptr) {

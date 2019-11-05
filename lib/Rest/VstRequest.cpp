@@ -173,7 +173,8 @@ void VstRequest::parseHeaderInformation() {
     }
 
     // fullUrl should not be necessary for Vst
-    _fullUrl = _requestPath + "?";
+    _fullUrl = _requestPath;
+    _fullUrl.push_back('?'); // intentional
     for (auto const& param : _values) {
       _fullUrl.append(param.first + "=" +
                       basics::StringUtils::urlEncode(param.second) + "&");

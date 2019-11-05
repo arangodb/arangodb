@@ -28,6 +28,7 @@
 #include "Mocks/Death_Test.h"
 
 #include "Aql/OutputAqlItemRow.h"
+#include "Aql/RegisterPlan.h"
 #include "Aql/SubqueryEndExecutor.h"
 
 #include "Logger/LogMacros.h"
@@ -47,7 +48,7 @@ class SubqueryEndExecutorTest : public ::testing::Test {
   SubqueryEndExecutorTest()
       : _infos(std::make_shared<RegisterSet>(std::initializer_list<RegisterId>({0})),
                std::make_shared<RegisterSet>(std::initializer_list<RegisterId>({0})),
-               1, 1, {}, {}, nullptr, RegisterId{0}) {}
+               1, 1, {}, {}, nullptr, RegisterId{0}, RegisterId{0}) {}
 
  protected:
   ResourceMonitor monitor;
@@ -77,8 +78,7 @@ class SubqueryEndExecutorTest : public ::testing::Test {
 
         InputAqlItemRow input{block, rowIdx};
         for (unsigned int colIdx = 0; colIdx < block->getNrRegs(); colIdx++) {
-          auto expected =
-              VPackParser::fromJson(expectedStrings.at(rowIdx).at(colIdx));
+          auto expected = VPackParser::fromJson(expectedStrings.at(rowIdx).at(colIdx));
           auto value = input.getValue(RegisterId{colIdx}).slice();
           EXPECT_TRUE(VelocyPackHelper::equal(value, expected->slice(), false))
               << value.toJson() << " != " << expected->toJson();
@@ -249,7 +249,7 @@ TEST_F(SubqueryEndExecutorTest, write_to_register_outside) {
   auto infos = SubqueryEndExecutorInfos(
       std::make_shared<RegisterSet>(std::initializer_list<RegisterId>{0}),
       std::make_shared<RegisterSet>(std::initializer_list<RegisterId>{1}), 1, 2,
-      {}, RegisterSet{0}, nullptr, RegisterId{1});
+      {}, RegisterSet{0}, nullptr, RegisterId{0}, RegisterId{1});
 
   ExecutionState state{ExecutionState::HASMORE};
 
@@ -270,6 +270,33 @@ TEST_F(SubqueryEndExecutorTest, write_to_register_outside) {
   EXPECT_EQ(output.numRowsWritten(), 1);
 
   ExpectedValues(output, {{"23", "[42]"}}, {{1, 0}});
+}
+
+TEST_F(SubqueryEndExecutorTest, no_input_register) {
+  auto infos = SubqueryEndExecutorInfos(
+      std::make_shared<RegisterSet>(std::initializer_list<RegisterId>{0}),
+      std::make_shared<RegisterSet>(std::initializer_list<RegisterId>{1}), 1, 2, {},
+      RegisterSet{0}, nullptr, RegisterId{RegisterPlan::MaxRegisterId}, RegisterId{1});
+
+  ExecutionState state{ExecutionState::HASMORE};
+
+  SharedAqlItemBlockPtr outputBlock;
+  SharedAqlItemBlockPtr inputBlock =
+      buildBlock<1>(itemBlockManager, {{{42}}, {{23}}}, {{1, 0}});
+
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
+      itemBlockManager, inputBlock->size(), false, inputBlock);
+
+  SubqueryEndExecutor testee(fetcher, infos);
+
+  outputBlock.reset(new AqlItemBlock(itemBlockManager, inputBlock->size(), 2));
+  OutputAqlItemRow output{std::move(outputBlock), infos.getOutputRegisters(),
+                          infos.registersToKeep(), infos.registersToClear()};
+  std::tie(state, std::ignore) = testee.produceRows(output);
+  EXPECT_EQ(state, ExecutionState::DONE);
+  EXPECT_EQ(output.numRowsWritten(), 1);
+
+  ExpectedValues(output, {{"23", "[]"}}, {{1, 0}});
 }
 
 // TODO: This is a "death test" with malformed shadow row layout (an irrelevant shadow row before any other row)
