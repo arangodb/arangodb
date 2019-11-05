@@ -23,6 +23,7 @@
 #ifndef ARANGOD_AQL_SHARED_QUERY_STATE_H
 #define ARANGOD_AQL_SHARED_QUERY_STATE_H 1
 
+#include <atomic>
 #include <condition_variable>
 #include <functional>
 
