@@ -129,9 +129,9 @@ class ProgramOptions {
     checkIfSealed();
 
     auto [it, emplaced] = _sections.try_emplace(section.name, section);
-    if (emplaced) {
+    if (!emplaced) {
       // section already present. check if we need to update it
-      Section sec = it->second;
+      Section& sec = it->second;
       if (!section.description.empty() && sec.description.empty()) {
         // copy over description
         sec.description = section.description;
@@ -179,7 +179,7 @@ class ProgramOptions {
   void printSectionsHelp() const;
 
   // returns a VPack representation of the option values, with optional
-  // filters applied to filter out specific options. 
+  // filters applied to filter out specific options.
   // the filter function is expected to return true
   // for any options that should become part of the result
   arangodb::velocypack::Builder toVPack(bool onlyTouched, bool detailed,

@@ -1664,7 +1664,7 @@ static void JS_KeyspaceCreate(v8::FunctionCallbackInfo<v8::Value> const& args) {
     try {
       auto [it, emplaced] = h->data.try_emplace(name, ptr.get());
       if(emplaced) {
-      ptr.release();
+        ptr.release();
       }
     } catch (...) {
       TRI_V8_THROW_EXCEPTION_MEMORY();
