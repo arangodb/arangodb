@@ -28,6 +28,7 @@
 
 #include "Basics/debugging.h"
 #include "Futures/Try.h"
+#include "Logger/LogMacros.h"
 
 namespace arangodb {
 namespace futures {
@@ -211,6 +212,7 @@ class SharedState {
           [[fallthrough]];
 
         default:
+          LOG_DEVEL << "state was: " << int(state);
           TRI_ASSERT(false);  // unexpected state
       }
     }
@@ -264,7 +266,7 @@ class SharedState {
   void doCallback() {
     TRI_ASSERT(_state == State::Done);
     TRI_ASSERT(_callback);
-    
+
     _attached.fetch_add(1);
     // SharedStateScope makes this exception safe
     SharedStateScope scope(this); // will call detachOne()
