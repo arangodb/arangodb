@@ -64,11 +64,7 @@ void SharedQueryState::resetWakeupHandler() {
 bool SharedQueryState::executeWakeupCallback() {
   TRI_ASSERT(_valid);
   TRI_ASSERT(_wakeupCb);
-  if (_queuedWakeup) {
-    return false;
-  }
-  _queuedWakeup = true;
-  
+
   auto scheduler = SchedulerFeature::SCHEDULER;
   if (ADB_UNLIKELY(scheduler == nullptr)) {
     // We are shutting down
@@ -76,29 +72,37 @@ bool SharedQueryState::executeWakeupCallback() {
   }
   TRI_ASSERT(_numWakeups > 0);
   
+  if (_inWakeupCb) {
+    return false;
+  }
+  _inWakeupCb = true;
+
   return scheduler->queue(RequestLane::CLIENT_AQL,
                           [self = shared_from_this(),
-                           cb = _wakeupCb] () mutable {
-    
-    while(true) {
+                           cb = _wakeupCb]() mutable {
+
+    while (true) {
       bool cntn = false;
       try {
-        cntn = cb();
+        /*cntn = */ cb();
       } catch (std::exception const& ex) {
         LOG_TOPIC("e988a", WARN, Logger::QUERIES)
-        << "Exception when continuing rest handler: " << ex.what();
+            << "Exception when continuing rest handler: " << ex.what();
       } catch (...) {
-         LOG_TOPIC("e988b", WARN, Logger::QUERIES)
-         << "Exception when continuing rest handler";
-       }
-      std::lock_guard<std::mutex> guard(self->_mutex);
-      TRI_ASSERT(self->_numWakeups > 0);
-      if (cntn) {
-        cntn = (--(self->_numWakeups) > 0);
+        LOG_TOPIC("e988b", WARN, Logger::QUERIES)
+            << "Exception when continuing rest handler";
       }
-      if (!cntn) {
-        self->_queuedWakeup = false;
-        break;
+      
+      const uint32_t n = self->_numWakeups.fetch_sub(1);
+      TRI_ASSERT(n > 0);
+
+      cntn = true;
+      if (!cntn || n == 1) {
+        std::lock_guard<std::mutex> guard(self->_mutex);
+        if (self->_numWakeups.load() == 0) {
+          self->_inWakeupCb = false;
+          break;
+        }
       }
     }
   });

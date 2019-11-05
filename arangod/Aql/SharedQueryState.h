@@ -34,7 +34,7 @@ class SharedQueryState final : public std::enable_shared_from_this<SharedQuerySt
   SharedQueryState(SharedQueryState const&) = delete;
   SharedQueryState& operator=(SharedQueryState const&) = delete;
 
-  SharedQueryState() : _numWakeups(0), _valid(true) {}
+  SharedQueryState() : _numWakeups(0), _valid(true), _inWakeupCb(false) {}
 
   ~SharedQueryState() = default;
 
@@ -53,15 +53,15 @@ class SharedQueryState final : public std::enable_shared_from_this<SharedQuerySt
   /// This will lead to the following: The original request that led to
   /// the network communication will be rescheduled on the ioservice and
   /// continues its execution where it left off.
-  template<typename F>
+  template <typename F>
   void executeAndWakeup(F&& cb) {
     std::lock_guard<std::mutex> guard(_mutex);
+    _numWakeups++;
+
     if (!_valid) {
       return;
     }
-    
-    _numWakeups++;
-    
+
     if (std::forward<F>(cb)()) {
       if (_wakeupCb) {
         executeWakeupCallback();
@@ -77,7 +77,7 @@ class SharedQueryState final : public std::enable_shared_from_this<SharedQuerySt
   /// @brief setter for the continue handler:
   ///        We can either have a handler or a callback
   void setWakeupHandler(std::function<bool()> const& cb);
-  
+
   void resetWakeupHandler();
 
  private:
@@ -85,7 +85,6 @@ class SharedQueryState final : public std::enable_shared_from_this<SharedQuerySt
   bool executeWakeupCallback();
 
  private:
-  
   mutable std::mutex _mutex;
   std::condition_variable _cv;
 
@@ -94,11 +93,11 @@ class SharedQueryState final : public std::enable_shared_from_this<SharedQuerySt
   /// in here, which continueAfterPause simply calls.
   std::function<bool()> _wakeupCb;
 
-  uint32_t _numWakeups;
+  std::atomic<uint32_t> _numWakeups;
 
   bool _valid;
-  
-  bool _queuedWakeup;
+
+  bool _inWakeupCb;
 };
 
 }  // namespace aql
