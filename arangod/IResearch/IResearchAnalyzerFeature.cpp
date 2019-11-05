@@ -775,24 +775,24 @@ arangodb::Result visitAnalyzers( // visit analyzers
       builder.openObject();
       builder.close();
     }
-    arangodb::network::Headers headers;
-    std::vector<arangodb::network::FutureRes> futures;
+    
+    arangodb::network::RequestOptions reqOpts;
+    reqOpts.database = vocbase.name();
 
+    std::vector<arangodb::network::FutureRes> futures;
     // create a request for every shard
     //for (auto& entry: collection->errorNum()) {
     for (auto& entry: *(collection->shardIds())) {
       auto& shardId = entry.first;
-      auto url = // url
-        "/_db/" + arangodb::basics::StringUtils::urlEncode(vocbase.name())
-        + arangodb::RestVocbaseBaseHandler::SIMPLE_QUERY_ALL_PATH
-        + "?collection=" + shardId;
+      auto url = arangodb::RestVocbaseBaseHandler::SIMPLE_QUERY_ALL_PATH;
+      reqOpts.param("collection", shardId);
 
       auto f = arangodb::network::sendRequest(pool,
                                               "shard:" + shardId,  // shard
-                                              arangodb::fuerte::RestVerb::Put,  // request type as per SimpleQueryHandker
+                                              arangodb::fuerte::RestVerb::Put,  // request type as per SimpleQueryHandler
                                               url,     // request url
                                               buffer,  // body
-                                              arangodb::network::Timeout(120.0), headers);
+                                              reqOpts);
       futures.emplace_back(std::move(f));
     }
 

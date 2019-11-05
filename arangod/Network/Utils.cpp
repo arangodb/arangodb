@@ -262,15 +262,15 @@ rest::RequestType fuerteRestVerbToArango(fuerte::RestVerb verb) {
 }
 
 int fuerteToArangoErrorCode(network::Response const& res) {
-  LOG_TOPIC_IF("abcde", ERR, Logger::CLUSTER, res.error != fuerte::Error::NoError)
-      << "cluster error: '" << fuerte::to_string(res.error)
+  LOG_TOPIC_IF("abcde", ERR, Logger::COMMUNICATION, res.error != fuerte::Error::NoError)
+      << "communication error: '" << fuerte::to_string(res.error)
       << "' from destination '" << res.destination << "'";
   return toArangoErrorCodeInternal(res.error);
 }
 
 int fuerteToArangoErrorCode(fuerte::Error err) {
-  LOG_TOPIC_IF("abcdf", ERR, Logger::CLUSTER, err != fuerte::Error::NoError)
-      << "cluster error: '" << fuerte::to_string(err) << "'";
+  LOG_TOPIC_IF("abcdf", ERR, Logger::COMMUNICATION, err != fuerte::Error::NoError)
+      << "communication error: '" << fuerte::to_string(err) << "'";
   return toArangoErrorCodeInternal(err);
 }
 
