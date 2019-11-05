@@ -328,9 +328,7 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::shutdown(i
     // do nothing...
     return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
   }
-  
-  LOG_DEVEL << "RemoteExecutor::shutdown " << _queryId << " sqs: " << _query.sharedState().get();
-  
+    
   std::unique_lock<std::mutex> guard(_communicationMutex);
 
   if (!_hasTriggeredShutdown) {
@@ -353,13 +351,11 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::shutdown(i
       THROW_ARANGO_EXCEPTION(res);
     }
     
-    LOG_DEVEL << "send out shutdown request q: " << _queryId << " sqs: " << _query.sharedState().get();
     return {ExecutionState::WAITING, TRI_ERROR_NO_ERROR};
   }
   
   if (_requestInFlight) {
     // Already sent a shutdown request, but haven't got an answer yet.
-    LOG_DEVEL << "waiting on shutdown request q:" << _queryId << " sqs: " << _query.sharedState().get();
     return {ExecutionState::WAITING, TRI_ERROR_NO_ERROR};
   }
     
@@ -387,10 +383,7 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::shutdown(i
 
   if (_lastResponse != nullptr) {
     TRI_ASSERT(_lastError.ok());
-//    _didReceiveShutdownRequest = true;
     
-    LOG_DEVEL << "got shutdown response q: " << _queryId << " sqs: " << _query.sharedState().get();
-
     auto response = std::move(_lastResponse);
 
     // both must be reset before return or throw
@@ -488,15 +481,12 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(fuerte::RestVerb typ
     return Result(res);
   }
   TRI_ASSERT(!spec.endpoint.empty());
-//  _requestInFlight.store(true, std::memory_order_release);
 
   auto req = fuerte::createRequest(type, fuerte::ContentType::VPack);
   req->header.database =_query.vocbase().name();
   req->header.path = urlPart + _queryId;
   req->addVPack(std::move(body));
   
-//  LOG_DEVEL << this->_exeNode->id() << " sending request  " << fuerte::to_string(type) << " " << req->header.path;
-
   // Later, we probably want to set these sensibly:
   req->timeout(kDefaultTimeOutSecs);
   if (!_ownName.empty()) {
@@ -505,7 +495,6 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(fuerte::RestVerb typ
   
   network::ConnectionPtr conn = pool->leaseConnection(spec.endpoint);
     
-//  std::lock_guard<std::mutex> guard(_communicationMutex);
   _requestInFlight = true;
   auto ticket = generateRequestTicket();
   conn->sendRequest(std::move(req),
@@ -519,18 +508,14 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(fuerte::RestVerb typ
                       sqs->executeAndWakeup([&] {
                         std::lock_guard<std::mutex> guard(_communicationMutex);
                         if (_lastTicket == ticket) {
-//                          _requestInFlight.store(false, std::memory_order_release);
-//                          LOG_DEVEL << "handling " << fuerte::to_string(req->header.restVerb) << " " << req->header.path;
                           if (err != fuerte::Error::NoError || res->statusCode() >= 400) {
                             _lastError = handleErrorResponse(spec, err, res.get());
                           } else {
                             _lastResponse = std::move(res);
                           }
                           _requestInFlight = false;
-                          LOG_DEVEL << "notify sqs: " << sqs.get();
                           return true;
                         }
-                        LOG_DEVEL << "skipping sqs: " << sqs.get();
                         return false;
                       });
                     });

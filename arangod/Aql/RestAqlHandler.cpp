@@ -737,8 +737,6 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation, Query* q
         int errorCode =
             VelocyPackHelper::readNumericValue<int>(querySlice, StaticStrings::Code, TRI_ERROR_INTERNAL);
         
-        LOG_DEVEL << "shutting down q: " << query->id() << " sqs: " << query->sharedState().get();
-
         ExecutionState state;
         Result res;
         std::tie(state, res) = query->engine()->shutdown(errorCode);
