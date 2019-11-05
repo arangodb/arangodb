@@ -46,12 +46,9 @@ devel
   Using these attributes for sharding was not supported before, but didn't trigger
   any errors. Instead, collections were created and silently using `_key` as
   the shard key, without making the caller aware of that an unsupported shard
-  keys was used.
+  key was used.
 
 * DB server locking / unlocking for hot backup revisited and enhanced.
-
-* Fixed unintended multiple unlock commands from coordinator to
-  transaction locked db servers.
 
 * Use execvp instead of execv in hotbackup restore.
 
