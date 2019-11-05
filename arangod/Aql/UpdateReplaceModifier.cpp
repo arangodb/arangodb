@@ -43,11 +43,6 @@ using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::aql::ModificationExecutorHelpers;
 
-UpdateReplaceModifierCompletion::UpdateReplaceModifierCompletion(ModificationExecutorInfos& infos)
-    : _infos(infos) {}
-
-UpdateReplaceModifierCompletion::~UpdateReplaceModifierCompletion() = default;
-
 ModifierOperationType UpdateReplaceModifierCompletion::accumulate(
     ModificationExecutorAccumulator& accu, InputAqlItemRow& row) {
   std::string key, rev;

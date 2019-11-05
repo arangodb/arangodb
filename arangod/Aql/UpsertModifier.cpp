@@ -131,17 +131,6 @@ typename UpsertModifier::OutputIterator UpsertModifier::OutputIterator::end() co
   return it;
 }
 
-UpsertModifier::UpsertModifier(ModificationExecutorInfos& infos)
-    : _infos(infos),
-
-      // Batch size has to be 1 so that the upsert modifier sees its own
-      // writes.
-      // This behaviour could be improved, if we can prove that an UPSERT
-      // does not need to see its own writes
-      _batchSize(1) {}
-
-UpsertModifier::~UpsertModifier() = default;
-
 void UpsertModifier::reset() {
   _insertAccumulator.reset(new ModificationExecutorAccumulator());
   _insertResults = OperationResult{};

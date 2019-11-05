@@ -34,8 +34,9 @@ struct ModificationExecutorInfos;
 
 class InsertModifierCompletion {
  public:
-  InsertModifierCompletion(ModificationExecutorInfos& infos);
-  ~InsertModifierCompletion();
+  InsertModifierCompletion(ModificationExecutorInfos& infos) : _infos(infos) {}
+
+  ~InsertModifierCompletion() = default;
 
   ModifierOperationType accumulate(ModificationExecutorAccumulator& accu,
                                    InputAqlItemRow& row);

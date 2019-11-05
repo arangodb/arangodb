@@ -42,11 +42,6 @@ using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::aql::ModificationExecutorHelpers;
 
-InsertModifierCompletion::InsertModifierCompletion(ModificationExecutorInfos& infos)
-    : _infos(infos) {}
-
-InsertModifierCompletion::~InsertModifierCompletion() = default;
-
 ModifierOperationType InsertModifierCompletion::accumulate(ModificationExecutorAccumulator& accu,
                                                            InputAqlItemRow& row) {
   RegisterId const inDocReg = _infos._input1RegisterId;
