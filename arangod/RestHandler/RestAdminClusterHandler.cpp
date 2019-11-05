@@ -141,7 +141,7 @@ void buildHealthResult(VPackBuilder &builder, std::vector<futures::Try<agentConf
 
     removePlanServers (set, store.get(rootPath->plan()->vec()));
     removeCurrentServers (set, store.get(rootPath->current()->vec()));
-    return std::move(set);
+    return set;
   };
   delayedCalculator canBeDeleted(canBeDeletedConstructor);
 
