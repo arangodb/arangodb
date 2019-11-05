@@ -550,14 +550,14 @@ void HttpRequest::setHeaderV2(std::string key, std::string value) {
       _contentType = ContentType::VPACK; // don't insert this header!!
       return;
     }
-    else if (value == StaticStrings::MimeTypeJson) {
+    else if (value == StaticStrings::MimeTypeJsonNoEncoding) {
       _contentType = ContentType::JSON;
       return;
     }
-    else if ((value.length() > StaticStrings::MimeTypeJson.length()) &&
+    else if ((value.length() > StaticStrings::MimeTypeJsonNoEncoding.length()) &&
              (memcmp(value.c_str(),
-                     StaticStrings::MimeTypeJson.c_str(),
-                     StaticStrings::MimeTypeJson.length()) == 0)) {
+                     StaticStrings::MimeTypeJsonNoEncoding.c_str(),
+                     StaticStrings::MimeTypeJsonNoEncoding.length()) == 0)) {
       // ignore encoding etc.
       _contentType = ContentType::JSON;
       return;
