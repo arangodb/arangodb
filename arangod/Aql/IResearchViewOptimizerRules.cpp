@@ -347,7 +347,7 @@ void lateDocumentMaterializationArangoSearchRule(arangodb::aql::Optimizer* opt,
         viewNode.setLateMaterialized(localColPtrTmp, localDocIdTmp);
         // insert a materialize node
         auto materializeNode =
-            plan->registerNode(std::make_unique<materialize::MaterializeViewNode>(
+            plan->registerNode(std::make_unique<materialize::MaterializeMultiNode>(
               plan.get(), plan->nextId(), *localColPtrTmp, *localDocIdTmp, viewNode.outVariable()));
 
         // on cluster we need to materialize node stay close to sort node on db server (to avoid network hop for materialization calls)

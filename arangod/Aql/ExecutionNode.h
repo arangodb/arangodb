@@ -980,12 +980,12 @@ class MaterializeNode : public ExecutionNode {
   Variable const* _outVariable;
 };
 
-class MaterializeViewNode : public MaterializeNode {
+class MaterializeMultiNode : public MaterializeNode {
  public:
-  MaterializeViewNode(ExecutionPlan* plan, size_t id, aql::Variable const& inColPtr,
-                      aql::Variable const& inDocId, aql::Variable const& outVariable);
+  MaterializeMultiNode(ExecutionPlan* plan, size_t id, aql::Variable const& inColPtr,
+                       aql::Variable const& inDocId, aql::Variable const& outVariable);
 
-  MaterializeViewNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
+  MaterializeMultiNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
 
   /// @brief export to VelocyPack
   void toVelocyPackHelper(arangodb::velocypack::Builder& nodes, unsigned flags,
@@ -1008,12 +1008,12 @@ class MaterializeViewNode : public MaterializeNode {
   aql::Variable const* _inNonMaterializedColPtr;
 };
 
-class MaterializeIndexNode : public MaterializeNode, public CollectionAccessingNode {
+class MaterializeSingleNode : public MaterializeNode, public CollectionAccessingNode {
  public:
-  MaterializeIndexNode(ExecutionPlan* plan, size_t id, aql::Collection const* collection,
-                       aql::Variable const& inDocId, aql::Variable const& outVariable);
+  MaterializeSingleNode(ExecutionPlan* plan, size_t id, aql::Collection const* collection,
+                        aql::Variable const& inDocId, aql::Variable const& outVariable);
 
-  MaterializeIndexNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
+  MaterializeSingleNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
 
   /// @brief export to VelocyPack
   void toVelocyPackHelper(arangodb::velocypack::Builder& nodes, unsigned flags,

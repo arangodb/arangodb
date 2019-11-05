@@ -34,18 +34,18 @@
 
 namespace {
 
-class IIndexNodeTest
+class IndexNodeTest
   : public ::testing::Test,
     public arangodb::tests::LogSuppressor<arangodb::Logger::AUTHENTICATION, arangodb::LogLevel::ERR> {
 
  protected:
   arangodb::tests::mocks::MockAqlServer server;
 
-  IIndexNodeTest() : server(false) {
+  IndexNodeTest() : server(false) {
     server.startFeatures();
   }
 
-};  // IIndexNodeTest
+};  // IndexNodeTest
 
 arangodb::CreateDatabaseInfo createInfo(arangodb::application_features::ApplicationServer& server) {
   arangodb::CreateDatabaseInfo info(server);
@@ -79,7 +79,7 @@ arangodb::aql::QueryResult executeQuery(TRI_vocbase_t& vocbase, std::string cons
   return result;
 }
 
-TEST_F(IIndexNodeTest, objectQuery) {
+TEST_F(IndexNodeTest, objectQuery) {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, createInfo(server.server()));
   // create a collection
   auto collectionJson = arangodb::velocypack::Parser::fromJson(
@@ -138,7 +138,7 @@ TEST_F(IIndexNodeTest, objectQuery) {
   }
 }
 
-TEST_F(IIndexNodeTest, expansionQuery) {
+TEST_F(IndexNodeTest, expansionQuery) {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, createInfo(server.server()));
   // create a collection
   auto collectionJson = arangodb::velocypack::Parser::fromJson(
@@ -175,7 +175,7 @@ TEST_F(IIndexNodeTest, expansionQuery) {
   ASSERT_EQ(2, resultIt.size());
 }
 
-TEST_F(IIndexNodeTest, expansionIndexAndNotExpansionDocumentQuery) {
+TEST_F(IndexNodeTest, expansionIndexAndNotExpansionDocumentQuery) {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, createInfo(server.server()));
   // create a collection
   auto collectionJson = arangodb::velocypack::Parser::fromJson(
@@ -210,7 +210,7 @@ TEST_F(IIndexNodeTest, expansionIndexAndNotExpansionDocumentQuery) {
   ASSERT_EQ(0, resultIt.size());
 }
 
-TEST_F(IIndexNodeTest, lastExpansionQuery) {
+TEST_F(IndexNodeTest, lastExpansionQuery) {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, createInfo(server.server()));
   // create a collection
   auto collectionJson = arangodb::velocypack::Parser::fromJson(
@@ -256,7 +256,7 @@ TEST_F(IIndexNodeTest, lastExpansionQuery) {
   }
 }
 
-TEST_F(IIndexNodeTest, constructIndexNode) {
+TEST_F(IndexNodeTest, constructIndexNode) {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, createInfo(server.server()));
   // create a collection
   auto collectionJson = arangodb::velocypack::Parser::fromJson(
@@ -525,7 +525,7 @@ TEST_F(IIndexNodeTest, constructIndexNode) {
   }
 }
 
-TEST_F(IIndexNodeTest, invalidLateMaterializedJSON) {
+TEST_F(IndexNodeTest, invalidLateMaterializedJSON) {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, createInfo(server.server()));
   // create a collection
   auto collectionJson = arangodb::velocypack::Parser::fromJson(
