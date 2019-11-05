@@ -106,7 +106,7 @@ void QueryOptions::fromVelocyPack(VPackSlice const& slice) {
 
   value = slice.get("timeout");
   if (value.isNumber()) {
-    timeout = value.getNumber<size_t>();
+    timeout = value.getNumber<double>();
   }
 
 

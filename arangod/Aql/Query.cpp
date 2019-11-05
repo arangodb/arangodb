@@ -276,7 +276,7 @@ Query* Query::clone(QueryPart part, bool withPlan) {
 }
 
 bool Query::killed() const {
-  if(_queryOptions.timeout) {
+  if(_queryOptions.timeout > std::numeric_limits<double>::epsilon()) {
     if(TRI_microtime() > (_startTime + _queryOptions.timeout)) {
       return true;
     }
