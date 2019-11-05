@@ -209,11 +209,6 @@ ExecutionState AllRowsFetcher::upstreamState() {
   return ExecutionState::HASMORE;
 }
 
-std::pair<ExecutionState, SharedAqlItemBlockPtr> AllRowsFetcher::fetchBlockForPassthrough(size_t) {
-  TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
-
 std::pair<ExecutionState, ShadowAqlItemRow> AllRowsFetcher::fetchShadowRow(size_t atMost) {
   TRI_ASSERT(_dataFetchedState != DATA_FETCH_ONGOING);
   if (ADB_UNLIKELY(_dataFetchedState == DATA_FETCH_ONGOING)) {

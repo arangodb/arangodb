@@ -943,17 +943,24 @@ void TRI_vocbase_t::inventory(VPackBuilder& result, TRI_voc_tick_t maxTick,
       // why are indexes added separately, when they are added by
       //  collection->toVelocyPackIgnore !?
       result.add(VPackValue("indexes"));
-      collection->getIndexesVPack(result, Index::makeFlags(), [](arangodb::Index const* idx) {
-        // we have to exclude the primary, edge index and links for dump /
-        // restore
-        return (idx->type() != arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX &&
-                idx->type() != arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX &&
-                !idx->isHidden());
+      collection->getIndexesVPack(result, [](arangodb::Index const* idx, decltype(Index::makeFlags())& flags) {
+        // we have to exclude the primary and edge index for dump / restore
+        switch (idx->type()) {
+          case Index::TRI_IDX_TYPE_PRIMARY_INDEX:
+          case Index::TRI_IDX_TYPE_EDGE_INDEX:
+            return false;
+          case Index::TRI_IDX_TYPE_IRESEARCH_LINK:
+            flags = Index::makeFlags(Index::Serialize::Internals);
+            return true;
+          default:
+            flags = Index::makeFlags(Index::Serialize::Basics);
+            return !idx->isHidden();
+        }
       });
       result.add("parameters", VPackValue(VPackValueType::Object));
       collection->toVelocyPackIgnore(
           result, {"objectId", "path", "statusString", "indexes"},
-          LogicalDataSource::makeFlags(LogicalDataSource::Serialize::Detailed));
+          LogicalDataSource::Serialization::Inventory);
       result.close();
 
       result.close();
@@ -965,10 +972,7 @@ void TRI_vocbase_t::inventory(VPackBuilder& result, TRI_voc_tick_t maxTick,
   LogicalView::enumerate(*this, [&result](LogicalView::ptr const& view) -> bool {
     if (view) {
       result.openObject();
-      view->properties(result, LogicalDataSource::makeFlags(
-                                   LogicalDataSource::Serialize::Detailed));
-      // details, !forPersistence because on  restore any datasource ids will
-      // differ, so need an end-user representation
+      view->properties(result, LogicalDataSource::Serialization::Inventory);
       result.close();
     }
 
@@ -1821,6 +1825,21 @@ void TRI_vocbase_t::toVelocyPack(VPackBuilder& result) const {
     } else {
       result.add("path", VPackValue("none"));
     }
+}
+
+/// @brief sets prototype collection for sharding (_users or _graphs)
+void TRI_vocbase_t::setShardingPrototype(ShardingPrototype type) {
+  _info.shardingPrototype(type);
+}
+
+/// @brief gets prototype collection for sharding (_users or _graphs)
+ShardingPrototype TRI_vocbase_t::shardingPrototype() const {
+  return _info.shardingPrototype();
+}
+  
+/// @brief gets name of prototype collection for sharding (_users or _graphs)
+std::string const& TRI_vocbase_t::shardingPrototypeName() const {
+  return _info.shardingPrototype() == ShardingPrototype::Users ? StaticStrings::UsersCollection : StaticStrings::GraphCollection;
 }
 
 std::vector<std::shared_ptr<arangodb::LogicalView>> TRI_vocbase_t::views() {

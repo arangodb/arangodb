@@ -261,6 +261,7 @@ bool VstCommTask<T>::processMessage(velocypack::Buffer<uint8_t> buffer,
     << "\"vst-request-begin\",\"" << (void*)this << "\",\""
     << this->_connectionInfo.clientAddress << "\",\""
     << VstRequest::translateMethod(req->requestType()) << "\",\""
+    << (req->databaseName().empty() ? "" : "/_db/" + req->databaseName())
     << (Logger::logRequestParameters() ? req->fullUrl() : req->requestPath())
     << "\"";
     
@@ -296,6 +297,8 @@ void VstCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes, Requ
   auto resItem = std::make_unique<ResponseItem>();
   response.writeMessageHeader(resItem->metadata);
   resItem->response = std::move(baseRes);
+  RequestStatistics::SET_WRITE_START(stat);
+  resItem->stat = stat;
   
   asio_ns::const_buffer payload;
   if (response.generateBody()) {
@@ -316,7 +319,7 @@ void VstCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes, Requ
   double const totalTime = RequestStatistics::ELAPSED_SINCE_READ_START(stat);
 
   // and give some request information
-  LOG_TOPIC("92fd7", INFO, Logger::REQUESTS)
+  LOG_TOPIC("92fd7", DEBUG, Logger::REQUESTS)
   << "\"vst-request-end\",\"" << (void*)this << "/" << response.messageId() << "\",\""
   << this->_connectionInfo.clientAddress << "\",\""
   << static_cast<int>(response.responseCode()) << ","
@@ -352,8 +355,8 @@ void VstCommTask<T>::doWrite() {
       if (_writeQueue.empty()) {
         break; // done, someone else may restart
       }
-      // at this point
-      bool expected = false;
+
+      bool expected = false; // may fail in a race
       if (_writing.compare_exchange_strong(expected, true)) {
         continue; // we re-start writing
       }
@@ -362,12 +365,15 @@ void VstCommTask<T>::doWrite() {
     }
     TRI_ASSERT(tmp != nullptr);
     std::unique_ptr<ResponseItem> item(tmp);
-    
+
     auto& buffers = item->buffers;
-    auto cb = [self = CommTask::shared_from_this(),
-               item = std::move(item)](asio_ns::error_code ec,
-                                       size_t transferred) {
+    asio_ns::async_write(this->_protocol->socket, buffers,
+                         [self(CommTask::shared_from_this()), rsp(std::move(item))]
+                         (asio_ns::error_code ec, size_t transferred) {
+      
       auto* thisPtr = static_cast<VstCommTask<T>*>(self.get());
+      RequestStatistics::SET_WRITE_END(rsp->stat);
+      RequestStatistics::ADD_SENT_BYTES(rsp->stat, rsp->buffers[0].size() + rsp->buffers[1].size());
       if (ec) {
         LOG_TOPIC("5c6b4", INFO, arangodb::Logger::REQUESTS)
         << "asio write error: '" << ec.message() << "'";
@@ -375,8 +381,8 @@ void VstCommTask<T>::doWrite() {
       } else {
         thisPtr->doWrite(); // write next one
       }
-    };
-    asio_ns::async_write(this->_protocol->socket, buffers, std::move(cb));
+      rsp->stat->release();
+    });
     
     break; // done
   }

@@ -34,8 +34,7 @@
 
 #include <memory>
 
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
 
 class AqlItemBlock;
 template <BlockPassthrough>
@@ -84,59 +83,33 @@ class SingleRowFetcher {
    */
   // This is only TEST_VIRTUAL, so we ignore this lint warning:
   // NOLINTNEXTLINE google-default-arguments
-  TEST_VIRTUAL std::pair<ExecutionState, InputAqlItemRow> fetchRow(
+  [[nodiscard]] TEST_VIRTUAL std::pair<ExecutionState, InputAqlItemRow> fetchRow(
       size_t atMost = ExecutionBlock::DefaultBatchSize());
 
-  // TODO: atMost?
   // NOLINTNEXTLINE google-default-arguments
-  TEST_VIRTUAL std::pair<ExecutionState, ShadowAqlItemRow> fetchShadowRow(
+  [[nodiscard]] TEST_VIRTUAL std::pair<ExecutionState, ShadowAqlItemRow> fetchShadowRow(
       size_t atMost = ExecutionBlock::DefaultBatchSize());
 
-  TEST_VIRTUAL std::pair<ExecutionState, size_t> skipRows(size_t atMost);
+  [[nodiscard]] TEST_VIRTUAL std::pair<ExecutionState, size_t> skipRows(size_t atMost);
 
-  // TODO enable_if<blockPassthrough>
-  // std::enable_if<blockPassthrough == BlockPassthrough::Enable>
-  TEST_VIRTUAL std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlockForPassthrough(size_t atMost);
+  // template methods may not be virtual, thus this #ifdef.
+#ifndef ARANGODB_USE_GOOGLE_TESTS
+  template <BlockPassthrough allowPass = blockPassthrough, typename = std::enable_if_t<allowPass == BlockPassthrough::Enable>>
+  [[nodiscard]]
+#else
+  [[nodiscard]]
+  TEST_VIRTUAL
+#endif
+  std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlockForPassthrough(size_t atMost);
 
-  std::pair<ExecutionState, size_t> preFetchNumberOfRows(size_t atMost) {
-    if (_upstreamState != ExecutionState::DONE && !indexIsValid()) {
-      // We have exhausted the current block and need to fetch a new one
-      ExecutionState state;
-      SharedAqlItemBlockPtr newBlock;
-      std::tie(state, newBlock) = fetchBlock(atMost);
-      // we de not need result as local members are modified
-      if (state == ExecutionState::WAITING) {
-        return {state, 0};
-      }
-      // The internal state should be in-line with the returned state.
-      TRI_ASSERT(_upstreamState == state);
-      _currentBlock = std::move(newBlock);
-      _rowIndex = 0;
-    }
+  [[nodiscard]] std::pair<ExecutionState, size_t> preFetchNumberOfRows(size_t atMost);
 
-    // The block before can put upstreamState to DONE.
-    // So we cannot swap the blocks
-    if (_upstreamState == ExecutionState::DONE) {
-      if (!indexIsValid()) {
-        // There is nothing more from upstream
-        return {_upstreamState, 0};
-      }
-      // we only have the block in hand, so we can only return that
-      // many additional rows
-      TRI_ASSERT(_rowIndex < _currentBlock->size());
-      return {_upstreamState, (std::min)(_currentBlock->size() - _rowIndex, atMost)};
-    }
+  void setDistributeId(std::string const& id);
 
-    TRI_ASSERT(_upstreamState == ExecutionState::HASMORE);
-    TRI_ASSERT(_currentBlock != nullptr);
-    // Here we can only assume that we have enough from upstream
-    // We do not want to pull additional block
-    return {_upstreamState, atMost};
-  }
-
-  void setDistributeId(std::string const& id) {
-    _dependencyProxy->setDistributeId(id);
-  }
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  [[nodiscard]] bool hasRowsLeftInBlock() const;
+  [[nodiscard]] bool isAtShadowRow() const;
+#endif
 
  private:
   DependencyProxy<blockPassthrough>* _dependencyProxy;
@@ -151,6 +124,7 @@ class SingleRowFetcher {
 #ifdef ARANGODB_USE_GOOGLE_TESTS
  protected:
 #endif
+  // NOLINTNEXTLINE(cppcoreguidelines-non-private-member-variables-in-classes, misc-non-private-member-variables-in-classes)
   ExecutionState _upstreamState;
 #ifdef ARANGODB_USE_GOOGLE_TESTS
  private:
@@ -181,31 +155,19 @@ class SingleRowFetcher {
   /**
    * @brief Delegates to ExecutionBlock::fetchBlock()
    */
-  TEST_VIRTUAL std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlock(size_t atMost);
+  [[nodiscard]] TEST_VIRTUAL std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlock(size_t atMost);
 
-  bool fetchBlockIfNecessary(size_t atMost);
+  [[nodiscard]] bool fetchBlockIfNecessary(size_t atMost);
 
   /**
    * @brief Delegates to ExecutionBlock::getNrInputRegisters()
    */
-  RegisterId getNrInputRegisters() const {
-    return _dependencyProxy->getNrInputRegisters();
-  }
-  bool indexIsValid() const;
+  [[nodiscard]] RegisterId getNrInputRegisters() const;
 
-  bool isLastRowInBlock() const {
-    TRI_ASSERT(indexIsValid());
-    return _rowIndex + 1 == _currentBlock->size();
-  }
+  [[nodiscard]] bool indexIsValid() const;
 
-  size_t getRowIndex() const {
-    TRI_ASSERT(indexIsValid());
-    return _rowIndex;
-  }
-
-  ExecutionState returnState(bool isShadowRow) const;
+  [[nodiscard]] ExecutionState returnState(bool isShadowRow) const;
 };
-}  // namespace aql
 }  // namespace arangodb
 
 #endif  // ARANGOD_AQL_SINGLE_ROW_FETCHER_H
