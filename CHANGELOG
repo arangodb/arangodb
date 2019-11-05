@@ -66,13 +66,14 @@ v3.5.3 (XXXX-XX-XX)
   string.
 
 
-v3.5.2 (2019-XX-XX)
--------------------
+v.3.5.2 (2019-11-06)
+--------------------
 
-* !!!PLACEHOLDER FOR UPGRADE ISSUES ENTRY!!!
+* Fixed ArangoSearch upgrade procedure from previous minor version and
+  patches.
 
-* Separately account for superuser and user request traffic. This is
-  needed for Oasis.
+* Separately account for superuser and user request traffic.
+
 
 v3.5.1 (2019-10-07)
 -------------------
