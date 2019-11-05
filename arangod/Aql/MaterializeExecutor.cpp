@@ -24,7 +24,6 @@
 
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
-#include "VocBase/LogicalCollection.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/Stats.h"
 #include "Transaction/Methods.h"
@@ -112,7 +111,11 @@ std::pair<ExecutionState, NoStats> arangodb::aql::MaterializeExecutor<T>::produc
     }
     arangodb::LogicalCollection const* collection = nullptr;
     if constexpr (std::is_same<T, std::string const&>::value) {
-      collection = trx->documentCollection(collectionSource);
+      if (_collection == nullptr) {
+        _collection = collection = trx->documentCollection(collectionSource);
+      } else {
+        collection = _collection;
+      }
     } else {
       collection =
         reinterpret_cast<arangodb::LogicalCollection const*>(

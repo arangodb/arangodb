@@ -31,6 +31,7 @@
 #include "Aql/types.h"
 #include "Indexes/IndexIterator.h"
 #include "VocBase/LocalDocumentId.h"
+#include "VocBase/LogicalCollection.h"
 
 #include <iosfwd>
 #include <memory>
@@ -134,6 +135,9 @@ class MaterializeExecutor {
   ReadContext _readDocumentContext;
   Infos const& _infos;
   Fetcher& _fetcher;
+
+  // for single collection case
+  LogicalCollection const* _collection = nullptr;
 };
 
 }  // namespace aql
