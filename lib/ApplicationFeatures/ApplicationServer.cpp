@@ -654,26 +654,26 @@ void ApplicationServer::start() {
 
       // try to stop all feature that we just started
       for (auto it = _orderedFeatures.rbegin(); it != _orderedFeatures.rend(); ++it) {
-        auto feature = *it;
-        if (!feature->isEnabled()) {
+        ApplicationFeature& feature = *it;
+        if (!feature.isEnabled()) {
           continue;
         }
-        if (feature->state() == ApplicationFeature::State::STARTED) {
+        if (feature.state() == ApplicationFeature::State::STARTED) {
           LOG_TOPIC("e5cfe", TRACE, Logger::STARTUP)
-          << "forcefully beginning stop of feature '" << feature->name() << "'";
+          << "forcefully beginning stop of feature '" << feature.name() << "'";
           try {
-            feature->beginShutdown();
+            feature.beginShutdown();
           } catch (...) {
             // ignore errors on shutdown
             LOG_TOPIC("13224", TRACE, Logger::STARTUP)
-            << "caught exception while stopping feature '" << feature->name() << "'";
+            << "caught exception while stopping feature '" << feature.name() << "'";
           }
         }
       }
 
       // try to stop all feature that we just started
       for (auto it = _orderedFeatures.rbegin(); it != _orderedFeatures.rend(); ++it) {
-        ApplicationFeature& feature = (*it).get();
+        ApplicationFeature& feature = *it;
         if (!feature.isEnabled()) {
           continue;
         }
