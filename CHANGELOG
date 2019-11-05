@@ -1,7 +1,8 @@
-v.3.5.2 (2019-XX-XX)
+v.3.5.2 (2019-11-06)
 --------------------
 
-* !!!PLACEHOLDER FOR UPGRADE ISSUES ENTRY!!!
+* Fixed ArangoSearch upgrade procedure from previous minor versiom and
+  patches.
 
 * Separately account for superuser and user request traffic.
 
