@@ -161,12 +161,12 @@ std::shared_ptr<fuerte::Connection> V8ClientConnection::createConnection() {
         return newConnection;
       }
     }
+    return _connection;
   } catch (fuerte::Error const& e) {  // connection error
     _lastErrorMessage = fuerte::to_string(e);
     _lastHttpReturnCode = 503;
+    return nullptr;
   }
-  
-  return nullptr;
 }
 
 std::shared_ptr<fuerte::Connection> V8ClientConnection::acquireConnection() {
@@ -175,7 +175,9 @@ std::shared_ptr<fuerte::Connection> V8ClientConnection::acquireConnection() {
   _lastErrorMessage = "";
   _lastHttpReturnCode = 0;
   
-  if (!_connection || _connection->state() == fuerte::Connection::State::Failed) {
+  if (!_connection || 
+      (_connection->state() == fuerte::Connection::State::Disconnected ||
+       _connection->state() == fuerte::Connection::State::Failed)) {
     return createConnection();
   }
   return _connection;
@@ -186,7 +188,8 @@ void V8ClientConnection::setInterrupted(bool interrupted) {
   if (interrupted && _connection != nullptr) {
     shutdownConnection();
   } else if (!interrupted && (_connection == nullptr ||
-                              _connection->state() == fuerte::Connection::State::Failed)) {
+                              (_connection->state() == fuerte::Connection::State::Disconnected ||
+                               _connection->state() == fuerte::Connection::State::Failed))) {
     createConnection();
   }
 }
@@ -218,7 +221,6 @@ void V8ClientConnection::timeout(double value) {
 }
 
 void V8ClientConnection::connect(ClientFeature* client) {
-  
   TRI_ASSERT(client);
   std::lock_guard<std::recursive_mutex> guard(_lock);
   _forceJson = client->forceJson();
@@ -1514,6 +1516,9 @@ v8::Local<v8::Value> V8ClientConnection::requestData(
     v8::Local<v8::Value> const& body,
     std::unordered_map<std::string, std::string> const& headerFields, bool isFile) {
 
+  bool retry = true;
+
+again:
   auto req = std::make_unique<fuerte::Request>();
   req->header.restVerb = method;
   req->header.database = _databaseName;
@@ -1589,21 +1594,30 @@ v8::Local<v8::Value> V8ClientConnection::requestData(
     return v8::Undefined(isolate);
   }
 
+  fuerte::Error rc = fuerte::Error::NoError;
   std::unique_ptr<fuerte::Response> response;
   try {
     response = connection->sendRequest(std::move(req));
   } catch (fuerte::Error const& ec) {
-    return handleResult(isolate, nullptr, ec);
+    rc = ec;
+  }
+    
+  if (rc == fuerte::Error::ConnectionClosed && retry) {
+    retry = false;
+    goto again;
   }
 
-  return handleResult(isolate, std::move(response), fuerte::Error::NoError);
+  return handleResult(isolate, std::move(response), rc);
 }
 
 v8::Local<v8::Value> V8ClientConnection::requestDataRaw(
     v8::Isolate* isolate, fuerte::RestVerb method, arangodb::velocypack::StringRef const& location,
     v8::Local<v8::Value> const& body,
     std::unordered_map<std::string, std::string> const& headerFields) {
+  
+  bool retry = true;
 
+again:
   auto req = std::make_unique<fuerte::Request>();
   req->header.restVerb = method;
   req->header.database = _databaseName;
@@ -1651,19 +1665,25 @@ v8::Local<v8::Value> V8ClientConnection::requestDataRaw(
   req->timeout(std::chrono::duration_cast<std::chrono::milliseconds>(_requestTimeout));
 
   std::shared_ptr<fuerte::Connection> connection = acquireConnection();
-  
   if (!connection || connection->state() == fuerte::Connection::State::Failed) {
     TRI_V8_SET_EXCEPTION_MESSAGE(TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT,
                                  "not connected");
     return v8::Undefined(isolate);
   }
 
+  fuerte::Error rc = fuerte::Error::NoError;
   std::unique_ptr<fuerte::Response> response;
   try {
     response = connection->sendRequest(std::move(req));
   } catch (fuerte::Error const& e) {
+    rc = e;
     _lastErrorMessage.assign(fuerte::to_string(e));
     _lastHttpReturnCode = 503;
+  }
+  
+  if (rc == fuerte::Error::ConnectionClosed && retry) {
+    retry = false;
+    goto again;
   }
 
   v8::Local<v8::Object> result = v8::Object::New(isolate);
