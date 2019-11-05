@@ -275,6 +275,15 @@ Query* Query::clone(QueryPart part, bool withPlan) {
   return clone.release();
 }
 
+bool Query::killed() const {
+  if(_queryOptions.timeout) {
+    if(TRI_microtime() > (_startTime + _queryOptions.timeout)) {
+      return true;
+    }
+  }
+  return _killed;
+}
+
 /// @brief set the query to killed
 void Query::kill() {
   _killed = true;
