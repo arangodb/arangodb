@@ -1,5 +1,7 @@
 v3.5.3 (XXXX-XX-XX)
 -------------------
+* Fixed ArangoSearch index removes being discarded on commiting consolidation results with
+  pending removes after some segments under consolidation were already committed.
 
 * Fixed internal issue #647: custom analyzer provokes errors on Active Failover
   deployment.
