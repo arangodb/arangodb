@@ -43,10 +43,8 @@ void SharedQueryState::invalidate() {
 void SharedQueryState::waitForAsyncWakeup() {
   std::unique_lock<std::mutex> guard(_mutex);
   TRI_ASSERT(!_wakeupCb);
-  LOG_DEVEL << "waiting " << this;
   _cv.wait(guard, [&] { return _numWakeups > 0; });
   TRI_ASSERT(_numWakeups > 0);
-  LOG_DEVEL << "continued " << this;
   _numWakeups--;
 }
 
@@ -64,10 +62,7 @@ void SharedQueryState::resetWakeupHandler() {
 
 /// execute the _continueCallback. must hold _mutex,
 bool SharedQueryState::executeWakeupCallback() {
-  if (!_valid) {
-    return false;
-  }
-  
+  TRI_ASSERT(_valid);
   TRI_ASSERT(_wakeupCb);
   auto scheduler = SchedulerFeature::SCHEDULER;
   if (ADB_UNLIKELY(scheduler == nullptr)) {
@@ -75,14 +70,18 @@ bool SharedQueryState::executeWakeupCallback() {
     return false;
   }
   TRI_ASSERT(_numWakeups > 0);
+    
+  if (_queuedWakeup) {
+    return false;
+  }
   
+  _queuedWakeup = true;
   return scheduler->queue(RequestLane::CLIENT_AQL,
                           [self = shared_from_this(),
                            cb = _wakeupCb] () mutable {
     
-    bool cntn = true;
-    while(cntn) {
-      cntn = false;
+    while(true) {
+      bool cntn = false;
       try {
         cntn = cb();
       } catch (std::exception const& ex) {
@@ -92,12 +91,15 @@ bool SharedQueryState::executeWakeupCallback() {
          LOG_TOPIC("e988b", WARN, Logger::QUERIES)
          << "Exception when continuing rest handler";
        }
-      if (!cntn) {
-        break;
-      }
       std::lock_guard<std::mutex> guard(self->_mutex);
       TRI_ASSERT(self->_numWakeups > 0);
-      cntn = (--(self->_numWakeups) > 0);
+      if (cntn) {
+        cntn = (--(self->_numWakeups) > 0);
+      }
+      if (!cntn) {
+        self->_queuedWakeup = false;
+        break;
+      }
     }
   });
 }

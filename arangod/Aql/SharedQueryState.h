@@ -60,12 +60,10 @@ class SharedQueryState final : public std::enable_shared_from_this<SharedQuerySt
       return;
     }
     
+    _numWakeups++;
+    
     if (std::forward<F>(cb)()) {
-      unsigned n = _numWakeups++;
       if (_wakeupCb) {
-        if (n > 0) {
-          return;
-        }
         executeWakeupCallback();
       } else {
         _cv.notify_one();
@@ -99,6 +97,8 @@ class SharedQueryState final : public std::enable_shared_from_this<SharedQuerySt
   uint32_t _numWakeups;
 
   bool _valid;
+  
+  bool _queuedWakeup;
 };
 
 }  // namespace aql
