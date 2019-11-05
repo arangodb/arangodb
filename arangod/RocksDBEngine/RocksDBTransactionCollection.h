@@ -123,6 +123,7 @@ class RocksDBTransactionCollection final : public TransactionCollection {
   uint64_t _numUpdates;
   uint64_t _numRemoves;
   bool _usageLocked;
+  bool _exclusiveWrites;
 
   /// @brief A list where all indexes with estimates can store their operations
   ///        Will be applied to the inserter on commit and not applied on abort
