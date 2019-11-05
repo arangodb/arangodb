@@ -873,7 +873,7 @@ template class ::arangodb::aql::ExecutionBlockImpl<
 template class ::arangodb::aql::ExecutionBlockImpl<IndexExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<LimitExecutor>;
 
-// IdexTag, Insert, Remove, Update,Replace, Upsert are only tags for this one
+// IndexTag, Insert, Remove, Update,Replace, Upsert are only tags for this one
 template class ::arangodb::aql::ExecutionBlockImpl<SingleRemoteModificationExecutor<IndexTag>>;
 template class ::arangodb::aql::ExecutionBlockImpl<SingleRemoteModificationExecutor<Insert>>;
 template class ::arangodb::aql::ExecutionBlockImpl<SingleRemoteModificationExecutor<Remove>>;
