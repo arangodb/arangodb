@@ -831,10 +831,10 @@ ExecutionNode* ExecutionPlan::registerNode(ExecutionNode* node) {
   TRI_ASSERT(_ids.find(node->id()) == _ids.end());
 
   try {
-   auto [it, emplaced] = _ids.try_emplace(node->id(), node);
-   if(!emplaced) {
-     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-   }
+    auto [it, emplaced] = _ids.try_emplace(node->id(), node);
+    if(!emplaced) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to register node in plan");
+    }
   } catch (...) {
     delete node;
     throw;

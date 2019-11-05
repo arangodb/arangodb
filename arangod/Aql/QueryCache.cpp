@@ -67,7 +67,7 @@ static bool showBindVars = true;  // will be set once on startup. cannot be chan
 QueryCacheResultEntry::QueryCacheResultEntry(uint64_t hash, QueryString const& queryString,
                                              std::shared_ptr<VPackBuilder> const& queryResult,
                                              std::shared_ptr<VPackBuilder> const& bindVars,
-                                             std::unordered_map<std::string, std::string>&& dataSources 
+                                             std::unordered_map<std::string, std::string>&& dataSources
 )
     : _hash(hash),
       _queryString(queryString.data(), queryString.size()),
@@ -639,16 +639,9 @@ void QueryCache::store(TRI_vocbase_t* vocbase, std::shared_ptr<QueryCacheResultE
 
   // get the right part of the cache to store the result in
   auto const part = getPart(vocbase);
+  auto db = std::make_unique<QueryCacheDatabaseEntry>(); //do not allocate under lock
   WRITE_LOCKER(writeLocker, _entriesLock[part]);
-
-  auto it = _entries[part].find(vocbase);
-
-  if (it == _entries[part].end()) {
-    // create entry for the current database
-    auto db = std::make_unique<QueryCacheDatabaseEntry>();
-    it = _entries[part].try_emplace(vocbase, std::move(db)).first;
-  }
-
+  auto [it, emplaced] = _entries[part].try_emplace(vocbase, std::move(db));
   // store cache entry
   (*it).second->store(std::move(entry), allowedMaxResultsCount, allowedMaxResultsSize);
 }

@@ -674,7 +674,12 @@ void TraversalNode::prepareOptions() {
     for (auto const& jt : _globalVertexConditions) {
       it.second->addMember(jt);
     }
-    opts->_vertexExpressions.try_emplace(it.first, new Expression(_plan, ast, it.second));
+    opts->_vertexExpressions.try_emplace(
+      it.first,
+      arangodb::lazyConstruct([&]{
+        new Expression(_plan, ast, it.second);
+      })
+    );
   }
   if (!_globalVertexConditions.empty()) {
     auto cond = _plan->getAst()->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
@@ -716,12 +721,12 @@ void TraversalNode::registerCondition(bool isConditionOnEdge, uint64_t condition
   Ast::getReferencedVariables(condition, _conditionVariables);
   if (isConditionOnEdge) {
     auto[it, emplaced] = _edgeConditions.try_emplace(
-        conditionLevel,
-        arangodb::lazyConstruct([&]()-> std::unique_ptr<TraversalEdgeConditionBuilder> {
-      auto builder = std::make_unique<TraversalEdgeConditionBuilder>(this);
-      builder->addConditionPart(condition);
-          return builder;
-        })
+      conditionLevel,
+      arangodb::lazyConstruct([&]()-> std::unique_ptr<TraversalEdgeConditionBuilder> {
+        auto builder = std::make_unique<TraversalEdgeConditionBuilder>(this);
+        builder->addConditionPart(condition);
+        return builder;
+      })
     );
     if(!emplaced) {
       it->second->addConditionPart(condition);
@@ -730,8 +735,8 @@ void TraversalNode::registerCondition(bool isConditionOnEdge, uint64_t condition
     auto [it, emplaced] = _vertexConditions.try_emplace(
       conditionLevel,
       arangodb::lazyConstruct([&]{
-      auto cond = _plan->getAst()->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
-      cond->addMember(condition);
+        auto cond = _plan->getAst()->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
+        cond->addMember(condition);
         return cond;
       })
     );
