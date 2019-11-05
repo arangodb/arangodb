@@ -87,7 +87,9 @@ class HttpRequest final : public GeneralRequest {
   arangodb::velocypack::Buffer<uint8_t>& body() {
     return _body;
   }
-      
+
+  void setDefaultContentType() override { _contentType = ContentType::JSON; }
+
   /// @brief sets a key/value header
   //  this function is called by setHeaders and get offsets to
   //  the found key / value with respective lengths.

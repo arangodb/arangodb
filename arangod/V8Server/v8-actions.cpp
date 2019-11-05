@@ -440,6 +440,31 @@ v8::Handle<v8::Object> TRI_RequestCppToV8(v8::Isolate* isolate,
   TRI_GET_GLOBAL_STRING(RequestBodyKey);
 
   auto setRequestBodyJsonOrVPack = [&]() {
+    if (rest::ContentType::UNSET == request->contentType()) {
+      bool digesteable = false;
+      try {
+        // attempt to parse the body anyways!
+        request->setDefaultContentType();
+        VPackOptions optionsWithUniquenessCheck = VPackOptions::Defaults;
+        optionsWithUniquenessCheck.checkAttributeUniqueness = true;
+        auto parsed = request->payload(&optionsWithUniquenessCheck);
+        if (parsed.isObject() || parsed.isArray()) {
+          digesteable = true;
+        }
+      } catch ( ... ) {} 
+      // ok, no json/vpack after all ;-)
+      if (!digesteable) {
+        V8Buffer* buffer;
+        auto raw = request->rawPayload();
+        headers[StaticStrings::ContentLength] =
+          StringUtils::itoa(raw.size());
+        buffer = V8Buffer::New(isolate, raw.data(), raw.size());
+        auto bufObj = v8::Local<v8::Object>::New(isolate, buffer->_handle);
+        req->Set(RequestBodyKey, bufObj);
+        return;
+      }
+    }
+                                     
     if (rest::ContentType::JSON == request->contentType()) {
       VPackStringRef body = request->rawPayload();
       req->Set(RequestBodyKey, TRI_V8_PAIR_STRING(isolate, body.data(), body.size()));
@@ -458,14 +483,6 @@ v8::Handle<v8::Object> TRI_RequestCppToV8(v8::Isolate* isolate,
       req->Set(RequestBodyKey, TRI_V8_STD_STRING(isolate, jsonString));
       headers[StaticStrings::ContentLength] = StringUtils::itoa(jsonString.size());
       headers[StaticStrings::ContentTypeHeader] = StaticStrings::MimeTypeJson;
-    } else {
-      V8Buffer* buffer;
-      auto raw = request->rawPayload();
-      headers[StaticStrings::ContentLength] =
-        StringUtils::itoa(raw.size());
-      buffer = V8Buffer::New(isolate, raw.data(), raw.size());
-      auto bufObj = v8::Local<v8::Object>::New(isolate, buffer->_handle);
-      req->Set(RequestBodyKey, bufObj);
     }
   };
 

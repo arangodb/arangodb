@@ -554,6 +554,14 @@ void HttpRequest::setHeaderV2(std::string key, std::string value) {
       _contentType = ContentType::JSON;
       return;
     }
+    else if ((value.length() > StaticStrings::MimeTypeJson.length()) &&
+             (memcmp(value.c_str(),
+                     StaticStrings::MimeTypeJson.c_str(),
+                     StaticStrings::MimeTypeJson.length()) == 0)) {
+      // ignore encoding etc.
+      _contentType = ContentType::JSON;
+      return;
+    }
     _contentType = ContentType::UNSET;
   } else if (key == StaticStrings::AcceptEncoding) {
     // This can be much more elaborated as the can specify weights on encodings
