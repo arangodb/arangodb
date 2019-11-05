@@ -215,6 +215,8 @@ std::string const StaticStrings::MimeTypeDump(
 std::string const StaticStrings::MimeTypeHtml("text/html; charset=utf-8");
 std::string const StaticStrings::MimeTypeJson(
     "application/json; charset=utf-8");
+std::string const StaticStrings::MimeTypeJsonNoEncoding(
+    "application/json");
 std::string const StaticStrings::MimeTypeText("text/plain; charset=utf-8");
 std::string const StaticStrings::MimeTypeVPack("application/x-velocypack");
 std::string const StaticStrings::MultiPartContentType("multipart/form-data");

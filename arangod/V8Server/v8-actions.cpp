@@ -453,14 +453,16 @@ v8::Handle<v8::Object> TRI_RequestCppToV8(v8::Isolate* isolate,
         }
       } catch ( ... ) {} 
       // ok, no json/vpack after all ;-)
+      V8Buffer* buffer;
+      auto raw = request->rawPayload();
+      headers[StaticStrings::ContentLength] =
+        StringUtils::itoa(raw.size());
+      buffer = V8Buffer::New(isolate, raw.data(), raw.size());
+      auto bufObj = v8::Local<v8::Object>::New(isolate, buffer->_handle);
+      TRI_GET_GLOBAL_STRING(RawRequestBodyKey);
+      req->Set(RawRequestBodyKey, bufObj);
+      req->Set(RequestBodyKey, TRI_V8_PAIR_STRING(isolate, raw.data(), raw.size()));
       if (!digesteable) {
-        V8Buffer* buffer;
-        auto raw = request->rawPayload();
-        headers[StaticStrings::ContentLength] =
-          StringUtils::itoa(raw.size());
-        buffer = V8Buffer::New(isolate, raw.data(), raw.size());
-        auto bufObj = v8::Local<v8::Object>::New(isolate, buffer->_handle);
-        req->Set(RequestBodyKey, bufObj);
         return;
       }
     }
@@ -639,14 +641,14 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
   response->setResponseCode(code);
 
   // string should not be used
-  std::string contentType = "application/json";
+  std::string contentType = StaticStrings::MimeTypeJsonNoEncoding;
   bool autoContent = true;
   TRI_GET_GLOBAL_STRING(ContentTypeKey);
   if (TRI_HasProperty(context, isolate, res, ContentTypeKey)) {
     contentType = TRI_ObjectToString(isolate, res->Get(ContentTypeKey));
 
-    if ((contentType.find("application/json") == std::string::npos) &&
-        (contentType.find("application/vpack") == std::string::npos)) {
+    if ((contentType.find(StaticStrings::MimeTypeJsonNoEncoding) == std::string::npos) &&
+        (contentType.find(StaticStrings::MimeTypeVPack) == std::string::npos)) {
       autoContent = false;
     }
     switch (response->transportType()) {
@@ -661,8 +663,9 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
       case Endpoint::TransportType::VST:
         if (!autoContent) {
           response->setContentType(contentType);
-        };
-        response->setHeaderNC(arangodb::StaticStrings::ContentTypeHeader, contentType);
+        } else {
+          response->setHeaderNC(arangodb::StaticStrings::ContentTypeHeader, contentType);
+        }
         break;
 
       default:

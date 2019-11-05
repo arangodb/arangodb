@@ -73,7 +73,12 @@ module.exports =
       this.path = this._url.pathname;
       this.pathParams = {};
       this.queryParams = querystring.parse(this._url.query);
-      this.body = req.requestBody;
+      if (req.hasOwnProperty('rawRequestBody')) {
+        this.body = req.rawRequestBody;
+      }
+      else {
+        this.body = req.requestBody;
+      }
       this.rawBody = this.body;
 
       this.trustProxy = (

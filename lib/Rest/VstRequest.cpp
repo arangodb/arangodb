@@ -114,13 +114,13 @@ void VstRequest::setHeader(VPackSlice keySlice, VPackSlice valSlice) {
   std::string key = StringUtils::tolower(keySlice.copyString());
   std::string val = StringUtils::tolower(value);
   if (key == StaticStrings::Accept &&
-      val.length() == StaticStrings::MimeTypeJson.length() &&
-      (val == StaticStrings::MimeTypeJson)) {
+      val.length() == StaticStrings::MimeTypeJsonNoEncoding.length() &&
+      (val == StaticStrings::MimeTypeJsonNoEncoding)) {
     _contentTypeResponse = ContentType::JSON;
     return;  // don't insert this header!!
   } else if (key == StaticStrings::ContentTypeHeader) {
-    if ((val.length() == StaticStrings::MimeTypeJson.length()) &&
-        (val == StaticStrings::MimeTypeJson)) {
+    if ((val.length() >= StaticStrings::MimeTypeJsonNoEncoding.length()) &&
+        (val == StaticStrings::MimeTypeJsonNoEncoding)) {
       _contentType = ContentType::JSON;
       return;  // don't insert this header!!
     }

@@ -199,6 +199,7 @@ class StaticStrings {
   static std::string const MimeTypeDump;
   static std::string const MimeTypeHtml;
   static std::string const MimeTypeJson;
+  static std::string const MimeTypeJsonNoEncoding;
   static std::string const MimeTypeText;
   static std::string const MimeTypeVPack;
   static std::string const MultiPartContentType;
