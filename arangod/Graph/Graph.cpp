@@ -100,7 +100,7 @@ Graph::Graph(velocypack::Slice const& slice)
                                    "Persisted graph is invalid. It does not "
                                    "have a _rev set. Please contact support.");
   }
-  
+
   TRI_ASSERT(!_graphName.empty());
   TRI_ASSERT(!_rev.empty());
 
@@ -508,7 +508,9 @@ bool Graph::removeEdgeDefinition(std::string const& edgeDefinitionName) {
     // Graph doesn't contain this edge definition, no need to do anything.
     return false;
   }
-  EdgeDefinition const& oldEdgeDef = maybeOldEdgeDef.value().get();
+  // This fails if we do not copy.
+  // Why don't we just work with pointers, when we use optionals without values?
+  EdgeDefinition const oldEdgeDef = maybeOldEdgeDef.value();
 
   _edgeColls.erase(edgeDefinitionName);
   _edgeDefs.erase(edgeDefinitionName);
