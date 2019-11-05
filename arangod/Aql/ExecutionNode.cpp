@@ -76,6 +76,7 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::basics;
+using namespace materialize;
 
 namespace {
 
@@ -352,7 +353,7 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan, VPackSlice c
     case DISTRIBUTE_CONSUMER:
       return new DistributeConsumerNode(plan, slice);
     case MATERIALIZE:
-      return MaterializeNode::create(plan, slice);
+      return createMaterializeNode(plan, slice);
     default: {
       // should not reach this point
       TRI_ASSERT(false);
@@ -2352,6 +2353,13 @@ const char* MATERIALIZE_NODE_IN_NM_DOC_PARAM = "inNmDocId";
 const char* MATERIALIZE_NODE_OUT_VARIABLE_PARAM = "outVariable";
 }
 
+MaterializeNode* materialize::createMaterializeNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base) {
+  if (base.hasKey(MATERIALIZE_NODE_IN_NM_COL_PARAM)) {
+    return new MaterializeViewNode(plan, base);
+  }
+  return new MaterializeIndexNode(plan, base);
+}
+
 MaterializeNode::MaterializeNode(ExecutionPlan* plan, size_t id,
                                  aql::Variable const& inDocId,
                                  aql::Variable const& outVariable)
@@ -2361,13 +2369,6 @@ MaterializeNode::MaterializeNode(ExecutionPlan* plan, arangodb::velocypack::Slic
   : ExecutionNode(plan, base),
     _inNonMaterializedDocId(aql::Variable::varFromVPack(plan->getAst(), base, MATERIALIZE_NODE_IN_NM_DOC_PARAM, true)),
     _outVariable(aql::Variable::varFromVPack(plan->getAst(), base, MATERIALIZE_NODE_OUT_VARIABLE_PARAM)) {}
-
-MaterializeNode* MaterializeNode::create(ExecutionPlan* plan, arangodb::velocypack::Slice const& base) {
-  if (base.hasKey(MATERIALIZE_NODE_IN_NM_COL_PARAM)) {
-    return new MaterializeViewNode(plan, base);
-  }
-  return new MaterializeIndexNode(plan, base);
-}
 
 void MaterializeNode::toVelocyPackHelper(arangodb::velocypack::Builder& nodes, unsigned flags,
                                          std::unordered_set<ExecutionNode const*>& seen) const {

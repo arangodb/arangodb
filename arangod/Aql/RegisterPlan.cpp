@@ -329,7 +329,7 @@ void RegisterPlan::after(ExecutionNode* en) {
       // may invalidate all references
       RegisterId registerId = nrRegs.back() + 1;
       nrRegs.emplace_back(registerId);
-      auto ep = ExecutionNode::castTo<MaterializeNode const*>(en);
+      auto ep = ExecutionNode::castTo<materialize::MaterializeNode const*>(en);
       TRI_ASSERT(ep != nullptr);
       varInfo.emplace(ep->outVariable().id, VarInfo(depth, totalNrRegs));
       totalNrRegs++;

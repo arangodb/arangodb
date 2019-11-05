@@ -239,7 +239,7 @@ void IndexNode::planNodeRegisters(
     std::unordered_map<aql::VariableId, aql::VarInfo>& varInfo,
     unsigned int& totalNrRegs, unsigned int depth) const {
   // create a copy of the last value here
-  // this is requried because back returns a reference and emplace/push_back
+  // this is required because back returns a reference and emplace/push_back
   // may invalidate all references
   auto regsCount = nrRegs.back();
   nrRegs.emplace_back(regsCount + 1);

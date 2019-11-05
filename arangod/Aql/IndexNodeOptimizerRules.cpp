@@ -245,7 +245,7 @@ void arangodb::aql::lateDocumentMaterializationRule(arangodb::aql::Optimizer* op
       }
       auto current = limitNode->getFirstDependency();
       ExecutionNode* sortNode = nullptr;
-      // examinig plan. We are looking for SortNode closest to lowerest LimitNode
+      // examining plan. We are looking for SortNode closest to lowest LimitNode
       // without document body usage before that node.
       // this node could be appended with materializer
       bool stopSearch = false;
@@ -334,7 +334,7 @@ void arangodb::aql::lateDocumentMaterializationRule(arangodb::aql::Optimizer* op
         // 2. We need to add materializer after limit node to do materialization
         // insert a materialize node
         auto materializeNode =
-          plan->registerNode(std::make_unique<MaterializeIndexNode>(
+          plan->registerNode(std::make_unique<materialize::MaterializeIndexNode>(
             plan.get(), plan->nextId(), indexNode->collection(),
             *localDocIdTmp, *indexNode->outVariable()));
 

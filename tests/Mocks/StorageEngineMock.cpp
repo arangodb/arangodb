@@ -559,7 +559,7 @@ class HashIndexMap {
   bool remove(arangodb::LocalDocumentId const& documentId, arangodb::velocypack::Slice const& doc) {
     size_t i = 0;
     auto documentRemoved = false;
-    for (auto map : _valueMaps) {
+    for (auto& map : _valueMaps) {
       auto slice = getSliceByField(doc, i++);
       auto [begin, end] = map.equal_range(VPackBuilder(slice));
       for (; begin != end; ++begin) {
