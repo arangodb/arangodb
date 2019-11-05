@@ -63,11 +63,7 @@ class SharedQueryState final : public std::enable_shared_from_this<SharedQuerySt
     }
 
     if (std::forward<F>(cb)()) {
-      if (_wakeupCb) {
-        executeWakeupCallback();
-      } else {
-        _cv.notify_one();
-      }
+      execute();
     }
   }
 
@@ -82,7 +78,7 @@ class SharedQueryState final : public std::enable_shared_from_this<SharedQuerySt
 
  private:
   /// execute the _continueCallback. must hold _mutex
-  bool executeWakeupCallback();
+  void execute();
 
  private:
   mutable std::mutex _mutex;
