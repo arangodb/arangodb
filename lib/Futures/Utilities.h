@@ -164,17 +164,12 @@ auto collectAll(Collection&& c) -> decltype(collectAll(std::begin(c), std::end(c
 
 
 namespace detail{
-namespace collectAll {
+namespace gather {
 
-template<int i, typename C>
-void thenFinalAll(C &c) {}
-
-template<int i, typename C, typename T, typename... Ts>
-void thenFinalAll(C& c, Future<T>&& t, Future<Ts>&&... ts) {
-  std::move(t).thenFinal([c](Try<T> &&t) { std::get<i>(c->results) = std::move(t); });
-  thenFinalAll<i+1>(c, std::forward<Future<Ts>>(ts)...);
+template<typename C, typename... Ts, std::size_t... I>
+void thenFinalAll(C& c, std::index_sequence<I...>, Future<Ts>&&... ts) {
+  (std::move(ts).thenFinal([&](Try<Ts> &&t) { std::get<I>(c->results) = std::move(t); }),...);
 }
-
 }
 }
 
@@ -187,54 +182,53 @@ auto gather(Future<Ts>&&... r) {
 
   struct Context {
     ~Context() { p.setValue(std::move(results)); }
-    std::tuple<Try<Ts>...> results;
+    try_tuple results;
     Promise<try_tuple> p;
   };
 
   auto ctx = std::make_shared<Context>();
-  detail::collectAll::thenFinalAll<0>(ctx, std::forward<Future<Ts>>(r)...);
+  detail::gather::thenFinalAll(ctx, std::index_sequence_for<Ts...>{}, std::forward<Future<Ts>>(r)...);
   return ctx->p.getFuture();
 };
 
 template<typename T>
 T gather(T t) { return t; };
 
+
+
 namespace detail {
 namespace collect {
 
-template<int i, typename C>
-void thenFinalAll(C &c) {}
+template<typename C, typename... Ts, std::size_t... I>
+void thenFinalAll(C& c, std::index_sequence<I...>, Future<Ts>&&... ts) {
 
-template<int i, typename C, typename T, typename... Ts>
-void thenFinalAll(C& c, Future<T>&& t, Future<Ts>&&... ts) {
-  thenFinalAll<i+1>(c, std::forward<Future<Ts>>(ts)...);
-  std::move(t).thenFinal([c](Try<T> &&t) {
+  (std::move(ts).thenFinal([c](Try<Ts> &&t) {
     if (t.hasException()) {
       if (c->hadError.exchange(true, std::memory_order_release) == false) {
         c->p.setException(std::move(t).exception());
       }
     } else {
-      std::get<i>(c->results) = std::move(t);
+      std::get<I>(c->results) = std::move(t);
     }
-  });
+  }), ...);
 }
 
-template <class T, std::size_t... I>
-auto unpackAll(T&& t, std::index_sequence<I...>) {
-  return std::make_tuple(std::move(std::get<I>(std::forward<T>(t))).get()...);
+template<typename... Ts, std::size_t... I>
+auto unpackAll(std::tuple<Try<Ts>...> &c, std::index_sequence<I...>) -> std::tuple<Ts...> {
+    return std::make_tuple(std::move(std::get<I>(c)).get()...);
 }
 
-template <class T>
-auto unpackAll(T&& t) {
-  return unpackAll(std::forward<T>(t),
-    std::make_index_sequence<std::tuple_size<std::remove_reference_t<T>>::value>{});
+template<typename... Ts>
+auto unpackAll(std::tuple<Try<Ts>...> &c) -> std::tuple<Ts...> {
+    return unpackAll(c, std::index_sequence_for<Ts...>{});
 }
+
 
 }
 }
 
 // like collectAll but uses a tuple instead and works with different types
-// returns a Future<std::tuple<Try<Ts>>...>
+// returns a Future<Try<std::tuple<Ts>>...>
 template<typename... Ts>
 auto collect(Future<Ts>&&... r) {
   using try_tuple = std::tuple<Try<Ts>...>;
@@ -242,10 +236,10 @@ auto collect(Future<Ts>&&... r) {
 
   struct Context {
     Context() : hadError(false) {}
-    ~Context() { 
+    ~Context() {
       if (hadError.load(std::memory_order_acquire) == false) {
-        p.setValue(detail::collect::unpackAll(std::move(results))); 
-      } 
+        p.setValue(detail::collect::unpackAll(results));
+      }
     }
     try_tuple results;
     Promise<value_tuple> p;
@@ -253,7 +247,7 @@ auto collect(Future<Ts>&&... r) {
   };
 
   auto ctx = std::make_shared<Context>();
-  detail::collect::thenFinalAll<0>(ctx, std::forward<Future<Ts>>(r)...);
+  detail::collect::thenFinalAll(ctx, std::index_sequence_for<Ts...>{}, std::forward<Future<Ts>>(r)...);
   return ctx->p.getFuture();
 }
 
