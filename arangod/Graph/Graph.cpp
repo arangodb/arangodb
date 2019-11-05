@@ -508,7 +508,7 @@ bool Graph::removeEdgeDefinition(std::string const& edgeDefinitionName) {
     // Graph doesn't contain this edge definition, no need to do anything.
     return false;
   }
-  EdgeDefinition const oldEdgeDef = maybeOldEdgeDef.value();
+  EdgeDefinition const& oldEdgeDef = maybeOldEdgeDef.value().get();
 
   _edgeColls.erase(edgeDefinitionName);
   _edgeDefs.erase(edgeDefinitionName);
