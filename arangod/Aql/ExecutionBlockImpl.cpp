@@ -65,11 +65,39 @@
 #include "Aql/SubqueryExecutor.h"
 #include "Aql/SubqueryStartExecutor.h"
 #include "Aql/TraversalExecutor.h"
+#include "Basics/system-functions.h"
+#include "Transaction/Context.h"
+
+#include <velocypack/Dumper.h>
+#include <velocypack/velocypack-aliases.h>
 
 #include <type_traits>
 
 using namespace arangodb;
 using namespace arangodb::aql;
+
+namespace {
+
+std::string const doneString = "DONE";
+std::string const hasMoreString = "HASMORE";
+std::string const waitingString = "WAITING";
+std::string const unknownString = "UNKNOWN";
+
+std::string const& stateToString(aql::ExecutionState state) {
+  switch (state) {
+    case aql::ExecutionState::DONE:
+      return doneString;
+    case aql::ExecutionState::HASMORE:
+      return hasMoreString;
+    case aql::ExecutionState::WAITING:
+      return waitingString;
+    default:
+      // just to suppress a warning ..
+      return unknownString;
+  }
+}
+
+}  // namespace
 
 /*
  * Creates a metafunction `checkName` that tests whether a class has a method
@@ -111,7 +139,7 @@ ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine,
       _executor(_rowFetcher, _infos),
       _outputItemRow(),
       _query(*engine->getQuery()),
-      _lastRange{} {
+      _lastRange{ExecutorState::HASMORE} {
   // already insert ourselves into the statistics results
   if (_profile >= PROFILE_LEVEL_BLOCKS) {
     _engine->_stats.nodes.emplace(node->id(), ExecutionStats::Node());
@@ -123,14 +151,6 @@ ExecutionBlockImpl<Executor>::~ExecutionBlockImpl() = default;
 
 template <class Executor>
 std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::getSome(size_t atMost) {
-  /*
-  getSome(x) = > {
-    offset: 0,
-    batchSize : x,
-    limit : AqlCall::Infinity{},
-    fullCount : <egal> | false
-  }
-  */
   traceGetSomeBegin(atMost);
   auto result = getSomeWithoutTrace(atMost);
   return traceGetSomeEnd(result.first, std::move(result.second));
@@ -349,14 +369,6 @@ static SkipVariants constexpr skipType() {
 
 template <class Executor>
 std::pair<ExecutionState, size_t> ExecutionBlockImpl<Executor>::skipSome(size_t const atMost) {
-  /*
-  skipSome(x) = > AqlCall{
-    offset : x,
-    batchSize : 0,
-    limit : AqlCall::Infinity{},
-    fullCount : <egal> | false
-  }
-  */
   traceSkipSomeBegin(atMost);
   auto state = ExecutionState::HASMORE;
 
@@ -433,6 +445,7 @@ template <class Executor>
 std::pair<ExecutionState, Result> ExecutionBlockImpl<Executor>::initializeCursor(InputAqlItemRow const& input) {
   // reinitialize the DependencyProxy
   _dependencyProxy.reset();
+  _lastRange = DataRange(ExecutorState::HASMORE);
 
   // destroy and re-create the Fetcher
   _rowFetcher.~Fetcher();
@@ -473,9 +486,95 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<Executor>::shutdown(int err
 
 template <class Executor>
 std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::execute(AqlCallStack stack) {
-  // TODO implement!
-  TRI_ASSERT(false);
+  // Fall back to getSome/skipSome
+  auto myCall = stack.popCall();
+  TRI_ASSERT(AqlCall::IsSkipSomeCall(myCall) || AqlCall::IsGetSomeCall(myCall));
+  if (AqlCall::IsSkipSomeCall(myCall)) {
+    auto const [state, skipped] = skipSome(myCall.getOffset());
+    if (state != ExecutionState::WAITING) {
+      myCall.didSkip(skipped);
+    }
+    return {state, skipped, nullptr};
+  } else if (AqlCall::IsGetSomeCall(myCall)) {
+    auto const [state, block] = getSome(myCall.getLimit());
+    // We do not need to count as softLimit will be overwritten, and hard cannot be set.
+    return {state, 0, block};
+  }
+  // Should never get here!
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
+template <class Executor>
+void ExecutionBlockImpl<Executor>::traceExecuteBegin(AqlCallStack const& stack) {
+  if (_profile >= PROFILE_LEVEL_BLOCKS) {
+    if (_getSomeBegin <= 0.0) {
+      _getSomeBegin = TRI_microtime();
+    }
+    if (_profile >= PROFILE_LEVEL_TRACE_1) {
+      auto const node = getPlanNode();
+      auto const queryId = this->_engine->getQuery()->id();
+      // TODO make sure this works also if stack is non relevant, e.g. passed through by outer subquery.
+      auto const& call = stack.peek();
+      LOG_TOPIC("1e717", INFO, Logger::QUERIES)
+          << "[query#" << queryId << "] "
+          << "execute type=" << node->getTypeString()
+          << " offset=" << call.getOffset() << " limit= " << call.getLimit()
+          << " this=" << (uintptr_t)this << " id=" << node->id();
+    }
+  }
+}
+
+template <class Executor>
+void ExecutionBlockImpl<Executor>::traceExecuteEnd(
+    std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> const& result) {
+  if (_profile >= PROFILE_LEVEL_BLOCKS) {
+    auto const& [state, skipped, block] = result;
+    auto const items = block != nullptr ? block->size() : 0;
+    ExecutionNode const* en = getPlanNode();
+    ExecutionStats::Node stats;
+    stats.calls = 1;
+    stats.items = skipped + items;
+    if (state != ExecutionState::WAITING) {
+      stats.runtime = TRI_microtime() - _getSomeBegin;
+      _getSomeBegin = 0.0;
+    }
+
+    auto it = _engine->_stats.nodes.find(en->id());
+    if (it != _engine->_stats.nodes.end()) {
+      it->second += stats;
+    } else {
+      _engine->_stats.nodes.emplace(en->id(), stats);
+    }
+
+    if (_profile >= PROFILE_LEVEL_TRACE_1) {
+      ExecutionNode const* node = getPlanNode();
+      auto const queryId = this->_engine->getQuery()->id();
+      LOG_TOPIC("60bbc", INFO, Logger::QUERIES)
+          << "[query#" << queryId << "] "
+          << "execute done type=" << node->getTypeString() << " this=" << (uintptr_t)this
+          << " id=" << node->id() << " state=" << stateToString(state)
+          << " skipped=" << skipped << " produced=" << items;
+
+      if (_profile >= PROFILE_LEVEL_TRACE_2) {
+        if (block == nullptr) {
+          LOG_TOPIC("9b3f4", INFO, Logger::QUERIES)
+              << "[query#" << queryId << "] "
+              << "execute type=" << node->getTypeString() << " result: nullptr";
+        } else {
+          VPackBuilder builder;
+          {
+            VPackObjectBuilder guard(&builder);
+            block->toVelocyPack(transaction(), builder);
+          }
+          auto options = transaction()->transactionContextPtr()->getVPackOptions();
+          LOG_TOPIC("f12f9", INFO, Logger::QUERIES)
+              << "[query#" << queryId << "] "
+              << "execute type=" << node->getTypeString()
+              << " result: " << VPackDumper::toString(builder.slice(), options);
+        }
+      }
+    }
+  }
 }
 
 // Work around GCC bug: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=56480
@@ -599,43 +698,6 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<
     return ExecutionBlock::shutdown(errorCode);
   }
   return {ExecutionState::DONE, {errorCode}};
-}
-
-// TODO this is only temporary, remove me
-// Just to make sure everything compiles!
-template <>
-std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr>
-ExecutionBlockImpl<FilterExecutor>::execute(AqlCallStack stack) {
-  // TODO: pop this from the stack instead of modify.
-  // TODO: Need to make this member variable for waiting?
-  AqlCall& myCall = stack.myCall();
-  // Skipping path
-  while (myCall.offset > 0) {
-    // Execute skipSome
-    auto const [state, skipped, call] = _executor.skipRowsRange(myCall.offset, _lastRange);
-    if (state == ExecutorState::DONE) {
-      // We are done with this subquery
-      // TODO Implement me properly, we would need to fill shadowRows into the block
-      return {ExecutionState::DONE, skipped, nullptr};
-    }
-    TRI_ASSERT(skipped <= myCall.offset);
-    myCall.offset -= skipped;
-    if (myCall.offset > 0) {
-      // Need to fetch more
-      // TODO: we need to push the returned call into the stack, pop our call of.
-      size_t skipped = 0;
-      TRI_ASSERT(!_lastRange.hasMore());
-      std::tie(_upstreamState, skipped, _lastRange) = _rowFetcher.execute(stack);
-      TRI_ASSERT(skipped <= myCall.offset);
-      myCall.offset -= skipped;
-    }
-  }
-
-  // TODO add GetSome path
-
-  // TODO implement!
-  TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 }  // namespace aql
@@ -808,6 +870,14 @@ template <class Executor>
 SharedAqlItemBlockPtr ExecutionBlockImpl<Executor>::requestBlock(size_t nrItems,
                                                                  RegisterId nrRegs) {
   return _engine->itemBlockManager().requestBlock(nrItems, nrRegs);
+}
+
+template <class Executor>
+std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr>
+ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
+  // TODO implement!
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 template class ::arangodb::aql::ExecutionBlockImpl<CalculationExecutor<CalculationType::Condition>>;

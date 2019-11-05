@@ -43,8 +43,15 @@ class AqlCallStack {
   bool isRelevant() const;
 
   // Get the top most Call element (this must be relevant).
-  // Caller is allowed to modify it, if necessary
-  AqlCall& myCall();
+  // This is popped of the stack and caller can take responsibility for it
+  AqlCall&& popCall();
+
+  // Peek at the top most Call element (this must be relevant).
+  // The responsibility will stay at the stack
+  AqlCall const& peek() const;
+
+  // Put another call on top of the stack.
+  void pushCall(AqlCall&& call);
 
   // fill up all missing calls within this stack s.t. we reach depth == 0
   // This needs to be called if an executor requires to be fully executed, even if skipped,

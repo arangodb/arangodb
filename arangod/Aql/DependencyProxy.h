@@ -73,6 +73,9 @@ class DependencyProxy {
 
   TEST_VIRTUAL ~DependencyProxy() = default;
 
+  // TODO Implement and document properly!
+  std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> execute(AqlCallStack& stack);
+
   // This is only TEST_VIRTUAL, so we ignore this lint warning:
   // NOLINTNEXTLINE google-default-arguments
   TEST_VIRTUAL std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlock(

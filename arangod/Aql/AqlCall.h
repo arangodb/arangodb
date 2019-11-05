@@ -34,6 +34,36 @@ struct AqlCall {
   class Infinity {};
   using Limit = std::variant<size_t, Infinity>;
 
+  // TODO Remove me, this will not be necessary later
+  static AqlCall SimulateSkipSome(std::size_t toSkip) {
+    AqlCall call;
+    call.offset = toSkip;
+    call.softLimit = 0;
+    call.hardLimit = AqlCall::Infinity{};
+    call.fullCount = false;
+    return call;
+  }
+
+  // TODO Remove me, this will not be necessary later
+  static AqlCall SimulateGetSome(std::size_t atMost) {
+    AqlCall call;
+    call.offset = 0;
+    call.softLimit = atMost;
+    call.hardLimit = AqlCall::Infinity{};
+    call.fullCount = false;
+    return call;
+  }
+
+  // TODO Remove me, this will not be necessary later
+  static bool IsSkipSomeCall(AqlCall const& call) {
+    return !call.hasHardLimit() && call.getLimit() == 0 && call.getOffset() > 0;
+  }
+
+  // TODO Remove me, this will not be necessary later
+  static bool IsGetSomeCall(AqlCall const& call) {
+    return !call.hasHardLimit() && call.getLimit() > 0 && call.getOffset() == 0;
+  }
+
   std::size_t offset{0};
   // TODO: The defaultBatchSize function could move into this file instead
   Limit softLimit{Infinity{}};
@@ -54,6 +84,11 @@ struct AqlCall {
       limit = (std::min)(std::get<std::size_t>(hardLimit), limit);
     }
     return limit;
+  }
+
+  void didSkip(std::size_t n) {
+    TRI_ASSERT(n <= offset);
+    offset -= n;
   }
 
   void didProduce(std::size_t n) {

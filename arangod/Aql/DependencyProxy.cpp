@@ -22,6 +22,7 @@
 
 #include "DependencyProxy.h"
 
+#include "Aql/AqlCallStack.h"
 #include "Aql/BlocksWithClients.h"
 #include "Aql/types.h"
 #include "Basics/Exceptions.h"
@@ -29,6 +30,14 @@
 
 using namespace arangodb;
 using namespace arangodb::aql;
+
+template <BlockPassthrough blockPassthrough>
+std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr>
+DependencyProxy<blockPassthrough>::execute(AqlCallStack& stack) {
+  // TODO: Test this, especially if upstreamBlock is done etc.
+  // We do not modify any local state here.
+  return upstreamBlock().execute(stack);
+}
 
 template <BlockPassthrough blockPassthrough>
 ExecutionState DependencyProxy<blockPassthrough>::prefetchBlock(size_t atMost) {

@@ -74,6 +74,13 @@ SingleRowFetcher<passBlocksThrough>::fetchBlockForPassthrough(size_t atMost) {
 }
 
 template <BlockPassthrough passBlocksThrough>
+std::tuple<ExecutionState, size_t, AqlItemBlockInputRange>
+SingleRowFetcher<passBlocksThrough>::execute(AqlCallStack& stack) {
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
+template <BlockPassthrough passBlocksThrough>
 std::pair<ExecutionState, size_t> SingleRowFetcher<passBlocksThrough>::skipRows(size_t atMost) {
   TRI_ASSERT(!_currentRow.isInitialized() || _currentRow.isLastRowInBlock());
   TRI_ASSERT(!indexIsValid());
