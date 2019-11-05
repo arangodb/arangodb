@@ -1,7 +1,7 @@
 v3.5.3 (XXXX-XX-XX)
 -------------------
 
-* Assertion fail when no timestamp in agency's persistence
+* Assertion fail when no timestamp in agency's persistence.
 
 * Fixed internal issue #647: custom analyzer provokes errors on Active Failover
   deployment.
