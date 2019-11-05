@@ -58,7 +58,7 @@ namespace {
         auto indexId = ind->id();
         size_t indexFieldNum = 0;
         for (auto const& field : ind->fields()) {
-          if (arangodb::basics::AttributeName::isIdentical(nodeAttr.attr, field, true)) {
+          if (arangodb::basics::AttributeName::isIdentical(nodeAttr.attr, field, false)) {
             nodeAttr.indexId = indexId;
             nodeAttr.indexFieldNum = indexFieldNum;
             nodeAttr.indexField = &field;
@@ -103,18 +103,16 @@ namespace {
   // traversal state
   struct TraversalState {
     arangodb::aql::Variable const* variable;
-    arangodb::aql::Variable const* expansionVariable;
     NodeWithAttrs& nodeAttrs;
     bool optimize;
     bool wasAccess;
-    bool isExpansion;
   };
 
   // determines attributes referenced in an expression for the specified out variable
   bool getReferencedAttributes(arangodb::aql::AstNode* node,
                                arangodb::aql::Variable const* variable,
                                NodeWithAttrs& nodeAttrs) {
-    TraversalState state{variable, nullptr, nodeAttrs, true, false, false};
+    TraversalState state{variable, nodeAttrs, true, false};
 
     auto preVisitor = [&state](arangodb::aql::AstNode const* node,
         arangodb::aql::AstNode* parentNode, size_t childNumber) {
@@ -123,13 +121,6 @@ namespace {
       }
 
       switch (node->type) {
-        case arangodb::aql::NODE_TYPE_VARIABLE: {
-          if (state.isExpansion && state.expansionVariable == nullptr) {
-            state.expansionVariable = static_cast<arangodb::aql::Variable const*>(node->getData());
-            return true;
-          }
-          break;
-        }
         case arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS:
           if (!state.wasAccess) {
             state.nodeAttrs.attrs.emplace_back(
@@ -140,53 +131,19 @@ namespace {
             state.nodeAttrs.attrs.back().attr.emplace_back(std::string(node->getStringValue(), node->getStringLength()), false);
           }
           return true;
-        case arangodb::aql::NODE_TYPE_EXPANSION: {
-          TRI_ASSERT(!state.wasAccess);
-          TRI_ASSERT(node->numMembers() >= 2);
-          auto left = node->getMemberUnchecked(0);
-          TRI_ASSERT(left->type == arangodb::aql::NODE_TYPE_ITERATOR);
-
-          auto right = node->getMemberUnchecked(1);
-          TRI_ASSERT(right->type == arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS ||
-                     right->type == arangodb::aql::NODE_TYPE_REFERENCE);
-          state.isExpansion = true;
-
-          return true;
-        }
-        case arangodb::aql::NODE_TYPE_ITERATOR:
-          if (!state.wasAccess && state.isExpansion) {
-            return true;
-          }
-          break;
         case arangodb::aql::NODE_TYPE_REFERENCE: {
           // reference to a variable
           auto v = static_cast<arangodb::aql::Variable const*>(node->getData());
-          auto isExp = state.isExpansion && v == state.expansionVariable;
-          if (v == state.variable || isExp) {
-            if (!(isExp || state.wasAccess)) {
+          if (v == state.variable) {
+            if (!state.wasAccess) {
               // we haven't seen an attribute access directly before
               state.optimize = false;
 
               return false;
             }
-            if (state.wasAccess) {
-              if (isExp) {
-                TRI_ASSERT(state.nodeAttrs.attrs.size() > 1);
-                auto attrAndField = state.nodeAttrs.attrs.end();
-                std::advance(attrAndField, -2);
-                attrAndField->attr.back().shouldExpand = true;
-                attrAndField->attr.insert(attrAndField->attr.end(), state.nodeAttrs.attrs.back().attr.crbegin(),
-                                          state.nodeAttrs.attrs.back().attr.crend());
-                state.isExpansion = false;
-                state.expansionVariable = nullptr;
-                state.nodeAttrs.attrs.pop_back();
-              } else {
-                std::reverse(state.nodeAttrs.attrs.back().attr.begin(), state.nodeAttrs.attrs.back().attr.end());
-              }
-            }
+            std::reverse(state.nodeAttrs.attrs.back().attr.begin(), state.nodeAttrs.attrs.back().attr.end());
           } else {
             if (state.wasAccess) {
-              state.wasAccess = false;
               state.nodeAttrs.attrs.pop_back();
             }
           }
@@ -206,7 +163,6 @@ namespace {
         return false;
       }
 
-      TRI_ASSERT(!state.wasAccess);
       return true;
     };
 
