@@ -48,7 +48,11 @@ function installFoxx(mountpoint, which) {
   } else if (which.type === 'file') {
     content = fs.readFileSync(which.buffer);
   }
-  const crudResp = arango.POST('/_api/foxx?mount=' + mountpoint, content, headers);
+  let devmode;
+  if (which.hasOwnProperty('devmode') && which.devmode === true) {
+    devmode = '&development=true';
+  }
+  const crudResp = arango.POST('/_api/foxx?mount=' + mountpoint + devmode, content, headers);
   expect(crudResp).to.have.property('manifest');
 }
 
@@ -199,6 +203,8 @@ describe('Foxx service', () => {
 
   const minimalWorkingServicePath = path.resolve(internal.pathForTesting('common'), 'test-data', 'apps', 'minimal-working-service');
   const minimalWorkingZip = loadFoxxIntoZip(minimalWorkingServicePath);
+  const minimalWorkingZipDev = minimalWorkingZip;
+  minimalWorkingZipDev['devmode'] = true;
   const minimalWorkingZipPath = utils.zipDirectory(minimalWorkingServicePath);
   
   const itzpapalotlPath = path.resolve(internal.pathForTesting('common'), 'test-data', 'apps', 'itzpapalotl');
@@ -987,16 +993,15 @@ describe('Foxx service', () => {
     expect(respAfter.development).to.equal(true);
   });
 
-////  it('clear devmode should disable devmode', () => {
-////    installFoxx(mount, minimalWorkingZip);
-////    /// TODO FoxxManager.install(minimalWorkingServicePath, mount, {development: true});
-////    const resp = arango.GET('/_api/foxx/service?mount=' + mount);
-////    expect(resp.development).to.equal(true);
-////    const devResp = arango.DELETE('/_api/foxx/development?mount=' + mount);
-////    expect(devResp.development).to.equal(false);
-////    const respAfter = arango.GET('/_api/foxx/service?mount=' + mount);
-////    expect(respAfter.development).to.equal(false);
-////  });
+  it('clear devmode should disable devmode', () => {
+    installFoxx(mount, minimalWorkingZipDev);
+    const resp = arango.GET('/_api/foxx/service?mount=' + mount);
+    expect(resp.development).to.equal(true);
+    const devResp = arango.DELETE('/_api/foxx/development?mount=' + mount);
+    expect(devResp.development).to.equal(false);
+    const respAfter = arango.GET('/_api/foxx/service?mount=' + mount);
+    expect(respAfter.development).to.equal(false);
+  });
 
   const routes = [
     ['GET', '/_api/foxx/service'],
