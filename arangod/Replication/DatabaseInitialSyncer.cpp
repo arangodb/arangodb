@@ -49,6 +49,7 @@
 #include "Utils/OperationOptions.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
+#include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
@@ -88,6 +89,60 @@ std::chrono::milliseconds sleepTimeFromWaitTime(double waitTime) {
 std::string const kTypeString = "type";
 std::string const kDataString = "data";
 
+arangodb::Result removeRevisions(arangodb::LogicalCollection& collection,
+                                 std::vector<std::string>& toRemove,
+                                 arangodb::InitialSyncerIncrementalSyncStats& stats) {
+  using arangodb::PhysicalCollection;
+  using arangodb::Result;
+  using arangodb::transaction::Hints;
+
+  if (toRemove.size() == 0) {
+    // no need to do anything
+    return Result();
+  }
+
+  arangodb::SingleCollectionTransaction trx(
+      arangodb::transaction::StandaloneContext::Create(collection.vocbase()),
+      collection, arangodb::AccessMode::Type::EXCLUSIVE);
+
+  trx.addHint(Hints::Hint::RECOVERY);  // turn off waitForSync!
+  trx.addHint(Hints::Hint::NO_INDEXING);
+  // turn on intermediate commits as the number of keys to delete can be huge
+  // here
+  trx.addHint(Hints::Hint::INTERMEDIATE_COMMITS);
+
+  PhysicalCollection* physical = collection.getPhysical();
+
+  Result res = trx.begin();
+  if (!res.ok()) {
+    return Result(res.errorNumber(),
+                  std::string("unable to start transaction: ") + res.errorMessage());
+  }
+  VPackBuilder builder;
+  arangodb::ManagedDocumentResult mdr;
+  arangodb::OperationOptions options;
+  options.silent = true;
+  options.ignoreRevs = true;
+  options.isRestore = true;
+
+  for (std::string& docKey : toRemove) {
+    builder.clear();
+    builder.add(arangodb::velocypack::ValuePair(docKey.data(), docKey.size(),
+                                                arangodb::velocypack::ValueType::String));
+    auto r = physical->remove(trx, builder.slice(), mdr, options,
+                              /*lock*/ false, nullptr, nullptr);
+    if (r.fail() && r.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
+      // ignore not found, we remove conflicting docs ahead of time
+      return r;
+    }
+
+    if (r.ok()) {
+      ++stats.numDocsRemoved;
+    }
+  }
+
+  return trx.commit();
+}
 }  // namespace
 
 namespace arangodb {
@@ -1041,63 +1096,244 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
                                                              TRI_voc_tick_t maxTick) {
   using ::arangodb::basics::StringUtils::urlEncode;
 
+  InitialSyncerIncrementalSyncStats stats;
+  double const startTime = TRI_microtime();
+
   if (!_config.isChild()) {
     batchExtend();
     _config.barrier.extend(_config.connection);
   }
 
+  std::unique_ptr<containers::RevisionTree> treeMaster;
   std::string const baseUrl = replutils::ReplicationUrl + "/revisions";
-  std::string url = baseUrl + "/tree" + "?collection=" + urlEncode(leaderColl) +
-                    "&to=" + std::to_string(maxTick) +
-                    "&serverId=" + _state.localServerIdString +
-                    "&batchId=" + std::to_string(_config.batch.id);
 
-  std::string msg = "fetching collection revisions for collection '" +
-                    coll->name() + "' from " + url;
-  _config.progress.set(msg);
+  // get master tree
+  {
+    std::string url = baseUrl + "/tree" + "?collection=" + urlEncode(leaderColl) +
+                      "&to=" + std::to_string(maxTick) +
+                      "&serverId=" + _state.localServerIdString +
+                      "&batchId=" + std::to_string(_config.batch.id);
 
-  auto headers = replutils::createHeaders();
-  std::unique_ptr<httpclient::SimpleHttpResult> response;
-  _config.connection.lease([&](httpclient::SimpleHttpClient* client) {
-    response.reset(client->retryRequest(rest::RequestType::GET, url, nullptr, 0, headers));
-  });
+    std::string msg = "fetching collection revision tree for collection '" +
+                      coll->name() + "' from " + url;
+    _config.progress.set(msg);
 
-  if (replutils::hasFailed(response.get())) {
-    if (response->getHttpReturnCode() == static_cast<int>(rest::ResponseCode::NOT_IMPLEMENTED)) {
-      // collection on master doesn't support revisions-based protocol, fallback
-      return fetchCollectionSyncByKeys(coll, leaderColl, maxTick);
+    auto headers = replutils::createHeaders();
+    std::unique_ptr<httpclient::SimpleHttpResult> response;
+    double t = TRI_microtime();
+    _config.connection.lease([&](httpclient::SimpleHttpClient* client) {
+      response.reset(client->retryRequest(rest::RequestType::GET, url, nullptr, 0, headers));
+    });
+    stats.waitedForInitial += TRI_microtime() - t;
+
+    if (replutils::hasFailed(response.get())) {
+      if (response->getHttpReturnCode() ==
+          static_cast<int>(rest::ResponseCode::NOT_IMPLEMENTED)) {
+        // collection on master doesn't support revisions-based protocol, fallback
+        return fetchCollectionSyncByKeys(coll, leaderColl, maxTick);
+      }
+      return replutils::buildHttpError(response.get(), url, _config.connection);
     }
-    return replutils::buildHttpError(response.get(), url, _config.connection);
+
+    std::unique_ptr<containers::RevisionTree> treeMaster = containers::RevisionTree::fromBuffer(
+        std::string_view(response->getBody().begin(), response->getBody().length()));
+    if (!treeMaster) {
+      return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
+                    std::string("got invalid response from master at ") +
+                        _config.master.endpoint + url +
+                        ": response does not contain a valid revision tree");
+    }
   }
 
-  std::unique_ptr<containers::RevisionTree> treeMaster = containers::RevisionTree::fromBuffer(
-      std::string_view(response->getBody().begin(), response->getBody().length()));
-  if (!treeMaster) {
-    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-                  std::string("got invalid response from master at ") +
-                      _config.master.endpoint + url +
-                      ": response does not contain a valid revision tree");
-  }
-
+  // diff with local tree
   std::pair<std::size_t, std::size_t> range = treeMaster->range();
   std::unique_ptr<containers::RevisionTree> treeLocal =
       coll->revisionTree(range.first, range.second);
-
   std::vector<std::pair<std::size_t, std::size_t>> ranges = treeMaster->diff(*treeLocal);
+  if (ranges.empty()) {
+    // no differences, done!
+    return Result{};
+  }
 
-  // TODO sync chunks of revisions using much of the same logic as in
-  // syncChunkRocksDB (RocksDBIncrementalSync.cpp); will need new APIs in
-  // replication handler to fetch revisions in a range and documents by revision
-  // 1) Fetch actual ranges from baseUrl + "/range"
-  //    a) Can send request ranges all at once (only about 2MB max)
-  //    b) Must get response in chunks (could be whole collection)
-  //    c) Must store stome state, probably in RocksDBRevisionContext to reuse
-  //       snapshot, unfortunately
-  // 2) Trim away any documents outside tree range
-  // 3) Iterate over fetched ranges
-  //    a) Remove documents which aren't in master
-  //    b) Add documents to list which differ or aren't on local
-  // 4) Fetch documents from list that need to be synced and insert them
+  // now lets get the actual ranges and handle the differences
+
+  {
+    VPackBuilder requestBuilder;
+    {
+      VPackArrayBuilder list(&requestBuilder);
+      for (auto& pair : ranges) {
+        VPackArrayBuilder range(&requestBuilder);
+        requestBuilder.add(VPackValue(pair.first));
+        requestBuilder.add(VPackValue(pair.second));
+      }
+    }
+    std::string request = requestBuilder.slice().toJson();
+
+    std::string url = baseUrl + "/range" + "?collection=" + urlEncode(leaderColl) +
+                      "&serverId=" + _state.localServerIdString +
+                      "&batchId=" + std::to_string(_config.batch.id);
+    auto headers = replutils::createHeaders();
+    std::unique_ptr<httpclient::SimpleHttpResult> response;
+    std::size_t resumeRev = ranges[0].first;  // start with beginning
+    TRI_ASSERT(resumeRev);
+    std::size_t chunk = 0;
+    PhysicalCollection* physical = coll->getPhysical();
+    TRI_ASSERT(physical);
+    std::unique_ptr<ReplicationIterator> iter =
+        physical->getReplicationIterator(ReplicationIterator::Ordering::Revision, 0);
+    if (!iter) {
+      return Result(TRI_ERROR_INTERNAL, "could not get replication iterator");
+    }
+
+    std::vector<std::size_t> toFetch;
+    std::vector<std::string> toRemove;
+
+    RevisionReplicationIterator& local =
+        *static_cast<RevisionReplicationIterator*>(iter.get());
+
+    while (local.hasMore() && local.revision() < range.first) {
+      toRemove.emplace_back(transaction::helpers::extractKeyString(local.document()));
+      local.next();
+    }
+    Result res = removeRevisions(*coll, toRemove, stats);
+    if (res.fail()) {
+      return res;
+    }
+    toRemove.clear();
+
+    local.seek(range.second);
+    while (local.hasMore()) {
+      toRemove.emplace_back(transaction::helpers::extractKeyString(local.document()));
+      local.next();
+    }
+    res = removeRevisions(*coll, toRemove, stats);
+    if (res.fail()) {
+      return res;
+    }
+    toRemove.clear();
+
+    while (resumeRev) {
+      if (!_config.isChild()) {
+        batchExtend();
+        _config.barrier.extend(_config.connection);
+      }
+
+      std::string batchUrl = url + "&resume=" + std::to_string(resumeRev);
+      std::string msg = "fetching collection revision ranges for collection '" +
+                        coll->name() + "' from " + batchUrl;
+      _config.progress.set(msg);
+      double t = TRI_microtime();
+      _config.connection.lease([&](httpclient::SimpleHttpClient* client) {
+        response.reset(client->retryRequest(rest::RequestType::POST, url,
+                                            request.data(), request.size(), headers));
+      });
+      stats.waitedForKeys += TRI_microtime() - t;
+      ++stats.numKeysRequests;
+
+      if (replutils::hasFailed(response.get())) {
+        return replutils::buildHttpError(response.get(), url, _config.connection);
+      }
+
+      VPackBuilder responseBuilder;
+      Result r = replutils::parseResponse(responseBuilder, response.get());
+      if (r.fail()) {
+        return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
+                      std::string("got invalid response from master at ") +
+                          _config.master.endpoint + batchUrl + ": " + r.errorMessage());
+      }
+
+      VPackSlice const slice = responseBuilder.slice();
+      if (!slice.isObject()) {
+        return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
+                      std::string("got invalid response from master at ") +
+                          _config.master.endpoint + batchUrl +
+                          ": response is not an object");
+      }
+
+      VPackSlice const resumeSlice = slice.get("resume");
+      if (!resumeSlice.isNone() && !resumeSlice.isNumber()) {
+        return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
+                      std::string("got invalid response from master at ") +
+                          _config.master.endpoint + batchUrl +
+                          ": response field 'resume' is not a number");
+      }
+      resumeRev = resumeSlice.isNone() ? 0 : resumeSlice.getNumber<std::size_t>();
+
+      VPackSlice const rangesSlice = slice.get("ranges");
+      if (!rangesSlice.isArray()) {
+        return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
+                      std::string("got invalid response from master at ") +
+                          _config.master.endpoint + batchUrl +
+                          ": response field 'ranges' is not an array");
+      }
+
+      for (std::size_t i = 0; i < rangesSlice.length(); ++i, ++chunk) {
+        VPackSlice masterSlice = rangesSlice.at(i);
+        if (!masterSlice.isArray()) {
+          return Result(
+              TRI_ERROR_REPLICATION_INVALID_RESPONSE,
+              std::string("got invalid response from master at ") +
+                  _config.master.endpoint + batchUrl +
+                  ": response field 'ranges' entry is not a revision range");
+        }
+        auto& currentRange = ranges[chunk];
+        local.seek(currentRange.first);
+
+        std::size_t masterFirst = masterSlice.isEmptyArray()
+                                      ? currentRange.second + 1
+                                      : masterSlice.at(0).getNumber<std::size_t>();
+        std::size_t masterLast =
+            masterSlice.isEmptyArray()
+                ? currentRange.second + 1
+                : masterSlice.at(masterSlice.length() - 1).getNumber<std::size_t>();
+
+        while (local.hasMore() && local.revision() < masterFirst) {
+          toRemove.emplace_back(transaction::helpers::extractKeyString(local.document()));
+          local.next();
+        }
+
+        std::size_t index = 0;
+        while (local.hasMore() && local.revision() <= masterLast) {
+          std::size_t masterRev = masterSlice.at(index).getNumber<std::size_t>();
+          if (local.revision() < masterRev) {
+            toRemove.emplace_back(transaction::helpers::extractKeyString(local.document()));
+          } else if (masterRev < local.revision()) {
+            toFetch.emplace_back(masterRev);
+          } else {
+            // match, no need to remove local or fetch from master
+            ++index;
+          }
+          local.next();
+        }
+
+        while (local.hasMore() && local.revision() <= currentRange.second) {
+          toRemove.emplace_back(transaction::helpers::extractKeyString(local.document()));
+          local.next();
+        }
+      }
+
+      Result res = removeRevisions(*coll, toRemove, stats);
+      if (res.fail()) {
+        return res;
+      }
+      toRemove.clear();
+
+      // TODO fetch from toFetch
+    }
+  }
+
+  setProgress(
+      std::string("incremental sync statistics for collection '") + coll->name() +
+      "': " + "keys requests: " + std::to_string(stats.numKeysRequests) + ", " +
+      "docs requests: " + std::to_string(stats.numDocsRequests) + ", " +
+      "number of documents requested: " + std::to_string(stats.numDocsRequested) +
+      ", " + "number of documents inserted: " + std::to_string(stats.numDocsInserted) +
+      ", " + "number of documents removed: " + std::to_string(stats.numDocsRemoved) +
+      ", " + "waited for initial: " + std::to_string(stats.waitedForInitial) +
+      " s, " + "waited for keys: " + std::to_string(stats.waitedForKeys) +
+      " s, " + "waited for docs: " + std::to_string(stats.waitedForDocs) +
+      " s, " + "total time: " + std::to_string(TRI_microtime() - startTime) +
+      " s");
 
   return Result{};
 }

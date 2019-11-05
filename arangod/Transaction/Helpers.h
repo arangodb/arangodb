@@ -52,6 +52,9 @@ namespace helpers {
 /// @brief extract the _key attribute from a slice
 arangodb::velocypack::StringRef extractKeyPart(VPackSlice);
 
+/// @brief extract the _key attribute from a slice
+std::string extractKeyString(VPackSlice);
+
 std::string extractIdString(CollectionNameResolver const*, VPackSlice, VPackSlice const&);
 
 /// @brief quick access to the _key attribute in a database document

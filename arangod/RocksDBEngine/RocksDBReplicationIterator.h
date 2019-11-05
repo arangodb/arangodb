@@ -38,14 +38,13 @@ class RocksDBRevisionReplicationIterator : public RevisionReplicationIterator {
  public:
   RocksDBRevisionReplicationIterator(LogicalCollection&, rocksdb::Snapshot const*);
 
+  bool hasMore() const;
   void reset();
 
-  bool hasMore() const;
   TRI_voc_rid_t revision() const;
+  VPackSlice document() const;
 
-  bool next(RevisionCallback const& callback);
-  bool nextDocument(DocumentCallback const& callback);
-
+  void next();
   void seek(TRI_voc_rid_t);
 
  private:

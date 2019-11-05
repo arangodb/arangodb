@@ -521,7 +521,7 @@ std::unique_ptr<ReplicationIterator> RocksDBCollection::getReplicationIterator(
   RocksDBEngine& engine = selector.engine<RocksDBEngine>();
   RocksDBReplicationManager* manager = engine.replicationManager();
   RocksDBReplicationContext* ctx = manager->find(batchId);
-  rocksdb::Snapshot const* snapshot = ctx->snapshot();
+  rocksdb::Snapshot const* snapshot = ctx ? ctx->snapshot() : nullptr;
 
   return std::make_unique<RocksDBRevisionReplicationIterator>(_logicalCollection, snapshot);
 }

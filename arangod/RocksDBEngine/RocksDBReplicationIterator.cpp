@@ -39,9 +39,9 @@ RocksDBRevisionReplicationIterator::RocksDBRevisionReplicationIterator(
       _readOptions(),
       _bounds(RocksDBKeyBounds::CollectionDocuments(
           static_cast<RocksDBCollection*>(collection.getPhysical())->objectId())) {
-  TRI_ASSERT(snapshot != nullptr);
-
-  _readOptions.snapshot = snapshot;
+  if (snapshot) {
+    _readOptions.snapshot = snapshot;
+  }
   _readOptions.verify_checksums = false;
   _readOptions.fill_cache = false;
   _readOptions.prefix_same_as_start = true;
@@ -56,37 +56,27 @@ RocksDBRevisionReplicationIterator::RocksDBRevisionReplicationIterator(
   _iter->Seek(_bounds.start());
 }
 
-void RocksDBRevisionReplicationIterator::reset() {
-  _iter->Seek(_bounds.start());
-}
-
 bool RocksDBRevisionReplicationIterator::hasMore() const {
   return _iter->Valid() && _cmp->Compare(_iter->key(), _bounds.end()) <= 0;
 }
 
+void RocksDBRevisionReplicationIterator::reset() {
+  _iter->Seek(_bounds.start());
+}
+
 TRI_voc_rid_t RocksDBRevisionReplicationIterator::revision() const {
-  if (hasMore()) {
-    return RocksDBKey::documentId(_iter->key()).id();
-  }
-  // iterator invalid, return garbage
-  return 0;
+  TRI_ASSERT(hasMore());
+  return RocksDBKey::documentId(_iter->key()).id();
 }
 
-bool RocksDBRevisionReplicationIterator::next(RevisionCallback const& callback) {
-  if (!hasMore()) {
-    return false;
-  }
-  TRI_voc_rid_t rid = RocksDBKey::documentId(_iter->key()).id();
-  return callback(rid);
+VPackSlice RocksDBRevisionReplicationIterator::document() const {
+  TRI_ASSERT(hasMore());
+  return RocksDBValue::data(_iter->value());
 }
 
-bool RocksDBRevisionReplicationIterator::nextDocument(DocumentCallback const& callback) {
-  if (!hasMore()) {
-    return false;
-  }
-  TRI_voc_rid_t rid = RocksDBKey::documentId(_iter->key()).id();
-  VPackSlice doc = RocksDBValue::data(_iter->value());
-  return callback(rid, doc);
+void RocksDBRevisionReplicationIterator::next() {
+  TRI_ASSERT(hasMore());
+  _iter->Next();
 }
 
 void RocksDBRevisionReplicationIterator::seek(TRI_voc_rid_t rid) {

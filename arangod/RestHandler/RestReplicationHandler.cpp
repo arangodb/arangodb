@@ -2876,16 +2876,9 @@ void RestReplicationHandler::handleCommandRevisionTree() {
   std::size_t const rangeMin = it.hasMore() ? it.revision() : 0;
   containers::RevisionTree tree(maxDepth, rangeMin);
 
-  auto cb = [&tree, tickEnd](TRI_voc_rid_t rid, VPackSlice doc) -> bool {
-    if (rid > tickEnd) {
-      // outside the desired range
-      return false;
-    }
-    std::size_t hash = doc.hashString();
-    tree.insert(rid, hash);
-    return true;
-  };
-  while (it.nextDocument(cb)) {
+  while (it.hasMore() && it.revision() <= tickEnd) {
+    tree.insert(it.revision(), it.document().hashString());
+    it.next();
   }
 
   std::string result = tree.serialize();

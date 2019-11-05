@@ -90,6 +90,31 @@ arangodb::velocypack::StringRef transaction::helpers::extractKeyPart(VPackSlice 
   return arangodb::velocypack::StringRef();
 }
 
+/// @brief extract the _key attribute from a slice
+std::string transaction::helpers::extractKeyString(VPackSlice slice) {
+  if (slice.isExternal()) {
+    slice = slice.resolveExternal();
+  }
+
+  // extract _key
+  if (slice.isObject()) {
+    VPackSlice k = slice.get(StaticStrings::KeyString);
+    if (!k.isString()) {
+      return "";  // fail
+    }
+    return k.copyString();
+  }
+  if (slice.isString()) {
+    arangodb::velocypack::StringRef key(slice);
+    size_t pos = key.find('/');
+    if (pos == std::string::npos) {
+      return std::string(key.data(), key.size());
+    }
+    return std::string(key.substr(pos + 1).data(), key.size() - pos - 1);
+  }
+  return "";
+}
+
 /// @brief extract the _id attribute from a slice, and convert it into a
 /// string, static method
 std::string transaction::helpers::extractIdString(CollectionNameResolver const* resolver,

@@ -55,9 +55,8 @@ class ReplicationIterator {
   /// @brief return the underlying collection
   LogicalCollection& collection() const;
 
-  virtual void reset() = 0;
-
   virtual bool hasMore() const = 0;
+  virtual void reset() = 0;
 
  protected:
   LogicalCollection& _collection;
@@ -65,18 +64,14 @@ class ReplicationIterator {
 
 class RevisionReplicationIterator : public ReplicationIterator {
  public:
-  typedef std::function<bool(TRI_voc_rid_t rev)> RevisionCallback;
-  typedef std::function<bool(TRI_voc_rid_t rev, velocypack::Slice doc)> DocumentCallback;
-
   RevisionReplicationIterator(LogicalCollection&);
 
   Ordering order() const override;
 
   virtual TRI_voc_rid_t revision() const = 0;
+  virtual VPackSlice document() const = 0;
 
-  virtual bool next(RevisionCallback const& callback) = 0;
-  virtual bool nextDocument(DocumentCallback const& callback) = 0;
-
+  virtual void next() = 0;
   virtual void seek(TRI_voc_rid_t) = 0;
 };
 
