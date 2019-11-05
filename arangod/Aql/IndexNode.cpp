@@ -130,7 +130,7 @@ IndexNode::IndexNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
     _outNonMaterializedIndVars.reserve(outNonMaterializedIndVarsSlice.length());
     for (auto const indVars : velocypack::ArrayIterator(outNonMaterializedIndVarsSlice)) {
       auto const indexIdSlice = indVars.get("indexId");
-      if (!indexIdSlice.isNumber()) {
+      if (!indexIdSlice.isNumber<TRI_idx_iid_t>()) {
         THROW_ARANGO_EXCEPTION_FORMAT(
             TRI_ERROR_BAD_PARAMETER, "\"IndexesValuesVars[*].indexId\" %s should be a number",
               indexIdSlice.toString().c_str());
@@ -147,7 +147,7 @@ IndexNode::IndexNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
       indexValuesVars.reserve(indexValuesVarsSlice.length());
       for (auto const indVar : velocypack::ArrayIterator(indexValuesVarsSlice)) {
         auto const fieldNumberSlice = indVar.get("fieldNumber");
-        if (!fieldNumberSlice.isNumber()) {
+        if (!fieldNumberSlice.isNumber<size_t>()) {
           THROW_ARANGO_EXCEPTION_FORMAT(
               TRI_ERROR_BAD_PARAMETER, "\"IndexesValuesVars[*].IndexValuesVars[*].fieldNumber\" %s should be a number",
                 fieldNumberSlice.toString().c_str());
@@ -155,7 +155,7 @@ IndexNode::IndexNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
         auto const fieldNumber = fieldNumberSlice.getNumber<size_t>();
 
         auto const varIdSlice = indVar.get("id");
-        if (!varIdSlice.isNumber()) {
+        if (!varIdSlice.isNumber<aql::VariableId>()) {
           THROW_ARANGO_EXCEPTION_FORMAT(
               TRI_ERROR_BAD_PARAMETER, "\"IndexesValuesVars[*].IndexValuesVars[*].id\" variable id %s should be a number",
                 varIdSlice.toString().c_str());
