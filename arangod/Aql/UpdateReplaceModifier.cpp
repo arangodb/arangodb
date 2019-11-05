@@ -45,9 +45,6 @@ using namespace arangodb::aql::ModificationExecutorHelpers;
 
 ModifierOperationType UpdateReplaceModifierCompletion::accumulate(
     ModificationExecutorAccumulator& accu, InputAqlItemRow& row) {
-  std::string key, rev;
-  Result result;
-
   RegisterId const inDocReg = _infos._input1RegisterId;
   RegisterId const keyReg = _infos._input2RegisterId;
   bool const hasKeyVariable = keyReg != RegisterPlan::MaxRegisterId;
@@ -76,6 +73,8 @@ ModifierOperationType UpdateReplaceModifierCompletion::accumulate(
 
   if (writeRequired(_infos, inDoc.slice(), key)) {
     if (hasKeyVariable) {
+      std::string key, rev;
+      Result result;
       VPackBuilder keyDocBuilder;
       AqlValue const& keyDoc = row.getValue(keyReg);
 
