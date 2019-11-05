@@ -681,8 +681,8 @@ void ApplicationServer::start() {
           LOG_TOPIC("e5cfd", TRACE, Logger::STARTUP)
               << "forcefully stopping feature '" << feature.name() << "'";
           try {
-            feature->stop();
-            feature->state(ApplicationFeature::State::STOPPED);
+            feature.stop();
+            feature.state(ApplicationFeature::State::STOPPED);
           } catch (...) {
             // ignore errors on shutdown
             LOG_TOPIC("13223", TRACE, Logger::STARTUP)
