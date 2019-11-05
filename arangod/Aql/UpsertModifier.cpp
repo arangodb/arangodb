@@ -132,10 +132,10 @@ typename UpsertModifier::OutputIterator UpsertModifier::OutputIterator::end() co
 }
 
 void UpsertModifier::reset() {
-  _insertAccumulator.reset(new ModificationExecutorAccumulator());
+  _insertAccumulator = std::make_unique<ModificationExecutorAccumulator>();
   _insertResults = OperationResult{};
 
-  _updateAccumulator.reset(new ModificationExecutorAccumulator());
+  _updateAccumulator = std::make_unique<ModificationExecutorAccumulator>();
   _updateResults = OperationResult{};
 
   _operations.clear();

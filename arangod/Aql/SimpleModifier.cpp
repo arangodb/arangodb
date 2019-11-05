@@ -131,7 +131,7 @@ SimpleModifier<ModifierCompletion, Enable>::OutputIterator::end() const {
 
 template <typename ModifierCompletion, typename Enable>
 void SimpleModifier<ModifierCompletion, Enable>::reset() {
-  _accumulator.reset(new ModificationExecutorAccumulator());
+  _accumulator = std::make_unique<ModificationExecutorAccumulator>();
   _operations.clear();
   _results = OperationResult{};
 }
