@@ -139,7 +139,8 @@ void ReplicationClientsProgressTracker::track(SyncerId syncerId, TRI_server_id_t
         << "inserting replication client entry for " << SyncerInfo{it->second}
         << " using TTL " << ttl << ", last tick: " << lastServedTick;
     return;
-  } else {
+  }
+
   // update an existing client entry
   it->second.lastSeenStamp = timestamp;
   it->second.expireStamp = expires;
@@ -153,7 +154,6 @@ void ReplicationClientsProgressTracker::track(SyncerId syncerId, TRI_server_id_t
           << "updating replication client entry for " << SyncerInfo{it->second}
         << " using TTL " << ttl;
   }
-}
 }
 
 /// @brief serialize the existing clients to a VelocyPack builder

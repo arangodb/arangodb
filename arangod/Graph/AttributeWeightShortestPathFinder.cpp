@@ -273,11 +273,10 @@ bool AttributeWeightShortestPathFinder::shortestPath(arangodb::velocypack::Slice
 }
 
 void AttributeWeightShortestPathFinder::inserter(
-    std::unordered_map<arangodb::velocypack::StringRef, size_t>& candidates,
-    std::vector<std::unique_ptr<Step>>& result,
-    arangodb::velocypack::StringRef const& s, arangodb::velocypack::StringRef const& t,
-    double currentWeight, EdgeDocumentToken&& edge) {
-
+  std::unordered_map<arangodb::velocypack::StringRef, size_t>& candidates,
+  std::vector<std::unique_ptr<Step>>& result,
+  arangodb::velocypack::StringRef const& s, arangodb::velocypack::StringRef const& t,
+  double currentWeight, EdgeDocumentToken&& edge) {
 
   auto [cand, emplaced] = candidates.try_emplace(
     t,

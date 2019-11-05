@@ -2640,12 +2640,12 @@ int MMFilesEngine::startCompactor(TRI_vocbase_t& vocbase) {
     auto [it, emplaced] = _compactorThreads.try_emplace(
       &vocbase,
       arangodb::lazyConstruct([&]{
-    thread.reset(new MMFilesCompactorThread(vocbase));
-    if (!thread->start()) {
-      LOG_TOPIC("3addc", ERR, arangodb::Logger::COMPACTOR)
-          << "could not start compactor thread";
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-    }
+        thread.reset(new MMFilesCompactorThread(vocbase));
+        if (!thread->start()) {
+          LOG_TOPIC("3addc", ERR, arangodb::Logger::COMPACTOR)
+            << "could not start compactor thread";
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+        }
         return std::move(thread);
       })
     );

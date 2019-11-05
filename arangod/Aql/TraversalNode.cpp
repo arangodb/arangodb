@@ -677,7 +677,7 @@ void TraversalNode::prepareOptions() {
     opts->_vertexExpressions.try_emplace(
       it.first,
       arangodb::lazyConstruct([&]{
-        new Expression(_plan, ast, it.second);
+        return new Expression(_plan, ast, it.second);
       })
     );
   }

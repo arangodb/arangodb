@@ -724,21 +724,21 @@ arangodb::Result MaintenanceFeature::storeIndexError(
   MUTEX_LOCKER(guard, _ieLock);
 
   decltype (_indexErrors.emplace(key)) emplace_result;
-    try {
+  try {
     emplace_result = _indexErrors.try_emplace(key, std::map<std::string, buffer_t>());
-    } catch (std::exception const& e) {
-      return Result(TRI_ERROR_FAILED, e.what());
-    }
-  auto& errors = emplace_result.first->second;
+  } catch (std::exception const& e) {
+    return Result(TRI_ERROR_FAILED, e.what());
+  }
 
+  auto& errors = emplace_result.first->second;
   try {
     auto [itr, emplaced] = errors.try_emplace(indexId, error);
     if(!emplaced) {
-    std::stringstream error;
-    error << "index " << indexId << " for shard " << key << " already has pending error";
-    LOG_TOPIC("d3c92", DEBUG, Logger::MAINTENANCE) << error.str();
-    return Result(TRI_ERROR_FAILED, error.str());
-  }
+      std::stringstream error;
+      error << "index " << indexId << " for shard " << key << " already has pending error";
+      LOG_TOPIC("d3c92", DEBUG, Logger::MAINTENANCE) << error.str();
+      return Result(TRI_ERROR_FAILED, error.str());
+    }
   } catch (std::exception const& e) {
     return Result(TRI_ERROR_FAILED, e.what());
   }

@@ -214,7 +214,8 @@ arangodb::traverser::TraverserOptions::TraverserOptions(arangodb::aql::Query* qu
     for (auto const& info : VPackObjectIterator(read)) {
       uint64_t d = basics::StringUtils::uint64(info.key.copyString());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      auto [it, emplaced] = _vertexExpressions.try_emplace(d, new aql::Expression(query->plan(),
+      bool emplaced = false;
+      std::tie(std::ignore, emplaced) = _vertexExpressions.try_emplace(d, new aql::Expression(query->plan(),
                                                                   query->ast(), info.value));
       TRI_ASSERT(emplaced);
 #else
