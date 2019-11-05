@@ -39,6 +39,8 @@
 
 #include <utility>
 
+#include "Logger/LogMacros.h"
+
 using namespace arangodb;
 using namespace arangodb::aql;
 
@@ -311,6 +313,8 @@ std::tuple<ExecutorState, NoStats, AqlCall> ShortestPathExecutor::produceRows(
       if (_infos.usesOutputRegister(ShortestPathExecutorInfos::VERTEX)) {
         AqlValue vertex = _path->vertexToAqlValue(_infos.cache(), _posInPath);
         AqlValueGuard guard{vertex, true};
+        LOG_DEVEL << "reg: " << _infos.getOutputRegister(ShortestPathExecutorInfos::VERTEX)
+                  << output.getNrRegisters();
         output.moveValueInto(_infos.getOutputRegister(ShortestPathExecutorInfos::VERTEX),
                              _input, guard);
       }
@@ -347,8 +351,10 @@ bool ShortestPathExecutor::fetchPath(AqlItemBlockInputRange& input) {
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
   do {
     // Make sure we have a valid start *and* end vertex
+    LOG_DEVEL << "getting start and end verrteks";
     do {
       if (!input.hasMore()) {
+        LOG_DEVEL << "input didn't have more :/";
         return false;
       }
       std::tie(state, row) = input.next();
@@ -358,6 +364,7 @@ bool ShortestPathExecutor::fetchPath(AqlItemBlockInputRange& input) {
     TRI_ASSERT(source.isString());
     TRI_ASSERT(target.isString());
     _path->clear();
+    LOG_DEVEL << "sourtce: " << source.toJson() << "target " << target.toJson();
   } while (!_finder.shortestPath(source, target, *_path));
   _posInPath = 0;
   return true;
@@ -370,6 +377,7 @@ bool ShortestPathExecutor::getVertexId(ShortestPathExecutorInfos::InputVertex co
   switch (vertex.type) {
     case ShortestPathExecutorInfos::InputVertex::Type::REGISTER: {
       AqlValue const& in = row.getValue(vertex.reg);
+      LOG_DEVEL << "register value" << in.slice().toJson();
       if (in.isObject()) {
         try {
           auto idString = _finder.options().trx()->extractIdString(in.slice());
@@ -407,6 +415,7 @@ bool ShortestPathExecutor::getVertexId(ShortestPathExecutorInfos::InputVertex co
     }
     case ShortestPathExecutorInfos::InputVertex::Type::CONSTANT: {
       id = builder.slice();
+      LOG_DEVEL << "constant value " << builder.slice().toJson();
       if (!::isValidId(id)) {
         _finder.options().query()->registerWarning(
             TRI_ERROR_BAD_PARAMETER,
