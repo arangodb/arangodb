@@ -55,18 +55,19 @@ using namespace std::chrono_literals;
 
 using VPackBufferPtr = std::shared_ptr<velocypack::Buffer<uint8_t>>;
 
-VPackBuffer<uint8_t>&& vpackFromJsonString(char const* c) {
+VPackBuffer<uint8_t> vpackFromJsonString(char const* c) {
   VPackOptions options;
   options.checkAttributeUniqueness = true;
   VPackParser parser(&options);
   parser.parse(c);
 
   std::shared_ptr<VPackBuilder> builder = parser.steal();
-
-  return std::move(*builder->steal());
+  std::shared_ptr<VPackBuffer<uint8_t>> buffer = builder->steal();
+  VPackBuffer<uint8_t> b = std::move(*buffer);
+  return b;
 }
 
-VPackBuffer<uint8_t>&& operator"" _vpack(const char* json, size_t) {
+VPackBuffer<uint8_t> operator"" _vpack(const char* json, size_t) {
   return vpackFromJsonString(json);
 }
 
