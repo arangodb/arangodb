@@ -129,17 +129,6 @@ SimpleModifier<ModifierCompletion, Enable>::OutputIterator::end() const {
   return it;
 }
 
-template <class ModifierCompletion, typename Enable>
-SimpleModifier<ModifierCompletion, Enable>::SimpleModifier(ModificationExecutorInfos& infos)
-    : _infos(infos),
-      _completion(infos),
-      _accumulator(nullptr),
-      _resultsIterator(VPackSlice::emptyArraySlice()),
-      _batchSize(ExecutionBlock::DefaultBatchSize()) {}
-
-template <typename ModifierCompletion, typename Enable>
-SimpleModifier<ModifierCompletion, Enable>::~SimpleModifier() = default;
-
 template <typename ModifierCompletion, typename Enable>
 void SimpleModifier<ModifierCompletion, Enable>::reset() {
   _accumulator.reset(new ModificationExecutorAccumulator());
