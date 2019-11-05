@@ -81,7 +81,6 @@ std::pair<ExecutionState, NoStats> UnsortedGatherExecutor::produceRows(OutputAql
     i = (_currentDependency + x) % _numberDependencies;
   
     if (_upstream[i] == ExecutionState::DONE) {
-      LOG_DEVEL << "dependency " << i << " done";
       continue;
     }
     
@@ -96,12 +95,6 @@ std::pair<ExecutionState, NoStats> UnsortedGatherExecutor::produceRows(OutputAql
         output.advanceRow();
         tmp++;
       }
-    }
-    
-    if (tmp > 0) {
-      LOG_DEVEL << "dependency " << i << " state " << state << " returned " << tmp;
-    } else {
-      LOG_DEVEL << "dependency " << i << " state " << state;
     }
     
     _upstream[i] = state;

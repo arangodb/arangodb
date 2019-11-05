@@ -64,18 +64,18 @@ void SharedQueryState::resetWakeupHandler() {
 bool SharedQueryState::executeWakeupCallback() {
   TRI_ASSERT(_valid);
   TRI_ASSERT(_wakeupCb);
+  if (_queuedWakeup) {
+    return false;
+  }
+  _queuedWakeup = true;
+  
   auto scheduler = SchedulerFeature::SCHEDULER;
   if (ADB_UNLIKELY(scheduler == nullptr)) {
     // We are shutting down
     return false;
   }
   TRI_ASSERT(_numWakeups > 0);
-    
-  if (_queuedWakeup) {
-    return false;
-  }
   
-  _queuedWakeup = true;
   return scheduler->queue(RequestLane::CLIENT_AQL,
                           [self = shared_from_this(),
                            cb = _wakeupCb] () mutable {
