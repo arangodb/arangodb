@@ -132,7 +132,6 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
 
   RestStatus handlePostRemoveServer(std::string const& server);
 
-  futureVoid handlePostRebalanceShards();
 
   std::string resolveServerNameID(std::string const&);
   std::string resolveServerNameID(velocypack::Slice);
@@ -149,6 +148,20 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
     }
   };
   void getShardDistribution(std::map<std::string, std::unordered_set<CollectionShardPair>>& distr);
+
+  struct MoveShardDescription {
+    std::string collection;
+    std::string shard;
+    std::string from;
+    std::string to;
+    bool isLeader;
+  };
+
+  using ShardMap = std::map<std::string, std::unordered_set<CollectionShardPair>>;
+  using ReshardAlgorithm = std::function<void(ShardMap&, std::vector<MoveShardDescription>&)>;
+
+private:
+  futureVoid handlePostRebalanceShards(ReshardAlgorithm);
 
 };
 }  // namespace arangodb

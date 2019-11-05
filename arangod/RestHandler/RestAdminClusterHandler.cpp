@@ -1413,22 +1413,20 @@ void RestAdminClusterHandler::getShardDistribution(std::map<std::string, std::un
 }
 
 
-RestAdminClusterHandler::futureVoid RestAdminClusterHandler::handlePostRebalanceShards() {
-  struct MoveShardDescription {
-    std::string collection;
-    std::string shard;
-    std::string from;
-    std::string to;
-    bool isLeader;
-  };
+namespace {
 
-  std::vector<MoveShardDescription> moves;
+using CollectionShardPair = RestAdminClusterHandler::CollectionShardPair;
+using MoveShardDescription = RestAdminClusterHandler::MoveShardDescription;
+
+
+void theSimpleStupidOne(std::map<std::string, std::unordered_set<CollectionShardPair>>& shardMap, std::vector<MoveShardDescription>& moves) {
+
+  // If you dislike this algorithm feel free to add a new one.
+  // shardMap is a map from dbserver to a set of shards located on that server.
+  // your algorithm has to fill `moves` with the move shard operations that it wants to execute.
+  // Please fill in all values of the `MoveShardDescription` struct.
+
   std::unordered_set<std::string> movedShards;
-
-  // dbserver -> shards
-  std::map<std::string, std::unordered_set<CollectionShardPair>> shardMap;
-  getShardDistribution(shardMap);
-
   while (moves.size() < 10) {
     auto [emptiest, fullest] = std::minmax_element(shardMap.begin(), shardMap.end(), [](auto const& a, auto const& b) {
       return a.second.size() < b.second.size();
@@ -1462,6 +1460,17 @@ RestAdminClusterHandler::futureVoid RestAdminClusterHandler::handlePostRebalance
     emptiest->second.emplace(std::move(*pair));
     fullest->second.erase(pair);
   }
+}
+}
+
+RestAdminClusterHandler::futureVoid RestAdminClusterHandler::handlePostRebalanceShards(ReshardAlgorithm algorithm) {
+
+  // dbserver -> shards
+  std::vector<MoveShardDescription> moves;
+  std::map<std::string, std::unordered_set<CollectionShardPair>> shardMap;
+  getShardDistribution(shardMap);
+
+  algorithm(shardMap, moves);
 
   if (moves.empty()) {
     resetResponse(rest::ResponseCode::OK);
@@ -1533,7 +1542,18 @@ RestStatus RestAdminClusterHandler::handleRebalanceShards() {
     return RestStatus::DONE;
   }
 
-  return waitForFuture(handlePostRebalanceShards()
+  // ADD YOUR ALGORITHM HERE!!!
+
+  std::string algorithmName = request()->value("algorithm");
+  ReshardAlgorithm algorithm;
+  if (algorithmName == "simple" || algorithmName.empty()) {
+    algorithm = theSimpleStupidOne;
+  } else {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER, "unknown algorithm");
+    return RestStatus::DONE;
+  }
+
+  return waitForFuture(handlePostRebalanceShards(algorithm)
   .thenError<VPackException>([this](VPackException const& e) {
     generateError(Result{e.errorCode(), e.what()});
   }).thenError<std::exception>([this](std::exception const& e) {
