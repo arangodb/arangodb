@@ -1267,7 +1267,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
                           ": response field 'ranges' is not an array");
       }
 
-      for (std::size_t i = 0; i < rangesSlice.length(); ++i, ++chunk) {
+      for (std::size_t i = 0; i < rangesSlice.length(); ++i) {
         VPackSlice masterSlice = rangesSlice.at(i);
         if (!masterSlice.isArray()) {
           return Result(
@@ -1310,6 +1310,10 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
           toRemove.emplace_back(transaction::helpers::extractKeyString(local.document()));
           local.next();
         }
+
+        if (resumeRev > currentRange.second) {
+          ++chunk;
+        }
       }
 
       Result res = removeRevisions(*coll, toRemove, stats);
@@ -1320,6 +1324,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
 
       // TODO fetch from toFetch
     }
+    TRI_ASSERT(resumeRev <= ranges[chunk].first);
   }
 
   setProgress(
