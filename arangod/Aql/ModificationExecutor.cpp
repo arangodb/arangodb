@@ -51,27 +51,23 @@ namespace arangodb {
 namespace aql {
 
 ModifierOutput::ModifierOutput(InputAqlItemRow inputRow, Type type)
-    : _inputRow(inputRow), _type(type), _oldValue(nullptr), _newValue(nullptr) {}
+    : _inputRow(inputRow), _type(type), _oldValue(), _newValue() {}
 
 ModifierOutput::ModifierOutput(InputAqlItemRow inputRow, Type type,
-                               std::unique_ptr<AqlValue>&& oldValue,
-                               std::unique_ptr<AqlValue>&& newValue)
-    : _inputRow(inputRow),
-      _type(type),
-      _oldValue(std::move(oldValue)),
-      _newValue(std::move(newValue)) {}
+                               AqlValue const& oldValue, AqlValue const& newValue)
+    : _inputRow(inputRow), _type(type), _oldValue(oldValue), _newValue(newValue) {}
 
 InputAqlItemRow ModifierOutput::getInputRow() const { return _inputRow; }
 ModifierOutput::Type ModifierOutput::getType() const { return _type; }
-bool ModifierOutput::hasOldValue() const { return _oldValue != nullptr; }
-AqlValue&& ModifierOutput::getOldValue() const {
-  TRI_ASSERT(_oldValue != nullptr);
-  return std::move(*_oldValue);
+bool ModifierOutput::hasOldValue() const { return _oldValue.has_value(); }
+AqlValue const& ModifierOutput::getOldValue() const {
+  TRI_ASSERT(_oldValue.has_value());
+  return _oldValue.value();
 }
-bool ModifierOutput::hasNewValue() const { return _newValue != nullptr; }
-AqlValue&& ModifierOutput::getNewValue() const {
-  TRI_ASSERT(_newValue != nullptr);
-  return std::move(*_newValue);
+bool ModifierOutput::hasNewValue() const { return _newValue.has_value(); }
+AqlValue const& ModifierOutput::getNewValue() const {
+  TRI_ASSERT(_newValue.has_value());
+  return _newValue.value();
 }
 
 template <typename FetcherType, typename ModifierType>
@@ -83,20 +79,13 @@ ModificationExecutor<FetcherType, ModifierType>::ModificationExecutor(Fetcher& f
   // This pin makes sure that no memory is moved pointers we get from a collection stay
   // correct until we release this pin
   _infos._trx->pinData(this->_infos._aqlCollection->id());
-
-  // TODO: explain this abomination
-  auto* trx = _infos._trx;
-  TRI_ASSERT(trx != nullptr);
-  bool const isDBServer = trx->state()->isDBServer();
-  _infos._producesResults = ProducesResults(
-      _infos._producesResults || (isDBServer && _infos._ignoreDocumentNotFound));
 }
 
 // Fetches as many rows as possible from upstream using the fetcher's fetchRow
 // method and accumulates results through the modifier
 template <typename FetcherType, typename ModifierType>
 std::pair<ExecutionState, typename ModificationExecutor<FetcherType, ModifierType>::Stats>
-ModificationExecutor<FetcherType, ModifierType>::doCollect(size_t const maxOutputs) {
+ModificationExecutor<FetcherType, ModifierType>::doCollect(size_t maxOutputs) {
   // for fetchRow
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
   ExecutionState state = ExecutionState::HASMORE;

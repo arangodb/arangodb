@@ -114,8 +114,8 @@ class ModifierOutput {
 
   ModifierOutput() = delete;
   ModifierOutput(InputAqlItemRow inputRow, Type type);
-  ModifierOutput(InputAqlItemRow inputRow, Type type, std::unique_ptr<AqlValue>&& oldValue,
-                 std::unique_ptr<AqlValue>&& newValue);
+  ModifierOutput(InputAqlItemRow inputRow, Type type, AqlValue const& oldValue,
+                 AqlValue const& newValue);
 
   // No copying or copy assignment allowed of this class or any derived class
   ModifierOutput(ModifierOutput const&) = delete;
@@ -128,15 +128,15 @@ class ModifierOutput {
   // If the output should be returned or skipped
   Type getType() const;
   bool hasOldValue() const;
-  AqlValue&& getOldValue() const;
+  AqlValue const& getOldValue() const;
   bool hasNewValue() const;
-  AqlValue&& getNewValue() const;
+  AqlValue const& getNewValue() const;
 
  protected:
   InputAqlItemRow const _inputRow;
   Type const _type;
-  std::unique_ptr<AqlValue> _oldValue;
-  std::unique_ptr<AqlValue> _newValue;
+  std::optional<AqlValue> const _oldValue;
+  std::optional<AqlValue> const _newValue;
 };
 
 template <typename FetcherType, typename ModifierType>
@@ -157,7 +157,7 @@ class ModificationExecutor {
   std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
 
  protected:
-  std::pair<ExecutionState, Stats> doCollect(size_t const maxOutputs);
+  std::pair<ExecutionState, Stats> doCollect(size_t maxOutputs);
   void doOutput(OutputAqlItemRow& output, Stats& stats);
 
   // The state that was returned on the last call to produceRows. For us

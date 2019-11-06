@@ -215,10 +215,10 @@ OperationOptions ModificationExecutorHelpers::convertOptions(ModificationOptions
   return out;
 }
 
-std::unique_ptr<AqlValue> ModificationExecutorHelpers::getDocumentOrNull(
-    VPackSlice const& elm, std::string const& key) {
+AqlValue ModificationExecutorHelpers::getDocumentOrNull(VPackSlice const& elm,
+                                                        std::string const& key) {
   if (elm.hasKey(key)) {
-    return std::make_unique<AqlValue>(elm.get(key));
+    return AqlValue{elm.get(key)};
   }
-  return std::make_unique<AqlValue>(VPackSlice::nullSlice());
+  return AqlValue{VPackSlice::nullSlice()};
 }

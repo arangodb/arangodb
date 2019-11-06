@@ -90,7 +90,7 @@ void throwOperationResultException(ModificationExecutorInfos const& infos,
 OperationOptions convertOptions(ModificationOptions const& in, Variable const* outVariableNew,
                                 Variable const* outVariableOld);
 
-std::unique_ptr<AqlValue> getDocumentOrNull(VPackSlice const& elm, std::string const& key);
+AqlValue getDocumentOrNull(VPackSlice const& elm, std::string const& key);
 
 }  // namespace ModificationExecutorHelpers
 }  // namespace aql

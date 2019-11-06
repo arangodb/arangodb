@@ -24,6 +24,8 @@
 #include "ModificationExecutorInfos.h"
 
 #include "Aql/RegisterPlan.h"
+#include "StorageEngine/TransactionState.h"
+#include "Transaction/Methods.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -73,7 +75,15 @@ ModificationExecutorInfos::ModificationExecutorInfos(
       _input3RegisterId(input3RegisterId),
       _outputNewRegisterId(outputNewRegisterId),
       _outputOldRegisterId(outputOldRegisterId),
-      _outputRegisterId(outputRegisterId) {}
+      _outputRegisterId(outputRegisterId) {
+  // If we're running on a DBServer in a cluster some modification operations legitimately
+  // fail due to the affected document not being available (which is reflected in _ignoreDocumentNotFound).
+  // This makes sure that results are reported back from a DBServer.
+  TRI_ASSERT(_trx);
+  auto isDBServer = _trx->state()->isDBServer();
+  _producesResults = ProducesResults(_producesResults || !_options.silent ||
+                                     (isDBServer && _ignoreDocumentNotFound));
+}
 
 }  // namespace aql
 }  // namespace arangodb
