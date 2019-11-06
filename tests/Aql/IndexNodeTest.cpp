@@ -100,7 +100,7 @@ TEST_F(IndexNodeTest, objectQuery) {
 
   arangodb::OperationOptions opt;
   arangodb::ManagedDocumentResult mmdoc;
-  auto jsonDocument = arangodb::velocypack::Parser::fromJson("{\"obj\": {\"a\": \"a_val\", \"b\": \"b_val\", \"c\": \"c_val\"}}");
+  auto jsonDocument = arangodb::velocypack::Parser::fromJson("{\"_key\": \"doc\", \"obj\": {\"a\": \"a_val\", \"b\": \"b_val\", \"c\": \"c_val\"}}");
   auto const res = collection->insert(&trx, jsonDocument->slice(), mmdoc, opt, false);
   EXPECT_TRUE(res.ok());
   EXPECT_TRUE(trx.commit().ok());
@@ -113,6 +113,7 @@ TEST_F(IndexNodeTest, objectQuery) {
     EXPECT_TRUE(result.isArray());
     arangodb::velocypack::ArrayIterator resultIt(result);
     ASSERT_EQ(1, resultIt.size());
+    ASSERT_EQ(jsonDocument->slice().get("_key").toJson(), resultIt.value().get("_key").toJson());
   }
 
   // const object in condition
@@ -124,6 +125,7 @@ TEST_F(IndexNodeTest, objectQuery) {
     EXPECT_TRUE(result.isArray());
     arangodb::velocypack::ArrayIterator resultIt(result);
     ASSERT_EQ(1, resultIt.size());
+    ASSERT_EQ(jsonDocument->slice().get("_key").toJson(), resultIt.value().get("_key").toJson());
   }
 
   // two index variables for registers
@@ -135,6 +137,7 @@ TEST_F(IndexNodeTest, objectQuery) {
     EXPECT_TRUE(result.isArray());
     arangodb::velocypack::ArrayIterator resultIt(result);
     ASSERT_EQ(1, resultIt.size());
+    ASSERT_EQ(jsonDocument->slice().get("_key").toJson(), resultIt.value().get("_key").toJson());
   }
 }
 
@@ -159,20 +162,22 @@ TEST_F(IndexNodeTest, expansionQuery) {
 
   arangodb::OperationOptions opt;
   arangodb::ManagedDocumentResult mmdoc;
-  auto jsonDocument1 = arangodb::velocypack::Parser::fromJson("{\"tags\": {\"hop\": [{\"foo\": {\"fo\": \"foo_val\"}, \"bar\": {\"br\": \"bar_val\"}, \"baz\": {\"bz\": \"baz_val\"}}]}}");
-  auto jsonDocument2 = arangodb::velocypack::Parser::fromJson("{\"tags\": {\"hop\": [{\"foo\": {\"fo\": \"foo_val\"}}, {\"bar\": {\"br\": \"bar_val\"}}, {\"baz\": {\"bz\": \"baz_val\"}}]}}");
+  auto jsonDocument0 = arangodb::velocypack::Parser::fromJson("{\"_key\": \"doc_0\", \"tags\": {\"hop\": [{\"foo\": {\"fo\": \"foo_val\"}, \"bar\": {\"br\": \"bar_val\"}, \"baz\": {\"bz\": \"baz_val_0\"}}]}}");
+  auto jsonDocument1 = arangodb::velocypack::Parser::fromJson("{\"_key\": \"doc_1\", \"tags\": {\"hop\": [{\"foo\": {\"fo\": \"foo_val\"}}, {\"bar\": {\"br\": \"bar_val\"}}, {\"baz\": {\"bz\": \"baz_val_1\"}}]}}");
+  auto const res0 = collection->insert(&trx, jsonDocument0->slice(), mmdoc, opt, false);
+  EXPECT_TRUE(res0.ok());
   auto const res1 = collection->insert(&trx, jsonDocument1->slice(), mmdoc, opt, false);
   EXPECT_TRUE(res1.ok());
-  auto const res2 = collection->insert(&trx, jsonDocument2->slice(), mmdoc, opt, false);
-  EXPECT_TRUE(res2.ok());
   EXPECT_TRUE(trx.commit().ok());
-  auto queryString = "FOR d IN testCollection FILTER 'foo_val' IN d.tags.hop[*].foo.fo SORT d.tags.hop[*].baz.bz LIMIT 10 RETURN d";
+  auto queryString = "FOR d IN testCollection FILTER 'foo_val' IN d.tags.hop[*].foo.fo SORT d.tags.hop[*].baz.bz LIMIT 2 RETURN d";
   auto queryResult = ::executeQuery(vocbase, queryString);
   EXPECT_TRUE(queryResult.result.ok()); // commit
   auto result = queryResult.data->slice();
   EXPECT_TRUE(result.isArray());
   arangodb::velocypack::ArrayIterator resultIt(result);
   ASSERT_EQ(2, resultIt.size());
+  ASSERT_EQ(jsonDocument1->slice().get("_key").toJson(), resultIt.value().get("_key").toJson());
+  ASSERT_EQ(jsonDocument0->slice().get("_key").toJson(), (++resultIt).value().get("_key").toJson());
 }
 
 TEST_F(IndexNodeTest, expansionIndexAndNotExpansionDocumentQuery) {
@@ -231,7 +236,7 @@ TEST_F(IndexNodeTest, lastExpansionQuery) {
 
   arangodb::OperationOptions opt;
   arangodb::ManagedDocumentResult mmdoc;
-  auto jsonDocument = arangodb::velocypack::Parser::fromJson("{\"tags\": [\"foo_val\", \"bar_val\", \"baz_val\"]}");
+  auto jsonDocument = arangodb::velocypack::Parser::fromJson("{\"_key\": \"doc\", \"tags\": [\"foo_val\", \"bar_val\", \"baz_val\"]}");
   auto const res = collection->insert(&trx, jsonDocument->slice(), mmdoc, opt, false);
   EXPECT_TRUE(res.ok());
 
@@ -244,6 +249,7 @@ TEST_F(IndexNodeTest, lastExpansionQuery) {
     EXPECT_TRUE(result.isArray());
     arangodb::velocypack::ArrayIterator resultIt(result);
     ASSERT_EQ(1, resultIt.size());
+    ASSERT_EQ(jsonDocument->slice().get("_key").toJson(), resultIt.value().get("_key").toJson());
   }
   {
     auto queryString = "FOR d IN testCollection FILTER 'foo_val' IN d.tags SORT d.tags LIMIT 10 RETURN d";
@@ -253,6 +259,7 @@ TEST_F(IndexNodeTest, lastExpansionQuery) {
     EXPECT_TRUE(result.isArray());
     arangodb::velocypack::ArrayIterator resultIt(result);
     ASSERT_EQ(1, resultIt.size());
+    ASSERT_EQ(jsonDocument->slice().get("_key").toJson(), resultIt.value().get("_key").toJson());
   }
 }
 
