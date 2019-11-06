@@ -583,7 +583,7 @@ class HashIndexMap {
     std::unordered_map<arangodb::LocalDocumentId, VPackBuilder const*> found;
     TRI_ASSERT(keys->slice().isArray());
     auto sliceIt = arangodb::velocypack::ArrayIterator(keys->slice());
-    if (!(sliceIt != sliceIt.end())) {
+    if (!sliceIt.valid()) {
       return std::unordered_map<arangodb::LocalDocumentId, VPackBuilder>();
     }
     for (auto const& map : _valueMaps) {
@@ -607,7 +607,7 @@ class HashIndexMap {
         }
         found.swap(tmpFound);
       }
-      if (!(++sliceIt != sliceIt.end())) {
+      if (!(++sliceIt).valid()) {
         break;
       }
     }
