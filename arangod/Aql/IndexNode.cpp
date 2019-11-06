@@ -488,7 +488,7 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
         _outNonMaterializedIndVars.cbegin(),
         _outNonMaterializedIndVars.cend(), static_cast<aql::RegisterCount>(0),
         [](auto sum, auto const& b) {
-    return sum + b.second.size();
+    return sum + static_cast<aql::RegisterCount>(b.second.size());
   });
   TRI_ASSERT(0 == numIndVarsRegisters || isLateMaterialized());
 
