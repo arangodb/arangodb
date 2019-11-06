@@ -978,6 +978,10 @@ IResearchAnalyzerFeature::IResearchAnalyzerFeature(arangodb::application_feature
   // used for getting the system database
   // containing the persisted configuration
   startsAfter("SystemDatabase");
+  startsAfter("CommunicationPhase");
+  startsAfter("Aql");
+  startsAfter("OptimizerRules");
+  startsAfter("QueryRegistry");
 }
 
 /*static*/ bool IResearchAnalyzerFeature::canUse( // check permissions
