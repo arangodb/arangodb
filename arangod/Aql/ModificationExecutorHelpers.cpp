@@ -142,7 +142,7 @@ void ModificationExecutorHelpers::buildKeyAndRevDocument(VPackBuilder& builder,
   builder.close();
 }
 
-bool ModificationExecutorHelpers::writeRequired(ModificationExecutorInfos& infos,
+bool ModificationExecutorHelpers::writeRequired(ModificationExecutorInfos const& infos,
                                                 VPackSlice const& doc,
                                                 std::string const& key) {
   return (!infos._consultAqlWriteFilter ||
@@ -150,7 +150,7 @@ bool ModificationExecutorHelpers::writeRequired(ModificationExecutorInfos& infos
 }
 
 void ModificationExecutorHelpers::throwOperationResultException(
-    ModificationExecutorInfos& infos, OperationResult const& result) {
+    ModificationExecutorInfos const& infos, OperationResult const& result) {
   auto const& errorCounter = result.countErrorCodes;
 
   // Early escape if we are ignoring errors.

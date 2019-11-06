@@ -60,7 +60,7 @@ namespace aql {
 //
 // The simple modifiers are created by instantiating the SimpleModifier template
 // class (defined in SimpleModifier.h) with a *completion*.
-// The for completions for SimpleModifiers are defined in InsertModifier.h,
+// The four completions for SimpleModifiers are defined in InsertModifier.h,
 // RemoveModifier.h, and UpdateReplaceModifier.h
 //
 // The FetcherType has to provide the function fetchRow with the parameter atMost
@@ -113,12 +113,16 @@ class ModifierOutput {
   };
 
   ModifierOutput() = delete;
-  ModifierOutput(InputAqlItemRow const inputRow, Type const type);
-  ModifierOutput(InputAqlItemRow const inputRow, Type const type,
-                 std::unique_ptr<AqlValue>&& oldValue, std::unique_ptr<AqlValue>&& newValue);
+  ModifierOutput(InputAqlItemRow inputRow, Type type);
+  ModifierOutput(InputAqlItemRow inputRow, Type type, std::unique_ptr<AqlValue>&& oldValue,
+                 std::unique_ptr<AqlValue>&& newValue);
 
-  ModifierOutput(ModifierOutput&& o);
-  ModifierOutput& operator=(ModifierOutput&& o);
+  // No copying or copy assignment allowed of this class or any derived class
+  ModifierOutput(ModifierOutput const&) = delete;
+  ModifierOutput(ModifierOutput&& o) = delete;
+  ModifierOutput& operator=(ModifierOutput&& o) = delete;
+
+  ModifierOutput& operator=(ModifierOutput const&);
 
   InputAqlItemRow getInputRow() const;
   // If the output should be returned or skipped
@@ -128,11 +132,7 @@ class ModifierOutput {
   bool hasNewValue() const;
   AqlValue&& getNewValue() const;
 
- private:
-  // No copying or copy assignment allowed of this class or any derived class
-  ModifierOutput(ModifierOutput const&);
-  ModifierOutput& operator=(ModifierOutput const&);
-
+ protected:
   InputAqlItemRow const _inputRow;
   Type const _type;
   std::unique_ptr<AqlValue> _oldValue;
@@ -152,7 +152,7 @@ class ModificationExecutor {
   using Stats = ModificationStats;
 
   ModificationExecutor(FetcherType&, Infos&);
-  ~ModificationExecutor();
+  ~ModificationExecutor() = default;
 
   std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
 

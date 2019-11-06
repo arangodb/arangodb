@@ -65,10 +65,6 @@ UpsertModifier::OutputIterator& UpsertModifier::OutputIterator::operator++() {
   return next();
 }
 
-UpsertModifier::OutputIterator& UpsertModifier::OutputIterator::operator++(int) {
-  return next();
-}
-
 bool UpsertModifier::OutputIterator::operator!=(UpsertModifier::OutputIterator const& other) const
     noexcept {
   return _operationsIterator != other._operationsIterator;

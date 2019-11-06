@@ -23,6 +23,7 @@
 #ifndef ARANGOD_AQL_SIMPLE_MODIFIER_H
 #define ARANGOD_AQL_SIMPLE_MODIFIER_H
 
+#include "Aql/ExecutionBlock.h"
 #include "Aql/ModificationExecutorAccumulator.h"
 #include "Aql/ModificationExecutorInfos.h"
 
@@ -85,7 +86,6 @@ class SimpleModifier {
     explicit OutputIterator(SimpleModifier<ModifierCompletion, Enable> const& modifier);
 
     OutputIterator& operator++();
-    OutputIterator& operator++(int);
     bool operator!=(OutputIterator const& other) const noexcept;
     ModifierOutput operator*() const;
     OutputIterator begin() const;

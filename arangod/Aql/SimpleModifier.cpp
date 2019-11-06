@@ -24,7 +24,6 @@
 
 #include "Aql/AqlValue.h"
 #include "Aql/Collection.h"
-#include "Aql/ExecutionBlock.h"
 #include "Aql/ModificationExecutor.h"
 #include "Aql/ModificationExecutorHelpers.h"
 #include "Aql/OutputAqlItemRow.h"
@@ -66,12 +65,6 @@ SimpleModifier<ModifierCompletion, Enable>::OutputIterator::next() {
 template <class ModifierCompletion, typename Enable>
 typename SimpleModifier<ModifierCompletion, Enable>::OutputIterator&
 SimpleModifier<ModifierCompletion, Enable>::OutputIterator::operator++() {
-  return next();
-}
-
-template <class ModifierCompletion, typename Enable>
-typename SimpleModifier<ModifierCompletion, Enable>::OutputIterator&
-SimpleModifier<ModifierCompletion, Enable>::OutputIterator::operator++(int) {
   return next();
 }
 

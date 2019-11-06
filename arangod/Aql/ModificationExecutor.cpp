@@ -50,10 +50,10 @@ using namespace arangodb::basics;
 namespace arangodb {
 namespace aql {
 
-ModifierOutput::ModifierOutput(InputAqlItemRow const inputRow, Type const type)
+ModifierOutput::ModifierOutput(InputAqlItemRow inputRow, Type type)
     : _inputRow(inputRow), _type(type), _oldValue(nullptr), _newValue(nullptr) {}
 
-ModifierOutput::ModifierOutput(InputAqlItemRow const inputRow, Type const type,
+ModifierOutput::ModifierOutput(InputAqlItemRow inputRow, Type type,
                                std::unique_ptr<AqlValue>&& oldValue,
                                std::unique_ptr<AqlValue>&& newValue)
     : _inputRow(inputRow),
@@ -91,9 +91,6 @@ ModificationExecutor<FetcherType, ModifierType>::ModificationExecutor(Fetcher& f
   _infos._producesResults = ProducesResults(
       _infos._producesResults || (isDBServer && _infos._ignoreDocumentNotFound));
 }
-
-template <typename FetcherType, typename ModifierType>
-ModificationExecutor<FetcherType, ModifierType>::~ModificationExecutor() = default;
 
 // Fetches as many rows as possible from upstream using the fetcher's fetchRow
 // method and accumulates results through the modifier

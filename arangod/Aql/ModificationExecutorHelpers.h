@@ -75,15 +75,15 @@ void buildKeyAndRevDocument(VPackBuilder& builder, std::string const& key,
 // Establishes whether a write is necessary. This is only relevant for
 // SmartGraphs in the enterprise edition. Refer to skipForAqlWrite in
 // Enterprise Edition
-bool writeRequired(ModificationExecutorInfos& infos, VPackSlice const& doc,
-                   std::string const& key);
+bool writeRequired(ModificationExecutorInfos const& infos,
+                   VPackSlice const& doc, std::string const& key);
 
 // Throws an exception if a transaction resulted in an error, and errors
 // are not ignored.
 // This function includes special handling for ignoreDocumentNotFound cases,
 // which are needed in the cluster where a document not found error can happen
 // but not be fatal.
-void throwOperationResultException(ModificationExecutorInfos& infos,
+void throwOperationResultException(ModificationExecutorInfos const& infos,
                                    OperationResult const& result);
 
 // Converts ModificationOptions to OperationOptions

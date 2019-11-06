@@ -55,7 +55,6 @@ class UpsertModifier {
     explicit OutputIterator(UpsertModifier const& modifier);
 
     OutputIterator& operator++();
-    OutputIterator& operator++(int);
     bool operator!=(OutputIterator const& other) const noexcept;
     ModifierOutput operator*() const;
     OutputIterator begin() const;

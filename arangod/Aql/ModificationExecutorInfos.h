@@ -38,7 +38,7 @@ namespace aql {
 
 struct BoolWrapper {
   explicit BoolWrapper(bool b) { _value = b; }
-  operator bool() { return _value; }
+  operator bool() const noexcept { return _value; }
   bool _value;
 };
 
