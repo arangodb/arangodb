@@ -212,7 +212,6 @@ class SharedState {
           [[fallthrough]];
 
         default:
-          LOG_DEVEL << "state was: " << int(state);
           TRI_ASSERT(false);  // unexpected state
       }
     }

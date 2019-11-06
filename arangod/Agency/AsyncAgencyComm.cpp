@@ -52,7 +52,7 @@ struct RequestMeta {
   unsigned tries;
 };
 
-bool agencyAsyncShouldCancel(RequestMeta &meta) {
+bool agencyAsyncShouldCancel(RequestMeta& meta) {
   if (meta.tries++ > 20) {
     return true;
   }
@@ -83,7 +83,7 @@ std::string extractEndpointFromUrl(std::string const& location) {
   if (location.compare(0, 7, "http://", 7) == 0) {
     specification = "http+tcp://" + location.substr(7);
     delim = specification.find_first_of('/', 12);
-  } else if (location.compare(0, 8, "https://") == 0) {
+  } else if (location.compare(0, 8, "https://", 8) == 0) {
     specification = "http+ssl://" + location.substr(8);
     delim = specification.find_first_of('/', 13);
   }

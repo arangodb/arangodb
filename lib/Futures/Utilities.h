@@ -202,7 +202,7 @@ namespace collect {
 template<typename C, typename... Ts, std::size_t... I>
 void thenFinalAll(C& c, std::index_sequence<I...>, Future<Ts>&&... ts) {
 
-  (std::move(ts).thenFinal([c](Try<Ts> &&t) {
+  (std::move(ts).thenFinal([c](Try<Ts>&& t) {
     if (t.hasException()) {
       if (c->hadError.exchange(true, std::memory_order_release) == false) {
         c->p.setException(std::move(t).exception());
@@ -215,12 +215,12 @@ void thenFinalAll(C& c, std::index_sequence<I...>, Future<Ts>&&... ts) {
 
 template<typename... Ts, std::size_t... I>
 auto unpackAll(std::tuple<Try<Ts>...> &c, std::index_sequence<I...>) -> std::tuple<Ts...> {
-    return std::make_tuple(std::move(std::get<I>(c)).get()...);
+  return std::make_tuple(std::move(std::get<I>(c)).get()...);
 }
 
 template<typename... Ts>
 auto unpackAll(std::tuple<Try<Ts>...> &c) -> std::tuple<Ts...> {
-    return unpackAll(c, std::index_sequence_for<Ts...>{});
+  return unpackAll(c, std::index_sequence_for<Ts...>{});
 }
 
 

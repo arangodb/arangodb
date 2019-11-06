@@ -111,7 +111,7 @@ public:
 private:
   mutable std::mutex _lock;
   std::deque<std::string> _endpoints;
-  network::ConnectionPool *_pool;
+  network::ConnectionPool* _pool;
 };
 
 class AsyncAgencyComm final {
@@ -173,7 +173,7 @@ public:
   AsyncAgencyComm(AsyncAgencyCommManager& manager) : _manager(manager) {}
 
  private:
-  AsyncAgencyCommManager &_manager;
+  AsyncAgencyCommManager& _manager;
 };
 
 }

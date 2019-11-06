@@ -204,12 +204,12 @@ struct envelope {
 namespace detail {
 
 template<typename V>
-void add_to_builder(VPackBuilder *b, V const& v) {
+void add_to_builder(VPackBuilder* b, V const& v) {
   b->add(VPackValue(v));
 }
 
 template<>
-void add_to_builder(VPackBuilder *b, VPackSlice const& v) {
+void add_to_builder(VPackBuilder* b, VPackSlice const& v) {
   b->add(v);
 }
 
@@ -237,7 +237,7 @@ struct buffer_mapper<VPackBuilder> {
 
   VPackBuilder& userObject() { return *_builder; }
 
-  VPackBuilder *_builder;
+  VPackBuilder* _builder;
 };
 
 }

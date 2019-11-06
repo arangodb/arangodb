@@ -345,7 +345,7 @@ RestAdminClusterHandler::futureVoid RestAdminClusterHandler::tryDeleteServer(std
   }
 
   return AsyncAgencyComm().sendWriteTransaction(20s, std::move(trx))
-    .thenValue([this, ctx = std::move(ctx)](AsyncAgencyCommResult &&result) mutable {
+    .thenValue([this, ctx = std::move(ctx)](AsyncAgencyCommResult&&result) mutable {
 
       auto rootPath = arangodb::cluster::paths::root()->arango();
       if (result.ok() && result.statusCode() == 200) {
@@ -386,7 +386,7 @@ RestAdminClusterHandler::futureVoid RestAdminClusterHandler::tryDeleteServer(std
             }
 
             return AsyncAgencyComm().sendWriteTransaction(20s, std::move(trx)).thenValue(
-              [this, ctx = std::move(ctx)](AsyncAgencyCommResult &&result) mutable {
+              [this, ctx = std::move(ctx)](AsyncAgencyCommResult&& result) mutable {
                 if (result.ok()) {
                   if (result.statusCode() == fuerte::StatusOK) {
                     resetResponse(rest::ResponseCode::OK);
@@ -601,7 +601,7 @@ RestAdminClusterHandler::futureVoid RestAdminClusterHandler::createMoveShard(std
   auto self(shared_from_this());
 
   return AsyncAgencyComm().sendWriteTransaction(20s, std::move(trx)).thenValue(
-    [this, ctx = std::move(ctx), jobId = std::move(jobId)](AsyncAgencyCommResult &&result) {
+    [this, ctx = std::move(ctx), jobId = std::move(jobId)](AsyncAgencyCommResult&& result) {
 
       if (result.ok() && result.statusCode() == fuerte::StatusOK) {
         VPackBuffer<uint8_t> payload;
@@ -648,7 +648,7 @@ RestStatus RestAdminClusterHandler::handlePostMoveShard(std::unique_ptr<MoveShar
 
   // gather information about that shard
   return waitForFuture(AsyncAgencyComm().getValues(planPath).thenValue(
-      [this, ctx = std::move(ctx)](AgencyReadResult &&result) mutable {
+      [this, ctx = std::move(ctx)](AgencyReadResult&& result) mutable {
 
         if (result.ok()) {
           switch (result.statusCode()) {
@@ -703,7 +703,7 @@ RestStatus RestAdminClusterHandler::handleQueryJobStatus() {
   };
 
   return waitForFuture(AsyncAgencyComm().sendTransaction(20s, AgencyReadTransaction{std::move(paths)})
-    .thenValue([this, targetPath, jobId = std::move(jobId)](AsyncAgencyCommResult &&result) {
+    .thenValue([this, targetPath, jobId = std::move(jobId)](AsyncAgencyCommResult&& result) {
       if (result.ok() && result.statusCode() == fuerte::StatusOK) {
         auto paths = std::vector{
           targetPath->pending()->job(jobId)->vec(),
@@ -796,7 +796,7 @@ RestStatus RestAdminClusterHandler::handleCreateSingleServerJob(std::string cons
   }
 
   return waitForFuture(AsyncAgencyComm().setValue(20s, jobToDoPath, builder.slice())
-    .thenValue([this, jobId = std::move(jobId)](AsyncAgencyCommResult &&result) {
+    .thenValue([this, jobId = std::move(jobId)](AsyncAgencyCommResult&& result) {
       if (result.ok() && result.statusCode() == 200) {
         VPackBuffer<uint8_t> payload;
         {
@@ -969,7 +969,7 @@ RestStatus RestAdminClusterHandler::handleGetMaintenance() {
   auto maintenancePath = arangodb::cluster::paths::root()->arango()->supervision()->state()->mode();
 
   return waitForFuture(AsyncAgencyComm().getValues(maintenancePath).thenValue(
-    [this](AgencyReadResult &&result) {
+    [this](AgencyReadResult&& result) {
       if (result.ok() && result.statusCode() == fuerte::StatusOK) {
         VPackBuffer<uint8_t> body;
         {
@@ -1052,7 +1052,7 @@ RestStatus RestAdminClusterHandler::setMaintenance(bool wantToActive) {
   auto self(shared_from_this());
 
   return waitForFuture(sendTransaction().thenValue(
-    [this, wantToActive](AsyncAgencyCommResult &&result) {
+    [this, wantToActive](AsyncAgencyCommResult&& result) {
       if (result.ok() && result.statusCode() == 200) {
         return waitForSupervisionState(wantToActive);
       } else {
@@ -1125,7 +1125,7 @@ RestStatus RestAdminClusterHandler::handleGetNumberOfServers() {
 
   auto self(shared_from_this());
   return waitForFuture(AsyncAgencyComm().sendReadTransaction(10.0s, std::move(trx))
-    .thenValue([this] (AsyncAgencyCommResult &&result) {
+    .thenValue([this] (AsyncAgencyCommResult&& result) {
       auto targetPath = arangodb::cluster::paths::root()->arango()->target();
 
       if (result.ok() && result.statusCode() == fuerte::StatusOK) {
@@ -1230,7 +1230,7 @@ RestStatus RestAdminClusterHandler::handlePutNumberOfServers() {
 
   auto self(shared_from_this());
   return waitForFuture(AsyncAgencyComm().sendWriteTransaction(20s, std::move(trx))
-    .thenValue([this](AsyncAgencyCommResult &&result) {
+    .thenValue([this](AsyncAgencyCommResult&& result) {
       if (result.ok() && result.statusCode() == fuerte::StatusOK) {
         resetResponse(rest::ResponseCode::OK);
       } else {
@@ -1282,7 +1282,7 @@ RestStatus RestAdminClusterHandler::handleHealth() {
 
   // query the agency config
   auto fConfig = AsyncAgencyComm().sendWithFailover(fuerte::RestVerb::Get, "/_api/agency/config", 60.0s, VPackBuffer<uint8_t>())
-    .thenValue([self] (AsyncAgencyCommResult &&result) {
+    .thenValue([self] (AsyncAgencyCommResult&& result) {
       // this lambda has to capture self since collect returns early on an exception
       // and the RestHandle might be freed to early otherwise
 
@@ -1505,7 +1505,7 @@ RestAdminClusterHandler::futureVoid RestAdminClusterHandler::handlePostRebalance
   }
 
   return AsyncAgencyComm().sendWriteTransaction(20s, std::move(trx)).thenValue(
-    [this](AsyncAgencyCommResult &&result) {
+    [this](AsyncAgencyCommResult&& result) {
       if (result.ok() && result.statusCode() == 200) {
 
         VPackBuffer<uint8_t> responseBody;
