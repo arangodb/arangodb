@@ -105,11 +105,13 @@ IndexIterator::DocumentCallback getCallback(DocumentProducingFunctionContext& co
     output.moveValueInto(registerId, input, guard);
 
     auto indexId = index.getIndex()->id();
-    auto const indRegs = outNonMaterializedIndRegs.find(indexId);
-    TRI_ASSERT(indRegs != outNonMaterializedIndRegs.cend());
+    TRI_ASSERT(indexId == outNonMaterializedIndRegs.first);
+    if (ADB_UNLIKELY(indexId != outNonMaterializedIndRegs.first)) {
+      return false;
+    }
     // hash/skiplist/edge
     if (slice.isArray()) {
-      for (auto const& indReg : indRegs->second) {
+      for (auto const& indReg : outNonMaterializedIndRegs.second) {
         TRI_ASSERT(indReg.first < slice.length());
         if (ADB_UNLIKELY(indReg.first >= slice.length())) {
           return false;
@@ -121,9 +123,9 @@ IndexIterator::DocumentCallback getCallback(DocumentProducingFunctionContext& co
         output.moveValueInto(indReg.second, input, guard);
       }
     } else { // primary
-      auto indReg = indRegs->second.cbegin();
-      TRI_ASSERT(indReg != indRegs->second.cend());
-      if (ADB_UNLIKELY(indReg == indRegs->second.cend())) {
+      auto indReg = outNonMaterializedIndRegs.second.cbegin();
+      TRI_ASSERT(indReg != outNonMaterializedIndRegs.second.cend());
+      if (ADB_UNLIKELY(indReg == outNonMaterializedIndRegs.second.cend())) {
         return false;
       }
       AqlValue v(slice);

@@ -38,7 +38,6 @@ namespace {
       std::vector<arangodb::basics::AttributeName> attr;
       arangodb::aql::AstNode* astNode;
       size_t astNodeChildNum;
-      TRI_idx_iid_t indexId;
       size_t indexFieldNum;
       std::vector<arangodb::basics::AttributeName> const* indexField;
     };
@@ -66,7 +65,6 @@ namespace {
             if (commonIndexId == 0) {
               commonIndexId = indexId;
             }
-            nodeAttr.indexId = indexId;
             nodeAttr.indexFieldNum = indexFieldNum;
             nodeAttr.indexField = &field;
             break;
@@ -132,7 +130,7 @@ namespace {
           if (!state.wasAccess) {
             state.nodeAttrs.attrs.emplace_back(
               NodeWithAttrs::AttributeAndField{std::vector<arangodb::basics::AttributeName>{
-                {std::string(node->getStringValue(), node->getStringLength()), false}}, parentNode, childNumber, 0, 0, nullptr});
+                {std::string(node->getStringValue(), node->getStringLength()), false}}, parentNode, childNumber, 0, nullptr});
             state.wasAccess = true;
           } else {
             state.nodeAttrs.attrs.back().attr.emplace_back(std::string(node->getStringValue(), node->getStringLength()), false);
@@ -272,7 +270,7 @@ void arangodb::aql::lateDocumentMaterializationRule(arangodb::aql::Optimizer* op
         for (auto& node : nodesToChange) {
           std::transform(node.attrs.cbegin(), node.attrs.cend(), std::inserter(uniqueVariables, uniqueVariables.end()),
                          [&ast] (auto const& attrAndField) {
-                           return std::make_pair(attrAndField.indexField, IndexNode::IndexVariable{attrAndField.indexId, attrAndField.indexFieldNum,
+                           return std::make_pair(attrAndField.indexField, IndexNode::IndexVariable{attrAndField.indexFieldNum,
                                                  ast->variables()->createTemporaryVariable()});
                          });
         }
@@ -294,7 +292,7 @@ void arangodb::aql::lateDocumentMaterializationRule(arangodb::aql::Optimizer* op
 
         // we could apply late materialization
         // 1. We need to notify index node - it should not materialize documents, but produce only localDocIds
-        indexNode->setLateMaterialized(localDocIdTmp, uniqueVariables);
+        indexNode->setLateMaterialized(localDocIdTmp, commonIndexId, uniqueVariables);
         // 2. We need to add materializer after limit node to do materialization
         // insert a materialize node
         auto materializeNode =

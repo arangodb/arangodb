@@ -108,7 +108,7 @@ class IndexExecutorInfos : public ExecutorInfos {
   bool hasNonConstParts() const;
 
   bool isLateMaterialized() const noexcept {
-    return !_outNonMaterializedIndRegs.empty();
+    return !_outNonMaterializedIndRegs.second.empty();
   }
 
   IndexNode::IndexValuesRegisters const& getOutNonMaterializedIndRegs() const noexcept {

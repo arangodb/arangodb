@@ -1147,13 +1147,9 @@ function processQuery(query, explain, planIndex) {
         let indexVariables = '';
         if (node.hasOwnProperty('outNmDocId')) {
           indexAnnotation += '/* with late materialization */';
-          if (node.hasOwnProperty('IndexesValuesVars') && node.IndexesValuesVars.length > 0) {
-            indexVariables = node.IndexesValuesVars.map(function (IndexValuesVars) {
-              if (IndexValuesVars.hasOwnProperty('IndexValuesVars') && IndexValuesVars.IndexValuesVars.length > 0) {
-                return IndexValuesVars.IndexValuesVars.map(function (IndexValuesVar) {
-                  return keyword(' LET ') + variableName(IndexValuesVar) + ' = ' + variableName(node.outVariable) + '.' + attribute(IndexValuesVar.field);
-                }).join('');
-              }
+          if (IndexValuesVars.hasOwnProperty('IndexValuesVars') && IndexValuesVars.IndexValuesVars.length > 0) {
+            indexVariables = IndexValuesVars.IndexValuesVars.map(function (IndexValuesVar) {
+              return keyword(' LET ') + variableName(IndexValuesVar) + ' = ' + variableName(node.outVariable) + '.' + attribute(IndexValuesVar.field);
             }).join('');
           }
         }

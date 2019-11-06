@@ -281,18 +281,14 @@ TEST_F(IndexNodeTest, constructIndexNode) {
   // correct json
   auto createJson = arangodb::velocypack::Parser::fromJson(
     "{"
-    "  \"IndexesValuesVars\" : ["
+    "  \"IndexValuesVars\" : ["
     "    {"
-    "      \"IndexValuesVars\" : ["
-    "        {"
-    "          \"fieldNumber\" : 2,"
-    "          \"id\" : 6,"
-    "          \"name\" : \"5\""
-    "        }"
-    "      ],"
-    "      \"indexId\" : 2086177"
+    "      \"fieldNumber\" : 2,"
+    "      \"id\" : 6,"
+    "      \"name\" : \"5\""
     "    }"
     "  ],"
+    "  \"indexIdOfVars\" : 2086177,"
     "  \"ascending\" : true,"
     "  \"collection\" : \"testCollection\","
     "  \"condition\" : {"
@@ -526,7 +522,7 @@ TEST_F(IndexNodeTest, constructIndexNode) {
 
     // not materialized
     {
-      indNode.setLateMaterialized(nullptr, arangodb::aql::IndexNode::IndexVarsInfo());
+      indNode.setLateMaterialized(nullptr, 0, arangodb::aql::IndexNode::IndexVarsInfo());
       ASSERT_FALSE(indNode.isLateMaterialized());
     }
   }
@@ -557,18 +553,14 @@ TEST_F(IndexNodeTest, invalidLateMaterializedJSON) {
   {
     auto createJson = arangodb::velocypack::Parser::fromJson(
       "{"
-      "  \"IndexesValuesVars\" : ["
+      "  \"IndexValuesVars\" : ["
       "    {"
-      "      \"IndexValuesVars\" : ["
-      "        {"
-      "          \"fieldNumber\" : 2,"
-      "          \"id\" : 6,"
-      "          \"name\" : \"5\""
-      "        }"
-      "      ],"
-      "      \"indexId\" : 2086177"
+      "      \"fieldNumber\" : 2,"
+      "      \"id\" : 6,"
+      "      \"name\" : \"5\""
       "    }"
       "  ],"
+      "  \"indexIdOfVars\" : 2086177,"
       "  \"collection\" : \"testCollection\","
       "  \"condition\" : {"
       "  },"
@@ -604,79 +596,16 @@ TEST_F(IndexNodeTest, invalidLateMaterializedJSON) {
     ASSERT_TRUE(indNode.isLateMaterialized());
   }
 
-  // incorrect IndexesValuesVars
-  {
-    auto createJson = arangodb::velocypack::Parser::fromJson(
-      "{"
-      "  \"IndexesValuesVars\" :"
-      "    {"
-      "      \"IndexValuesVars\" : ["
-      "        {"
-      "          \"fieldNumber\" : 2,"
-      "          \"id\" : 6,"
-      "          \"name\" : \"5\""
-      "        }"
-      "      ],"
-      "      \"indexId\" : 2086177"
-      "    }"
-      "  ,"
-      "  \"collection\" : \"testCollection\","
-      "  \"condition\" : {"
-      "  },"
-      "  \"depth\" : 1,"
-      "  \"id\" : 9,"
-      "  \"indexes\" : ["
-      "  ],"
-      "  \"nrRegs\" : ["
-      "  ],"
-      "  \"nrRegsHere\" : ["
-      "  ],"
-      "  \"outNmDocId\" : {"
-      "    \"id\" : 8,"
-      "    \"name\" : \"7\""
-      "  }, "
-      "  \"outVariable\" : {"
-      "    \"id\" : 0,"
-      "    \"name\" : \"d\""
-      "  },"
-      "  \"regsToClear\" : ["
-      "  ],"
-      "  \"totalNrRegs\" : 0,"
-      "  \"varInfoList\" : ["
-      "  ],"
-      "  \"varsUsedLater\" : ["
-      "  ],"
-      "  \"varsValid\" : ["
-      "  ]"
-      "}"
-    );
-    // deserialization
-    try {
-      arangodb::aql::IndexNode indNode(query.plan(), createJson->slice());
-      EXPECT_TRUE(false);
-    } catch (arangodb::basics::Exception const& e) {
-      EXPECT_EQ(TRI_ERROR_BAD_PARAMETER, e.code());
-    } catch (...) {
-      EXPECT_TRUE(false);
-    }
-  }
-
   // incorrect IndexValuesVars
   {
     auto createJson = arangodb::velocypack::Parser::fromJson(
       "{"
-      "  \"IndexesValuesVars\" : ["
-      "    {"
-      "      \"IndexValuesVars\" :"
-      "        {"
-      "          \"fieldNumber\" : 2,"
-      "          \"id\" : 6,"
-      "          \"name\" : \"5\""
-      "        }"
-      "      ,"
-      "      \"indexId\" : 2086177"
-      "    }"
-      "  ],"
+      "  \"IndexValuesVars\" : {"
+      "    \"fieldNumber\" : 2,"
+      "    \"id\" : 6,"
+      "    \"name\" : \"5\""
+      "  },"
+      "  \"indexIdOfVars\" : 2086177,"
       "  \"collection\" : \"testCollection\","
       "  \"condition\" : {"
       "  },"
@@ -722,18 +651,14 @@ TEST_F(IndexNodeTest, invalidLateMaterializedJSON) {
   {
     auto createJson = arangodb::velocypack::Parser::fromJson(
       "{"
-      "  \"IndexesValuesVars\" : ["
+      "  \"IndexValuesVars\" : ["
       "    {"
-      "      \"IndexValuesVars\" : ["
-      "        {"
-      "          \"fieldNumber\" : \"two\","
-      "          \"id\" : 6,"
-      "          \"name\" : \"5\""
-      "        }"
-      "      ],"
-      "      \"indexId\" : 2086177"
+      "      \"fieldNumber\" : \"two\","
+      "      \"id\" : 6,"
+      "      \"name\" : \"5\""
       "    }"
       "  ],"
+      "  \"indexIdOfVars\" : 2086177,"
       "  \"collection\" : \"testCollection\","
       "  \"condition\" : {"
       "  },"
@@ -779,18 +704,14 @@ TEST_F(IndexNodeTest, invalidLateMaterializedJSON) {
   {
     auto createJson = arangodb::velocypack::Parser::fromJson(
       "{"
-      "  \"IndexesValuesVars\" : ["
+      "  \"IndexValuesVars\" : ["
       "    {"
-      "      \"IndexValuesVars\" : ["
-      "        {"
-      "          \"fieldNumber\" : 2,"
-      "          \"id\" : \"six\","
-      "          \"name\" : \"5\""
-      "        }"
-      "      ],"
-      "      \"indexId\" : 2086177"
+      "      \"fieldNumber\" : 2,"
+      "      \"id\" : \"six\","
+      "      \"name\" : \"5\""
       "    }"
       "  ],"
+      "  \"indexIdOfVars\" : 2086177,"
       "  \"collection\" : \"testCollection\","
       "  \"condition\" : {"
       "  },"
@@ -836,18 +757,14 @@ TEST_F(IndexNodeTest, invalidLateMaterializedJSON) {
   {
     auto createJson = arangodb::velocypack::Parser::fromJson(
       "{"
-      "  \"IndexesValuesVars\" : ["
+      "  \"IndexValuesVars\" : ["
       "    {"
-      "      \"IndexValuesVars\" : ["
-      "        {"
-      "          \"fieldNumber\" : 2,"
-      "          \"id\" : 6,"
-      "          \"name\" : 5"
-      "        }"
-      "      ],"
-      "      \"indexId\" : 2086177"
+      "      \"fieldNumber\" : 2,"
+      "      \"id\" : 6,"
+      "      \"name\" : 5"
       "    }"
       "  ],"
+      "  \"indexIdOfVars\" : 2086177,"
       "  \"collection\" : \"testCollection\","
       "  \"condition\" : {"
       "  },"
@@ -882,22 +799,18 @@ TEST_F(IndexNodeTest, invalidLateMaterializedJSON) {
     ASSERT_TRUE(indNode.isLateMaterialized()); // do not read the name
   }
 
-  // incorrect indexId
+  // incorrect indexIdOfVars
   {
     auto createJson = arangodb::velocypack::Parser::fromJson(
       "{"
-      "  \"IndexesValuesVars\" : ["
+      "  \"IndexValuesVars\" : ["
       "    {"
-      "      \"IndexValuesVars\" : ["
-      "        {"
-      "          \"fieldNumber\" : 2,"
-      "          \"id\" : 6,"
-      "          \"name\" : \"5\""
-      "        }"
-      "      ],"
-      "      \"indexId\" : \"2086177\""
+      "      \"fieldNumber\" : 2,"
+      "      \"id\" : 6,"
+      "      \"name\" : \"5\""
       "    }"
       "  ],"
+      "  \"indexIdOfVars\" : \"2086177\","
       "  \"collection\" : \"testCollection\","
       "  \"condition\" : {"
       "  },"
@@ -943,18 +856,14 @@ TEST_F(IndexNodeTest, invalidLateMaterializedJSON) {
   {
     auto createJson = arangodb::velocypack::Parser::fromJson(
       "{"
-      "  \"IndexesValuesVars\" : ["
+      "  \"IndexValuesVars\" : ["
       "    {"
-      "      \"IndexValuesVars\" : ["
-      "        {"
-      "          \"fieldNumber\" : 2,"
-      "          \"id\" : 6,"
-      "          \"name\" : \"5\""
-      "        }"
-      "      ],"
-      "      \"indexId\" : 2086177"
+      "      \"fieldNumber\" : 2,"
+      "      \"id\" : 6,"
+      "      \"name\" : \"5\""
       "    }"
       "  ],"
+      "  \"indexIdOfVars\" : 2086177,"
       "  \"collection\" : \"testCollection\","
       "  \"condition\" : {"
       "  },"
