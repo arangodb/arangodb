@@ -39,6 +39,7 @@ function lateDocumentMaterializationRuleTestSuite () {
   let collectionNames = [];
   let expCollectionNames = [];
   let primaryIndexCollectionName = "UnitTestsPrimCollection";
+  let edgeIndexCollectionName = "UnitTestsEdgeCollection";
   var i;
   var j;
   for (i = 0; i < numOfCollectionIndexes; ++i) {
@@ -56,6 +57,7 @@ function lateDocumentMaterializationRuleTestSuite () {
         }
       }
       db._drop(primaryIndexCollectionName);
+      db._drop(edgeIndexCollectionName);
 
       var collections = [];
       var expCollections = [];
@@ -65,7 +67,8 @@ function lateDocumentMaterializationRuleTestSuite () {
           expCollections.push(db._create(expCollectionNames[i * numOfCollectionIndexes + j], { numberOfShards: 3 }));
         }
       }
-      var primCollection = db._create(primaryIndexCollectionName, { numberOfShards: 3 })
+      var primCollection = db._create(primaryIndexCollectionName, { numberOfShards: 3 });
+      var edgeCollection = db._createEdgeCollection(edgeIndexCollectionName, { numberOfShards: 3 });
 
       for (i = 0; i < numOfCollectionIndexes; ++i) {
         let type;
@@ -106,6 +109,9 @@ function lateDocumentMaterializationRuleTestSuite () {
       primCollection.save({_key: "c0", foo: "a_val"});
       primCollection.save({_key: "c1", foo: "b_val"});
       primCollection.save({_key: "c2", foo: "c_val"});
+
+      edgeCollection.save({_key: "c0", _from: "testVertices/c0", _to: "testVertices/c1"});
+      edgeCollection.save({_key: "c1", _from: "testVertices/c0", _to: "testVertices/c0"});
     },
 
     tearDownAll : function () {
@@ -116,6 +122,7 @@ function lateDocumentMaterializationRuleTestSuite () {
         }
       }
       try { db._drop(primaryIndexCollectionName); } catch(e) {}
+      try { db._drop(edgeIndexCollectionName); } catch(e) {}
     },
     testNotAppliedDueToNoFilter() {
       for (i = 0; i < numOfCollectionIndexes; ++i) {
@@ -376,6 +383,19 @@ function lateDocumentMaterializationRuleTestSuite () {
       });
       assertEqual(0, expectedKeys.size);
     },
+    testQueryResultsEdgeIndex() {
+      let query = "FOR d IN " + edgeIndexCollectionName + " FILTER d._from == 'testVertices/c0' SORT NOOPT(d._from) DESC LIMIT 10 RETURN d";
+      let plan = AQL_EXPLAIN(query).plan;
+      assertNotEqual(-1, plan.rules.indexOf(ruleName));
+      let result = AQL_EXECUTE(query);
+      assertEqual(2, result.json.length);
+      let expectedKeys = new Set(['c0', 'c1']);
+      result.json.forEach(function(doc) {
+        assertTrue(expectedKeys.has(doc._key));
+        expectedKeys.delete(doc._key);
+      });
+      assertEqual(0, expectedKeys.size);
+    }
   };
 }
 

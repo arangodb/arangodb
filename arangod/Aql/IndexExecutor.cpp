@@ -108,7 +108,7 @@ IndexIterator::DocumentCallback getCallback(DocumentProducingFunctionContext& co
     auto const indRegs = outNonMaterializedIndRegs.find(indexId);
     TRI_ASSERT(indRegs != outNonMaterializedIndRegs.cend());
     size_t i = 0;
-    // hash/skiplist
+    // hash/skiplist/edge
     if (slice.isArray()) {
       for (auto const s : arangodb::velocypack::ArrayIterator(slice)) {
         auto indReg = indRegs->second.find(i++);
@@ -120,7 +120,7 @@ IndexIterator::DocumentCallback getCallback(DocumentProducingFunctionContext& co
         TRI_ASSERT(!output.isFull());
         output.moveValueInto(indReg->second, input, guard);
       }
-    } else { // primary/edge
+    } else { // primary
       auto indReg = indRegs->second.find(i);
       TRI_ASSERT(indReg != indRegs->second.cend());
       AqlValue v(slice);
