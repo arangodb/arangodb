@@ -160,15 +160,20 @@ function gatherBlocksTestSuite() {
               rv = rv.toArray().map(doc => { return doc.value; } );
               time += (Date.now() - start);
 
+              // check number of returned documents
+              assertEqual(rv.length, t.count);
+
+              if (t.sortmode === "unset") {
+                rv.sort();
+              }
+
               // check that the result is the same for each call
               if (last_rv) {
-                assertEqual(rv,last_rv);
+                assertEqual(rv, last_rv, "q: " + t.test);
               }
+
               last_rv = rv;
             };
-
-            // check number of returned documents
-            assertEqual(rv.length, t.count);
 
             // check that the returned result is sorted when requested
             if(t.sorted) {
