@@ -91,7 +91,7 @@ namespace {
 
 /// Initialize certain agency entries, like Plan, system collections
 /// and various similar things. Only runs through on a SINGLE coordinator.
-/// must only return if we are boostrap lead or bootstrap is done
+/// must only return if we are bootstrap lead or bootstrap is done
 void raceForClusterBootstrap(BootstrapFeature& feature) {
   AgencyComm agency;
   auto& ci = feature.server().getFeature<ClusterFeature>().clusterInfo();
@@ -109,13 +109,13 @@ void raceForClusterBootstrap(BootstrapFeature& feature) {
         std::vector<std::string>({AgencyCommManager::path(), ::bootstrapKey}));
     if (value.isString()) {
       // key was found and is a string
-      std::string boostrapVal = value.copyString();
-      if (boostrapVal.find("done") != std::string::npos) {
+      std::string bootstrapVal = value.copyString();
+      if (bootstrapVal.find("done") != std::string::npos) {
         // all done, let's get out of here:
         LOG_TOPIC("61e04", TRACE, Logger::STARTUP)
             << "raceForClusterBootstrap: bootstrap already done";
         return;
-      } else if (boostrapVal == ServerState::instance()->getId()) {
+      } else if (bootstrapVal == ServerState::instance()->getId()) {
         agency.removeValues(::bootstrapKey, false);
       }
       LOG_TOPIC("49437", DEBUG, Logger::STARTUP)
@@ -320,7 +320,7 @@ void BootstrapFeature::start() {
       ss->setFoxxmaster(myId);  // could be empty, but set anyway
     }
 
-    if (v8Enabled) {  // runs the single server boostrap JS
+    if (v8Enabled) {  // runs the single server bootstrap JS
       // will run foxx/manager.js::_startup() and more (start queues, load
       // routes, etc)
       LOG_TOPIC("e0c8b", DEBUG, Logger::STARTUP) << "Running server/server.js";

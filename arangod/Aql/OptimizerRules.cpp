@@ -7259,10 +7259,12 @@ void arangodb::aql::moveFiltersIntoEnumerateRule(Optimizer* opt, std::unique_ptr
         if (!expr->isDeterministic() || !expr->canRunOnDBServer()) {
           break;
         }
+
         if (expr->node() == nullptr) {
           break;
         }
 
+        TRI_ASSERT(!expr->willUseV8());
         found.clear();
         Ast::getReferencedVariables(expr->node(), found);
         if (found.size() == 1 && found.find(outVariable) != found.end()) {

@@ -113,7 +113,7 @@ void SharedQueryState::execute() {
   if (!queued) { // just invalidate
      _wakeupCb = nullptr;
      _valid = false;
-     // guard.unlock();
+     _inWakeupCb = false;
      _cv.notify_all();
   }
 }

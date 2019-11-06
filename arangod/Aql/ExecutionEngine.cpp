@@ -587,10 +587,14 @@ std::pair<ExecutionState, size_t> ExecutionEngine::skipSome(size_t atMost) {
   return _root->skipSome(atMost);
 }
 
-Result ExecutionEngine::shutdownSync(int errorCode) noexcept {
+Result ExecutionEngine::shutdownSync(int errorCode) noexcept try {
   Result res{TRI_ERROR_INTERNAL, "unable to shutdown query"};
   ExecutionState state = ExecutionState::WAITING;
   try {
+    TRI_IF_FAILURE("ExecutionEngine::shutdownSync") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+
     std::shared_ptr<SharedQueryState> sharedState = _query.sharedState();
     if (sharedState != nullptr) {
       sharedState->resetWakeupHandler();
@@ -601,12 +605,33 @@ Result ExecutionEngine::shutdownSync(int errorCode) noexcept {
         }
       }
     }
+  } catch (basics::Exception const& ex) {
+    res.reset(ex.code(), std::string("unable to shutdown query: ") + ex.what());
   } catch (std::exception const& ex) {
-    res.reset(TRI_ERROR_INTERNAL, ex.what());
+    res.reset(TRI_ERROR_INTERNAL, std::string("unable to shutdown query: ") + ex.what());
   } catch (...) {
     res.reset(TRI_ERROR_INTERNAL);
   }
+
+  if (res.fail() && ServerState::instance()->isCoordinator()) {
+    // shutdown attempt has failed...
+    // in a cluster, try to at least abort all other coordinator parts
+    auto queryRegistry = QueryRegistryFeature::registry();
+    if (queryRegistry != nullptr) {
+      for (auto const& id : _coordinatorQueryIds) {
+        try {
+          queryRegistry->destroy(_query.vocbase().name(), id, errorCode, false);
+        } catch (...) {
+          // we want to abort all parts, even if aborting other parts fails
+        }
+      }
+    }
+  }
+
   return res;
+} catch (...) {
+  // nothing we can do here...
+  return Result(TRI_ERROR_INTERNAL, "unable to shutdown query");
 }
 
 /// @brief shutdown, will be called exactly once for the whole query

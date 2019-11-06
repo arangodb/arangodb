@@ -625,6 +625,9 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation, Query* q
   // this is because the request may contain additional data
   if ((operation == "getSome" || operation == "skipSome") &&
       !query->engine()->initializeCursorCalled()) {
+    TRI_IF_FAILURE("RestAqlHandler::getSome") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
     auto res = query->engine()->initializeCursor(nullptr, 0);
     if (res.first == ExecutionState::WAITING) {
       return RestStatus::WAITING;
@@ -649,6 +652,9 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation, Query* q
         answerBuilder.add(StaticStrings::Error, VPackValue(res != TRI_ERROR_NO_ERROR));
         answerBuilder.add(StaticStrings::Code, VPackValue(res));
       } else if (operation == "getSome") {
+        TRI_IF_FAILURE("RestAqlHandler::getSome") {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
         auto atMost =
             VelocyPackHelper::getNumericValue<size_t>(querySlice, "atMost",
                                                       ExecutionBlock::DefaultBatchSize());
