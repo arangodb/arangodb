@@ -48,7 +48,7 @@ function installFoxx(mountpoint, which) {
   } else if (which.type === 'file') {
     content = fs.readFileSync(which.buffer);
   }
-  let devmode;
+  let devmode = '';
   if (which.hasOwnProperty('devmode') && which.devmode === true) {
     devmode = '&development=true';
   }
@@ -203,8 +203,11 @@ describe('Foxx service', () => {
 
   const minimalWorkingServicePath = path.resolve(internal.pathForTesting('common'), 'test-data', 'apps', 'minimal-working-service');
   const minimalWorkingZip = loadFoxxIntoZip(minimalWorkingServicePath);
-  const minimalWorkingZipDev = minimalWorkingZip;
-  minimalWorkingZipDev['devmode'] = true;
+  const minimalWorkingZipDev = {
+    buffer: minimalWorkingZip.buffer,
+    devmode: true,
+    type: minimalWorkingZip.type
+  };
   const minimalWorkingZipPath = utils.zipDirectory(minimalWorkingServicePath);
   
   const itzpapalotlPath = path.resolve(internal.pathForTesting('common'), 'test-data', 'apps', 'itzpapalotl');
