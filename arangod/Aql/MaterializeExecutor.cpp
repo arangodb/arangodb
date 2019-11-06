@@ -112,10 +112,9 @@ std::pair<ExecutionState, NoStats> arangodb::aql::MaterializeExecutor<T>::produc
     arangodb::LogicalCollection const* collection = nullptr;
     if constexpr (std::is_same<T, std::string const&>::value) {
       if (_collection == nullptr) {
-        _collection = collection = trx->documentCollection(collectionSource);
-      } else {
-        collection = _collection;
+        _collection = trx->documentCollection(collectionSource);
       }
+      collection = _collection;
     } else {
       collection =
         reinterpret_cast<arangodb::LogicalCollection const*>(
