@@ -35,6 +35,8 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <optional>
+
 namespace arangodb {
 namespace aql {
 //
