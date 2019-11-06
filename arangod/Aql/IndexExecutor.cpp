@@ -107,22 +107,25 @@ IndexIterator::DocumentCallback getCallback(DocumentProducingFunctionContext& co
     auto indexId = index.getIndex()->id();
     auto const indRegs = outNonMaterializedIndRegs.find(indexId);
     TRI_ASSERT(indRegs != outNonMaterializedIndRegs.cend());
-    size_t i = 0;
     // hash/skiplist/edge
     if (slice.isArray()) {
-      for (auto const s : arangodb::velocypack::ArrayIterator(slice)) {
-        auto indReg = indRegs->second.find(i++);
-        if (indReg == indRegs->second.cend()) {
-          continue;
+      for (auto const& indReg : indRegs->second) {
+        TRI_ASSERT(indReg.first < slice.length());
+        if (indReg.first >= slice.length()) {
+          return false;
         }
+        auto s = slice.at(indReg.first);
         AqlValue v(s);
         AqlValueGuard guard{v, true};
         TRI_ASSERT(!output.isFull());
-        output.moveValueInto(indReg->second, input, guard);
+        output.moveValueInto(indReg.second, input, guard);
       }
     } else { // primary
-      auto indReg = indRegs->second.find(i);
+      auto indReg = indRegs->second.cbegin();
       TRI_ASSERT(indReg != indRegs->second.cend());
+      if (indReg == indRegs->second.cend()) {
+        return false;
+      }
       AqlValue v(slice);
       AqlValueGuard guard{v, true};
       TRI_ASSERT(!output.isFull());
