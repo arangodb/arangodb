@@ -289,7 +289,7 @@ void IndexNode::toVelocyPackHelper(VPackBuilder& builder, unsigned flags,
 
     builder.add("indexIdOfVars", VPackValue(_outNonMaterializedIndVars.first));
     // container _indexes contains a few items
-    auto indIt = std::find_if(_indexes.cbegin(), _indexes.cend(), [this](auto const& index) {
+    auto indIt = std::find_if(_indexes.cbegin(), _indexes.cend(), [this] (auto const& index) {
       return index.getIndex()->id() == _outNonMaterializedIndVars.first;
     });
     TRI_ASSERT(indIt != _indexes.cend());
