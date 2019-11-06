@@ -116,13 +116,13 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncInquiry(
   using namespace arangodb;
 
   // check for conditions to abort
+  auto waitTime = agencyAsyncWaitTime(meta);
   if (agencyAsyncShouldCancel(meta)) {
     return futures::makeFuture(AsyncAgencyCommResult{fuerte::Error::Canceled, nullptr});
   } else if (agencyAsyncShouldTimeout(meta)) {
     return futures::makeFuture(AsyncAgencyCommResult{fuerte::Error::Timeout, nullptr});
   }
 
-  auto waitTime = agencyAsyncWaitTime(meta);
   return SchedulerFeature::SCHEDULER->delay(waitTime).thenValue(
     [meta = std::move(meta), &man, body = std::move(body)](auto){
 
@@ -193,6 +193,7 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncSend(
   using namespace arangodb;
 
   // check for conditions to abort
+  auto waitTime = agencyAsyncWaitTime(meta);
   if (agencyAsyncShouldCancel(meta)) {
     return futures::makeFuture(AsyncAgencyCommResult{fuerte::Error::Canceled, nullptr});
   } else if (agencyAsyncShouldTimeout(meta)) {
@@ -200,7 +201,6 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncSend(
   }
 
   // after a possible small delay (if required)
-  auto waitTime = agencyAsyncWaitTime(meta);
   return SchedulerFeature::SCHEDULER->delay(waitTime).thenValue(
     [meta = std::move(meta), &man, body = std::move(body)](auto) {
 
