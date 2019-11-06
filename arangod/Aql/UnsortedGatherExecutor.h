@@ -27,6 +27,7 @@
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Containers/SmallVector.h"
 
 namespace arangodb {
 
@@ -76,9 +77,6 @@ class UnsortedGatherExecutor {
    */
   std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
 
-//  std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t atMost) const;
-//  std::tuple<ExecutionState, Stats, SharedAqlItemBlockPtr> fetchBlockForPassthrough(size_t atMost);
-
   std::tuple<ExecutionState, Stats, size_t> skipRows(size_t atMost);
   
  private:
@@ -88,7 +86,8 @@ class UnsortedGatherExecutor {
  private:
   Fetcher& _fetcher;
   
-  std::vector<ExecutionState> _upstream;
+  ::arangodb::containers::SmallVector<ExecutionState>::allocator_type::arena_type _arena;
+  ::arangodb::containers::SmallVector<ExecutionState> _upstream{_arena};
 
   // Total Number of dependencies
   size_t _numberDependencies;

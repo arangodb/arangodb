@@ -73,12 +73,9 @@ std::pair<ExecutionState, NoStats> UnsortedGatherExecutor::produceRows(OutputAql
   ExecutionState state;
   InputAqlItemRow inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
   
-  bool more = false;
-  bool waiting = false;
-  
-  size_t i = _currentDependency;
-  for (size_t x = 0; x < _numberDependencies; ++x) {
-    i = (_currentDependency + x) % _numberDependencies;
+  size_t x;
+  for (x = 0; x < _numberDependencies; ++x) {
+    size_t i = (_currentDependency + x) % _numberDependencies;
   
     if (_upstream[i] == ExecutionState::DONE) {
       continue;
@@ -98,23 +95,25 @@ std::pair<ExecutionState, NoStats> UnsortedGatherExecutor::produceRows(OutputAql
     }
     
     _upstream[i] = state;
-    if (state == ExecutionState::HASMORE) {
-      more = true;
-    } else if (state == ExecutionState::WAITING) {
-      waiting = true;
-    }
     if (output.isFull()) {
       break;
     }
   }
-  _currentDependency = i;
+  _currentDependency = x;
   
   NoStats stats;
-  if (more) {
-    return {ExecutionState::HASMORE, stats};
-  } else if (waiting) {
+  size_t numWaiting = 0;
+  for (x = 0; x < _numberDependencies; ++x) {
+    if (_upstream[x] == ExecutionState::HASMORE) {
+      return {ExecutionState::HASMORE, stats};
+    } else if (_upstream[x] == ExecutionState::WAITING) {
+      numWaiting++;
+    }
+  }
+  if (numWaiting > 0) {
     return {ExecutionState::WAITING, stats};
   }
+  
   TRI_ASSERT(std::all_of(_upstream.begin(), _upstream.end(), [](auto const& s) { return s == ExecutionState::DONE; } ));
   return {ExecutionState::DONE, stats};
 }
