@@ -133,6 +133,21 @@ class IResearchAnalyzerFeature final : public arangodb::application_features::Ap
   );
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief create new analyzer pool
+  /// @param analyzer created analyzer
+  /// @param name analyzer name (already normalized)
+  /// @param type the underlying IResearch analyzer type
+  /// @param properties the configuration for the underlying IResearch type
+  /// @param features the expected features the analyzer should produce
+  /// @return success
+  //////////////////////////////////////////////////////////////////////////////
+  static Result createAnalyzerPool(AnalyzerPool::ptr& analyzer,
+                                   irs::string_ref const& name,
+                                   irs::string_ref const& type,
+                                   VPackSlice const properties,
+                                   irs::flags const& features);
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief emplace an analyzer as per the specified parameters
   /// @param result the result of the successful emplacement (out-param)
   ///               first - the emplaced pool
@@ -177,6 +192,7 @@ class IResearchAnalyzerFeature final : public arangodb::application_features::Ap
      irs::string_ref const& type,
      VPackSlice const properties,
      irs::flags const& features) {
+    // FIXME that's only used by IResearchLinkMeta and can be removed
     return ensure(result, name, type, properties, features, false);
   }
 

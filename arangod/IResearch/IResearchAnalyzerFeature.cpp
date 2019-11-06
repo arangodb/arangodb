@@ -98,7 +98,7 @@ bool normalize(std::string& out,
     // in ArangoSearch we don't allow to have analyzers with empty type string
     return false;
   }
-  
+
   // for API consistency we only support analyzers configurable via jSON
   return irs::analysis::analyzers::normalize(
     out, type,
@@ -220,7 +220,7 @@ bool parse_ngram_vpack_config(const irs::string_ref& args, irs::analysis::ngram_
   auto slice = arangodb::iresearch::slice<char>(args);
 
   if (!slice.isObject()) {
-    LOG_TOPIC("c0168", WARN, arangodb::iresearch::TOPIC) 
+    LOG_TOPIC("c0168", WARN, arangodb::iresearch::TOPIC)
       << "Not a jSON object passed while constructing ngram_token_stream, "
       "arguments: " << slice.toString();
     return false;
@@ -229,8 +229,8 @@ bool parse_ngram_vpack_config(const irs::string_ref& args, irs::analysis::ngram_
   uint64_t min = 0, max = 0;
   bool seen = false;
   if (!arangodb::iresearch::getNumber(min, slice, MIN_PARAM_NAME, seen, min) || !seen) {
-    LOG_TOPIC("7b706", WARN, arangodb::iresearch::TOPIC) 
-      << "Failed to read '" << MIN_PARAM_NAME  
+    LOG_TOPIC("7b706", WARN, arangodb::iresearch::TOPIC)
+      << "Failed to read '" << MIN_PARAM_NAME
       << "' attribute as number while constructing "
          "ngram_token_stream from jSON arguments: "
       << slice.toString();
@@ -307,9 +307,9 @@ bool text_vpack_normalizer(const irs::string_ref& args, std::string& out) noexce
   std::string tmp;
   auto slice = arangodb::iresearch::slice<char>(args);
 
-  if (!slice.isNone() && 
+  if (!slice.isNone() &&
       irs::analysis::analyzers::normalize(tmp, "text", irs::text_format::json,
-                                          slice.toString(), 
+                                          slice.toString(),
                                           false)) {
     auto vpack = VPackParser::fromJson(tmp);
     out.assign(vpack->slice().startAs<char>(), vpack->slice().byteSize());
@@ -330,14 +330,14 @@ namespace stem_vpack {
       return irs::analysis::analyzers::get("stem", irs::text_format::json,
         slice.toString(),
         false);
-    } 
+    }
     return nullptr;
   }
 
   bool stem_vpack_normalizer(const irs::string_ref& args, std::string& out) noexcept {
     std::string tmp;
     auto slice = arangodb::iresearch::slice<char>(args);
-    if (!slice.isNone() && 
+    if (!slice.isNone() &&
         irs::analysis::analyzers::normalize(tmp, "stem", irs::text_format::json,
       slice.toString(), false)) {
       auto vpack = VPackParser::fromJson(tmp);
@@ -524,13 +524,13 @@ bool equalAnalyzer(
   if (type != pool.type() || features != pool.features()) {
     return false;
   }
-  
+
   // this check is not final as old-normalized definition may be present in database!
   if (arangodb::basics::VelocyPackHelper::equal(arangodb::iresearch::slice(normalizedProperties),
                                                 pool.properties(), false)) {
     return true;
-  } 
- 
+  }
+
   // Here could be analyzer definition with old-normalized properties (see Issue #9652)
   // To make sure properties really differ, let`s re-normalize and re-check
   std::string reNormalizedProperties;
@@ -920,7 +920,7 @@ void AnalyzerPool::setKey(irs::string_ref const& key) {
   // After reallocation all methods of Slice will not work!
   const auto propertiesIsNone = _properties.isNone();
   const auto propertiesByteSize = propertiesIsNone ? 0 : _properties.byteSize();
- 
+
   const auto keyOffset = _config.size();
   _config.append(key.c_str(), key.size());
 
@@ -1020,6 +1020,82 @@ IResearchAnalyzerFeature::IResearchAnalyzerFeature(arangodb::application_feature
        );
 }
 
+
+/*static*/ Result IResearchAnalyzerFeature::createAnalyzerPool(
+    AnalyzerPool::ptr& pool,
+    irs::string_ref const& name,
+    irs::string_ref const& type,
+    VPackSlice const properties,
+    irs::flags const& features) {
+  // check type available
+  if (!irs::analysis::analyzers::exists(type, irs::text_format::vpack, false)) {
+    return {
+      TRI_ERROR_NOT_IMPLEMENTED,
+      "Not implemented analyzer type '" + std::string(type) + "'."
+    };
+  }
+
+  // validate analyzer name
+  auto split = splitAnalyzerName(name);
+
+  if (!TRI_vocbase_t::IsAllowedName(false, velocypack::StringRef(split.second.c_str(), split.second.size()))) {
+    return {
+      TRI_ERROR_BAD_PARAMETER,
+      std::string("invalid characters in analyzer name '") + std::string(split.second) + "'"
+    };
+  }
+
+  // validate that features are supported by arangod an ensure that their
+  // dependencies are met
+  for(auto& feature: features) {
+    if (&irs::frequency::type() == feature) {
+      // no extra validation required
+    } else if (&irs::norm::type() == feature) {
+      // no extra validation required
+    } else if (&irs::position::type() == feature) {
+      if (!features.check(irs::frequency::type())) {
+        return {
+          TRI_ERROR_BAD_PARAMETER,
+          "missing feature '" + std::string(irs::frequency::type().name()) +
+          "' required when '" + std::string(feature->name()) + "' feature is specified"
+        };
+      }
+    } else if (feature) {
+      return {
+        TRI_ERROR_BAD_PARAMETER,
+        "unsupported analyzer feature '" + std::string(feature->name()) + "'"
+      };
+    }
+  }
+
+  // limit the maximum size of analyzer properties
+  if (ANALYZER_PROPERTIES_SIZE_MAX < properties.byteSize()) {
+    return {
+      TRI_ERROR_BAD_PARAMETER,
+      "analyzer properties size of '" + std::to_string(properties.byteSize()) +
+      "' exceeds the maximum allowed limit of '" + std::to_string(ANALYZER_PROPERTIES_SIZE_MAX) + "'"
+    };
+  }
+
+  auto analyzerPool = std::make_shared<AnalyzerPool>(name);
+
+  if (!analyzerPool->init(type, properties, features)) {
+    return {
+      TRI_ERROR_BAD_PARAMETER,
+      "Failure initializing an arangosearch analyzer instance for name '" + std::string(name) +
+      "' type '" + std::string(type) + "'." +
+      (properties.isNone() ?
+        std::string(" Init without properties")
+        : std::string(" Properties '") + properties.toString() + "'") +
+      " was rejected by analyzer. Please check documentation for corresponding analyzer type."
+    };
+  }
+
+  // noexcept
+  pool = analyzerPool;
+  return {};
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief validate analyzer parameters and emplace into map
 ////////////////////////////////////////////////////////////////////////////////
@@ -1030,7 +1106,6 @@ arangodb::Result IResearchAnalyzerFeature::emplaceAnalyzer( // emplace
     irs::string_ref const& type,
     VPackSlice const properties,
     irs::flags const& features) {
-
   // check type available
   if (!irs::analysis::analyzers::exists(type, irs::text_format::vpack, false)) {
     return arangodb::Result(
@@ -1108,12 +1183,12 @@ arangodb::Result IResearchAnalyzerFeature::emplaceAnalyzer( // emplace
       }
     });
 
-    if (!analyzer->init(type, properties, features)) { 
+    if (!analyzer->init(type, properties, features)) {
       return arangodb::Result(
         TRI_ERROR_BAD_PARAMETER,
         "Failure initializing an arangosearch analyzer instance for name '" + std::string(name) +
-        "' type '" + std::string(type) + "'." + 
-        (properties.isNone() ? 
+        "' type '" + std::string(type) + "'." +
+        (properties.isNone() ?
           std::string(" Init without properties")
           : std::string(" Properties '") + properties.toString() + "'") +
         " was rejected by analyzer. Please check documentation for corresponding analyzer type.");
@@ -1128,7 +1203,7 @@ arangodb::Result IResearchAnalyzerFeature::emplaceAnalyzer( // emplace
     if (!properties.isNone()) {
       errorText << "  properties:'" << properties.toString() << "'\n";
     }
-    errorText  << "  features: [\n";  
+    errorText  << "  features: [\n";
     for (auto feature = std::begin(features); feature != std::end(features);) {
       errorText << "    '" << (*feature)->name() << "'";
       ++feature;
@@ -1142,7 +1217,7 @@ arangodb::Result IResearchAnalyzerFeature::emplaceAnalyzer( // emplace
     errorText << "  ]\n}\nPrevious definition was:\n"
       << existingDefinition.toString();
     return arangodb::Result(TRI_ERROR_BAD_PARAMETER, errorText.str());
-    
+
   }
 
   result = itr;
@@ -1850,7 +1925,7 @@ arangodb::Result IResearchAnalyzerFeature::loadAnalyzers(
 }
 
 /*static*/ bool IResearchAnalyzerFeature::analyzerReachableFromDb(
-    irs::string_ref const& dbNameFromAnalyzer, 
+    irs::string_ref const& dbNameFromAnalyzer,
     irs::string_ref const& currentDbName, bool forGetters) noexcept {
   TRI_ASSERT(!currentDbName.empty());
   if (dbNameFromAnalyzer.null()) { // NULL means local db name = always reachable
@@ -1862,11 +1937,11 @@ arangodb::Result IResearchAnalyzerFeature::loadAnalyzers(
     }
     return currentDbName == arangodb::StaticStrings::SystemDatabase;
   }
-  return currentDbName == dbNameFromAnalyzer || 
+  return currentDbName == dbNameFromAnalyzer ||
          (forGetters && dbNameFromAnalyzer == arangodb::StaticStrings::SystemDatabase);
 }
 
-/*static*/ std::pair<irs::string_ref, irs::string_ref> IResearchAnalyzerFeature::splitAnalyzerName( 
+/*static*/ std::pair<irs::string_ref, irs::string_ref> IResearchAnalyzerFeature::splitAnalyzerName(
     irs::string_ref const& analyzer) noexcept {
   // search for vocbase prefix ending with '::'
   for (size_t i = 1, count = analyzer.size(); i < count; ++i) {
@@ -2078,7 +2153,7 @@ arangodb::Result IResearchAnalyzerFeature::remove( // remove analyzer
 
       return result.result;
     }
-    
+
     auto commitResult = trx.commit();
     if (!commitResult.ok()) {
       return commitResult;
@@ -2109,7 +2184,7 @@ void IResearchAnalyzerFeature::start() {
   if (!isEnabled()) {
     return;
   }
-  
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // sanity check: we rely on this condition is true internally
   {
@@ -2200,9 +2275,9 @@ arangodb::Result IResearchAnalyzerFeature::storeAnalyzer(AnalyzerPool& pool) {
     if (!collection) {
        return arangodb::Result( // result
          TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, // code
-         std::string("failure to find collection '") + 
-             ANALYZER_COLLECTION_NAME + 
-             "' in vocbase '" + vocbase->name() + 
+         std::string("failure to find collection '") +
+             ANALYZER_COLLECTION_NAME +
+             "' in vocbase '" + vocbase->name() +
              "' vocbase while persising arangosearch analyzer '" + pool.name()+ "'"
        );
     }
@@ -2219,7 +2294,7 @@ arangodb::Result IResearchAnalyzerFeature::storeAnalyzer(AnalyzerPool& pool) {
     }
 
     arangodb::velocypack::Builder builder;
-    // for storing in db analyzers collection - store only analyzer name 
+    // for storing in db analyzers collection - store only analyzer name
     pool.toVelocyPack(builder, true);
 
     arangodb::OperationOptions options;
@@ -2364,10 +2439,10 @@ void IResearchAnalyzerFeature::cleanupAnalyzers(irs::string_ref const& database)
 
 void IResearchAnalyzerFeature::invalidate(const TRI_vocbase_t& vocbase) {
   WriteMutex mutex(_mutex);
-  SCOPED_LOCK(mutex); 
+  SCOPED_LOCK(mutex);
   auto database = irs::string_ref(vocbase.name());
   auto itr = _lastLoad.find(
-      irs::make_hashed_ref(database, std::hash<irs::string_ref>())); 
+      irs::make_hashed_ref(database, std::hash<irs::string_ref>()));
   if (itr != _lastLoad.end()) {
     cleanupAnalyzers(database);
     _lastLoad.erase(itr);

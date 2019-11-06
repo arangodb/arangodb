@@ -65,7 +65,7 @@ struct FieldMeta {
     AnalyzerPool::ptr _pool;
     std::string _shortName; // vocbase-dependent short analyzer name
     Analyzer(); // identity analyzer
-    Analyzer( // constructor
+    Analyzer(
       AnalyzerPool::ptr const& pool, // pool
       std::string&& shortName // short name (cached for use during insert(...))
     ) noexcept: _pool(pool), _shortName(std::move(shortName)) {}
@@ -115,13 +115,14 @@ struct FieldMeta {
   ///                       nullptr == do not normalize
   /// @param defaults inherited defaults
   /// @param mask if set reflects which fields were initialized from JSON
+  /// @param analyzers analyzers referenced in this link
   ////////////////////////////////////////////////////////////////////////////////
   bool init(velocypack::Slice const& slice,
             std::string& errorField,
             TRI_vocbase_t const* defaultVocbase = nullptr,
             FieldMeta const& defaults = DEFAULT(),
             Mask* mask = nullptr,
-            std::map<irs::string_ref, AnalyzerPool::ptr>* uniqueGuard = nullptr);
+            std::map<irs::string_ref, AnalyzerPool::ptr>* analyzers = nullptr);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief fill and return a JSON description of a FieldMeta object
