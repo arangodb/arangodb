@@ -61,9 +61,6 @@ ModifierOperationType UpdateReplaceModifierCompletion::accumulate(
     return ModifierOperationType::SkipRow;
   }
 
-  // A separate register for the key/rev is available
-  // so we use that
-  //
   // WARNING
   //
   // We must never take _rev from the document if there is a key
@@ -71,22 +68,24 @@ ModifierOperationType UpdateReplaceModifierCompletion::accumulate(
   TRI_ASSERT(_infos._trx->resolver() != nullptr);
   CollectionNameResolver const& collectionNameResolver{*_infos._trx->resolver()};
 
+  Result result;
+  auto key = std::string{};
+  auto rev = std::string{};
+
+  AqlValue const& keyDoc = hasKeyVariable ? row.getValue(keyReg) : inDoc;
+  result = getKeyAndRevision(collectionNameResolver, keyDoc, key, rev);
+
+  if (!result.ok()) {
+    // error happened extracting key, record in operations map
+    if (!_infos._ignoreErrors) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(result.errorNumber(), result.errorMessage());
+    }
+    return ModifierOperationType::SkipRow;
+  }
+
   if (writeRequired(_infos, inDoc.slice(), key)) {
     if (hasKeyVariable) {
-      std::string key, rev;
-      Result result;
       VPackBuilder keyDocBuilder;
-      AqlValue const& keyDoc = row.getValue(keyReg);
-
-      result = getKeyAndRevision(collectionNameResolver, keyDoc, key, rev);
-
-      if (!result.ok()) {
-        // error happened extracting key, record in operations map
-        if (!_infos._ignoreErrors) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(result.errorNumber(), result.errorMessage());
-        }
-        return ModifierOperationType::SkipRow;
-      }
 
       if (_infos._options.ignoreRevs) {
         rev.clear();
