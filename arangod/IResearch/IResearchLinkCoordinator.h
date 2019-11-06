@@ -44,6 +44,12 @@ class IResearchViewCoordinator;
 ////////////////////////////////////////////////////////////////////////////////
 class IResearchLinkCoordinator final : public arangodb::ClusterIndex, public IResearchLink {
  public:
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief construct an uninitialized IResearch link, must call init(...)
+  /// after
+  ////////////////////////////////////////////////////////////////////////////////
+  IResearchLinkCoordinator(TRI_idx_iid_t id, arangodb::LogicalCollection& collection);
+
   virtual void batchInsert(
       transaction::Methods& trx,
       std::vector<std::pair<arangodb::LocalDocumentId, arangodb::velocypack::Slice>> const& documents,
@@ -56,11 +62,6 @@ class IResearchLinkCoordinator final : public arangodb::ClusterIndex, public IRe
   }
 
   virtual arangodb::Result drop() override { return IResearchLink::drop(); }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief the factory for this type of index
-  //////////////////////////////////////////////////////////////////////////////
-  static arangodb::IndexTypeFactory const& factory();
 
   virtual bool hasSelectivityEstimate() const override {
     return IResearchLink::hasSelectivityEstimate();
@@ -102,15 +103,6 @@ class IResearchLinkCoordinator final : public arangodb::ClusterIndex, public IRe
       THROW_ARANGO_EXCEPTION(res);
     }
   }
-
- private:
-  struct IndexFactory;  // forward declaration
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief construct an uninitialized IResearch link, must call init(...)
-  /// after
-  ////////////////////////////////////////////////////////////////////////////////
-  IResearchLinkCoordinator(TRI_idx_iid_t id, arangodb::LogicalCollection& collection);
 };  // IResearchLinkCoordinator
 
 }  // namespace iresearch

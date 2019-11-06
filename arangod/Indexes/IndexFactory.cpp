@@ -44,6 +44,9 @@
 namespace {
 
 struct InvalidIndexFactory : public arangodb::IndexTypeFactory {
+  InvalidIndexFactory(arangodb::application_features::ApplicationServer& server)
+      : IndexTypeFactory(server) {}
+
   bool equal(arangodb::velocypack::Slice const&,
              arangodb::velocypack::Slice const&) const override {
     return false;  // invalid definitions are never equal
@@ -70,11 +73,12 @@ struct InvalidIndexFactory : public arangodb::IndexTypeFactory {
   }
 };
 
-InvalidIndexFactory const INVALID;
-
 }  // namespace
 
 namespace arangodb {
+
+IndexTypeFactory::IndexTypeFactory(application_features::ApplicationServer& server)
+    : _server(server) {}
 
 bool IndexTypeFactory::equal(arangodb::Index::IndexType type,
                              arangodb::velocypack::Slice const& lhs,
@@ -170,7 +174,9 @@ bool IndexTypeFactory::equal(arangodb::Index::IndexType type,
 }
 
 IndexFactory::IndexFactory(application_features::ApplicationServer& server)
-    : _server(server), _factories() {}
+    : _server(server),
+      _factories(),
+      _invalid(std::make_unique<InvalidIndexFactory>(server)) {}
 
 void IndexFactory::clear() { _factories.clear(); }
 
@@ -265,7 +271,7 @@ const IndexTypeFactory& IndexFactory::factory(std::string const& type) const noe
   auto itr = _factories.find(type);
   TRI_ASSERT(itr == _factories.end() || false == !(itr->second));  // IndexFactory::emplace(...) inserts non-nullptr
 
-  return itr == _factories.end() ? INVALID : *(itr->second);
+  return itr == _factories.end() ? *_invalid : *(itr->second);
 }
 
 std::shared_ptr<Index> IndexFactory::prepareIndexFromSlice(velocypack::Slice definition,

@@ -38,6 +38,8 @@ namespace iresearch {
 
 class IResearchMMFilesLink final : public arangodb::MMFilesIndex, public IResearchLink {
  public:
+  IResearchMMFilesLink(TRI_idx_iid_t iid, arangodb::LogicalCollection& collection);
+
   void afterTruncate(TRI_voc_tick_t /*tick*/) override {
     IResearchLink::afterTruncate();
   };
@@ -54,11 +56,6 @@ class IResearchMMFilesLink final : public arangodb::MMFilesIndex, public IResear
   }
 
   arangodb::Result drop() override { return IResearchLink::drop(); }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief the factory for this type of index
-  //////////////////////////////////////////////////////////////////////////////
-  static arangodb::IndexTypeFactory const& factory();
 
   bool hasSelectivityEstimate() const override {
     return IResearchLink::hasSelectivityEstimate();
@@ -114,11 +111,6 @@ class IResearchMMFilesLink final : public arangodb::MMFilesIndex, public IResear
       THROW_ARANGO_EXCEPTION(res);
     }
   }
-
- private:
-  struct IndexFactory;  // forward declaration
-
-  IResearchMMFilesLink(TRI_idx_iid_t iid, arangodb::LogicalCollection& collection);
 };
 
 }  // namespace iresearch

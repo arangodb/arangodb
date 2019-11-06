@@ -38,6 +38,8 @@ namespace iresearch {
 
 class IResearchRocksDBLink final : public arangodb::RocksDBIndex, public IResearchLink {
  public:
+  IResearchRocksDBLink(TRI_idx_iid_t iid, arangodb::LogicalCollection& collection);
+
   void afterTruncate(TRI_voc_tick_t /*tick*/) override {
     IResearchLink::afterTruncate();
   }
@@ -47,11 +49,6 @@ class IResearchRocksDBLink final : public arangodb::RocksDBIndex, public IResear
   }
 
   arangodb::Result drop() override { return IResearchLink::drop(); }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief the factory for this type of index
-  //////////////////////////////////////////////////////////////////////////////
-  static arangodb::IndexTypeFactory const& factory();
 
   bool hasSelectivityEstimate() const override {
     return IResearchLink::hasSelectivityEstimate();
@@ -108,11 +105,6 @@ class IResearchRocksDBLink final : public arangodb::RocksDBIndex, public IResear
       THROW_ARANGO_EXCEPTION(res);
     }
   }
-
- private:
-  struct IndexFactory;  // forward declaration
-
-  IResearchRocksDBLink(TRI_idx_iid_t iid, arangodb::LogicalCollection& collection);
 };
 
 }  // namespace iresearch

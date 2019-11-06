@@ -130,13 +130,14 @@ struct IResearchLinkMeta {
   ///                       nullptr == do not normalize
   /// @param mask if set reflects which fields were initialized from JSON
   ////////////////////////////////////////////////////////////////////////////////
-  bool init( // initialize meta
-    arangodb::velocypack::Slice const& slice, // definition
-    bool readAnalyzerDefinition, // allow reading analyzer definitions instead of just name
-    std::string& errorField, // field causing error (out-param)
-    TRI_vocbase_t const* defaultVocbase = nullptr, // fallback vocbase
-    IResearchLinkMeta const& defaults = DEFAULT(), // inherited defaults
-    Mask* mask = nullptr // initialized fields (out-param)
+  bool init(  // initialize meta
+      arangodb::application_features::ApplicationServer& server,
+      arangodb::velocypack::Slice const& slice,  // definition
+      bool readAnalyzerDefinition,  // allow reading analyzer definitions instead of just name
+      std::string& errorField,  // field causing error (out-param)
+      TRI_vocbase_t const* defaultVocbase = nullptr,  // fallback vocbase
+      IResearchLinkMeta const& defaults = DEFAULT(),  // inherited defaults
+      Mask* mask = nullptr  // initialized fields (out-param)
   );
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -149,14 +150,15 @@ struct IResearchLinkMeta {
   ///                       nullptr == do not normalize
   /// @param usedAnalyzers add to this map analyzers used in meta,
   ////////////////////////////////////////////////////////////////////////////////
-  bool json( // append meta jSON
-    arangodb::velocypack::Builder& builder, // output buffer (out-param)
-    bool writeAnalyzerDefinition, // output full analyzer definition instead of just name
-    IResearchLinkMeta const* ignoreEqual = nullptr, // values to ignore if equal
-    TRI_vocbase_t const* defaultVocbase = nullptr, // fallback vocbase
-    Mask const* mask = nullptr, // values to ignore always
-    std::map<std::string, AnalyzerPool::ptr>* usedAnalyzers = nullptr // append analyzers used in definition
-  ) const;
+  bool json(  // append meta jSON
+      arangodb::application_features::ApplicationServer& server,
+      arangodb::velocypack::Builder& builder,  // output buffer (out-param)
+      bool writeAnalyzerDefinition,  // output full analyzer definition instead of just name
+      IResearchLinkMeta const* ignoreEqual = nullptr,  // values to ignore if equal
+      TRI_vocbase_t const* defaultVocbase = nullptr,  // fallback vocbase
+      Mask const* mask = nullptr,                     // values to ignore always
+      std::map<std::string, AnalyzerPool::ptr>* usedAnalyzers = nullptr  // append analyzers used in definition
+      ) const;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief amount of memory in bytes occupied by this iResearch Link meta

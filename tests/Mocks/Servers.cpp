@@ -22,7 +22,6 @@
 
 #include <algorithm>
 
-#include "Servers.h"
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
@@ -36,6 +35,7 @@
 #include "Cluster/CreateDatabase.h"
 #include "Cluster/DropDatabase.h"
 #include "Cluster/Maintenance.h"
+#include "ClusterEngine/ClusterEngine.h"
 #include "FeaturePhases/AqlFeaturePhase.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "FeaturePhases/ClusterFeaturePhase.h"
@@ -61,6 +61,7 @@
 #include "RestServer/TraverserEngineRegistryFeature.h"
 #include "RestServer/UpgradeFeature.h"
 #include "RestServer/ViewTypesFeature.h"
+#include "Servers.h"
 #include "Sharding/ShardingFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Methods.h"
@@ -507,8 +508,9 @@ void MockClusterServer::startFeatures() {
 
   // register factories & normalizers
   auto& indexFactory = const_cast<arangodb::IndexFactory&>(_engine.indexFactory());
-  indexFactory.emplace(arangodb::iresearch::DATA_SOURCE_TYPE.name(),
-                       arangodb::iresearch::IResearchLinkCoordinator::factory());
+  auto& factory =
+      getFeature<arangodb::iresearch::IResearchFeature>().factory<arangodb::ClusterEngine>();
+  indexFactory.emplace(arangodb::iresearch::DATA_SOURCE_TYPE.name(), factory);
 }
 
 void MockClusterServer::agencyTrx(std::string const& key, std::string const& value) {

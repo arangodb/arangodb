@@ -442,19 +442,15 @@ arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* expression
     arangodb::iresearch::getStringRef(args[1].slice()) :
     iresearch::string_ref(arangodb::iresearch::IResearchAnalyzerFeature::identity()->name());
 
-  auto& server = arangodb::application_features::ApplicationServer::server();
+  TRI_ASSERT(trx);
+  auto& server = trx->vocbase().server();
   if( args.size() > 1) {
     auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
-    if (trx) {
-      auto sysVocbase =
-          server.hasFeature<arangodb::SystemDatabaseFeature>()
-              ? server.getFeature<arangodb::SystemDatabaseFeature>().use()
-              : nullptr;
-      if (sysVocbase) {
-        pool = analyzers.get(name, trx->vocbase(), *sysVocbase);
-      }
-    } else {
-      pool = analyzers.get(name);  // verbatim
+    auto sysVocbase = server.hasFeature<arangodb::SystemDatabaseFeature>()
+                          ? server.getFeature<arangodb::SystemDatabaseFeature>().use()
+                          : nullptr;
+    if (sysVocbase) {
+      pool = analyzers.get(name, trx->vocbase(), *sysVocbase);
     }
   } else { //do not look for identity, we already have reference)
     pool = arangodb::iresearch::IResearchAnalyzerFeature::identity();

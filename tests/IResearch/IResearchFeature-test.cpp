@@ -41,6 +41,7 @@
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
+#include "ClusterEngine/ClusterEngine.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/ServerSecurityFeature.h"
 #include "IResearch/ApplicationServerHelper.h"
@@ -770,10 +771,11 @@ TEST_F(IResearchFeatureTestCoordinator, test_upgrade0_1) {
   server.getFeature<arangodb::DatabaseFeature>().enableUpgrade();  // skip IResearchView validation
 
   auto& engine = server.getFeature<arangodb::EngineSelectorFeature>().engine();
+  auto& factory =
+      server.getFeature<arangodb::iresearch::IResearchFeature>().factory<arangodb::ClusterEngine>();
   const_cast<arangodb::IndexFactory&>(engine.indexFactory())
       .emplace(  // required for Indexes::ensureIndex(...)
-          arangodb::iresearch::DATA_SOURCE_TYPE.name(),
-          arangodb::iresearch::IResearchLinkCoordinator::factory());
+          arangodb::iresearch::DATA_SOURCE_TYPE.name(), factory);
   auto& ci = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
 

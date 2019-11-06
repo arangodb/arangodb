@@ -777,7 +777,8 @@ Result IResearchLink::init(
   IResearchLinkMeta meta;
 
   // definition should already be normalized and analyzers created if required
-  if (!meta.init(definition, true, error, &(collection().vocbase()))) {
+  if (!meta.init(_collection.vocbase().server(), definition, true, error,
+                 &(_collection.vocbase()))) {
     return {
       TRI_ERROR_BAD_PARAMETER,
       "error parsing view link parameters from json: " + error
@@ -981,7 +982,7 @@ Result IResearchLink::initDataStore(InitCallback const& initCallback, bool sorte
   _flushSubscription.reset() ; // reset together with '_asyncSelf'
   _asyncSelf->reset(); // the data-store is being deallocated, link use is no longer valid (wait for all the view users to finish)
 
-  auto& server = application_features::ApplicationServer::server();
+  auto& server = _collection.vocbase().server();
   if (!server.hasFeature<DatabasePathFeature>()) {
     return {
       TRI_ERROR_INTERNAL,
@@ -1224,7 +1225,7 @@ Result IResearchLink::initDataStore(InitCallback const& initCallback, bool sorte
 }
 
 void IResearchLink::setupMaintenance() {
-  auto& server = application_features::ApplicationServer::server();
+  auto& server = _collection.vocbase().server();
   if (!server.hasFeature<iresearch::IResearchFeature>()) {
     return;
   }
@@ -1494,8 +1495,9 @@ bool IResearchLink::matchesDefinition(VPackSlice const& slice) const {
   IResearchLinkMeta other;
   std::string errorField;
 
-  return other.init(slice, true, errorField, &(collection().vocbase())) // for db-server analyzer validation should have already apssed on coordinator (missing analyzer == no match)
-    && _meta == other;
+  return other.init(_collection.vocbase().server(), slice, true, errorField,
+                    &(_collection.vocbase()))  // for db-server analyzer validation should have already apssed on coordinator (missing analyzer == no match)
+         && _meta == other;
 }
 
 size_t IResearchLink::memory() const {
@@ -1519,8 +1521,9 @@ size_t IResearchLink::memory() const {
 Result IResearchLink::properties(
     velocypack::Builder& builder,
     bool forPersistence) const {
-  if (!builder.isOpenObject() // not an open object
-      || !_meta.json(builder, forPersistence, nullptr, &(collection().vocbase()))) {
+  if (!builder.isOpenObject()  // not an open object
+      || !_meta.json(_collection.vocbase().server(), builder, forPersistence,
+                     nullptr, &(_collection.vocbase()))) {
     return Result(TRI_ERROR_BAD_PARAMETER);
   }
 

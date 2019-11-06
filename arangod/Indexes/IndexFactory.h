@@ -43,6 +43,7 @@ class Slice;
 /// @brief factory for comparing/instantiating/normalizing a definition for a
 ///        specific Index type
 struct IndexTypeFactory {
+  explicit IndexTypeFactory(application_features::ApplicationServer& server);
   virtual ~IndexTypeFactory() = default;  // define to silence warning
 
   /// @brief determine if the two Index definitions will result in the same
@@ -70,6 +71,9 @@ struct IndexTypeFactory {
     // can be overridden by specific indexes
     return true;
   }
+
+ protected:
+  application_features::ApplicationServer& _server;
 };
 
 class IndexFactory {
@@ -166,6 +170,7 @@ class IndexFactory {
  private:
   application_features::ApplicationServer& _server;
   std::unordered_map<std::string, IndexTypeFactory const*> _factories;
+  std::unique_ptr<IndexTypeFactory> _invalid;
 };
 
 }  // namespace arangodb

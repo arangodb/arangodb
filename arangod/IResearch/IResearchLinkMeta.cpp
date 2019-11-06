@@ -153,13 +153,14 @@ bool IResearchLinkMeta::operator!=(IResearchLinkMeta const& other) const noexcep
   return meta;
 }
 
-bool IResearchLinkMeta::init( // initialize meta
-    arangodb::velocypack::Slice const& slice, // definition
-    bool readAnalyzerDefinition, // allow analyzer definitions
-    std::string& errorField, // field causing error (out-param)
-    TRI_vocbase_t const* defaultVocbase /*= nullptr*/, // fallback vocbase
-    IResearchLinkMeta const& defaults /*= DEFAULT()*/, // inherited defaults
-    Mask* mask /*= nullptr*/ // initialized fields (out-param)
+bool IResearchLinkMeta::init(  // initialize meta
+    arangodb::application_features::ApplicationServer& server,
+    arangodb::velocypack::Slice const& slice,  // definition
+    bool readAnalyzerDefinition,               // allow analyzer definitions
+    std::string& errorField,  // field causing error (out-param)
+    TRI_vocbase_t const* defaultVocbase /*= nullptr*/,  // fallback vocbase
+    IResearchLinkMeta const& defaults /*= DEFAULT()*/,  // inherited defaults
+    Mask* mask /*= nullptr*/  // initialized fields (out-param)
 ) {
   if (!slice.isObject()) {
     return false;
@@ -194,7 +195,6 @@ bool IResearchLinkMeta::init( // initialize meta
     // load analyzer definitions if requested (used on cluster)
     // @note must load definitions before loading 'analyzers' to ensure presence
     if (readAnalyzerDefinition && mask->_analyzerDefinitions) {
-      auto& server = arangodb::application_features::ApplicationServer::server();
       auto field = slice.get(fieldName);
       if (!server.hasFeature<IResearchAnalyzerFeature>() || !field.isArray()) {
         errorField = fieldName;
@@ -337,7 +337,6 @@ bool IResearchLinkMeta::init( // initialize meta
     if (!mask->_analyzers) {
       _analyzers = defaults._analyzers;
     } else {
-      auto& server = arangodb::application_features::ApplicationServer::server();
       auto field = slice.get(fieldName);
       if (!server.hasFeature<IResearchAnalyzerFeature>() || !field.isArray()) {
         errorField = fieldName;
@@ -512,7 +511,8 @@ bool IResearchLinkMeta::init( // initialize meta
         std::string childErrorField;
 
         // false == do not read 'analyzerDefinitions' from child elements
-        if (!_fields[name]->init(value, false, childErrorField, defaultVocbase, subDefaults)) {
+        if (!_fields[name]->init(server, value, false, childErrorField,
+                                 defaultVocbase, subDefaults)) {
           errorField = fieldName + "." + name + "." + childErrorField;
 
           return false;
@@ -524,14 +524,15 @@ bool IResearchLinkMeta::init( // initialize meta
   return true;
 }
 
-bool IResearchLinkMeta::json( // append meta jSON
-    arangodb::velocypack::Builder& builder, // output buffer (out-param)
-    bool writeAnalyzerDefinition, // output fill analyzer definition instead of just name
-    IResearchLinkMeta const* ignoreEqual /*= nullptr*/, // values to ignore if equal
-    TRI_vocbase_t const* defaultVocbase /*= nullptr*/, // fallback vocbase
-    Mask const* mask /*= nullptr*/, // values to ignore always
-    std::map<std::string, AnalyzerPool::ptr>* usedAnalyzers /*= nullptr*/ // append analyzers used in definition
-) const {
+bool IResearchLinkMeta::json(  // append meta jSON
+    arangodb::application_features::ApplicationServer& server,
+    arangodb::velocypack::Builder& builder,  // output buffer (out-param)
+    bool writeAnalyzerDefinition,  // output fill analyzer definition instead of just name
+    IResearchLinkMeta const* ignoreEqual /*= nullptr*/,  // values to ignore if equal
+    TRI_vocbase_t const* defaultVocbase /*= nullptr*/,  // fallback vocbase
+    Mask const* mask /*= nullptr*/,  // values to ignore always
+    std::map<std::string, AnalyzerPool::ptr>* usedAnalyzers /*= nullptr*/  // append analyzers used in definition
+    ) const {
   if (!builder.isOpenObject()) {
     return false;
   }
@@ -561,7 +562,6 @@ bool IResearchLinkMeta::json( // append meta jSON
       std::string name;
 
       if (defaultVocbase) {
-        auto& server = arangodb::application_features::ApplicationServer::server();
         auto sysVocbase = server.hasFeature<SystemDatabaseFeature>()
                               ? server.getFeature<SystemDatabaseFeature>().use()
                               : nullptr;
@@ -615,8 +615,9 @@ bool IResearchLinkMeta::json( // append meta jSON
           arangodb::velocypack::Value(arangodb::velocypack::ValueType::Object)
         );
 
-          if (!entry.value()->json(fieldsBuilder, writeAnalyzerDefinition, &subDefaults, defaultVocbase, &fieldMask, &analyzers)) {
-            return false;
+        if (!entry.value()->json(server, fieldsBuilder, writeAnalyzerDefinition,
+                                 &subDefaults, defaultVocbase, &fieldMask, &analyzers)) {
+          return false;
           }
 
         fieldsBuilder.close();
