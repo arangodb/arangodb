@@ -212,7 +212,6 @@ function lateDocumentMaterializationRuleTestSuite () {
         let result = AQL_EXECUTE(query);
         assertEqual(2, result.json.length);
         let expectedKeys = new Set(['c0', 'c2']);
-        let currentValue  = 0;
         result.json.forEach(function(doc) {
           assertTrue(expectedKeys.has(doc._key));
           expectedKeys.delete(doc._key);
