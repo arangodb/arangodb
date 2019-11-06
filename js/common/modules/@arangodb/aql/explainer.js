@@ -1149,14 +1149,12 @@ function processQuery(query, explain, planIndex) {
           indexAnnotation += '/* with late materialization */';
           if (node.hasOwnProperty('IndexesValuesVars') && node.IndexesValuesVars.length > 0) {
             indexVariables = node.IndexesValuesVars.map(function (IndexValuesVars) {
-              indexVariables += keyword(' LET');
               if (IndexValuesVars.hasOwnProperty('IndexValuesVars') && IndexValuesVars.IndexValuesVars.length > 0) {
-                indexVariables += ' ' + IndexValuesVars.IndexValuesVars.map(function (IndexValuesVar) {
-                  return variableName(IndexValuesVar) + ' = ' + variableName(node.outVariable) + '.' + attribute(IndexValuesVar.field);
-                }).join(keyword(' LET '));
-                return indexVariables;
+                return IndexValuesVars.IndexValuesVars.map(function (IndexValuesVar) {
+                  return keyword(' LET ') + variableName(IndexValuesVar) + ' = ' + variableName(node.outVariable) + '.' + attribute(IndexValuesVar.field);
+                }).join('');
               }
-            }).join(keyword(' LET'));
+            }).join('');
           }
         }
         node.indexes.forEach(function (idx, i) { iterateIndexes(idx, i, node, types, false); });
