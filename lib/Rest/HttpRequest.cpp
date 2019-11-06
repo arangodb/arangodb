@@ -913,8 +913,7 @@ VPackStringRef HttpRequest::rawPayload() const {
 
 VPackSlice HttpRequest::payload(VPackOptions const* options) {
   TRI_ASSERT(options != nullptr);
-
-  if (_contentType == ContentType::JSON) {
+  if ((_contentType == ContentType::UNSET) || (_contentType == ContentType::JSON)) {
     if (!_body.empty()) {
       if (!_vpackBuilder) {
         VPackParser parser(options);

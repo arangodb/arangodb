@@ -86,7 +86,7 @@ VPackSlice VstRequest::payload(VPackOptions const* options) {
     if (_vpackBuilder) {
       return _vpackBuilder->slice();
     }
-  } else if (_contentType == ContentType::VPACK) {
+  } else if ((_contentType == ContentType::UNSET) || (_contentType == ContentType::VPACK)) {
     if (_buffer.size() > _payloadOffset) {
       uint8_t const* ptr = _buffer.data() + _payloadOffset;
       if (!_validatedPayload) {

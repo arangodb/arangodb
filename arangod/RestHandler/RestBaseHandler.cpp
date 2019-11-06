@@ -67,10 +67,6 @@ std::shared_ptr<VPackBuilder> RestBaseHandler::parseVelocyPackBody(bool& success
 arangodb::velocypack::Slice RestBaseHandler::parseVPackBody(bool& success) {
   try {
     success = true;
-    if (_request->contentType() == ContentType::UNSET) {
-      // attempt to parse the body anyways!
-      _request->setDefaultContentType();
-    }
     VPackOptions optionsWithUniquenessCheck = VPackOptions::Defaults;
     optionsWithUniquenessCheck.checkAttributeUniqueness = true;
     return _request->payload(&optionsWithUniquenessCheck);

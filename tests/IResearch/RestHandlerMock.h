@@ -38,8 +38,6 @@ struct GeneralRequestMock: public arangodb::GeneralRequest {
   std::unique_ptr<arangodb::VocbaseContext> _context; // VocbaseContext required for use with RestVocbaseBaseHandler
   arangodb::velocypack::Builder _payload; // request body
 
-  void setDefaultContentType() override { _contentType = arangodb::rest::ContentType::VPACK; }
-
   GeneralRequestMock(TRI_vocbase_t& vocbase);
   ~GeneralRequestMock();
   using arangodb::GeneralRequest::addSuffix;
