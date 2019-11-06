@@ -102,6 +102,11 @@ std::pair<ExecutionState, NoStats> UnsortedGatherExecutor::produceRows(OutputAql
   _currentDependency = x;
   
   NoStats stats;
+  
+  if (output.isFull()) {
+    return {ExecutionState::HASMORE, stats};
+  }
+  
   size_t numWaiting = 0;
   for (x = 0; x < _numberDependencies; ++x) {
     if (_upstream[x] == ExecutionState::HASMORE) {

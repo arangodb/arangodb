@@ -1871,6 +1871,9 @@ function optimizerAggregateResultsSuite () {
     if (typeof actual === 'number') {
       actual = actual.toFixed(6);
     }
+    
+    expected.sort();
+    actual.sort();
     assertEqual(expected, actual, query);
     
     plan = AQL_EXPLAIN(query).plan;
