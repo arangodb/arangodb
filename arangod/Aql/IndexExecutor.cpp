@@ -111,7 +111,7 @@ IndexIterator::DocumentCallback getCallback(DocumentProducingFunctionContext& co
     if (slice.isArray()) {
       for (auto const& indReg : indRegs->second) {
         TRI_ASSERT(indReg.first < slice.length());
-        if (indReg.first >= slice.length()) {
+        if (ADB_UNLIKELY(indReg.first >= slice.length())) {
           return false;
         }
         auto s = slice.at(indReg.first);
@@ -123,7 +123,7 @@ IndexIterator::DocumentCallback getCallback(DocumentProducingFunctionContext& co
     } else { // primary
       auto indReg = indRegs->second.cbegin();
       TRI_ASSERT(indReg != indRegs->second.cend());
-      if (indReg == indRegs->second.cend()) {
+      if (ADB_UNLIKELY(indReg == indRegs->second.cend())) {
         return false;
       }
       AqlValue v(slice);
