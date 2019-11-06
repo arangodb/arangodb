@@ -47,8 +47,8 @@ namespace {
     arangodb::aql::CalculationNode* node;
   };
 
-  bool attributesMatch(arangodb::aql::IndexNode const* indexNode, NodeWithAttrs& node) {
-    // check all node attributes to be in indexes
+  bool attributesMatch(TRI_idx_iid_t& commonIndexId, arangodb::aql::IndexNode const* indexNode, NodeWithAttrs& node) {
+    // check all node attributes to be in index
     for (auto& nodeAttr : node.attrs) {
       for (auto& index : indexNode->getIndexes()) {
         auto const& ind = index.getIndex();
@@ -56,9 +56,16 @@ namespace {
           continue;
         }
         auto indexId = ind->id();
+        // use one index only
+        if (commonIndexId != 0 && commonIndexId != indexId) {
+          continue;
+        }
         size_t indexFieldNum = 0;
         for (auto const& field : ind->fields()) {
           if (arangodb::basics::AttributeName::isIdentical(nodeAttr.attr, field, false)) {
+            if (commonIndexId == 0) {
+              commonIndexId = indexId;
+            }
             nodeAttr.indexId = indexId;
             nodeAttr.indexFieldNum = indexFieldNum;
             nodeAttr.indexField = &field;
@@ -206,6 +213,7 @@ void arangodb::aql::lateDocumentMaterializationRule(arangodb::aql::Optimizer* op
       // this node could be appended with materializer
       bool stopSearch = false;
       std::vector<NodeWithAttrs> nodesToChange;
+      TRI_idx_iid_t commonIndexId = 0; // use one index only
       while (current != loop) {
         switch (current->getType()) {
           case arangodb::aql::ExecutionNode::SORT:
@@ -223,7 +231,7 @@ void arangodb::aql::lateDocumentMaterializationRule(arangodb::aql::Optimizer* op
               // is not safe for optimization
               stopSearch = true;
             } else if (!node.attrs.empty()) {
-              if (!attributesMatch(indexNode, node)) {
+              if (!attributesMatch(commonIndexId, indexNode, node)) {
                 // the node uses attributes which is not in index
                 stopSearch = true;
               } else {
