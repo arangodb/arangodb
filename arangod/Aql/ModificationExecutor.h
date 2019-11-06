@@ -113,9 +113,12 @@ class ModifierOutput {
   };
 
   ModifierOutput() = delete;
-  ModifierOutput(InputAqlItemRow inputRow, Type type);
-  ModifierOutput(InputAqlItemRow inputRow, Type type, AqlValue const& oldValue,
-                 AqlValue const& newValue);
+  ModifierOutput(InputAqlItemRow const& inputRow, Type type);
+  ModifierOutput(InputAqlItemRow&& inputRow, Type type);
+  ModifierOutput(InputAqlItemRow const& inputRow, Type type,
+                 AqlValue const& oldValue, AqlValue const& newValue);
+  ModifierOutput(InputAqlItemRow&& inputRow, Type type,
+                 AqlValue const& oldValue, AqlValue const& newValue);
 
   // No copying or copy assignment allowed of this class or any derived class
   ModifierOutput(ModifierOutput const&) = delete;

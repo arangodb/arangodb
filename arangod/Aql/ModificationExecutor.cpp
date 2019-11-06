@@ -50,12 +50,17 @@ using namespace arangodb::basics;
 namespace arangodb {
 namespace aql {
 
-ModifierOutput::ModifierOutput(InputAqlItemRow inputRow, Type type)
-    : _inputRow(inputRow), _type(type), _oldValue(), _newValue() {}
+ModifierOutput::ModifierOutput(InputAqlItemRow const& inputRow, Type type)
+    : _inputRow(std::move(inputRow)), _type(type), _oldValue(), _newValue() {}
+ModifierOutput::ModifierOutput(InputAqlItemRow&& inputRow, Type type)
+    : _inputRow(std::move(inputRow)), _type(type), _oldValue(), _newValue() {}
 
-ModifierOutput::ModifierOutput(InputAqlItemRow inputRow, Type type,
+ModifierOutput::ModifierOutput(InputAqlItemRow const& inputRow, Type type,
                                AqlValue const& oldValue, AqlValue const& newValue)
-    : _inputRow(inputRow), _type(type), _oldValue(oldValue), _newValue(newValue) {}
+    : _inputRow(std::move(inputRow)), _type(type), _oldValue(oldValue), _newValue(newValue) {}
+ModifierOutput::ModifierOutput(InputAqlItemRow&& inputRow, Type type,
+                               AqlValue const& oldValue, AqlValue const& newValue)
+    : _inputRow(std::move(inputRow)), _type(type), _oldValue(oldValue), _newValue(newValue) {}
 
 InputAqlItemRow ModifierOutput::getInputRow() const { return _inputRow; }
 ModifierOutput::Type ModifierOutput::getType() const { return _type; }
