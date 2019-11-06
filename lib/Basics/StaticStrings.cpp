@@ -225,6 +225,7 @@ std::string const StaticStrings::EncodingDeflate("deflate");
 // collection attributes
 std::string const StaticStrings::DistributeShardsLike("distributeShardsLike");
 std::string const StaticStrings::IsSmart("isSmart");
+std::string const StaticStrings::IsSmartChild("isSmartChild");
 std::string const StaticStrings::NumberOfShards("numberOfShards");
 std::string const StaticStrings::CacheEnabled("cacheEnabled");
 std::string const StaticStrings::IndexBuckets("indexBuckets");

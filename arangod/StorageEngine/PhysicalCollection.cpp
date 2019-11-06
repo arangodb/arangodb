@@ -23,12 +23,15 @@
 
 #include "PhysicalCollection.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/encoding.h"
+#include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Futures/Utilities.h"
 #include "Indexes/Index.h"
 #include "StorageEngine/TransactionState.h"
@@ -170,6 +173,13 @@ std::shared_ptr<Index> PhysicalCollection::lookupIndex(std::string const& idxNam
 }
 
 TRI_voc_rid_t PhysicalCollection::newRevisionId() const {
+  if (_logicalCollection.hasClusterWideUniqueRevs()) {
+    application_features::ApplicationServer& server =
+        _logicalCollection.vocbase().server();
+    ClusterFeature& cf = server.getFeature<ClusterFeature>();
+    ClusterInfo& ci = cf.clusterInfo();
+    return static_cast<TRI_voc_rid_t>(ci.uniqid());
+  }
   return TRI_HybridLogicalClock();
 }
 

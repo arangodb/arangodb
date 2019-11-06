@@ -823,7 +823,9 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
     }
   }
 
-  LocalDocumentId const documentId = LocalDocumentId::create();
+  bool useRev = _logicalCollection.version() >= LogicalCollection::Version::v36;
+  LocalDocumentId const documentId =
+      useRev ? LocalDocumentId::create(revisionId) : LocalDocumentId::create();
 
   RocksDBSavePoint guard(trx, TRI_VOC_DOCUMENT_OPERATION_INSERT);
 
@@ -912,7 +914,6 @@ Result RocksDBCollection::update(arangodb::transaction::Methods* trx,
 
   // merge old and new values
   TRI_voc_rid_t revisionId;
-  LocalDocumentId const newDocumentId = LocalDocumentId::create();
   auto isEdgeCollection = (TRI_COL_TYPE_EDGE == _logicalCollection.type());
 
   transaction::BuilderLeaser builder(trx);
@@ -922,6 +923,10 @@ Result RocksDBCollection::update(arangodb::transaction::Methods* trx,
   if (res.fail()) {
     return res;
   }
+
+  bool useRev = _logicalCollection.version() >= LogicalCollection::Version::v36;
+  LocalDocumentId const newDocumentId =
+      useRev ? LocalDocumentId::create(revisionId) : LocalDocumentId::create();
 
   if (_isDBServer) {
     // Need to check that no sharding keys have changed:
@@ -1013,7 +1018,6 @@ Result RocksDBCollection::replace(transaction::Methods* trx,
 
   // merge old and new values
   TRI_voc_rid_t revisionId;
-  LocalDocumentId const newDocumentId = LocalDocumentId::create();
   bool const isEdgeCollection = (TRI_COL_TYPE_EDGE == _logicalCollection.type());
 
   transaction::BuilderLeaser builder(trx);
@@ -1022,6 +1026,10 @@ Result RocksDBCollection::replace(transaction::Methods* trx,
   if (res.fail()) {
     return res;
   }
+
+  bool useRev = _logicalCollection.version() >= LogicalCollection::Version::v36;
+  LocalDocumentId const newDocumentId =
+      useRev ? LocalDocumentId::create(revisionId) : LocalDocumentId::create();
 
   if (_isDBServer) {
     // Need to check that no sharding keys have changed:
