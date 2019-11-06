@@ -32,6 +32,7 @@
 #include "Replication/Syncer.h"
 #include "Replication/common-defines.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
+#include "StorageEngine/ReplicationIterator.h"
 
 namespace arangodb {
 class ClusterInfo;
@@ -88,6 +89,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   static std::string const Keys;
   static std::string const Revisions;
   static std::string const Tree;
+  static std::string const Ranges;
   static std::string const Dump;
   static std::string const RestoreCollection;
   static std::string const RestoreIndexes;
@@ -295,6 +297,17 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   void handleCommandRevisionTree();
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief return the requested revision ranges for a given collection, if
+  ///        available
+  /// @response VPackObject, containing
+  ///           * ranges, VPackArray of VPackArray of revisions
+  ///           * resume, optional, if response is chunked; revision resume
+  ///                     point to specify on subsequent requests
+  //////////////////////////////////////////////////////////////////////////////
+
+  void handleCommandRevisionRanges();
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief determine chunk size from request
   ///        Reads chunkSize attribute from request
   //////////////////////////////////////////////////////////////////////////////
@@ -307,6 +320,17 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   ReplicationApplier* getApplier(bool& global);
 
  private:
+  struct RangeOperationContext {
+    uint64_t batchId;
+    std::size_t resume;
+    TRI_voc_tick_t tickEnd;
+    std::string cname;
+    std::shared_ptr<LogicalCollection> collection;
+    std::unique_ptr<ReplicationIterator> iter;
+  };
+
+  bool prepareRangeOperation(RangeOperationContext&);
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief restores the structure of a collection
   //////////////////////////////////////////////////////////////////////////////

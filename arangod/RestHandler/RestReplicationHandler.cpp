@@ -257,6 +257,7 @@ std::string const RestReplicationHandler::Inventory = "inventory";
 std::string const RestReplicationHandler::Keys = "keys";
 std::string const RestReplicationHandler::Revisions = "revisions";
 std::string const RestReplicationHandler::Tree = "tree";
+std::string const RestReplicationHandler::Ranges = "ranges";
 std::string const RestReplicationHandler::Dump = "dump";
 std::string const RestReplicationHandler::RestoreCollection =
     "restore-collection";
@@ -409,18 +410,16 @@ RestStatus RestReplicationHandler::execute() {
         handleCommandRemoveKeys();
       }
     } else if (command == Revisions) {
-      if (type != rest::RequestType::GET) {
-        goto BAD_CALL;
-      }
-
       if (isCoordinatorError()) {
         return RestStatus::DONE;
       }
 
       if (len > 1) {
         std::string subCommand = suffixes[1];
-        if (subCommand == Tree) {
+        if (type == rest::RequestType::GET && subCommand == Tree) {
           handleCommandRevisionTree();
+        } else if (type == rest::RequestType::POST && subCommand == Ranges) {
+          handleCommandRevisionRanges();
         }
       } else {
         goto BAD_CALL;
@@ -2792,91 +2791,106 @@ void RestReplicationHandler::handleCommandLoggerTickRanges() {
   }
 }
 
-//////////////////////////////////////////////////////////////////////////////
-/// @brief return the revision tree for a given collection, if available
-/// @response serialized revision tree, binary
-//////////////////////////////////////////////////////////////////////////////
-
-void RestReplicationHandler::handleCommandRevisionTree() {
+bool RestReplicationHandler::prepareRangeOperation(RangeOperationContext& ctx) {
   auto& selector = server().getFeature<EngineSelectorFeature>();
   if (!selector.isRocksDB()) {
     generateError(
         rest::ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_NOT_IMPLEMENTED,
         "this storage engine does not support revision-based replication");
-    return;
+    return false;
   }
 
   LOG_TOPIC("213e2", TRACE, arangodb::Logger::REPLICATION)
       << "enter handleCommandRevisionTree";
 
   bool found = false;
-  uint64_t batchId = 0;
 
   // get collection Name
-  std::string const& cname = _request->value("collection");
-  if (cname.empty()) {
+  ctx.cname = _request->value("collection");
+  if (ctx.cname.empty()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid collection parameter");
-    return;
+    return false;
   }
 
   // get batchId
   std::string const& batchIdString = _request->value("batchId", found);
   if (found) {
-    batchId = StringUtils::uint64(batchIdString);
+    ctx.batchId = StringUtils::uint64(batchIdString);
   } else {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "replication revision tree - request misses batchId");
-    return;
+    return false;
+  }
+
+  // get resume
+  std::string const& resumeString = _request->value("resume", found);
+  if (found) {
+    ctx.resume = StringUtils::uint64(resumeString);
   }
 
   // print request
   LOG_TOPIC("2b20f", TRACE, arangodb::Logger::REPLICATION)
-      << "requested revision tree for collection '" << cname
-      << "' using contextId '" << batchId << "'";
+      << "requested revision tree for collection '" << ctx.cname
+      << "' using contextId '" << ctx.batchId << "'";
 
   ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
 
-  if (!ExecContext::current().canUseCollection(_vocbase.name(), cname, auth::Level::RO)) {
+  if (!ExecContext::current().canUseCollection(_vocbase.name(), ctx.cname, auth::Level::RO)) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
-    return;
+    return false;
   }
 
-  std::shared_ptr<LogicalCollection> logical{_vocbase.lookupCollection(cname)};
-  if (!logical) {
+  ctx.collection = _vocbase.lookupCollection(ctx.cname);
+  if (!ctx.collection) {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
-    return;
+    return false;
   }
-  if (logical->version() < LogicalCollection::Version::v37) {
+  if (ctx.collection->version() < LogicalCollection::Version::v37) {
     generateError(rest::ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_NOT_IMPLEMENTED,
                   "this collection doesn't support revision-based replication");
-    return;
+    return false;
   }
 
   // determine end tick for dump
-  TRI_voc_tick_t tickEnd = std::numeric_limits<TRI_voc_tick_t>::max();
+  ctx.tickEnd = std::numeric_limits<TRI_voc_tick_t>::max();
   std::string const& value2 = _request->value("to", found);
   if (found) {
-    tickEnd = static_cast<TRI_voc_tick_t>(StringUtils::uint64(value2));
+    ctx.tickEnd = static_cast<TRI_voc_tick_t>(StringUtils::uint64(value2));
   }
 
-  std::unique_ptr<ReplicationIterator> iter =
-      logical->getPhysical()->getReplicationIterator(ReplicationIterator::Ordering::Revision,
-                                                     batchId);
-  if (!iter) {
+  ctx.iter =
+      ctx.collection->getPhysical()->getReplicationIterator(ReplicationIterator::Ordering::Revision,
+                                                            ctx.batchId);
+  if (!ctx.iter) {
     generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
                   "could not get replication iterator for collection '" +
-                      cname + "'");
+                      ctx.cname + "'");
+    return false;
+  }
+
+  return true;
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief return the revision tree for a given collection, if available
+/// @response serialized revision tree, binary
+//////////////////////////////////////////////////////////////////////////////
+
+void RestReplicationHandler::handleCommandRevisionTree() {
+  RangeOperationContext ctx;
+  if (!prepareRangeOperation(ctx)) {
     return;
   }
+
   RevisionReplicationIterator& it =
-      *static_cast<RevisionReplicationIterator*>(iter.get());
+      *static_cast<RevisionReplicationIterator*>(ctx.iter.get());
 
   std::size_t constexpr maxDepth = 6;
   std::size_t const rangeMin = it.hasMore() ? it.revision() : 0;
   containers::RevisionTree tree(maxDepth, rangeMin);
 
-  while (it.hasMore() && it.revision() <= tickEnd) {
+  while (it.hasMore() && it.revision() <= ctx.tickEnd) {
     tree.insert(it.revision(), it.document().hashString());
     it.next();
   }
@@ -2886,6 +2900,64 @@ void RestReplicationHandler::handleCommandRevisionTree() {
   resetResponse(rest::ResponseCode::OK);
   _response->setContentType("application/octet-stream");
   _response->addRawPayload(VPackStringRef(result.data(), result.size()));
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief return the requested revision ranges for a given collection, if
+///        available
+/// @response VPackObject, containing
+///           * ranges, VPackArray of VPackArray of revisions
+///           * resume, optional, if response is chunked; revision resume
+///                     point to specify on subsequent requests
+//////////////////////////////////////////////////////////////////////////////
+
+void RestReplicationHandler::handleCommandRevisionRanges() {
+  RangeOperationContext ctx;
+  if (!prepareRangeOperation(ctx)) {
+    return;
+  }
+
+  bool success = false;
+  std::size_t current = 0;
+  VPackSlice const body = this->parseVPackBody(success);
+  if (!success) {
+    // error already created
+    return;
+  }
+  bool badFormat = !body.isArray();
+  if (!badFormat) {
+    for (std::size_t i = 0; i < body.length(); ++i) {
+      if (!body.at(i).isArray() || body.at(i).length() != 2 ||
+          !body.at(i).at(0).isNumber() || !body.at(i).at(1).isNumber()) {
+        badFormat = true;
+        break;
+      }
+      if (body.at(i).at(1).getNumber<std::size_t>() >= ctx.resume) {
+        current = std::max(current, i);
+      }
+    }
+  }
+  if (badFormat) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "body needs to be an array of pairs of revisions");
+    return;
+  }
+
+  RevisionReplicationIterator& it =
+      *static_cast<RevisionReplicationIterator*>(ctx.iter.get());
+  it.seek(ctx.resume);
+
+  VPackBuilder response;
+  {
+    VPackObjectBuilder obj(&response);
+    TRI_voc_rid_t resumeNext = ctx.resume;
+
+    // TODO actually generate response
+
+    response.add("resume", VPackValue(resumeNext));
+  }
+
+  generateResult(rest::ResponseCode::OK, response.slice());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
