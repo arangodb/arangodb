@@ -38,6 +38,7 @@ function lateDocumentMaterializationRuleTestSuite () {
   const numOfExpCollections = 2;
   let collectionNames = [];
   let expCollectionNames = [];
+  let primaryIndexCollectionName = "UnitTestsPrimCollection";
   var i;
   var j;
   for (i = 0; i < numOfCollectionIndexes; ++i) {
@@ -54,6 +55,7 @@ function lateDocumentMaterializationRuleTestSuite () {
           db._drop(expCollectionNames[i * numOfCollectionIndexes + j]);
         }
       }
+      db._drop(primaryIndexCollectionName);
 
       var collections = [];
       var expCollections = [];
@@ -63,6 +65,7 @@ function lateDocumentMaterializationRuleTestSuite () {
           expCollections.push(db._create(expCollectionNames[i * numOfCollectionIndexes + j], { numberOfShards: 3 }));
         }
       }
+      var primCollection = db._create(primaryIndexCollectionName, { numberOfShards: 3 })
 
       for (i = 0; i < numOfCollectionIndexes; ++i) {
         let type;
@@ -100,6 +103,9 @@ function lateDocumentMaterializationRuleTestSuite () {
           expCollections[i * numOfCollectionIndexes + j].save(doc);
         }
       }
+      primCollection.save({_key: "c0", foo: "a_val"});
+      primCollection.save({_key: "c1", foo: "b_val"});
+      primCollection.save({_key: "c2", foo: "c_val"});
     },
 
     tearDownAll : function () {
@@ -109,6 +115,7 @@ function lateDocumentMaterializationRuleTestSuite () {
           try { db._drop(expCollectionNames[i * numOfCollectionIndexes + j]); } catch(e) {}
         }
       }
+      try { db._drop(primaryIndexCollectionName); } catch(e) {}
     },
     testNotAppliedDueToNoFilter() {
       for (i = 0; i < numOfCollectionIndexes; ++i) {
@@ -355,6 +362,19 @@ function lateDocumentMaterializationRuleTestSuite () {
         });
         assertTrue(materializeNodeFound);
       }
+    },
+    testQueryResultsPrimaryIndex() {
+      let query = "FOR d IN " + primaryIndexCollectionName + " FILTER d._key IN ['c0', 'c1'] SORT NOOPT(d._key) DESC LIMIT 1 RETURN d";
+      let plan = AQL_EXPLAIN(query).plan;
+      assertNotEqual(-1, plan.rules.indexOf(ruleName));
+      let result = AQL_EXECUTE(query);
+      assertEqual(1, result.json.length);
+      let expectedKeys = new Set(['c1']);
+      result.json.forEach(function(doc) {
+        assertTrue(expectedKeys.has(doc._key));
+        expectedKeys.delete(doc._key);
+      });
+      assertEqual(0, expectedKeys.size);
     },
   };
 }

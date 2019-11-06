@@ -78,7 +78,7 @@ IndexIterator::DocumentCallback getCallback(DocumentProducingFunctionContext& co
                                             transaction::Methods::IndexHandle const& index,
                                             IndexNode::IndexValuesRegisters const& outNonMaterializedIndRegs) {
   return [&context, &index, &outNonMaterializedIndRegs](LocalDocumentId const& token, VPackSlice slice) {
-    if (checkUniqueness) {
+    if constexpr (checkUniqueness) {
       if (!context.checkUniqueness(token)) {
         // Document already found, skip it
         return false;
@@ -104,17 +104,26 @@ IndexIterator::DocumentCallback getCallback(DocumentProducingFunctionContext& co
     TRI_ASSERT(!output.isFull());
     output.moveValueInto(registerId, input, guard);
 
-    TRI_ASSERT(slice.isArray());
     auto indexId = index.getIndex()->id();
     auto const indRegs = outNonMaterializedIndRegs.find(indexId);
     TRI_ASSERT(indRegs != outNonMaterializedIndRegs.cend());
     size_t i = 0;
-    for (auto const s : arangodb::velocypack::ArrayIterator(slice)) {
-      auto indReg = indRegs->second.find(i++);
-      if (indReg == indRegs->second.cend()) {
-        continue;
+    // hash/skiplist
+    if (slice.isArray()) {
+      for (auto const s : arangodb::velocypack::ArrayIterator(slice)) {
+        auto indReg = indRegs->second.find(i++);
+        if (indReg == indRegs->second.cend()) {
+          continue;
+        }
+        AqlValue v(s);
+        AqlValueGuard guard{v, true};
+        TRI_ASSERT(!output.isFull());
+        output.moveValueInto(indReg->second, input, guard);
       }
-      AqlValue v(s);
+    } else { // primary/edge
+      auto indReg = indRegs->second.find(i);
+      TRI_ASSERT(indReg != indRegs->second.cend());
+      AqlValue v(slice);
       AqlValueGuard guard{v, true};
       TRI_ASSERT(!output.isFull());
       output.moveValueInto(indReg->second, input, guard);
