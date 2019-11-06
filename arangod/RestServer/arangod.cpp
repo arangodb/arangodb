@@ -116,6 +116,7 @@
 #endif
 
 #include "IResearch/IResearchAnalyzerFeature.h"
+#include "IResearch/IResearchAnalyzerCollectionFeature.h"
 #include "IResearch/IResearchFeature.h"
 
 // storage engines
@@ -245,6 +246,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
 
     server.addFeature(new arangodb::iresearch::IResearchAnalyzerFeature(server));
     server.addFeature(new arangodb::iresearch::IResearchFeature(server));
+    server.addFeature(new arangodb::IResearchAnalyzerCollectionFeature(server));
 
     // storage engines
     server.addFeature(new ClusterEngine(server));
