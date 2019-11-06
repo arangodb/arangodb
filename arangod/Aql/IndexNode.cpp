@@ -301,12 +301,22 @@ void IndexNode::toVelocyPackHelper(VPackBuilder& builder, unsigned flags,
     for (auto const& indVars : _outNonMaterializedIndVars) {
       VPackObjectBuilder objectScope(&builder);
       builder.add("indexId", VPackValue(indVars.first));
+      // container _indexes contains a few items
+      auto indIt = std::find_if(_indexes.cbegin(), _indexes.cend(), [&indVars](auto const& index) {
+        return index.getIndex()->id() == indVars.first;
+      });
+      TRI_ASSERT(indIt != _indexes.cend());
+      auto const& fields = indIt->getIndex()->fields();
       VPackArrayBuilder arrayScope(&builder, "IndexValuesVars");
       for (auto const& indVar : indVars.second) {
         VPackObjectBuilder objectScope(&builder);
         builder.add("fieldNumber", VPackValue(indVar.first));
         builder.add("id", VPackValue(indVar.second->id));
-        builder.add("name", VPackValue(indVar.second->name));  // for explainer.js
+        builder.add("name", VPackValue(indVar.second->name)); // for explainer.js
+        std::string fieldName;
+        TRI_ASSERT(indVar.first < fields.size());
+        basics::TRI_AttributeNamesToString(fields[indVar.first], fieldName, true);
+        builder.add("field", VPackValue(fieldName)); // for explainer.js
       }
     }
   }
