@@ -454,7 +454,7 @@ v8::Handle<v8::Object> TRI_RequestCppToV8(v8::Isolate* isolate,
       auto raw = request->rawPayload();
       headers[StaticStrings::ContentLength] =
         StringUtils::itoa(raw.size());
-      buffer = V8Buffer::New(isolate, raw.data(), raw.size());
+      V8Buffer* buffer = V8Buffer::New(isolate, raw.data(), raw.size());
       auto bufObj = v8::Local<v8::Object>::New(isolate, buffer->_handle);
       TRI_GET_GLOBAL_STRING(RawRequestBodyKey);
       req->Set(RawRequestBodyKey, bufObj);
