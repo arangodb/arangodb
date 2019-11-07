@@ -843,7 +843,7 @@ RestStatus RestAdminClusterHandler::handleProxyGetRequest(std::string const& url
   opt.timeout = 10s;
   auto frequest = network::sendRequestRetry(pool, "server:" + serverId, fuerte::RestVerb::Get, url, VPackBuffer<uint8_t>(), opt);
 
-  return waitForFuture(std::move(frequest).thenValue([this](network::Response &&result) {
+  return waitForFuture(std::move(frequest).thenValue([this](network::Response&& result) {
     if (result.ok()) {
       resetResponse(ResponseCode(result.statusCode())); // I quit if the values are not the HTTP Status Codes
       auto payload = result.response->stealPayload();
