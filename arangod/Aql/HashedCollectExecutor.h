@@ -38,6 +38,9 @@
 
 namespace arangodb {
 namespace aql {
+
+struct AqlCall;
+class AqlItemBlockInputRange;
 class OutputAqlItemRow;
 class ExecutorInfos;
 template <BlockPassthrough>
@@ -121,6 +124,15 @@ class HashedCollectExecutor {
   std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
 
   /**
+   * @brief produce the next Row of Aql Values.
+   *
+   * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
+   */
+  std::tuple<ExecutorState, Stats, AqlCall> produceRows(size_t atMost,
+                                                        AqlItemBlockInputRange& input,
+                                                        OutputAqlItemRow& output);
+
+  /**
    * @brief This Executor does not know how many distinct rows will be fetched
    * from upstream, it can only report how many it has found by itself, plus
    * it knows that it can only create as many new rows as pulled from upstream.
@@ -145,6 +157,7 @@ class HashedCollectExecutor {
    * @return DONE or WAITING
    */
   ExecutionState init();
+  ExecutorState initRange(AqlItemBlockInputRange& inputRange, size_t& limit);
 
   void destroyAllGroupsAqlValues();
 
