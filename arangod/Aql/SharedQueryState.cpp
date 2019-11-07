@@ -25,49 +25,95 @@
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 
+#include "Logger/LogMacros.h"
+
 using namespace arangodb;
 using namespace arangodb::aql;
 
 void SharedQueryState::invalidate() {
   std::lock_guard<std::mutex> guard(_mutex);
+  _numWakeups += 1;
+  _wakeupCb = nullptr;
   _valid = false;
-  _wasNotified = true;
   // guard.unlock();
-  _condition.notify_one();
+  _cv.notify_all();
 }
 
 /// this has to stay for a backwards-compatible AQL HTTP API (hasMore).
-void SharedQueryState::waitForAsyncResponse() {
+void SharedQueryState::waitForAsyncWakeup() {
   std::unique_lock<std::mutex> guard(_mutex);
-  _condition.wait(guard, [&] { return _wasNotified; });
-  _wasNotified = false;
-}
-
-/// @brief setter for the continue callback:
-///        We can either have a handler or a callback
-void SharedQueryState::setContinueCallback() noexcept {
-  std::lock_guard<std::mutex> guard(_mutex);
-  _continueCallback = nullptr;
-  _hasHandler = false;
+  TRI_ASSERT(!_wakeupCb);
+  _cv.wait(guard, [&] { return _numWakeups > 0; });
+  TRI_ASSERT(_numWakeups > 0);
+  _numWakeups--;
 }
 
 /// @brief setter for the continue handler:
 ///        We can either have a handler or a callback
-void SharedQueryState::setContinueHandler(std::function<void()> const& handler) {
+void SharedQueryState::setWakeupHandler(std::function<bool()> const& cb) {
   std::lock_guard<std::mutex> guard(_mutex);
-  _continueCallback = handler;
-  _hasHandler = true;
+  _wakeupCb = cb;
 }
 
-/// execute the _continueCallback. must hold _mutex
-bool SharedQueryState::executeContinueCallback() const {
-  TRI_ASSERT(_hasHandler);
+void SharedQueryState::resetWakeupHandler() {
+  std::lock_guard<std::mutex> guard(_mutex);
+  _wakeupCb = nullptr;
+}
+
+/// execute the _continueCallback. must hold _mutex,
+void SharedQueryState::execute() {
+  TRI_ASSERT(_valid);
+  
+  if (!_wakeupCb) {
+    _cv.notify_one();
+    return;
+  }
+
   auto scheduler = SchedulerFeature::SCHEDULER;
   if (ADB_UNLIKELY(scheduler == nullptr)) {
     // We are shutting down
-    return false;
+    return;
   }
-  // do NOT use scheduler->post(), can have high latency that
-  //  then backs up libcurl callbacks to other objects
-  return scheduler->queue(RequestLane::CLIENT_AQL, _continueCallback);
+  TRI_ASSERT(_numWakeups > 0);
+  
+  if (_inWakeupCb) {
+    return;
+  }
+  _inWakeupCb = true;
+
+  bool queued = scheduler->queue(RequestLane::CLIENT_AQL,
+                                 [self = shared_from_this(),
+                                  cb = _wakeupCb]() mutable {
+
+    while (true) {
+      bool cntn = false;
+      try {
+        cntn = cb();
+      } catch (std::exception const& ex) {
+        LOG_TOPIC("e988a", WARN, Logger::QUERIES)
+            << "Exception when continuing rest handler: " << ex.what();
+      } catch (...) {
+        LOG_TOPIC("e988b", WARN, Logger::QUERIES)
+            << "Exception when continuing rest handler";
+      }
+      
+      const uint32_t n = self->_numWakeups.fetch_sub(1);
+      TRI_ASSERT(n > 0);
+
+      if (!cntn || n == 1) {
+        std::lock_guard<std::mutex> guard(self->_mutex);
+        if (!cntn || self->_numWakeups.load() == 0) {
+          self->_inWakeupCb = false;
+          break;
+        }
+      }
+    }
+  });
+  
+  if (!queued) { // just invalidate
+     _wakeupCb = nullptr;
+     _valid = false;
+     _inWakeupCb = false;
+     _cv.notify_all();
+  }
 }

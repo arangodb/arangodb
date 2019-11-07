@@ -484,7 +484,7 @@ int ShardingInfo::getResponsibleShard(arangodb::velocypack::Slice slice, bool do
 }
 
 Result ShardingInfo::validateShardsAndReplicationFactor(arangodb::velocypack::Slice slice,
-                                                        application_features::ApplicationServer& server) {
+                                                        application_features::ApplicationServer const& server) {
   if (slice.isObject()) {
     auto const& cl = server.getFeature<ClusterFeature>();
 
