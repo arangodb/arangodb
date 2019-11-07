@@ -2662,7 +2662,6 @@ AstNode* Ast::makeConditionFromExample(AstNode const* node) {
     TRI_ASSERT(object->type == NODE_TYPE_OBJECT);
 
     auto const n = object->numMembers();
-
     for (size_t i = 0; i < n; ++i) {
       auto member = object->getMember(i);
 
@@ -2677,8 +2676,8 @@ AstNode* Ast::makeConditionFromExample(AstNode const* node) {
 
       auto value = member->getMember(0);
 
-      if (value->type == NODE_TYPE_OBJECT) {
-        createCondition(value);
+      if (value->type == NODE_TYPE_OBJECT && value->numMembers() != 0) {
+          createCondition(value);
       } else {
         auto access = variable;
         for (auto const& it : attributeParts) {
