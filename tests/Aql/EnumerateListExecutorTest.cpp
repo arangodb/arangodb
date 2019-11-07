@@ -347,7 +347,7 @@ TEST_F(EnumerateListExecutorTest, there_are_rows_in_the_upstream_the_producer_wa
   ASSERT_TRUE(v.toBoolean());
 }
 
-TEST_F(EnumerateListExecutorTest, test_produce_datarange) {
+TEST_F(EnumerateListExecutorTest, test_produce_datarange_single_row) {
   // This fetcher will not be called!
   // After Execute is done this fetcher shall be removed, the Executor does not need it anymore!
   auto fakeUnusedBlock = VPackParser::fromJson("[  ]");
@@ -409,7 +409,86 @@ TEST_F(EnumerateListExecutorTest, test_produce_datarange) {
   v = block->getValue(2, 4);
   ASSERT_TRUE(v.isNumber());
   ASSERT_EQ(v.toInt64(), 2);
-}  // namespace aql
+}
+
+TEST_F(EnumerateListExecutorTest, test_produce_datarange) {
+  // This fetcher will not be called!
+  // After Execute is done this fetcher shall be removed, the Executor does not need it anymore!
+  auto fakeUnusedBlock = VPackParser::fromJson("[  ]");
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
+      itemBlockManager, fakeUnusedBlock->steal(), false);
+
+  // SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 5)};
+  // This is the relevant part of the test
+  SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 5)};
+  EnumerateListExecutorInfos infos(3, 4, 4, 5, {}, {0, 1, 2, 3});
+  EnumerateListExecutor testee(fetcher, infos);
+  SharedAqlItemBlockPtr inBlock =
+      buildBlock<4>(itemBlockManager, {{{{1}, {2}, {3}, {R"([true, 1, 2])"}}},
+                                       {{{1}, {2}, {3}, {R"([true, 1, 2])"}}}});
+
+  AqlItemBlockInputRange input{ExecutorState::DONE, inBlock, 0, inBlock->size()};
+  OutputAqlItemRow output(std::move(block), infos.getOutputRegisters(),
+                          infos.registersToKeep(), infos.registersToClear());
+
+  EXPECT_EQ(output.numRowsWritten(), 0);
+  auto const [state, stats, call] = testee.produceRows(1000, input, output);
+  EXPECT_EQ(state, ExecutorState::DONE);
+  EXPECT_EQ(output.numRowsWritten(), 6);
+  EXPECT_FALSE(input.hasMore());
+
+  block = output.stealBlock();
+  // check registers that should be kept
+  AqlValue v = block->getValue(0, 0);
+  ASSERT_TRUE(v.isNumber());
+  ASSERT_EQ(v.toInt64(), 1);
+
+  v = block->getValue(1, 0);
+  ASSERT_TRUE(v.isNumber());
+  ASSERT_EQ(v.toInt64(), 1);
+
+  v = block->getValue(1, 1);
+  ASSERT_TRUE(v.isNumber());
+  ASSERT_EQ(v.toInt64(), 2);
+
+  v = block->getValue(1, 2);
+  ASSERT_TRUE(v.isNumber());
+  ASSERT_EQ(v.toInt64(), 3);
+
+  bool mustDestroy = false;
+  v = block->getValue(1, 3);
+  ASSERT_TRUE(v.isArray());
+  ASSERT_TRUE(v.at(0, mustDestroy, false).toBoolean());
+  ASSERT_TRUE(v.at(1, mustDestroy, false).toBoolean());
+  ASSERT_TRUE(v.at(2, mustDestroy, false).toBoolean());
+
+  // check registers that should be filled
+  v = block->getValue(0, 4);
+  ASSERT_TRUE(v.isBoolean());
+  ASSERT_TRUE(v.toBoolean());
+
+  v = block->getValue(1, 4);
+  ASSERT_TRUE(v.isNumber());
+  ASSERT_EQ(v.toInt64(), 1);
+
+  v = block->getValue(2, 4);
+  ASSERT_TRUE(v.isNumber());
+  ASSERT_EQ(v.toInt64(), 2);
+
+  v = block->getValue(3, 4);
+  ASSERT_TRUE(v.isBoolean());
+  ASSERT_TRUE(v.toBoolean());
+
+  v = block->getValue(4, 4);
+  ASSERT_TRUE(v.isNumber());
+  ASSERT_EQ(v.toInt64(), 1);
+
+  v = block->getValue(5, 4);
+  ASSERT_TRUE(v.isNumber());
+  ASSERT_EQ(v.toInt64(), 2);
+}
+
+// namespace aql
 
 }  // namespace aql
 }  // namespace tests
