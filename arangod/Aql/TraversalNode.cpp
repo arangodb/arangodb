@@ -728,7 +728,7 @@ void TraversalNode::registerCondition(bool isConditionOnEdge, uint64_t condition
         return builder;
       })
     );
-    if(!emplaced) {
+    if (!emplaced) {
       it->second->addConditionPart(condition);
     }
   } else {
@@ -740,7 +740,7 @@ void TraversalNode::registerCondition(bool isConditionOnEdge, uint64_t condition
         return cond;
       })
     );
-    if(!emplaced) {
+    if (!emplaced) {
       it->second->addMember(condition);
     }
   }

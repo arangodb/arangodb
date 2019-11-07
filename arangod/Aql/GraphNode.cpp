@@ -282,7 +282,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
     _directions.emplace_back(d);
   }
 
-  if(!ServerState::instance()->isDBServer()) {
+  if (!ServerState::instance()->isDBServer()) {
     // Graph Information. Do we need to reload the graph here?
     std::string graphName;
     if (base.hasKey("graph") && (base.get("graph").isString())) {

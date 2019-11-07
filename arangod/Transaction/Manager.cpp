@@ -482,7 +482,7 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
         tid,
         MetaType::Managed, state.get()
     ).second;
-    if(emplaced) {
+    if (emplaced) {
       state.release();
     }
   }

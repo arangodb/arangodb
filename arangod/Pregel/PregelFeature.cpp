@@ -163,7 +163,7 @@ std::pair<Result, uint64_t> PregelFeature::startExecution(
           std::vector<std::string> eKeys = coll->shardKeys();
 
           std::string shardKeyAttribute = "vertex";
-          if(params.hasKey("shardKeyAttribute")) {
+          if (params.hasKey("shardKeyAttribute")) {
            shardKeyAttribute =  params.get("shardKeyAttribute").copyString();
           }
 

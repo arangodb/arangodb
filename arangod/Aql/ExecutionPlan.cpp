@@ -832,7 +832,7 @@ ExecutionNode* ExecutionPlan::registerNode(ExecutionNode* node) {
 
   try {
     auto [it, emplaced] = _ids.try_emplace(node->id(), node);
-    if(!emplaced) {
+    if (!emplaced) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to register node in plan");
     }
   } catch (...) {

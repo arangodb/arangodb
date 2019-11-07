@@ -610,7 +610,7 @@ bool ServerState::checkIfAgencyInitialized(AgencyComm& comm,
 bool ServerState::registerAtAgencyPhase1(AgencyComm& comm, ServerState::RoleEnum const& role) {
 
   // if the agency is not initialized, there is no point in continuing.
-  if(!checkIfAgencyInitialized(comm, role)) {
+  if (!checkIfAgencyInitialized(comm, role)) {
     return false;
   }
 

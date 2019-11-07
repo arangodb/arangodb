@@ -671,12 +671,12 @@ arangodb::Result MaintenanceFeature::storeShardError(
   MUTEX_LOCKER(guard, _seLock);
   try {
     auto [it, emplaced] = _shardErrors.try_emplace(std::move(key), std::move(error));
-    if(!emplaced){
-    std::stringstream error;
-    error << "shard " << key << " already has pending error";
-    LOG_TOPIC("378fa", DEBUG, Logger::MAINTENANCE) << error.str();
-    return Result(TRI_ERROR_FAILED, error.str());
-  }
+    if (!emplaced) {
+      std::stringstream error;
+      error << "shard " << key << " already has pending error";
+      LOG_TOPIC("378fa", DEBUG, Logger::MAINTENANCE) << error.str();
+      return Result(TRI_ERROR_FAILED, error.str());
+    }
   } catch (std::exception const& e) {
     return Result(TRI_ERROR_FAILED, e.what());
   }
@@ -733,7 +733,7 @@ arangodb::Result MaintenanceFeature::storeIndexError(
   auto& errors = emplace_result.first->second;
   try {
     auto [itr, emplaced] = errors.try_emplace(indexId, error);
-    if(!emplaced) {
+    if (!emplaced) {
       std::stringstream error;
       error << "index " << indexId << " for shard " << key << " already has pending error";
       LOG_TOPIC("d3c92", DEBUG, Logger::MAINTENANCE) << error.str();

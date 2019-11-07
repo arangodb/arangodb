@@ -446,7 +446,7 @@ arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* expression
     iresearch::string_ref(arangodb::iresearch::IResearchAnalyzerFeature::identity()->name());
 
   auto& server = arangodb::application_features::ApplicationServer::server();
-  if( args.size() > 1) {
+  if (args.size() > 1) {
     auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     if (trx) {
       auto sysVocbase =
@@ -547,7 +547,7 @@ arangodb::aql::AqlValue aqlFnTokens(arangodb::aql::ExpressionContext* expression
     default:
       if (current.isNumber()) { // there are many "number" types. To adopt all current and future ones just
                                 // deal with them all here in generic way
-        if(!numeric_analyzer) {
+        if (!numeric_analyzer) {
           numeric_analyzer = std::make_unique<irs::numeric_token_stream>();
           numeric_terms = numeric_analyzer->attributes().get<irs::term_attribute>().get();
           if (ADB_UNLIKELY(!numeric_terms)) {
@@ -1735,7 +1735,7 @@ arangodb::Result IResearchAnalyzerFeature::loadAnalyzers(
         return arangodb::Result(); // db-server should not access cluster during inRecovery
       }
     } else if (arangodb::ServerState::instance()->isSingleServer()) { // single server
-      if(itr != _lastLoad.end()) {
+      if (itr != _lastLoad.end()) {
         return arangodb::Result(); // do not reload on single-server
       }
     } else if (itr != _lastLoad.end() // had a previous load

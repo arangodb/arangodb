@@ -48,12 +48,13 @@ ConnectionPool::~ConnectionPool() { shutdown(); }
 /// note: it is the callers responsibility to ensure the endpoint
 /// is always the same, we do not do any post-processing
 network::ConnectionPtr ConnectionPool::leaseConnection(std::string const& endpoint) {
-
   READ_LOCKER(guard, _lock);
   auto it = _connections.find(endpoint);
   if (it == _connections.end()) {
     guard.unlock();
+
     auto tmp = std::make_unique<Bucket>(); //get memory outside lock
+    
     WRITE_LOCKER(wguard, _lock);
     auto [it2, emplaced] = _connections.try_emplace(endpoint, std::move(tmp));
     it = it2;
