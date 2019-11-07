@@ -2672,8 +2672,7 @@ AstNode* Ast::makeConditionFromExample(AstNode const* node) {
             "expecting object literal with literal attribute names in example");
       }
 
-      attributeParts.emplace_back(
-          std::make_pair(member->getStringValue(), member->getStringLength()));
+      attributeParts.emplace_back(member->getStringValue(), member->getStringLength());
 
       auto value = member->getMember(0);
 

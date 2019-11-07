@@ -30,6 +30,7 @@
 #include "Aql/ExpressionContext.h"
 #include "Aql/Function.h"
 #include "Aql/Query.h"
+#include "Aql/Range.h"
 #include "Aql/V8Executor.h"
 #include "Basics/Exceptions.h"
 #include "Basics/HybridLogicalClock.h"
@@ -6736,12 +6737,16 @@ AqlValue Functions::Range(ExpressionContext* expressionContext, transaction::Met
   }
 
   transaction::BuilderLeaser builder(trx);
-  builder->openArray();
+  builder->openArray(true);
   if (step < 0.0 && to <= from) {
+    TRI_ASSERT(step != 0.0);
+    Range::throwIfTooBigForMaterialization(static_cast<uint64_t>((from - to) / -step));
     for (; from >= to; from += step) {
       builder->add(VPackValue(from));
     }
   } else {
+    TRI_ASSERT(step != 0.0);
+    Range::throwIfTooBigForMaterialization(static_cast<uint64_t>((to - from) / step));
     for (; from <= to; from += step) {
       builder->add(VPackValue(from));
     }
