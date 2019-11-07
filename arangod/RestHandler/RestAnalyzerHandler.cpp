@@ -47,18 +47,18 @@ void RestAnalyzerHandler::createAnalyzer( // create
 ) {
   TRI_ASSERT(_request); // ensured by execute()
 
-  if (_request->payload().isEmptyObject()) {
-    generateError(
-      arangodb::rest::ResponseCode::BAD, TRI_ERROR_HTTP_CORRUPTED_JSON
-    );
-    return;
-  }
-
   bool success = false;
   auto body = parseVPackBody(success);
 
   if (!success) {
     return; // parseVPackBody(...) calls generateError(...)
+  }
+
+  if (body.isEmptyObject()) {
+    generateError(
+      arangodb::rest::ResponseCode::BAD, TRI_ERROR_HTTP_CORRUPTED_JSON
+    );
+    return;
   }
 
   if (!body.isObject()) {
