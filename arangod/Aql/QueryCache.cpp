@@ -647,7 +647,7 @@ void QueryCache::store(TRI_vocbase_t* vocbase, std::shared_ptr<QueryCacheResultE
       arangodb::lazyConstruct([&]{
         return std::make_unique<QueryCacheDatabaseEntry>();
       })
-    };
+  );
   // store cache entry
   (*it).second->store(std::move(entry), allowedMaxResultsCount, allowedMaxResultsSize);
 }
