@@ -445,7 +445,7 @@ function ahuacatlSubqueryTestSuite () {
           assertEqual(scannedIndex, 40000);
           assertEqual(filtered, 0);
           if (isCoordinator) {
-            assertEqual(httpRequests, 8007);
+            assertTrue(httpRequests <= 8007 + 1);
           } else {
             assertEqual(httpRequests, 0);
           }
