@@ -1195,7 +1195,7 @@ static void JS_RawRequestBody(v8::FunctionCallbackInfo<v8::Value> const& args) {
         case Endpoint::TransportType::VST: {
           if (request != nullptr) {
             auto raw = request->rawPayload();
-            buffer = V8Buffer::New(isolate, raw.data(), raw.size());
+            V8Buffer* buffer = V8Buffer::New(isolate, raw.data(), raw.size());
             TRI_V8_RETURN(buffer->_handle);
           }
         } break;
