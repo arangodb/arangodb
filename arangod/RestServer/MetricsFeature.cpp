@@ -77,7 +77,11 @@ void MetricsFeature::stop() {
 }
 
 double time() {
-  return std::chrono::duration<double>(  // time since epoch in seconds
+  return std::chrono::duration<double>( // time since epoch in seconds
     std::chrono::system_clock::now().time_since_epoch())
     .count();
 }
+
+Counter MetricsFeature::counter (std::string const& name) {
+  return _metrics.registerCounter(name);
+};

@@ -1,5 +1,32 @@
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+/// @author Kaveh Vahedipour
+////////////////////////////////////////////////////////////////////////////////
+
 #include "Metrics.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Basics/debugging.h"
 #include <type_traits>
+
+using namespace arangodb;
 
 Metrics::Metric::Metric(uint64_t val) {
   _var.emplace<0>(val);
@@ -114,17 +141,26 @@ Metrics::hist_type& Metrics::histogram(
   return std::get<Metrics::hist_type>(ptr->_var);
 }
 
+Counter Metrics::getCounter(std::string const& name) {
+  return Counter(counter(name));
+}
+Counter Metrics::registerCounter(std::string const& name, uint64_t init) {
+  return Counter(counter(name, init));
+}
 
 Metrics::counter_type& Metrics::counter(std::string const& name) {
   auto it = _registry.find(name);
+  LOG_TOPIC("4ca33", ERR, Logger::FIXME) << "No such counter " << name;
+  TRI_ASSERT(it != _registry.end());
   return std::get<Metrics::counter_type>(it->second->_var);
 }
 
 Metrics::hist_type& Metrics::histogram(std::string const& name) {
   auto it = _registry.find(name);
+  LOG_TOPIC("3ca34", ERR, Logger::FIXME) << "No such histogram " << name;
+  TRI_ASSERT(it != _registry.end());
   return std::get<Metrics::hist_type>(it->second->_var);
 }
-
 
 template<class T> struct always_false : std::false_type {};
 

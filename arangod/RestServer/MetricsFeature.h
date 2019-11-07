@@ -46,6 +46,13 @@ class MetricsFeature final : public application_features::ApplicationFeature {
   void start() override final;
   void stop() override final;
 
+  template<typename T> Histogram<T>
+  histogram (std::string const& name, size_t buckets, T low, T high) {
+    return _metrics.registerHistogram(name, buckets, low, high);
+  };
+
+  Counter counter(std::string const& name);
+  
  private:
   static MetricsFeature* METRICS;
 

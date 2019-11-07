@@ -37,6 +37,9 @@
 
 #include "counter.h"
 
+class Counter;
+template<typename T> class Histogram;
+
 class Metrics {
 
 public:
@@ -67,15 +70,30 @@ public:
   
   Metrics() {}
   virtual ~Metrics();
-  counter_type& counter (std::string const& name, uint64_t val);
-  hist_type& histogram (std::string const& name, uint64_t buckets);
+  void clear();
+
+private:
+
+public:
+  Counter getCounter(std::string const& name);
+  Counter registerCounter(std::string const& name, uint64_t init = 0);
+    
+  template<typename T>
+  Histogram<T> getHistogram (std::string const& name, size_t buckets, T low, T high) {
+    return Histogram<T>(histogram(name, buckets), low, high);
+  };
+  template<typename T>
+  Histogram<T> registerHistogram (std::string const& name, size_t buckets, T low, T high) {
+    return Histogram<T>(histogram(name, buckets), low, high);
+  };
+
+private:
+  counter_type& counter(std::string const& name, uint64_t val);
+  hist_type& histogram(std::string const& name, uint64_t buckets);
 
   counter_type& counter(std::string const& name);
   hist_type& histogram(std::string const& name);
 
-  void clear();
-
-private:
   registry_type _registry;
   
 };
@@ -184,4 +202,3 @@ std::ostream& operator<<(std::ostream& o, Histogram<T> const& h) {
 
 
 #endif
-
