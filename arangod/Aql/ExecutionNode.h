@@ -215,6 +215,9 @@ class ExecutionNode {
   /// not.
   static void validateType(int type);
 
+  /// @brief whether or not a node is located inside a subquery
+  bool isInSubquery() const;
+
   /// @brief add a dependency
   void addDependency(ExecutionNode*);
 

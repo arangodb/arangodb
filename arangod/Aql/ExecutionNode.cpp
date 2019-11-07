@@ -117,26 +117,6 @@ std::unordered_map<int, std::string const> const typeNames{
      "DistributeConsumer"},
     {static_cast<int>(ExecutionNode::MATERIALIZE),
      "MaterializeNode"}};
-
-// FIXME -- this temporary function should be
-// replaced by a ExecutionNode member variable
-// that shows the subquery depth and if filled
-// during register planning
-bool isInSubQuery(ExecutionNode const* node) {
-  auto current = node;
-  TRI_ASSERT(current != nullptr);
-  while (current != nullptr && current->hasDependency()) {
-    current = current->getFirstDependency();
-  }
-  if (ADB_UNLIKELY(current == nullptr)) {
-    // shouldn't happen in reality, just to please the compiler
-    return false;
-  }
-  TRI_ASSERT(current != nullptr);
-  TRI_ASSERT(current->getType() == ExecutionNode::NodeType::SINGLETON);
-  return current->id() != 1;
-}
-
 }  // namespace
 
 /// @brief resolve nodeType to a string.
@@ -162,6 +142,15 @@ void ExecutionNode::validateType(int type) {
   if (it == ::typeNames.end()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "unknown TypeID");
   }
+}
+
+bool ExecutionNode::isInSubquery() const {
+  auto const* current = this;
+  while (current != nullptr && current->hasDependency()) {
+    current = current->getFirstDependency();
+  }
+  TRI_ASSERT(current != nullptr);
+  return current->id() != 1;
 }
 
 /// @brief add a dependency
@@ -1281,7 +1270,7 @@ std::unique_ptr<ExecutionBlock> SingletonNode::createBlock(
   RegisterId const nrRegs = getRegisterPlan()->nrRegs[getDepth()];
 
   std::unordered_set<RegisterId> toKeep;
-  if (::isInSubQuery(this)) {
+  if (isInSubquery()) {
     for (auto const& var : this->getVarsUsedLater()) {
       auto val = variableToRegisterId(var);
       if (val < nrRegs) {
@@ -1553,7 +1542,7 @@ std::unique_ptr<ExecutionBlock> LimitNode::createBlock(
   TRI_ASSERT(previousNode != nullptr);
 
   // Fullcount must only be enabled on the last limit node on the main level
-  TRI_ASSERT(!_fullCount || !::isInSubQuery(this));
+  TRI_ASSERT(!_fullCount || !isInSubquery());
 
   LimitExecutorInfos infos(getRegisterPlan()->nrRegs[previousNode->getDepth()],
                            getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),

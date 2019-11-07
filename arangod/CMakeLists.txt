@@ -345,6 +345,7 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/TraversalConditionFinder.cpp
   Aql/TraversalExecutor.cpp
   Aql/TraversalNode.cpp
+  Aql/UnsortedGatherExecutor.cpp
   Aql/V8Executor.cpp
   Aql/Variable.cpp
   Aql/VariableGenerator.cpp

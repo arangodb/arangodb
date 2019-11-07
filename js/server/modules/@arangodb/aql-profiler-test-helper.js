@@ -32,7 +32,6 @@ const jsunity = require("jsunity");
 const assert = jsunity.jsUnity.assertions;
 const { getResponsibleServers } = global.ArangoClusterInfo;
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @file common variables and functions for aql-profiler* tests
 ////////////////////////////////////////////////////////////////////////////////
@@ -189,7 +188,6 @@ function assertFuzzyNumArrayEquality(expected, actual, details) {
     }
   }
 }
-
 
 function zipPlanNodesIntoStatsNodes (profile) {
   const statsNodesById = profile.stats.nodes.reduce(
@@ -384,7 +382,6 @@ function assertIsProfilePlanObject (plan) {
     expect(variable.id).to.be.a('number');
     expect(variable.name).to.be.a('string');
   }
-
 }
 
 ////////////////////////////////////////////////////////////////////////////////

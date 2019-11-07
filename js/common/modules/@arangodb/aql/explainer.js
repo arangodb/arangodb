@@ -1660,12 +1660,20 @@ function processQuery(query, explain, planIndex) {
       case 'ScatterNode':
         return keyword('SCATTER');
       case 'GatherNode':
+        let gatherAnnotations = [];
+        if (node.parallelism === 'parallel') {
+          gatherAnnotations.push('parallel');
+        }
+        if (node.sortmode !== 'unset') {
+          gatherAnnotations.push('sort mode: ' + node.sortmode);
+        } 
         return keyword('GATHER') + ' ' + node.elements.map(function (node) {
           if (node.path && node.path.length) {
             return variableName(node.inVariable) + node.path.map(function (n) { return '.' + attribute(n); }) + ' ' + keyword(node.ascending ? 'ASC' : 'DESC');
           }
           return variableName(node.inVariable) + ' ' + keyword(node.ascending ? 'ASC' : 'DESC');
-        }).join(', ') + (node.sortmode === 'unset' ? '' : '  ' + annotation('/* sort mode: ' + node.sortmode + ' */'));
+        }).join(', ') + (gatherAnnotations.length ? '  ' + annotation('/* ' + gatherAnnotations.join(', ') + ' */') : '');
+
       case 'MaterializeNode':
       	return keyword('MATERIALIZE') + ' ' + variableName(node.outVariable);
     }

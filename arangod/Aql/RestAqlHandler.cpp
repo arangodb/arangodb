@@ -612,8 +612,9 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation, Query* q
   auto closeGuard = scopeGuard([this] { _queryRegistry->close(&_vocbase, _qId); });
 
   std::shared_ptr<SharedQueryState> ss = query->sharedState();
-  ss->setContinueHandler(
-      [self = shared_from_this(), ss]() { self->continueHandlerExecution(); });
+  ss->setWakeupHandler([self = shared_from_this()] {
+    return self->wakeupHandler();
+  });
 
   bool found;
   std::string const& shardId = _request->header("shard-id", found);
@@ -679,6 +680,7 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation, Query* q
         }
         // Used in 3.4.0 onwards.
         answerBuilder.add("done", VPackValue(state == ExecutionState::DONE));
+        answerBuilder.add(StaticStrings::Code, VPackValue(TRI_ERROR_NO_ERROR));
         if (items.get() == nullptr) {
           // Backwards Compatibility
           answerBuilder.add(StaticStrings::Error, VPackValue(false));
@@ -739,8 +741,8 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation, Query* q
         answerBuilder.add(StaticStrings::Code, VPackValue(res.errorNumber()));
       } else if (operation == "shutdown") {
         int errorCode =
-            VelocyPackHelper::getNumericValue<int>(querySlice, "code", TRI_ERROR_INTERNAL);
-
+            VelocyPackHelper::readNumericValue<int>(querySlice, StaticStrings::Code, TRI_ERROR_INTERNAL);
+        
         ExecutionState state;
         Result res;
         std::tie(state, res) = query->engine()->shutdown(errorCode);

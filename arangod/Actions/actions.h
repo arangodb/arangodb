@@ -64,7 +64,7 @@ class TRI_action_t {
                                       arangodb::GeneralResponse*,
                                       arangodb::Mutex* dataLock, void** data) = 0;
 
-  virtual bool cancel(arangodb::Mutex* dataLock, void** data) = 0;
+  virtual void cancel(arangodb::Mutex* dataLock, void** data) = 0;
 
   void setUrl(std::string const& url, size_t urlParts) {
     _url = url;
@@ -97,9 +97,7 @@ class TRI_fake_action_t final : public TRI_action_t {
 
   /// @brief actions of this type are not registered anywhere, and thus
   /// cannot be canceled
-  bool cancel(arangodb::Mutex*, void**) override {
-    return false;
-  }
+  void cancel(arangodb::Mutex*, void**) override {}
 };
 
 /// @brief defines an action
