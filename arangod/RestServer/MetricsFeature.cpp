@@ -69,7 +69,6 @@ void MetricsFeature::prepare() {
 
 void MetricsFeature::start() {
   TRI_ASSERT(isEnabled());
-
 }
 
 void MetricsFeature::stop() {

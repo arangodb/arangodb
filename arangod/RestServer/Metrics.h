@@ -35,6 +35,7 @@
 #include <cmath>
 #include <limits>
 
+#include "Basics/VelocyPackHelper.h"
 #include "counter.h"
 
 class Counter;
@@ -63,6 +64,8 @@ public:
     Metric(uint64_t, uint64_t, uint64_t);
     ~Metric();
     std::ostream& print(std::ostream&) const;
+    void toBuilder(VPackBuilder&);
+    std::string _help
     var_type _var;
   };
 
@@ -71,6 +74,9 @@ public:
   Metrics() {}
   virtual ~Metrics();
   void clear();
+  
+  VPackBuilder toBuilder() const;
+  void toBuilder(VPackBuilder& builder) const;
 
 private:
 
@@ -80,10 +86,12 @@ public:
     
   template<typename T>
   Histogram<T> getHistogram (std::string const& name, size_t buckets, T low, T high) {
+    std::lock_guard<std::mutex> guard(_lock);
     return Histogram<T>(histogram(name, buckets), low, high);
   };
   template<typename T>
   Histogram<T> registerHistogram (std::string const& name, size_t buckets, T low, T high) {
+    std::lock_guard<std::mutex> guard(_lock);
     return Histogram<T>(histogram(name, buckets), low, high);
   };
 
@@ -95,6 +103,7 @@ private:
   hist_type& histogram(std::string const& name);
 
   registry_type _registry;
+  mutable std::mutex _lock;
   
 };
 

@@ -142,10 +142,27 @@ Metrics::hist_type& Metrics::histogram(
 }
 
 Counter Metrics::getCounter(std::string const& name) {
+  std::lock_guard<std::mutex> guard(_lock);
   return Counter(counter(name));
 }
 Counter Metrics::registerCounter(std::string const& name, uint64_t init) {
+  std::lock_guard<std::mutex> guard(_lock);
   return Counter(counter(name, init));
+}
+
+void Metrics::toBuilder(VPackBuilder& builder) const {
+  std::lock_guard<std::mutex> guard(_lock);
+  for (auto& metric : _registry) {
+    builder.add(VPackValue(metric.first));
+    metric.second->toBuilder(builder);
+  }
+}
+
+VPackBuilder Metrics::toBuilder() const {
+  VPackBuilder b;
+  VPackObjectBuilder o(&b);
+  toBuilder(b);
+  return b;
 }
 
 Metrics::counter_type& Metrics::counter(std::string const& name) {
@@ -172,3 +189,14 @@ std::ostream& Metrics::Metric::print(std::ostream& o) const {
   return o;
 }
 
+void Metrics::Metric::toBuilder(VPackBuilder& b) {
+  std::visit(overloaded {
+      [&b](Metrics::counter_type& arg) { b.add(VPackValue(arg.load())); },
+      [&b](Metrics::hist_type& arg) {
+        VPackArrayBuilder a(&b);
+        for (size_t i = 0; i < arg.size(); ++i) {
+          b.add(VPackValue(arg.load(i)));
+        }
+      },
+    }, _var);
+}
