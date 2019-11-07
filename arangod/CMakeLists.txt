@@ -646,6 +646,8 @@ set(LIB_ARANGOSERVER_SOURCES
   RestServer/InitDatabaseFeature.cpp
   RestServer/LanguageCheckFeature.cpp
   RestServer/LockfileFeature.cpp
+  RestServer/Metrics.cpp
+  RestServer/MetricsFeature.cpp
   RestServer/QueryRegistryFeature.cpp
   RestServer/ScriptFeature.cpp
   RestServer/ServerFeature.cpp
