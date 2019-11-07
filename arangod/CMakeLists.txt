@@ -282,6 +282,7 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/IndexExecutor.cpp
   Aql/IndexHint.cpp
   Aql/IndexNode.cpp
+  Aql/IndexNodeOptimizerRules.cpp
   Aql/InputAqlItemRow.cpp
   Aql/InsertModifier.cpp
   Aql/KShortestPathsExecutor.cpp
