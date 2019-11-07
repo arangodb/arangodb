@@ -67,7 +67,7 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   virtual RestStatus continueExecute() override;
   void shutdownExecute(bool isFinalized) noexcept override;
 
-  bool cancel() override final;
+  void cancel() override final;
   void handleError(basics::Exception const&) override;
 
  protected:
@@ -121,7 +121,7 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   /// @brief cancel the currently running query
   //////////////////////////////////////////////////////////////////////////////
 
-  bool cancelQuery();
+  void cancelQuery();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief build options for the query as JSON

@@ -175,7 +175,7 @@ class v8_action_t final : public TRI_action_t {
     return result;
   }
 
-  bool cancel(Mutex* dataLock, void** data) override {
+  void cancel(Mutex* dataLock, void** data) override {
     {
       // cppcheck-suppress redundantPointerOp
       MUTEX_LOCKER(mutexLocker, *dataLock);
@@ -192,8 +192,6 @@ class v8_action_t final : public TRI_action_t {
         }
       }
     }
-
-    return true;
   }
 
  private:

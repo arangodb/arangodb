@@ -296,7 +296,7 @@ OperationResult handleResponsesFromAllShards(
 
 // velocypack representation of object
 // {"error":true,"errorMessage":"document not found","errorNum":1202}
-static const char* notFoundSlice =
+const char* notFoundSlice =
   "\x14\x36\x45\x65\x72\x72\x6f\x72\x1a\x4c\x65\x72\x72\x6f\x72\x4d"
   "\x65\x73\x73\x61\x67\x65\x52\x64\x6f\x63\x75\x6d\x65\x6e\x74\x20"
   "\x6e\x6f\x74\x20\x66\x6f\x75\x6e\x64\x48\x65\x72\x72\x6f\x72\x4e"
@@ -463,7 +463,8 @@ OperationResult handleCRUDShardResponsesSlow(F&& func, size_t expectedLen, Opera
 
     if (nrok == 0) {  // This can only happen, if a commError was encountered!
       return OperationResult(commError);
-    } else if (nrok > 1) {
+    }
+    if (nrok > 1) {
       return OperationResult(TRI_ERROR_CLUSTER_GOT_CONTRADICTING_ANSWERS);
     }
 
@@ -540,7 +541,7 @@ int distributeBabyOnShards(CrudOperationCtx& opCtx,
     opCtx.shardMap.try_emplace(shardID, std::vector<VPackSlice>{value});
     opCtx.reverseMapping.emplace_back(shardID, 0);
   } else {
-    it->second.emplace_back(value);
+    it->second.push_back(value);
     opCtx.reverseMapping.emplace_back(shardID, it->second.size() - 1);
   }
   return TRI_ERROR_NO_ERROR;
@@ -563,7 +564,6 @@ int distributeBabyOnShards(CreateOperationCtx& opCtx,
                            LogicalCollection& collinfo,
                            VPackSlice const value, bool isRestore) {
   ShardID shardID;
-  bool userSpecifiedKey = false;
   std::string _key = "";
 
   if (!value.isObject()) {
@@ -572,7 +572,6 @@ int distributeBabyOnShards(CreateOperationCtx& opCtx,
     // This is for compatibility with single server
     // We just assign it to any shard and pretend the user has given a key
     shardID = collinfo.shardingInfo()->shardListAsShardID()->at(0);
-    userSpecifiedKey = true;
   } else {
     int r = transaction::Methods::validateSmartJoinAttribute(collinfo, value);
 
@@ -589,6 +588,7 @@ int distributeBabyOnShards(CreateOperationCtx& opCtx,
     // attributes a bit further down the line when we have determined
     // the responsible shard.
 
+    bool userSpecifiedKey = false;
     VPackSlice keySlice = value.get(StaticStrings::KeyString);
     if (keySlice.isNone()) {
       // The user did not specify a key, let's create one:
@@ -1873,6 +1873,7 @@ int fetchEdgesFromEngines(transaction::Methods& trx,
     }
     filtered += Helper::getNumericValue<size_t>(resSlice, "filtered", 0);
     read += Helper::getNumericValue<size_t>(resSlice, "readIndex", 0);
+    
     VPackSlice edges = resSlice.get("edges");
     bool allCached = true;
 
@@ -1885,7 +1886,7 @@ int fetchEdgesFromEngines(transaction::Methods& trx,
         continue;
       }
       arangodb::velocypack::StringRef idRef(id);
-      auto resE = cache.insert({idRef, e});
+      auto resE = cache.emplace(idRef, e);
       if (resE.second) {
         // This edge is not yet cached.
         allCached = false;
@@ -1975,7 +1976,7 @@ int fetchEdgesFromEngines(
         continue;
       }
       arangodb::velocypack::StringRef idRef(id);
-      auto resE = cache.insert({idRef, e});
+      auto resE = cache.emplace(idRef, e);
       if (resE.second) {
         // This edge is not yet cached.
         allCached = false;
@@ -2053,15 +2054,12 @@ void fetchVerticesFromEngines(
       THROW_ARANGO_EXCEPTION(TRI_ERROR_HTTP_CORRUPTED_JSON);
     }
     if (r.response->statusCode() != fuerte::StatusOK) {
-      int code = network::errorCodeFromBody(resSlice, TRI_ERROR_INTERNAL);
       // We have an error case here. Throw it.
-      THROW_ARANGO_EXCEPTION_MESSAGE(code, Helper::getStringValue(
-                                               resSlice, StaticStrings::ErrorMessage,
-                                               TRI_errno_string(code)));
+      THROW_ARANGO_EXCEPTION(network::resultFromBody(resSlice, TRI_ERROR_INTERNAL));
     }
 
     bool cached = false;
-    for (auto pair : VPackObjectIterator(resSlice, true)) {
+    for (auto pair : VPackObjectIterator(resSlice, /*sequential*/true)) {
       arangodb::velocypack::StringRef key(pair.key);
       if (vertexIds.erase(key) == 0) {
         // We either found the same vertex twice,

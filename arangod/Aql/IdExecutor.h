@@ -39,12 +39,9 @@ class Methods;
 namespace aql {
 class ExecutionEngine;
 class ExecutionNode;
-class ConstFetcher;
-class AqlItemMatrix;
 class ExecutorInfos;
 class NoStats;
 class OutputAqlItemRow;
-struct SortRegister;
 
 class IdExecutorInfos : public ExecutorInfos {
  public:
@@ -141,7 +138,7 @@ class IdExecutor {
 
  private:
   Fetcher& _fetcher;
-};  // namespace aql
+};
 }  // namespace aql
 }  // namespace arangodb
 

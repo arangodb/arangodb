@@ -768,19 +768,8 @@ static void JS_ExecuteAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
   arangodb::aql::Query query(true, vocbase, aql::QueryString(queryString),
                              bindVars, options, arangodb::aql::PART_MAIN);
 
-  std::shared_ptr<arangodb::aql::SharedQueryState> ss = query.sharedState();
-  ss->setContinueCallback();
+  arangodb::aql::QueryResultV8 queryResult = query.executeV8(isolate, queryRegistry);
 
-  aql::QueryResultV8 queryResult;
-  while (true) {
-    auto state =
-        query.executeV8(isolate, static_cast<arangodb::aql::QueryRegistry*>(queryRegistry),
-                        queryResult);
-    if (state != aql::ExecutionState::WAITING) {
-      break;
-    }
-    ss->waitForAsyncResponse();
-  }
 
   if (queryResult.result.fail()) {
     if (queryResult.result.is(TRI_ERROR_REQUEST_CANCELED)) {
