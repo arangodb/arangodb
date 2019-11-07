@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTrue, assertEqual, assertTypeOf, assertNotEqual, fail, assertFalse */
+/*global assertEqual, assertTrue, assertEqual, assertTypeOf, assertNotEqual, fail, assertFalse, print */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the collection interface
@@ -242,7 +242,7 @@ function CollectionCacheSuite () {
       print(f);
       assertTrue(f.cacheSize > 0);
       assertNotEqual(f.cacheUsage, 0);
-      assertTrue(f.hasOwnProperty('cacheLifeTimeHitRate');
+      assertTrue(f.hasOwnProperty('cacheLifeTimeHitRate'));
 
     }
   };
