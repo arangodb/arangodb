@@ -202,8 +202,8 @@ public:
 
 
 std::ostream& operator<< (std::ostream&, Metrics::var_type&);
-std::ostream& operator<< (std::ostream&, Metrics::counter_type&);
-std::ostream& operator<< (std::ostream&, Metrics::hist_type&);
+std::ostream& operator<< (std::ostream&, Metrics::counter_type const&);
+std::ostream& operator<< (std::ostream&, Metrics::hist_type const&);
 template<typename T>
 std::ostream& operator<<(std::ostream& o, Histogram<T> const& h) {
   return h.print(o);

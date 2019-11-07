@@ -447,7 +447,7 @@ public:
 protected:
     constexpr bumper( Integral in ) : value_( in ) {}
     constexpr bumper() : value_( 0 ) {}
-    Integral load() { return value_.load( std::memory_order_relaxed ); }
+    Integral load() const { return value_.load( std::memory_order_relaxed ); }
     Integral exchange( Integral to )
         { return value_.exchange( to, std::memory_order_relaxed ); }
     std::atomic< Integral > value_;
@@ -473,7 +473,7 @@ public:
     constexpr simplex( Integral in ) : base_type( in ) {}
     simplex( const simplex& ) = delete;
     simplex& operator=( const simplex& ) = delete;
-    Integral load() { return base_type::load(); }
+    Integral load() const { return base_type::load(); }
     Integral exchange( Integral to ) { return base_type::exchange( to ); }
 };
 

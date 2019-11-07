@@ -42,7 +42,7 @@ void Metrics::clear() {
   _registry.clear();
 }
 
-std::ostream& operator<< (std::ostream& o, Metrics::counter_type& s) {
+std::ostream& operator<< (std::ostream& o, Metrics::counter_type const& s) {
   o << s.load();
   return o;
 }
@@ -52,7 +52,7 @@ std::ostream& operator<< (std::ostream& o, Counter& s) {
   return o;
 }
 
-std::ostream& operator<< (std::ostream& o, Metrics::hist_type& v) {
+std::ostream& operator<< (std::ostream& o, Metrics::hist_type const& v) {
   o << "[";
   for (size_t i = 0; i < v.size(); ++i) {
     if (i > 0) { o << ", "; }
@@ -183,8 +183,8 @@ template<class T> struct always_false : std::false_type {};
 
 std::ostream& Metrics::Metric::print(std::ostream& o) const {
   std::visit(overloaded {
-      [&o](Metrics::counter_type const& arg) { o << "counter with value " /*<< arg*/; },
-      [&o](Metrics::hist_type const& arg) { o << "histogram with value " /*<< arg*/; },
+      [&o](Metrics::counter_type const& arg) { o << "counter with value " << arg; },
+      [&o](Metrics::hist_type const& arg) { o << "histogram with value " << arg; },
     }, _var);
   return o;
 }
