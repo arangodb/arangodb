@@ -224,8 +224,8 @@ function CollectionCacheSuite () {
           assertEqual(idx.figures.cacheLifeTimeHitRate, 0);
         }
       });
-    }
 */
+    }
   };
 }
 
