@@ -29,10 +29,11 @@
 #include "store/directory.hpp"
 #include "utils/utf8_path.hpp"
 
+#include "Indexes/Index.h"
 #include "IResearchLinkMeta.h"
 #include "IResearchViewMeta.h"
 #include "IResearchVPackComparer.h"
-#include "Indexes/Index.h"
+#include "RestServer/DatabasePathFeature.h"
 #include "Transaction/Status.h"
 
 namespace arangodb {
@@ -310,6 +311,9 @@ class IResearchLink {
   std::string const _viewGuid; // the identifier of the desired view (read-only, set via init())
   bool _createdInRecovery; // link was created based on recovery marker
 };  // IResearchLink
+
+irs::utf8_path getPersistedPath(arangodb::DatabasePathFeature const& dbPathFeature,
+                                arangodb::iresearch::IResearchLink const& link);
 
 }  // namespace iresearch
 }  // namespace arangodb

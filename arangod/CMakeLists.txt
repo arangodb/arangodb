@@ -866,6 +866,13 @@ target_link_libraries(arango_rocksdb arango_indexes)
 target_link_libraries(arango_rocksdb arango_storage_engine_common)
 target_link_libraries(arango_rocksdb boost_boost)
 
+if (USE_ENTERPRISE)
+  # this is required for hotbackup. Views need to be flushed.
+  target_include_directories(arango_rocksdb
+    PUBLIC ${IRESEARCH_INCLUDE}
+  )
+endif()
+
 target_link_libraries(arango_storage_engine arango_cluster_engine)
 target_link_libraries(arango_storage_engine arango_cluster_methods)
 target_link_libraries(arango_storage_engine arango_mmfiles)
