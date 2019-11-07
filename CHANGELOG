@@ -13,7 +13,7 @@ devel
   It is still possible to create ranges with more than 10 million members as long
   as they are not materialized. For example, the following is still valid:
 
-      FOR i IN 1 .. 1000000000 INSERT {} INTO collection
+      FOR i IN 1 .. 1000000000 INSERT {CONCAT('test', i)} INTO collection
 
 * Fixed available flag for hotbackup.
 
