@@ -134,8 +134,6 @@ void InputAqlItemRow::toVelocyPack(transaction::Methods* trx, VPackBuilder& resu
   result.add("nrItems", VPackValue(1));
   result.add("nrRegs", VPackValue(getNrRegisters()));
   result.add("error", VPackValue(false));
-  // Backwards compatbility 3.3
-  result.add("exhausted", VPackValue(false));
 
   enum State {
     Empty,       // saw an empty value
@@ -321,10 +319,30 @@ bool InputAqlItemRow::isInitialized() const noexcept {
 
 InputAqlItemRow::operator bool() const noexcept { return isInitialized(); }
 
-bool InputAqlItemRow::isFirstRowInBlock() const noexcept {
+bool InputAqlItemRow::isFirstDataRowInBlock() const noexcept {
   TRI_ASSERT(isInitialized());
   TRI_ASSERT(_baseIndex < block().size());
-  return _baseIndex == 0;
+
+  auto const& shadowRowIndexes = block().getShadowRowIndexes();
+
+  // Count the number of shadow rows before this row.
+  size_t const numShadowRowsBeforeCurrentRow = [&]() {
+    auto const& begin = shadowRowIndexes.cbegin();
+    auto const& end = shadowRowIndexes.cend();
+
+    // this is the last shadow row after _baseIndex, i.e.
+    // nextShadowRowIt := min { it \in shadowRowIndexes | _baseIndex <= it }
+    auto const nextShadowRowIt = shadowRowIndexes.lower_bound(_baseIndex);
+    // But, as _baseIndex must not be a shadow row, it's actually
+    // nextShadowRowIt = min { it \in shadowRowIndexes | _baseIndex < it }
+    // so the same as shadowRowIndexes.upper_bound(_baseIndex)
+    TRI_ASSERT(nextShadowRowIt == end || _baseIndex < *nextShadowRowIt);
+
+    return std::distance(begin, nextShadowRowIt);
+  }();
+  TRI_ASSERT(numShadowRowsBeforeCurrentRow <= shadowRowIndexes.size());
+
+  return numShadowRowsBeforeCurrentRow == _baseIndex;
 }
 
 bool InputAqlItemRow::isLastRowInBlock() const noexcept {
@@ -333,7 +351,32 @@ bool InputAqlItemRow::isLastRowInBlock() const noexcept {
   return _baseIndex + 1 == block().size();
 }
 
-bool InputAqlItemRow::blockHasMoreRows() const noexcept { return !isLastRowInBlock(); }
+bool InputAqlItemRow::blockHasMoreDataRowsAfterThis() const noexcept {
+  TRI_ASSERT(isInitialized());
+  TRI_ASSERT(_baseIndex < block().size());
+
+  auto const& shadowRowIndexes = block().getShadowRowIndexes();
+
+  // Count the number of shadow rows after this row.
+  size_t const numShadowRowsAfterCurrentRow = [&]() {
+    auto const& end = shadowRowIndexes.cend();
+
+    // this is the last shadow row after _baseIndex, i.e.
+    // nextShadowRowIt := min { it \in shadowRowIndexes | _baseIndex <= it }
+    auto const nextShadowRowIt = shadowRowIndexes.lower_bound(_baseIndex);
+    // But, as _baseIndex must not be a shadow row, it's actually
+    // nextShadowRowIt = min { it \in shadowRowIndexes | _baseIndex < it }
+    // so the same as shadowRowIndexes.upper_bound(_baseIndex)
+    TRI_ASSERT(nextShadowRowIt == end || _baseIndex < *nextShadowRowIt);
+
+    return std::distance(nextShadowRowIt, end);
+  }();
+
+  // block().size() is strictly greater than baseIndex
+  size_t const totalRowsAfterCurrentRow = block().size() - _baseIndex - 1;
+
+  return totalRowsAfterCurrentRow > numShadowRowsAfterCurrentRow;
+}
 
 AqlItemBlock& InputAqlItemRow::block() noexcept {
   TRI_ASSERT(_block != nullptr);

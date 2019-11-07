@@ -231,7 +231,7 @@ class Query {
 
   /// @brief execute an AQL query
   /// may only be called with an active V8 handle scope
-  aql::ExecutionState executeV8(v8::Isolate* isolate, QueryRegistry*, QueryResultV8&);
+  QueryResultV8 executeV8(v8::Isolate* isolate, QueryRegistry*);
 
   /// @brief Enter finalization phase and do cleanup.
   /// Sets `warnings`, `stats`, `profile`, timings and does the cleanup.

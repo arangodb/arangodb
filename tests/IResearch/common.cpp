@@ -367,12 +367,13 @@ arangodb::aql::QueryResult executeQuery(TRI_vocbase_t& vocbase, std::string cons
                              arangodb::aql::PART_MAIN);
 
   std::shared_ptr<arangodb::aql::SharedQueryState> ss = query.sharedState();
+  ss->resetWakeupHandler();
 
   arangodb::aql::QueryResult result;
   while (true) {
     auto state = query.execute(arangodb::QueryRegistryFeature::registry(), result);
     if (state == arangodb::aql::ExecutionState::WAITING) {
-      ss->waitForAsyncResponse();
+      ss->waitForAsyncWakeup();
     } else {
       break;
     }

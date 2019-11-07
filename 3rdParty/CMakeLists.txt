@@ -251,7 +251,7 @@ set(CMAKE_USE_LIBSSH2 OFF CACHE BOOL "Use libssh2")
 set(CMAKE_USE_OPENSSL ON CACHE BOOL "Use OpenSSL")
 # mop: super important...if this is off curl will not handle request timeouts < 1000ms
 set(ENABLE_THREADED_RESOLVER ON CACHE BOOL "Enable threaded resolver")
-set(CURL_VERSION "7.65.3")
+set(CURL_VERSION "7.66.0")
 set(CURL_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/curl/curl-${CURL_VERSION}")
 add_subdirectory(${CURL_SRC_DIR})
 

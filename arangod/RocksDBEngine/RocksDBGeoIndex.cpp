@@ -100,11 +100,12 @@ class RDBNearIterator final : public IndexIterator {
                       (ft == geo::FilterType::CONTAINS && !filter.contains(&test)) ||
                       (ft == geo::FilterType::INTERSECTS && !filter.intersects(&test))) {
                     result = false;
-                    return;
+                    return false;
                   }
                 }
                 cb(gdoc.token, doc);  // return document
                 result = true;
+                return true;
               })) {
             return false;  // ignore document
           }
@@ -129,7 +130,9 @@ class RDBNearIterator final : public IndexIterator {
                       (ft == geo::FilterType::CONTAINS && !filter.contains(&test)) ||
                       (ft == geo::FilterType::INTERSECTS && !filter.intersects(&test))) {
                     result = false;
+                    return false;
                   }
+                  return true;
                 })) {
               return false;
             }

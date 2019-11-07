@@ -36,14 +36,18 @@ class SubqueryEndNode : public ExecutionNode {
  public:
   SubqueryEndNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
 
-  SubqueryEndNode(ExecutionPlan* plan, size_t id, Variable const* outVariable)
-      : ExecutionNode(plan, id), _outVariable(outVariable) {
+  SubqueryEndNode(ExecutionPlan* plan, size_t id, Variable const* inVariable,
+                  Variable const* outVariable)
+      : ExecutionNode(plan, id), _inVariable(inVariable), _outVariable(outVariable) {
+    // _inVariable might be nullptr
     TRI_ASSERT(_outVariable != nullptr);
   }
 
   CostEstimate estimateCost() const override final;
 
   NodeType getType() const override final { return SUBQUERY_END; }
+
+  Variable const* inVariable() const { return _inVariable; }
 
   Variable const* outVariable() const { return _outVariable; }
 
@@ -59,6 +63,12 @@ class SubqueryEndNode : public ExecutionNode {
 
   bool isEqualTo(ExecutionNode const& other) const override final;
 
+  void getVariablesUsedHere(arangodb::containers::HashSet<Variable const*>& usedVars) const final {
+    if (_inVariable != nullptr) {
+      usedVars.emplace(_inVariable);
+    }
+  }
+
   std::vector<Variable const*> getVariablesSetHere() const override final {
     return std::vector<Variable const*>{_outVariable};
   }
@@ -66,6 +76,8 @@ class SubqueryEndNode : public ExecutionNode {
   void replaceOutVariable(Variable const* var);
 
  private:
+  Variable const* _inVariable;
+
   Variable const* _outVariable;
 };
 

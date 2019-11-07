@@ -54,6 +54,7 @@
 #include "Containers/SmallVector.h"
 #include "Graph/ShortestPathOptions.h"
 #include "Graph/TraverserOptions.h"
+#include "Logger/LoggerStream.h"
 #include "VocBase/AccessMode.h"
 
 using namespace arangodb;
@@ -1275,7 +1276,8 @@ ExecutionNode* ExecutionPlan::fromNodeLet(ExecutionNode* previous, AstNode const
       // the LET. and don't create the LET
 
       subquery->replaceOutVariable(v);
-      return subquery;
+      // TODO Local fix of #10304. Remove this note after #10304 is merged back.
+      return previous;
     }
     // otherwise fall-through to normal behavior
 
@@ -2412,25 +2414,40 @@ struct Shower final : public WalkerWorker<ExecutionNode> {
 
   ~Shower() = default;
 
-  bool enterSubquery(ExecutionNode*, ExecutionNode*) override final {
+  bool enterSubquery(ExecutionNode*, ExecutionNode*) final {
     indent++;
     return true;
   }
 
-  void leaveSubquery(ExecutionNode*, ExecutionNode*) override final {
+  void leaveSubquery(ExecutionNode*, ExecutionNode*) final {
     indent--;
   }
 
-  void after(ExecutionNode* en) override final {
-    for (int i = 0; i < indent; i++) {
-      std::cout << ' ';
+  bool before(ExecutionNode* en) final {
+    return false;
+  }
+
+  void after(ExecutionNode* en) final {
+    if (en->getType() == ExecutionNode::SUBQUERY_END) {
+      --indent;
     }
-    std::cout << en->getTypeString() << std::endl;
+
+    auto logLn{LoggerStream()};
+    logLn << LogLevel::INFO << Logger::AQL;
+
+    for (int i = 0; i < 2 * indent; i++) {
+      logLn << ' ';
+    }
+    logLn << "[" << en->id() << "]" << en->getTypeString();
+
+    if (en->getType() == ExecutionNode::SUBQUERY_START) {
+      ++indent;
+    }
   }
 };
 
 /// @brief show an overview over the plan
-void ExecutionPlan::show() {
+void ExecutionPlan::show() const {
   Shower shower;
   _root->walk(shower);
 }

@@ -420,7 +420,7 @@ bool RestAqlHandler::killQuery(std::string const& idString) {
 //   "number": must be a positive integer, the cursor skips as many items,
 //             possibly exhausting the cursor.
 //             The result is a JSON with the attributes "error" (boolean),
-//             "errorMessage" (if applicable) and "exhausted" (boolean)
+//             "errorMessage" (if applicable) and "done" (boolean)
 //             to indicate whether or not the cursor is exhausted.
 //             If "number" is not given it defaults to 1.
 // For the "initializeCursor" operation, one has to bind the following
@@ -515,30 +515,6 @@ RestStatus RestAqlHandler::execute() {
       }
       break;
     }
-    case rest::RequestType::GET: {
-      // in 3.3, the only GET API was /_api/aql/hasMore. Now, there is none
-      // in 3.4. we need to keep the old route for compatibility with 3.3
-      // however.
-      if (suffixes.size() != 2 || suffixes[0] != "hasMore") {
-        std::string msg("Unknown GET API: ");
-        msg += arangodb::basics::StringUtils::join(suffixes, '/');
-        LOG_TOPIC("68e57", ERR, arangodb::Logger::AQL) << msg;
-        generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
-                      std::move(msg));
-      } else {
-        // for /_api/aql/hasMore, now always return with a hard-coded response
-        // that contains  "hasMore" : true. This seems good enough to ensure
-        // compatibility with 3.3.
-        VPackBuilder answerBody;
-        {
-          VPackObjectBuilder guard(&answerBody);
-          answerBody.add("hasMore", VPackValue(true));
-          answerBody.add("error", VPackValue(false));
-        }
-        sendResponse(rest::ResponseCode::OK, answerBody.slice());
-      }
-      break;
-    }
     case rest::RequestType::DELETE_REQ: {
       if (suffixes.size() != 2) {
         std::string msg("Unknown DELETE API: ");
@@ -560,6 +536,7 @@ RestStatus RestAqlHandler::execute() {
       }
       break;
     }
+    case rest::RequestType::GET: 
     case rest::RequestType::HEAD:
     case rest::RequestType::PATCH:
     case rest::RequestType::OPTIONS:
@@ -635,8 +612,9 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation, Query* q
   auto closeGuard = scopeGuard([this] { _queryRegistry->close(&_vocbase, _qId); });
 
   std::shared_ptr<SharedQueryState> ss = query->sharedState();
-  ss->setContinueHandler(
-      [self = shared_from_this(), ss]() { self->continueHandlerExecution(); });
+  ss->setWakeupHandler([self = shared_from_this()] {
+    return self->wakeupHandler();
+  });
 
   bool found;
   std::string const& shardId = _request->header("shard-id", found);
@@ -647,6 +625,9 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation, Query* q
   // this is because the request may contain additional data
   if ((operation == "getSome" || operation == "skipSome") &&
       !query->engine()->initializeCursorCalled()) {
+    TRI_IF_FAILURE("RestAqlHandler::getSome") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
     auto res = query->engine()->initializeCursor(nullptr, 0);
     if (res.first == ExecutionState::WAITING) {
       return RestStatus::WAITING;
@@ -671,6 +652,9 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation, Query* q
         answerBuilder.add(StaticStrings::Error, VPackValue(res != TRI_ERROR_NO_ERROR));
         answerBuilder.add(StaticStrings::Code, VPackValue(res));
       } else if (operation == "getSome") {
+        TRI_IF_FAILURE("RestAqlHandler::getSome") {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
         auto atMost =
             VelocyPackHelper::getNumericValue<size_t>(querySlice, "atMost",
                                                       ExecutionBlock::DefaultBatchSize());
@@ -696,9 +680,9 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation, Query* q
         }
         // Used in 3.4.0 onwards.
         answerBuilder.add("done", VPackValue(state == ExecutionState::DONE));
+        answerBuilder.add(StaticStrings::Code, VPackValue(TRI_ERROR_NO_ERROR));
         if (items.get() == nullptr) {
           // Backwards Compatibility
-          answerBuilder.add("exhausted", VPackValue(true));
           answerBuilder.add(StaticStrings::Error, VPackValue(false));
         } else {
           items->toVelocyPack(query->trx(), answerBuilder);
@@ -738,7 +722,7 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation, Query* q
       } else if (operation == "initializeCursor") {
         auto pos = VelocyPackHelper::getNumericValue<size_t>(querySlice, "pos", 0);
         Result res;
-        if (VelocyPackHelper::getBooleanValue(querySlice, "exhausted", true)) {
+        if (VelocyPackHelper::getBooleanValue(querySlice, "done", true)) {
           auto tmpRes = query->engine()->initializeCursor(nullptr, 0);
           if (tmpRes.first == ExecutionState::WAITING) {
             return RestStatus::WAITING;
@@ -757,8 +741,8 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation, Query* q
         answerBuilder.add(StaticStrings::Code, VPackValue(res.errorNumber()));
       } else if (operation == "shutdown") {
         int errorCode =
-            VelocyPackHelper::getNumericValue<int>(querySlice, "code", TRI_ERROR_INTERNAL);
-
+            VelocyPackHelper::readNumericValue<int>(querySlice, StaticStrings::Code, TRI_ERROR_INTERNAL);
+        
         ExecutionState state;
         Result res;
         std::tie(state, res) = query->engine()->shutdown(errorCode);

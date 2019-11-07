@@ -25,6 +25,7 @@
 #include "Aql/AqlItemRowPrinter.h"
 
 #include "Aql/AqlItemBlockManager.h"
+#include "Aql/ShadowAqlItemRow.h"
 
 #include <velocypack/Slice.h>
 

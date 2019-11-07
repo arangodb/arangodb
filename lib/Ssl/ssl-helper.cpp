@@ -86,6 +86,10 @@ asio_ns::ssl::context arangodb::sslContext(SslProtocol protocol, std::string con
       break;
 #endif
 
+    case TLS_GENERIC:
+      meth = asio_ns::ssl::context::method::tls_server;
+      break;
+
     default:
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
                                      "unknown SSL protocol method");
@@ -149,6 +153,9 @@ std::string arangodb::protocolName(SslProtocol protocol) {
     case TLS_V13:
       return "TLSv13";
 #endif
+    
+    case TLS_GENERIC:
+      return "TLS";
 
     default:
       return "unknown";
@@ -163,12 +170,13 @@ std::unordered_set<uint64_t> arangodb::availableSslProtocols() {
   return std::unordered_set<uint64_t>{SslProtocol::SSL_V2,  // unsupported!
                                       SslProtocol::SSL_V23, SslProtocol::SSL_V3,
                                       SslProtocol::TLS_V1, SslProtocol::TLS_V12,
-                                      SslProtocol::TLS_V13};
+                                      SslProtocol::TLS_V13, SslProtocol::TLS_GENERIC};
 #else
   // no support for TLS 1.3                                      
   return std::unordered_set<uint64_t>{SslProtocol::SSL_V2,  // unsupported!
                                       SslProtocol::SSL_V23, SslProtocol::SSL_V3,
-                                      SslProtocol::TLS_V1, SslProtocol::TLS_V12};
+                                      SslProtocol::TLS_V1, SslProtocol::TLS_V12,
+                                      SslProtocol::TLS_GENERIC};
 #endif
 }
 
@@ -176,11 +184,11 @@ std::string arangodb::availableSslProtocolsDescription() {
 #if OPENSSL_VERSION_NUMBER >= 0x10101000L
   return "ssl protocol (1 = SSLv2 (unsupported), 2 = SSLv2 or SSLv3 "
          "(negotiated), 3 = SSLv3, 4 = "
-         "TLSv1, 5 = TLSv1.2, 6 = TLSv1.3)";
+         "TLSv1, 5 = TLSv1.2, 6 = TLSv1.3, 9 = generic TLS)";
 #else
   return "ssl protocol (1 = SSLv2 (unsupported), 2 = SSLv2 or SSLv3 "
          "(negotiated), 3 = SSLv3, 4 = "
-         "TLSv1, 5 = TLSv1.2)";
+         "TLSv1, 5 = TLSv1.2, 9 = generic TLS)";
 #endif
 }
 

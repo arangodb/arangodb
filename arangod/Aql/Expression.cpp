@@ -1621,6 +1621,7 @@ bool Expression::canRunOnDBServer() {
   TRI_ASSERT(_node != nullptr);
   return _node->canRunOnDBServer();
 }
+
 bool Expression::isDeterministic() {
   if (_type == UNPROCESSED) {
     initExpression();

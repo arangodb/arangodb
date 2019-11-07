@@ -292,9 +292,12 @@ struct OptimizerRule {
     // entire document to a projection of this document
     reduceExtractionToProjectionRule,
 
-    // moves filters on collection data into EnumerateCollection to
+    // moves filters on collection data into EnumerateCollection/Index to
     // avoid copying large amounts of unneeded documents
-    moveFiltersIntoEnumerateCollection,
+    moveFiltersIntoEnumerateRule,
+
+    // parallelizes execution in coordinator-sided GatherNodes
+    parallelizeGatherRule,
 
     // move document materialization after SORT and LIMIT
     // this must be run AFTER all cluster rules as this rule
@@ -306,6 +309,18 @@ struct OptimizerRule {
     // Must run last.
     spliceSubqueriesRule
   };
+
+#ifdef USE_ENTERPRISE
+  static_assert(clusterOneShardRule < distributeInClusterRule);
+  static_assert(clusterOneShardRule < smartJoinsRule);
+  static_assert(clusterOneShardRule < scatterInClusterRule);
+  
+  // smart joins must come before we move filters around, so the smart-join
+  // detection code does not need to take the special filters into account
+  static_assert(smartJoinsRule < moveFiltersIntoEnumerateRule);
+#endif
+  
+  static_assert(scatterInClusterRule < parallelizeGatherRule);
 
   velocypack::StringRef name;
   RuleFunction func;

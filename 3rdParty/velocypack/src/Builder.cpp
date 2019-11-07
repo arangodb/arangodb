@@ -89,6 +89,7 @@ bool checkAttributeUniquenessUnsortedBrute(ObjectIterator& it) {
   do {
     // key(true) guarantees a String as returned type
     StringRef key = it.key(true).stringRef();
+
     ValueLength index = it.index();
     // compare with all other already looked-at keys
     for (ValueLength i = 0; i < index; ++i) {
@@ -124,19 +125,9 @@ bool checkAttributeUniquenessUnsortedSet(ObjectIterator& it) {
   return true;
 }
 
-
 } // namespace
   
-// create an empty Builder, using default Options 
-Builder::Builder()
-      : _buffer(std::make_shared<Buffer<uint8_t>>()),
-        _bufferPtr(_buffer.get()),
-        _start(_bufferPtr->data()),
-        _pos(0),
-        _keyWritten(false),
-        options(&Options::Defaults) {}
- 
-// create an empty Builder, with custom Options 
+// create an empty Builder, using Options 
 Builder::Builder(Options const* options)
       : _buffer(std::make_shared<Buffer<uint8_t>>()),
         _bufferPtr(_buffer.get()),
@@ -149,9 +140,11 @@ Builder::Builder(Options const* options)
   }
 }
   
+// create an empty Builder, using an existing buffer
 Builder::Builder(std::shared_ptr<Buffer<uint8_t>> const& buffer, Options const* options)
       : _buffer(buffer), 
         _bufferPtr(_buffer.get()), 
+        _start(nullptr),
         _pos(0), 
         _keyWritten(false), 
         options(options) {
@@ -159,48 +152,69 @@ Builder::Builder(std::shared_ptr<Buffer<uint8_t>> const& buffer, Options const* 
     throw Exception(Exception::InternalError, "Buffer cannot be a nullptr");
   }
   _start = _bufferPtr->data();
+  _pos = _bufferPtr->size();
 
   if (VELOCYPACK_UNLIKELY(options == nullptr)) {
     throw Exception(Exception::InternalError, "Options cannot be a nullptr");
   }
 }
   
+// create a Builder that uses an existing Buffer. the Builder will not
+// claim ownership for this Buffer
 Builder::Builder(Buffer<uint8_t>& buffer, Options const* options)
-      : _bufferPtr(nullptr), 
+      : _bufferPtr(&buffer), 
+        _start(_bufferPtr->data()),
         _pos(buffer.size()), 
         _keyWritten(false), 
         options(options) {
-  _buffer.reset(&buffer, BufferNonDeleter<uint8_t>());
-  _bufferPtr = _buffer.get();
-  _start = _bufferPtr->data();
 
   if (VELOCYPACK_UNLIKELY(options == nullptr)) {
     throw Exception(Exception::InternalError, "Options cannot be a nullptr");
   }
 }
   
+// populate a Builder from a Slice
 Builder::Builder(Slice slice, Options const* options)
       : Builder(options) {
   add(slice);
 }
 
 Builder::Builder(Builder const& that)
-      : _buffer(std::make_shared<Buffer<uint8_t>>(*that._buffer)),
-        _bufferPtr(_buffer.get()),
-        _start(_bufferPtr->data()),
+      : _bufferPtr(nullptr),
+        _start(nullptr),
         _pos(that._pos),
         _stack(that._stack),
         _index(that._index),
         _keyWritten(that._keyWritten),
         options(that.options) {
   VELOCYPACK_ASSERT(options != nullptr);
+
+  if (that._buffer == nullptr) {
+    _bufferPtr = that._bufferPtr;
+  } else {
+    _buffer = std::make_shared<Buffer<uint8_t>>(*that._buffer);
+    _bufferPtr = _buffer.get();
+  }
+        
+  if (_bufferPtr != nullptr) {
+    _start = _bufferPtr->data();
+  }
 }
 
 Builder& Builder::operator=(Builder const& that) {
   if (this != &that) {
-    _buffer = std::make_shared<Buffer<uint8_t>>(*that._buffer);
-    _bufferPtr = _buffer.get();
-    _start = _bufferPtr->data();
+    if (that._buffer == nullptr) {
+      _buffer.reset();
+      _bufferPtr = that._bufferPtr;
+    } else {
+      _buffer = std::make_shared<Buffer<uint8_t>>(*that._buffer);
+      _bufferPtr = _buffer.get();
+    }
+    if (_bufferPtr == nullptr) {
+      _start = nullptr;
+    } else {
+      _start = _bufferPtr->data();
+    }
     _pos = that._pos;
     _stack = that._stack;
     _index = that._index;
@@ -211,41 +225,50 @@ Builder& Builder::operator=(Builder const& that) {
   return *this;
 }
 
-Builder::Builder(Builder&& that) {
-  if (VELOCYPACK_UNLIKELY(!that.isClosed())) {
-    throw Exception(Exception::InternalError, "Cannot move an open Builder");
+Builder::Builder(Builder&& that) noexcept
+    : _buffer(std::move(that._buffer)),
+      _bufferPtr(nullptr),
+      _start(nullptr),
+      _pos(that._pos),
+      _stack(std::move(that._stack)),
+      _index(std::move(that._index)),
+      _keyWritten(that._keyWritten),
+      options(that.options) {
+  
+  if (_buffer != nullptr) {
+    _bufferPtr = _buffer.get();
+  } else {
+    _bufferPtr = that._bufferPtr;
   }
-  _buffer = that._buffer;
-  _bufferPtr = _buffer.get();
-  _start = _bufferPtr->data();
-  _pos = that._pos;
-  _stack.clear();
-  _stack.swap(that._stack);
-  _index.clear();
-  _index.swap(that._index);
-  _keyWritten = that._keyWritten;
-  options = that.options;
-  that._pos = 0;
-  that._keyWritten = false;
+  if (_bufferPtr != nullptr) {
+    _start = _bufferPtr->data();
+  }
+  VELOCYPACK_ASSERT(that._buffer == nullptr);
+  that._bufferPtr = nullptr;
+  that.clear();
 }
 
-Builder& Builder::operator=(Builder&& that) {
-  if (VELOCYPACK_UNLIKELY(!that.isClosed())) {
-    throw Exception(Exception::InternalError, "Cannot move an open Builder");
-  }
+Builder& Builder::operator=(Builder&& that) noexcept {
   if (this != &that) {
-    _buffer = that._buffer;
-    _bufferPtr = _buffer.get();
-    _start = _bufferPtr->data();
+    _buffer = std::move(that._buffer);
+    if (_buffer != nullptr) {
+      _bufferPtr = _buffer.get();
+    } else {
+      _bufferPtr = that._bufferPtr;
+    }
+    if (_bufferPtr != nullptr) {
+      _start = _bufferPtr->data();
+    } else {
+      _start = nullptr;
+    }
     _pos = that._pos;
-    _stack.clear();
-    _stack.swap(that._stack);
-    _index.clear();
-    _index.swap(that._index);
+    _stack = std::move(that._stack);
+    _index = std::move(that._index);
     _keyWritten = that._keyWritten;
     options = that.options;
-    that._pos = 0;
-    that._keyWritten = false;
+    VELOCYPACK_ASSERT(that._buffer == nullptr);
+    that._bufferPtr = nullptr;
+    that.clear();
   }
   return *this;
 }
@@ -444,41 +467,50 @@ Builder& Builder::closeArray(ValueLength tos, std::vector<ValueLength>& index) {
     offsetSize = 8;
   }
 
+  if (offsetSize < 8 &&
+      !needIndexTable && 
+      options->paddingBehavior == Options::PaddingBehavior::UsePadding) {
+    // if we are allowed to use padding, we will pad to 8 bytes anyway. as we are not
+    // using an index table, we can also use type 0x05 for all Arrays without making
+    // things worse space-wise
+    offsetSize = 8;
+  }
+
   // Maybe we need to move down data:
-  if (offsetSize == 1) {
+  if (offsetSize == 1 || offsetSize == 2) {
     // check if one of the first entries in the array is ValueType::None 
     // (0x00). in this case, we could not distinguish between a None (0x00) 
     // and the optional padding. so we must prevent the memmove here
-    bool allowMemMove = true;
-    std::size_t const n = (std::min)(std::size_t(6), index.size());
-    for (std::size_t i = 0; i < n; i++) {
-      if (_start[tos + index[i]] == 0x00) {
-        allowMemMove = false;
-        break;
-      }
-    }
+    bool allowMemMove = options->paddingBehavior == Options::PaddingBehavior::NoPadding ||
+                        (offsetSize == 1 && options->paddingBehavior == Options::PaddingBehavior::Flexible);
     if (allowMemMove) {
-      ValueLength targetPos = 3;
-      if (!needIndexTable) {
-        targetPos = 2;
-      }
-      if (_pos > (tos + 9)) {
-        ValueLength len = _pos - (tos + 9);
-        memmove(_start + tos + targetPos, _start + tos + 9, checkOverflow(len));
-      }
-      ValueLength const diff = 9 - targetPos;
-      rollback(diff);
-      if (needIndexTable) {
-        std::size_t const n = index.size();
-        for (std::size_t i = 0; i < n; i++) {
-          index[i] -= diff;
+      std::size_t const n = (std::min)(std::size_t(8 - 2 * offsetSize), index.size());
+      for (std::size_t i = 0; i < n; i++) {
+        if (_start[tos + index[i]] == 0x00) {
+          allowMemMove = false;
+          break;
         }
-      }  // Note: if !needIndexTable the index array is now wrong!
+      }
+      if (allowMemMove) {
+        ValueLength targetPos = 1 + 2 * offsetSize;
+        if (!needIndexTable) {
+          targetPos -= offsetSize;
+        }
+        if (_pos > (tos + 9)) {
+          ValueLength len = _pos - (tos + 9);
+          memmove(_start + tos + targetPos, _start + tos + 9, checkOverflow(len));
+        }
+        ValueLength const diff = 9 - targetPos;
+        rollback(diff);
+        if (needIndexTable) {
+          std::size_t const n = index.size();
+          for (std::size_t i = 0; i < n; i++) {
+            index[i] -= diff;
+          }
+        }  // Note: if !needIndexTable the index array is now wrong!
+      }
     }
   }
-  // One could move down things in the offsetSize == 2 case as well,
-  // since we only need 4 bytes in the beginning. However, saving these
-  // 4 bytes has been sacrificed on the Altar of Performance.
 
   // Now build the table:
   if (needIndexTable) {
@@ -558,6 +590,13 @@ Builder& Builder::close() {
       (head == 0x06 && options->buildUnindexedArrays) ||
       (head == 0x0b && (options->buildUnindexedObjects || index.size() == 1))) {
     if (closeCompactArrayOrObject(tos, isArray, index)) {
+      // And, if desired, check attribute uniqueness:
+      if (options->checkAttributeUniqueness && 
+          index.size() > 1 &&
+          !checkAttributeUniqueness(Slice(_start + tos))) {
+        // duplicate attribute name!
+        throw Exception(Exception::DuplicateAttributeName);
+      }
       return *this;
     }
     // This might fall through, if closeCompactArrayOrObject gave up!
@@ -583,9 +622,20 @@ Builder& Builder::close() {
     // case we would win back 6 bytes but would need one byte per subvalue
     // for the index table
     offsetSize = 1;
-
+    // One could move down things in the offsetSize == 2 case as well,
+    // since we only need 4 bytes in the beginning. However, saving these
+    // 4 bytes has been sacrificed on the Altar of Performance.
+  } else if (_pos - tos + 2 * index.size() <= 0xffff) {
+    offsetSize = 2;
+  } else if (_pos - tos + 4 * index.size() <= 0xffffffffu) {
+    offsetSize = 4;
+  }
+    
+  if (offsetSize < 4 &&
+      (options->paddingBehavior == Options::PaddingBehavior::NoPadding ||
+       (offsetSize == 1 && options->paddingBehavior == Options::PaddingBehavior::Flexible))) {
     // Maybe we need to move down data:
-    ValueLength targetPos = 3;
+    ValueLength targetPos = 1 + 2 * offsetSize;
     if (_pos > (tos + 9)) {
       ValueLength len = _pos - (tos + 9);
       memmove(_start + tos + targetPos, _start + tos + 9, checkOverflow(len));
@@ -596,14 +646,6 @@ Builder& Builder::close() {
     for (std::size_t i = 0; i < n; i++) {
       index[i] -= diff;
     }
-
-    // One could move down things in the offsetSize == 2 case as well,
-    // since we only need 4 bytes in the beginning. However, saving these
-    // 4 bytes has been sacrificed on the Altar of Performance.
-  } else if (_pos - tos + 2 * index.size() <= 0xffff) {
-    offsetSize = 2;
-  } else if (_pos - tos + 4 * index.size() <= 0xffffffffu) {
-    offsetSize = 4;
   }
 
   // Now build the table:
@@ -1042,7 +1084,7 @@ bool Builder::checkAttributeUniqueness(Slice obj) const {
   VELOCYPACK_ASSERT(options->checkAttributeUniqueness == true);
   VELOCYPACK_ASSERT(obj.isObject());
   VELOCYPACK_ASSERT(obj.length() >= 2);
-
+  
   if (obj.isSorted()) {
     // object attributes are sorted
     return checkAttributeUniquenessSorted(obj);
@@ -1091,7 +1133,7 @@ bool Builder::checkAttributeUniquenessUnsorted(Slice obj) const {
   // will use an std::unordered_set for O(1) lookups but with heap
   // allocations
   ObjectIterator it(obj, true);
-
+    
   if (it.size() <= ::LinearAttributeUniquenessCutoff) {
     return ::checkAttributeUniquenessUnsortedBrute(it);
   }

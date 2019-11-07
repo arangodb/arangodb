@@ -965,13 +965,16 @@ static void JS_FiguresVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  auto builder = collection->figures().get();
+  auto opRes = collection->figures().get();
 
   trx.finish(TRI_ERROR_NO_ERROR);
+  
+  if (opRes.ok()) {
+    TRI_V8_RETURN(TRI_VPackToV8(isolate, opRes.slice()));
+  } else {
+    TRI_V8_RETURN_NULL();
+  }
 
-  v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, builder->slice());
-
-  TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
 }
 

@@ -1152,7 +1152,7 @@ void Supervision::cleanupFinishedAndFailedJobs() {
   constexpr size_t maximalFinishedJobs = 500;
   constexpr size_t maximalFailedJobs = 1000;
 
-  auto cleanup = [&](std::string prefix, size_t limit) {
+  auto cleanup = [&](std::string const& prefix, size_t limit) {
     auto const& jobs = _snapshot.hasAsChildren(prefix).first;
     if (jobs.size() <= 2 * limit) {
       return;
@@ -1169,8 +1169,8 @@ void Supervision::cleanupFinishedAndFailedJobs() {
       }
     }
     std::sort(v.begin(), v.end(), [](keyDate const& a, keyDate const& b) -> bool {
-        return a.second < b.second;
-      });
+      return a.second < b.second;
+    });
     size_t toBeDeleted = v.size() - limit;  // known to be positive
     LOG_TOPIC("98451", INFO, Logger::AGENCY) << "Deleting " << toBeDeleted << " old jobs"
       " in " << prefix;
@@ -1281,7 +1281,7 @@ void Supervision::workJobs() {
 }
 
 
-bool Supervision::verifyCoordinatorRebootID(std::string coordinatorID, uint64_t wantedRebootID) {
+bool Supervision::verifyCoordinatorRebootID(std::string const& coordinatorID, uint64_t wantedRebootID) {
   // check if the coordinator exists in health
   std::string const& health = serverHealth(coordinatorID);
   LOG_TOPIC("44432", DEBUG, Logger::SUPERVISION)

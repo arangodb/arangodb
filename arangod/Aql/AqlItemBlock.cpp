@@ -580,8 +580,6 @@ void AqlItemBlock::toVelocyPack(transaction::Methods* trx, VPackBuilder& result)
   result.add("nrItems", VPackValue(_nrItems));
   result.add("nrRegs", VPackValue(_nrRegs));
   result.add("error", VPackValue(false));
-  // Backwards compatbility 3.3
-  result.add("exhausted", VPackValue(false));
 
   enum State {
     Empty,       // saw an empty value
@@ -698,6 +696,32 @@ void AqlItemBlock::toVelocyPack(transaction::Methods* trx, VPackBuilder& result)
 
   raw.close();
   result.add("raw", raw.slice());
+}
+
+void AqlItemBlock::rowToSimpleVPack(size_t const row, transaction::Methods* trx, arangodb::velocypack::Builder& builder) const {
+  VPackArrayBuilder rowBuilder{&builder};
+
+  if (isShadowRow(row)) {
+    getShadowRowDepth(row).toVelocyPack(trx, *rowBuilder, false);
+  } else {
+    AqlValue{AqlValueHintNull{}}.toVelocyPack(trx, *rowBuilder, false);
+  }
+  for (RegisterId reg = 0; reg < getNrRegs(); ++reg) {
+    getValueReference(row, reg).toVelocyPack(trx, *rowBuilder, false);
+  }
+}
+
+void AqlItemBlock::toSimpleVPack(transaction::Methods* trx, arangodb::velocypack::Builder& builder) const {
+  VPackObjectBuilder block{&builder};
+  block->add("nrItems", VPackValue(size()));
+  block->add("nrRegs", VPackValue(getNrRegs()));
+  block->add(VPackValue("matrix"));
+  {
+    VPackArrayBuilder matrixBuilder{block.builder};
+    for (size_t row = 0; row < size(); ++row) {
+      rowToSimpleVPack(row, trx, *matrixBuilder.builder);
+    }
+  }
 }
 
 ResourceMonitor& AqlItemBlock::resourceMonitor() noexcept {

@@ -80,7 +80,7 @@ std::string ensureGuid(std::string&& guid, TRI_voc_cid_t id, TRI_voc_cid_t planI
   return std::move(guid);
 }
 
-TRI_voc_cid_t ensureId(arangodb::ClusterInfo* ci, TRI_voc_cid_t id) {
+TRI_voc_cid_t ensureId(TRI_vocbase_t& vocbase, TRI_voc_cid_t id) {
   if (id) {
     return id;
   }
@@ -90,6 +90,9 @@ TRI_voc_cid_t ensureId(arangodb::ClusterInfo* ci, TRI_voc_cid_t id) {
      ) {
     return TRI_NewTickServer();
   }
+
+  TRI_ASSERT(vocbase.server().hasFeature<arangodb::ClusterFeature>());
+  arangodb::ClusterInfo* ci = &vocbase.server().getFeature<arangodb::ClusterFeature>().clusterInfo();
 
   TRI_ASSERT(ci != nullptr);
   id = ci->uniqid(1);
@@ -179,10 +182,7 @@ LogicalDataSource::LogicalDataSource(Category const& category, Type const& type,
       _category(category),
       _type(type),
       _vocbase(vocbase),
-      _id(ensureId(vocbase.server().hasFeature<ClusterFeature>()
-                       ? &vocbase.server().getFeature<ClusterFeature>().clusterInfo()
-                       : nullptr,
-                   id)),
+      _id(ensureId(vocbase, id)),
       _planId(planId ? planId : _id),
       _planVersion(planVersion),
       _guid(ensureGuid(std::move(guid), _id, _planId, _name, system)),
@@ -193,11 +193,10 @@ LogicalDataSource::LogicalDataSource(Category const& category, Type const& type,
 }
 
 Result LogicalDataSource::properties(velocypack::Builder& builder,
-                                     std::underlying_type<Serialize>::type flags) const {
+                                     Serialization context) const {
   if (!builder.isOpenObject()) {
     return Result(TRI_ERROR_BAD_PARAMETER,
-                  std::string(
-                      "invalid builder provided for data-source definition"));
+                  "invalid builder provided for data-source definition");
   }
 
   builder.add(StaticStrings::DataSourceGuid,
@@ -208,7 +207,7 @@ Result LogicalDataSource::properties(velocypack::Builder& builder,
   // note: includeSystem and forPersistence are not 100% synonymous,
   // however, for our purposes this is an okay mapping; we only set
   // includeSystem if we are persisting the properties
-  if (hasFlag(flags, Serialize::ForPersistence)) {
+  if (context == Serialization::Persistence) {
     builder.add(StaticStrings::DataSourceDeleted, velocypack::Value(deleted()));
     builder.add(StaticStrings::DataSourceSystem, velocypack::Value(system()));
 
@@ -218,7 +217,7 @@ Result LogicalDataSource::properties(velocypack::Builder& builder,
                 velocypack::Value(std::to_string(planId())));
   }
 
-  return appendVelocyPack(builder, flags);
+  return appendVelocyPack(builder, context);
 }
 
 }  // namespace arangodb
