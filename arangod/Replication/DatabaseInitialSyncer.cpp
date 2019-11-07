@@ -143,6 +143,12 @@ arangodb::Result removeRevisions(arangodb::LogicalCollection& collection,
 
   return trx.commit();
 }
+
+arangodb::Result fetchRevisions(arangodb::LogicalCollection& collection,
+                                std::vector<std::size_t>& toFetch,
+                                arangodb::InitialSyncerIncrementalSyncStats& stats) {
+  // TODO fetch revisions in chunks of 5000, a la RocksDBIncrementalSync::syncChunkRocksDB
+}
 }  // namespace
 
 namespace arangodb {
@@ -1195,7 +1201,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
       toRemove.emplace_back(transaction::helpers::extractKeyString(local.document()));
       local.next();
     }
-    Result res = removeRevisions(*coll, toRemove, stats);
+    Result res = ::removeRevisions(*coll, toRemove, stats);
     if (res.fail()) {
       return res;
     }
@@ -1206,7 +1212,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
       toRemove.emplace_back(transaction::helpers::extractKeyString(local.document()));
       local.next();
     }
-    res = removeRevisions(*coll, toRemove, stats);
+    res = ::removeRevisions(*coll, toRemove, stats);
     if (res.fail()) {
       return res;
     }
@@ -1317,13 +1323,20 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
         }
       }
 
-      Result res = removeRevisions(*coll, toRemove, stats);
+      Result res = ::removeRevisions(*coll, toRemove, stats);
       if (res.fail()) {
         return res;
       }
       toRemove.clear();
 
-      // TODO fetch from toFetch
+      if (!_state.isChildSyncer) {
+        _state.barrier.extend(_state.connection);
+      }
+
+      res = ::fetchRevisions(*coll, toFetch, stats);
+      if (res.fail()) {
+        return res;
+      }
     }
     TRI_ASSERT(resumeRev <= ranges[chunk].first);
   }
