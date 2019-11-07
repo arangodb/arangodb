@@ -345,7 +345,7 @@ RestAdminClusterHandler::futureVoid RestAdminClusterHandler::tryDeleteServer(std
   }
 
   return AsyncAgencyComm().sendWriteTransaction(20s, std::move(trx))
-    .thenValue([this, ctx = std::move(ctx)](AsyncAgencyCommResult&&result) mutable {
+    .thenValue([this, ctx = std::move(ctx)](AsyncAgencyCommResult&& result) mutable {
 
       auto rootPath = arangodb::cluster::paths::root()->arango();
       if (result.ok() && result.statusCode() == 200) {
