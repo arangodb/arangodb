@@ -28,6 +28,7 @@
 #include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/NumberUtils.h"
 #include "Basics/RecursiveLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
@@ -964,6 +965,7 @@ void ClusterInfo::loadPlan() {
           shards->reserve(shardIDs->size());
 
           for (auto const& p : *shardIDs) {
+            TRI_ASSERT(p.first.size() >= 2);
             shards->push_back(p.first);
             newShardServers.emplace(p.first, p.second);
           }
@@ -973,8 +975,10 @@ void ClusterInfo::loadPlan() {
               shards->begin(),  // begin
               shards->end(),    // end
               [](std::string const& a, std::string const& b) -> bool {
-                return std::strtol(a.c_str() + 1, nullptr, 10) <
-                       std::strtol(b.c_str() + 1, nullptr, 10);
+                TRI_ASSERT(a.size() >= 2);
+                TRI_ASSERT(b.size() >= 2);
+                return NumberUtils::atoi_zero<uint64_t>(a.c_str() + 1, a.c_str() + a.size() - 1) <
+                       NumberUtils::atoi_zero<uint64_t>(b.c_str() + 1, b.c_str() + b.size() - 1);
               }  // comparator
           );
           newShards.emplace(collectionId, std::move(shards));
