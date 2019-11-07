@@ -289,7 +289,7 @@ void IndexNode::toVelocyPackHelper(VPackBuilder& builder, unsigned flags,
 
     builder.add("indexIdOfVars", VPackValue(_outNonMaterializedIndVars.first));
     // container _indexes contains a few items
-    auto indIt = std::find_if(_indexes.cbegin(), _indexes.cend(), [this] (auto const& index) {
+    auto indIt = std::find_if(_indexes.cbegin(), _indexes.cend(), [this](auto const& index) {
       return index.getIndex()->id() == _outNonMaterializedIndVars.first;
     });
     TRI_ASSERT(indIt != _indexes.cend());
@@ -510,7 +510,7 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
   outNonMaterializedIndRegs.second.reserve(_outNonMaterializedIndVars.second.size());
   std::transform(_outNonMaterializedIndVars.second.cbegin(), _outNonMaterializedIndVars.second.cend(),
                  std::inserter(outNonMaterializedIndRegs.second, outNonMaterializedIndRegs.second.end()),
-                 [&varInfos] (auto const& indVar) {
+                 [&varInfos](auto const& indVar) {
                    auto it = varInfos.find(indVar.second->id);
                    TRI_ASSERT(it != varInfos.cend());
 
@@ -531,7 +531,7 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
                            this->getIndexes(), _plan->getAst(), this->options(),
                            std::move(outNonMaterializedIndRegs));
 
-    return std::make_unique<ExecutionBlockImpl<IndexExecutor>>(&engine, this, std::move(infos));
+  return std::make_unique<ExecutionBlockImpl<IndexExecutor>>(&engine, this, std::move(infos));
 }
 
 ExecutionNode* IndexNode::clone(ExecutionPlan* plan, bool withDependencies,
@@ -627,7 +627,10 @@ std::vector<Variable const*> IndexNode::getVariablesSetHere() const {
   std::vector<arangodb::aql::Variable const*> vars;
   vars.reserve(1 + _outNonMaterializedIndVars.second.size());
   vars.emplace_back(_outNonMaterializedDocId);
-  std::transform(_outNonMaterializedIndVars.second.cbegin(), _outNonMaterializedIndVars.second.cend(), std::back_inserter(vars), [] (auto const& indVar) {
+  std::transform(_outNonMaterializedIndVars.second.cbegin(),
+                 _outNonMaterializedIndVars.second.cend(),
+                 std::back_inserter(vars),
+                 [](auto const& indVar) {
     return indVar.second;
   });
 

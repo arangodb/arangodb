@@ -269,7 +269,7 @@ void arangodb::aql::lateDocumentMaterializationRule(arangodb::aql::Optimizer* op
         IndexNode::IndexVarsInfo uniqueVariables;
         for (auto& node : nodesToChange) {
           std::transform(node.attrs.cbegin(), node.attrs.cend(), std::inserter(uniqueVariables, uniqueVariables.end()),
-                         [&ast] (auto const& attrAndField) {
+                         [&ast](auto const& attrAndField) {
                            return std::make_pair(attrAndField.indexField, IndexNode::IndexVariable{attrAndField.indexFieldNum,
                                                  ast->variables()->createTemporaryVariable()});
                          });
