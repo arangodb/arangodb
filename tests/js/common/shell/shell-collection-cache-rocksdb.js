@@ -210,24 +210,24 @@ function CollectionCacheSuite () {
       });
 
       f = c.figures();
-      print(f)
+      print(f);
       assertTrue(f.cacheSize > 0);
       assertTrue(f.cacheUsage > 0);
       assertTrue(f.cacheLifeTimeHitRate > 0);
 
       c.unload(); // should destroy cache
       f = c.figures();
-      print(f)
+      print(f);
       assertEqual(f.cacheSize, 0);
       assertEqual(f.cacheUsage, 0);
       assertFalse(f.hasOwnProperty('cacheLifeTimeHitRate'));
 
       
       idxs = c.getIndexes(true);
-      print(idxs)
+      print(idxs);
       idxs.forEach(function(idx, i) {
         if (idx.figures.cacheInUse) {
-          print(idx.figures)
+          print(idx.figures);
           assertTrue(idx.figures.cacheSize > 0);
           assertEqual(idx.figures.cacheUsage, 0);
           assertEqual(idx.figures.cacheLifeTimeHitRate, 0);
@@ -239,7 +239,7 @@ function CollectionCacheSuite () {
         doc = c.exists("1");
       }
       f = c.figures();
-      print(f)
+      print(f);
       assertTrue(f.cacheSize > 0);
       assertNotEqual(f.cacheUsage, 0);
       assertTrue(f.hasOwnProperty('cacheLifeTimeHitRate');
