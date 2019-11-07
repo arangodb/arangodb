@@ -41,13 +41,13 @@ RocksDBTransactionCollection::RocksDBTransactionCollection(TransactionState* trx
                                                            AccessMode::Type accessType,
                                                            int nestingLevel)
     : TransactionCollection(trx, cid, accessType, nestingLevel),
+      _usageLocked(false),
+      _exclusiveWrites(trx->vocbase().server().getFeature<arangodb::RocksDBOptionFeature>()._exclusiveWrites),
       _initialNumberDocuments(0),
       _revision(0),
       _numInserts(0),
       _numUpdates(0),
-      _numRemoves(0),
-      _usageLocked(false),
-      _exclusiveWrites(trx->vocbase().server().getFeature<arangodb::RocksDBOptionFeature>()._exclusiveWrites)
+      _numRemoves(0)
       {}
 
 
