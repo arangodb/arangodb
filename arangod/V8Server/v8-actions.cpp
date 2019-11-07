@@ -451,7 +451,6 @@ v8::Handle<v8::Object> TRI_RequestCppToV8(v8::Isolate* isolate,
         }
       } catch ( ... ) {} 
       // ok, no json/vpack after all ;-)
-      V8Buffer* buffer;
       auto raw = request->rawPayload();
       headers[StaticStrings::ContentLength] =
         StringUtils::itoa(raw.size());
