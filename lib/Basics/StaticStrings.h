@@ -248,6 +248,8 @@ class StaticStrings {
   static std::string const checksumFileJs;
   static std::string const IsBuilding;
   static std::string const RebootId;
+  static std::string const New;
+  static std::string const Old;
 };
 }  // namespace arangodb
 

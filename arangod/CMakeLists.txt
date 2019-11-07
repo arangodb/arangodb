@@ -283,12 +283,14 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/IndexHint.cpp
   Aql/IndexNode.cpp
   Aql/InputAqlItemRow.cpp
+  Aql/InsertModifier.cpp
   Aql/KShortestPathsExecutor.cpp
   Aql/KShortestPathsNode.cpp
   Aql/LimitExecutor.cpp
   Aql/MaterializeExecutor.cpp
   Aql/ModificationExecutor.cpp
-  Aql/ModificationExecutorTraits.cpp
+  Aql/ModificationExecutorHelpers.cpp
+  Aql/ModificationExecutorInfos.cpp
   Aql/ModificationNodes.cpp
   Aql/ModificationOptions.cpp
   Aql/MultiDependencySingleRowFetcher.cpp
@@ -314,6 +316,7 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/QuerySnippet.cpp
   Aql/QueryString.cpp
   Aql/Range.cpp
+  Aql/RemoveModifier.cpp
   Aql/RegexCache.cpp
   Aql/RegisterPlan.cpp
   Aql/RemoteExecutor.cpp
@@ -328,6 +331,7 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/ShortStringStorage.cpp
   Aql/ShortestPathExecutor.cpp
   Aql/ShortestPathNode.cpp
+  Aql/SimpleModifier.cpp
   Aql/SingleRemoteModificationExecutor.cpp
   Aql/SingleRowFetcher.cpp
   Aql/SortCondition.cpp
@@ -345,6 +349,8 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/TraversalExecutor.cpp
   Aql/TraversalNode.cpp
   Aql/UnsortedGatherExecutor.cpp
+  Aql/UpdateReplaceModifier.cpp
+  Aql/UpsertModifier.cpp
   Aql/V8Executor.cpp
   Aql/Variable.cpp
   Aql/VariableGenerator.cpp
