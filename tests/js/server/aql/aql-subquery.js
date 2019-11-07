@@ -399,7 +399,7 @@ function ahuacatlSubqueryTestSuite () {
         }
         col.save(docs);
 
-        // Now we do a left out join on the same collection
+        // Now we do a left outer join on the same collection
         const query = `
           FOR left IN ${colName}
             LET rightJoin = (
