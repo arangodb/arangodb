@@ -751,15 +751,9 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
 
     auto result = fn_save->CallAsFunction(context, fn_save,
                                        static_cast<int>(args.size()), args.data());
-<<<<<<< HEAD
     ASSERT_FALSE(result.IsEmpty());
     ASSERT_TRUE(result.ToLocalChecked()->IsObject());
-    auto* v8AnalyzerWeak = TRI_UnwrapClass<arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool>(
-=======
-    EXPECT_FALSE(result.IsEmpty());
-    EXPECT_TRUE(result.ToLocalChecked()->IsObject());
-    auto* v8Analyzer = TRI_UnwrapClass<arangodb::iresearch::AnalyzerPool>(
->>>>>>> c75ad7c1ee273fd1847fe79640848ea20dc484f4
+    auto* v8AnalyzerWeak = TRI_UnwrapClass<arangodb::iresearch::AnalyzerPool>(
         result.ToLocalChecked()->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()),
         WRP_IRESEARCH_ANALYZER_TYPE, TRI_IGETC);
     ASSERT_FALSE(!v8AnalyzerWeak);
@@ -791,15 +785,9 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
 
     auto result = fn_save->CallAsFunction(context, fn_save,
                                        static_cast<int>(args.size()), args.data());
-<<<<<<< HEAD
     ASSERT_FALSE(result.IsEmpty());
     ASSERT_TRUE(result.ToLocalChecked()->IsObject());
-    auto* v8AnalyzerWeak = TRI_UnwrapClass<arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool>(
-=======
-    EXPECT_FALSE(result.IsEmpty());
-    EXPECT_TRUE(result.ToLocalChecked()->IsObject());
-    auto* v8Analyzer = TRI_UnwrapClass<arangodb::iresearch::AnalyzerPool>(
->>>>>>> c75ad7c1ee273fd1847fe79640848ea20dc484f4
+    auto* v8AnalyzerWeak = TRI_UnwrapClass<arangodb::iresearch::AnalyzerPool>(
         result.ToLocalChecked()->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()),
         WRP_IRESEARCH_ANALYZER_TYPE, TRI_IGETC);
     ASSERT_FALSE(!v8AnalyzerWeak);
@@ -830,15 +818,9 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
 
     auto result = fn_save->CallAsFunction(context, fn_save,
                                        static_cast<int>(args.size()), args.data());
-<<<<<<< HEAD
     ASSERT_FALSE(result.IsEmpty());
     ASSERT_TRUE(result.ToLocalChecked()->IsObject());
-    auto* v8AnalyzerWeak = TRI_UnwrapClass<arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool>(
-=======
-    EXPECT_FALSE(result.IsEmpty());
-    EXPECT_TRUE(result.ToLocalChecked()->IsObject());
-    auto* v8Analyzer = TRI_UnwrapClass<arangodb::iresearch::AnalyzerPool>(
->>>>>>> c75ad7c1ee273fd1847fe79640848ea20dc484f4
+    auto* v8AnalyzerWeak = TRI_UnwrapClass<arangodb::iresearch::AnalyzerPool>(
         result.ToLocalChecked()->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()),
         WRP_IRESEARCH_ANALYZER_TYPE, TRI_IGETC);
     ASSERT_FALSE(!v8AnalyzerWeak);
@@ -960,15 +942,9 @@ TEST_F(V8AnalyzerTest, test_manager_get) {
     auto result = fn_analyzer->CallAsFunction(context, fn_analyzer,
                                                     static_cast<int>(args.size()),
                                                     args.data());
-<<<<<<< HEAD
     ASSERT_FALSE(result.IsEmpty());
     ASSERT_TRUE(result.ToLocalChecked()->IsObject());
-    auto* v8AnalyzerWeak = TRI_UnwrapClass<arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool>(
-=======
-    EXPECT_FALSE(result.IsEmpty());
-    EXPECT_TRUE(result.ToLocalChecked()->IsObject());
-    auto* v8Analyzer = TRI_UnwrapClass<arangodb::iresearch::AnalyzerPool>(
->>>>>>> c75ad7c1ee273fd1847fe79640848ea20dc484f4
+    auto* v8AnalyzerWeak = TRI_UnwrapClass<arangodb::iresearch::AnalyzerPool>(
         result.ToLocalChecked()->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()),
         WRP_IRESEARCH_ANALYZER_TYPE, TRI_IGETC);
     ASSERT_FALSE(!v8AnalyzerWeak);
@@ -1018,15 +994,9 @@ TEST_F(V8AnalyzerTest, test_manager_get) {
     auto result = fn_analyzer->CallAsFunction(context, fn_analyzer,
                                                     static_cast<int>(args.size()),
                                                     args.data());
-<<<<<<< HEAD
     ASSERT_FALSE(result.IsEmpty());
     ASSERT_TRUE(result.ToLocalChecked()->IsObject());
-    auto* v8AnalyzerWeak = TRI_UnwrapClass<arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool>(
-=======
-    EXPECT_FALSE(result.IsEmpty());
-    EXPECT_TRUE(result.ToLocalChecked()->IsObject());
-    auto* v8Analyzer = TRI_UnwrapClass<arangodb::iresearch::AnalyzerPool>(
->>>>>>> c75ad7c1ee273fd1847fe79640848ea20dc484f4
+    auto* v8AnalyzerWeak = TRI_UnwrapClass<arangodb::iresearch::AnalyzerPool>(
         result.ToLocalChecked()->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()),
         WRP_IRESEARCH_ANALYZER_TYPE, TRI_IGETC);
     ASSERT_FALSE(!v8AnalyzerWeak);
@@ -1088,15 +1058,9 @@ TEST_F(V8AnalyzerTest, test_manager_get) {
     auto result = fn_analyzer->CallAsFunction(context, fn_analyzer,
                                                     static_cast<int>(args.size()),
                                                     args.data());
-<<<<<<< HEAD
     ASSERT_FALSE(result.IsEmpty());
     ASSERT_TRUE(result.ToLocalChecked()->IsObject());
-    auto* v8AnalyzerWeak = TRI_UnwrapClass<arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool>(
-=======
-    EXPECT_FALSE(result.IsEmpty());
-    EXPECT_TRUE(result.ToLocalChecked()->IsObject());
-    auto* v8Analyzer = TRI_UnwrapClass<arangodb::iresearch::AnalyzerPool>(
->>>>>>> c75ad7c1ee273fd1847fe79640848ea20dc484f4
+    auto* v8AnalyzerWeak = TRI_UnwrapClass<arangodb::iresearch::AnalyzerPool>(
         result.ToLocalChecked()->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()),
         WRP_IRESEARCH_ANALYZER_TYPE, TRI_IGETC);
     ASSERT_FALSE(!v8AnalyzerWeak);
@@ -1341,17 +1305,9 @@ TEST_F(V8AnalyzerTest, test_manager_list) {
 
     for (uint32_t i = 0, count = v8Result->Length(); i < count; ++i) {
       auto v8Analyzer = v8Result->Get(i);
-<<<<<<< HEAD
       ASSERT_FALSE(v8Analyzer.IsEmpty());
       ASSERT_TRUE(v8Analyzer->IsObject());
-      auto* v8AnalyzerWeak =
-          TRI_UnwrapClass<arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool>(
-=======
-      EXPECT_FALSE(v8Analyzer.IsEmpty());
-      EXPECT_TRUE(v8Analyzer->IsObject());
-      auto* analyzer =
-          TRI_UnwrapClass<arangodb::iresearch::AnalyzerPool>(
->>>>>>> c75ad7c1ee273fd1847fe79640848ea20dc484f4
+      auto* v8AnalyzerWeak = TRI_UnwrapClass<arangodb::iresearch::AnalyzerPool>(
               v8Analyzer->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()),
               WRP_IRESEARCH_ANALYZER_TYPE, TRI_IGETC);
       ASSERT_FALSE(!v8AnalyzerWeak);
@@ -1389,17 +1345,9 @@ TEST_F(V8AnalyzerTest, test_manager_list) {
 
     for (uint32_t i = 0, count = v8Result->Length(); i < count; ++i) {
       auto v8Analyzer = v8Result->Get(i);
-<<<<<<< HEAD
       ASSERT_FALSE(v8Analyzer.IsEmpty());
       ASSERT_TRUE(v8Analyzer->IsObject());
-      auto* v8AnalyzerWeak =
-          TRI_UnwrapClass<arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool>(
-=======
-      EXPECT_FALSE(v8Analyzer.IsEmpty());
-      EXPECT_TRUE(v8Analyzer->IsObject());
-      auto* analyzer =
-          TRI_UnwrapClass<arangodb::iresearch::AnalyzerPool>(
->>>>>>> c75ad7c1ee273fd1847fe79640848ea20dc484f4
+      auto* v8AnalyzerWeak = TRI_UnwrapClass<arangodb::iresearch::AnalyzerPool>(
               v8Analyzer->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()),
               WRP_IRESEARCH_ANALYZER_TYPE, TRI_IGETC);
       ASSERT_FALSE(!v8AnalyzerWeak);
@@ -1440,13 +1388,7 @@ TEST_F(V8AnalyzerTest, test_manager_list) {
       auto v8Analyzer = v8Result->Get(i);
       EXPECT_FALSE(v8Analyzer.IsEmpty());
       EXPECT_TRUE(v8Analyzer->IsObject());
-<<<<<<< HEAD
-      auto* v8AnalyzerWeak =
-          TRI_UnwrapClass<arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool>(
-=======
-      auto* analyzer =
-          TRI_UnwrapClass<arangodb::iresearch::AnalyzerPool>(
->>>>>>> c75ad7c1ee273fd1847fe79640848ea20dc484f4
+      auto* v8AnalyzerWeak = TRI_UnwrapClass<arangodb::iresearch::AnalyzerPool>(
               v8Analyzer->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()),
               WRP_IRESEARCH_ANALYZER_TYPE, TRI_IGETC);
       EXPECT_FALSE(!v8AnalyzerWeak);
@@ -1486,17 +1428,9 @@ TEST_F(V8AnalyzerTest, test_manager_list) {
 
     for (uint32_t i = 0, count = v8Result->Length(); i < count; ++i) {
       auto v8Analyzer = v8Result->Get(i);
-<<<<<<< HEAD
       ASSERT_FALSE(v8Analyzer.IsEmpty());
       ASSERT_TRUE(v8Analyzer->IsObject());
-      auto* v8AnalyzerWeak =
-          TRI_UnwrapClass<arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool>(
-=======
-      EXPECT_FALSE(v8Analyzer.IsEmpty());
-      EXPECT_TRUE(v8Analyzer->IsObject());
-      auto* analyzer =
-          TRI_UnwrapClass<arangodb::iresearch::AnalyzerPool>(
->>>>>>> c75ad7c1ee273fd1847fe79640848ea20dc484f4
+      auto* v8AnalyzerWeak = TRI_UnwrapClass<arangodb::iresearch::AnalyzerPool>(
               v8Analyzer->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()),
               WRP_IRESEARCH_ANALYZER_TYPE, TRI_IGETC);
       EXPECT_FALSE(!v8AnalyzerWeak);
@@ -1536,17 +1470,9 @@ TEST_F(V8AnalyzerTest, test_manager_list) {
 
     for (uint32_t i = 0, count = v8Result->Length(); i < count; ++i) {
       auto v8Analyzer = v8Result->Get(i);
-<<<<<<< HEAD
       ASSERT_FALSE(v8Analyzer.IsEmpty());
       ASSERT_TRUE(v8Analyzer->IsObject());
-      auto* v8AnalyzerWeak =
-          TRI_UnwrapClass<arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool>(
-=======
-      EXPECT_FALSE(v8Analyzer.IsEmpty());
-      EXPECT_TRUE(v8Analyzer->IsObject());
-      auto* analyzer =
-          TRI_UnwrapClass<arangodb::iresearch::AnalyzerPool>(
->>>>>>> c75ad7c1ee273fd1847fe79640848ea20dc484f4
+      auto* v8AnalyzerWeak = TRI_UnwrapClass<arangodb::iresearch::AnalyzerPool>(
               v8Analyzer->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()),
               WRP_IRESEARCH_ANALYZER_TYPE, TRI_IGETC);
       ASSERT_FALSE(!v8AnalyzerWeak);
@@ -1585,17 +1511,9 @@ TEST_F(V8AnalyzerTest, test_manager_list) {
 
     for (uint32_t i = 0, count = v8Result->Length(); i < count; ++i) {
       auto v8Analyzer = v8Result->Get(i);
-<<<<<<< HEAD
       ASSERT_FALSE(v8Analyzer.IsEmpty());
       ASSERT_TRUE(v8Analyzer->IsObject());
-      auto* v8AnalyzerWeak =
-          TRI_UnwrapClass<arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool>(
-=======
-      EXPECT_FALSE(v8Analyzer.IsEmpty());
-      EXPECT_TRUE(v8Analyzer->IsObject());
-      auto* analyzer =
-          TRI_UnwrapClass<arangodb::iresearch::AnalyzerPool>(
->>>>>>> c75ad7c1ee273fd1847fe79640848ea20dc484f4
+      auto* v8AnalyzerWeak = TRI_UnwrapClass<arangodb::iresearch::AnalyzerPool>(
               v8Analyzer->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()),
               WRP_IRESEARCH_ANALYZER_TYPE, TRI_IGETC);
       ASSERT_FALSE(!v8AnalyzerWeak);
