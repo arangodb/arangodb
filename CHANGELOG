@@ -46,12 +46,9 @@ devel
   Using these attributes for sharding was not supported before, but didn't trigger
   any errors. Instead, collections were created and silently using `_key` as
   the shard key, without making the caller aware of that an unsupported shard
-  keys was used.
+  key was used.
 
 * DB server locking / unlocking for hot backup revisited and enhanced.
-
-* Fixed unintended multiple unlock commands from coordinator to
-  transaction locked db servers.
 
 * Use execvp instead of execv in hotbackup restore.
 
@@ -167,12 +164,13 @@ devel
 * Fixed internal issue #4407: remove storage engine warning.
 
 * Added support for TLS 1.3 for the arangod server and the client tools.
+  
+  The arangod server can be started with option `--ssl.protocol 6` to make it require
+  TLS 1.3 for incoming client connections. The server can be started with option 
+  `--ssl.protocol 5` to make it require TLS 1.2, as in previous versions of arangod.
 
-  The default TLS protocol for the arangod server is now TLS 1.3 as well, in
-  contrast to TLS 1.2 in previous versions.
-
-  The arangod server can be started with option `--ssl.protocol 5` to make it use
-  TLS 1.2 again.
+  The default TLS protocol for the arangod server is now generic TLS, which will allow
+  the negotation of the TLS version between the client and the server.
 
   All client tools also support TLS 1.3, by using the `--ssl.protocol 6` option when
   invoking them. The client tools will use TLS 1.2 by default, in order to be
@@ -185,6 +183,7 @@ devel
   - 4 = TLSv1
   - 5 = TLSv1.2
   - 6 = TLSv1.3
+  - 9 = generic TLS
 
 * Added TransactionStatistics to ServerStatistics (transactions started /
   aborted / committed and number of intermediate commits).

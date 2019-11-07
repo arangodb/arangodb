@@ -100,7 +100,6 @@ void ConnectionPool::pruneConnections() {
   READ_LOCKER(guard, _lock);
 
   const auto ttl = std::chrono::milliseconds(_config.idleConnectionMilli * 2);
-
   for (auto& pair : _connections) {
     Bucket& buck = *(pair.second);
     std::lock_guard<std::mutex> lock(buck.mutex);

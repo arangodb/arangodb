@@ -3722,6 +3722,8 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt, std::unique_ptr<Executi
       TRI_ASSERT(false);
     }
 
+    TRI_ASSERT(collection != nullptr);
+
     // insert a scatter node
     auto* scatterNode =
         new ScatterNode(plan.get(), plan->nextId(), ScatterNode::ScatterType::SHARD);
@@ -3747,7 +3749,10 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt, std::unique_ptr<Executi
 
     // insert a gather node
     auto const sortMode = GatherNode::evaluateSortMode(collection->numberOfShards());
-    auto* gatherNode = new GatherNode(plan.get(), plan->nextId(), sortMode);
+    // single-sharded collections don't require any parallelism. collections with more than
+    // one shard are eligible for later parallelization (the Undefined allows this)
+    auto const parallelism = (collection->numberOfShards() <= 1 ? GatherNode::Parallelism::Serial : GatherNode::Parallelism::Undefined);
+    auto* gatherNode = new GatherNode(plan.get(), plan->nextId(), sortMode, parallelism); 
     plan->registerNode(gatherNode);
     TRI_ASSERT(remoteNode);
     gatherNode->addDependency(remoteNode);
@@ -3989,7 +3994,8 @@ void arangodb::aql::distributeInClusterRule(Optimizer* opt,
 
       // insert a gather node
       auto const sortMode = GatherNode::evaluateSortMode(collection->numberOfShards());
-      auto* gatherNode = new GatherNode(plan.get(), plan->nextId(), sortMode);
+      auto const parallelism = GatherNode::Parallelism::Undefined;
+      auto* gatherNode = new GatherNode(plan.get(), plan->nextId(), sortMode, parallelism);
       plan->registerNode(gatherNode);
       gatherNode->addDependency(remoteNode);
 
@@ -7253,10 +7259,12 @@ void arangodb::aql::moveFiltersIntoEnumerateRule(Optimizer* opt, std::unique_ptr
         if (!expr->isDeterministic() || !expr->canRunOnDBServer()) {
           break;
         }
+
         if (expr->node() == nullptr) {
           break;
         }
 
+        TRI_ASSERT(!expr->willUseV8());
         found.clear();
         Ast::getReferencedVariables(expr->node(), found);
         if (found.size() == 1 && found.find(outVariable) != found.end()) {
@@ -7265,6 +7273,28 @@ void arangodb::aql::moveFiltersIntoEnumerateRule(Optimizer* opt, std::unique_ptr
       }
 
       current = current->getFirstParent();
+    }
+  }
+
+  opt->addPlan(std::move(plan), rule, modified);
+}
+
+/// @brief parallelize coordinator GatherNodes
+void arangodb::aql::parallelizeGatherRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
+                                          OptimizerRule const& rule) {
+  TRI_ASSERT(ServerState::instance()->isCoordinator());
+  
+  bool modified = false;
+
+  ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type a;
+  ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
+  plan->findNodesOfType(nodes, EN::GATHER, false);
+
+  for (auto const& n : nodes) {
+    GatherNode* gn = ExecutionNode::castTo<GatherNode*>(n);
+    if (gn->isParallelizable()) {
+      gn->setParallelism(GatherNode::Parallelism::Parallel);
+      modified = true;
     }
   }
 
@@ -7457,7 +7487,6 @@ void findSubqueriesSuitableForSplicing(ExecutionPlan const& plan,
     result.resize(i);
   }
 }
-
 }
 
 // Splices in subqueries by replacing subquery nodes by

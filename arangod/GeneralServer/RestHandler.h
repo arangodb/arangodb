@@ -74,7 +74,6 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   uint64_t messageId() const;
 
   GeneralRequest const* request() const { return _request.get(); }
-
   GeneralResponse* response() const { return _response.get(); }
   std::unique_ptr<GeneralResponse> stealResponse() {
     return std::move(_response);
@@ -82,9 +81,8 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
 
   application_features::ApplicationServer& server() { return _server; };
 
-  RequestStatistics* statistics() const { return _statistics.load(); }
-  RequestStatistics* stealStatistics() { return _statistics.exchange(nullptr); }
-
+  RequestStatistics* statistics() const { return _statistics; }
+  RequestStatistics* stealStatistics();
   void setStatistics(RequestStatistics* stat);
 
   /// Execute the rest handler state machine
@@ -94,8 +92,8 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
     runHandlerStateMachine();
   }
 
-  /// Execute the rest handler state machine
-  void continueHandlerExecution();
+  /// Execute the rest handler state machine. Retry the wakeup, returns false if done
+  bool wakeupHandler();
 
   /// @brief forwards the request to the appropriate server
   futures::Future<Result> forwardRequest(bool& forwarded);
@@ -127,9 +125,8 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
 
   // you might need to implment this in you handler
   // if it will be executed in an async job
-  virtual bool cancel() {
+  virtual void cancel() {
     _canceled.store(true);
-    return false;
   }
 
   virtual void handleError(basics::Exception const&) = 0;
@@ -166,7 +163,7 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
       if (std::this_thread::get_id() == thisPtr->_executionMutexOwner.load()) {
         done = true;
       } else {
-        thisPtr->continueHandlerExecution();
+        thisPtr->wakeupHandler();
       }
     });
     return done ? RestStatus::DONE : RestStatus::WAITING;
@@ -181,12 +178,10 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   ///        If isContinue == true it will call continueExecute()
   ///        otherwise execute() will be called
   void executeEngine(bool isContinue);
-  void shutdownEngine();
   void compressResponse();
-
- protected:
-  enum class HandlerState {
-    PREPARE,
+  
+  enum class HandlerState : uint8_t {
+    PREPARE = 0,
     EXECUTE,
     PAUSED,
     CONTINUED,
@@ -195,20 +190,28 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
     FAILED
   };
 
-  std::atomic<bool> _canceled;
+ protected:
+
   std::unique_ptr<GeneralRequest> _request;
   std::unique_ptr<GeneralResponse> _response;
   application_features::ApplicationServer& _server;
-  std::atomic<RequestStatistics*> _statistics;
-  HandlerState _state;
+  RequestStatistics* _statistics;
 
  private:
-  uint64_t _handlerId;
+  
+  mutable Mutex _executionMutex;
 
   std::function<void(rest::RestHandler*)> _callback;
+  
+  uint64_t _handlerId;
 
-  mutable Mutex _executionMutex;
   std::atomic<std::thread::id> _executionMutexOwner;
+  
+  HandlerState _state;
+  
+ protected:
+  
+  std::atomic<bool> _canceled;
 };
 
 }  // namespace rest
