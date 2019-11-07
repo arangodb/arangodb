@@ -147,7 +147,11 @@ arangodb::Result removeRevisions(arangodb::LogicalCollection& collection,
 arangodb::Result fetchRevisions(arangodb::LogicalCollection& collection,
                                 std::vector<std::size_t>& toFetch,
                                 arangodb::InitialSyncerIncrementalSyncStats& stats) {
+  using arangodb::Result;
+
   // TODO fetch revisions in chunks of 5000, a la RocksDBIncrementalSync::syncChunkRocksDB
+
+  return Result();
 }
 }  // namespace
 
