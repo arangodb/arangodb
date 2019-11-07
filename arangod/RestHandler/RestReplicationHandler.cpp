@@ -2947,12 +2947,41 @@ void RestReplicationHandler::handleCommandRevisionRanges() {
       *static_cast<RevisionReplicationIterator*>(ctx.iter.get());
   it.seek(ctx.resume);
 
+  std::size_t constexpr limit = static_cast<std::size_t>(1) << 16;  // ~2MB data
+  std::size_t total = 0;
   VPackBuilder response;
   {
     VPackObjectBuilder obj(&response);
     TRI_voc_rid_t resumeNext = ctx.resume;
+    VPackSlice range = body.at(current);
 
-    // TODO actually generate response
+    response.add(VPackValue("ranges"));
+    response.openArray();
+    while (total < limit && current < body.length()) {
+      bool advance = false;
+      if (!it.hasMore() || it.revision() <= range.at(0).getNumber<std::size_t>()) {
+        it.seek(range.at(0).getNumber<std::size_t>());
+        response.openArray();
+      }
+
+      if (it.hasMore() && it.revision() >= range.at(0).getNumber<std::size_t>() &&
+          it.revision() <= range.at(1).getNumber<std::size_t>()) {
+        response.add(VPackValue(it.revision()));
+        ++total;
+        advance = true;
+      }
+
+      if (!it.hasMore() || it.revision() >= range.at(1).getNumber<std::size_t>()) {
+        response.close();
+        ++current;
+        range = body.at(current);
+      }
+
+      if (advance) {
+        it.next();
+      }
+    }
+    response.close();  // "ranges"
 
     response.add("resume", VPackValue(resumeNext));
   }
