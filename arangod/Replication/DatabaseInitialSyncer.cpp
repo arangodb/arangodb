@@ -1306,7 +1306,8 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
           local.next();
         }
 
-        while (local.hasMore() && local.revision() <= currentRange.second) {
+        while (local.hasMore() &&
+               local.revision() <= std::min(resumeRev, currentRange.second)) {
           toRemove.emplace_back(transaction::helpers::extractKeyString(local.document()));
           local.next();
         }
