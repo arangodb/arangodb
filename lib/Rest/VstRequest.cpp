@@ -61,7 +61,7 @@ VstRequest::VstRequest(ConnectionInfo const& connectionInfo,
       _payloadOffset(payloadOffset),
       _messageId(messageId),
       _validatedPayload(false) {
-  _contentType = ContentType::VPACK;
+  _contentType = ContentType::UNSET;
   _contentTypeResponse = ContentType::VPACK;
   parseHeaderInformation();
 }
@@ -118,7 +118,8 @@ void VstRequest::setHeader(VPackSlice keySlice, VPackSlice valSlice) {
       (val == StaticStrings::MimeTypeJsonNoEncoding)) {
     _contentTypeResponse = ContentType::JSON;
     return;  // don't insert this header!!
-  } else if (key == StaticStrings::ContentTypeHeader) {
+  } else if ((_contentType == ContentType::UNSET) &&
+             (key == StaticStrings::ContentTypeHeader)) {
     if ((val.length() >= StaticStrings::MimeTypeJsonNoEncoding.length()) &&
         (val == StaticStrings::MimeTypeJsonNoEncoding)) {
       _contentType = ContentType::JSON;

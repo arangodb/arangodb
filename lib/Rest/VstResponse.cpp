@@ -59,8 +59,8 @@ void VstResponse::addPayload(VPackSlice const& slice,
                              bool resolveExternals) {
   if (_contentType == rest::ContentType::VPACK &&
       _contentTypeRequested == rest::ContentType::JSON) {
-    // content type was set by a handler to VPACK but the client wants JSON
-    // as we have a slice at had we are able to reply with JSON
+    // content type was set by a handler to VPACK but the client requested JSON
+    // as we have a slice at hand we are able to reply with JSON easily
     _contentType = rest::ContentType::JSON;
   }
   if (!options) {

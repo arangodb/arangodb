@@ -48,7 +48,7 @@ HttpRequest::HttpRequest(ConnectionInfo const& connectionInfo, char const* heade
       _vpackBuilder(nullptr),
       _version(ProtocolVersion::UNKNOWN),
       _allowMethodOverride(allowMethodOverride) {
-        _contentType = ContentType::JSON;
+        _contentType = ContentType::UNSET;
         _contentTypeResponse = ContentType::JSON;
   if (0 < length) {
     auto buff = std::make_unique<char[]>(length + 1);
@@ -545,7 +545,7 @@ void HttpRequest::setHeaderV2(std::string key, std::string value) {
   
   if (key == StaticStrings::Accept && value == StaticStrings::MimeTypeVPack) {
     _contentTypeResponse = ContentType::VPACK;
-  } else if (key == StaticStrings::ContentTypeHeader) {
+  } else if ((_contentType == ContentType::UNSET) && (key == StaticStrings::ContentTypeHeader)) {
     if (value == StaticStrings::MimeTypeVPack) {
       _contentType = ContentType::VPACK; // don't insert this header!!
       return;
@@ -554,7 +554,7 @@ void HttpRequest::setHeaderV2(std::string key, std::string value) {
       _contentType = ContentType::JSON;
       return;
     }
-    else if ((value.length() > StaticStrings::MimeTypeJsonNoEncoding.length()) &&
+    else if ((value.length() >= StaticStrings::MimeTypeJsonNoEncoding.length()) &&
              (memcmp(value.c_str(),
                      StaticStrings::MimeTypeJsonNoEncoding.c_str(),
                      StaticStrings::MimeTypeJsonNoEncoding.length()) == 0)) {
@@ -735,7 +735,8 @@ void HttpRequest::setHeader(char const* key, size_t keyLength,
     // This can be much more elaborated as the can specify weights on encodings
     // However, for now just toggle on deflate if deflate is requested
     _acceptEncoding = EncodingType::DEFLATE;
-  } else if (keyLength == StaticStrings::ContentTypeHeader.size() &&
+  } else if ((_contentType == ContentType::UNSET) &&
+             (keyLength == StaticStrings::ContentTypeHeader.size()) &&
              (memcmp(key, StaticStrings::ContentTypeHeader.c_str(), keyLength) == 0)) {
     if (valueLength == StaticStrings::MimeTypeVPack.size() &&
         memcmp(value, StaticStrings::MimeTypeVPack.c_str(), valueLength) == 0) {
@@ -743,9 +744,9 @@ void HttpRequest::setHeader(char const* key, size_t keyLength,
       // don't insert this header!!
       return;
     }
-    if (valueLength == StaticStrings::MimeTypeJson.size() &&
-        memcmp(value, StaticStrings::MimeTypeJson.c_str(), valueLength) == 0) {
-      _contentType = ContentType::VPACK;
+    if (valueLength >= StaticStrings::MimeTypeJsonNoEncoding.size() &&
+        memcmp(value, StaticStrings::MimeTypeJsonNoEncoding.c_str(), valueLength) == 0) {
+      _contentType = ContentType::JSON;
       // don't insert this header!!
       return;
     }
