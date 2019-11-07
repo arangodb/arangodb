@@ -209,20 +209,41 @@ function CollectionCacheSuite () {
         }
       });
 
-      c.unload(); // should destroy cache
-      f = c.figures(); // will load collection
+      f = c.figures();
+      print(f)
       assertTrue(f.cacheSize > 0);
-      assertEqual(f.cacheUsage, 0);
-      assertEqual(f.cacheLifeTimeHitRate, 0);
+      assertTrue(f.cacheUsage > 0);
+      assertTrue(f.cacheLifeTimeHitRate > 0);
 
+      c.unload(); // should destroy cache
+      f = c.figures();
+      print(f)
+      assertEqual(f.cacheSize, 0);
+      assertEqual(f.cacheUsage, 0);
+      assertFalse(f.hasOwnProperty('cacheLifeTimeHitRate'));
+
+      
       idxs = c.getIndexes(true);
+      print(idxs)
       idxs.forEach(function(idx, i) {
         if (idx.figures.cacheInUse) {
+          print(idx.figures)
           assertTrue(idx.figures.cacheSize > 0);
           assertEqual(idx.figures.cacheUsage, 0);
           assertEqual(idx.figures.cacheLifeTimeHitRate, 0);
         }
       });
+
+      let doc; // load the collection again, put some cache hits...
+      for (let i=0; i < 10; i++) {
+        doc = c.exists("1");
+      }
+      f = c.figures();
+      print(f)
+      assertTrue(f.cacheSize > 0);
+      assertNotEqual(f.cacheUsage, 0);
+      assertTrue(f.hasOwnProperty('cacheLifeTimeHitRate');
+
     }
   };
 }
