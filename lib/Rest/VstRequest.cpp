@@ -120,17 +120,18 @@ void VstRequest::setHeader(VPackSlice keySlice, VPackSlice valSlice) {
     return;  // don't insert this header!!
   } else if ((_contentType == ContentType::UNSET) &&
              (key == StaticStrings::ContentTypeHeader)) {
-    if ((val.length() >= StaticStrings::MimeTypeJsonNoEncoding.length()) &&
-        (val == StaticStrings::MimeTypeJsonNoEncoding)) {
-      _contentType = ContentType::JSON;
-      return;  // don't insert this header!!
-    }
     if ((val.length() == StaticStrings::MimeTypeVPack.length()) &&
         (val == StaticStrings::MimeTypeVPack)) {
       _contentType = ContentType::VPACK;
       return;  // don't insert this header!!
     }
-    _contentType = ContentType::UNSET;
+    if (val.length() >= StaticStrings::MimeTypeJsonNoEncoding.length() &&
+        memcmp(value.c_str(), StaticStrings::MimeTypeJsonNoEncoding.c_str(),
+               StaticStrings::MimeTypeJsonNoEncoding.length()) == 0) {
+      _contentType = ContentType::JSON;
+      // don't insert this header!!
+      return;
+    }
   }
 
   // must lower-case the header key

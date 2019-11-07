@@ -1526,8 +1526,31 @@ again:
   req->header.parseArangoPath(location.toString());
   for (auto& pair : headerFields) {
     if (boost::iequals(StaticStrings::ContentTypeHeader, pair.first)) {
-      req->header.contentType(fuerte::ContentType::Custom);
+      if (pair.second == StaticStrings::MimeTypeVPack) {
+        req->header.contentType(fuerte::ContentType::VPack);
+      } else if ((pair.second.length() >= StaticStrings::MimeTypeJsonNoEncoding.length()) &&
+               (memcmp(pair.second.c_str(),
+                       StaticStrings::MimeTypeJsonNoEncoding.c_str(),
+                       StaticStrings::MimeTypeJsonNoEncoding.length()) == 0)) {
+        // ignore encoding etc.
+        req->header.contentType(fuerte::ContentType::Json);
+      } else {
+        req->header.contentType(fuerte::ContentType::Custom);
+      }
+      
     } else if (boost::iequals(StaticStrings::Accept, pair.first)) {
+      if (pair.second == StaticStrings::MimeTypeVPack) {
+        req->header.acceptType(fuerte::ContentType::VPack);
+      } else if ((pair.second.length() >= StaticStrings::MimeTypeJsonNoEncoding.length()) &&
+               (memcmp(pair.second.c_str(),
+                       StaticStrings::MimeTypeJsonNoEncoding.c_str(),
+                       StaticStrings::MimeTypeJsonNoEncoding.length()) == 0)) {
+        // ignore encoding etc.
+        req->header.acceptType(fuerte::ContentType::Json);
+      } else {
+        req->header.acceptType(fuerte::ContentType::Custom);
+      }
+
       req->header.acceptType(fuerte::ContentType::Custom);
     }
     req->header.addMeta(pair.first, pair.second);

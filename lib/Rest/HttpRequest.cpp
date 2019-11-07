@@ -550,10 +550,6 @@ void HttpRequest::setHeaderV2(std::string key, std::string value) {
       _contentType = ContentType::VPACK; // don't insert this header!!
       return;
     }
-    else if (value == StaticStrings::MimeTypeJsonNoEncoding) {
-      _contentType = ContentType::JSON;
-      return;
-    }
     else if ((value.length() >= StaticStrings::MimeTypeJsonNoEncoding.length()) &&
              (memcmp(value.c_str(),
                      StaticStrings::MimeTypeJsonNoEncoding.c_str(),
@@ -562,7 +558,6 @@ void HttpRequest::setHeaderV2(std::string key, std::string value) {
       _contentType = ContentType::JSON;
       return;
     }
-    _contentType = ContentType::UNSET;
   } else if (key == StaticStrings::AcceptEncoding) {
     // This can be much more elaborated as the can specify weights on encodings
     // However, for now just toggle on deflate if deflate is requested
@@ -745,12 +740,12 @@ void HttpRequest::setHeader(char const* key, size_t keyLength,
       return;
     }
     if (valueLength >= StaticStrings::MimeTypeJsonNoEncoding.size() &&
-        memcmp(value, StaticStrings::MimeTypeJsonNoEncoding.c_str(), valueLength) == 0) {
+        memcmp(value, StaticStrings::MimeTypeJsonNoEncoding.c_str(),
+               StaticStrings::MimeTypeJsonNoEncoding.length()) == 0) {
       _contentType = ContentType::JSON;
       // don't insert this header!!
       return;
     }
-    _contentType = ContentType::UNSET;
   }
 
   if (keyLength == 6 && memcmp(key, "cookie", keyLength) == 0) {  // 6 = strlen("cookie")

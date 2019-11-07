@@ -82,7 +82,6 @@ void VstResponse::addPayload(VPackSlice const& slice,
         } else {
           _payload.append(tmpBuffer.data(), tmpBuffer.size());
         }
-        return;
       } else if (_contentType == rest::ContentType::JSON) {
         VPackSlice finalSlice(tmpBuffer.data());
         StringBuffer plainBuffer;
@@ -94,6 +93,7 @@ void VstResponse::addPayload(VPackSlice const& slice,
         _payload.reset();
         _payload.append(slice.start(), slice.byteSize());
       }
+      return;
     }
   }
 
@@ -140,7 +140,6 @@ void VstResponse::addPayload(VPackBuffer<uint8_t>&& buffer,
         } else {
           _payload.append(tmpBuffer.data(), tmpBuffer.size());
         }
-        return;
       } else if (_contentType == rest::ContentType::JSON) {
         VPackSlice finalSlice(tmpBuffer.data());
         StringBuffer plainBuffer;
@@ -152,6 +151,7 @@ void VstResponse::addPayload(VPackBuffer<uint8_t>&& buffer,
         _payload.reset();
         _payload = buffer;
       }
+      return;
     }
   }
   if (_contentType == rest::ContentType::VPACK) {
