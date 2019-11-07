@@ -25,6 +25,8 @@
 
 #include "EnumerateListExecutor.h"
 
+#include "Aql/AqlCall.h"
+#include "Aql/AqlItemBlockInputRange.h"
 #include "Aql/AqlValue.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
@@ -45,7 +47,7 @@ void throwArrayExpectedException(AqlValue const& value) {
               " as operand to FOR loop; you provided a value of type '") +
           value.getTypeString() + std::string("'"));
 }
-} // namespace
+}  // namespace
 
 constexpr bool EnumerateListExecutor::Properties::preservesOrder;
 constexpr BlockPassthrough EnumerateListExecutor::Properties::allowsBlockPassthrough;
@@ -152,6 +154,60 @@ std::pair<ExecutionState, NoStats> EnumerateListExecutor::produceRows(OutputAqlI
       return {ExecutionState::DONE, NoStats{}};
     }
   }
+}
+
+std::tuple<ExecutorState, NoStats, AqlCall> EnumerateListExecutor::produceRows(
+    size_t limit, AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output) {
+  while (inputRange.hasMore() && limit > 0) {
+    initialize();
+    auto const& [state, input] = inputRange.next();
+    TRI_ASSERT(input.isInitialized());
+    // HIT in first run, because pos and length are initiliazed
+    // both with 0
+
+    AqlValue const& inputList = input.getValue(_infos.getInputRegister());
+
+    while (true) {
+      if (_inputArrayPosition == 0) {
+        // store the length into a local variable
+        // so we don't need to calculate length every time
+        if (inputList.isDocvec()) {
+          _inputArrayLength = inputList.docvecSize();
+        } else {
+          if (!inputList.isArray()) {
+            throwArrayExpectedException(inputList);
+          }
+          _inputArrayLength = inputList.length();
+        }
+      }
+
+      if (_inputArrayLength == 0) {
+        continue;
+      } else if (_inputArrayLength == _inputArrayPosition) {
+        // we reached the end, forget all state
+        break;
+      } else {
+        bool mustDestroy;
+        AqlValue innerValue = getAqlValue(inputList, _inputArrayPosition, mustDestroy);
+        AqlValueGuard guard(innerValue, mustDestroy);
+
+        TRI_IF_FAILURE("EnumerateListBlock::getSome") {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
+
+        output.moveValueInto(_infos.getOutputRegister(), input, guard);
+        output.advanceRow();
+        limit--;
+
+        // set position to +1 for next iteration after new fetchRow
+        _inputArrayPosition++;
+      }
+    }
+  }
+
+  AqlCall upstreamCall{};
+  upstreamCall.softLimit = limit;
+  return {inputRange.peek().first, NoStats{}, upstreamCall};
 }
 
 void EnumerateListExecutor::initialize() {

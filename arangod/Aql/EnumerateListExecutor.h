@@ -41,6 +41,8 @@ class Methods;
 
 namespace aql {
 
+struct AqlCall;
+class AqlItemBlockInputRange;
 class ExecutorInfos;
 class OutputAqlItemRow;
 class NoStats;
@@ -94,6 +96,15 @@ class EnumerateListExecutor {
    * @return ExecutionState, and if successful exactly one new Row of AqlItems.
    */
   std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
+
+  /**
+   * @brief produce the next Row of Aql Values.
+   *
+   * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
+   */
+  std::tuple<ExecutorState, Stats, AqlCall> produceRows(size_t atMost,
+                                                        AqlItemBlockInputRange& input,
+                                                        OutputAqlItemRow& output);
 
  private:
   AqlValue getAqlValue(AqlValue const& inVarReg, size_t const& pos, bool& mustDestroy);
