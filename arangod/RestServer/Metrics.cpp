@@ -183,8 +183,8 @@ template<class T> struct always_false : std::false_type {};
 
 std::ostream& Metrics::Metric::print(std::ostream& o) const {
   std::visit(overloaded {
-      [&o](Metrics::counter_type const& arg) { o << "counter with value "/* << arg*/; },
-      [&o](Metrics::hist_type const& arg) { o << "histogram with value "/* << arg*/; },
+      [&o](Metrics::counter_type const& arg) { o << "counter with value " /*<< arg*/; },
+      [&o](Metrics::hist_type const& arg) { o << "histogram with value " /*<< arg*/; },
     }, _var);
   return o;
 }

@@ -51,7 +51,7 @@ public:
   using hist_type = gcl::counter::simplex_array<uint64_t, gcl::counter::atomicity::full>;
   using buffer_type = gcl::counter::buffer<uint64_t>;
   using var_type = std::variant<counter_type,hist_type>;
-
+  
 
   /**
    * @brief Metric class with variant of counter or histogram
@@ -65,7 +65,7 @@ public:
     ~Metric();
     std::ostream& print(std::ostream&) const;
     void toBuilder(VPackBuilder&);
-    std::string _help
+    std::string _help;
     var_type _var;
   };
 
