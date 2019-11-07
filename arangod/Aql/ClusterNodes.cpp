@@ -575,9 +575,9 @@ bool GatherNode::isParallelizable() const {
     return false;
   }
 
-  if (isInSubquery()) {
-    return false;
-  }
+//  if (isInSubquery()) {
+//    return false;
+//  }
   ParallelizableFinder finder;
   for (ExecutionNode* e : _dependencies) {
     e->walk(finder);
