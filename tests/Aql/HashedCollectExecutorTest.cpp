@@ -812,6 +812,51 @@ TEST_F(HashedCollectExecutorTestRowsNoCount, test_produce_datarange_2) {
   ASSERT_EQ(myNumbers.at(1), 2);
   ASSERT_EQ(myNumbers.at(2), 3);
 }
+
+TEST_F(HashedCollectExecutorTestRowsNoCount, test_produce_datarange_3) {
+  // This fetcher will not be called!
+  // After Execute is done this fetcher shall be removed, the Executor does not need it anymore!
+  auto fakeUnusedBlock = VPackParser::fromJson("[  ]");
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
+      itemBlockManager, fakeUnusedBlock->steal(), false);
+
+  // This is the relevant part of the test
+  HashedCollectExecutor testee(fetcher, infos);
+  SharedAqlItemBlockPtr inBlock =
+      buildBlock<1>(itemBlockManager, {{R"(1)"}, {R"(2)"}, {R"(3)"}, {R"(1)"}, {R"(2)"}});
+  AqlItemBlockInputRange input{ExecutorState::DONE, inBlock, 0, inBlock->size()};
+
+  OutputAqlItemRow output(std::move(block), infos.getOutputRegisters(),
+                          infos.registersToKeep(), infos.registersToClear());
+  EXPECT_EQ(output.numRowsWritten(), 0);
+
+  auto const [state, stats, call] = testee.produceRows(1000, input, output);
+  EXPECT_EQ(state, ExecutorState::DONE);
+  EXPECT_EQ(output.numRowsWritten(), 3);
+
+  std::vector<int64_t> myNumbers;
+  auto block = output.stealBlock();
+
+  // check for types
+  AqlValue x = block->getValue(0, 1);
+  ASSERT_TRUE(x.isNumber());
+  myNumbers.emplace_back(x.slice().getInt());
+
+  AqlValue y = block->getValue(1, 1);
+  ASSERT_TRUE(y.isNumber());
+  myNumbers.emplace_back(y.slice().getInt());
+
+  AqlValue z = block->getValue(2, 1);
+  ASSERT_TRUE(z.isNumber());
+  myNumbers.emplace_back(z.slice().getInt());
+
+  // now sort vector and check for appearances
+  std::sort(myNumbers.begin(), myNumbers.end());
+  ASSERT_EQ(myNumbers.at(0), 1);
+  ASSERT_EQ(myNumbers.at(1), 2);
+  ASSERT_EQ(myNumbers.at(2), 3);
+}
+
 }  // namespace aql
 }  // namespace tests
 }  // namespace arangodb
