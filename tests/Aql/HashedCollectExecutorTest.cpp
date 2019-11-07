@@ -25,15 +25,17 @@
 
 #include "gtest/gtest.h"
 
+#include "AqlItemBlockHelper.h"
 #include "RowFetcherHelper.h"
 
+#include "Aql/AqlCall.h"
 #include "Aql/AqlItemBlock.h"
 #include "Aql/Collection.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/HashedCollectExecutor.h"
 #include "Aql/OutputAqlItemRow.h"
-#include "Aql/SingleRowFetcher.h"
 #include "Aql/Query.h"
+#include "Aql/SingleRowFetcher.h"
 #include "Mocks/Servers.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
@@ -95,7 +97,8 @@ class HashedCollectExecutorTestNoRows : public ::testing::Test {
 };
 
 TEST_F(HashedCollectExecutorTestNoRows, the_producer_doesnt_wait) {
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input.steal(), false);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
+      itemBlockManager, input.steal(), false);
   HashedCollectExecutor testee(fetcher, infos);
 
   OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
@@ -106,7 +109,8 @@ TEST_F(HashedCollectExecutorTestNoRows, the_producer_doesnt_wait) {
 }
 
 TEST_F(HashedCollectExecutorTestNoRows, the_producer_waits) {
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input.steal(), true);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
+      itemBlockManager, input.steal(), true);
   HashedCollectExecutor testee(fetcher, infos);
 
   OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
@@ -170,7 +174,8 @@ class HashedCollectExecutorTestRowsNoCount : public ::testing::Test {
 
 TEST_F(HashedCollectExecutorTestRowsNoCount, the_producer_doesnt_wait_1) {
   auto input = VPackParser::fromJson("[ [1], [2] ]");
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input->steal(), false);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
+      itemBlockManager, input->steal(), false);
   HashedCollectExecutor testee(fetcher, infos);
 
   OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
@@ -210,7 +215,8 @@ TEST_F(HashedCollectExecutorTestRowsNoCount, the_producer_doesnt_wait_1) {
 
 TEST_F(HashedCollectExecutorTestRowsNoCount, the_producer_doesnt_wait_2) {
   auto input = VPackParser::fromJson("[ [1], [2], [3] ]");
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input->steal(), false);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
+      itemBlockManager, input->steal(), false);
   HashedCollectExecutor testee(fetcher, infos);
 
   OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
@@ -260,7 +266,8 @@ TEST_F(HashedCollectExecutorTestRowsNoCount, the_producer_doesnt_wait_2) {
 
 TEST_F(HashedCollectExecutorTestRowsNoCount, the_producer_doesnt_wait_3) {
   auto input = VPackParser::fromJson("[ [1], [2], [3], [1], [2] ]");
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input->steal(), false);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
+      itemBlockManager, input->steal(), false);
   HashedCollectExecutor testee(fetcher, infos);
 
   OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
@@ -310,7 +317,8 @@ TEST_F(HashedCollectExecutorTestRowsNoCount, the_producer_doesnt_wait_3) {
 
 TEST_F(HashedCollectExecutorTestRowsNoCount, the_producer_doesnt_wait_4) {
   auto input = VPackParser::fromJson("[ [1], [2], [1], [2] ]");
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input->steal(), false);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
+      itemBlockManager, input->steal(), false);
   HashedCollectExecutor testee(fetcher, infos);
 
   OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
@@ -350,7 +358,8 @@ TEST_F(HashedCollectExecutorTestRowsNoCount, the_producer_doesnt_wait_4) {
 
 TEST_F(HashedCollectExecutorTestRowsNoCount, the_producer_waits) {
   auto input = VPackParser::fromJson("[ [1], [2] ]");
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input->steal(), true);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
+      itemBlockManager, input->steal(), true);
   HashedCollectExecutor testee(fetcher, infos);
 
   OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
@@ -440,7 +449,8 @@ TEST(HashedCollectExecutorTestRowsCount, the_producer_doesnt_wait) {
   NoStats stats{};
 
   auto input = VPackParser::fromJson("[ [1], [2] ]");
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input->steal(), false);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
+      itemBlockManager, input->steal(), false);
   HashedCollectExecutor testee(fetcher, infos);
 
   OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
@@ -537,7 +547,8 @@ TEST(HashedCollectExecutorTestRowsCountNumbers, the_producer_doesnt_wait) {
   NoStats stats{};
 
   auto input = VPackParser::fromJson("[ [1], [2], [3] ]");
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input->steal(), false);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
+      itemBlockManager, input->steal(), false);
   HashedCollectExecutor testee(fetcher, infos);
 
   OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
@@ -650,7 +661,8 @@ TEST(HashedCollectExecutorTestRowsCountStrings, the_producer_doesnt_wait) {
   NoStats stats{};
 
   auto input = VPackParser::fromJson("[ [\"a\"], [\"aa\"], [\"aaa\"] ]");
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input->steal(), false);
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
+      itemBlockManager, input->steal(), false);
   HashedCollectExecutor testee(fetcher, infos);
 
   OutputAqlItemRow result(std::move(block), infos.getOutputRegisters(),
@@ -717,6 +729,44 @@ TEST(HashedCollectExecutorTestRowsCountStrings, the_producer_doesnt_wait) {
   ASSERT_EQ(myCountNumbers.at(0), 1);
   ASSERT_EQ(myCountNumbers.at(1), 1);
   ASSERT_EQ(myCountNumbers.at(2), 1);
+}
+
+TEST_F(HashedCollectExecutorTestRowsNoCount, test_produce_datarange_1) {
+  // This fetcher will not be called!
+  // After Execute is done this fetcher shall be removed, the Executor does not need it anymore!
+  auto fakeUnusedBlock = VPackParser::fromJson("[  ]");
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
+      itemBlockManager, fakeUnusedBlock->steal(), false);
+
+  // This is the relevant part of the test
+  HashedCollectExecutor testee(fetcher, infos);
+  SharedAqlItemBlockPtr inBlock = buildBlock<1>(itemBlockManager, {{R"(1)"}, {R"(2)"}});
+  AqlItemBlockInputRange input{ExecutorState::DONE, inBlock, 0, inBlock->size()};
+
+  OutputAqlItemRow output(std::move(block), infos.getOutputRegisters(),
+                          infos.registersToKeep(), infos.registersToClear());
+  EXPECT_EQ(output.numRowsWritten(), 0);
+
+  auto const [state, stats, call] = testee.produceRows(1000, input, output);
+  EXPECT_EQ(state, ExecutorState::DONE);
+  EXPECT_EQ(output.numRowsWritten(), 2);
+
+  std::vector<int64_t> myNumbers;
+  auto block = output.stealBlock();
+
+  // check for types
+  AqlValue x = block->getValue(0, 1);
+  ASSERT_TRUE(x.isNumber());
+  myNumbers.emplace_back(x.slice().getInt());
+
+  AqlValue z = block->getValue(1, 1);
+  ASSERT_TRUE(z.isNumber());
+  myNumbers.emplace_back(z.slice().getInt());
+
+  // now sort vector and check for appearances
+  std::sort(myNumbers.begin(), myNumbers.end());
+  ASSERT_EQ(myNumbers.at(0), 1);
+  ASSERT_EQ(myNumbers.at(1), 2);
 }
 
 }  // namespace aql
