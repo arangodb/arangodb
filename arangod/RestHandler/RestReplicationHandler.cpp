@@ -2962,6 +2962,7 @@ void RestReplicationHandler::handleCommandRevisionRanges() {
       if (!it.hasMore() || it.revision() <= range.at(0).getNumber<std::size_t>()) {
         it.seek(range.at(0).getNumber<std::size_t>());
         response.openArray();
+        resumeNext = range.at(0).getNumber<std::size_t>();
       }
 
       if (it.hasMore() && it.revision() >= range.at(0).getNumber<std::size_t>() &&
@@ -2969,12 +2970,16 @@ void RestReplicationHandler::handleCommandRevisionRanges() {
         response.add(VPackValue(it.revision()));
         ++total;
         advance = true;
+        resumeNext = it.revision() + 1;
       }
 
       if (!it.hasMore() || it.revision() >= range.at(1).getNumber<std::size_t>()) {
         response.close();
+        resumeNext = range.at(1).getNumber<std::size_t>();
         ++current;
-        range = body.at(current);
+        if (current < body.length()) {
+          range = body.at(current);
+        }
       }
 
       if (advance) {
