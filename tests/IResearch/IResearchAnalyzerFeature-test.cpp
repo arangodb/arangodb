@@ -883,43 +883,6 @@ TEST_F(IResearchAnalyzerFeatureTest, test_emplace_add_static_analyzer) {
   ASSERT_NE(analyzer, nullptr);
 }
 
-TEST_F(IResearchAnalyzerFeatureTest, test_get_parameter_match) {
-  arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
-  arangodb::iresearch::IResearchAnalyzerFeature feature(server);
-  auto res = feature.emplace(result, analyzerName(), "TestAnalyzer",
-                             VPackParser::fromJson("\"abc\"")->slice(),
-                             {irs::frequency::type()});
-  EXPECT_TRUE(res.ok());
-  ASSERT_FALSE(feature.get(result,
-                          analyzerName(), "identity",
-                          VPackParser::fromJson("\"abc\"")->slice(),
-                          {irs::frequency::type()}).ok());
-}
-
-TEST_F(IResearchAnalyzerFeatureTest, test_get_properties_mismatch) {
-  arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
-  arangodb::iresearch::IResearchAnalyzerFeature feature(server);
-  auto res = feature.emplace(result, analyzerName(), "TestAnalyzer",
-                             VPackParser::fromJson("\"abc\"")->slice(),
-                             {irs::frequency::type()});
-  EXPECT_TRUE(res.ok());
-  ASSERT_FALSE(feature.get(result, analyzerName(), "TestAnalyzer",
-                          VPackParser::fromJson("\"abcd\"")->slice(),
-                          {irs::frequency::type()}).ok());
-}
-
-TEST_F(IResearchAnalyzerFeatureTest, test_get_feature_mismatch) {
-  arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
-  arangodb::iresearch::IResearchAnalyzerFeature feature(server);
-  auto res = feature.emplace(result, analyzerName(), "TestAnalyzer",
-                             VPackParser::fromJson("\"abc\"")->slice(),
-                             {irs::frequency::type()});
-  EXPECT_TRUE(res.ok());
-  ASSERT_FALSE(feature.get(result, analyzerName(), "TestAnalyzer",
-                          VPackParser::fromJson("\"abc\"")->slice(),
-                          {irs::position::type()}).ok());
-}
-
 TEST_F(IResearchAnalyzerFeatureTest, test_renormalize_for_equal) {
   arangodb::iresearch::IResearchAnalyzerFeature feature(server);
   {
@@ -1159,28 +1122,6 @@ TEST_F(IResearchAnalyzerFeatureGetTest, test_get_static_analyzer_adding_vocbases
   EXPECT_EQ(irs::flags({irs::norm::type(), irs::frequency::type()}), pool->features());
   auto analyzer = pool->get();
   ASSERT_NE(analyzer, nullptr);
-}
-
-TEST_F(IResearchAnalyzerFeatureGetTest, test_get_failure_specfic_type_and_properties_mismatch) {
-  arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
-  ASSERT_FALSE(feature().get(result, specificName(), "TestAnalyzer",
-                            VPackParser::fromJson("{\"args\":\"abc\"}")->slice(),
-                            {irs::frequency::type()}).ok());
-}
-
-TEST_F(IResearchAnalyzerFeatureGetTest, test_get_db_server) {
-  auto before = arangodb::ServerState::instance()->getRole();
-  arangodb::ServerState::instance()->setRole(arangodb::ServerState::ROLE_DBSERVER);
-  auto restore = irs::make_finally([&before]() -> void {
-    arangodb::ServerState::instance()->setRole(before);
-  });
-
-  arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
-  arangodb::iresearch::IResearchAnalyzerFeature feature(server);
-  ASSERT_TRUE(feature.get(result,"testVocbase::test_analyzer", "TestAnalyzer",
-                           VPackParser::fromJson("\"abc\"")->slice(),
-                           {irs::frequency::type()}).ok());
-  ASSERT_NE(nullptr, result.first);
 }
 
 // -----------------------------------------------------------------------------
@@ -1446,10 +1387,6 @@ TEST_F(IResearchAnalyzerFeatureCoordinatorTest, test_ensure_index) {
             arangodb::application_features::ApplicationServer::lookupFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
         EXPECT_TRUE((feature));
         ci->invalidatePlan();  // invalidate plan to test recursive lock aquisition in ClusterInfo::loadPlan()
-        arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
-        EXPECT_TRUE(!feature->get(result, arangodb::StaticStrings::SystemDatabase + "::missing",
-                                 "TestAnalyzer", VPackSlice::noneSlice(),
-                                 irs::flags()).ok());
         return std::make_shared<TestIndex>(id, collection, definition);
       }
 
@@ -3754,6 +3691,7 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_toVelocyPack) {
     sysDatabase->start();  // get system database from DatabaseFeature
     auto vocbase = dbFeature->useDatabase(arangodb::StaticStrings::SystemDatabase);
     arangodb::methods::Collections::createSystem(*vocbase, arangodb::tests::AnalyzerCollectionName, false);
+    EXPECT_NE(nullptr, sysDatabase->use());
   }
 
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
@@ -3768,7 +3706,7 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_toVelocyPack) {
   // for persistence
   {
     auto expectedVpack = VPackParser::fromJson(
-      "{ \"name\": \"test_norm_analyzer4\", \"type\": \"norm\", "
+      "{ \"_key\": \"test_norm_analyzer4\", \"name\": \"test_norm_analyzer4\", \"type\": \"norm\", "
       "\"properties\":{\"locale\":\"ru_RU.utf-8\",\"case\":\"upper\",\"accent\":true}, "
       "\"features\": [] }");
 
@@ -3799,7 +3737,7 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_toVelocyPack) {
       "\"features\": [] }");
 
     VPackBuilder builder;
-    result.first->toVelocyPack(builder, sysDatabase);
+    result.first->toVelocyPack(builder, sysDatabase->use().get());
     EXPECT_EQUAL_SLICES(expectedVpack->slice(), builder.slice());
   }
 
