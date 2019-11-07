@@ -83,7 +83,8 @@ std::string const StaticStrings::SystemDatabase("_system");
 
 // collection names
 std::string const StaticStrings::AnalyzersCollection("_analyzers");
-std::string const StaticStrings::LegacyAnalyzersCollection("_iresearch_analyzers");
+std::string const StaticStrings::LegacyAnalyzersCollection(
+    "_iresearch_analyzers");
 std::string const StaticStrings::UsersCollection("_users");
 std::string const StaticStrings::GraphsCollection("_graphs");
 std::string const StaticStrings::AqlFunctionsCollection("_aqlfunctions");
@@ -103,7 +104,8 @@ std::string const StaticStrings::DatabaseId("id");
 std::string const StaticStrings::DatabaseName("name");
 std::string const StaticStrings::DatabaseOptions("options");
 std::string const StaticStrings::DatabaseCoordinator("coordinator");
-std::string const StaticStrings::DatabaseCoordinatorRebootId("coordinatorRebootId");
+std::string const StaticStrings::DatabaseCoordinatorRebootId(
+    "coordinatorRebootId");
 std::string const StaticStrings::DatabaseIsBuilding("isBuilding");
 
 // LogicalDataSource definition fields
@@ -215,6 +217,8 @@ std::string const StaticStrings::MimeTypeDump(
 std::string const StaticStrings::MimeTypeHtml("text/html; charset=utf-8");
 std::string const StaticStrings::MimeTypeJson(
     "application/json; charset=utf-8");
+std::string const StaticStrings::MimeTypeJsonNoEncoding(
+    "application/json");
 std::string const StaticStrings::MimeTypeText("text/plain; charset=utf-8");
 std::string const StaticStrings::MimeTypeVPack("application/x-velocypack");
 std::string const StaticStrings::MultiPartContentType("multipart/form-data");
@@ -269,3 +273,6 @@ std::string const StaticStrings::checksumFileJs("JS_SHA1SUM.txt");
 
 std::string const StaticStrings::IsBuilding("isBuilding");
 std::string const StaticStrings::RebootId("rebootId");
+
+std::string const StaticStrings::New("new");
+std::string const StaticStrings::Old("old");

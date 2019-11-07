@@ -28,6 +28,7 @@
 #include "Aql/CollectNode.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/GraphNode.h"
+#include "Aql/IndexNode.h"
 #include "Aql/IResearchViewNode.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/SubqueryEndExecutionNode.h"
@@ -92,8 +93,7 @@ RegisterPlan* RegisterPlan::clone(ExecutionPlan* otherPlan, ExecutionPlan* plan)
 
 void RegisterPlan::after(ExecutionNode* en) {
   switch (en->getType()) {
-    case ExecutionNode::ENUMERATE_COLLECTION:
-    case ExecutionNode::INDEX: {
+    case ExecutionNode::ENUMERATE_COLLECTION: {
       depth++;
       nrRegsHere.emplace_back(1);
       // create a copy of the last value here
@@ -112,6 +112,13 @@ void RegisterPlan::after(ExecutionNode* en) {
       varInfo.emplace(ep->outVariable()->id, VarInfo(depth, totalNrRegs));
       totalNrRegs++;
       break;
+    }
+    case ExecutionNode::INDEX: {
+        auto ep = ExecutionNode::castTo<IndexNode const*>(en);
+        TRI_ASSERT(ep);
+
+        ep->planNodeRegisters(nrRegsHere, nrRegs, varInfo, totalNrRegs, ++depth);
+        break;
     }
 
     case ExecutionNode::ENUMERATE_LIST: {
@@ -322,7 +329,7 @@ void RegisterPlan::after(ExecutionNode* en) {
       // may invalidate all references
       RegisterId registerId = nrRegs.back() + 1;
       nrRegs.emplace_back(registerId);
-      auto ep = ExecutionNode::castTo<MaterializeNode const*>(en);
+      auto ep = ExecutionNode::castTo<materialize::MaterializeNode const*>(en);
       TRI_ASSERT(ep != nullptr);
       varInfo.emplace(ep->outVariable().id, VarInfo(depth, totalNrRegs));
       totalNrRegs++;

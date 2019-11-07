@@ -21,6 +21,9 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifndef ARANGOD_AQL_IRESEARCH_QUERY_COMMON_H
+#define ARANGOD_AQL_IRESEARCH_QUERY_COMMON_H
+
 #include "gtest/gtest.h"
 
 #include "3rdParty/iresearch/tests/tests_config.hpp"
@@ -149,3 +152,5 @@ class IResearchQueryTest
     return *_vocbase;
   }
 };  // IResearchQueryTest
+
+#endif // ARANGOD_AQL_IRESEARCH_QUERY_COMMON_H

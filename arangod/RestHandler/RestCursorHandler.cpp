@@ -112,7 +112,7 @@ void RestCursorHandler::shutdownExecute(bool isFinalized) noexcept {
   TRI_DEFER(RestVocbaseBaseHandler::shutdownExecute(isFinalized));
 
   // request not done yet
-  if (_state == HandlerState::PAUSED) {
+  if (!isFinalized) {
     return;
   }
   
@@ -141,7 +141,7 @@ void RestCursorHandler::shutdownExecute(bool isFinalized) noexcept {
   }
 }
 
-bool RestCursorHandler::cancel() {
+void RestCursorHandler::cancel() {
   RestVocbaseBaseHandler::cancel();
   return cancelQuery();
 }
@@ -240,7 +240,9 @@ RestStatus RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
   query->setTransactionContext(createTransactionContext());
 
   std::shared_ptr<aql::SharedQueryState> ss = query->sharedState();
-  ss->setContinueHandler([self = shared_from_this(), ss] { self->continueHandlerExecution(); });
+  ss->setWakeupHandler([self = shared_from_this()] {
+    return self->wakeupHandler();
+  });
 
   registerQuery(std::move(query));
   return processQuery();
@@ -419,7 +421,7 @@ void RestCursorHandler::unregisterQuery() {
 /// @brief cancel the currently running query
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestCursorHandler::cancelQuery() {
+void RestCursorHandler::cancelQuery() {
   MUTEX_LOCKER(mutexLocker, _queryLock);
 
   if (_query != nullptr) {
@@ -430,17 +432,10 @@ bool RestCursorHandler::cancelQuery() {
     // cursor is canceled. now remove the continue handler we may have
     // registered in the query
     std::shared_ptr<aql::SharedQueryState> ss = _query->sharedState();
-    ss->setContinueCallback();
-
-    return true;
-  }
-
-  if (!_hasStarted) {
+    ss->invalidate();
+  } else if (!_hasStarted) {
     _queryKilled = true;
-    return true;
   }
-
-  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -548,7 +543,7 @@ RestStatus RestCursorHandler::generateCursorResult(rest::ResponseCode code,
   aql::ExecutionState state;
   Result r;
   std::tie(state, r) =
-      cursor->dump(builder, [self = shared_from_this()]() { self->continueHandlerExecution(); });
+      cursor->dump(builder, [self = shared_from_this()]() { return self->wakeupHandler(); });
   if (state == aql::ExecutionState::WAITING) {
     builder.clear();
     _leasedCursor = cursor;
@@ -574,11 +569,6 @@ RestStatus RestCursorHandler::generateCursorResult(rest::ResponseCode code,
 ////////////////////////////////////////////////////////////////////////////////
 
 RestStatus RestCursorHandler::createQueryCursor() {
-  if (_request->payload().isEmptyObject()) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_CORRUPTED_JSON);
-    return RestStatus::DONE;
-  }
-
   std::vector<std::string> const& suffixes = _request->suffixes();
 
   if (!suffixes.empty()) {
@@ -592,6 +582,11 @@ RestStatus RestCursorHandler::createQueryCursor() {
 
   if (!parseSuccess) {
     // error message generated in parseVPackBody
+    return RestStatus::DONE;
+  }
+
+  if (body.isEmptyObject()) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_CORRUPTED_JSON);
     return RestStatus::DONE;
   }
 

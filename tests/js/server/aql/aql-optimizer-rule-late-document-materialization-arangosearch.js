@@ -2,7 +2,7 @@
 /*global assertTrue, assertFalse, assertEqual, assertNotEqual, AQL_EXECUTE, AQL_EXPLAIN */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for late document materialization rule
+/// @brief tests for late document materialization arangosearch rule
 ///
 /// @file
 ///
@@ -32,8 +32,8 @@ let jsunity = require("jsunity");
 let db = require("@arangodb").db;
 let isCluster = require("internal").isCluster();
 
-function lateDocumentMaterializationRuleTestSuite () {
-  const ruleName = "late-document-materialization";
+function lateDocumentMaterializationArangoSearchRuleTestSuite () {
+  const ruleName = "late-document-materialization-arangosearch";
   const cn = "UnitTestsCollection";
   const cn1 = "UnitTestsCollection1";
   const vn = "UnitTestsView";
@@ -305,6 +305,6 @@ function lateDocumentMaterializationRuleTestSuite () {
   };
 }
 
-jsunity.run(lateDocumentMaterializationRuleTestSuite);
+jsunity.run(lateDocumentMaterializationArangoSearchRuleTestSuite);
 
 return jsunity.done();
