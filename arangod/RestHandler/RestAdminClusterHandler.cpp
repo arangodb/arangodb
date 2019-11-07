@@ -1003,7 +1003,7 @@ RestAdminClusterHandler::futureVoid RestAdminClusterHandler::waitForSupervisionS
       return AsyncAgencyComm()
         .getValues(arangodb::cluster::paths::root()->arango()->supervision()->state()->mode());
     })
-    .thenValue([this, state, startTime] (AgencyReadResult &&result) {
+    .thenValue([this, state, startTime] (AgencyReadResult&& result) {
       auto waitFor = state ? "Maintenance" : "Normal";
       if (result.ok() && result.statusCode() == fuerte::StatusOK) {
         if (false == result.value().isEqualString(waitFor)) {
