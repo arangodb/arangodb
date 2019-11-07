@@ -26,6 +26,7 @@
 #include "HashedCollectExecutor.h"
 
 #include "Aql/Aggregator.h"
+#include "Aql/AqlCall.h"
 #include "Aql/AqlValue.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutorInfos.h"
@@ -241,6 +242,32 @@ ExecutionState HashedCollectExecutor::init() {
   return ExecutionState::DONE;
 }
 
+ExecutorState HashedCollectExecutor::initRange(AqlItemBlockInputRange& inputRange,
+                                               size_t& limit) {
+  TRI_ASSERT(!_isInitialized);
+
+  // fetch & consume all input
+  while (inputRange.hasMore() && limit > 0) {
+    auto [state, input] = inputRange.next();
+    TRI_ASSERT(input.isInitialized() || _upstreamState == ExecutionState::DONE);
+
+    // needed to remember the last valid input aql item row
+    // NOTE: this might impact the performance
+    if (input.isInitialized()) {
+      _lastInitializedInputRow = input;
+
+      consumeInputRow(input);
+      limit--;
+    }
+  }
+
+  // initialize group iterator for output
+  _currentGroup = _allGroups.begin();
+  // The values within are not supposed to be used anymore.
+  _nextGroupValues.clear();
+  return ExecutorState::DONE;
+}
+
 std::pair<ExecutionState, NoStats> HashedCollectExecutor::produceRows(OutputAqlItemRow& output) {
   TRI_IF_FAILURE("HashedCollectExecutor::produceRows") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -268,6 +295,38 @@ std::pair<ExecutionState, NoStats> HashedCollectExecutor::produceRows(OutputAqlI
                                                            : ExecutionState::DONE;
 
   return {state, NoStats{}};
+}
+
+std::tuple<ExecutorState, NoStats, AqlCall> HashedCollectExecutor::produceRows(
+    size_t limit, AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output) {
+  TRI_IF_FAILURE("HashedCollectExecutor::produceRows") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+
+  ExecutorState state = ExecutorState::HASMORE;
+  if (!_isInitialized) {
+    // fetch & consume all input and initialize output cursor
+    state = initRange(inputRange, limit);
+    TRI_ASSERT(state == ExecutorState::DONE);
+    _isInitialized = true;
+  }
+
+  // produce output
+  while (_currentGroup != _allGroups.end()) {
+    writeCurrentGroupToOutput(output);
+    ++_currentGroup;
+    ++_returnedGroups;
+    output.advanceRow();
+    TRI_ASSERT(_returnedGroups <= _allGroups.size());
+  }
+
+  state = _currentGroup != _allGroups.end() ? ExecutorState::HASMORE
+                                                          : ExecutorState::DONE;
+
+  AqlCall upstreamCall{};
+  upstreamCall.softLimit = limit;
+  // return {inputRange.peek().first, NoStats{}, upstreamCall}; // TODO: check states
+  return {state, NoStats{}, upstreamCall};
 }
 
 // finds the group matching the current row, or emplaces it. in either case,
