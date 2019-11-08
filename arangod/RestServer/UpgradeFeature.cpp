@@ -78,8 +78,10 @@ void UpgradeFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 ///        Used to perform one last action upon shutdown.
 extern std::function<int()> * restartAction;
 
+static std::string const UPGRADE_ENV = "ARANGODB_UPGRADE_DURING_RESTORE";
+
 static int upgradeRestart() {
-  unsetenv("ARANGODB_UPGRADE_DURING_RESTORE");
+  putenv((UPGRADE_ENV + "=").c_str());
   return 0;
 }
 
@@ -92,7 +94,7 @@ void UpgradeFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   // variable at runtime and then does a restore. After the restart (with
   // the old data) the database upgrade is run and another restart is
   // happening afterwards with the environment variable being cleared.
-  char* upgrade = getenv("ARANGODB_UPGRADE_DURING_RESTORE");
+  char* upgrade = getenv(UPGRADE_ENV.c_str());
   if (upgrade != nullptr) {
     _upgrade = true;
     restartAction = new std::function<int()>();
