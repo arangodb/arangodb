@@ -1125,7 +1125,7 @@ function IResearchFeatureDDLTestSuite () {
       db._useDatabase("_system");
       assertNotEqual(null, db._collection("_analyzers"));
       try { db._dropDatabase(dbName); } catch (e) {}
-      try { a.remove(analyzerName); } catch (e) {}
+      try { analyzers.remove(analyzerName); } catch (e) {}
       assertEqual(0, db._analyzers.count());
       db._createDatabase(dbName);
       db._useDatabase(dbName);
