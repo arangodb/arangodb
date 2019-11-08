@@ -31,6 +31,7 @@
 #include "Basics/ConditionLocker.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/system-functions.h"
 #include "Cluster/Action.h"
@@ -590,9 +591,9 @@ arangodb::Result MaintenanceFeature::storeDBError(std::string const& database,
   {
     VPackObjectBuilder b(&eb);
     eb.add(NAME, VPackValue(database));
-    eb.add("error", VPackValue(true));
-    eb.add("errorNum", VPackValue(failure.errorNumber()));
-    eb.add("errorMessage", VPackValue(failure.errorMessage()));
+    eb.add(StaticStrings::Error, VPackValue(true));
+    eb.add(StaticStrings::ErrorNum, VPackValue(failure.errorNumber()));
+    eb.add(StaticStrings::ErrorMessage, VPackValue(failure.errorMessage()));
   }
 
   return storeDBError(database, eb.steal());
@@ -648,9 +649,9 @@ arangodb::Result MaintenanceFeature::storeShardError(std::string const& database
   VPackBuilder eb;
   {
     VPackObjectBuilder o(&eb);
-    eb.add("error", VPackValue(true));
-    eb.add("errorMessage", VPackValue(failure.errorMessage()));
-    eb.add("errorNum", VPackValue(failure.errorNumber()));
+    eb.add(StaticStrings::Error, VPackValue(true));
+    eb.add(StaticStrings::ErrorMessage, VPackValue(failure.errorMessage()));
+    eb.add(StaticStrings::ErrorNum, VPackValue(failure.errorNumber()));
     eb.add(VPackValue("indexes"));
     { VPackArrayBuilder a(&eb); }  // []
     eb.add(VPackValue("servers"));

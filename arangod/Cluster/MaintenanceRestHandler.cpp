@@ -132,8 +132,8 @@ RestStatus MaintenanceRestHandler::postAction() {
     VPackBuilder ok;
     {
       VPackObjectBuilder o(&ok);
-      ok.add("error", VPackValue(false));
-      ok.add("code", VPackValue(200));
+      ok.add(StaticStrings::Error, VPackValue(false));
+      ok.add(StaticStrings::Code, VPackValue(200));
       ok.add("result", VPackValue(true));
     }
     generateResult(rest::ResponseCode::OK, ok.slice());

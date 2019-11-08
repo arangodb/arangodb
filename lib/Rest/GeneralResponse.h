@@ -104,7 +104,7 @@ class GeneralResponse {
     _responseCode = responseCode;
   }
 
-  void setHeaders(std::unordered_map<std::string, std::string>&& headers) {
+  void setHeaders(std::unordered_map<std::string, std::string> headers) {
     _headers = std::move(headers);
   }
 
@@ -118,21 +118,12 @@ class GeneralResponse {
   }
 
   // adds a header. the header field name must be lower-cased
-  void setHeaderNC(std::string const& key, std::string const& value) {
-    _headers[key] = value;
-  }
-
-  // adds a header. the header field name must be lower-cased
-  void setHeaderNC(std::string const& key, std::string&& value) {
+  void setHeaderNC(std::string const& key, std::string value) {
     _headers[key] = std::move(value);
   }
 
   // adds a header if not set. the header field name must be lower-cased
   void setHeaderNCIfNotSet(std::string const& key, std::string const& value) {
-    if (_headers.find(key) != _headers.end()) {
-      // already set
-      return;
-    }
     _headers.emplace(key, value);
   }
 

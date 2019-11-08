@@ -80,11 +80,11 @@ Graph::Graph(velocypack::Slice const& slice)
           VelocyPackHelper::getStringValue(slice, StaticStrings::KeyString, "")),
       _vertexColls(),
       _edgeColls(),
-      _numberOfShards(basics::VelocyPackHelper::readNumericValue<uint64_t>(slice, StaticStrings::NumberOfShards,
+      _numberOfShards(basics::VelocyPackHelper::getNumericValue<uint64_t>(slice, StaticStrings::NumberOfShards,
                                                                            1)),
-      _replicationFactor(basics::VelocyPackHelper::readNumericValue<uint64_t>(
+      _replicationFactor(basics::VelocyPackHelper::getNumericValue<uint64_t>(
           slice, StaticStrings::ReplicationFactor, 1)),
-      _writeConcern(basics::VelocyPackHelper::readNumericValue<uint64_t>(
+      _writeConcern(basics::VelocyPackHelper::getNumericValue<uint64_t>(
               slice, StaticStrings::MinReplicationFactor, 1)),
       _rev(basics::VelocyPackHelper::getStringValue(slice, StaticStrings::RevString,
                                                     "")) {
@@ -135,11 +135,11 @@ Graph::Graph(std::string&& graphName, VPackSlice const& info, VPackSlice const& 
   }
   if (options.isObject()) {
     _numberOfShards =
-        VelocyPackHelper::readNumericValue<uint64_t>(options, StaticStrings::NumberOfShards, 1);
+        VelocyPackHelper::getNumericValue<uint64_t>(options, StaticStrings::NumberOfShards, 1);
     _replicationFactor =
-        VelocyPackHelper::readNumericValue<uint64_t>(options, StaticStrings::ReplicationFactor, 1);
+        VelocyPackHelper::getNumericValue<uint64_t>(options, StaticStrings::ReplicationFactor, 1);
     _writeConcern =
-            VelocyPackHelper::readNumericValue<uint64_t>(options, StaticStrings::MinReplicationFactor, 1);
+            VelocyPackHelper::getNumericValue<uint64_t>(options, StaticStrings::MinReplicationFactor, 1);
   }
 }
 

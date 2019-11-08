@@ -135,7 +135,7 @@ static inline int setErrormsg(int ourerrno, std::string& errorMsg) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline bool hasError(VPackSlice const& slice) {
-  return arangodb::basics::VelocyPackHelper::getBooleanValue(slice, "error", false);
+  return arangodb::basics::VelocyPackHelper::getBooleanValue(slice, StaticStrings::Error, false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -147,7 +147,7 @@ static std::string extractErrorMessage(std::string const& shardId, VPackSlice co
 
   // add error message text
   msg += arangodb::basics::VelocyPackHelper::getStringValue(slice,
-                                                            "errorMessage", "");
+                                                            StaticStrings::ErrorMessage, "");
 
   // add error number
   if (slice.hasKey(StaticStrings::ErrorNum)) {
@@ -1538,7 +1538,7 @@ Result ClusterInfo::waitForDatabaseInCurrent(CreateDatabaseInfo const& database)
 
       for (VPackObjectIterator::ObjectPair dbserver : dbs) {
         VPackSlice slice = dbserver.value;
-        if (arangodb::basics::VelocyPackHelper::getBooleanValue(slice, "error", false)) {
+        if (arangodb::basics::VelocyPackHelper::getBooleanValue(slice, StaticStrings::Error, false)) {
           tmpHaveError = true;
           tmpMsg += " DBServer:" + dbserver.key.copyString() + ":";
           tmpMsg += arangodb::basics::VelocyPackHelper::getStringValue(slice, StaticStrings::ErrorMessage,
@@ -2013,10 +2013,10 @@ Result ClusterInfo::createCollectionsCoordinator(
 
         for (auto const& p : VPackObjectIterator(result)) {
           if (arangodb::basics::VelocyPackHelper::getBooleanValue(p.value,
-                                                                  "error", false)) {
+                                                                  StaticStrings::Error, false)) {
             tmpError += " shardID:" + p.key.copyString() + ":";
             tmpError += arangodb::basics::VelocyPackHelper::getStringValue(
-                p.value, "errorMessage", "");
+                p.value, StaticStrings::ErrorMessage, "");
             if (p.value.hasKey(StaticStrings::ErrorNum)) {
               VPackSlice const errorNum = p.value.get(StaticStrings::ErrorNum);
               if (errorNum.isNumber()) {
@@ -3018,7 +3018,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
             *errMsg = "Error during index creation: " + *errMsg;
             // Returns the specific error number if set, or the general
             // error otherwise
-            int errNum = arangodb::basics::VelocyPackHelper::readNumericValue<int>(
+            int errNum = arangodb::basics::VelocyPackHelper::getNumericValue<int>(
                 v, StaticStrings::ErrorNum, TRI_ERROR_ARANGO_INDEX_CREATION_FAILED);
             dbServerResult->store(errNum, std::memory_order_release);
             return true;
@@ -3330,7 +3330,7 @@ Result ClusterInfo::dropIndexCoordinator(  // drop index
 
   TRI_ASSERT(VPackObjectIterator(collection).size() > 0);
   size_t const numberOfShards =
-      basics::VelocyPackHelper::readNumericValue<size_t>(collection,
+      basics::VelocyPackHelper::getNumericValue<size_t>(collection,
                                                          StaticStrings::NumberOfShards, 1);
 
   VPackSlice indexes = collection.get("indexes");

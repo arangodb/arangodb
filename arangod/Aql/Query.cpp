@@ -865,7 +865,6 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
     auto builder = std::make_shared<VPackBuilder>(&options);
     
     try {
-      std::shared_ptr<SharedQueryState> ss = sharedState();
       ss->resetWakeupHandler();
 
       // iterate over result, return it and optionally store it in query cache

@@ -45,7 +45,7 @@ using namespace arangodb;
 
 ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* collection)
     : _collection(collection),
-      _numberOfShards(basics::VelocyPackHelper::readNumericValue<size_t>(info, StaticStrings::NumberOfShards,
+      _numberOfShards(basics::VelocyPackHelper::getNumericValue<size_t>(info, StaticStrings::NumberOfShards,
                                                                          1)),
       _replicationFactor(1),
       _writeConcern(1),
@@ -53,7 +53,7 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
                                                                      "")),
       _shardIds(new ShardMap()) {
   bool const isSmart =
-      basics::VelocyPackHelper::readBooleanValue(info, StaticStrings::IsSmart, false);
+      basics::VelocyPackHelper::getBooleanValue(info, StaticStrings::IsSmart, false);
       
   if (isSmart && _collection->type() == TRI_COL_TYPE_EDGE) {
     // smart edge collection

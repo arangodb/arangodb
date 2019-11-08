@@ -1775,10 +1775,10 @@ std::uint32_t TRI_vocbase_t::writeConcern() const {
 bool TRI_vocbase_t::IsAllowedName(arangodb::velocypack::Slice slice) noexcept {
   return !slice.isObject()
              ? false
-             : IsAllowedName(arangodb::basics::VelocyPackHelper::readBooleanValue(
+             : IsAllowedName(arangodb::basics::VelocyPackHelper::getBooleanValue(
                                  slice, StaticStrings::DataSourceSystem, false),
                              arangodb::basics::VelocyPackHelper::getStringRef(
-                                 slice, StaticStrings::DataSourceName, ""));
+                                 slice, StaticStrings::DataSourceName, VPackStringRef()));
 }
 
 /// @brief checks if a database name is allowed
