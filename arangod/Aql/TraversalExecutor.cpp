@@ -21,7 +21,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "TraversalExecutor.h"
+#include <Logger/LogMacros.h>
 
+#include "Aql/AqlCall.h"
+#include "Aql/AqlItemBlockInputRange.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/PruneExpressionEvaluator.h"
@@ -248,6 +251,57 @@ std::pair<ExecutionState, TraversalStats> TraversalExecutor::produceRows(OutputA
   return {ExecutionState::DONE, s};
 }
 
+std::tuple<ExecutorState, TraversalStats, AqlCall> TraversalExecutor::produceRows(
+    size_t limit, AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output) {
+  TraversalStats s;
+
+  while (inputRange.hasMore() && limit > 0) {
+    auto const& [state, input] = inputRange.next();
+    LOG_DEVEL << "ExecutorState: " << state << " - remove me after review";
+
+    if (!resetTraverser(input)) {
+      // Could not start here, (invalid)
+      // Go to next
+      continue;
+    }
+
+    if (!_traverser.hasMore() || !_traverser.next()) {
+      // Nothing more to read, reset input to refetch
+      continue;
+    } else {
+      // traverser now has next v, e, p values
+      if (_infos.useVertexOutput()) {
+        AqlValue vertex = _traverser.lastVertexToAqlValue();
+        AqlValueGuard guard{vertex, true};
+        output.moveValueInto(_infos.vertexRegister(), input, guard);
+      }
+      if (_infos.useEdgeOutput()) {
+        AqlValue edge = _traverser.lastEdgeToAqlValue();
+        AqlValueGuard guard{edge, true};
+        output.moveValueInto(_infos.edgeRegister(), input, guard);
+      }
+      if (_infos.usePathOutput()) {
+        transaction::BuilderLeaser tmp(_traverser.trx());
+        tmp->clear();
+        AqlValue path = _traverser.pathToAqlValue(*tmp.builder());
+        AqlValueGuard guard{path, true};
+        output.moveValueInto(_infos.pathRegister(), input, guard);
+      }
+      output.advanceRow();
+      limit--;
+    }
+  }
+
+  // we are done
+  s.addFiltered(_traverser.getAndResetFilteredPaths());
+  s.addScannedIndex(_traverser.getAndResetReadDocuments());
+  s.addHttpRequests(_traverser.getAndResetHttpRequests());
+
+  AqlCall upstreamCall{};
+  upstreamCall.softLimit = limit;
+  return {inputRange.peek().first, s, upstreamCall};
+}
+
 ExecutionState TraversalExecutor::computeState() const {
   if (_rowState == ExecutionState::DONE && !_traverser.hasMore()) {
     return ExecutionState::DONE;
@@ -288,6 +342,62 @@ bool TraversalExecutor::resetTraverser() {
     }
   } else {
     AqlValue const& in = _input.getValue(_infos.getInputRegister());
+    if (in.isObject()) {
+      try {
+        _traverser.setStartVertex(_traverser.options()->trx()->extractIdString(in.slice()));
+        return true;
+      } catch (...) {
+        // on purpose ignore this error.
+        return false;
+      }
+      // _id or _key not present we cannot start here, register warning take next
+    } else if (in.isString()) {
+      _traverser.setStartVertex(in.slice().copyString());
+      return true;
+    } else {
+      _traverser.options()->query()->registerWarning(
+          TRI_ERROR_BAD_PARAMETER,
+          "Invalid input for traversal: Only "
+          "id strings or objects with _id are "
+          "allowed");
+      return false;
+    }
+  }
+}
+
+bool TraversalExecutor::resetTraverser(InputAqlItemRow const& input) {
+  _traverser.traverserCache()->clear();
+
+  // Initialize the Expressions within the options.
+  // We need to find the variable and read its value here. Everything is
+  // computed right now.
+  auto opts = _traverser.options();
+  opts->clearVariableValues();
+  for (auto const& pair : _infos.filterConditionVariables()) {
+    opts->setVariableValue(pair.first, input.getValue(pair.second));
+  }
+  if (opts->usesPrune()) {
+    auto* evaluator = opts->getPruneEvaluator();
+    // Replace by inputRow
+    evaluator->prepareContext(input);
+  }
+  // Now reset the traverser
+  if (_infos.usesFixedSource()) {
+    auto pos = _infos.getFixedSource().find('/');
+    if (pos == std::string::npos) {
+      _traverser.options()->query()->registerWarning(
+          TRI_ERROR_BAD_PARAMETER,
+          "Invalid input for traversal: "
+          "Only id strings or objects with "
+          "_id are allowed");
+      return false;
+    } else {
+      // Use constant value
+      _traverser.setStartVertex(_infos.getFixedSource());
+      return true;
+    }
+  } else {
+    AqlValue const& in = input.getValue(_infos.getInputRegister());
     if (in.isObject()) {
       try {
         _traverser.setStartVertex(_traverser.options()->trx()->extractIdString(in.slice()));

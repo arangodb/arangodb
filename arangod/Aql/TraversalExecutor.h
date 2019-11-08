@@ -38,6 +38,8 @@ class Traverser;
 
 namespace aql {
 
+struct AqlCall;
+class AqlItemBlockInputRange;
 class Query;
 class OutputAqlItemRow;
 class ExecutorInfos;
@@ -138,6 +140,15 @@ class TraversalExecutor {
    */
   std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
 
+  /**
+   * @brief produce the next Row of Aql Values.
+   *
+   * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
+   */
+  std::tuple<ExecutorState, Stats, AqlCall> produceRows(size_t limit,
+                                                        AqlItemBlockInputRange& inputRange,
+                                                        OutputAqlItemRow& output);
+
  private:
   /**
    * @brief compute the return state
@@ -146,6 +157,7 @@ class TraversalExecutor {
   ExecutionState computeState() const;
 
   bool resetTraverser();
+  bool resetTraverser(InputAqlItemRow const& input);
 
  private:
   Infos& _infos;
