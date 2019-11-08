@@ -1,6 +1,9 @@
 v3.5.3 (XXXX-XX-XX)
 -------------------
 
+* Stop putting system services in _apps on single server, this has never
+  worked on cluster and was not needed.
+
 * Improve killability of some types of cluster AQL queries. Previously, several
   cluster queries, especially those containing a `DistributeNode` in their
   execution plans, did not respond to a kill instruction.
