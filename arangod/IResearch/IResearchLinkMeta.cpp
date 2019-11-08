@@ -369,8 +369,8 @@ bool FieldMeta::init(velocypack::Slice const& slice,
 
         std::string childErrorField;
 
-        // false == do not read 'analyzerDefinitions' from child elements
-        if (!_fields[name]->init(value, childErrorField, defaultVocbase, subDefaults)) {
+        if (!_fields[name]->init(value, childErrorField, defaultVocbase,
+                                 subDefaults, nullptr, referencedAnalyzers)) {
           errorField = fieldName + "." + name + "." + childErrorField;
 
           return false;

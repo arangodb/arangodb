@@ -316,7 +316,7 @@ function IResearchFeatureDDLTestSuite () {
 
       var meta = { links: {
         "TestCollection0": { },
-        "TestCollection1": { analyzers: [ "text_en"], includeAllFields: true, trackListPositions: true, storeValues: "full" },
+        "TestCollection1": { analyzers: [ "text_en"], includeAllFields: true, trackListPositions: true, storeValues: "value" },
         "TestCollection2": { fields: {
           "b": { fields: { "b1": {} } },
           "c": { includeAllFields: true },
@@ -352,7 +352,7 @@ function IResearchFeatureDDLTestSuite () {
       assertTrue(Boolean === properties.links.TestCollection1.trackListPositions.constructor);
       assertEqual(true, properties.links.TestCollection1.trackListPositions);
       assertTrue(String === properties.links.TestCollection1.storeValues.constructor);
-      assertEqual("full", properties.links.TestCollection1.storeValues);
+      assertEqual("value", properties.links.TestCollection1.storeValues);
       assertTrue(Array === properties.links.TestCollection1.analyzers.constructor);
       assertEqual(1, properties.links.TestCollection1.analyzers.length);
       assertTrue(String === properties.links.TestCollection1.analyzers[0].constructor);
@@ -405,7 +405,7 @@ function IResearchFeatureDDLTestSuite () {
       assertTrue(Boolean === properties.links.TestCollection1.trackListPositions.constructor);
       assertEqual(true, properties.links.TestCollection1.trackListPositions);
       assertTrue(String === properties.links.TestCollection1.storeValues.constructor);
-      assertEqual("full", properties.links.TestCollection1.storeValues);
+      assertEqual("value", properties.links.TestCollection1.storeValues);
       assertTrue(Array === properties.links.TestCollection1.analyzers.constructor);
       assertEqual(1, properties.links.TestCollection1.analyzers.length);
       assertTrue(String === properties.links.TestCollection1.analyzers[0].constructor);
