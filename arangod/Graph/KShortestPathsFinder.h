@@ -249,7 +249,7 @@ class KShortestPathsFinder : public ShortestPathFinder {
   void computeNeighbourhoodOfVertex(VertexRef vertex, Direction direction,
                                     std::vector<Step>& steps);
 
-  bool advanceFrontier(Ball& source, Ball const& target,
+  void advanceFrontier(Ball& source, Ball const& target,
                        std::unordered_set<VertexRef> const& forbiddenVertices,
                        std::unordered_set<Edge> const& forbiddenEdges,
                        VertexRef& join, std::optional<double>& currentBest);
