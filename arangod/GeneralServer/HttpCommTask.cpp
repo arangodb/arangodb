@@ -202,7 +202,6 @@ int HttpCommTask<T>::on_message_complete(llhttp_t* p) {
 
   RequestStatistics* stat = self->statistics(1UL);
   RequestStatistics::SET_READ_END(stat);
-  RequestStatistics::ADD_RECEIVED_BYTES(stat, self->_request->body().size());
   self->_messageDone = true;
 
   return HPE_PAUSED;
@@ -293,6 +292,9 @@ bool HttpCommTask<T>::readCallback(asio_ns::error_code ec) {
     TRI_ASSERT(parsedBytes < std::numeric_limits<size_t>::max());
     // Remove consumed data from receive buffer.
     this->_protocol->buffer.consume(parsedBytes);
+    // And count it in the statistics:
+    RequestStatistics* stat = this->statistics(1UL);
+    RequestStatistics::ADD_RECEIVED_BYTES(stat, parsedBytes);
 
     if (err == HPE_PAUSED_UPGRADE) {
       this->addSimpleResponse(rest::ResponseCode::NOT_IMPLEMENTED,
@@ -420,6 +422,11 @@ void HttpCommTask<T>::processRequest() {
     res->setHeaderNC(StaticStrings::WwwAuthenticate, std::move(realm));
     sendResponse(std::move(res), nullptr);
     return;
+  }
+
+  // We want to separate superuser token traffic:
+  if (_request->authenticated() && _request->user().empty()) {
+    RequestStatistics::SET_SUPERUSER(this->statistics(1UL));
   }
 
   // first check whether we allow the request to continue
@@ -795,14 +802,16 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
     buffers[1] = asio_ns::buffer(body->data(), body->size());
     TRI_ASSERT(len == body->size());
   }
+  RequestStatistics::SET_WRITE_START(stat);
 
   // FIXME measure performance w/o sync write
   auto cb = [self = CommTask::shared_from_this(),
              h = std::move(header),
-             b = std::move(body)](asio_ns::error_code ec,
-                                  size_t nwrite) {
+             b = std::move(body),
+             stat](asio_ns::error_code ec, size_t nwrite) {
     auto* thisPtr = static_cast<HttpCommTask<T>*>(self.get());
-
+    RequestStatistics::SET_WRITE_END(stat);
+    RequestStatistics::ADD_SENT_BYTES(stat, h->size() + b->size());
     llhttp_errno_t err = llhttp_get_errno(&thisPtr->_parser);
     if (ec || !thisPtr->_shouldKeepAlive || err != HPE_PAUSED) {
       if (ec) {
@@ -814,6 +823,9 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
 
       llhttp_resume(&thisPtr->_parser);
       thisPtr->asyncReadSome();
+    }
+    if (stat != nullptr) {
+      stat->release();
     }
   };
   asio_ns::async_write(this->_protocol->socket, buffers, std::move(cb));
