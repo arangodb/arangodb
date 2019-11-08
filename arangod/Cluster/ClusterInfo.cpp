@@ -977,7 +977,7 @@ void ClusterInfo::loadPlan() {
               [](std::string const& a, std::string const& b) -> bool {
                 TRI_ASSERT(a.size() >= 2);
                 TRI_ASSERT(b.size() >= 2);
-                return NumberUtils::atoi_zero<uint64_t>(a.c_str() + 1, a.c_str() + a.size() - 1) <
+                return NumberUtils::atoi_zero<uint64_t>(a.c_str() + 1, a.c_str() + a.size()) <
                        NumberUtils::atoi_zero<uint64_t>(b.c_str() + 1, b.c_str() + b.size() - 1);
               }  // comparator
           );
