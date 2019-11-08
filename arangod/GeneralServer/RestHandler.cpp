@@ -54,19 +54,18 @@ thread_local RestHandler const* RestHandler::CURRENT_HANDLER = nullptr;
 
 RestHandler::RestHandler(application_features::ApplicationServer& server,
                          GeneralRequest* request, GeneralResponse* response)
-    : _canceled(false),
+    :
       _request(request),
       _response(response),
       _server(server),
       _statistics(nullptr),
+      _handlerId(0),
       _state(HandlerState::PREPARE),
-      _handlerId(0) {}
+      _canceled(false) {}
 
 RestHandler::~RestHandler() {
-  RequestStatistics* stat = _statistics.exchange(nullptr);
-
-  if (stat != nullptr) {
-    stat->release();
+  if (_statistics != nullptr) {
+    _statistics->release();
   }
 }
 
@@ -94,8 +93,15 @@ uint64_t RestHandler::messageId() const {
   return messageId;
 }
 
+RequestStatistics* RestHandler::stealStatistics() {
+  RequestStatistics* ptr = _statistics;
+  _statistics = nullptr;
+  return ptr;
+}
+
 void RestHandler::setStatistics(RequestStatistics* stat) {
-  RequestStatistics* old = _statistics.exchange(stat);
+  RequestStatistics* old = _statistics;
+  _statistics = stat;
   if (old != nullptr) {
     old->release();
   }
@@ -303,7 +309,13 @@ void RestHandler::runHandlerStateMachine() {
 
       case HandlerState::FINALIZE:
         RequestStatistics::SET_REQUEST_END(_statistics);
-        shutdownEngine();
+        RestHandler::CURRENT_HANDLER = this;
+
+        // shutdownExecute is noexcept
+        shutdownExecute(true);
+
+        RestHandler::CURRENT_HANDLER = nullptr;
+        _state = HandlerState::DONE;
         
         // compress response if required
         compressResponse();
@@ -363,24 +375,13 @@ void RestHandler::prepareEngine() {
 }
 
 /// Execute the rest handler state machine
-void RestHandler::continueHandlerExecution() {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  {
-    RECURSIVE_MUTEX_LOCKER(_executionMutex, _executionMutexOwner);
-    TRI_ASSERT(_state == HandlerState::PAUSED);
+bool RestHandler::wakeupHandler() {
+  RECURSIVE_MUTEX_LOCKER(_executionMutex, _executionMutexOwner);
+  if (_state == HandlerState::PAUSED) {
+    runHandlerStateMachine();
+    return true;
   }
-#endif
-  runHandlerStateMachine();
-}
-
-void RestHandler::shutdownEngine() {
-  RestHandler::CURRENT_HANDLER = this;
-
-  // shutdownExecute is noexcept
-  shutdownExecute(true);
-
-  RestHandler::CURRENT_HANDLER = nullptr;
-  _state = HandlerState::DONE;
+  return false;
 }
 
 void RestHandler::executeEngine(bool isContinue) {

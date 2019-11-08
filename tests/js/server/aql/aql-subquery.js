@@ -389,6 +389,12 @@ function ahuacatlSubqueryTestSuite () {
       const colName = "UnitTestSubqueryCollection";
       try {
         const col = db._create(colName, {numberOfShards: 9});
+        let dbServers = 0;
+        if (isCoordinator) {
+          dbServers = Object.values(col.shards(true)).filter((value, index, self) => {
+            return self.indexOf(value) === index;
+          }).length;
+        }
         const docs = [];
         const expected = new Map();
         for (let i = 0; i < 2000; ++i) {
@@ -418,7 +424,7 @@ function ahuacatlSubqueryTestSuite () {
           assertEqual(scannedIndex, 0);
           assertEqual(filtered, 3960000);
           if (isCoordinator) {
-            assertEqual(httpRequests, 8007);
+            assertTrue(httpRequests <= 4003 * dbServers + 1, httpRequests);
           } else {
             assertEqual(httpRequests, 0);
           }
@@ -445,7 +451,7 @@ function ahuacatlSubqueryTestSuite () {
           assertEqual(scannedIndex, 40000);
           assertEqual(filtered, 0);
           if (isCoordinator) {
-            assertEqual(httpRequests, 8007);
+            assertTrue(httpRequests <= 4003 * dbServers + 1, httpRequests);
           } else {
             assertEqual(httpRequests, 0);
           }

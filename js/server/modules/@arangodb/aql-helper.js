@@ -365,7 +365,7 @@ function getQueryMultiplePlansAndExecutions (query, bindVars, testObject, debug)
 
 function removeAlwaysOnClusterRules (rules) {
   return rules.filter(function (rule) {
-    return ([ 'distribute-filtercalc-to-cluster', 'scatter-in-cluster', 'distribute-in-cluster', 'remove-unnecessary-remote-scatter' ].indexOf(rule) === -1);
+    return ([ 'distribute-filtercalc-to-cluster', 'scatter-in-cluster', 'distribute-in-cluster', 'remove-unnecessary-remote-scatter', 'parallelize-gather' ].indexOf(rule) === -1);
   });
 }
 

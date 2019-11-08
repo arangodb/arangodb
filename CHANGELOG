@@ -4,6 +4,9 @@ devel
 * Separately account for superuser and user request traffic. This is
   needed for Oasis.
 
+* No longer put system services in _app on single server. On cluster, this
+  has never worked. This was unnecessary.
+
 * Fixed available flag for hotbackup.
 
 * Fixed list with id for partially available hotbackups.
