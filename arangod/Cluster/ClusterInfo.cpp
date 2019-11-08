@@ -978,7 +978,7 @@ void ClusterInfo::loadPlan() {
                 TRI_ASSERT(a.size() >= 2);
                 TRI_ASSERT(b.size() >= 2);
                 return NumberUtils::atoi_zero<uint64_t>(a.c_str() + 1, a.c_str() + a.size()) <
-                       NumberUtils::atoi_zero<uint64_t>(b.c_str() + 1, b.c_str() + b.size() - 1);
+                       NumberUtils::atoi_zero<uint64_t>(b.c_str() + 1, b.c_str() + b.size());
               }  // comparator
           );
           newShards.emplace(collectionId, std::move(shards));
