@@ -78,14 +78,17 @@ void UpgradeFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 ///        Used to perform one last action upon shutdown.
 extern std::function<int()> * restartAction;
 
+#ifndef _WIN32
 static std::string const UPGRADE_ENV = "ARANGODB_UPGRADE_DURING_RESTORE";
 
 static int upgradeRestart() {
-  putenv((UPGRADE_ENV + "=").c_str());
+  unsetenv(UPGRADE_ENV.c_str());
   return 0;
 }
+#endif
 
 void UpgradeFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
+#ifndef _WIN32
   // The following environment variable is another way to run a database
   // upgrade. If the environment variable is set, the system does a database
   // upgrade and then restarts itself without the environment variable.
@@ -100,6 +103,7 @@ void UpgradeFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     restartAction = new std::function<int()>();
     *restartAction = upgradeRestart;
   }
+#endif
   if (_upgrade && !_upgradeCheck) {
     LOG_TOPIC("47698", FATAL, arangodb::Logger::FIXME)
         << "cannot specify both '--database.auto-upgrade true' and "
