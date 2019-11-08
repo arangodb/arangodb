@@ -302,6 +302,13 @@ struct OptimizerRule {
     // move document materialization after SORT and LIMIT
     // this must be run AFTER all cluster rules as this rule
     // needs to take into account query distribution across cluster nodes
+    // for arango search view
+    lateDocumentMaterializationArangoSearchRule,
+
+    // move document materialization after SORT and LIMIT
+    // this must be run AFTER all cluster rules as this rule
+    // needs to take into account query distribution across cluster nodes
+    // for index
     lateDocumentMaterializationRule,
 
     // splice subquery into the place of a subquery node

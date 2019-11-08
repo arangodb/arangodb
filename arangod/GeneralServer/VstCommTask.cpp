@@ -219,11 +219,20 @@ bool VstCommTask<T>::processMessage(velocypack::Buffer<uint8_t> buffer,
     // error is handled below
   }
 
-  RequestStatistics::SET_READ_END(this->statistics(messageId));
+  RequestStatistics* stat = this->statistics(messageId);
+  RequestStatistics::SET_READ_END(stat);
+  RequestStatistics::ADD_RECEIVED_BYTES(stat, buffer.size());
   
   // handle request types
   if (mt == MessageType::Authentication) {  // auth
     handleAuthHeader(VPackSlice(buffer.data()), messageId);
+    // Separate superuser traffic:
+    // Note that currently, velocystream traffic will never come from
+    // a forwarding, since we always forward with HTTP.
+    if (_authMethod != AuthenticationMethod::NONE && _authorized &&
+        this->_authToken._username.empty()) {
+      RequestStatistics::SET_SUPERUSER(stat);
+    }
   } else if (mt == MessageType::Request) {  // request
     
     VPackSlice header(buffer.data());
@@ -240,6 +249,14 @@ bool VstCommTask<T>::processMessage(velocypack::Buffer<uint8_t> buffer,
       this->_auth->userManager()->refreshUser(this->_authToken._username);
     }
     
+    // Separate superuser traffic:
+    // Note that currently, velocystream traffic will never come from
+    // a forwarding, since we always forward with HTTP.
+    if (_authMethod != AuthenticationMethod::NONE && _authorized &&
+        this->_authToken._username.empty()) {
+      RequestStatistics::SET_SUPERUSER(stat);
+    }
+
     LOG_TOPIC("92fd6", DEBUG, Logger::REQUESTS)
     << "\"vst-request-begin\",\"" << (void*)this << "\",\""
     << this->_connectionInfo.clientAddress << "\",\""
@@ -280,6 +297,8 @@ void VstCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes, Requ
   auto resItem = std::make_unique<ResponseItem>();
   response.writeMessageHeader(resItem->metadata);
   resItem->response = std::move(baseRes);
+  RequestStatistics::SET_WRITE_START(stat);
+  resItem->stat = stat;
   
   asio_ns::const_buffer payload;
   if (response.generateBody()) {
@@ -346,13 +365,15 @@ void VstCommTask<T>::doWrite() {
     }
     TRI_ASSERT(tmp != nullptr);
     std::unique_ptr<ResponseItem> item(tmp);
-    
+
     auto& buffers = item->buffers;
     asio_ns::async_write(this->_protocol->socket, buffers,
                          [self(CommTask::shared_from_this()), rsp(std::move(item))]
                          (asio_ns::error_code ec, size_t transferred) {
       
       auto* thisPtr = static_cast<VstCommTask<T>*>(self.get());
+      RequestStatistics::SET_WRITE_END(rsp->stat);
+      RequestStatistics::ADD_SENT_BYTES(rsp->stat, rsp->buffers[0].size() + rsp->buffers[1].size());
       if (ec) {
         LOG_TOPIC("5c6b4", INFO, arangodb::Logger::REQUESTS)
         << "asio write error: '" << ec.message() << "'";
@@ -360,6 +381,7 @@ void VstCommTask<T>::doWrite() {
       } else {
         thisPtr->doWrite(); // write next one
       }
+      rsp->stat->release();
     });
     
     break; // done

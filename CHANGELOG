@@ -15,6 +15,12 @@ devel
 
       FOR i IN 1 .. 1000000000 INSERT {CONCAT('test', i)} INTO collection
 
+* Separately account for superuser and user request traffic. This is
+  needed for Oasis.
+
+* No longer put system services into `_apps` on single server. On cluster, this
+  has never worked. This was unnecessary.
+
 * Fixed available flag for hotbackup.
 
 * Fixed list with id for partially available hotbackups.
