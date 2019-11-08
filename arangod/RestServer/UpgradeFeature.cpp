@@ -74,7 +74,30 @@ void UpgradeFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
 }
 
+/// @brief This external is buried in RestServer/arangod.cpp.
+///        Used to perform one last action upon shutdown.
+extern std::function<int()> * restartAction;
+
+static int upgradeRestart() {
+  unsetenv("ARANGODB_UPGRADE_DURING_RESTORE");
+  return 0;
+}
+
 void UpgradeFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
+  // The following environment variable is another way to run a database
+  // upgrade. If the environment variable is set, the system does a database
+  // upgrade and then restarts itself without the environment variable.
+  // This is used in hotbackup if a restore to a backup happens which is from
+  // an older database version. The restore process sets the environment
+  // variable at runtime and then does a restore. After the restart (with
+  // the old data) the database upgrade is run and another restart is
+  // happening afterwards with the environment variable being cleared.
+  char* upgrade = getenv("ARANGODB_UPGRADE_DURING_RESTORE");
+  if (upgrade != nullptr) {
+    _upgrade = true;
+    restartAction = new std::function<int()>();
+    *restartAction = upgradeRestart;
+  }
   if (_upgrade && !_upgradeCheck) {
     LOG_TOPIC("47698", FATAL, arangodb::Logger::FIXME)
         << "cannot specify both '--database.auto-upgrade true' and "
