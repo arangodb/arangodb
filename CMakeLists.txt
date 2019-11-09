@@ -665,6 +665,7 @@ if (CUSTOM_INCLUDES)
   include_directories(${CUSTOM_INCLUDES})
 endif ()
 
+
 ################################################################################
 ## TARGET ARCHITECTURE
 ################################################################################
@@ -1382,3 +1383,47 @@ message(STATUS "building for git revision: ${ARANGODB_BUILD_REPOSITORY}")
 #     message(STATUS "${_variableName}=${${_variableName}}")
 #   endforeach ()
 # endif ()
+
+################################################################################
+## PVS-Studio check
+################################################################################
+
+option(USE_PVS_STUDIO "generate targets for PVS-Studio" OFF)
+
+if (USE_PVS_STUDIO)
+  include(PVS-Studio)
+  set(PVS_STUDIO_TARGET_NAME "${BIN_ARANGOD}-pvs-check")
+  set(PVS_STUDIO_ANALYZE ${BIN_ARANGOBENCH}
+                         ${BIN_ARANGOBACKUP}
+                         ${BIN_ARANGOD}
+                         ${BIN_ARANGODUMP}
+                         ${BIN_ARANGOEXPORT}
+                         ${BIN_ARANGOIMPORT}
+                         ${BIN_ARANGORESTORE}
+                         #${BIN_ARANGOSH} FIXME
+                         ${BIN_ARANGOVPACK})
+
+  pvs_studio_add_target(
+    TARGET ${PVS_STUDIO_TARGET_NAME} ALL
+    OUTPUT FORMAT errorfile
+    ANALYZE ${PVS_STUDIO_ANALYZE}
+    MODE GA:1,2 OP
+    LOG ${BIN_ARANGOD}.err
+  )
+
+  pvs_studio_add_target(
+    TARGET ${PVS_STUDIO_TARGET_NAME}-html ALL
+    FORMAT fullhtml
+    ANALYZE ${PVS_STUDIO_ANALYZE}
+    MODE GA:1,2 OP
+    LOG ${BIN_ARANGOD}-html.err
+  )
+
+  pvs_studio_add_target(
+    TARGET ${PVS_STUDIO_TARGET_NAME}-xml ALL
+    FORMAT xml
+    ANALYZE ${PVS_STUDIO_ANALYZE}
+    MODE GA:1,2 OP
+    LOG ${BIN_ARANGOD}-xml.err
+  )
+endif()
