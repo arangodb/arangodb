@@ -579,9 +579,9 @@ arangodb::Result visitAnalyzers(
     TRI_vocbase_t& vocbase,
     std::function<arangodb::Result(VPackSlice const&)> const& visitor) {
   static const auto resultVisitor = [](
-    std::function<arangodb::Result(VPackSlice const&)> const& visitor,
-    TRI_vocbase_t const& vocbase,
-    VPackSlice const& slice) -> arangodb::Result {
+      std::function<arangodb::Result(VPackSlice const&)> const& visitor,
+      TRI_vocbase_t const& vocbase,
+      VPackSlice const& slice) -> arangodb::Result {
     if (!slice.isArray()) {
       return {
         TRI_ERROR_INTERNAL,
@@ -1439,16 +1439,16 @@ AnalyzerPool::ptr IResearchAnalyzerFeature::get(
 
 Result IResearchAnalyzerFeature::loadAnalyzers(
     irs::string_ref const& database /*= irs::string_ref::NIL*/) {
+  auto* dbFeature = application_features::ApplicationServer::lookupFeature<DatabaseFeature>("Database");
+
+  if (!dbFeature) {
+    return {
+      TRI_ERROR_INTERNAL,
+      "failure to find feature 'Database' while loading analyzers for database '" + std::string(database)+ "'"
+    };
+  }
+
   try {
-    auto* dbFeature = application_features::ApplicationServer::lookupFeature<DatabaseFeature>("Database");
-
-    if (!dbFeature) {
-      return {
-        TRI_ERROR_INTERNAL,
-        "failure to find feature 'Database' while loading analyzers for database '" + std::string(database)+ "'"
-      };
-    }
-
     WriteMutex mutex(_mutex);
     SCOPED_LOCK(mutex); // '_analyzers'/'_lastLoad' can be asynchronously read
 
@@ -1531,8 +1531,7 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
         return {}; // do not reload on single-server
       }
     } else if (itr != _lastLoad.end() // had a previous load
-               && itr->second + RELOAD_INTERVAL > currentTimestamp // timeout not reached
-              ) {
+               && itr->second + RELOAD_INTERVAL > currentTimestamp) { // timeout not reached
       return {}; // reload interval not reached
     }
 
