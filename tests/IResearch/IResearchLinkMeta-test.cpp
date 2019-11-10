@@ -37,6 +37,7 @@
 #include "ApplicationFeatures/GreetingsPhase.h"
 #include "ApplicationFeatures/V8Phase.h"
 #include "Aql/AqlFunctionFeature.h"
+#include "Aql/OptimizerRulesFeature.h"
 #include "Cluster/ClusterFeature.h"
 
 #if USE_ENTERPRISE
@@ -48,6 +49,8 @@
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchLinkMeta.h"
 #include "IResearch/VelocyPackHelper.h"
+#include "RestServer/AqlFeature.h"
+#include "RestServer/TraverserEngineRegistryFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
@@ -137,6 +140,9 @@ class IResearchLinkMetaTest : public ::testing::Test {
                                     arangodb::LogLevel::ERR);
 
     // setup required application features
+    features.emplace_back(new arangodb::TraverserEngineRegistryFeature(server), false);  // must be before AqlFeature
+    features.emplace_back(new arangodb::AqlFeature(server), true);
+    features.emplace_back(new arangodb::aql::OptimizerRulesFeature(server), true);
     features.emplace_back(new arangodb::AuthenticationFeature(server), true);
     features.emplace_back(new arangodb::DatabaseFeature(server), false);
     features.emplace_back(new arangodb::ShardingFeature(server), false);
