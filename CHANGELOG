@@ -1,6 +1,20 @@
 devel
 -----
 
+* Changed default value for startup option `--agency.supervision-grace-period` from
+  `10` to `0`. The value of `0` will make the server automatically determine the
+  grace period based on the chosen deployment mode. 
+  
+  When `0` is used, a grace period of 10 seconds will be used for regular clusters, 
+  and a grace period of 30 seconds will be used for active failover setups.
+
+  That means the effective default value for regular clusters does not change, but
+  the supervision grace period for active failover setups is increased from 10 to
+  30 seconds by default. This is to avoid unnecessary failovers in active failover
+  setups. In active failover setups, the leader server needs to handle all the load 
+  and is thus expected to get overloaded and unresponsive more easily than a server 
+  in a regular cluster which needs handle only a part of the overall load.
+
 * Added limit for AQL range materialization to prevent out-of-memory errors.
 
   When materializing ranges created by either the AQL `RANGE` function or by using
