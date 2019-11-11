@@ -679,7 +679,7 @@ int MMFilesEngine::getCollectionsAndIndexes(TRI_vocbase_t& vocbase,
       VPackBuilder builder = loadCollectionInfo(&vocbase, directory);
       VPackSlice info = builder.slice();
 
-      if (VelocyPackHelper::readBooleanValue(info, "deleted", false)) {
+      if (VelocyPackHelper::getBooleanValue(info, "deleted", false)) {
         std::string name = VelocyPackHelper::getStringValue(info, "name", "");
         _deleted.emplace_back(std::make_pair(name, directory));
         continue;
@@ -755,7 +755,7 @@ int MMFilesEngine::getViews(TRI_vocbase_t& vocbase, arangodb::velocypack::Builde
 
       LOG_TOPIC("41921", TRACE, Logger::VIEWS) << "got view slice: " << info.toJson();
 
-      if (VelocyPackHelper::readBooleanValue(info, "deleted", false)) {
+      if (VelocyPackHelper::getBooleanValue(info, "deleted", false)) {
         std::string name = VelocyPackHelper::getStringValue(info, "name", "");
         _deleted.emplace_back(std::make_pair(name, directory));
         continue;

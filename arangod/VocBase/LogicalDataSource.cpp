@@ -121,7 +121,7 @@ bool readIsSystem(arangodb::velocypack::Slice definition) {
   }
 
   // same condition as in LogicalCollection
-  return arangodb::basics::VelocyPackHelper::readBooleanValue(
+  return arangodb::basics::VelocyPackHelper::getBooleanValue(
       definition, arangodb::StaticStrings::DataSourceSystem, false);
 }
 
@@ -169,7 +169,7 @@ LogicalDataSource::LogicalDataSource(Category const& category, Type const& type,
           basics::VelocyPackHelper::getStringValue(definition, StaticStrings::DataSourceName,
                                                    ""),
           planVersion, readIsSystem(definition),
-          basics::VelocyPackHelper::readBooleanValue(definition, StaticStrings::DataSourceDeleted,
+          basics::VelocyPackHelper::getBooleanValue(definition, StaticStrings::DataSourceDeleted,
                                                      false)) {}
 
 LogicalDataSource::LogicalDataSource(Category const& category, Type const& type,
