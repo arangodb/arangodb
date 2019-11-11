@@ -293,7 +293,7 @@ function setupSatelliteCollections() {
       links: {
         _analyzers : {
           includeAllFields:true,
-          analyzers: [ analyzer.name() ]
+          analyzers: [ analyzer.name ]
         }
       }
     });

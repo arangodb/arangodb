@@ -943,7 +943,7 @@ function BaseTestConfig () {
       db._flushCache();
       db._createView('analyzersView', 'arangosearch', {
         consolidationIntervalMsec:0,
-        links: { _analyzers: { analyzers: [ analyzer.name() ], includeAllFields:true } }
+        links: { _analyzers: { analyzers: [ analyzer.name ], includeAllFields:true } }
       });
 
       db._flushCache();

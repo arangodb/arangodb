@@ -264,8 +264,8 @@
     let view = db._createView("analyzersView", "arangosearch", {
       links: {
         _analyzers : {
-          includeAllFields:true,
-          analyzers: [ analyzer.name() ]
+          includeAllFields: true,
+          analyzers: [ analyzer.name ]
         }
       }
     });
