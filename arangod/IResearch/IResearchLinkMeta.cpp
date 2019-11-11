@@ -32,6 +32,7 @@
 #include "Cluster/ServerState.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "VelocyPackHelper.h"
+#include "Basics/VelocyPackHelper.h"
 #include "velocypack/Builder.h"
 #include "velocypack/Iterator.h"
 #include "IResearchLinkMeta.h"
@@ -69,6 +70,16 @@ bool equalAnalyzers(std::vector<arangodb::iresearch::FieldMeta::Analyzer> const&
 }
 
 }  // namespace
+
+bool operator<(arangodb::iresearch::FieldMeta::Analyzer const& lhs,
+               irs::string_ref const& rhs) noexcept {
+  return lhs._pool->name() < rhs;
+}
+
+bool operator<(irs::string_ref const& lhs,
+               arangodb::iresearch::FieldMeta::Analyzer const& rhs) noexcept {
+  return lhs < rhs._pool->name();
+}
 
 namespace arangodb {
 namespace iresearch {
@@ -142,7 +153,7 @@ bool FieldMeta::init(velocypack::Slice const& slice,
                      TRI_vocbase_t const* defaultVocbase /*= nullptr*/,
                      FieldMeta const& defaults /*= DEFAULT()*/,
                      Mask* mask /*= nullptr*/,
-                     std::map<irs::string_ref, AnalyzerPool::ptr>* referencedAnalyzers /*= nullptr*/) {
+                     std::set<AnalyzerPool::ptr, AnalyzerComparer>* referencedAnalyzers /*= nullptr*/) {
   if (!slice.isObject()) {
     return false;
   }
@@ -206,10 +217,10 @@ bool FieldMeta::init(velocypack::Slice const& slice,
         bool found = false;
 
         if (referencedAnalyzers) {
-          auto it = referencedAnalyzers->find(name);
+          auto it = referencedAnalyzers->find(irs::string_ref(name));
 
           if (it != referencedAnalyzers->end()) {
-            analyzer = it->second;
+            analyzer = *it;
             found = static_cast<bool>(analyzer);
 
             if (ADB_UNLIKELY(!found)) {
@@ -233,7 +244,7 @@ bool FieldMeta::init(velocypack::Slice const& slice,
 
         if (!found && referencedAnalyzers) {
           // save in referencedAnalyzers
-          referencedAnalyzers->emplace(analyzer->name(), analyzer);
+          referencedAnalyzers->emplace(analyzer);
         }
 
         // avoid adding same analyzer twice
@@ -525,8 +536,7 @@ size_t FieldMeta::memory() const noexcept {
 IResearchLinkMeta::IResearchLinkMeta() {
   // add default analyzers
   for (auto& analyzer : _analyzers) {
-    auto& pool = analyzer._pool;
-    _analyzerDefinitions.emplace(pool->name(), pool);
+    _analyzerDefinitions.emplace(analyzer._pool);
   }
 }
 
@@ -727,7 +737,7 @@ bool IResearchLinkMeta::init(velocypack::Slice const& slice,
           return false;
         }
 
-        _analyzerDefinitions.emplace(analyzer->name(), analyzer);
+        _analyzerDefinitions.emplace(analyzer);
       }
     }
   }
@@ -759,8 +769,8 @@ bool IResearchLinkMeta::json(velocypack::Builder& builder,
     VPackArrayBuilder arrayScope(&builder, "analyzerDefinitions");
 
     for (auto& entry: _analyzerDefinitions) {
-      TRI_ASSERT(entry.second); // ensured by emplace into 'analyzers' above
-      entry.second->toVelocyPack(builder, defaultVocbase);
+      TRI_ASSERT(entry); // ensured by emplace into 'analyzers' above
+      entry->toVelocyPack(builder, defaultVocbase);
     }
   }
 

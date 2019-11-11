@@ -77,6 +77,11 @@ class AnalyzerPool : private irs::util::noncopyable {
   void toVelocyPack(velocypack::Builder& builder,
                     TRI_vocbase_t const* vocbase = nullptr);
 
+  bool operator==(AnalyzerPool const& rhs) const;
+  bool operator!=(AnalyzerPool const& rhs) const {
+    return !(*this == rhs);
+  }
+
  private:
   // required for calling AnalyzerPool::init(...) and AnalyzerPool::setKey(...)
   friend class IResearchAnalyzerFeature;

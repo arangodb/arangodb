@@ -45,10 +45,12 @@
 #include "Aql/QueryString.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "IResearchAnalyzerFeature.h"
+#include "IResearchLink.h"
 #include "IResearchCommon.h"
 #include "Logger/LogMacros.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
@@ -65,6 +67,7 @@
 #include "VelocyPackHelper.h"
 #include "VocBase/LocalDocumentId.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/LogicalView.h"
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/Methods/Collections.h"
@@ -700,6 +703,93 @@ inline std::string normalizedAnalyzerName(
   return database.append(2, ANALYZER_PREFIX_DELIM).append(analyzer);
 }
 
+bool analyzerInUse(irs::string_ref const& dbName,
+                   arangodb::iresearch::AnalyzerPool::ptr const& analyzerPtr) {
+  using arangodb::application_features::ApplicationServer;
+
+  TRI_ASSERT(analyzerPtr);
+
+  if (analyzerPtr.use_count() > 1) { // +1 for ref in '_analyzers'
+    return true;
+  }
+
+  auto* server = arangodb::ServerState::instance();
+
+  if (!server) {
+    // no server state
+    return false;
+  }
+
+  auto checkDatabase = [server, analyzer = analyzerPtr.get()](TRI_vocbase_t* vocbase) {
+    if (!vocbase) {
+      // no database
+      return false;
+    }
+
+    std::vector<std::shared_ptr<arangodb::LogicalCollection>> collections;
+
+    if (server->isCoordinator()) {
+      auto* ci = arangodb::ClusterInfo::instance();
+
+      if (ci) {
+        collections = ci->getCollections(vocbase->name());
+      }
+    } else {
+      collections = vocbase->collections(false);
+    }
+
+    for (auto const& collection : collections) {
+      for (auto const& index : collection->getIndexes()) {
+        if (!index || arangodb::Index::TRI_IDX_TYPE_IRESEARCH_LINK != index->type()) {
+          continue;  // not an IResearchLink
+        }
+
+        // TODO FIXME find a better way to retrieve an iResearch Link
+        // cannot use static_cast/reinterpret_cast since Index is not related to
+        // IResearchLink
+        auto link = std::dynamic_pointer_cast<arangodb::iresearch::IResearchLink>(index);
+
+        if (!link) {
+          continue;
+        }
+
+        if (nullptr != link->findAnalyzer(*analyzer)) {
+          // found referenced analyzer
+          return true;
+        }
+      }
+    }
+
+    return false;
+  };
+
+  TRI_vocbase_t* vocbase{};
+
+  // check analyzer database
+  auto* dbFeature = ApplicationServer::lookupFeature<arangodb::DatabaseFeature>("Database");
+
+  if (dbFeature) {
+    vocbase = dbFeature->lookupDatabase(dbName);
+
+    if (checkDatabase(vocbase)) {
+      return true;
+    }
+  }
+
+  // check system database if necessary
+  auto* sysDbFeature = ApplicationServer::lookupFeature<arangodb::SystemDatabaseFeature>("SystemDatabase");
+
+  if (sysDbFeature) {
+    auto sysVocbase = sysDbFeature->use();
+
+    if (sysVocbase.get() != vocbase && checkDatabase(sysVocbase.get())) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 typedef irs::async_utils::read_write_mutex::read_mutex ReadMutex;
 typedef irs::async_utils::read_write_mutex::write_mutex WriteMutex;
 
@@ -775,6 +865,13 @@ AnalyzerPool::Builder::make(
 AnalyzerPool::AnalyzerPool(irs::string_ref const& name)
   : _cache(DEFAULT_POOL_SIZE),
     _name(name) {
+}
+
+bool AnalyzerPool::operator==(AnalyzerPool const& rhs) const {
+  return _name == rhs._name &&
+      _type == rhs._type &&
+      _features == rhs._features &&
+      basics::VelocyPackHelper::equal(_properties, rhs._properties, true);
 }
 
 bool AnalyzerPool::init(
@@ -1908,7 +2005,7 @@ Result IResearchAnalyzerFeature::remove(
       };
     }
 
-    if (!force && pool.use_count() > 1) { // +1 for ref in '_analyzers'
+    if (!force && analyzerInUse(split.first, pool)) { // +1 for ref in '_analyzers'
       return {
         TRI_ERROR_ARANGO_CONFLICT,
         "analyzer in-use while removing arangosearch analyzer '" + std::string(name)+ "'"

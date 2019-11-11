@@ -63,12 +63,10 @@ arangodb::Result canUseAnalyzers( // validate
   >();
   auto sysVocbase = sysDatabase ? sysDatabase->use() : nullptr;
 
-  for (auto& entry: meta._analyzerDefinitions) {
-    if (!entry.second) {
+  for (auto& pool: meta._analyzerDefinitions) {
+    if (!pool) {
       continue; // skip invalid entries
     }
-
-    auto* pool = entry.second.get();
 
     bool result;
 
@@ -798,11 +796,11 @@ namespace iresearch {
       {
         const auto& currentVocbase = vocbase.name();
         for (const auto& analyzer : meta._analyzerDefinitions) {
-          TRI_ASSERT(analyzer.second); // should be checked in meta init
-          if (ADB_UNLIKELY(!analyzer.second)) {
+          TRI_ASSERT(analyzer); // should be checked in meta init
+          if (ADB_UNLIKELY(!analyzer)) {
             continue; 
           }
-          auto* pool = analyzer.second.get();
+          auto* pool = analyzer.get();
           auto analyzerVocbase = IResearchAnalyzerFeature::extractVocbaseName(pool->name());
 
           if (!IResearchAnalyzerFeature::analyzerReachableFromDb(analyzerVocbase, currentVocbase, true)) {

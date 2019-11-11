@@ -245,11 +245,10 @@ TEST_F(IResearchLinkMetaTest, test_defaults) {
 
   {
     ASSERT_EQ(1, meta._analyzerDefinitions.size());
-    EXPECT_TRUE("identity" == meta._analyzerDefinitions.begin()->first);
-    EXPECT_TRUE("identity" == meta._analyzerDefinitions.begin()->second->name());
+    EXPECT_TRUE("identity" == (*meta._analyzerDefinitions.begin())->name());
     EXPECT_TRUE(irs::flags({irs::norm::type(), irs::frequency::type()}) ==
-                 meta._analyzerDefinitions.begin()->second->features());
-    EXPECT_NE(nullptr, meta._analyzerDefinitions.begin()->second->get());
+                 (*meta._analyzerDefinitions.begin())->features());
+    EXPECT_NE(nullptr, meta._analyzerDefinitions.begin()->get());
   }
 
   EXPECT_TRUE(meta._sort.empty());
@@ -665,8 +664,8 @@ TEST_F(IResearchLinkMetaTest, test_writeCustomizedValues) {
   meta._trackListPositions = true;
   meta._storeValues = arangodb::iresearch::ValueStorage::VALUE;
   meta._analyzerDefinitions.clear();
-  meta._analyzerDefinitions.emplace("identity", analyzers.get("identity"));
-  meta._analyzerDefinitions.emplace("::empty", analyzers.get(arangodb::StaticStrings::SystemDatabase + "::empty"));
+  meta._analyzerDefinitions.emplace(analyzers.get("identity"));
+  meta._analyzerDefinitions.emplace(analyzers.get(arangodb::StaticStrings::SystemDatabase + "::empty"));
   meta._analyzers.clear();
   meta._analyzers.emplace_back(arangodb::iresearch::IResearchLinkMeta::Analyzer(
       analyzers.get("identity"), "identity"));
@@ -1477,7 +1476,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
       EXPECT_EQ(1, analyzer._pool->features().size());
       EXPECT_TRUE(analyzer._pool->features().check(irs::frequency::type()));
       EXPECT_EQ("empty", analyzer._shortName);
-      EXPECT_EQ(meta._analyzerDefinitions.find(analyzer._pool->name())->second, analyzer._pool);
+      EXPECT_EQ((*meta._analyzerDefinitions.find(analyzer._pool->name())), analyzer._pool);
     }
     {
       auto& analyzer = meta._fields.begin().value()->_analyzers[1];
@@ -1488,7 +1487,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
       EXPECT_EQ(1, analyzer._pool->features().size());
       EXPECT_TRUE(analyzer._pool->features().check(irs::frequency::type()));
       EXPECT_EQ("::empty", analyzer._shortName);
-      EXPECT_EQ(meta._analyzerDefinitions.find(analyzer._pool->name())->second, analyzer._pool);
+      EXPECT_EQ((*meta._analyzerDefinitions.find(analyzer._pool->name())), analyzer._pool);
     }
   }
 
@@ -1522,7 +1521,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
       EXPECT_EQ(1, analyzer._pool->features().size());
       EXPECT_TRUE(analyzer._pool->features().check(irs::frequency::type()));
       EXPECT_EQ("empty", analyzer._shortName);
-      EXPECT_EQ(meta._analyzerDefinitions.find(analyzer._pool->name())->second, analyzer._pool);
+      EXPECT_EQ((*meta._analyzerDefinitions.find(analyzer._pool->name())), analyzer._pool);
     }
     {
       auto& analyzer = meta._fields.begin().value()->_analyzers[1];
@@ -1533,7 +1532,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
       EXPECT_EQ(1, analyzer._pool->features().size());
       EXPECT_TRUE(analyzer._pool->features().check(irs::frequency::type()));
       EXPECT_EQ("::empty", analyzer._shortName);
-      EXPECT_EQ(meta._analyzerDefinitions.find(analyzer._pool->name())->second, analyzer._pool);
+      EXPECT_EQ((*meta._analyzerDefinitions.find(analyzer._pool->name())), analyzer._pool);
     }
   }
 
@@ -1655,7 +1654,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
       EXPECT_EQ(1, analyzer._pool->features().size());
       EXPECT_TRUE(analyzer._pool->features().check(irs::frequency::type()));
       EXPECT_EQ("empty", analyzer._shortName);
-      EXPECT_EQ(meta._analyzerDefinitions.find(analyzer._pool->name())->second, analyzer._pool);
+      EXPECT_EQ((*meta._analyzerDefinitions.find(analyzer._pool->name())), analyzer._pool);
     }
     {
       auto& analyzer = meta._fields.begin().value()->_analyzers[1];
@@ -1666,7 +1665,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
       EXPECT_EQ(1, analyzer._pool->features().size());
       EXPECT_TRUE(analyzer._pool->features().check(irs::frequency::type()));
       EXPECT_EQ("::empty", analyzer._shortName);
-      EXPECT_EQ(meta._analyzerDefinitions.find(analyzer._pool->name())->second, analyzer._pool);
+      EXPECT_EQ((*meta._analyzerDefinitions.find(analyzer._pool->name())), analyzer._pool);
     }
   }
 
@@ -1707,7 +1706,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
       EXPECT_EQ(1, analyzer._pool->features().size());
       EXPECT_TRUE(analyzer._pool->features().check(irs::frequency::type()));
       EXPECT_EQ("empty", analyzer._shortName);
-      EXPECT_EQ(meta._analyzerDefinitions.find(analyzer._pool->name())->second, analyzer._pool);
+      EXPECT_EQ((*meta._analyzerDefinitions.find(analyzer._pool->name())), analyzer._pool);
     }
     {
       auto& analyzer = meta._fields.begin().value()->_analyzers[1];
@@ -1718,7 +1717,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
       EXPECT_EQ(1, analyzer._pool->features().size());
       EXPECT_TRUE(analyzer._pool->features().check(irs::frequency::type()));
       EXPECT_EQ("::empty", analyzer._shortName);
-      EXPECT_EQ(meta._analyzerDefinitions.find(analyzer._pool->name())->second, analyzer._pool);
+      EXPECT_EQ((*meta._analyzerDefinitions.find(analyzer._pool->name())), analyzer._pool);
     }
   }
 
@@ -1822,7 +1821,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
       EXPECT_EQ(1, analyzer._pool->features().size());
       EXPECT_TRUE(analyzer._pool->features().check(irs::frequency::type()));
       EXPECT_EQ("empty", analyzer._shortName);
-      EXPECT_EQ(meta._analyzerDefinitions.find(analyzer._pool->name())->second, analyzer._pool);
+      EXPECT_EQ((*meta._analyzerDefinitions.find(analyzer._pool->name())), analyzer._pool);
     }
     {
       auto& analyzer = meta._fields.begin().value()->_analyzers[1];
@@ -1833,7 +1832,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
       EXPECT_EQ(1, analyzer._pool->features().size());
       EXPECT_TRUE(analyzer._pool->features().check(irs::frequency::type()));
       EXPECT_EQ("::empty", analyzer._shortName);
-      EXPECT_EQ(meta._analyzerDefinitions.find(analyzer._pool->name())->second, analyzer._pool);
+      EXPECT_EQ((*meta._analyzerDefinitions.find(analyzer._pool->name())), analyzer._pool);
     }
   }
 
@@ -1874,7 +1873,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
       EXPECT_EQ(1, analyzer._pool->features().size());
       EXPECT_TRUE(analyzer._pool->features().check(irs::frequency::type()));
       EXPECT_EQ("empty", analyzer._shortName);
-      EXPECT_EQ(meta._analyzerDefinitions.find(analyzer._pool->name())->second, analyzer._pool);
+      EXPECT_EQ((*meta._analyzerDefinitions.find(analyzer._pool->name())), analyzer._pool);
     }
     {
       auto& analyzer = meta._fields.begin().value()->_analyzers[1];
@@ -1885,7 +1884,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
       EXPECT_EQ(1, analyzer._pool->features().size());
       EXPECT_TRUE(analyzer._pool->features().check(irs::frequency::type()));
       EXPECT_EQ("::empty", analyzer._shortName);
-      EXPECT_EQ(meta._analyzerDefinitions.find(analyzer._pool->name())->second, analyzer._pool);
+      EXPECT_EQ((*meta._analyzerDefinitions.find(analyzer._pool->name())), analyzer._pool);
     }
   }
 
@@ -2026,7 +2025,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
       EXPECT_EQ(1, analyzer._pool->features().size());
       EXPECT_TRUE(analyzer._pool->features().check(irs::frequency::type()));
       EXPECT_EQ("empty", analyzer._shortName);
-      EXPECT_EQ(meta._analyzerDefinitions.find(analyzer._pool->name())->second, analyzer._pool);
+      EXPECT_EQ((*meta._analyzerDefinitions.find(analyzer._pool->name())), analyzer._pool);
     }
     {
       auto& analyzer = meta._fields.begin().value()->_analyzers[1];
@@ -2037,7 +2036,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
       EXPECT_EQ(1, analyzer._pool->features().size());
       EXPECT_TRUE(analyzer._pool->features().check(irs::frequency::type()));
       EXPECT_EQ("::empty", analyzer._shortName);
-      EXPECT_EQ(meta._analyzerDefinitions.find(analyzer._pool->name())->second, analyzer._pool);
+      EXPECT_EQ((*meta._analyzerDefinitions.find(analyzer._pool->name())), analyzer._pool);
     }
   }
 
@@ -2077,7 +2076,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
       EXPECT_EQ(1, analyzer._pool->features().size());
       EXPECT_TRUE(analyzer._pool->features().check(irs::frequency::type()));
       EXPECT_EQ("empty", analyzer._shortName);
-      EXPECT_EQ(meta._analyzerDefinitions.find(analyzer._pool->name())->second, analyzer._pool);
+      EXPECT_EQ((*meta._analyzerDefinitions.find(analyzer._pool->name())), analyzer._pool);
     }
     {
       auto& analyzer = meta._fields.begin().value()->_analyzers[1];
@@ -2088,7 +2087,7 @@ TEST_F(IResearchLinkMetaTest, test_readAnalyzerDefinitions) {
       EXPECT_EQ(1, analyzer._pool->features().size());
       EXPECT_TRUE(analyzer._pool->features().check(irs::frequency::type()));
       EXPECT_EQ("::empty", analyzer._shortName);
-      EXPECT_EQ(meta._analyzerDefinitions.find(analyzer._pool->name())->second, analyzer._pool);
+      EXPECT_EQ((*meta._analyzerDefinitions.find(analyzer._pool->name())), analyzer._pool);
     }
   }
 

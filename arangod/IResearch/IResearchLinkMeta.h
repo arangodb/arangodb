@@ -62,14 +62,32 @@ struct FieldMeta {
   typedef UnorderedRefKeyMap<char, UniqueHeapInstance<FieldMeta>> Fields;
 
   struct Analyzer {
-    AnalyzerPool::ptr _pool;
-    std::string _shortName; // vocbase-dependent short analyzer name
     Analyzer(); // identity analyzer
-    Analyzer(
-      AnalyzerPool::ptr const& pool, // pool
-      std::string&& shortName // short name (cached for use during insert(...))
-    ) noexcept: _pool(pool), _shortName(std::move(shortName)) {}
+    Analyzer(AnalyzerPool::ptr const& pool,
+             std::string&& shortName) noexcept
+      : _pool(pool),
+        _shortName(std::move(shortName)) {
+    }
     operator bool() const noexcept { return false == !_pool; }
+
+    AnalyzerPool::ptr _pool;
+    std::string _shortName; // vocbase-independent short analyzer name
+  };
+
+  struct AnalyzerComparer {
+    using is_transparent = void;
+
+    bool operator()(AnalyzerPool::ptr const& lhs, AnalyzerPool::ptr const& rhs) const noexcept {
+      return lhs->name() < rhs->name();
+    }
+
+    bool operator()(AnalyzerPool::ptr const& lhs, irs::string_ref const& rhs) const noexcept {
+      return lhs->name() < rhs;
+    }
+
+    bool operator()(irs::string_ref const& lhs, AnalyzerPool::ptr const& rhs) const noexcept {
+      return lhs < rhs->name();
+    }
   };
 
   struct Mask {
@@ -122,7 +140,7 @@ struct FieldMeta {
             TRI_vocbase_t const* defaultVocbase = nullptr,
             FieldMeta const& defaults = DEFAULT(),
             Mask* mask = nullptr,
-            std::map<irs::string_ref, AnalyzerPool::ptr>* analyzers = nullptr);
+            std::set<AnalyzerPool::ptr, AnalyzerComparer>* analyzers = nullptr);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief fill and return a JSON description of a FieldMeta object
@@ -169,7 +187,7 @@ struct IResearchLinkMeta : public FieldMeta {
     bool _sort;
   };
 
-  std::map<irs::string_ref, AnalyzerPool::ptr> _analyzerDefinitions;
+  std::set<AnalyzerPool::ptr, FieldMeta::AnalyzerComparer> _analyzerDefinitions;
   IResearchViewSort _sort; // sort condition associated with the link
   // NOTE: if adding fields don't forget to modify the comparison operator !!!
   // NOTE: if adding fields don't forget to modify IResearchLinkMeta::Mask !!!
