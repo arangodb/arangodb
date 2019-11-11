@@ -355,10 +355,8 @@ void RestHandler::prepareEngine() {
 /// returns true if _state == PAUSED, false otherwise
 bool RestHandler::wakeupHandler() {
   RECURSIVE_MUTEX_LOCKER(_executionMutex, _executionMutexOwner);
-  LOG_DEVEL << "handler state pre " << static_cast<int>(_state);
   if (_state == HandlerState::PAUSED) {
     runHandlerStateMachine(); // may change _state
-    LOG_DEVEL << "handler state post " << static_cast<int>(_state);
     return _state == HandlerState::PAUSED;
   }
   return false;
