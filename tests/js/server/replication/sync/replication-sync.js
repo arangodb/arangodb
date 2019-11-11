@@ -930,6 +930,51 @@ function BaseTestConfig () {
       }
     },
 
+    testSyncViewOnAnalyzersCollection: function () {
+      connectToMaster();
+
+      // create custom analyzer
+      assertNotEqual(null, db._collection("_analyzers"));
+      assertEqual(0, db._analyzers.count());
+      let analyzer = analyzers.save('custom', 'delimiter', { delimiter: ' ' }, ['frequency']);
+      assertEqual(1, db._analyzers.count());
+
+      //  create view & collection on master
+      db._flushCache();
+      db._createView('analyzersView', 'arangosearch', {
+        consolidationIntervalMsec:0,
+        links: { _analyzers: { analyzers: [ analyzer.name() ], includeAllFields:true } }
+      });
+
+      db._flushCache();
+      connectToSlave();
+      internal.wait(0.1, false);
+      //  sync on slave
+      replication.sync({ endpoint: masterEndpoint });
+
+      db._flushCache();
+
+      assertEqual(1, db._analyzers.count());
+      var res = db._query("FOR d IN analyzersView OPTIONS {waitForSync:true} RETURN d").toArray();
+      assertEqual(1, db._analyzers.count());
+      assertEqual(1, res.length);
+      assertEqual(db._analyzers.toArray()[0], res[0]);
+
+      {
+        //  check state is the same
+        let view = db._view('analyzersView');
+        assertTrue(view !== null);
+        let props = view.properties();
+        assertTrue(props.hasOwnProperty('links'));
+        assertEqual(0, props.consolidationIntervalMsec);
+        assertEqual(Object.keys(props.links).length, 1);
+        assertTrue(props.links.hasOwnProperty('_analyzers'));
+        assertTrue(props.links['_analyzers'].includeAllFields);
+        assertTrue(props.links['_analyzers'].analyzers.length, 1);
+        assertTrue(props.links['_analyzers'].analyzers[0], 'custom');
+      }
+    },
+
     // //////////////////////////////////////////////////////////////////////////////
     // / @brief test with edges
     // //////////////////////////////////////////////////////////////////////////////
