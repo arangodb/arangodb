@@ -2195,6 +2195,9 @@ function ahuacatlFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRangeCxxInvalid : function () {
+      assertQueryError(errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE.code, "RETURN NOOPT(RANGE(1, 100000000))");
+      assertQueryError(errors.ERROR_QUERY_NUMBER_OUT_OF_RANGE.code, "RETURN NOOPT(RANGE(100000000, 1, -1))");
+
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(RANGE())");
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(RANGE(1))"); 
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(RANGE(1, 2, 3, 4))"); 

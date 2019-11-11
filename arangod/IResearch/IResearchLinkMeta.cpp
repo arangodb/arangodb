@@ -591,7 +591,7 @@ bool IResearchLinkMeta::json( // append meta jSON
         name = entry._pool->name(); // verbatim (assume already normalized)
       }
 
-      analyzers.emplace(name, entry._pool);
+      analyzers.try_emplace(name, entry._pool);
       analyzersBuilder.add(arangodb::velocypack::Value(std::move(name)));
     }
 

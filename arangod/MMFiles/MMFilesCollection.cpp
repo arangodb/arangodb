@@ -148,7 +148,7 @@ static MMFilesDatafileStatisticsContainer* FindDatafileStats(OpenIteratorState* 
   }
 
   auto stats = std::make_unique<MMFilesDatafileStatisticsContainer>();
-  state->_stats.emplace(fid, stats.get());
+  state->_stats.try_emplace(fid, stats.get());
   return stats.release();
 }
 
@@ -583,18 +583,18 @@ MMFilesCollection::MMFilesCollection(LogicalCollection& collection, VPackSlice c
       _nextCompactionStartIndex(0),
       _lastCompactionStatus(nullptr),
       _lastCompactionStamp(0.0),
-      _journalSize(Helper::readNumericValue<uint32_t>(
+      _journalSize(Helper::getNumericValue<uint32_t>(
           info, "maximalSize",  // Backwards compatibility. Agency uses
                                 // journalSize. paramters.json uses maximalSize
-          Helper::readNumericValue<uint32_t>(info, "journalSize", TRI_JOURNAL_DEFAULT_SIZE))),
+          Helper::getNumericValue<uint32_t>(info, "journalSize", TRI_JOURNAL_DEFAULT_SIZE))),
       _isVolatile(
-          arangodb::basics::VelocyPackHelper::readBooleanValue(info,
+          arangodb::basics::VelocyPackHelper::getBooleanValue(info,
                                                                "isVolatile", false)),
       _persistentIndexes(0),
       _primaryIndex(nullptr),
-      _indexBuckets(Helper::readNumericValue<uint32_t>(info, "indexBuckets", defaultIndexBuckets)),
+      _indexBuckets(Helper::getNumericValue<uint32_t>(info, "indexBuckets", defaultIndexBuckets)),
       _useSecondaryIndexes(true),
-      _doCompact(Helper::readBooleanValue(info, "doCompact", true)),
+      _doCompact(Helper::getBooleanValue(info, "doCompact", true)),
       _maxTick(0) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
 

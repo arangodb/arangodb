@@ -31,7 +31,7 @@
 
     breadcrumb: function () {
       $('#subNavigationBar .breadcrumb').html(
-        'Collection: ' + this.collectionName
+        'Collection: ' + (this.collectionName.length > 64 ? this.collectionName.substr(0, 64) + "..." : this.collectionName)
       );
     },
 
@@ -66,7 +66,7 @@
           };
           window.modalView.show(
             'modalCollectionInfo.ejs',
-            'Collection: ' + this.model.get('name'),
+            'Collection: ' + (this.model.get('name').length > 64 ? this.model.get('name').substr(0, 64) + "..." : this.model.get('name')),
             buttons,
             tableContent, null, null,
             null, null,

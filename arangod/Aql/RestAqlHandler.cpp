@@ -527,7 +527,7 @@ RestStatus RestAqlHandler::execute() {
           VPackBuilder answerBody;
           {
             VPackObjectBuilder guard(&answerBody);
-            answerBody.add("error", VPackValue(false));
+            answerBody.add(StaticStrings::Error, VPackValue(false));
           }
           sendResponse(rest::ResponseCode::OK, answerBody.slice());
         } else {
@@ -612,11 +612,11 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation, Query* q
   auto closeGuard = scopeGuard([this] { _queryRegistry->close(&_vocbase, _qId); });
 
   std::shared_ptr<SharedQueryState> ss = query->sharedState();
-  ss->setContinueHandler(
-      [self = shared_from_this(), ss]() { self->continueHandlerExecution(); });
+  ss->setWakeupHandler([self = shared_from_this()] {
+    return self->wakeupHandler();
+  });
 
-  bool found;
-  std::string const& shardId = _request->header("shard-id", found);
+  std::string const& shardId = _request->header("shard-id");
 
   // upon first usage, the "initializeCursor" method must be called
   // note: if the operation is "initializeCursor" itself, we do not initialize
@@ -624,6 +624,9 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation, Query* q
   // this is because the request may contain additional data
   if ((operation == "getSome" || operation == "skipSome") &&
       !query->engine()->initializeCursorCalled()) {
+    TRI_IF_FAILURE("RestAqlHandler::getSome") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
     auto res = query->engine()->initializeCursor(nullptr, 0);
     if (res.first == ExecutionState::WAITING) {
       return RestStatus::WAITING;
@@ -648,6 +651,9 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation, Query* q
         answerBuilder.add(StaticStrings::Error, VPackValue(res != TRI_ERROR_NO_ERROR));
         answerBuilder.add(StaticStrings::Code, VPackValue(res));
       } else if (operation == "getSome") {
+        TRI_IF_FAILURE("RestAqlHandler::getSome") {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
         auto atMost =
             VelocyPackHelper::getNumericValue<size_t>(querySlice, "atMost",
                                                       ExecutionBlock::DefaultBatchSize());
@@ -673,6 +679,7 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation, Query* q
         }
         // Used in 3.4.0 onwards.
         answerBuilder.add("done", VPackValue(state == ExecutionState::DONE));
+        answerBuilder.add(StaticStrings::Code, VPackValue(TRI_ERROR_NO_ERROR));
         if (items.get() == nullptr) {
           // Backwards Compatibility
           answerBuilder.add(StaticStrings::Error, VPackValue(false));
@@ -733,8 +740,8 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation, Query* q
         answerBuilder.add(StaticStrings::Code, VPackValue(res.errorNumber()));
       } else if (operation == "shutdown") {
         int errorCode =
-            VelocyPackHelper::getNumericValue<int>(querySlice, "code", TRI_ERROR_INTERNAL);
-
+            VelocyPackHelper::getNumericValue<int>(querySlice, StaticStrings::Code, TRI_ERROR_INTERNAL);
+        
         ExecutionState state;
         Result res;
         std::tie(state, res) = query->engine()->shutdown(errorCode);

@@ -182,7 +182,7 @@ std::tuple<Result, TRI_voc_cid_t, uint64_t> RocksDBReplicationContext::bindColle
   TRI_ASSERT(_snapshot != nullptr);
 
   auto iter = std::make_unique<CollectionIterator>(vocbase, logical, true, _snapshot);
-  auto result = _iterators.emplace(cid, std::move(iter));
+  auto result = _iterators.try_emplace(cid, std::move(iter));
   TRI_ASSERT(result.second);
 
   CollectionIterator* cIter = result.first->second.get();
@@ -906,7 +906,7 @@ RocksDBReplicationContext::CollectionIterator* RocksDBReplicationContext::getCol
 
     if (nullptr != logical) {
       auto result =
-          _iterators.emplace(cid, std::make_unique<CollectionIterator>(vocbase, logical, sorted,
+          _iterators.try_emplace(cid, std::make_unique<CollectionIterator>(vocbase, logical, sorted,
                                                                        _snapshot));
 
       if (result.second) {
