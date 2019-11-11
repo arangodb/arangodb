@@ -25,14 +25,19 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Christoph Uhde
-/// @author Copyright 2018, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2019, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require("jsunity");
+if (getOptions === true) {
+  return {
+    'rocksdb.exclusive-writes': 'true',
+  };
+}
 
+var jsunity = require("jsunity");
+var tasks = require("@arangodb/tasks");
 var arangodb = require("@arangodb");
 var db = arangodb.db;
-var tasks = require("@arangodb/tasks");
 
 var ERRORS = arangodb.errors;
 
@@ -67,13 +72,13 @@ function ExclusiveSuite () {
       db._drop(cn2);
     },
 
-    testExclusiveExpectConflict : function () {
+    testExclusiveExpectConflictWithoutOption : function () {
       c1.insert({ "_key" : "XXX" , "name" : "initial" });
       let task = tasks.register({
         command: function() {
           let db = require("internal").db;
           db.UnitTestsExclusiveCollection2.insert({ _key: "runner1", value: false });
-              
+
           while (!db.UnitTestsExclusiveCollection2.exists("runner2")) {
             require("internal").sleep(0.02);
           }
@@ -96,68 +101,8 @@ function ExclusiveSuite () {
         require("internal").sleep(0.02);
       }
 
-      try {
-        db._executeTransaction({
-          collections: { write: [ "UnitTestsExclusiveCollection1", "UnitTestsExclusiveCollection2" ], exclusive: [ ] },
-          action: function () {
-            let db = require("internal").db;
-            for (let i = 0; i < 100000; ++i) {
-              db.UnitTestsExclusiveCollection1.update("XXX", { name : "runner2" });
-            }
-            db.UnitTestsExclusiveCollection2.update("runner2", { value: true });
-          }
-        });
-      } catch (err) {
-        assertEqual(ERRORS.ERROR_ARANGO_CONFLICT.code, err.errorNum);
-      }
-
-      while (true) {
-        try {
-          tasks.get(task);
-          require("internal").wait(0.25, false);
-        } catch (err) {
-          // "task not found" means the task is finished
-          break;
-        }
-      }
-
-      // only one transaction should have succeeded
-      assertEqual(2, c2.count());
-      let docs = c2.toArray().sort(function(l, r) { return l._key < r._key; });
-      assertNotEqual(docs[0].value, docs[1].value);
-    },
-
-    testExclusiveExpectNoConflict : function () {
-      assertEqual(0, c2.count());
-      c1.insert({ "_key" : "XXX" , "name" : "initial" });
-      let task = tasks.register({
-        command: function() {
-          let db = require("internal").db;
-          db.UnitTestsExclusiveCollection2.insert({ _key: "runner1", value: false });
-          while (!db.UnitTestsExclusiveCollection2.exists("runner2")) {
-            require("internal").sleep(0.02);
-          }
-
-          db._executeTransaction({
-            collections: { exclusive: [ "UnitTestsExclusiveCollection1", "UnitTestsExclusiveCollection2" ] },
-            action: function () {
-              let db = require("internal").db;
-              for (let i = 0; i < 100000; ++i) {
-                db.UnitTestsExclusiveCollection1.update("XXX", { name : "runner1" });
-              }
-              db.UnitTestsExclusiveCollection2.update("runner1", { value: true });
-            }
-          });
-        }
-      });
-
-      db.UnitTestsExclusiveCollection2.insert({ _key: "runner2", value: false });
-      while (!db.UnitTestsExclusiveCollection2.exists("runner1")) {
-        require("internal").sleep(0.02);
-      }
-
       db._executeTransaction({
-        collections: { exclusive: [ "UnitTestsExclusiveCollection1", "UnitTestsExclusiveCollection2" ] },
+        collections: { write: [ "UnitTestsExclusiveCollection1", "UnitTestsExclusiveCollection2" ], exclusive: [ ] },
         action: function () {
           let db = require("internal").db;
           for (let i = 0; i < 100000; ++i) {
@@ -176,101 +121,15 @@ function ExclusiveSuite () {
           break;
         }
       }
-      
-      // both transactions should have succeeded
-      assertEqual(2, c2.count());
-      let docs = c2.toArray().sort(function(l, r) { return l._key < r._key; });
-      assertTrue(docs[0].value);
-      assertTrue(docs[1].value);
-    },
-
-    testExclusiveExpectConflictAQL : function () {
-      c1.insert({ "_key" : "XXX" , "name" : "initial" });
-      let task = tasks.register({
-        command: function() {
-          let db = require("internal").db;
-          db.UnitTestsExclusiveCollection2.insert({ _key: "runner1", value: false });
-          while (!db.UnitTestsExclusiveCollection2.exists("runner2")) {
-            require("internal").sleep(0.02);
-          }
-          for (let i = 0; i < 10000; ++i) {
-            db._query("UPSERT { _key: 'XXX' } INSERT { name: 'runner1' } UPDATE { name: 'runner1' } IN UnitTestsExclusiveCollection1");
-          }
-          db.UnitTestsExclusiveCollection2.update("runner1", { value: true });
-        }
-      });
-
-      try {
-        db.UnitTestsExclusiveCollection2.insert({ _key: "runner2", value: false });
-        while (!db.UnitTestsExclusiveCollection2.exists("runner1")) {
-          require("internal").sleep(0.02);
-        }
-        for (let i = 0; i < 10000; i++) {
-          db._query("UPSERT { _key: 'XXX' } INSERT { name: 'runner2' } UPDATE { name: 'runner2' } IN UnitTestsExclusiveCollection1");
-        }
-        db.UnitTestsExclusiveCollection2.update("runner2", { value: true });
-      } catch (err) {
-        assertEqual(ERRORS.ERROR_ARANGO_CONFLICT.code, err.errorNum);
-      }
-
-      while (true) {
-        try {
-          tasks.get(task);
-          require("internal").wait(0.25, false);
-        } catch (err) {
-          // "task not found" means the task is finished
-          break;
-        }
-      }
 
       // only one transaction should have succeeded
       assertEqual(2, c2.count());
-      let docs = c2.toArray().sort(function(l, r) { return l._key < r._key; });
-      assertNotEqual(docs[0].value, docs[1].value);
+      let docs = c2.toArray()
+      assertEqual(docs[0].value, true);
+      assertEqual(docs[1].value, true);
     },
-    
-    testExclusiveExpectNoConflictAQL : function () {
-      c1.insert({ "_key" : "XXX" , "name" : "initial" });
-      let task = tasks.register({
-        command: function() {
-          let db = require("internal").db;
-          db.UnitTestsExclusiveCollection2.insert({ _key: "runner1", value: false });
-          while (!db.UnitTestsExclusiveCollection2.exists("runner2")) {
-            require("internal").sleep(0.02);
-          }
-          for (let i = 0; i < 10000; ++i) {
-            db._query("UPSERT { _key: 'XXX' } INSERT { name: 'runner1' } UPDATE { name: 'runner1' } IN UnitTestsExclusiveCollection1 OPTIONS { exclusive: true }");
-          }
-          db.UnitTestsExclusiveCollection2.update("runner1", { value: true });
-        }
-      });
 
-      db.UnitTestsExclusiveCollection2.insert({ _key: "runner2", value: false });
-      while (!db.UnitTestsExclusiveCollection2.exists("runner1")) {
-        require("internal").sleep(0.02);
-      }
-      for (let i = 0; i < 10000; i++) {
-        db._query("UPSERT { _key: 'XXX' } INSERT { name: 'runner2' } UPDATE { name: 'runner2' } IN UnitTestsExclusiveCollection1 OPTIONS { exclusive: true }");
-      }
-      db.UnitTestsExclusiveCollection2.update("runner2", { value: true });
 
-      while (true) {
-        try {
-          tasks.get(task);
-          require("internal").wait(0.25, false);
-        } catch (err) {
-          // "task not found" means the task is finished
-          break;
-        }
-      }
-
-      // both transactions should have succeeded
-      assertEqual(2, c2.count());
-      let docs = c2.toArray().sort(function(l, r) { return l._key < r._key; });
-      assertTrue(docs[0].value);
-      assertTrue(docs[1].value);
-    }
-  
   };
 }
 
