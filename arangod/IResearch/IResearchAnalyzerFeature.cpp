@@ -682,6 +682,11 @@ arangodb::Result visitAnalyzers(
                              nullptr, nullptr, arangodb::aql::PART_MAIN);
 
   auto* queryRegistry = arangodb::QueryRegistryFeature::registry();
+
+  if (!queryRegistry) {
+    return { TRI_ERROR_INTERNAL, "QueryRegistry is not set" };
+  }
+
   auto result = query.executeSync(queryRegistry);
 
   if (TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND == result.result.errorNumber()) {
