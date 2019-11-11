@@ -26,6 +26,7 @@
 
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutorInfos.h"
+#include "Aql/IResearchViewNode.h"
 #include "IResearch/ExpressionFilter.h"
 #include "IResearch/IResearchExpressionContext.h"
 #include "IResearch/IResearchVPackComparer.h"
@@ -70,11 +71,12 @@ class IResearchViewExecutorInfos : public ExecutorInfos {
       aql::AstNode const& filterCondition,
       std::pair<bool, bool> volatility,
       VarInfoMap const& varInfoMap,
-      int depth);
+      int depth, iresearch::IResearchViewNode::ViewValuesRegisters&& outNonMaterializedViewRegs);
 
   RegisterId getOutputRegister() const noexcept;
   RegisterId getFirstScoreRegister() const noexcept;
   RegisterId getNumScoreRegisters() const noexcept;
+  iresearch::IResearchViewNode::ViewValuesRegisters const& getOutNonMaterializedViewRegs() const noexcept;
   std::shared_ptr<iresearch::IResearchView::Snapshot const> getReader() const noexcept;
   Query& getQuery() const noexcept;
   std::vector<iresearch::Scorer> const& scorers() const noexcept;
@@ -106,6 +108,7 @@ class IResearchViewExecutorInfos : public ExecutorInfos {
   bool const _volatileFilter;
   VarInfoMap const& _varInfoMap;
   int const _depth;
+  iresearch::IResearchViewNode::ViewValuesRegisters _outNonMaterializedViewRegs;
 };  // IResearchViewExecutorInfos
 
 class IResearchViewStats {
@@ -241,8 +244,12 @@ class IResearchViewExecutorBase {
     // before and after.
     void assertSizeCoherence() const noexcept;
 
+    void pushSortValue(irs::bytes_ref&& sortValue);
+
+    irs::bytes_ref getSortValue(IndexReadBufferEntry bufferEntry) const noexcept;
+
    private:
-    // _keyBuffer, _scoreBuffer together hold all the
+    // _keyBuffer, _scoreBuffer, _sortValueBuffer together hold all the
     // information read from the iresearch index.
     // For the _scoreBuffer, it holds that
     //   _scoreBuffer.size() == _keyBuffer.size() * infos().getNumScoreRegisters()
@@ -253,6 +260,7 @@ class IResearchViewExecutorBase {
     // .
     std::vector<ValueType> _keyBuffer;
     std::vector<AqlValue> _scoreBuffer;
+    std::vector<irs::bytes_ref> _sortValueBuffer;
     std::size_t _numScoreRegisters;
     std::size_t _keyBaseIdx;
   };
@@ -334,7 +342,8 @@ class IResearchViewExecutor : public IResearchViewExecutorBase<IResearchViewExec
   // unset if readPK returns true.
   bool readPK(LocalDocumentId& documentId);
 
-  irs::columnstore_reader::values_reader_f _pkReader;  // current primary key reader
+  irs::columnstore_reader::values_reader_f _pkReader;   // current primary key reader
+  irs::columnstore_reader::values_reader_f _sortReader; // current sort reader
   irs::doc_iterator::ptr _itr;
   irs::document const* _doc{};
   size_t _readerOffset;
@@ -374,7 +383,7 @@ class IResearchViewMergeExecutor : public IResearchViewExecutorBase<IResearchVie
     Segment(irs::doc_iterator::ptr&& docs, irs::document const& doc,
             irs::score const& score, LogicalCollection const& collection,
             irs::columnstore_reader::values_reader_f&& sortReader,
-           irs::columnstore_reader::values_reader_f&& pkReader) noexcept;
+            irs::columnstore_reader::values_reader_f&& pkReader) noexcept;
     Segment(Segment const&) = delete;
     Segment(Segment&&) = default;
     Segment& operator=(Segment const&) = delete;

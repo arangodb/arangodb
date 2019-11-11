@@ -116,7 +116,8 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
     std::pair<arangodb::iresearch::IResearchViewSort const*, size_t> const& sort,
     ExecutionPlan const& plan, Variable const& outVariable,
     aql::AstNode const& filterCondition, std::pair<bool, bool> volatility,
-    IResearchViewExecutorInfos::VarInfoMap const& varInfoMap, int depth)
+    IResearchViewExecutorInfos::VarInfoMap const& varInfoMap, int depth,
+    IResearchViewNode::ViewValuesRegisters&& outNonMaterializedViewRegs)
     : ExecutorInfos(std::move(infos)),
       _firstOutputRegister(firstOutputRegister),
       _numScoreRegisters(numScoreRegisters),
@@ -131,7 +132,8 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
       // `_volatileSort` implies `_volatileFilter`
       _volatileFilter(_volatileSort || volatility.first),
       _varInfoMap(varInfoMap),
-      _depth(depth) {
+      _depth(depth),
+      _outNonMaterializedViewRegs(std::move(outNonMaterializedViewRegs)) {
   TRI_ASSERT(_reader != nullptr);
   TRI_ASSERT(getOutputRegisters()->find(firstOutputRegister) !=
              getOutputRegisters()->end());
@@ -143,6 +145,10 @@ RegisterId IResearchViewExecutorInfos::getOutputRegister() const noexcept {
 
 RegisterId IResearchViewExecutorInfos::getNumScoreRegisters() const noexcept {
   return _numScoreRegisters;
+}
+
+IResearchViewNode::ViewValuesRegisters const& IResearchViewExecutorInfos::getOutNonMaterializedViewRegs() const noexcept {
+  return _outNonMaterializedViewRegs;
 }
 
 RegisterId IResearchViewExecutorInfos::getFirstScoreRegister() const noexcept {
@@ -287,7 +293,7 @@ std::vector<AqlValue>::iterator IResearchViewExecutorBase<Impl, Traits>::IndexRe
 template <typename Impl, typename Traits>
 template <typename ValueType>
 IResearchViewExecutorBase<Impl, Traits>::IndexReadBuffer<ValueType>::IndexReadBuffer(std::size_t const numScoreRegisters)
-    : _keyBuffer(), _scoreBuffer(), _numScoreRegisters(numScoreRegisters), _keyBaseIdx(0) {}
+  : _keyBuffer(), _scoreBuffer(), _sortValueBuffer(), _numScoreRegisters(numScoreRegisters), _keyBaseIdx(0) {}
 
 template <typename Impl, typename Traits>
 template <typename ValueType>
@@ -316,6 +322,20 @@ void IResearchViewExecutorBase<Impl, Traits>::IndexReadBuffer<ValueType>::pushVa
 
 template <typename Impl, typename Traits>
 template <typename ValueType>
+void IResearchViewExecutorBase<Impl, Traits>::IndexReadBuffer<ValueType>::pushSortValue(irs::bytes_ref&& sortValue) {
+  _sortValueBuffer.emplace_back(std::move(sortValue));
+}
+
+template <typename Impl, typename Traits>
+template <typename ValueType>
+irs::bytes_ref IResearchViewExecutorBase<Impl, Traits>::IndexReadBuffer<ValueType>::getSortValue(
+    const IResearchViewExecutorBase::IndexReadBufferEntry bufferEntry) const noexcept {
+  TRI_ASSERT(bufferEntry._keyIdx < _sortValueBuffer.size());
+  return _sortValueBuffer[bufferEntry._keyIdx];
+}
+
+template <typename Impl, typename Traits>
+template <typename ValueType>
 void IResearchViewExecutorBase<Impl, Traits>::IndexReadBuffer<ValueType>::pushScore(float_t const scoreValue) {
   _scoreBuffer.emplace_back(AqlValueHintDouble{scoreValue});
 }
@@ -334,6 +354,7 @@ void IResearchViewExecutorBase<Impl, Traits>::IndexReadBuffer<ValueType>::reset(
   _keyBaseIdx = 0;
   _keyBuffer.clear();
   _scoreBuffer.clear();
+  _sortValueBuffer.clear();
 }
 
 template <typename Impl, typename Traits>
@@ -625,7 +646,7 @@ bool IResearchViewExecutorBase<Impl, Traits>::writeRow(ReadContext& ctx,
                                                        LogicalCollection const& collection) {
   TRI_ASSERT(documentId.isSet());
   bool writeDocOk;
-  if (Traits::Materialized) {
+  if constexpr (Traits::Materialized) {
     // read document from underlying storage engine, if we got an id
     writeDocOk = collection.readDocumentWithCallback(infos().getQuery().trx(), documentId, ctx.callback);
   } else {
@@ -634,7 +655,7 @@ bool IResearchViewExecutorBase<Impl, Traits>::writeRow(ReadContext& ctx,
   }
   if (writeDocOk) {
     // in the ordered case we have to write scores as well as a document
-    if /* constexpr */ (Traits::Ordered) {
+    if constexpr (Traits::Ordered) {
       // scorer register are placed right before the document output register
       RegisterId scoreReg = infos().getFirstScoreRegister();
       for (auto& it : _indexReadBuffer.getScores(bufferEntry)) {
@@ -647,6 +668,37 @@ bool IResearchViewExecutorBase<Impl, Traits>::writeRow(ReadContext& ctx,
 
       // we should have written exactly all score registers by now
       TRI_ASSERT(!infos().isScoreReg(scoreReg));
+    } else {
+      UNUSED(bufferEntry);
+    }
+    if constexpr (!Traits::Materialized) {
+      auto const& outNonMaterializedViewRegs = infos().getOutNonMaterializedViewRegs();
+      if (!outNonMaterializedViewRegs.empty()) {
+        auto sortValue = _indexReadBuffer.getSortValue(bufferEntry);
+        TRI_ASSERT(!sortValue.empty());
+        if (ADB_UNLIKELY(sortValue.empty())) {
+          return false;
+        }
+        auto s = sortValue.c_str();
+        auto totalSize = sortValue.size();
+        auto slice = VPackSlice(s);
+        size_t size = 0;
+        size_t i = 0;
+        for (auto const& [fieldNum, registerId] : outNonMaterializedViewRegs) {
+          while (i < fieldNum) {
+            size += slice.byteSize();
+            TRI_ASSERT(size <= totalSize);
+            if (ADB_UNLIKELY(size > totalSize)) {
+              return false;
+            }
+            slice = VPackSlice(s + slice.byteSize());
+            ++i;
+          }
+          AqlValue v(slice);
+          AqlValueGuard guard{v, true};
+          ctx.outputRow.moveValueInto(registerId, ctx.inputRow, guard);
+        }
+      }
     }
 
     return true;
@@ -663,6 +715,7 @@ template <bool ordered, bool materialized>
 IResearchViewExecutor<ordered, materialized>::IResearchViewExecutor(Fetcher& fetcher, Infos& infos)
     : Base(fetcher, infos),
       _pkReader(),
+      _sortReader(),
       _itr(),
       _readerOffset(0),
       _scr(&irs::score::no_score()),
@@ -782,11 +835,20 @@ void IResearchViewExecutor<ordered, materialized>::fillBuffer(IResearchViewExecu
     this->_indexReadBuffer.pushValue(documentId);
 
     // in the ordered case we have to write scores as well as a document
-    if /* constexpr */ (ordered) {
+    if constexpr (ordered) {
       // Writes into _scoreBuffer
       evaluateScores(ctx);
     }
 
+    if constexpr (!materialized) {
+      if (!this->_infos.getOutNonMaterializedViewRegs().empty()) {
+        TRI_ASSERT(_sortReader);
+        irs::bytes_ref sortValue{irs::bytes_ref::NIL}; // sort column value
+        auto ok = _sortReader(_doc->value, sortValue);
+        TRI_ASSERT(ok);
+        this->_indexReadBuffer.pushSortValue(std::move(sortValue));
+      }
+    }
     // doc and scores are both pushed, sizes must now be coherent
     this->_indexReadBuffer.assertSizeCoherence();
 
@@ -822,13 +884,26 @@ bool IResearchViewExecutor<ordered, materialized>::resetIterator() {
     return false;
   }
 
+  if constexpr (!materialized) {
+    if (!this->_infos.getOutNonMaterializedViewRegs().empty()) {
+      _sortReader = ::sortColumn(segmentReader);
+
+      if (!_sortReader) {
+        LOG_TOPIC("bc5bd", WARN, arangodb::iresearch::TOPIC)
+            << "encountered a sub-reader without a sort column while "
+               "executing a query, ignoring";
+        return false;
+      }
+    }
+  }
+
   _itr = segmentReader.mask(
       this->_filter->execute(segmentReader, this->_order, this->_filterCtx));
   TRI_ASSERT(_itr);
   _doc = _itr->attributes().get<irs::document>().get();
   TRI_ASSERT(_doc);
 
-  if /* constexpr */ (ordered) {
+  if constexpr (ordered) {
     _scr = _itr->attributes().get<irs::score>().get();
 
     if (_scr) {
@@ -1031,7 +1106,7 @@ void IResearchViewMergeExecutor<ordered, materialized>::reset() {
 
     auto const* score = &irs::score::no_score();
 
-    if /* constexpr */ (ordered) {
+    if constexpr (ordered) {
       auto& scoreRef = it->attributes().get<irs::score>();
 
       if (scoreRef) {
@@ -1126,7 +1201,7 @@ void IResearchViewMergeExecutor<ordered, materialized>::fillBuffer(ReadContext& 
     this->_indexReadBuffer.pushValue(documentId, segment.collection);
 
     // in the ordered case we have to write scores as well as a document
-    if /* constexpr */ (ordered) {
+    if constexpr (ordered) {
       // Writes into _scoreBuffer
       evaluateScores(ctx, *segment.score);
     }
