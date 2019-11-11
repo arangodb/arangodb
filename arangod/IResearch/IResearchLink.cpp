@@ -1416,6 +1416,10 @@ Result IResearchLink::insert(
     }
   };
 
+  if (state.hasHint(transaction::Hints::Hint::INDEX_CREATION)) {
+    auto ctx = _dataStore._writer->documents();
+    return insertImpl(ctx);
+  }
   auto* key = this;
 
 // TODO FIXME find a better way to look up a ViewState
@@ -1591,6 +1595,8 @@ Result IResearchLink::remove(
   TRI_ASSERT(trx.state());
 
   auto& state = *(trx.state());
+
+  TRI_ASSERT(!state.hasHint(transaction::Hints::Hint::INDEX_CREATION));
 
   if (_dataStore._inRecovery && _engine->recoveryTick() <= _dataStore._recoveryTick) {
     LOG_TOPIC("7d228", TRACE, iresearch::TOPIC)

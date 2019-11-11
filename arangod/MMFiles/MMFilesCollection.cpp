@@ -2180,6 +2180,8 @@ std::shared_ptr<Index> MMFilesCollection::createIndex(arangodb::velocypack::Slic
                                             &ctx),  // aliasing ctor
       _logicalCollection, AccessMode::Type::EXCLUSIVE);
 
+  trx.addHint(transaction::Hints::Hint::INDEX_CREATION);
+
   Result res = trx.begin();
 
   if (!res.ok()) {
