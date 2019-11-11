@@ -61,7 +61,7 @@ void SharedQueryState::waitForAsyncWakeup() {
 void SharedQueryState::setWakeupHandler(std::function<bool()> const& cb) {
   std::lock_guard<std::mutex> guard(_mutex);
   _wakeupCb = cb;
-//  _numWakeups = 0;
+  _numWakeups = 0;
   _cbVersion++;
   LOG_DEVEL << "setting wakeup handler " << this;
 }
