@@ -29,6 +29,7 @@
 #include "Basics/HybridLogicalClock.h"
 #include "Basics/StringUtils.h"
 #include "Basics/application-exit.h"
+#include "Basics/tryEmplaceHelper.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
@@ -568,8 +569,12 @@ OperationID ClusterComm::asyncRequest(
   auto ticketId = communicatorPtr->addRequest(std::move(newRequest));
 
   result->operationID = ticketId;
-  responses.emplace(ticketId, AsyncResponse{TRI_microtime(), result,
-                                            std::move(communicatorPtr)});
+  responses.try_emplace(
+      ticketId,
+      arangodb::lazyConstruct([&] {
+        return AsyncResponse{TRI_microtime(), result, std::move(communicatorPtr)};
+      })
+  );
   return ticketId;
 }
 
@@ -1116,7 +1121,7 @@ std::pair<ClusterCommResult*, HttpRequest*> ClusterComm::prepareRequest(
 void ClusterComm::addAuthorization(std::unordered_map<std::string, std::string>* headers) {
   if (_authenticationEnabled &&
       headers->find(StaticStrings::Authorization) == headers->end()) {
-    headers->emplace(StaticStrings::Authorization, _jwtAuthorization);
+    headers->try_emplace(StaticStrings::Authorization, _jwtAuthorization);
   }
 }
 

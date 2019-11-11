@@ -184,7 +184,7 @@ Result IndexFactory::emplace(std::string const& type, IndexTypeFactory const& fa
     }
   }
 
-  if (!_factories.emplace(type, &factory).second) {
+  if (!_factories.try_emplace(type, &factory).second) {
     return arangodb::Result(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER, std::string("index factory previously registered during index factory "
                                                                                "registration for index type '") +
                                                                        type +

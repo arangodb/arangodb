@@ -180,7 +180,7 @@ void CombiningOutCache<M>::appendMessage(PregelShard shard,
     if (it != vertexMap.end()) {  // more than one message
       _combiner->combine(vertexMap[key], data);
     } else {  // first message for this vertex
-      vertexMap.emplace(key, data);
+      vertexMap.try_emplace(key, data);
 
       if (++(this->_containedMessages) >= this->_batchSize) {
         // LOG_TOPIC("23bc7", INFO, Logger::PREGEL) << "Hit buffer limit";

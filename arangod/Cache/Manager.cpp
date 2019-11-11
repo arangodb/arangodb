@@ -150,7 +150,7 @@ std::shared_ptr<Cache> Manager::createCache(CacheType type, bool enableWindowedS
   }
 
   if (result.get() != nullptr) {
-    _caches.emplace(id, result);
+    _caches.try_emplace(id, result);
   }
   _lock.writeUnlock();
 

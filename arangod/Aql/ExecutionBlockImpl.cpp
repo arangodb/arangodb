@@ -117,7 +117,7 @@ ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine,
       _state(InternalState::FETCH_DATA) {
   // already insert ourselves into the statistics results
   if (_profile >= PROFILE_LEVEL_BLOCKS) {
-    _engine->_stats.nodes.emplace(node->id(), ExecutionStats::Node());
+    _engine->_stats.nodes.try_emplace(node->id(), ExecutionStats::Node());
   }
 }
 

@@ -101,7 +101,7 @@ EngineInfoContainerDBServerServerBased::TraverserEngineShardLists::TraverserEngi
       }
     }
 #endif
-    _vertexCollections.emplace(col->name(), std::move(shards));
+    _vertexCollections.try_emplace(col->name(), std::move(shards));
   }
 }
 

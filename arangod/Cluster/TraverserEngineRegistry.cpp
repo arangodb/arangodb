@@ -72,8 +72,8 @@ TraverserEngineID TraverserEngineRegistry::createNew(
   info->_expires = TRI_microtime() + ttl;
 
   WRITE_LOCKER(writeLocker, _lock);
-  TRI_ASSERT(_engines.find(id) == _engines.end());
-  _engines.emplace(id, info.get());
+  auto [it, emplaced] =_engines.try_emplace(id, info.get());
+  TRI_ASSERT(emplaced);
   info.release();
   return id;
 }

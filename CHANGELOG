@@ -1,7 +1,24 @@
 devel
 -----
 
-* No longer put system services in _app on single server. On cluster, this
+* Added limit for AQL range materialization to prevent out-of-memory errors.
+
+  When materializing ranges created by either the AQL `RANGE` function or by using
+  the built-in `..` operator (e.g. `1 .. 1000000`), a check is now performed if
+  the range is too big to be materialized. The threshold value is set to 10 million
+  members. Ranges with at most that many members can be materialized, ranges with
+  more members will fail to materialize and abort the query with the exception
+  `number out of range` (error code 1504).
+
+  It is still possible to create ranges with more than 10 million members as long
+  as they are not materialized. For example, the following is still valid:
+
+      FOR i IN 1 .. 1000000000 INSERT {_key: CONCAT('test', i)} INTO collection
+
+* Separately account for superuser and user request traffic. This is
+  needed for Oasis.
+
+* No longer put system services into `_apps` on single server. On cluster, this
   has never worked. This was unnecessary.
 
 * Fixed available flag for hotbackup.
