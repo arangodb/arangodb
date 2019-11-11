@@ -40,6 +40,7 @@
 #include "Aql/TraversalExecutor.h"
 #include "Aql/Variable.h"
 #include "Basics/StringUtils.h"
+#include "Basics/tryEmplaceHelper.h"
 #include "Cluster/ClusterTraverser.h"
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Cluster/SmartGraphTraverser.h"
@@ -241,7 +242,7 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, arangodb::velocypack::Slice co
   if (list.isObject()) {
     for (auto const& cond : VPackObjectIterator(list)) {
       std::string key = cond.key.copyString();
-      _vertexConditions.emplace(StringUtils::uint64(key),
+      _vertexConditions.try_emplace(StringUtils::uint64(key),
                                 new AstNode(plan->getAst(), cond.value));
     }
   }
@@ -251,7 +252,7 @@ TraversalNode::TraversalNode(ExecutionPlan* plan, arangodb::velocypack::Slice co
     for (auto const& cond : VPackObjectIterator(list)) {
       std::string key = cond.key.copyString();
       auto ecbuilder = std::make_unique<TraversalEdgeConditionBuilder>(this, cond.value);
-      _edgeConditions.emplace(StringUtils::uint64(key), std::move(ecbuilder));
+      _edgeConditions.try_emplace(StringUtils::uint64(key), std::move(ecbuilder));
     }
   }
 
@@ -431,7 +432,7 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
     TRI_ASSERT(it != varInfo.end());
     TRI_ASSERT(it->second.registerId < RegisterPlan::MaxRegisterId);
     outputRegisters->emplace(it->second.registerId);
-    outputRegisterMapping.emplace(TraversalExecutorInfos::OutputName::VERTEX,
+    outputRegisterMapping.try_emplace(TraversalExecutorInfos::OutputName::VERTEX,
                                   it->second.registerId);
   }
   if (usesEdgeOutVariable()) {
@@ -439,7 +440,7 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
     TRI_ASSERT(it != varInfo.end());
     TRI_ASSERT(it->second.registerId < RegisterPlan::MaxRegisterId);
     outputRegisters->emplace(it->second.registerId);
-    outputRegisterMapping.emplace(TraversalExecutorInfos::OutputName::EDGE,
+    outputRegisterMapping.try_emplace(TraversalExecutorInfos::OutputName::EDGE,
                                   it->second.registerId);
   }
   if (usesPathOutVariable()) {
@@ -447,7 +448,7 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
     TRI_ASSERT(it != varInfo.end());
     TRI_ASSERT(it->second.registerId < RegisterPlan::MaxRegisterId);
     outputRegisters->emplace(it->second.registerId);
-    outputRegisterMapping.emplace(TraversalExecutorInfos::OutputName::PATH,
+    outputRegisterMapping.try_emplace(TraversalExecutorInfos::OutputName::PATH,
                                   it->second.registerId);
   }
   auto opts = static_cast<TraverserOptions*>(options());
@@ -586,11 +587,11 @@ ExecutionNode* TraversalNode::clone(ExecutionPlan* plan, bool withDependencies,
     // Copy the builder
     auto ecBuilder =
         std::make_unique<TraversalEdgeConditionBuilder>(this, it.second.get());
-    c->_edgeConditions.emplace(it.first, std::move(ecBuilder));
+    c->_edgeConditions.try_emplace(it.first, std::move(ecBuilder));
   }
 
   for (auto const& it : _vertexConditions) {
-    c->_vertexConditions.emplace(it.first, it.second->clone(_plan->getAst()));
+    c->_vertexConditions.try_emplace(it.first, it.second->clone(_plan->getAst()));
   }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -673,7 +674,12 @@ void TraversalNode::prepareOptions() {
     for (auto const& jt : _globalVertexConditions) {
       it.second->addMember(jt);
     }
-    opts->_vertexExpressions.emplace(it.first, new Expression(_plan, ast, it.second));
+    opts->_vertexExpressions.try_emplace(
+      it.first,
+      arangodb::lazyConstruct([&]{
+        return new Expression(_plan, ast, it.second);
+      })
+    );
   }
   if (!_globalVertexConditions.empty()) {
     auto cond = _plan->getAst()->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
@@ -714,21 +720,27 @@ void TraversalNode::registerCondition(bool isConditionOnEdge, uint64_t condition
                                       AstNode const* condition) {
   Ast::getReferencedVariables(condition, _conditionVariables);
   if (isConditionOnEdge) {
-    auto const& it = _edgeConditions.find(conditionLevel);
-    if (it == _edgeConditions.end()) {
-      auto builder = std::make_unique<TraversalEdgeConditionBuilder>(this);
-      builder->addConditionPart(condition);
-      _edgeConditions.emplace(conditionLevel, std::move(builder));
-    } else {
+    auto[it, emplaced] = _edgeConditions.try_emplace(
+      conditionLevel,
+      arangodb::lazyConstruct([&]()-> std::unique_ptr<TraversalEdgeConditionBuilder> {
+        auto builder = std::make_unique<TraversalEdgeConditionBuilder>(this);
+        builder->addConditionPart(condition);
+        return builder;
+      })
+    );
+    if (!emplaced) {
       it->second->addConditionPart(condition);
     }
   } else {
-    auto const& it = _vertexConditions.find(conditionLevel);
-    if (it == _vertexConditions.end()) {
-      auto cond = _plan->getAst()->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
-      cond->addMember(condition);
-      _vertexConditions.emplace(conditionLevel, cond);
-    } else {
+    auto [it, emplaced] = _vertexConditions.try_emplace(
+      conditionLevel,
+      arangodb::lazyConstruct([&]{
+        auto cond = _plan->getAst()->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
+        cond->addMember(condition);
+        return cond;
+      })
+    );
+    if (!emplaced) {
       it->second->addMember(condition);
     }
   }

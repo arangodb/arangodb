@@ -861,7 +861,7 @@ void IResearchViewNode::planNodeRegisters(
   nrRegsHere.emplace_back(0);
 
   // create a copy of the last value here
-  // this is requried because back returns a reference and emplace/push_back
+  // this is required because back returns a reference and emplace/push_back
   // may invalidate all references
   aql::RegisterCount const prevRegistersCount = nrRegs.back();
   nrRegs.emplace_back(prevRegistersCount);
@@ -873,21 +873,21 @@ void IResearchViewNode::planNodeRegisters(
   for (auto const& scorer : _scorers) {
     ++nrRegsHere[depth];
     ++nrRegs[depth];
-    varInfo.emplace(scorer.var->id, aql::VarInfo(depth, totalNrRegs++));
+    varInfo.try_emplace(scorer.var->id, aql::VarInfo(depth, totalNrRegs++));
   }
 
   // Plan register for document-id only block
   if (isLateMaterialized()) {
     ++nrRegsHere[depth];
     ++nrRegs[depth];
-    varInfo.emplace(_outNonMaterializedColPtr->id, aql::VarInfo(depth, totalNrRegs++));
+    varInfo.try_emplace(_outNonMaterializedColPtr->id, aql::VarInfo(depth, totalNrRegs++));
     ++nrRegsHere[depth];
     ++nrRegs[depth];
-    varInfo.emplace(_outNonMaterializedDocId->id, aql::VarInfo(depth, totalNrRegs++));
+    varInfo.try_emplace(_outNonMaterializedDocId->id, aql::VarInfo(depth, totalNrRegs++));
   } else {
     ++nrRegsHere[depth];
     ++nrRegs[depth];
-    varInfo.emplace(_outVariable->id, aql::VarInfo(depth, totalNrRegs++));
+    varInfo.try_emplace(_outVariable->id, aql::VarInfo(depth, totalNrRegs++));
   }
 }
 

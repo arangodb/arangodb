@@ -262,14 +262,14 @@ std::unique_ptr<ExecutionBlock> ShortestPathNode::createBlock(
   if (usesVertexOutVariable()) {
     auto it = varInfo.find(vertexOutVariable()->id);
     TRI_ASSERT(it != varInfo.end());
-    outputRegisterMapping.emplace(ShortestPathExecutorInfos::OutputName::VERTEX,
+    outputRegisterMapping.try_emplace(ShortestPathExecutorInfos::OutputName::VERTEX,
                                   it->second.registerId);
     outputRegisters->emplace(it->second.registerId);
   }
   if (usesEdgeOutVariable()) {
     auto it = varInfo.find(edgeOutVariable()->id);
     TRI_ASSERT(it != varInfo.end());
-    outputRegisterMapping.emplace(ShortestPathExecutorInfos::OutputName::EDGE,
+    outputRegisterMapping.try_emplace(ShortestPathExecutorInfos::OutputName::EDGE,
                                   it->second.registerId);
     outputRegisters->emplace(it->second.registerId);
   }
