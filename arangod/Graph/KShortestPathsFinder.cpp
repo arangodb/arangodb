@@ -76,7 +76,7 @@ bool KShortestPathsFinder::computeShortestPath(VertexRef const& start, VertexRef
 
   result.clear();
 
-  auto currentBest = std::optional<double>{};
+  auto currentBest = Optional{};
 
   // We will not improve anymore if we have found a best path and the smallest
   // combined distance between left and right is bigger than that path
