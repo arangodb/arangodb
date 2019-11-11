@@ -67,7 +67,6 @@
 #include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
 #include "RestServer/UpgradeFeature.h"
-#include "RestServer/ViewTypesFeature.h"
 #include "RestServer/VocbaseContext.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Sharding/ShardingFeature.h"
@@ -189,7 +188,6 @@ class TestAnalyzer : public irs::analysis::analyzer {
     _attrs.emplace(_attr);
     _attrs.emplace(_increment);  // required by field_data::invert(...)
   }
-
   virtual irs::attribute_view const& attributes() const noexcept override {
     return _attrs;
   }
@@ -405,7 +403,7 @@ class IResearchAnalyzerFeatureTest : public ::testing::Test {
         _agencyStore);  // need 2 connections or Agency callbacks will fail
     arangodb::AgencyCommManager::MANAGER.reset(agencyCommManager);  // required for Coordinator tests
 
-    arangodb::tests::init();
+    arangodb::tests::init(true);
 
     // suppress INFO {authentication} Authentication is turned on (system only), authentication for unix sockets is turned on
     // suppress WARNING {authentication} --server.jwt-secret is insecure. Use --server.jwt-secret-keyfile instead
@@ -1191,7 +1189,6 @@ class IResearchAnalyzerFeatureCoordinatorTest : public ::testing::Test {
 
     // setup required application features
     buildFeatureEntry(new arangodb::V8DealerFeature(server), false);
-    buildFeatureEntry(new arangodb::ViewTypesFeature(server), true);
     buildFeatureEntry(tmpFeature = new arangodb::QueryRegistryFeature(server), false);
     arangodb::application_features::ApplicationServer::server->addFeature(tmpFeature);  // need QueryRegistryFeature feature to be added now in order to create the system database
     _system = irs::memory::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
@@ -2099,11 +2096,54 @@ TEST_F(IResearchAnalyzerFeatureTest, test_persistence) {
   }
 }
 
+TEST_F(IResearchAnalyzerFeatureTest, test_analyzer_equality) {
+  arangodb::iresearch::AnalyzerPool::ptr lhs;
+  ASSERT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::createAnalyzerPool(
+           lhs, "test", "TestAnalyzer", VPackParser::fromJson("\"abc\"")->slice(), irs::flags()).ok());
+  ASSERT_NE(nullptr, lhs);
+  ASSERT_EQ(*lhs, *lhs);
+
+  // different name
+  {
+    arangodb::iresearch::AnalyzerPool::ptr rhs;
+    ASSERT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::createAnalyzerPool(
+                  rhs, "test1", "TestAnalyzer", VPackParser::fromJson("\"abc\"")->slice(), irs::flags()).ok());
+    ASSERT_NE(nullptr, rhs);
+    ASSERT_NE(lhs, rhs);
+  }
+
+  // different type
+  {
+    arangodb::iresearch::AnalyzerPool::ptr rhs;
+    ASSERT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::createAnalyzerPool(
+                  rhs, "test", "ReNormalizingAnalyzer", VPackParser::fromJson("\"abc\"")->slice(), irs::flags()).ok());
+    ASSERT_NE(nullptr, rhs);
+    ASSERT_NE(lhs, rhs);
+  }
+
+  // different properties
+  {
+    arangodb::iresearch::AnalyzerPool::ptr rhs;
+    ASSERT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::createAnalyzerPool(
+                  rhs, "test", "TestAnalyzer", VPackParser::fromJson("\"abcd\"")->slice(), irs::flags()).ok());
+    ASSERT_NE(nullptr, rhs);
+    ASSERT_NE(lhs, rhs);
+  }
+
+  // different features
+  {
+    arangodb::iresearch::AnalyzerPool::ptr rhs;
+    ASSERT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::createAnalyzerPool(
+                  rhs, "test", "TestAnalyzer", VPackParser::fromJson("\"abcd\"")->slice(), irs::flags{ irs::frequency::type()}).ok());
+    ASSERT_NE(nullptr, rhs);
+    ASSERT_NE(lhs, rhs);
+  }
+}
+
 TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
-  auto* dbFeature =
-      arangodb::application_features::ApplicationServer::lookupFeature<arangodb::DatabaseFeature>(
-          "Database");
-  ASSERT_TRUE((false == !dbFeature));
+  auto* dbFeature = arangodb::application_features::ApplicationServer::lookupFeature<
+      arangodb::DatabaseFeature>("Database");
+  ASSERT_NE(nullptr, dbFeature);
 
   // remove existing
   {
@@ -2113,19 +2153,13 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
     // add analyzer
     {
       arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
-      ASSERT_TRUE(
-          (true == feature
-                       .emplace(result, arangodb::StaticStrings::SystemDatabase + "::test_analyzer0",
-                                "TestAnalyzer", VPackParser::fromJson("\"abc\"")->slice())
-                       .ok()));
-      ASSERT_TRUE((false == !feature.get(arangodb::StaticStrings::SystemDatabase +
-                                         "::test_analyzer0")));
+      ASSERT_TRUE(feature.emplace(result, arangodb::StaticStrings::SystemDatabase + "::test_analyzer0",
+                                  "TestAnalyzer", VPackParser::fromJson("\"abc\"")->slice()) .ok());
+      ASSERT_NE(nullptr, feature.get(arangodb::StaticStrings::SystemDatabase + "::test_analyzer0"));
     }
 
-    EXPECT_TRUE((true == feature
-                             .remove(arangodb::StaticStrings::SystemDatabase + "::test_analyzer0")
-                             .ok()));
-    EXPECT_TRUE((true == !feature.get(arangodb::StaticStrings::SystemDatabase + "::test_analyzer0")));
+    EXPECT_TRUE(feature.remove(arangodb::StaticStrings::SystemDatabase + "::test_analyzer0").ok());
+    EXPECT_EQ(nullptr, feature.get(arangodb::StaticStrings::SystemDatabase + "::test_analyzer0"));
   }
 
   // remove existing (inRecovery) single-server
@@ -2135,13 +2169,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
     // add analyzer
     {
       arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
-      ASSERT_TRUE(
-          (true == feature
-                       .emplace(result, arangodb::StaticStrings::SystemDatabase + "::test_analyzer0",
-                                "TestAnalyzer", VPackParser::fromJson("\"abc\"")->slice())
-                       .ok()));
-      ASSERT_TRUE((false == !feature.get(arangodb::StaticStrings::SystemDatabase +
-                                         "::test_analyzer0")));
+      ASSERT_TRUE(feature.emplace(result, arangodb::StaticStrings::SystemDatabase + "::test_analyzer0",
+                                  "TestAnalyzer", VPackParser::fromJson("\"abc\"")->slice()).ok());
+      ASSERT_NE(nullptr, feature.get(arangodb::StaticStrings::SystemDatabase + "::test_analyzer0"));
     }
 
     auto before = StorageEngineMock::recoveryStateResult;
@@ -2150,10 +2180,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
       StorageEngineMock::recoveryStateResult = before;
     });
 
-    EXPECT_TRUE((false == feature
-                              .remove(arangodb::StaticStrings::SystemDatabase + "::test_analyzer0")
-                              .ok()));
-    EXPECT_TRUE((false == !feature.get(arangodb::StaticStrings::SystemDatabase + "::test_analyzer0")));
+    EXPECT_FALSE(feature.remove(arangodb::StaticStrings::SystemDatabase + "::test_analyzer0").ok());
+    EXPECT_NE(nullptr, feature.get(arangodb::StaticStrings::SystemDatabase + "::test_analyzer0"));
   }
 
   // remove existing (dbserver)
@@ -2217,21 +2245,14 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
     // add analyzer
     {
       arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
-      ASSERT_TRUE((true == !feature->get(arangodb::StaticStrings::SystemDatabase +
-                                         "::test_analyzer2")));
-      ASSERT_TRUE((true == feature
-                               ->emplace(result, arangodb::StaticStrings::SystemDatabase + "::test_analyzer2",
-                                         "TestAnalyzer",
-                                         VPackParser::fromJson("\"abc\"")->slice())
-                               .ok()));
-      ASSERT_TRUE((false == !feature->get(arangodb::StaticStrings::SystemDatabase +
-                                          "::test_analyzer2")));
+      ASSERT_EQ(nullptr, feature->get(arangodb::StaticStrings::SystemDatabase + "::test_analyzer2"));
+      ASSERT_TRUE(feature->emplace(result, arangodb::StaticStrings::SystemDatabase + "::test_analyzer2",
+                                   "TestAnalyzer", VPackParser::fromJson("\"abc\"")->slice()).ok());
+      ASSERT_NE(nullptr, feature->get(arangodb::StaticStrings::SystemDatabase + "::test_analyzer2"));
     }
 
-    EXPECT_TRUE((true == feature
-                             ->remove(arangodb::StaticStrings::SystemDatabase + "::test_analyzer2")
-                             .ok()));
-    EXPECT_TRUE((true == !feature->get(arangodb::StaticStrings::SystemDatabase + "::test_analyzer2")));
+    EXPECT_TRUE(feature->remove(arangodb::StaticStrings::SystemDatabase + "::test_analyzer2").ok());
+    EXPECT_EQ(nullptr, feature->get(arangodb::StaticStrings::SystemDatabase + "::test_analyzer2"));
   }
 
   // remove existing (inRecovery) dbserver
@@ -2295,15 +2316,10 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
     // add analyzer
     {
       arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
-      ASSERT_TRUE((true == !feature->get(arangodb::StaticStrings::SystemDatabase +
-                                         "::test_analyzer2")));
-      ASSERT_TRUE((true == feature
-                               ->emplace(result, arangodb::StaticStrings::SystemDatabase + "::test_analyzer2",
-                                         "TestAnalyzer",
-                                         VPackParser::fromJson("\"abc\"")->slice())
-                               .ok()));
-      ASSERT_TRUE((false == !feature->get(arangodb::StaticStrings::SystemDatabase +
-                                          "::test_analyzer2")));
+      ASSERT_EQ(nullptr, feature->get(arangodb::StaticStrings::SystemDatabase + "::test_analyzer2"));
+      ASSERT_TRUE(feature->emplace(result, arangodb::StaticStrings::SystemDatabase + "::test_analyzer2",
+                                   "TestAnalyzer", VPackParser::fromJson("\"abc\"")->slice()).ok());
+      ASSERT_NE(nullptr, feature->get(arangodb::StaticStrings::SystemDatabase + "::test_analyzer2"));
     }
 
     auto before = StorageEngineMock::recoveryStateResult;
@@ -2312,40 +2328,31 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
       StorageEngineMock::recoveryStateResult = before;
     });
 
-    EXPECT_TRUE((true == feature
-                             ->remove(arangodb::StaticStrings::SystemDatabase + "::test_analyzer2")
-                             .ok()));
-    EXPECT_TRUE((true == !feature->get(arangodb::StaticStrings::SystemDatabase + "::test_analyzer2")));
+    EXPECT_TRUE(feature->remove(arangodb::StaticStrings::SystemDatabase + "::test_analyzer2").ok());
+    EXPECT_EQ(nullptr, feature->get(arangodb::StaticStrings::SystemDatabase + "::test_analyzer2"));
   }
 
   // remove existing (in-use)
   {
     arangodb::iresearch::IResearchAnalyzerFeature feature(server);
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;  // will keep reference
-    ASSERT_TRUE(
-        (true == feature
-                     .emplace(result, arangodb::StaticStrings::SystemDatabase + "::test_analyzer3",
-                              "TestAnalyzer", VPackParser::fromJson("\"abc\"")->slice())
-                     .ok()));
-    ASSERT_TRUE((false == !feature.get(arangodb::StaticStrings::SystemDatabase + "::test_analyzer3")));
+    ASSERT_TRUE(feature.emplace(result, arangodb::StaticStrings::SystemDatabase + "::test_analyzer3",
+                                "TestAnalyzer", VPackParser::fromJson("\"abc\"")->slice()).ok());
+    ASSERT_NE(nullptr, feature.get(arangodb::StaticStrings::SystemDatabase + "::test_analyzer3"));
 
-    EXPECT_TRUE((false == feature
-                              .remove(arangodb::StaticStrings::SystemDatabase + "::test_analyzer3", false)
-                              .ok()));
-    EXPECT_TRUE((false == !feature.get(arangodb::StaticStrings::SystemDatabase + "::test_analyzer3")));
-    EXPECT_TRUE((true == feature
-                             .remove(arangodb::StaticStrings::SystemDatabase + "::test_analyzer3", true)
-                             .ok()));
-    EXPECT_TRUE((true == !feature.get(arangodb::StaticStrings::SystemDatabase + "::test_analyzer3")));
+    EXPECT_FALSE(feature.remove(arangodb::StaticStrings::SystemDatabase + "::test_analyzer3", false).ok());
+    EXPECT_NE(nullptr, feature.get(arangodb::StaticStrings::SystemDatabase + "::test_analyzer3"));
+    EXPECT_TRUE(feature.remove(arangodb::StaticStrings::SystemDatabase + "::test_analyzer3", true).ok());
+    EXPECT_EQ(nullptr, feature.get(arangodb::StaticStrings::SystemDatabase + "::test_analyzer3"));
   }
 
   // remove missing (no vocbase)
   {
     arangodb::iresearch::IResearchAnalyzerFeature feature(server);
-    ASSERT_TRUE((nullptr == dbFeature->lookupDatabase("testVocbase")));
+    ASSERT_EQ(nullptr, dbFeature->lookupDatabase("testVocbase"));
 
-    EXPECT_TRUE((true == !feature.get("testVocbase::test_analyzer")));
-    EXPECT_TRUE((false == feature.remove("testVocbase::test_analyzer").ok()));
+    EXPECT_EQ(nullptr, feature.get("testVocbase::test_analyzer"));
+    EXPECT_FALSE(feature.remove("testVocbase::test_analyzer").ok());
   }
 
   // remove missing (no collection)
@@ -2353,28 +2360,26 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
     arangodb::iresearch::IResearchAnalyzerFeature feature(server);
     TRI_vocbase_t* vocbase;
     ASSERT_TRUE(dbFeature->createDatabase(1, "testVocbase", vocbase).ok());
-    ASSERT_TRUE((nullptr != dbFeature->lookupDatabase("testVocbase")));
+    ASSERT_NE(nullptr, dbFeature->lookupDatabase("testVocbase"));
 
-    EXPECT_TRUE((true == !feature.get("testVocbase::test_analyzer")));
-    EXPECT_TRUE((false == feature.remove("testVocbase::test_analyzer").ok()));
+    EXPECT_EQ(nullptr, feature.get("testVocbase::test_analyzer"));
+    EXPECT_FALSE(feature.remove("testVocbase::test_analyzer").ok());
   }
 
   // remove invalid
   {
     arangodb::iresearch::IResearchAnalyzerFeature feature(server);
-    EXPECT_TRUE((true == !feature.get(arangodb::StaticStrings::SystemDatabase + "::test_analyzer")));
-    EXPECT_TRUE((false == feature
-                              .remove(arangodb::StaticStrings::SystemDatabase + "::test_analyzer")
-                              .ok()));
+    EXPECT_EQ(nullptr, feature.get(arangodb::StaticStrings::SystemDatabase + "::test_analyzer"));
+    EXPECT_FALSE(feature.remove(arangodb::StaticStrings::SystemDatabase + "::test_analyzer").ok());
   }
 
   // remove static analyzer
   {
     arangodb::iresearch::IResearchAnalyzerFeature feature(server);
     feature.prepare();  // add static analyzers
-    EXPECT_TRUE((false == !feature.get("identity")));
-    EXPECT_TRUE((false == feature.remove("identity").ok()));
-    EXPECT_TRUE((false == !feature.get("identity")));
+    EXPECT_NE(nullptr, feature.get("identity"));
+    EXPECT_FALSE(feature.remove("identity").ok());
+    EXPECT_NE(nullptr, feature.get("identity"));
   }
 }
 

@@ -230,7 +230,7 @@ bool FieldMeta::init(velocypack::Slice const& slice,
           }
         }
 
-        if (!found) {
+        if (!found && analyzers) {
           // for cluster only check cache to avoid ClusterInfo locking issues
           // analyzer should have been populated via 'analyzerDefinitions' above
           analyzer = analyzers->get(name, ServerState::instance()->isClusterRole());
