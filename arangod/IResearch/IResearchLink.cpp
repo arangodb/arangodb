@@ -1416,6 +1416,12 @@ Result IResearchLink::insert(
     }
   };
 
+  TRI_IF_FAILURE("BlockInsertsWithoutIndexCreationHint") {
+    if (!state.hasHint(transaction::Hints::Hint::INDEX_CREATION)) {
+      return Result(TRI_ERROR_DEBUG);
+    }
+  }
+
   if (state.hasHint(transaction::Hints::Hint::INDEX_CREATION)) {
     auto ctx = _dataStore._writer->documents();
     return insertImpl(ctx);
