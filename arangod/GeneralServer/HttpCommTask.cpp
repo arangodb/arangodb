@@ -176,11 +176,11 @@ int HttpCommTask<T>::on_header_complete(llhttp_t* p) {
     char const* response = "HTTP/1.1 100 Continue\r\n\r\n";
     auto buff = asio_ns::buffer(response, strlen(response));
     asio_ns::async_write(self->_protocol->socket, buff,
-                         [self](asio_ns::error_code const& ec, std::size_t transferred) {
-                           llhttp_resume(&self->_parser);
-                           self->asyncReadSome();
+                         [self = self->shared_from_this()](asio_ns::error_code const& ec, std::size_t transferred) {
+                           HttpCommTask<T>* task = static_cast<HttpCommTask<T>*>(self.get());
+                           task->asyncReadSome();
                          });
-    return HPE_PAUSED;
+    return HPE_OK;
   }
   if (self->_request->requestType() == RequestType::HEAD) {
     // Assume that request/response has no body, proceed parsing next message
@@ -805,7 +805,8 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
   RequestStatistics::SET_WRITE_START(stat);
 
   // FIXME measure performance w/o sync write
-  auto cb = [self = CommTask::shared_from_this(),
+  asio_ns::async_write(this->_protocol->socket, buffers, 
+            [self = CommTask::shared_from_this(),
              h = std::move(header),
              b = std::move(body),
              stat](asio_ns::error_code ec, size_t nwrite) {
@@ -827,8 +828,7 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
     if (stat != nullptr) {
       stat->release();
     }
-  };
-  asio_ns::async_write(this->_protocol->socket, buffers, std::move(cb));
+  });
 }
 
 template <SocketType T>
