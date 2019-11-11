@@ -29,6 +29,7 @@
 #include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/AqlValue.h"
 #include "Aql/Range.h"
+#include "Basics/StaticStrings.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
@@ -133,7 +134,7 @@ void InputAqlItemRow::toVelocyPack(transaction::Methods* trx, VPackBuilder& resu
 
   result.add("nrItems", VPackValue(1));
   result.add("nrRegs", VPackValue(getNrRegisters()));
-  result.add("error", VPackValue(false));
+  result.add(StaticStrings::Error, VPackValue(false));
 
   enum State {
     Empty,       // saw an empty value
@@ -203,7 +204,7 @@ void InputAqlItemRow::toVelocyPack(transaction::Methods* trx, VPackBuilder& resu
       if (it == table.end()) {
         currentState = Next;
         a.toVelocyPack(trx, raw, false);
-        table.emplace(a, pos++);
+        table.try_emplace(a, pos++);
       } else {
         currentState = Positional;
         tablePos = it->second;

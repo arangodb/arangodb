@@ -71,12 +71,12 @@ void WorkerConfig::updateConfig(VPackSlice params) {
   for (VPackSlice shard : VPackArrayIterator(globalShards)) {
     ShardID s = shard.copyString();
     _globalShardIDs.push_back(s);
-    _pregelShardIDs.emplace(s, i++);  // Cache these ids
+    _pregelShardIDs.try_emplace(s, i++);  // Cache these ids
   }
 
   // To access information based on a user defined collection name we need the
   for (auto it : VPackObjectIterator(collectionPlanIdMap)) {
-    _collectionPlanIdMap.emplace(it.key.copyString(), it.value.copyString());
+    _collectionPlanIdMap.try_emplace(it.key.copyString(), it.value.copyString());
   }
 
   // Ordered list of shards for each vertex collection on the CURRENT db server
@@ -93,9 +93,9 @@ void WorkerConfig::updateConfig(VPackSlice params) {
       _localVertexShardIDs.push_back(shard);
       _localPregelShardIDs.insert(_pregelShardIDs[shard]);
       _localPShardIDs_hash.insert(_pregelShardIDs[shard]);
-      _shardToCollectionName.emplace(shard, cname);
+      _shardToCollectionName.try_emplace(shard, cname);
     }
-    _vertexCollectionShards.emplace(cname, shards);
+    _vertexCollectionShards.try_emplace(cname, shards);
   }
 
   // Ordered list of edge shards for each collection
@@ -107,9 +107,9 @@ void WorkerConfig::updateConfig(VPackSlice params) {
       ShardID shard = shardSlice.copyString();
       shards.push_back(shard);
       _localEdgeShardIDs.push_back(shard);
-      _shardToCollectionName.emplace(shard, cname);
+      _shardToCollectionName.try_emplace(shard, cname);
     }
-    _edgeCollectionShards.emplace(cname, shards);
+    _edgeCollectionShards.try_emplace(cname, shards);
   }  
 }
 

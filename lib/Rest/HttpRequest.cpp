@@ -211,7 +211,7 @@ void HttpRequest::parseHeader(char* start, size_t length) {
           // get ride of "//"
           char* g = f;
 
-          // do NOT url-decode the path, we need to distingush between
+          // do NOT url-decode the path, we need to distinguish between
           // "/document/a/b" and "/document/a%2fb"
 
           while (f < valueEnd && *f != '?' && *f != ' ' && *f != '\n') {

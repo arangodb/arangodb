@@ -383,7 +383,7 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan, VPackSlice const& slice)
     RegisterId registerId = it.get("RegisterId").getNumericValue<RegisterId>();
     unsigned int depth = it.get("depth").getNumericValue<unsigned int>();
 
-    _registerPlan->varInfo.emplace(variableId, VarInfo(depth, registerId));
+    _registerPlan->varInfo.try_emplace(variableId, VarInfo(depth, registerId));
   }
 
   VPackSlice nrRegsList = slice.get("nrRegs");
