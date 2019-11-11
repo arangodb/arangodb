@@ -651,7 +651,7 @@ void AqlItemBlock::toVelocyPack(transaction::Methods* trx, VPackBuilder& result)
         if (it == table.end()) {
           currentState = Next;
           a.toVelocyPack(trx, raw, false);
-          table.emplace(a, pos++);
+          table.try_emplace(a, pos++);
         } else {
           currentState = Positional;
           tablePos = it->second;

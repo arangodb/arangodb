@@ -29,7 +29,6 @@
 #include <velocypack/velocypack-aliases.h>
 #include <array>
 #include <boost/range/join.hpp>
-#include <boost/variant.hpp>
 #include <utility>
 
 #include "Aql/AstNode.h"

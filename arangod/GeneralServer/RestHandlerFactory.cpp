@@ -125,7 +125,7 @@ RestHandler* RestHandlerFactory::createHandler(application_features::Application
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestHandlerFactory::addHandler(std::string const& path, create_fptr func, void* data) {
-  if (!_constructors.emplace(path, std::make_pair(func, data)).second) {
+  if (!_constructors.try_emplace(path, func, data).second) {
     // there should only be one handler for each path
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL,

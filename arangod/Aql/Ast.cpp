@@ -40,6 +40,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
+#include "Basics/tryEmplaceHelper.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Containers/SmallVector.h"
@@ -1132,7 +1133,7 @@ AstNode* Ast::createNodeIntersectedArray(AstNode const* lhs, AstNode const* rhs)
     auto member = lhs->getMemberUnchecked(i);
     VPackSlice slice = member->computeValue();
 
-    cache.emplace(slice, member);
+    cache.try_emplace(slice, member);
   }
 
   auto node = createNodeArray(cache.size() + nr);
@@ -1176,7 +1177,7 @@ AstNode* Ast::createNodeUnionizedArray(AstNode const* lhs, AstNode const* rhs) {
     }
     VPackSlice slice = member->computeValue();
 
-    if (cache.emplace(slice, member).second) {
+    if (cache.try_emplace(slice, member).second) {
       // only insert unique values
       node->addMember(member);
     }
@@ -1876,7 +1877,7 @@ void Ast::validateAndOptimize() {
       return false;
     } else if (node->type == NODE_TYPE_COLLECTION) {
       // note the level on which we first saw a collection
-      ctx->collectionsFirstSeen.emplace(node->getString(), ctx->nestingLevel);
+      ctx->collectionsFirstSeen.try_emplace(node->getString(), ctx->nestingLevel);
     } else if (node->type == NODE_TYPE_AGGREGATIONS) {
       ++ctx->stopOptimizationRequests;
     } else if (node->type == NODE_TYPE_SUBQUERY) {
@@ -2069,7 +2070,7 @@ void Ast::validateAndOptimize() {
         definition = (*it).second;
       }
 
-      ctx->variableDefinitions.emplace(variable, definition);
+      ctx->variableDefinitions.try_emplace(variable, definition);
       return this->optimizeLet(node);
     }
 
@@ -2217,13 +2218,13 @@ TopLevelAttributes Ast::getReferencedAttributes(AstNode const* node, bool& isSaf
         THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
       }
 
-      auto it = result.find(variable);
-
-      if (it == result.end()) {
-        // insert variable and attributeName
-        result.emplace(variable, std::unordered_set<std::string>(
-                                     {std::string(attributeName, nameLength)}));
-      } else {
+      auto[it, emp] = result.try_emplace(
+        variable,
+        arangodb::lazyConstruct([&]{
+         return std::unordered_set<std::string>( {std::string(attributeName, nameLength)});
+         })
+      );
+      if (emp) {
         // insert attributeName only
         (*it).second.emplace(attributeName, nameLength);
       }
@@ -2582,7 +2583,7 @@ AstNode const* Ast::deduplicateArray(AstNode const* node) {
     VPackSlice slice = member->computeValue();
 
     if (cache.find(slice) == cache.end()) {
-      cache.emplace(slice, member);
+      cache.try_emplace(slice, member);
     }
   }
 

@@ -172,7 +172,7 @@ void TRI_vocbase_t::registerCollection(bool doLock,
     TRI_DEFER(checkCollectionInvariants());
 
     // check name
-    auto it = _dataSourceByName.emplace(name, collection);
+    auto it = _dataSourceByName.try_emplace(name, collection);
 
     if (!it.second) {
       std::string msg;
@@ -187,7 +187,7 @@ void TRI_vocbase_t::registerCollection(bool doLock,
 
     // check collection identifier
     try {
-      auto it2 = _dataSourceById.emplace(cid, collection);
+      auto it2 = _dataSourceById.try_emplace(cid, collection);
 
       if (!it2.second) {
         std::string msg;
@@ -204,7 +204,7 @@ void TRI_vocbase_t::registerCollection(bool doLock,
     }
 
     try {
-      auto it2 = _dataSourceByUuid.emplace(collection->guid(), collection);
+      auto it2 = _dataSourceByUuid.try_emplace(collection->guid(), collection);
 
       if (!it2.second) {
         std::string msg;

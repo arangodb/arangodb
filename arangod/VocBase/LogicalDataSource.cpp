@@ -148,8 +148,7 @@ namespace arangodb {
   static std::mutex mutex;
   static std::map<arangodb::velocypack::StringRef, LogicalDataSource::Type, Less> types;
   std::lock_guard<std::mutex> lock(mutex);
-  auto itr = types.emplace(name, Type());
-
+  auto itr = types.try_emplace(name, Type());
   if (itr.second && name.data()) {
     const_cast<std::string&>(itr.first->second._name) = name.toString();  // update '_name'
     const_cast<arangodb::velocypack::StringRef&>(itr.first->first) =

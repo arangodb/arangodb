@@ -267,7 +267,7 @@ void AsyncJobManager::initAsyncJob(std::shared_ptr<RestHandler> handler) {
 
   WRITE_LOCKER(writeLocker, _lock);
 
-  _jobs.emplace(jobId, std::make_pair(std::move(user), ajr));
+  _jobs.try_emplace(jobId, std::move(user), std::move(ajr));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

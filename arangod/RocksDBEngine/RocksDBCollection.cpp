@@ -838,7 +838,7 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
     if (options.returnNew) {
       resultMdr.setManaged(newSlice.begin());
       TRI_ASSERT(resultMdr.revisionId() == revisionId);
-    } else if(!options.silent) {  //  need to pass revId manually
+    } else if (!options.silent) {  //  need to pass revId manually
       transaction::BuilderLeaser keyBuilder(trx);
       keyBuilder->openObject(/*unindexed*/true);
       keyBuilder->add(StaticStrings::KeyString, transaction::helpers::extractKeyFromDocument(newSlice));

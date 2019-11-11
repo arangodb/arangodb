@@ -148,7 +148,7 @@ static MMFilesDatafileStatisticsContainer* FindDatafileStats(OpenIteratorState* 
   }
 
   auto stats = std::make_unique<MMFilesDatafileStatisticsContainer>();
-  state->_stats.emplace(fid, stats.get());
+  state->_stats.try_emplace(fid, stats.get());
   return stats.release();
 }
 

@@ -114,12 +114,12 @@ class GeneralResponse {
 
   // adds a header. the header field name will be lower-cased
   void setHeader(std::string const& key, std::string const& value) {
-    _headers[basics::StringUtils::tolower(key)] = value;
+    _headers.insert_or_assign(basics::StringUtils::tolower(key), value);
   }
 
   // adds a header. the header field name must be lower-cased
   void setHeaderNC(std::string const& key, std::string value) {
-    _headers[key] = std::move(value);
+    _headers.insert_or_assign(key, std::move(value));
   }
 
   // adds a header if not set. the header field name must be lower-cased

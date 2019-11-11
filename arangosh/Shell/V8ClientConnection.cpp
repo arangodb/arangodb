@@ -116,7 +116,7 @@ std::shared_ptr<fuerte::Connection> V8ClientConnection::createConnection() {
     VPackSlice body;
     if (res->contentType() == fuerte::ContentType::VPack) {
       body = res->slice();
-    } else if (res->contentType() == fuerte::ContentType::Json){
+    } else if (res->contentType() == fuerte::ContentType::Json) {
       parsedBody =
           VPackParser::fromJson(reinterpret_cast<char const*>(res->payload().data()),
                                 res->payload().size());
