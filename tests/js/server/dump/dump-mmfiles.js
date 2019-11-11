@@ -488,6 +488,7 @@ function dumpTestSuite () {
 /// @brief test custom analyzers restoring
 ////////////////////////////////////////////////////////////////////////////////
     testAnalyzers: function() {
+      assertNotEqual(null, db._collection("_analyzers"));
       assertEqual(1, db._analyzers.count()); // only 1 stored custom analyzer
 
       let analyzer = analyzers.analyzer("custom");
@@ -497,7 +498,18 @@ function dumpTestSuite () {
       assertEqual(" ", analyzer.properties().delimiter);
       assertEqual(1, analyzer.features().length);
       assertEqual("frequency", analyzer.features()[0]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test link on analyzers collection
+////////////////////////////////////////////////////////////////////////////////
+    testIndexAnalyzerCollection : function() {
+      var res = db._query("FOR d IN analyzersView OPTIONS {waitForSync:true} RETURN d").toArray();
+      assertEqual(1, db._analyzers.count());
+      assertEqual(1, res.length);
+      assertEqual(db._analyzers.toArray()[0], res[0]);
     }
+  };
 
   };
 

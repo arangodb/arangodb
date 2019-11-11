@@ -287,6 +287,18 @@ function setupSatelliteCollections() {
     c.save({ value: -1, text: "the red foxx jumps over the pond" });
   } catch (err) { }
 
+  // setup a view on _analyzers collection
+  try {
+    let view = db._createView("analyzersView", "arangosearch", {
+      links: {
+        _analyzers : {
+          includeAllFields:true,
+          analyzers: [ analyzer.name() ]
+        }
+      }
+    });
+  } catch (err) { }
+
   setupSmartGraph();
   setupSmartArangoSearch();
   setupSatelliteCollections();
