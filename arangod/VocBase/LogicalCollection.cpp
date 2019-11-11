@@ -109,7 +109,7 @@ arangodb::LogicalDataSource::Type const& readType(arangodb::velocypack::Slice in
 
   // arbitrary system-global value for unknown
   static const auto& unknown =
-      arangodb::LogicalDataSource::Type::emplace(arangodb::velocypack::StringRef(""));
+      arangodb::LogicalDataSource::Type::emplace(arangodb::velocypack::StringRef());
 
   switch (Helper::getNumericValue<TRI_col_type_e, int>(info, key, def)) {
     case TRI_col_type_e::TRI_COL_TYPE_DOCUMENT:
