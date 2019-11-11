@@ -38,7 +38,6 @@
 #include "MMFiles/MMFilesPersistentIndexFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
-#include "Replication/ReplicationFeature.h"
 #include "RestServer/FrontendFeature.h"
 #include "RestServer/ScriptFeature.h"
 #include "Statistics/StatisticsFeature.h"
@@ -68,7 +67,7 @@ AgencyFeature::AgencyFeature(application_features::ApplicationServer& server)
       _compactionStepSize(1000),
       _compactionKeepSize(50000),
       _maxAppendSize(250),
-      _supervisionGracePeriod(0.0),
+      _supervisionGracePeriod(10.0),
       _cmdLineTimings(false) {
   setOptional(true);
   startsAfter<FoxxFeaturePhase>();
@@ -114,7 +113,7 @@ void AgencyFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options->addOption(
       "--agency.supervision-grace-period",
-      "supervision time, after which a server is considered to have failed (in seconds, 0 = auto-select grace period)",
+      "supervision time, after which a server is considered to have failed (in seconds)",
       new DoubleParameter(&_supervisionGracePeriod));
 
   options->addOption("--agency.compaction-step-size",
@@ -309,21 +308,6 @@ void AgencyFeature::prepare() {
   if (_waitForSync) {
     _maxAppendSize /= 10;
   }
-
-  // default value for supervision-grace-period was 10 seconds in 3.5 and before.
-  // 3.6 changes the default to 0.0, which means "determine grace period automatically"
-  if (_supervisionGracePeriod <= 0.00001) {
-    ReplicationFeature& replicationFeature = server().getFeature<ReplicationFeature>();
-    if (replicationFeature.isActiveFailoverEnabled()) {
-      // default value for active failover
-      _supervisionGracePeriod = 30.0;
-    } else {
-      // default value for regular cluster
-      _supervisionGracePeriod = 10.0;
-    }
-  }
-
-  TRI_ASSERT(_supervisionGracePeriod > 0.0);
 
   _agent.reset(new consensus::Agent(
       server(), consensus::config_t(_recoveryId, _size, _poolSize, _minElectionTimeout,
