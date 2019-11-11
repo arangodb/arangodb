@@ -311,11 +311,15 @@ Result QueryStreamCursor::dumpSync(VPackBuilder& builder) {
 
 /// Set wakeup callback on streaming cursor
 void QueryStreamCursor::setWakeupHandler(std::function<bool()> const& cb) {
-  _query->sharedState()->setWakeupHandler(cb);
+  if (_query) {
+    _query->sharedState()->setWakeupHandler(cb);
+  }
 }
 
 void QueryStreamCursor::resetWakeupHandler() {
-  _query->sharedState()->resetWakeupHandler();
+  if (_query) {
+    _query->sharedState()->resetWakeupHandler();
+  }
 }
 
 Result QueryStreamCursor::writeResult(VPackBuilder& builder) {
