@@ -235,7 +235,7 @@ void KShortestPathsFinder::advanceFrontier(Ball& source, Ball const& target,
     double totalWeight = v->_weight + w->_weight;
     if (!currentBest.has_value() || totalWeight < currentBest.value()) {
       join = v->_vertex;
-      currentBest = v->_weight + w->_weight;
+      currentBest = totalWeight;
     }
   }
 }
