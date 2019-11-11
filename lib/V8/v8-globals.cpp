@@ -95,6 +95,7 @@ TRI_v8_global_t::TRI_v8_global_t(v8::Isolate* isolate, size_t id)
       ProtocolKey(),
       RawSuffixKey(),
       RequestBodyKey(),
+      RawRequestBodyKey(),
       RequestTypeKey(),
       ResponseCodeKey(),
       ReturnNewKey(),
@@ -191,6 +192,7 @@ TRI_v8_global_t::TRI_v8_global_t(v8::Isolate* isolate, size_t id)
   ProtocolKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "protocol"));
   RawSuffixKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "rawSuffix"));
   RequestBodyKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "requestBody"));
+  RawRequestBodyKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "rawRequestBody"));
   RequestTypeKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "requestType"));
   ResponseCodeKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "responseCode"));
   ReturnNewKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "returnNew"));

@@ -1143,9 +1143,20 @@ function processQuery(query, explain, planIndex) {
         if (node.filter) {
           filter = '   ' + keyword('FILTER') + ' ' + buildExpression(node.filter) + '   ' + annotation('/* early pruning */');
         }
+        let indexAnnotation = '';
+        let indexVariables = '';
+        if (node.hasOwnProperty('outNmDocId')) {
+          indexAnnotation += '/* with late materialization */';
+          if (node.hasOwnProperty('IndexValuesVars') && node.IndexValuesVars.length > 0) {
+            indexVariables = node.IndexValuesVars.map(function (IndexValuesVar) {
+              return keyword(' LET ') + variableName(IndexValuesVar) + ' = ' + variableName(node.outVariable) + '.' + attribute(IndexValuesVar.field);
+            }).join('');
+          }
+        }
         node.indexes.forEach(function (idx, i) { iterateIndexes(idx, i, node, types, false); });
-        return `${keyword('FOR')} ${variableName(node.outVariable)} ${keyword('IN')} ${collection(node.collection)}   ${annotation(`/* ${types.join(', ')}${projection(node)}${node.satellite ? ', satellite' : ''}${restriction(node)}`)} */` + filter;
-      
+        return `${keyword('FOR')} ${variableName(node.outVariable)} ${keyword('IN')} ${collection(node.collection)}` + indexVariables +
+          `   ${annotation(`/* ${types.join(', ')}${projection(node)}${node.satellite ? ', satellite' : ''}${restriction(node)} */`)} ` + filter +
+          '   ' + annotation(indexAnnotation);
       case 'TraversalNode':
         if (node.hasOwnProperty("options")) {
           node.minMaxDepth = node.options.minDepth + '..' + node.options.maxDepth;

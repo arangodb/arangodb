@@ -269,14 +269,14 @@ namespace arangodb {
 
 namespace iresearch {
 
-void lateDocumentMaterializationRule(arangodb::aql::Optimizer* opt,
+void lateDocumentMaterializationArangoSearchRule(arangodb::aql::Optimizer* opt,
                      std::unique_ptr<arangodb::aql::ExecutionPlan> plan,
                      arangodb::aql::OptimizerRule const& rule) {
   bool modified = false;
   auto addPlan = arangodb::scopeGuard([opt, &plan, &rule, &modified]() {
     opt->addPlan(std::move(plan), rule, modified);
   });
-      // currently only arangosearch view node supports late materialization
+      // arangosearch view node supports late materialization
   if (!plan->contains(EN::ENUMERATE_IRESEARCH_VIEW) ||
       // we need sort node  to be present  (without sort it will be just skip, nothing to optimize)
       !plan->contains(EN::SORT) ||
@@ -297,7 +297,7 @@ void lateDocumentMaterializationRule(arangodb::aql::Optimizer* opt,
       }
       ExecutionNode* current = limitNode->getFirstDependency();
       ExecutionNode* sortNode = nullptr;
-      // examinig plan. We are looking for SortNode closest to lowerest LimitNode
+      // examining plan. We are looking for SortNode closest to lowest LimitNode
       // without document body usage before that node.
       // this node could be appended with materializer
       bool stopSearch = false;
@@ -347,7 +347,7 @@ void lateDocumentMaterializationRule(arangodb::aql::Optimizer* opt,
         viewNode.setLateMaterialized(localColPtrTmp, localDocIdTmp);
         // insert a materialize node
         auto materializeNode =
-            plan->registerNode(std::make_unique<MaterializeNode>(
+            plan->registerNode(std::make_unique<materialize::MaterializeMultiNode>(
               plan.get(), plan->nextId(), *localColPtrTmp, *localDocIdTmp, viewNode.outVariable()));
 
         // on cluster we need to materialize node stay close to sort node on db server (to avoid network hop for materialization calls)

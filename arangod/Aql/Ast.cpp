@@ -2657,7 +2657,8 @@ AstNode* Ast::makeConditionFromExample(AstNode const* node) {
   }
 
   AstNode* result = nullptr;
-  std::vector<std::pair<char const*, size_t>> attributeParts{};
+  ::arangodb::containers::SmallVector<arangodb::velocypack::StringRef>::allocator_type::arena_type a;
+  ::arangodb::containers::SmallVector<arangodb::velocypack::StringRef> attributeParts{a};
 
   std::function<void(AstNode const*)> createCondition = [&](AstNode const* object) -> void {
     TRI_ASSERT(object->type == NODE_TYPE_OBJECT);
@@ -2673,8 +2674,7 @@ AstNode* Ast::makeConditionFromExample(AstNode const* node) {
             "expecting object literal with literal attribute names in example");
       }
 
-      attributeParts.emplace_back(
-          std::make_pair(member->getStringValue(), member->getStringLength()));
+      attributeParts.emplace_back(member->getStringRef());
 
       auto value = member->getMember(0);
 
@@ -2683,7 +2683,7 @@ AstNode* Ast::makeConditionFromExample(AstNode const* node) {
       } else {
         auto access = variable;
         for (auto const& it : attributeParts) {
-          access = createNodeAttributeAccess(access, it.first, it.second);
+          access = createNodeAttributeAccess(access, it.data(), it.size());
         }
 
         auto condition =

@@ -861,7 +861,7 @@ void IResearchViewNode::planNodeRegisters(
   nrRegsHere.emplace_back(0);
 
   // create a copy of the last value here
-  // this is requried because back returns a reference and emplace/push_back
+  // this is required because back returns a reference and emplace/push_back
   // may invalidate all references
   aql::RegisterCount const prevRegistersCount = nrRegs.back();
   nrRegs.emplace_back(prevRegistersCount);

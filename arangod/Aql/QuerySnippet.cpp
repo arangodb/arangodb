@@ -76,6 +76,15 @@ void QuerySnippet::addNode(ExecutionNode* node) {
       _expansions.emplace_back(node, false, false);
       break;
     }
+  case ExecutionNode::MATERIALIZE: {
+      auto collectionAccessingNode = dynamic_cast<CollectionAccessingNode*>(node);
+      // Materialize index node - true
+      // Materialize view node - false
+      if (collectionAccessingNode != nullptr) {
+        _expansions.emplace_back(node, true, false);
+      }
+      break;
+    }
     default:
       // do nothing
       break;
