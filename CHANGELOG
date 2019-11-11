@@ -1,6 +1,9 @@
 v3.5.3 (XXXX-XX-XX)
 -------------------
 
+* Fixed issue #10371: K_SHORTEST_PATHS LIMIT 1 can not return the shortest path.
+  Now the shortest path is returned as the first one in such queries.
+
 * Improve killability of some types of cluster AQL queries. Previously, several
   cluster queries, especially those containing a `DistributeNode` in their
   execution plans, did not respond to a kill instruction.
