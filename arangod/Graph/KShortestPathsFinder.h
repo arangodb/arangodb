@@ -33,6 +33,7 @@
 #include <velocypack/StringRef.h>
 
 #include <list>
+#include <optional>
 
 namespace arangodb {
 
