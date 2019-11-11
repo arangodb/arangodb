@@ -52,6 +52,8 @@
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 
+#include <optional>
+
 using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::graph;
