@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fixed issue #10371: K_SHORTEST_PATHS LIMIT 1 can not return the shortest path.
+  Now the shortest path is returned as the first one in such queries.
+
 * Added limit for AQL range materialization to prevent out-of-memory errors.
 
   When materializing ranges created by either the AQL `RANGE` function or by using
