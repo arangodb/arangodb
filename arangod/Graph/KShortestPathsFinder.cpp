@@ -76,7 +76,7 @@ bool KShortestPathsFinder::computeShortestPath(VertexRef const& start, VertexRef
 
   result.clear();
 
-  auto currentBest = Optional{};
+  auto currentBest = boost::optional<double>{};
 
   // We will not improve anymore if we have found a best path and the smallest
   // combined distance between left and right is bigger than that path
@@ -191,7 +191,7 @@ void KShortestPathsFinder::advanceFrontier(Ball& source, Ball const& target,
                                            std::unordered_set<VertexRef> const& forbiddenVertices,
                                            std::unordered_set<Edge> const& forbiddenEdges,
                                            VertexRef& join,
-                                           std::optional<double>& currentBest) {
+                                           boost::optional<double>& currentBest) {
   VertexRef vr;
   DijkstraInfo *v, *w;
   std::vector<Step>* neighbours;

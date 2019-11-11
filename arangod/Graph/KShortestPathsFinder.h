@@ -34,6 +34,8 @@
 
 #include <list>
 
+#include <boost/optional.hpp>
+
 namespace arangodb {
 
 namespace velocypack {
@@ -204,20 +206,6 @@ class KShortestPathsFinder : public ShortestPathFinder {
   // how to trace paths from the vertex from start/to end.
   typedef std::unordered_map<VertexRef, FoundVertex> FoundVertexCache;
 
-  struct Optional {
-    double _value;
-    bool _valueSet;
-
-    Optional() : valueSet(false){};
-
-    operator=(double value) {
-      _valueSet = true;
-      _value = value;
-    }
-    bool has_value() const noexcept { return _valueSet; }
-    bool value() const noexcept { return _value; }
-  };
-
  public:
   explicit KShortestPathsFinder(ShortestPathOptions& options);
   ~KShortestPathsFinder();
@@ -266,7 +254,7 @@ class KShortestPathsFinder : public ShortestPathFinder {
   void advanceFrontier(Ball& source, Ball const& target,
                        std::unordered_set<VertexRef> const& forbiddenVertices,
                        std::unordered_set<Edge> const& forbiddenEdges,
-                       VertexRef& join, Optional& currentBest);
+                       VertexRef& join, boost::optional<double>& currentBest);
 
  private:
   bool _pathAvailable;

@@ -50,6 +50,8 @@
 #include "../Mocks/StorageEngineMock.h"
 #include "IResearch/common.h"
 
+#include "boost/optional.hpp"
+
 using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::graph;
@@ -190,7 +192,7 @@ struct MockGraphDatabase {
         : _from(from), _to(to), _weight(weight){};
     size_t _from;
     size_t _to;
-    std::optional<double> _weight;
+    boost::optional<double> _weight;
   };
 
   // Create a collection with name <name> of edges given by <edges>
