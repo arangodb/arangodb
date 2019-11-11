@@ -60,8 +60,8 @@ RestAqlHandler::RestAqlHandler(application_features::ApplicationServer& server,
     : RestVocbaseBaseHandler(server, request, response),
       _queryRegistry(registries->first),
       _traverserRegistry(registries->second),
-      _qId(0),
-      _query(nullptr) {
+      _query(nullptr),
+      _qId(0) {
   TRI_ASSERT(_queryRegistry != nullptr);
   TRI_ASSERT(_traverserRegistry != nullptr);
 }
