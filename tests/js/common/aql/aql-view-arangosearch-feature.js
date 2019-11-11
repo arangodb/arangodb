@@ -27,6 +27,7 @@
 var jsunity = require("jsunity");
 var db = require("@arangodb").db;
 var analyzers = require("@arangodb/analyzers");
+const arango = require('@arangodb').arango;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -240,14 +241,7 @@ function iResearchFeatureAqlTestSuite () {
 
       // force server-side V8 garbage collection
       if (db._connection !== undefined) { // client test
-        let url = require('internal').arango.getEndpoint().replace('tcp', 'http');
-        url += '/_admin/execute?returnAsJSON=true';
-        let options = require('@arangodb/process-utils').makeAuthorizationHeaders({
-          username: 'root',
-          password: ''
-        });
-        options.method = 'POST';
-        require('internal').download(url, 'require("internal").wait(0.1, true);', options);
+        arango.POST('/_admin/execute?returnAsJSON=true', 'require("internal").wait(0.1, true);');
       } else {
         require("internal").wait(0.1, true);
       }

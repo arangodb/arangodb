@@ -287,15 +287,12 @@ arangodb::Result IResearchViewCoordinator::link(IResearchLink const& link) {
 
   WriteMutex mutex(_mutex); // '_collections' can be asynchronously read
   SCOPED_LOCK(mutex);
-  auto entry = _collections.emplace( // emplace definition
-    std::piecewise_construct, // piecewise construct
-    std::forward_as_tuple(cid), // key
-    std::forward_as_tuple( // value
-      link.collection().name(), std::move(sanitizedBuilder) // args
-    )
+  auto [it, emplaced] = _collections.try_emplace( // emplace definition
+    cid, // key
+    link.collection().name(), std::move(sanitizedBuilder) // value
   );
 
-  if (!entry.second) {
+  if (!emplaced) {
     return arangodb::Result( // result
       TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER, // code
       std::string("duplicate entry while emplacing collection '") + std::to_string(cid) + "' into arangosearch View '" + name() + "'"
