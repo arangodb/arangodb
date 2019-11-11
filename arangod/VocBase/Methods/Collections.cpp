@@ -299,7 +299,7 @@ Result Collections::create(TRI_vocbase_t& vocbase,
       }
 
       if (!vocbase.IsSystemName(info.name)) {
-        uint64_t numberOfShards = arangodb::basics::VelocyPackHelper::readNumericValue<uint64_t>(info.properties, StaticStrings::NumberOfShards, 0);
+        uint64_t numberOfShards = arangodb::basics::VelocyPackHelper::getNumericValue<uint64_t>(info.properties, StaticStrings::NumberOfShards, 0);
         // system-collections will be sharded normally. only user collections will get
         // the forced sharding
         if (vocbase.server().getFeature<ClusterFeature>().forceOneShard()) {

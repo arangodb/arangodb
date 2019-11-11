@@ -337,9 +337,10 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
   bool forwarded;
   auto res = handler->forwardRequest(forwarded);
   if (forwarded) {
-    std::move(res).thenFinal([self = shared_from_this(), handler = std::move(handler)](
+    RequestStatistics::SET_SUPERUSER(statistics(messageId));
+    std::move(res).thenFinal([self = shared_from_this(), handler = std::move(handler), messageId](
                                  futures::Try<Result> && /*ignored*/) -> void {
-      self->sendResponse(handler->stealResponse(), handler->stealStatistics());
+      self->sendResponse(handler->stealResponse(), self->stealStatistics(messageId));
     });
     return;
   }
