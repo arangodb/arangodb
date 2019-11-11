@@ -33,19 +33,13 @@ class RocksDBEngine;
 
 class RocksDBBackgroundThread final : public Thread {
  public:
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief engine pointer
-  //////////////////////////////////////////////////////////////////////////////
   RocksDBEngine& _engine;
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief interval in which we will run
-  //////////////////////////////////////////////////////////////////////////////
   double const _interval;
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief condition variable for heartbeat
-  //////////////////////////////////////////////////////////////////////////////
   arangodb::basics::ConditionVariable _condition;
 
   RocksDBBackgroundThread(RocksDBEngine& eng, double interval);
@@ -55,6 +49,13 @@ class RocksDBBackgroundThread final : public Thread {
 
  protected:
   void run() override;
+  
+ private:
+  /// @brief next time point for flushing column families
+  /// note that we need to flush column families every now and then
+  /// to prevent data from exotic column families to only reside in
+  /// memtables and block WAL file collection
+  double _nextFlushTime;
 };
 }  // namespace arangodb
 

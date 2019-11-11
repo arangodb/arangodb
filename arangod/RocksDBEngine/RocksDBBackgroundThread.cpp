@@ -22,6 +22,7 @@
 
 #include "RocksDBBackgroundThread.h"
 #include "Basics/ConditionLocker.h"
+#include "Random/RandomGenerator.h"
 #include "Replication/ReplicationClients.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -33,7 +34,17 @@
 using namespace arangodb;
 
 RocksDBBackgroundThread::RocksDBBackgroundThread(RocksDBEngine& eng, double interval)
-    : Thread(eng.server(), "RocksDBThread"), _engine(eng), _interval(interval) {}
+    : Thread(eng.server(), "RocksDBThread"), 
+      _engine(eng), 
+      _interval(interval),
+      _nextFlushTime(TRI_microtime() + 10.0 * 60.0 + RandomGenerator::interval(uint32_t(120))) {
+  // initial column family flush is around 10 minutes after startup, with a bit of
+  // random delay. The random delay is used to prevent all servers from flushing their
+  // data at the very same time. The 10 minute offset is used to prevent
+  // long startup delays, and also to prevent many repeated flushes in case there are 
+  // startup errors and thus restarts. after the initial flush shortly after the
+  // server start, we will only flush every few hours to reduce ongoing I/O burden
+}
 
 RocksDBBackgroundThread::~RocksDBBackgroundThread() { shutdown(); }
 
@@ -101,13 +112,22 @@ void RocksDBBackgroundThread::run() {
       // will not have a chance to reconnect to a restarted master in
       // time so the master may purge WAL files that replication slaves
       // would still like to peek into
-      if (TRI_microtime() >= startTime + _engine.pruneWaitTimeInitial()) {
+      double const now = TRI_microtime();
+      if (now >= startTime + _engine.pruneWaitTimeInitial()) {
         // determine which WAL files can be pruned
         _engine.determinePrunableWalFiles(minTick);
         // and then prune them when they expired
         _engine.pruneWalFiles();
       }
-        
+
+      // flush column families every now and then, to prevent data from
+      // exotic column column families to reside only in memtables and thus
+      // block WAL file collection
+      if (now >= _nextFlushTime) {
+        _engine.flushColumnFamilies(false);
+        // flush at most every 12 hours
+        _nextFlushTime = now + 12.0 * 60.0 * 60.0;
+      }
     } catch (std::exception const& ex) {
       LOG_TOPIC("8236f", WARN, Logger::ENGINES)
           << "caught exception in rocksdb background thread: " << ex.what();
