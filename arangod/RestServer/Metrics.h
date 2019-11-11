@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -65,7 +65,6 @@ public:
     ~Metric();
     std::ostream& print(std::ostream&) const;
     void toBuilder(VPackBuilder&);
-    std::string _help;
     var_type _var;
   };
 
@@ -75,17 +74,13 @@ public:
   virtual ~Metrics();
   void clear();
   
-  VPackBuilder toBuilder() const;
-  void toBuilder(VPackBuilder& builder) const;
-
-private:
-
 public:
   Counter getCounter(std::string const& name);
   Counter registerCounter(std::string const& name, uint64_t init = 0);
     
   template<typename T>
-  Histogram<T> getHistogram (std::string const& name, size_t buckets, T low, T high) {
+  Histogram<T> getHistogram (
+    std::string const& name, size_t buckets, T low, T high) {
     std::lock_guard<std::mutex> guard(_lock);
     return Histogram<T>(histogram(name, buckets), low, high);
   };
@@ -103,6 +98,7 @@ private:
   hist_type& histogram(std::string const& name);
 
   registry_type _registry;
+
   mutable std::mutex _lock;
   
 };
@@ -201,7 +197,7 @@ public:
 };
 
 
-std::ostream& operator<< (std::ostream&, Metrics::var_type&);
+std::ostream& operator<< (std::ostream&, Metrics::var_type const&);
 std::ostream& operator<< (std::ostream&, Metrics::counter_type const&);
 std::ostream& operator<< (std::ostream&, Metrics::hist_type const&);
 template<typename T>

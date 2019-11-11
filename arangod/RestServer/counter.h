@@ -388,7 +388,7 @@ public:
 protected:
     constexpr bumper( Integral in ) : value_( in ) {}
     constexpr bumper() : value_( 0 ) {}
-    Integral load() { return value_; }
+    Integral load() const { return value_; }
     Integral exchange( Integral to )
         { Integral tmp = value_; value_ = to; return tmp; }
     Integral value_;
@@ -418,7 +418,7 @@ public:
 protected:
     constexpr bumper( Integral in ) : value_( in ) {}
     constexpr bumper() : value_( 0 ) {}
-    Integral load() { return value_.load( std::memory_order_relaxed ); }
+    Integral load() const { return value_.load( std::memory_order_relaxed ); }
     Integral exchange( Integral to )
         { Integral tmp = value_.load( std::memory_order_relaxed );
           value_.store( to, std::memory_order_relaxed ); return tmp; }
@@ -528,7 +528,7 @@ template< typename Integral > class strong_duplex
 public:
     strong_duplex() : base_type( 0 ) {}
     strong_duplex( Integral in ) : base_type( in ) {}
-    Integral load();
+    Integral load() const;
     Integral exchange( Integral to );
     ~strong_duplex();
 private:
@@ -552,7 +552,7 @@ public:
     strong_broker& operator=( const strong_broker& ) = delete;
     ~strong_broker();
 private:
-    Integral poll() { return base_type::load(); }
+    Integral poll() const { return base_type::load(); }
     Integral drain() { return base_type::exchange( 0 ); }
     duplex_type& prime_;
 };
@@ -573,7 +573,7 @@ void strong_duplex< Integral >::erase( broker_type* child, Integral by )
 }
 
 template< typename Integral >
-Integral strong_duplex< Integral >::load()
+Integral strong_duplex< Integral >::load() const
 {
     typedef typename set_type::iterator iterator;
     Integral tmp = 0;
@@ -635,7 +635,7 @@ public:
     weak_duplex( Integral in ) : base_type( in ) {}
     weak_duplex( const weak_duplex& ) = delete;
     weak_duplex& operator=( const weak_duplex& ) = delete;
-    Integral load();
+    Integral load() const;
     ~weak_duplex();
 private:
     void insert( broker_type* child );
@@ -658,7 +658,7 @@ public:
     weak_broker& operator=( const weak_broker& ) = delete;
     ~weak_broker();
 private:
-    Integral poll() { return base_type::load(); }
+    Integral poll() const { return base_type::load(); }
     duplex_type& prime_;
 };
 
@@ -678,7 +678,7 @@ void weak_duplex< Integral >::erase( broker_type* child, Integral by )
 }
 
 template< typename Integral >
-Integral weak_duplex< Integral >::load()
+Integral weak_duplex< Integral >::load() const
 {
     typedef typename set_type::iterator iterator;
     Integral tmp = 0;
@@ -733,9 +733,9 @@ public:
     bumper_array( const bumper_array& ) = delete;
     bumper_array& operator=( const bumper_array& ) = delete;
     value_type& operator[]( size_type idx ) { return storage[ idx ]; }
-    size_type size() { return storage.size(); }
+    size_type size() const { return storage.size(); }
 protected:
-    Integral load( size_type idx ) { return storage[ idx ].load(); }
+    Integral load( size_type idx ) const { return storage[ idx ].load(); }
     Integral exchange( size_type idx, Integral value )
         { return storage[ idx ].exchange( value ); }
 private:
@@ -755,11 +755,11 @@ public:
     constexpr simplex_array( size_type size ) : base_type( size ) {}
     simplex_array( const simplex_array& ) = delete;
     simplex_array& operator=( const simplex_array& ) = delete;
-    Integral load( size_type idx ) { return base_type::load( idx ); }
+    Integral load( size_type idx ) const{ return base_type::load( idx ); }
     Integral exchange( size_type idx, Integral value )
         { return base_type::exchange( idx, value ); }
     value_type& operator[]( int idx ) { return base_type::operator[]( idx ); }
-    size_type size() { return base_type::size(); }
+    size_type size() const { return base_type::size(); }
 };
 
 template< typename Integral,
@@ -781,7 +781,7 @@ public:
         { Integral value = base_type::operator[]( idx ).exchange( 0 );
           if ( value != 0 ) prime_[ idx ] += value; }
     void push();
-    size_type size() { return base_type::size(); }
+    size_type size() const { return base_type::size(); }
     ~buffer_array() { push(); }
 private:
     prime_type& prime_;
@@ -816,7 +816,7 @@ public:
     strong_duplex_array( const strong_duplex_array& ) = delete;
     strong_duplex_array& operator=( const strong_duplex_array& ) = delete;
     value_type& operator[]( int idx ) { return base_type::operator[]( idx ); }
-    size_type size() { return base_type::size(); }
+    size_type size() const { return base_type::size(); }
     ~strong_duplex_array();
 private:
     void insert( broker_type* child );
@@ -839,7 +839,7 @@ public:
     strong_broker_array( duplex_type& p );
     strong_broker_array( const strong_broker_array& ) = delete;
     strong_broker_array& operator=( const strong_broker_array& ) = delete;
-    size_type size() { return base_type::size(); }
+    size_type size() const { return base_type::size(); }
     ~strong_broker_array();
 private:
     Integral poll( size_type idx )
@@ -889,7 +889,7 @@ public:
     weak_duplex_array( const weak_duplex_array& ) = delete;
     weak_duplex_array& operator=( const weak_duplex_array& ) = delete;
     value_type& operator[]( int idx ) { return base_type::operator[]( idx ); }
-    size_type size() { return base_type::size(); }
+    size_type size() const { return base_type::size(); }
     ~weak_duplex_array();
 private:
     void insert( broker_type* child );
@@ -912,7 +912,7 @@ public:
     weak_broker_array( duplex_type& p );
     weak_broker_array( const weak_broker_array& ) = delete;
     weak_broker_array& operator=( const weak_broker_array& ) = delete;
-    size_type size() { return base_type::size(); }
+    size_type size() const { return base_type::size(); }
     ~weak_broker_array();
 private:
     Integral poll( size_type idx )

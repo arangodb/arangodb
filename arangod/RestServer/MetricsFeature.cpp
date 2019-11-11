@@ -81,6 +81,18 @@ double time() {
     .count();
 }
 
-Counter MetricsFeature::counter (std::string const& name) {
+void MetricsFeature::toBuilder(VPackBuilder& builder) const {
+  for (auto const& i : _help) {
+    builder.add(VPackValue(i.first));
+    builder.add(VPackValue())
+  }
+}
+
+Counter MetricsFeature::counter (std::string const& name, std::string const& help) {
+  std::lock_guard<std::mutex> guard(_lock);
+  auto const it = _help.find(name);
+  if (it == _help.end()) {
+    _help[name] = help;
+  }
   return _metrics.registerCounter(name);
 };

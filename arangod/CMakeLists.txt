@@ -638,6 +638,7 @@ set(LIB_ARANGOSERVER_SOURCES
   RestHandler/RestViewHandler.cpp
   RestHandler/RestVocbaseBaseHandler.cpp
   RestHandler/RestWalAccessHandler.cpp
+  RestHandler/RestMetricsHandler.cpp
   RestServer/AqlFeature.cpp
   RestServer/BootstrapFeature.cpp
   RestServer/CheckVersionFeature.cpp

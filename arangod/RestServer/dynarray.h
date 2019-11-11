@@ -4,7 +4,7 @@
 
 namespace std {
 
-struct bad_array_length { };
+struct bad_array_length_ { };
 
 template< class T >
 struct dynarray
@@ -30,7 +30,7 @@ private:
         { if ( n >= count ) throw out_of_range("dynarray"); }
     T* alloc(size_type n)
         { if ( n > std::numeric_limits<size_type>::max()/sizeof(T) )
-              throw std::bad_array_length();
+              throw std::bad_array_length_();
           return reinterpret_cast<T*>( new char[ n*sizeof(T) ] ); }
 
 public:

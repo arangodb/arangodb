@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -47,7 +47,7 @@ std::ostream& operator<< (std::ostream& o, Metrics::counter_type const& s) {
   return o;
 }
 
-std::ostream& operator<< (std::ostream& o, Counter& s) {
+std::ostream& operator<< (std::ostream& o, Counter const& s) {
   o << s.load();
   return o;
 }
@@ -60,10 +60,6 @@ std::ostream& operator<< (std::ostream& o, Metrics::hist_type const& v) {
   }
   o << "]";
   return o;
-}
-
-std::ostream& operator<< (std::ostream& o, Counter const& c) {
-  return c.print(o);
 }
 
 Counter& Counter::operator++() {
@@ -99,10 +95,10 @@ Counter::~Counter() { _b.push(); }
 template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
 template<class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
 
-std::ostream& operator<<(std::ostream& o, Metrics::var_type& v) {
+std::ostream& operator<<(std::ostream& o, Metrics::var_type const& v) {
   std::visit(overloaded {
-      [&o](Metrics::counter_type& arg) { o << arg; },
-      [&o](Metrics::hist_type& arg) { o << arg; },
+      [&o](Metrics::counter_type const& arg) { o << arg; },
+      [&o](Metrics::hist_type const& arg) { o << arg; },
     }, v);
   return o;
 }
@@ -150,21 +146,6 @@ Counter Metrics::registerCounter(std::string const& name, uint64_t init) {
   return Counter(counter(name, init));
 }
 
-void Metrics::toBuilder(VPackBuilder& builder) const {
-  std::lock_guard<std::mutex> guard(_lock);
-  for (auto& metric : _registry) {
-    builder.add(VPackValue(metric.first));
-    metric.second->toBuilder(builder);
-  }
-}
-
-VPackBuilder Metrics::toBuilder() const {
-  VPackBuilder b;
-  VPackObjectBuilder o(&b);
-  toBuilder(b);
-  return b;
-}
-
 Metrics::counter_type& Metrics::counter(std::string const& name) {
   auto it = _registry.find(name);
   LOG_TOPIC("4ca33", ERR, Logger::FIXME) << "No such counter " << name;
@@ -191,8 +172,8 @@ std::ostream& Metrics::Metric::print(std::ostream& o) const {
 
 void Metrics::Metric::toBuilder(VPackBuilder& b) {
   std::visit(overloaded {
-      [&b](Metrics::counter_type& arg) { b.add(VPackValue(arg.load())); },
-      [&b](Metrics::hist_type& arg) {
+      [&b](Metrics::counter_type const& arg) { b.add(VPackValue(arg.load())); },
+      [&b](Metrics::hist_type const& arg) {
         VPackArrayBuilder a(&b);
         for (size_t i = 0; i < arg.size(); ++i) {
           b.add(VPackValue(arg.load(i)));

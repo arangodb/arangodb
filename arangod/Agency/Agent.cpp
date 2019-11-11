@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2019 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -72,7 +72,9 @@ Agent::Agent(ApplicationServer& server, config_t const& config)
       _agentNeedsWakeup(false),
       _compactor(this),
       _ready(false),
-      _preparing(0) {
+      _preparing(0),
+      _writes(_server.getFeature<arangodb::MetricsFeature>().counter(
+                "agency_agent_write", "Agency writes")) {
   _state.configure(this);
   _constituent.configure(this);
   if (size() > 1) {
