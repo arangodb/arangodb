@@ -483,7 +483,7 @@ bool SimpleAttributeEqualityMatcher::accessFitsIndex(
 
     if (match) {
       // mark ith attribute as being covered
-      _found.emplace(i, op);
+      _found.try_emplace(i, op);
       TRI_IF_FAILURE("SimpleAttributeMatcher::accessFitsIndex") {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }

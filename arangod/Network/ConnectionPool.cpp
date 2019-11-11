@@ -48,19 +48,16 @@ ConnectionPool::~ConnectionPool() { shutdown(); }
 /// note: it is the callers responsibility to ensure the endpoint
 /// is always the same, we do not do any post-processing
 network::ConnectionPtr ConnectionPool::leaseConnection(std::string const& endpoint) {
-
   READ_LOCKER(guard, _lock);
   auto it = _connections.find(endpoint);
   if (it == _connections.end()) {
     guard.unlock();
-    WRITE_LOCKER(wguard, _lock);
 
-    it = _connections.find(endpoint);  // check again
-    if (it == _connections.end()) {
-      auto it2 = _connections.emplace(endpoint, std::make_unique<Bucket>());
-      it = it2.first;
-    }
-    return selectConnection(it->first, *(it->second));
+    auto tmp = std::make_unique<Bucket>(); //get memory outside lock
+    
+    WRITE_LOCKER(wguard, _lock);
+    auto [it2, emplaced] = _connections.try_emplace(endpoint, std::move(tmp));
+    it = it2;
   }
   return selectConnection(it->first,*(it->second));
 }
@@ -82,7 +79,7 @@ void ConnectionPool::shutdown() {
   WRITE_LOCKER(guard, _lock);
   _connections.clear();
 }
-  
+
 void ConnectionPool::removeBrokenConnections(Bucket& buck) {
   auto it = buck.list.begin();
   while (it != buck.list.end()) {
@@ -112,7 +109,7 @@ void ConnectionPool::pruneConnections() {
     if (buck.list.size() <= _config.minOpenConnections) {
       continue;
     }
-    
+
     // first remove old connections
     auto it = buck.list.begin();
     while (it != buck.list.end()) {
@@ -132,16 +129,16 @@ void ConnectionPool::pruneConnections() {
       }
       it++;
     }
-    
+
     // do not remove connections if there are less
     if (buck.list.size() <= _config.maxOpenConnections) {
       continue; // done
     }
-    
+
     LOG_TOPIC("2d59a", DEBUG, Logger::COMMUNICATION)
         << "pruning extra connections to '" << pair.first
         << "' (" << buck.list.size() << ")";
-    
+
     // remove any remaining connections, they will be closed eventually
     it = buck.list.begin();
     while (it != buck.list.end()) {
@@ -152,15 +149,15 @@ void ConnectionPool::pruneConnections() {
     }
   }
 }
-  
+
 /// @brief cancel connections to this endpoint
 void ConnectionPool::cancelConnections(std::string const& endpoint) {
   fuerte::ConnectionBuilder builder;
   builder.endpoint(endpoint);
   builder.protocolType(_config.protocol); // always overwrite protocol
-  
+
   std::string normalized = builder.normalizedEndpoint();
-  
+
   WRITE_LOCKER(guard, _lock);
   auto const& it = _connections.find(normalized);
   if (it != _connections.end()) {
@@ -214,7 +211,7 @@ ConnectionPtr ConnectionPool::selectConnection(std::string const& endpoint,
     if (state == fuerte::Connection::State::Failed) {
       continue;
     }
-    
+
     size_t num = c.fuerte->requestsLeft();
     if (_config.protocol == fuerte::ProtocolType::Http && num == 0) {
       auto now = std::chrono::steady_clock::now();
@@ -229,14 +226,14 @@ ConnectionPtr ConnectionPool::selectConnection(std::string const& endpoint,
       return c.fuerte; // TODO: make (num <= 3) configurable ?
     }
   }
-  
+
   // no free connection found, so we add one
-  
+
   fuerte::ConnectionBuilder builder;
   builder.endpoint(endpoint); // picks the socket type
   builder.protocolType(_config.protocol); // always overwrite protocol
   TRI_ASSERT(builder.socketType() != SocketType::Undefined);
-  
+
   std::shared_ptr<fuerte::Connection> fuerte = createConnection(builder);
   bucket.list.push_back(Context{fuerte, std::chrono::steady_clock::now()});
   return fuerte;

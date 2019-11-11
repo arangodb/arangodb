@@ -135,7 +135,7 @@ void VstRequest::setHeader(VPackSlice keySlice, VPackSlice valSlice) {
   }
 
   // must lower-case the header key
-  _headers.emplace(std::move(key), std::move(value));
+  _headers.try_emplace(std::move(key), std::move(value));
 }
 
 void VstRequest::parseHeaderInformation() {
@@ -172,9 +172,9 @@ void VstRequest::parseHeaderInformation() {
         for (auto itInner : VPackArrayIterator(it.value)) {
           tmp.emplace_back(itInner.copyString());
         }
-        _arrayValues.emplace(it.key.copyString(), move(tmp));
+        _arrayValues.try_emplace(it.key.copyString(), move(tmp));
       } else {
-        _values.emplace(it.key.copyString(), it.value.copyString());
+        _values.try_emplace(it.key.copyString(), it.value.copyString());
       }
     }
 

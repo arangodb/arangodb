@@ -610,7 +610,7 @@ arangodb::Result MaintenanceFeature::storeDBError(std::string const& database,
   }
 
   try {
-    _dbErrors.emplace(database, error);
+    _dbErrors.try_emplace(database, error);
   } catch (std::exception const& e) {
     return Result(TRI_ERROR_FAILED, e.what());
   }
@@ -666,19 +666,17 @@ arangodb::Result MaintenanceFeature::storeShardError(std::string const& database
 arangodb::Result MaintenanceFeature::storeShardError(
     std::string const& database, std::string const& collection,
     std::string const& shard, std::shared_ptr<VPackBuffer<uint8_t>> error) {
-  std::string key = database + SLASH + collection + SLASH + shard;
+  std::string const key = database + SLASH + collection + SLASH + shard;
 
   MUTEX_LOCKER(guard, _seLock);
-  auto const it = _shardErrors.find(key);
-  if (it != _shardErrors.end()) {
-    std::stringstream error;
-    error << "shard " << key << " already has pending error";
-    LOG_TOPIC("378fa", DEBUG, Logger::MAINTENANCE) << error.str();
-    return Result(TRI_ERROR_FAILED, error.str());
-  }
-
   try {
-    _shardErrors.emplace(key, error);
+    auto [it, emplaced] = _shardErrors.try_emplace(std::move(key), std::move(error));
+    if (!emplaced) {
+      std::stringstream error;
+      error << "shard " << key << " already has pending error";
+      LOG_TOPIC("378fa", DEBUG, Logger::MAINTENANCE) << error.str();
+      return Result(TRI_ERROR_FAILED, error.str());
+    }
   } catch (std::exception const& e) {
     return Result(TRI_ERROR_FAILED, e.what());
   }
@@ -721,30 +719,26 @@ arangodb::Result MaintenanceFeature::storeIndexError(
     std::string const& database, std::string const& collection, std::string const& shard,
     std::string const& indexId, std::shared_ptr<VPackBuffer<uint8_t>> error) {
   using buffer_t = std::shared_ptr<VPackBuffer<uint8_t>>;
-  std::string key = database + SLASH + collection + SLASH + shard;
+  std::string const key = database + SLASH + collection + SLASH + shard;
 
   MUTEX_LOCKER(guard, _ieLock);
 
-  auto errorsIt = _indexErrors.find(key);
-  if (errorsIt == _indexErrors.end()) {
-    try {
-      _indexErrors.emplace(key, std::map<std::string, buffer_t>());
-    } catch (std::exception const& e) {
-      return Result(TRI_ERROR_FAILED, e.what());
-    }
-  }
-  auto& errors = _indexErrors.find(key)->second;
-  auto const it = errors.find(indexId);
-
-  if (it != errors.end()) {
-    std::stringstream error;
-    error << "index " << indexId << " for shard " << key << " already has pending error";
-    LOG_TOPIC("d3c92", DEBUG, Logger::MAINTENANCE) << error.str();
-    return Result(TRI_ERROR_FAILED, error.str());
-  }
-
+  decltype (_indexErrors.emplace(key)) emplace_result;
   try {
-    errors.emplace(indexId, error);
+    emplace_result = _indexErrors.try_emplace(key, std::map<std::string, buffer_t>());
+  } catch (std::exception const& e) {
+    return Result(TRI_ERROR_FAILED, e.what());
+  }
+
+  auto& errors = emplace_result.first->second;
+  try {
+    auto [itr, emplaced] = errors.try_emplace(indexId, error);
+    if (!emplaced) {
+      std::stringstream error;
+      error << "index " << indexId << " for shard " << key << " already has pending error";
+      LOG_TOPIC("d3c92", DEBUG, Logger::MAINTENANCE) << error.str();
+      return Result(TRI_ERROR_FAILED, error.str());
+    }
   } catch (std::exception const& e) {
     return Result(TRI_ERROR_FAILED, e.what());
   }

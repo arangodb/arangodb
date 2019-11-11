@@ -242,7 +242,7 @@ v8::Isolate* V8PlatformFeature::createIsolate() {
   {
     MUTEX_LOCKER(guard, _lock);
     try {
-      _isolateData.emplace(isolate, std::move(data));
+      _isolateData.try_emplace(isolate, std::move(data));
     } catch (...) {
       isolate->SetData(V8_INFO, nullptr);
       isolate->Dispose();

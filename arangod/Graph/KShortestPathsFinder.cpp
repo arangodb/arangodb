@@ -96,7 +96,7 @@ bool KShortestPathsFinder::computeShortestPath(VertexRef const& start, VertexRef
 void KShortestPathsFinder::computeNeighbourhoodOfVertexCache(VertexRef vertex,
                                                              Direction direction,
                                                              std::vector<Step>*& res) {
-  auto lookup = _vertexCache.emplace(vertex, FoundVertex(vertex)).first;
+  auto lookup = _vertexCache.try_emplace(vertex, FoundVertex(vertex)).first;
   auto& cache = lookup->second;  // want to update the cached vertex in place
 
   switch (direction) {

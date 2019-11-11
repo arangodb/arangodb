@@ -169,7 +169,7 @@ class GeneralRequest {
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   void addHeader(std::string key, std::string value) {
-    _headers.emplace(std::move(key), std::move(value));
+    _headers.try_emplace(std::move(key), std::move(value));
   }
 #endif
 
