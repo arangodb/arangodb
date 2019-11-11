@@ -2637,7 +2637,7 @@ int MMFilesEngine::startCompactor(TRI_vocbase_t& vocbase) {
   {
     MUTEX_LOCKER(locker, _threadsLock);
 
-    auto [it, emplaced] = _compactorThreads.try_emplace(
+    auto emplaced = _compactorThreads.try_emplace(
       &vocbase,
       arangodb::lazyConstruct([&]{
         thread.reset(new MMFilesCompactorThread(vocbase));
@@ -2648,7 +2648,7 @@ int MMFilesEngine::startCompactor(TRI_vocbase_t& vocbase) {
         }
         return std::move(thread);
       })
-    );
+    ).second;
 
     if (!emplaced) {
       return TRI_ERROR_INTERNAL;
