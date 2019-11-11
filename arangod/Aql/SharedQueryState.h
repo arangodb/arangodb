@@ -35,7 +35,8 @@ class SharedQueryState final : public std::enable_shared_from_this<SharedQuerySt
   SharedQueryState(SharedQueryState const&) = delete;
   SharedQueryState& operator=(SharedQueryState const&) = delete;
 
-  SharedQueryState() : _numWakeups(0), _valid(true), _inWakeupCb(false) {}
+  SharedQueryState()
+    : _wakeupCb(nullptr), _numWakeups(0), _cbVersion(0), _valid(true) {}
 
   ~SharedQueryState() = default;
 
@@ -57,8 +58,6 @@ class SharedQueryState final : public std::enable_shared_from_this<SharedQuerySt
   template <typename F>
   void executeAndWakeup(F&& cb) {
     std::lock_guard<std::mutex> guard(_mutex);
-    _numWakeups++;
-
     if (!_valid) {
       return;
     }
@@ -80,6 +79,7 @@ class SharedQueryState final : public std::enable_shared_from_this<SharedQuerySt
  private:
   /// execute the _continueCallback. must hold _mutex
   void execute();
+  void queueHandler();
 
  private:
   mutable std::mutex _mutex;
@@ -90,11 +90,11 @@ class SharedQueryState final : public std::enable_shared_from_this<SharedQuerySt
   /// in here, which continueAfterPause simply calls.
   std::function<bool()> _wakeupCb;
 
-  std::atomic<uint32_t> _numWakeups;
+  uint32_t _numWakeups;
+  
+  uint32_t _cbVersion;
 
   bool _valid;
-
-  bool _inWakeupCb;
 };
 
 }  // namespace aql

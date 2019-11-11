@@ -261,7 +261,7 @@ void RestHandler::runHandlerStateMachine() {
         if (_state == HandlerState::PAUSED) {
           shutdownExecute(false);
           LOG_TOPIC("23a33", DEBUG, Logger::COMMUNICATION)
-              << "Pausing rest handler execution";
+              << "Pausing rest handler execution " << this;
           return;  // stop state machine
         }
         break;
@@ -272,7 +272,7 @@ void RestHandler::runHandlerStateMachine() {
         if (_state == HandlerState::PAUSED) {
           shutdownExecute(/*isFinalized*/false);
           LOG_TOPIC("23727", DEBUG, Logger::COMMUNICATION)
-              << "Pausing rest handler execution";
+              << "Pausing rest handler execution " << this;
           return;  // stop state machine
         }
         break;
@@ -280,7 +280,7 @@ void RestHandler::runHandlerStateMachine() {
 
       case HandlerState::PAUSED:
         LOG_TOPIC("ae26f", DEBUG, Logger::COMMUNICATION)
-            << "Resuming rest handler execution";
+            << "Resuming rest handler execution " << this;
         _state = HandlerState::CONTINUED;
         break;
 
@@ -289,7 +289,7 @@ void RestHandler::runHandlerStateMachine() {
         RestHandler::CURRENT_HANDLER = this;
 
         // shutdownExecute is noexcept
-        shutdownExecute(true);
+        shutdownExecute(true); // may not be moved down
 
         RestHandler::CURRENT_HANDLER = nullptr;
         _state = HandlerState::DONE;
@@ -351,12 +351,15 @@ void RestHandler::prepareEngine() {
   _state = HandlerState::FAILED;
 }
 
-/// Execute the rest handler state machine
+/// Execute the rest handler state machine. Retry the wakeup,
+/// returns true if _state == PAUSED, false otherwise
 bool RestHandler::wakeupHandler() {
   RECURSIVE_MUTEX_LOCKER(_executionMutex, _executionMutexOwner);
+  LOG_DEVEL << "handler state pre " << static_cast<int>(_state);
   if (_state == HandlerState::PAUSED) {
-    runHandlerStateMachine();
-    return true;
+    runHandlerStateMachine(); // may change _state
+    LOG_DEVEL << "handler state post " << static_cast<int>(_state);
+    return _state == HandlerState::PAUSED;
   }
   return false;
 }

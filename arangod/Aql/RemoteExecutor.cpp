@@ -514,8 +514,10 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(fuerte::RestVerb typ
                             _lastResponse = std::move(res);
                           }
                           _requestInFlight = false;
+//                          LOG_DEVEL << "notifying " << sqs.get();
                           return true;
                         }
+//                        LOG_DEVEL << "skipping " << sqs.get();
                         return false;
                       });
                     });

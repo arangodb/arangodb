@@ -349,7 +349,7 @@ class Query {
 
  private:
   /// @brief query id
-  TRI_voc_tick_t _id;
+  const TRI_voc_tick_t _id;
 
   /// @brief current resources and limits used by query
   ResourceMonitor _resourceMonitor;

@@ -132,10 +132,11 @@ void RestCursorHandler::shutdownExecute(bool isFinalized) noexcept {
   }
   
   try {
-    bool parseSuccess = true;
-    std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
-    VPackSlice body = parsedBody.get()->slice();
-    events::QueryDocument(*_request, _response.get(), body);
+    bool success = true;
+    VPackSlice body = parseVPackBody(success);
+    if (success) {
+      events::QueryDocument(*_request, _response.get(), body);
+    }
     _auditLogged = true;
   } catch (...) {
   }
@@ -154,10 +155,11 @@ void RestCursorHandler::handleError(basics::Exception const& ex) {
   }
 
   try {
-    bool parseSuccess = true;
-    std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
-    VPackSlice body = parsedBody.get()->slice();
-    events::QueryDocument(*_request, _response.get(), body);
+    bool success = true;
+     VPackSlice body = parseVPackBody(success);
+     if (success) {
+       events::QueryDocument(*_request, _response.get(), body);
+     }
     _auditLogged = true;
   } catch (...) {
   }
@@ -532,6 +534,10 @@ RestStatus RestCursorHandler::generateCursorResult(rest::ResponseCode code,
     TRI_ASSERT(cursors != nullptr);
     cursors->release(cursor);
   });
+  
+  if (this->state() == HandlerState::EXECUTE) { // do not set after wakeup
+    cursor->setWakeupHandler([self = shared_from_this()]() { return self->wakeupHandler(); });
+  }
 
   // dump might delete the cursor
   std::shared_ptr<transaction::Context> ctx = cursor->context();
@@ -543,13 +549,14 @@ RestStatus RestCursorHandler::generateCursorResult(rest::ResponseCode code,
   aql::ExecutionState state;
   Result r;
   std::tie(state, r) =
-      cursor->dump(builder, [self = shared_from_this()]() { return self->wakeupHandler(); });
+      cursor->dump(builder);
   if (state == aql::ExecutionState::WAITING) {
     builder.clear();
     _leasedCursor = cursor;
     guard.cancel();
     return RestStatus::WAITING;
   }
+  cursor->resetWakeupHandler();
 
   builder.add(StaticStrings::Error, VPackValue(false));
   builder.add(StaticStrings::Code, VPackValue(static_cast<int>(code)));
@@ -561,6 +568,7 @@ RestStatus RestCursorHandler::generateCursorResult(rest::ResponseCode code,
   } else {
     generateError(r);
   }
+  
   return RestStatus::DONE;
 }
 

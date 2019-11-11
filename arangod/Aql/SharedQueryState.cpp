@@ -22,6 +22,7 @@
 
 #include "SharedQueryState.h"
 
+#include "Basics/ScopeGuard.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 
@@ -32,8 +33,8 @@ using namespace arangodb::aql;
 
 void SharedQueryState::invalidate() {
   std::lock_guard<std::mutex> guard(_mutex);
-  _numWakeups += 1;
   _wakeupCb = nullptr;
+  _cbVersion++;
   _valid = false;
   // guard.unlock();
   _cv.notify_all();
@@ -41,11 +42,19 @@ void SharedQueryState::invalidate() {
 
 /// this has to stay for a backwards-compatible AQL HTTP API (hasMore).
 void SharedQueryState::waitForAsyncWakeup() {
+//  LOG_DEVEL << "waiting " << _numWakeups << " " << this;
+
   std::unique_lock<std::mutex> guard(_mutex);
+  if (!_valid) {
+    return;
+  }
+  
   TRI_ASSERT(!_wakeupCb);
-  _cv.wait(guard, [&] { return _numWakeups > 0; });
-  TRI_ASSERT(_numWakeups > 0);
+  _cv.wait(guard, [&] { return _numWakeups > 0 || !_valid; });
+  TRI_ASSERT(_numWakeups > 0 || !_valid);
   _numWakeups--;
+  
+//  LOG_DEVEL << "wakeup " << _numWakeups << " " << this;;
 }
 
 /// @brief setter for the continue handler:
@@ -53,67 +62,91 @@ void SharedQueryState::waitForAsyncWakeup() {
 void SharedQueryState::setWakeupHandler(std::function<bool()> const& cb) {
   std::lock_guard<std::mutex> guard(_mutex);
   _wakeupCb = cb;
+//  _numWakeups = 0;
+  _cbVersion++;
+  LOG_DEVEL << "setting wakeup handler " << this;
 }
 
 void SharedQueryState::resetWakeupHandler() {
   std::lock_guard<std::mutex> guard(_mutex);
+  if (_wakeupCb) {
+    LOG_DEVEL << "resetting wakeup handler " << this;
+  }
   _wakeupCb = nullptr;
+  _numWakeups = 0;
+  _cbVersion++;
 }
 
 /// execute the _continueCallback. must hold _mutex,
 void SharedQueryState::execute() {
   TRI_ASSERT(_valid);
-  
+  uint32_t n = _numWakeups++;
+
   if (!_wakeupCb) {
+    LOG_DEVEL << "notify_one() " << this;
     _cv.notify_one();
     return;
   }
 
+  if (n > 0) {
+    LOG_DEVEL << "other handler already running " << this;
+    return;
+  }
+
+  queueHandler();
+}
+  
+void SharedQueryState::queueHandler() {
+  
+  if (_numWakeups == 0 || !_wakeupCb || !_valid) {
+    bool c = !_wakeupCb;
+    LOG_DEVEL << "queueHandler leave, numWakeups" << _numWakeups << " wakeup cb: " << (!c) << " valid: " << _valid << " " << this;
+    return;
+  }
+  
   auto scheduler = SchedulerFeature::SCHEDULER;
   if (ADB_UNLIKELY(scheduler == nullptr)) {
     // We are shutting down
     return;
   }
-  TRI_ASSERT(_numWakeups > 0);
-  
-  if (_inWakeupCb) {
-    return;
-  }
-  _inWakeupCb = true;
-
+      
   bool queued = scheduler->queue(RequestLane::CLIENT_AQL,
                                  [self = shared_from_this(),
-                                  cb = _wakeupCb]() mutable {
+                                  cb = _wakeupCb,
+                                  v = _cbVersion]() {
+//    auto guard = scopeGuard([&] {
+//      std::unique_lock<std::mutex> lck(self->_mutex);
+//      self->_inWakeupCb = false;
+//    });
+    
+    std::unique_lock<std::mutex> lck(self->_mutex, std::defer_lock);
 
-    while (true) {
+    do {
       bool cntn = false;
       try {
         cntn = cb();
-      } catch (std::exception const& ex) {
-        LOG_TOPIC("e988a", WARN, Logger::QUERIES)
-            << "Exception when continuing rest handler: " << ex.what();
-      } catch (...) {
-        LOG_TOPIC("e988b", WARN, Logger::QUERIES)
-            << "Exception when continuing rest handler";
-      }
+      } catch (...) {}
       
-      const uint32_t n = self->_numWakeups.fetch_sub(1);
-      TRI_ASSERT(n > 0);
-
-      if (!cntn || n == 1) {
-        std::lock_guard<std::mutex> guard(self->_mutex);
-        if (!cntn || self->_numWakeups.load() == 0) {
-          self->_inWakeupCb = false;
+      lck.lock();
+      if (v == self->_cbVersion) {
+        uint32_t c = self->_numWakeups--;
+        if (c == 1 || !cntn || !self->_valid) {
           break;
         }
+      } else {
+        LOG_DEVEL << "outdated handler";
+        return;
       }
-    }
+      lck.unlock();
+    } while (true);
+
+    TRI_ASSERT(lck);
+    self->queueHandler();
   });
   
   if (!queued) { // just invalidate
      _wakeupCb = nullptr;
      _valid = false;
-     _inWakeupCb = false;
      _cv.notify_all();
   }
 }
