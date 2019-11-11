@@ -1,6 +1,9 @@
 devel
 -----
 
+* Added new timeout option for queries. If a query does finish exectuion within
+  the given time it will be killed.
+
 * Added limit for AQL range materialization to prevent out-of-memory errors.
 
   When materializing ranges created by either the AQL `RANGE` function or by using
