@@ -90,12 +90,15 @@ public:
     return Histogram<T>(histogram(name, buckets), low, high);
   };
 
+  counter_type& counter(std::string const& name);
+  hist_type& histogram(std::string const& name);
+
+  counter_type const& counter(std::string const& name) const;
+  hist_type const& histogram(std::string const& name) const;
+
 private:
   counter_type& counter(std::string const& name, uint64_t val);
   hist_type& histogram(std::string const& name, uint64_t buckets);
-
-  counter_type& counter(std::string const& name);
-  hist_type& histogram(std::string const& name);
 
   registry_type _registry;
 
@@ -118,6 +121,7 @@ public:
   void count();
   void count(uint64_t);
   uint64_t load() const;
+  void push();
 private:
   Metrics::counter_type& _c;
   mutable Metrics::buffer_type _b; 

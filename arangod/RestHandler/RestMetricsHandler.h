@@ -24,18 +24,22 @@
 #define ARANGOD_REST_HANDLER_REST_METRICS_HANDLER_H 1
 
 #include "RestHandler/RestBaseHandler.h"
+#include "RestServer/MetricsFeature.h"
 
 namespace arangodb {
 class RestMetricsHandler : public arangodb::RestBaseHandler {
  public:
   RestMetricsHandler(application_features::ApplicationServer&, GeneralRequest*,
-                    GeneralResponse*);
+                     GeneralResponse*);
 
- public:
   char const* name() const override final { return "RestMetricsHandler"; }
   RequestLane lane() const override final { return RequestLane::CLIENT_FAST; }
   RestStatus execute() override;
+
 };
+
+
+
 }  // namespace arangodb
 
 #endif

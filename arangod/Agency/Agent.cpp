@@ -73,8 +73,10 @@ Agent::Agent(ApplicationServer& server, config_t const& config)
       _compactor(this),
       _ready(false),
       _preparing(0),
-      _writes(_server.getFeature<arangodb::MetricsFeature>().counter(
-                "agency_agent_write", "Agency writes")) {
+      _write_ok(_server.getFeature<arangodb::MetricsFeature>().counter(
+                  "agency_agent_write_ok", "Agency write ok")),
+      _write_no_leader(_server.getFeature<arangodb::MetricsFeature>().counter(
+                         "agency_agent_write_no_leader", "Agency write no leader")) {
   _state.configure(this);
   _constituent.configure(this);
   if (size() > 1) {
@@ -1136,6 +1138,7 @@ write_ret_t Agent::write(query_t const& query, WriteMode const& wmode) {
   // look at the leaderID.
   auto leader = _constituent.leaderID();
   if (multihost && leader != id()) {
+    ++_write_no_leader;
     return write_ret_t(false, leader);
   }
 
@@ -1167,6 +1170,7 @@ write_ret_t Agent::write(query_t const& query, WriteMode const& wmode) {
 
     // Check that we are actually still the leader:
     if (!leading()) {
+      ++_write_no_leader;
       return write_ret_t(false, NO_LEADER);
     }
 
@@ -1184,11 +1188,13 @@ write_ret_t Agent::write(query_t const& query, WriteMode const& wmode) {
       // Only leader else redirect
       if (multihost && challengeLeadership()) {
         resign();
+        ++_write_no_leader;
         return write_ret_t(false, NO_LEADER);
       }
 
       // Check that we are actually still the leader:
       if (!leading()) {
+        ++_write_no_leader;
         return write_ret_t(false, NO_LEADER);
       }
 
@@ -1214,6 +1220,7 @@ write_ret_t Agent::write(query_t const& query, WriteMode const& wmode) {
     advanceCommitIndex();
   }
 
+  ++_write_ok;
   return write_ret_t(true, id(), applied, indices);
 }
 
@@ -1256,6 +1263,10 @@ read_ret_t Agent::read(query_t const& query) {
 void Agent::run() {
   // Only run in case we are in multi-host mode
   while (!this->isStopping() && size() > 1) {
+
+    _write_ok.push();
+    _write_no_leader.push();
+    
     {
       // We set the variable to false here, if any change happens during
       // or after the calls in this loop, this will be set to true to

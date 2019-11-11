@@ -65,7 +65,7 @@ RestStatus RestMetricsHandler::execute() {
   MetricsFeature& metrics = server.getFeature<MetricsFeature>();
 
   VPackBuilder result; {
-    VPackObjectBuilder o(&result); 
+    VPackObjectBuilder o(&result);
     metrics.toBuilder(result); }
   
   generateResult(rest::ResponseCode::OK, result.slice());

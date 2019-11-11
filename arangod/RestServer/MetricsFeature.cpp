@@ -82,10 +82,8 @@ double time() {
 }
 
 void MetricsFeature::toBuilder(VPackBuilder& builder) const {
-  VPackArrayBuilder (&builder);
   for (auto const& i : _help) {
-    builder.add(VPackValue(i.first));
-    //builder.add(VPackValue())
+    builder.add(i.first, VPackValue(_metrics.counter(i.first).load()));
   }
 }
 
