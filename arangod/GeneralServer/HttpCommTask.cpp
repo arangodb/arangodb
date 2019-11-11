@@ -175,11 +175,11 @@ int HttpCommTask<T>::on_header_complete(llhttp_t* p) {
         << "received a 100-continue request";
     char const* response = "HTTP/1.1 100 Continue\r\n\r\n";
     auto buff = asio_ns::buffer(response, strlen(response));
-    asio_ns::async_write(self->_protocol->socket, buff,
-                         [self = self->shared_from_this()](asio_ns::error_code const& ec, std::size_t transferred) {
-                           HttpCommTask<T>* task = static_cast<HttpCommTask<T>*>(self.get());
-                           task->asyncReadSome();
-                         });
+    asio_ns::async_write(self->_protocol->socket, buff, [self = self->shared_from_this()](asio_ns::error_code const& ec, std::size_t) {
+      if (ec) {
+        static_cast<HttpCommTask<T>*>(self.get())->close();
+      }
+    }); 
     return HPE_OK;
   }
   if (self->_request->requestType() == RequestType::HEAD) {
