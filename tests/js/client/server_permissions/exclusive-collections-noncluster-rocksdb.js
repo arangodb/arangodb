@@ -45,7 +45,7 @@ var ERRORS = arangodb.errors;
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-function ExclusiveSuite () {
+function OptionsTestSuite () {
   var cn1 = "UnitTestsExclusiveCollection1"; // used for test data
   var cn2 = "UnitTestsExclusiveCollection2"; // used for communication
   var c1, c2;
@@ -137,6 +137,6 @@ function ExclusiveSuite () {
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-jsunity.run(ExclusiveSuite);
+jsunity.run(OptionsTestSuite);
 
 return jsunity.done();
