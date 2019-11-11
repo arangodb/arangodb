@@ -108,9 +108,7 @@ DatabaseInitialSyncer::DatabaseInitialSyncer(TRI_vocbase_t& vocbase,
       _config{_state.applier,    _state.barrier, _batch,
               _state.connection, false,          _state.master,
               _progress,         _state,         vocbase} {
-  _state.vocbases.emplace(std::piecewise_construct,
-                          std::forward_as_tuple(vocbase.name()),
-                          std::forward_as_tuple(vocbase));
+  _state.vocbases.try_emplace(vocbase.name(), vocbase);
 
   if (configuration._database.empty()) {
     _state.databaseName = vocbase.name();
@@ -1095,7 +1093,7 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
   if (phase == PHASE_VALIDATE) {
     // validation phase just returns ok if we got here (aborts above if data is
     // invalid)
-    _config.progress.processedCollections.emplace(masterCid, masterName);
+    _config.progress.processedCollections.try_emplace(masterCid, masterName);
 
     return Result();
   }

@@ -23,6 +23,7 @@
 
 #include "ConstantWeightShortestPathFinder.h"
 
+#include "Basics/tryEmplaceHelper.h"
 #include "Cluster/ServerState.h"
 #include "Graph/EdgeCursor.h"
 #include "Graph/EdgeDocumentToken.h"
@@ -70,8 +71,8 @@ bool ConstantWeightShortestPathFinder::shortestPath(
   _rightClosure.clear();
   clearVisited();
 
-  _leftFound.emplace(start, nullptr);
-  _rightFound.emplace(end, nullptr);
+  _leftFound.try_emplace(start, nullptr);
+  _rightFound.try_emplace(end, nullptr);
   _leftClosure.emplace_back(start);
   _rightClosure.emplace_back(end);
 
@@ -112,12 +113,20 @@ bool ConstantWeightShortestPathFinder::expandClosure(Closure& sourceClosure,
 
     for (size_t i = 0; i < neighborsSize; ++i) {
       auto const& n = _neighbors[i];
-      if (sourceSnippets.find(n) == sourceSnippets.end()) {
+
+      bool emplaced = false;
+      std::tie(std::ignore, emplaced) = sourceSnippets.try_emplace(
+        _neighbors[i],
+        arangodb::lazyConstruct([&]{
+          return new PathSnippet(v, std::move(_edges[i]));
+        })
+      );
+
+      if (emplaced) {
         // NOTE: _edges[i] stays intact after move
         // and is reset to a nullptr. So if we crash
         // here no mem-leaks. or undefined behavior
         // Just make sure _edges is not used after
-        sourceSnippets.emplace(n, new PathSnippet(v, std::move(_edges[i])));
         auto targetFoundIt = targetSnippets.find(n);
         if (targetFoundIt != targetSnippets.end()) {
           result = n;

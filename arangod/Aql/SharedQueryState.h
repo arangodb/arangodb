@@ -59,6 +59,7 @@ class SharedQueryState final : public std::enable_shared_from_this<SharedQuerySt
   void executeAndWakeup(F&& cb) {
     std::lock_guard<std::mutex> guard(_mutex);
     if (!_valid) {
+      _cv.notify_all();
       return;
     }
 

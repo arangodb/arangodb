@@ -577,11 +577,6 @@ RestStatus RestCursorHandler::generateCursorResult(rest::ResponseCode code,
 ////////////////////////////////////////////////////////////////////////////////
 
 RestStatus RestCursorHandler::createQueryCursor() {
-  if (_request->payload().isEmptyObject()) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_CORRUPTED_JSON);
-    return RestStatus::DONE;
-  }
-
   std::vector<std::string> const& suffixes = _request->suffixes();
 
   if (!suffixes.empty()) {
@@ -595,6 +590,11 @@ RestStatus RestCursorHandler::createQueryCursor() {
 
   if (!parseSuccess) {
     // error message generated in parseVPackBody
+    return RestStatus::DONE;
+  }
+
+  if (body.isEmptyObject()) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_CORRUPTED_JSON);
     return RestStatus::DONE;
   }
 

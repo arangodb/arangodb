@@ -141,6 +141,29 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
   std::map<std::string, std::string> headers{_request->headers().begin(),
                                              _request->headers().end()};
 
+  if (headers.find(StaticStrings::Authorization) == headers.end()) {
+    // No authorization header is set, this is in particular the case if this
+    // request is coming in with VelocyStream, where the authentication happens
+    // once at the beginning of the connection and not with every request.
+    // In this case, we have to produce a proper JWT token as authorization:
+      auto auth = AuthenticationFeature::instance();
+    if (auth != nullptr && auth->isActive()) {
+      // when in superuser mode, username is empty
+      // in this case ClusterComm will add the default superuser token
+      std::string const& username = _request->user();
+      if (!username.empty()) {
+        VPackBuilder builder;
+        {
+          VPackObjectBuilder payload{&builder};
+          payload->add("preferred_username", VPackValue(username));
+        }
+        VPackSlice slice = builder.slice();
+        headers.emplace(StaticStrings::Authorization,
+                        "bearer " + auth->tokenCache().generateJwt(slice));
+      }
+    }
+  }
+
   network::RequestOptions options;
   options.database = dbname;
   options.timeout = network::Timeout(300);
@@ -187,7 +210,7 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
     for (auto const& it : resultHeaders) {
       _response->setHeader(it.first, it.second);
     }
-    _response->setHeader(StaticStrings::RequestForwardedTo, serverId);
+    _response->setHeaderNC(StaticStrings::RequestForwardedTo, serverId);
 
     return Result();
   };
@@ -481,7 +504,7 @@ void RestHandler::compressResponse() {
     switch (_request->acceptEncoding()) {
       case rest::EncodingType::DEFLATE:
         _response->deflate();
-        _response->setHeader(StaticStrings::ContentEncoding, StaticStrings::EncodingDeflate);
+        _response->setHeaderNC(StaticStrings::ContentEncoding, StaticStrings::EncodingDeflate);
         break;
 
       default:

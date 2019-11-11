@@ -137,7 +137,7 @@ TRI_vocbase_t* MMFilesWalRecoverState::useDatabase(TRI_voc_tick_t databaseId) {
     return nullptr;
   }
 
-  openedDatabases.emplace(databaseId, vocbase);
+  openedDatabases.try_emplace(databaseId, vocbase);
   return vocbase;
 }
 
@@ -228,7 +228,7 @@ arangodb::LogicalCollection* MMFilesWalRecoverState::useCollection(TRI_vocbase_t
   // disable secondary indexes for the moment
   physical->useSecondaryIndexes(false);
 
-  openedCollections.emplace(collectionId, collection);
+  openedCollections.try_emplace(collectionId, collection);
   res = TRI_ERROR_NO_ERROR;
   return collection.get();
 }
@@ -398,7 +398,7 @@ bool MMFilesWalRecoverState::InitialScanMarker(MMFilesMarker const* marker, void
       // it
       TRI_voc_tick_t const databaseId = MMFilesDatafileHelper::DatabaseId(marker);
       TRI_voc_tid_t const tid = MMFilesDatafileHelper::TransactionId(marker);
-      state->failedTransactions.emplace(tid, std::make_pair(databaseId, false));
+      state->failedTransactions.try_emplace(tid, std::make_pair(databaseId, false));
       break;
     }
 

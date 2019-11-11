@@ -299,7 +299,7 @@ UpgradeResult methods::Upgrade::runTasks(TRI_vocbase_t& vocbase, VersionResult& 
       // special optimization: for local server and new database,
       // an upgrade-only task can be viewed as executed.
       if (isLocal && dbFlag == DATABASE_INIT && t.databaseFlags == DATABASE_UPGRADE) {
-        vinfo.tasks.emplace(t.name, true);
+        vinfo.tasks.try_emplace(t.name, true);
       }
       LOG_TOPIC("346ba", DEBUG, Logger::STARTUP)
           << "Upgrade: db flag mismatch, skipping " << t.name;
@@ -328,7 +328,7 @@ UpgradeResult methods::Upgrade::runTasks(TRI_vocbase_t& vocbase, VersionResult& 
     }
 
     // remember we already executed this one
-    vinfo.tasks.emplace(t.name, true);
+    vinfo.tasks.try_emplace(t.name, true);
 
     if (isLocal) {  // save after every task for resilience
       auto res = methods::Version::write(&vocbase, vinfo.tasks, /*sync*/ false);

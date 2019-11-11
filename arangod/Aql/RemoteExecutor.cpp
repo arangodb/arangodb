@@ -450,10 +450,10 @@ Result handleErrorResponse(network::EndpointSpec const& spec, fuerte::Error err,
     if (slice.isObject()) {
       VPackSlice err = slice.get(StaticStrings::Error);
       if (err.isBool() && err.getBool()) {
-        res = VelocyPackHelper::readNumericValue(slice, StaticStrings::ErrorNum, res);
+        res = VelocyPackHelper::getNumericValue(slice, StaticStrings::ErrorNum, res);
         VPackStringRef ref =
             VelocyPackHelper::getStringRef(slice, StaticStrings::ErrorMessage,
-                                           "(no valid error in response)");
+                                           VPackStringRef("(no valid error in response)"));
         msg.append(ref.data(), ref.size());
       }
     }

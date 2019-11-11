@@ -634,6 +634,9 @@ struct TRI_v8_global_t {
   /// @brief "requestBody" key name
   v8::Persistent<v8::String> RequestBodyKey;
 
+  /// @brief "rawRequestBody" key name
+  v8::Persistent<v8::String> RawRequestBodyKey;
+
   /// @brief "requestType" key name
   v8::Persistent<v8::String> RequestTypeKey;
 

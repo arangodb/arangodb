@@ -36,7 +36,6 @@ void SharedQueryState::invalidate() {
   _wakeupCb = nullptr;
   _cbVersion++;
   _valid = false;
-  // guard.unlock();
   _cv.notify_all();
 }
 
