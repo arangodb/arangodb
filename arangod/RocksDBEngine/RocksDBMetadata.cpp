@@ -183,7 +183,7 @@ void RocksDBMetadata::adjustNumberDocuments(rocksdb::SequenceNumber seq,
   TRI_ASSERT(seq != 0 && (adj || revId));
   std::lock_guard<std::mutex> guard(_bufferLock);
   _bufferedAdjs.try_emplace(seq, Adjustment{revId, adj});
-
+  
   // update immediately to ensure the user sees a correct value
   if (revId != 0) {
     _revisionId.store(revId);

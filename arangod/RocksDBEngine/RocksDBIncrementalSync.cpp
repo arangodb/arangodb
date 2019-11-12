@@ -425,7 +425,8 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
     if (r.fail()) {
       return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                     std::string("got invalid response from master at ") +
-                        syncer._state.master.endpoint + ": " + r.errorMessage());
+                        syncer._state.master.endpoint +
+                        ": " + r.errorMessage());
     }
 
     VPackSlice const slice = docsBuilder->slice();

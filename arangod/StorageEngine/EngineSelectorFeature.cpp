@@ -45,9 +45,9 @@ namespace {
 std::unordered_map<std::string, std::type_index> createEngineMap() {
   std::unordered_map<std::string, std::type_index> map;
   map.try_emplace(arangodb::MMFilesEngine::EngineName,
-                  std::type_index(typeid(arangodb::MMFilesEngine)));
+              std::type_index(typeid(arangodb::MMFilesEngine)));
   map.try_emplace(arangodb::RocksDBEngine::EngineName,
-                  std::type_index(typeid(arangodb::RocksDBEngine)));
+              std::type_index(typeid(arangodb::RocksDBEngine)));
   return map;
 }
 }

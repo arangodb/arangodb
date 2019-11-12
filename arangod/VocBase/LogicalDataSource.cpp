@@ -121,9 +121,8 @@ bool readIsSystem(arangodb::velocypack::Slice definition) {
   }
 
   // same condition as in LogicalCollection
-  return arangodb::basics::VelocyPackHelper::getBooleanValue(definition,
-                                                             arangodb::StaticStrings::DataSourceSystem,
-                                                             false);
+  return arangodb::basics::VelocyPackHelper::getBooleanValue(
+      definition, arangodb::StaticStrings::DataSourceSystem, false);
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -171,7 +170,7 @@ LogicalDataSource::LogicalDataSource(Category const& category, Type const& type,
                                                    ""),
           planVersion, readIsSystem(definition),
           basics::VelocyPackHelper::getBooleanValue(definition, StaticStrings::DataSourceDeleted,
-                                                    false)) {}
+                                                     false)) {}
 
 LogicalDataSource::LogicalDataSource(Category const& category, Type const& type,
                                      TRI_vocbase_t& vocbase, TRI_voc_cid_t id,

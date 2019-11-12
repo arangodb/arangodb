@@ -905,8 +905,9 @@ RocksDBReplicationContext::CollectionIterator* RocksDBReplicationContext::getCol
     std::shared_ptr<LogicalCollection> logical{vocbase.lookupCollection(cid)};
 
     if (nullptr != logical) {
-      auto result = _iterators.try_emplace(
-          cid, std::make_unique<CollectionIterator>(vocbase, logical, sorted, _snapshot));
+      auto result =
+          _iterators.try_emplace(cid, std::make_unique<CollectionIterator>(vocbase, logical, sorted,
+                                                                       _snapshot));
 
       if (result.second) {
         cIter = result.first->second.get();
