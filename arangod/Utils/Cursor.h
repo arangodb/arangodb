@@ -124,7 +124,7 @@ class Cursor {
    * @return ErrorResult, if something goes wrong
    */
   virtual Result dumpSync(velocypack::Builder& result) = 0;
-
+  
   /// Set wakeup handler on streaming cursor
   virtual void setWakeupHandler(std::function<bool()> const& cb) {}
   virtual void resetWakeupHandler() {}

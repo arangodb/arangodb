@@ -98,7 +98,8 @@ struct StatisticsDistribution {
   void add(StatisticsDistribution& other) {
     MUTEX_LOCKER(lock, _mutex);
     MUTEX_LOCKER(lock2, other._mutex);
-    TRI_ASSERT(_counts.size() == other._counts.size() && _cuts.size() == _cuts.size());
+    TRI_ASSERT(_counts.size() == other._counts.size() &&
+               _cuts.size() == _cuts.size());
     _count += other._count;
     _total += other._total;
     for (size_t i = 0; i < _counts.size(); ++i) {

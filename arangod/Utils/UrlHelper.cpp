@@ -171,7 +171,9 @@ std::string Location::toString() const {
 
 Path const& Location::path() const noexcept { return _path; }
 
-std::optional<Query> const& Location::query() const noexcept { return _query; }
+std::optional<Query> const& Location::query() const noexcept {
+  return _query;
+}
 
 std::optional<Fragment> const& Location::fragment() const noexcept {
   return _fragment;

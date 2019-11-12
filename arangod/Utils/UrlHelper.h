@@ -166,7 +166,8 @@ class Fragment {
 
 class Url {
  public:
-  Url(Scheme, std::optional<Authority>, Path, std::optional<Query>, std::optional<Fragment>);
+  Url(Scheme, std::optional<Authority>, Path, std::optional<Query>,
+      std::optional<Fragment>);
 
   std::string toString() const;
 

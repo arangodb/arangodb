@@ -46,7 +46,7 @@ using namespace arangodb;
 ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* collection)
     : _collection(collection),
       _numberOfShards(basics::VelocyPackHelper::getNumericValue<size_t>(info, StaticStrings::NumberOfShards,
-                                                                        1)),
+                                                                         1)),
       _replicationFactor(1),
       _writeConcern(1),
       _distributeShardsLike(basics::VelocyPackHelper::getStringValue(info, StaticStrings::DistributeShardsLike,
@@ -54,7 +54,7 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
       _shardIds(new ShardMap()) {
   bool const isSmart =
       basics::VelocyPackHelper::getBooleanValue(info, StaticStrings::IsSmart, false);
-
+      
   if (isSmart && _collection->type() == TRI_COL_TYPE_EDGE) {
     // smart edge collection
     _numberOfShards = 0;
@@ -483,8 +483,8 @@ int ShardingInfo::getResponsibleShard(arangodb::velocypack::Slice slice, bool do
                                                 usesDefaultShardKeys, key);
 }
 
-Result ShardingInfo::validateShardsAndReplicationFactor(
-    arangodb::velocypack::Slice slice, application_features::ApplicationServer const& server) {
+Result ShardingInfo::validateShardsAndReplicationFactor(arangodb::velocypack::Slice slice,
+                                                        application_features::ApplicationServer const& server) {
   if (slice.isObject()) {
     auto const& cl = server.getFeature<ClusterFeature>();
 

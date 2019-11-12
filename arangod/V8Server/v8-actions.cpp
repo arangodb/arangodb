@@ -447,11 +447,11 @@ v8::Handle<v8::Object> TRI_RequestCppToV8(v8::Isolate* isolate,
         if (parsed.isObject() || parsed.isArray()) {
           digesteable = true;
         }
-      } catch (...) {
-      }
+      } catch ( ... ) {} 
       // ok, no json/vpack after all ;-)
       auto raw = request->rawPayload();
-      headers[StaticStrings::ContentLength] = StringUtils::itoa(raw.size());
+      headers[StaticStrings::ContentLength] =
+        StringUtils::itoa(raw.size());
       V8Buffer* buffer = V8Buffer::New(isolate, raw.data(), raw.size());
       auto bufObj = v8::Local<v8::Object>::New(isolate, buffer->_handle);
       TRI_GET_GLOBAL_STRING(RawRequestBodyKey);
@@ -461,7 +461,7 @@ v8::Handle<v8::Object> TRI_RequestCppToV8(v8::Isolate* isolate,
         return;
       }
     }
-
+                                     
     if (rest::ContentType::JSON == request->contentType()) {
       VPackStringRef body = request->rawPayload();
       req->Set(RequestBodyKey, TRI_V8_PAIR_STRING(isolate, body.data(), body.size()));

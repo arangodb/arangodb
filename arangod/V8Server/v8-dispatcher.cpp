@@ -141,8 +141,7 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   if (isSystem && !v8g->_securityContext.isInternal()) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(
-        TRI_ERROR_FORBIDDEN, "Only internal context may create system tasks");
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, "Only internal context may create system tasks");
   }
 
   // offset in seconds into period or from now on if no period

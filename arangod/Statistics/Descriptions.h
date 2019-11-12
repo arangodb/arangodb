@@ -31,7 +31,11 @@
 namespace arangodb {
 namespace stats {
 
-enum RequestStatisticsSource { USER, SUPERUSER, ALL };
+enum RequestStatisticsSource {
+  USER,
+  SUPERUSER,
+  ALL
+};
 
 enum class GroupType { System, Client, ClientUser, Http, Vst, Server };
 

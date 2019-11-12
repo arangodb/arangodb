@@ -60,7 +60,7 @@ using namespace arangodb::basics;
 aql::QueryResultV8 AqlQuery(v8::Isolate* isolate, arangodb::LogicalCollection const* col,
                             std::string const& aql, std::shared_ptr<VPackBuilder> bindVars) {
   TRI_ASSERT(col != nullptr);
-
+  
   arangodb::aql::QueryRegistry* queryRegistry = QueryRegistryFeature::registry();
   TRI_ASSERT(queryRegistry != nullptr);
 

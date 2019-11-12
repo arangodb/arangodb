@@ -478,10 +478,10 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
                        std::string("transaction ID '") + std::to_string(tid) + "' already used in createManagedTrx insert");
     }
     TRI_ASSERT(state->id() == tid);
-    bool emplaced =
-        _transactions[bucket]
-            ._managed.try_emplace(tid, MetaType::Managed, state.get())
-            .second;
+    bool emplaced = _transactions[bucket]._managed.try_emplace(
+        tid,
+        MetaType::Managed, state.get()
+    ).second;
     if (emplaced) {
       state.release();
     }
@@ -921,10 +921,10 @@ void Manager::toVelocyPack(VPackBuilder& builder, std::string const& database,
           }
           VPackSlice slice = authBuilder.slice();
           headers.try_emplace(StaticStrings::Authorization,
-                              "bearer " + auth->tokenCache().generateJwt(slice));
+                          "bearer " + auth->tokenCache().generateJwt(slice));
         } else {
           headers.try_emplace(StaticStrings::Authorization,
-                              "bearer " + auth->tokenCache().jwtToken());
+                          "bearer " + auth->tokenCache().jwtToken());
         }
       }
 
@@ -978,12 +978,10 @@ Result Manager::abortAllManagedWriteTrx(std::string const& username, bool fanout
     auto queryList = vocbase->queryList();
     TRI_ASSERT(queryList != nullptr);
     // we are only interested in killed write queries
-    queryList->kill(
-        [](aql::Query& query) {
-          auto* state = query.trx()->state();
-          return state && !state->isReadOnlyTransaction();
-        },
-        false);
+    queryList->kill([](aql::Query& query) {
+      auto* state = query.trx()->state();
+      return state && !state->isReadOnlyTransaction();
+    }, false);
   });
 
   // abort local transactions
@@ -991,7 +989,8 @@ Result Manager::abortAllManagedWriteTrx(std::string const& username, bool fanout
     return ::authorized(user) && !state.isReadOnlyTransaction();
   });
 
-  if (fanout && ServerState::instance()->isCoordinator()) {
+  if (fanout &&
+      ServerState::instance()->isCoordinator()) {
     auto& ci = _feature.server().getFeature<ClusterFeature>().clusterInfo();
 
     NetworkFeature const& nf = _feature.server().getFeature<NetworkFeature>();
@@ -1024,10 +1023,10 @@ Result Manager::abortAllManagedWriteTrx(std::string const& username, bool fanout
           }
           VPackSlice slice = builder.slice();
           headers.try_emplace(StaticStrings::Authorization,
-                              "bearer " + auth->tokenCache().generateJwt(slice));
+                          "bearer " + auth->tokenCache().generateJwt(slice));
         } else {
           headers.try_emplace(StaticStrings::Authorization,
-                              "bearer " + auth->tokenCache().jwtToken());
+                          "bearer " + auth->tokenCache().jwtToken());
         }
       }
 

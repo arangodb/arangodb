@@ -1089,24 +1089,25 @@ class KeySpace {
               v8::Handle<v8::Value> const& value, bool replace) {
     // do not get memory under the lock
     auto element = std::make_unique<KeySpaceElement>(key.c_str(), key.size(),
-                                                     TRI_ObjectToJson(isolate, value));
-    WRITE_LOCKER(writeLocker, _lock);
+                                       TRI_ObjectToJson(isolate, value));
+      WRITE_LOCKER(writeLocker, _lock);
 
     auto [it, emplaced] = _hash.try_emplace(key, element.get());
 
     if (replace && !emplaced) {
-      // delete previous entry
+        // delete previous entry
       delete it->second;
-      it->second = element.get();
-      emplaced = true;
+      it->second =  element.get();
+      emplaced=true;
       }
 
-      if (emplaced) {
-        element.release();
+    if (emplaced) {
+      element.release();
     }
 
     return emplaced;
   }
+
 
   bool keySet(std::string const& key, double val) {
     // do not get memory under the lock
@@ -1136,7 +1137,7 @@ class KeySpace {
              v8::Handle<v8::Value> const& compare, bool& match) {
     // do not get memory under the lock
     auto element = std::make_unique<KeySpaceElement>(key.c_str(), key.size(),
-                                                     TRI_ObjectToJson(isolate, value));
+                                       TRI_ObjectToJson(isolate, value));
 
     WRITE_LOCKER(writeLocker, _lock);
 
@@ -1169,8 +1170,8 @@ class KeySpace {
       match = false;
     } else {
         delete found;
-        found = element.release();
-        match = true;
+      found = element.release();
+      match = true;
     }
 
     return TRI_ERROR_NO_ERROR;
@@ -1206,11 +1207,12 @@ class KeySpace {
   int keyIncr(std::string const& key, double value, double& result) {
     WRITE_LOCKER(writeLocker, _lock);
 
-    auto [found, emplaced] =
-        _hash.try_emplace(key, arangodb::lazyConstruct([&] {
-                            return new KeySpaceElement(key.c_str(), key.size(),
-                                                       TRI_CreateNumberJson(value));
-                          }));
+    auto [found, emplaced] = _hash.try_emplace(
+      key,
+      arangodb::lazyConstruct([&]{
+          return new KeySpaceElement(key.c_str(), key.size(), TRI_CreateNumberJson(value));
+      })
+    );
 
     if (emplaced) {
       result = value;
@@ -1351,8 +1353,7 @@ class KeySpace {
       TRI_PushBack2ArrayJson(list, sourceItem);
 
       try {
-        auto element =
-            std::make_unique<KeySpaceElement>(keyTo.c_str(), keyTo.size(), list);
+        auto element = std::make_unique<KeySpaceElement>(keyTo.c_str(), keyTo.size(), list);
         _hash.try_emplace(keyTo, element.get());
         element.release();
         // hack: decrease the vector size
@@ -1539,14 +1540,17 @@ class KeySpace {
 
     WRITE_LOCKER(writeLocker, _lock);
 
-    auto [it, emplaced] =
-        _hash.try_emplace(key, arangodb::lazyConstruct([&] {
-                            return new KeySpaceElement(key.c_str(), key.size(),
-                                                       TRI_ObjectToJson(isolate, value));
-                          }));
+    auto [it, emplaced] = _hash.try_emplace(
+      key,
+      arangodb::lazyConstruct([&]{
+        return new KeySpaceElement(key.c_str(), key.size(),
+                                         TRI_ObjectToJson(isolate, value));
+      })
+    );
+
 
     if (emplaced) {
-      TRI_V8_RETURN(value);  // does a real return
+      TRI_V8_RETURN(value); // does a real return
     }
 
     KeySpaceElement* found = (*it).second;

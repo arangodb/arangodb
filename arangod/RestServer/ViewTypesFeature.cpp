@@ -91,7 +91,7 @@ Result ViewTypesFeature::emplace(LogicalDataSource::Type const& type,
     TRI_ASSERT(false);
     return arangodb::Result();
   }
-
+  
   if (!_factories.try_emplace(&type, &factory).second) {
     return arangodb::Result(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER, std::string("view factory previously registered during view factory "
                                                                                "registration for view type '") +

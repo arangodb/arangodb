@@ -770,6 +770,7 @@ static void JS_ExecuteAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   arangodb::aql::QueryResultV8 queryResult = query.executeV8(isolate, queryRegistry);
 
+
   if (queryResult.result.fail()) {
     if (queryResult.result.is(TRI_ERROR_REQUEST_CANCELED)) {
       TRI_GET_GLOBALS();

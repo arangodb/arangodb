@@ -168,6 +168,7 @@ void RequestStatistics::process(RequestStatistics* statistics) {
 
         TRI_BytesSentDistributionStatisticsUser.addFigure(statistics->_sentBytes);
         TRI_BytesReceivedDistributionStatisticsUser.addFigure(statistics->_receivedBytes);
+
       }
     }
   }
@@ -323,6 +324,6 @@ void RequestStatistics::trace_log() {
   LOG_TOPIC("31657", TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
                                      << "_ignore         " << _ignore;
 
-  LOG_TOPIC("31658", TRACE, Logger::REQUESTS)
-      << std::boolalpha << std::setprecision(20) << "_superuser      " << _superuser;
+  LOG_TOPIC("31658", TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
+                                     << "_superuser      " << _superuser;
 }
