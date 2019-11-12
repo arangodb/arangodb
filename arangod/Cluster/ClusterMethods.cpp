@@ -1610,7 +1610,7 @@ futures::Future<OperationResult> truncateCollectionOnCoordinator(transaction::Me
   auto cb = [](std::vector<Try<network::Response>>&& results) -> OperationResult {
     return handleResponsesFromAllShards(
         results, [](Result& result, VPackBuilder&, ShardID&, VPackSlice answer) -> void {
-          if (Helper::readBooleanValue(answer, StaticStrings::Error, false)) {
+          if (Helper::getBooleanValue(answer, StaticStrings::Error, false)) {
             result = network::resultFromBody(answer, TRI_ERROR_NO_ERROR);
           }
         });
@@ -2614,9 +2614,9 @@ arangodb::Result hotBackupList(std::vector<ServerID> const& dbServers, VPackSlic
                                   req.destination + " not an object");
     }
 
-    if (resSlice.get("error").getBoolean()) {
+    if (resSlice.get(StaticStrings::Error).getBoolean()) {
       return arangodb::Result(static_cast<int>(resSlice.get(StaticStrings::ErrorNum).getNumber<uint64_t>()),
-                              resSlice.get("errorMessage").copyString());
+                              resSlice.get(StaticStrings::ErrorMessage).copyString());
     }
 
     if (!resSlice.hasKey("result") || !resSlice.get("result").isObject()) {
@@ -2804,15 +2804,15 @@ arangodb::Result controlMaintenanceFeature(std::string const& command,
     TRI_ASSERT(res.answer != nullptr);
     auto resBody = res.answer->toVelocyPackBuilderPtrNoUniquenessChecks();
     VPackSlice resSlice = resBody->slice();
-    if (!resSlice.isObject() || !resSlice.hasKey("error") ||
-        !resSlice.get("error").isBoolean()) {
+    if (!resSlice.isObject() || !resSlice.hasKey(StaticStrings::Error) ||
+        !resSlice.get(StaticStrings::Error).isBoolean()) {
       // Response has invalid format
       return arangodb::Result(TRI_ERROR_HTTP_CORRUPTED_JSON,
                               std::string("result of executing " + command + " request to maintenance feature on ") +
                                   req.destination + " is invalid");
     }
 
-    if (resSlice.get("error").getBoolean()) {
+    if (resSlice.get(StaticStrings::Error).getBoolean()) {
       return arangodb::Result(TRI_ERROR_HOT_BACKUP_INTERNAL,
                               std::string("failed to execute " + command + " on maintenance feature for ") +
                                   backupId + " on server " + req.destination);
@@ -2873,8 +2873,8 @@ arangodb::Result restoreOnDBServers(std::string const& backupId,
                                   req.destination + "not an object");
     }
 
-    if (!resSlice.hasKey("error") || !resSlice.get("error").isBoolean() ||
-        resSlice.get("error").getBoolean()) {
+    if (!resSlice.hasKey(StaticStrings::Error) || !resSlice.get(StaticStrings::Error).isBoolean() ||
+        resSlice.get(StaticStrings::Error).getBoolean()) {
       return arangodb::Result(TRI_ERROR_HOT_RESTORE_INTERNAL,
                               std::string("failed to restore ") + backupId +
                                   " on server " + req.destination + ": " +
@@ -3182,7 +3182,7 @@ arangodb::Result lockDBServerTransactions(std::string const& backupId,
     auto resBody = res.answer->toVelocyPackBuilderPtrNoUniquenessChecks();
     VPackSlice slc = resBody->slice();
 
-    if (!slc.isObject() || !slc.hasKey("error") || !slc.get("error").isBoolean()) {
+    if (!slc.isObject() || !slc.hasKey(StaticStrings::Error) || !slc.get(StaticStrings::Error).isBoolean()) {
       reportError(TRI_ERROR_LOCAL_LOCK_FAILED,
                   std::string("invalid response from ") + req.destination +
                   " when trying to freeze transactions for hot backup " +
@@ -3190,12 +3190,12 @@ arangodb::Result lockDBServerTransactions(std::string const& backupId,
       continue;
     }
 
-    if (slc.get("error").getBoolean()) {
+    if (slc.get(StaticStrings::Error).getBoolean()) {
       LOG_TOPIC("f4b8f", DEBUG, Logger::BACKUP)
           << "failed to acquire lock from " << req.destination << ": " << slc.toJson();
-      auto errorNum = slc.get("errorNum").getNumber<int>();
+      auto errorNum = slc.get(StaticStrings::ErrorNum).getNumber<int>();
       if (errorNum == TRI_ERROR_LOCK_TIMEOUT) {
-        reportError(errorNum, slc.get("errorMessage").copyString());
+        reportError(errorNum, slc.get(StaticStrings::ErrorMessage).copyString());
         continue;
       }
       reportError(TRI_ERROR_LOCAL_LOCK_FAILED,
@@ -3426,9 +3426,9 @@ arangodb::Result removeLocalBackups(std::string const& backupId,
                                   req.destination + ", result not an object");
     }
 
-    if (!resSlice.hasKey("error") || !resSlice.get("error").isBoolean() ||
-        resSlice.get("error").getBoolean()) {
-      int64_t errorNum = resSlice.get("errorNum").getNumber<int64_t>();
+    if (!resSlice.hasKey(StaticStrings::Error) || !resSlice.get(StaticStrings::Error).isBoolean() ||
+        resSlice.get(StaticStrings::Error).getBoolean()) {
+      int64_t errorNum = resSlice.get(StaticStrings::ErrorNum).getNumber<int64_t>();
 
       if (errorNum == TRI_ERROR_FILE_NOT_FOUND) {
         notFoundCount += 1;
@@ -3437,7 +3437,7 @@ arangodb::Result removeLocalBackups(std::string const& backupId,
 
       std::string errorMsg = std::string("failed to delete backup ") +
                              backupId + " on " + req.destination + ":" +
-                             resSlice.get("errorMessage").copyString() + " (" +
+                             resSlice.get(StaticStrings::ErrorMessage).copyString() + " (" +
                              std::to_string(errorNum) + ")";
 
       LOG_TOPIC("9b94f", ERR, Logger::BACKUP) << errorMsg;
@@ -3563,19 +3563,19 @@ arangodb::Result hotbackupWaitForLockDBServersTransactions(
     auto resBody = res.answer->toVelocyPackBuilderPtrNoUniquenessChecks();
     VPackSlice slc = resBody->slice();
 
-    if (!slc.isObject() || !slc.hasKey("error") || !slc.get("error").isBoolean()) {
+    if (!slc.isObject() || !slc.hasKey(StaticStrings::Error) || !slc.get(StaticStrings::Error).isBoolean()) {
       return arangodb::Result(TRI_ERROR_LOCAL_LOCK_FAILED,
                   std::string("invalid response from ") + req.destination +
                   " when trying to freeze transactions for hot backup " +
                   backupId + ": " + slc.toJson());
     }
 
-    if (slc.get("error").getBoolean()) {
+    if (slc.get(StaticStrings::Error).getBoolean()) {
       LOG_TOPIC("d7a8a", DEBUG, Logger::BACKUP)
           << "failed to acquire lock from " << req.destination << ": " << slc.toJson();
-      auto errorNum = slc.get("errorNum").getNumber<int>();
+      auto errorNum = slc.get(StaticStrings::ErrorNum).getNumber<int>();
       if (errorNum == TRI_ERROR_LOCK_TIMEOUT) {
-        return arangodb::Result(errorNum, slc.get("errorMessage").copyString());
+        return arangodb::Result(errorNum, slc.get(StaticStrings::ErrorMessage).copyString());
       }
       return arangodb::Result(TRI_ERROR_LOCAL_LOCK_FAILED,
           std::string("lock was denied from ") + req.destination +

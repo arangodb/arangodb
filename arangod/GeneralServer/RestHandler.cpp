@@ -210,7 +210,7 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
     for (auto const& it : resultHeaders) {
       _response->setHeader(it.first, it.second);
     }
-    _response->setHeader(StaticStrings::RequestForwardedTo, serverId);
+    _response->setHeaderNC(StaticStrings::RequestForwardedTo, serverId);
 
     return Result();
   };
@@ -503,7 +503,7 @@ void RestHandler::compressResponse() {
     switch (_request->acceptEncoding()) {
       case rest::EncodingType::DEFLATE:
         _response->deflate();
-        _response->setHeader(StaticStrings::ContentEncoding, StaticStrings::EncodingDeflate);
+        _response->setHeaderNC(StaticStrings::ContentEncoding, StaticStrings::EncodingDeflate);
         break;
 
       default:

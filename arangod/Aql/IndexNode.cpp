@@ -73,16 +73,16 @@ IndexNode::IndexNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
       CollectionAccessingNode(plan, base),
       _indexes(),
       _needsGatherNodeSort(
-          basics::VelocyPackHelper::readBooleanValue(base, "needsGatherNodeSort", false)),
+          basics::VelocyPackHelper::getBooleanValue(base, "needsGatherNodeSort", false)),
       _options(),
       _outNonMaterializedDocId(
           aql::Variable::varFromVPack(plan->getAst(), base, "outNmDocId", true)) {
-  _options.sorted = basics::VelocyPackHelper::readBooleanValue(base, "sorted", true);
+  _options.sorted = basics::VelocyPackHelper::getBooleanValue(base, "sorted", true);
   _options.ascending =
-      basics::VelocyPackHelper::readBooleanValue(base, "ascending", false);
+      basics::VelocyPackHelper::getBooleanValue(base, "ascending", false);
   _options.evaluateFCalls =
-      basics::VelocyPackHelper::readBooleanValue(base, "evalFCalls", true);
-  _options.limit = basics::VelocyPackHelper::readNumericValue(base, "limit", 0);
+      basics::VelocyPackHelper::getBooleanValue(base, "evalFCalls", true);
+  _options.limit = basics::VelocyPackHelper::getNumericValue(base, "limit", 0);
 
   if (_options.sorted && base.isObject() && base.get("reverse").isBool()) {
     // legacy

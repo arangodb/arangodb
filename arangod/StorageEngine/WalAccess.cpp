@@ -89,7 +89,7 @@ LogicalCollection* WalAccessContext::loadCollection(TRI_voc_tick_t dbid, TRI_voc
   TRI_vocbase_t* vocbase = loadVocbase(dbid);
   if (vocbase != nullptr) {
     try {
-      auto const [it, created] = _collectionCache.try_emplace(cid, CollectionGuard(vocbase, cid));
+      auto it = _collectionCache.try_emplace(cid, CollectionGuard(vocbase, cid)).first;
       return it->second.collection();
     } catch (...) {
       // weglaecheln

@@ -305,7 +305,9 @@ void message::prepareForNetwork(VSTVersion vstVersion, MessageID messageId,
     }
     if (chunkDataLen > 0) {
       assert(payload.size() > 0);
+#ifdef FUERTE_DEBUG
       assert(begin < end);
+#endif
       // Add chunk data buffer
       result.emplace_back(begin, chunkDataLen);
       begin += chunkDataLen;
