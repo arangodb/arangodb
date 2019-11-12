@@ -217,6 +217,7 @@ public:
      arangodb::RandomGenerator::initialize(arangodb::RandomGenerator::RandomType::MERSENNE);
    }
 
+
    _id = TRI_GetTempPath();
    _id += TRI_DIR_SEPARATOR_CHAR;
    _id += "arangotest-";
@@ -330,14 +331,16 @@ public:
     pathname += "backups";
     pathname += TRI_DIR_SEPARATOR_CHAR;
     pathname += _idRestore;
+    pathname += TRI_DIR_SEPARATOR_CHAR;
+    pathname += "engine_rocksdb";
     retVal = TRI_CreateRecursiveDirectory(pathname.c_str(), systemError,
                                           systemErrorStr);
 
     EXPECT_EQ(TRI_ERROR_NO_ERROR, retVal);
 
+    writeFile(pathname.c_str(), "../META", "{\"version\":\"" ARANGODB_VERSION "\", \"datetime\":\"xxx\", \"id\":\"xxx\"}");
     writeFile(pathname.c_str(), "MANIFEST-000003", "manifest info");
     writeFile(pathname.c_str(), "CURRENT", "MANIFEST-000003\n");
-    writeFile(pathname.c_str(), "META", "{\"version\":\"" ARANGODB_VERSION "\", \"datetime\":\"xxx\", \"id\":\"xxx\"}");
     writeFile(pathname.c_str(), "IDENTITY", "huh?");
     writeFile(pathname.c_str(), "000111.sst", "raw data 1");
     writeFile(pathname.c_str(), "000111.sha.e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855.hash", "");
