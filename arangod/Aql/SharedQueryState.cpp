@@ -41,8 +41,6 @@ void SharedQueryState::invalidate() {
 
 /// this has to stay for a backwards-compatible AQL HTTP API (hasMore).
 void SharedQueryState::waitForAsyncWakeup() {
-//  LOG_DEVEL << "waiting " << _numWakeups << " " << this;
-
   std::unique_lock<std::mutex> guard(_mutex);
   if (!_valid) {
     return;
@@ -52,8 +50,6 @@ void SharedQueryState::waitForAsyncWakeup() {
   _cv.wait(guard, [&] { return _numWakeups > 0 || !_valid; });
   TRI_ASSERT(_numWakeups > 0 || !_valid);
   _numWakeups--;
-  
-//  LOG_DEVEL << "wakeup " << _numWakeups << " " << this;;
 }
 
 /// @brief setter for the continue handler:
@@ -63,14 +59,10 @@ void SharedQueryState::setWakeupHandler(std::function<bool()> const& cb) {
   _wakeupCb = cb;
   _numWakeups = 0;
   _cbVersion++;
-  LOG_DEVEL << "setting wakeup handler " << this;
 }
 
 void SharedQueryState::resetWakeupHandler() {
   std::lock_guard<std::mutex> guard(_mutex);
-  if (_wakeupCb) {
-    LOG_DEVEL << "resetting wakeup handler " << this;
-  }
   _wakeupCb = nullptr;
   _numWakeups = 0;
   _cbVersion++;
@@ -82,13 +74,11 @@ void SharedQueryState::execute() {
   uint32_t n = _numWakeups++;
 
   if (!_wakeupCb) {
-    LOG_DEVEL << "notify_one() " << this;
     _cv.notify_one();
     return;
   }
 
   if (n > 0) {
-    LOG_DEVEL << "other handler already running " << this;
     return;
   }
 
@@ -98,8 +88,6 @@ void SharedQueryState::execute() {
 void SharedQueryState::queueHandler() {
   
   if (_numWakeups == 0 || !_wakeupCb || !_valid) {
-    bool c = !_wakeupCb;
-    LOG_DEVEL << "queueHandler leave, numWakeups" << _numWakeups << " wakeup cb: " << (!c) << " valid: " << _valid << " " << this;
     return;
   }
   
@@ -129,11 +117,11 @@ void SharedQueryState::queueHandler() {
       lck.lock();
       if (v == self->_cbVersion) {
         uint32_t c = self->_numWakeups--;
+        TRI_ASSERT(c > 0);
         if (c == 1 || !cntn || !self->_valid) {
           break;
         }
       } else {
-        LOG_DEVEL << "outdated handler";
         return;
       }
       lck.unlock();
