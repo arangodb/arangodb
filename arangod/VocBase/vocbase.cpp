@@ -1019,8 +1019,8 @@ std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::lookupCollectionByUu
 }
 
 /// @brief looks up a data-source by identifier
-std::shared_ptr<arangodb::LogicalDataSource> TRI_vocbase_t::lookupDataSource(TRI_voc_cid_t id) const
-    noexcept {
+std::shared_ptr<arangodb::LogicalDataSource> TRI_vocbase_t::lookupDataSource(
+    TRI_voc_cid_t id) const noexcept {
   RECURSIVE_READ_LOCKER(_dataSourceLock, _dataSourceLockWriteOwner);
   auto itr = _dataSourceById.find(id);
 
