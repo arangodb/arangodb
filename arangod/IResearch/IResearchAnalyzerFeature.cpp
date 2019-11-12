@@ -640,12 +640,16 @@ arangodb::Result visitAnalyzers(
 
     arangodb::Result res;
     for (auto const& coord : coords) {
-      res = {};
       request.destination = "server:" + coord;
 
       // same timeout as in ClusterMethods::getDocumentOnCoordinator()
       static double const CL_DEFAULT_TIMEOUT = 120.0;
       cc->performRequests(requests, CL_DEFAULT_TIMEOUT, arangodb::iresearch::TOPIC, false, false);
+
+      if (TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND == request.result.errorCode) {
+        // no "_analyzers" collection => not an error
+        return {};
+      }
 
       if (TRI_ERROR_CLUSTER_TIMEOUT == request.result.errorCode) {
         res = { request.result.errorCode, request.result.errorMessage };

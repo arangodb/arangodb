@@ -244,7 +244,7 @@ struct IResearchLinkMeta : public FieldMeta {
   /// @param ignoreEqual values to ignore if equal
   /// @param defaultVocbase fallback vocbase for analyzer name normalization
   ///                       nullptr == do not normalize
-  /// @param values to ignore always
+  /// @param mask if set reflects which fields were initialized from JSON
   ////////////////////////////////////////////////////////////////////////////////
   bool json(velocypack::Builder& builder,
             bool writeAnalyzerDefinition,
