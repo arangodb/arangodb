@@ -379,7 +379,6 @@ bool LogicalCollection::hasClusterWideUniqueRevs() const {
   return isSmartChild() &&
          _version >= Version::v36 && 
          vocbase().server().getFeature<EngineSelectorFeature>().isRocksDB();
-         _version >= Version::v36;
 }
 
 uint32_t LogicalCollection::v8CacheVersion() const { return _v8CacheVersion; }
