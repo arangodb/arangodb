@@ -74,8 +74,7 @@ VPackSlice MMFilesExportCursor::next() {
 
 size_t MMFilesExportCursor::count() const { return _size; }
 
-std::pair<aql::ExecutionState, Result> MMFilesExportCursor::dump(VPackBuilder& builder,
-                                                                 std::function<bool()> const&) {
+std::pair<aql::ExecutionState, Result> MMFilesExportCursor::dump(VPackBuilder& builder) {
   return {aql::ExecutionState::DONE, dumpSync(builder)};
 }
 

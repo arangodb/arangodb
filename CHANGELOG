@@ -1,6 +1,29 @@
 devel
 -----
 
+* Added new timeout option for queries. If a query does finish execution within
+  the given time in second it will be killed.
+
+* Fixed internal issue #4597: rebalanceShards API cannot work on any database
+  other than the _system database.
+
+* Fixed UPSERT matching.
+
+  Empty objects in the `UPSERT { ... }` expression will not be omitted anymore:
+
+      db._collection("col").insert({ "find" : "me" });
+      db._query(` UPSERT { "find" : "me", "foo" : {} }
+                  UPDATE { "foo"  : "not gonna happen" }
+                  INSERT { "find" : "me", "foo"  : {} }
+                  INTO col
+      `)
+
+  This will now correctly insert a document instead of updating the existing,
+  that only partially machtes the upsert-expression.
+
+* Fixed issue #10371: K_SHORTEST_PATHS LIMIT 1 can not return the shortest path.
+  Now the shortest path is returned as the first one in such queries.
+
 * Added limit for AQL range materialization to prevent out-of-memory errors.
 
   When materializing ranges created by either the AQL `RANGE` function or by using
