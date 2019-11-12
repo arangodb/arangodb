@@ -898,7 +898,7 @@ function multiCollectionGraphSuite() {
       /* this test is intended to trigger the clone functionality. */
       var query = 'FOR t IN ' + vn +
         ' FOR s IN ' + vn2 +
-        ' FOR x, e, p IN OUTBOUND t ' + en + ' SORT x._key RETURN {vertex: x, path: p}';
+        ' FOR x, e, p IN OUTBOUND t ' + en + ' SORT x._key, e._key RETURN {vertex: x, path: p}';
       var result = db._query(query).toArray();
       var plans = AQL_EXPLAIN(query, {}, opts).plans;
       plans.forEach(function (plan) {
