@@ -1,5 +1,18 @@
 devel
 -----
+* Fixed UPSERT matching.
+
+  Empty objects in the `UPSERT { ... }` expression will not be omitted anymore:
+
+      db._collection("col").insert({ "find" : "me" });
+      db._query(` UPSERT { "find" : "me", "foo" : {} }
+                  UPDATE { "foo"  : "not gonna happen" }
+                  INSERT { "find" : "me", "foo"  : {} }
+                  INTO col
+      `)
+
+  This will now correctly insert a document instead of updating the existing,
+  that only partially machtes the upsert-expression.
 
 * Fixed issue #10371: K_SHORTEST_PATHS LIMIT 1 can not return the shortest path.
   Now the shortest path is returned as the first one in such queries.

@@ -1127,6 +1127,39 @@ function aqlUpsertOptionsSuite() {
       validateDocsAreUpdated(docs, invalid, true);
     },
 
+    testUpsertEmptyObject: function () {
+      let NEW, OLD, res;
+      col.insert({ "value1": "find me" });
+
+      // before "find me" was found because the empty object
+      // was ignored now we will insert instead
+      let q1 = `UPSERT { "value1" : "find me", "value2" : {} }
+                INSERT { "value1" : "find me", "value2" : {} }
+                UPDATE { "value1" : "not gonna happen" }
+                IN ${collectionName}
+                RETURN [$OLD, $NEW]`;
+
+      res = db._query(q1).toArray();
+      OLD = res[0][0];
+      NEW = res[0][1];
+      assertEqual(NEW.value1, "find me");
+      assertEqual(NEW.value2, {});
+
+
+      // now we update the exact doucment
+      let q2 = `UPSERT { "value1" : "find me", "value2" : {} }
+                INSERT { "value1" : "not gonna happen" }
+                UPDATE { "value1" : "update" }
+                IN ${collectionName}
+                RETURN [$OLD, $NEW]`;
+
+      res = db._query(q2).toArray();
+      OLD = res[0][0];
+      NEW = res[0][1];
+      assertEqual(NEW.value1, "update");
+      assertEqual(NEW.value2, {});
+    },
+
     /* We cannot yet solve this. If you need to ensure _rev value checks put them in the UPDATE {} clause
     testUpsertSingleWithInvalidRevInMatch : function () {
       const invalid = genInvalidValue();
