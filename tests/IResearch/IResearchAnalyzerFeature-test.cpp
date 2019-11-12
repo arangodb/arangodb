@@ -68,6 +68,7 @@
 #include "RestServer/TraverserEngineRegistryFeature.h"
 #include "RestServer/UpgradeFeature.h"
 #include "RestServer/VocbaseContext.h"
+#include "RestServer/ViewTypesFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Sharding/ShardingFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -1210,6 +1211,7 @@ class IResearchAnalyzerFeatureCoordinatorTest : public ::testing::Test {
     buildFeatureEntry(new arangodb::ClusterFeature(server), false);
     buildFeatureEntry(new arangodb::ShardingFeature(server), false);
     buildFeatureEntry(new arangodb::iresearch::IResearchAnalyzerFeature(server), true);
+    buildFeatureEntry(new arangodb::ViewTypesFeature(server), true);
 
 #if USE_ENTERPRISE
     buildFeatureEntry(new arangodb::LdapFeature(server),
