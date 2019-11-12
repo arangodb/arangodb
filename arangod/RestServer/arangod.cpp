@@ -155,6 +155,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
         std::type_index(typeid(GreetingsFeature)),
         std::type_index(typeid(HttpEndpointProvider)),
         std::type_index(typeid(LoggerBufferFeature)),
+        std::type_index(typeid(pregel::PregelFeature)),
         std::type_index(typeid(ServerFeature)),
         std::type_index(typeid(SslServerFeature)),
         std::type_index(typeid(StatisticsFeature)),
