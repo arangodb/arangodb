@@ -23,11 +23,15 @@
 #ifndef ARANGOD_AQL_KSHORTEST_PATHS_EXECUTOR_H
 #define ARANGOD_AQL_KSHORTEST_PATHS_EXECUTOR_H
 
+#include "Aql/AqlCall.h"
+#include "Aql/AqlItemBlockInputRange.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
 
 #include <velocypack/Builder.h>
+
+using namespace arangodb::velocypack;
 
 namespace arangodb {
 
@@ -54,16 +58,17 @@ class NoStats;
 class KShortestPathsExecutorInfos : public ExecutorInfos {
  public:
   struct InputVertex {
-    enum { CONSTANT, REGISTER } type;
+    enum class Type { CONSTANT, REGISTER };
+    Type type;
     // TODO make the following two a union instead
     RegisterId reg;
     std::string value;
 
     // cppcheck-suppress passedByValue
     explicit InputVertex(std::string value)
-        : type(CONSTANT), reg(0), value(std::move(value)) {}
+        : type(Type::CONSTANT), reg(0), value(std::move(value)) {}
     explicit InputVertex(RegisterId reg)
-        : type(REGISTER), reg(reg), value("") {}
+        : type(Type::REGISTER), reg(reg), value("") {}
   };
 
   KShortestPathsExecutorInfos(std::shared_ptr<std::unordered_set<RegisterId>> inputRegisters,
@@ -110,6 +115,9 @@ class KShortestPathsExecutorInfos : public ExecutorInfos {
 
   graph::TraverserCache* cache() const;
 
+  InputVertex getSourceVertex() const noexcept;
+  InputVertex getTargetVertex() const noexcept;
+
  private:
   /// @brief the shortest path finder.
   std::unique_ptr<arangodb::graph::KShortestPathsFinder> _finder;
@@ -141,7 +149,7 @@ class KShortestPathsExecutor {
   KShortestPathsExecutor(KShortestPathsExecutor&&) = default;
 
   KShortestPathsExecutor(Fetcher& fetcher, Infos&);
-  ~KShortestPathsExecutor();
+  ~KShortestPathsExecutor() = default;
 
   /**
    * @brief Shutdown will be called once for every query
@@ -156,6 +164,9 @@ class KShortestPathsExecutor {
    * @return ExecutionState, and if successful exactly one new Row of AqlItems.
    */
   std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
+  std::tuple<ExecutorState, Stats, AqlCall> produceRows(size_t atMost,
+                                                        AqlItemBlockInputRange& input,
+                                                        OutputAqlItemRow& output);
 
  private:
   /**
@@ -164,6 +175,7 @@ class KShortestPathsExecutor {
    * @return false if we are done and no path could be found.
    */
   bool fetchPaths();
+  bool fetchPaths(AqlItemBlockInputRange& input);
 
   /**
    * @brief compute the correct return state
@@ -178,10 +190,13 @@ class KShortestPathsExecutor {
    */
   bool getVertexId(bool isTarget, arangodb::velocypack::Slice& id);
 
+  bool getVertexId(KShortestPathsExecutorInfos::InputVertex const& vertex,
+                   InputAqlItemRow& row, Builder& builder, Slice& id);
+
  private:
   Infos& _infos;
   Fetcher& _fetcher;
-  InputAqlItemRow _input;
+  InputAqlItemRow _inputRow;
   ExecutionState _rowState;
   /// @brief the shortest path finder.
   arangodb::graph::KShortestPathsFinder& _finder;
