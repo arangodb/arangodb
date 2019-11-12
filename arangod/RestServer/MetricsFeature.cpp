@@ -49,13 +49,18 @@ using namespace arangodb::options;
 
 MetricsFeature* MetricsFeature::METRICS = nullptr;
 
-
+#include <iostream>
 MetricsFeature::MetricsFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Metrics"),
       _enabled(true) {
-  setOptional(false);
-  startsAfter<LoggerFeature>();
   METRICS = this;
+  _serverStatistics = new
+    ServerStatistics(std::chrono::duration<double>(
+                       std::chrono::system_clock::now().time_since_epoch()).count());
+  setOptional(false);
+  startsBefore<LoggerFeature>();
+  //startsAfter<LoggerFeature>();
+  ;
 }
 
 void MetricsFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -162,3 +167,8 @@ Counter MetricsFeature::counter (std::string const& name, std::string const& hel
   }
   return _metrics.registerCounter(name);
 };
+
+
+ServerStatistics& MetricsFeature::serverStatistics() {
+  return *_serverStatistics;
+}

@@ -37,6 +37,7 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "RestServer/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/TtlFeature.h"
 #include "Scheduler/Scheduler.h"
@@ -836,7 +837,7 @@ void StatisticsWorker::generateRawStatistics(VPackBuilder& builder, double const
 
   RequestStatistics::fill(totalTime, requestTime, queueTime, ioTime, bytesSent, bytesReceived, stats::RequestStatisticsSource::ALL);
 
-  ServerStatistics const& serverInfo = ServerStatistics::statistics();
+  ServerStatistics const& serverInfo = MetricsFeature::metrics()->serverStatistics();
 
   builder.openObject();
   if (!_clusterId.empty()) {
@@ -916,9 +917,9 @@ void StatisticsWorker::generateRawStatistics(VPackBuilder& builder, double const
   builder.add("physicalMemory", VPackValue(TRI_PhysicalMemory));
   builder.add("transactions", VPackValue(VPackValueType::Object));
   builder.add("started", VPackValue(serverInfo._transactionsStatistics._transactionsStarted.load()));
-  builder.add("aborted", VPackValue(serverInfo._transactionsStatistics._transactionsAborted));
-  builder.add("committed", VPackValue(serverInfo._transactionsStatistics._transactionsCommitted));
-  builder.add("intermediateCommits", VPackValue(serverInfo._transactionsStatistics._intermediateCommits));
+  builder.add("aborted", VPackValue(serverInfo._transactionsStatistics._transactionsAborted.load()));
+  builder.add("committed", VPackValue(serverInfo._transactionsStatistics._transactionsCommitted.load()));
+  builder.add("intermediateCommits", VPackValue(serverInfo._transactionsStatistics._intermediateCommits.load()));
   builder.close();
 
   // export v8 statistics

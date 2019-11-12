@@ -27,6 +27,7 @@
 #include "Logger/LoggerFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/Metrics.h"
+#include "Statistics/ServerStatistics.h"
 
 #include <any>
 
@@ -68,6 +69,8 @@ class MetricsFeature final : public application_features::ApplicationFeature {
   static MetricsFeature* metrics() {
     return METRICS;
   }
+
+  ServerStatistics& serverStatistics();
   
  private:
   static MetricsFeature* METRICS;
@@ -79,6 +82,8 @@ class MetricsFeature final : public application_features::ApplicationFeature {
   std::unordered_map<std::string, std::pair<std::any,std::any>> _params;
 
   mutable std::mutex _lock;
+
+  ServerStatistics* _serverStatistics;
   
 };
 

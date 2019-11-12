@@ -23,14 +23,20 @@
 
 #include "ServerStatistics.h"
 #include "Statistics/StatisticsFeature.h"
+#include "RestServer/MetricsFeature.h"
 
 using namespace arangodb;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    static members
-// -----------------------------------------------------------------------------
-
-ServerStatistics serverStatisticsGlobal(0);
+TransactionStatistics::TransactionStatistics() :
+  _metrics(arangodb::MetricsFeature::metrics()),
+  _transactionsStarted(
+    _metrics->counter("arango_transactions_started", "Transactions started")),
+  _transactionsAborted(
+    _metrics->counter("arango_transactions_aborted", "Transactions aborted")),
+  _transactionsCommitted(
+    _metrics->counter("arango_transactions_committed", "Transactions committed")),
+  _intermediateCommits(
+    _metrics->counter("arango_intermediate_commits", "Intermediate commits")) {}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                             static public methods
@@ -38,10 +44,10 @@ ServerStatistics serverStatisticsGlobal(0);
 
 ServerStatistics& ServerStatistics::statistics() {
   //update the uptime for everyone reading the statistics.
-  serverStatisticsGlobal._uptime = StatisticsFeature::time() - serverStatisticsGlobal._startTime;
-  return serverStatisticsGlobal;
+  _uptime = StatisticsFeature::time() - _startTime;
+  return *this;
 }
 
 void ServerStatistics::initialize(double startTime) {
-    serverStatisticsGlobal._startTime = startTime;
+    _startTime = startTime;
 }
