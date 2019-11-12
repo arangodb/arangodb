@@ -25,6 +25,7 @@
 
 #include <map>
 
+#include <Agency/AsyncAgencyComm.h>
 #include <date/date.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -1297,6 +1298,7 @@ void HeartbeatThread::updateAgentPool(VPackSlice const& agentPool) {
         values.emplace_back(pair.value.copyString());
       }
       AgencyCommManager::MANAGER->updateEndpoints(values);
+      AsyncAgencyCommManager::INSTANCE->updateEndpoints(values);
     } catch (basics::Exception const& e) {
       LOG_TOPIC("1cec6", WARN, Logger::HEARTBEAT)
           << "Error updating agency pool: " << e.message();
