@@ -328,11 +328,11 @@ static Result createIndex(std::string const name, Index::IndexType type,
   // Static helper function that wraps creating an index. If we fail to
   // create an index with some indices created, we clean up by removing all
   // collections later on. Find the collection by name
-  auto colIt = find_if(collections.begin(), collections.end(),
-                       [name](std::shared_ptr<LogicalCollection> col) {
-                         TRI_ASSERT(col != nullptr);
-                         return col->name() == name;
-                       });
+  auto colIt = std::find_if(collections.begin(), collections.end(),
+                            [name](std::shared_ptr<LogicalCollection> const& col) {
+                              TRI_ASSERT(col != nullptr);
+                              return col->name() == name;
+                            });
   if (colIt == collections.end()) {
     return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
                   "Collection " + name + " not found");
@@ -363,7 +363,7 @@ Result createSystemStatisticsIndices(TRI_vocbase_t& vocbase,
       return res;
     }
   }
-  return {TRI_ERROR_NO_ERROR};
+  return res;
 }
 
 Result createSystemCollectionsIndices(TRI_vocbase_t& vocbase,
@@ -403,19 +403,17 @@ Result createSystemCollectionsIndices(TRI_vocbase_t& vocbase,
     return res;
   }
 
-  return {TRI_ERROR_NO_ERROR};
+  return res;
 }
 
 }  // namespace
 
 bool UpgradeTasks::createSystemCollectionsAndIndices(TRI_vocbase_t& vocbase,
                                                      arangodb::velocypack::Slice const& slice) {
-  Result res;
-
-  // This vector should after the call to ::createSystemCollections contain
+  // after the call to ::createSystemCollections this vector should contain
   // a LogicalCollection for *every* (required) system collection.
   std::vector<std::shared_ptr<LogicalCollection>> presentSystemCollections;
-  res = ::createSystemCollections(vocbase, presentSystemCollections);
+  Result res = ::createSystemCollections(vocbase, presentSystemCollections);
 
   // TODO: Maybe check or assert that all collections are present (i.e. were
   //       present or created), raise an error if not?

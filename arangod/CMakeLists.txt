@@ -52,7 +52,6 @@ add_library(arango_iresearch
   IResearch/ApplicationServerHelper.h IResearch/ApplicationServerHelper.cpp
   IResearch/Containers.cpp IResearch/Containers.h
   IResearch/IResearchAnalyzerFeature.cpp IResearch/IResearchAnalyzerFeature.h
-  IResearch/IResearchAnalyzerCollectionFeature.cpp
   IResearch/IResearchCommon.cpp IResearch/IResearchCommon.h
   IResearch/IResearchKludge.cpp IResearch/IResearchKludge.h
   IResearch/IResearchLink.cpp IResearch/IResearchLink.h
@@ -543,6 +542,7 @@ set(LIB_ARANGOSERVER_SOURCES
   Cluster/ClusterInfo.cpp
   Cluster/ClusterRepairDistributeShardsLike.cpp
   Cluster/ClusterRepairOperations.cpp
+  Cluster/ClusterUpgradeFeature.cpp
   Cluster/ClusterTrxMethods.cpp
   Cluster/ClusterTypes.cpp
   Cluster/CreateCollection.cpp

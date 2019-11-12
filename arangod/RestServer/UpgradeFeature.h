@@ -38,14 +38,19 @@ class UpgradeFeature final : public application_features::ApplicationFeature {
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
   void start() override final;
+  
+  void tryClusterUpgrade();
+  std::string const& clusterVersionAgencyKey() const;
+
+ private:
+  bool upgradeCoordinator();
+  void upgradeLocalDatabase();
 
  private:
   friend struct methods::Upgrade;  // to allow access to '_tasks'
 
   bool _upgrade;
   bool _upgradeCheck;
-
-  void upgradeDatabase();
 
   int* _result;
   std::vector<std::type_index> _nonServerFeatures;

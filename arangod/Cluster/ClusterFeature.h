@@ -87,7 +87,9 @@ class ClusterFeature : public application_features::ApplicationFeature {
  protected:
   void startHeartbeatThread(AgencyCallbackRegistry* agencyCallbackRegistry,
                             uint64_t interval_ms, uint64_t maxFailsBeforeWarning,
-                            const std::string& endpoints);
+                            std::string const& endpoints);
+  
+  void shutdownHeartbeatThread();
 
  private:
   void reportRole(ServerState::RoleEnum);

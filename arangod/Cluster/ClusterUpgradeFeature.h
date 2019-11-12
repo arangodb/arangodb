@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,21 +20,18 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_IRESEARCH__IRESEARCH_ANALYZER_COLLECTION_FEATURE_H
-#define ARANGOD_IRESEARCH__IRESEARCH_ANALYZER_COLLECTION_FEATURE_H 1
+#ifndef APPLICATION_FEATURES_CLUSTER_UPGRADE_FEATURE_H
+#define APPLICATION_FEATURES_CLUSTER_UPGRADE_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {
 
-/// @brief the sole purpose of this feature is to create potentially
-/// missing `_analyzers` collection after startup. It can be removed
-/// eventually once the entire upgrading logic has been revised
-class IResearchAnalyzerCollectionFeature final : public arangodb::application_features::ApplicationFeature {
+class ClusterUpgradeFeature final : public application_features::ApplicationFeature {
  public:
-  explicit IResearchAnalyzerCollectionFeature(arangodb::application_features::ApplicationServer& server);
+  explicit ClusterUpgradeFeature(application_features::ApplicationServer& server);
 
-  void start() override;
+  void start() override final;
 };
 
 }  // namespace arangodb
