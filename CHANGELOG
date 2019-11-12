@@ -5,7 +5,7 @@ devel
 
   This will allow for an easier transition from MMFiles to RocksDB storage
   engine but comes with a big performance penalty as collections will be locked
-  exclusive for writes.
+  exclusively for writes.
 
 * Fixed issue #10371: K_SHORTEST_PATHS LIMIT 1 can not return the shortest path.
   Now the shortest path is returned as the first one in such queries.

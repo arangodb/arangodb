@@ -346,10 +346,9 @@ void RocksDBOptionFeature::collectOptions(std::shared_ptr<ProgramOptions> option
   options
       ->addOption("--rocksdb.exclusive-writes",
                   "if true, writes are exclusive. This allows the RocksDB engine to mimic "
-                  "the MMfiles collection locks behavior, but will inhibit concurrent write operations",
+                  "the MMFiles collection locks behavior, but will inhibit concurrent write operations",
                   new BooleanParameter(&_exclusiveWrites))
-      .setIntroducedIn(30505) //TODO fix version
-      .setIntroducedIn(30600);
+      .setIntroducedIn(30504);
 }
 
 void RocksDBOptionFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {

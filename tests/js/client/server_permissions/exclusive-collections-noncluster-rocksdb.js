@@ -84,7 +84,7 @@ function OptionsTestSuite () {
           }
 
           db._executeTransaction({
-            collections: { write: [ "UnitTestsExclusiveCollection1", "UnitTestsExclusiveCollection2" ], exclusive: [ ] },
+            collections: { write: [ "UnitTestsExclusiveCollection1", "UnitTestsExclusiveCollection2" ] },
             action: function () {
               let db = require("internal").db;
               for (let i = 0; i < 100000; ++i) {
@@ -102,7 +102,7 @@ function OptionsTestSuite () {
       }
 
       db._executeTransaction({
-        collections: { write: [ "UnitTestsExclusiveCollection1", "UnitTestsExclusiveCollection2" ], exclusive: [ ] },
+        collections: { write: [ "UnitTestsExclusiveCollection1", "UnitTestsExclusiveCollection2" ] },
         action: function () {
           let db = require("internal").db;
           for (let i = 0; i < 100000; ++i) {
