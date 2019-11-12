@@ -110,7 +110,7 @@ class Query {
   constexpr static uint64_t DontCache = 0;
 
   /// @brief whether or not the query is killed
-  inline bool killed() const { return _killed; }
+  bool killed() const;
   
   void setKilled() { _killed = true; }
 
