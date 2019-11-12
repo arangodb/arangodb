@@ -127,7 +127,7 @@ private:
   mutable Metrics::buffer_type _b; 
 };
 
-std::ostream& operator<< (std::ostream&, Metrics::hist_type&);
+std::ostream& operator<< (std::ostream&, Metrics::hist_type const&);
 
 /**
  * @brief Histogram functionality
@@ -140,10 +140,10 @@ public:
     
   Histogram (Metrics::hist_type& hist, T const& low, T const& high)
     : _c(hist), _low(low), _high(high),
-      _lowr(std::numeric_limits<uint64_t>::max()), _highr(0) {
+      _lowr(std::numeric_limits<T>::max()), _highr(std::numeric_limits<T>::min()) {
     assert(hist.size() > 0);
     _n = _c.size() - 1;
-    _div = (double)(high - low) / (double)hist.size();
+    _div = std::floor((double)(high - low) / (double)hist.size());
   }
 
   ~Histogram() {
@@ -184,6 +184,14 @@ public:
     return _c[n];
   }
 
+  std::vector<uint64_t> load() const {
+    std::vector<uint64_t> v(size());
+    for (size_t i = 0; i < size(); ++i) {
+      v[i] = load(i);
+    }
+    return v;
+  }
+
   uint64_t load(size_t i) const { return _c.load(i); };
       
   size_t size() const { return _c.size(); }
@@ -203,7 +211,6 @@ public:
 
 std::ostream& operator<< (std::ostream&, Metrics::var_type const&);
 std::ostream& operator<< (std::ostream&, Metrics::counter_type const&);
-std::ostream& operator<< (std::ostream&, Metrics::hist_type const&);
 template<typename T>
 std::ostream& operator<<(std::ostream& o, Histogram<T> const& h) {
   return h.print(o);

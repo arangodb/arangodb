@@ -81,9 +81,75 @@ double time() {
     .count();
 }
 
-void MetricsFeature::toBuilder(VPackBuilder& builder) const {
+template<typename T> struct printer;
+template<> struct printer<double> {
+  static std::string const print(
+    std::string const name, Metrics::hist_type const& hist,
+    std::pair<std::any,std::any> const& lims) {
+    double low = std::any_cast<const double>(std::get<0>(lims));
+    double high = std::any_cast<const double>(std::get<1>(lims));
+    size_t buckets = hist.size();
+    uint64_t sum = 0;
+    double div = (high - low) / (double)hist.size();
+    std::string ret;
+    double le = low;
+    for (size_t i = 0; i < buckets; ++i) {
+      uint64_t n = hist.load(i);
+      sum += n;
+      ret += name + "_bucket{le=\"" + std::to_string(le) + "\"} " + std::to_string(hist.load(i)) + "\n";
+      le += div;
+    }
+    ret += name + "_count " + std::to_string(sum) + "\n";
+    return ret;
+  }
+};
+
+char const* _HELP ="#HELP ";
+char const* _TYPE ="#TYPE ";
+
+void MetricsFeature::toPrometheus(std::string& result) const {
+  std::lock_guard<std::mutex> guard(_lock);
   for (auto const& i : _help) {
-    builder.add(i.first, VPackValue(_metrics.counter(i.first).load()));
+    if (!i.second.empty()) {
+      result += _HELP + i.first + " " + i.second + "\n";
+    }
+    auto const it = _params.find(i.first);
+    if (it != _params.end()) {
+      result += _TYPE + i.first + " histogram\n";
+      std::string const tname = std::get<0>(it->second).type().name();
+      if (tname == typeid(double(0.)).name()) {
+        result += printer<double>::print(
+          i.first, _metrics.histogram(i.first), it->second);
+      }
+    } else {
+      result += _TYPE + i.first + " counter\n";
+      result +=
+        i.first + " " + std::to_string(_metrics.counter(i.first).load()) + "\n";
+    }
+    result += "\n";
+  }
+}
+  
+
+void MetricsFeature::toBuilder(VPackBuilder& builder) const {
+  std::lock_guard<std::mutex> guard(_lock);
+  for (auto const& i : _help) {
+    builder.add(VPackValue(i.first));
+    VPackObjectBuilder o(&builder);
+    builder.add("help", VPackValue(i.second));
+    auto const it = _params.find(i.first);
+    if (it != _params.end()) {
+      builder.add(
+        "type", VPackValue(std::get<0>(it->second).type().name()));
+      builder.add(VPackValue("value"));
+      VPackArrayBuilder a(&builder);
+      auto const& hist = _metrics.histogram(i.first);
+      for (size_t i = 0; i < hist.size(); ++i) {
+        builder.add(VPackValue(hist.load(i)));
+      }
+    } else {
+      builder.add("value", VPackValue(_metrics.counter(i.first).load()));
+    }
   }
 }
 

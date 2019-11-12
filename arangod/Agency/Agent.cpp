@@ -76,7 +76,9 @@ Agent::Agent(ApplicationServer& server, config_t const& config)
       _write_ok(_server.getFeature<arangodb::MetricsFeature>().counter(
                   "agency_agent_write_ok", "Agency write ok")),
       _write_no_leader(_server.getFeature<arangodb::MetricsFeature>().counter(
-                         "agency_agent_write_no_leader", "Agency write no leader")) {
+                         "agency_agent_write_no_leader", "Agency write no leader")),
+      _write_hist_msec(_server.getFeature<arangodb::MetricsFeature>().histogram(
+                         "agency_agent_write_hist", 10, 0., 20., "Agency write histogram [ms]")) {
   _state.configure(this);
   _constituent.configure(this);
   if (size() > 1) {
@@ -1128,6 +1130,8 @@ write_ret_t Agent::inquire(query_t const& query) {
 
 /// Write new entries to replicated state and store
 write_ret_t Agent::write(query_t const& query, WriteMode const& wmode) {
+
+  using namespace std::chrono;
   std::vector<apply_ret_t> applied;
   std::vector<index_t> indices;
   auto multihost = size() > 1;
@@ -1174,6 +1178,7 @@ write_ret_t Agent::write(query_t const& query, WriteMode const& wmode) {
       return write_ret_t(false, NO_LEADER);
     }
 
+    auto const start = high_resolution_clock::now();
     // Apply to spearhead and get indices for log entries
     // Avoid keeping lock indefinitely
     for (size_t i = 0, l = 0; i < npacks; ++i) {
@@ -1205,6 +1210,8 @@ write_ret_t Agent::write(query_t const& query, WriteMode const& wmode) {
       auto tmp = _state.logLeaderMulti(chunk, applied, currentTerm);
       indices.insert(indices.end(), tmp.begin(), tmp.end());
     }
+    _write_hist_msec.count(
+      duration<double,std::milli>(high_resolution_clock::now()-start).count());
   }
 
   // Maximum log index

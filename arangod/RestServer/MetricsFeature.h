@@ -48,7 +48,7 @@ class MetricsFeature final : public application_features::ApplicationFeature {
   void start() override final;
   void stop() override final;
 
-  template<typename T> Histogram<T>&
+  template<typename T> Histogram<T>
   histogram (std::string const& name, size_t buckets, T low, T high,
              std::string const& help = std::string()) {
     std::lock_guard<std::mutex> guard(_lock);
@@ -57,13 +57,13 @@ class MetricsFeature final : public application_features::ApplicationFeature {
       _help[name] = help;
       _params[name] = std::pair<T,T>{low,high};
     }
-
     return _metrics.registerHistogram(name, buckets, low, high);
   };
 
   Counter counter(std::string const& name, std::string const& help);
 
   void toBuilder(VPackBuilder& builder) const;
+  void toPrometheus(std::string& result) const;
   
  private:
   static MetricsFeature* METRICS;

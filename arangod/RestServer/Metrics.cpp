@@ -87,7 +87,6 @@ void Counter::push() {
 }
 
 std::ostream& Counter::print(std::ostream& o) const {
-  _b.push();
   o << _c;
   return o;
 }
@@ -154,28 +153,24 @@ Counter Metrics::registerCounter(std::string const& name, uint64_t init) {
 
 Metrics::counter_type& Metrics::counter(std::string const& name) {
   auto it = _registry.find(name);
-  LOG_TOPIC("4ca33", ERR, Logger::FIXME) << "No such counter " << name;
   TRI_ASSERT(it != _registry.end());
   return std::get<Metrics::counter_type>(it->second->_var);
 }
 
 Metrics::counter_type const& Metrics::counter(std::string const& name) const {
   auto const it = _registry.find(name);
-  LOG_TOPIC("4ca33", ERR, Logger::FIXME) << "No such counter " << name;
   TRI_ASSERT(it != _registry.end());
   return std::get<Metrics::counter_type>(it->second->_var);
 }
 
 Metrics::hist_type& Metrics::histogram(std::string const& name) {
   auto it = _registry.find(name);
-  LOG_TOPIC("3ca34", ERR, Logger::FIXME) << "No such histogram " << name;
   TRI_ASSERT(it != _registry.end());
   return std::get<Metrics::hist_type>(it->second->_var);
 }
 
 Metrics::hist_type const& Metrics::histogram(std::string const& name) const {
   auto const it = _registry.find(name);
-  LOG_TOPIC("3ca34", ERR, Logger::FIXME) << "No such histogram " << name;
   TRI_ASSERT(it != _registry.end());
   return std::get<Metrics::hist_type>(it->second->_var);
 }
