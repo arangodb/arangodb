@@ -394,7 +394,8 @@ TEST(RocksDBHotBackupRestoreDirectories, test_createRestoringDirectory) {
   EXPECT_TRUE( TRI_IsRegularFile(tempname.c_str()) ); // looks same as hard link
 
   // verify still present in originating dir
-  restoringDir = testee.rebuildPath(testee.getDirectoryRestore());
+  restoringDir = testee.rebuildPath(testee.getDirectoryRestore() +
+                                    TRI_DIR_SEPARATOR_CHAR + "engine_rocksdb");
   EXPECT_TRUE( TRI_ExistsFile(restoringDir.c_str()) );
   EXPECT_TRUE( TRI_IsDirectory(restoringDir.c_str()) );
   tempname = restoringDir + TRI_DIR_SEPARATOR_CHAR + "MANIFEST-000003";
