@@ -52,6 +52,9 @@ class Methods;
 }
 
 namespace aql {
+
+struct AqlCall;
+class AqlItemBlockInputRange;
 class ExecutionEngine;
 class ExecutionNode;
 class ExecutorInfos;
@@ -147,6 +150,19 @@ class IdExecutor {
    */
   std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
 
+  /**
+   * @brief produce the next Row of Aql Values.
+   *
+   * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
+   */
+  std::tuple<ExecutorState, Stats, AqlCall> produceRows(size_t atMost,
+                                                        AqlItemBlockInputRange& input,
+                                                        OutputAqlItemRow& output);
+
+  std::tuple<ExecutorState, size_t, AqlCall> skipRowsRange(size_t atMost,
+                                                           AqlItemBlockInputRange& input);
+
+  template <BlockPassthrough allowPass = usePassThrough, typename = std::enable_if_t<allowPass == BlockPassthrough::Enable>>
   std::tuple<ExecutionState, Stats, SharedAqlItemBlockPtr> fetchBlockForPassthrough(size_t atMost);
 
  private:
