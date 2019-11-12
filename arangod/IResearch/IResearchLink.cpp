@@ -31,7 +31,6 @@
 #include "Aql/QueryCache.h"
 #include "Basics/LocalTaskQueue.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterInfo.h"
 #include "MMFiles/MMFilesCollection.h"
 #include "RestServer/DatabaseFeature.h"
@@ -1747,6 +1746,25 @@ Result IResearchLink::unload() {
   }
 
   return {};
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief lookup referenced analyzer
+////////////////////////////////////////////////////////////////////////////////
+AnalyzerPool::ptr IResearchLink::findAnalyzer(AnalyzerPool const& analyzer) const {
+  auto const it = _meta._analyzerDefinitions.find(irs::string_ref(analyzer.name()));
+
+  if (it == _meta._analyzerDefinitions.end()) {
+    return nullptr;
+  }
+
+  auto const pool = *it;
+
+  if (pool && analyzer == *pool) {
+    return pool;
+  }
+
+  return nullptr;
 }
 
 }  // namespace iresearch

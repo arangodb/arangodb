@@ -46,6 +46,9 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
+#include "RestServer/TraverserEngineRegistryFeature.h"
+#include "RestServer/AqlFeature.h"
+#include "Aql/OptimizerRulesFeature.h"
 #include "Sharding/ShardingFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Methods.h"
@@ -165,6 +168,9 @@ class IResearchDocumentTest : public ::testing::Test {
                                     arangodb::LogLevel::ERR);
 
     // setup required application features
+    features.emplace_back(new arangodb::TraverserEngineRegistryFeature(server), false);  // must be before AqlFeature
+    features.emplace_back(new arangodb::AqlFeature(server), true);
+    features.emplace_back(new arangodb::aql::OptimizerRulesFeature(server), true);
     features.emplace_back(new arangodb::AuthenticationFeature(server), true);
     features.emplace_back(new arangodb::DatabaseFeature(server), false);
     features.emplace_back(new arangodb::QueryRegistryFeature(server), false);  // required for constructing TRI_vocbase_t
@@ -722,7 +728,7 @@ TEST_F(IResearchDocumentTest, FieldIterator_traverse_complex_object_ordered_chec
   auto const slice = json->slice();
 
   arangodb::iresearch::IResearchLinkMeta linkMeta;
-  linkMeta._analyzers.emplace_back(arangodb::iresearch::IResearchLinkMeta::Analyzer(
+  linkMeta._analyzers.emplace_back(arangodb::iresearch::FieldMeta::Analyzer(
       analyzers->get(arangodb::StaticStrings::SystemDatabase +
                      "::iresearch-document-empty"),
       "iresearch-document-empty"));   // add analyzer
@@ -1549,12 +1555,12 @@ TEST_F(IResearchDocumentTest, FieldIterator_nullptr_analyzer) {
   // last analyzer invalid
   {
     arangodb::iresearch::IResearchLinkMeta linkMeta;
-    linkMeta._analyzers.emplace_back(arangodb::iresearch::IResearchLinkMeta::Analyzer(
+    linkMeta._analyzers.emplace_back(arangodb::iresearch::FieldMeta::Analyzer(
         analyzers.get(arangodb::StaticStrings::SystemDatabase + "::empty"),
         "empty"));  // add analyzer
 
     InvalidAnalyzer::returnNullFromMake = false;
-    linkMeta._analyzers.emplace_back(arangodb::iresearch::IResearchLinkMeta::Analyzer(
+    linkMeta._analyzers.emplace_back(arangodb::iresearch::FieldMeta::Analyzer(
         analyzers.get(arangodb::StaticStrings::SystemDatabase + "::invalid"),
         "invalid"));                    // add analyzer
     linkMeta._includeAllFields = true;  // include all fields
@@ -1620,10 +1626,10 @@ TEST_F(IResearchDocumentTest, FieldIterator_nullptr_analyzer) {
     linkMeta._analyzers.clear();
 
     InvalidAnalyzer::returnNullFromMake = false;
-    linkMeta._analyzers.emplace_back(arangodb::iresearch::IResearchLinkMeta::Analyzer(
+    linkMeta._analyzers.emplace_back(arangodb::iresearch::FieldMeta::Analyzer(
         analyzers.get(arangodb::StaticStrings::SystemDatabase + "::invalid"),
         "invalid"));  // add analyzer
-    linkMeta._analyzers.emplace_back(arangodb::iresearch::IResearchLinkMeta::Analyzer(
+    linkMeta._analyzers.emplace_back(arangodb::iresearch::FieldMeta::Analyzer(
         analyzers.get(arangodb::StaticStrings::SystemDatabase + "::empty"),
         "empty"));                      // add analyzer
     linkMeta._includeAllFields = true;  // include all fields

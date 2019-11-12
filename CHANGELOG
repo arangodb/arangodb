@@ -15,6 +15,14 @@ v3.5.3 (XXXX-XX-XX)
   This will now correctly insert a document instead of updating the existing,
   that only partially machtes the upsert-expression.
 
+* Fixed undefined behaviour with creation of ArangoSearch links with custom
+  analyzers in cluster environment.
+
+* Fixed internal issue #651: analyzer duplication in _analyzers collection.
+
+* Fixed internal issue #4597: rebalanceShards API cannot work on any database
+  other than the _system database.
+
 * Stop putting system services in _apps on single server, this has never
   worked on cluster and was not needed.
 

@@ -36,6 +36,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/ExpressionContext.h"
 #include "Aql/Query.h"
+#include "Aql/OptimizerRulesFeature.h"
 #include "Cluster/ClusterFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/AqlHelper.h"
@@ -109,6 +110,7 @@ class IResearchFilterInTest : public ::testing::Test {
                           false);  // required for DatabaseFeature::createDatabase(...)
     features.emplace_back(new arangodb::ViewTypesFeature(server), false);  // required for IResearchFeature
     features.emplace_back(new arangodb::AqlFeature(server), true);
+    features.emplace_back(new arangodb::aql::OptimizerRulesFeature(server), true);
     features.emplace_back(functions = new arangodb::aql::AqlFunctionFeature(server),
                           true);  // required for IResearchAnalyzerFeature
     features.emplace_back(new arangodb::iresearch::IResearchAnalyzerFeature(server), true);
