@@ -284,48 +284,10 @@ function cleanupOrphanedServices (knownServicePaths, knownBundlePaths) {
 }
 
 function startup () {
-  if (isFoxxmaster()) {
-    const db = require('internal').db;
-    const dbName = db._name();
-    try {
-      db._useDatabase('_system');
-      const databases = db._databases();
-      for (const name of databases) {
-        try {
-          db._useDatabase(name);
-          upsertSystemServices();
-        } catch (e) {
-          console.warnStack(e);
-        }
-      }
-    } finally {
-      db._useDatabase(dbName);
-    }
-  }
   if (global.ArangoServerState.role() === 'SINGLE') {
     commitLocalState(true);
   }
   selfHealAll();
-}
-
-function upsertSystemServices () {
-  const serviceDefinitions = new Map();
-  for (const mount of SYSTEM_SERVICE_MOUNTS) {
-    try {
-      const serviceDefinition = utils.getServiceDefinition(mount) || {mount};
-      const service = FoxxService.create(serviceDefinition);
-      serviceDefinitions.set(mount, service.toJSON());
-    } catch (e) {
-      console.errorStack(e);
-    }
-  }
-  db._query(aql`
-    FOR item IN ${Array.from(serviceDefinitions)}
-    UPSERT {mount: item[0]}
-    INSERT item[1]
-    REPLACE item[1]
-    IN ${utils.getStorage()}
-  `);
 }
 
 function commitLocalState (replace) {

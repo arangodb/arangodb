@@ -6,6 +6,20 @@ v3.5.3 (XXXX-XX-XX)
   running. This should prevent data from more exotic column families to
   stay only in WAL and memtables, which may block WAL journals collection.
 
+* Fixed undefined behaviour with creation of ArangoSearch links with custom
+  analyzers in cluster environment.
+
+* Fixed internal issue #651: analyzer duplication in _analyzers collection.
+
+* Fixed internal issue #4597: rebalanceShards API cannot work on any database
+  other than the _system database.
+
+* Stop putting system services in _apps on single server, this has never
+  worked on cluster and was not needed.
+
+* Fixed issue #10371: K_SHORTEST_PATHS LIMIT 1 can not return the shortest path.
+  Now the shortest path is returned as the first one in such queries.
+
 * Improve killability of some types of cluster AQL queries. Previously, several
   cluster queries, especially those containing a `DistributeNode` in their
   execution plans, did not respond to a kill instruction.

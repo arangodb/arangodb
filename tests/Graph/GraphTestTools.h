@@ -50,6 +50,8 @@
 #include "../Mocks/StorageEngineMock.h"
 #include "IResearch/common.h"
 
+#include "boost/optional.hpp"
+
 using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::graph;
@@ -184,9 +186,18 @@ struct MockGraphDatabase {
     EXPECT_TRUE(vertices->type());
   }
 
+  struct EdgeDef {
+    EdgeDef(size_t from, size_t to) : _from(from), _to(to){};
+    EdgeDef(size_t from, size_t to, double weight)
+        : _from(from), _to(to), _weight(weight){};
+    size_t _from;
+    size_t _to;
+    boost::optional<double> _weight;
+  };
+
   // Create a collection with name <name> of edges given by <edges>
   void addEdgeCollection(std::string name, std::string vertexCollection,
-                         std::vector<std::pair<size_t, size_t>> edgedef) {
+                         std::vector<EdgeDef> edgedef) {
     std::shared_ptr<arangodb::LogicalCollection> edges;
     auto createJson = velocypack::Parser::fromJson("{ \"name\": \"" + name +
                                                    "\", \"type\": 3 }");
@@ -205,10 +216,18 @@ struct MockGraphDatabase {
     for (auto& p : edgedef) {
       //      std::cout << "edge: " << vertexCollection << " " << p.first << " -> "
       //          << p.second << std::endl;
-      auto docJson = velocypack::Parser::fromJson(
-          "{ \"_from\": \"" + vertexCollection + "/" + std::to_string(p.first) +
-          "\"" + ", \"_to\": \"" + vertexCollection + "/" +
-          std::to_string(p.second) + "\" }");
+      // This is moderately horrible
+      auto docJson =
+          p._weight.has_value()
+              ? velocypack::Parser::fromJson(
+                    "{ \"_from\": \"" + vertexCollection + "/" +
+                    std::to_string(p._from) + "\"" + ", \"_to\": \"" +
+                    vertexCollection + "/" + std::to_string(p._to) +
+                    "\", \"cost\": " + std::to_string(p._weight.value()) + "}")
+              : velocypack::Parser::fromJson(
+                    "{ \"_from\": \"" + vertexCollection + "/" +
+                    std::to_string(p._from) + "\"" + ", \"_to\": \"" +
+                    vertexCollection + "/" + std::to_string(p._to) + "\" }");
       docs.emplace_back(docJson);
     }
 
@@ -282,12 +301,13 @@ struct MockGraphDatabase {
     spos.emplace_back(spo);
     return spo;
   }
-};
+};  // namespace graph
 
-bool checkPath(ShortestPathOptions* spo, ShortestPathResult result, std::vector<std::string> vertices,
+bool checkPath(ShortestPathOptions* spo, ShortestPathResult result,
+               std::vector<std::string> vertices,
                std::vector<std::pair<std::string, std::string>> edges, std::string& msgs);
 
-}
-}
-}
+}  // namespace graph
+}  // namespace tests
+}  // namespace arangodb
 #endif

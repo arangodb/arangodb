@@ -63,8 +63,8 @@ arangodb::Result canUseAnalyzers( // validate
   >();
   auto sysVocbase = sysDatabase ? sysDatabase->use() : nullptr;
 
-  for (auto& entry: meta._analyzers) {
-    if (!entry._pool) {
+  for (auto& pool: meta._analyzerDefinitions) {
+    if (!pool) {
       continue; // skip invalid entries
     }
 
@@ -73,35 +73,35 @@ arangodb::Result canUseAnalyzers( // validate
     if (sysVocbase) {
       result = arangodb::iresearch::IResearchAnalyzerFeature::canUse( // validate
         arangodb::iresearch::IResearchAnalyzerFeature::normalize( // normalize
-          entry._pool->name(), defaultVocbase, *sysVocbase // args
+          pool->name(), defaultVocbase, *sysVocbase // args
         ), // analyzer
         arangodb::auth::Level::RO // auth level
       );
     } else {
       result = arangodb::iresearch::IResearchAnalyzerFeature::canUse( // validate
-        entry._pool->name(), arangodb::auth::Level::RO // args
+        pool->name(), arangodb::auth::Level::RO // args
       );
     }
 
     if (!result) {
-      return arangodb::Result( // result
-        TRI_ERROR_FORBIDDEN, // code
-        std::string("read access is forbidden to arangosearch analyzer '") + entry._pool->name() + "'"
-      );
+      return {
+        TRI_ERROR_FORBIDDEN,
+        std::string("read access is forbidden to arangosearch analyzer '") + pool->name() + "'"
+      };
     }
   }
 
-  for (auto& field: meta._fields) {
-    TRI_ASSERT(field.value().get()); // ensured by UniqueHeapInstance constructor
-    auto& entry = field.value();
-    auto res = canUseAnalyzers(*entry, defaultVocbase);
+//  for (auto& field: meta._fields) {
+//    TRI_ASSERT(field.value().get()); // ensured by UniqueHeapInstance constructor
+//    auto& entry = field.value();
+//    auto res = canUseAnalyzers(*entry, defaultVocbase);
+//
+//    if (!res.ok()) {
+//      return res;
+//    }
+//  }
 
-    if (!res.ok()) {
-      return res;
-    }
-  }
-
-  return arangodb::Result();
+  return {};
 }
 
 arangodb::Result createLink( // create link
@@ -795,17 +795,22 @@ namespace iresearch {
       // analyzer should be either from same database as view (and collection) or from system database
       {
         const auto& currentVocbase = vocbase.name();
-        for (const auto& analyzer : meta._analyzers) {
-          TRI_ASSERT(analyzer._pool); // should be checked in meta init
-          if (ADB_UNLIKELY(!analyzer._pool)) { 
+        for (const auto& analyzer : meta._analyzerDefinitions) {
+          TRI_ASSERT(analyzer); // should be checked in meta init
+          if (ADB_UNLIKELY(!analyzer)) {
             continue; 
           }
-          auto analyzerVocbase = IResearchAnalyzerFeature::extractVocbaseName(analyzer._pool->name());
+          auto* pool = analyzer.get();
+          auto analyzerVocbase = IResearchAnalyzerFeature::extractVocbaseName(pool->name());
+
           if (!IResearchAnalyzerFeature::analyzerReachableFromDb(analyzerVocbase, currentVocbase, true)) {
-            return arangodb::Result(
-                TRI_ERROR_BAD_PARAMETER,
-                std::string("Analyzer '").append(analyzer._pool->name())
-                .append("' is not accessible from database '").append(currentVocbase).append("'"));
+            return {
+              TRI_ERROR_BAD_PARAMETER,
+              std::string("Analyzer '")
+                  .append(pool->name())
+                  .append("' is not accessible from database '")
+                  .append(currentVocbase).append("'")
+            };
           }
         }
       }
