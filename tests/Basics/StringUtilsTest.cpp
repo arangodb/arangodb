@@ -172,38 +172,38 @@ TEST_F(StringUtilsTest, test_toupper) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TEST_F(StringUtilsTest, test_uint64) {
-  EXPECT_EQ(0ULL, StringUtils::uint64("abc"s));
-  EXPECT_EQ(0ULL, StringUtils::uint64("ABC"s));
-  EXPECT_EQ(0ULL, StringUtils::uint64(" foo"s));
-  EXPECT_EQ(0ULL, StringUtils::uint64(""s));
-  EXPECT_EQ(0ULL, StringUtils::uint64(" "s));
-  EXPECT_EQ(12ULL, StringUtils::uint64("012"s));
-  EXPECT_EQ(12ULL, StringUtils::uint64("00012"s));
-  EXPECT_EQ(1234ULL, StringUtils::uint64("1234"s));
-  EXPECT_EQ(1234ULL, StringUtils::uint64("1234a"s));
+  EXPECT_EQ(0ULL,  StringUtils::uint64("abc"s));
+  EXPECT_EQ(0ULL,  StringUtils::uint64("ABC"s));
+  EXPECT_EQ(0ULL,  StringUtils::uint64(" foo"s));
+  EXPECT_EQ(0ULL,  StringUtils::uint64(""s));
+  EXPECT_EQ(0ULL,  StringUtils::uint64(" "s));
+  EXPECT_EQ(12ULL,  StringUtils::uint64("012"s));
+  EXPECT_EQ(12ULL,  StringUtils::uint64("00012"s));
+  EXPECT_EQ(1234ULL,  StringUtils::uint64("1234"s));
+  EXPECT_EQ(1234ULL,  StringUtils::uint64("1234a"s));
 #ifdef ARANGODB_STRING_UTILS_USE_FROM_CHARS
-  EXPECT_EQ(0ULL, StringUtils::uint64("-1"s));
-  EXPECT_EQ(0ULL, StringUtils::uint64("-12345"s));
+  EXPECT_EQ(0ULL,  StringUtils::uint64("-1"s));
+  EXPECT_EQ(0ULL,  StringUtils::uint64("-12345"s));
 #else
-  EXPECT_EQ(18446744073709551615ULL, StringUtils::uint64("-1"s));
-  EXPECT_EQ(18446744073709539271ULL, StringUtils::uint64("-12345"s));
+  EXPECT_EQ(18446744073709551615ULL,  StringUtils::uint64("-1"s));
+  EXPECT_EQ(18446744073709539271ULL,  StringUtils::uint64("-12345"s));
 #endif
-  EXPECT_EQ(1234ULL, StringUtils::uint64("1234.56"s));
-  EXPECT_EQ(0ULL, StringUtils::uint64("1234567890123456789012345678901234567890"s));
-  EXPECT_EQ(0ULL, StringUtils::uint64("@"s));
+  EXPECT_EQ(1234ULL,  StringUtils::uint64("1234.56"s));
+  EXPECT_EQ(0ULL,  StringUtils::uint64("1234567890123456789012345678901234567890"s));
+  EXPECT_EQ(0ULL,  StringUtils::uint64("@"s));
 
-  EXPECT_EQ(0ULL, StringUtils::uint64("0"s));
-  EXPECT_EQ(1ULL, StringUtils::uint64("1"s));
-  EXPECT_EQ(12ULL, StringUtils::uint64("12"s));
-  EXPECT_EQ(123ULL, StringUtils::uint64("123"s));
-  EXPECT_EQ(1234ULL, StringUtils::uint64("1234"s));
-  EXPECT_EQ(1234ULL, StringUtils::uint64("01234"s));
-  EXPECT_EQ(9ULL, StringUtils::uint64("9"s));
-  EXPECT_EQ(9ULL, StringUtils::uint64("09"s));
-  EXPECT_EQ(9ULL, StringUtils::uint64("0009"s));
-  EXPECT_EQ(12345678ULL, StringUtils::uint64("12345678"s));
-  EXPECT_EQ(1234567800ULL, StringUtils::uint64("1234567800"s));
-  EXPECT_EQ(1234567890123456ULL, StringUtils::uint64("1234567890123456"s));
+  EXPECT_EQ(0ULL,  StringUtils::uint64("0"s));
+  EXPECT_EQ(1ULL,  StringUtils::uint64("1"s));
+  EXPECT_EQ(12ULL,  StringUtils::uint64("12"s));
+  EXPECT_EQ(123ULL,  StringUtils::uint64("123"s));
+  EXPECT_EQ(1234ULL,  StringUtils::uint64("1234"s));
+  EXPECT_EQ(1234ULL,  StringUtils::uint64("01234"s));
+  EXPECT_EQ(9ULL,  StringUtils::uint64("9"s));
+  EXPECT_EQ(9ULL,  StringUtils::uint64("09"s));
+  EXPECT_EQ(9ULL,  StringUtils::uint64("0009"s));
+  EXPECT_EQ(12345678ULL,  StringUtils::uint64("12345678"s));
+  EXPECT_EQ(1234567800ULL,  StringUtils::uint64("1234567800"s));
+  EXPECT_EQ(1234567890123456ULL,  StringUtils::uint64("1234567890123456"s));
   EXPECT_EQ(UINT64_MAX,  StringUtils::uint64(std::to_string(UINT64_MAX)));
 }
 

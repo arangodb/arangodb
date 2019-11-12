@@ -230,7 +230,7 @@ class ApplicationServer {
      TRI_ASSERT(!hasFeature<As>());
      std::pair<FeatureMap::iterator, bool> result =
          _features.try_emplace(std::type_index(typeid(As)),
-                               std::make_unique<Type>(*this, std::forward<Args>(args)...));
+                           std::make_unique<Type>(*this, std::forward<Args>(args)...));
      TRI_ASSERT(result.second);
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
      auto obj = dynamic_cast<As*>(result.first->second.get());

@@ -456,7 +456,8 @@ void VelocyPackHelper::ensureStringValue(VPackSlice const& slice, std::string co
 }
 
 /// @brief returns a string value, or the default value if it is not a string
-std::string VelocyPackHelper::getStringValue(VPackSlice slice, std::string const& defaultValue) {
+std::string VelocyPackHelper::getStringValue(VPackSlice slice,
+                                             std::string const& defaultValue) {
   if (!slice.isString()) {
     return defaultValue;
   }

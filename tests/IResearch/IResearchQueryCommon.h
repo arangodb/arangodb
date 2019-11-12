@@ -153,4 +153,4 @@ class IResearchQueryTest
   }
 };  // IResearchQueryTest
 
-#endif  // ARANGOD_AQL_IRESEARCH_QUERY_COMMON_H
+#endif // ARANGOD_AQL_IRESEARCH_QUERY_COMMON_H

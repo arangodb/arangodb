@@ -47,6 +47,7 @@
 #include "Sharding/ShardingFeature.h"
 #include "Sharding/ShardingInfo.h"
 #include "StorageEngine/PhysicalCollection.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/V8Context.h"
 #include "Utils/Events.h"
@@ -255,7 +256,7 @@ Result Collections::create(TRI_vocbase_t& vocbase,
   bool haveShardingFeature = ServerState::instance()->isCoordinator() &&
                              vocbase.server().hasFeature<ShardingFeature>();
   bool useRevs = ServerState::instance()->isSingleServerOrCoordinator() &&
-                 vocbase.server().getFeature<EngineSelectorFeature>().isRocksDB();
+                 vocbase.server().getFeature<arangodb::EngineSelectorFeature>().isRocksDB();
   VPackBuilder builder;
   VPackBuilder helper;
   builder.openArray();

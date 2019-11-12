@@ -442,17 +442,14 @@ class HashIndexMap {
 
   struct VPackBuilderComparator {
     bool operator()(VPackBuilder const& builder1, VPackBuilder const& builder2) const {
-      return ::arangodb::basics::VelocyPackHelper::compare(builder1.slice(),
-                                                           builder2.slice(), true) == 0;
+      return ::arangodb::basics::VelocyPackHelper::compare(builder1.slice(), builder2.slice(), true) == 0;
     }
   };
 
-  using ValueMap =
-      std::unordered_multimap<VPackBuilder, arangodb::LocalDocumentId, VPackBuilderHasher, VPackBuilderComparator>;
+  using ValueMap = std::unordered_multimap<VPackBuilder, arangodb::LocalDocumentId, VPackBuilderHasher, VPackBuilderComparator>;
   using DocumentsIndexMap = std::unordered_map<arangodb::LocalDocumentId, VPackBuilder>;
 
-  arangodb::velocypack::Slice getSliceByField(arangodb::velocypack::Slice const& doc,
-                                              size_t i) {
+  arangodb::velocypack::Slice getSliceByField(arangodb::velocypack::Slice const& doc, size_t i) {
     TRI_ASSERT(i < _fields.size());
     TRI_ASSERT(!doc.isNone());
     auto slice = doc;
@@ -465,8 +462,7 @@ class HashIndexMap {
     return slice;
   }
 
-  void insertSlice(arangodb::LocalDocumentId const& documentId,
-                   arangodb::velocypack::Slice const& slice, size_t i) {
+  void insertSlice(arangodb::LocalDocumentId const& documentId, arangodb::velocypack::Slice const& slice, size_t i) {
     VPackBuilder builder;
     if (slice.isNone() || slice.isNull()) {
       builder.add(VPackSlice::nullSlice());
@@ -477,13 +473,11 @@ class HashIndexMap {
   }
 
  public:
-  HashIndexMap(std::vector<std::vector<arangodb::basics::AttributeName>> const& fields)
-      : _fields(fields), _valueMaps(fields.size()) {
+  HashIndexMap(std::vector<std::vector<arangodb::basics::AttributeName>> const& fields) : _fields(fields), _valueMaps(fields.size()) {
     TRI_ASSERT(!_fields.empty());
   }
 
-  void insert(arangodb::LocalDocumentId const& documentId,
-              arangodb::velocypack::Slice const& doc) {
+  void insert(arangodb::LocalDocumentId const& documentId, arangodb::velocypack::Slice const& doc) {
     VPackBuilder builder;
     builder.openArray();
     auto toClose = true;
@@ -503,16 +497,14 @@ class HashIndexMap {
           if (slice.isNone() || slice.isNull()) {
             break;
           }
-        } else {  // expansion
+        } else { // expansion
           isExpansion = slice.isArray();
           TRI_ASSERT(isExpansion);
           auto found = false;
-          for (auto sliceIt = arangodb::velocypack::ArrayIterator(slice);
-               sliceIt != sliceIt.end(); ++sliceIt) {
+          for (auto sliceIt = arangodb::velocypack::ArrayIterator(slice); sliceIt != sliceIt.end(); ++sliceIt) {
             auto subSlice = sliceIt.value();
             if (!(subSlice.isNone() || subSlice.isNull())) {
-              for (auto fieldItForArray = fieldIt;
-                   fieldItForArray != _fields[i].end(); ++fieldItForArray) {
+              for (auto fieldItForArray = fieldIt; fieldItForArray != _fields[i].end(); ++fieldItForArray) {
                 TRI_ASSERT(subSlice.isObject());
                 subSlice = subSlice.get(fieldItForArray->name);
                 if (subSlice.isNone() || subSlice.isNull()) {
@@ -539,8 +531,7 @@ class HashIndexMap {
         if (slice.isArray() && i == _fields.size() - 1) {
           auto found = false;
           auto wasNull = false;
-          for (auto sliceIt = arangodb::velocypack::ArrayIterator(slice);
-               sliceIt != sliceIt.end(); ++sliceIt) {
+          for (auto sliceIt = arangodb::velocypack::ArrayIterator(slice); sliceIt != sliceIt.end(); ++sliceIt) {
             auto subSlice = sliceIt.value();
             if (!(subSlice.isNone() || subSlice.isNull())) {
               insertSlice(documentId, subSlice, i);
@@ -553,7 +544,7 @@ class HashIndexMap {
             insertSlice(documentId, VPackSlice::nullSlice(), i);
           }
           toClose = false;
-        } else {  // object
+        } else { // object
           insertSlice(documentId, slice, i);
           builder.add(slice);
         }
@@ -565,8 +556,7 @@ class HashIndexMap {
     _docIndexMap.try_emplace(documentId, std::move(builder));
   }
 
-  bool remove(arangodb::LocalDocumentId const& documentId,
-              arangodb::velocypack::Slice const& doc) {
+  bool remove(arangodb::LocalDocumentId const& documentId, arangodb::velocypack::Slice const& doc) {
     size_t i = 0;
     auto documentRemoved = false;
     for (auto& map : _valueMaps) {
@@ -589,8 +579,7 @@ class HashIndexMap {
     _docIndexMap.clear();
   }
 
-  std::unordered_map<arangodb::LocalDocumentId, VPackBuilder> find(
-      std::unique_ptr<VPackBuilder>&& keys) const {
+  std::unordered_map<arangodb::LocalDocumentId, VPackBuilder> find(std::unique_ptr<VPackBuilder>&& keys) const {
     std::unordered_map<arangodb::LocalDocumentId, VPackBuilder const*> found;
     TRI_ASSERT(keys->slice().isArray());
     auto sliceIt = arangodb::velocypack::ArrayIterator(keys->slice());
@@ -603,7 +592,7 @@ class HashIndexMap {
         return std::unordered_map<arangodb::LocalDocumentId, VPackBuilder>();
       }
       if (found.empty()) {
-        std::transform(begin, end, std::inserter(found, found.end()), [](auto const& item) {
+        std::transform(begin, end, std::inserter(found, found.end()), [] (auto const& item) {
           return std::make_pair(item.second, &item.first);
         });
       } else {
@@ -648,7 +637,7 @@ class HashIndexIteratorMock final : public arangodb::IndexIterator {
   HashIndexIteratorMock(arangodb::LogicalCollection* collection,
                         arangodb::transaction::Methods* trx, arangodb::Index const* index,
                         HashIndexMap const& map, std::unique_ptr<VPackBuilder>&& keys)
-      : IndexIterator(collection, trx), _map(map) {
+    : IndexIterator(collection, trx), _map(map) {
     _documents = _map.find(std::move(keys));
     _begin = _documents.begin();
     _end = _documents.end();
@@ -682,7 +671,9 @@ class HashIndexIteratorMock final : public arangodb::IndexIterator {
     _end = _documents.end();
   }
 
-  bool hasCovering() const override { return true; }
+  bool hasCovering() const override {
+    return true;
+  }
 
  private:
   HashIndexMap const& _map;
@@ -702,9 +693,8 @@ class HashIndexMock final : public arangodb::Index {
       return nullptr;
     }
 
-    auto const type =
-        arangodb::basics::VelocyPackHelper::getStringRef(typeSlice,
-                                                         arangodb::velocypack::StringRef());
+    auto const type = arangodb::basics::VelocyPackHelper::getStringRef(typeSlice,
+                                                                       arangodb::velocypack::StringRef());
 
     if (type.compare("hash") != 0) {
       return nullptr;
@@ -735,7 +725,9 @@ class HashIndexMock final : public arangodb::Index {
 
   void unload() override {}
 
-  void afterTruncate(TRI_voc_tick_t) override { _hashData.clear(); }
+  void afterTruncate(TRI_voc_tick_t) override {
+    _hashData.clear();
+  }
 
   void toVelocyPack(VPackBuilder& builder,
                     std::underlying_type<arangodb::Index::Serialize>::type flags) const override {
@@ -778,19 +770,17 @@ class HashIndexMock final : public arangodb::Index {
       std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
       arangodb::aql::AstNode const* node, arangodb::aql::Variable const* reference,
       size_t itemsInIndex) const override {
-    return arangodb::SortedIndexAttributeMatcher::supportsFilterCondition(
-        allIndexes, this, node, reference, itemsInIndex);
+    return arangodb::SortedIndexAttributeMatcher::supportsFilterCondition(allIndexes, this, node, reference, itemsInIndex);
   }
 
   Index::SortCosts supportsSortCondition(arangodb::aql::SortCondition const* sortCondition,
-                                         arangodb::aql::Variable const* reference,
-                                         size_t itemsInIndex) const override {
-    return arangodb::SortedIndexAttributeMatcher::supportsSortCondition(this, sortCondition,
-                                                                        reference, itemsInIndex);
+                                                            arangodb::aql::Variable const* reference,
+                                                            size_t itemsInIndex) const override {
+    return arangodb::SortedIndexAttributeMatcher::supportsSortCondition(this, sortCondition, reference, itemsInIndex);
   }
 
-  arangodb::aql::AstNode* specializeCondition(arangodb::aql::AstNode* node,
-                                              arangodb::aql::Variable const* reference) const override {
+  arangodb::aql::AstNode* specializeCondition(
+      arangodb::aql::AstNode* node, arangodb::aql::Variable const* reference) const override {
     return arangodb::SortedIndexAttributeMatcher::specializeCondition(this, node, reference);
   }
 
@@ -803,7 +793,8 @@ class HashIndexMock final : public arangodb::Index {
     if (nullptr == node) {
       keys->close();
       return std::make_unique<HashIndexIteratorMock>(&_collection, trx, this,
-                                                     _hashData, std::move(keys));
+                                                     _hashData,
+                                                     std::move(keys));
     }
     TRI_ASSERT(node->type == arangodb::aql::NODE_TYPE_OPERATOR_NARY_AND);
 
@@ -822,7 +813,7 @@ class HashIndexMock final : public arangodb::Index {
       auto valNode = comp->getMember(1);
 
       if (!(attrNode->type == arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS ||
-            attrNode->type == arangodb::aql::NODE_TYPE_EXPANSION)) {
+          attrNode->type == arangodb::aql::NODE_TYPE_EXPANSION)) {
         // got value == a.b -> flip sides
         std::swap(attrNode, valNode);
       }
@@ -832,13 +823,11 @@ class HashIndexMock final : public arangodb::Index {
       std::vector<arangodb::basics::AttributeName> attributes;
       if (attrNode->type == arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
         do {
-          attributes.emplace_back(std::string(attrNode->getStringValue(),
-                                              attrNode->getStringLength()),
-                                  false);
+          attributes.emplace_back(std::string(attrNode->getStringValue(), attrNode->getStringLength()), false);
           attrNode = attrNode->getMember(0);
         } while (attrNode->type == arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS);
         std::reverse(attributes.begin(), attributes.end());
-      } else {  // expansion
+      } else { // expansion
         TRI_ASSERT(attrNode->type == arangodb::aql::NODE_TYPE_EXPANSION);
         auto expNode = attrNode;
         TRI_ASSERT(expNode->numMembers() >= 2);
@@ -847,9 +836,7 @@ class HashIndexMock final : public arangodb::Index {
         attrNode = left->getMember(1);
         TRI_ASSERT(attrNode->type == arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS);
         do {
-          attributes.emplace_back(std::string(attrNode->getStringValue(),
-                                              attrNode->getStringLength()),
-                                  false);
+          attributes.emplace_back(std::string(attrNode->getStringValue(), attrNode->getStringLength()), false);
           attrNode = attrNode->getMember(0);
         } while (attrNode->type == arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS);
         attributes.front().shouldExpand = true;
@@ -860,19 +847,16 @@ class HashIndexMock final : public arangodb::Index {
         TRI_ASSERT(attrNode->type == arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS ||
                    attrNode->type == arangodb::aql::NODE_TYPE_REFERENCE);
         while (attrNode->type == arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
-          attributesRight.emplace_back(std::string(attrNode->getStringValue(),
-                                                   attrNode->getStringLength()),
-                                       false);
+          attributesRight.emplace_back(std::string(attrNode->getStringValue(), attrNode->getStringLength()), false);
           attrNode = attrNode->getMember(0);
         }
-        attributes.insert(attributes.end(), attributesRight.crbegin(),
-                          attributesRight.crend());
+        attributes.insert(attributes.end(), attributesRight.crbegin(), attributesRight.crend());
       }
       allAttributes.emplace_back(std::move(attributes), valNode);
     }
     size_t nullsCount = 0;
     for (auto const& f : _fields) {
-      auto it = std::find_if(allAttributes.cbegin(), allAttributes.cend(), [&f](auto const& attrs) {
+      auto it = std::find_if(allAttributes.cbegin(), allAttributes.cend(), [&f] (auto const& attrs) {
         return arangodb::basics::AttributeName::isIdentical(attrs.first, f, true);
       });
       if (it != allAttributes.cend()) {
@@ -888,11 +872,11 @@ class HashIndexMock final : public arangodb::Index {
     keys->close();
 
     return std::make_unique<HashIndexIteratorMock>(&_collection, trx, this,
-                                                   _hashData, std::move(keys));
+                                                   _hashData,
+                                                   std::move(keys));
   }
 
-  HashIndexMock(TRI_idx_iid_t iid, arangodb::LogicalCollection& collection,
-                VPackSlice const& slice)
+  HashIndexMock(TRI_idx_iid_t iid, arangodb::LogicalCollection& collection, VPackSlice const& slice)
       : arangodb::Index(iid, collection, slice), _hashData(_fields) {}
 
   /// @brief the hash table for data

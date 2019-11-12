@@ -1,8 +1,8 @@
 #ifndef ARANGODB_BASICS_TRYEMPLACEHELPER_H
 #define ARANGODB_BASICS_TRYEMPLACEHELPER_H 1
 
-#include <memory>
 #include <type_traits>
+#include <memory>
 namespace arangodb {
 template <class Lambda>
 struct lazyConstruct {
@@ -13,5 +13,5 @@ struct lazyConstruct {
   }
   Lambda factory_;
 };
-}  // namespace arangodb
+}
 #endif

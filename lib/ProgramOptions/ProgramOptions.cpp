@@ -477,8 +477,7 @@ void ProgramOptions::addPositional(std::string const& value) {
 // adds an option to the list of options
 void ProgramOptions::addOption(Option const& option) {
   checkIfSealed();
-  std::map<std::string, Section>::iterator sectionIt =
-      addSection(option.section, "");
+  std::map<std::string, Section>::iterator sectionIt = addSection(option.section, "");
 
   if (!option.shorthand.empty()) {
     if (!_shorthands.try_emplace(option.shorthand, option.fullName()).second) {

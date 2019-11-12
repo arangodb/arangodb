@@ -192,8 +192,7 @@ TRI_v8_global_t::TRI_v8_global_t(v8::Isolate* isolate, size_t id)
   ProtocolKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "protocol"));
   RawSuffixKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "rawSuffix"));
   RequestBodyKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "requestBody"));
-  RawRequestBodyKey.Reset(isolate,
-                          TRI_V8_ASCII_STRING(isolate, "rawRequestBody"));
+  RawRequestBodyKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "rawRequestBody"));
   RequestTypeKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "requestType"));
   ResponseCodeKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "responseCode"));
   ReturnNewKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "returnNew"));
@@ -263,9 +262,9 @@ TRI_v8_global_t::SharedPtrPersistent::~SharedPtrPersistent() {
   auto* isolate = &isolateRef;
   TRI_GET_GLOBALS();
 
-  auto entry = v8g->JSSharedPtrs.try_emplace(  // ensure shared_ptr is not deallocated
-      value.get(),                             // key
-      isolateRef, value                        // value
+  auto entry = v8g->JSSharedPtrs.try_emplace( // ensure shared_ptr is not deallocated
+    value.get(), // key
+    isolateRef, value // value
   );
 
   return std::pair<SharedPtrPersistent&, bool>( // result

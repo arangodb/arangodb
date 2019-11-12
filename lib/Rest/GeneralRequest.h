@@ -225,7 +225,7 @@ class GeneralRequest {
 
   // request context
   RequestContext* _requestContext;
-
+  
   rest::AuthenticationMethod _authenticationMethod;
 
   // information about the payload
@@ -235,7 +235,7 @@ class GeneralRequest {
   EncodingType _acceptEncoding;
   bool _isRequestContextOwner;
   bool _authenticated;
-
+  
   std::string _fullUrl;
   std::string _requestPath;
   std::string _prefix;  // part of path matched by rest route

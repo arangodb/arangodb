@@ -265,14 +265,13 @@ class VelocyPackHelper {
     }
     return sub.getNumericValue<T>();
   }
-
+  
   /// @return string ref, or the defaultValue if slice is not a string
   static arangodb::velocypack::StringRef getStringRef(
       arangodb::velocypack::Slice slice,
       arangodb::velocypack::StringRef const& defaultValue) noexcept {
     if (slice.isExternal()) {
-      slice = arangodb::velocypack::Slice(
-          reinterpret_cast<uint8_t const*>(slice.getExternal()));
+      slice = arangodb::velocypack::Slice(reinterpret_cast<uint8_t const*>(slice.getExternal()));
     }
 
     if (slice.isString()) {
@@ -287,8 +286,7 @@ class VelocyPackHelper {
       arangodb::velocypack::Slice slice, T const& key,
       arangodb::velocypack::StringRef const& defaultValue) noexcept {
     if (slice.isExternal()) {
-      slice = arangodb::velocypack::Slice(
-          reinterpret_cast<uint8_t const*>(slice.getExternal()));
+      slice = arangodb::velocypack::Slice(reinterpret_cast<uint8_t const*>(slice.getExternal()));
     }
 
     if (slice.isObject()) {
@@ -303,8 +301,7 @@ class VelocyPackHelper {
   /// @brief returns a string sub-element, or the default value if it does not
   /// exist or it is not a string
   template <typename T>
-  static std::string getStringValue(VPackSlice slice, T const& name,
-                                    std::string const& defaultValue) {
+  static std::string getStringValue(VPackSlice slice, T const& name, std::string const& defaultValue) {
     if (slice.isExternal()) {
       slice = VPackSlice(reinterpret_cast<uint8_t const*>(slice.getExternal()));
     }
@@ -321,7 +318,7 @@ class VelocyPackHelper {
   /// @brief convert an Object sub value into a uint64
   static uint64_t stringUInt64(VPackSlice slice);
 
-  template <typename T>
+  template<typename T>
   static uint64_t stringUInt64(VPackSlice slice, T const& name) {
     return stringUInt64(slice.get(name));
   }
@@ -330,7 +327,8 @@ class VelocyPackHelper {
   static VPackBuilder velocyPackFromFile(std::string const&);
 
   /// @brief writes a VelocyPack to a file
-  static bool velocyPackToFile(std::string const& filename, VPackSlice slice, bool syncFile);
+  static bool velocyPackToFile(std::string const& filename,
+                               VPackSlice slice, bool syncFile);
 
   /// @brief compares two VelocyPack number values
   static int compareNumberValues(arangodb::velocypack::ValueType,

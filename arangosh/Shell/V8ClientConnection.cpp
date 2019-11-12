@@ -24,11 +24,11 @@
 
 #include "V8ClientConnection.h"
 
+#include <boost/algorithm/string.hpp>
 #include <fuerte/connection.h>
 #include <fuerte/jwt.h>
 #include <fuerte/requests.h>
 #include <v8.h>
-#include <boost/algorithm/string.hpp>
 
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
@@ -1529,22 +1529,22 @@ again:
       if (pair.second == StaticStrings::MimeTypeVPack) {
         req->header.contentType(fuerte::ContentType::VPack);
       } else if ((pair.second.length() >= StaticStrings::MimeTypeJsonNoEncoding.length()) &&
-                 (memcmp(pair.second.c_str(),
-                         StaticStrings::MimeTypeJsonNoEncoding.c_str(),
-                         StaticStrings::MimeTypeJsonNoEncoding.length()) == 0)) {
+               (memcmp(pair.second.c_str(),
+                       StaticStrings::MimeTypeJsonNoEncoding.c_str(),
+                       StaticStrings::MimeTypeJsonNoEncoding.length()) == 0)) {
         // ignore encoding etc.
         req->header.contentType(fuerte::ContentType::Json);
       } else {
         req->header.contentType(fuerte::ContentType::Custom);
       }
-
+      
     } else if (boost::iequals(StaticStrings::Accept, pair.first)) {
       if (pair.second == StaticStrings::MimeTypeVPack) {
         req->header.acceptType(fuerte::ContentType::VPack);
       } else if ((pair.second.length() >= StaticStrings::MimeTypeJsonNoEncoding.length()) &&
-                 (memcmp(pair.second.c_str(),
-                         StaticStrings::MimeTypeJsonNoEncoding.c_str(),
-                         StaticStrings::MimeTypeJsonNoEncoding.length()) == 0)) {
+               (memcmp(pair.second.c_str(),
+                       StaticStrings::MimeTypeJsonNoEncoding.c_str(),
+                       StaticStrings::MimeTypeJsonNoEncoding.length()) == 0)) {
         // ignore encoding etc.
         req->header.acceptType(fuerte::ContentType::Json);
       } else {

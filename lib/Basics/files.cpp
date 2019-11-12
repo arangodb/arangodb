@@ -1123,8 +1123,8 @@ bool TRI_ProcessFile(char const* filename,
 
 char* TRI_SlurpGzipFile(char const* filename, size_t* length) {
   TRI_set_errno(TRI_ERROR_NO_ERROR);
-  gzFile gzFd = gzopen(filename, "rb");
-  auto fdGuard = arangodb::scopeGuard([&gzFd]() {
+  gzFile gzFd = gzopen(filename,"rb");
+  auto fdGuard = arangodb::scopeGuard([&gzFd]() { 
     if (nullptr != gzFd) {
       gzclose(gzFd);
     }
@@ -1181,8 +1181,9 @@ char* TRI_SlurpDecryptFile(EncryptionFeature& encryptionFeature, char const* fil
   TRI_set_errno(TRI_ERROR_NO_ERROR);
 
   encryptionFeature.setKeyFile(keyfile);
-  auto keyGuard = arangodb::scopeGuard(
-      [&encryptionFeature]() { encryptionFeature.clearKey(); });
+  auto keyGuard = arangodb::scopeGuard([&encryptionFeature]() { 
+    encryptionFeature.clearKey();
+  });
 
   int fd = TRI_OPEN(filename, O_RDONLY | TRI_O_CLOEXEC);
 

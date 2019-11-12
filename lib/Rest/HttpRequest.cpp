@@ -48,8 +48,8 @@ HttpRequest::HttpRequest(ConnectionInfo const& connectionInfo, char const* heade
       _vpackBuilder(nullptr),
       _version(ProtocolVersion::UNKNOWN),
       _allowMethodOverride(allowMethodOverride) {
-  _contentType = ContentType::UNSET;
-  _contentTypeResponse = ContentType::JSON;
+        _contentType = ContentType::UNSET;
+        _contentTypeResponse = ContentType::JSON;
   if (0 < length) {
     auto buff = std::make_unique<char[]>(length + 1);
     memcpy(buff.get(), header, length);
@@ -547,11 +547,13 @@ void HttpRequest::setHeaderV2(std::string key, std::string value) {
     _contentTypeResponse = ContentType::VPACK;
   } else if ((_contentType == ContentType::UNSET) && (key == StaticStrings::ContentTypeHeader)) {
     if (value == StaticStrings::MimeTypeVPack) {
-      _contentType = ContentType::VPACK;  // don't insert this header!!
+      _contentType = ContentType::VPACK; // don't insert this header!!
       return;
-    } else if ((value.length() >= StaticStrings::MimeTypeJsonNoEncoding.length()) &&
-               (memcmp(value.c_str(), StaticStrings::MimeTypeJsonNoEncoding.c_str(),
-                       StaticStrings::MimeTypeJsonNoEncoding.length()) == 0)) {
+    }
+    else if ((value.length() >= StaticStrings::MimeTypeJsonNoEncoding.length()) &&
+             (memcmp(value.c_str(),
+                     StaticStrings::MimeTypeJsonNoEncoding.c_str(),
+                     StaticStrings::MimeTypeJsonNoEncoding.length()) == 0)) {
       // ignore encoding etc.
       _contentType = ContentType::JSON;
       return;

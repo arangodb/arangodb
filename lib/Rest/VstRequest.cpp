@@ -118,7 +118,8 @@ void VstRequest::setHeader(VPackSlice keySlice, VPackSlice valSlice) {
       (val == StaticStrings::MimeTypeJsonNoEncoding)) {
     _contentTypeResponse = ContentType::JSON;
     return;  // don't insert this header!!
-  } else if ((_contentType == ContentType::UNSET) && (key == StaticStrings::ContentTypeHeader)) {
+  } else if ((_contentType == ContentType::UNSET) &&
+             (key == StaticStrings::ContentTypeHeader)) {
     if ((val.length() == StaticStrings::MimeTypeVPack.length()) &&
         (val == StaticStrings::MimeTypeVPack)) {
       _contentType = ContentType::VPACK;

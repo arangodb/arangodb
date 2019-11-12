@@ -717,7 +717,7 @@ class Slice {
   }
 #ifdef VELOCYPACK_HAS_STRING_VIEW
   std::string_view stringView() const {
-    StringRef ref = this->stringRef();
+    StringRef ref  = this->stringRef();
     return std::string_view(ref.data(), ref.size());
   }
 #endif
