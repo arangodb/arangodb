@@ -1416,10 +1416,14 @@ Result IResearchLink::insert(
     }
   };
 
-  TRI_IF_FAILURE("BlockInsertsWithoutIndexCreationHint") {
+  TRI_IF_FAILURE("ArangoSearch::BlockInsertsWithoutIndexCreationHint") {
     if (!state.hasHint(transaction::Hints::Hint::INDEX_CREATION)) {
       return Result(TRI_ERROR_DEBUG);
     }
+  }
+
+  TRI_IF_FAILURE("ArangoSearch::FailInsert") {
+    return Result(TRI_ERROR_DEBUG);
   }
 
   if (state.hasHint(transaction::Hints::Hint::INDEX_CREATION)) {
