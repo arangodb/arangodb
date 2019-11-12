@@ -26,6 +26,7 @@
 #include "Aql/QueryList.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
+#include "Cluster/ClusterUpgradeFeature.h"
 #include "Cluster/ServerState.h"
 #include "FeaturePhases/ServerFeaturePhase.h"
 #include "GeneralServer/AuthenticationFeature.h"
@@ -39,7 +40,6 @@
 #include "Rest/Version.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
-#include "RestServer/UpgradeFeature.h"
 #include "V8Server/FoxxQueuesFeature.h"
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/Methods/Upgrade.h"
@@ -190,12 +190,9 @@ void raceForClusterBootstrap(BootstrapFeature& feature) {
     if (result.successful()) {
       // store current version number in agency to avoid unnecessary upgrades
       // to the same version
-      if (feature.server().hasFeature<UpgradeFeature>()) {
-        VPackBuilder builder;
-        builder.add(VPackValue(arangodb::methods::Version::current()));
-
-        UpgradeFeature& upgradeFeature = feature.server().getFeature<UpgradeFeature>();
-        agency.setValue(upgradeFeature.clusterVersionAgencyKey(), builder.slice(), 0);
+      if (feature.server().hasFeature<ClusterUpgradeFeature>()) {
+        ClusterUpgradeFeature& clusterUpgradeFeature = feature.server().getFeature<ClusterUpgradeFeature>();
+        clusterUpgradeFeature.setBootstrapVersion();
       }
       return;
     }

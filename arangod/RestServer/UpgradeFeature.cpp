@@ -22,8 +22,6 @@
 
 #include "UpgradeFeature.h"
 
-#include "Agency/AgencyComm.h"
-#include "Agency/AgencyFeature.h"
 #include "ApplicationFeatures/DaemonFeature.h"
 #include "ApplicationFeatures/HttpEndpointProvider.h"
 #include "ApplicationFeatures/GreetingsFeature.h"
@@ -50,11 +48,6 @@
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
-
-namespace {
-static std::string const upgradeVersionKey = "ClusterUpgradeVersion";
-static std::string const upgradeExecutedByKey = "ClusterUpgradeExecutedBy";
-}
 
 namespace arangodb {
 
@@ -104,6 +97,8 @@ void UpgradeFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   LOG_TOPIC("23525", INFO, arangodb::Logger::FIXME)
         << "executing upgrade procedure: disabling server features";
 
+  // if we run the upgrade, we need to disable a few features that may get
+  // in the way...
   if (ServerState::instance()->isCoordinator()) {
     std::vector<std::type_index> otherFeaturesToDisable = {
         std::type_index(typeid(DaemonFeature)),
@@ -140,6 +135,7 @@ void UpgradeFeature::start() {
   // upgrade the database
   if (_upgradeCheck) {
     if (!ServerState::instance()->isCoordinator()) {
+      // no need to run local upgrades in the coordinator
       upgradeLocalDatabase();
     }
 
@@ -191,128 +187,12 @@ void UpgradeFeature::start() {
           << "server will now shut down due to upgrade, database initialization "
              "or admin restoration.";
 
+      // in the non-coordinator case, we are already done now and will shut down.
+      // in the coordinator case, the actual upgrade is performed by the 
+      // ClusterUpgradeFeature, which is way later in the startup sequence.
       server().beginShutdown();
     }
   }
-}
-
-std::string const& UpgradeFeature::clusterVersionAgencyKey() const {
-  return ::upgradeVersionKey;
-}
-
-void UpgradeFeature::tryClusterUpgrade() {
-  TRI_ASSERT(ServerState::instance()->isCoordinator());
-  
-  if (!_upgrade) {
-    return;
-  }
-  
-  AgencyComm agency;
-  AgencyCommResult result = agency.getValues(::upgradeVersionKey);
-
-  if (!result.successful()) {
-    LOG_TOPIC("26104", ERR, arangodb::Logger::CLUSTER) << "unable to fetch cluster upgrade version from agency: " << result.errorMessage();
-    return;
-  }
-
-  uint64_t latestUpgradeVersion = 0;
-  VPackSlice value = result.slice()[0].get(
-      std::vector<std::string>({AgencyCommManager::path(), ::upgradeVersionKey}));
-  if (value.isNumber()) {
-    latestUpgradeVersion = value.getNumber<uint64_t>();
-    LOG_TOPIC("54f69", DEBUG, arangodb::Logger::CLUSTER) << "found previous cluster upgrade version in agency: " << latestUpgradeVersion;
-  } else {
-    // key not there yet.
-    LOG_TOPIC("5b00d", DEBUG, arangodb::Logger::CLUSTER) << "did not find previous cluster upgrade version in agency"; 
-  }
-
-  if (arangodb::methods::Version::current() <= latestUpgradeVersion) {
-    // nothing to do
-    return;
-  }
-
-  std::vector<AgencyPrecondition> precs;
-  if (latestUpgradeVersion == 0) {
-    precs.emplace_back(::upgradeVersionKey, AgencyPrecondition::Type::EMPTY, true);
-  } else {
-    precs.emplace_back(::upgradeVersionKey, AgencyPrecondition::Type::VALUE, latestUpgradeVersion);
-  }
-  precs.emplace_back(::upgradeExecutedByKey, AgencyPrecondition::Type::EMPTY, true);
-
-  // try to register ourselves as responsible for the upgrade
-  AgencyOperation operation(::upgradeExecutedByKey, AgencyValueOperationType::SET, ServerState::instance()->getId());
-  // make the key expire automatically in case we crash
-  // operation._ttl = TRI_microtime() + 1800.0;  
-  AgencyWriteTransaction transaction(operation, precs);
-
-  result = agency.sendTransactionWithFailover(transaction);
-  if (result.successful()) {
-    // we are responsible for the upgrade!
-    LOG_TOPIC("15ac4", INFO, arangodb::Logger::CLUSTER) << "running cluster upgrade...";
-
-    bool success = false;
-    try {
-      success = upgradeCoordinator();
-    } catch (std::exception const& ex) {
-      LOG_TOPIC("f2a84", ERR, Logger::CLUSTER) << "caught exception during cluster upgrade: " << ex.what();
-      TRI_ASSERT(!success);
-    }
-
-    // now finally remove the upgrading key and store the new version number
-    std::vector<AgencyPrecondition> precs;
-    precs.emplace_back(::upgradeExecutedByKey, AgencyPrecondition::Type::VALUE, ServerState::instance()->getId());
-
-    std::vector<AgencyOperation> operations;
-    if (success) {
-      // upgrade successful - store our current version number
-      operations.emplace_back(::upgradeVersionKey, AgencyValueOperationType::SET, arangodb::methods::Version::current());
-    }
-    operations.emplace_back(::upgradeExecutedByKey, AgencySimpleOperationType::DELETE_OP);
-    AgencyWriteTransaction transaction(operations, precs);
-
-    result = agency.sendTransactionWithFailover(transaction);
-    if (result.successful()) {
-      LOG_TOPIC("853de", DEBUG, arangodb::Logger::CLUSTER) << "successfully stored upgrade information in agency";
-    } else {
-      LOG_TOPIC("a0b4f", ERR, arangodb::Logger::CLUSTER) << "unable to store cluster upgrade information in agency: " << result.errorMessage();
-    }
-  } else if (result.httpCode() != (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
-    // someone else has performed the upgrade
-    LOG_TOPIC("482a3", WARN, arangodb::Logger::CLUSTER) << "unable to fetch upgrade information: " << result.errorMessage();
-  } else {
-    LOG_TOPIC("ab6eb", DEBUG, arangodb::Logger::CLUSTER) << "someone else is running the cluster upgrade right now";
-  }
-}
-
-bool UpgradeFeature::upgradeCoordinator() {
-  LOG_TOPIC("a2d65", TRACE, arangodb::Logger::FIXME) << "starting coordinator upgrade";
- 
-  bool success = true;
-  DatabaseFeature& databaseFeature = server().getFeature<DatabaseFeature>();
-  
-  for (auto& name : databaseFeature.getDatabaseNames()) {
-    TRI_vocbase_t* vocbase = databaseFeature.useDatabase(name);
-
-    if (vocbase == nullptr) {
-      // probably deleted in the meantime... so we can ignore it here
-      continue;
-    }
-
-    auto guard = scopeGuard([&vocbase]() { vocbase->release(); });
-
-    auto res = methods::Upgrade::startupCoordinator(*vocbase);
-    if (res.fail()) {
-      LOG_TOPIC("f51b1", ERR, arangodb::Logger::FIXME)
-          << "Database '" << vocbase->name() << "' upgrade failed ("
-          << res.errorMessage() << "). "
-          << "Please inspect the logs from the upgrade procedure"
-          << " and try starting the server again.";
-      success = false;
-    }
-  }
-  
-  LOG_TOPIC("efd49", TRACE, arangodb::Logger::FIXME) << "finished coordinator upgrade";
-  return success;
 }
 
 void UpgradeFeature::upgradeLocalDatabase() {
