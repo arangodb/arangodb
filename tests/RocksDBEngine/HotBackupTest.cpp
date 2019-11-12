@@ -362,7 +362,7 @@ public:
 
 /// @brief test
 TEST(RocksDBHotBackupRestoreDirectories, test_createRestoringDirectory) {
-  std::string restoringDir, tempname;
+  std::string restoringDir, restoringSearchDir, tempname;
   bool retBool;
 
   VPackBuilder report;
@@ -371,7 +371,7 @@ TEST(RocksDBHotBackupRestoreDirectories, test_createRestoringDirectory) {
   RocksDBHotBackupRestoreTest testee(feature, VPackSlice(), report);
   testee.createHotDirectory();
 
-  retBool = testee.createRestoringDirectory(restoringDir);
+  retBool = testee.createRestoringDirectories(restoringDir, restoringSearchDir);
 
   // spot check files in restoring dir
   EXPECT_TRUE( retBool );
