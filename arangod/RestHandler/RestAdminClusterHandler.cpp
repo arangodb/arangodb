@@ -372,6 +372,7 @@ RestAdminClusterHandler::FutureVoid RestAdminClusterHandler::tryDeleteServer(
           {
             VPackBuilder builder(trx);
             arangodb::agency::envelope<VPackBuilder>::create(builder)
+
                 .write()
                 .remove(rootPath->plan()->coordinators()->server(ctx->server)->str())
                 .remove(rootPath->plan()->dBServers()->server(ctx->server)->str())
@@ -1089,7 +1090,7 @@ RestAdminClusterHandler::FutureVoid RestAdminClusterHandler::waitForSupervisionS
       .thenValue([this, state, startTime](AgencyReadResult&& result) {
         auto waitFor = state ? "Maintenance" : "Normal";
         if (result.ok() && result.statusCode() == fuerte::StatusOK) {
-          if (false == result.value().isEqualString(waitFor)) {
+          if (!result.value().isEqualString(waitFor)) {
             if (clock::now() - startTime < 120.0s) {
               // wait again
               return waitForSupervisionState(state);
