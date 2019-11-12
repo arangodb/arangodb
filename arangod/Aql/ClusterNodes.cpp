@@ -515,6 +515,12 @@ std::unique_ptr<ExecutionBlock> GatherNode::createBlock(
           &engine, this, std::move(infos));
     }
   }
+  
+  Parallelism p = _parallelism;
+  if (ServerState::instance()->isDBServer()) {
+    p = Parallelism::Serial; // not supported in v36
+  }
+  
   std::vector<SortRegister> sortRegister;
   SortRegister::fill(*plan(), *getRegisterPlan(), _elements, sortRegister);
   SortingGatherExecutorInfos infos(make_shared_unordered_set(),
@@ -523,7 +529,7 @@ std::unique_ptr<ExecutionBlock> GatherNode::createBlock(
                                    getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
                                    calcRegsToKeep(), std::move(sortRegister),
                                    _plan->getAst()->query()->trx(), sortMode(),
-                                   constrainedSortLimit(), _parallelism);
+                                   constrainedSortLimit(), p);
 
   return std::make_unique<ExecutionBlockImpl<SortingGatherExecutor>>(&engine, this,
                                                                      std::move(infos));
