@@ -735,6 +735,9 @@ TEST_F(IResearchLinkTest, test_write) {
     EXPECT_TRUE((l->insert(trx, arangodb::LocalDocumentId(1), doc0->slice(),
                            arangodb::Index::OperationMode::normal)
                      .ok()));
+    EXPECT_TRUE((l->commit().ok()));
+    EXPECT_EQ(0, reader.reopen().live_docs_count());
+
     EXPECT_TRUE((trx.commit().ok()));
     EXPECT_TRUE((l->commit().ok()));
   }

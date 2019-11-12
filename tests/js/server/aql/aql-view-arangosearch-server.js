@@ -292,6 +292,50 @@ function iResearchFeatureAqlServerSideTestSuite () {
         db._dropView(docsViewName);
         internal.debugRemoveFailAt('BlockInsertsWithoutIndexCreationHint');
       }
+    },
+    testViewNoLinkCreationHint : function() {
+      if (!internal.debugCanUseFailAt()) {
+        return;
+      }
+      internal.debugClearFailAt();
+      let docsCollectionName = "docs";
+      let docsViewName  = "docs_view";
+      try { db._drop(docsCollectionName); } catch(e) {}
+      try { db._dropView(docsViewName); } catch(e) {}
+      let docsCollection = db._create(docsCollectionName);
+      docsCollection.save({"some_field": "some_value"});
+      try {
+        let docsView = db._createView(docsViewName, "arangosearch", {
+          "links": {
+              "docs": {
+                "analyzers": ["identity"],
+                "fields": {},
+                "includeAllFields": true,
+                "storeValues": "id",
+                "trackListPositions": false
+              }
+            } ,
+          consolidationIntervalMsec:0,
+          cleanupIntervalStep:0
+        });
+        let properties = docsView.properties();
+        assertTrue(Object === properties.links.constructor);
+        assertEqual(1, Object.keys(properties.links).length);
+        
+        internal.debugSetFailAt('BlockInsertsWithoutIndexCreationHint'); 
+        // now regular save to collection should trigger fail on index insert
+        // as there should be no hint!
+        try {
+          docsCollection.save({"some_field": "some_value2"});
+          fail();
+        } catch (e) {
+          assertEqual(ERRORS.ERROR_DEBUG.code, e.errorNum);
+        }
+      } finally {
+        db._drop(docsCollectionName);
+        db._dropView(docsViewName);
+        internal.debugRemoveFailAt('BlockInsertsWithoutIndexCreationHint');
+      }
     }
   };
 }
