@@ -165,7 +165,6 @@ class SharedState {
           }
           TRI_ASSERT(state == State::OnlyResult);  // race with setResult
           [[fallthrough]];
-
         case State::OnlyResult:
           // acquire is actually correct here
           if (_state.compare_exchange_strong(state, State::Done, std::memory_order_acquire)) {
@@ -173,7 +172,6 @@ class SharedState {
             return;
           }
           [[fallthrough]];
-
         default:
           TRI_ASSERT(false);  // unexpected state
       }
@@ -202,7 +200,6 @@ class SharedState {
           }
           TRI_ASSERT(state == State::OnlyCallback);  // race with setCallback
           [[fallthrough]];
-
         case State::OnlyCallback:
           // acquire is actually correct here
           if (_state.compare_exchange_strong(state, State::Done, std::memory_order_acquire)) {

@@ -47,18 +47,18 @@ void RestAnalyzerHandler::createAnalyzer( // create
 ) {
   TRI_ASSERT(_request); // ensured by execute()
 
-  if (_request->payload().isEmptyObject()) {
-    generateError(
-      arangodb::rest::ResponseCode::BAD, TRI_ERROR_HTTP_CORRUPTED_JSON
-    );
-    return;
-  }
-
   bool success = false;
   auto body = parseVPackBody(success);
 
   if (!success) {
     return; // parseVPackBody(...) calls generateError(...)
+  }
+
+  if (body.isEmptyObject()) {
+    generateError(
+      arangodb::rest::ResponseCode::BAD, TRI_ERROR_HTTP_CORRUPTED_JSON
+    );
+    return;
   }
 
   if (!body.isObject()) {
@@ -125,7 +125,7 @@ void RestAnalyzerHandler::createAnalyzer( // create
   
   std::shared_ptr<VPackBuilder> propertiesFromStringBuilder;
   auto properties = body.get(StaticStrings::AnalyzerPropertiesField);
-  if(properties.isString()) { // string still could be parsed to an object
+  if (properties.isString()) { // string still could be parsed to an object
     auto string_ref = getStringRef(properties);
     propertiesFromStringBuilder = arangodb::velocypack::Parser::fromJson(string_ref);
     properties = propertiesFromStringBuilder->slice();

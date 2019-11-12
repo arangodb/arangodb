@@ -140,12 +140,6 @@ RestStatus RestViewHandler::execute() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestViewHandler::createView() {
-  if (_request->payload().isEmptyObject()) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_CORRUPTED_JSON);
-    events::CreateView(_vocbase.name(), "", TRI_ERROR_HTTP_CORRUPTED_JSON);
-    return;
-  }
-
   std::vector<std::string> const& suffixes = _request->suffixes();
 
   if (!suffixes.empty()) {
@@ -169,6 +163,13 @@ void RestViewHandler::createView() {
     events::CreateView(_vocbase.name(), "", TRI_ERROR_BAD_PARAMETER);
     return;
   }
+
+  if (body.isEmptyObject()) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_CORRUPTED_JSON);
+    events::CreateView(_vocbase.name(), "", TRI_ERROR_HTTP_CORRUPTED_JSON);
+    return;
+  }
+
 
   auto nameSlice = body.get(StaticStrings::DataSourceName);
   auto typeSlice = body.get(StaticStrings::DataSourceType);

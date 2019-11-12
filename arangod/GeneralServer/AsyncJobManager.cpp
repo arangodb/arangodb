@@ -184,19 +184,12 @@ Result AsyncJobManager::cancelJob(AsyncJobResult::IdType jobId) {
     return rv;
   }
 
-  bool ok = true;
   std::shared_ptr<RestHandler>& handler = it->second.second._handler;
 
   if (handler != nullptr) {
-    ok = handler->cancel();
+    handler->cancel();
   }
 
-  if (!ok) {
-    // if you end up here you might need to implement the cancel method on your
-    // handler
-    rv.reset(TRI_ERROR_INTERNAL,
-             "could not cancel job (" + std::to_string(jobId) + ") in handler");
-  }
   return rv;
 }
 
@@ -206,18 +199,10 @@ Result AsyncJobManager::clearAllJobs() {
   WRITE_LOCKER(writeLocker, _lock);
 
   for (auto& it : _jobs) {
-    bool ok = true;
     std::shared_ptr<RestHandler>& handler = it.second.second._handler;
 
     if (handler != nullptr) {
-      ok = handler->cancel();
-    }
-
-    if (!ok) {
-      // if you end up here you might need to implement the cancel method on
-      // your handler
-      rv.reset(TRI_ERROR_INTERNAL, "could not cancel job (" + std::to_string(it.first) +
-                                       ") in handler " + handler->name());
+      handler->cancel();
     }
   }
   _jobs.clear();
@@ -282,7 +267,7 @@ void AsyncJobManager::initAsyncJob(std::shared_ptr<RestHandler> handler) {
 
   WRITE_LOCKER(writeLocker, _lock);
 
-  _jobs.emplace(jobId, std::make_pair(std::move(user), ajr));
+  _jobs.try_emplace(jobId, std::move(user), std::move(ajr));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

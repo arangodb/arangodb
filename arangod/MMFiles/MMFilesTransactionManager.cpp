@@ -66,7 +66,7 @@ void MMFilesTransactionManager::registerTransaction(TRI_voc_tid_t transactionId,
   WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
 
   // insert into currently running list of transactions
-  _transactions[bucket]._activeTransactions.emplace(transactionId, std::move(data));
+  _transactions[bucket]._activeTransactions.try_emplace(transactionId, std::move(data));
 }
 
 // unregisters a transaction

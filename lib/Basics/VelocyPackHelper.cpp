@@ -407,37 +407,6 @@ int VelocyPackHelper::compareStringValues(char const* left, VPackValueLength nl,
   return (nl < nr ? -1 : 1);
 }
 
-/// @brief returns a boolean sub-element, or a default if it is does not exist
-bool VelocyPackHelper::getBooleanValue(VPackSlice const& slice,
-                                       char const* name, bool defaultValue) {
-  TRI_ASSERT(slice.isObject());
-  if (!slice.hasKey(name)) {
-    return defaultValue;
-  }
-  VPackSlice const& sub = slice.get(name);
-
-  if (sub.isBoolean()) {
-    return sub.getBool();
-  }
-
-  return defaultValue;
-}
-
-bool VelocyPackHelper::getBooleanValue(VPackSlice const& slice,
-                                       std::string const& name, bool defaultValue) {
-  TRI_ASSERT(slice.isObject());
-  if (!slice.hasKey(name)) {
-    return defaultValue;
-  }
-  VPackSlice const& sub = slice.get(name);
-
-  if (sub.isBoolean()) {
-    return sub.getBool();
-  }
-
-  return defaultValue;
-}
-
 /// @brief returns a string sub-element, or throws if <name> does not exist
 /// or it is not a string
 std::string VelocyPackHelper::checkAndGetStringValue(VPackSlice const& slice,
@@ -486,30 +455,8 @@ void VelocyPackHelper::ensureStringValue(VPackSlice const& slice, std::string co
   }
 }
 
-/*static*/ arangodb::velocypack::StringRef VelocyPackHelper::getStringRef(
-    arangodb::velocypack::Slice slice,
-    arangodb::velocypack::StringRef const& defaultValue) noexcept {
-  return slice.isString() ? arangodb::velocypack::StringRef(slice) : defaultValue;
-}
-
-/*static*/ arangodb::velocypack::StringRef VelocyPackHelper::getStringRef(
-    arangodb::velocypack::Slice slice, std::string const& key,
-    arangodb::velocypack::StringRef const& defaultValue) noexcept {
-  if (slice.isExternal()) {
-    slice = arangodb::velocypack::Slice(reinterpret_cast<uint8_t const*>(slice.getExternal()));
-  }
-
-  if (!slice.isObject() || !slice.hasKey(key)) {
-    return defaultValue;
-  }
-
-  auto value = slice.get(key);
-
-  return value.isString() ? arangodb::velocypack::StringRef(value) : defaultValue;
-}
-
 /// @brief returns a string value, or the default value if it is not a string
-std::string VelocyPackHelper::getStringValue(VPackSlice const& slice,
+std::string VelocyPackHelper::getStringValue(VPackSlice slice,
                                              std::string const& defaultValue) {
   if (!slice.isString()) {
     return defaultValue;
@@ -517,47 +464,11 @@ std::string VelocyPackHelper::getStringValue(VPackSlice const& slice,
   return slice.copyString();
 }
 
-/// @brief returns a string sub-element, or the default value if it does not
-/// exist
-/// or it is not a string
-std::string VelocyPackHelper::getStringValue(VPackSlice slice, char const* name,
-                                             std::string const& defaultValue) {
-  if (slice.isExternal()) {
-    slice = VPackSlice(reinterpret_cast<uint8_t const*>(slice.getExternal()));
-  }
-  TRI_ASSERT(slice.isObject());
-  if (!slice.hasKey(name)) {
-    return defaultValue;
-  }
-  VPackSlice const sub = slice.get(name);
-  if (!sub.isString()) {
-    return defaultValue;
-  }
-  return sub.copyString();
-}
-
-/// @brief returns a string sub-element, or the default value if it does not
-/// exist
-/// or it is not a string
-std::string VelocyPackHelper::getStringValue(VPackSlice slice, std::string const& name,
-                                             std::string const& defaultValue) {
-  if (slice.isExternal()) {
-    slice = VPackSlice(reinterpret_cast<uint8_t const*>(slice.getExternal()));
-  }
-  TRI_ASSERT(slice.isObject());
-  if (!slice.hasKey(name)) {
-    return defaultValue;
-  }
-  VPackSlice const sub = slice.get(name);
-  if (!sub.isString()) {
-    return defaultValue;
-  }
-  return sub.copyString();
-}
-
-uint64_t VelocyPackHelper::stringUInt64(VPackSlice const& slice) {
+uint64_t VelocyPackHelper::stringUInt64(VPackSlice slice) {
   if (slice.isString()) {
-    return arangodb::basics::StringUtils::uint64(slice.copyString());
+    VPackValueLength length;
+    char const* p = slice.getString(length);
+    return arangodb::NumberUtils::atoi_zero<uint64_t>(p, p + length);
   }
   if (slice.isNumber()) {
     return slice.getNumericValue<uint64_t>();
@@ -626,7 +537,7 @@ static bool PrintVelocyPack(int fd, VPackSlice const& slice, bool appendNewline)
 
 /// @brief writes a VelocyPack to a file
 bool VelocyPackHelper::velocyPackToFile(std::string const& filename,
-                                        VPackSlice const& slice, bool syncFile) {
+                                        VPackSlice slice, bool syncFile) {
   std::string const tmp = filename + ".tmp";
 
   // remove a potentially existing temporary file

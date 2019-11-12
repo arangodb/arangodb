@@ -28,6 +28,7 @@
 #include "Aql/CollectNode.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/GraphNode.h"
+#include "Aql/IndexNode.h"
 #include "Aql/IResearchViewNode.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/SubqueryEndExecutionNode.h"
@@ -92,8 +93,7 @@ RegisterPlan* RegisterPlan::clone(ExecutionPlan* otherPlan, ExecutionPlan* plan)
 
 void RegisterPlan::after(ExecutionNode* en) {
   switch (en->getType()) {
-    case ExecutionNode::ENUMERATE_COLLECTION:
-    case ExecutionNode::INDEX: {
+    case ExecutionNode::ENUMERATE_COLLECTION: {
       depth++;
       nrRegsHere.emplace_back(1);
       // create a copy of the last value here
@@ -109,9 +109,16 @@ void RegisterPlan::after(ExecutionNode* en) {
             "unexpected cast result for DocumentProducingNode");
       }
 
-      varInfo.emplace(ep->outVariable()->id, VarInfo(depth, totalNrRegs));
+      varInfo.try_emplace(ep->outVariable()->id, VarInfo(depth, totalNrRegs));
       totalNrRegs++;
       break;
+    }
+    case ExecutionNode::INDEX: {
+        auto ep = ExecutionNode::castTo<IndexNode const*>(en);
+        TRI_ASSERT(ep);
+
+        ep->planNodeRegisters(nrRegsHere, nrRegs, varInfo, totalNrRegs, ++depth);
+        break;
     }
 
     case ExecutionNode::ENUMERATE_LIST: {
@@ -125,7 +132,7 @@ void RegisterPlan::after(ExecutionNode* en) {
 
       auto ep = ExecutionNode::castTo<EnumerateListNode const*>(en);
       TRI_ASSERT(ep != nullptr);
-      varInfo.emplace(ep->outVariable()->id, VarInfo(depth, totalNrRegs));
+      varInfo.try_emplace(ep->outVariable()->id, VarInfo(depth, totalNrRegs));
       totalNrRegs++;
       break;
     }
@@ -135,7 +142,7 @@ void RegisterPlan::after(ExecutionNode* en) {
       nrRegs[depth]++;
       auto ep = ExecutionNode::castTo<CalculationNode const*>(en);
       TRI_ASSERT(ep != nullptr);
-      varInfo.emplace(ep->outVariable()->id, VarInfo(depth, totalNrRegs));
+      varInfo.try_emplace(ep->outVariable()->id, VarInfo(depth, totalNrRegs));
       totalNrRegs++;
       break;
     }
@@ -145,7 +152,7 @@ void RegisterPlan::after(ExecutionNode* en) {
       nrRegs[depth]++;
       auto ep = ExecutionNode::castTo<SubqueryNode const*>(en);
       TRI_ASSERT(ep != nullptr);
-      varInfo.emplace(ep->outVariable()->id, VarInfo(depth, totalNrRegs));
+      varInfo.try_emplace(ep->outVariable()->id, VarInfo(depth, totalNrRegs));
       totalNrRegs++;
       subQueryNodes.emplace_back(en);
       break;
@@ -168,7 +175,7 @@ void RegisterPlan::after(ExecutionNode* en) {
         // frame:
         nrRegsHere[depth]++;
         nrRegs[depth]++;
-        varInfo.emplace(p.first->id, VarInfo(depth, totalNrRegs));
+        varInfo.try_emplace(p.first->id, VarInfo(depth, totalNrRegs));
         totalNrRegs++;
       }
       for (auto const& p : ep->aggregateVariables()) {
@@ -178,13 +185,13 @@ void RegisterPlan::after(ExecutionNode* en) {
         // frame:
         nrRegsHere[depth]++;
         nrRegs[depth]++;
-        varInfo.emplace(p.first->id, VarInfo(depth, totalNrRegs));
+        varInfo.try_emplace(p.first->id, VarInfo(depth, totalNrRegs));
         totalNrRegs++;
       }
       if (ep->hasOutVariable()) {
         nrRegsHere[depth]++;
         nrRegs[depth]++;
-        varInfo.emplace(ep->outVariable()->id, VarInfo(depth, totalNrRegs));
+        varInfo.try_emplace(ep->outVariable()->id, VarInfo(depth, totalNrRegs));
         totalNrRegs++;
       }
       break;
@@ -211,13 +218,13 @@ void RegisterPlan::after(ExecutionNode* en) {
       if (ep->getOutVariableOld() != nullptr) {
         nrRegsHere[depth]++;
         nrRegs[depth]++;
-        varInfo.emplace(ep->getOutVariableOld()->id, VarInfo(depth, totalNrRegs));
+        varInfo.try_emplace(ep->getOutVariableOld()->id, VarInfo(depth, totalNrRegs));
         totalNrRegs++;
       }
       if (ep->getOutVariableNew() != nullptr) {
         nrRegsHere[depth]++;
         nrRegs[depth]++;
-        varInfo.emplace(ep->getOutVariableNew()->id, VarInfo(depth, totalNrRegs));
+        varInfo.try_emplace(ep->getOutVariableNew()->id, VarInfo(depth, totalNrRegs));
         totalNrRegs++;
       }
 
@@ -267,7 +274,7 @@ void RegisterPlan::after(ExecutionNode* en) {
       nrRegs.emplace_back(registerId);
 
       for (auto& it : vars) {
-        varInfo.emplace(it->id, VarInfo(depth, totalNrRegs));
+        varInfo.try_emplace(it->id, VarInfo(depth, totalNrRegs));
         totalNrRegs++;
       }
       break;
@@ -286,7 +293,7 @@ void RegisterPlan::after(ExecutionNode* en) {
       nrRegs.emplace_back(registerId);
 
       for (auto& it : vars) {
-        varInfo.emplace(it->id, VarInfo(depth, totalNrRegs));
+        varInfo.try_emplace(it->id, VarInfo(depth, totalNrRegs));
         totalNrRegs++;
       }
       break;
@@ -309,7 +316,7 @@ void RegisterPlan::after(ExecutionNode* en) {
       nrRegs[depth]++;
       auto ep = ExecutionNode::castTo<SubqueryEndNode const*>(en);
       TRI_ASSERT(ep != nullptr);
-      varInfo.emplace(ep->outVariable()->id, VarInfo(depth, totalNrRegs));
+      varInfo.try_emplace(ep->outVariable()->id, VarInfo(depth, totalNrRegs));
       totalNrRegs++;
       subQueryNodes.emplace_back(en);
       break;
@@ -322,9 +329,9 @@ void RegisterPlan::after(ExecutionNode* en) {
       // may invalidate all references
       RegisterId registerId = nrRegs.back() + 1;
       nrRegs.emplace_back(registerId);
-      auto ep = ExecutionNode::castTo<MaterializeNode const*>(en);
+      auto ep = ExecutionNode::castTo<materialize::MaterializeNode const*>(en);
       TRI_ASSERT(ep != nullptr);
-      varInfo.emplace(ep->outVariable().id, VarInfo(depth, totalNrRegs));
+      varInfo.try_emplace(ep->outVariable().id, VarInfo(depth, totalNrRegs));
       totalNrRegs++;
       break;
     }

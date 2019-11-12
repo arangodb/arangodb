@@ -215,46 +215,27 @@ class VelocyPackHelper {
   }
 
   /// @brief returns a numeric sub-element, or a default if it does not exist
-  template <typename T>
-  static T getNumericValue(VPackSlice const& slice, char const* name, T defaultValue) {
-    TRI_ASSERT(slice.isObject());
-    if (!slice.hasKey(name)) {
-      return defaultValue;
-    }
-    VPackSlice sub = slice.get(name);
-    if (sub.isNumber()) {
-      return sub.getNumber<T>();
+  template <typename T, typename NumberType = T, typename NameType>
+  static T getNumericValue(VPackSlice const& slice, NameType const& name, T defaultValue) {
+    if (slice.isObject()) {
+      VPackSlice sub = slice.get(name);
+      if (sub.isNumber()) {
+        return static_cast<T>(sub.getNumber<NumberType>());
+      }
     }
     return defaultValue;
   }
 
-  template <typename T>
-  static T readNumericValue(VPackSlice info, std::string const& name, T def) {
-    if (!info.isObject()) {
-      return def;
-    }
-    return getNumericValue<T>(info, name.c_str(), def);
-  }
-
-  template <typename T, typename BaseType>
-  static T readNumericValue(VPackSlice info, std::string const& name, T def) {
-    if (!info.isObject()) {
-      return def;
-    }
-    // nice extra conversion required for Visual Studio pickyness
-    return static_cast<T>(getNumericValue<BaseType>(info, name.c_str(),
-                                                    static_cast<BaseType>(def)));
-  }
-
   /// @brief returns a boolean sub-element, or a default if it does not exist
-  static bool getBooleanValue(VPackSlice const&, char const* name, bool defaultValue);
-  static bool getBooleanValue(VPackSlice const&, std::string const& name, bool defaultValue);
-
-  static bool readBooleanValue(VPackSlice info, std::string const& name, bool defaultValue) {
-    if (!info.isObject()) {
-      return defaultValue;
+  template <typename NameType>
+  static bool getBooleanValue(VPackSlice const& slice, NameType const& name, bool defaultValue) {
+    if (slice.isObject()) {
+      VPackSlice sub = slice.get(name);
+      if (sub.isBoolean()) {
+        return sub.getBoolean();
+      }
     }
-    return getBooleanValue(info, name, defaultValue);
+    return defaultValue;
   }
 
   /// @brief returns a string sub-element, or throws if <name> does not exist
@@ -271,12 +252,12 @@ class VelocyPackHelper {
   template <typename T>
   static T checkAndGetNumericValue(VPackSlice const& slice, char const* name) {
     TRI_ASSERT(slice.isObject());
-    if (!slice.hasKey(name)) {
+    VPackSlice const sub = slice.get(name);
+    if (sub.isNone()) {
       std::string msg =
           "The attribute '" + std::string(name) + "' was not found.";
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, msg);
     }
-    VPackSlice const sub = slice.get(name);
     if (!sub.isNumber()) {
       std::string msg =
           "The attribute '" + std::string(name) + "' is not a number.";
@@ -284,45 +265,61 @@ class VelocyPackHelper {
     }
     return sub.getNumericValue<T>();
   }
-
-  /// @return string ref, or the default ref if slice is not a string
+  
+  /// @return string ref, or the defaultValue if slice is not a string
   static arangodb::velocypack::StringRef getStringRef(
       arangodb::velocypack::Slice slice,
-      arangodb::velocypack::StringRef const& defaultValue) noexcept;
+      arangodb::velocypack::StringRef const& defaultValue) noexcept {
+    if (slice.isExternal()) {
+      slice = arangodb::velocypack::Slice(reinterpret_cast<uint8_t const*>(slice.getExternal()));
+    }
 
-  /// @return string ref, or the default ref if slice is not a string
-  static arangodb::velocypack::StringRef getStringRef(arangodb::velocypack::Slice slice,
-                                                      char const* defaultValue) noexcept {
-    return getStringRef(slice, arangodb::velocypack::StringRef(defaultValue));
+    if (slice.isString()) {
+      return arangodb::velocypack::StringRef(slice);
+    }
+    return defaultValue;
   }
 
   /// @return string ref, or the defaultValue if slice[key] is not a string
+  template <typename T>
   static arangodb::velocypack::StringRef getStringRef(
-      arangodb::velocypack::Slice slice, std::string const& key,
-      arangodb::velocypack::StringRef const& defaultValue) noexcept;
+      arangodb::velocypack::Slice slice, T const& key,
+      arangodb::velocypack::StringRef const& defaultValue) noexcept {
+    if (slice.isExternal()) {
+      slice = arangodb::velocypack::Slice(reinterpret_cast<uint8_t const*>(slice.getExternal()));
+    }
 
-  /// @return string ref, or the defaultValue if slice[key] is not a string
-  static arangodb::velocypack::StringRef getStringRef(arangodb::velocypack::Slice slice,
-                                                      std::string const& key,
-                                                      char const* defaultValue) noexcept {
-    return getStringRef(slice, key, arangodb::velocypack::StringRef(defaultValue));
+    if (slice.isObject()) {
+      return getStringRef(slice.get(key), defaultValue);
+    }
+    return defaultValue;
   }
 
   /// @brief returns a string value, or the default value if it is not a string
-  static std::string getStringValue(VPackSlice const&, std::string const&);
+  static std::string getStringValue(VPackSlice slice, std::string const& defaultValue);
 
   /// @brief returns a string sub-element, or the default value if it does not
-  /// exist
-  /// or it is not a string
-  static std::string getStringValue(VPackSlice, char const*, std::string const&);
-  static std::string getStringValue(VPackSlice, std::string const&, std::string const&);
+  /// exist or it is not a string
+  template <typename T>
+  static std::string getStringValue(VPackSlice slice, T const& name, std::string const& defaultValue) {
+    if (slice.isExternal()) {
+      slice = VPackSlice(reinterpret_cast<uint8_t const*>(slice.getExternal()));
+    }
+
+    if (slice.isObject()) {
+      VPackSlice sub = slice.get(name);
+      if (sub.isString()) {
+        return sub.copyString();
+      }
+    }
+    return defaultValue;
+  }
 
   /// @brief convert an Object sub value into a uint64
-  static uint64_t stringUInt64(VPackSlice const& slice);
-  static uint64_t stringUInt64(VPackSlice const& slice, char const* name) {
-    return stringUInt64(slice.get(name));
-  }
-  static uint64_t stringUInt64(VPackSlice const& slice, std::string const& name) {
+  static uint64_t stringUInt64(VPackSlice slice);
+
+  template<typename T>
+  static uint64_t stringUInt64(VPackSlice slice, T const& name) {
     return stringUInt64(slice.get(name));
   }
 
@@ -331,7 +328,7 @@ class VelocyPackHelper {
 
   /// @brief writes a VelocyPack to a file
   static bool velocyPackToFile(std::string const& filename,
-                               VPackSlice const& slice, bool syncFile);
+                               VPackSlice slice, bool syncFile);
 
   /// @brief compares two VelocyPack number values
   static int compareNumberValues(arangodb::velocypack::ValueType,
