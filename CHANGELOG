@@ -6,6 +6,36 @@ v3.5.3 (XXXX-XX-XX)
 
 * Fixed internal issue #651: analyzer duplication in _analyzers collection.
 
+* Fixed internal issue #4597: rebalanceShards API cannot work on any database
+  other than the _system database.
+
+* Stop putting system services in _apps on single server, this has never
+  worked on cluster and was not needed.
+
+* Fixed issue #10371: K_SHORTEST_PATHS LIMIT 1 can not return the shortest path.
+  Now the shortest path is returned as the first one in such queries.
+
+* Improve killability of some types of cluster AQL queries. Previously, several
+  cluster queries, especially those containing a `DistributeNode` in their
+  execution plans, did not respond to a kill instruction.
+
+  This change also introduces a new query status "killed", which may now be
+  returned by the REST APIs at `/_api/query/current` and `/_api/query/slow` in
+  the `state` attribute of each query.
+
+* Improve shutdown of some cluster AQL queries on the coordinator in case the
+  query has multiple coordinator snippets (true for queries involving more than
+  one collection) and the database server(s) cannot be reached on query
+  shutdown. In this case the proper shutdown of the coordinator parts of the
+  query previously was deferred until the coordinator snippets were removed by
+  the automatic garbage collection. Now, the cleanup of the coordinator snippets
+  will happen much more quickly, which reduces the chances of the queries
+  blocking resources.
+
+* Fixed ArangoSearch index removes being discarded on commiting consolidation
+  results with pending removes after some segments under consolidation were
+  already committed.
+
 * Assertion fail when no timestamp in agency's persistence.
 
 * Fixed internal issue #647: custom analyzer provokes errors on Active Failover

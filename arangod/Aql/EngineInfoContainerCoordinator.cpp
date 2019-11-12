@@ -138,11 +138,11 @@ QueryId EngineInfoContainerCoordinator::closeSnippet() {
 ExecutionEngineResult EngineInfoContainerCoordinator::buildEngines(
     Query* query, QueryRegistry* registry, std::string const& dbname,
     std::unordered_set<std::string> const& restrictToShards,
-    MapRemoteToSnippet const& dbServerQueryIds) const {
+    MapRemoteToSnippet const& dbServerQueryIds,
+    std::vector<uint64_t>& coordinatorQueryIds) const {
   TRI_ASSERT(_engineStack.size() == 1);
   TRI_ASSERT(_engineStack.top() == 0);
 
-  std::vector<uint64_t> coordinatorQueryIds{};
   // destroy all query snippets in case of error
   auto guard = scopeGuard([&dbname, &registry, &coordinatorQueryIds]() {
     for (auto const& it : coordinatorQueryIds) {

@@ -376,7 +376,7 @@ void BootstrapFeature::unprepare() {
     TRI_vocbase_t* vocbase = databaseFeature->useDatabase(name);
 
     if (vocbase != nullptr) {
-      vocbase->queryList()->killAll(true);
+      vocbase->queryList()->kill([](aql::Query&) { return true; }, true);
       vocbase->release();
     }
   }

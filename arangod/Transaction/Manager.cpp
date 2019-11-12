@@ -23,7 +23,10 @@
 
 #include "Manager.h"
 
+#include "Aql/Query.h"
+#include "Aql/QueryList.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/ScopeGuard.h"
 #include "Basics/WriteLocker.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
@@ -130,6 +133,9 @@ void Manager::registerTransaction(TRI_voc_tid_t transactionId,
       _transactions[bucket]._activeTransactions.emplace(transactionId, std::move(data));
     } catch (...) {
       _nrRunning.fetch_sub(1, std::memory_order_relaxed);
+      if (!isReadOnlyTransaction) {
+        _rwLock.unlockRead();
+      }
       throw;
     }
   }
@@ -137,6 +143,13 @@ void Manager::registerTransaction(TRI_voc_tid_t transactionId,
 
 // unregisters a transaction
 void Manager::unregisterTransaction(TRI_voc_tid_t transactionId, bool markAsFailed, bool isReadOnlyTransaction) {
+  // always perform an unlock when we leave this function
+  auto guard = scopeGuard([this, &isReadOnlyTransaction]() {
+    if (!isReadOnlyTransaction) {
+      _rwLock.unlockRead();
+    }
+  });
+
   uint64_t r = _nrRunning.fetch_sub(1, std::memory_order_relaxed);
   TRI_ASSERT(r > 0);
 
@@ -150,9 +163,6 @@ void Manager::unregisterTransaction(TRI_voc_tid_t transactionId, bool markAsFail
     if (markAsFailed) {
       _transactions[bucket]._failedTransactions.emplace(transactionId);
     }
-  }
-  if (!isReadOnlyTransaction) {
-    _rwLock.unlockRead();
   }
 }
 
