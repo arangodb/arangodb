@@ -377,7 +377,8 @@ uint64_t LogicalCollection::numberDocuments(transaction::Methods* trx,
 
 bool LogicalCollection::hasClusterWideUniqueRevs() const {
   return isSmartChild() &&
-         vocbase().server().getFeature<EngineSelectorFeature>().isRocksDB() &&
+         _version >= Version::v36 && 
+         vocbase().server().getFeature<EngineSelectorFeature>().isRocksDB();
          _version >= Version::v36;
 }
 
