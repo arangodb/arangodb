@@ -436,23 +436,22 @@ bool RestAqlHandler::killQuery(std::string const& idString) {
 // set, then the root block of the stored query must be a ScatterBlock
 // and the shard ID is given as an additional argument to the ScatterBlock's
 // special API.
-RestStatus RestAqlHandler::useQuery(std::string const& operation,
-                                    std::string const& idString,
-                                    bool isContinue) {
+RestStatus RestAqlHandler::useQuery(std::string const& operation, std::string const& idString) {
   bool success = false;
   VPackSlice querySlice = this->parseVPackBody(success);
   if (!success) {
     return RestStatus::DONE;
   }
 
-  TRI_ASSERT(_query == nullptr);
-  // the PUT verb
-  _query = findQuery(idString);
-  if (!_query) {
-    return RestStatus::DONE;
-  }
-  if (!isContinue) {
-    _query->sharedState()->setWakeupHandler([self = shared_from_this()] {
+  if (!_query) { // the PUT verb
+    TRI_ASSERT(this->state() == RestHandler::HandlerState::EXECUTE);
+    
+    _query = findQuery(idString);
+    if (!_query) {
+      return RestStatus::DONE;
+    }
+    std::shared_ptr<SharedQueryState> ss = _query->sharedState();
+    ss->setWakeupHandler([self = shared_from_this()] {
       return self->wakeupHandler();
     });
   }
@@ -518,7 +517,7 @@ RestStatus RestAqlHandler::execute() {
         generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
                       std::move(msg));
       } else {
-        auto status = useQuery(suffixes[0], suffixes[1], /*isContinue*/false);
+        auto status = useQuery(suffixes[0], suffixes[1]);
         if (status == RestStatus::WAITING) {
           return status;
         }
@@ -566,7 +565,8 @@ RestStatus RestAqlHandler::continueExecute() {
   if (type == rest::RequestType::PUT) {
     // This cannot be changed!
     TRI_ASSERT(suffixes.size() == 2);
-    return useQuery(suffixes[0], suffixes[1], /*isContinue*/true);
+    TRI_ASSERT(_query != nullptr);
+    return useQuery(suffixes[0], suffixes[1]);
   }
   generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
                 "continued non-continuable method for /_api/aql");
@@ -579,11 +579,9 @@ void RestAqlHandler::shutdownExecute(bool isFinalized) noexcept {
     if (_query) {
       _query->sharedState()->resetWakeupHandler();
     }
-  }
-  _query = nullptr;
-  if (_qId != 0) {
-    _queryRegistry->close(&_vocbase, _qId);
-    _qId = 0;
+    if (_qId != 0) {
+      _queryRegistry->close(&_vocbase, _qId);
+    }
   }
 }
 

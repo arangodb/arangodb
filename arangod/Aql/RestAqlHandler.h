@@ -51,7 +51,6 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
  public:
   char const* name() const override final { return "RestAqlHandler"; }
   RequestLane lane() const override final { return RequestLane::CLUSTER_AQL; }
-  
   RestStatus execute() override;
   RestStatus continueExecute() override;
   void shutdownExecute(bool isFinalized) noexcept override;
@@ -76,8 +75,7 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
   //             "errorMessage" (if applicable) and
   //             "done" (boolean) [3.4.0 and later] to indicate
   //             whether or not the cursor is exhausted.
-  RestStatus useQuery(std::string const& operation, std::string const& idString,
-                      bool isContinue);
+  RestStatus useQuery(std::string const& operation, std::string const& idString);
 
  private:
   // POST method for /_api/aql/setup (internal)
