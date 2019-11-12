@@ -180,7 +180,7 @@ Result ExecutionEngine::createBlocks(std::vector<ExecutionNode*> const& nodes,
     root(eb);
 
     // put it into our cache:
-    cache.emplace(en, eb);
+    cache.try_emplace(en, eb);
   }
   return {TRI_ERROR_NO_ERROR};
 }
@@ -273,7 +273,7 @@ struct SingleServerQueryInstanciator final : public WalkerWorker<ExecutionNode> 
         block->addDependency(it2->second);
       }
 
-      cache.emplace(en, block);
+      cache.try_emplace(en, block);
     }
   }
 

@@ -527,7 +527,7 @@ RestStatus RestAqlHandler::execute() {
           VPackBuilder answerBody;
           {
             VPackObjectBuilder guard(&answerBody);
-            answerBody.add("error", VPackValue(false));
+            answerBody.add(StaticStrings::Error, VPackValue(false));
           }
           sendResponse(rest::ResponseCode::OK, answerBody.slice());
         } else {
@@ -616,8 +616,7 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation, Query* q
     return self->wakeupHandler();
   });
 
-  bool found;
-  std::string const& shardId = _request->header("shard-id", found);
+  std::string const& shardId = _request->header("shard-id");
 
   // upon first usage, the "initializeCursor" method must be called
   // note: if the operation is "initializeCursor" itself, we do not initialize
@@ -741,7 +740,7 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation, Query* q
         answerBuilder.add(StaticStrings::Code, VPackValue(res.errorNumber()));
       } else if (operation == "shutdown") {
         int errorCode =
-            VelocyPackHelper::readNumericValue<int>(querySlice, StaticStrings::Code, TRI_ERROR_INTERNAL);
+            VelocyPackHelper::getNumericValue<int>(querySlice, StaticStrings::Code, TRI_ERROR_INTERNAL);
         
         ExecutionState state;
         Result res;

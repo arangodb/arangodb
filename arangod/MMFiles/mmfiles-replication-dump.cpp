@@ -83,7 +83,7 @@ static std::string const& nameFromCid(MMFilesReplicationDumpContext* dump, TRI_v
   if (!name.empty()) {
     // insert into cache
     try {
-      dump->_collectionNames.emplace(cid, std::move(name));
+      dump->_collectionNames.try_emplace(cid, std::move(name));
 
       // and look it up again
       return nameFromCid(dump, cid);
@@ -758,7 +758,7 @@ int MMFilesDetermineOpenTransactionsReplication(MMFilesReplicationDumpContext* d
         TRI_ASSERT(tid > 0);
 
         if (type == TRI_DF_MARKER_VPACK_BEGIN_TRANSACTION) {
-          transactions.emplace(tid, foundTick);
+          transactions.try_emplace(tid, foundTick);
         } else if (type == TRI_DF_MARKER_VPACK_COMMIT_TRANSACTION ||
                    type == TRI_DF_MARKER_VPACK_ABORT_TRANSACTION) {
           transactions.erase(tid);

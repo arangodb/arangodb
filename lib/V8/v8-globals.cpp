@@ -262,10 +262,9 @@ TRI_v8_global_t::SharedPtrPersistent::~SharedPtrPersistent() {
   auto* isolate = &isolateRef;
   TRI_GET_GLOBALS();
 
-  auto entry = v8g->JSSharedPtrs.emplace( // ensure shared_ptr is not deallocated
-    std::piecewise_construct, // piecewise construct
-    std::forward_as_tuple(value.get()), // key
-    std::forward_as_tuple(isolateRef, value) // value
+  auto entry = v8g->JSSharedPtrs.try_emplace( // ensure shared_ptr is not deallocated
+    value.get(), // key
+    isolateRef, value // value
   );
 
   return std::pair<SharedPtrPersistent&, bool>( // result

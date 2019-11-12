@@ -72,7 +72,7 @@ bool FailedServer::start(bool& aborts) {
     LOG_TOPIC("a04da", INFO, Logger::SUPERVISION) << reason.str();
     finish(_server, "", false, reason.str());
     return false;
-  } else if(!status.second) {
+  } else if (!status.second) {
     std::stringstream reason;
     reason << "Server " << _server << " no longer in health. Already removed. Abort.";
     LOG_TOPIC("1479a", INFO, Logger::SUPERVISION) << reason.str();

@@ -127,7 +127,7 @@ class AqlItemBlock {
     } catch (...) {
       // invoke dtor
       value->~AqlValue();
-      // TODO - instead of disabling it completly we could you use
+      // TODO - instead of disabling it completely we could you use
       // a constexpr if() with c++17
       _data[address].destroy();
       throw;
