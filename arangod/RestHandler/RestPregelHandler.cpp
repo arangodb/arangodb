@@ -43,12 +43,10 @@ RestPregelHandler::RestPregelHandler(application_features::ApplicationServer& se
 RestStatus RestPregelHandler::execute() {
   try {
     bool parseSuccess = true;
-    std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
-    VPackSlice body(parsedBody->start());  // never nullptr
-
+    VPackSlice body = parseVPackBody(parseSuccess);
     if (!parseSuccess || !body.isObject()) {
       LOG_TOPIC("cec03", ERR, Logger::PREGEL) << "Bad request body\n";
-      // error message generated in parseVelocyPackBody
+      // error message generated in parseVPackBody
       return RestStatus::DONE;
     }
     if (_request->requestType() != rest::RequestType::POST) {

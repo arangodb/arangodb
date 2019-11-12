@@ -92,7 +92,8 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
     runHandlerStateMachine();
   }
 
-  /// Execute the rest handler state machine. Retry the wakeup, returns false if done
+  /// Execute the rest handler state machine. Retry the wakeup,
+  /// returns true if _state == PAUSED, false otherwise
   bool wakeupHandler();
 
   /// @brief forwards the request to the appropriate server
@@ -168,6 +169,21 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
     });
     return done ? RestStatus::DONE : RestStatus::WAITING;
   }
+  
+  enum class HandlerState : uint8_t {
+    PREPARE = 0,
+    EXECUTE,
+    PAUSED,
+    CONTINUED,
+    FINALIZE,
+    DONE,
+    FAILED
+  };
+  
+  /// handler state machine
+  HandlerState state() const {
+    return _state;
+  }
 
  private:
   void runHandlerStateMachine();
@@ -180,16 +196,6 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   void executeEngine(bool isContinue);
   void compressResponse();
   
-  enum class HandlerState : uint8_t {
-    PREPARE = 0,
-    EXECUTE,
-    PAUSED,
-    CONTINUED,
-    FINALIZE,
-    DONE,
-    FAILED
-  };
-
  protected:
 
   std::unique_ptr<GeneralRequest> _request;
