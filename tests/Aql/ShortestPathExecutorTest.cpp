@@ -945,26 +945,42 @@ using Vertex = ShortestPathExecutorInfos::InputVertex;
 using RegisterSet = std::unordered_set<RegisterId>;
 using RegisterMapping =
     std::unordered_map<ShortestPathExecutorInfos::OutputName, RegisterId, ShortestPathExecutorInfos::OutputNameHash>;
+using PathSequence = std::vector<std::vector<std::string>>;
+using EdgeSequence = std::vector<std::pair<std::string, std::string>>;
 
+// TODO: this needs a << operator
 struct ShortestPathTestParameters {
-  ShortestPathTestParameters(Vertex source, Vertex target, RegisterId vertexOut)
-      : source(source),
-        target(target),
-        outputRegisters(std::initializer_list<RegisterId>{vertexOut}),
-        registerMapping({{ShortestPathExecutorInfos::OutputName::VERTEX, vertexOut}}){};
+  ShortestPathTestParameters(Vertex source, Vertex target, RegisterId vertexOut,
+                             MatrixBuilder<2> matrix, PathSequence paths,
+                             EdgeSequence resultPaths)
+      : _source(source),
+        _target(target),
+        _outputRegisters(std::initializer_list<RegisterId>{vertexOut}),
+        _registerMapping({{ShortestPathExecutorInfos::OutputName::VERTEX, vertexOut}}),
+        _inputMatrix{matrix},
+        _paths(paths),
+        _resultPaths{resultPaths} {};
 
-  ShortestPathTestParameters(Vertex source, Vertex target, RegisterId vertexOut, RegisterId edgeOut)
-      : source(source),
-        target(target),
-        outputRegisters(std::initializer_list<RegisterId>{vertexOut, edgeOut}),
-        registerMapping({{ShortestPathExecutorInfos::OutputName::VERTEX, vertexOut},
-                         {ShortestPathExecutorInfos::OutputName::EDGE, edgeOut}}){};
+  ShortestPathTestParameters(Vertex source, Vertex target, RegisterId vertexOut,
+                             RegisterId edgeOut, MatrixBuilder<2> matrix,
+                             PathSequence paths, EdgeSequence resultPaths)
+      : _source(source),
+        _target(target),
+        _outputRegisters(std::initializer_list<RegisterId>{vertexOut, edgeOut}),
+        _registerMapping({{ShortestPathExecutorInfos::OutputName::VERTEX, vertexOut},
+                          {ShortestPathExecutorInfos::OutputName::EDGE, edgeOut}}),
+        _inputMatrix{matrix},
+        _paths(paths),
+        _resultPaths(resultPaths){};
 
-  Vertex source;
-  Vertex target;
-  RegisterSet inputRegisters;
-  RegisterSet outputRegisters;
-  RegisterMapping registerMapping;
+  Vertex _source;
+  Vertex _target;
+  RegisterSet _inputRegisters;
+  RegisterSet _outputRegisters;
+  RegisterMapping _registerMapping;
+  MatrixBuilder<2> _inputMatrix;
+  PathSequence _paths;
+  EdgeSequence _resultPaths;
 };
 
 class ShortestPathExecutorTest_new
@@ -987,6 +1003,16 @@ class ShortestPathExecutorTest_new
   ShortestPathExecutorInfos infos;
 
   FakePathFinder& finder;
+
+  SharedAqlItemBlockPtr inputBlock;
+  AqlItemBlockInputRange input;
+
+  std::shared_ptr<Builder> fakeUnusedBlock;
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher;
+
+  ShortestPathExecutor testee;
+  OutputAqlItemRow output;
+
   ShortestPathExecutorTest_new()
       : server{},
         itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
@@ -996,16 +1022,32 @@ class ShortestPathExecutorTest_new
         options(fakedQuery.get()),
         translator(*(static_cast<TokenTranslator*>(options.cache()))),
         parameters(GetParam()),
-        infos(std::make_shared<RegisterSet>(parameters.inputRegisters),
-              std::make_shared<RegisterSet>(parameters.outputRegisters), 2, 4,
+        infos(std::make_shared<RegisterSet>(parameters._inputRegisters),
+              std::make_shared<RegisterSet>(parameters._outputRegisters), 2, 4,
               {}, {0, 1}, std::make_unique<FakePathFinder>(options, translator),
-              std::move(parameters.registerMapping),
-              std::move(parameters.source), std::move(parameters.target)),
-        finder(static_cast<FakePathFinder&>(infos.finder())) {}
+              std::move(parameters._registerMapping),
+              std::move(parameters._source), std::move(parameters._target)),
+        finder(static_cast<FakePathFinder&>(infos.finder())),
+        inputBlock(buildBlock<2>(itemBlockManager, std::move(parameters._inputMatrix))),
+        input(AqlItemBlockInputRange(ExecutorState::HASMORE, inputBlock, 0,
+                                     inputBlock->size())),
+        fakeUnusedBlock(VPackParser::fromJson("[]")),
+        fetcher(itemBlockManager, fakeUnusedBlock->steal(), false),
+        testee(fetcher, infos),
+        output(std::move(block), infos.getOutputRegisters(),
+               infos.registersToKeep(), infos.registersToClear()) {
+    for (auto&& p : parameters._paths) {
+      finder.addPath(std::move(p));
+    }
+  }
 
   void ValidateResult(ShortestPathExecutorInfos& infos, OutputAqlItemRow& result,
                       std::vector<std::pair<std::string, std::string>> const& resultPaths) {
-    if (!resultPaths.empty()) {
+    if (resultPaths.empty()) {
+      //  TODO: this is really crude, but we can't currently, easily determine whether we got
+      //        *exactly* the paths we were hoping  for.
+      ASSERT_EQ(result.numRowsWritten(), 0);
+    } else {
       FakePathFinder& finder = static_cast<FakePathFinder&>(infos.finder());
       TokenTranslator& translator = *(static_cast<TokenTranslator*>(infos.cache()));
       auto block = result.stealBlock();
@@ -1048,136 +1090,79 @@ class ShortestPathExecutorTest_new
                     std::vector<std::pair<std::string, std::string>> const& resultPaths) {
     // This fetcher will not be called!
     // After Execute is done this fetcher shall be removed, the Executor does not need it anymore!
-    auto fakeUnusedBlock = VPackParser::fromJson("[  ]");
-    SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
-        itemBlockManager, fakeUnusedBlock->steal(), false);
-
-    OutputAqlItemRow output(std::move(block), infos.getOutputRegisters(),
-                            infos.registersToKeep(), infos.registersToClear());
-    ShortestPathExecutor testee(fetcher, infos);
-
     // This will fetch everything now, unless we give a small enough atMost
-    LOG_DEVEL << "input has more: " << input.hasMore();
     auto const [state, stats, call] = testee.produceRows(1000, input, output);
 
     EXPECT_EQ(state, ExecutorState::DONE);
-    LOG_DEVEL << "written: " << output.numRowsWritten();
     ValidateResult(infos, output, resultPaths);
   }
-};
+};  // namespace aql
 
-TEST_P(ShortestPathExecutorTest_new, simple) {
-  std::vector<std::pair<std::string, std::string>> resultPaths;
-  resultPaths.clear();
-
-  auto inputBlock = buildBlock<1>(itemBlockManager, {{}});
-  auto input = AqlItemBlockInputRange{ExecutorState::HASMORE, inputBlock, 0,
-                                      inputBlock->size()};
-  TestExecutor(infos, input, resultPaths);
-}
-
-TEST_P(ShortestPathExecutorTest_new, no_rows_upstream) {
-  std::vector<std::pair<std::string, std::string>> resultPaths;
-  resultPaths.clear();
-
-  auto inputBlock = buildBlock<1>(itemBlockManager, {{}});
-  auto input = AqlItemBlockInputRange{ExecutorState::HASMORE, inputBlock, 0,
-                                      inputBlock->size()};
-
-  TestExecutor(infos, input, resultPaths);
-}
-
-TEST_P(ShortestPathExecutorTest_new, rows_upstream_no_paths) {
-  std::vector<std::pair<std::string, std::string>> resultPaths;
-
-  auto inputBlock = buildBlock<2>(itemBlockManager,
-                                  {{{{R"("vertex/source")"}, {R"("vertex/target")"}}}});
-  auto input = AqlItemBlockInputRange{ExecutorState::HASMORE, inputBlock, 0,
-                                      inputBlock->size()};
-
-  TestExecutor(infos, input, resultPaths);
-}
-
-TEST_P(ShortestPathExecutorTest_new, rows_upstream_one_path) {
-  std::vector<std::pair<std::string, std::string>> resultPaths;
-  auto inputBlock = buildBlock<2>(itemBlockManager,
-                                  {{{{R"("vertex/source")"}, {R"("vertex/target")"}}}});
-  auto input = AqlItemBlockInputRange{ExecutorState::HASMORE, inputBlock, 0,
-                                      inputBlock->size()};
-
-  finder.addPath(std::vector<std::string>{"vertex/source", "vertex/intermed",
-                                          "vertex/target"});
-  resultPaths.emplace_back(std::make_pair("vertex/source", "vertex/target"));
-  TestExecutor(infos, input, resultPaths);
-}
-
-TEST_P(ShortestPathExecutorTest_new, multiple_rows_upstream) {
-  std::vector<std::pair<std::string, std::string>> resultPaths;
-
-  auto inputBlock = buildBlock<2>(itemBlockManager,
-                                  {{{{R"("vertex/source")"}, {R"("vertex/target")"}}},
-                                   {{{R"("vertex/a")"}, {R"("vertex/b")"}}}});
-
-  auto input = AqlItemBlockInputRange{ExecutorState::HASMORE, inputBlock, 0,
-                                      inputBlock->size()};
-
-  // We add enough paths for all combinations
-  // Otherwise waiting / more / done is getting complicated
-  finder.addPath(std::vector<std::string>{"vertex/source", "vertex/intermed",
-                                          "vertex/target"});
-  finder.addPath(
-      std::vector<std::string>{"vertex/a", "vertex/b", "vertex/c", "vertex/d"});
-  finder.addPath(std::vector<std::string>{"vertex/source", "vertex/b",
-                                          "vertex/c", "vertex/d"});
-  finder.addPath(
-      std::vector<std::string>{"vertex/a", "vertex/b", "vertex/target"});
-  resultPaths.emplace_back(std::make_pair("vertex/source", "vertex/target"));
-  // Add the expected second path
-  if (infos.useRegisterForInput(false)) {
-    // Source is register
-    if (infos.useRegisterForInput(true)) {
-      // Target is register
-      resultPaths.emplace_back(std::make_pair("vertex/a", "vertex/d"));
-    } else {
-      // Target constant
-      resultPaths.emplace_back(std::make_pair("vertex/a", "vertex/target"));
-    }
-  } else {
-    // Source is constant
-    if (infos.useRegisterForInput(true)) {
-      // Target is register
-      resultPaths.emplace_back(std::make_pair("vertex/source", "vertex/d"));
-    } else {
-      // Target constant
-      resultPaths.emplace_back(
-          std::make_pair("vertex/source", "vertex/target"));
-    }
-  }
-  TestExecutor(infos, input, resultPaths);
+TEST_P(ShortestPathExecutorTest_new, the_test) {
+  TestExecutor(infos, input, parameters._resultPaths);
 }
 
 Vertex const constSource("vertex/source"), constTarget("vertex/target"),
     regSource(0), regTarget(1), brokenSource{"IwillBreakYourSearch"},
     brokenTarget{"I will also break your search"};
 
+MatrixBuilder<2> const noneRow{{{{}}}};
+MatrixBuilder<2> const oneRow{{{{R"("vertex/source")"}, {R"("vertex/target")"}}}};
+MatrixBuilder<2> const twoRows{{{{R"("vertex/source")"}, {R"("vertex/target")"}}},
+                               {{{R"("vertex/a")"}, {R"("vertex/b")"}}}};
+MatrixBuilder<2> const threeRows{{{{R"("vertex/source")"}, {R"("vertex/target")"}}},
+                                 {{{R"("vertex/a")"}, {R"("vertex/b")"}}},
+                                 {{{R"("vertex/a")"}, {R"("vertex/target")"}}}};
+
+std::vector<std::vector<std::string>> const onePath = {
+    {"vertex/source", "vertex/intermed", "vertex/target"}};
+
+std::vector<std::vector<std::string>> const threePaths = {
+    {"vertex/source", "vertex/intermed", "vertex/target"},
+    {"vertex/a", "vertex/b", "vertex/c", "vertex/d"},
+    {"vertex/source", "vertex/b", "vertex/c", "vertex/d"},
+    {"vertex/a", "vertex/b", "vertex/target"}};
+
 INSTANTIATE_TEST_CASE_P(
     ShortestPathExecutorTestInstance, ShortestPathExecutorTest_new,
     testing::Values(
         // No edge output
-        ShortestPathTestParameters(constSource, constTarget, 2),
-        ShortestPathTestParameters(constSource, brokenTarget, 2),
-        ShortestPathTestParameters(brokenSource, brokenTarget, 2),
-        ShortestPathTestParameters(brokenSource, constTarget, 2),
-        ShortestPathTestParameters(constSource, brokenTarget, 2),
-        ShortestPathTestParameters(brokenSource, brokenTarget, 2),
-        // With edge output
-        ShortestPathTestParameters(constSource, constTarget, 2, 3),
-        ShortestPathTestParameters(constSource, brokenTarget, 2, 3),
-        ShortestPathTestParameters(brokenSource, brokenTarget, 2, 3),
-        ShortestPathTestParameters(brokenSource, constTarget, 2, 3),
-        ShortestPathTestParameters(constSource, brokenTarget, 2, 3),
-        ShortestPathTestParameters(brokenSource, brokenTarget, 2, 3)));
+        ShortestPathTestParameters(constSource, constTarget, 2, noneRow, {}, {}),
+        ShortestPathTestParameters(constSource, brokenTarget, 2, noneRow, {}, {}),
+        ShortestPathTestParameters(brokenSource, constTarget, 2, noneRow, {}, {}),
+        ShortestPathTestParameters(brokenSource, brokenTarget, 2, noneRow, {}, {}),
+        ShortestPathTestParameters(regSource, constTarget, 2, noneRow, {}, {}),
+        ShortestPathTestParameters(regSource, brokenTarget, 2, noneRow, {}, {}),
+        ShortestPathTestParameters(constSource, regTarget, 2, noneRow, {}, {}),
+        ShortestPathTestParameters(brokenSource, regTarget, 2, noneRow, {}, {}),
 
+        ShortestPathTestParameters(constSource, constTarget, 2, noneRow, onePath,
+                                   {{"vertex/source", "vertex/target"}}),
+
+        ShortestPathTestParameters(Vertex{"vertex/a"}, Vertex{"vertex/target"}, 2, noneRow,
+                                   threePaths, {{"vertex/a", "vertex/target"}}),
+
+        ShortestPathTestParameters(regSource, regTarget, 2, oneRow, onePath,
+                                   {{"vertex/source", "vertex/target"}}),
+
+        ShortestPathTestParameters(regSource, regTarget, 2, twoRows, threePaths,
+                                   {{"vertex/source", "vertex/target"}}),
+
+        ShortestPathTestParameters(regSource, regTarget, 2, threeRows, threePaths,
+                                   {{"vertex/source", "vertex/target"},
+                                    {"vertex/a", "vertex/target"}}),
+
+        // With edge output
+        ShortestPathTestParameters(constSource, constTarget, 2, 3, noneRow, {}, {}),
+        ShortestPathTestParameters(constSource, brokenTarget, 2, 3, noneRow, {}, {}),
+        ShortestPathTestParameters(brokenSource, constTarget, 2, 3, noneRow, {}, {}),
+        ShortestPathTestParameters(brokenSource, brokenTarget, 2, 3, noneRow, {}, {}),
+        ShortestPathTestParameters(regSource, constTarget, 2, 3, noneRow, {}, {}),
+        ShortestPathTestParameters(regSource, brokenTarget, 2, 3, noneRow, {}, {}),
+        ShortestPathTestParameters(constSource, regTarget, 2, 3, noneRow, {}, {}),
+        ShortestPathTestParameters(brokenSource, regTarget, 2, 3, noneRow, {}, {})
+
+            ));
 }  // namespace aql
 }  // namespace tests
 }  // namespace arangodb

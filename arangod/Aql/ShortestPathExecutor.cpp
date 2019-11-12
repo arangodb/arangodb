@@ -149,7 +149,7 @@ graph::TraverserCache* ShortestPathExecutorInfos::cache() const {
 ShortestPathExecutor::ShortestPathExecutor(Fetcher& fetcher, Infos& infos)
     : _infos(infos),
       _fetcher(fetcher),
-      _input{CreateInvalidInputRowHint{}},
+      _inputRow{CreateInvalidInputRowHint{}},
       _rowState(ExecutionState::HASMORE),
       _finder{infos.finder()},
       _path{new arangodb::graph::ShortestPathResult{}},
@@ -183,13 +183,13 @@ std::pair<ExecutionState, NoStats> ShortestPathExecutor::produceRows(OutputAqlIt
         AqlValue vertex = _path->vertexToAqlValue(_infos.cache(), _posInPath);
         AqlValueGuard guard{vertex, true};
         output.moveValueInto(_infos.getOutputRegister(ShortestPathExecutorInfos::VERTEX),
-                             _input, guard);
+                             _inputRow, guard);
       }
       if (_infos.usesOutputRegister(ShortestPathExecutorInfos::EDGE)) {
         AqlValue edge = _path->edgeToAqlValue(_infos.cache(), _posInPath);
         AqlValueGuard guard{edge, true};
         output.moveValueInto(_infos.getOutputRegister(ShortestPathExecutorInfos::EDGE),
-                             _input, guard);
+                             _inputRow, guard);
       }
       _posInPath++;
       return {computeState(), s};
@@ -210,8 +210,8 @@ bool ShortestPathExecutor::fetchPath() {
   do {
     // Make sure we have a valid start *and* end vertex
     do {
-      std::tie(_rowState, _input) = _fetcher.fetchRow();
-      if (!_input.isInitialized()) {
+      std::tie(_rowState, _inputRow) = _fetcher.fetchRow();
+      if (!_inputRow.isInitialized()) {
         // Either WAITING or DONE and nothing produced.
         TRI_ASSERT(_rowState == ExecutionState::WAITING || _rowState == ExecutionState::DONE);
         return false;
@@ -237,7 +237,7 @@ bool ShortestPathExecutor::getVertexId(bool isTarget, VPackSlice& id) {
     // The input row stays valid until the next fetchRow is executed.
     // So the slice can easily point to it.
     RegisterId reg = _infos.getInputRegister(isTarget);
-    AqlValue const& in = _input.getValue(reg);
+    AqlValue const& in = _inputRow.getValue(reg);
     if (in.isObject()) {
       try {
         auto idString = _finder.options().trx()->extractIdString(in.slice());
@@ -312,17 +312,13 @@ std::tuple<ExecutorState, NoStats, AqlCall> ShortestPathExecutor::produceRows(
     if (_posInPath < _path->length()) {
       if (_infos.usesOutputRegister(ShortestPathExecutorInfos::VERTEX)) {
         AqlValue vertex = _path->vertexToAqlValue(_infos.cache(), _posInPath);
-        AqlValueGuard guard{vertex, true};
-        LOG_DEVEL << "reg: " << _infos.getOutputRegister(ShortestPathExecutorInfos::VERTEX)
-                  << output.getNrRegisters();
-        output.moveValueInto(_infos.getOutputRegister(ShortestPathExecutorInfos::VERTEX),
-                             _input, guard);
+        output.cloneValueInto(_infos.getOutputRegister(ShortestPathExecutorInfos::VERTEX),
+                              _inputRow, vertex);
       }
       if (_infos.usesOutputRegister(ShortestPathExecutorInfos::EDGE)) {
         AqlValue edge = _path->edgeToAqlValue(_infos.cache(), _posInPath);
-        AqlValueGuard guard{edge, true};
-        output.moveValueInto(_infos.getOutputRegister(ShortestPathExecutorInfos::EDGE),
-                             _input, guard);
+        output.cloneValueInto(_infos.getOutputRegister(ShortestPathExecutorInfos::EDGE),
+                              _inputRow, edge);
       }
       _posInPath++;
       output.advanceRow();
@@ -348,23 +344,19 @@ bool ShortestPathExecutor::fetchPath(AqlItemBlockInputRange& input) {
   VPackSlice source;
   VPackSlice target;
   ExecutorState state;
-  InputAqlItemRow row{CreateInvalidInputRowHint{}};
   do {
     // Make sure we have a valid start *and* end vertex
-    LOG_DEVEL << "getting start and end verrteks";
     do {
       if (!input.hasMore()) {
-        LOG_DEVEL << "input didn't have more :/";
         return false;
       }
-      std::tie(state, row) = input.next();
-      TRI_ASSERT(row.isInitialized());
-    } while (!getVertexId(_infos.getSourceVertex(), row, _sourceBuilder, source) ||
-             !getVertexId(_infos.getTargetVertex(), row, _targetBuilder, target));
+      std::tie(state, _inputRow) = input.next();
+      TRI_ASSERT(_inputRow.isInitialized());
+    } while (!getVertexId(_infos.getSourceVertex(), _inputRow, _sourceBuilder, source) ||
+             !getVertexId(_infos.getTargetVertex(), _inputRow, _targetBuilder, target));
     TRI_ASSERT(source.isString());
     TRI_ASSERT(target.isString());
     _path->clear();
-    LOG_DEVEL << "sourtce: " << source.toJson() << "target " << target.toJson();
   } while (!_finder.shortestPath(source, target, *_path));
   _posInPath = 0;
   return true;
@@ -377,7 +369,6 @@ bool ShortestPathExecutor::getVertexId(ShortestPathExecutorInfos::InputVertex co
   switch (vertex.type) {
     case ShortestPathExecutorInfos::InputVertex::Type::REGISTER: {
       AqlValue const& in = row.getValue(vertex.reg);
-      LOG_DEVEL << "register value" << in.slice().toJson();
       if (in.isObject()) {
         try {
           auto idString = _finder.options().trx()->extractIdString(in.slice());
@@ -415,7 +406,6 @@ bool ShortestPathExecutor::getVertexId(ShortestPathExecutorInfos::InputVertex co
     }
     case ShortestPathExecutorInfos::InputVertex::Type::CONSTANT: {
       id = builder.slice();
-      LOG_DEVEL << "constant value " << builder.slice().toJson();
       if (!::isValidId(id)) {
         _finder.options().query()->registerWarning(
             TRI_ERROR_BAD_PARAMETER,

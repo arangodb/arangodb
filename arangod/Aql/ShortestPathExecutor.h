@@ -218,7 +218,7 @@ class ShortestPathExecutor {
  private:
   Infos& _infos;
   Fetcher& _fetcher;
-  InputAqlItemRow _input;
+  InputAqlItemRow _inputRow;
   ExecutionState _rowState;
   /// @brief the shortest path finder.
   arangodb::graph::ShortestPathFinder& _finder;
