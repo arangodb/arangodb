@@ -1,6 +1,9 @@
 v3.5.3 (XXXX-XX-XX)
 -------------------
 
+* Fixed internal issue #4597: rebalanceShards API cannot work on any database
+  other than the _system database.
+
 * Stop putting system services in _apps on single server, this has never
   worked on cluster and was not needed.
 
