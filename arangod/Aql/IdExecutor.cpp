@@ -22,7 +22,9 @@
 
 #include "IdExecutor.h"
 
+#include "Aql/AqlCall.h"
 #include "Aql/AqlCallStack.h"
+#include "Aql/AqlItemBlockInputRange.h"
 #include "Aql/AqlValue.h"
 #include "Aql/ConstFetcher.h"
 #include "Aql/ExecutionEngine.h"
@@ -196,12 +198,61 @@ std::pair<ExecutionState, NoStats> IdExecutor<usePassThrough, UsedFetcher>::prod
 }
 
 template <BlockPassthrough usePassThrough, class UsedFetcher>
+std::tuple<ExecutorState, NoStats, AqlCall> IdExecutor<usePassThrough, UsedFetcher>::produceRows(
+    size_t limit, AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output) {
+  NoStats stats;
+
+  while (!output.isFull() && inputRange.hasMore() && limit > 0) {
+    auto const& [state, inputRow] = inputRange.next();
+
+    TRI_IF_FAILURE("SingletonBlock::getOrSkipSome") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+
+    TRI_ASSERT(state == ExecutorState::HASMORE || state == ExecutorState::DONE);
+    /*Second parameter are to ignore registers that should be kept but are missing in the input row*/
+    output.copyRow(inputRow, std::is_same<UsedFetcher, ConstFetcher>::value);
+    TRI_ASSERT(output.produced());
+    output.advanceRow();
+
+    TRI_IF_FAILURE("SingletonBlock::getOrSkipSomeSet") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+  }
+
+  AqlCall upstreamCall{};
+  upstreamCall.softLimit = limit;
+  return {inputRange.peek().first, stats, upstreamCall};
+}
+
+template <BlockPassthrough usePassThrough, class UsedFetcher>
 template <BlockPassthrough allowPass, typename>
 std::tuple<ExecutionState, NoStats, size_t> IdExecutor<usePassThrough, UsedFetcher>::skipRows(size_t atMost) {
   ExecutionState state;
   size_t skipped;
   std::tie(state, skipped) = _fetcher.skipRows(atMost);
   return {state, NoStats{}, skipped};
+}
+
+template <BlockPassthrough usePassThrough, class UsedFetcher>
+std::tuple<ExecutorState, size_t, AqlCall> IdExecutor<usePassThrough, UsedFetcher>::skipRowsRange(
+    size_t offset, AqlItemBlockInputRange& inputRange) {
+  ExecutorState state;
+  size_t skipped = 0;
+  InputAqlItemRow input{CreateInvalidInputRowHint{}};
+
+  while (inputRange.hasMore() && skipped < offset) {
+    std::tie(state, input) = inputRange.next();
+    if (!input) {
+      TRI_ASSERT(!inputRange.hasMore());
+      break;
+    }
+    skipped++;
+  }
+
+  AqlCall upstreamCall{};
+  upstreamCall.softLimit = offset - skipped;
+  return {state, skipped, upstreamCall};
 }
 
 template <BlockPassthrough usePassThrough, class UsedFetcher>
