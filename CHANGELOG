@@ -1,6 +1,11 @@
 v3.5.3 (XXXX-XX-XX)
 -------------------
 
+* Fixed undefined behaviour with creation of ArangoSearch links with custom
+  analyzers in cluster environment.
+
+* Fixed internal issue #651: analyzer duplication in _analyzers collection.
+
 * Assertion fail when no timestamp in agency's persistence.
 
 * Fixed internal issue #647: custom analyzer provokes errors on Active Failover
