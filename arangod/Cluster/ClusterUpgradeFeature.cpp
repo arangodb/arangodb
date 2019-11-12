@@ -52,7 +52,7 @@ ClusterUpgradeFeature::ClusterUpgradeFeature(application_features::ApplicationSe
 
 void ClusterUpgradeFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--cluster.upgrade",
-                     "perform a cluster upgrade if necessary (auto = perform upgrade and shut down only if `--database.auto-upgrade true` is set, disable = never perform upgrade, force = always perform an upgrade and shut down, onlne = always perform an upgrade but don't shut down)",
+                     "perform a cluster upgrade if necessary (auto = perform upgrade and shut down only if `--database.auto-upgrade true` is set, disable = never perform upgrade, force = always perform an upgrade and shut down, online = always perform an upgrade but don't shut down)",
                      new DiscreteValuesParameter<StringParameter>(&_upgradeMode, std::unordered_set<std::string>{"auto", "disable", "force", "online"}));
 }
 
