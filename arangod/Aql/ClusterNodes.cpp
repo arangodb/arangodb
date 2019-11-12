@@ -509,7 +509,7 @@ std::unique_ptr<ExecutionBlock> GatherNode::createBlock(
       IdExecutorInfos infos(getRegisterPlan()->nrRegs[getDepth()],
                             calcRegsToKeep(), getRegsToClear());
       // In the DBServer case the GatherBlock will merge local results and then expose them (directly or indirectly)
-      // To the RemoteBlock on coordinator. We want to trigger as few requests as possible, so we invest the little
+      // to the RemoteBlock on coordinator. We want to trigger as few requests as possible, so we invest the little
       // memory inefficiency that we have here in favor of a better grouping of requests.
       return std::make_unique<ExecutionBlockImpl<IdExecutor<BlockPassthrough::Disable, SingleRowFetcher<BlockPassthrough::Disable>>>>(
           &engine, this, std::move(infos));
