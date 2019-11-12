@@ -330,7 +330,7 @@ void RestTransactionHandler::returnContext() {
   _v8Context = nullptr;
 }
 
-bool RestTransactionHandler::cancel() {
+void RestTransactionHandler::cancel() {
   // cancel v8 transaction
   WRITE_LOCKER(writeLock, _lock);
   _canceled.store(true);
@@ -338,7 +338,6 @@ bool RestTransactionHandler::cancel() {
   if (!isolate->IsExecutionTerminating()) {
     isolate->TerminateExecution();
   }
-  return true;
 }
 
 /// @brief returns the short id of the server which should handle this request

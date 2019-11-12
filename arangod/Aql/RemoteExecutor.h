@@ -88,6 +88,16 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
   unsigned generateRequestTicket();
 
  private:
+  enum class ReqState {
+    None,
+    SendingGetSome,
+    GotSendSome,
+    SendingSkipSome,
+    GotSkipSome,
+    SendingShutdown,
+    GotShutdown
+  };
+
   ExecutorInfos _infos;
 
   Query const& _query;
@@ -106,6 +116,8 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
   /// initializeCursor or shutDown requests
   bool const _isResponsibleForInitializeCursor;
 
+  std::mutex _communicationMutex;
+
   /// @brief the last unprocessed result. Make sure to reset it
   ///        after it is processed.
   std::unique_ptr<fuerte::Response> _lastResponse;
@@ -113,13 +125,13 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
   /// @brief the last remote response Result object, may contain an error.
   arangodb::Result _lastError;
   
-  std::mutex _communicationMutex;
-  
   unsigned _lastTicket;  /// used to check for canceled requests
-  
+
+  bool _requestInFlight;
+
   bool _hasTriggeredShutdown;
-  
-  bool _didSendShutdownRequest = false;
+
+  //  bool _didReceiveShutdownRequest;
 
   void traceGetSomeRequest(velocypack::Slice slice, size_t atMost);
   void traceSkipSomeRequest(velocypack::Slice slice, size_t atMost);

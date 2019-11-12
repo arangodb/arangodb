@@ -176,11 +176,13 @@ int HttpCommTask<T>::on_header_complete(llhttp_t* p) {
     char const* response = "HTTP/1.1 100 Continue\r\n\r\n";
     auto buff = asio_ns::buffer(response, strlen(response));
     asio_ns::async_write(self->_protocol->socket, buff,
-                         [self](asio_ns::error_code const& ec, std::size_t transferred) {
-                           llhttp_resume(&self->_parser);
-                           self->asyncReadSome();
+                         [self = self->shared_from_this()](asio_ns::error_code const& ec,
+                                                           std::size_t) {
+                           if (ec) {
+                             static_cast<HttpCommTask<T>*>(self.get())->close();
+                           }
                          });
-    return HPE_PAUSED;
+    return HPE_OK;
   }
   if (self->_request->requestType() == RequestType::HEAD) {
     // Assume that request/response has no body, proceed parsing next message
@@ -202,7 +204,6 @@ int HttpCommTask<T>::on_message_complete(llhttp_t* p) {
 
   RequestStatistics* stat = self->statistics(1UL);
   RequestStatistics::SET_READ_END(stat);
-  RequestStatistics::ADD_RECEIVED_BYTES(stat, self->_request->body().size());
   self->_messageDone = true;
 
   return HPE_PAUSED;
@@ -293,6 +294,9 @@ bool HttpCommTask<T>::readCallback(asio_ns::error_code ec) {
     TRI_ASSERT(parsedBytes < std::numeric_limits<size_t>::max());
     // Remove consumed data from receive buffer.
     this->_protocol->buffer.consume(parsedBytes);
+    // And count it in the statistics:
+    RequestStatistics* stat = this->statistics(1UL);
+    RequestStatistics::ADD_RECEIVED_BYTES(stat, parsedBytes);
 
     if (err == HPE_PAUSED_UPGRADE) {
       this->addSimpleResponse(rest::ResponseCode::NOT_IMPLEMENTED,
@@ -420,6 +424,11 @@ void HttpCommTask<T>::processRequest() {
     res->setHeaderNC(StaticStrings::WwwAuthenticate, std::move(realm));
     sendResponse(std::move(res), nullptr);
     return;
+  }
+
+  // We want to separate superuser token traffic:
+  if (_request->authenticated() && _request->user().empty()) {
+    RequestStatistics::SET_SUPERUSER(this->statistics(1UL));
   }
 
   // first check whether we allow the request to continue
@@ -795,28 +804,31 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
     buffers[1] = asio_ns::buffer(body->data(), body->size());
     TRI_ASSERT(len == body->size());
   }
+  RequestStatistics::SET_WRITE_START(stat);
 
   // FIXME measure performance w/o sync write
-  auto cb = [self = CommTask::shared_from_this(),
-             h = std::move(header),
-             b = std::move(body)](asio_ns::error_code ec,
-                                  size_t nwrite) {
-    auto* thisPtr = static_cast<HttpCommTask<T>*>(self.get());
+  asio_ns::async_write(this->_protocol->socket, buffers,
+                       [self = CommTask::shared_from_this(), h = std::move(header),
+                        b = std::move(body), stat](asio_ns::error_code ec, size_t nwrite) {
+                         auto* thisPtr = static_cast<HttpCommTask<T>*>(self.get());
+                         RequestStatistics::SET_WRITE_END(stat);
+                         RequestStatistics::ADD_SENT_BYTES(stat, h->size() + b->size());
+                         llhttp_errno_t err = llhttp_get_errno(&thisPtr->_parser);
+                         if (ec || !thisPtr->_shouldKeepAlive || err != HPE_PAUSED) {
+                           if (ec) {
+                             LOG_TOPIC("2b6b4", DEBUG, arangodb::Logger::REQUESTS)
+                                 << "asio write error: '" << ec.message() << "'";
+                           }
+                           thisPtr->close();
+                         } else {  // ec == HPE_PAUSED
 
-    llhttp_errno_t err = llhttp_get_errno(&thisPtr->_parser);
-    if (ec || !thisPtr->_shouldKeepAlive || err != HPE_PAUSED) {
-      if (ec) {
-        LOG_TOPIC("2b6b4", DEBUG, arangodb::Logger::REQUESTS)
-        << "asio write error: '" << ec.message() << "'";
-      }
-      thisPtr->close();
-    } else {  // ec == HPE_PAUSED
-
-      llhttp_resume(&thisPtr->_parser);
-      thisPtr->asyncReadSome();
-    }
-  };
-  asio_ns::async_write(this->_protocol->socket, buffers, std::move(cb));
+                           llhttp_resume(&thisPtr->_parser);
+                           thisPtr->asyncReadSome();
+                         }
+                         if (stat != nullptr) {
+                           stat->release();
+                         }
+                       });
 }
 
 template <SocketType T>

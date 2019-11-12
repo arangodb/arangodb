@@ -28,6 +28,7 @@
 #include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/NumberUtils.h"
 #include "Basics/RecursiveLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
@@ -135,7 +136,7 @@ static inline int setErrormsg(int ourerrno, std::string& errorMsg) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline bool hasError(VPackSlice const& slice) {
-  return arangodb::basics::VelocyPackHelper::getBooleanValue(slice, "error", false);
+  return arangodb::basics::VelocyPackHelper::getBooleanValue(slice, StaticStrings::Error, false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -146,8 +147,8 @@ static std::string extractErrorMessage(std::string const& shardId, VPackSlice co
   std::string msg = " shardID:" + shardId + ": ";
 
   // add error message text
-  msg += arangodb::basics::VelocyPackHelper::getStringValue(slice,
-                                                            "errorMessage", "");
+  msg += arangodb::basics::VelocyPackHelper::getStringValue(slice, StaticStrings::ErrorMessage,
+                                                            "");
 
   // add error number
   if (slice.hasKey(StaticStrings::ErrorNum)) {
@@ -652,7 +653,7 @@ void ClusterInfo::loadPlan() {
       // On a coordinator we can only see databases that have been fully created
       if (!(ServerState::instance()->isCoordinator() &&
             database.value.hasKey(StaticStrings::DatabaseIsBuilding))) {
-        newDatabases.emplace(std::move(name), database.value);
+        newDatabases.try_emplace(std::move(name), database.value);
       } else {
         buildingDatabases.emplace(std::move(name));
       }
@@ -952,20 +953,21 @@ void ClusterInfo::loadPlan() {
 
           if (!isBuilding) {
             // register with name as well as with id:
-            databaseCollections.emplace(collectionName, newCollection);
-            databaseCollections.emplace(collectionId, newCollection);
+            databaseCollections.try_emplace(collectionName, newCollection);
+            databaseCollections.try_emplace(collectionId, newCollection);
           }
 
-          newShardKeys.emplace(collectionId, std::make_shared<std::vector<std::string>>(
-                                                 newCollection->shardKeys()));
+          newShardKeys.try_emplace(collectionId, std::make_shared<std::vector<std::string>>(
+                                                     newCollection->shardKeys()));
 
           auto shardIDs = newCollection->shardIds();
           auto shards = std::make_shared<std::vector<std::string>>();
           shards->reserve(shardIDs->size());
 
           for (auto const& p : *shardIDs) {
+            TRI_ASSERT(p.first.size() >= 2);
             shards->push_back(p.first);
-            newShardServers.emplace(p.first, p.second);
+            newShardServers.try_emplace(p.first, p.second);
           }
 
           // Sort by the number in the shard ID ("s0000001" for example):
@@ -973,11 +975,15 @@ void ClusterInfo::loadPlan() {
               shards->begin(),  // begin
               shards->end(),    // end
               [](std::string const& a, std::string const& b) -> bool {
-                return std::strtol(a.c_str() + 1, nullptr, 10) <
-                       std::strtol(b.c_str() + 1, nullptr, 10);
+                TRI_ASSERT(a.size() >= 2);
+                TRI_ASSERT(b.size() >= 2);
+                return NumberUtils::atoi_zero<uint64_t>(a.c_str() + 1,
+                                                        a.c_str() + a.size()) <
+                       NumberUtils::atoi_zero<uint64_t>(b.c_str() + 1,
+                                                        b.c_str() + b.size());
               }  // comparator
           );
-          newShards.emplace(collectionId, std::move(shards));
+          newShards.try_emplace(collectionId, std::move(shards));
         } catch (std::exception const& ex) {
           // The plan contains invalid collection information.
           // This should not happen in healthy situations.
@@ -1007,7 +1013,7 @@ void ClusterInfo::loadPlan() {
         }
       }
 
-      newCollections.emplace(std::move(databaseName), std::move(databaseCollections));
+      newCollections.try_emplace(std::move(databaseName), std::move(databaseCollections));
     }
     LOG_TOPIC("12dfa", DEBUG, Logger::CLUSTER)
         << "loadPlan done: wantedVersion=" << storedVersion
@@ -1186,10 +1192,10 @@ void ClusterInfo::loadCurrent() {
 
       for (auto const& serverSlicePair :
            velocypack::ObjectIterator(databaseSlicePair.value)) {
-        serverList.emplace(serverSlicePair.key.copyString(), serverSlicePair.value);
+        serverList.try_emplace(serverSlicePair.key.copyString(), serverSlicePair.value);
       }
 
-      newDatabases.emplace(database, serverList);
+      newDatabases.try_emplace(database, serverList);
     }
   }
 
@@ -1226,13 +1232,13 @@ void ClusterInfo::loadCurrent() {
               collectionDataCurrent->servers(shardID)  // args
           );
 
-          newShardIds.emplace(shardID, servers);
+          newShardIds.try_emplace(shardID, servers);
         }
 
-        databaseCollections.emplace(collectionName, collectionDataCurrent);
+        databaseCollections.try_emplace(collectionName, collectionDataCurrent);
       }
 
-      newCollections.emplace(databaseName, databaseCollections);
+      newCollections.try_emplace(databaseName, databaseCollections);
     }
   }
 
@@ -1538,7 +1544,8 @@ Result ClusterInfo::waitForDatabaseInCurrent(CreateDatabaseInfo const& database)
 
       for (VPackObjectIterator::ObjectPair dbserver : dbs) {
         VPackSlice slice = dbserver.value;
-        if (arangodb::basics::VelocyPackHelper::getBooleanValue(slice, "error", false)) {
+        if (arangodb::basics::VelocyPackHelper::getBooleanValue(slice, StaticStrings::Error,
+                                                                false)) {
           tmpHaveError = true;
           tmpMsg += " DBServer:" + dbserver.key.copyString() + ":";
           tmpMsg += arangodb::basics::VelocyPackHelper::getStringValue(slice, StaticStrings::ErrorMessage,
@@ -1986,7 +1993,7 @@ Result ClusterInfo::createCollectionsCoordinator(
       for (auto const& serv : VPackArrayIterator(pair.value)) {
         serverIds.emplace_back(serv.copyString());
       }
-      shardServers.emplace(shardID, serverIds);
+      shardServers.try_emplace(shardID, serverIds);
     }
 
     // The AgencyCallback will copy the closure will take responsibilty of it.
@@ -2012,11 +2019,11 @@ Result ClusterInfo::createCollectionsCoordinator(
         std::string tmpError = "";
 
         for (auto const& p : VPackObjectIterator(result)) {
-          if (arangodb::basics::VelocyPackHelper::getBooleanValue(p.value,
-                                                                  "error", false)) {
+          if (arangodb::basics::VelocyPackHelper::getBooleanValue(p.value, StaticStrings::Error,
+                                                                  false)) {
             tmpError += " shardID:" + p.key.copyString() + ":";
             tmpError += arangodb::basics::VelocyPackHelper::getStringValue(
-                p.value, "errorMessage", "");
+                p.value, StaticStrings::ErrorMessage, "");
             if (p.value.hasKey(StaticStrings::ErrorNum)) {
               VPackSlice const errorNum = p.value.get(StaticStrings::ErrorNum);
               if (errorNum.isNumber()) {
@@ -3018,7 +3025,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
             *errMsg = "Error during index creation: " + *errMsg;
             // Returns the specific error number if set, or the general
             // error otherwise
-            int errNum = arangodb::basics::VelocyPackHelper::readNumericValue<int>(
+            int errNum = arangodb::basics::VelocyPackHelper::getNumericValue<int>(
                 v, StaticStrings::ErrorNum, TRI_ERROR_ARANGO_INDEX_CREATION_FAILED);
             dbServerResult->store(errNum, std::memory_order_release);
             return true;
@@ -3330,8 +3337,8 @@ Result ClusterInfo::dropIndexCoordinator(  // drop index
 
   TRI_ASSERT(VPackObjectIterator(collection).size() > 0);
   size_t const numberOfShards =
-      basics::VelocyPackHelper::readNumericValue<size_t>(collection,
-                                                         StaticStrings::NumberOfShards, 1);
+      basics::VelocyPackHelper::getNumericValue<size_t>(collection,
+                                                        StaticStrings::NumberOfShards, 1);
 
   VPackSlice indexes = collection.get("indexes");
   if (!indexes.isArray()) {
@@ -3540,7 +3547,7 @@ void ClusterInfo::loadServers() {
             if (serverSlice.isObject()) {
               std::string alias = arangodb::basics::VelocyPackHelper::getStringValue(
                   serverSlice, "ShortName", "");
-              newAliases.emplace(std::make_pair(alias, serverId));
+              newAliases.try_emplace(std::move(alias), serverId);
             }
           } catch (...) {
           }
@@ -3548,10 +3555,10 @@ void ClusterInfo::loadServers() {
               arangodb::basics::VelocyPackHelper::getStringValue(slice,
                                                                  "timestamp",
                                                                  "");
-          newServers.emplace(std::make_pair(serverId, server));
-          newAdvertisedEndpoints.emplace(std::make_pair(serverId, advertised));
+          newServers.try_emplace(serverId, server);
+          newAdvertisedEndpoints.try_emplace(serverId, advertised);
           serverIds.emplace(serverId);
-          newTimestamps.emplace(std::make_pair(serverId, serverTimestamp));
+          newTimestamps.try_emplace(serverId, serverTimestamp);
         }
       }
 
@@ -3755,8 +3762,8 @@ void ClusterInfo::loadCurrentCoordinators() {
       decltype(_coordinators) newCoordinators;
 
       for (auto const& coordinator : VPackObjectIterator(currentCoordinators)) {
-        newCoordinators.emplace(std::make_pair(coordinator.key.copyString(),
-                                               coordinator.value.copyString()));
+        newCoordinators.try_emplace(coordinator.key.copyString(),
+                                    coordinator.value.copyString());
       }
 
       // Now set the new value:
@@ -3811,7 +3818,7 @@ void ClusterInfo::loadCurrentMappings() {
           static std::string const expectedPrefix{"Coordinator"};
           if (shortName.size() > expectedPrefix.size() &&
               shortName.substr(0, expectedPrefix.size()) == expectedPrefix) {
-            newCoordinatorIdMap.emplace(shortId, fullId);
+            newCoordinatorIdMap.try_emplace(shortId, fullId);
           }
         }
       }
@@ -3917,8 +3924,7 @@ void ClusterInfo::loadCurrentDBServers() {
           }
         }
 
-        newDBServers.emplace(std::make_pair(dbserver.key.copyString(),
-                                            dbserver.value.copyString()));
+        newDBServers.try_emplace(dbserver.key.copyString(), dbserver.value.copyString());
       }
 
       // Now set the new value:
@@ -4058,7 +4064,7 @@ std::unordered_map<ShardID, ServerID> ClusterInfo::getResponsibleServers(
         }
 
         // put leader into result
-        result.emplace(shardId, (*it).second->front());
+        result.try_emplace(shardId, (*it).second->front());
       }
     }
 
@@ -4250,7 +4256,7 @@ std::unordered_map<ServerID, std::string> ClusterInfo::getServerAliases() {
   READ_LOCKER(readLocker, _serversProt.lock);
   std::unordered_map<std::string, std::string> ret;
   for (const auto& i : _serverAliases) {
-    ret.emplace(i.second, i.first);
+    ret.try_emplace(i.second, i.first);
   }
   return ret;
 }
@@ -4259,7 +4265,7 @@ std::unordered_map<ServerID, std::string> ClusterInfo::getServerAdvertisedEndpoi
   READ_LOCKER(readLocker, _serversProt.lock);
   std::unordered_map<std::string, std::string> ret;
   for (const auto& i : _serverAdvertisedEndpoints) {
-    ret.emplace(i.second, i.first);
+    ret.try_emplace(i.second, i.first);
   }
   return ret;
 }
@@ -4622,7 +4628,7 @@ ClusterInfo::ServersKnown::ServersKnown(VPackSlice const serversKnownSlice,
         TRI_ASSERT(rebootIdSlice.isInteger());
         if (rebootIdSlice.isInteger()) {
           auto const rebootId = RebootId{rebootIdSlice.getNumericValue<uint64_t>()};
-          _serversKnown.emplace(std::move(serverId), rebootId);
+          _serversKnown.try_emplace(std::move(serverId), rebootId);
         }
       }
     }
@@ -4632,7 +4638,7 @@ ClusterInfo::ServersKnown::ServersKnown(VPackSlice const serversKnownSlice,
   // ServersKnown but in ServersRegistered with a reboot ID of 0 as a fallback.
   // We should be able to remove this in 3.6.
   for (auto const& serverId : serverIds) {
-    auto const rv = _serversKnown.emplace(serverId, RebootId{0});
+    auto const rv = _serversKnown.try_emplace(serverId, RebootId{0});
     LOG_TOPIC_IF("0acbd", INFO, Logger::CLUSTER, rv.second)
         << "Server " << serverId
         << " is in Current/ServersRegistered, but not in "
@@ -4649,7 +4655,7 @@ ClusterInfo::ServersKnown::serversKnown() const noexcept {
 std::unordered_map<ServerID, RebootId> ClusterInfo::ServersKnown::rebootIds() const {
   std::unordered_map<ServerID, RebootId> rebootIds;
   for (auto const& it : _serversKnown) {
-    rebootIds.emplace(it.first, it.second.rebootId());
+    rebootIds.try_emplace(it.first, it.second.rebootId());
   }
   return rebootIds;
 }

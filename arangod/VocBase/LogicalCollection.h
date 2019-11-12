@@ -144,6 +144,7 @@ class LogicalCollection : public LogicalDataSource {
   bool isSmart() const { return false; }
   bool isSmartChild() const { return false; }
 #endif
+  bool usesRevisionsAsDocumentIds() const;
   /// @brief is this a cluster-wide Plan (ClusterInfo) collection
   bool isAStub() const { return _isAStub; }
   /// @brief is this a cluster-wide Plan (ClusterInfo) collection
@@ -374,6 +375,8 @@ class LogicalCollection : public LogicalDataSource {
   // @brief Flag if this collection is a child of a smart collection (Enterprise only)
   bool const _isSmartChild;
 #endif
+
+  bool const _usesRevisionsAsDocumentIds;
 
   // SECTION: Properties
   bool _waitForSync;

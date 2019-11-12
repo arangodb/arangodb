@@ -88,12 +88,12 @@ void AgencyFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options->addOption(
       "--agency.election-timeout-min",
-      "minimum timeout before an agent calls for new election [s]",
+      "minimum timeout before an agent calls for new election (in seconds)",
       new DoubleParameter(&_minElectionTimeout));
 
   options->addOption(
       "--agency.election-timeout-max",
-      "maximum timeout before an agent calls for new election [s]",
+      "maximum timeout before an agent calls for new election (in seconds)",
       new DoubleParameter(&_maxElectionTimeout));
 
   options->addOption("--agency.endpoint", "agency endpoints",
@@ -108,13 +108,13 @@ void AgencyFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      new BooleanParameter(&_supervision));
 
   options->addOption("--agency.supervision-frequency",
-                     "arangodb cluster supervision frequency [s]",
+                     "arangodb cluster supervision frequency (in seconds)",
                      new DoubleParameter(&_supervisionFrequency));
 
-  options->addOption(
-      "--agency.supervision-grace-period",
-      "supervision time, after which a server is considered to have failed [s]",
-      new DoubleParameter(&_supervisionGracePeriod));
+  options->addOption("--agency.supervision-grace-period",
+                     "supervision time, after which a server is considered to "
+                     "have failed (in seconds)",
+                     new DoubleParameter(&_supervisionGracePeriod));
 
   options->addOption("--agency.compaction-step-size",
                      "step size between state machine compactions",

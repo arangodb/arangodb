@@ -36,8 +36,8 @@ bool VersionSort::operator()(std::string const& a, std::string const& b) const {
   auto compareResult =
       std::lexicographical_compare(va.begin(), va.end(), vb.begin(), vb.end(),
                                    [](CharOrInt const& a, CharOrInt const& b) -> bool {
-                                     if (a.which() != b.which()) {
-                                       return a.which() < b.which();
+                                     if (a.index() != b.index()) {
+                                       return a.index() < b.index();
                                      }
                                      return a < b;
                                    });
@@ -246,7 +246,7 @@ std::ostream& cluster_repairs::operator<<(std::ostream& ostream,
   return ostream;
 }
 
-class StreamRepairOperationVisitor : public boost::static_visitor<std::ostream&> {
+class StreamRepairOperationVisitor {
  public:
   StreamRepairOperationVisitor() = delete;
 
@@ -273,7 +273,7 @@ class StreamRepairOperationVisitor : public boost::static_visitor<std::ostream&>
 std::ostream& cluster_repairs::operator<<(std::ostream& ostream,
                                           RepairOperation const& operation) {
   auto visitor = StreamRepairOperationVisitor(ostream);
-  return boost::apply_visitor(visitor, operation);
+  return std::visit(visitor, operation);
 }
 
 std::string getExtendedIsoString(std::chrono::system_clock::time_point time_point) {
@@ -293,7 +293,7 @@ std::string getExtendedIsoString(std::chrono::system_clock::time_point time_poin
   return std::string(timeString);
 }
 
-class RepairOperationTypeStringVisitor : public boost::static_visitor<std::string> {
+class RepairOperationTypeStringVisitor {
  public:
   std::string operator()(BeginRepairsOperation const& op) const {
     return "BeginRepairsOperation";
@@ -310,7 +310,7 @@ class RepairOperationTypeStringVisitor : public boost::static_visitor<std::strin
 };
 
 std::string cluster_repairs::getTypeAsString(RepairOperation const& op) {
-  return boost::apply_visitor(RepairOperationTypeStringVisitor(), op);
+  return std::visit(RepairOperationTypeStringVisitor(), op);
 }
 
 VPackBufferPtr MoveShardOperation::toVPackTodo(
@@ -421,7 +421,7 @@ RepairOperationToTransactionVisitor::ReturnValueT RepairOperationToTransactionVi
   operations.emplace_back(
       AgencyOperation("Plan/Version", AgencySimpleOperationType::INCREMENT_OP));
 
-  return {AgencyWriteTransaction{operations, preconditions}, boost::none};
+  return {AgencyWriteTransaction{operations, preconditions}, std::nullopt};
 }
 
 RepairOperationToTransactionVisitor::ReturnValueT RepairOperationToTransactionVisitor::operator()(
@@ -482,7 +482,7 @@ RepairOperationToTransactionVisitor::ReturnValueT RepairOperationToTransactionVi
   operations.emplace_back(
       AgencyOperation("Plan/Version", AgencySimpleOperationType::INCREMENT_OP));
 
-  return {AgencyWriteTransaction{operations, preconditions}, boost::none};
+  return {AgencyWriteTransaction{operations, preconditions}, std::nullopt};
 }
 
 RepairOperationToTransactionVisitor::ReturnValueT RepairOperationToTransactionVisitor::operator()(
@@ -525,7 +525,7 @@ RepairOperationToTransactionVisitor::ReturnValueT RepairOperationToTransactionVi
   AgencyOperation agencyOperation{agencyShardId, AgencyValueOperationType::SET,
                                   protoDbServerSlice};
 
-  return {AgencyWriteTransaction{agencyOperation, agencyPreconditions}, boost::none};
+  return {AgencyWriteTransaction{agencyOperation, agencyPreconditions}, std::nullopt};
 }
 
 std::string RepairOperationToTransactionVisitor::agencyCollectionId(DatabaseID database,

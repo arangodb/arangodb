@@ -148,7 +148,7 @@ ExecutionStats::ExecutionStats(VPackSlice const& slice) : ExecutionStats() {
       if (alias != _nodeAliases.end()) {
         nid = alias->second;
       }
-      nodes.emplace(nid, node);
+      nodes.try_emplace(nid, node);
     }
   }
 }

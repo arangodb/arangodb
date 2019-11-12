@@ -317,8 +317,6 @@ bool RestImportHandler::createFromJson(std::string const& type) {
 
     // auto detect import type by peeking at first non-whitespace character
 
-    // json required here
-    TRI_ASSERT(_request->contentType() == ContentType::JSON);
     VPackStringRef body = _request->rawPayload();
 
     char const* ptr = body.data();
@@ -373,9 +371,6 @@ bool RestImportHandler::createFromJson(std::string const& type) {
   VPackBuilder tmpBuilder;
 
   if (linewise) {
-    // json required here
-    TRI_ASSERT(_request->contentType() == ContentType::JSON);
-    
     // each line is a separate JSON document
     VPackStringRef body = _request->rawPayload();
     char const* ptr = body.data();

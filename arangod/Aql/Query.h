@@ -109,8 +109,8 @@ class Query {
   constexpr static uint64_t DontCache = 0;
 
   /// @brief whether or not the query is killed
-  inline bool killed() const { return _killed; }
-  
+  bool killed() const;
+
   void setKilled() { _killed = true; }
 
   /// @brief set the query to killed
@@ -231,7 +231,7 @@ class Query {
 
   /// @brief execute an AQL query
   /// may only be called with an active V8 handle scope
-  aql::ExecutionState executeV8(v8::Isolate* isolate, QueryRegistry*, QueryResultV8&);
+  QueryResultV8 executeV8(v8::Isolate* isolate, QueryRegistry*);
 
   /// @brief Enter finalization phase and do cleanup.
   /// Sets `warnings`, `stats`, `profile`, timings and does the cleanup.
@@ -349,7 +349,7 @@ class Query {
 
  private:
   /// @brief query id
-  TRI_voc_tick_t _id;
+  const TRI_voc_tick_t _id;
 
   /// @brief current resources and limits used by query
   ResourceMonitor _resourceMonitor;

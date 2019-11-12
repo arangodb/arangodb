@@ -1123,8 +1123,13 @@ bool TRI_ProcessFile(char const* filename,
 
 char* TRI_SlurpGzipFile(char const* filename, size_t* length) {
   TRI_set_errno(TRI_ERROR_NO_ERROR);
-  gzFile gzFd(gzopen(filename,"rb"));
-  auto fdGuard = arangodb::scopeGuard([&gzFd](){ if (nullptr != gzFd) gzclose(gzFd); });
+  gzFile gzFd = gzopen(filename, "rb");
+  auto fdGuard = arangodb::scopeGuard([&gzFd]() {
+    if (nullptr != gzFd) {
+      gzclose(gzFd);
+    }
+  });
+
   char* retPtr = nullptr;
 
   if (nullptr != gzFd) {
@@ -1176,7 +1181,8 @@ char* TRI_SlurpDecryptFile(EncryptionFeature& encryptionFeature, char const* fil
   TRI_set_errno(TRI_ERROR_NO_ERROR);
 
   encryptionFeature.setKeyFile(keyfile);
-  auto keyGuard = arangodb::scopeGuard([&encryptionFeature](){ encryptionFeature.clearKey(); });
+  auto keyGuard = arangodb::scopeGuard(
+      [&encryptionFeature]() { encryptionFeature.clearKey(); });
 
   int fd = TRI_OPEN(filename, O_RDONLY | TRI_O_CLOEXEC);
 
@@ -2247,14 +2253,15 @@ class SystemTempPathSweeper {
   std::string _systemTempPath;
 
  public:
-  SystemTempPathSweeper() : _systemTempPath(){};
+  SystemTempPathSweeper() : _systemTempPath() {}
 
-  ~SystemTempPathSweeper(void) {
+  ~SystemTempPathSweeper() {
     if (!_systemTempPath.empty()) {
       // delete directory iff directory is empty
       TRI_RMDIR(_systemTempPath.c_str());
     }
   }
+
   void init(const char* path) { _systemTempPath = path; }
 };
 

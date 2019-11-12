@@ -121,8 +121,9 @@ bool readIsSystem(arangodb::velocypack::Slice definition) {
   }
 
   // same condition as in LogicalCollection
-  return arangodb::basics::VelocyPackHelper::readBooleanValue(
-      definition, arangodb::StaticStrings::DataSourceSystem, false);
+  return arangodb::basics::VelocyPackHelper::getBooleanValue(definition,
+                                                             arangodb::StaticStrings::DataSourceSystem,
+                                                             false);
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -148,8 +149,7 @@ namespace arangodb {
   static std::mutex mutex;
   static std::map<arangodb::velocypack::StringRef, LogicalDataSource::Type, Less> types;
   std::lock_guard<std::mutex> lock(mutex);
-  auto itr = types.emplace(name, Type());
-
+  auto itr = types.try_emplace(name, Type());
   if (itr.second && name.data()) {
     const_cast<std::string&>(itr.first->second._name) = name.toString();  // update '_name'
     const_cast<arangodb::velocypack::StringRef&>(itr.first->first) =
@@ -170,8 +170,8 @@ LogicalDataSource::LogicalDataSource(Category const& category, Type const& type,
           basics::VelocyPackHelper::getStringValue(definition, StaticStrings::DataSourceName,
                                                    ""),
           planVersion, readIsSystem(definition),
-          basics::VelocyPackHelper::readBooleanValue(definition, StaticStrings::DataSourceDeleted,
-                                                     false)) {}
+          basics::VelocyPackHelper::getBooleanValue(definition, StaticStrings::DataSourceDeleted,
+                                                    false)) {}
 
 LogicalDataSource::LogicalDataSource(Category const& category, Type const& type,
                                      TRI_vocbase_t& vocbase, TRI_voc_cid_t id,

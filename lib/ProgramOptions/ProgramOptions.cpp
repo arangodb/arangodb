@@ -477,22 +477,18 @@ void ProgramOptions::addPositional(std::string const& value) {
 // adds an option to the list of options
 void ProgramOptions::addOption(Option const& option) {
   checkIfSealed();
-  auto it = _sections.find(option.section);
-
-  if (it == _sections.end()) {
-    // add an anonymous section now...
-    addSection(option.section, "");
-    it = _sections.find(option.section);
-  }
+  std::map<std::string, Section>::iterator sectionIt =
+      addSection(option.section, "");
 
   if (!option.shorthand.empty()) {
-    if (!_shorthands.emplace(option.shorthand, option.fullName()).second) {
+    if (!_shorthands.try_emplace(option.shorthand, option.fullName()).second) {
       throw std::logic_error(
           std::string("shorthand option already defined for option ") + option.displayName());
     }
   }
 
-  (*it).second.options.emplace(option.name, option);
+  Section& section = (*sectionIt).second;
+  section.options.try_emplace(option.name, option);
 }
 
 // determine maximum width of all options labels

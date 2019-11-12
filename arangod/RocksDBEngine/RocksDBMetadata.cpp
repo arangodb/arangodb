@@ -93,7 +93,7 @@ Result RocksDBMetadata::placeBlocker(TRI_voc_tid_t trxId, rocksdb::SequenceNumbe
     TRI_ASSERT(_blockers.end() == _blockers.find(trxId));
     TRI_ASSERT(_blockersBySeq.end() == _blockersBySeq.find(std::make_pair(seq, trxId)));
 
-    auto insert = _blockers.emplace(trxId, seq);
+    auto insert = _blockers.try_emplace(trxId, seq);
     auto crosslist = _blockersBySeq.emplace(seq, trxId);
     if (!insert.second || !crosslist.second) {
       return res.reset(TRI_ERROR_INTERNAL);
@@ -182,8 +182,8 @@ void RocksDBMetadata::adjustNumberDocuments(rocksdb::SequenceNumber seq,
                                             TRI_voc_rid_t revId, int64_t adj) {
   TRI_ASSERT(seq != 0 && (adj || revId));
   std::lock_guard<std::mutex> guard(_bufferLock);
-  _bufferedAdjs.emplace(seq, Adjustment{revId, adj});
-  
+  _bufferedAdjs.try_emplace(seq, Adjustment{revId, adj});
+
   // update immediately to ensure the user sees a correct value
   if (revId != 0) {
     _revisionId.store(revId);

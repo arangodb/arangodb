@@ -94,8 +94,8 @@ Conductor::Conductor(uint64_t executionNumber, TRI_vocbase_t& vocbase,
   if (_lazyLoading) {
     LOG_TOPIC("464dd", DEBUG, Logger::PREGEL) << "Enabled lazy loading";
   }
-  _useMemoryMaps = VelocyPackHelper::readBooleanValue(_userParams.slice(),
-                                                      Utils::useMemoryMaps, _useMemoryMaps);
+  _useMemoryMaps = VelocyPackHelper::getBooleanValue(_userParams.slice(),
+                                                     Utils::useMemoryMaps, _useMemoryMaps);
   VPackSlice storeSlice = config.get("store");
   _storeResults = !storeSlice.isBool() || storeSlice.getBool();
   if (!_storeResults) {
@@ -497,7 +497,7 @@ static void resolveInfo(TRI_vocbase_t* vocbase, CollectionID const& collectionID
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, collectionID);
     }
 
-    collectionPlanIdMap.emplace(collectionID, std::to_string(lc->planId()));
+    collectionPlanIdMap.try_emplace(collectionID, std::to_string(lc->planId()));
     allShards.push_back(collectionID);
     serverMap[ss->getId()][collectionID].push_back(collectionID);
 
@@ -508,7 +508,7 @@ static void resolveInfo(TRI_vocbase_t* vocbase, CollectionID const& collectionID
     if (lc->deleted()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, collectionID);
     }
-    collectionPlanIdMap.emplace(collectionID, std::to_string(lc->planId()));
+    collectionPlanIdMap.try_emplace(collectionID, std::to_string(lc->planId()));
 
     std::shared_ptr<std::vector<ShardID>> shardIDs =
         ci.getShardList(std::to_string(lc->id()));

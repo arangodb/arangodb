@@ -476,8 +476,7 @@ void Communicator::createRequestInProgress(std::unique_ptr<NewRequest> newReques
     // always succeed (or throw an exception in case of OOM). but it
     // should never happen that the key for the ticketId already exists
     // in the map
-    auto result =
-        _handlesInProgress.emplace(ticketId, std::move(handleInProgress));
+    auto result = _handlesInProgress.try_emplace(ticketId, std::move(handleInProgress));
     TRI_ASSERT(result.second);
   }
   curl_multi_add_handle(_curl, handle);
@@ -704,8 +703,8 @@ size_t Communicator::readHeaders(char* buffer, size_t size, size_t nitems, void*
     // mop: hmm response needs lowercased headers
     std::string headerKey =
         basics::StringUtils::tolower(std::string(header.c_str(), pivot));
-    rip->_responseHeaders.emplace(std::move(headerKey),
-                                  header.substr(pivot + 2, header.length() - pivot - 4));
+    rip->_responseHeaders.try_emplace(std::move(headerKey),
+                                      header.substr(pivot + 2, header.length() - pivot - 4));
   }
   return realsize;
 }

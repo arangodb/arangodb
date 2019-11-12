@@ -41,7 +41,7 @@ std::ostream& Query::toStream(std::ostream& ostream) const {
       return ostream << queryParameters;
     }
   };
-  return boost::apply_visitor(output{ostream}, _content);
+  return std::visit(output{ostream}, _content);
 }
 
 Query::Query(QueryString queryString) : _content(queryString) {}
@@ -56,7 +56,7 @@ bool Query::empty() const noexcept {
       return queryParameters.empty();
     }
   };
-  return boost::apply_visitor(output{}, _content);
+  return std::visit(output{}, _content);
 }
 
 std::ostream& QueryParameters::toStream(std::ostream& ostream) const {
@@ -98,25 +98,25 @@ Port::Port(uint16_t port) : _value(port) {}
 
 uint16_t const& Port::value() const noexcept { return _value; }
 
-Authority::Authority(boost::optional<UserInfo> userInfo, Host host, boost::optional<Port> port)
+Authority::Authority(std::optional<UserInfo> userInfo, Host host, std::optional<Port> port)
     : _userInfo(std::move(userInfo)), _host(std::move(host)), _port(std::move(port)) {}
-boost::optional<UserInfo> const& Authority::userInfo() const noexcept {
+std::optional<UserInfo> const& Authority::userInfo() const noexcept {
   return _userInfo;
 }
 
 Host const& Authority::host() const noexcept { return _host; }
 
-boost::optional<Port> const& Authority::port() const noexcept { return _port; }
+std::optional<Port> const& Authority::port() const noexcept { return _port; }
 
 UserInfo::UserInfo(User user, Password password)
     : _user(std::move(user)), _password(std::move(password)) {}
 
 UserInfo::UserInfo(User user)
-    : _user(std::move(user)), _password(boost::none) {}
+    : _user(std::move(user)), _password(std::nullopt) {}
 
 User const& UserInfo::user() const noexcept { return _user; }
 
-boost::optional<Password> const& UserInfo::password() const noexcept {
+std::optional<Password> const& UserInfo::password() const noexcept {
   return _password;
 }
 
@@ -138,8 +138,8 @@ std::string Url::toString() const {
   return url.str();
 }
 
-Url::Url(Scheme scheme, boost::optional<Authority> authority, Path path,
-         boost::optional<Query> query, boost::optional<Fragment> fragment)
+Url::Url(Scheme scheme, std::optional<Authority> authority, Path path,
+         std::optional<Query> query, std::optional<Fragment> fragment)
     : _scheme(std::move(scheme)),
       _authority(std::move(authority)),
       _path(std::move(path)),
@@ -148,19 +148,19 @@ Url::Url(Scheme scheme, boost::optional<Authority> authority, Path path,
 
 Scheme const& Url::scheme() const noexcept { return _scheme; }
 
-boost::optional<Authority> const& Url::authority() const noexcept {
+std::optional<Authority> const& Url::authority() const noexcept {
   return _authority;
 }
 
 Path const& Url::path() const noexcept { return _path; }
 
-boost::optional<Query> const& Url::query() const noexcept { return _query; }
+std::optional<Query> const& Url::query() const noexcept { return _query; }
 
-boost::optional<Fragment> const& Url::fragment() const noexcept {
+std::optional<Fragment> const& Url::fragment() const noexcept {
   return _fragment;
 }
 
-Location::Location(Path path, boost::optional<Query> query, boost::optional<Fragment> fragment)
+Location::Location(Path path, std::optional<Query> query, std::optional<Fragment> fragment)
     : _path(std::move(path)), _query(std::move(query)), _fragment(std::move(fragment)) {}
 
 std::string Location::toString() const {
@@ -171,11 +171,9 @@ std::string Location::toString() const {
 
 Path const& Location::path() const noexcept { return _path; }
 
-boost::optional<Query> const& Location::query() const noexcept {
-  return _query;
-}
+std::optional<Query> const& Location::query() const noexcept { return _query; }
 
-boost::optional<Fragment> const& Location::fragment() const noexcept {
+std::optional<Fragment> const& Location::fragment() const noexcept {
   return _fragment;
 }
 

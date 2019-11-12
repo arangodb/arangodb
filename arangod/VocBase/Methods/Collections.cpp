@@ -254,6 +254,8 @@ Result Collections::create(TRI_vocbase_t& vocbase,
   TRI_ASSERT(!vocbase.isDangling());
   bool haveShardingFeature = ServerState::instance()->isCoordinator() &&
                              vocbase.server().hasFeature<ShardingFeature>();
+  bool useRevs = ServerState::instance()->isSingleServerOrCoordinator() &&
+                 vocbase.server().getFeature<EngineSelectorFeature>().isRocksDB();
   VPackBuilder builder;
   VPackBuilder helper;
   builder.openArray();
@@ -287,6 +289,11 @@ Result Collections::create(TRI_vocbase_t& vocbase,
     helper.add(arangodb::StaticStrings::DataSourceName,
                arangodb::velocypack::Value(info.name));
 
+    if (useRevs) {
+      helper.add(arangodb::StaticStrings::UsesRevisionsAsDocumentIds,
+                 arangodb::velocypack::Value(true));
+    }
+
     if (ServerState::instance()->isCoordinator()) {
       auto replicationFactorSlice = info.properties.get(StaticStrings::ReplicationFactor);
       if (replicationFactorSlice.isNone()) {
@@ -299,7 +306,9 @@ Result Collections::create(TRI_vocbase_t& vocbase,
       }
 
       if (!vocbase.IsSystemName(info.name)) {
-        uint64_t numberOfShards = arangodb::basics::VelocyPackHelper::readNumericValue<uint64_t>(info.properties, StaticStrings::NumberOfShards, 0);
+        uint64_t numberOfShards =
+            arangodb::basics::VelocyPackHelper::getNumericValue<uint64_t>(
+                info.properties, StaticStrings::NumberOfShards, 0);
         // system-collections will be sharded normally. only user collections will get
         // the forced sharding
         if (vocbase.server().getFeature<ClusterFeature>().forceOneShard()) {

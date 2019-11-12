@@ -38,6 +38,7 @@ QueryOptions::QueryOptions()
     : memoryLimit(0),
       maxNumberOfPlans(0),
       maxWarningCount(10),
+      timeout(0),
       satelliteSyncWait(60.0),
       ttl(0),
       profile(PROFILE_LEVEL_NONE),
@@ -101,6 +102,11 @@ void QueryOptions::fromVelocyPack(VPackSlice const& slice) {
   value = slice.get("maxWarningCount");
   if (value.isNumber()) {
     maxWarningCount = value.getNumber<size_t>();
+  }
+
+  value = slice.get("timeout");
+  if (value.isNumber()) {
+    timeout = value.getNumber<double>();
   }
 
   value = slice.get("satelliteSyncWait");
@@ -214,6 +220,7 @@ void QueryOptions::toVelocyPack(VPackBuilder& builder, bool disableOptimizerRule
   builder.add("memoryLimit", VPackValue(memoryLimit));
   builder.add("maxNumberOfPlans", VPackValue(maxNumberOfPlans));
   builder.add("maxWarningCount", VPackValue(maxWarningCount));
+  builder.add("timeout", VPackValue(timeout));
   builder.add("satelliteSyncWait", VPackValue(satelliteSyncWait));
   builder.add("ttl", VPackValue(ttl));
   builder.add("profile", VPackValue(static_cast<uint32_t>(profile)));

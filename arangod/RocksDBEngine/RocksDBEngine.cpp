@@ -181,7 +181,7 @@ RocksDBFilePurgeEnabler::RocksDBFilePurgeEnabler(RocksDBFilePurgeEnabler&& other
 // create the storage engine
 RocksDBEngine::RocksDBEngine(application_features::ApplicationServer& server)
     : StorageEngine(server, EngineName, FeatureName,
-                    std::unique_ptr<IndexFactory>(new RocksDBIndexFactory())),
+                    std::make_unique<RocksDBIndexFactory>()),
 #ifdef USE_ENTERPRISE
       _createShaFiles(true),
 #else
@@ -1006,8 +1006,8 @@ int RocksDBEngine::getCollectionsAndIndexes(TRI_vocbase_t& vocbase,
 
     auto slice = VPackSlice(reinterpret_cast<uint8_t const*>(iter->value().data()));
 
-    if (arangodb::basics::VelocyPackHelper::readBooleanValue(slice, StaticStrings::DataSourceDeleted,
-                                                             false)) {
+    if (arangodb::basics::VelocyPackHelper::getBooleanValue(slice, StaticStrings::DataSourceDeleted,
+                                                            false)) {
       continue;
     }
 
@@ -1035,8 +1035,8 @@ int RocksDBEngine::getViews(TRI_vocbase_t& vocbase, arangodb::velocypack::Builde
 
     LOG_TOPIC("e3bcd", TRACE, Logger::VIEWS) << "got view slice: " << slice.toJson();
 
-    if (arangodb::basics::VelocyPackHelper::readBooleanValue(slice, StaticStrings::DataSourceDeleted,
-                                                             false)) {
+    if (arangodb::basics::VelocyPackHelper::getBooleanValue(slice, StaticStrings::DataSourceDeleted,
+                                                            false)) {
       continue;
     }
 
@@ -1748,12 +1748,14 @@ void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickExternal) {
       if (n->StartSequence() < minTickToKeep) {
         // this file will be removed because it does not contain any data we
         // still need
-        if (_prunableWalFiles.find(f->PathName()) == _prunableWalFiles.end()) {
+        auto const [it, emplaced] =
+            _prunableWalFiles.try_emplace(f->PathName(), TRI_microtime() + _pruneWaitTime);
+        if (emplaced) {
           LOG_TOPIC("9f7a4", DEBUG, Logger::ENGINES)
               << "RocksDB WAL file '" << f->PathName()
               << "' with start sequence " << f->StartSequence()
               << " added to prunable list because it is not needed anymore";
-          _prunableWalFiles.emplace(f->PathName(), TRI_microtime() + _pruneWaitTime);
+          TRI_ASSERT(it != _prunableWalFiles.end());
         }
       }
     }
@@ -1783,13 +1785,11 @@ void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickExternal) {
 
     // force pruning
     bool doPrint = false;
-    auto it = _prunableWalFiles.find(f->PathName());
-
-    if (it == _prunableWalFiles.end()) {
+    auto [it, emplaced] = _prunableWalFiles.try_emplace(f->PathName(), -1.0);
+    if (emplaced) {
       doPrint = true;
       // using an expiration time of -1.0 indicates the file is subject to
       // deletion because the archive outgrew the maximum allowed size
-      _prunableWalFiles.emplace(f->PathName(), -1.0);
     } else {
       // file already in list. now set its expiration time to the past
       // so we are sure it will get deleted

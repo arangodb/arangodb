@@ -140,12 +140,6 @@ RestStatus RestViewHandler::execute() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestViewHandler::createView() {
-  if (_request->payload().isEmptyObject()) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_CORRUPTED_JSON);
-    events::CreateView(_vocbase.name(), "", TRI_ERROR_HTTP_CORRUPTED_JSON);
-    return;
-  }
-
   std::vector<std::string> const& suffixes = _request->suffixes();
 
   if (!suffixes.empty()) {
@@ -167,6 +161,12 @@ void RestViewHandler::createView() {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
                   "request body is not an object");
     events::CreateView(_vocbase.name(), "", TRI_ERROR_BAD_PARAMETER);
+    return;
+  }
+
+  if (body.isEmptyObject()) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_CORRUPTED_JSON);
+    events::CreateView(_vocbase.name(), "", TRI_ERROR_HTTP_CORRUPTED_JSON);
     return;
   }
 

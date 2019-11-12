@@ -68,7 +68,7 @@ using namespace arangodb;
 
 namespace {
 LocalDocumentId generateDocumentId(LogicalCollection& collection, TRI_voc_rid_t revisionId) {
-  bool useRev = collection.version() >= LogicalCollection::Version::v36;
+  bool useRev = collection.usesRevisionsAsDocumentIds();
   return useRev ? LocalDocumentId::create(revisionId) : LocalDocumentId::create();
 }
 }  // namespace
@@ -80,7 +80,7 @@ RocksDBCollection::RocksDBCollection(LogicalCollection& collection,
       _cache(nullptr),
       _cacheEnabled(
           !collection.system() &&
-          basics::VelocyPackHelper::readBooleanValue(info, "cacheEnabled", false) &&
+          basics::VelocyPackHelper::getBooleanValue(info, "cacheEnabled", false) &&
           CacheManagerFeature::MANAGER != nullptr),
       _numIndexCreations(0) {
   TRI_ASSERT(_logicalCollection.isAStub() || _objectId != 0);
@@ -116,7 +116,7 @@ Result RocksDBCollection::updateProperties(VPackSlice const& slice, bool doSync)
 
   _cacheEnabled =
       !isSys &&
-      basics::VelocyPackHelper::readBooleanValue(slice, "cacheEnabled", _cacheEnabled) &&
+      basics::VelocyPackHelper::getBooleanValue(slice, "cacheEnabled", _cacheEnabled) &&
       CacheManagerFeature::MANAGER != nullptr;
   primaryIndex()->setCacheEnabled(_cacheEnabled);
 
@@ -845,7 +845,7 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
     if (options.returnNew) {
       resultMdr.setManaged(newSlice.begin());
       TRI_ASSERT(resultMdr.revisionId() == revisionId);
-    } else if(!options.silent) {  //  need to pass revId manually
+    } else if (!options.silent) {  //  need to pass revId manually
       transaction::BuilderLeaser keyBuilder(trx);
       keyBuilder->openObject(/*unindexed*/true);
       keyBuilder->add(StaticStrings::KeyString, transaction::helpers::extractKeyFromDocument(newSlice));

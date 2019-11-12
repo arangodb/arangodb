@@ -163,8 +163,8 @@ std::pair<Result, uint64_t> PregelFeature::startExecution(
           std::vector<std::string> eKeys = coll->shardKeys();
 
           std::string shardKeyAttribute = "vertex";
-          if(params.hasKey("shardKeyAttribute")) {
-           shardKeyAttribute =  params.get("shardKeyAttribute").copyString();
+          if (params.hasKey("shardKeyAttribute")) {
+            shardKeyAttribute = params.get("shardKeyAttribute").copyString();
           }
 
           if (eKeys.size() != 1 || eKeys[0] != shardKeyAttribute) {
@@ -267,8 +267,7 @@ void PregelFeature::addConductor(std::shared_ptr<Conductor>&& c, uint64_t execut
   std::string user = ExecContext::current().user();
 
   MUTEX_LOCKER(guard, _mutex);
-  _conductors.emplace(executionNumber,
-                      std::make_pair(std::move(user), std::move(c)));
+  _conductors.try_emplace(executionNumber, std::move(user), std::move(c));
 }
 
 std::shared_ptr<Conductor> PregelFeature::conductor(uint64_t executionNumber) {
@@ -281,8 +280,7 @@ void PregelFeature::addWorker(std::shared_ptr<IWorker>&& w, uint64_t executionNu
   std::string user = ExecContext::current().user();
 
   MUTEX_LOCKER(guard, _mutex);
-  _workers.emplace(executionNumber,
-                   std::make_pair(std::move(user), std::move(w)));
+  _workers.try_emplace(executionNumber, std::move(user), std::move(w));
 }
 
 std::shared_ptr<IWorker> PregelFeature::worker(uint64_t executionNumber) {
