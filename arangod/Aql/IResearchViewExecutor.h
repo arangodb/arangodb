@@ -167,11 +167,11 @@ class IResearchViewExecutorBase {
     OutputAqlItemRow& outputRow;
     IndexIterator::DocumentCallback const callback;
 
-    inline aql::RegisterId getNmColPtrOutReg() const noexcept {
+    aql::RegisterId getNmColPtrOutReg() const noexcept {
       return docOutReg;
     }
 
-    inline aql::RegisterId getNmDocIdOutReg() const noexcept {
+    aql::RegisterId getNmDocIdOutReg() const noexcept {
       return docOutReg + 1;
     }
   };  // ReadContext
@@ -308,10 +308,10 @@ class IResearchViewExecutorBase {
   bool _isInitialized;
 };  // IResearchViewExecutorBase
 
-template <bool ordered, bool materialized>
-class IResearchViewExecutor : public IResearchViewExecutorBase<IResearchViewExecutor<ordered, materialized>> {
+template <bool ordered, iresearch::MaterializeType materializeType>
+class IResearchViewExecutor : public IResearchViewExecutorBase<IResearchViewExecutor<ordered, materializeType>> {
  public:
-  using Base = IResearchViewExecutorBase<IResearchViewExecutor<ordered, materialized>>;
+  using Base = IResearchViewExecutorBase<IResearchViewExecutor<ordered, materializeType>>;
   using Fetcher = typename Base::Fetcher;
   using Infos = typename Base::Infos;
 
@@ -354,17 +354,17 @@ class IResearchViewExecutor : public IResearchViewExecutorBase<IResearchViewExec
   irs::bytes_ref _scrVal;
 };  // IResearchViewExecutor
 
-template<bool ordered, bool materialized>
-struct IResearchViewExecutorTraits<IResearchViewExecutor<ordered, materialized>> {
+template<bool ordered, iresearch::MaterializeType materializeType>
+struct IResearchViewExecutorTraits<IResearchViewExecutor<ordered, materializeType>> {
   using IndexBufferValueType = LocalDocumentId;
   static constexpr bool Ordered = ordered;
-  static constexpr bool Materialized = materialized;
+  static constexpr iresearch::MaterializeType MaterializeType = materializeType;
 };
 
-template <bool ordered, bool materialized>
-class IResearchViewMergeExecutor : public IResearchViewExecutorBase<IResearchViewMergeExecutor<ordered, materialized>> {
+template <bool ordered, iresearch::MaterializeType materializeType>
+class IResearchViewMergeExecutor : public IResearchViewExecutorBase<IResearchViewMergeExecutor<ordered, materializeType>> {
  public:
-  using Base = IResearchViewExecutorBase<IResearchViewMergeExecutor<ordered, materialized>>;
+  using Base = IResearchViewExecutorBase<IResearchViewMergeExecutor<ordered, materializeType>>;
   using Fetcher = typename Base::Fetcher;
   using Infos = typename Base::Infos;
 
@@ -430,11 +430,11 @@ class IResearchViewMergeExecutor : public IResearchViewExecutorBase<IResearchVie
   irs::external_heap_iterator<MinHeapContext> _heap_it;
 };  // IResearchViewMergeExecutor
 
-template<bool ordered, bool materialized>
-struct IResearchViewExecutorTraits<IResearchViewMergeExecutor<ordered, materialized>> {
+template<bool ordered, iresearch::MaterializeType materializeType>
+struct IResearchViewExecutorTraits<IResearchViewMergeExecutor<ordered, materializeType>> {
   using IndexBufferValueType = std::pair<LocalDocumentId, LogicalCollection const*>;
-  static constexpr const bool Ordered = ordered;
-  static constexpr const bool Materialized = materialized;
+  static constexpr bool Ordered = ordered;
+  static constexpr iresearch::MaterializeType MaterializeType = materializeType;
 };
 
 }  // namespace aql

@@ -41,6 +41,10 @@ struct VarInfo;
 
 namespace iresearch {
 
+enum class MaterializeType {
+  Materialized, LateMaterialized, LateMaterializedWithVars
+};
+
 /// @brief class EnumerateViewNode
 class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   friend class arangodb::aql::RedundantCalculationsReplacer;
