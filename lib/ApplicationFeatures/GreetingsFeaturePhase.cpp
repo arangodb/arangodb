@@ -25,6 +25,7 @@
 #include "ApplicationFeatures/ConfigFeature.h"
 #include "ApplicationFeatures/GreetingsFeature.h"
 #include "ApplicationFeatures/ShellColorsFeature.h"
+#include "RestServer/MetricsFeature.h"
 #include "ApplicationFeatures/VersionFeature.h"
 #include "Logger/LoggerBufferFeature.h"
 #include "Logger/LoggerFeature.h"
@@ -37,6 +38,7 @@ GreetingsFeaturePhase::GreetingsFeaturePhase(ApplicationServer& server, bool isC
     : ApplicationFeaturePhase(server, "GreetingsPhase") {
   setOptional(false);
 
+  startsAfter<MetricsFeature>();
   startsAfter<ConfigFeature>();
   startsAfter<LoggerFeature>();
   startsAfter<RandomFeature>();

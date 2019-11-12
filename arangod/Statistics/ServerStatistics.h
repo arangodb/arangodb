@@ -26,12 +26,22 @@
 
 #include <atomic>
 #include <cstdint>
+#include "RestServer/MetricsFeature.h"
 
 struct TransactionStatistics {
-  TransactionStatistics() : _transactionsStarted(0), _transactionsAborted(0)
-                          , _transactionsCommitted(0), _intermediateCommits(0) {}
+  TransactionStatistics() :
+    _metrics(arangodb::MetricsFeature::metrics()),
+    _transactionsStarted(
+      _metrics->counter("arango_transactions_started", "Transactions started")),
+    //_transactionsStarted(0),
+    _transactionsAborted(0),
+    _transactionsCommitted(0),
+    _intermediateCommits(0) {}
 
-  std::atomic<std::uint64_t> _transactionsStarted;
+  arangodb::MetricsFeature* _metrics;
+  
+  //std::atomic<std::uint64_t> _transactionsStarted;
+  Counter _transactionsStarted;
   std::atomic<std::uint64_t> _transactionsAborted;
   std::atomic<std::uint64_t> _transactionsCommitted;
   std::atomic<std::uint64_t> _intermediateCommits;

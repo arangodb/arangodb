@@ -55,6 +55,7 @@ MetricsFeature::MetricsFeature(application_features::ApplicationServer& server)
       _enabled(true) {
   setOptional(false);
   startsAfter<LoggerFeature>();
+  METRICS = this;
 }
 
 void MetricsFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -64,7 +65,7 @@ void MetricsFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
 }
 
 void MetricsFeature::prepare() {
-  METRICS = this;
+  //METRICS = this;
 }
 
 void MetricsFeature::start() {

@@ -64,6 +64,10 @@ class MetricsFeature final : public application_features::ApplicationFeature {
 
   void toBuilder(VPackBuilder& builder) const;
   void toPrometheus(std::string& result) const;
+
+  static MetricsFeature* metrics() {
+    return METRICS;
+  }
   
  private:
   static MetricsFeature* METRICS;

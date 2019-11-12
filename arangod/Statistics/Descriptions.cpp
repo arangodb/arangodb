@@ -415,7 +415,7 @@ void stats::Descriptions::serverStatistics(velocypack::Builder& b) const {
   b.add("physicalMemory", VPackValue(TRI_PhysicalMemory));
 
   b.add("transactions", VPackValue(VPackValueType::Object));
-  b.add("started", VPackValue(info._transactionsStatistics._transactionsStarted));
+  b.add("started", VPackValue(info._transactionsStatistics._transactionsStarted.load()));
   b.add("aborted", VPackValue(info._transactionsStatistics._transactionsAborted));
   b.add("committed", VPackValue(info._transactionsStatistics._transactionsCommitted));
   b.add("intermediateCommits", VPackValue(info._transactionsStatistics._intermediateCommits));

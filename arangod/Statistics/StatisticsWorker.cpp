@@ -915,7 +915,7 @@ void StatisticsWorker::generateRawStatistics(VPackBuilder& builder, double const
   builder.add("uptime", VPackValue(serverInfo._uptime));
   builder.add("physicalMemory", VPackValue(TRI_PhysicalMemory));
   builder.add("transactions", VPackValue(VPackValueType::Object));
-  builder.add("started", VPackValue(serverInfo._transactionsStatistics._transactionsStarted));
+  builder.add("started", VPackValue(serverInfo._transactionsStatistics._transactionsStarted.load()));
   builder.add("aborted", VPackValue(serverInfo._transactionsStatistics._transactionsAborted));
   builder.add("committed", VPackValue(serverInfo._transactionsStatistics._transactionsCommitted));
   builder.add("intermediateCommits", VPackValue(serverInfo._transactionsStatistics._intermediateCommits));

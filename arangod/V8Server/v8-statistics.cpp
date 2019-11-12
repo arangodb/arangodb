@@ -111,7 +111,7 @@ static void JS_ServerStatistics(v8::FunctionCallbackInfo<v8::Value> const& args)
   auto const& ts = info._transactionsStatistics;
   v8::Handle<v8::Object> v8TransactionInfoObj = v8::Object::New(isolate);
   v8TransactionInfoObj->Set(TRI_V8_ASCII_STRING(isolate, "started"),
-              v8::Number::New(isolate, (double)ts._transactionsStarted));
+              v8::Number::New(isolate, (double)ts._transactionsStarted.load()));
   v8TransactionInfoObj->Set(TRI_V8_ASCII_STRING(isolate, "aborted"),
               v8::Number::New(isolate, (double)ts._transactionsAborted));
   v8TransactionInfoObj->Set(TRI_V8_ASCII_STRING(isolate, "committed"),
