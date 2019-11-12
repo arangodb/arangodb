@@ -232,12 +232,12 @@ struct OptimizerRule {
     /// Pass 9: patch update statements
     patchUpdateStatementsRule,
 
-  /// "Pass 10": final transformations for the cluster
+    /// "Pass 10": final transformations for the cluster
 
-  // optimize queries in the cluster so that the entire query
-  // gets pushed to a single server
-  // if applied, this rule will turn all other cluster rules off
-  // for the current plan
+    // optimize queries in the cluster so that the entire query
+    // gets pushed to a single server
+    // if applied, this rule will turn all other cluster rules off
+    // for the current plan
 #ifdef USE_ENTERPRISE
     clusterOneShardRule,
 #endif
@@ -321,12 +321,12 @@ struct OptimizerRule {
   static_assert(clusterOneShardRule < distributeInClusterRule);
   static_assert(clusterOneShardRule < smartJoinsRule);
   static_assert(clusterOneShardRule < scatterInClusterRule);
-
+  
   // smart joins must come before we move filters around, so the smart-join
   // detection code does not need to take the special filters into account
   static_assert(smartJoinsRule < moveFiltersIntoEnumerateRule);
 #endif
-
+  
   static_assert(scatterInClusterRule < parallelizeGatherRule);
 
   velocypack::StringRef name;

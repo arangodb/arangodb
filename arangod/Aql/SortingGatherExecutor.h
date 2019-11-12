@@ -49,8 +49,9 @@ class SortingGatherExecutorInfos : public ExecutorInfos {
                              std::unordered_set<RegisterId> registersToClear,
                              std::unordered_set<RegisterId> registersToKeep,
                              std::vector<SortRegister>&& sortRegister,
-                             arangodb::transaction::Methods* trx, GatherNode::SortMode sortMode,
-                             size_t limit, GatherNode::Parallelism p);
+                             arangodb::transaction::Methods* trx,
+                             GatherNode::SortMode sortMode, size_t limit,
+                             GatherNode::Parallelism p);
   SortingGatherExecutorInfos() = delete;
   SortingGatherExecutorInfos(SortingGatherExecutorInfos&&);
   SortingGatherExecutorInfos(SortingGatherExecutorInfos const&) = delete;
@@ -61,7 +62,7 @@ class SortingGatherExecutorInfos : public ExecutorInfos {
   arangodb::transaction::Methods* trx() { return _trx; }
 
   GatherNode::SortMode sortMode() const noexcept { return _sortMode; }
-
+  
   GatherNode::Parallelism parallelism() const noexcept { return _parallelism; }
 
   size_t limit() const noexcept { return _limit; }
@@ -164,7 +165,7 @@ class SortingGatherExecutor {
 
   // Counter for DONE states
   size_t _nrDone;
-
+  
   /// @brief If we do a constrained sort, it holds the limit > 0. Otherwise, it's 0.
   size_t _limit;
 
@@ -192,7 +193,7 @@ class SortingGatherExecutor {
 #endif
   std::tuple<ExecutionState, SortingGatherExecutor::Stats, size_t> reallySkipRows(size_t atMost);
   std::tuple<ExecutionState, SortingGatherExecutor::Stats, size_t> produceAndSkipRows(size_t atMost);
-
+  
   const bool _fetchParallel;
 };
 

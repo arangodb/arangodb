@@ -54,7 +54,7 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
   RestStatus execute() override;
   RestStatus continueExecute() override;
   void shutdownExecute(bool isFinalized) noexcept override;
-
+  
  public:
   // DELETE method for /_api/aql/kill/<queryId>, (internal)
   bool killQuery(std::string const& idString);
@@ -115,7 +115,7 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
                                 std::shared_ptr<transaction::Context> const& ctx,
                                 double const ttl, bool& needToLock,
                                 arangodb::velocypack::Builder& answer);
-
+  
   // handle for useQuery
   RestStatus handleUseQuery(std::string const&, arangodb::velocypack::Slice const);
 
@@ -131,9 +131,9 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
 
   // our traversal engine registry
   traverser::TraverserEngineRegistry* _traverserRegistry;
-
+  
   aql::Query* _query;
-
+  
   // id of current query
   QueryId _qId;
 };

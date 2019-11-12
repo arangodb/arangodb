@@ -175,10 +175,11 @@ Result ClusterCollection::updateProperties(VPackSlice const& slice, bool doSync)
       }
     }
 
-    merge.add("doCompact", VPackValue(Helper::getBooleanValue(slice, "doCompact", true)));
+    merge.add("doCompact",
+              VPackValue(Helper::getBooleanValue(slice, "doCompact", true)));
     merge.add("indexBuckets",
               VPackValue(Helper::getNumericValue(slice, "indexBuckets",
-                                                 MMFilesCollection::defaultIndexBuckets)));
+                                                  MMFilesCollection::defaultIndexBuckets)));
     merge.add("journalSize", VPackValue(journalSize));
 
   } else if (_engineType == ClusterEngineType::RocksDBEngine) {
@@ -232,12 +233,12 @@ void ClusterCollection::getPropertiesVPack(velocypack::Builder& result) const {
                VPackValue(Helper::getBooleanValue(_info.slice(), "doCompact", true)));
     result.add("indexBuckets",
                VPackValue(Helper::getNumericValue(_info.slice(), "indexBuckets",
-                                                  MMFilesCollection::defaultIndexBuckets)));
+                                                   MMFilesCollection::defaultIndexBuckets)));
     result.add("isVolatile",
                VPackValue(Helper::getBooleanValue(_info.slice(), "isVolatile", false)));
     result.add("journalSize",
                VPackValue(Helper::getNumericValue(_info.slice(), "journalSize",
-                                                  TRI_JOURNAL_DEFAULT_SIZE)));
+                                                   TRI_JOURNAL_DEFAULT_SIZE)));
 
   } else if (_engineType == ClusterEngineType::RocksDBEngine) {
     result.add("cacheEnabled",

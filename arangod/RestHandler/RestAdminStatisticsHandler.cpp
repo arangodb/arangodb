@@ -24,8 +24,8 @@
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include "GeneralServer/ServerSecurityFeature.h"
 #include "RestAdminStatisticsHandler.h"
+#include "GeneralServer/ServerSecurityFeature.h"
 #include "Statistics/Descriptions.h"
 #include "Statistics/RequestStatistics.h"
 #include "Statistics/StatisticsFeature.h"

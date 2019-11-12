@@ -104,7 +104,7 @@ class QueryStreamCursor final : public arangodb::Cursor {
   std::pair<ExecutionState, Result> dump(velocypack::Builder& result) override final;
 
   Result dumpSync(velocypack::Builder& result) override final;
-
+  
   /// Set wakeup callback on streaming cursor
   void setWakeupHandler(std::function<bool()> const& cb) override final;
   void resetWakeupHandler() override final;

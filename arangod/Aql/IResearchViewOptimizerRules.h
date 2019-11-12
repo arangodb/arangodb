@@ -38,8 +38,8 @@ namespace iresearch {
 
 /// @brief moves document materialization from view nodes to sort nodes
 void lateDocumentMaterializationArangoSearchRule(arangodb::aql::Optimizer* opt,
-                                                 std::unique_ptr<arangodb::aql::ExecutionPlan> plan,
-                                                 arangodb::aql::OptimizerRule const& rule);
+                     std::unique_ptr<arangodb::aql::ExecutionPlan> plan,
+                     arangodb::aql::OptimizerRule const& rule);
 
 /// @brief move filters and sort conditions into views
 void handleViewsRule(arangodb::aql::Optimizer* opt,

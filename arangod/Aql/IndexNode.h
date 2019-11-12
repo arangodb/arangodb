@@ -122,10 +122,8 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode, public Col
                          unsigned int& totalNrRegs, unsigned int depth) const;
 
   bool isLateMaterialized() const noexcept {
-    TRI_ASSERT((_outNonMaterializedDocId == nullptr &&
-                _outNonMaterializedIndVars.second.empty()) ||
-               !(_outNonMaterializedDocId == nullptr ||
-                 _outNonMaterializedIndVars.second.empty()));
+    TRI_ASSERT((_outNonMaterializedDocId == nullptr && _outNonMaterializedIndVars.second.empty()) ||
+               !(_outNonMaterializedDocId == nullptr || _outNonMaterializedIndVars.second.empty()));
     return !_outNonMaterializedIndVars.second.empty();
   }
 
@@ -134,17 +132,13 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode, public Col
     Variable const* var;
   };
 
-  using IndexValuesVars =
-      std::pair<TRI_idx_iid_t, std::unordered_map<size_t, Variable const*>>;
+  using IndexValuesVars = std::pair<TRI_idx_iid_t, std::unordered_map<size_t, Variable const*>>;
 
-  using IndexValuesRegisters =
-      std::pair<TRI_idx_iid_t, std::unordered_map<size_t, RegisterId>>;
+  using IndexValuesRegisters = std::pair<TRI_idx_iid_t, std::unordered_map<size_t, RegisterId>>;
 
-  using IndexVarsInfo =
-      std::unordered_map<std::vector<arangodb::basics::AttributeName> const*, IndexNode::IndexVariable>;
+  using IndexVarsInfo = std::unordered_map<std::vector<arangodb::basics::AttributeName> const*, IndexNode::IndexVariable>;
 
-  void setLateMaterialized(aql::Variable const* docIdVariable, TRI_idx_iid_t commonIndexId,
-                           IndexVarsInfo const& indexVariables);
+  void setLateMaterialized(aql::Variable const* docIdVariable, TRI_idx_iid_t commonIndexId, IndexVarsInfo const& indexVariables);
 
  private:
   void initializeOnce(bool hasV8Expression, std::vector<Variable const*>& inVars,

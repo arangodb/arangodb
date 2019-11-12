@@ -53,8 +53,8 @@ network::ConnectionPtr ConnectionPool::leaseConnection(std::string const& endpoi
   if (it == _connections.end()) {
     guard.unlock();
 
-    auto tmp = std::make_unique<Bucket>();  // get memory outside lock
-
+    auto tmp = std::make_unique<Bucket>(); //get memory outside lock
+    
     WRITE_LOCKER(wguard, _lock);
     auto [it2, emplaced] = _connections.try_emplace(endpoint, std::move(tmp));
     it = it2;

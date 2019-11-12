@@ -422,7 +422,7 @@ GatherNode::GatherNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& b
     : ExecutionNode(plan, base),
       _elements(elements),
       _sortmode(SortMode::MinElement),
-      _parallelism(Parallelism::Undefined),
+      _parallelism(Parallelism::Undefined), 
       _limit(0) {
   if (!_elements.empty()) {
     auto const sortModeSlice = base.get("sortmode");
@@ -437,21 +437,22 @@ GatherNode::GatherNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& b
         basics::VelocyPackHelper::getNumericValue<decltype(_limit)>(base,
                                                                     "limit", 0);
   }
-
-  setParallelism(parallelismFromString(
-      VelocyPackHelper::getStringValue(base, "parellelism", "")));
+    
+  setParallelism(parallelismFromString(VelocyPackHelper::getStringValue(base, "parellelism", "")));
 }
 
-GatherNode::GatherNode(ExecutionPlan* plan, size_t id, SortMode sortMode,
-                       Parallelism parallelism) noexcept
-    : ExecutionNode(plan, id), _sortmode(sortMode), _parallelism(parallelism), _limit(0) {}
+GatherNode::GatherNode(ExecutionPlan* plan, size_t id, SortMode sortMode, Parallelism parallelism) noexcept
+    : ExecutionNode(plan, id), 
+      _sortmode(sortMode), 
+      _parallelism(parallelism),
+      _limit(0) {}
 
 /// @brief toVelocyPack, for GatherNode
 void GatherNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
                                     std::unordered_set<ExecutionNode const*>& seen) const {
   // call base class method
   ExecutionNode::toVelocyPackHelperGeneric(nodes, flags, seen);
-
+ 
   nodes.add("parallelism", VPackValue(toString(_parallelism)));
 
   if (_elements.empty()) {
@@ -478,7 +479,7 @@ void GatherNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
       }
     }
   }
-
+  
   // And close it:
   nodes.close();
 }
@@ -497,8 +498,7 @@ std::unique_ptr<ExecutionBlock> GatherNode::createBlock(
       if (_parallelism == Parallelism::Parallel) {
         UnsortedGatherExecutorInfos infos(getRegisterPlan()->nrRegs[getDepth()],
                                           calcRegsToKeep(), getRegsToClear());
-        return std::make_unique<ExecutionBlockImpl<UnsortedGatherExecutor>>(&engine, this,
-                                                                            std::move(infos));
+        return std::make_unique<ExecutionBlockImpl<UnsortedGatherExecutor>>(&engine, this, std::move(infos));
       }
       IdExecutorInfos infos(getRegisterPlan()->nrRegs[getDepth()],
                             calcRegsToKeep(), getRegsToClear());
@@ -558,7 +558,8 @@ struct ParallelizableFinder final : public WalkerWorker<ExecutionNode> {
   }
 
   bool before(ExecutionNode* node) override final {
-    if (node->isModificationNode() || node->getType() == ExecutionNode::SCATTER ||
+    if (node->isModificationNode() ||
+        node->getType() == ExecutionNode::SCATTER ||
         node->getType() == ExecutionNode::GATHER ||
         node->getType() == ExecutionNode::DISTRIBUTE) {
       _isParallelizable = false;

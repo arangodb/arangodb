@@ -88,6 +88,7 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
   unsigned generateRequestTicket();
 
  private:
+  
   enum class ReqState {
     None,
     SendingGetSome,
@@ -97,7 +98,7 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
     SendingShutdown,
     GotShutdown
   };
-
+  
   ExecutorInfos _infos;
 
   Query const& _query;
@@ -115,7 +116,7 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
   /// @brief whether or not this block will forward initialize,
   /// initializeCursor or shutDown requests
   bool const _isResponsibleForInitializeCursor;
-
+  
   std::mutex _communicationMutex;
 
   /// @brief the last unprocessed result. Make sure to reset it
@@ -126,12 +127,12 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
   arangodb::Result _lastError;
   
   unsigned _lastTicket;  /// used to check for canceled requests
-
+  
   bool _requestInFlight;
-
+  
   bool _hasTriggeredShutdown;
 
-  //  bool _didReceiveShutdownRequest;
+//  bool _didReceiveShutdownRequest;
 
   void traceGetSomeRequest(velocypack::Slice slice, size_t atMost);
   void traceSkipSomeRequest(velocypack::Slice slice, size_t atMost);

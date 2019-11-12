@@ -25,12 +25,12 @@
 #include "Basics/Exceptions.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/tryEmplaceHelper.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/conversions.h"
 #include "Basics/fasthash.h"
 #include "Basics/system-functions.h"
-#include "Basics/tryEmplaceHelper.h"
 #include "VocBase/LogicalDataSource.h"
 #include "VocBase/vocbase.h"
 
@@ -68,7 +68,8 @@ static bool showBindVars = true;  // will be set once on startup. cannot be chan
 QueryCacheResultEntry::QueryCacheResultEntry(uint64_t hash, QueryString const& queryString,
                                              std::shared_ptr<VPackBuilder> const& queryResult,
                                              std::shared_ptr<VPackBuilder> const& bindVars,
-                                             std::unordered_map<std::string, std::string>&& dataSources)
+                                             std::unordered_map<std::string, std::string>&& dataSources
+)
     : _hash(hash),
       _queryString(queryString.data(), queryString.size()),
       _queryResult(queryResult),
@@ -641,10 +642,12 @@ void QueryCache::store(TRI_vocbase_t* vocbase, std::shared_ptr<QueryCacheResultE
   // get the right part of the cache to store the result in
   auto const part = getPart(vocbase);
   WRITE_LOCKER(writeLocker, _entriesLock[part]);
-  auto [it, emplaced] =
-      _entries[part].try_emplace(vocbase, arangodb::lazyConstruct([&] {
-                                   return std::make_unique<QueryCacheDatabaseEntry>();
-                                 }));
+  auto [it, emplaced] = _entries[part].try_emplace(
+      vocbase, 
+      arangodb::lazyConstruct([&]{
+        return std::make_unique<QueryCacheDatabaseEntry>();
+      })
+  );
   // store cache entry
   (*it).second->store(std::move(entry), allowedMaxResultsCount, allowedMaxResultsSize);
 }

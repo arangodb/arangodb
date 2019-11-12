@@ -186,17 +186,13 @@ class CollectionInfoCurrent {
   /// @brief returns the error flag for a shardID
   //////////////////////////////////////////////////////////////////////////////
 
-  bool error(ShardID const& shardID) const {
-    return getFlag(StaticStrings::Error, shardID);
-  }
+  bool error(ShardID const& shardID) const { return getFlag(StaticStrings::Error, shardID); }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns the error flag for all shardIDs
   //////////////////////////////////////////////////////////////////////////////
 
-  std::unordered_map<ShardID, bool> error() const {
-    return getFlag(StaticStrings::Error);
-  }
+  std::unordered_map<ShardID, bool> error() const { return getFlag(StaticStrings::Error); }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns the errorNum for one shardID
@@ -206,8 +202,8 @@ class CollectionInfoCurrent {
     auto it = _vpacks.find(shardID);
     if (it != _vpacks.end()) {
       VPackSlice slice = it->second->slice();
-      return arangodb::basics::VelocyPackHelper::getNumericValue<int>(slice, StaticStrings::ErrorNum,
-                                                                      0);
+      return arangodb::basics::VelocyPackHelper::getNumericValue<int>(
+          slice, StaticStrings::ErrorNum, 0);
     }
     return 0;
   }
@@ -220,8 +216,9 @@ class CollectionInfoCurrent {
     std::unordered_map<ShardID, int> m;
 
     for (auto const& it : _vpacks) {
-      int s = arangodb::basics::VelocyPackHelper::getNumericValue<int>(
-          it.second->slice(), StaticStrings::ErrorNum, 0);
+      int s =
+          arangodb::basics::VelocyPackHelper::getNumericValue<int>(it.second->slice(),
+                                                                   StaticStrings::ErrorNum, 0);
       m.insert(std::make_pair(it.first, s));
     }
     return m;

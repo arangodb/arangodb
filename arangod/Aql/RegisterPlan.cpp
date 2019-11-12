@@ -28,8 +28,8 @@
 #include "Aql/CollectNode.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/GraphNode.h"
-#include "Aql/IResearchViewNode.h"
 #include "Aql/IndexNode.h"
+#include "Aql/IResearchViewNode.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/SubqueryEndExecutionNode.h"
 
@@ -114,11 +114,11 @@ void RegisterPlan::after(ExecutionNode* en) {
       break;
     }
     case ExecutionNode::INDEX: {
-      auto ep = ExecutionNode::castTo<IndexNode const*>(en);
-      TRI_ASSERT(ep);
+        auto ep = ExecutionNode::castTo<IndexNode const*>(en);
+        TRI_ASSERT(ep);
 
-      ep->planNodeRegisters(nrRegsHere, nrRegs, varInfo, totalNrRegs, ++depth);
-      break;
+        ep->planNodeRegisters(nrRegsHere, nrRegs, varInfo, totalNrRegs, ++depth);
+        break;
     }
 
     case ExecutionNode::ENUMERATE_LIST: {

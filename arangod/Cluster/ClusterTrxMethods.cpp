@@ -360,7 +360,7 @@ void addTransactionHeader(transaction::Methods const& trx,
     ::buildTransactionBody(state, server, *builder.get());
     headers.try_emplace(StaticStrings::TransactionBody, builder->toJson());
     headers.try_emplace(arangodb::StaticStrings::TransactionId,
-                        std::to_string(tidPlus).append(" begin"));
+                    std::to_string(tidPlus).append(" begin"));
     state.addKnownServer(server);  // remember server
   } else {
     headers.try_emplace(arangodb::StaticStrings::TransactionId, std::to_string(tidPlus));
@@ -397,8 +397,7 @@ void addAQLTransactionHeader(transaction::Methods const& trx,
     }
     state.addKnownServer(server);  // remember server
   } else if (state.hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL)) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "illegal AQL transaction state");
+     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "illegal AQL transaction state");
   }
   headers.try_emplace(arangodb::StaticStrings::TransactionId, std::move(value));
 }

@@ -370,7 +370,7 @@ bool RestImportHandler::createFromJson(std::string const& type) {
 
   VPackBuilder tmpBuilder;
 
-  if (linewise) {
+  if (linewise) {    
     // each line is a separate JSON document
     VPackStringRef body = _request->rawPayload();
     char const* ptr = body.data();

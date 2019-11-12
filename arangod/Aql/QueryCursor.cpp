@@ -236,7 +236,7 @@ std::pair<ExecutionState, Result> QueryStreamCursor::dump(VPackBuilder& builder)
     if (!res.ok()) {
       return {ExecutionState::DONE, res};
     }
-
+    
     return {state, res};
   } catch (arangodb::basics::Exception const& ex) {
     this->setDeleted();

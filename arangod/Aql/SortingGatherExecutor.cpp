@@ -171,9 +171,9 @@ SortingGatherExecutorInfos::SortingGatherExecutorInfos(
     std::shared_ptr<std::unordered_set<RegisterId>> inputRegisters,
     std::shared_ptr<std::unordered_set<RegisterId>> outputRegisters, RegisterId nrInputRegisters,
     RegisterId nrOutputRegisters, std::unordered_set<RegisterId> registersToClear,
-    std::unordered_set<RegisterId> registersToKeep,
-    std::vector<SortRegister>&& sortRegister, arangodb::transaction::Methods* trx,
-    GatherNode::SortMode sortMode, size_t limit, GatherNode::Parallelism p)
+    std::unordered_set<RegisterId> registersToKeep, std::vector<SortRegister>&& sortRegister,
+    arangodb::transaction::Methods* trx, GatherNode::SortMode sortMode, size_t limit,
+    GatherNode::Parallelism p)
     : ExecutorInfos(std::move(inputRegisters), std::move(outputRegisters),
                     nrInputRegisters, nrOutputRegisters,
                     std::move(registersToClear), std::move(registersToKeep)),
@@ -347,18 +347,18 @@ ExecutionState SortingGatherExecutor::init(size_t const atMost) {
   assertConstrainedDoesntOverfetch(atMost);
   initNumDepsIfNecessary();
 
-  //  size_t numWaiting = 0;
-  //  for (size_t i = 0; i < _numberDependencies; i++) {
+//  size_t numWaiting = 0;
+//  for (size_t i = 0; i < _numberDependencies; i++) {
   while (_dependencyToFetch < _numberDependencies) {
     std::tie(_inputRows[_dependencyToFetch].state,
              _inputRows[_dependencyToFetch].row) =
         _fetcher.fetchRowForDependency(_dependencyToFetch, atMost);
     if (_inputRows[_dependencyToFetch].state == ExecutionState::WAITING) {
-      //      if (!_fetchParallel) {
-      //        _dependencyToFetch = i;
-      return ExecutionState::WAITING;
-    }
-    //      numWaiting++; }/* else*/
+//      if (!_fetchParallel) {
+//        _dependencyToFetch = i;
+        return ExecutionState::WAITING;
+      }
+//      numWaiting++; }/* else*/
     if (!_inputRows[_dependencyToFetch].row) {
       TRI_ASSERT(_inputRows[_dependencyToFetch].state == ExecutionState::DONE);
       adjustNrDone(_dependencyToFetch);
@@ -366,10 +366,10 @@ ExecutionState SortingGatherExecutor::init(size_t const atMost) {
     ++_dependencyToFetch;
   }
 
-  //  if (numWaiting > 0) {
-  //    return ExecutionState::WAITING;
-  //  }
-
+//  if (numWaiting > 0) {
+//    return ExecutionState::WAITING;
+//  }
+  
   _initialized = true;
   if (_nrDone >= _numberDependencies) {
     return ExecutionState::DONE;

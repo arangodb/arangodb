@@ -3111,8 +3111,8 @@ void RestReplicationHandler::registerTombstone(aql::QueryId id) const {
   std::string key = IdToTombstoneKey(_vocbase, id);
   {
     WRITE_LOCKER(writeLocker, RestReplicationHandler::_tombLock);
-    RestReplicationHandler::_tombstones.try_emplace(
-        key, std::chrono::steady_clock::now() + RestReplicationHandler::_tombstoneTimeout);
+    RestReplicationHandler::_tombstones.try_emplace(key, std::chrono::steady_clock::now() +
+                                                         RestReplicationHandler::_tombstoneTimeout);
   }
   timeoutTombstones();
 }

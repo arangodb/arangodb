@@ -45,7 +45,7 @@ template <BlockPassthrough>
 class SingleRowFetcher;
 class NoStats;
 
-template <typename T>
+template<typename T>
 class MaterializerExecutorInfos : public ExecutorInfos {
  public:
   MaterializerExecutorInfos(RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
@@ -67,16 +67,18 @@ class MaterializerExecutorInfos : public ExecutorInfos {
     return _inNonMaterializedDocRegId;
   }
 
-  transaction::Methods* trx() const { return _trx; }
+  transaction::Methods* trx() const {
+    return _trx;
+  }
 
-  T collectionSource() const { return _collectionSource; }
+  T collectionSource() const {
+    return _collectionSource;
+  }
 
  private:
-  std::shared_ptr<std::unordered_set<RegisterId>> getReadableInputRegisters(
-      T const collectionSource, RegisterId inNmDocId) {
+  std::shared_ptr<std::unordered_set<RegisterId>> getReadableInputRegisters(T const collectionSource, RegisterId inNmDocId) {
     if constexpr (std::is_same<T, RegisterId>::value) {
-      return make_shared_unordered_set(
-          std::initializer_list<RegisterId>({collectionSource, inNmDocId}));
+      return make_shared_unordered_set(std::initializer_list<RegisterId>({collectionSource, inNmDocId}));
     } else {
       return make_shared_unordered_set(std::initializer_list<RegisterId>({inNmDocId}));
     }
@@ -92,7 +94,7 @@ class MaterializerExecutorInfos : public ExecutorInfos {
   transaction::Methods* _trx;
 };
 
-template <typename T>
+template<typename T>
 class MaterializeExecutor {
  public:
   struct Properties {

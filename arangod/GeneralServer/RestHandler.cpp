@@ -54,7 +54,8 @@ thread_local RestHandler const* RestHandler::CURRENT_HANDLER = nullptr;
 
 RestHandler::RestHandler(application_features::ApplicationServer& server,
                          GeneralRequest* request, GeneralResponse* response)
-    : _request(request),
+    :
+      _request(request),
       _response(response),
       _server(server),
       _statistics(nullptr),
@@ -145,7 +146,7 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
     // request is coming in with VelocyStream, where the authentication happens
     // once at the beginning of the connection and not with every request.
     // In this case, we have to produce a proper JWT token as authorization:
-    auto auth = AuthenticationFeature::instance();
+      auto auth = AuthenticationFeature::instance();
     if (auth != nullptr && auth->isActive()) {
       // when in superuser mode, username is empty
       // in this case ClusterComm will add the default superuser token
@@ -311,11 +312,11 @@ void RestHandler::runHandlerStateMachine() {
         RestHandler::CURRENT_HANDLER = this;
 
         // shutdownExecute is noexcept
-        shutdownExecute(true);  // may not be moved down
+        shutdownExecute(true); // may not be moved down
 
         RestHandler::CURRENT_HANDLER = nullptr;
         _state = HandlerState::DONE;
-
+        
         // compress response if required
         compressResponse();
         // Callback may stealStatistics!
@@ -378,7 +379,7 @@ void RestHandler::prepareEngine() {
 bool RestHandler::wakeupHandler() {
   RECURSIVE_MUTEX_LOCKER(_executionMutex, _executionMutexOwner);
   if (_state == HandlerState::PAUSED) {
-    runHandlerStateMachine();  // may change _state
+    runHandlerStateMachine(); // may change _state
     return _state == HandlerState::PAUSED;
   }
   return false;

@@ -276,8 +276,8 @@ Query* Query::clone(QueryPart part, bool withPlan) {
 }
 
 bool Query::killed() const {
-  if (_queryOptions.timeout > std::numeric_limits<double>::epsilon()) {
-    if (TRI_microtime() > (_startTime + _queryOptions.timeout)) {
+  if(_queryOptions.timeout > std::numeric_limits<double>::epsilon()) {
+    if(TRI_microtime() > (_startTime + _queryOptions.timeout)) {
       return true;
     }
   }
@@ -784,7 +784,7 @@ ExecutionState Query::execute(QueryRegistry* registry, QueryResult& queryResult)
 QueryResult Query::executeSync(QueryRegistry* registry) {
   std::shared_ptr<SharedQueryState> ss = sharedState();
   ss->resetWakeupHandler();
-
+  
   QueryResult queryResult;
   while (true) {
     auto state = execute(registry, queryResult);
@@ -872,7 +872,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
     options.buildUnindexedArrays = true;
     options.buildUnindexedObjects = true;
     auto builder = std::make_shared<VPackBuilder>(&options);
-
+    
     try {
       ss->resetWakeupHandler();
 

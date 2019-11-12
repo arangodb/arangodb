@@ -163,7 +163,7 @@ class MultiDependencySingleRowFetcher {
   * level. If it returns false, there may or may not be more.
   */
   bool noMoreDataRows(DependencyInfo const& info) const;
-
+  
   bool isAtShadowRow(DependencyInfo const& info) const;
 
   bool fetchBlockIfNecessary(const size_t dependency, const size_t atMost);

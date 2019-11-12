@@ -270,13 +270,13 @@ namespace arangodb {
 namespace iresearch {
 
 void lateDocumentMaterializationArangoSearchRule(arangodb::aql::Optimizer* opt,
-                                                 std::unique_ptr<arangodb::aql::ExecutionPlan> plan,
-                                                 arangodb::aql::OptimizerRule const& rule) {
+                     std::unique_ptr<arangodb::aql::ExecutionPlan> plan,
+                     arangodb::aql::OptimizerRule const& rule) {
   bool modified = false;
   auto addPlan = arangodb::scopeGuard([opt, &plan, &rule, &modified]() {
     opt->addPlan(std::move(plan), rule, modified);
   });
-  // arangosearch view node supports late materialization
+      // arangosearch view node supports late materialization
   if (!plan->contains(EN::ENUMERATE_IRESEARCH_VIEW) ||
       // we need sort node  to be present  (without sort it will be just skip, nothing to optimize)
       !plan->contains(EN::SORT) ||
@@ -348,8 +348,7 @@ void lateDocumentMaterializationArangoSearchRule(arangodb::aql::Optimizer* opt,
         // insert a materialize node
         auto materializeNode =
             plan->registerNode(std::make_unique<materialize::MaterializeMultiNode>(
-                plan.get(), plan->nextId(), *localColPtrTmp, *localDocIdTmp,
-                viewNode.outVariable()));
+              plan.get(), plan->nextId(), *localColPtrTmp, *localDocIdTmp, viewNode.outVariable()));
 
         // on cluster we need to materialize node stay close to sort node on db server (to avoid network hop for materialization calls)
         // however on single server we move it to limit node to make materialization as lazy as possible

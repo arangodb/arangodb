@@ -2218,11 +2218,12 @@ TopLevelAttributes Ast::getReferencedAttributes(AstNode const* node, bool& isSaf
         THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
       }
 
-      auto [it, emp] =
-          result.try_emplace(variable, arangodb::lazyConstruct([&] {
-                               return std::unordered_set<std::string>(
-                                   {std::string(attributeName, nameLength)});
-                             }));
+      auto[it, emp] = result.try_emplace(
+        variable,
+        arangodb::lazyConstruct([&]{
+         return std::unordered_set<std::string>( {std::string(attributeName, nameLength)});
+         })
+      );
       if (emp) {
         // insert attributeName only
         (*it).second.emplace(attributeName, nameLength);
@@ -2677,7 +2678,7 @@ AstNode* Ast::makeConditionFromExample(AstNode const* node) {
       auto value = member->getMember(0);
 
       if (value->type == NODE_TYPE_OBJECT && value->numMembers() != 0) {
-        createCondition(value);
+          createCondition(value);
       } else {
         auto access = variable;
         for (auto const& it : attributeParts) {

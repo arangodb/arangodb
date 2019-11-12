@@ -943,7 +943,8 @@ bool SynchronizeShard::first() {
       }
 
       auto lastTick =
-          arangodb::basics::VelocyPackHelper::getNumericValue<TRI_voc_tick_t>(sy, LAST_LOG_TICK, 0);
+          arangodb::basics::VelocyPackHelper::getNumericValue<TRI_voc_tick_t>(sy, LAST_LOG_TICK,
+                                                                               0);
       VPackBuilder builder;
 
       ResultT<TRI_voc_tick_t> tickResult =

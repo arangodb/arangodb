@@ -338,8 +338,8 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
   auto res = handler->forwardRequest(forwarded);
   if (forwarded) {
     RequestStatistics::SET_SUPERUSER(statistics(messageId));
-    std::move(res).thenFinal([self = shared_from_this(), handler = std::move(handler),
-                              messageId](futures::Try<Result> && /*ignored*/) -> void {
+    std::move(res).thenFinal([self = shared_from_this(), handler = std::move(handler), messageId](
+                                 futures::Try<Result> && /*ignored*/) -> void {
       self->sendResponse(handler->stealResponse(), self->stealStatistics(messageId));
     });
     return;

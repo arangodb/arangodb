@@ -44,8 +44,7 @@ struct SortRegister;
 
 class UnsortedGatherExecutorInfos : public ExecutorInfos {
  public:
-  UnsortedGatherExecutorInfos(RegisterId nrInOutRegisters,
-                              std::unordered_set<RegisterId> registersToKeep,
+  UnsortedGatherExecutorInfos(RegisterId nrInOutRegisters, std::unordered_set<RegisterId> registersToKeep,
                               std::unordered_set<RegisterId> registersToClear);
   UnsortedGatherExecutorInfos() = delete;
   UnsortedGatherExecutorInfos(UnsortedGatherExecutorInfos&&) = default;
@@ -55,6 +54,7 @@ class UnsortedGatherExecutorInfos : public ExecutorInfos {
 
 class UnsortedGatherExecutor {
  public:
+
  public:
   struct Properties {
     static constexpr bool preservesOrder = true;
@@ -78,21 +78,22 @@ class UnsortedGatherExecutor {
   std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
 
   std::tuple<ExecutionState, Stats, size_t> skipRows(size_t atMost);
-
+  
  private:
+  
   void initDependencies();
-
+  
  private:
   Fetcher& _fetcher;
-
+  
   ::arangodb::containers::SmallVector<ExecutionState>::allocator_type::arena_type _arena;
   ::arangodb::containers::SmallVector<ExecutionState> _upstream{_arena};
 
   // Total Number of dependencies
   size_t _numberDependencies;
-
+  
   size_t _currentDependency;
-
+  
   size_t _skipped;
 };
 

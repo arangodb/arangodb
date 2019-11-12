@@ -724,7 +724,7 @@ arangodb::Result MaintenanceFeature::storeIndexError(
 
   MUTEX_LOCKER(guard, _ieLock);
 
-  decltype(_indexErrors.emplace(key)) emplace_result;
+  decltype (_indexErrors.emplace(key)) emplace_result;
   try {
     emplace_result = _indexErrors.try_emplace(key, std::map<std::string, buffer_t>());
   } catch (std::exception const& e) {

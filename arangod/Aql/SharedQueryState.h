@@ -36,7 +36,7 @@ class SharedQueryState final : public std::enable_shared_from_this<SharedQuerySt
   SharedQueryState& operator=(SharedQueryState const&) = delete;
 
   SharedQueryState()
-      : _wakeupCb(nullptr), _numWakeups(0), _cbVersion(0), _valid(true) {}
+    : _wakeupCb(nullptr), _numWakeups(0), _cbVersion(0), _valid(true) {}
 
   ~SharedQueryState() = default;
 
@@ -92,7 +92,7 @@ class SharedQueryState final : public std::enable_shared_from_this<SharedQuerySt
   std::function<bool()> _wakeupCb;
 
   uint32_t _numWakeups;
-
+  
   uint32_t _cbVersion;
 
   bool _valid;

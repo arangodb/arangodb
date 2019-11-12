@@ -22,9 +22,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RegexCache.h"
+#include "Basics/Utf8Helper.h"
 #include <Basics/StringUtils.h>
 #include <Basics/tryEmplaceHelper.h>
-#include "Basics/Utf8Helper.h"
 
 #include <velocypack/Collection.h>
 #include <velocypack/Dumper.h>
@@ -97,11 +97,12 @@ icu::RegexMatcher* RegexCache::fromCache(
     std::unordered_map<std::string, std::unique_ptr<icu::RegexMatcher>>& cache) {
 
   // insert into cache, no matter if pattern is valid or not
-  auto [matcherIter, res] =
-      cache.try_emplace(pattern, arangodb::lazyConstruct([&] {
-                          return std::unique_ptr<icu::RegexMatcher>(
-                              arangodb::basics::Utf8Helper::DefaultUtf8Helper.buildMatcher(pattern));
-                        }));
+  auto [matcherIter, res] = cache.try_emplace(
+      pattern,
+      arangodb::lazyConstruct([&]{
+        return std::unique_ptr<icu::RegexMatcher>(arangodb::basics::Utf8Helper::DefaultUtf8Helper.buildMatcher(pattern));
+      })
+  );
 
   return matcherIter->second.get();
 }

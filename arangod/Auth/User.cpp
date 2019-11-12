@@ -470,13 +470,15 @@ void auth::User::grantCollection(std::string const& dbname, std::string const& c
       << _username << ": Granting " << auth::convertFromAuthLevel(level)
       << " on " << dbname << "/" << cname;
 
-  auto [it, emplaced] = _dbAccess.try_emplace(
-      dbname, arangodb::lazyConstruct([&] {
-        // do not overwrite wildcard access to a database, by granting more
-        // specific rights to a collection in a specific db
-        auth::Level lvl = auth::Level::UNDEFINED;
+  auto[it, emplaced] = _dbAccess.try_emplace(
+      dbname,
+      arangodb::lazyConstruct([&]{
+    // do not overwrite wildcard access to a database, by granting more
+    // specific rights to a collection in a specific db
+    auth::Level lvl = auth::Level::UNDEFINED;
         return DBAuthContext(lvl, CollLevelMap({{cname, level}}));
-      }));
+      })
+  );
   if (!emplaced) {
     it->second._collectionAccess[cname] = level;
   }

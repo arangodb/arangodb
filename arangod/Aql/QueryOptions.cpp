@@ -109,6 +109,7 @@ void QueryOptions::fromVelocyPack(VPackSlice const& slice) {
     timeout = value.getNumber<double>();
   }
 
+
   value = slice.get("satelliteSyncWait");
   if (value.isNumber()) {
     satelliteSyncWait = value.getNumber<double>();

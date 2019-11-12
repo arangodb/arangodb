@@ -451,14 +451,13 @@ bool ServerState::integrateIntoCluster(ServerState::RoleEnum role,
         if (!endpointSlice.isString()) {
           continue;
         }
-        auto const [idIter, emplaced] =
-            endpoints.try_emplace(endpointSlice.copyString(), serverId);
+        auto const [idIter, emplaced] = endpoints.try_emplace(endpointSlice.copyString(), serverId);
         if (!emplaced && idIter->first != serverId) {
           // duplicate entry!
           LOG_TOPIC("9a134", WARN, Logger::CLUSTER)
-              << "found duplicate server entry for endpoint '"
-              << endpointSlice.copyString() << "', already used by other server "
-              << idIter->second << ". it looks like this is a (mis)configuration issue";
+            << "found duplicate server entry for endpoint '"
+            << endpointSlice.copyString() << "', already used by other server " << idIter->second
+            << ". it looks like this is a (mis)configuration issue";
           // anyway, continue with startup
         }
       }

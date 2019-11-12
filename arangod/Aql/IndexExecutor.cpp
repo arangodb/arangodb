@@ -77,8 +77,7 @@ template <bool checkUniqueness>
 IndexIterator::DocumentCallback getCallback(DocumentProducingFunctionContext& context,
                                             transaction::Methods::IndexHandle const& index,
                                             IndexNode::IndexValuesRegisters const& outNonMaterializedIndRegs) {
-  return [&context, &index, &outNonMaterializedIndRegs](LocalDocumentId const& token,
-                                                        VPackSlice slice) {
+  return [&context, &index, &outNonMaterializedIndRegs](LocalDocumentId const& token, VPackSlice slice) {
     if constexpr (checkUniqueness) {
       if (!context.checkUniqueness(token)) {
         // Document already found, skip it
@@ -123,7 +122,7 @@ IndexIterator::DocumentCallback getCallback(DocumentProducingFunctionContext& co
         TRI_ASSERT(!output.isFull());
         output.moveValueInto(indReg.second, input, guard);
       }
-    } else {  // primary
+    } else { // primary
       auto indReg = outNonMaterializedIndRegs.second.cbegin();
       TRI_ASSERT(indReg != outNonMaterializedIndRegs.second.cend());
       if (ADB_UNLIKELY(indReg == outNonMaterializedIndRegs.second.cend())) {
@@ -156,20 +155,25 @@ static inline DocumentProducingFunctionContext createContext(InputAqlItemRow con
 
 IndexExecutorInfos::IndexExecutorInfos(
     std::shared_ptr<std::unordered_set<aql::RegisterId>>&& writableOutputRegisters,
-    RegisterId nrInputRegisters, RegisterId outputRegister, RegisterId nrOutputRegisters,
+    RegisterId nrInputRegisters,
+    RegisterId outputRegister,
+    RegisterId nrOutputRegisters,
     // cppcheck-suppress passedByValue
     std::unordered_set<RegisterId> registersToClear,
     // cppcheck-suppress passedByValue
     std::unordered_set<RegisterId> registersToKeep, ExecutionEngine* engine,
     Collection const* collection, Variable const* outVariable, bool produceResult,
-    Expression* filter, std::vector<std::string> const& projections,
+    Expression* filter,
+    std::vector<std::string> const& projections, 
     std::vector<size_t> const& coveringIndexAttributePositions, bool useRawDocumentPointers,
     std::vector<std::unique_ptr<NonConstExpression>>&& nonConstExpression,
     std::vector<Variable const*>&& expInVars, std::vector<RegisterId>&& expInRegs,
     bool hasV8Expression, AstNode const* condition,
     std::vector<transaction::Methods::IndexHandle> indexes, Ast* ast,
-    IndexIteratorOptions options, IndexNode::IndexValuesRegisters&& outNonMaterializedIndRegs)
-    : ExecutorInfos(make_shared_unordered_set(), writableOutputRegisters,
+    IndexIteratorOptions options,
+    IndexNode::IndexValuesRegisters&& outNonMaterializedIndRegs)
+    : ExecutorInfos(make_shared_unordered_set(),
+                    writableOutputRegisters,
                     nrInputRegisters, nrOutputRegisters,
                     std::move(registersToClear), std::move(registersToKeep)),
       _indexes(std::move(indexes)),
@@ -346,28 +350,23 @@ IndexExecutor::CursorReader::CursorReader(IndexExecutorInfos const& infos,
       _type(infos.isLateMaterialized()
                 ? Type::LateMaterialized
                 : !infos.getProduceResult()
-                      ? Type::NoResult
-                      : _cursor->hasCovering() &&
-                                !infos.getCoveringIndexAttributePositions().empty()
-                            ? Type::Covering
-                            : Type::Document) {
+                ? Type::NoResult
+                : _cursor->hasCovering() &&
+                          !infos.getCoveringIndexAttributePositions().empty()
+                      ? Type::Covering
+                      : Type::Document) {
   switch (_type) {
-    case Type::NoResult: {
-      _documentNonProducer = checkUniqueness ? getNullCallback<true>(context)
-                                             : getNullCallback<false>(context);
-      break;
-    }
-    case Type::LateMaterialized:
-      _documentProducer =
-          checkUniqueness
-              ? ::getCallback<true>(context, _index, _infos.getOutNonMaterializedIndRegs())
-              : ::getCallback<false>(context, _index, _infos.getOutNonMaterializedIndRegs());
-      break;
-    default:
-      _documentProducer = checkUniqueness
-                              ? buildDocumentCallback<true, false>(context)
-                              : buildDocumentCallback<false, false>(context);
-      break;
+  case Type::NoResult: {
+    _documentNonProducer = checkUniqueness ? getNullCallback<true>(context) : getNullCallback<false>(context);
+    break;
+  }
+  case Type::LateMaterialized:
+    _documentProducer = checkUniqueness ? ::getCallback<true>(context, _index, _infos.getOutNonMaterializedIndRegs()) :
+                                 ::getCallback<false>(context, _index, _infos.getOutNonMaterializedIndRegs());
+    break;
+  default:
+    _documentProducer = checkUniqueness ? buildDocumentCallback<true, false>(context) : buildDocumentCallback<false, false>(context);
+    break;
   }
   _documentSkipper = checkUniqueness ? buildDocumentCallback<true, true>(context) : buildDocumentCallback<false, true>(context);
 }

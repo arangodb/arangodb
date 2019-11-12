@@ -303,7 +303,7 @@ class GatherNode final : public ExecutionNode {
   }
 
   /// @brief constructor with an id
-  GatherNode(ExecutionPlan* plan, size_t id, SortMode sortMode,
+  GatherNode(ExecutionPlan* plan, size_t id, SortMode sortMode, 
              Parallelism parallelism = Parallelism::Undefined) noexcept;
 
   GatherNode(ExecutionPlan*, arangodb::velocypack::Slice const& base,
@@ -353,9 +353,9 @@ class GatherNode final : public ExecutionNode {
   size_t constrainedSortLimit() const noexcept;
 
   bool isSortingGather() const noexcept;
-
+  
   void setParallelism(Parallelism value);
-
+  
   /// no modification nodes, ScatterNodes etc
   bool isParallelizable() const;
 
@@ -366,7 +366,7 @@ class GatherNode final : public ExecutionNode {
 
   /// @brief sorting mode
   SortMode _sortmode;
-
+  
   /// @brief parallelism
   Parallelism _parallelism;
 

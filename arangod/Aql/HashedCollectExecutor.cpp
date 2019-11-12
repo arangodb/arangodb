@@ -305,8 +305,7 @@ decltype(HashedCollectExecutor::_allGroups)::iterator HashedCollectExecutor::fin
   }
 
   // note: aggregateValues may be a nullptr!
-  auto [result, emplaced] =
-      _allGroups.try_emplace(std::move(_nextGroupValues), std::move(aggregateValues));
+  auto [result, emplaced] = _allGroups.try_emplace(std::move(_nextGroupValues), std::move(aggregateValues));
   // emplace must not fail
   TRI_ASSERT(emplaced);
 

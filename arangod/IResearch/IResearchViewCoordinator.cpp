@@ -287,9 +287,9 @@ arangodb::Result IResearchViewCoordinator::link(IResearchLink const& link) {
 
   WriteMutex mutex(_mutex); // '_collections' can be asynchronously read
   SCOPED_LOCK(mutex);
-  auto [it, emplaced] = _collections.try_emplace(  // emplace definition
-      cid,                                         // key
-      link.collection().name(), std::move(sanitizedBuilder)  // value
+  auto [it, emplaced] = _collections.try_emplace( // emplace definition
+    cid, // key
+    link.collection().name(), std::move(sanitizedBuilder) // value
   );
 
   if (!emplaced) {

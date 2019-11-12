@@ -818,7 +818,7 @@ ExecutionNode* ExecutionPlan::registerNode(std::unique_ptr<ExecutionNode> node) 
   TRI_ASSERT(node->plan() == this);
   TRI_ASSERT(node->id() > 0);
   TRI_ASSERT(_ids.find(node->id()) == _ids.end());
-  auto [it, emplaced] = _ids.try_emplace(node->id(), node.get());  // take ownership
+  auto[it, emplaced] = _ids.try_emplace(node->id(), node.get());  // take ownership
   TRI_ASSERT(emplaced);
   return node.release();
 }
@@ -833,8 +833,7 @@ ExecutionNode* ExecutionPlan::registerNode(ExecutionNode* node) {
   try {
     auto [it, emplaced] = _ids.try_emplace(node->id(), node);
     if (!emplaced) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "unable to register node in plan");
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to register node in plan");
     }
     TRI_ASSERT(it != _ids.end());
   } catch (...) {

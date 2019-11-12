@@ -81,6 +81,7 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<RemoteExecut
 }
 
 std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<RemoteExecutor>::getSomeWithoutTrace(size_t atMost) {
+
   // silence tests -- we need to introduce new failure tests for fetchers
   TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome1") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -95,9 +96,9 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<RemoteExecut
   if (getQuery().killed()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
   }
-
+  
   std::unique_lock<std::mutex> guard(_communicationMutex);
-
+  
   if (_requestInFlight) {
     // Already sent a shutdown request, but haven't got an answer yet.
     return {ExecutionState::WAITING, nullptr};
@@ -164,13 +165,14 @@ std::pair<ExecutionState, size_t> ExecutionBlockImpl<RemoteExecutor>::skipSome(s
 }
 
 std::pair<ExecutionState, size_t> ExecutionBlockImpl<RemoteExecutor>::skipSomeWithoutTrace(size_t atMost) {
+  
   std::unique_lock<std::mutex> guard(_communicationMutex);
-
+  
   if (_requestInFlight) {
     // Already sent a shutdown request, but haven't got an answer yet.
     return {ExecutionState::WAITING, TRI_ERROR_NO_ERROR};
   }
-
+  
   if (_lastError.fail()) {
     TRI_ASSERT(_lastResponse == nullptr);
     Result res = _lastError;
@@ -255,9 +257,9 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::initialize
   if (getQuery().killed()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
   }
-
+  
   std::unique_lock<std::mutex> guard(_communicationMutex);
-
+  
   if (_requestInFlight) {
     return {ExecutionState::WAITING, TRI_ERROR_NO_ERROR};
   }
@@ -267,7 +269,7 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::initialize
     auto response = std::move(_lastResponse);
 
     // Result is the response which is an object containing the ErrorCode
-    int errorNumber = TRI_ERROR_INTERNAL;  // default error code
+    int errorNumber = TRI_ERROR_INTERNAL; // default error code
     VPackSlice slice = response->slice();
     VPackSlice errorSlice = slice.get(StaticStrings::ErrorNum);
     if (!errorSlice.isNumber()) {
@@ -320,19 +322,20 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::initialize
 
 /// @brief shutdown, will be called exactly once for the whole query
 std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::shutdown(int errorCode) {
+  
   // this should make the whole thing idempotent
   if (!_isResponsibleForInitializeCursor) {
     // do nothing...
     return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
   }
-
+    
   std::unique_lock<std::mutex> guard(_communicationMutex);
 
   if (!_hasTriggeredShutdown) {
     // skip request in progress
     std::ignore = generateRequestTicket();
     _hasTriggeredShutdown = true;
-
+    
     // For every call we simply forward via HTTP
     VPackBuffer<uint8_t> buffer;
     VPackBuilder builder(buffer);
@@ -347,18 +350,18 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::shutdown(i
     if (!res.ok()) {
       THROW_ARANGO_EXCEPTION(res);
     }
-
+    
     return {ExecutionState::WAITING, TRI_ERROR_NO_ERROR};
   }
-
+  
   if (_requestInFlight) {
     // Already sent a shutdown request, but haven't got an answer yet.
     return {ExecutionState::WAITING, TRI_ERROR_NO_ERROR};
   }
-
+    
   if (_lastError.fail()) {
-    //    _didReceiveShutdownRequest = true;
-
+//    _didReceiveShutdownRequest = true;
+    
     TRI_ASSERT(_lastResponse == nullptr);
     Result res = std::move(_lastError);
     _lastError.reset();
@@ -380,7 +383,7 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::shutdown(i
 
   if (_lastResponse != nullptr) {
     TRI_ASSERT(_lastError.ok());
-
+    
     auto response = std::move(_lastResponse);
 
     // both must be reset before return or throw
@@ -415,7 +418,7 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::shutdown(i
 
     return {ExecutionState::DONE, TRI_ERROR_INTERNAL};
   }
-
+  
   TRI_ASSERT(false);
   return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
 }
@@ -450,8 +453,7 @@ Result handleErrorResponse(network::EndpointSpec const& spec, fuerte::Error err,
         res = VelocyPackHelper::getNumericValue(slice, StaticStrings::ErrorNum, res);
         VPackStringRef ref =
             VelocyPackHelper::getStringRef(slice, StaticStrings::ErrorMessage,
-                                           VPackStringRef(
-                                               "(no valid error in response)"));
+                                           VPackStringRef("(no valid error in response)"));
         msg.append(ref.data(), ref.size());
       }
     }
@@ -484,7 +486,7 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(fuerte::RestVerb typ
   req->header.database =_query.vocbase().name();
   req->header.path = urlPart + _queryId;
   req->addVPack(std::move(body));
-
+  
   // Later, we probably want to set these sensibly:
   req->timeout(kDefaultTimeOutSecs);
   if (!_ownName.empty()) {
@@ -492,7 +494,7 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(fuerte::RestVerb typ
   }
   
   network::ConnectionPtr conn = pool->leaseConnection(spec.endpoint);
-
+    
   _requestInFlight = true;
   auto ticket = generateRequestTicket();
   conn->sendRequest(std::move(req),
@@ -500,6 +502,7 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(fuerte::RestVerb typ
                      sqs = _query.sharedState()](fuerte::Error err,
                                                  std::unique_ptr<fuerte::Request> req,
                                                  std::unique_ptr<fuerte::Response> res) {
+
                       // `this` is only valid as long as sharedState is valid.
                       // So we must execute this under sharedState's mutex.
                       sqs->executeAndWakeup([&] {

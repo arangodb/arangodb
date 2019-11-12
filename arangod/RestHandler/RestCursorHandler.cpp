@@ -114,7 +114,7 @@ void RestCursorHandler::shutdownExecute(bool isFinalized) noexcept {
   if (!isFinalized) {
     return;
   }
-
+  
   if (_cursor) {
     _cursor->resetWakeupHandler();
     auto cursors = _vocbase.cursorRepository();
@@ -122,7 +122,7 @@ void RestCursorHandler::shutdownExecute(bool isFinalized) noexcept {
     cursors->release(_cursor);
     _cursor = nullptr;
   }
-
+  
   // only trace create cursor requests
   if (_request->requestType() != rest::RequestType::POST) {
     return;
@@ -163,10 +163,10 @@ void RestCursorHandler::handleError(basics::Exception const& ex) {
 
   try {
     bool success = true;
-    VPackSlice body = parseVPackBody(success);
-    if (success) {
-      events::QueryDocument(*_request, _response.get(), body);
-    }
+     VPackSlice body = parseVPackBody(success);
+     if (success) {
+       events::QueryDocument(*_request, _response.get(), body);
+     }
     _auditLogged = true;
   } catch (...) {
   }
@@ -232,9 +232,8 @@ RestStatus RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
                                            _options, batchSize, ttl,
                                            /*contextOwnedByExt*/ false,
                                            createTransactionContext());
-      _cursor->setWakeupHandler(
-          [self = shared_from_this()]() { return self->wakeupHandler(); });
-
+      _cursor->setWakeupHandler([self = shared_from_this()]() { return self->wakeupHandler(); });
+      
       return generateCursorResult(rest::ResponseCode::CREATED);
     }
   }
@@ -251,8 +250,9 @@ RestStatus RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
   query->setTransactionContext(createTransactionContext());
 
   std::shared_ptr<aql::SharedQueryState> ss = query->sharedState();
-  ss->setWakeupHandler(
-      [self = shared_from_this()] { return self->wakeupHandler(); });
+  ss->setWakeupHandler([self = shared_from_this()] {
+    return self->wakeupHandler();
+  });
 
   registerQuery(std::move(query));
   return processQuery();
@@ -541,7 +541,7 @@ RestStatus RestCursorHandler::generateCursorResult(rest::ResponseCode code) {
 
   VPackBuffer<uint8_t> buffer;
   VPackBuilder builder(buffer);
-  builder.openObject(/*unindexed*/ true);
+  builder.openObject(/*unindexed*/true);
 
   auto const [state, r] = _cursor->dump(builder);
   if (state == aql::ExecutionState::WAITING) {
@@ -560,7 +560,7 @@ RestStatus RestCursorHandler::generateCursorResult(rest::ResponseCode code) {
   } else {
     generateError(r);
   }
-
+  
   return RestStatus::DONE;
 }
 
@@ -631,9 +631,8 @@ RestStatus RestCursorHandler::modifyQueryCursor() {
     return RestStatus::DONE;
   }
 
-  _cursor->setWakeupHandler(
-      [self = shared_from_this()]() { return self->wakeupHandler(); });
-
+  _cursor->setWakeupHandler([self = shared_from_this()]() { return self->wakeupHandler(); });
+  
   return generateCursorResult(rest::ResponseCode::OK);
 }
 

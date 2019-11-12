@@ -282,8 +282,8 @@ struct IResearchView::ViewFactory : public arangodb::ViewFactory {
                                          // collection comes up it'll bring up the link
 
       impl->_links.try_emplace(cid, link ? link->self()
-                                         : nullptr);  // add placeholders to links, when the link
-                                                      // comes up it'll call link(...)
+                                     : nullptr);  // add placeholders to links, when the link
+                                                  // comes up it'll call link(...)
     }
 
     view = impl;

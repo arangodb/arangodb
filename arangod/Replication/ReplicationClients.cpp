@@ -125,12 +125,13 @@ void ReplicationClientsProgressTracker::track(SyncerId syncerId, TRI_server_id_t
   WRITE_LOCKER(writeLocker, _lock);
 
   // insert new client entry
-  auto const [it, inserted] =
-      _clients.try_emplace(key, arangodb::lazyConstruct([&] {
-                             return ReplicationClientProgress(timestamp, expires,
-                                                              lastServedTick, syncerId,
-                                                              clientId, clientInfo);
-                           }));
+  auto const [it, inserted] = _clients.try_emplace(
+    key,
+    arangodb::lazyConstruct([&]{
+      return ReplicationClientProgress(timestamp, expires, lastServedTick,
+                                                  syncerId, clientId, clientInfo);
+    })
+  );
   auto const syncer = syncerId.toString();
 
   if (inserted) {
@@ -146,11 +147,11 @@ void ReplicationClientsProgressTracker::track(SyncerId syncerId, TRI_server_id_t
   if (lastServedTick > 0) {
     it->second.lastServedTick = lastServedTick;
     LOG_TOPIC("47d4a", TRACE, Logger::REPLICATION)
-        << "updating replication client entry for " << SyncerInfo{it->second}
+          << "updating replication client entry for " << SyncerInfo{it->second}
         << " using TTL " << ttl << ", last tick: " << lastServedTick;
   } else {
     LOG_TOPIC("fce26", TRACE, Logger::REPLICATION)
-        << "updating replication client entry for " << SyncerInfo{it->second}
+          << "updating replication client entry for " << SyncerInfo{it->second}
         << " using TTL " << ttl;
   }
 }

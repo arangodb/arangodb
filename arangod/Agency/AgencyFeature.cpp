@@ -111,10 +111,10 @@ void AgencyFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      "arangodb cluster supervision frequency (in seconds)",
                      new DoubleParameter(&_supervisionFrequency));
 
-  options->addOption("--agency.supervision-grace-period",
-                     "supervision time, after which a server is considered to "
-                     "have failed (in seconds)",
-                     new DoubleParameter(&_supervisionGracePeriod));
+  options->addOption(
+      "--agency.supervision-grace-period",
+      "supervision time, after which a server is considered to have failed (in seconds)",
+      new DoubleParameter(&_supervisionGracePeriod));
 
   options->addOption("--agency.compaction-step-size",
                      "step size between state machine compactions",

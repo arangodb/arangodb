@@ -106,7 +106,7 @@ class DistributeShardsLikeRepairer {
       velocypack::Slice const& collectionsByDatabase);
 
   std::optional<ServerID const> static findFreeServer(DBServers const& availableDbServers,
-                                                      DBServers const& shardDbServers);
+                                                        DBServers const& shardDbServers);
 
   std::vector<std::pair<CollectionID, Result>> static findCollectionsToFix(
       std::map<CollectionID, struct Collection> collections);

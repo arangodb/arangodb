@@ -80,13 +80,13 @@ class GraphOperations {
                           std::optional<TRI_voc_rid_t> rev);
 
   /// @brief Remove a single edge document from definitionName.
-  OperationResult removeEdge(const std::string& definitionName,
-                             const std::string& key, std::optional<TRI_voc_rid_t> rev,
+  OperationResult removeEdge(const std::string& definitionName, const std::string& key,
+                             std::optional<TRI_voc_rid_t> rev,
                              bool waitForSync, bool returnOld);
 
   /// @brief Remove a vertex and all incident edges in the graph
-  OperationResult removeVertex(const std::string& collectionName,
-                               const std::string& key, std::optional<TRI_voc_rid_t> rev,
+  OperationResult removeVertex(const std::string& collectionName, const std::string& key,
+                               std::optional<TRI_voc_rid_t> rev,
                                bool waitForSync, bool returnOld);
 
   /// @brief Remove an edge or vertex and all incident edges in the graph

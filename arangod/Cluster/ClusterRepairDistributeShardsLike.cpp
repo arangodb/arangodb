@@ -483,7 +483,7 @@ ResultT<std::map<CollectionID, ResultT<std::list<RepairOperation>>>> DistributeS
           << "DistributeShardsLikeRepairer::repairDistributeShardsLike: "
           << "(repairing)distributeShardsLike missing in " << collection.fullName();
       repairOperationsByCollection.try_emplace(collection.id,
-                                               Result{TRI_ERROR_CLUSTER_REPAIRS_INCONSISTENT_ATTRIBUTES});
+                                           Result{TRI_ERROR_CLUSTER_REPAIRS_INCONSISTENT_ATTRIBUTES});
       continue;
     }
 
@@ -492,7 +492,7 @@ ResultT<std::map<CollectionID, ResultT<std::list<RepairOperation>>>> DistributeS
     auto beginRepairsOperation = createBeginRepairsOperation(collection, proto);
     if (beginRepairsOperation.fail()) {
       repairOperationsByCollection.try_emplace(collection.id,
-                                               std::move(beginRepairsOperation).result());
+                                           std::move(beginRepairsOperation).result());
       continue;
     }
     std::list<RepairOperation> repairOperations;
@@ -512,7 +512,7 @@ ResultT<std::map<CollectionID, ResultT<std::list<RepairOperation>>>> DistributeS
     auto finishRepairsOperation = createFinishRepairsOperation(collection, proto);
     if (finishRepairsOperation.fail()) {
       repairOperationsByCollection.try_emplace(collection.id,
-                                               std::move(finishRepairsOperation).result());
+                                           std::move(finishRepairsOperation).result());
       continue;
     }
     repairOperations.emplace_back(std::move(finishRepairsOperation.get()));

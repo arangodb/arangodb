@@ -569,10 +569,12 @@ OperationID ClusterComm::asyncRequest(
   auto ticketId = communicatorPtr->addRequest(std::move(newRequest));
 
   result->operationID = ticketId;
-  responses.try_emplace(ticketId, arangodb::lazyConstruct([&] {
-                          return AsyncResponse{TRI_microtime(), result,
-                                               std::move(communicatorPtr)};
-                        }));
+  responses.try_emplace(
+      ticketId,
+      arangodb::lazyConstruct([&] {
+        return AsyncResponse{TRI_microtime(), result, std::move(communicatorPtr)};
+      })
+  );
   return ticketId;
 }
 

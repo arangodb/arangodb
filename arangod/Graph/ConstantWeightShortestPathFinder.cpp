@@ -115,10 +115,12 @@ bool ConstantWeightShortestPathFinder::expandClosure(Closure& sourceClosure,
       auto const& n = _neighbors[i];
 
       bool emplaced = false;
-      std::tie(std::ignore, emplaced) =
-          sourceSnippets.try_emplace(_neighbors[i], arangodb::lazyConstruct([&] {
-                                       return new PathSnippet(v, std::move(_edges[i]));
-                                     }));
+      std::tie(std::ignore, emplaced) = sourceSnippets.try_emplace(
+        _neighbors[i],
+        arangodb::lazyConstruct([&]{
+          return new PathSnippet(v, std::move(_edges[i]));
+        })
+      );
 
       if (emplaced) {
         // NOTE: _edges[i] stays intact after move

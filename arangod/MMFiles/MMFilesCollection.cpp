@@ -588,7 +588,8 @@ MMFilesCollection::MMFilesCollection(LogicalCollection& collection, VPackSlice c
                                 // journalSize. paramters.json uses maximalSize
           Helper::getNumericValue<uint32_t>(info, "journalSize", TRI_JOURNAL_DEFAULT_SIZE))),
       _isVolatile(
-          arangodb::basics::VelocyPackHelper::getBooleanValue(info, "isVolatile", false)),
+          arangodb::basics::VelocyPackHelper::getBooleanValue(info,
+                                                               "isVolatile", false)),
       _persistentIndexes(0),
       _primaryIndex(nullptr),
       _indexBuckets(Helper::getNumericValue<uint32_t>(info, "indexBuckets", defaultIndexBuckets)),

@@ -80,11 +80,11 @@ Graph::Graph(velocypack::Slice const& slice)
       _vertexColls(),
       _edgeColls(),
       _numberOfShards(basics::VelocyPackHelper::getNumericValue<uint64_t>(slice, StaticStrings::NumberOfShards,
-                                                                          1)),
+                                                                           1)),
       _replicationFactor(basics::VelocyPackHelper::getNumericValue<uint64_t>(
           slice, StaticStrings::ReplicationFactor, 1)),
-      _writeConcern(basics::VelocyPackHelper::getNumericValue<uint64_t>(slice, StaticStrings::MinReplicationFactor,
-                                                                        1)),
+      _writeConcern(basics::VelocyPackHelper::getNumericValue<uint64_t>(
+              slice, StaticStrings::MinReplicationFactor, 1)),
       _rev(basics::VelocyPackHelper::getStringValue(slice, StaticStrings::RevString,
                                                     "")) {
   // If this happens we have a document without an _key Attribute.
@@ -138,8 +138,7 @@ Graph::Graph(std::string&& graphName, VPackSlice const& info, VPackSlice const& 
     _replicationFactor =
         VelocyPackHelper::getNumericValue<uint64_t>(options, StaticStrings::ReplicationFactor, 1);
     _writeConcern =
-        VelocyPackHelper::getNumericValue<uint64_t>(options, StaticStrings::MinReplicationFactor,
-                                                    1);
+            VelocyPackHelper::getNumericValue<uint64_t>(options, StaticStrings::MinReplicationFactor, 1);
   }
 }
 
@@ -684,8 +683,7 @@ void Graph::createCollectionOptions(VPackBuilder& builder, bool waitForSync) con
   builder.add(StaticStrings::MinReplicationFactor, VPackValue(writeConcern()));
 }
 
-std::optional<std::reference_wrapper<const EdgeDefinition>> Graph::getEdgeDefinition(
-    std::string const& collectionName) const {
+std::optional<std::reference_wrapper<const EdgeDefinition>> Graph::getEdgeDefinition(std::string const& collectionName) const {
   auto it = edgeDefinitions().find(collectionName);
   if (it == edgeDefinitions().end()) {
     TRI_ASSERT(!hasEdgeCollection(collectionName));

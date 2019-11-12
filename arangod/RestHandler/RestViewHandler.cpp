@@ -170,6 +170,7 @@ void RestViewHandler::createView() {
     return;
   }
 
+
   auto nameSlice = body.get(StaticStrings::DataSourceName);
   auto typeSlice = body.get(StaticStrings::DataSourceType);
 

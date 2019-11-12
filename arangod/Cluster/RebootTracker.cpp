@@ -167,9 +167,8 @@ CallbackGuard RebootTracker::callMeOnChange(RebootTracker::PeerState const& peer
   });
 
   auto const [iterator, inserted] =
-      callbackMap.try_emplace(callbackId,
-                              DescriptedCallback{std::move(callback),
-                                                 std::move(callbackDescription)});
+      callbackMap.try_emplace(callbackId, DescriptedCallback{std::move(callback),
+                                                         std::move(callbackDescription)});
   TRI_ASSERT(inserted);
   TRI_ASSERT(callbackId == iterator->first);
 

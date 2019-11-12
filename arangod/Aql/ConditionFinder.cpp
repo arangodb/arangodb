@@ -31,6 +31,7 @@
 #include "Aql/SortNode.h"
 #include "Basics/tryEmplaceHelper.h"
 
+
 using namespace arangodb::aql;
 using EN = arangodb::aql::ExecutionNode;
 
@@ -152,12 +153,14 @@ bool ConditionFinder::before(ExecutionNode* en) {
         }
 
         // We keep this node's change
-        _changes->try_emplace(node->id(), arangodb::lazyConstruct([&] {
-                                return new IndexNode(_plan, _plan->nextId(),
-                                                     node->collection(),
-                                                     node->outVariable(), usedIndexes,
-                                                     std::move(condition), opts);
-                              }));
+        _changes->try_emplace(
+            node->id(),
+            arangodb::lazyConstruct([&]{
+              return new IndexNode(_plan, _plan->nextId(), node->collection(),
+                          node->outVariable(), usedIndexes, std::move(condition), opts);
+            })
+        );
+
       }
 
       break;

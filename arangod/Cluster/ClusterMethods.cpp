@@ -297,10 +297,10 @@ OperationResult handleResponsesFromAllShards(
 // velocypack representation of object
 // {"error":true,"errorMessage":"document not found","errorNum":1202}
 const char* notFoundSlice =
-    "\x14\x36\x45\x65\x72\x72\x6f\x72\x1a\x4c\x65\x72\x72\x6f\x72\x4d"
-    "\x65\x73\x73\x61\x67\x65\x52\x64\x6f\x63\x75\x6d\x65\x6e\x74\x20"
-    "\x6e\x6f\x74\x20\x66\x6f\x75\x6e\x64\x48\x65\x72\x72\x6f\x72\x4e"
-    "\x75\x6d\x29\xb2\x04\x03";
+  "\x14\x36\x45\x65\x72\x72\x6f\x72\x1a\x4c\x65\x72\x72\x6f\x72\x4d"
+  "\x65\x73\x73\x61\x67\x65\x52\x64\x6f\x63\x75\x6d\x65\x6e\x74\x20"
+  "\x6e\x6f\x74\x20\x66\x6f\x75\x6e\x64\x48\x65\x72\x72\x6f\x72\x4e"
+  "\x75\x6d\x29\xb2\x04\x03";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief merge the baby-object results. (all shards version)
@@ -627,8 +627,7 @@ int distributeBabyOnShards(CreateOperationCtx& opCtx,
   // We found the responsible shard. Add it to the list.
   auto it = opCtx.shardMap.find(shardID);
   if (it == opCtx.shardMap.end()) {
-    opCtx.shardMap.try_emplace(shardID, std::vector<std::pair<VPackSlice, std::string>>{
-                                            {value, _key}});
+    opCtx.shardMap.try_emplace(shardID, std::vector<std::pair<VPackSlice, std::string>>{{value, _key}});
     opCtx.reverseMapping.emplace_back(shardID, 0);
   } else {
     it->second.emplace_back(value, _key);
@@ -1708,8 +1707,7 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
           TRI_ASSERT(it.second.size() == 1);
 
           if (!options.ignoreRevs && slice.hasKey(StaticStrings::RevString)) {
-            headers.try_emplace("if-match",
-                                slice.get(StaticStrings::RevString).copyString());
+            headers.try_emplace("if-match", slice.get(StaticStrings::RevString).copyString());
           }
           VPackSlice keySlice = slice;
           if (slice.isObject()) {
@@ -1875,7 +1873,7 @@ int fetchEdgesFromEngines(transaction::Methods& trx,
     }
     filtered += Helper::getNumericValue<size_t>(resSlice, "filtered", 0);
     read += Helper::getNumericValue<size_t>(resSlice, "readIndex", 0);
-
+    
     VPackSlice edges = resSlice.get("edges");
     bool allCached = true;
 
@@ -2061,7 +2059,7 @@ void fetchVerticesFromEngines(
     }
 
     bool cached = false;
-    for (auto pair : VPackObjectIterator(resSlice, /*sequential*/ true)) {
+    for (auto pair : VPackObjectIterator(resSlice, /*sequential*/true)) {
       arangodb::velocypack::StringRef key(pair.key);
       if (vertexIds.erase(key) == 0) {
         // We either found the same vertex twice,
@@ -2617,9 +2615,8 @@ arangodb::Result hotBackupList(std::vector<ServerID> const& dbServers, VPackSlic
     }
 
     if (resSlice.get(StaticStrings::Error).getBoolean()) {
-      return arangodb::Result(
-          static_cast<int>(resSlice.get(StaticStrings::ErrorNum).getNumber<uint64_t>()),
-          resSlice.get(StaticStrings::ErrorMessage).copyString());
+      return arangodb::Result(static_cast<int>(resSlice.get(StaticStrings::ErrorNum).getNumber<uint64_t>()),
+                              resSlice.get(StaticStrings::ErrorMessage).copyString());
     }
 
     if (!resSlice.hasKey("result") || !resSlice.get("result").isObject()) {
@@ -2876,8 +2873,7 @@ arangodb::Result restoreOnDBServers(std::string const& backupId,
                                   req.destination + "not an object");
     }
 
-    if (!resSlice.hasKey(StaticStrings::Error) ||
-        !resSlice.get(StaticStrings::Error).isBoolean() ||
+    if (!resSlice.hasKey(StaticStrings::Error) || !resSlice.get(StaticStrings::Error).isBoolean() ||
         resSlice.get(StaticStrings::Error).getBoolean()) {
       return arangodb::Result(TRI_ERROR_HOT_RESTORE_INTERNAL,
                               std::string("failed to restore ") + backupId +
@@ -3186,8 +3182,7 @@ arangodb::Result lockDBServerTransactions(std::string const& backupId,
     auto resBody = res.answer->toVelocyPackBuilderPtrNoUniquenessChecks();
     VPackSlice slc = resBody->slice();
 
-    if (!slc.isObject() || !slc.hasKey(StaticStrings::Error) ||
-        !slc.get(StaticStrings::Error).isBoolean()) {
+    if (!slc.isObject() || !slc.hasKey(StaticStrings::Error) || !slc.get(StaticStrings::Error).isBoolean()) {
       reportError(TRI_ERROR_LOCAL_LOCK_FAILED,
                   std::string("invalid response from ") + req.destination +
                   " when trying to freeze transactions for hot backup " +
@@ -3431,8 +3426,7 @@ arangodb::Result removeLocalBackups(std::string const& backupId,
                                   req.destination + ", result not an object");
     }
 
-    if (!resSlice.hasKey(StaticStrings::Error) ||
-        !resSlice.get(StaticStrings::Error).isBoolean() ||
+    if (!resSlice.hasKey(StaticStrings::Error) || !resSlice.get(StaticStrings::Error).isBoolean() ||
         resSlice.get(StaticStrings::Error).getBoolean()) {
       int64_t errorNum = resSlice.get(StaticStrings::ErrorNum).getNumber<int64_t>();
 
@@ -3443,8 +3437,8 @@ arangodb::Result removeLocalBackups(std::string const& backupId,
 
       std::string errorMsg = std::string("failed to delete backup ") +
                              backupId + " on " + req.destination + ":" +
-                             resSlice.get(StaticStrings::ErrorMessage).copyString() +
-                             " (" + std::to_string(errorNum) + ")";
+                             resSlice.get(StaticStrings::ErrorMessage).copyString() + " (" +
+                             std::to_string(errorNum) + ")";
 
       LOG_TOPIC("9b94f", ERR, Logger::BACKUP) << errorMsg;
       return arangodb::Result(static_cast<int>(errorNum), errorMsg);
@@ -3569,8 +3563,7 @@ arangodb::Result hotbackupWaitForLockDBServersTransactions(
     auto resBody = res.answer->toVelocyPackBuilderPtrNoUniquenessChecks();
     VPackSlice slc = resBody->slice();
 
-    if (!slc.isObject() || !slc.hasKey(StaticStrings::Error) ||
-        !slc.get(StaticStrings::Error).isBoolean()) {
+    if (!slc.isObject() || !slc.hasKey(StaticStrings::Error) || !slc.get(StaticStrings::Error).isBoolean()) {
       return arangodb::Result(TRI_ERROR_LOCAL_LOCK_FAILED,
                   std::string("invalid response from ") + req.destination +
                   " when trying to freeze transactions for hot backup " +

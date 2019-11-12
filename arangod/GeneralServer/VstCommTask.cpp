@@ -109,6 +109,7 @@ bool VstCommTask<T>::readCallback(asio_ns::error_code ec) {
 
   size_t parsedBytes = 0;
   while (true) {
+
     vst::Chunk chunk;
     vst::parser::ChunkState state = vst::parser::ChunkState::Invalid;
     if (_vstVersion == vst::VST1_1) {
@@ -170,10 +171,12 @@ bool VstCommTask<T>::processChunk(fuerte::vst::Chunk const& chunk) {
   }
 
   // Find stored message for this chunk.
-  auto [it, emplaced] =
-      _messages.try_emplace(chunk.header.messageID(), arangodb::lazyConstruct([&] {
-                              return std::make_unique<Message>();
-                            }));
+  auto [it, emplaced] = _messages.try_emplace(
+    chunk.header.messageID(),
+    arangodb::lazyConstruct([&]{
+      return std::make_unique<Message>();
+    })
+  );
   Message* msg = it->second.get();
 
   // returns false if message gets too big
@@ -218,7 +221,7 @@ bool VstCommTask<T>::processMessage(velocypack::Buffer<uint8_t> buffer,
   RequestStatistics* stat = this->statistics(messageId);
   RequestStatistics::SET_READ_END(stat);
   RequestStatistics::ADD_RECEIVED_BYTES(stat, buffer.size());
-
+  
   // handle request types
   if (mt == MessageType::Authentication) {  // auth
     handleAuthHeader(VPackSlice(buffer.data()), messageId);
@@ -244,7 +247,7 @@ bool VstCommTask<T>::processMessage(velocypack::Buffer<uint8_t> buffer,
       // if we don't call checkAuthentication we need to refresh
       this->_auth->userManager()->refreshUser(this->_authToken._username);
     }
-
+    
     // Separate superuser traffic:
     // Note that currently, velocystream traffic will never come from
     // a forwarding, since we always forward with HTTP.
@@ -295,7 +298,7 @@ void VstCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes, Requ
   resItem->response = std::move(baseRes);
   RequestStatistics::SET_WRITE_START(stat);
   resItem->stat = stat;
-
+  
   asio_ns::const_buffer payload;
   if (response.generateBody()) {
     payload = asio_ns::buffer(response.payload().data(),
@@ -366,10 +369,10 @@ void VstCommTask<T>::doWrite() {
     asio_ns::async_write(this->_protocol->socket, buffers,
                          [self(CommTask::shared_from_this()), rsp(std::move(item))]
                          (asio_ns::error_code ec, size_t transferred) {
+
       auto* thisPtr = static_cast<VstCommTask<T>*>(self.get());
       RequestStatistics::SET_WRITE_END(rsp->stat);
-      RequestStatistics::ADD_SENT_BYTES(rsp->stat, rsp->buffers[0].size() +
-                                                       rsp->buffers[1].size());
+      RequestStatistics::ADD_SENT_BYTES(rsp->stat, rsp->buffers[0].size() + rsp->buffers[1].size());
       if (ec) {
         LOG_TOPIC("5c6b4", INFO, arangodb::Logger::REQUESTS)
         << "asio write error: '" << ec.message() << "'";

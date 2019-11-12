@@ -22,18 +22,17 @@
 
 #include "MaterializeExecutor.h"
 
-#include "Aql/SingleRowFetcher.h"
-#include "Aql/Stats.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
+#include "Aql/SingleRowFetcher.h"
+#include "Aql/Stats.h"
 #include "Transaction/Methods.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
 
-template <typename T>
-arangodb::IndexIterator::DocumentCallback MaterializeExecutor<T>::ReadContext::copyDocumentCallback(
-    ReadContext& ctx) {
+template<typename T>
+arangodb::IndexIterator::DocumentCallback MaterializeExecutor<T>::ReadContext::copyDocumentCallback(ReadContext & ctx) {
   auto* engine = EngineSelectorFeature::ENGINE;
   TRI_ASSERT(engine);
   typedef std::function<arangodb::IndexIterator::DocumentCallback(ReadContext&)> CallbackFactory;
@@ -71,25 +70,27 @@ arangodb::IndexIterator::DocumentCallback MaterializeExecutor<T>::ReadContext::c
   return callbackFactories[size_t(engine->useRawDocumentPointers())](ctx);
 }
 
-template <typename T>
+template<typename T>
 arangodb::aql::MaterializerExecutorInfos<T>::MaterializerExecutorInfos(
     RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
     // cppcheck-suppress passedByValue
     std::unordered_set<RegisterId> registersToClear,
     // cppcheck-suppress passedByValue
-    std::unordered_set<RegisterId> registersToKeep, T const collectionSource,
-    RegisterId inNmDocId, RegisterId outDocRegId, transaction::Methods* trx)
-    : ExecutorInfos(getReadableInputRegisters(collectionSource, inNmDocId),
-                    make_shared_unordered_set(std::initializer_list<RegisterId>({outDocRegId})),
-                    nrInputRegisters, nrOutputRegisters,
-                    std::move(registersToClear), std::move(registersToKeep)),
+    std::unordered_set<RegisterId> registersToKeep,
+    T const collectionSource, RegisterId inNmDocId,
+    RegisterId outDocRegId, transaction::Methods* trx)
+  : ExecutorInfos(
+      getReadableInputRegisters(collectionSource, inNmDocId),
+      make_shared_unordered_set(std::initializer_list<RegisterId>({outDocRegId})),
+      nrInputRegisters, nrOutputRegisters,
+      std::move(registersToClear), std::move(registersToKeep)),
       _collectionSource(collectionSource),
       _inNonMaterializedDocRegId(inNmDocId),
-      _outMaterializedDocumentRegId(outDocRegId),
-      _trx(trx) {}
+      _outMaterializedDocumentRegId(outDocRegId), _trx(trx) {
+}
 
-template <typename T>
-std::pair<ExecutionState, NoStats> arangodb::aql::MaterializeExecutor<T>::produceRows(OutputAqlItemRow& output) {
+template<typename T>
+std::pair<ExecutionState, NoStats> arangodb::aql::MaterializeExecutor<T>::produceRows(OutputAqlItemRow & output) {
   InputAqlItemRow input{CreateInvalidInputRowHint{}};
   ExecutionState state;
   bool written = false;
@@ -115,7 +116,8 @@ std::pair<ExecutionState, NoStats> arangodb::aql::MaterializeExecutor<T>::produc
       }
       collection = _collection;
     } else {
-      collection = reinterpret_cast<arangodb::LogicalCollection const*>(
+      collection =
+        reinterpret_cast<arangodb::LogicalCollection const*>(
           input.getValue(collectionSource).slice().getUInt());
     }
     TRI_ASSERT(collection != nullptr);
@@ -128,7 +130,7 @@ std::pair<ExecutionState, NoStats> arangodb::aql::MaterializeExecutor<T>::produc
   return {state, NoStats{}};
 }
 
-template <typename T>
+template<typename T>
 std::tuple<ExecutionState, NoStats, size_t> arangodb::aql::MaterializeExecutor<T>::skipRows(size_t toSkipRequested) {
   ExecutionState state;
   size_t skipped;

@@ -175,13 +175,11 @@ int HttpCommTask<T>::on_header_complete(llhttp_t* p) {
         << "received a 100-continue request";
     char const* response = "HTTP/1.1 100 Continue\r\n\r\n";
     auto buff = asio_ns::buffer(response, strlen(response));
-    asio_ns::async_write(self->_protocol->socket, buff,
-                         [self = self->shared_from_this()](asio_ns::error_code const& ec,
-                                                           std::size_t) {
-                           if (ec) {
-                             static_cast<HttpCommTask<T>*>(self.get())->close();
-                           }
-                         });
+    asio_ns::async_write(self->_protocol->socket, buff, [self = self->shared_from_this()](asio_ns::error_code const& ec, std::size_t) {
+      if (ec) {
+        static_cast<HttpCommTask<T>*>(self.get())->close();
+      }
+    }); 
     return HPE_OK;
   }
   if (self->_request->requestType() == RequestType::HEAD) {
@@ -807,28 +805,30 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
   RequestStatistics::SET_WRITE_START(stat);
 
   // FIXME measure performance w/o sync write
-  asio_ns::async_write(this->_protocol->socket, buffers,
-                       [self = CommTask::shared_from_this(), h = std::move(header),
-                        b = std::move(body), stat](asio_ns::error_code ec, size_t nwrite) {
-                         auto* thisPtr = static_cast<HttpCommTask<T>*>(self.get());
-                         RequestStatistics::SET_WRITE_END(stat);
-                         RequestStatistics::ADD_SENT_BYTES(stat, h->size() + b->size());
-                         llhttp_errno_t err = llhttp_get_errno(&thisPtr->_parser);
-                         if (ec || !thisPtr->_shouldKeepAlive || err != HPE_PAUSED) {
-                           if (ec) {
-                             LOG_TOPIC("2b6b4", DEBUG, arangodb::Logger::REQUESTS)
-                                 << "asio write error: '" << ec.message() << "'";
-                           }
-                           thisPtr->close();
-                         } else {  // ec == HPE_PAUSED
+  asio_ns::async_write(this->_protocol->socket, buffers, 
+            [self = CommTask::shared_from_this(),
+             h = std::move(header),
+             b = std::move(body),
+             stat](asio_ns::error_code ec, size_t nwrite) {
+    auto* thisPtr = static_cast<HttpCommTask<T>*>(self.get());
+    RequestStatistics::SET_WRITE_END(stat);
+    RequestStatistics::ADD_SENT_BYTES(stat, h->size() + b->size());
+    llhttp_errno_t err = llhttp_get_errno(&thisPtr->_parser);
+    if (ec || !thisPtr->_shouldKeepAlive || err != HPE_PAUSED) {
+      if (ec) {
+        LOG_TOPIC("2b6b4", DEBUG, arangodb::Logger::REQUESTS)
+        << "asio write error: '" << ec.message() << "'";
+      }
+      thisPtr->close();
+    } else {  // ec == HPE_PAUSED
 
-                           llhttp_resume(&thisPtr->_parser);
-                           thisPtr->asyncReadSome();
-                         }
-                         if (stat != nullptr) {
-                           stat->release();
-                         }
-                       });
+      llhttp_resume(&thisPtr->_parser);
+      thisPtr->asyncReadSome();
+    }
+    if (stat != nullptr) {
+      stat->release();
+    }
+  });
 }
 
 template <SocketType T>

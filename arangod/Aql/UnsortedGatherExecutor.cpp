@@ -45,7 +45,10 @@ UnsortedGatherExecutorInfos::UnsortedGatherExecutorInfos(
                     std::move(registersToClear), std::move(registersToKeep)) {}
 
 UnsortedGatherExecutor::UnsortedGatherExecutor(Fetcher& fetcher, Infos& infos)
-    : _fetcher(fetcher), _numberDependencies(0), _currentDependency(0), _skipped(0) {}
+    : _fetcher(fetcher),
+      _numberDependencies(0),
+      _currentDependency(0),
+      _skipped(0) {}
 
 UnsortedGatherExecutor::~UnsortedGatherExecutor() = default;
 
@@ -64,25 +67,25 @@ UnsortedGatherExecutor::~UnsortedGatherExecutor() = default;
 ////////////////////////////////////////////////////////////////////////////////
 
 std::pair<ExecutionState, NoStats> UnsortedGatherExecutor::produceRows(OutputAqlItemRow& output) {
-  initDependencies();
 
+  initDependencies();
+  
   ExecutionState state;
   InputAqlItemRow inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
-
+  
   size_t x;
   for (x = 0; x < _numberDependencies; ++x) {
     size_t i = (_currentDependency + x) % _numberDependencies;
-
+  
     if (_upstream[i] == ExecutionState::DONE) {
       continue;
     }
-
+    
     size_t tmp = 0;
-
+    
     state = ExecutionState::HASMORE;
     while (!output.isFull() && state == ExecutionState::HASMORE) {
-      std::tie(state, inputRow) =
-          _fetcher.fetchRowForDependency(i, output.numRowsLeft() /*atMost*/);
+      std::tie(state, inputRow) = _fetcher.fetchRowForDependency(i, output.numRowsLeft() /*atMost*/);
       if (inputRow) {
         output.copyRow(inputRow);
         TRI_ASSERT(output.produced());
@@ -90,21 +93,21 @@ std::pair<ExecutionState, NoStats> UnsortedGatherExecutor::produceRows(OutputAql
         tmp++;
       }
     }
-
+    
     _upstream[i] = state;
     if (output.isFull()) {
       break;
     }
   }
   _currentDependency = x;
-
+  
   NoStats stats;
-
+  
   // fix assert in ExecutionBlockImpl<E>::getSomeWithoutTrace
   if (output.isFull()) {
     return {ExecutionState::HASMORE, stats};
   }
-
+  
   size_t numWaiting = 0;
   for (x = 0; x < _numberDependencies; ++x) {
     if (_upstream[x] == ExecutionState::HASMORE) {
@@ -116,30 +119,30 @@ std::pair<ExecutionState, NoStats> UnsortedGatherExecutor::produceRows(OutputAql
   if (numWaiting > 0) {
     return {ExecutionState::WAITING, stats};
   }
-
-  TRI_ASSERT(std::all_of(_upstream.begin(), _upstream.end(),
-                         [](auto const& s) { return s == ExecutionState::DONE; }));
+  
+  TRI_ASSERT(std::all_of(_upstream.begin(), _upstream.end(), [](auto const& s) { return s == ExecutionState::DONE; } ));
   return {ExecutionState::DONE, stats};
 }
 
-std::tuple<ExecutionState, UnsortedGatherExecutor::Stats, size_t> UnsortedGatherExecutor::skipRows(
-    size_t const toSkip) {
+std::tuple<ExecutionState, UnsortedGatherExecutor::Stats, size_t> UnsortedGatherExecutor::skipRows(size_t const toSkip) {
+  
   initDependencies();
   TRI_ASSERT(_skipped <= toSkip);
-
+  
   ExecutionState state = ExecutionState::HASMORE;
   while (_skipped < toSkip) {
+    
     const size_t i = _currentDependency;
     if (_upstream[i] == ExecutionState::DONE) {
       if (std::all_of(_upstream.begin(), _upstream.end(),
                       [](auto s) { return s == ExecutionState::DONE; })) {
-        state = ExecutionState::DONE;
-        break;
-      }
+         state = ExecutionState::DONE;
+         break;
+       }
       _currentDependency = (i + 1) % _numberDependencies;
-      continue;
-    }
-
+       continue;
+     }
+    
     TRI_ASSERT(_skipped <= toSkip);
 
     size_t skippedNow;
@@ -150,17 +153,17 @@ std::tuple<ExecutionState, UnsortedGatherExecutor::Stats, size_t> UnsortedGather
       return {ExecutionState::WAITING, NoStats{}, 0};
     }
     _skipped += skippedNow;
-
+    
     if (_upstream[i] == ExecutionState::DONE) {
       if (std::all_of(_upstream.begin(), _upstream.end(),
                       [](auto s) { return s == ExecutionState::DONE; })) {
         break;
       }
-      _currentDependency = (i + 1) % _numberDependencies;
-      continue;
-    }
+       _currentDependency = (i + 1) % _numberDependencies;
+       continue;
+     }
   }
-
+  
   size_t skipped = _skipped;
   _skipped = 0;
 
@@ -175,8 +178,6 @@ void UnsortedGatherExecutor::initDependencies() {
     _numberDependencies = _fetcher.numberDependencies();
     TRI_ASSERT(_numberDependencies > 0);
     _upstream.resize(_numberDependencies, ExecutionState::HASMORE);
-    TRI_ASSERT(std::all_of(_upstream.begin(), _upstream.end(), [](auto const& s) {
-      return s == ExecutionState::HASMORE;
-    }));
+    TRI_ASSERT(std::all_of(_upstream.begin(), _upstream.end(), [](auto const& s) { return s == ExecutionState::HASMORE; } ));
   }
 }

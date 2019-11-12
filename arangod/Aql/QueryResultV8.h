@@ -57,7 +57,7 @@ struct QueryResultV8 : public QueryResult {
     QueryResult::reset(std::move(result));
     data.Clear();
   }
-
+  
   v8::Local<v8::Array> data;
 };
 }  // namespace aql

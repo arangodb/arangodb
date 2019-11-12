@@ -1489,7 +1489,7 @@ class PropagateConstantAttributesHelper {
 
     if (it == _constants.end()) {
       _constants.try_emplace(variable,
-                             std::unordered_map<std::string, AstNode const*>{{name, value}});
+                         std::unordered_map<std::string, AstNode const*>{{name, value}});
       return;
     }
 
@@ -2767,7 +2767,7 @@ void arangodb::aql::removeUnnecessaryCalculationsRule(Optimizer* opt,
           // no COLLECT found, now replace
           std::unordered_map<VariableId, Variable const*> replacements;
           replacements.try_emplace(outVariable->id,
-                                   static_cast<Variable const*>(rootNode->getData()));
+                               static_cast<Variable const*>(rootNode->getData()));
 
           RedundantCalculationsReplacer finder(plan->getAst(), replacements);
           plan->root()->walk(finder);
@@ -3751,10 +3751,8 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt, std::unique_ptr<Executi
     auto const sortMode = GatherNode::evaluateSortMode(collection->numberOfShards());
     // single-sharded collections don't require any parallelism. collections with more than
     // one shard are eligible for later parallelization (the Undefined allows this)
-    auto const parallelism =
-        (collection->numberOfShards() <= 1 ? GatherNode::Parallelism::Serial
-                                           : GatherNode::Parallelism::Undefined);
-    auto* gatherNode = new GatherNode(plan.get(), plan->nextId(), sortMode, parallelism);
+    auto const parallelism = (collection->numberOfShards() <= 1 ? GatherNode::Parallelism::Serial : GatherNode::Parallelism::Undefined);
+    auto* gatherNode = new GatherNode(plan.get(), plan->nextId(), sortMode, parallelism); 
     plan->registerNode(gatherNode);
     TRI_ASSERT(remoteNode);
     gatherNode->addDependency(remoteNode);
@@ -7054,10 +7052,10 @@ void arangodb::aql::optimizeSubqueriesRule(Optimizer* opt,
       if (found.first != nullptr) {
         auto it = subqueryAttributes.find(found.first);
         if (it == subqueryAttributes.end()) {
-          subqueryAttributes.try_emplace(
-              found.first, std::make_tuple(found.second,
-                                           std::unordered_set<ExecutionNode const*>{n},
-                                           usedForCount));
+          subqueryAttributes.try_emplace(found.first,
+                                     std::make_tuple(found.second,
+                                                     std::unordered_set<ExecutionNode const*>{n},
+                                                     usedForCount));
         } else {
           auto& sq = (*it).second;
           if (usedForCount) {
@@ -7282,11 +7280,10 @@ void arangodb::aql::moveFiltersIntoEnumerateRule(Optimizer* opt, std::unique_ptr
 }
 
 /// @brief parallelize coordinator GatherNodes
-void arangodb::aql::parallelizeGatherRule(Optimizer* opt,
-                                          std::unique_ptr<ExecutionPlan> plan,
+void arangodb::aql::parallelizeGatherRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
                                           OptimizerRule const& rule) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
-
+  
   bool modified = false;
 
   ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type a;

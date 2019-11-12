@@ -28,8 +28,8 @@
 #include "Aql/PruneExpressionEvaluator.h"
 #include "Aql/Query.h"
 #include "Basics/StringUtils.h"
-#include "Basics/VelocyPackHelper.h"
 #include "Basics/tryEmplaceHelper.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterEdgeCursor.h"
 #include "Graph/SingleServerTraverser.h"
 #include "Indexes/Index.h"
@@ -215,15 +215,16 @@ arangodb::traverser::TraverserOptions::TraverserOptions(arangodb::aql::Query* qu
       uint64_t d = basics::StringUtils::uint64(info.key.copyString());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       bool emplaced = false;
-      std::tie(std::ignore, emplaced) = _vertexExpressions.try_emplace(
-          d, new aql::Expression(query->plan(), query->ast(), info.value));
+      std::tie(std::ignore, emplaced) = _vertexExpressions.try_emplace(d, new aql::Expression(query->plan(),
+                                                                  query->ast(), info.value));
       TRI_ASSERT(emplaced);
 #else
-      _vertexExpressions.try_emplace(d, arangodb::lazyConstruct([&] {
-                                       return new aql::Expression(query->plan(),
-                                                                  query->ast(),
-                                                                  info.value);
-                                     }));
+      _vertexExpressions.try_emplace(
+        d,
+        arangodb::lazyConstruct([&]{
+          return new aql::Expression(query->plan(), query->ast(), info.value);
+        })
+      );
 #endif
     }
   }

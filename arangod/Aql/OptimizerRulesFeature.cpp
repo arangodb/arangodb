@@ -22,8 +22,8 @@
 
 #include "OptimizerRulesFeature.h"
 #include "Aql/ExecutionPlan.h"
-#include "Aql/IResearchViewOptimizerRules.h"
 #include "Aql/IndexNodeOptimizerRules.h"
+#include "Aql/IResearchViewOptimizerRules.h"
 #include "Aql/OptimizerRules.h"
 #include "Basics/Exceptions.h"
 #include "Cluster/ServerState.h"
@@ -377,11 +377,12 @@ void OptimizerRulesFeature::addRules() {
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
                                         OptimizerRule::Flags::ClusterOnly));
 
-  registerRule("move-filters-into-enumerate", moveFiltersIntoEnumerateRule,
+  registerRule("move-filters-into-enumerate", moveFiltersIntoEnumerateRule, 
                OptimizerRule::moveFiltersIntoEnumerateRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
-
-  registerRule("parallelize-gather", parallelizeGatherRule, OptimizerRule::parallelizeGatherRule,
+  
+  registerRule("parallelize-gather", parallelizeGatherRule, 
+               OptimizerRule::parallelizeGatherRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
                                         OptimizerRule::Flags::ClusterOnly));
 
@@ -391,14 +392,13 @@ void OptimizerRulesFeature::addRules() {
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
 
   // apply late materialization for view queries
-  registerRule("late-document-materialization-arangosearch",
-               arangodb::iresearch::lateDocumentMaterializationArangoSearchRule,
+  registerRule("late-document-materialization-arangosearch", arangodb::iresearch::lateDocumentMaterializationArangoSearchRule,
                OptimizerRule::lateDocumentMaterializationArangoSearchRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
 
   // add the storage-engine specific rules
   addStorageEngineRules();
-
+  
   // Splice subqueries
   //
   // ***CAUTION***
@@ -413,8 +413,8 @@ void OptimizerRulesFeature::addRules() {
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
 
   // finally sort all rules by their level
-  std::sort(_rules.begin(),
-            _rules.end(), [](OptimizerRule const& lhs, OptimizerRule const& rhs) noexcept {
+  std::sort(_rules.begin(), _rules.end(),
+            [](OptimizerRule const& lhs, OptimizerRule const& rhs) noexcept {
               return (lhs.level < rhs.level);
             });
 

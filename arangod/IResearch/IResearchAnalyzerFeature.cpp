@@ -1556,9 +1556,9 @@ AnalyzerPool::ptr IResearchAnalyzerFeature::get( // find analyzer
           THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "failed to create arangosearch static analyzer");
         }
 
-        analyzers.try_emplace(irs::make_hashed_ref(irs::string_ref(pool->name()),
-                                                   std::hash<irs::string_ref>()),
-                              pool);
+        analyzers.try_emplace(
+          irs::make_hashed_ref(irs::string_ref(pool->name()), std::hash<irs::string_ref>()),
+          pool);
       }
 
       // register the text analyzers
@@ -1606,9 +1606,9 @@ AnalyzerPool::ptr IResearchAnalyzerFeature::get( // find analyzer
             THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "failed to create arangosearch static analyzer instance");
           }
 
-          analyzers.try_emplace(irs::make_hashed_ref(irs::string_ref(pool->name()),
-                                                     std::hash<irs::string_ref>()),
-                                pool);
+          analyzers.try_emplace(
+            irs::make_hashed_ref(irs::string_ref(pool->name()), std::hash<irs::string_ref>()),
+            pool);
         }
       }
     }
@@ -1914,24 +1914,21 @@ arangodb::Result IResearchAnalyzerFeature::loadAnalyzers(
       if (split.first != vocbase->name()) {
         auto [it, emplaced] = analyzers.try_emplace(entry.first, entry.second);
 
-        if (!emplaced) {  // existing entry
-          if (it->second  // valid new entry
-              && !equalAnalyzer(*(entry.second), it->second->type(),
-                                it->second->properties(), it->second->features())) {
-            return arangodb::Result(      // result
-                TRI_ERROR_BAD_PARAMETER,  // code
-                "name collision detected while re-registering a duplicate "
-                "arangosearch analizer name '" +
-                    std::string(it->second->name()) + "' type '" +
-                    std::string(it->second->type()) + "' properties '" +
-                    it->second->properties().toString() +
-                    "', previous registration type '" +
-                    std::string(entry.second->type()) + "' properties '" +
-                    entry.second->properties().toString() + "'");
+        if (!emplaced) { // existing entry
+          if (it->second // valid new entry
+              && !equalAnalyzer(*(entry.second), it->second->type(), it->second->properties(), it->second->features())) {
+            return arangodb::Result( // result
+              TRI_ERROR_BAD_PARAMETER, // code
+              "name collision detected while re-registering a duplicate arangosearch analizer name '" + std::string(it->second->name()) +
+              "' type '" + std::string(it->second->type()) +
+              "' properties '" + it->second->properties().toString() +
+              "', previous registration type '" + std::string(entry.second->type()) +
+              "' properties '" + entry.second->properties().toString() + "'"
+            );
           }
 
-          it->second = entry.second;  // reuse old analyzer pool to avoid duplicates in memmory
-          const_cast<Analyzers::key_type&>(it->first) = entry.first;  // point key at old pool
+          it->second = entry.second; // reuse old analyzer pool to avoid duplicates in memmory
+          const_cast<Analyzers::key_type&>(it->first) = entry.first; // point key at old pool
         }
 
         continue; // done with this analyzer

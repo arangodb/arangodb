@@ -147,8 +147,8 @@ static std::string extractErrorMessage(std::string const& shardId, VPackSlice co
   std::string msg = " shardID:" + shardId + ": ";
 
   // add error message text
-  msg += arangodb::basics::VelocyPackHelper::getStringValue(slice, StaticStrings::ErrorMessage,
-                                                            "");
+  msg += arangodb::basics::VelocyPackHelper::getStringValue(slice,
+                                                            StaticStrings::ErrorMessage, "");
 
   // add error number
   if (slice.hasKey(StaticStrings::ErrorNum)) {
@@ -958,7 +958,7 @@ void ClusterInfo::loadPlan() {
           }
 
           newShardKeys.try_emplace(collectionId, std::make_shared<std::vector<std::string>>(
-                                                     newCollection->shardKeys()));
+                                                 newCollection->shardKeys()));
 
           auto shardIDs = newCollection->shardIds();
           auto shards = std::make_shared<std::vector<std::string>>();
@@ -977,10 +977,8 @@ void ClusterInfo::loadPlan() {
               [](std::string const& a, std::string const& b) -> bool {
                 TRI_ASSERT(a.size() >= 2);
                 TRI_ASSERT(b.size() >= 2);
-                return NumberUtils::atoi_zero<uint64_t>(a.c_str() + 1,
-                                                        a.c_str() + a.size()) <
-                       NumberUtils::atoi_zero<uint64_t>(b.c_str() + 1,
-                                                        b.c_str() + b.size());
+                return NumberUtils::atoi_zero<uint64_t>(a.c_str() + 1, a.c_str() + a.size()) <
+                       NumberUtils::atoi_zero<uint64_t>(b.c_str() + 1, b.c_str() + b.size());
               }  // comparator
           );
           newShards.try_emplace(collectionId, std::move(shards));
@@ -1544,8 +1542,7 @@ Result ClusterInfo::waitForDatabaseInCurrent(CreateDatabaseInfo const& database)
 
       for (VPackObjectIterator::ObjectPair dbserver : dbs) {
         VPackSlice slice = dbserver.value;
-        if (arangodb::basics::VelocyPackHelper::getBooleanValue(slice, StaticStrings::Error,
-                                                                false)) {
+        if (arangodb::basics::VelocyPackHelper::getBooleanValue(slice, StaticStrings::Error, false)) {
           tmpHaveError = true;
           tmpMsg += " DBServer:" + dbserver.key.copyString() + ":";
           tmpMsg += arangodb::basics::VelocyPackHelper::getStringValue(slice, StaticStrings::ErrorMessage,
@@ -2019,8 +2016,8 @@ Result ClusterInfo::createCollectionsCoordinator(
         std::string tmpError = "";
 
         for (auto const& p : VPackObjectIterator(result)) {
-          if (arangodb::basics::VelocyPackHelper::getBooleanValue(p.value, StaticStrings::Error,
-                                                                  false)) {
+          if (arangodb::basics::VelocyPackHelper::getBooleanValue(p.value,
+                                                                  StaticStrings::Error, false)) {
             tmpError += " shardID:" + p.key.copyString() + ":";
             tmpError += arangodb::basics::VelocyPackHelper::getStringValue(
                 p.value, StaticStrings::ErrorMessage, "");
@@ -3338,7 +3335,7 @@ Result ClusterInfo::dropIndexCoordinator(  // drop index
   TRI_ASSERT(VPackObjectIterator(collection).size() > 0);
   size_t const numberOfShards =
       basics::VelocyPackHelper::getNumericValue<size_t>(collection,
-                                                        StaticStrings::NumberOfShards, 1);
+                                                         StaticStrings::NumberOfShards, 1);
 
   VPackSlice indexes = collection.get("indexes");
   if (!indexes.isArray()) {
@@ -3762,8 +3759,7 @@ void ClusterInfo::loadCurrentCoordinators() {
       decltype(_coordinators) newCoordinators;
 
       for (auto const& coordinator : VPackObjectIterator(currentCoordinators)) {
-        newCoordinators.try_emplace(coordinator.key.copyString(),
-                                    coordinator.value.copyString());
+        newCoordinators.try_emplace(coordinator.key.copyString(), coordinator.value.copyString());
       }
 
       // Now set the new value:
@@ -3924,7 +3920,8 @@ void ClusterInfo::loadCurrentDBServers() {
           }
         }
 
-        newDBServers.try_emplace(dbserver.key.copyString(), dbserver.value.copyString());
+        newDBServers.try_emplace(dbserver.key.copyString(),
+                                            dbserver.value.copyString());
       }
 
       // Now set the new value:

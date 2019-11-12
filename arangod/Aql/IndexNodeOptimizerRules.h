@@ -34,8 +34,8 @@ class ExecutionPlan;
 
 /// @brief moves document materialization from index nodes to sort nodes
 void lateDocumentMaterializationRule(arangodb::aql::Optimizer* opt,
-                                     std::unique_ptr<arangodb::aql::ExecutionPlan> plan,
-                                     arangodb::aql::OptimizerRule const& rule);
+                     std::unique_ptr<arangodb::aql::ExecutionPlan> plan,
+                     arangodb::aql::OptimizerRule const& rule);
 
 }  // namespace aql
 }  // namespace arangodb

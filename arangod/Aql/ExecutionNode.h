@@ -941,8 +941,7 @@ class NoResultsNode : public ExecutionNode {
 namespace materialize {
 class MaterializeNode : public ExecutionNode {
  protected:
-  MaterializeNode(ExecutionPlan* plan, size_t id, aql::Variable const& inDocId,
-                  aql::Variable const& outVariable);
+  MaterializeNode(ExecutionPlan* plan, size_t id, aql::Variable const& inDocId, aql::Variable const& outVariable);
 
   MaterializeNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
 
@@ -1033,8 +1032,7 @@ class MaterializeSingleNode : public MaterializeNode, public CollectionAccessing
                        bool withProperties) const override final;
 };
 
-MaterializeNode* createMaterializeNode(ExecutionPlan* plan,
-                                       arangodb::velocypack::Slice const& base);
+MaterializeNode* createMaterializeNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
 
 }  // namespace materialize
 }  // namespace aql
