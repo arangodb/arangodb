@@ -58,8 +58,7 @@ MetricsFeature::MetricsFeature(application_features::ApplicationServer& server)
     ServerStatistics(std::chrono::duration<double>(
                        std::chrono::system_clock::now().time_since_epoch()).count());
   setOptional(false);
-  startsBefore<LoggerFeature>();
-  //startsAfter<LoggerFeature>();
+  startsAfter<LoggerFeature>();
   ;
 }
 
