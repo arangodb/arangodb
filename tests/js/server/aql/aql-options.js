@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertTrue */
+/*global assertEqual, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, bind parameters
@@ -37,23 +37,8 @@ const internal = require("internal");
 
 function aqlOptionsTestSuite () {
   var errors = internal.errors;
-  var numbers = null;
 
   return {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
-
-    setUpAll : function () {
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
-
-    tearDownAll : function () {
-    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test timeout option
@@ -62,7 +47,7 @@ function aqlOptionsTestSuite () {
     testTimeOut : function () {
       try {
         internal.db._query("LET x = SLEEP(10) RETURN 1", {} /*bind*/, { timeout : 1} /*options*/);
-        assertTrue(false);
+        fail();
       } catch (e) {
         assertEqual(e.errorNum, errors.ERROR_QUERY_KILLED.code);
       }
