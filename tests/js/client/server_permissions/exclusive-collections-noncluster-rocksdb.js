@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertNotEqual, assertTrue */
+/*global assertEqual, assertNotEqual, assertTrue, getOptions*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the deadlock detection
@@ -124,7 +124,7 @@ function OptionsTestSuite () {
 
       // only one transaction should have succeeded
       assertEqual(2, c2.count());
-      let docs = c2.toArray()
+      let docs = c2.toArray();
       assertEqual(docs[0].value, true);
       assertEqual(docs[1].value, true);
     },
