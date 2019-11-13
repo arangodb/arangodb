@@ -4,6 +4,11 @@ devel
 * Added new timeout option for queries. If a query does finish execution within
   the given time in second it will be killed.
 
+* Fixed undefined behaviour with creation of ArangoSearch links with custom
+  analyzers in cluster environment.
+
+* Fixed internal issue #651: analyzer duplication in _analyzers collection.
+
 * Fixed internal issue #4597: rebalanceShards API cannot work on any database
   other than the _system database.
 
