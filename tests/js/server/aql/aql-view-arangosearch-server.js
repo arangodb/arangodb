@@ -28,7 +28,7 @@ var db = require("@arangodb").db;
 var ERRORS = require("@arangodb").errors;
 var internal = require('internal');
 var fs = require("fs");
-
+var isCluster = require("internal").isCluster();
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
@@ -370,25 +370,26 @@ function iResearchFeatureAqlServerSideTestSuite () {
         // on Single server we could also check fs (on cluster we are on 
         // coordinator, so nothing to do)
         // no arangosearch folders should be present
-        
-        let dbPath = internal.db._path();
-        if (db._engine().name === "rocksdb") {
-          dbPath = fs.safeJoin(internal.db._path(), 'databases');
-          let databases = fs.list(dbPath);
-          assertEqual(1, databases.length);
-          dbPath = fs.safeJoin(dbPath, databases[0]);
-        } else if (db._engine().name !== "mmfiles") {
-          fail("Unknown storage engine"); // if new engine is introduced, test should be updated
-        }          
-        let linksCount = 0;
-        let directories = fs.list(dbPath);
-        // check only arangosearch-XXXX
-        directories.forEach(function(candidate) {
-          if (candidate.startsWith("arangosearch")) {
-            linksCount++;
-          }
-        });
-        assertEqual(0, linksCount);
+        if (!isCluster) {
+          let dbPath = internal.db._path();
+          if (db._engine().name === "rocksdb") {
+            dbPath = fs.safeJoin(internal.db._path(), 'databases');
+            let databases = fs.list(dbPath);
+            assertEqual(1, databases.length);
+            dbPath = fs.safeJoin(dbPath, databases[0]);
+          } else if (db._engine().name !== "mmfiles") {
+            fail("Unknown storage engine"); // if new engine is introduced, test should be updated
+          }          
+          let linksCount = 0;
+          let directories = fs.list(dbPath);
+          // check only arangosearch-XXXX
+          directories.forEach(function(candidate) {
+            if (candidate.startsWith("arangosearch")) {
+              linksCount++;
+            }
+          });
+          assertEqual(0, linksCount);
+        }
       } finally {
         db._drop(docsCollectionName);
         db._dropView(docsViewName);
