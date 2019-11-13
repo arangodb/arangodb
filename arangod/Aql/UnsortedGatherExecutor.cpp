@@ -103,6 +103,7 @@ std::pair<ExecutionState, NoStats> UnsortedGatherExecutor::produceRows(OutputAql
   
   NoStats stats;
   
+  // fix assert in ExecutionBlockImpl<E>::getSomeWithoutTrace
   if (output.isFull()) {
     return {ExecutionState::HASMORE, stats};
   }

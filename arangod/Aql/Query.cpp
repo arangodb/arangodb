@@ -77,7 +77,7 @@ static std::atomic<TRI_voc_tick_t> nextQueryId(1);
 Query::Query(bool contextOwnedByExterior, TRI_vocbase_t& vocbase,
              QueryString const& queryString, std::shared_ptr<VPackBuilder> const& bindParameters,
              std::shared_ptr<VPackBuilder> const& options, QueryPart part)
-    : _id(0),
+    : _id(Query::nextId()),
       _resourceMonitor(),
       _resources(&_resourceMonitor),
       _vocbase(vocbase),
@@ -154,7 +154,7 @@ Query::Query(bool contextOwnedByExterior, TRI_vocbase_t& vocbase,
 Query::Query(bool contextOwnedByExterior, TRI_vocbase_t& vocbase,
              std::shared_ptr<VPackBuilder> const& queryStruct,
              std::shared_ptr<VPackBuilder> const& options, QueryPart part)
-    : _id(0),
+    : _id(Query::nextId()),
       _resourceMonitor(),
       _resources(&_resourceMonitor),
       _vocbase(vocbase),
@@ -273,6 +273,15 @@ Query* Query::clone(QueryPart part, bool withPlan) {
   clone->_isClonedQuery = true;
 
   return clone.release();
+}
+
+bool Query::killed() const {
+  if(_queryOptions.timeout > std::numeric_limits<double>::epsilon()) {
+    if(TRI_microtime() > (_startTime + _queryOptions.timeout)) {
+      return true;
+    }
+  }
+  return _killed;
 }
 
 /// @brief set the query to killed
@@ -1298,13 +1307,11 @@ void Query::addWarningsToVelocyPack(VPackBuilder& builder) const {
 
 /// @brief initializes the query
 void Query::init() {
-  if (_id != 0) {
+  TRI_ASSERT(!_profile && !_ast);
+  if (_profile || _ast) {
     // already called
     return;
   }
-  TRI_ASSERT(_id == 0);
-  _id = nextId();
-  TRI_ASSERT(_id != 0);
 
   TRI_ASSERT(_profile == nullptr);
   // adds query to QueryList which is needed for /_api/query/current
@@ -1504,5 +1511,5 @@ graph::Graph const* Query::lookupGraphByName(std::string const& name) {
 
 /// @brief returns the next query id
 TRI_voc_tick_t Query::nextId() {
-  return ::nextQueryId.fetch_add(1, std::memory_order_seq_cst);
+  return ::nextQueryId.fetch_add(1, std::memory_order_seq_cst) + 1;
 }

@@ -85,8 +85,7 @@ VPackSlice QueryResultCursor::next() {
 /// @brief return the cursor size
 size_t QueryResultCursor::count() const { return _iterator.size(); }
 
-std::pair<ExecutionState, Result> QueryResultCursor::dump(VPackBuilder& builder,
-                                                          std::function<bool()> const&) {
+std::pair<ExecutionState, Result> QueryResultCursor::dump(VPackBuilder& builder) {
   // This cursor cannot block, result already there.
   auto res = dumpSync(builder);
   return {ExecutionState::DONE, res};
@@ -220,16 +219,11 @@ void QueryStreamCursor::kill() {
   }
 }
 
-std::pair<ExecutionState, Result> QueryStreamCursor::dump(VPackBuilder& builder,
-                                                          std::function<bool()> const& ch) {
+std::pair<ExecutionState, Result> QueryStreamCursor::dump(VPackBuilder& builder) {
   TRI_ASSERT(batchSize() > 0);
   LOG_TOPIC("9af59", TRACE, Logger::QUERIES)
       << "executing query " << _id << ": '"
       << _query->queryString().extract(1024) << "'";
-
-  // We will get a different RestHandler on every dump, so we need to update the
-  // Callback
-  _query->sharedState()->setWakeupHandler(ch);
 
   try {
     ExecutionState state = prepareDump();
@@ -242,6 +236,7 @@ std::pair<ExecutionState, Result> QueryStreamCursor::dump(VPackBuilder& builder,
     if (!res.ok()) {
       return {ExecutionState::DONE, res};
     }
+    
     return {state, res};
   } catch (arangodb::basics::Exception const& ex) {
     this->setDeleted();
@@ -314,6 +309,19 @@ Result QueryStreamCursor::dumpSync(VPackBuilder& builder) {
   }
 }
 
+/// Set wakeup callback on streaming cursor
+void QueryStreamCursor::setWakeupHandler(std::function<bool()> const& cb) {
+  if (_query) {
+    _query->sharedState()->setWakeupHandler(cb);
+  }
+}
+
+void QueryStreamCursor::resetWakeupHandler() {
+  if (_query) {
+    _query->sharedState()->resetWakeupHandler();
+  }
+}
+
 Result QueryStreamCursor::writeResult(VPackBuilder& builder) {
   try {
     VPackOptions const* oldOptions = builder.options;
@@ -379,6 +387,7 @@ Result QueryStreamCursor::writeResult(VPackBuilder& builder) {
       // cleanup before transaction is committet
       cleanupStateCallback();
 
+      // TODO: perhaps run this differently ?
       QueryResult result;
       ExecutionState state = _query->finalize(result);  // will commit transaction
       while (state == ExecutionState::WAITING) {
