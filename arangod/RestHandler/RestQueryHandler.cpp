@@ -215,9 +215,8 @@ bool RestQueryHandler::replaceProperties() {
 
   bool parseSuccess = false;
   VPackSlice body = this->parseVPackBody(parseSuccess);
-
   if (!parseSuccess) {
-    // error message generated in parseVelocyPackBody
+    // error message generated in parseVPackBody
     return true;
   }
 

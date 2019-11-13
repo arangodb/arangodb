@@ -52,17 +52,17 @@ RestCursorHandler::RestCursorHandler(application_features::ApplicationServer& se
       _query(nullptr),
       _queryResult(),
       _queryRegistry(queryRegistry),
-      _leasedCursor(nullptr),
+      _cursor(nullptr),
       _hasStarted(false),
       _queryKilled(false),
       _isValidForFinalize(false),
       _auditLogged(false) {}
 
 RestCursorHandler::~RestCursorHandler() {
-  if (_leasedCursor) {
+  if (_cursor) {
     auto cursors = _vocbase.cursorRepository();
     TRI_ASSERT(cursors != nullptr);
-    cursors->release(_leasedCursor);
+    cursors->release(_cursor);
   }
 }
 
@@ -89,17 +89,16 @@ RestStatus RestCursorHandler::continueExecute() {
     if (type == rest::RequestType::POST || type == rest::RequestType::PUT) {
       return processQuery();
     }
-  } else if (_leasedCursor) {  // stream cursor query
-    Cursor* cs = _leasedCursor;
-    _leasedCursor = nullptr;
+  } else if (_cursor) {  // stream cursor query
+
     if (type == rest::RequestType::POST) {
-      return generateCursorResult(rest::ResponseCode::CREATED, cs);
+      return generateCursorResult(rest::ResponseCode::CREATED);
     } else if (type == rest::RequestType::PUT) {
       if (_request->requestPath() == SIMPLE_QUERY_ALL_PATH) {
         // RestSimpleQueryHandler::allDocuments uses PUT for cursor creation
-        return generateCursorResult(ResponseCode::CREATED, cs);
+        return generateCursorResult(ResponseCode::CREATED);
       }
-      return generateCursorResult(ResponseCode::OK, cs);
+      return generateCursorResult(ResponseCode::OK);
     }
   }
 
@@ -114,6 +113,14 @@ void RestCursorHandler::shutdownExecute(bool isFinalized) noexcept {
   // request not done yet
   if (!isFinalized) {
     return;
+  }
+  
+  if (_cursor) {
+    _cursor->resetWakeupHandler();
+    auto cursors = _vocbase.cursorRepository();
+    TRI_ASSERT(cursors != nullptr);
+    cursors->release(_cursor);
+    _cursor = nullptr;
   }
   
   // only trace create cursor requests
@@ -132,10 +139,11 @@ void RestCursorHandler::shutdownExecute(bool isFinalized) noexcept {
   }
   
   try {
-    bool parseSuccess = true;
-    std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
-    VPackSlice body = parsedBody.get()->slice();
-    events::QueryDocument(*_request, _response.get(), body);
+    bool success = true;
+    VPackSlice body = parseVPackBody(success);
+    if (success) {
+      events::QueryDocument(*_request, _response.get(), body);
+    }
     _auditLogged = true;
   } catch (...) {
   }
@@ -154,10 +162,11 @@ void RestCursorHandler::handleError(basics::Exception const& ex) {
   }
 
   try {
-    bool parseSuccess = true;
-    std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
-    VPackSlice body = parsedBody.get()->slice();
-    events::QueryDocument(*_request, _response.get(), body);
+    bool success = true;
+     VPackSlice body = parseVPackBody(success);
+     if (success) {
+       events::QueryDocument(*_request, _response.get(), body);
+     }
     _auditLogged = true;
   } catch (...) {
   }
@@ -219,12 +228,13 @@ RestStatus RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
     } else {
       CursorRepository* cursors = _vocbase.cursorRepository();
       TRI_ASSERT(cursors != nullptr);
-      Cursor* cursor = cursors->createQueryStream(querySlice.copyString(), bindVarsBuilder,
-                                                  _options, batchSize, ttl,
-                                                  /*contextOwnedByExt*/ false,
-                                                  createTransactionContext());
-
-      return generateCursorResult(rest::ResponseCode::CREATED, cursor);
+      _cursor = cursors->createQueryStream(querySlice.copyString(), bindVarsBuilder,
+                                           _options, batchSize, ttl,
+                                           /*contextOwnedByExt*/ false,
+                                           createTransactionContext());
+      _cursor->setWakeupHandler([self = shared_from_this()]() { return self->wakeupHandler(); });
+      
+      return generateCursorResult(rest::ResponseCode::CREATED);
     }
   }
 
@@ -365,9 +375,8 @@ RestStatus RestCursorHandler::handleQueryResult() {
     TRI_ASSERT(cursors != nullptr);
     TRI_ASSERT(_queryResult.data.get() != nullptr);
     // steal the query result, cursor will take over the ownership
-    Cursor* cursor =
-        cursors->createFromQueryResult(std::move(_queryResult), batchSize, ttl, count);
-    return generateCursorResult(rest::ResponseCode::CREATED, cursor);
+    _cursor = cursors->createFromQueryResult(std::move(_queryResult), batchSize, ttl, count);
+    return generateCursorResult(rest::ResponseCode::CREATED);
   }
 }
 
@@ -524,30 +533,20 @@ void RestCursorHandler::buildOptions(VPackSlice const& slice) {
 /// registry if required
 //////////////////////////////////////////////////////////////////////////////
 
-RestStatus RestCursorHandler::generateCursorResult(rest::ResponseCode code,
-                                                   arangodb::Cursor* cursor) {
-  // always clean up
-  auto guard = scopeGuard([this, &cursor]() {
-    auto cursors = _vocbase.cursorRepository();
-    TRI_ASSERT(cursors != nullptr);
-    cursors->release(cursor);
-  });
+RestStatus RestCursorHandler::generateCursorResult(rest::ResponseCode code) {
+  TRI_ASSERT(_cursor != nullptr);
 
   // dump might delete the cursor
-  std::shared_ptr<transaction::Context> ctx = cursor->context();
+  std::shared_ptr<transaction::Context> ctx = _cursor->context();
 
   VPackBuffer<uint8_t> buffer;
   VPackBuilder builder(buffer);
-  builder.openObject();
+  builder.openObject(/*unindexed*/true);
 
-  aql::ExecutionState state;
-  Result r;
-  std::tie(state, r) =
-      cursor->dump(builder, [self = shared_from_this()]() { return self->wakeupHandler(); });
+  auto const [state, r] = _cursor->dump(builder);
   if (state == aql::ExecutionState::WAITING) {
     builder.clear();
-    _leasedCursor = cursor;
-    guard.cancel();
+    TRI_ASSERT(r.ok());
     return RestStatus::WAITING;
   }
 
@@ -561,6 +560,7 @@ RestStatus RestCursorHandler::generateCursorResult(rest::ResponseCode code,
   } else {
     generateError(r);
   }
+  
   return RestStatus::DONE;
 }
 
@@ -619,9 +619,9 @@ RestStatus RestCursorHandler::modifyQueryCursor() {
   auto cursorId =
       static_cast<arangodb::CursorId>(arangodb::basics::StringUtils::uint64(id));
   bool busy;
-  Cursor* cursor = cursors->find(cursorId, Cursor::CURSOR_VPACK, busy);
+  _cursor = cursors->find(cursorId, Cursor::CURSOR_VPACK, busy);
 
-  if (cursor == nullptr) {
+  if (_cursor == nullptr) {
     if (busy) {
       generateError(GeneralResponse::responseCode(TRI_ERROR_CURSOR_BUSY), TRI_ERROR_CURSOR_BUSY);
     } else {
@@ -631,7 +631,9 @@ RestStatus RestCursorHandler::modifyQueryCursor() {
     return RestStatus::DONE;
   }
 
-  return generateCursorResult(rest::ResponseCode::OK, cursor);
+  _cursor->setWakeupHandler([self = shared_from_this()]() { return self->wakeupHandler(); });
+  
+  return generateCursorResult(rest::ResponseCode::OK);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
