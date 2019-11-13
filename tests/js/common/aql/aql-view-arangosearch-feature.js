@@ -57,38 +57,53 @@ function iResearchFeatureAqlTestSuite () {
     testAnalyzersInvalidPropertiesDiscarded : function() {
       {
         try {analyzers.remove("normPropAnalyzer"); } catch (e) {}
+        assertEqual(0, db._analyzers.count());
         let analyzer = analyzers.save("normPropAnalyzer", "norm", { "locale":"en", "invalid_param":true});
+        assertEqual(1, db._analyzers.count());
         assertTrue(null != analyzer);
         assertTrue(null == analyzer.properties.invalid_param);
         analyzers.remove("normPropAnalyzer", true);
+        assertEqual(0, db._analyzers.count());
       }
       {
         try {analyzers.remove("textPropAnalyzer"); } catch (e) {}
+        assertEqual(0, db._analyzers.count());
         let analyzer = analyzers.save("textPropAnalyzer", "text", {"stopwords" : [], "locale":"en", "invalid_param":true});
+        assertEqual(1, db._analyzers.count());
         assertTrue(null != analyzer);
         assertTrue(null == analyzer.properties.invalid_param);
         analyzers.remove("textPropAnalyzer", true);
+        assertEqual(0, db._analyzers.count());
       }
       {
         try {analyzers.remove("delimiterPropAnalyzer"); } catch (e) {}
+        assertEqual(0, db._analyzers.count());
         let analyzer = analyzers.save("delimiterPropAnalyzer", "delimiter", { "delimiter":"|", "invalid_param":true});
+        assertEqual(1, db._analyzers.count());
         assertTrue(null != analyzer);
         assertTrue(null == analyzer.properties.invalid_param);
         analyzers.remove("delimiterPropAnalyzer", true);
+        assertEqual(0, db._analyzers.count());
       }
       {
         try {analyzers.remove("stemPropAnalyzer"); } catch (e) {}
+        assertEqual(0, db._analyzers.count());
         let analyzer = analyzers.save("stemPropAnalyzer", "stem", { "locale":"en", "invalid_param":true});
+        assertEqual(1, db._analyzers.count());
         assertTrue(null != analyzer);
         assertTrue(null == analyzer.properties.invalid_param);
         analyzers.remove("stemPropAnalyzer", true);
+        assertEqual(0, db._analyzers.count());
       }
       {
         try {analyzers.remove("ngramPropAnalyzer"); } catch (e) {}
+        assertEqual(0, db._analyzers.count());
         let analyzer = analyzers.save("ngramPropAnalyzer", "ngram", { "min":1, "max":5, "preserveOriginal":true, "invalid_param":true});
+        assertEqual(1, db._analyzers.count());
         assertTrue(null != analyzer);
         assertTrue(null == analyzer.properties.invalid_param);
         analyzers.remove("ngramPropAnalyzer", true);
+        assertEqual(0, db._analyzers.count());
       }
     },
     testAnalyzerRemovalWithDatabaseName_InSystem: function() {
@@ -204,6 +219,8 @@ function iResearchFeatureAqlTestSuite () {
       let oldListInCollection = db._analyzers.toArray();
       assertTrue(Array === oldList.constructor);
 
+      assertEqual(0, db._analyzers.count());
+
       // creation
       analyzers.save("testAnalyzer", "stem", { "locale":"en"}, [ "frequency" ]);
 
@@ -217,12 +234,27 @@ function iResearchFeatureAqlTestSuite () {
       assertTrue(Array === analyzer.features().constructor);
       assertEqual(1, analyzer.features().length);
       assertEqual([ "frequency" ], analyzer.features());
+
+      // check persisted analyzer
+      assertEqual(1, db._analyzers.count());
+      let savedAnalyzer = db._analyzers.toArray()[0];
+      assertTrue(null !== savedAnalyzer);
+      assertEqual(7, Object.keys(savedAnalyzer).length);
+      assertEqual("_analyzers/testAnalyzer", savedAnalyzer._id);
+      assertEqual("testAnalyzer", savedAnalyzer._key);
+      assertEqual("testAnalyzer", savedAnalyzer.name);
+      assertEqual("stem", savedAnalyzer.type);
+      assertEqual(analyzer.properties(), savedAnalyzer.properties);
+      assertEqual(analyzer.features(), savedAnalyzer.features);
+
       analyzer = undefined; // release reference 
 
       // check the analyzers collection in database
       assertEqual(oldListInCollection.length + 1, db._analyzers.toArray().length);
       let dbAnalyzer = db._query("FOR d in _analyzers FILTER d.name=='testAnalyzer' RETURN d").toArray();
       assertEqual(1, dbAnalyzer.length);
+      assertEqual("_analyzers/testAnalyzer", dbAnalyzer[0]._id);
+      assertEqual("testAnalyzer", dbAnalyzer[0]._key);
       assertEqual("testAnalyzer", dbAnalyzer[0].name);
       assertEqual("stem", dbAnalyzer[0].type);
       assertEqual(1, Object.keys(dbAnalyzer[0].properties).length);

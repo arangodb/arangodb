@@ -171,12 +171,11 @@ bool VstCommTask<T>::processChunk(fuerte::vst::Chunk const& chunk) {
   }
 
   // Find stored message for this chunk.
-  auto [it, emplaced] = _messages.try_emplace(
+  auto it = _messages.try_emplace(
     chunk.header.messageID(),
     arangodb::lazyConstruct([&]{
       return std::make_unique<Message>();
-    })
-  );
+    })).first;
   Message* msg = it->second.get();
 
   // returns false if message gets too big
