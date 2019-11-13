@@ -995,7 +995,8 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt, std::unique_ptr<ExecutionPl
     oldParent->addDependency(calculationNode);
     setter->setParent(calculationNode);
 
-    AstNode* clone = ast->clone(inNode);
+    AstNode* clone = ast->shallowCopyForModify(inNode);
+    TRI_DEFER(FINALIZE_SUBTREE(clone));
     // set sortedness bit for the IN operator
     clone->setBoolValue(true);
     // finally adjust the variable inside the IN calculation
