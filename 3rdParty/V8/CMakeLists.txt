@@ -216,6 +216,7 @@ if (WIN32)
     list(APPEND V8_TARGETS
       torque
       run_torque
+      generate_bytecode_builtins_list
       v8
       v8_libsampler
       v8_initializers
