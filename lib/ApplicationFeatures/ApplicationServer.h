@@ -243,14 +243,14 @@ class ApplicationServer {
 
    // checks for the existence of a feature by type. will not throw when used
    // for a non-existing feature
-   bool hasFeature(std::type_index type) const {
+   bool hasFeature(std::type_index type) const noexcept {
      return (_features.find(type) != _features.end());
    }
 
    // checks for the existence of a feature. will not throw when used for
    // a non-existing feature
    template <typename Type, typename std::enable_if<std::is_base_of<ApplicationFeature, Type>::value, int>::type = 0>
-   bool hasFeature() const {
+   bool hasFeature() const noexcept {
      return hasFeature(std::type_index(typeid(Type)));
    }
 
