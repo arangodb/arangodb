@@ -736,10 +736,11 @@ function dumpTestEnterpriseSuite () {
 /// @brief test link on analyzers collection
 ////////////////////////////////////////////////////////////////////////////////
     testIndexAnalyzerCollection : function() {
-      var res = db._query("FOR d IN analyzersView OPTIONS {waitForSync:true} RETURN d").toArray();
-      assertEqual(1, db._analyzers.count());
-      assertEqual(1, res.length);
-      assertEqual(db._analyzers.toArray()[0], res[0]);
+      var res = db._query("FOR d IN analyzersView OPTIONS {waitForSync:true} FOR a IN _analyzers FILTER d._key == a._key RETURN [d,a]").toArray();
+      assertEqual(res.length, db._analyzers.count());
+      res.forEach(function(e) {
+        assertEqual(e[0],e[1]);
+      });
     },
 
     testViewOnSmartEdgeCollection : function() {
