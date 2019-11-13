@@ -385,7 +385,7 @@ class IResearchAnalyzerFeatureTest
   arangodb::SystemDatabaseFeature* sysDatabaseFeature{};
 
   IResearchAnalyzerFeatureTest() : server(false) {
-    arangodb::tests::init(true);
+    arangodb::tests::init();
 
     server.addFeature<arangodb::QueryRegistryFeature>(false);
     server.addFeature<arangodb::TraverserEngineRegistryFeature>(false);
@@ -803,7 +803,6 @@ TEST_F(IResearchAnalyzerFeatureTest, test_renormalize_for_equal) {
 
 class IResearchAnalyzerFeatureGetTest : public IResearchAnalyzerFeatureTest {
  protected:
-  arangodb::AqlFeature& aqlFeature;
   arangodb::iresearch::IResearchAnalyzerFeature& analyzerFeature;
   std::string dbName;
 
@@ -814,7 +813,6 @@ class IResearchAnalyzerFeatureGetTest : public IResearchAnalyzerFeatureTest {
  protected:
   IResearchAnalyzerFeatureGetTest()
       : IResearchAnalyzerFeatureTest(),
-        aqlFeature(server.addFeatureUntracked<arangodb::AqlFeature>()),
         analyzerFeature(server.addFeatureUntracked<arangodb::iresearch::IResearchAnalyzerFeature>()),
         dbName("testVocbase") {}
 
@@ -839,9 +837,6 @@ class IResearchAnalyzerFeatureGetTest : public IResearchAnalyzerFeatureTest {
                                   VPackParser::fromJson("\"abc\"")->slice()).ok());
     ASSERT_TRUE(feature().emplace(result, specificName(), "TestAnalyzer",
                                   VPackParser::fromJson("\"def\"")->slice()).ok());
-
-    // required for Query::Query(...), must not call ~AqlFeature() for the duration of the test
-    aqlFeature.start();
   }
 
   void TearDown() override {
@@ -850,7 +845,6 @@ class IResearchAnalyzerFeatureGetTest : public IResearchAnalyzerFeatureTest {
       server.getFeature<arangodb::DatabaseFeature>().dropDatabase(dbName, true, true);
       _vocbase = nullptr;
     }
-    aqlFeature.stop();
     analyzerFeature.unprepare();
   }
 
@@ -1031,7 +1025,7 @@ class IResearchAnalyzerFeatureCoordinatorTest
         _feature(server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>()) {
     arangodb::tests::init();
 
-    server.addFeature<arangodb::ViewTypesFeature>(true);
+    //server.addFeature<arangodb::ViewTypesFeature>(true);
 
     TransactionStateMock::abortTransactionCount = 0;
     TransactionStateMock::beginTransactionCount = 0;
@@ -1906,8 +1900,6 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
 
   ASSERT_TRUE(server.server().hasFeature<arangodb::DatabaseFeature>());
   auto& dbFeature = server.getFeature<arangodb::DatabaseFeature>();
-  arangodb::AqlFeature aqlFeature(server.server());
-  aqlFeature.start();  // required for Query::Query(...), must not call ~AqlFeature() for the duration of the test
 
   // remove existing
   {
@@ -1969,10 +1961,6 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
     newServer.addFeature<arangodb::application_features::CommunicationFeaturePhase>();  // required for SimpleHttpClient::doRequest>(std::make_unique<arangodb::application_features::CommunicationFeaturePhase(newServer));  // required for SimpleHttpClient::doRequest>()
     auto& feature =
         newServer.addFeature<arangodb::iresearch::IResearchAnalyzerFeature>();  // required for running upgrade task
-    arangodb::aql::OptimizerRulesFeature(this->server.server()).prepare();  // required for Query::preparePlan(...)
-    auto clearOptimizerRules = irs::make_finally([this]() -> void {
-      arangodb::aql::OptimizerRulesFeature(this->server.server()).unprepare();
-    });
 
     auto cleanup = arangodb::scopeGuard([&dbFeature]() { dbFeature.unprepare(); });
 
@@ -2033,10 +2021,6 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
     newServer.addFeature<arangodb::application_features::CommunicationFeaturePhase>();  // required for SimpleHttpClient::doRequest()
     auto& feature =
         newServer.addFeature<arangodb::iresearch::IResearchAnalyzerFeature>();  // required for running upgrade task
-    arangodb::aql::OptimizerRulesFeature(this->server.server()).prepare();  // required for Query::preparePlan(...)
-    auto clearOptimizerRules = irs::make_finally([this]() -> void {
-      arangodb::aql::OptimizerRulesFeature(this->server.server()).unprepare();
-    });
 
     auto cleanup = arangodb::scopeGuard([&dbFeature]() { dbFeature.unprepare(); });
 
@@ -2952,8 +2936,6 @@ class IResearchAnalyzerFeatureUpgradeStaticLegacyTest : public IResearchAnalyzer
       VPackParser::fromJson("{ \"version\": 0, \"tasks\": {} }");
 
  private:
-  arangodb::AqlFeature& aqlFeature;
-  arangodb::aql::OptimizerRulesFeature& rulesFeature;
   arangodb::DatabasePathFeature& dbPathFeature;
 
  protected:
@@ -2961,16 +2943,10 @@ class IResearchAnalyzerFeatureUpgradeStaticLegacyTest : public IResearchAnalyzer
       : IResearchAnalyzerFeatureTest(),
         dbFeature(server.getFeature<arangodb::DatabaseFeature>()),
         sysDatabase(server.getFeature<arangodb::SystemDatabaseFeature>()),
-        aqlFeature(server.addFeatureUntracked<arangodb::AqlFeature>()),
-        rulesFeature(server.addFeatureUntracked<arangodb::aql::OptimizerRulesFeature>()),
         dbPathFeature(server.getFeature<arangodb::DatabasePathFeature>()) {
-    aqlFeature.start();
-    rulesFeature.prepare();
   }
 
   ~IResearchAnalyzerFeatureUpgradeStaticLegacyTest() {
-    rulesFeature.unprepare();
-    aqlFeature.stop();
   }
 };
 
