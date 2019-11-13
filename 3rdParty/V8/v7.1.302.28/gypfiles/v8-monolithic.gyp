@@ -27,7 +27,7 @@
         {
           'action_name': 'build_with_gn',
           'inputs': [
-            '../tools//node/build_gn.py',
+#            '../tools//node/build_gn.py',
           ],
           'outputs': [
             '<(INTERMEDIATE_DIR)/gn/obj/libv8_monolith.a',

@@ -78,7 +78,7 @@
         'host_arch%': '<(host_arch)',
         'target_arch%': '<(target_arch)',
         'use_sysroot%': '<(use_sysroot)',
-        'base_dir%': '<!(cd <(DEPTH) && <(PYTHON_EXECUTABLE) -c "import os; print(os.getcwd())")',
+        'base_dir%': '<!(<(PYTHON_EXECUTABLE) -c "import os; print(os.getcwd())")',
 
         # Instrument for code coverage and use coverage wrapper to exclude some
         # files. Uses gcov if clang=0 is set explicitly. Otherwise,
@@ -945,7 +945,7 @@
             'EnableFunctionLevelLinking': 'true',
             'RuntimeTypeInfo': 'false',
             'WarningLevel': '3',
-            'WarnAsError': 'true',
+            'WarnAsError': 'false',
             'Detect64BitPortabilityProblems': 'false',
             'conditions': [
               ['use_clcache_mode=="true"', {
@@ -954,7 +954,8 @@
                 'DebugInformationFormat': '3',
               }],
               [ 'msvs_multi_core_compile', {
-                'AdditionalOptions': ['/MP'],
+                'AdditionalOptions': ['/MP', '/utf-8'],
+#                'AdditionalOptions': ['/MP'],
               }],
               ['component=="shared_library"', {
                 'ExceptionHandling': '1',  # /EHsc

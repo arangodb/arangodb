@@ -40,7 +40,7 @@
         [ 'want_separate_host_toolset==1', {
           'toolsets': [ 'target', ],
           'dependencies': [
-            'd8_js2c#host',
+     #       'd8_js2c#host',
           ],
         }],
         ['(OS=="linux" or OS=="mac" or OS=="freebsd" or OS=="netbsd" \
