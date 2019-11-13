@@ -1326,23 +1326,33 @@ bool HeartbeatThread::sendServerState() {
 }
 
 void HeartbeatThread::updateAgentPool(VPackSlice const& agentPool) {
-  if (agentPool.isObject() && agentPool.get("pool").isObject() &&
-      agentPool.hasKey("size") && agentPool.get("size").getUInt() > 0) {
+  if (agentPool.isObject() && agentPool.get("pool").isObject() && agentPool.hasKey("size") &&
+      agentPool.get("size").getUInt() > 0 && agentPool.get("id").isString()) {
     try {
       std::vector<std::string> values;
-      for (auto pair : VPackObjectIterator(agentPool.get("pool"))) {
-        values.emplace_back(pair.value.copyString());
+      // we have to make sure that the leader is on the front
+      auto leaderId = agentPool.get("id").stringRef();
+      auto pool = agentPool.get("pool");
+      values.reserve(pool.length());
+      values.emplace_back(pool.get(leaderId).copyString());
+      // now add all non leaders
+      for (auto pair : VPackObjectIterator(pool)) {
+        if (!pair.key.isEqualString(leaderId)) {
+          values.emplace_back(pair.value.copyString());
+        }
       }
       AgencyCommManager::MANAGER->updateEndpoints(values);
     } catch (basics::Exception const& e) {
-      LOG_TOPIC(WARN, Logger::HEARTBEAT) << "Error updating agency pool: " << e.message();
+      LOG_TOPIC("1cec6", WARN, Logger::HEARTBEAT)
+        << "Error updating agency pool: " << e.message();
     } catch (std::exception const& e) {
-      LOG_TOPIC(WARN, Logger::HEARTBEAT) << "Error updating agency pool: " << e.what();
+      LOG_TOPIC("889d4", WARN, Logger::HEARTBEAT)
+        << "Error updating agency pool: " << e.what();
     } catch (...) {
     }
   } else {
-    LOG_TOPIC(ERR, Logger::AGENCYCOMM)
-        << "Cannot find an agency persisted in RAFT 8|";
+    LOG_TOPIC("92522", ERR, Logger::AGENCYCOMM)
+      << "Cannot find an agency persisted in RAFT 8|";
   }
 }
 
