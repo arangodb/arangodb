@@ -385,7 +385,7 @@ TEST_F(IResearchViewTest, test_cleanup) {
     EXPECT_TRUE(link->commit().ok());
   }
 
-  auto const memory = view->memory();
+  auto const memory = index->memory();
 
   // remove the data
   {
@@ -407,13 +407,13 @@ TEST_F(IResearchViewTest, test_cleanup) {
   size_t const MAX_ATTEMPTS = 200;
   size_t attempt = 0;
 
-  while (memory <= view->memory() && attempt < MAX_ATTEMPTS) {
+  while (memory <= index->memory() && attempt < MAX_ATTEMPTS) {
     std::this_thread::sleep_for(std::chrono::seconds(1));
     ++attempt;
   }
 
   // ensure memory was freed
-  EXPECT_TRUE(view->memory() <= memory);
+  EXPECT_TRUE(index->memory() <= memory);
 }
 
 TEST_F(IResearchViewTest, test_consolidate) {
