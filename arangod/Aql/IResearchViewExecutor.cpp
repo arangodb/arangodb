@@ -673,7 +673,8 @@ bool IResearchViewExecutorBase<Impl, Traits>::writeRow(ReadContext& ctx,
     }
     if constexpr (Traits::MaterializeType == MaterializeType::LateMaterializedWithVars) {
       auto const& outNonMaterializedViewRegs = infos().getOutNonMaterializedViewRegs();
-      if (!outNonMaterializedViewRegs.empty()) {
+      TRI_ASSERT(!outNonMaterializedViewRegs.empty());
+      if (ADB_LIKELY(!outNonMaterializedViewRegs.empty())) {
         auto sortValue = _indexReadBuffer.getSortValue(bufferEntry);
         TRI_ASSERT(!sortValue.empty());
         if (ADB_UNLIKELY(sortValue.empty())) {
@@ -841,7 +842,8 @@ void IResearchViewExecutor<ordered, materializeType>::fillBuffer(IResearchViewEx
     }
 
     if constexpr (materializeType == MaterializeType::LateMaterializedWithVars) {
-      if (!this->_infos.getOutNonMaterializedViewRegs().empty()) {
+      TRI_ASSERT((!this->_infos.getOutNonMaterializedViewRegs().empty()));
+      if (ADB_LIKELY(!this->_infos.getOutNonMaterializedViewRegs().empty())) {
         TRI_ASSERT(_sortReader);
         irs::bytes_ref sortValue{irs::bytes_ref::NIL}; // sort column value
         auto ok = _sortReader(_doc->value, sortValue);
