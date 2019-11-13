@@ -697,7 +697,7 @@ std::unique_ptr<IndexIterator> Index::iteratorForCondition(transaction::Methods*
                                                            IndexIteratorOptions const& /* opts */) {
   // the default implementation should never be called
   TRI_ASSERT(false); 
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, std::string("no default implementation for iteratorCondition. index type: ") + typeName());
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, std::string("no default implementation for iteratorForCondition. index type: ") + typeName());
 }
 
 /// @brief perform some base checks for an index condition part
