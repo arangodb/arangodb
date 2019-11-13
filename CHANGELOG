@@ -1,6 +1,10 @@
 devel
 -----
 
+* Allow usage of AQL function `RANDOM_TOKEN` with an argument value of `0`. This
+  now produces an empty string, whereas in older versions this threw an invalid
+  value exception.
+
 * Add startup option `--rocksdb.exclusive-writes` to avoid write-write conflicts.
 
   This options allows for an easier transition from MMFiles to the RocksDB storage
