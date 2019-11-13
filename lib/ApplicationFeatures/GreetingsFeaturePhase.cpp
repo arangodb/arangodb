@@ -38,7 +38,6 @@ GreetingsFeaturePhase::GreetingsFeaturePhase(ApplicationServer& server, bool isC
     : ApplicationFeaturePhase(server, "GreetingsPhase") {
   setOptional(false);
 
-  startsAfter<MetricsFeature>();
   startsAfter<ConfigFeature>();
   startsAfter<LoggerFeature>();
   startsAfter<RandomFeature>();

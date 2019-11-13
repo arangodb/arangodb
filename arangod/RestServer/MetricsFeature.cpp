@@ -59,7 +59,8 @@ MetricsFeature::MetricsFeature(application_features::ApplicationServer& server)
                        std::chrono::system_clock::now().time_since_epoch()).count());
   setOptional(false);
   startsAfter<LoggerFeature>();
-  ;
+  startsBefore<GreetingsFeaturePhase>();
+
 }
 
 void MetricsFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
