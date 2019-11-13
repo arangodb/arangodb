@@ -281,7 +281,8 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
       vocbase.id(),
       arangodb::lazyConstruct([&]{
        return std::make_unique<MyTypeHandler>(vocbase);
-      })).first;
+      })
+    ).first;
     opts.customTypeHandler = it->second.get();
   };
 
