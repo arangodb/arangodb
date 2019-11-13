@@ -117,12 +117,14 @@ class RocksDBTransactionCollection final : public TransactionCollection {
   int doUnlock(AccessMode::Type, int nestingLevel) override;
 
  private:
+  bool _usageLocked;
+  bool _exclusiveWrites;
+
   uint64_t _initialNumberDocuments;
   TRI_voc_rid_t _revision;
   uint64_t _numInserts;
   uint64_t _numUpdates;
   uint64_t _numRemoves;
-  bool _usageLocked;
 
   /// @brief A list where all indexes with estimates can store their operations
   ///        Will be applied to the inserter on commit and not applied on abort
