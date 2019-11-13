@@ -669,79 +669,54 @@ const char* NODE_VIEW_VALUES_VAR_ID = "id";
 const char* NODE_VIEW_VALUES_VAR_NAME = "name";
 const char* NODE_VIEW_VALUES_VAR_FIELD = "field";
 
-std::map<std::tuple<bool, bool, MaterializeType>, std::unique_ptr<aql::ExecutionBlock> (*)(
-    aql::ExecutionEngine*, IResearchViewNode const*, aql::IResearchViewExecutorInfos&&)> executors {
-  {
-    {false, false, MaterializeType::Materialized},
-    [](aql::ExecutionEngine* engine, IResearchViewNode const* viewNode, aql::IResearchViewExecutorInfos&& infos) -> std::unique_ptr<aql::ExecutionBlock> {
-      return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewExecutor<false, MaterializeType::Materialized>>>(
-        engine, viewNode, std::move(infos));
-    }
+std::array<std::unique_ptr<aql::ExecutionBlock> (*)(
+    aql::ExecutionEngine*, IResearchViewNode const*, aql::IResearchViewExecutorInfos&&), 10> executors {
+  [](aql::ExecutionEngine* engine, IResearchViewNode const* viewNode, aql::IResearchViewExecutorInfos&& infos) -> std::unique_ptr<aql::ExecutionBlock> {
+    return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewExecutor<false, MaterializeType::Materialized>>>(
+      engine, viewNode, std::move(infos));
   },
-  {
-    {false, false, MaterializeType::LateMaterialized},
-    [](aql::ExecutionEngine* engine, IResearchViewNode const* viewNode, aql::IResearchViewExecutorInfos&& infos) -> std::unique_ptr<aql::ExecutionBlock> {
-      return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewExecutor<false, MaterializeType::LateMaterialized>>>(
-        engine, viewNode, std::move(infos));
-    }
+  [](aql::ExecutionEngine* engine, IResearchViewNode const* viewNode, aql::IResearchViewExecutorInfos&& infos) -> std::unique_ptr<aql::ExecutionBlock> {
+    return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewExecutor<false, MaterializeType::LateMaterialized>>>(
+      engine, viewNode, std::move(infos));
   },
-  {
-    {false, false, MaterializeType::LateMaterializedWithVars},
-    [](aql::ExecutionEngine* engine, IResearchViewNode const* viewNode, aql::IResearchViewExecutorInfos&& infos) -> std::unique_ptr<aql::ExecutionBlock> {
-      return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewExecutor<false, MaterializeType::LateMaterializedWithVars>>>(
-        engine, viewNode, std::move(infos));
-    }
+  [](aql::ExecutionEngine* engine, IResearchViewNode const* viewNode, aql::IResearchViewExecutorInfos&& infos) -> std::unique_ptr<aql::ExecutionBlock> {
+    return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewExecutor<false, MaterializeType::LateMaterializedWithVars>>>(
+      engine, viewNode, std::move(infos));
   },
-  {
-    {false, true, MaterializeType::Materialized},
-    [](aql::ExecutionEngine* engine, IResearchViewNode const* viewNode, aql::IResearchViewExecutorInfos&& infos) -> std::unique_ptr<aql::ExecutionBlock> {
-      return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewExecutor<true, MaterializeType::Materialized>>>(
-        engine, viewNode, std::move(infos));
-    }
+  [](aql::ExecutionEngine* engine, IResearchViewNode const* viewNode, aql::IResearchViewExecutorInfos&& infos) -> std::unique_ptr<aql::ExecutionBlock> {
+    return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewExecutor<true, MaterializeType::Materialized>>>(
+      engine, viewNode, std::move(infos));
   },
-  {
-    {false, true, MaterializeType::LateMaterialized},
-    [](aql::ExecutionEngine* engine, IResearchViewNode const* viewNode, aql::IResearchViewExecutorInfos&& infos) -> std::unique_ptr<aql::ExecutionBlock> {
-      return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewExecutor<true, MaterializeType::LateMaterialized>>>(
-        engine, viewNode, std::move(infos));
-    }
+  [](aql::ExecutionEngine* engine, IResearchViewNode const* viewNode, aql::IResearchViewExecutorInfos&& infos) -> std::unique_ptr<aql::ExecutionBlock> {
+    return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewExecutor<true, MaterializeType::LateMaterialized>>>(
+      engine, viewNode, std::move(infos));
   },
-  {
-    {false, true, MaterializeType::LateMaterializedWithVars},
-    [](aql::ExecutionEngine* engine, IResearchViewNode const* viewNode, aql::IResearchViewExecutorInfos&& infos) -> std::unique_ptr<aql::ExecutionBlock> {
-      return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewExecutor<true, MaterializeType::LateMaterializedWithVars>>>(
-        engine, viewNode, std::move(infos));
-    }
+  [](aql::ExecutionEngine* engine, IResearchViewNode const* viewNode, aql::IResearchViewExecutorInfos&& infos) -> std::unique_ptr<aql::ExecutionBlock> {
+    return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewExecutor<true, MaterializeType::LateMaterializedWithVars>>>(
+      engine, viewNode, std::move(infos));
   },
-  {
-    {true, false, MaterializeType::Materialized},
-    [](aql::ExecutionEngine* engine, IResearchViewNode const* viewNode, aql::IResearchViewExecutorInfos&& infos) -> std::unique_ptr<aql::ExecutionBlock> {
-      return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewMergeExecutor<false, MaterializeType::Materialized>>>(
-        engine, viewNode, std::move(infos));
-    }
+  [](aql::ExecutionEngine* engine, IResearchViewNode const* viewNode, aql::IResearchViewExecutorInfos&& infos) -> std::unique_ptr<aql::ExecutionBlock> {
+    return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewMergeExecutor<false, MaterializeType::Materialized>>>(
+      engine, viewNode, std::move(infos));
   },
-  {
-    {true, false, MaterializeType::LateMaterialized},
-    [](aql::ExecutionEngine* engine, IResearchViewNode const* viewNode, aql::IResearchViewExecutorInfos&& infos) -> std::unique_ptr<aql::ExecutionBlock> {
-      return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewMergeExecutor<false, MaterializeType::LateMaterialized>>>(
-        engine, viewNode, std::move(infos));
-    }
+  [](aql::ExecutionEngine* engine, IResearchViewNode const* viewNode, aql::IResearchViewExecutorInfos&& infos) -> std::unique_ptr<aql::ExecutionBlock> {
+    return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewMergeExecutor<false, MaterializeType::LateMaterialized>>>(
+      engine, viewNode, std::move(infos));
   },
-  {
-    {true, true, MaterializeType::Materialized},
-    [](aql::ExecutionEngine* engine, IResearchViewNode const* viewNode, aql::IResearchViewExecutorInfos&& infos) -> std::unique_ptr<aql::ExecutionBlock> {
-      return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewMergeExecutor<true, MaterializeType::Materialized>>>(
-        engine, viewNode, std::move(infos));
-    }
+  [](aql::ExecutionEngine* engine, IResearchViewNode const* viewNode, aql::IResearchViewExecutorInfos&& infos) -> std::unique_ptr<aql::ExecutionBlock> {
+    return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewMergeExecutor<true, MaterializeType::Materialized>>>(
+      engine, viewNode, std::move(infos));
   },
-  {
-    {true, true, MaterializeType::LateMaterialized},
-    [](aql::ExecutionEngine* engine, IResearchViewNode const* viewNode, aql::IResearchViewExecutorInfos&& infos) -> std::unique_ptr<aql::ExecutionBlock> {
-      return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewMergeExecutor<true, MaterializeType::LateMaterialized>>>(
-        engine, viewNode, std::move(infos));
-    }
+  [](aql::ExecutionEngine* engine, IResearchViewNode const* viewNode, aql::IResearchViewExecutorInfos&& infos) -> std::unique_ptr<aql::ExecutionBlock> {
+    return std::make_unique<aql::ExecutionBlockImpl<aql::IResearchViewMergeExecutor<true, MaterializeType::LateMaterialized>>>(
+      engine, viewNode, std::move(infos));
   }
 };
+
+inline decltype(executors)::size_type getExecutorIndex(bool sorted, bool ordered, MaterializeType materializeType) {
+  auto index = static_cast<int>(materializeType) + 3 * static_cast<int>(ordered) + 6 * static_cast<int>(sorted);
+  return static_cast<decltype(executors)::size_type>(index < 9 ? index : index - 1);
+}
 
 }  // namespace
 
@@ -1417,7 +1392,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
 
   TRI_ASSERT(_sort.first == nullptr || !_sort.first->empty()); // guaranteed by optimizer rule
   TRI_ASSERT(_sort.first == nullptr || materializeType != MaterializeType::LateMaterializedWithVars);
-  return ::executors[std::make_tuple(_sort.first != nullptr, ordered, materializeType)](&engine, this, std::move(executorInfos));
+  return ::executors[getExecutorIndex(_sort.first != nullptr, ordered, materializeType)](&engine, this, std::move(executorInfos));
 }
 
 }  // namespace iresearch
