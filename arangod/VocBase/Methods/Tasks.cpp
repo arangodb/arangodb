@@ -104,7 +104,7 @@ std::shared_ptr<Task> Task::createTask(std::string const& id, std::string const&
   
   MUTEX_LOCKER(guard, _tasksLock);
 
-  if (!_tasks.emplace(id, std::make_pair(user, task)).second) {
+  if (!_tasks.try_emplace(id, user, task).second) {
     ec = TRI_ERROR_TASK_DUPLICATE_ID;
 
     return {nullptr};

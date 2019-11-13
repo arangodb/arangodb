@@ -24,6 +24,7 @@
 #include <type_traits>
 
 #include <velocypack/Iterator.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include "ClusterNodes.h"
@@ -426,7 +427,7 @@ GatherNode::GatherNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& b
   if (!_elements.empty()) {
     auto const sortModeSlice = base.get("sortmode");
 
-    if (!toSortMode(VelocyPackHelper::getStringRef(sortModeSlice, ""), _sortmode)) {
+    if (!toSortMode(VelocyPackHelper::getStringRef(sortModeSlice, VPackStringRef()), _sortmode)) {
       LOG_TOPIC("2c6f3", ERR, Logger::AQL)
           << "invalid sort mode detected while "
              "creating 'GatherNode' from vpack";
@@ -522,7 +523,7 @@ std::unique_ptr<ExecutionBlock> GatherNode::createBlock(
                                    getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
                                    calcRegsToKeep(), std::move(sortRegister),
                                    _plan->getAst()->query()->trx(), sortMode(),
-                                   constrainedSortLimit());
+                                   constrainedSortLimit(), _parallelism);
 
   return std::make_unique<ExecutionBlockImpl<SortingGatherExecutor>>(&engine, this,
                                                                      std::move(infos));
@@ -575,9 +576,6 @@ bool GatherNode::isParallelizable() const {
     return false;
   }
 
-  if (isInSubquery()) {
-    return false;
-  }
   ParallelizableFinder finder;
   for (ExecutionNode* e : _dependencies) {
     e->walk(finder);
@@ -637,7 +635,8 @@ std::unique_ptr<ExecutionBlock> SingleRemoteOperationNode::createBlock(
   RegisterId outputNew = variableToRegisterOptionalId(_outVariableNew);
   RegisterId outputOld = variableToRegisterOptionalId(_outVariableOld);
 
-  OperationOptions options = convertOptions(_options, _outVariableNew, _outVariableOld);
+  OperationOptions options =
+      ModificationExecutorHelpers::convertOptions(_options, _outVariableNew, _outVariableOld);
 
   SingleRemoteModificationInfos infos(
       in, outputNew, outputOld, out,

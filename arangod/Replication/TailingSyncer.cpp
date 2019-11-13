@@ -426,7 +426,7 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
 
   // extract "tid"
   arangodb::velocypack::StringRef const transactionId =
-      VelocyPackHelper::getStringRef(slice, "tid", "");
+      VelocyPackHelper::getStringRef(slice, "tid", VPackStringRef());
   TRI_voc_tid_t tid = 0;
   if (!transactionId.empty()) {
     // operation is part of a transaction
@@ -439,7 +439,7 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
   VPackSlice applySlice = data;
   if (type == REPLICATION_MARKER_REMOVE) {
     _documentBuilder.clear();
-    _documentBuilder.openObject();
+    _documentBuilder.openObject(true);
     _documentBuilder.add(StaticStrings::KeyString, key);
     if (rev.isString()) {
       // _rev is an optional attribute
@@ -1736,7 +1736,8 @@ Result TailingSyncer::fetchOpenTransactions(TRI_voc_tick_t fromTick, TRI_voc_tic
                         ": invalid response type for initial data. expecting "
                         "array of ids");
     }
-    _ongoingTransactions.emplace(StringUtils::uint64(it.copyString()), nullptr);
+    auto ref = it.stringRef();
+    _ongoingTransactions.try_emplace(StringUtils::uint64(ref.data(), ref.size()), nullptr);
   }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE

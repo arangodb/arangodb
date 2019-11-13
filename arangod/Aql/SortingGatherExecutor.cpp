@@ -172,13 +172,15 @@ SortingGatherExecutorInfos::SortingGatherExecutorInfos(
     std::shared_ptr<std::unordered_set<RegisterId>> outputRegisters, RegisterId nrInputRegisters,
     RegisterId nrOutputRegisters, std::unordered_set<RegisterId> registersToClear,
     std::unordered_set<RegisterId> registersToKeep, std::vector<SortRegister>&& sortRegister,
-    arangodb::transaction::Methods* trx, GatherNode::SortMode sortMode, size_t limit)
+    arangodb::transaction::Methods* trx, GatherNode::SortMode sortMode, size_t limit,
+    GatherNode::Parallelism p)
     : ExecutorInfos(std::move(inputRegisters), std::move(outputRegisters),
                     nrInputRegisters, nrOutputRegisters,
                     std::move(registersToClear), std::move(registersToKeep)),
       _sortRegister(std::move(sortRegister)),
       _trx(trx),
       _sortMode(sortMode),
+      _parallelism(p),
       _limit(limit) {}
 
 SortingGatherExecutorInfos::SortingGatherExecutorInfos(SortingGatherExecutorInfos&&) = default;
@@ -196,7 +198,8 @@ SortingGatherExecutor::SortingGatherExecutor(Fetcher& fetcher, Infos& infos)
       _heapCounted(false),
       _rowsLeftInHeap(0),
       _skipped(0),
-      _strategy(nullptr) {
+      _strategy(nullptr),
+      _fetchParallel(infos.parallelism() == GatherNode::Parallelism::Parallel) {
   switch (infos.sortMode()) {
     case GatherNode::SortMode::MinElement:
       _strategy = std::make_unique<MinElementSorting>(infos.trx(), infos.sortRegister());
@@ -344,19 +347,29 @@ ExecutionState SortingGatherExecutor::init(size_t const atMost) {
   assertConstrainedDoesntOverfetch(atMost);
   initNumDepsIfNecessary();
 
+//  size_t numWaiting = 0;
+//  for (size_t i = 0; i < _numberDependencies; i++) {
   while (_dependencyToFetch < _numberDependencies) {
     std::tie(_inputRows[_dependencyToFetch].state,
              _inputRows[_dependencyToFetch].row) =
         _fetcher.fetchRowForDependency(_dependencyToFetch, atMost);
     if (_inputRows[_dependencyToFetch].state == ExecutionState::WAITING) {
-      return ExecutionState::WAITING;
-    }
+//      if (!_fetchParallel) {
+//        _dependencyToFetch = i;
+        return ExecutionState::WAITING;
+      }
+//      numWaiting++; }/* else*/
     if (!_inputRows[_dependencyToFetch].row) {
       TRI_ASSERT(_inputRows[_dependencyToFetch].state == ExecutionState::DONE);
       adjustNrDone(_dependencyToFetch);
     }
     ++_dependencyToFetch;
   }
+
+//  if (numWaiting > 0) {
+//    return ExecutionState::WAITING;
+//  }
+  
   _initialized = true;
   if (_nrDone >= _numberDependencies) {
     return ExecutionState::DONE;

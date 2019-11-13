@@ -76,6 +76,7 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::basics;
+using namespace materialize;
 
 namespace {
 
@@ -341,7 +342,7 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan, VPackSlice c
     case DISTRIBUTE_CONSUMER:
       return new DistributeConsumerNode(plan, slice);
     case MATERIALIZE:
-      return new MaterializeNode(plan, slice);
+      return createMaterializeNode(plan, slice);
     default: {
       // should not reach this point
       TRI_ASSERT(false);
@@ -382,7 +383,7 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan, VPackSlice const& slice)
     RegisterId registerId = it.get("RegisterId").getNumericValue<RegisterId>();
     unsigned int depth = it.get("depth").getNumericValue<unsigned int>();
 
-    _registerPlan->varInfo.emplace(variableId, VarInfo(depth, registerId));
+    _registerPlan->varInfo.try_emplace(variableId, VarInfo(depth, registerId));
   }
 
   VPackSlice nrRegsList = slice.get("nrRegs");
@@ -2334,47 +2335,90 @@ SortInformation::Match SortInformation::isCoveredBy(SortInformation const& other
 
   return allEqual;
 }
+
 namespace {
 const char* MATERIALIZE_NODE_IN_NM_COL_PARAM = "inNmColPtr";
 const char* MATERIALIZE_NODE_IN_NM_DOC_PARAM = "inNmDocId";
 const char* MATERIALIZE_NODE_OUT_VARIABLE_PARAM = "outVariable";
 }
 
-MaterializeNode::MaterializeNode(ExecutionPlan * plan, size_t id,
-                                                  aql::Variable const & inColPtr,
-                                                  aql::Variable const & inDocId,
-                                                  aql::Variable const & outVariable)
-  : ExecutionNode(plan, id), _inNonMaterializedColPtr(&inColPtr),
-      _inNonMaterializedDocId(&inDocId), _outVariable(&outVariable) {}
+MaterializeNode* materialize::createMaterializeNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base) {
+  if (base.hasKey(MATERIALIZE_NODE_IN_NM_COL_PARAM)) {
+    return new MaterializeMultiNode(plan, base);
+  }
+  return new MaterializeSingleNode(plan, base);
+}
 
-MaterializeNode::MaterializeNode(ExecutionPlan * plan, arangodb::velocypack::Slice const & base)
+MaterializeNode::MaterializeNode(ExecutionPlan* plan, size_t id,
+                                 aql::Variable const& inDocId,
+                                 aql::Variable const& outVariable)
+  : ExecutionNode(plan, id), _inNonMaterializedDocId(&inDocId), _outVariable(&outVariable) {}
+
+MaterializeNode::MaterializeNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
   : ExecutionNode(plan, base),
-  _inNonMaterializedColPtr(aql::Variable::varFromVPack(plan->getAst(), base, MATERIALIZE_NODE_IN_NM_COL_PARAM, true)),
-  _inNonMaterializedDocId(aql::Variable::varFromVPack(plan->getAst(), base, MATERIALIZE_NODE_IN_NM_DOC_PARAM, true)),
-  _outVariable(aql::Variable::varFromVPack(plan->getAst(), base, MATERIALIZE_NODE_OUT_VARIABLE_PARAM)) {}
+    _inNonMaterializedDocId(aql::Variable::varFromVPack(plan->getAst(), base, MATERIALIZE_NODE_IN_NM_DOC_PARAM, true)),
+    _outVariable(aql::Variable::varFromVPack(plan->getAst(), base, MATERIALIZE_NODE_OUT_VARIABLE_PARAM)) {}
 
-void MaterializeNode::toVelocyPackHelper(arangodb::velocypack::Builder & nodes, unsigned flags,
-                                                         std::unordered_set<ExecutionNode const*>& seen) const {
+void MaterializeNode::toVelocyPackHelper(arangodb::velocypack::Builder& nodes, unsigned flags,
+                                         std::unordered_set<ExecutionNode const*>& seen) const {
   // call base class method
   aql::ExecutionNode::toVelocyPackHelperGeneric(nodes, flags, seen);
-
-  nodes.add(VPackValue(MATERIALIZE_NODE_IN_NM_COL_PARAM));
-  _inNonMaterializedColPtr->toVelocyPack(nodes);
 
   nodes.add(VPackValue(MATERIALIZE_NODE_IN_NM_DOC_PARAM));
   _inNonMaterializedDocId->toVelocyPack(nodes);
 
   nodes.add(VPackValue(MATERIALIZE_NODE_OUT_VARIABLE_PARAM));
   _outVariable->toVelocyPack(nodes);
+}
+
+CostEstimate MaterializeNode::estimateCost() const {
+  if (_dependencies.empty()) {
+    // we should always have dependency as we need input for materializing
+    TRI_ASSERT(false);
+    return aql::CostEstimate::empty();
+  }
+  aql::CostEstimate estimate = _dependencies[0]->getCost();
+  // we will materialize all output of our dependency
+  estimate.estimatedCost += estimate.estimatedNrItems;
+  return estimate;
+}
+
+void MaterializeNode::getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& vars) const {
+  vars.emplace(_inNonMaterializedDocId);
+}
+
+std::vector<Variable const*> MaterializeNode::getVariablesSetHere() const {
+  return std::vector<Variable const*>{_outVariable};
+}
+
+MaterializeMultiNode::MaterializeMultiNode(ExecutionPlan* plan, size_t id,
+                                           aql::Variable const& inColPtr,
+                                           aql::Variable const& inDocId,
+                                           aql::Variable const& outVariable)
+  : MaterializeNode(plan, id, inDocId, outVariable),
+    _inNonMaterializedColPtr(&inColPtr) {}
+
+MaterializeMultiNode::MaterializeMultiNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
+  : MaterializeNode(plan, base),
+    _inNonMaterializedColPtr(aql::Variable::varFromVPack(plan->getAst(), base, MATERIALIZE_NODE_IN_NM_COL_PARAM, true)) {}
+
+void MaterializeMultiNode::toVelocyPackHelper(arangodb::velocypack::Builder& nodes, unsigned flags,
+                                              std::unordered_set<ExecutionNode const*>& seen) const {
+  // call base class method
+  MaterializeNode::toVelocyPackHelper(nodes, flags, seen);
+
+  nodes.add(VPackValue(MATERIALIZE_NODE_IN_NM_COL_PARAM));
+  _inNonMaterializedColPtr->toVelocyPack(nodes);
 
   nodes.close();
 }
 
-std::unique_ptr<ExecutionBlock> MaterializeNode::createBlock(
-    ExecutionEngine & engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const &) const {
+std::unique_ptr<ExecutionBlock> MaterializeMultiNode::createBlock(
+    ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
 
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
+
   RegisterId inNmColPtrRegId;
   {
     auto it = getRegisterPlan()->varInfo.find(_inNonMaterializedColPtr->id);
@@ -2394,14 +2438,15 @@ std::unique_ptr<ExecutionBlock> MaterializeNode::createBlock(
     outDocumentRegId = it->second.registerId;
   }
   TRI_ASSERT(engine.getQuery());
-  MaterializerExecutorInfos infos(getRegisterPlan()->nrRegs[previousNode->getDepth()],
-                           getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
-                           calcRegsToKeep(), inNmColPtrRegId, inNmDocIdRegId, outDocumentRegId, engine.getQuery()->trx());
-  return std::make_unique<ExecutionBlockImpl<MaterializeExecutor>>(&engine, this,
-                                                             std::move(infos));
+
+  return std::make_unique<ExecutionBlockImpl<MaterializeExecutor<decltype(inNmColPtrRegId)>>>(&engine, this,
+     MaterializerExecutorInfos(getRegisterPlan()->nrRegs[previousNode->getDepth()],
+                               getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
+                               calcRegsToKeep(), inNmColPtrRegId, inNmDocIdRegId,
+                               outDocumentRegId, engine.getQuery()->trx()));
 }
 
-ExecutionNode * MaterializeNode::clone(ExecutionPlan * plan, bool withDependencies, bool withProperties) const {
+ExecutionNode* MaterializeMultiNode::clone(ExecutionPlan* plan, bool withDependencies, bool withProperties) const {
   TRI_ASSERT(plan);
 
   auto* outVariable = _outVariable;
@@ -2414,28 +2459,74 @@ ExecutionNode * MaterializeNode::clone(ExecutionPlan * plan, bool withDependenci
     inNonMaterializedColId = plan->getAst()->variables()->createVariable(inNonMaterializedColId);
   }
 
-  auto node =
-      std::make_unique<MaterializeNode>(plan, _id, *inNonMaterializedColId, *inNonMaterializedDocId, *outVariable);
-  return cloneHelper(std::move(node), withDependencies, withProperties);
+  auto c = std::make_unique<MaterializeMultiNode>(plan, _id, *inNonMaterializedColId, *inNonMaterializedDocId, *outVariable);
+  return cloneHelper(std::move(c), withDependencies, withProperties);
 }
 
-CostEstimate MaterializeNode::estimateCost() const {
-  if (_dependencies.empty()) {
-    // we should always have dependency as we need input for materializing
-    TRI_ASSERT(false);
-    return aql::CostEstimate::empty();
-  }
-  aql::CostEstimate estimate = _dependencies[0]->getCost();
-  // we will materialize all output of our dependency
-  estimate.estimatedCost += estimate.estimatedNrItems;
-  return estimate;
-}
+void MaterializeMultiNode::getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& vars) const {
+  // call base class method
+  MaterializeNode::getVariablesUsedHere(vars);
 
-void MaterializeNode::getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& vars) const {
   vars.emplace(_inNonMaterializedColPtr);
-  vars.emplace(_inNonMaterializedDocId);
 }
 
-std::vector<Variable const*> MaterializeNode::getVariablesSetHere() const {
-  return std::vector<Variable const*>{_outVariable};
+MaterializeSingleNode::MaterializeSingleNode(ExecutionPlan* plan, size_t id, aql::Collection const* collection,
+                                             aql::Variable const& inDocId, aql::Variable const& outVariable)
+  : MaterializeNode(plan, id, inDocId, outVariable), CollectionAccessingNode(collection) {}
+
+MaterializeSingleNode::MaterializeSingleNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
+  : MaterializeNode(plan, base), CollectionAccessingNode(plan, base) {}
+
+void MaterializeSingleNode::toVelocyPackHelper(arangodb::velocypack::Builder& nodes, unsigned flags,
+                                              std::unordered_set<ExecutionNode const*>& seen) const {
+  // call base class method
+  MaterializeNode::toVelocyPackHelper(nodes, flags, seen);
+
+  // add collection information
+  CollectionAccessingNode::toVelocyPack(nodes, flags);
+
+  nodes.close();
+}
+
+std::unique_ptr<ExecutionBlock> MaterializeSingleNode::createBlock(
+    ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
+
+  ExecutionNode const* previousNode = getFirstDependency();
+  TRI_ASSERT(previousNode != nullptr);
+  RegisterId inNmDocIdRegId;
+  {
+    auto it = getRegisterPlan()->varInfo.find(_inNonMaterializedDocId->id);
+    TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
+    inNmDocIdRegId = it->second.registerId;
+  }
+  RegisterId outDocumentRegId;
+  {
+    auto it = getRegisterPlan()->varInfo.find(_outVariable->id);
+    TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
+    outDocumentRegId = it->second.registerId;
+  }
+  TRI_ASSERT(engine.getQuery());
+  auto const& name = _collection->name();
+
+  return std::make_unique<ExecutionBlockImpl<MaterializeExecutor<decltype(name)>>>(&engine, this,
+    MaterializerExecutorInfos<decltype(name)>(getRegisterPlan()->nrRegs[previousNode->getDepth()],
+                                              getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
+                                              calcRegsToKeep(), _collection->name(), inNmDocIdRegId,
+                                              outDocumentRegId, engine.getQuery()->trx()));
+}
+
+ExecutionNode* MaterializeSingleNode::clone(ExecutionPlan * plan, bool withDependencies, bool withProperties) const {
+  TRI_ASSERT(plan);
+
+  auto* outVariable = _outVariable;
+  auto* inNonMaterializedDocId = _inNonMaterializedDocId;
+
+  if (withProperties) {
+    outVariable = plan->getAst()->variables()->createVariable(outVariable);
+    inNonMaterializedDocId = plan->getAst()->variables()->createVariable(inNonMaterializedDocId);
+  }
+
+  auto c = std::make_unique<MaterializeSingleNode>(plan, _id, _collection, *inNonMaterializedDocId, *outVariable);
+  CollectionAccessingNode::cloneInto(*c);
+  return cloneHelper(std::move(c), withDependencies, withProperties);
 }

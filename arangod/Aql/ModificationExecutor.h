@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -17,225 +17,164 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Christoph Uhde
+/// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGOD_AQL_MODIFICATION_EXECUTOR_H
 #define ARANGOD_AQL_MODIFICATION_EXECUTOR_H
 
-#include "Aql/AllRowsFetcher.h"
 #include "Aql/ExecutionState.h"
-#include "Aql/ExecutorInfos.h"
-#include "Aql/ModificationNodes.h"
-#include "Aql/ModificationOptions.h"
-#include "Aql/SingleBlockFetcher.h"
-#include "Aql/SingleRowFetcher.h"
+#include "Aql/InputAqlItemRow.h"
+#include "Aql/ModificationExecutorInfos.h"
+#include "Aql/OutputAqlItemRow.h"
 #include "Aql/Stats.h"
-#include "Aql/RegisterPlan.h"
-#include "Utils/OperationOptions.h"
+#include "Utils/OperationResult.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <optional>
+
 namespace arangodb {
-namespace transaction {
-class Methods;
-}
-
 namespace aql {
+//
+// ModificationExecutor is the "base" class for the Insert, Remove,
+// UpdateReplace and Upsert executors.
+//
+// The fetcher and modification-specific code is spliced in via a template for
+// performance reasons
+//
+// A ModifierType has to provide the function accumulate, which batches updates
+// to be submitted to the transaction, a function transact which submits the
+// currently accumulated batch of updates to the transaction, and an iterator to
+// retrieve the results of the transaction.
+//
+// There currently are 4 modifier types: Insert, Remove, UpdateReplace, and
+// Upsert. These are divided into three *simple* modifiers, Insert, Remove,
+// UpdateReplace, and the special Upsert modifier.
+//
+// The Upsert modifier is a mix of Insert and UpdateReplace, and hence more
+// complicated. In the future it should share as much code as possible with the
+// Insert and UpdateReplace modifiers. This might enable the removal of the
+// extra SimpleModifier layer described below.
+//
+// The simple modifiers are created by instantiating the SimpleModifier template
+// class (defined in SimpleModifier.h) with a *completion*.
+// The four completions for SimpleModifiers are defined in InsertModifier.h,
+// RemoveModifier.h, and UpdateReplaceModifier.h
+//
+// The FetcherType has to provide the function fetchRow with the parameter atMost
+//
+// The two types of modifiers (Simple and Upsert) follow a similar design. The main
+// data is held in
+//   * an operations vector which stores the type of operation
+//     (APPLY_RETURN, IGNORE_RETURN, IGNORE_SKIP) that was performed by the
+//     modifier. The Upsert modifier internally uses APPLY_UPDATE and APPLY_INSERT
+//     to distinguish between the insert and UpdateReplace branches.
+//   * an accumulator that stores the documents that are committed in the
+//     transaction.
+//
+// The class ModifierOutput is what is returned by the result iterator of a
+// modifier, and represents the results of the modification operation on the
+// input row.
+// It contains the operation type, an InputAqlItemRow, and sometimes (if there
+// have been results specific for the InputAqlItemRow) a VPackSlice containing
+// the result of the transaction for this row.
 
-class AqlItemMatrix;
-class ExecutorInfos;
-class NoStats;
-class OutputAqlItemRow;
-struct SortRegister;
-
-struct Insert;
-struct Remove;
-struct Upsert;
-struct Update;
-struct Replace;
-
-template <typename>
-struct UpdateReplace;
-
-inline OperationOptions convertOptions(ModificationOptions const& in,
-                                       Variable const* outVariableNew,
-                                       Variable const* outVariableOld) {
-  OperationOptions out;
-
-  // commented out OperationOptions attributesare not provided
-  // by the ModificationOptions or the information given by the
-  // Variable pointer.
-
-  // in.ignoreErrors;
-  out.waitForSync = in.waitForSync;
-  out.keepNull = !in.nullMeansRemove;
-  out.mergeObjects = in.mergeObjects;
-  // in.ignoreDocumentNotFound;
-  // in.readCompleteInput;
-  out.isRestore = in.useIsRestore;
-  // in.consultAqlWriteFilter;
-  // in.exclusive;
-  out.overwrite = in.overwrite;
-  out.ignoreRevs = in.ignoreRevs;
-
-  out.returnNew = (outVariableNew != nullptr);
-  out.returnOld = (outVariableOld != nullptr);
-  out.silent = !(out.returnNew || out.returnOld);
-
-  return out;
-}
-
-inline std::shared_ptr<std::unordered_set<RegisterId>> makeSet(std::initializer_list<RegisterId> regList) {
-  auto rv = make_shared_unordered_set();
-  for (RegisterId regId : regList) {
-    if (regId < RegisterPlan::MaxRegisterId) {
-      rv->insert(regId);
-    }
-  }
-  return rv;
-}
-
-struct BoolWrapper {
-  explicit BoolWrapper(bool b) { _value = b; }
-  operator bool() { return _value; }
-  bool _value;
+// Note that ModifierOperationType is *subtly* different from
+// ModifierOutput::Type.
+// ModifierOperationType is used internally in the Modifiers (and the UPSERT
+// modifier has its own ModifierOperationType that includes a case for Update
+// and a case for Insert).
+enum class ModifierOperationType {
+  // Return result of operation if available (i.e. the query was not silent),
+  // this in particular includes values OLD and NEW or errors specific to the
+  // InputAqlItemRow under consideration
+  ReturnIfAvailable,
+  // Just copy the InputAqlItemRow to the OutputAqlItemRow. We do this if there
+  // are no results available specific to this row (for example because the query was
+  // silent).
+  CopyRow,
+  // Skip the InputAqlItemRow entirely. This happens in case an error happens at
+  // verification stage, for example when a key document does not contain a key or
+  // isn't a document.
+  SkipRow
 };
 
-struct ProducesResults : BoolWrapper {
-  explicit ProducesResults(bool b) : BoolWrapper(b) {}
-};
-struct ConsultAqlWriteFilter : BoolWrapper {
-  explicit ConsultAqlWriteFilter(bool b) : BoolWrapper(b) {}
-};
-struct IgnoreErrors : BoolWrapper {
-  explicit IgnoreErrors(bool b) : BoolWrapper(b) {}
-};
-struct DoCount : BoolWrapper {
-  explicit DoCount(bool b) : BoolWrapper(b) {}
-};
-struct IsReplace : BoolWrapper {
-  explicit IsReplace(bool b) : BoolWrapper(b) {}
-};
+class ModifierOutput {
+ public:
+  enum class Type {
+    // Return the row if requested by the query
+    ReturnIfRequired,
+    // Just copy the InputAqlItemRow to the OutputAqlItemRow
+    CopyRow,
+    // Skip the InputAqlItemRow entirely
+    SkipRow
+  };
 
-struct IgnoreDocumentNotFound : BoolWrapper {
-  explicit IgnoreDocumentNotFound(bool b) : BoolWrapper(b) {}
-};
+  ModifierOutput() = delete;
+  ModifierOutput(InputAqlItemRow const& inputRow, Type type);
+  ModifierOutput(InputAqlItemRow&& inputRow, Type type);
+  ModifierOutput(InputAqlItemRow const& inputRow, Type type,
+                 AqlValue const& oldValue, AqlValue const& newValue);
+  ModifierOutput(InputAqlItemRow&& inputRow, Type type,
+                 AqlValue const& oldValue, AqlValue const& newValue);
 
-struct ModificationExecutorInfos : public ExecutorInfos {
-  ModificationExecutorInfos(
-      RegisterId input1RegisterId, RegisterId input2RegisterId, RegisterId input3RegisterId,
-      RegisterId outputNewRegisterId, RegisterId outputOldRegisterId,
-      RegisterId outputRegisterId, RegisterId nrInputRegisters,
-      RegisterId nrOutputRegisters, std::unordered_set<RegisterId> registersToClear,
-      std::unordered_set<RegisterId> registersToKeep, transaction::Methods* trx,
-      OperationOptions options, aql::Collection const* aqlCollection,
-      ProducesResults producesResults, ConsultAqlWriteFilter consultAqlWriteFilter,
-      IgnoreErrors ignoreErrors, DoCount doCount, IsReplace isReplace,
-      IgnoreDocumentNotFound ignoreDocumentNotFound)
-      : ExecutorInfos(makeSet({input1RegisterId, input2RegisterId, input3RegisterId}) /*input registers*/,
-                      makeSet({outputOldRegisterId, outputNewRegisterId, outputRegisterId}) /*output registers*/,
-                      nrInputRegisters, nrOutputRegisters,
-                      std::move(registersToClear), std::move(registersToKeep)),
-        _trx(trx),
-        _options(options),
-        _aqlCollection(aqlCollection),
-        _producesResults(ProducesResults(producesResults._value || !_options.silent)),
-        _consultAqlWriteFilter(consultAqlWriteFilter),
-        _ignoreErrors(ignoreErrors),
-        _doCount(doCount),
-        _isReplace(isReplace),
-        _ignoreDocumentNotFound(ignoreDocumentNotFound),
-        _input1RegisterId(input1RegisterId),
-        _input2RegisterId(input2RegisterId),
-        _input3RegisterId(input3RegisterId),
-        _outputNewRegisterId(outputNewRegisterId),
-        _outputOldRegisterId(outputOldRegisterId),
-        _outputRegisterId(outputRegisterId) {}
+  // No copying or copy assignment allowed of this class or any derived class
+  ModifierOutput(ModifierOutput const&) = delete;
+  ModifierOutput(ModifierOutput&& o) = delete;
+  ModifierOutput& operator=(ModifierOutput&& o) = delete;
 
-  ModificationExecutorInfos() = delete;
-  ModificationExecutorInfos(ModificationExecutorInfos&&) = default;
-  ModificationExecutorInfos(ModificationExecutorInfos const&) = delete;
-  ~ModificationExecutorInfos() = default;
+  ModifierOutput& operator=(ModifierOutput const&);
 
-  /// @brief the variable produced by Return
-  transaction::Methods* _trx;
-  OperationOptions _options;
-  aql::Collection const* _aqlCollection;
-  ProducesResults _producesResults;
-  ConsultAqlWriteFilter _consultAqlWriteFilter;
-  IgnoreErrors _ignoreErrors;
-  DoCount _doCount;  // count statisitics
-  // bool _returnInheritedResults;
-  IsReplace _isReplace;                            // needed for upsert
-  IgnoreDocumentNotFound _ignoreDocumentNotFound;  // needed for update replace
+  InputAqlItemRow getInputRow() const;
+  // If the output should be returned or skipped
+  Type getType() const;
+  bool hasOldValue() const;
+  AqlValue const& getOldValue() const;
+  bool hasNewValue() const;
+  AqlValue const& getNewValue() const;
 
-  // insert (singleinput) - upsert (inDoc) - update replace (inDoc)
-  RegisterId _input1RegisterId;
-  // upsert (insertVar) -- update replace (keyVar)
-  RegisterId _input2RegisterId;
-  // upsert (updateVar)
-  RegisterId _input3RegisterId;
-
-  RegisterId _outputNewRegisterId;
-  RegisterId _outputOldRegisterId;
-  RegisterId _outputRegisterId;  // single remote
+ protected:
+  InputAqlItemRow const _inputRow;
+  Type const _type;
+  std::optional<AqlValue> const _oldValue;
+  std::optional<AqlValue> const _newValue;
 };
 
-template <typename FetcherType>
-struct ModificationExecutorBase {
+template <typename FetcherType, typename ModifierType>
+class ModificationExecutor {
+ public:
   struct Properties {
     static constexpr bool preservesOrder = true;
     static constexpr BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Disable;
-    static constexpr bool inputSizeRestrictsOutputSize =
-        false;  // Disabled because prefetch does not work in the Cluster
-                // Maybe This should ask for a 1:1 relation.
+    static constexpr bool inputSizeRestrictsOutputSize = false;
   };
+  using Fetcher = FetcherType;
   using Infos = ModificationExecutorInfos;
-  using Fetcher = FetcherType;  // SingleBlockFetcher<Properties::allowsBlockPassthrough>;
   using Stats = ModificationStats;
 
-  ModificationExecutorBase(Fetcher&, Infos&);
+  ModificationExecutor(FetcherType&, Infos&);
+  ~ModificationExecutor() = default;
 
- protected:
-  ModificationExecutorInfos& _infos;
-  Fetcher& _fetcher;
-  bool _prepared = false;
-};
-
-template <typename Modifier, typename FetcherType>
-class ModificationExecutor : public ModificationExecutorBase<FetcherType> {
-  friend struct Insert;
-  friend struct Remove;
-  friend struct Upsert;
-  friend struct UpdateReplace<Update>;
-  friend struct UpdateReplace<Replace>;
-
- public:
-  using Modification = Modifier;
-
-  // pull in types from template base
-  using Fetcher = typename ModificationExecutorBase<FetcherType>::Fetcher;
-  using Infos = typename ModificationExecutorBase<FetcherType>::Infos;
-  using Stats = typename ModificationExecutorBase<FetcherType>::Stats;
-
-  ModificationExecutor(Fetcher&, Infos&);
-  ~ModificationExecutor();
-
-  /**
-   * @brief produce the next Row of Aql Values.
-   *
-   * @return ExecutionState,
-   *         if something was written output.hasValue() == true
-   */
   std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
 
- private:
-  Modifier _modifier;
+ protected:
+  std::pair<ExecutionState, Stats> doCollect(size_t maxOutputs);
+  void doOutput(OutputAqlItemRow& output, Stats& stats);
+
+  // The state that was returned on the last call to produceRows. For us
+  // this is relevant because we might have collected some documents in the
+  // modifier's accumulator, but not written them yet, because we ran into
+  // WAITING
+  ExecutionState _lastState;
+  ModificationExecutorInfos& _infos;
+  FetcherType& _fetcher;
+  ModifierType _modifier;
 };
 
 }  // namespace aql
 }  // namespace arangodb
-
 #endif

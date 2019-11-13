@@ -24,6 +24,7 @@
 
 #include "V8ClientConnection.h"
 
+#include <boost/algorithm/string.hpp>
 #include <fuerte/connection.h>
 #include <fuerte/jwt.h>
 #include <fuerte/requests.h>
@@ -115,7 +116,7 @@ std::shared_ptr<fuerte::Connection> V8ClientConnection::createConnection() {
     VPackSlice body;
     if (res->contentType() == fuerte::ContentType::VPack) {
       body = res->slice();
-    } else if (res->contentType() == fuerte::ContentType::Json){
+    } else if (res->contentType() == fuerte::ContentType::Json) {
       parsedBody =
           VPackParser::fromJson(reinterpret_cast<char const*>(res->payload().data()),
                                 res->payload().size());
@@ -1524,6 +1525,34 @@ again:
   req->header.database = _databaseName;
   req->header.parseArangoPath(location.toString());
   for (auto& pair : headerFields) {
+    if (boost::iequals(StaticStrings::ContentTypeHeader, pair.first)) {
+      if (pair.second == StaticStrings::MimeTypeVPack) {
+        req->header.contentType(fuerte::ContentType::VPack);
+      } else if ((pair.second.length() >= StaticStrings::MimeTypeJsonNoEncoding.length()) &&
+               (memcmp(pair.second.c_str(),
+                       StaticStrings::MimeTypeJsonNoEncoding.c_str(),
+                       StaticStrings::MimeTypeJsonNoEncoding.length()) == 0)) {
+        // ignore encoding etc.
+        req->header.contentType(fuerte::ContentType::Json);
+      } else {
+        req->header.contentType(fuerte::ContentType::Custom);
+      }
+      
+    } else if (boost::iequals(StaticStrings::Accept, pair.first)) {
+      if (pair.second == StaticStrings::MimeTypeVPack) {
+        req->header.acceptType(fuerte::ContentType::VPack);
+      } else if ((pair.second.length() >= StaticStrings::MimeTypeJsonNoEncoding.length()) &&
+               (memcmp(pair.second.c_str(),
+                       StaticStrings::MimeTypeJsonNoEncoding.c_str(),
+                       StaticStrings::MimeTypeJsonNoEncoding.length()) == 0)) {
+        // ignore encoding etc.
+        req->header.acceptType(fuerte::ContentType::Json);
+      } else {
+        req->header.acceptType(fuerte::ContentType::Custom);
+      }
+
+      req->header.acceptType(fuerte::ContentType::Custom);
+    }
     req->header.addMeta(pair.first, pair.second);
   }
   if (isFile) {
@@ -1623,6 +1652,11 @@ again:
   req->header.database = _databaseName;
   req->header.parseArangoPath(location.toString());
   for (auto& pair : headerFields) {
+    if (boost::iequals(StaticStrings::ContentTypeHeader, pair.first)) {
+      req->header.contentType(fuerte::ContentType::Custom);
+    } else if (boost::iequals(StaticStrings::Accept, pair.first)) {
+      req->header.acceptType(fuerte::ContentType::Custom);
+    }
     req->header.addMeta(pair.first, pair.second);
   }
   if (body->IsString() || body->IsStringObject()) {  // assume JSON
@@ -1815,8 +1849,15 @@ v8::Local<v8::Value> V8ClientConnection::handleResult(v8::Isolate* isolate,
       }
       return ret;
     }
-    // return body as string
-    return TRI_V8_PAIR_STRING(isolate, str, sb.size());
+    if (res->isContentTypeHtml() || res->isContentTypeText()) {
+      // return body as string
+      return TRI_V8_PAIR_STRING(isolate, str, sb.size());
+    }
+
+    V8Buffer* buffer;
+    buffer = V8Buffer::New(isolate, reinterpret_cast<char const*>(sb.data()), sb.size());
+    auto bufObj = v8::Local<v8::Object>::New(isolate, buffer->_handle);
+    return bufObj;
   }
 
   // no body
