@@ -1343,15 +1343,15 @@ void HeartbeatThread::updateAgentPool(VPackSlice const& agentPool) {
       }
       AgencyCommManager::MANAGER->updateEndpoints(values);
     } catch (basics::Exception const& e) {
-      LOG_TOPIC("1cec6", WARN, Logger::HEARTBEAT)
+      LOG_TOPIC(WARN, Logger::HEARTBEAT)
         << "Error updating agency pool: " << e.message();
     } catch (std::exception const& e) {
-      LOG_TOPIC("889d4", WARN, Logger::HEARTBEAT)
+      LOG_TOPIC(WARN, Logger::HEARTBEAT)
         << "Error updating agency pool: " << e.what();
     } catch (...) {
     }
   } else {
-    LOG_TOPIC("92522", ERR, Logger::AGENCYCOMM)
+    LOG_TOPIC(ERR, Logger::AGENCYCOMM)
       << "Cannot find an agency persisted in RAFT 8|";
   }
 }
