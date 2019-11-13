@@ -151,6 +151,9 @@ def _FixPath(path):
   Returns:
     The path with all slashes made into backslashes.
   """
+  if (path.endswith('.tq')):
+    return path
+
   if fixpath_prefix and path and not os.path.isabs(path) and not path[0] == '$':
     path = os.path.join(fixpath_prefix, path)
   path = path.replace('/', '\\')
