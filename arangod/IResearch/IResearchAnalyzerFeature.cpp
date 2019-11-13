@@ -640,31 +640,6 @@ bool equalAnalyzer(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get the collection containing analyzer definitions (if found)
-///        taken from vocabse for single-server and from ClusterInfo on cluster
-/// @note cannot use arangodb::methods::Collections::lookup(...) since it will
-///       try to resolve via vocbase for the case of db-server
-/// @note cannot use arangodb::CollectionNameResolver::getCollection(...) since
-///       it will try to resolve via vocbase for the case of db-server
-////////////////////////////////////////////////////////////////////////////////
-std::shared_ptr<arangodb::LogicalCollection> getAnalyzerCollection(
-    TRI_vocbase_t const& vocbase) {
-  if (arangodb::ServerState::instance()->isSingleServer()) {
-    return vocbase.lookupCollection(arangodb::StaticStrings::AnalyzersCollection);
-  }
-
-  auto& server = vocbase.server();
-
-  if (server.hasFeature<arangodb::ClusterFeature>()) {
-    return server.getFeature<arangodb::ClusterFeature>()
-                 .clusterInfo()
-                 .getCollectionNT(vocbase.name(), arangodb::StaticStrings::AnalyzersCollection);
-  }
-
-  return nullptr;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief read analyzers from vocbase
 /// @return visitation completed fully
 ////////////////////////////////////////////////////////////////////////////////
@@ -743,10 +718,6 @@ arangodb::Result visitAnalyzers(
 
       auto& response = f.get();
 
-      if (response.error != arangodb::fuerte::Error::NoError) {
-        return { arangodb::network::fuerteToArangoErrorCode(response) };
-      }
-
       if (response.error == arangodb::fuerte::Error::Timeout) {
         // timeout, try another coordinator
         res = arangodb::Result{ arangodb::network::fuerteToArangoErrorCode(response) };
@@ -754,7 +725,11 @@ arangodb::Result visitAnalyzers(
       }
 
       if (response.response->statusCode() == arangodb::fuerte::StatusNotFound) {
-        continue; // treat missing collection as if there are no analyzers
+        return { TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND };
+      }
+
+      if (response.error != arangodb::fuerte::Error::NoError) {
+        return { arangodb::network::fuerteToArangoErrorCode(response) };
       }
 
       std::vector<VPackSlice> slices = response.response->slices();
@@ -1753,15 +1728,6 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
       };
     }
 
-    if (!getAnalyzerCollection(*vocbase)) {
-      if (itr != _lastLoad.end()) {
-        cleanupAnalyzers(database); // cleanup any analyzers for 'database'
-      }
-      _lastLoad[databaseKey] = currentTimestamp; // update timestamp
-
-      return {}; // no collection means nothing to load
-    }
-
     Analyzers analyzers;
     auto visitor = [this, &analyzers, &vocbase](velocypack::Slice const& slice)-> Result {
       if (!slice.isObject()) {
@@ -1895,9 +1861,20 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
 
       return {};
     };
-    auto res = visitAnalyzers(*vocbase, visitor);
+
+    auto const res = visitAnalyzers(*vocbase, visitor);
 
     if (!res.ok()) {
+      if (res.errorNumber() == TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
+        // collection not found, cleanup any analyzers for 'database'
+        if (itr != _lastLoad.end()) {
+          cleanupAnalyzers(database);
+        }
+        _lastLoad[databaseKey] = currentTimestamp; // update timestamp
+
+        return {}; // no collection means nothing to load
+      }
+
       return res;
     }
 

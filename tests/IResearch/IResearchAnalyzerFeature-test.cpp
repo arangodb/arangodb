@@ -53,6 +53,7 @@
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/VelocyPackHelper.h"
+#include "Network/NetworkFeature.h"
 #include "Indexes/IndexFactory.h"
 #include "Random/RandomFeature.h"
 #include "RestServer/AqlFeature.h"
@@ -1951,8 +1952,10 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
 
     // create a new instance of an ApplicationServer and fill it with the required features
     // cannot use the existing server since its features already have some state
+
     arangodb::application_features::ApplicationServer newServer(nullptr, nullptr);
-    newServer.addFeature<arangodb::ClusterFeature>();  // required to create ClusterInfo instance
+    auto& cluster = newServer.addFeature<arangodb::ClusterFeature>();  // required to create ClusterInfo instance
+    auto& networkFeature = newServer.addFeature<arangodb::NetworkFeature>();  // required to create ClusterInfo instance
     auto& dbFeature = newServer.addFeature<arangodb::DatabaseFeature>();  // required for IResearchAnalyzerFeature::emplace>(std::make_unique<arangodb::DatabaseFeature(newServer));  // required for IResearchAnalyzerFeature::emplace>(...)
     newServer.addFeature<arangodb::QueryRegistryFeature>();  // required for constructing TRI_vocbase_t
     newServer.addFeature<arangodb::ShardingFeature>();  // required for Collections::create>(std::make_unique<arangodb::ShardingFeature(newServer)); // required for Collections::create>(...)
@@ -1962,7 +1965,13 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
     auto& feature =
         newServer.addFeature<arangodb::iresearch::IResearchAnalyzerFeature>();  // required for running upgrade task
 
-    auto cleanup = arangodb::scopeGuard([&dbFeature]() { dbFeature.unprepare(); });
+    cluster.prepare();
+    networkFeature.prepare();
+
+    auto cleanup = arangodb::scopeGuard([&]() {
+      dbFeature.unprepare();
+      networkFeature.unprepare();
+    });
 
     // create system vocbase (before feature start)
     {
@@ -2012,7 +2021,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
     });
 
     arangodb::application_features::ApplicationServer newServer(nullptr, nullptr);
-    newServer.addFeature<arangodb::ClusterFeature>();  // required to create ClusterInfo instance
+    auto& auth = newServer.addFeature<arangodb::AuthenticationFeature>();
+    auto& cluster = newServer.addFeature<arangodb::ClusterFeature>();  // required to create ClusterInfo instance
+    auto& networkFeature = newServer.addFeature<arangodb::NetworkFeature>();  // required to create ClusterInfo instance
     auto& dbFeature = newServer.addFeature<arangodb::DatabaseFeature>();  // required for IResearchAnalyzerFeature::emplace(...)
     newServer.addFeature<arangodb::QueryRegistryFeature>();  // required for constructing TRI_vocbase_t
     newServer.addFeature<arangodb::ShardingFeature>();  // required for Collections::create>(std::make_unique<arangodb::ShardingFeature(server)); // required for Collections::create>(...)
@@ -2022,7 +2033,16 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
     auto& feature =
         newServer.addFeature<arangodb::iresearch::IResearchAnalyzerFeature>();  // required for running upgrade task
 
-    auto cleanup = arangodb::scopeGuard([&dbFeature]() { dbFeature.unprepare(); });
+    auth.prepare();
+    cluster.prepare();
+    networkFeature.prepare();
+
+    auto cleanup = arangodb::scopeGuard([&]() {
+      dbFeature.unprepare();
+      networkFeature.unprepare();
+      cluster.unprepare();
+      auth.unprepare();
+    });
 
     // create system vocbase (before feature start)
     {
