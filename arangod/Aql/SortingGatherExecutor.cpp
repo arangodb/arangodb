@@ -347,29 +347,32 @@ ExecutionState SortingGatherExecutor::init(size_t const atMost) {
   assertConstrainedDoesntOverfetch(atMost);
   initNumDepsIfNecessary();
 
-//  size_t numWaiting = 0;
-//  for (size_t i = 0; i < _numberDependencies; i++) {
-  while (_dependencyToFetch < _numberDependencies) {
-    std::tie(_inputRows[_dependencyToFetch].state,
-             _inputRows[_dependencyToFetch].row) =
-        _fetcher.fetchRowForDependency(_dependencyToFetch, atMost);
-    if (_inputRows[_dependencyToFetch].state == ExecutionState::WAITING) {
-//      if (!_fetchParallel) {
-//        _dependencyToFetch = i;
+  size_t numWaiting = 0;
+  for (size_t i = 0; i < _numberDependencies; i++) {
+    if (_inputRows[i].state == ExecutionState::DONE ||
+        _inputRows[i].row) {
+      continue;
+    }
+    
+    std::tie(_inputRows[i].state,
+             _inputRows[i].row) = _fetcher.fetchRowForDependency(i, atMost);
+    if (_inputRows[i].state == ExecutionState::WAITING) {
+      if (!_fetchParallel) {
         return ExecutionState::WAITING;
       }
-//      numWaiting++; }/* else*/
-    if (!_inputRows[_dependencyToFetch].row) {
-      TRI_ASSERT(_inputRows[_dependencyToFetch].state == ExecutionState::DONE);
-      adjustNrDone(_dependencyToFetch);
+      numWaiting++;
+    } else if (!_inputRows[i].row) {
+      TRI_ASSERT(_inputRows[i].state == ExecutionState::DONE);
+      adjustNrDone(i);
     }
-    ++_dependencyToFetch;
   }
 
-//  if (numWaiting > 0) {
-//    return ExecutionState::WAITING;
-//  }
+  if (numWaiting > 0) {
+    return ExecutionState::WAITING;
+  }
   
+  TRI_ASSERT(_numberDependencies > 0);
+  _dependencyToFetch = _numberDependencies - 1;
   _initialized = true;
   if (_nrDone >= _numberDependencies) {
     return ExecutionState::DONE;
