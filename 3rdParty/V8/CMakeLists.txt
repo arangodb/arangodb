@@ -59,9 +59,7 @@ list(APPEND V8_GYP_ARGS
   -Dv8_target_arch=${V8_PROC_ARCH}
   -Dv8_host_arch=${V8_PROC_ARCH}
   -Dbyteorder=${ENDIANESS}
-  # -Dicu_use_data_file_flag=1 not supportet anymore..
   -Dv8_enable_i18n_support=1
-#  -DV8_ROOT=${V8_DIR}
   -DV8_SRC_ROOT=${V8_DIR}/gypfiles/
 )
 
@@ -123,7 +121,7 @@ set(V8_VERSION
 
 if (WIN32)
   MESSAGE(STATUS "Building V8 for Windows with MSBUILD")
-  set(GYP_MAIN gypfiles/gyp_v8)
+  set(GYP_MAIN ${V8_DIR}/tools/gyp/gyp_main.py)
 
   if (USE_CLCACHE_MODE)
     list(APPEND V8_GYP_ARGS "-Duse_clcache_mode=true")
@@ -160,27 +158,21 @@ if (WIN32)
   list(APPEND V8_GYP_ARGS -Dtarget_arch=${V8_PROC_ARCH} -Dhost_arch=${V8_PROC_ARCH})
   list(APPEND V8_GYP_ARGS gypfiles/all.gyp)
 
-  list(APPEND V8_TARGET_ARCHS "Debug" "Release")
+  list(APPEND V8_TARGET_ARCHS #"Debug"
+    "Release")
   set(GYP_GENERATORS "msvs")
   set(DEPOT_TOOLS_WIN_TOOLCHAIN "0")
   set(GYP_MSVS_OVERRIDE_PATH "${CMAKE_CXX_COMPILER}")
 
   list(APPEND V8_GYP_ARGS
+    -DV8_ROOT=../
+    -Igypfiles/standalone.gypi
     -Dcomponent=static_library
     -Dlibrary=static_library
     -Dgenerator_output=${V8_TARGET_DIR}
     -Ggenerator_output=${V8_TARGET_DIR}
-    #--depth=2
-    #-Dv8_use_external_startup_data=1
-    #-Dicu_gyp_path=../third_party/icu/icu.gyp
-    #-Dv8_optimized_debug=0
-    #-Dos_posix=0
-    #-Dclang=0
-    #-Dwant_separate_host_toolset=0
+    --depth=.
     -Dwerror=
-#    -Dclang=0
-#    -Dhost_clang=
-#    -Dv8_embed_script=
     -Dembed_script=
     -Dwarmup_script=
     -Dv8_enable_embedded_builtins=0
@@ -193,21 +185,18 @@ if (WIN32)
 
   add_custom_target(v8_build)
   set(V8_LIBS
-        "v8_libplatform;v8_libsampler;v8_libbase;v8_init;v8_initializers;v8_nosnapshot"
+    "v8_compiler;v8_base_without_compiler;v8_compiler;v8_base_without_compiler;torque_base;v8_libplatform;v8_libsampler;v8_libbase;v8_init;v8_initializers;v8_nosnapshot"
     CACHE INTERNAL
     "${PROJECT_NAME}: Libraries"
   )
 
   foreach (MS_TARGET_CONF ${V8_TARGET_ARCHS})
     string(TOLOWER ${MS_TARGET_CONF} MS_TARGET_CONF_LOWER)
-
-    message(" xxxx env GYP_MSVS_VERSION=${GYP_MSVS_VERSION} GYP_GENERATORS=${GYP_GENERATORS} GYP_MSVS_OVERRIDE_PATH=${GYP_MSVS_OVERRIDE_PATH} DEPOT_TOOLS_WIN_TOOLCHAIN=${DEPOT_TOOLS_WIN_TOOLCHAIN} ${PYTHON_EXECUTABLE} ${GYP_MAIN} ${V8_GYP_ARGS} -Dmode=${MS_TARGET_CONF_LOWER}")
-
     ExternalProject_Add(v8_build_${MS_TARGET_CONF_LOWER}
       BUILD_IN_SOURCE
         TRUE
       WORKING_DIRECTORY
-        ${V8_DIR}
+        ${V8_DIR}/gypfiles
       SOURCE_DIR
         "${V8_DIR}"
       CONFIGURE_COMMAND
@@ -220,40 +209,24 @@ if (WIN32)
 
     add_dependencies(v8_build v8_build_${MS_TARGET_CONF_LOWER})
 
-    # and now ICU...
+    list(APPEND V8_TARGETS
+      torque
+      run_torque
+      v8
+      v8_libsampler
+      v8_initializers
+      v8_libplatform)
 
-    ExternalProject_Add_Step(v8_build_${MS_TARGET_CONF_LOWER} icu_build_icui18n
-      WORKING_DIRECTORY
-        ${V8_TARGET_DIR}/third_party/icu
-      COMMAND
-        msbuild icu.sln /t:icui18n /p:Configuration=${MS_TARGET_CONF} /p:Platform=${MS_TARGET_PLATFORM}
-      DEPENDEES
-        configure
-      DEPENDERS
-        build
-    )
-
-    ExternalProject_Add_Step(v8_build_${MS_TARGET_CONF_LOWER} icu_build_icuuc
-      WORKING_DIRECTORY
-        ${V8_TARGET_DIR}/third_party/icu
-      COMMAND
-        msbuild icu.sln /t:icuuc /p:Configuration=${MS_TARGET_CONF} /p:Platform=${MS_TARGET_PLATFORM}
-      DEPENDEES
-        configure
-      DEPENDERS
-        build
-    )
-
-  foreach(V8_LIB_TARGET ${V8_LIBS})
-    # cmake eats semicolons or quotes them or, or, or so we can't use /t:a;b;c
-    ExternalProject_Add_Step(v8_build_${MS_TARGET_CONF_LOWER} v8_build_${V8_LIB_TARGET}
-      WORKING_DIRECTORY
+    foreach(V8_ONE_TARGET ${V8_TARGETS})
+      # cmake eats semicolons or quotes them or, or, or so we can't use /t:a;b;c
+      ExternalProject_Add_Step(v8_build_${MS_TARGET_CONF_LOWER} v8_build_${V8_ONE_TARGET}
+        WORKING_DIRECTORY
         ${V8_TARGET_DIR}/gypfiles
-      COMMAND
-        msbuild all.sln /t:${V8_LIB_TARGET} /p:Configuration=${MS_TARGET_CONF} /p:Platform=${MS_TARGET_PLATFORM}
-      DEPENDEES
+        COMMAND
+        msbuild ${V8_ONE_TARGET}.vcxproj /p:Configuration=${MS_TARGET_CONF} /p:Platform=${MS_TARGET_PLATFORM}
+        DEPENDEES
         configure
-      DEPENDERS
+        DEPENDERS
         build
         )
     endforeach()
@@ -282,35 +255,32 @@ if (WIN32)
   message("V8_LIBRARY_DEBUG ${V8_LIBRARY_DEBUG} CMAKE_CURRENT_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}")
 
   set(V8_LIBS
-    debug "${V8_LIBRARY_DEBUG}/lib/v8_base_0.lib"
-    optimized "${V8_LIBRARY_RELEASE}/lib/v8_base_0.lib"
+    debug "${V8_LIBRARY_DEBUG}/lib/v8_libbase.lib"
+    optimized "${V8_LIBRARY_RELEASE}/lib/v8_libbase.lib"
 
-    debug "${V8_LIBRARY_DEBUG}/lib/v8_base_1.lib"
-    optimized "${V8_LIBRARY_RELEASE}/lib/v8_base_1.lib"
+    debug "${V8_LIBRARY_DEBUG}/lib/torque_base.lib"
+    optimized "${V8_LIBRARY_RELEASE}/lib/torque_base.lib"
 
-    debug "${V8_LIBRARY_DEBUG}/lib/v8_base_2.lib"
-    optimized "${V8_LIBRARY_RELEASE}/lib/v8_base_2.lib"
+    debug "${V8_LIBRARY_DEBUG}/lib/v8_base_without_compiler.lib"
+    optimized "${V8_LIBRARY_RELEASE}/lib/v8_base_without_compiler.lib"
 
-    debug "${V8_LIBRARY_DEBUG}/lib/v8_base_3.lib"
-    optimized "${V8_LIBRARY_RELEASE}/lib/v8_base_3.lib"
-
-    debug "${V8_LIBRARY_DEBUG}/lib/v8_libplatform.lib"
-    optimized "${V8_LIBRARY_RELEASE}/lib/v8_libplatform.lib"
+    debug "${V8_LIBRARY_DEBUG}/lib/v8_compiler.lib"
+    optimized "${V8_LIBRARY_RELEASE}/lib/v8_compiler.lib"
 
     debug "${V8_LIBRARY_DEBUG}/lib/v8_nosnapshot.lib"
     optimized "${V8_LIBRARY_RELEASE}/lib/v8_nosnapshot.lib"
 
+    debug "${V8_LIBRARY_DEBUG}/lib/v8_init.lib"
+    optimized "${V8_LIBRARY_RELEASE}/lib/v8_init.lib"
+
+    debug "${V8_LIBRARY_DEBUG}/lib/v8_libplatform.lib"
+    optimized "${V8_LIBRARY_RELEASE}/lib/v8_libplatform.lib"
+
     debug "${V8_LIBRARY_DEBUG}/lib/v8_libsampler.lib"
     optimized "${V8_LIBRARY_RELEASE}/lib/v8_libsampler.lib"
 
-    debug "${V8_LIBRARY_DEBUG}/lib/v8_libbase.lib"
-    optimized "${V8_LIBRARY_RELEASE}/lib/v8_libbase.lib"
-
     debug "${V8_LIBRARY_DEBUG}/lib/v8_initializers.lib"
     optimized "${V8_LIBRARY_RELEASE}/lib/v8_initializers.lib"
-
-    debug "${V8_LIBRARY_DEBUG}/lib/v8_init.lib"
-    optimized "${V8_LIBRARY_RELEASE}/lib/v8_init.lib"
 
     debug "DbgHelp.lib"
     optimized "DbgHelp.lib"
