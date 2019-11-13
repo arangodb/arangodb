@@ -165,20 +165,20 @@ TEST_F(IResearchLinkTest, test_defaults) {
 
     bool created;
     auto link = logicalCollection->createIndex(linkJson->slice(), created);
-    ASSERT_TRUE((false == !link && created));
-    EXPECT_TRUE((true == link->canBeDropped()));
-    EXPECT_TRUE((logicalCollection.get() == &(link->collection())));
-    EXPECT_TRUE((link->fieldNames().empty()));
-    EXPECT_TRUE((link->fields().empty()));
-    EXPECT_TRUE((false == link->hasExpansion()));
-    EXPECT_TRUE((false == link->hasSelectivityEstimate()));
-    EXPECT_TRUE((false == link->implicitlyUnique()));
-    EXPECT_TRUE((false == link->isSorted()));
-    EXPECT_TRUE((0 < link->memory()));
-    EXPECT_TRUE((true == link->sparse()));
-    EXPECT_TRUE((arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK == link->type()));
-    EXPECT_TRUE((arangodb::iresearch::DATA_SOURCE_TYPE.name() == link->typeName()));
-    EXPECT_TRUE((false == link->unique()));
+    ASSERT_TRUE(false == !link && created);
+    EXPECT_TRUE(true == link->canBeDropped());
+    EXPECT_TRUE(logicalCollection.get() == &(link->collection()));
+    EXPECT_TRUE(link->fieldNames().empty());
+    EXPECT_TRUE(link->fields().empty());
+    EXPECT_TRUE(false == link->hasExpansion());
+    EXPECT_TRUE(false == link->hasSelectivityEstimate());
+    EXPECT_TRUE(false == link->implicitlyUnique());
+    EXPECT_TRUE(false == link->isSorted());
+    EXPECT_EQ(0, link->memory());
+    EXPECT_TRUE(true == link->sparse());
+    EXPECT_TRUE(arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK == link->type());
+    EXPECT_TRUE(arangodb::iresearch::DATA_SOURCE_TYPE.name() == link->typeName());
+    EXPECT_TRUE(false == link->unique());
 
     arangodb::iresearch::IResearchLinkMeta actualMeta;
     arangodb::iresearch::IResearchLinkMeta expectedMeta;
@@ -186,15 +186,33 @@ TEST_F(IResearchLinkTest, test_defaults) {
         arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
     std::string error;
 
-    EXPECT_TRUE((actualMeta.init(builder->slice(), false, error) && expectedMeta == actualMeta));
+    EXPECT_TRUE(actualMeta.init(builder->slice(), false, error));
+    EXPECT_TRUE(expectedMeta == actualMeta);
     auto slice = builder->slice();
-    EXPECT_TRUE((slice.hasKey("view") && slice.get("view").isString() &&
-                 logicalView->guid() == slice.get("view").copyString() &&
-                 slice.hasKey("figures") && slice.get("figures").isObject() &&
-                 slice.get("figures").hasKey("memory") &&
-                 slice.get("figures").get("memory").isNumber() &&
-                 0 < slice.get("figures").get("memory").getUInt()));
-
+    EXPECT_TRUE(slice.hasKey("view"));
+    EXPECT_TRUE(slice.get("view").isString());
+    EXPECT_TRUE(logicalView->guid() == slice.get("view").copyString());
+    EXPECT_TRUE(slice.hasKey("figures"));
+    auto figuresSlice = slice.get("figures");
+    EXPECT_TRUE(figuresSlice.isObject());
+    EXPECT_TRUE(figuresSlice.hasKey("indexSize"));
+    EXPECT_TRUE(figuresSlice.get("indexSize").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("indexSize").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numFiles"));
+    EXPECT_TRUE(figuresSlice.get("numFiles").isNumber());
+    EXPECT_EQ(1, figuresSlice.get("numFiles").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numDocs"));
+    EXPECT_TRUE(figuresSlice.get("numDocs").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numDocs").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numLiveDocs"));
+    EXPECT_TRUE(figuresSlice.get("numLiveDocs").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numLiveDocs").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numBufferedDocs"));
+    EXPECT_TRUE(figuresSlice.get("numBufferedDocs").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numBufferedDocs").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numSegments"));
+    EXPECT_TRUE(figuresSlice.get("numSegments").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numSegments").getNumber<size_t>());
     EXPECT_TRUE((logicalCollection->dropIndex(link->id()) &&
                  logicalCollection->getIndexes().empty()));
   }
@@ -218,20 +236,20 @@ TEST_F(IResearchLinkTest, test_defaults) {
 
     bool created;
     auto link = logicalCollection->createIndex(linkJson->slice(), created);
-    ASSERT_TRUE((false == !link && created));
-    EXPECT_TRUE((true == link->canBeDropped()));
-    EXPECT_TRUE((logicalCollection.get() == &(link->collection())));
-    EXPECT_TRUE((link->fieldNames().empty()));
-    EXPECT_TRUE((link->fields().empty()));
-    EXPECT_TRUE((false == link->hasExpansion()));
-    EXPECT_TRUE((false == link->hasSelectivityEstimate()));
-    EXPECT_TRUE((false == link->implicitlyUnique()));
-    EXPECT_TRUE((false == link->isSorted()));
-    EXPECT_TRUE((0 < link->memory()));
-    EXPECT_TRUE((true == link->sparse()));
-    EXPECT_TRUE((arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK == link->type()));
-    EXPECT_TRUE((arangodb::iresearch::DATA_SOURCE_TYPE.name() == link->typeName()));
-    EXPECT_TRUE((false == link->unique()));
+    ASSERT_TRUE(false == !link && created);
+    EXPECT_TRUE(true == link->canBeDropped());
+    EXPECT_TRUE(logicalCollection.get() == &(link->collection()));
+    EXPECT_TRUE(link->fieldNames().empty());
+    EXPECT_TRUE(link->fields().empty());
+    EXPECT_TRUE(false == link->hasExpansion());
+    EXPECT_TRUE(false == link->hasSelectivityEstimate());
+    EXPECT_TRUE(false == link->implicitlyUnique());
+    EXPECT_TRUE(false == link->isSorted());
+    EXPECT_EQ(0, link->memory());
+    EXPECT_TRUE(true == link->sparse());
+    EXPECT_TRUE(arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK == link->type());
+    EXPECT_TRUE(arangodb::iresearch::DATA_SOURCE_TYPE.name() == link->typeName());
+    EXPECT_TRUE(false == link->unique());
 
     {
       arangodb::iresearch::IResearchLinkMeta actualMeta;
@@ -242,12 +260,29 @@ TEST_F(IResearchLinkTest, test_defaults) {
 
       EXPECT_TRUE((actualMeta.init(builder->slice(), false, error) && expectedMeta == actualMeta));
       auto slice = builder->slice();
-      EXPECT_TRUE((slice.hasKey("view") && slice.get("view").isString() &&
-                   logicalView->guid() == slice.get("view").copyString() &&
-                   slice.hasKey("figures") && slice.get("figures").isObject() &&
-                   slice.get("figures").hasKey("memory") &&
-                   slice.get("figures").get("memory").isNumber() &&
-                   0 < slice.get("figures").get("memory").getUInt()));
+      EXPECT_TRUE(slice.hasKey("view") && slice.get("view").isString() &&
+                   logicalView->guid() == slice.get("view").copyString());
+      EXPECT_TRUE(slice.hasKey("figures"));
+      auto figuresSlice = slice.get("figures");
+      EXPECT_TRUE(figuresSlice.isObject());
+      EXPECT_TRUE(figuresSlice.hasKey("indexSize"));
+      EXPECT_TRUE(figuresSlice.get("indexSize").isNumber());
+      EXPECT_EQ(0, figuresSlice.get("indexSize").getNumber<size_t>());
+      EXPECT_TRUE(figuresSlice.hasKey("numFiles"));
+      EXPECT_TRUE(figuresSlice.get("numFiles").isNumber());
+      EXPECT_EQ(1, figuresSlice.get("numFiles").getNumber<size_t>());
+      EXPECT_TRUE(figuresSlice.hasKey("numDocs"));
+      EXPECT_TRUE(figuresSlice.get("numDocs").isNumber());
+      EXPECT_EQ(0, figuresSlice.get("numDocs").getNumber<size_t>());
+      EXPECT_TRUE(figuresSlice.hasKey("numLiveDocs"));
+      EXPECT_TRUE(figuresSlice.get("numLiveDocs").isNumber());
+      EXPECT_EQ(0, figuresSlice.get("numLiveDocs").getNumber<size_t>());
+      EXPECT_TRUE(figuresSlice.hasKey("numBufferedDocs"));
+      EXPECT_TRUE(figuresSlice.get("numBufferedDocs").isNumber());
+      EXPECT_EQ(0, figuresSlice.get("numBufferedDocs").getNumber<size_t>());
+      EXPECT_TRUE(figuresSlice.hasKey("numSegments"));
+      EXPECT_TRUE(figuresSlice.get("numSegments").isNumber());
+      EXPECT_EQ(0, figuresSlice.get("numSegments").getNumber<size_t>());
     }
 
     // ensure jSON is still valid after unload()
@@ -256,12 +291,29 @@ TEST_F(IResearchLinkTest, test_defaults) {
       auto builder = link->toVelocyPack(
           arangodb::Index::makeFlags(arangodb::Index::Serialize::Figures));
       auto slice = builder->slice();
-      EXPECT_TRUE((slice.hasKey("view") && slice.get("view").isString() &&
-                   logicalView->guid() == slice.get("view").copyString() &&
-                   slice.hasKey("figures") && slice.get("figures").isObject() &&
-                   slice.get("figures").hasKey("memory") &&
-                   slice.get("figures").get("memory").isNumber() &&
-                   0 < slice.get("figures").get("memory").getUInt()));
+      EXPECT_TRUE(slice.hasKey("view") && slice.get("view").isString() &&
+                   logicalView->guid() == slice.get("view").copyString());
+      EXPECT_TRUE(slice.hasKey("figures"));
+      auto figuresSlice = slice.get("figures");
+      EXPECT_TRUE(figuresSlice.isObject());
+      EXPECT_TRUE(figuresSlice.hasKey("indexSize"));
+      EXPECT_TRUE(figuresSlice.get("indexSize").isNumber());
+      EXPECT_EQ(0, figuresSlice.get("indexSize").getNumber<size_t>());
+      EXPECT_TRUE(figuresSlice.hasKey("numFiles"));
+      EXPECT_TRUE(figuresSlice.get("numFiles").isNumber());
+      EXPECT_EQ(0, figuresSlice.get("numFiles").getNumber<size_t>());
+      EXPECT_TRUE(figuresSlice.hasKey("numDocs"));
+      EXPECT_TRUE(figuresSlice.get("numDocs").isNumber());
+      EXPECT_EQ(0, figuresSlice.get("numDocs").getNumber<size_t>());
+      EXPECT_TRUE(figuresSlice.hasKey("numLiveDocs"));
+      EXPECT_TRUE(figuresSlice.get("numLiveDocs").isNumber());
+      EXPECT_EQ(0, figuresSlice.get("numLiveDocs").getNumber<size_t>());
+      EXPECT_TRUE(figuresSlice.hasKey("numBufferedDocs"));
+      EXPECT_TRUE(figuresSlice.get("numBufferedDocs").isNumber());
+      EXPECT_EQ(0, figuresSlice.get("numBufferedDocs").getNumber<size_t>());
+      EXPECT_TRUE(figuresSlice.hasKey("numSegments"));
+      EXPECT_TRUE(figuresSlice.get("numSegments").isNumber());
+      EXPECT_EQ(0, figuresSlice.get("numSegments").getNumber<size_t>());
     }
   }
 }
