@@ -45,11 +45,12 @@ def UnixifyPath(path):
 # elsewhere on the system. Also convert to Unix style path on Cygwin systems,
 # else the 'gyp' library will not be found
 path = UnixifyPath(sys.argv[0])
-sys.path.insert(0, os.path.join(os.path.dirname(path), 'pylib'))
+p = os.path.dirname(path).replace('/cygdrive/c/', 'c:/')
+sys.path.insert(0, p)
 sys.path.append(os.path.join(os.path.dirname(sys.argv[0]), '..'))
 sys.path.append(os.path.join(os.path.dirname(sys.argv[0]), '../../gypfiles'))
 sys.path.append(os.path.join(os.path.dirname(sys.argv[0]), '../../third_party/binutils'))
-print(sys.path)
+#print(sys.path)
 sys.argv.append("-DPYTHON_EXECUTABLE=" + sys.executable)
 os.environ['PYTHON_EXECUTABLE'] = sys.executable
 import gyp
