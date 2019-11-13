@@ -25,6 +25,7 @@
 #include "Aql/Condition.h"
 #include "Aql/Expression.h"
 #include "Aql/IndexNode.h"
+#include "Aql/LateMaterializedOptimizerRulesCommon.h"
 #include "Aql/Optimizer.h"
 #include "IndexNodeOptimizerRules.h"
 #include "Basics/AttributeNameParser.h"
@@ -33,20 +34,7 @@
 using namespace arangodb::aql;
 
 namespace {
-  struct NodeWithAttrs {
-    struct AttributeAndField {
-      std::vector<arangodb::basics::AttributeName> attr;
-      AstNode* astNode;
-      size_t astNodeChildNum;
-      size_t indexFieldNum;
-      std::vector<arangodb::basics::AttributeName> const* indexField;
-    };
-
-    std::vector<AttributeAndField> attrs;
-    CalculationNode* node;
-  };
-
-  bool attributesMatch(TRI_idx_iid_t& commonIndexId, IndexNode const* indexNode, NodeWithAttrs& node) {
+  bool attributesMatch(TRI_idx_iid_t& commonIndexId, IndexNode const* indexNode, latematerialized::NodeWithAttrs& node) {
     // check all node attributes to be in index
     for (auto& nodeAttr : node.attrs) {
       for (auto& index : indexNode->getIndexes()) {
@@ -65,115 +53,22 @@ namespace {
             if (commonIndexId == 0) {
               commonIndexId = indexId;
             }
-            nodeAttr.indexFieldNum = indexFieldNum;
-            nodeAttr.indexField = &field;
+            nodeAttr.fieldNum = indexFieldNum;
+            nodeAttr.field = &field;
             break;
           }
           ++indexFieldNum;
         }
-        if (commonIndexId != 0 || nodeAttr.indexField != nullptr) {
+        if (commonIndexId != 0 || nodeAttr.field != nullptr) {
           break;
         }
       }
       // not found
-      if (nodeAttr.indexField == nullptr) {
+      if (nodeAttr.field == nullptr) {
         return false;
       }
     }
     return true;
-  }
-
-  // traverse the AST, using previsitor
-  void traverseReadOnly(AstNode* node, AstNode* parentNode, size_t childNumber,
-                        std::function<bool(AstNode const*, AstNode*, size_t)> const& preVisitor) {
-    if (node == nullptr) {
-      return;
-    }
-
-    if (!preVisitor(node, parentNode, childNumber)) {
-      return;
-    }
-
-    size_t const n = node->numMembers();
-
-    for (size_t i = 0; i < n; ++i) {
-      auto member = node->getMemberUnchecked(i);
-
-      if (member != nullptr) {
-        traverseReadOnly(member, node, i, preVisitor);
-      }
-    }
-  }
-
-  // traversal state
-  struct TraversalState {
-    Variable const* variable;
-    NodeWithAttrs& nodeAttrs;
-    bool optimize;
-    bool wasAccess;
-  };
-
-  // determines attributes referenced in an expression for the specified out variable
-  bool getReferencedAttributes(AstNode* node,
-                               Variable const* variable,
-                               NodeWithAttrs& nodeAttrs) {
-    TraversalState state{variable, nodeAttrs, true, false};
-
-    auto preVisitor = [&state](AstNode const* node,
-        AstNode* parentNode, size_t childNumber) {
-      if (node == nullptr) {
-        return false;
-      }
-
-      switch (node->type) {
-        case NODE_TYPE_ATTRIBUTE_ACCESS:
-          if (!state.wasAccess) {
-            state.nodeAttrs.attrs.emplace_back(
-              NodeWithAttrs::AttributeAndField{std::vector<arangodb::basics::AttributeName>{
-                {std::string(node->getStringValue(), node->getStringLength()), false}}, parentNode, childNumber, 0, nullptr});
-            state.wasAccess = true;
-          } else {
-            state.nodeAttrs.attrs.back().attr.emplace_back(std::string(node->getStringValue(), node->getStringLength()), false);
-          }
-          return true;
-        case NODE_TYPE_REFERENCE: {
-          // reference to a variable
-          auto v = static_cast<Variable const*>(node->getData());
-          if (v == state.variable) {
-            if (!state.wasAccess) {
-              // we haven't seen an attribute access directly before
-              state.optimize = false;
-
-              return false;
-            }
-            std::reverse(state.nodeAttrs.attrs.back().attr.begin(), state.nodeAttrs.attrs.back().attr.end());
-          } else {
-            if (state.wasAccess) {
-              state.nodeAttrs.attrs.pop_back();
-            }
-          }
-          // finish an attribute path
-          state.wasAccess = false;
-          return true;
-        }
-        default:
-          break;
-      }
-
-      if (state.wasAccess) {
-        // not appropriate node type
-        state.wasAccess = false;
-        state.optimize = false;
-
-        return false;
-      }
-
-      return true;
-    };
-
-    traverseReadOnly(node, nullptr, 0, preVisitor);
-
-    return state.optimize;
   }
 }
 
@@ -210,7 +105,7 @@ void arangodb::aql::lateDocumentMaterializationRule(Optimizer* opt,
       // without document body usage before that node.
       // this node could be appended with materializer
       bool stopSearch = false;
-      std::vector<NodeWithAttrs> nodesToChange;
+      std::vector<latematerialized::NodeWithAttrs> nodesToChange;
       TRI_idx_iid_t commonIndexId = 0; // use one index only
       while (current != loop) {
         switch (current->getType()) {
@@ -222,10 +117,10 @@ void arangodb::aql::lateDocumentMaterializationRule(Optimizer* opt,
           case ExecutionNode::CALCULATION: {
             auto calculationNode = ExecutionNode::castTo<CalculationNode*>(current);
             auto astNode = calculationNode->expression()->nodeForModification();
-            NodeWithAttrs node;
+            latematerialized::NodeWithAttrs node;
             node.node = calculationNode;
             // find attributes referenced to index node out variable
-            if (!getReferencedAttributes(astNode, indexNode->outVariable(), node)) {
+            if (!latematerialized::getReferencedAttributes(astNode, indexNode->outVariable(), node)) {
               // is not safe for optimization
               stopSearch = true;
             } else if (!node.attrs.empty()) {
@@ -270,14 +165,14 @@ void arangodb::aql::lateDocumentMaterializationRule(Optimizer* opt,
         for (auto& node : nodesToChange) {
           std::transform(node.attrs.cbegin(), node.attrs.cend(), std::inserter(uniqueVariables, uniqueVariables.end()),
                          [ast](auto const& attrAndField) {
-                           return std::make_pair(attrAndField.indexField, IndexNode::IndexVariable{attrAndField.indexFieldNum,
+                           return std::make_pair(attrAndField.field, IndexNode::IndexVariable{attrAndField.fieldNum,
                              ast->variables()->createTemporaryVariable()});
                          });
         }
         auto localDocIdTmp = ast->variables()->createTemporaryVariable();
         for (auto& node : nodesToChange) {
           for (auto& attr : node.attrs) {
-            auto it = uniqueVariables.find(attr.indexField);
+            auto it = uniqueVariables.find(attr.field);
             TRI_ASSERT(it != uniqueVariables.cend());
             auto newNode = ast->createNodeReference(it->second.var);
             if (attr.astNode != nullptr) {
