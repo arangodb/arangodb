@@ -1298,9 +1298,10 @@ void HeartbeatThread::updateAgentPool(VPackSlice const& agentPool) {
       // we have to make sure that the leader is on the front
       auto leaderId = agentPool.get("id").stringRef();
       auto pool = agentPool.get("pool");
+      values.reserve(pool.length());
       values.emplace_back(pool.get(leaderId).copyString());
       // now add all non leaders
-      for (auto pair : VPackObjectIterator(agentPool.get("pool"))) {
+      for (auto pair : VPackObjectIterator(pool)) {
         if (!pair.key.isEqualString(leaderId)) {
           values.emplace_back(pair.value.copyString());
         }
