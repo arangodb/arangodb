@@ -62,7 +62,7 @@ bool agencyAsyncShouldCancel(RequestMeta& meta) {
 
 bool agencyAsyncShouldTimeout(RequestMeta const& meta) {
   auto now = clock::now();
-  return (now > meta.startTime + meta.timeout);
+  return (now > (meta.startTime + meta.timeout));
 }
 
 auto agencyAsyncWaitTime(RequestMeta const& meta) {

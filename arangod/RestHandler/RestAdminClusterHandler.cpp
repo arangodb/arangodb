@@ -633,8 +633,6 @@ RestAdminClusterHandler::FutureVoid RestAdminClusterHandler::createMoveShard(
         .done();
   }
 
-  auto self(shared_from_this());
-
   return AsyncAgencyComm()
       .sendWriteTransaction(20s, std::move(trx))
       .thenValue([this, ctx = std::move(ctx),
@@ -689,8 +687,8 @@ RestStatus RestAdminClusterHandler::handlePostMoveShard(std::unique_ptr<MoveShar
   // gather information about that shard
   return waitForFuture(
       AsyncAgencyComm()
-          .getValues(planPath)
-          .thenValue([this, ctx = std::move(ctx)](AgencyReadResult&& result) mutable {
+          .sendReadTransaction(20s, std::move(trx))
+          .thenValue([this, ctx = std::move(ctx)](AsyncAgencyCommResult&& result) mutable {
             if (result.ok()) {
               switch (result.statusCode()) {
                 case fuerte::StatusOK:
@@ -704,7 +702,6 @@ RestStatus RestAdminClusterHandler::handlePostMoveShard(std::unique_ptr<MoveShar
               }
             }
 
-            // to some checks that this shard is moveable
             generateError(result.asResult());
             return futures::makeFuture();
           })
@@ -1335,22 +1332,31 @@ RestStatus RestAdminClusterHandler::handlePutNumberOfServers() {
   }
 
   auto self(shared_from_this());
-  return waitForFuture(AsyncAgencyComm()
-                           .sendWriteTransaction(20s, std::move(trx))
-                           .thenValue([this](AsyncAgencyCommResult&& result) {
-                             if (result.ok() && result.statusCode() == fuerte::StatusOK) {
-                               resetResponse(rest::ResponseCode::OK);
-                             } else {
-                               generateError(result.asResult());
-                             }
-                           })
-                           .thenError<VPackException>([this](VPackException const& e) {
-                             generateError(Result{e.errorCode(), e.what()});
-                           })
-                           .thenError<std::exception>([this](std::exception const& e) {
-                             generateError(rest::ResponseCode::SERVER_ERROR,
-                                           TRI_ERROR_HTTP_SERVER_ERROR, e.what());
-                           }));
+  return waitForFuture(
+      AsyncAgencyComm()
+          .sendWriteTransaction(20s, std::move(trx))
+          .thenValue([this](AsyncAgencyCommResult&& result) {
+            if (result.ok() && result.statusCode() == fuerte::StatusOK) {
+              VPackBuffer<uint8_t> responseBody;
+              {
+                VPackBuilder builder(responseBody);
+                VPackObjectBuilder ob(&builder);
+                builder.add(StaticStrings::Error, VPackValue(false));
+                builder.add("code", VPackValue(200));
+              }
+              response()->setPayload(std::move(responseBody), true);
+              resetResponse(rest::ResponseCode::OK);
+            } else {
+              generateError(result.asResult());
+            }
+          })
+          .thenError<VPackException>([this](VPackException const& e) {
+            generateError(Result{e.errorCode(), e.what()});
+          })
+          .thenError<std::exception>([this](std::exception const& e) {
+            generateError(rest::ResponseCode::SERVER_ERROR,
+                          TRI_ERROR_HTTP_SERVER_ERROR, e.what());
+          }));
 }
 
 RestStatus RestAdminClusterHandler::handleNumberOfServers() {
@@ -1637,7 +1643,7 @@ RestAdminClusterHandler::FutureVoid RestAdminClusterHandler::handlePostRebalance
         VPackBuilder builder(responseBody);
         VPackObjectBuilder ob(&builder);
         builder.add(StaticStrings::Error, VPackValue(false));
-        builder.add("code", VPackValue(200));
+        builder.add("code", VPackValue(202));
       }
       resetResponse(rest::ResponseCode::ACCEPTED);
       response()->setPayload(std::move(responseBody), true);
