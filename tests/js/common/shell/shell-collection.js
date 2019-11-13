@@ -534,6 +534,31 @@ function CollectionSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief check that properties include usesRevisionsAsDocumentIds
+////////////////////////////////////////////////////////////////////////////////
+
+  testUsesRevisionsAsDocumentIds: function () {
+    var cn = "example";
+
+    db._drop(cn);
+    var c1 = db._create(cn);
+
+    assertTypeOf("string", c1._id);
+    assertEqual(cn, c1.name());
+    assertTypeOf("number", c1.status());
+    assertEqual(ArangoCollection.TYPE_DOCUMENT, c1.type());
+    assertTypeOf("number", c1.type());
+
+    var p = c1.properties();
+
+    var isRocksDB = db._engine().name === "rocksdb";
+    assertEqual(true, p.hasOwnProperty("usesRevisionsAsDocumentIds"));
+    assertEqual(isRocksDB, p.usesRevisionsAsDocumentIds);
+
+    db._drop(cn);
+  },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief drop new-born
 ////////////////////////////////////////////////////////////////////////////////
 

@@ -255,8 +255,9 @@ Result Collections::create(TRI_vocbase_t& vocbase,
   TRI_ASSERT(!vocbase.isDangling());
   bool haveShardingFeature = ServerState::instance()->isCoordinator() &&
                              vocbase.server().hasFeature<ShardingFeature>();
-  bool useRevs = ServerState::instance()->isSingleServerOrCoordinator() &&
-                 vocbase.server().getFeature<arangodb::EngineSelectorFeature>().isRocksDB();
+  bool addUseRevs = ServerState::instance()->isSingleServerOrCoordinator();
+  bool useRevs =
+      vocbase.server().getFeature<arangodb::EngineSelectorFeature>().isRocksDB();
   VPackBuilder builder;
   VPackBuilder helper;
   builder.openArray();
@@ -290,9 +291,9 @@ Result Collections::create(TRI_vocbase_t& vocbase,
     helper.add(arangodb::StaticStrings::DataSourceName,
                arangodb::velocypack::Value(info.name));
 
-    if (useRevs) {
+    if (addUseRevs) {
       helper.add(arangodb::StaticStrings::UsesRevisionsAsDocumentIds,
-                 arangodb::velocypack::Value(true));
+                 arangodb::velocypack::Value(useRevs));
     }
 
     if (ServerState::instance()->isCoordinator()) {
