@@ -3086,7 +3086,6 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
     TRI_ASSERT(outVariable != nullptr);
 
     auto index = indexes[0];
-    transaction::Methods* trx = _plan->getAst()->query()->trx();
     bool isSorted = index->isSorted();
     bool isSparse = index->sparse();
     std::vector<std::vector<arangodb::basics::AttributeName>> fields = index->fields();
