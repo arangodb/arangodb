@@ -523,7 +523,7 @@ std::unique_ptr<ExecutionBlock> GatherNode::createBlock(
                                    getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
                                    calcRegsToKeep(), std::move(sortRegister),
                                    _plan->getAst()->query()->trx(), sortMode(),
-                                   constrainedSortLimit());
+                                   constrainedSortLimit(), _parallelism);
 
   return std::make_unique<ExecutionBlockImpl<SortingGatherExecutor>>(&engine, this,
                                                                      std::move(infos));
@@ -576,9 +576,6 @@ bool GatherNode::isParallelizable() const {
     return false;
   }
 
-  if (isInSubquery()) {
-    return false;
-  }
   ParallelizableFinder finder;
   for (ExecutionNode* e : _dependencies) {
     e->walk(finder);
