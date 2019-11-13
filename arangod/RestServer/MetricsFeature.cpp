@@ -22,6 +22,7 @@
 
 #include "MetricsFeature.h"
 
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Basics/application-exit.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -59,18 +60,14 @@ MetricsFeature::MetricsFeature(application_features::ApplicationServer& server)
                        std::chrono::system_clock::now().time_since_epoch()).count());
   setOptional(false);
   startsAfter<LoggerFeature>();
-  ;
+  startsBefore<GreetingsFeaturePhase>();
 }
 
-void MetricsFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-}
+void MetricsFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {}
 
-void MetricsFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
-}
+void MetricsFeature::validateOptions(std::shared_ptr<ProgramOptions>) {}
 
-void MetricsFeature::prepare() {
-  //METRICS = this;
-}
+void MetricsFeature::prepare() {}
 
 void MetricsFeature::start() {
   TRI_ASSERT(isEnabled());
