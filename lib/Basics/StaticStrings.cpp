@@ -275,3 +275,5 @@ std::string const StaticStrings::RebootId("rebootId");
 
 std::string const StaticStrings::New("new");
 std::string const StaticStrings::Old("old");
+std::string const StaticStrings::UpgradeEnvName(
+    "ARANGODB_UPGRADE_DURING_RESTORE");
