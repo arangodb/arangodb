@@ -835,6 +835,7 @@ ExecutionNode* ExecutionPlan::registerNode(ExecutionNode* node) {
     if (!emplaced) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to register node in plan");
     }
+    TRI_ASSERT(it != _ids.end());
   } catch (...) {
     delete node;
     throw;
