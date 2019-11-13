@@ -34,7 +34,7 @@ struct ModificationExecutorInfos;
 
 class RemoveModifierCompletion {
  public:
-  RemoveModifierCompletion(ModificationExecutorInfos& infos) : _infos(infos) {}
+  explicit RemoveModifierCompletion(ModificationExecutorInfos& infos) : _infos(infos) {}
   ~RemoveModifierCompletion() = default;
 
   ModifierOperationType accumulate(ModificationExecutorAccumulator& accu,
