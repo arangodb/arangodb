@@ -1030,7 +1030,7 @@ else ()
   else ()
     set (OPENSSL_VERSION_PATTERN ".*OPENSSL_${TARGET_OS}[ ]+\"([^\"a-z]*).*")
   endif ()
-  string(REGEX MATCH  
+  string(REGEX MATCH
             "${OPENSSL_VERSION_PATTERN}"
             ARANGODB_REQUIRED_OPENSSL_VERSION
             "${ARANGODB_VERSIONS_CONTENT}")
@@ -1382,3 +1382,6 @@ message(STATUS "building for git revision: ${ARANGODB_BUILD_REPOSITORY}")
 #     message(STATUS "${_variableName}=${${_variableName}}")
 #   endforeach ()
 # endif ()
+
+add_custom_target(arangodb
+        DEPENDS arangod arangosh arangodump arangoexport arangobackup arangoimport arangorestore)

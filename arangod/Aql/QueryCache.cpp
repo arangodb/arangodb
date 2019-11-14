@@ -642,12 +642,12 @@ void QueryCache::store(TRI_vocbase_t* vocbase, std::shared_ptr<QueryCacheResultE
   // get the right part of the cache to store the result in
   auto const part = getPart(vocbase);
   WRITE_LOCKER(writeLocker, _entriesLock[part]);
-  auto [it, emplaced] = _entries[part].try_emplace(
+  auto it = _entries[part].try_emplace(
       vocbase, 
       arangodb::lazyConstruct([&]{
         return std::make_unique<QueryCacheDatabaseEntry>();
       })
-  );
+  ).first;
   // store cache entry
   (*it).second->store(std::move(entry), allowedMaxResultsCount, allowedMaxResultsSize);
 }
