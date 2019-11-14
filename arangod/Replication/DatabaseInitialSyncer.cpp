@@ -224,7 +224,7 @@ arangodb::Result fetchRevisions(arangodb::DatabaseInitialSyncer::Configuration& 
 
     double t = TRI_microtime();
     config.connection.lease([&](arangodb::httpclient::SimpleHttpClient* client) {
-      response.reset(client->retryRequest(arangodb::rest::RequestType::POST, url,
+      response.reset(client->retryRequest(arangodb::rest::RequestType::PUT, url,
                                           request.data(), request.size(), headers));
     });
     stats.waitedForDocs += TRI_microtime() - t;
@@ -1398,7 +1398,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
       _config.progress.set(msg);
       double t = TRI_microtime();
       _config.connection.lease([&](httpclient::SimpleHttpClient* client) {
-        response.reset(client->retryRequest(rest::RequestType::POST, url,
+        response.reset(client->retryRequest(rest::RequestType::PUT, url,
                                             request.data(), request.size(), headers));
       });
       stats.waitedForKeys += TRI_microtime() - t;

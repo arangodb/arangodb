@@ -90,6 +90,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   static std::string const Revisions;
   static std::string const Tree;
   static std::string const Ranges;
+  static std::string const Documents;
   static std::string const Dump;
   static std::string const RestoreCollection;
   static std::string const RestoreIndexes;
@@ -308,6 +309,14 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   void handleCommandRevisionRanges();
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief return the requested documents from a given collection, if
+  ///        available
+  /// @response VPackArray, containing VPackObject documents or errors
+  //////////////////////////////////////////////////////////////////////////////
+
+  void handleCommandRevisionDocuments();
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief determine chunk size from request
   ///        Reads chunkSize attribute from request
   //////////////////////////////////////////////////////////////////////////////
@@ -320,7 +329,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   ReplicationApplier* getApplier(bool& global);
 
  private:
-  struct RangeOperationContext {
+  struct RevisionOperationContext {
     uint64_t batchId;
     std::size_t resume;
     TRI_voc_tick_t tickEnd;
@@ -329,7 +338,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
     std::unique_ptr<ReplicationIterator> iter;
   };
 
-  bool prepareRangeOperation(RangeOperationContext&);
+  bool prepareRevisionOperation(RevisionOperationContext&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief restores the structure of a collection

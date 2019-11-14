@@ -258,6 +258,7 @@ std::string const RestReplicationHandler::Keys = "keys";
 std::string const RestReplicationHandler::Revisions = "revisions";
 std::string const RestReplicationHandler::Tree = "tree";
 std::string const RestReplicationHandler::Ranges = "ranges";
+std::string const RestReplicationHandler::Documents = "documents";
 std::string const RestReplicationHandler::Dump = "dump";
 std::string const RestReplicationHandler::RestoreCollection =
     "restore-collection";
@@ -418,8 +419,10 @@ RestStatus RestReplicationHandler::execute() {
         std::string subCommand = suffixes[1];
         if (type == rest::RequestType::GET && subCommand == Tree) {
           handleCommandRevisionTree();
-        } else if (type == rest::RequestType::POST && subCommand == Ranges) {
+        } else if (type == rest::RequestType::PUT && subCommand == Ranges) {
           handleCommandRevisionRanges();
+        } else if (type == rest::RequestType::PUT && subCommand == Documents) {
+          handleCommandRevisionDocuments();
         }
       } else {
         goto BAD_CALL;
@@ -2791,7 +2794,7 @@ void RestReplicationHandler::handleCommandLoggerTickRanges() {
   }
 }
 
-bool RestReplicationHandler::prepareRangeOperation(RangeOperationContext& ctx) {
+bool RestReplicationHandler::prepareRevisionOperation(RevisionOperationContext& ctx) {
   auto& selector = server().getFeature<EngineSelectorFeature>();
   if (!selector.isRocksDB()) {
     generateError(
@@ -2878,8 +2881,8 @@ bool RestReplicationHandler::prepareRangeOperation(RangeOperationContext& ctx) {
 //////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandRevisionTree() {
-  RangeOperationContext ctx;
-  if (!prepareRangeOperation(ctx)) {
+  RevisionOperationContext ctx;
+  if (!prepareRevisionOperation(ctx)) {
     return;
   }
 
@@ -2912,8 +2915,65 @@ void RestReplicationHandler::handleCommandRevisionTree() {
 //////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandRevisionRanges() {
-  RangeOperationContext ctx;
-  if (!prepareRangeOperation(ctx)) {
+  RevisionOperationContext ctx;
+  if (!prepareRevisionOperation(ctx)) {
+    return;
+  }
+
+  bool success = false;
+  VPackSlice const body = this->parseVPackBody(success);
+  if (!success) {
+    // error already created
+    return;
+  }
+  bool badFormat = !body.isArray();
+  if (!badFormat) {
+    for (std::size_t i = 0; i < body.length(); ++i) {
+      if (!body.at(i).isNumber()) {
+        badFormat = true;
+        break;
+      }
+    }
+  }
+  if (badFormat) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "body needs to be an array of pairs of revisions");
+    return;
+  }
+
+  std::size_t constexpr sizeLimit = 64 * 1024 * 1024;
+  RevisionReplicationIterator& it =
+      *static_cast<RevisionReplicationIterator*>(ctx.iter.get());
+
+  VPackBuilder response;
+  {
+    VPackArrayBuilder docs(&response);
+
+    for (std::size_t i = 0; i < body.length(); ++i) {
+      TRI_voc_rid_t rev = body.at(i).getNumber<TRI_voc_rid_t>();
+      it.seek(rev);
+      VPackSlice res =
+          it.hasMore() ? it.document() : velocypack::Slice::emptyObjectSlice();
+      if (response.slice().byteSize() + res.byteSize() > sizeLimit &&
+          !response.slice().isEmptyArray()) {
+        break;
+      }
+      response.add(res);
+    }
+  }
+
+  generateResult(rest::ResponseCode::OK, response.slice());
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief return the requested documents from a given collection, if
+///        available
+/// @response VPackArray, containing VPackObject documents or errors
+//////////////////////////////////////////////////////////////////////////////
+
+void RestReplicationHandler::handleCommandRevisionDocuments() {
+  RevisionOperationContext ctx;
+  if (!prepareRevisionOperation(ctx)) {
     return;
   }
 
