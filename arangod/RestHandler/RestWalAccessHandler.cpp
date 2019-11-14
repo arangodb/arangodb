@@ -277,12 +277,12 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
   std::map<TRI_voc_tick_t, std::unique_ptr<MyTypeHandler>> handlers;
   VPackOptions opts = VPackOptions::Defaults;
   auto prepOpts = [&handlers, &opts](TRI_vocbase_t& vocbase) -> void {
-    auto [it, emplaced] = handlers.try_emplace(
+    auto it = handlers.try_emplace(
       vocbase.id(),
       arangodb::lazyConstruct([&]{
        return std::make_unique<MyTypeHandler>(vocbase);
       })
-    );
+    ).first;
     opts.customTypeHandler = it->second.get();
   };
 
