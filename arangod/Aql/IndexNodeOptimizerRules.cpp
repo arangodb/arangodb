@@ -263,7 +263,7 @@ void arangodb::aql::lateDocumentMaterializationRule(arangodb::aql::Optimizer* op
           ::arangodb::containers::HashSet<Variable const*> currentUsedVars;
           current->getVariablesUsedHere(currentUsedVars);
           if (currentUsedVars.find(indexNode->outVariable()) != currentUsedVars.end()) {
-            TRI_ASSERT(FALSE);
+            TRI_ASSERT(false);
             stopSearch = true;
           }
         }
