@@ -241,7 +241,7 @@ void arangodb::aql::lateDocumentMaterializationRule(arangodb::aql::Optimizer* op
                   stopSearch = true;
                 }
               } else {
-                nodesToChange.emplace_back(node);
+                nodesToChange.emplace_back(std::move(node));
               }
             }
             break;
