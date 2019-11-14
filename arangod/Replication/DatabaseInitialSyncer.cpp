@@ -111,13 +111,14 @@ arangodb::Result removeRevisions(arangodb::LogicalCollection& collection,
   // here
   trx.addHint(Hints::Hint::INTERMEDIATE_COMMITS);
 
-  PhysicalCollection* physical = collection.getPhysical();
-
   Result res = trx.begin();
   if (!res.ok()) {
     return Result(res.errorNumber(),
                   std::string("unable to start transaction: ") + res.errorMessage());
   }
+
+  PhysicalCollection* physical = collection.getPhysical();
+
   VPackBuilder builder;
   arangodb::ManagedDocumentResult mdr;
   arangodb::OperationOptions options;
@@ -144,12 +145,177 @@ arangodb::Result removeRevisions(arangodb::LogicalCollection& collection,
   return trx.commit();
 }
 
-arangodb::Result fetchRevisions(arangodb::LogicalCollection& collection,
-                                std::vector<std::size_t>& toFetch,
+arangodb::Result fetchRevisions(arangodb::DatabaseInitialSyncer::Configuration& config,
+                                arangodb::Syncer::SyncerState& state,
+                                arangodb::LogicalCollection& collection,
+                                std::string const& leader, std::vector<std::size_t>& toFetch,
                                 arangodb::InitialSyncerIncrementalSyncStats& stats) {
+  using arangodb::PhysicalCollection;
   using arangodb::Result;
+  using arangodb::transaction::Hints;
 
-  // TODO fetch revisions in chunks of 5000, a la RocksDBIncrementalSync::syncChunkRocksDB
+  arangodb::SingleCollectionTransaction trx(
+      arangodb::transaction::StandaloneContext::Create(collection.vocbase()),
+      collection, arangodb::AccessMode::Type::EXCLUSIVE);
+
+  trx.addHint(Hints::Hint::RECOVERY);  // turn off waitForSync!
+  trx.addHint(Hints::Hint::NO_INDEXING);
+  // turn on intermediate commits as the number of keys to delete can be huge
+  // here
+  trx.addHint(Hints::Hint::INTERMEDIATE_COMMITS);
+
+  Result res = trx.begin();
+  if (!res.ok()) {
+    return Result(res.errorNumber(),
+                  std::string("unable to start transaction: ") + res.errorMessage());
+  }
+
+  arangodb::transaction::BuilderLeaser keyBuilder(&trx);
+  arangodb::ManagedDocumentResult mdr;
+  arangodb::OperationOptions options;
+  options.silent = true;
+  options.ignoreRevs = true;
+  options.isRestore = true;
+  options.indexOperationMode = arangodb::Index::OperationMode::internal;
+  if (!state.leaderId.empty()) {
+    options.isSynchronousReplicationFrom = state.leaderId;
+  }
+
+  PhysicalCollection* physical = collection.getPhysical();
+
+  std::string url =
+      arangodb::replutils::ReplicationUrl + "/revisions/documents" +
+      "?collection=" + arangodb::basics::StringUtils::urlEncode(leader) +
+      "&serverId=" + state.localServerIdString +
+      "&batchId=" + std::to_string(config.batch.id);
+  auto headers = arangodb::replutils::createHeaders();
+
+  std::string msg = "fetching documents by revision for collection '" +
+                    collection.name() + "' from " + url;
+  config.progress.set(msg);
+
+  auto removeConflict = [&](std::string const& conflictingKey) -> Result {
+    keyBuilder->clear();
+    keyBuilder->add(VPackValue(conflictingKey));
+
+    auto res = physical->remove(trx, keyBuilder->slice(), mdr, options,
+                                /*lock*/ false, nullptr, nullptr);
+
+    if (res.ok()) {
+      ++stats.numDocsRemoved;
+    }
+
+    return res;
+  };
+
+  std::size_t current = 0;
+  auto guard = arangodb::scopeGuard(
+      [&current, &stats]() -> void { stats.numDocsRequested += current; });
+  std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response;
+  while (current < toFetch.size()) {
+    arangodb::transaction::BuilderLeaser requestBuilder(&trx);
+    {
+      VPackArrayBuilder list(requestBuilder.get());
+      for (std::size_t i = 0; i < 5000 && current + i < toFetch.size(); ++i) {
+        requestBuilder->add(VPackValue(toFetch[current + i]));
+      }
+    }
+    std::string request = requestBuilder->slice().toJson();
+
+    double t = TRI_microtime();
+    config.connection.lease([&](arangodb::httpclient::SimpleHttpClient* client) {
+      response.reset(client->retryRequest(arangodb::rest::RequestType::POST, url,
+                                          request.data(), request.size(), headers));
+    });
+    stats.waitedForDocs += TRI_microtime() - t;
+    ++stats.numDocsRequests;
+
+    if (arangodb::replutils::hasFailed(response.get())) {
+      return arangodb::replutils::buildHttpError(response.get(), url, config.connection);
+    }
+
+    arangodb::transaction::BuilderLeaser responseBuilder(&trx);
+    Result r =
+        arangodb::replutils::parseResponse(*responseBuilder.get(), response.get());
+    if (r.fail()) {
+      return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
+                    std::string("got invalid response from master at ") +
+                        config.master.endpoint + url + ": " + r.errorMessage());
+    }
+
+    VPackSlice const docs = responseBuilder->slice();
+    if (!docs.isArray()) {
+      return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
+                    std::string("got invalid response from master at ") +
+                        config.master.endpoint + url +
+                        ": response is not an array");
+    }
+
+    for (std::size_t i = 0; i < docs.length(); ++i) {
+      VPackSlice masterDoc = docs.at(i);
+
+      if (!masterDoc.isObject()) {
+        return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
+                      std::string("got invalid response from master at ") +
+                          config.master.endpoint + url +
+                          ": response document entry is not an object");
+      }
+
+      VPackSlice const keySlice = masterDoc.get(arangodb::StaticStrings::KeyString);
+      if (!keySlice.isString()) {
+        return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
+                      std::string("got invalid response from master at ") +
+                          state.master.endpoint + ": document key is invalid");
+      }
+
+      VPackSlice const revSlice = masterDoc.get(arangodb::StaticStrings::RevString);
+      if (!revSlice.isString()) {
+        return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
+                      std::string("got invalid response from master at ") +
+                          state.master.endpoint +
+                          ": document revision is invalid");
+      }
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      arangodb::LocalDocumentId const documentId = physical->lookupKey(&trx, keySlice);
+      TRI_ASSERT(!documentId.isSet());  // we should have already removed any
+                                        // old revision of this document in an
+                                        // earlier step
+#endif
+
+      Result res = physical->insert(&trx, masterDoc, mdr, options,
+                                    /*lock*/ false, nullptr, nullptr);
+      if (res.fail()) {
+        if (res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) &&
+            res.errorMessage() > keySlice.copyString()) {
+          // TODO verify if this case can actually happen still?
+          // remove conflict and retry
+          // errorMessage() is this case contains the conflicting key
+          auto inner = removeConflict(res.errorMessage());
+          if (inner.fail()) {
+            return res;
+          }
+
+          options.indexOperationMode = arangodb::Index::OperationMode::normal;
+          res = physical->insert(&trx, masterDoc, mdr, options,
+                                 /*lock*/ false, nullptr, nullptr);
+          options.indexOperationMode = arangodb::Index::OperationMode::internal;
+          if (res.fail()) {
+            return res;
+          }
+          // fall-through
+        } else {
+          int errorNumber = res.errorNumber();
+          res.reset(errorNumber, std::string(TRI_errno_string(errorNumber)) +
+                                     ": " + res.errorMessage());
+          return res;
+        }
+      }
+
+      ++stats.numDocsInserted;
+    }
+    current += docs.length();
+  }
 
   return Result();
 }
@@ -1335,7 +1501,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
         _state.barrier.extend(_state.connection);
       }
 
-      res = ::fetchRevisions(*coll, toFetch, stats);
+      res = ::fetchRevisions(_config, _state, *coll, leaderColl, toFetch, stats);
       if (res.fail()) {
         return res;
       }
