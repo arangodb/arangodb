@@ -1011,7 +1011,7 @@ function IResearchFeatureDDLTestSuite () {
       // check link stats
       {
         let figures = db.TestCollection.getIndexes(true, true)
-                                    .find(e => e.type == 'arangosearch')
+                                    .find(e => e.type === 'arangosearch')
                                     .figures;
         assertNotEqual(null, figures);
         assertTrue(Object === figures.constructor);
@@ -1031,7 +1031,7 @@ function IResearchFeatureDDLTestSuite () {
       // check link stats
       {
         let figures = db.TestCollection.getIndexes(true, true)
-                                    .find(e => e.type == 'arangosearch')
+                                    .find(e => e.type === 'arangosearch')
                                     .figures;
         assertNotEqual(null, figures);
         assertTrue(Object === figures.constructor);
@@ -1053,7 +1053,7 @@ function IResearchFeatureDDLTestSuite () {
       // check link stats
       {
         let figures = db.TestCollection.getIndexes(true, true)
-                                    .find(e => e.type == 'arangosearch')
+                                    .find(e => e.type === 'arangosearch')
                                     .figures;
         assertNotEqual(null, figures);
         assertTrue(Object === figures.constructor);
@@ -1077,7 +1077,7 @@ function IResearchFeatureDDLTestSuite () {
       // check link stats
       {
         let figures = db.TestCollection.getIndexes(true, true)
-                                    .find(e => e.type == 'arangosearch')
+                                    .find(e => e.type === 'arangosearch')
                                     .figures;
         assertNotEqual(null, figures);
         assertTrue(Object === figures.constructor);
@@ -1100,7 +1100,7 @@ function IResearchFeatureDDLTestSuite () {
       // check link stats
       {
         let figures = db.TestCollection.getIndexes(true, true)
-                                    .find(e => e.type == 'arangosearch')
+                                    .find(e => e.type === 'arangosearch')
                                     .figures;
         assertNotEqual(null, figures);
         assertTrue(Object === figures.constructor);
