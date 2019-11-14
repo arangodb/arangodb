@@ -110,39 +110,6 @@ struct LinkTrxState final : public arangodb::TransactionState::Cookie {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief approximate data store directory instance size
-////////////////////////////////////////////////////////////////////////////////
-size_t directoryMemory(irs::directory const& directory, TRI_idx_iid_t id) noexcept {
-  size_t size = 0;
-
-  try {
-    directory.visit([&directory, &size](std::string& file) -> bool {
-      uint64_t length;
-
-      size += directory.length(length, file) ? length : 0;
-
-      return true;
-    });
-  } catch (arangodb::basics::Exception& e) {
-    LOG_TOPIC("e6cb2", WARN, arangodb::iresearch::TOPIC)
-        << "caught exception while calculating size of arangosearch link '"
-        << id << "': " << e.code() << " " << e.what();
-    IR_LOG_EXCEPTION();
-  } catch (std::exception const& e) {
-    LOG_TOPIC("7e623", WARN, arangodb::iresearch::TOPIC)
-        << "caught exception while calculating size of arangosearch link '"
-        << id << "': " << e.what();
-    IR_LOG_EXCEPTION();
-  } catch (...) {
-    LOG_TOPIC("21d6a", WARN, arangodb::iresearch::TOPIC)
-        << "caught exception while calculating size of arangosearch link '" << id << "'";
-    IR_LOG_EXCEPTION();
-  }
-
-  return size;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief compute the data path to user for iresearch data store
 ///        get base path from DatabaseServerFeature (similar to MMFilesEngine)
 ///        the path is hardcoded to reside under:
@@ -1497,24 +1464,6 @@ bool IResearchLink::matchesDefinition(VPackSlice const& slice) const {
     && _meta == other;
 }
 
-size_t IResearchLink::memory() const {
-  auto size = sizeof(IResearchLink); // includes empty members from parent
-
-  size += _meta.memory();
-
-  {
-    SCOPED_LOCK(_asyncSelf->mutex()); // '_dataStore' can be asynchronously modified
-
-    if (_dataStore) {
-      // FIXME TODO this is incorrect since '_storePersisted' is on disk and not in memory
-      size += directoryMemory(*(_dataStore._directory), id());
-      size += _dataStore._path.native().size() * sizeof(irs::utf8_path::native_char_t);
-    }
-  }
-
-  return size;
-}
-
 Result IResearchLink::properties(
     velocypack::Builder& builder,
     bool forPersistence) const {
@@ -1760,6 +1709,54 @@ AnalyzerPool::ptr IResearchLink::findAnalyzer(AnalyzerPool const& analyzer) cons
   }
 
   return nullptr;
+}
+
+IResearchLink::Stats IResearchLink::stats() const {
+  Stats stats;
+
+  // '_dataStore' can be asynchronously modified
+  SCOPED_LOCK_NAMED(_asyncSelf->mutex(), lock);
+
+  if (_dataStore) {
+    stats.numBufferedDocs = _dataStore._writer->buffered_docs();
+
+    // copy of 'reader' is important to hold
+    // reference to the current snapshot
+    auto reader = _dataStore._reader;
+
+    if (!reader) {
+      return {};
+    }
+
+    stats.numSegments = reader->size();
+    stats.docsCount = reader->docs_count();
+    stats.liveDocsCount = reader->live_docs_count();
+    stats.numFiles = 1; // +1 for segments file
+
+    auto visitor = [&stats](std::string const& /*name*/,
+                            irs::segment_meta const& segment) noexcept {
+      stats.indexSize += segment.size;
+      stats.numFiles += segment.files.size();
+      return true;
+    };
+
+    reader->meta().meta.visit_segments(visitor);
+  }
+
+  return stats;
+}
+
+void IResearchLink::toVelocyPackStats(VPackBuilder& builder) const {
+  TRI_ASSERT(builder.isOpenObject());
+
+  auto const stats = this->stats();
+
+  builder.add("numBufferedDocs", VPackValue(stats.numBufferedDocs));
+  builder.add("numDocs", VPackValue(stats.docsCount));
+  builder.add("numLiveDocs", VPackValue(stats.liveDocsCount));
+  builder.add("numSegments", VPackValue(stats.numSegments));
+  builder.add("numFiles", VPackValue(stats.numFiles));
+  builder.add("indexSize", VPackValue(stats.indexSize));
 }
 
 }  // namespace iresearch
