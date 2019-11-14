@@ -188,8 +188,10 @@ Result IResearchViewCoordinator::appendVelocyPackImpl(
 
   auto* acceptor = &propertiesAcceptor;
 
-  if (context == Serialization::Persistence || context == Serialization::Inventory) {
-    auto res = LogicalViewHelperClusterInfo::properties(builder, *this);
+  if (context == Serialization::Persistence || 
+      context == Serialization::PersistenceWithInProgress ||
+      context == Serialization::Inventory) {
+    auto res = arangodb::LogicalViewHelperClusterInfo::properties(builder, *this);
 
     if (!res.ok()) {
       return res;
