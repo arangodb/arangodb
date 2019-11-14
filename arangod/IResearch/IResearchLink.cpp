@@ -357,11 +357,68 @@ void IResearchLink::batchInsert(
 
   auto& state = *(trx.state());
 
+  TRI_IF_FAILURE("ArangoSearch::BlockInsertsWithoutIndexCreationHint") {
+    if (!state.hasHint(transaction::Hints::Hint::INDEX_CREATION)) {
+      queue->setStatus(TRI_ERROR_DEBUG);
+      return;
+    }
+  }
+
   if (_dataStore._inRecovery && _engine->recoveryTick() <= _dataStore._recoveryTick) {
     LOG_TOPIC("7e228", TRACE, iresearch::TOPIC)
       << "skipping 'batchInsert', operation tick '" << _engine->recoveryTick()
       << "', recovery tick '" << _dataStore._recoveryTick << "'";
 
+    return;
+  }
+
+  auto batchInsertImpl = [this, &batch, &trx, &queue](irs::index_writer::documents_context& ctx) {
+    auto begin = batch.begin();
+    auto const end = batch.end();
+    try {
+      for (FieldIterator body(trx); begin != end; ++begin) {
+        auto const res = insertDocument(ctx, body, begin->second, begin->first, _meta, id());
+
+        if (!res.ok()) {
+          LOG_TOPIC("e5eb1", WARN, iresearch::TOPIC) << res.errorMessage();
+          queue->setStatus(res.errorNumber());
+
+          return;
+        }
+      }
+    }
+    catch (basics::Exception const& e) {
+      LOG_TOPIC("72aa5", WARN, iresearch::TOPIC)
+        << "caught exception while inserting batch into arangosearch link '" << id()
+        << "': " << e.code() << " " << e.what();
+      IR_LOG_EXCEPTION();
+      queue->setStatus(e.code());
+    }
+    catch (std::exception const& e) {
+      LOG_TOPIC("3cbae", WARN, iresearch::TOPIC)
+        << "caught exception while inserting batch into arangosearch link '" << id()
+        << "': " << e.what();
+      IR_LOG_EXCEPTION();
+      queue->setStatus(TRI_ERROR_INTERNAL);
+    }
+    catch (...) {
+      LOG_TOPIC("3da8d", WARN, iresearch::TOPIC)
+        << "caught exception while inserting batch into arangosearch link '" << id()
+        << "'";
+      IR_LOG_EXCEPTION();
+      queue->setStatus(TRI_ERROR_INTERNAL);
+    }
+  };
+
+  if (state.hasHint(transaction::Hints::Hint::INDEX_CREATION)) {
+    SCOPED_LOCK_NAMED(_asyncSelf->mutex(), lock);
+    auto ctx = _dataStore._writer->documents();
+    batchInsertImpl(ctx); // we need insert to succeed, so  we have things to cleanup in storage
+    TRI_IF_FAILURE("ArangoSearch::MisreportCreationInsertAsFailed") {
+      if (queue->status() == TRI_ERROR_NO_ERROR) {
+        queue->setStatus(TRI_ERROR_DEBUG);
+      }
+    }
     return;
   }
 
@@ -412,40 +469,7 @@ void IResearchLink::batchInsert(
   // ...........................................................................
   // below only during recovery after the 'checkpoint' marker, or post recovery
   // ...........................................................................
-
-  auto begin = batch.begin();
-  auto const end = batch.end();
-
-  try {
-    for (FieldIterator body(trx); begin != end; ++begin) {
-      auto const res = insertDocument(ctx->_ctx, body, begin->second, begin->first, _meta, id());
-
-      if (!res.ok()) {
-        LOG_TOPIC("e5eb1", WARN, iresearch::TOPIC) << res.errorMessage();
-        queue->setStatus(res.errorNumber());
-
-        return;
-      }
-    }
-  } catch (basics::Exception const& e) {
-    LOG_TOPIC("72aa5", WARN, iresearch::TOPIC)
-      << "caught exception while inserting batch into arangosearch link '" << id()
-      << "': " << e.code() << " " << e.what();
-    IR_LOG_EXCEPTION();
-    queue->setStatus(e.code());
-  } catch (std::exception const& e) {
-    LOG_TOPIC("3cbae", WARN, iresearch::TOPIC)
-      << "caught exception while inserting batch into arangosearch link '" << id()
-      << "': " << e.what();
-    IR_LOG_EXCEPTION();
-    queue->setStatus(TRI_ERROR_INTERNAL);
-  } catch (...) {
-    LOG_TOPIC("3da8d", WARN, iresearch::TOPIC)
-      << "caught exception while inserting batch into arangosearch link '" << id()
-      << "'";
-    IR_LOG_EXCEPTION();
-    queue->setStatus(TRI_ERROR_INTERNAL);
-  }
+  batchInsertImpl(ctx->_ctx);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1382,6 +1406,25 @@ Result IResearchLink::insert(
     }
   };
 
+  TRI_IF_FAILURE("ArangoSearch::BlockInsertsWithoutIndexCreationHint") {
+    if (!state.hasHint(transaction::Hints::Hint::INDEX_CREATION)) {
+      return Result(TRI_ERROR_DEBUG);
+    }
+  }
+
+  if (state.hasHint(transaction::Hints::Hint::INDEX_CREATION)) {
+    SCOPED_LOCK_NAMED(_asyncSelf->mutex(), lock);
+    auto ctx = _dataStore._writer->documents();
+
+    TRI_IF_FAILURE("ArangoSearch::MisreportCreationInsertAsFailed") {
+      auto res = insertImpl(ctx); // we need insert to succeed, so  we have things to cleanup in storage
+      if (res.fail()) {
+        return res;
+      }
+      return Result(TRI_ERROR_DEBUG);
+    }
+    return insertImpl(ctx);
+  }
   auto* key = this;
 
 // TODO FIXME find a better way to look up a ViewState
@@ -1539,6 +1582,8 @@ Result IResearchLink::remove(
   TRI_ASSERT(trx.state());
 
   auto& state = *(trx.state());
+
+  TRI_ASSERT(!state.hasHint(transaction::Hints::Hint::INDEX_CREATION));
 
   if (_dataStore._inRecovery && _engine->recoveryTick() <= _dataStore._recoveryTick) {
     LOG_TOPIC("7d228", TRACE, iresearch::TOPIC)
