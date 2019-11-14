@@ -316,7 +316,7 @@ function IResearchFeatureDDLTestSuite () {
 
       var meta = { links: {
         "TestCollection0": { },
-        "TestCollection1": { analyzers: [ "text_en"], includeAllFields: true, trackListPositions: true, storeValues: "full" },
+        "TestCollection1": { analyzers: [ "text_en"], includeAllFields: true, trackListPositions: true, storeValues: "value" },
         "TestCollection2": { fields: {
           "b": { fields: { "b1": {} } },
           "c": { includeAllFields: true },
@@ -352,7 +352,7 @@ function IResearchFeatureDDLTestSuite () {
       assertTrue(Boolean === properties.links.TestCollection1.trackListPositions.constructor);
       assertEqual(true, properties.links.TestCollection1.trackListPositions);
       assertTrue(String === properties.links.TestCollection1.storeValues.constructor);
-      assertEqual("full", properties.links.TestCollection1.storeValues);
+      assertEqual("value", properties.links.TestCollection1.storeValues);
       assertTrue(Array === properties.links.TestCollection1.analyzers.constructor);
       assertEqual(1, properties.links.TestCollection1.analyzers.length);
       assertTrue(String === properties.links.TestCollection1.analyzers[0].constructor);
@@ -405,7 +405,7 @@ function IResearchFeatureDDLTestSuite () {
       assertTrue(Boolean === properties.links.TestCollection1.trackListPositions.constructor);
       assertEqual(true, properties.links.TestCollection1.trackListPositions);
       assertTrue(String === properties.links.TestCollection1.storeValues.constructor);
-      assertEqual("full", properties.links.TestCollection1.storeValues);
+      assertEqual("value", properties.links.TestCollection1.storeValues);
       assertTrue(Array === properties.links.TestCollection1.analyzers.constructor);
       assertEqual(1, properties.links.TestCollection1.analyzers.length);
       assertTrue(String === properties.links.TestCollection1.analyzers[0].constructor);
@@ -1116,7 +1116,47 @@ function IResearchFeatureDDLTestSuite () {
       assertNull(analyzers.analyzer(analyzerName));
       // this should be no name conflict
       analyzers.save(analyzerName, "text", {"stopwords" : [], "locale":"en"});
-     
+
+      db._useDatabase("_system");
+      db._dropDatabase(dbName);
+    },
+
+    testIndexAnalyzerCollection : function() {
+      const dbName = "TestNameDroppedDB";
+      const analyzerName = "TestAnalyzer";
+      db._useDatabase("_system");
+      assertNotEqual(null, db._collection("_analyzers"));
+      try { db._dropDatabase(dbName); } catch (e) {}
+      try { analyzers.remove(analyzerName); } catch (e) {}
+      assertEqual(0, db._analyzers.count());
+      db._createDatabase(dbName);
+      db._useDatabase(dbName);
+      analyzers.save(analyzerName, "identity");
+      // recreating database
+      db._useDatabase("_system");
+      db._dropDatabase(dbName);
+      db._createDatabase(dbName);
+      db._useDatabase(dbName);
+
+      assertNull(analyzers.analyzer(analyzerName));
+      // this should be no name conflict
+      analyzers.save(analyzerName, "text", {"stopwords" : [], "locale":"en"});
+      assertEqual(1, db._analyzers.count());
+
+      var view = db._createView("analyzersView", "arangosearch", {
+        links: {
+          _analyzers : {
+            includeAllFields:true,
+            analyzers: [ analyzerName ]
+          }
+        }
+      });
+
+      var res = db._query("FOR d IN analyzersView OPTIONS {waitForSync:true} RETURN d").toArray();
+      assertEqual(1, db._analyzers.count());
+      assertEqual(1, res.length);
+      assertEqual(db._analyzers.toArray()[0], res[0]);
+
       db._useDatabase("_system");
       db._dropDatabase(dbName);
     }

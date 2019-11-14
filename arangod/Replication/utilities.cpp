@@ -641,6 +641,8 @@ Result parseResponse(velocypack::Builder& builder,
     velocypack::Parser parser(builder);
     parser.parse(response->getBody().begin(), response->getBody().length());
     return Result();
+  } catch (VPackException const& e) {
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, e.what());
   } catch (...) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE);
   }

@@ -381,6 +381,7 @@ RestAdminClusterHandler::FutureVoid RestAdminClusterHandler::tryDeleteServer(
                             ->server(ctx->server)
                             ->str())
                 .remove(rootPath->current()->dBServers()->server(ctx->server)->str())
+                .remove(rootPath->current()->coordinators()->server(ctx->server)->str())
                 .remove(rootPath->supervision()->health()->server(ctx->server)->str())
                 .remove(rootPath->target()
                             ->mapUniqueToShortID()

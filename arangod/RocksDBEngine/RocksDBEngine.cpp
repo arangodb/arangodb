@@ -1754,6 +1754,7 @@ void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickExternal) {
               << "RocksDB WAL file '" << f->PathName()
               << "' with start sequence " << f->StartSequence()
               << " added to prunable list because it is not needed anymore";
+          TRI_ASSERT(it != _prunableWalFiles.end());
         }
       }
     }
