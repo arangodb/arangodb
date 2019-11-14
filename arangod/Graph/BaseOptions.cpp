@@ -122,7 +122,7 @@ void BaseOptions::LookupInfo::buildEngineInfo(VPackBuilder& result) const {
   // We only run toVelocyPack on Coordinator.
   TRI_ASSERT(idxHandles.size() == 1);
 
-  idxHandles[0].toVelocyPack(result, Index::makeFlags(Index::Serialize::Basics));
+  idxHandles[0]->toVelocyPack(result, Index::makeFlags(Index::Serialize::Basics));
 
   if (expression != nullptr) {
     result.add(VPackValue("expression"));
@@ -143,7 +143,7 @@ double BaseOptions::LookupInfo::estimateCost(size_t& nrItems) const {
   // If we do not have an index yet we cannot do anything.
   // Should NOT be the case
   TRI_ASSERT(!idxHandles.empty());
-  std::shared_ptr<Index> idx = idxHandles[0].getIndex();
+  std::shared_ptr<Index> const& idx = idxHandles[0];
   if (idx->hasSelectivityEstimate()) {
     double s = idx->selectivityEstimate();
     if (s > 0.0) {
@@ -335,7 +335,7 @@ void BaseOptions::injectVelocyPackIndexes(VPackBuilder& builder) const {
   for (auto const& it : _baseLookupInfos) {
     for (auto const& it2 : it.idxHandles) {
       builder.openObject();
-      it2.getIndex()->toVelocyPack(builder, Index::makeFlags(Index::Serialize::Basics));
+      it2->toVelocyPack(builder, Index::makeFlags(Index::Serialize::Basics));
       builder.close();
     }
   }

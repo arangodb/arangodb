@@ -104,7 +104,7 @@ IndexIterator::DocumentCallback getCallback(DocumentProducingFunctionContext& co
     TRI_ASSERT(!output.isFull());
     output.moveValueInto(registerId, input, guard);
 
-    auto indexId = index.getIndex()->id();
+    auto indexId = index->id();
     TRI_ASSERT(indexId == outNonMaterializedIndRegs.first);
     if (ADB_UNLIKELY(indexId != outNonMaterializedIndRegs.first)) {
       return false;
@@ -232,9 +232,8 @@ IndexExecutorInfos::IndexExecutorInfos(
   // count how many attributes in the index are expanded (array index)
   // if more than a single attribute, we always need to deduplicate the
   // result later on
-  for (auto const& it : getIndexes()) {
+  for (auto const& idx : getIndexes()) {
     size_t expansions = 0;
-    auto idx = it.getIndex();
     auto const& fields = idx->fields();
     for (size_t i = 0; i < fields.size(); ++i) {
       if (idx->isAttributeExpanded(i)) {
