@@ -291,7 +291,8 @@ bool InputAqlItemRow::operator!=(InputAqlItemRow const& other) const noexcept {
   return !(*this == other);
 }
 
-bool InputAqlItemRow::equates(InputAqlItemRow const& other) const noexcept {
+bool InputAqlItemRow::equates(InputAqlItemRow const& other,
+                              velocypack::Options const* const options) const noexcept {
   if (!isInitialized() || !other.isInitialized()) {
     return isInitialized() == other.isInitialized();
   }
@@ -299,8 +300,9 @@ bool InputAqlItemRow::equates(InputAqlItemRow const& other) const noexcept {
   if (getNrRegisters() != other.getNrRegisters()) {
     return false;
   }
-  // NOLINTNEXTLINE(modernize-use-transparent-functors)
-  auto const eq = std::equal_to<AqlValue>{};
+  auto const eq = [options](auto left, auto right) {
+    return 0 == AqlValue::Compare(options, left, right, false);
+  };
   for (RegisterId i = 0; i < getNrRegisters(); ++i) {
     if (!eq(getValue(i), other.getValue(i))) {
       return false;

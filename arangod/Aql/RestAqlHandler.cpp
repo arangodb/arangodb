@@ -677,7 +677,8 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation, Query* q
           // Backwards Compatibility
           answerBuilder.add(StaticStrings::Error, VPackValue(false));
         } else {
-          items->toVelocyPack(query->trx(), answerBuilder);
+          items->toVelocyPack(query->trx()->transactionContextPtr()->getVPackOptions(),
+                              answerBuilder);
         }
       } else if (operation == "skipSome") {
         auto atMost =

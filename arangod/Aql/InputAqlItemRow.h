@@ -103,7 +103,8 @@ class InputAqlItemRow {
   // blocks are equal, because comparing rows of blocks with different layouts
   // does not make sense.
   // Invalid rows are considered equivalent.
-  bool equates(InputAqlItemRow const& other) const noexcept;
+  [[nodiscard]] bool equates(InputAqlItemRow const& other,
+                             velocypack::Options const* options) const noexcept;
 
   bool isInitialized() const noexcept;
 

@@ -40,8 +40,6 @@
 #include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include <array>
-
 using namespace arangodb;
 using namespace arangodb::aql;
 
@@ -932,7 +930,7 @@ v8::Handle<v8::Value> AqlValue::toV8(v8::Isolate* isolate, transaction::Methods*
 }
 
 /// @brief materializes a value into the builder
-void AqlValue::toVelocyPack(transaction::Methods* trx, arangodb::velocypack::Builder& builder,
+void AqlValue::toVelocyPack(VPackOptions const* options, arangodb::velocypack::Builder& builder,
                             bool resolveExternals) const {
   switch (type()) {
     case VPACK_SLICE_POINTER:
@@ -948,7 +946,7 @@ void AqlValue::toVelocyPack(transaction::Methods* trx, arangodb::velocypack::Bui
         bool const sanitizeCustom = true;
         arangodb::basics::VelocyPackHelper::sanitizeNonClientTypes(
             slice(), VPackSlice::noneSlice(), builder,
-            trx->transactionContextPtr()->getVPackOptions(), sanitizeExternals,
+            options, sanitizeExternals,
             sanitizeCustom);
       } else {
         builder.add(slice());
@@ -960,7 +958,7 @@ void AqlValue::toVelocyPack(transaction::Methods* trx, arangodb::velocypack::Bui
       for (auto const& it : *_data.docvec) {
         size_t const n = it->size();
         for (size_t i = 0; i < n; ++i) {
-          it->getValueReference(i, 0).toVelocyPack(trx, builder, resolveExternals);
+          it->getValueReference(i, 0).toVelocyPack(options, builder, resolveExternals);
         }
       }
       builder.close();
@@ -978,8 +976,13 @@ void AqlValue::toVelocyPack(transaction::Methods* trx, arangodb::velocypack::Bui
   }
 }
 
+void AqlValue::toVelocyPack(transaction::Methods* trx, arangodb::velocypack::Builder& builder,
+                            bool resolveExternals) const {
+  toVelocyPack(trx->transactionContextPtr()->getVPackOptions(), builder, resolveExternals);
+}
+
 /// @brief materializes a value into the builder
-AqlValue AqlValue::materialize(transaction::Methods* trx, bool& hasCopied,
+AqlValue AqlValue::materialize(VPackOptions const* options, bool& hasCopied,
                                bool resolveExternals) const {
   switch (type()) {
     case VPACK_INLINE:
@@ -995,7 +998,7 @@ AqlValue AqlValue::materialize(transaction::Methods* trx, bool& hasCopied,
       ConditionalDeleter<VPackBuffer<uint8_t>> deleter(shouldDelete);
       std::shared_ptr<VPackBuffer<uint8_t>> buffer(new VPackBuffer<uint8_t>, deleter);
       VPackBuilder builder(buffer);
-      toVelocyPack(trx, builder, resolveExternals);
+      toVelocyPack(options, builder, resolveExternals);
       hasCopied = true;
       return AqlValue(buffer.get(), shouldDelete);
     }
@@ -1004,6 +1007,11 @@ AqlValue AqlValue::materialize(transaction::Methods* trx, bool& hasCopied,
   // we shouldn't get here
   hasCopied = false;
   return AqlValue();
+}
+
+AqlValue AqlValue::materialize(transaction::Methods* trx, bool& hasCopied,
+                               bool resolveExternals) const {
+  return materialize(trx->transactionContextPtr()->getVPackOptions(), hasCopied, resolveExternals);
 }
 
 /// @brief clone a value
@@ -1171,23 +1179,24 @@ AqlValue AqlValue::CreateFromBlocks(transaction::Methods* trx,
 }
 
 /// @brief comparison for AqlValue objects
-int AqlValue::Compare(transaction::Methods* trx, AqlValue const& left,
+int AqlValue::Compare(velocypack::Options const* options, AqlValue const& left,
                       AqlValue const& right, bool compareUtf8) {
   AqlValue::AqlValueType const leftType = left.type();
   AqlValue::AqlValueType const rightType = right.type();
 
   if (leftType != rightType) {
+    // TODO implement this case more efficiently
     if (leftType == RANGE || rightType == RANGE || leftType == DOCVEC || rightType == DOCVEC) {
       // range|docvec against x
-      transaction::BuilderLeaser leftBuilder(trx);
-      left.toVelocyPack(trx, *leftBuilder.get(), false);
+      VPackBuilder leftBuilder;
+      left.toVelocyPack(options, leftBuilder, false);
 
-      transaction::BuilderLeaser rightBuilder(trx);
-      right.toVelocyPack(trx, *rightBuilder.get(), false);
+      VPackBuilder rightBuilder;
+      right.toVelocyPack(options, rightBuilder, false);
 
-      return arangodb::basics::VelocyPackHelper::compare(
-          leftBuilder->slice(), rightBuilder->slice(), compareUtf8,
-          trx->transactionContextPtr()->getVPackOptions());
+      return arangodb::basics::VelocyPackHelper::compare(leftBuilder.slice(),
+                                                         rightBuilder.slice(),
+                                                         compareUtf8, options);
     }
     // fall-through to other types intentional
   }
@@ -1199,9 +1208,8 @@ int AqlValue::Compare(transaction::Methods* trx, AqlValue const& left,
     case VPACK_SLICE_POINTER:
     case VPACK_MANAGED_SLICE:
     case VPACK_MANAGED_BUFFER: {
-      return arangodb::basics::VelocyPackHelper::compare(
-          left.slice(), right.slice(), compareUtf8,
-          trx->transactionContextPtr()->getVPackOptions());
+      return arangodb::basics::VelocyPackHelper::compare(left.slice(), right.slice(),
+                                                         compareUtf8, options);
     }
     case DOCVEC: {
       // use lexicographic ordering of AqlValues regardless of block,
@@ -1230,7 +1238,7 @@ int AqlValue::Compare(transaction::Methods* trx, AqlValue const& left,
         AqlValue const& rval =
             right._data.docvec->at(rblock)->getValueReference(ritem, 0);
 
-        int cmp = Compare(trx, lval, rval, compareUtf8);
+        int cmp = Compare(options, lval, rval, compareUtf8);
 
         if (cmp != 0) {
           return cmp;
@@ -1276,6 +1284,11 @@ int AqlValue::Compare(transaction::Methods* trx, AqlValue const& left,
   }
 
   return 0;
+}
+
+int AqlValue::Compare(transaction::Methods* trx, AqlValue const& left,
+                      AqlValue const& right, bool compareUtf8) {
+  return Compare(trx->transactionContextPtr()->getVPackOptions(), left, right, compareUtf8);
 }
 
 AqlValue::AqlValue(std::vector<arangodb::aql::SharedAqlItemBlockPtr>* docvec) noexcept {

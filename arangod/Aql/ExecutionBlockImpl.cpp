@@ -66,6 +66,8 @@
 #include "Aql/SubqueryStartExecutor.h"
 #include "Aql/TraversalExecutor.h"
 #include "Aql/UnsortingGatherExecutor.h"
+#include "Transaction/Context.h"
+#include "Transaction/Methods.h"
 
 #include <type_traits>
 
@@ -106,7 +108,8 @@ ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine,
                                                  typename Executor::Infos&& infos)
     : ExecutionBlock(engine, node),
       _dependencyProxy(_dependencies, engine->itemBlockManager(),
-                       infos.getInputRegisters(), infos.numberOfInputRegisters()),
+                       infos.getInputRegisters(), infos.numberOfInputRegisters(),
+                       transaction()->transactionContextPtr()->getVPackOptions()),
       _rowFetcher(_dependencyProxy),
       _infos(std::move(infos)),
       _executor(_rowFetcher, _infos),

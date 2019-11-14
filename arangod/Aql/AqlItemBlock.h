@@ -208,7 +208,7 @@ class AqlItemBlock {
 
   /// @brief toJson, transfer a whole AqlItemBlock to Json, the result can
   /// be used to recreate the AqlItemBlock via the Json constructor
-  void toVelocyPack(transaction::Methods* trx, arangodb::velocypack::Builder&) const;
+  void toVelocyPack(velocypack::Options const*, arangodb::velocypack::Builder&) const;
 
   /// @brief Creates a human-readable velocypack of the block. Adds an object
   /// `{nrItems, nrRegs, matrix}` to the builder.
@@ -217,9 +217,9 @@ class AqlItemBlock {
   // (of length nrRegs+1 (sic)). The first entry contains the shadow row depth,
   // or `null` for data rows. The entries with indexes 1..nrRegs contain the
   // registers 0..nrRegs-1, respectively.
-  void toSimpleVPack(transaction::Methods* trx, arangodb::velocypack::Builder&) const;
+  void toSimpleVPack(velocypack::Options const*, arangodb::velocypack::Builder&) const;
 
-  void rowToSimpleVPack(size_t row, transaction::Methods* trx,
+  void rowToSimpleVPack(size_t row, velocypack::Options const*,
                         velocypack::Builder& builder) const;
 
   /// @brief test if the given row is a shadow row and conveys subquery

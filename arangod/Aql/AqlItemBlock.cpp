@@ -32,6 +32,8 @@
 #include "Aql/RegisterPlan.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Transaction/Context.h"
+#include "Transaction/Methods.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -565,7 +567,7 @@ SharedAqlItemBlockPtr AqlItemBlock::steal(std::vector<size_t> const& chosen,
 ///                  corresponding position
 ///  "raw":     List of actual values, positions 0 and 1 are always null
 ///                  such that actual indices start at 2
-void AqlItemBlock::toVelocyPack(transaction::Methods* trx, VPackBuilder& result) const {
+void AqlItemBlock::toVelocyPack(velocypack::Options const* const trxOptions, VPackBuilder& result) const {
   TRI_ASSERT(result.isOpenObject());
   VPackOptions options(VPackOptions::Defaults);
   options.buildUnindexedArrays = true;
@@ -651,7 +653,7 @@ void AqlItemBlock::toVelocyPack(transaction::Methods* trx, VPackBuilder& result)
 
         if (it == table.end()) {
           currentState = Next;
-          a.toVelocyPack(trx, raw, false);
+          a.toVelocyPack(trxOptions, raw, false);
           table.emplace(a, pos++);
         } else {
           currentState = Positional;
@@ -700,20 +702,21 @@ void AqlItemBlock::toVelocyPack(transaction::Methods* trx, VPackBuilder& result)
   result.add("raw", raw.slice());
 }
 
-void AqlItemBlock::rowToSimpleVPack(size_t const row, transaction::Methods* trx, arangodb::velocypack::Builder& builder) const {
+void AqlItemBlock::rowToSimpleVPack(size_t const row, velocypack::Options const* options, arangodb::velocypack::Builder& builder) const {
   VPackArrayBuilder rowBuilder{&builder};
 
   if (isShadowRow(row)) {
-    getShadowRowDepth(row).toVelocyPack(trx, *rowBuilder, false);
+    getShadowRowDepth(row).toVelocyPack(options, *rowBuilder, false);
   } else {
-    AqlValue{AqlValueHintNull{}}.toVelocyPack(trx, *rowBuilder, false);
+    AqlValue{AqlValueHintNull{}}.toVelocyPack(options, *rowBuilder, false);
   }
   for (RegisterId reg = 0; reg < getNrRegs(); ++reg) {
-    getValueReference(row, reg).toVelocyPack(trx, *rowBuilder, false);
+    getValueReference(row, reg).toVelocyPack(options, *rowBuilder, false);
   }
 }
 
-void AqlItemBlock::toSimpleVPack(transaction::Methods* trx, arangodb::velocypack::Builder& builder) const {
+void AqlItemBlock::toSimpleVPack(velocypack::Options const* options,
+                                 arangodb::velocypack::Builder& builder) const {
   VPackObjectBuilder block{&builder};
   block->add("nrItems", VPackValue(size()));
   block->add("nrRegs", VPackValue(getNrRegs()));
@@ -721,7 +724,7 @@ void AqlItemBlock::toSimpleVPack(transaction::Methods* trx, arangodb::velocypack
   {
     VPackArrayBuilder matrixBuilder{block.builder};
     for (size_t row = 0; row < size(); ++row) {
-      rowToSimpleVPack(row, trx, *matrixBuilder.builder);
+      rowToSimpleVPack(row, options, *matrixBuilder.builder);
     }
   }
 }

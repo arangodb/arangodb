@@ -530,7 +530,6 @@ function gatherBlockTestSuite () {
       assertEqual(0, nodeTypes.filter(type => type === 'SubqueryNode').length);
       assertNotEqual(0, nodeTypes.filter(type => type === 'SubqueryStartNode').length);
       assertNotEqual(0, nodeTypes.filter(type => type === 'SubqueryEndNode').length);
-      db._explain(query, {}, opts);
       const actual = AQL_EXECUTE(query, {}, opts).json;
 
       assertEqual(expected, actual, query);
