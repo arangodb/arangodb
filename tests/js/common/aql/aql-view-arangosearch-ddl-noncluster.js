@@ -989,6 +989,131 @@ function IResearchFeatureDDLTestSuite () {
       assertEqual(db[viewName], undefined);
     },
 
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test link on analyzers collection
+    ////////////////////////////////////////////////////////////////////////////////
+    testIndexStats : function() {
+      const colName = 'TestCollection';
+      const viewName = 'TestView';
+
+      db._drop(colName);
+      db._dropView(viewName);
+
+      const col = db._create(colName);
+      const view = db._createView(viewName, 'arangosearch', {
+        commitIntervalMsec: 0,        // disable auto-commit
+        consolidationIntervalMsec: 0, // disable consolidation
+        cleanupIntervalStep: 0        // disable cleanup
+      });
+      view.properties({ links: { [colName]: { includeAllFields: true } } });
+
+      // check link stats
+      {
+        let figures = db.TestCollection.getIndexes(true, true)
+                                    .find(e => e.type == 'arangosearch')
+                                    .figures;
+        assertNotEqual(null, figures);
+        assertTrue(Object === figures.constructor);
+        assertEqual(6, Object.keys(figures).length);
+        assertEqual(0, figures.indexSize);
+        assertEqual(0, figures.numDocs);
+        assertEqual(0, figures.numLiveDocs);
+        assertEqual(0, figures.numBufferedDocs);
+        assertEqual(1, figures.numFiles);
+        assertEqual(0, figures.numSegments);
+      }
+
+      // insert documents
+      col.save({ foo: 'bar' });
+      col.save({ foo: 'baz' });
+
+      // check link stats
+      {
+        let figures = db.TestCollection.getIndexes(true, true)
+                                    .find(e => e.type == 'arangosearch')
+                                    .figures;
+        assertNotEqual(null, figures);
+        assertTrue(Object === figures.constructor);
+        assertEqual(6, Object.keys(figures).length);
+        assertEqual(0, figures.indexSize);
+        assertEqual(0, figures.numDocs);
+        assertEqual(0, figures.numLiveDocs);
+        assertEqual(2, figures.numBufferedDocs);
+        assertEqual(1, figures.numFiles);
+        assertEqual(0, figures.numSegments);
+      }
+
+      // ensure data is synchronized
+      var res = db._query("FOR d IN TestView OPTIONS {waitForSync:true} SORT d.foo RETURN d").toArray();
+      assertEqual(2, res.length);
+      assertEqual('bar', res[0].foo);
+      assertEqual('baz', res[1].foo);
+
+      // check link stats
+      {
+        let figures = db.TestCollection.getIndexes(true, true)
+                                    .find(e => e.type == 'arangosearch')
+                                    .figures;
+        assertNotEqual(null, figures);
+        assertTrue(Object === figures.constructor);
+        assertEqual(6, Object.keys(figures).length);
+        assertTrue(0 < figures.indexSize);
+        assertEqual(2, figures.numDocs);
+        assertEqual(2, figures.numLiveDocs);
+        assertEqual(0, figures.numBufferedDocs);
+        assertEqual(6, figures.numFiles);
+        assertEqual(1, figures.numSegments);
+      }
+
+      // remove document
+      col.remove(res[0]._key);
+
+      // ensure data is synchronized
+      res = db._query("FOR d IN TestView OPTIONS {waitForSync:true} SORT d.foo RETURN d").toArray();
+      assertEqual(1, res.length);
+      assertEqual('baz', res[0].foo);
+
+      // check link stats
+      {
+        let figures = db.TestCollection.getIndexes(true, true)
+                                    .find(e => e.type == 'arangosearch')
+                                    .figures;
+        assertNotEqual(null, figures);
+        assertTrue(Object === figures.constructor);
+        assertEqual(6, Object.keys(figures).length);
+        assertTrue(0 < figures.indexSize);
+        assertEqual(2, figures.numDocs);
+        assertEqual(1, figures.numLiveDocs);
+        assertEqual(0, figures.numBufferedDocs);
+        assertEqual(7, figures.numFiles);
+        assertEqual(1, figures.numSegments);
+      }
+
+      // truncate collection
+      col.truncate();
+
+      // ensure data is synchronized
+      res = db._query("FOR d IN TestView OPTIONS {waitForSync:true} SORT d.foo RETURN d").toArray();
+      assertEqual(0, res.length);
+
+      // check link stats
+      {
+        let figures = db.TestCollection.getIndexes(true, true)
+                                    .find(e => e.type == 'arangosearch')
+                                    .figures;
+        assertNotEqual(null, figures);
+        assertTrue(Object === figures.constructor);
+        assertEqual(6, Object.keys(figures).length);
+        assertEqual(0, figures.indexSize);
+        assertEqual(0, figures.numDocs);
+        assertEqual(0, figures.numLiveDocs);
+        assertEqual(0, figures.numBufferedDocs);
+        assertEqual(1, figures.numFiles);
+        assertEqual(0, figures.numSegments);
+      }
+    },
+
     ////////////////////////////////////////////////////////////////////////////
     /// @brief test ensure that view is deleted within deleted database
     /// Regression test for arangodb/release-3.4#153.
@@ -1097,6 +1222,7 @@ function IResearchFeatureDDLTestSuite () {
       db._useDatabase("_system");
       db._dropDatabase(dbName);
     },
+
     testLeftAnalyzerInDroppedDatabase: function () {
       const dbName = "TestNameDroppedDB";
       const analyzerName = "TestAnalyzer";
@@ -1119,9 +1245,9 @@ function IResearchFeatureDDLTestSuite () {
       db._dropDatabase(dbName);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test link on analyzers collection
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test link on analyzers collection
+    ////////////////////////////////////////////////////////////////////////////////
     testIndexAnalyzerCollection : function() {
       const dbName = "TestNameDroppedDB";
       const analyzerName = "TestAnalyzer";
