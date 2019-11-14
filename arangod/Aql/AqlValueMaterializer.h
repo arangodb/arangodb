@@ -35,7 +35,7 @@ class Methods;
 
 namespace velocypack {
 class Slice;
-class Options;
+struct Options;
 }  // namespace velocypack
 
 namespace aql {
