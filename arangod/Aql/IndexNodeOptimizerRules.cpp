@@ -127,7 +127,7 @@ void arangodb::aql::lateDocumentMaterializationRule(Optimizer* opt,
                 // the node uses attributes which is not in index
                 stopSearch = true;
               } else {
-                nodesToChange.emplace_back(node);
+                nodesToChange.emplace_back(std::move(node));
               }
             }
             break;
@@ -141,7 +141,7 @@ void arangodb::aql::lateDocumentMaterializationRule(Optimizer* opt,
           default: // make clang happy
             break;
         }
-        if (sortNode != nullptr && current->getType() != ExecutionNode::CALCULATION) {
+        if (!stopSearch && sortNode != nullptr && current->getType() != ExecutionNode::CALCULATION) {
           arangodb::containers::HashSet<Variable const*> currentUsedVars;
           current->getVariablesUsedHere(currentUsedVars);
           if (currentUsedVars.find(indexNode->outVariable()) != currentUsedVars.end()) {

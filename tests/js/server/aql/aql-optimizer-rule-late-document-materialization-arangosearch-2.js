@@ -33,7 +33,7 @@ let db = require("@arangodb").db;
 let isCluster = require("internal").isCluster();
 
 function lateDocumentMaterializationArangoSearch2RuleTestSuite () {
-  const ruleName = "late-document-materialization-arangosearch-2";
+  const ruleName = "late-document-materialization-arangosearch";
   const cn = "UnitTestsCollection";
   const cn1 = "UnitTestsCollection1";
   const vn = "UnitTestsView";
@@ -89,11 +89,6 @@ function lateDocumentMaterializationArangoSearch2RuleTestSuite () {
       assertEqual(-1, plan.rules.indexOf(ruleName));
     },
     testNotAppliedDueToSortElimination() {
-      let query = "FOR d IN " + svn + " SEARCH d.value IN [1, 2] SORT BM25(d) LIMIT 10 RETURN d";
-      let plan = AQL_EXPLAIN(query).plan;
-      assertEqual(-1, plan.rules.indexOf(ruleName));
-    },
-    testNotAppliedDueToSortElimination2() {
       let query = "FOR d IN " + svn + " LET c = d.value + RAND() SORT d.value LIMIT 10 RETURN d";
       let plan = AQL_EXPLAIN(query).plan;
       assertEqual(-1, plan.rules.indexOf(ruleName));

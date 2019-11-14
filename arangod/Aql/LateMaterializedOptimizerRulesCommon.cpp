@@ -92,10 +92,8 @@ bool latematerialized::getReferencedAttributes(AstNode* node,
             return false;
           }
           std::reverse(state.nodeAttrs.attrs.back().attr.begin(), state.nodeAttrs.attrs.back().attr.end());
-        } else {
-          if (state.wasAccess) {
-            state.nodeAttrs.attrs.pop_back();
-          }
+        } else if (state.wasAccess) {
+          state.nodeAttrs.attrs.pop_back();
         }
         // finish an attribute path
         state.wasAccess = false;

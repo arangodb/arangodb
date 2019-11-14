@@ -191,11 +191,8 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
 
   using ViewVarsInfo = std::unordered_map<std::vector<arangodb::basics::AttributeName> const*, ViewVariable>;
 
-  void setLateMaterialized(aql::Variable const* colPtrVariable,
-                           aql::Variable const* docIdVariable,
-                           ViewVarsInfo const& viewVariables) {
+  void setViewVariables(ViewVarsInfo const& viewVariables) {
     _outNonMaterializedViewVars.clear();
-    setLateMaterialized(colPtrVariable, docIdVariable);
     for (auto& viewVars : viewVariables) {
       _outNonMaterializedViewVars[viewVars.second.viewFieldNum] = viewVars.second.var;
     }
