@@ -137,6 +137,7 @@ void ClusterUpgradeFeature::tryClusterUpgrade() {
   } else {
     precs.emplace_back(::upgradeVersionKey, AgencyPrecondition::Type::VALUE, latestUpgradeVersion);
   }
+  // there must be no other coordinator that performs an upgrade at the same time
   precs.emplace_back(::upgradeExecutedByKey, AgencyPrecondition::Type::EMPTY, true);
 
   // try to register ourselves as responsible for the upgrade
@@ -148,7 +149,10 @@ void ClusterUpgradeFeature::tryClusterUpgrade() {
   result = agency.sendTransactionWithFailover(transaction);
   if (result.successful()) {
     // we are responsible for the upgrade!
-    LOG_TOPIC("15ac4", INFO, arangodb::Logger::CLUSTER) << "running cluster upgrade...";
+    LOG_TOPIC("15ac4", INFO, arangodb::Logger::CLUSTER) 
+        << "running cluster upgrade from " 
+        << (latestUpgradeVersion == 0 ? std::string("an unknown version") : std::string("version ") + std::to_string(latestUpgradeVersion)) 
+        << " to version " << arangodb::methods::Version::current() << "...";
 
     bool success = false;
     try {
@@ -167,19 +171,22 @@ void ClusterUpgradeFeature::tryClusterUpgrade() {
       // upgrade successful - store our current version number
       operations.emplace_back(::upgradeVersionKey, AgencyValueOperationType::SET, arangodb::methods::Version::current());
     }
+    // remove the key that locks out other coordinators from upgrading
     operations.emplace_back(::upgradeExecutedByKey, AgencySimpleOperationType::DELETE_OP);
     AgencyWriteTransaction transaction(operations, precs);
 
     result = agency.sendTransactionWithFailover(transaction);
     if (result.successful()) {
-      LOG_TOPIC("853de", INFO, arangodb::Logger::CLUSTER) << "cluster upgrade completed successfully";
+      LOG_TOPIC("853de", INFO, arangodb::Logger::CLUSTER) 
+          << "cluster upgrade to version " << arangodb::methods::Version::current() 
+          << " completed successfully";
     } else {
       LOG_TOPIC("a0b4f", ERR, arangodb::Logger::CLUSTER) << "unable to store cluster upgrade information in agency: " << result.errorMessage();
     }
   } else if (result.httpCode() != (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
-    // someone else has performed the upgrade
     LOG_TOPIC("482a3", WARN, arangodb::Logger::CLUSTER) << "unable to fetch upgrade information: " << result.errorMessage();
   } else {
+    // someone else is performing the upgrade
     LOG_TOPIC("ab6eb", DEBUG, arangodb::Logger::CLUSTER) << "someone else is running the cluster upgrade right now";
   }
 }
