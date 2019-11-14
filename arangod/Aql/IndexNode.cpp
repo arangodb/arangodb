@@ -179,9 +179,9 @@ void IndexNode::initIndexCoversProjections() {
   }
 
   // cannot apply the optimization if we use more than one different index
-  auto idx = _indexes[0].getIndex();
+  auto const& idx = _indexes[0];
   for (size_t i = 1; i < _indexes.size(); ++i) {
-    if (_indexes[i].getIndex() != idx) {
+    if (_indexes[i] != idx) {
       // different index used => optimization not possible
       return;
     }
@@ -270,8 +270,8 @@ void IndexNode::toVelocyPackHelper(VPackBuilder& builder, unsigned flags,
   builder.add(VPackValue("indexes"));
   {
     VPackArrayBuilder guard(&builder);
-    for (auto& index : _indexes) {
-      index.toVelocyPack(builder, Index::makeFlags(Index::Serialize::Estimates));
+    for (auto const& index : _indexes) {
+      index->toVelocyPack(builder, Index::makeFlags(Index::Serialize::Estimates));
     }
   }
   builder.add(VPackValue("condition"));
@@ -290,10 +290,10 @@ void IndexNode::toVelocyPackHelper(VPackBuilder& builder, unsigned flags,
     builder.add("indexIdOfVars", VPackValue(_outNonMaterializedIndVars.first));
     // container _indexes contains a few items
     auto indIt = std::find_if(_indexes.cbegin(), _indexes.cend(), [this](auto const& index) {
-      return index.getIndex()->id() == _outNonMaterializedIndVars.first;
+      return index->id() == _outNonMaterializedIndVars.first;
     });
     TRI_ASSERT(indIt != _indexes.cend());
-    auto const& fields = indIt->getIndex()->fields();
+    auto const& fields = (*indIt)->fields();
     VPackArrayBuilder arrayScope(&builder, "IndexValuesVars");
     for (auto const& indVar : _outNonMaterializedIndVars.second) {
       VPackObjectBuilder objectScope(&builder);
@@ -319,14 +319,19 @@ arangodb::aql::AstNode* IndexNode::makeUnique(arangodb::aql::AstNode* node,
     auto ast = _plan->getAst();
     auto array = _plan->getAst()->createNodeArray();
     array->addMember(node);
-    bool isSorted = false;
-    bool isSparse = false;
+   
     TRI_ASSERT(trx != nullptr);
 
     // Here it does not matter which index we choose for the isSorted/isSparse
     // check, we need them all sorted here.
-    auto unused = trx->getIndexFeatures(_indexes.at(0), isSorted, isSparse);
-    if (isSparse || isSorted) {
+
+    auto idx = _indexes.at(0);
+    if (!idx) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                     "The index id cannot be empty.");
+    }
+    
+    if (idx->sparse() || idx->isSorted()) {
       // the index is sorted. we need to use SORTED_UNIQUE to get the
       // result back in index order
       return ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("SORTED_UNIQUE"), array);
@@ -586,7 +591,7 @@ CostEstimate IndexNode::estimateCost() const {
 
     if (root != nullptr && root->numMembers() > i) {
       arangodb::aql::AstNode const* condition = root->getMember(i);
-      costs = _indexes[i].getIndex()->supportsFilterCondition(
+      costs = _indexes[i]->supportsFilterCondition(
           std::vector<std::shared_ptr<Index>>(), condition, _outVariable, itemsInCollection);
     }
 

@@ -262,23 +262,6 @@ bool transaction::Methods::removeStatusChangeCallback(StatusChangeCallback const
   getDataSourceRegistrationCallbacks().clear();
 }
 
-/// @brief Get the field names of the used index
-std::vector<std::vector<std::string>> transaction::Methods::IndexHandle::fieldNames() const {
-  return _index->fieldNames();
-}
-
-/// @brief IndexHandle getter method
-std::shared_ptr<arangodb::Index> transaction::Methods::IndexHandle::getIndex() const {
-  return _index;
-}
-
-/// @brief IndexHandle toVelocyPack method passthrough
-void transaction::Methods::IndexHandle::toVelocyPack(
-    arangodb::velocypack::Builder& builder,
-    std::underlying_type<Index::Serialize>::type flags) const {
-  _index->toVelocyPack(builder, flags);
-}
-
 TRI_vocbase_t& transaction::Methods::vocbase() const {
   return _state->vocbase();
 }
@@ -539,7 +522,7 @@ bool transaction::Methods::sortOrs(arangodb::aql::Ast* ast, arangodb::aql::AstNo
       try {
         std::string conditionString =
             conditionData->first->toString() + " - " +
-            std::to_string(conditionData->second.getIndex()->id());
+            std::to_string(conditionData->second->id());
         isUnique = seenIndexConditions.emplace(std::move(conditionString)).second;
         // we already saw the same combination of index & condition
         // don't add it again
@@ -1646,8 +1629,8 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
 
     if (res.fail()) {
       // Error reporting in the babies case is done outside of here,
-      if (res.is(TRI_ERROR_ARANGO_CONFLICT) && !isBabies) {
-        TRI_ASSERT(prevDocResult.revisionId() != 0);
+      if (res.is(TRI_ERROR_ARANGO_CONFLICT) && !isBabies && prevDocResult.revisionId() != 0) {
+        TRI_ASSERT(didReplace);
         
         arangodb::velocypack::StringRef key = value.get(StaticStrings::KeyString).stringRef();
         buildDocumentIdentity(collection.get(), resultBuilder, cid, key, prevDocResult.revisionId(),
@@ -1657,7 +1640,7 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
     }
 
     if (!options.silent) {
-      const bool showReplaced = (options.returnOld && didReplace);
+      bool const showReplaced = (options.returnOld && didReplace);
       TRI_ASSERT(!options.returnNew || !docResult.empty());
       TRI_ASSERT(!showReplaced || !prevDocResult.empty());
 
@@ -2742,22 +2725,6 @@ bool transaction::Methods::getBestIndexHandleForFilterCondition(
   return false;
 }
 
-/// @brief Get the index features:
-///        Returns the covered attributes, and sets the first bool value
-///        to isSorted and the second bool value to isSparse
-std::vector<std::vector<arangodb::basics::AttributeName>> transaction::Methods::getIndexFeatures(
-    IndexHandle const& indexHandle, bool& isSorted, bool& isSparse) {
-  auto idx = indexHandle.getIndex();
-  if (nullptr == idx) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                   "The index id cannot be empty.");
-  }
-
-  isSorted = idx->isSorted();
-  isSparse = idx->sparse();
-  return idx->fields();
-}
-
 /// @brief Gets the best fitting index for an AQL sort condition
 /// note: the caller must have read-locked the underlying collection when
 /// calling this method
@@ -2837,14 +2804,13 @@ bool transaction::Methods::getIndexForSortCondition(
 /// note: the caller must have read-locked the underlying collection when
 /// calling this method
 std::unique_ptr<IndexIterator> transaction::Methods::indexScanForCondition(
-    IndexHandle const& indexId, arangodb::aql::AstNode const* condition,
+    IndexHandle const& idx, arangodb::aql::AstNode const* condition,
     arangodb::aql::Variable const* var, IndexIteratorOptions const& opts) {
   if (_state->isCoordinator()) {
     // The index scan is only available on DBServers and Single Server.
     THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_ONLY_ON_DBSERVER);
   }
 
-  auto idx = indexId.getIndex();
   if (nullptr == idx) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "The index id cannot be empty.");
@@ -3100,22 +3066,22 @@ std::vector<std::shared_ptr<Index>> transaction::Methods::indexesForCollectionCo
 /// @brief get the index by it's identifier. Will either throw or
 ///        return a valid index. nullptr is impossible.
 transaction::Methods::IndexHandle transaction::Methods::getIndexByIdentifier(
-    std::string const& collectionName, std::string const& indexHandle) {
+    std::string const& collectionName, std::string const& idxId) {
+  
+  if (idxId.empty()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                   "The index id cannot be empty.");
+  }
+
+  if (!arangodb::Index::validateId(idxId.c_str())) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_INDEX_HANDLE_BAD);
+  }
+  
   if (_state->isCoordinator()) {
-    if (indexHandle.empty()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                     "The index id cannot be empty.");
-    }
-
-    if (!arangodb::Index::validateId(indexHandle.c_str())) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_INDEX_HANDLE_BAD);
-    }
-
-    std::shared_ptr<Index> idx = indexForCollectionCoordinator(collectionName, indexHandle);
-
+    std::shared_ptr<Index> idx = indexForCollectionCoordinator(collectionName, idxId);
     if (idx == nullptr) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_INDEX_NOT_FOUND,
-                                     "Could not find index '" + indexHandle +
+                                     "Could not find index '" + idxId +
                                          "' in collection '" + collectionName +
                                          "'.");
     }
@@ -3127,20 +3093,13 @@ transaction::Methods::IndexHandle transaction::Methods::getIndexByIdentifier(
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
   std::shared_ptr<LogicalCollection> const& document = trxCollection(cid)->collection();
 
-  if (indexHandle.empty()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                   "The index id cannot be empty.");
-  }
 
-  if (!arangodb::Index::validateId(indexHandle.c_str())) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_INDEX_HANDLE_BAD);
-  }
-  TRI_idx_iid_t iid = arangodb::basics::StringUtils::uint64(indexHandle);
+  TRI_idx_iid_t iid = arangodb::basics::StringUtils::uint64(idxId);
   std::shared_ptr<arangodb::Index> idx = document->lookupIndex(iid);
 
   if (idx == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_INDEX_NOT_FOUND,
-                                   "Could not find index '" + indexHandle +
+                                   "Could not find index '" + idxId +
                                        "' in collection '" + collectionName +
                                        "'.");
   }

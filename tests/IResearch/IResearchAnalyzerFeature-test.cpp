@@ -1082,8 +1082,6 @@ TEST_F(IResearchAnalyzerFeatureCoordinatorTest, test_ensure_index_add_factory) {
         auto& ci =
             collection.vocbase().server().getFeature<arangodb::ClusterFeature>().clusterInfo();
         EXPECT_TRUE(collection.vocbase().server().hasFeature<arangodb::iresearch::IResearchAnalyzerFeature>());
-        auto& feature =
-            collection.vocbase().server().getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
         ci.invalidatePlan();  // invalidate plan to test recursive lock aquisition in ClusterInfo::loadPlan()
         return std::make_shared<TestIndex>(id, collection, definition);
       }

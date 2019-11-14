@@ -96,32 +96,11 @@ class Methods {
   friend class traverser::BaseEngine;
 
  public:
-  class IndexHandle {
-    friend class transaction::Methods;
 
-    std::shared_ptr<arangodb::Index> _index;
-
-   public:
-    IndexHandle() = default;
-    void toVelocyPack(arangodb::velocypack::Builder& builder,
-                      std::underlying_type<Index::Serialize>::type flags) const;
-    bool operator==(IndexHandle const& other) const {
-      return other._index.get() == _index.get();
-    }
-    bool operator!=(IndexHandle const& other) const {
-      return other._index.get() != _index.get();
-    }
-    explicit IndexHandle(std::shared_ptr<arangodb::Index> const& idx)
-        : _index(idx) {}
-    std::vector<std::vector<std::string>> fieldNames() const;
-
-   public:
-    std::shared_ptr<arangodb::Index> getIndex() const;
-  };
-
-  using VPackSlice = arangodb::velocypack::Slice;
   template<typename T>
   using Future = futures::Future<T>;
+  using IndexHandle = std::shared_ptr<arangodb::Index>; // legacy
+  using VPackSlice = arangodb::velocypack::Slice;
 
   /// @brief transaction::Methods
  private:
@@ -393,12 +372,6 @@ class Methods {
   ENTERPRISE_VIRT bool getBestIndexHandleForFilterCondition(
       std::string const&, arangodb::aql::AstNode*&,
       arangodb::aql::Variable const*, size_t, aql::IndexHint const&, IndexHandle&);
-
-  /// @brief Get the index features:
-  ///        Returns the covered attributes, and sets the first bool value
-  ///        to isSorted and the second bool value to isSparse
-  std::vector<std::vector<arangodb::basics::AttributeName>> getIndexFeatures(IndexHandle const&,
-                                                                             bool&, bool&);
 
   /// @brief Gets the best fitting index for an AQL sort condition
   /// note: the caller must have read-locked the underlying collection when

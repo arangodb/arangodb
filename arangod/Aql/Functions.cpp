@@ -4250,14 +4250,14 @@ AqlValue Functions::RandomToken(ExpressionContext*, transaction::Methods*,
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
 
   int64_t const length = value.toInt64();
-  if (length <= 0 || length > 65536) {
+  if (length < 0 || length > 65536) {
     THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
                                   "RANDOM_TOKEN");
   }
 
-  UniformCharacter JSNumGenerator(
+  UniformCharacter generator(
       "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789");
-  return AqlValue(JSNumGenerator.random(static_cast<size_t>(length)));
+  return AqlValue(generator.random(static_cast<size_t>(length)));
 }
 
 /// @brief function MD5
