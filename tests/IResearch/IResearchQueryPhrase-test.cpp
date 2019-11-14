@@ -1325,6 +1325,30 @@ TEST_F(IResearchQueryPhraseTest, test) {
     ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 
+  // test invalid input type (invalid order of terms) [] args
+  {
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "FOR d IN testView SEARCH PHRASE(d['value'], 1, ['12312'], ['12313']) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
+  }
+
+  // test invalid input type (invalid order of terms 2) [] args
+  {
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "FOR d IN testView SEARCH PHRASE(d['value'], ['12312'], ['12313'], 2 ) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
+  }
+
+  // test invalid input type (invalid order of terms 3) [] args
+  {
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "FOR d IN testView SEARCH PHRASE(d['value'], ['12312'], 2, 2, ['12313']) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
+  }
+
   // test invalid input type (invalid order of terms) via []
   {
     auto result = arangodb::tests::executeQuery(
@@ -1977,7 +2001,7 @@ TEST_F(IResearchQueryPhraseTest, test) {
     std::vector<arangodb::velocypack::Slice> expected = {};
     auto result = arangodb::tests::executeQuery(
         vocbase,
-        "FOR d IN testView SEARCH ANALYZER(PHRASE(d['duplicated'], [ 'v', 1, "
+        "FOR d IN testView SEARCH PHRASE(d['duplicated'], [ 'v', 1, "
         "'c' ], 'test_analyzer'), 'identity') SORT BM25(d) ASC, TFIDF(d) DESC, "
         "d.seq RETURN d");
     ASSERT_TRUE(result.result.ok());
@@ -2003,7 +2027,7 @@ TEST_F(IResearchQueryPhraseTest, test) {
     };
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN testView SEARCH ANALYZER(PHRASE(d.duplicated, 'a', 'b', 1, 'd'), "
+      "FOR d IN testView SEARCH PHRASE(d.duplicated, ['a', 'b'], 1, ['d'], "
       "'test_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
@@ -2028,7 +2052,7 @@ TEST_F(IResearchQueryPhraseTest, test) {
     };
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN testView SEARCH ANALYZER(PHRASE(d.duplicated, ['a', 'b', 1, 'd']), "
+      "FOR d IN testView SEARCH PHRASE(d.duplicated, ['a', 'b', 1, 'd'], "
       "'test_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
@@ -2053,7 +2077,7 @@ TEST_F(IResearchQueryPhraseTest, test) {
     };
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN testView SEARCH ANALYZER(PHRASE(d.duplicated, 'a', 1, 'c', 'd'), "
+      "FOR d IN testView SEARCH PHRASE(d.duplicated, ['a', 1, 'c'], 0, 'd', "
       "'test_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
