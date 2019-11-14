@@ -1404,7 +1404,7 @@ RestStatus RestAdminClusterHandler::handleHealth() {
   auto fConfig =
       AsyncAgencyComm()
           .sendWithFailover(fuerte::RestVerb::Get, "/_api/agency/config", 60.0s,
-                            VPackBuffer<uint8_t>())
+                            AsyncAgencyComm::RequestType::READ, VPackBuffer<uint8_t>())
           .thenValue([self](AsyncAgencyCommResult&& result) {
             // this lambda has to capture self since collect returns early on an
             // exception and the RestHandle might be freed to early otherwise

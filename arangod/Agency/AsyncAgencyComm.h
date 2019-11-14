@@ -40,7 +40,9 @@ struct AsyncAgencyCommResult {
   arangodb::fuerte::Error error;
   std::unique_ptr<arangodb::fuerte::Response> response;
 
-  [[nodiscard]] bool ok() const { return arangodb::fuerte::Error::NoError == this->error; }
+  [[nodiscard]] bool ok() const {
+    return arangodb::fuerte::Error::NoError == this->error;
+  }
 
   [[nodiscard]] bool fail() const { return !ok(); }
 
@@ -114,18 +116,19 @@ class AsyncAgencyComm final {
   using FutureReadResult = arangodb::futures::Future<AgencyReadResult>;
 
   [[nodiscard]] FutureResult getValues(std::string const& path) const;
-  [[nodiscard]] FutureReadResult getValues(std::shared_ptr<arangodb::cluster::paths::Path const> const& path) const;
+  [[nodiscard]] FutureReadResult getValues(
+      std::shared_ptr<arangodb::cluster::paths::Path const> const& path) const;
 
   template <typename T>
   [[nodiscard]] FutureResult setValue(network::Timeout timeout,
-                        std::shared_ptr<arangodb::cluster::paths::Path const> const& path,
-                        T const& value, uint64_t ttl = 0) {
+                                      std::shared_ptr<arangodb::cluster::paths::Path const> const& path,
+                                      T const& value, uint64_t ttl = 0) {
     return setValue(timeout, path->str(), value, ttl);
   }
 
   template <typename T>
   [[nodiscard]] FutureResult setValue(network::Timeout timeout, std::string const& path,
-                        T const& value, uint64_t ttl = 0) {
+                                      T const& value, uint64_t ttl = 0) {
     VPackBuffer<uint8_t> transaction;
     {
       VPackBuilder trxBuilder(transaction);
@@ -149,29 +152,53 @@ class AsyncAgencyComm final {
     return sendWriteTransaction(timeout, std::move(transaction));
   }
 
-  [[nodiscard]] FutureResult deleteKey(network::Timeout timeout,
-                         std::shared_ptr<arangodb::cluster::paths::Path const> const& path) const;
+  [[nodiscard]] FutureResult deleteKey(
+      network::Timeout timeout,
+      std::shared_ptr<arangodb::cluster::paths::Path const> const& path) const;
   [[nodiscard]] FutureResult deleteKey(network::Timeout timeout, std::string const& path) const;
 
   [[nodiscard]] FutureResult sendWriteTransaction(network::Timeout timeout,
-                                    velocypack::Buffer<uint8_t>&& body) const;
+                                                  velocypack::Buffer<uint8_t>&& body) const;
   [[nodiscard]] FutureResult sendReadTransaction(network::Timeout timeout,
-                                   velocypack::Buffer<uint8_t>&& body) const;
+                                                 velocypack::Buffer<uint8_t>&& body) const;
 
-  [[nodiscard]] FutureResult sendTransaction(network::Timeout timeout, AgencyReadTransaction const&) const;
-  [[nodiscard]] FutureResult sendTransaction(network::Timeout timeout, AgencyWriteTransaction const&) const;
+  [[nodiscard]] FutureResult sendTransaction(network::Timeout timeout,
+                                             AgencyReadTransaction const&) const;
+  [[nodiscard]] FutureResult sendTransaction(network::Timeout timeout,
+                                             AgencyWriteTransaction const&) const;
 
  public:
-  [[nodiscard]] FutureResult sendWithFailover(arangodb::fuerte::RestVerb method,
-                                std::string const& url, network::Timeout timeout,
-                                velocypack::Buffer<uint8_t>&& body) const;
-  [[nodiscard]] FutureResult sendWithFailover(arangodb::fuerte::RestVerb method,
-                                std::string const& url, network::Timeout timeout,
-                                AgencyTransaction const& trx) const;
+  enum class RequestType {
+    READ,   // send the transaction again in the case of no response
+    WRITE,  // does not send the transaction again but instead tries to do inquiry with the given ids
+    CUSTOM,  // talk to the leader and return always the result, even on timeout or redirect
+  };
 
+  using ClientId = std::string;
+
+  [[nodiscard]] FutureResult sendWithFailover(arangodb::fuerte::RestVerb method,
+                                              std::string const& url,
+                                              network::Timeout timeout, RequestType type,
+                                              std::vector<ClientId> clientIds,
+                                              velocypack::Buffer<uint8_t>&& body) const;
+
+  [[nodiscard]] FutureResult sendWithFailover(arangodb::fuerte::RestVerb method,
+                                              std::string const& url,
+                                              network::Timeout timeout, RequestType type,
+                                              std::vector<ClientId> clientIds,
+                                              AgencyTransaction const& trx) const;
+
+  [[nodiscard]] FutureResult sendWithFailover(arangodb::fuerte::RestVerb method,
+                                              std::string const& url,
+                                              network::Timeout timeout, RequestType type,
+                                              velocypack::Buffer<uint8_t>&& body) const;
+
+ public:
   AsyncAgencyComm() : _manager(*AsyncAgencyCommManager::INSTANCE) {}
-  explicit AsyncAgencyComm(AsyncAgencyCommManager* manager) : _manager(*manager) {}
-  explicit AsyncAgencyComm(AsyncAgencyCommManager& manager) : _manager(manager) {}
+  explicit AsyncAgencyComm(AsyncAgencyCommManager* manager)
+      : _manager(*manager) {}
+  explicit AsyncAgencyComm(AsyncAgencyCommManager& manager)
+      : _manager(manager) {}
 
  private:
   AsyncAgencyCommManager& _manager;

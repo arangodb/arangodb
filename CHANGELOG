@@ -1,6 +1,10 @@
 devel
 -----
 
+* Ported `/_admin/cluster*` API to C++.
+
+* Introduced AsyncAgencyComm for asynchronous internal agency requests.
+
 * Fixed an issue where removeServer left bihind current coordinators
 
 * Allow usage of AQL function `RANDOM_TOKEN` with an argument value of `0`. This
@@ -224,9 +228,9 @@ devel
 * Fixed internal issue #4407: remove storage engine warning.
 
 * Added support for TLS 1.3 for the arangod server and the client tools.
-  
+
   The arangod server can be started with option `--ssl.protocol 6` to make it require
-  TLS 1.3 for incoming client connections. The server can be started with option 
+  TLS 1.3 for incoming client connections. The server can be started with option
   `--ssl.protocol 5` to make it require TLS 1.2, as in previous versions of arangod.
 
   The default TLS protocol for the arangod server is now generic TLS, which will allow

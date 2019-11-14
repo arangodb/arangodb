@@ -41,15 +41,23 @@ using namespace arangodb;
 using namespace std::chrono_literals;
 
 using clock = std::chrono::steady_clock;
+using RequestType = arangodb::AsyncAgencyComm::RequestType;
 
 struct RequestMeta {
   network::Timeout timeout;
   fuerte::RestVerb method;
   std::string url;
+  RequestType type;
   std::vector<std::string> clientIds;
   network::Headers headers;
   clock::time_point startTime;
   unsigned tries;
+
+  bool isRetryOnNoResponse() { return type == RequestType::READ; }
+
+  bool isInquiryOnNoResponse() {
+    return type == RequestType::WRITE && !clientIds.empty();
+  }
 };
 
 bool agencyAsyncShouldCancel(RequestMeta& meta) {
@@ -66,10 +74,14 @@ bool agencyAsyncShouldTimeout(RequestMeta const& meta) {
 }
 
 auto agencyAsyncWaitTime(RequestMeta const& meta) {
+  clock::duration timeout = 0ms;
   if (meta.tries > 0) {
-    return 250ms * long(1lu << meta.tries);
+    timeout = 1ms * clock::duration::rep(1lu << meta.tries);
   }
-  return 0ms;
+  // only wait as long as the timeout allows
+  return std::min(timeout, (meta.startTime +
+                            std::chrono::duration_cast<clock::duration>(meta.timeout)) -
+                               clock::now());
 }
 
 std::string extractEndpointFromUrl(std::string const& location) {
@@ -158,12 +170,7 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncInquiry(AsyncAgencyCommManage
                     redirectOrError(man, endpoint, location);
                     return ::agencyAsyncInquiry(man, std::move(meta), std::move(body));
                   }
-
-                  if (resp->statusCode() == fuerte::StatusOK) {
-                    break;
-                  }
-
-                  [[fallthrough]];
+                  break;  // otherwise return error as is
                   /* fallthrough */
                 case fuerte::Error::Timeout:
                 case fuerte::Error::CouldNotConnect:
@@ -236,7 +243,7 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncSend(AsyncAgencyCommManager& 
                   }
 
                   // if we only did reads return here
-                  if (meta.clientIds.empty()) {
+                  if (meta.type == RequestType::READ) {
                     break;
                   }
 
@@ -245,15 +252,21 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncSend(AsyncAgencyCommManager& 
                 case fuerte::Error::Timeout:
                   // inquiry the request
                   man.reportError(endpoint);
-                  return ::agencyAsyncInquiry(man, std::move(meta),
-                                              std::move(body).moveBuffer());
-
+                  // in case of a write transaction we have to do inquiry
+                  if (meta.isInquiryOnNoResponse()) {
+                    return ::agencyAsyncInquiry(man, std::move(meta),
+                                                std::move(body).moveBuffer());
+                  }
+                  // otherwise just send again
+                  [[fallthrough]];
                 case fuerte::Error::CouldNotConnect:
-                  // retry to send the request
-                  man.reportError(endpoint);
-                  return ::agencyAsyncSend(man, std::move(meta),
-                                           std::move(body).moveBuffer());
-
+                  if (meta.isRetryOnNoResponse()) {
+                    // retry to send the request
+                    man.reportError(endpoint);
+                    return ::agencyAsyncSend(man, std::move(meta),
+                                             std::move(body).moveBuffer());
+                  }
+                  [[fallthrough]];
                 default:
                   break;
               }
@@ -270,30 +283,26 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncSend(AsyncAgencyCommManager& 
 namespace arangodb {
 
 AsyncAgencyComm::FutureResult AsyncAgencyComm::sendWithFailover(
-    fuerte::RestVerb method, std::string const& url,
-    arangodb::network::Timeout timeout, VPackBuffer<uint8_t>&& body) const {
-  std::vector<std::string> clientIds;
-  VPackSlice bodySlice(body.data());
-  if (bodySlice.isArray()) {
-    // In the writing case we want to find all transactions with client IDs
-    // and remember these IDs:
-    for (auto const& query : VPackArrayIterator(bodySlice)) {
-      if (query.isArray() && query.length() == 3 && query[0].isObject() &&
-          query[2].isString()) {
-        clientIds.push_back(query[2].copyString());
-      }
-    }
-  }
+    arangodb::fuerte::RestVerb method, std::string const& url, network::Timeout timeout,
+    RequestType type, velocypack::Buffer<uint8_t>&& body) const {
+  std::vector<ClientId> clientIds;
+  return sendWithFailover(method, url, timeout, type, clientIds, std::move(body));
+}
 
+AsyncAgencyComm::FutureResult AsyncAgencyComm::sendWithFailover(
+    arangodb::fuerte::RestVerb method, std::string const& url,
+    network::Timeout timeout, RequestType type, std::vector<ClientId> clientIds,
+    velocypack::Buffer<uint8_t>&& body) const {
   network::Headers headers;
   return agencyAsyncSend(_manager,
-                         RequestMeta({timeout, method, url, std::move(clientIds),
+                         RequestMeta({timeout, method, url, type, std::move(clientIds),
                                       std::move(headers), clock::now(), 0}),
                          std::move(body));
 }
 
 AsyncAgencyComm::FutureResult AsyncAgencyComm::sendWithFailover(
-    fuerte::RestVerb method, std::string const& url, network::Timeout timeout,
+    arangodb::fuerte::RestVerb method, std::string const& url,
+    network::Timeout timeout, RequestType type, std::vector<ClientId> clientIds,
     AgencyTransaction const& trx) const {
   VPackBuffer<uint8_t> body;
   {
@@ -302,7 +311,8 @@ AsyncAgencyComm::FutureResult AsyncAgencyComm::sendWithFailover(
     trx.toVelocyPack(builder);
   }
 
-  return sendWithFailover(method, url, timeout, std::move(body));
+  return sendWithFailover(method, url, timeout, type, std::move(clientIds),
+                          std::move(body));
 }
 
 void AsyncAgencyCommManager::addEndpoint(std::string const& endpoint) {
@@ -347,43 +357,60 @@ const char* AGENCY_URL_READ = "/_api/agency/read";
 const char* AGENCY_URL_WRITE = "/_api/agency/write";
 
 AsyncAgencyComm::FutureResult AsyncAgencyComm::getValues(std::string const& path) const {
-  return sendWithFailover(fuerte::RestVerb::Post, AGENCY_URL_READ, 120s,
-                          AgencyReadTransaction(path));
+  return sendTransaction(120s, AgencyReadTransaction(path));
 }
 
 AsyncAgencyComm::FutureReadResult AsyncAgencyComm::getValues(
     std::shared_ptr<arangodb::cluster::paths::Path const> const& path) const {
-  return sendWithFailover(fuerte::RestVerb::Post, AGENCY_URL_READ, 120s,
-                          AgencyReadTransaction(path->str()))
-      .thenValue([path = path](AsyncAgencyCommResult&& result) mutable {
-        if (result.ok() && result.statusCode() == fuerte::StatusOK) {
-          return futures::makeFuture(AgencyReadResult{std::move(result), std::move(path)});
-        }
+  return sendTransaction(120s, AgencyReadTransaction(path->str())).thenValue([path = path](AsyncAgencyCommResult&& result) mutable {
+    if (result.ok() && result.statusCode() == fuerte::StatusOK) {
+      return futures::makeFuture(AgencyReadResult{std::move(result), std::move(path)});
+    }
 
-        return futures::makeFuture(AgencyReadResult{std::move(result), nullptr});
-      });
+    return futures::makeFuture(AgencyReadResult{std::move(result), nullptr});
+  });
 }
 
 AsyncAgencyComm::FutureResult AsyncAgencyComm::sendTransaction(
     network::Timeout timeout, AgencyReadTransaction const& trx) const {
-  return sendWithFailover(fuerte::RestVerb::Post, AGENCY_URL_READ, timeout, trx);
+  std::vector<ClientId> clientIds;
+  return sendWithFailover(fuerte::RestVerb::Post, AGENCY_URL_READ, timeout,
+                          RequestType::READ, clientIds, trx);
 }
 
 AsyncAgencyComm::FutureResult AsyncAgencyComm::sendTransaction(
     network::Timeout timeout, AgencyWriteTransaction const& trx) const {
-  return sendWithFailover(fuerte::RestVerb::Post, AGENCY_URL_WRITE, timeout, trx);
+  std::vector<ClientId> clientIds;
+  if (!trx.clientId.empty()) {
+    clientIds.push_back(trx.clientId);
+  }
+  return sendWithFailover(fuerte::RestVerb::Post, AGENCY_URL_WRITE, timeout,
+                          RequestType::WRITE, std::move(clientIds), trx);
 }
 
 AsyncAgencyComm::FutureResult AsyncAgencyComm::sendWriteTransaction(
     network::Timeout timeout, velocypack::Buffer<uint8_t>&& body) const {
+  std::vector<std::string> clientIds;
+  VPackSlice bodySlice(body.data());
+  if (bodySlice.isArray()) {
+    // In the writing case we want to find all transactions with client IDs
+    // and remember these IDs:
+    for (auto const& query : VPackArrayIterator(bodySlice)) {
+      if (query.isArray() && query.length() == 3 && query[0].isObject() &&
+          query[2].isString()) {
+        clientIds.push_back(query[2].copyString());
+      }
+    }
+  }
   return sendWithFailover(fuerte::RestVerb::Post, AGENCY_URL_WRITE, timeout,
-                          std::move(body));
+                          RequestType::WRITE, std::move(clientIds), std::move(body));
 }
 
 AsyncAgencyComm::FutureResult AsyncAgencyComm::sendReadTransaction(
     network::Timeout timeout, velocypack::Buffer<uint8_t>&& body) const {
+  std::vector<ClientId> clientIds;
   return sendWithFailover(fuerte::RestVerb::Post, AGENCY_URL_READ, timeout,
-                          std::move(body));
+                          RequestType::READ, clientIds, std::move(body));
 }
 
 AsyncAgencyComm::FutureResult AsyncAgencyComm::deleteKey(
