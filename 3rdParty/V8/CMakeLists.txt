@@ -230,7 +230,7 @@ if (WIN32)
       # cmake eats semicolons or quotes them or, or, or so we can't use /t:a;b;c
       ExternalProject_Add_Step(v8_build_${MS_TARGET_CONF_LOWER} v8_build_${V8_ONE_TARGET}
         WORKING_DIRECTORY
-        ${V8_TARGET_DIR}/gypfiles
+        ${V8_TARGET_DIR}/../gypfiles
         COMMAND
         msbuild ${V8_ONE_TARGET}.vcxproj /p:Configuration=${MS_TARGET_CONF} /p:Platform=${MS_TARGET_PLATFORM}
         DEPENDEES
@@ -257,8 +257,8 @@ if (WIN32)
     )
 
   
-  set(V8_LIBRARY_DEBUG "${CMAKE_CURRENT_BINARY_DIR}/${V8_SUB_DIR}/gypfiles/Debug")
-  set(V8_LIBRARY_RELEASE "${CMAKE_CURRENT_BINARY_DIR}/${V8_SUB_DIR}/gypfiles//Release")
+  set(V8_LIBRARY_DEBUG "${CMAKE_CURRENT_BINARY_DIR}/gypfiles/Debug")
+  set(V8_LIBRARY_RELEASE "${CMAKE_CURRENT_BINARY_DIR}/gypfiles//Release")
 
 
   message("V8_LIBRARY_DEBUG ${V8_LIBRARY_DEBUG} CMAKE_CURRENT_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}")
@@ -303,6 +303,15 @@ if (WIN32)
     CACHE INTERNAL
     "${PROJECT_NAME}: include path"
     )
+  set(V8_INTERNAL_INCLUDE_DIR
+    debug "${V8_DIR}/src/builtins;${V8_LIBRARY_DEBUG}/obj/global_intermediate/generate-bytecode-output-root;${V8_LIBRARY_DEBUG}/obj/global_intermediate/torque-output-root"
+    optimized "${V8_DIR}/src/builtins;${V8_LIBRARY_RELEASE}/obj/global_intermediate/generate-bytecode-output-root;${V8_LIBRARY_RELEASE}/obj/global_intermediate/torque-output-root"
+    CACHE INTERNAL
+    "${PROJECT_NAME}: V8 private include path"
+    )
+
+  set(V8_LIBRARY_DEBUG "${CMAKE_CURRENT_BINARY_DIR}/gypfiles/Debug")
+  set(V8_LIBRARY_RELEASE "${CMAKE_CURRENT_BINARY_DIR}/gypfiles//Release")
 
 else ()
 
