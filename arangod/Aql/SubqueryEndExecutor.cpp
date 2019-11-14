@@ -41,20 +41,28 @@ SubqueryEndExecutorInfos::SubqueryEndExecutorInfos(
     RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
     std::unordered_set<RegisterId> const& registersToClear,
     std::unordered_set<RegisterId> registersToKeep,
-    transaction::Methods* trxPtr, RegisterId inReg, RegisterId outReg)
+    velocypack::Options const* const options, RegisterId inReg, RegisterId outReg)
     : ExecutorInfos(std::move(readableInputRegisters), std::move(writeableOutputRegisters), nrInputRegisters,
                     nrOutputRegisters, registersToClear, std::move(registersToKeep)),
-      _trxPtr(trxPtr),
+      _vpackOptions(options),
       _outReg(outReg),
       _inReg(inReg) {}
 
-SubqueryEndExecutorInfos::SubqueryEndExecutorInfos(SubqueryEndExecutorInfos&& other) = default;
-
 SubqueryEndExecutorInfos::~SubqueryEndExecutorInfos() = default;
 
-bool SubqueryEndExecutorInfos::usesInputRegister() const {
+bool SubqueryEndExecutorInfos::usesInputRegister() const noexcept {
   return _inReg != RegisterPlan::MaxRegisterId;
 }
+
+velocypack::Options const* SubqueryEndExecutorInfos::vpackOptions() const noexcept {
+  return _vpackOptions;
+}
+
+RegisterId SubqueryEndExecutorInfos::getOutputRegister() const noexcept {
+  return _outReg;
+}
+
+RegisterId SubqueryEndExecutorInfos::getInputRegister() const noexcept { return _inReg; }
 
 SubqueryEndExecutor::SubqueryEndExecutor(Fetcher& fetcher, SubqueryEndExecutorInfos& infos)
     : _fetcher(fetcher), _infos(infos), _accumulator(nullptr), _state(ACCUMULATE) {
@@ -83,7 +91,7 @@ std::pair<ExecutionState, NoStats> SubqueryEndExecutor::produceRows(OutputAqlIte
         if (inputRow.isInitialized() && _infos.usesInputRegister()) {
           TRI_ASSERT(_accumulator->isOpenArray());
           AqlValue value = inputRow.getValue(_infos.getInputRegister());
-          value.toVelocyPack(_infos.getTrxPtr(), *_accumulator, false);
+          value.toVelocyPack(_infos.vpackOptions(), *_accumulator, false);
         }
 
         // We have received DONE on data rows, so now

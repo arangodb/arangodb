@@ -50,15 +50,7 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-namespace arangodb {
-namespace tests {
-namespace aql {
-
-int compareAqlValues(irs::sort::prepared const*, arangodb::transaction::Methods* trx,
-                     arangodb::aql::AqlValue const& lhs,
-                     arangodb::aql::AqlValue const& rhs) {
-  return arangodb::aql::AqlValue::Compare(trx, lhs, rhs, true);
-}
+namespace arangodb::tests::aql {
 
 class SortExecutorTest : public ::testing::Test {
  protected:
@@ -215,6 +207,4 @@ TEST_F(SortExecutorTest, rows_upstream_we_are_waiting_for_list_of_numbers) {
   ASSERT_EQ(number, 5);
 }
 
-}  // namespace aql
-}  // namespace tests
-}  // namespace arangodb
+}  // namespace arangodb::tests::aql
