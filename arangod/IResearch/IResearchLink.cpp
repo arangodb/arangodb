@@ -444,6 +444,7 @@ void IResearchLink::batchInsert(
   };
 
   if (state.hasHint(transaction::Hints::Hint::INDEX_CREATION)) {
+    SCOPED_LOCK_NAMED(_asyncSelf->mutex(), lock);
     auto ctx = _dataStore._writer->documents();
     batchInsertImpl(ctx); // we need insert to succeed, so  we have things to cleanup in storage
     TRI_IF_FAILURE("ArangoSearch::MisreportCreationInsertAsFailed") {
@@ -1445,6 +1446,7 @@ Result IResearchLink::insert(
   }
 
   if (state.hasHint(transaction::Hints::Hint::INDEX_CREATION)) {
+    SCOPED_LOCK_NAMED(_asyncSelf->mutex(), lock);
     auto ctx = _dataStore._writer->documents();
 
     TRI_IF_FAILURE("ArangoSearch::MisreportCreationInsertAsFailed") {
