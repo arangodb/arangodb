@@ -1978,8 +1978,8 @@ arangodb::Result fromFuncPhrase(irs::boolean_filter* filter, QueryContext const&
     valueArgsBegin = 0;
     valueArgsEnd = valueArg->numMembers();
 
-    if (0 == (valueArgsEnd & 1)) {
-      auto message = "'PHRASE' AQL function: 2nd argument has an invalid number of members (must be an odd number)";
+    if (0 == valueArgsEnd) {
+      auto message = "'PHRASE' AQL function: 2nd argument is empty array";
       LOG_TOPIC("05c0c", WARN, arangodb::iresearch::TOPIC) << message;
       return {TRI_ERROR_BAD_PARAMETER, message};
     }
@@ -2053,45 +2053,33 @@ arangodb::Result fromFuncPhrase(irs::boolean_filter* filter, QueryContext const&
   decltype(fieldArg) offsetArg = nullptr;
   size_t offset = 0;
 
-  for (size_t idx = valueArgsBegin + 1, end = valueArgsEnd; idx < end; idx += 2) {
-    offsetArg = valueArgs->getMemberUnchecked(idx);
+  bool expectingOffset = true;
 
-    if (!offsetArg) {
-      auto message = "'PHRASE' AQL function: Unable to parse argument on position "s + std::to_string(idx) + " as an offset"s;
+  // value [digit = 0] value
+
+  for (size_t idx = valueArgsBegin + 1, end = valueArgsEnd; idx < end; ++idx) {
+    auto currentArg = valueArgs->getMemberUnchecked(idx);
+    if (!currentArg) {
+      auto message = "'PHRASE' AQL function: Unable to parse argument on position "s + std::to_string(idx);
       LOG_TOPIC("44bed", WARN, arangodb::iresearch::TOPIC) << message;
-      return {TRI_ERROR_BAD_PARAMETER, message};
+      return { TRI_ERROR_BAD_PARAMETER, message };
     }
+    ScopedAqlValue currentValue(*currentArg);
 
-    valueArg = valueArgs->getMemberUnchecked(idx + 1);
-
-    if (!valueArg) {
-      auto message = "'PHRASE' AQL function: Unable to parse argument on position " + std::to_string(idx + 1) + " as a value";
-      LOG_TOPIC("ac06b", WARN, arangodb::iresearch::TOPIC) << message;
-      return {TRI_ERROR_BAD_PARAMETER, message};
-    }
-
-    ScopedAqlValue offsetValue(*offsetArg);
-
-    if (filter || offsetValue.isConstant()) {
-      if (!offsetValue.execute(ctx) ||
-          arangodb::iresearch::SCOPED_VALUE_TYPE_DOUBLE != offsetValue.type()) {
-        auto message = "'PHRASE' AQL function: Unable to parse argument on position " + std::to_string(idx) + " as an offset";
+    if (filter || currentValue.isConstant()) {
+      if (!currentValue.execute(ctx)) {
+        auto message = "'PHRASE' AQL function: Unable to parse argument on position " + std::to_string(idx);
         LOG_TOPIC("d819d", WARN, arangodb::iresearch::TOPIC) << message;
-        return {TRI_ERROR_BAD_PARAMETER, message};
+        return { TRI_ERROR_BAD_PARAMETER, message };
       }
-
-      offset = static_cast<uint64_t>(offsetValue.getInt64());
-    }
-
-    ScopedAqlValue inputValue(*valueArg);
-
-    if (filter || inputValue.isConstant()) {
-      if (!inputValue.execute(ctx) ||
-          arangodb::iresearch::SCOPED_VALUE_TYPE_STRING != inputValue.type() ||
-          !inputValue.getString(value)) {
-        auto message =  "'PHRASE' AQL function: Unable to parse argument on position " + std::to_string(idx + 1) + " as a value";
-        LOG_TOPIC("39e12", WARN, arangodb::iresearch::TOPIC) << message;
-        return {TRI_ERROR_BAD_PARAMETER, message};
+      if (arangodb::iresearch::SCOPED_VALUE_TYPE_DOUBLE == currentValue.type() && expectingOffset) {
+          offset = static_cast<uint64_t>(currentValue.getInt64());
+          expectingOffset = false;
+          continue; // let`s go search for value
+      } else if(arangodb::iresearch::SCOPED_VALUE_TYPE_STRING != currentValue.type() || !currentValue.getString(value)) {
+        auto message = "'PHRASE' AQL function: Unable to parse argument on position " + std::to_string(idx) + (expectingOffset ?  " as a value or offset"s : "as a value"s);
+        LOG_TOPIC("ac06b", WARN, arangodb::iresearch::TOPIC) << message;
+        return { TRI_ERROR_BAD_PARAMETER, message };
       }
     }
 
@@ -2099,6 +2087,14 @@ arangodb::Result fromFuncPhrase(irs::boolean_filter* filter, QueryContext const&
       TRI_ASSERT(analyzer);
       appendTerms(*phrase, value, *analyzer, offset);
     }
+    offset = 0;
+    expectingOffset = true;
+  }
+
+  if (!expectingOffset) { // that means last arg is numeric - this is error as no term to apply offset to
+    auto message = "'PHRASE' AQL function : Unable to parse argument on position " + std::to_string(valueArgsEnd - 1) +  "as a value"s;
+    LOG_TOPIC("ac06f", WARN, arangodb::iresearch::TOPIC) << message;
+    return { TRI_ERROR_BAD_PARAMETER, message };
   }
 
   return { }; //ok;
