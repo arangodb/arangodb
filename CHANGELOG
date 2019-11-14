@@ -1,11 +1,7 @@
-v3.5.4 (XXXX-XX-XX)
--------------------
-
-* Fixed an issue, where removeServer left coordinators behind
-
-
 v3.5.3 (XXXX-XX-XX)
 -------------------
+
+* Fixed an issue where removeServer left coordinators behind.
 
 * Fixed UPSERT matching.
 
