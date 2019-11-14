@@ -70,7 +70,7 @@ class UpsertModifier {
   };
 
  public:
-  UpsertModifier(ModificationExecutorInfos& infos)
+  explicit UpsertModifier(ModificationExecutorInfos& infos)
       : _infos(infos),
 
         // Batch size has to be 1 so that the upsert modifier sees its own
