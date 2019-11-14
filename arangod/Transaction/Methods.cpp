@@ -1644,8 +1644,8 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
 
     if (res.fail()) {
       // Error reporting in the babies case is done outside of here,
-      if (res.is(TRI_ERROR_ARANGO_CONFLICT) && !isBabies) {
-        TRI_ASSERT(prevDocResult.revisionId() != 0);
+      if (res.is(TRI_ERROR_ARANGO_CONFLICT) && !isBabies && prevDocResult.revisionId() != 0) {
+        TRI_ASSERT(didReplace);
         
         arangodb::velocypack::StringRef key = value.get(StaticStrings::KeyString).stringRef();
         buildDocumentIdentity(collection.get(), resultBuilder, cid, key, prevDocResult.revisionId(),
@@ -1655,7 +1655,7 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
     }
 
     if (!options.silent) {
-      const bool showReplaced = (options.returnOld && didReplace);
+      bool const showReplaced = (options.returnOld && didReplace);
       TRI_ASSERT(!options.returnNew || !docResult.empty());
       TRI_ASSERT(!showReplaced || !prevDocResult.empty());
 

@@ -726,6 +726,17 @@ function dumpTestEnterpriseSuite () {
       assertEqual(6, p.numberOfShards);
     },
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test link on analyzers collection
+////////////////////////////////////////////////////////////////////////////////
+    testIndexAnalyzerCollection : function() {
+      var res = db._query("FOR d IN analyzersView OPTIONS {waitForSync:true} FOR a IN _analyzers FILTER d._key == a._key RETURN [d,a]").toArray();
+      assertEqual(res.length, db._analyzers.count());
+      res.forEach(function(e) {
+        assertEqual(e[0],e[1]);
+      });
+    },
+
     testViewOnSmartEdgeCollection : function() {
       try {
         db._createView("check", "arangosearch", {});
