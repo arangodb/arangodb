@@ -555,6 +555,8 @@ std::pair<bool, bool> transaction::Methods::findIndexHandleForAndNode(
   auto considerIndex = [&bestIndex, &bestCost, &bestSupportsFilter, &bestSupportsSort,
                         &indexes, node, reference, itemsInCollection,
                         &sortCondition](std::shared_ptr<Index> const& idx) -> void {
+    TRI_ASSERT(!idx->inProgress());
+
     double filterCost = 0.0;
     double sortCost = 0.0;
     size_t itemsInIndex = itemsInCollection;
@@ -2739,6 +2741,8 @@ bool transaction::Methods::getIndexForSortCondition(
 
     auto considerIndex = [reference, sortCondition, itemsInIndex, &bestCost, &bestIndex,
                           &coveredAttributes](std::shared_ptr<Index> const& idx) -> void {
+      TRI_ASSERT(!idx->inProgress());
+
       Index::SortCosts costs =
           idx->supportsSortCondition(sortCondition, reference, itemsInIndex);
       if (costs.supportsCondition &&
@@ -2813,6 +2817,7 @@ std::unique_ptr<IndexIterator> transaction::Methods::indexScanForCondition(
   }
 
   // Now create the Iterator
+  TRI_ASSERT(!idx->inProgress());
   return idx->iteratorForCondition(this, condition, var, opts);
 }
 
@@ -3003,7 +3008,7 @@ Result transaction::Methods::unlockRecursive(TRI_voc_cid_t cid, AccessMode::Type
 
 /// @brief get list of indexes for a collection
 std::vector<std::shared_ptr<Index>> transaction::Methods::indexesForCollection(
-    std::string const& collectionName, bool withHidden) {
+    std::string const& collectionName) {
   if (_state->isCoordinator()) {
     return indexesForCollectionCoordinator(collectionName);
   }
@@ -3012,13 +3017,12 @@ std::vector<std::shared_ptr<Index>> transaction::Methods::indexesForCollection(
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
   std::shared_ptr<LogicalCollection> const& document = trxCollection(cid)->collection();
   std::vector<std::shared_ptr<Index>> indexes = document->getIndexes();
-  if (!withHidden) {
-    indexes.erase(std::remove_if(indexes.begin(), indexes.end(),
-                                 [](std::shared_ptr<Index> x) {
-                                   return x->isHidden();
-                                 }),
-                  indexes.end());
-  }
+    
+  indexes.erase(std::remove_if(indexes.begin(), indexes.end(),
+                               [](std::shared_ptr<Index> const& x) {
+                                 return x->isHidden();
+                               }),
+                indexes.end());
   return indexes;
 }
 
@@ -3049,7 +3053,14 @@ std::vector<std::shared_ptr<Index>> transaction::Methods::indexesForCollectionCo
     collection->clusterIndexEstimates(true);
   }
 
-  return collection->getIndexes();
+  std::vector<std::shared_ptr<Index>> indexes = collection->getIndexes();
+    
+  indexes.erase(std::remove_if(indexes.begin(), indexes.end(),
+                               [](std::shared_ptr<Index> const& x) {
+                                 return x->isHidden();
+                               }),
+                indexes.end());
+  return indexes;
 }
 
 /// @brief get the index by it's identifier. Will either throw or

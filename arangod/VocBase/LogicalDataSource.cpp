@@ -206,7 +206,7 @@ Result LogicalDataSource::properties(velocypack::Builder& builder,
   // note: includeSystem and forPersistence are not 100% synonymous,
   // however, for our purposes this is an okay mapping; we only set
   // includeSystem if we are persisting the properties
-  if (context == Serialization::Persistence) {
+  if (context == Serialization::Persistence || context == Serialization::PersistenceWithInProgress) {
     builder.add(StaticStrings::DataSourceDeleted, velocypack::Value(deleted()));
     builder.add(StaticStrings::DataSourceSystem, velocypack::Value(system()));
 
