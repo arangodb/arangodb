@@ -237,7 +237,7 @@
     'v8_use_external_startup_data%': 1,
 
     # Relative path to icu.gyp from this file.
-    'icu_gyp_path': '../third_party/icu/icu.gyp',
+    'icu_gyp_path': './<(V8_ROOT)/third_party/icu/icu.gyp',
 
     'conditions': [
       ['(v8_target_arch=="arm" and host_arch!="arm") or \

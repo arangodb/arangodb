@@ -4,7 +4,7 @@
 
 {
   'variables': {
-    'V8_ROOT': '../',
+#    'V8_ROOT': '../',
     'v8_code': 1,
     'v8_enable_i18n_support%': 1,
     'v8_toolset_for_shell%': 'target',

@@ -31,15 +31,22 @@ void ReadAndParseTorqueFile(const std::string& path) {
   CurrentSourceFile::Scope source_id_scope(source_id);
 
   // path might be either a normal file path or an encoded URI.
-  auto maybe_content = ReadFile(SourceFileMap::AbsolutePath(source_id));
+  auto fn = SourceFileMap::AbsolutePath(source_id);
+  auto maybe_content = ReadFile(fn);
+  std::string maybe_path;
   if (!maybe_content) {
-    if (auto maybe_path = FileUriDecode(path)) {
-      maybe_content = ReadFile(*maybe_path);
+    if (auto mmmaybe_path = FileUriDecode(path)) {
+      maybe_path = *mmmaybe_path;
+      maybe_content = ReadFile(maybe_path);
     }
   }
-
+  /*
   if (!maybe_content) {
-    Error("Cannot open file path/uri: ", path).Throw();
+    maybe_content = ReadFile(path);
+    }*/
+  if (!maybe_content) {
+    std::string allPaths = path + " - " + fn + " - " + maybe_path;
+    Error("Cannot open file path/uri: ", allPaths).Throw();
   }
 
   ParseTorque(*maybe_content);

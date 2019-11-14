@@ -16,7 +16,41 @@ project(V8)
 
 set(V8_DIR "${PROJECT_SOURCE_DIR}/${V8_SUB_DIR}")
 set(V8_TARGET_DIR "${CMAKE_CURRENT_BINARY_DIR}/${V8_SUB_DIR}")
+set(GYP_FILES_DIR "${PROJECT_SOURCE_DIR}/gypfiles")
 
+################################################################################
+## ICU EXPORTS
+################################################################################
+
+set(ICU_COMPACT_VERSION
+  "54"
+  CACHE INTERNAL
+  "ICU: compact Version"
+)
+
+set(ICU_VERSION
+  "${ICU_COMPACT_VERSION}.1"
+  CACHE INTERNAL
+  "ICU: Version"
+  )
+
+set(ICU_BASEDIR ${V8_DIR}/third_party/icu)
+
+set(ICU_INCLUDE_DIR
+  ${ICU_BASEDIR}/source/common;${ICU_BASEDIR}/source/i18n;${ICU_BASEDIR}/source/io
+  CACHE INTERNAL
+  "ICU: include path"
+  FORCE
+)
+
+set(V8_VERSION
+  ${V8_VERSION}
+  CACHE INTERNAL
+  "${PROJECT_NAME}: Version"
+)
+
+
+SET(V8_RELATIVE_SOURCE_DIR "../${V8_SUB_DIR}")
 file(MAKE_DIRECTORY ${V8_TARGET_DIR})
 
 # detect endianess, and translate to gyp/v8 proper string
@@ -55,12 +89,13 @@ file(RELATIVE_PATH V8_REL_TARGET_PATH ${V8_DIR} ${V8_TARGET_DIR})
 
 list(APPEND V8_GYP_ARGS
   --generator-output=${V8_TARGET_DIR}
+  -DV8_ROOT=${V8_RELATIVE_SOURCE_DIR}
   #$ ${V8_REL_TARGET_PATH}
   -Dv8_target_arch=${V8_PROC_ARCH}
   -Dv8_host_arch=${V8_PROC_ARCH}
   -Dbyteorder=${ENDIANESS}
   -Dv8_enable_i18n_support=1
-  -DV8_SRC_ROOT=${V8_DIR}/gypfiles/
+  -DV8_SRC_ROOT=${GYP_FILES_DIR}/
 )
 
 if (CROSS_COMPILING)
@@ -83,45 +118,15 @@ if (CROSS_COMPILING)
   )
 endif()
 
-################################################################################
-## ICU EXPORTS
-################################################################################
-
-set(ICU_COMPACT_VERSION
-  "54"
-  CACHE INTERNAL
-  "ICU: compact Version"
-)
-
-set(ICU_VERSION
-  "${ICU_COMPACT_VERSION}.1"
-  CACHE INTERNAL
-  "ICU: Version"
-  )
-
-set(ICU_BASEDIR ${V8_DIR}/third_party/icu)
-
-set(ICU_INCLUDE_DIR
-  ${ICU_BASEDIR}/source/common;${ICU_BASEDIR}/source/i18n;${ICU_BASEDIR}/source/io
-  CACHE INTERNAL
-  "ICU: include path"
-  FORCE
-)
-
-set(V8_VERSION
-  ${V8_VERSION}
-  CACHE INTERNAL
-  "${PROJECT_NAME}: Version"
-)
-
 
 ################################################################################
 ## WINDOWS with msbuild
 ################################################################################
 
+set(GYP_MAIN ${PROJECT_SOURCE_DIR}/gyp/gyp_main.py)
+
 if (WIN32)
   MESSAGE(STATUS "Building V8 for Windows with MSBUILD")
-  set(GYP_MAIN ${V8_DIR}/tools/gyp/gyp_main.py)
 
   if (USE_CLCACHE_MODE)
     list(APPEND V8_GYP_ARGS "-Duse_clcache_mode=true")
@@ -160,7 +165,7 @@ if (WIN32)
   endif ()
 
   list(APPEND V8_GYP_ARGS -Dtarget_arch=${V8_PROC_ARCH} -Dhost_arch=${V8_PROC_ARCH})
-  list(APPEND V8_GYP_ARGS gypfiles/all.gyp)
+  list(APPEND V8_GYP_ARGS ../gypfiles/all.gyp)
 
   list(APPEND V8_TARGET_ARCHS #"Debug"
     "Release")
@@ -169,8 +174,7 @@ if (WIN32)
   set(GYP_MSVS_OVERRIDE_PATH "${CMAKE_CXX_COMPILER}")
 
   list(APPEND V8_GYP_ARGS
-    -DV8_ROOT=../
-    -Igypfiles/standalone.gypi
+    -I../gypfiles/standalone.gypi
     -Dcomponent=static_library
     -Dlibrary=static_library
     -Dgenerator_output=${V8_TARGET_DIR}
@@ -331,15 +335,13 @@ else ()
   set(V8_LIBRARY_DIR "${V8_TARGET_DIR}/${V8_TARGET_ARCH}/")
   set(ICU_LIBRARY_DIR "${V8_LIBRARY_DIR}")
 
-  set(GYP_MAIN ${V8_DIR}/tools/gyp/gyp_main.py)
-
-  list(APPEND V8_GYP_ARGS gypfiles/all.gyp)
+  list(APPEND V8_GYP_ARGS ../gypfiles/all.gyp)
   list(APPEND V8_GYP_ARGS --format make)
   list(APPEND V8_GYP_ARGS -S.${V8_TARGET_ARCH})
 
   if (LINUX)
     set(V8_INTERNAL_INCLUDE_DIR "${V8_LIBRARY_DIR}/obj/gen/generate-bytecode-output-root;${V8_LIBRARY_DIR}/obj/gen/torque-output-root")
-    set(V8_LIBRARY_DIR "${V8_LIBRARY_DIR}/obj.target/gypfiles")
+    set(V8_LIBRARY_DIR "${V8_LIBRARY_DIR}/gypfiles")
     set(ICU_LIBRARY_DIR "${ICU_LIBRARY_DIR}/obj.target/third_party/icu")
   elseif (SOLARIS)
     set(V8_LIBRARY_DIR "${V8_LIBRARY_DIR}/obj.host/gypfiles")
@@ -347,7 +349,7 @@ else ()
   endif ()
 
   list(APPEND V8_GYP_ARGS
-    -Igypfiles/standalone.gypi
+    -I../gypfiles/standalone.gypi
     -Dmac_deployment_target=${CMAKE_OSX_DEPLOYMENT_TARGET}
     --depth=.
     -Dstandalone_static_library=1
