@@ -277,3 +277,5 @@ std::string const StaticStrings::New("new");
 std::string const StaticStrings::Old("old");
 std::string const StaticStrings::UpgradeEnvName(
     "ARANGODB_UPGRADE_DURING_RESTORE");
+std::string const StaticStrings::BackupToDeleteName("DIRECTORY_TO_DELETE");
+std::string const StaticStrings::BackupSearchToDeleteName("DIRECTORY_TO_DELETE_SEARCH");

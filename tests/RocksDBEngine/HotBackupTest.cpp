@@ -365,16 +365,16 @@ public:
 
 /// @brief test
 TEST(RocksDBHotBackupRestoreDirectories, test_createRestoringDirectory) {
-  std::string restoringDir, restoringSearchDir, tempname;
+  std::string fullRestoringDir, restoringDir, restoringSearchDir, tempname;
   bool retBool;
 
   VPackBuilder report;
   tests::mocks::MockAqlServer server;
   HotBackupFeature& feature = server.getFeature<HotBackupFeature>();
   RocksDBHotBackupRestoreTest testee(feature, VPackSlice(), report);
-  testee.createHotDirectory();
+  testee.createHotDirectory()
 
-  retBool = testee.createRestoringDirectories(restoringDir, restoringSearchDir);
+  retBool = testee.createRestoringDirectories(fullRestoringDir, restoringDir, restoringSearchDir);
 
   // spot check files in restoring dir
   EXPECT_TRUE( retBool );

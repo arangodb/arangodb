@@ -143,9 +143,9 @@ void UpgradeFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   cluster.forceDisable();
   ServerState::instance()->setRole(ServerState::ROLE_SINGLE);
 
-#ifdef USE_ENTEPRISE
+#ifdef USE_ENTERPRISE
   HotBackupFeature& hotBackupFeature = server().getFeature<HotBackupFeature>();
-  hotBackupFeature.disable();
+  hotBackupFeature.forceDisable();
 #endif
 }
 
