@@ -41,6 +41,8 @@ struct Options;
 namespace aql {
 
 struct AqlValueMaterializer {
+  explicit AqlValueMaterializer(velocypack::Options const* options);
+  [[deprecated("Pass VPackOptions instead of the transaction")]]
   explicit AqlValueMaterializer(arangodb::transaction::Methods* trx);
 
   AqlValueMaterializer(AqlValueMaterializer const& other);
@@ -57,7 +59,6 @@ struct AqlValueMaterializer {
 
   arangodb::velocypack::Slice slice(arangodb::aql::AqlValue const& value, bool resolveExternals);
 
-  arangodb::transaction::Methods* trx;
   arangodb::velocypack::Options const* options;
   arangodb::aql::AqlValue materialized;
   bool hasCopied;
