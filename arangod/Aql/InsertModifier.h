@@ -34,7 +34,7 @@ struct ModificationExecutorInfos;
 
 class InsertModifierCompletion {
  public:
-  InsertModifierCompletion(ModificationExecutorInfos& infos) : _infos(infos) {}
+  explicit InsertModifierCompletion(ModificationExecutorInfos& infos) : _infos(infos) {}
 
   ~InsertModifierCompletion() = default;
 

@@ -772,8 +772,6 @@ if (USE_MAINTAINER_MODE)
   find_package(BISON)
   # these are required for generateREADME.sh
   find_program(FGREP_EXECUTABLE fgrep)
-  find_program(MARKDOWN_EXECUTABLE markdown)
-  find_program(HTML2TEXT_EXECUTABLE html2text)
   find_program(SED_EXECUTABLE sed)
   find_program(AWK_EXECUTABLE awk)
 endif ()

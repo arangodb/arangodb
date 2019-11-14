@@ -40,7 +40,6 @@
 #include "ProgramOptions/Section.h"
 #include "RestServer/FrontendFeature.h"
 #include "RestServer/ScriptFeature.h"
-#include "Statistics/StatisticsFeature.h"
 #include "V8Server/FoxxQueuesFeature.h"
 #include "V8Server/V8DealerFeature.h"
 
@@ -253,7 +252,7 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
       {std::type_index(typeid(MMFilesPersistentIndexFeature)),
        std::type_index(typeid(iresearch::IResearchFeature)),
        std::type_index(typeid(iresearch::IResearchAnalyzerFeature)),
-       std::type_index(typeid(StatisticsFeature)), std::type_index(typeid(ActionFeature)),
+       std::type_index(typeid(ActionFeature)),
        std::type_index(typeid(ScriptFeature)), std::type_index(typeid(FoxxQueuesFeature)),
        std::type_index(typeid(FrontendFeature))});
 
