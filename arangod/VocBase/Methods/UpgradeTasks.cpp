@@ -322,14 +322,14 @@ Result createSystemStatisticsCollections(TRI_vocbase_t& vocbase,
   return {TRI_ERROR_NO_ERROR};
 }
 
-static Result createIndex(std::string const name, Index::IndexType type,
+static Result createIndex(std::string const& name, Index::IndexType type,
                           std::vector<std::string> const& fields, bool unique, bool sparse,
                           std::vector<std::shared_ptr<LogicalCollection>>& collections) {
   // Static helper function that wraps creating an index. If we fail to
   // create an index with some indices created, we clean up by removing all
   // collections later on. Find the collection by name
   auto colIt = std::find_if(collections.begin(), collections.end(),
-                            [name](std::shared_ptr<LogicalCollection> const& col) {
+                            [&name](std::shared_ptr<LogicalCollection> const& col) {
                               TRI_ASSERT(col != nullptr);
                               return col->name() == name;
                             });
