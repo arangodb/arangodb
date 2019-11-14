@@ -104,6 +104,7 @@ class StaticStrings {
   static std::string const DatabaseCoordinator;
   static std::string const DatabaseCoordinatorRebootId;
   static std::string const DatabaseIsBuilding;
+  static std::string const Properties;
 
   // LogicalDataSource definition fields
   static std::string const DataSourceDeleted;  // data-source deletion marker

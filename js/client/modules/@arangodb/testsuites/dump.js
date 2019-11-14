@@ -5,29 +5,31 @@
 
 // /////////////////////////////////////////////////////////////////////////////
 // DISCLAIMER
-// 
+//
 // Copyright 2016-2019 ArangoDB GmbH, Cologne, Germany
 // Copyright 2014 triagens GmbH, Cologne, Germany
-// 
+//
 // Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-// 
+//
 //      http://www.apache.org/licenses/LICENSE-2.0
-// 
+//
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-// 
+//
 // Copyright holder is ArangoDB GmbH, Cologne, Germany
-// 
+//
 // @author Max Neunhoeffer
 // //////////////////////////////////////////////////////////////////////////////
 
 const functionsDocumentation = {
   'dump': 'dump tests',
+  'dump_db_properties_single': 'dump single database and test db properties',
+  'dump_db_properties_all': 'dump all databases and test db properties',
   'dump_authentication': 'dump tests with authentication',
   'dump_encrypted': 'encrypted dump tests',
   'dump_maskings': 'masked dump tests',
@@ -55,6 +57,8 @@ const RESET = require('internal').COLORS.COLOR_RESET;
 
 const testPaths = {
   'dump': [tu.pathForTesting('server/dump')],
+  'dump_db_properties_single': [tu.pathForTesting('server/dump')],
+  'dump_db_properties_all': [tu.pathForTesting('server/dump')],
   'dump_authentication': [tu.pathForTesting('server/dump')],
   'dump_encrypted': [tu.pathForTesting('server/dump')],
   'dump_maskings': [tu.pathForTesting('server/dump')],
@@ -132,7 +136,7 @@ class DumpRestoreHelper {
     phaseInfo.failed = (phaseInfo.status !== true || !this.isAlive() ? 1 : 0);
     return phaseInfo.failed === 0;
   };
- 
+
   extractResults() {
     if (this.fn !== undefined) {
       fs.remove(this.fn);
@@ -262,7 +266,7 @@ class DumpRestoreHelper {
     this.results.testFoxxFoxxAppBundles = this.arangosh(file, {'server.database': database});
     return this.validate(this.results.testFoxxAppBundles);
   }
-  
+
   createHotBackup() {
     this.print("creating backup");
     let cmds = {
@@ -338,7 +342,7 @@ function dump_backend (options, serverAuthInfo, clientAuth, dumpOptions, restore
     return rc;
   }
   const helper = new DumpRestoreHelper(instanceInfo, options, clientAuth, dumpOptions, restoreOptions, which, afterServerStart);
- 
+
   const setupFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpSetup));
   const cleanupFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpCleanup));
   const testFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpAgain));
@@ -346,7 +350,7 @@ function dump_backend (options, serverAuthInfo, clientAuth, dumpOptions, restore
   if (
     !helper.runSetupSuite(setupFile) ||
     !helper.dumpFrom('UnitTestsDumpSrc') ||
-    !helper.runCleanupSuite(cleanupFile) ||  
+    !helper.runCleanupSuite(cleanupFile) ||
     !helper.restoreTo('UnitTestsDumpDst') ||
     !helper.runTests(testFile,'UnitTestsDumpDst') ||
     !helper.tearDown(tearDownFile)) {
@@ -392,6 +396,66 @@ function dump (options) {
   return dump_backend(options, {}, {}, options, options, 'dump', tstFiles, function(){});
 }
 
+
+function dumpDBPropertiesSingle (options) {
+  if(options.cluster !== true) {
+    // skip non cluster
+    return {
+      'dump_db_properties_single': {
+        'status': true,
+        'message': 'skipped because of single server (cluster required)',
+        'skipped': true
+      }
+    };
+  }
+
+  let tstFiles = {
+    dumpSetup: 'dump-db-properties-setup-cluster-single.js',
+    dumpCleanup: 'cleanup-nothing.js',
+    dumpAgain: 'dump-db-properties-cluster-single.js',
+    dumpTearDown: 'dump-db-properties-teardown-cluster-single.js'
+  };
+
+  let dumpOptions = { ...options };
+
+  let restoreOptions = { ...options };
+  restoreOptions['create-collection'] = 'true';
+
+  return dump_backend(options, {}, {}, /*dump*/ dumpOptions, /*restore*/ restoreOptions,
+                      'dump_db_properties_single', tstFiles, function(){});
+}
+
+function dumpDBPropertiesAll (options) {
+  if(options.cluster !== true) {
+    // skip non cluster
+    return {
+      'dump_db_properties_all': {
+        'status': true,
+        'message': 'skipped because of single server (cluster required)',
+        'skipped': true
+      }
+    };
+  }
+
+  let tstFiles = {
+    dumpSetup: 'dump-db-properties-setup-cluster-all.js',
+    dumpCleanup: 'cleanup-nothing.js',
+    dumpAgain: 'dump-db-properties-cluster-all.js',
+    dumpTearDown: 'dump-db-properties-teardown-cluster-all.js'
+  };
+
+  let dumpOptions = { ...options };
+  dumpOptions['allDatabases'] = true;
+
+  let restoreOptions = { ...options };
+  restoreOptions['allDatabases'] = true;
+  restoreOptions['create-collection'] = 'true';
+
+  return dump_backend(options, {}, {}, /*dump*/ dumpOptions, /*restore*/ restoreOptions,
+                      'dump_db_properties_all', tstFiles, function(){});
+}
+
+
 function dumpMultiple (options) {
   let c = getClusterStrings(options);
   let tstFiles = {
@@ -401,7 +465,7 @@ function dumpMultiple (options) {
     dumpTearDown: 'dump-teardown' + c.cluster + '.js',
     dumpCheckGraph: 'check-graph-multiple.js'
   };
-  
+
   let dumpOptions = {
     allDatabases: true
   };
@@ -480,7 +544,7 @@ function dumpEncrypted (options) {
 
   let dumpOptions = _.clone(options);
   dumpOptions.encrypted = true;
-  
+
   let tstFiles = {
     dumpSetup: 'dump-setup' + c.cluster + '.js',
     dumpCleanup: 'cleanup-nothing.js',
@@ -621,6 +685,12 @@ exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTest
   Object.assign(allTestPaths, testPaths);
   testFns['dump'] = dump;
   defaultFns.push('dump');
+
+  testFns['dump_db_properties_single'] = dumpDBPropertiesSingle;
+  defaultFns.push('dump_db_properties_single');
+
+  testFns['dump_db_properties_all'] = dumpDBPropertiesAll;
+  defaultFns.push('dump_db_properties_all');
 
   testFns['dump_authentication'] = dumpAuthentication;
   defaultFns.push('dump_authentication');

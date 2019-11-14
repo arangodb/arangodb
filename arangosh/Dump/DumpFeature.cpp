@@ -750,6 +750,17 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client, std::string co
     _options.tickEnd = tick;
   }
 
+  LOG_DEVEL << "### body dump single ###";
+  LOG_DEVEL << body.toJson();
+
+  VPackSlice const properties = body.get(StaticStrings::Properties);
+  if (!properties.isObject()) {
+    return ::ErrorMalformedJsonResponse;
+  }
+
+  LOG_DEVEL << "################## info ##############################";
+  LOG_DEVEL << properties.toJson();
+
   // get the collections list
   VPackSlice const collections = body.get("collections");
   if (!collections.isArray()) {
@@ -867,6 +878,17 @@ Result DumpFeature::runClusterDump(httpclient::SimpleHttpClient& client,
   if (!body.isObject()) {
     return ::ErrorMalformedJsonResponse;
   }
+
+  VPackSlice const properties = body.get(StaticStrings::Properties);
+  if (!properties.isObject()) {
+    LOG_DEVEL << "### body dump cluster ###";
+    LOG_DEVEL << "properties is not an object" << properties.toJson();
+    LOG_DEVEL << body.toJson();
+    return ::ErrorMalformedJsonResponse;
+  }
+
+  LOG_DEVEL << "### properties dump cluster ###";
+  LOG_DEVEL << properties.toJson();
 
   // parse collections array
   VPackSlice const collections = body.get("collections");
@@ -993,6 +1015,7 @@ Result DumpFeature::storeDumpJson(VPackSlice const& body, std::string const& dbN
     meta.openObject();
     meta.add("database", VPackValue(dbName));
     meta.add("lastTickAtDumpStart", VPackValue(tickString));
+    meta.add("properties", body.get("properties"));
     meta.close();
 
     // save last tick in file
@@ -1178,6 +1201,9 @@ void DumpFeature::start() {
       }
 
       try {
+        LOG_DEVEL << "####################################################";
+        LOG_DEVEL << "properties" ;
+        LOG_DEVEL << "####################################################";
         if (!_options.clusterMode) {
           res = runDump(*httpClient, db);
         } else {
