@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fixed an issue where removeServer left bihind current coordinators
+
 * Allow usage of AQL function `RANDOM_TOKEN` with an argument value of `0`. This
   now produces an empty string, whereas in older versions this threw an invalid
   value exception.
@@ -11,7 +13,7 @@ devel
   engine, but comes with a big performance penalty as all collections will be locked
   exclusively for writes.
 
-* Added new timeout option for AQL queries. If a query does not finish execution 
+* Added new timeout option for AQL queries. If a query does not finish execution
   within the given time in seconds it will be killed.
 
 * Fixed undefined behaviour with creation of ArangoSearch links with custom
