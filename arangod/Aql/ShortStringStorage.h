@@ -24,6 +24,7 @@
 #ifndef ARANGOD_AQL_SHORT_STRING_STORAGE_H
 #define ARANGOD_AQL_SHORT_STRING_STORAGE_H 1
 
+#include <cstddef>
 #include <vector>
 
 #include "Basics/Common.h"

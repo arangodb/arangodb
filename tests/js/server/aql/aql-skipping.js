@@ -50,9 +50,11 @@ function aqlSkippingTestsuite () {
     setUpAll : function () {
       var c = db._createDocumentCollection('skipCollection', { numberOfShards: 5 });
       // c size > 1000 because of internal batchSize of 1000
+      let docs = [];
       for (var i = 0; i < 2000; i++) {
-        c.save({i: i});
+        docs.push({i: i});
       }
+      c.insert(docs);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -64,7 +66,7 @@ function aqlSkippingTestsuite () {
     },
 
     testDefaultSkipOffset: function () {
-      var query = "FOR i in 1..100 let p = i+2 limit 90, 10 return p";
+      var query = "FOR i IN 1..100 LET p = i + 2 LIMIT 90, 10 RETURN p";
       var bindParams = {};
       var queryOptions = {};
 
@@ -73,7 +75,7 @@ function aqlSkippingTestsuite () {
     },
 
     testDefaultSkipOffsetWithFullCount: function () {
-      var query = "FOR i in 1..100 let p = i+2 limit 90, 10 return p";
+      var query = "FOR i IN 1..100 LET p = i + 2 LIMIT 90, 10 RETURN p";
       var bindParams = {};
       var queryOptions = {fullCount: true};
 
@@ -83,7 +85,7 @@ function aqlSkippingTestsuite () {
     },
 
     testPassSkipOffset: function () {
-      var query = "FOR i in 1..100 let p = i+2 limit 90, 10 return p";
+      var query = "FOR i IN 1..100 LET p = i + 2 LIMIT 90, 10 RETURN p";
       var bindParams = {};
       // This way the CalculationBlock stays before the LimitBlock.
       var queryOptions = {optimizer: {"rules": ["-move-calculations-down"]}};
@@ -93,10 +95,10 @@ function aqlSkippingTestsuite () {
     },
 
     testPassSkipOffsetWithFullCount: function () {
-      var query = "FOR i in 1..100 let p = i+2 limit 90, 10 return p";
+      var query = "FOR i IN 1..100 LET p = i + 2 LIMIT 90, 10 RETURN p";
       var bindParams = {};
       // This way the CalculationBlock stays before the LimitBlock.
-      var queryOptions = {fullCount: true, optimizer: {"rules": ["-move-calculations-down"]}};
+      var queryOptions = {fullCount: true, optimizer: {"rules": ["-move-calculations-down", "-parallelize-gather"]}};
 
       var result = AQL_EXECUTE(query, bindParams, queryOptions);
       assertEqual([ 93, 94, 95, 96, 97, 98, 99, 100, 101, 102 ], result.json);
@@ -104,9 +106,9 @@ function aqlSkippingTestsuite () {
     },
 
     testPassSkipEnumerateCollection: function () {
-      var query = "FOR i IN skipCollection LIMIT 10, 10 return i";
+      var query = "FOR i IN skipCollection LIMIT 10, 10 RETURN i";
       var bindParams = {};
-      var queryOptions = {};
+      var queryOptions = {optimizer: {"rules": ["-parallelize-gather"]}};
 
       var result = AQL_EXECUTE(query, bindParams, queryOptions);
       assertEqual(10, result.json.length);
@@ -114,9 +116,9 @@ function aqlSkippingTestsuite () {
     },
 
     testPassSkipEnumerateCollectionWithFullCount1: function () {
-      var query = "FOR i IN skipCollection LIMIT 10, 20 return i";
+      var query = "FOR i IN skipCollection LIMIT 10, 20 RETURN i";
       var bindParams = {};
-      var queryOptions = {fullCount: true};
+      var queryOptions = {fullCount: true, optimizer: {"rules": ["-parallelize-gather"]}};
 
       var result = AQL_EXECUTE(query, bindParams, queryOptions);
       assertEqual(20, result.json.length);
@@ -138,9 +140,9 @@ function aqlSkippingTestsuite () {
     //},
 
     testPassSkipEnumerateCollectionWithFullCountDefaultSort: function () {
-      var query = "FOR i IN skipCollection SORT i.i DESC LIMIT 10, 20 return i";
+      var query = "FOR i IN skipCollection SORT i.i DESC LIMIT 10, 20 RETURN i";
       var bindParams = {};
-      var queryOptions = {optimizer : { rules : [ "-sort-limit" ] }, fullCount: true};
+      var queryOptions = {optimizer : { rules : [ "-sort-limit", "-parallelize-gather" ] }, fullCount: true};
 
       var result = AQL_EXPLAIN(query, bindParams, queryOptions);
       assertNotEqual(-1, result.plan.nodes.filter(node => node.type === "SortNode").map(function(node) { return node.strategy; }).indexOf("standard"));
@@ -152,9 +154,9 @@ function aqlSkippingTestsuite () {
     },
 
     testPassSkipEnumerateCollectionWithFullCount2: function () {
-      var query = "FOR i IN skipCollection LIMIT 900, 300 return i";
+      var query = "FOR i IN skipCollection LIMIT 900, 300 RETURN i";
       var bindParams = {};
-      var queryOptions = {fullCount: true};
+      var queryOptions = {optimizer : { rules : [ "-parallelize-gather" ] }, fullCount: true};
 
       var result = AQL_EXECUTE(query, bindParams, queryOptions);
       assertEqual(300, result.json.length);
@@ -166,7 +168,7 @@ function aqlSkippingTestsuite () {
       // skip more as documents are available
       var query = "FOR i IN skipCollection LIMIT 2000, 100 return i";
       var bindParams = {};
-      var queryOptions = {fullCount: true};
+      var queryOptions = {optimizer : { rules : [ "-parallelize-gather" ] }, fullCount: true};
 
       var result = AQL_EXECUTE(query, bindParams, queryOptions);
       assertEqual(0, result.json.length);
@@ -178,14 +180,13 @@ function aqlSkippingTestsuite () {
       // skip more as documents are available, this will trigger done inside internal skip
       var query = "FOR i IN skipCollection LIMIT 3000, 100 return i";
       var bindParams = {};
-      var queryOptions = {fullCount: true};
+      var queryOptions = {optimizer : { rules : [ "-parallelize-gather" ] }, fullCount: true};
 
       var result = AQL_EXECUTE(query, bindParams, queryOptions);
       assertEqual(0, result.json.length);
       assertEqual(2000, result.stats.scannedFull);
       assertEqual(2000, result.stats.fullCount);
     },
-
   };
 
 }
@@ -214,15 +215,17 @@ function aqlSkippingIndexTestsuite () {
       const values = _.range(7); // 0..6
 
       // insert a total of 7^4 = 2401 documents:
+      let docs = [];
       for (const a of values) {
         for (const b of values) {
           for (const c of values) {
             for (const d of values) {
-              col.insert({a, b, c, d});
+              docs.push({a, b, c, d});
             }
           }
         }
       }
+      col.insert(docs);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -259,7 +262,7 @@ function aqlSkippingIndexTestsuite () {
         LIMIT 43, 100
         RETURN doc`;
       const bindParams = {};
-      const queryOptions = {};
+      const queryOptions = {optimizer: {"rules": ["-parallelize-gather"]}};
 
       const nodes = explainPlanNodes(query, bindParams, queryOptions);
       assertEqual('IndexNode', nodes[1].type);
@@ -278,7 +281,7 @@ function aqlSkippingIndexTestsuite () {
         LIMIT 43, 100
         RETURN doc`;
       const bindParams = {};
-      const queryOptions = {fullCount: true};
+      const queryOptions = {fullCount: true, optimizer: {"rules": ["-parallelize-gather"]}};
 
       const nodes = explainPlanNodes(query, bindParams, queryOptions);
       assertEqual('IndexNode', nodes[1].type);
@@ -322,7 +325,7 @@ function aqlSkippingIndexTestsuite () {
         LIMIT 37, 100
         RETURN doc`;
       const bindParams = {};
-      const queryOptions = {};
+      const queryOptions = {optimizer: {"rules": ["-parallelize-gather"]}};
 
       const nodes = explainPlanNodes(query, bindParams, queryOptions);
       assertEqual('IndexNode', nodes[1].type);
@@ -345,7 +348,7 @@ function aqlSkippingIndexTestsuite () {
         LIMIT 37, 100
         RETURN doc`;
       const bindParams = {};
-      const queryOptions = {fullCount: true};
+      const queryOptions = {fullCount: true, optimizer: {"rules": ["-parallelize-gather"]}};
 
       const nodes = explainPlanNodes(query, bindParams, queryOptions);
       assertEqual('IndexNode', nodes[1].type);
@@ -393,7 +396,7 @@ function aqlSkippingIndexTestsuite () {
         LIMIT 89, 100
         RETURN doc`;
       const bindParams = {};
-      const queryOptions = {};
+      const queryOptions = {optimizer: {"rules": ["-parallelize-gather"]}};
 
       const nodes = explainPlanNodes(query, bindParams, queryOptions);
       assertEqual('IndexNode', nodes[1].type);
@@ -418,7 +421,7 @@ function aqlSkippingIndexTestsuite () {
         LIMIT 89, 100
         RETURN doc`;
       const bindParams = {};
-      const queryOptions = {fullCount: true};
+      const queryOptions = {fullCount: true, optimizer: {"rules": ["-parallelize-gather"]}};
 
       const nodes = explainPlanNodes(query, bindParams, queryOptions);
       assertEqual('IndexNode', nodes[1].type);
@@ -485,26 +488,30 @@ function aqlSkippingIResearchTestsuite () {
       ac.save({ a: "foo", id : 0 });
       ac.save({ a: "ba", id : 1 });
 
+      let docs = [];
+      let docs2 = [];
       for (let i = 0; i < 5; i++) {
-        c.save({ a: "foo", b: "bar", c: i });
-        c.save({ a: "foo", b: "baz", c: i });
-        c.save({ a: "bar", b: "foo", c: i });
-        c.save({ a: "baz", b: "foo", c: i });
+        docs.push({ a: "foo", b: "bar", c: i });
+        docs.push({ a: "foo", b: "baz", c: i });
+        docs.push({ a: "bar", b: "foo", c: i });
+        docs.push({ a: "baz", b: "foo", c: i });
 
-        c2.save({ a: "foo", b: "bar", c: i });
-        c2.save({ a: "bar", b: "foo", c: i });
-        c2.save({ a: "baz", b: "foo", c: i });
+        docs2.push({ a: "foo", b: "bar", c: i });
+        docs2.push({ a: "bar", b: "foo", c: i });
+        docs2.push({ a: "baz", b: "foo", c: i });
       }
 
-      c.save({ name: "full", text: "the quick brown fox jumps over the lazy dog" });
-      c.save({ name: "half", text: "quick fox over lazy" });
-      c.save({ name: "other half", text: "the brown jumps the dog" });
-      c.save({ name: "quarter", text: "quick over" });
+      docs.push({ name: "full", text: "the quick brown fox jumps over the lazy dog" });
+      docs.push({ name: "half", text: "quick fox over lazy" });
+      docs.push({ name: "other half", text: "the brown jumps the dog" });
+      docs.push({ name: "quarter", text: "quick over" });
 
-      c.save({ name: "numeric", anotherNumericField: 0 });
-      c.save({ name: "null", anotherNullField: null });
-      c.save({ name: "bool", anotherBoolField: true });
-      c.save({ _key: "foo", xyz: 1 });
+      docs2.push({ name: "numeric", anotherNumericField: 0 });
+      docs2.push({ name: "null", anotherNullField: null });
+      docs2.push({ name: "bool", anotherBoolField: true });
+      docs2.push({ _key: "foo", xyz: 1 });
+      c.insert(docs);
+      c2.insert(docs2);
     },
 
 ////////////////////////////////////////////////////////////////////////////////

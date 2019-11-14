@@ -31,10 +31,6 @@
 #include <string>
 #include <unordered_map>
 
-#include <boost/uuid/uuid.hpp>
-#include <boost/uuid/uuid_generators.hpp>
-#include <boost/uuid/uuid_io.hpp>
-
 #include <velocypack/Slice.h>
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
@@ -290,13 +286,13 @@ class AgencyPrecondition {
   AgencyPrecondition();
   AgencyPrecondition(std::string const& key, Type, bool e);
   AgencyPrecondition(std::string const& key, Type, velocypack::Slice const&);
-  template<typename T> 
+  template<typename T>
   AgencyPrecondition(std::string const& key, Type t, T const& v)
     : key(AgencyCommManager::path(key)), type(t), empty(false),
       builder(std::make_shared<VPackBuilder>()) {
     builder->add(VPackValue(v));
     value = builder->slice();
-  }; 
+  };
 
  public:
   void toVelocyPack(arangodb::velocypack::Builder& builder) const;
@@ -363,7 +359,7 @@ class AgencyCommResult {
                    std::string const& transactionId = std::string());
 
   ~AgencyCommResult() = default;
-  
+
   AgencyCommResult(AgencyCommResult const& other) = delete;
   AgencyCommResult& operator=(AgencyCommResult const& other) = delete;
 
@@ -405,6 +401,10 @@ class AgencyCommResult {
     }
     return Result{errorCode(), errorMessage()};
   }
+
+  void toVelocyPack(VPackBuilder& builder) const;
+
+  VPackBuilder toVelocyPack() const;
 
  public:
   std::string _location;
@@ -730,5 +730,9 @@ class AgencyComm {
   bool shouldInitializeStructure();
 };
 }  // namespace arangodb
+
+namespace std {
+ostream& operator<<(ostream& o, arangodb::AgencyCommResult const& a);
+}
 
 #endif

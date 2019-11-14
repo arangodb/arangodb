@@ -38,7 +38,7 @@ QueryOptions::QueryOptions()
     : memoryLimit(0),
       maxNumberOfPlans(0),
       maxWarningCount(10),
-      literalSizeThreshold(-1),
+      timeout(0),
       satelliteSyncWait(60.0),
       ttl(0),
       profile(PROFILE_LEVEL_NONE),
@@ -53,28 +53,26 @@ QueryOptions::QueryOptions()
       verboseErrors(false),
       inspectSimplePlans(true) {
   // now set some default values from server configuration options
-  QueryRegistryFeature* q =
-      application_features::ApplicationServer::getFeature<QueryRegistryFeature>(
-          "QueryRegistry");
-  TRI_ASSERT(q != nullptr);
+  auto& server = application_features::ApplicationServer::server();
+  auto& feature = server.getFeature<QueryRegistryFeature>();
 
   // use global memory limit value
-  uint64_t globalLimit = q->queryMemoryLimit();
+  uint64_t globalLimit = feature.queryMemoryLimit();
   if (globalLimit > 0) {
     memoryLimit = globalLimit;
   }
 
   // get global default ttl
-  ttl = q->registry()->defaultTTL();
+  ttl = feature.registry()->defaultTTL();
 
   // use global "failOnWarning" value
-  failOnWarning = q->failOnWarning();
+  failOnWarning = feature.failOnWarning();
 
   // "cache" only defaults to true if query cache is turned on
   auto queryCacheMode = QueryCache::instance()->mode();
   cache = (queryCacheMode == CACHE_ALWAYS_ON);
 
-  maxNumberOfPlans = q->maxQueryPlans();
+  maxNumberOfPlans = feature.maxQueryPlans();
   TRI_ASSERT(maxNumberOfPlans > 0);
 }
 
@@ -100,17 +98,18 @@ void QueryOptions::fromVelocyPack(VPackSlice const& slice) {
       maxNumberOfPlans = 1;
     }
   }
+
   value = slice.get("maxWarningCount");
   if (value.isNumber()) {
     maxWarningCount = value.getNumber<size_t>();
   }
-  value = slice.get("literalSizeThreshold");
+
+  value = slice.get("timeout");
   if (value.isNumber()) {
-    int64_t v = value.getNumber<int64_t>();
-    if (v > 0) {
-      literalSizeThreshold = v;
-    }
+    timeout = value.getNumber<double>();
   }
+
+
   value = slice.get("satelliteSyncWait");
   if (value.isNumber()) {
     satelliteSyncWait = value.getNumber<double>();
@@ -222,7 +221,7 @@ void QueryOptions::toVelocyPack(VPackBuilder& builder, bool disableOptimizerRule
   builder.add("memoryLimit", VPackValue(memoryLimit));
   builder.add("maxNumberOfPlans", VPackValue(maxNumberOfPlans));
   builder.add("maxWarningCount", VPackValue(maxWarningCount));
-  builder.add("literalSizeThreshold", VPackValue(literalSizeThreshold));
+  builder.add("timeout", VPackValue(timeout));
   builder.add("satelliteSyncWait", VPackValue(satelliteSyncWait));
   builder.add("ttl", VPackValue(ttl));
   builder.add("profile", VPackValue(static_cast<uint32_t>(profile)));

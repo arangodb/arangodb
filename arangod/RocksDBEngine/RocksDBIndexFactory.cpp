@@ -41,11 +41,8 @@
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Builder.h>
-#include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
-
-#include "IResearch/IResearchRocksDBLink.h"
 
 using namespace arangodb;
 
@@ -358,20 +355,18 @@ std::unordered_map<std::string, std::string> RocksDBIndexFactory::indexAliases()
 
 void RocksDBIndexFactory::fillSystemIndexes(arangodb::LogicalCollection& col,
                                             std::vector<std::shared_ptr<arangodb::Index>>& indexes) const {
+  VPackSlice def = VPackSlice::emptyObjectSlice();
+  
   // create primary index
-  VPackBuilder builder;
-  builder.openObject();
-  builder.close();
-
-  indexes.emplace_back(std::make_shared<RocksDBPrimaryIndex>(col, builder.slice()));
+  indexes.emplace_back(std::make_shared<RocksDBPrimaryIndex>(col, def));
 
   // create edges indexes
   if (TRI_COL_TYPE_EDGE == col.type()) {
     indexes.emplace_back(
-        std::make_shared<arangodb::RocksDBEdgeIndex>(1, col, builder.slice(),
+        std::make_shared<arangodb::RocksDBEdgeIndex>(1, col, def,
                                                      StaticStrings::FromString));
     indexes.emplace_back(
-        std::make_shared<arangodb::RocksDBEdgeIndex>(2, col, builder.slice(),
+        std::make_shared<arangodb::RocksDBEdgeIndex>(2, col, def,
                                                      StaticStrings::ToString));
   }
 }
@@ -405,7 +400,7 @@ void RocksDBIndexFactory::prepareIndexes(
 
           from.openObject();
 
-          for (auto const& f : VPackObjectIterator(v)) {
+          for (auto f : VPackObjectIterator(v)) {
             if (arangodb::velocypack::StringRef(f.key) == StaticStrings::IndexFields) {
               from.add(VPackValue(StaticStrings::IndexFields));
               from.openArray();
@@ -422,7 +417,7 @@ void RocksDBIndexFactory::prepareIndexes(
           VPackBuilder to;
 
           to.openObject();
-          for (auto const& f : VPackObjectIterator(v)) {
+          for (auto f : VPackObjectIterator(v)) {
             if (arangodb::velocypack::StringRef(f.key) == StaticStrings::IndexFields) {
               to.add(VPackValue(StaticStrings::IndexFields));
               to.openArray();

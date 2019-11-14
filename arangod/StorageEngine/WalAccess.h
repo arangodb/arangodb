@@ -93,7 +93,7 @@ class WalAccess {
 
  protected:
   WalAccess() {}
-  virtual ~WalAccess() {}
+  virtual ~WalAccess() = default;
 
  public:
   struct Filter {
@@ -160,7 +160,7 @@ struct WalAccessContext {
   WalAccessContext(WalAccess::Filter const& filter, WalAccess::MarkerCallback const& c)
       : _filter(filter), _callback(c), _responseSize(0) {}
 
-  ~WalAccessContext() {}
+  ~WalAccessContext() = default;
 
   /// @brief check if db should be handled, might already be deleted
   bool shouldHandleDB(TRI_voc_tick_t dbid) const;

@@ -26,12 +26,13 @@
 #include <velocypack/StringRef.h>
 
 namespace {
-
 static const char* TYPE = "arangosearch";
 }
 
 namespace arangodb {
 namespace iresearch {
+
+LogTopic TOPIC(::TYPE, LogLevel::INFO);
 
 arangodb::LogicalDataSource::Type const& dataSourceType() {
   static auto& type =
@@ -40,11 +41,7 @@ arangodb::LogicalDataSource::Type const& dataSourceType() {
   return type;
 }
 
-arangodb::LogTopic& logTopic() {
-  static arangodb::LogTopic topic(TYPE, LogLevel::INFO);
-
-  return topic;
-}
+arangodb::LogTopic& logTopic() { return TOPIC; }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     StaticStrings

@@ -33,10 +33,10 @@
 using namespace arangodb;
 using namespace arangodb::rest;
 
-RestAgencyCallbacksHandler::RestAgencyCallbacksHandler(GeneralRequest* request,
-                                                       GeneralResponse* response,
-                                                       arangodb::AgencyCallbackRegistry* agencyCallbackRegistry)
-    : RestVocbaseBaseHandler(request, response),
+RestAgencyCallbacksHandler::RestAgencyCallbacksHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response, arangodb::AgencyCallbackRegistry* agencyCallbackRegistry)
+    : RestVocbaseBaseHandler(server, request, response),
       _agencyCallbackRegistry(agencyCallbackRegistry) {}
 
 RestStatus RestAgencyCallbacksHandler::execute() {

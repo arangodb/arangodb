@@ -52,7 +52,7 @@ class Agent;
 // RAFT leader election
 class Constituent : public Thread {
  public:
-  Constituent();
+  explicit Constituent(application_features::ApplicationServer&);
 
   // clean up and exit election
   virtual ~Constituent();
@@ -82,7 +82,7 @@ class Constituent : public Thread {
   bool checkLeader(term_t term, std::string const& id, index_t prevLogIndex, term_t prevLogTerm);
 
   // Notify about heartbeat being sent out:
-  void notifyHeartbeatSent(std::string followerId);
+  void notifyHeartbeatSent(std::string const& followerId);
 
   // My daily business
   void run() override final;

@@ -22,14 +22,12 @@
 
 #include "GraphOperations.h"
 
-#include <arangod/Transaction/V8Context.h>
 #include <velocypack/Buffer.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 #include <array>
 #include <boost/range/join.hpp>
-#include <boost/variant.hpp>
 #include <utility>
 
 #include "Aql/Query.h"
@@ -44,6 +42,7 @@
 #include "Transaction/Methods.h"
 #include "Transaction/SmartContext.h"
 #include "Transaction/StandaloneContext.h"
+#include "Transaction/V8Context.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/ExecContext.h"
 #include "Utils/OperationOptions.h"
@@ -54,9 +53,12 @@
 using namespace arangodb;
 using namespace arangodb::graph;
 
-std::shared_ptr<transaction::Context> GraphOperations::ctx() const {
-  return transaction::StandaloneContext::Create(_vocbase);
-};
+std::shared_ptr<transaction::Context> GraphOperations::ctx() {
+  if (!_ctx) {
+    _ctx = std::make_shared<transaction::StandaloneSmartContext>(_vocbase);
+  }
+  return _ctx;
+}
 
 void GraphOperations::checkForUsedEdgeCollections(const Graph& graph,
                                                   const std::string& collectionName,
@@ -116,7 +118,7 @@ OperationResult GraphOperations::changeEdgeDefinitionForGraph(Graph& graph,
   return trx.update(StaticStrings::GraphCollection, builder.slice(), options);
 }
 
-OperationResult GraphOperations::eraseEdgeDefinition(bool waitForSync, std::string edgeDefinitionName,
+OperationResult GraphOperations::eraseEdgeDefinition(bool waitForSync, std::string const& edgeDefinitionName,
                                                      bool dropCollection) {
   // check if edgeCollection is available
   OperationResult result = checkEdgeCollectionAvailability(edgeDefinitionName);
@@ -186,7 +188,7 @@ OperationResult GraphOperations::eraseEdgeDefinition(bool waitForSync, std::stri
   return result;
 }
 
-OperationResult GraphOperations::checkEdgeCollectionAvailability(std::string edgeCollectionName) {
+OperationResult GraphOperations::checkEdgeCollectionAvailability(std::string const& edgeCollectionName) {
   bool found = _graph.edgeCollections().find(edgeCollectionName) !=
                _graph.edgeCollections().end();
 
@@ -197,7 +199,7 @@ OperationResult GraphOperations::checkEdgeCollectionAvailability(std::string edg
   return OperationResult(TRI_ERROR_NO_ERROR);
 }
 
-OperationResult GraphOperations::checkVertexCollectionAvailability(std::string vertexCollectionName) {
+OperationResult GraphOperations::checkVertexCollectionAvailability(std::string const& vertexCollectionName) {
   std::shared_ptr<LogicalCollection> def =
       GraphManager::getCollectionByName(_vocbase, vertexCollectionName);
 
@@ -213,7 +215,7 @@ OperationResult GraphOperations::checkVertexCollectionAvailability(std::string v
 
 OperationResult GraphOperations::editEdgeDefinition(VPackSlice edgeDefinitionSlice,
                                                     bool waitForSync,
-                                                    const std::string& edgeDefinitionName) {
+                                                    std::string const& edgeDefinitionName) {
   auto maybeEdgeDef = EdgeDefinition::createFromVelocypack(edgeDefinitionSlice);
   if (!maybeEdgeDef) {
     return OperationResult{std::move(maybeEdgeDef).result()};
@@ -287,10 +289,6 @@ OperationResult GraphOperations::addOrphanCollection(VPackSlice document, bool w
   std::shared_ptr<LogicalCollection> def;
 
   OperationResult result;
-  VPackBuilder collectionsOptions;
-  collectionsOptions.openObject();
-  _graph.createCollectionOptions(collectionsOptions, waitForSync);
-  collectionsOptions.close();
 
   if (_graph.hasVertexCollection(collectionName)) {
     if (_graph.hasOrphanCollection(collectionName)) {
@@ -302,13 +300,19 @@ OperationResult GraphOperations::addOrphanCollection(VPackSlice document, bool w
                    std::string{TRI_errno_string(TRI_ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF)}));
   }
 
+  // add orphan collection to graph
+  _graph.addOrphanCollection(std::string(collectionName));
+
   def = GraphManager::getCollectionByName(_vocbase, collectionName);
+  Result res;
+
   if (def == nullptr) {
     if (createCollection) {
-      result = gmngr.createVertexCollection(collectionName, waitForSync,
-                                            collectionsOptions.slice());
-      if (result.fail()) {
-        return result;
+      // ensure that all collections are available
+      res = gmngr.ensureCollections(&_graph, waitForSync);
+
+      if (res.fail()) {
+        return OperationResult{std::move(res)};
       }
     } else {
       return OperationResult(
@@ -320,13 +324,11 @@ OperationResult GraphOperations::addOrphanCollection(VPackSlice document, bool w
     if (def->type() != TRI_COL_TYPE_DOCUMENT) {
       return OperationResult(TRI_ERROR_GRAPH_WRONG_COLLECTION_TYPE_VERTEX);
     }
-    auto res = _graph.validateCollection(*(def.get()));
+    res = _graph.validateCollection(*(def.get()));
     if (res.fail()) {
       return OperationResult{std::move(res)};
     }
   }
-  // add orphan collection to graph
-  _graph.addOrphanCollection(std::move(collectionName));
 
   VPackBuilder builder;
   builder.openObject();
@@ -336,10 +338,9 @@ OperationResult GraphOperations::addOrphanCollection(VPackSlice document, bool w
   SingleCollectionTransaction trx(ctx(), StaticStrings::GraphCollection,
                                   AccessMode::Type::WRITE);
 
-  Result res = trx.begin();
+  res = trx.begin();
 
   if (!res.ok()) {
-    trx.finish(TRI_ERROR_NO_ERROR);
     return OperationResult(res);
   }
 
@@ -354,7 +355,7 @@ OperationResult GraphOperations::addOrphanCollection(VPackSlice document, bool w
   return result;
 }
 
-OperationResult GraphOperations::eraseOrphanCollection(bool waitForSync, std::string collectionName,
+OperationResult GraphOperations::eraseOrphanCollection(bool waitForSync, std::string const& collectionName,
                                                        bool dropCollection) {
   // check if collection exists within the orphan collections
   bool found = false;
@@ -378,7 +379,7 @@ OperationResult GraphOperations::eraseOrphanCollection(bool waitForSync, std::st
     return OperationResult{TRI_ERROR_FORBIDDEN};
   }
 
-  Result res = _graph.removeOrphanCollection(std::move(collectionName));
+  Result res = _graph.removeOrphanCollection(collectionName);
   if (res.fail()) {
     return OperationResult(res);
   }
@@ -460,7 +461,7 @@ OperationResult GraphOperations::addEdgeDefinition(VPackSlice edgeDefinitionSlic
 
   // finally save the graph
   return gmngr.storeGraph(_graph, waitForSync, true);
-};
+}
 
 // vertices
 
@@ -468,22 +469,22 @@ OperationResult GraphOperations::addEdgeDefinition(VPackSlice edgeDefinitionSlic
 // TODO are orphans allowed?
 OperationResult GraphOperations::getVertex(std::string const& collectionName,
                                            std::string const& key,
-                                           boost::optional<TRI_voc_rid_t> rev) {
+                                           std::optional<TRI_voc_rid_t> rev) {
   return getDocument(collectionName, key, std::move(rev));
-};
+}
 
 // TODO check if definitionName is an edge collection in _graph?
 OperationResult GraphOperations::getEdge(const std::string& definitionName,
                                          const std::string& key,
-                                         boost::optional<TRI_voc_rid_t> rev) {
+                                         std::optional<TRI_voc_rid_t> rev) {
   return getDocument(definitionName, key, std::move(rev));
 }
 
 OperationResult GraphOperations::getDocument(std::string const& collectionName,
                                              std::string const& key,
-                                             boost::optional<TRI_voc_rid_t> rev) {
+                                             std::optional<TRI_voc_rid_t> rev) {
   OperationOptions options;
-  options.ignoreRevs = !rev.is_initialized();
+  options.ignoreRevs = !rev.has_value();
 
   VPackBufferPtr searchBuffer = _getSearchSlice(key, rev);
   VPackSlice search{searchBuffer->data()};
@@ -508,36 +509,36 @@ OperationResult GraphOperations::getDocument(std::string const& collectionName,
   return result;
 }
 
-GraphOperations::VPackBufferPtr GraphOperations::_getSearchSlice(
-    const std::string& key, boost::optional<TRI_voc_rid_t>& rev) const {
+GraphOperations::VPackBufferPtr GraphOperations::_getSearchSlice(std::string const& key, 
+                                                                 std::optional<TRI_voc_rid_t>& rev) const {
   VPackBuilder builder;
   {
     VPackObjectBuilder guard(&builder);
     builder.add(StaticStrings::KeyString, VPackValue(key));
     if (rev) {
-      builder.add(StaticStrings::RevString, VPackValue(TRI_RidToString(rev.get())));
+      builder.add(StaticStrings::RevString, VPackValue(TRI_RidToString(rev.value())));
     }
   }
 
-  return builder.buffer();
+  return builder.steal();
 }
 
-OperationResult GraphOperations::removeEdge(const std::string& definitionName,
-                                            const std::string& key,
-                                            boost::optional<TRI_voc_rid_t> rev,
+OperationResult GraphOperations::removeEdge(std::string const& definitionName,
+                                            std::string const& key,
+                                            std::optional<TRI_voc_rid_t> rev,
                                             bool waitForSync, bool returnOld) {
   return removeEdgeOrVertex(definitionName, key, rev, waitForSync, returnOld);
 }
 
 OperationResult GraphOperations::modifyDocument(
     std::string const& collectionName, std::string const& key, VPackSlice document,
-    bool isPatch, boost::optional<TRI_voc_rid_t> rev, bool waitForSync,
+    bool isPatch, std::optional<TRI_voc_rid_t> rev, bool waitForSync,
     bool returnOld, bool returnNew, bool keepNull, transaction::Methods& trx) {
   // extract the revision, if single document variant and header given:
   std::unique_ptr<VPackBuilder> builder;
 
   VPackSlice keyInBody = document.get(StaticStrings::KeyString);
-  if ((rev && TRI_ExtractRevisionId(document) != rev.get()) || keyInBody.isNone() ||
+  if ((rev && TRI_ExtractRevisionId(document) != rev.value()) || keyInBody.isNone() ||
       keyInBody.isNull() || (keyInBody.isString() && keyInBody.copyString() != key)) {
     // We need to rewrite the document with the given revision and key:
     builder = std::make_unique<VPackBuilder>();
@@ -546,14 +547,14 @@ OperationResult GraphOperations::modifyDocument(
       TRI_SanitizeObject(document, *builder);
       builder->add(StaticStrings::KeyString, VPackValue(key));
       if (rev) {
-        builder->add(StaticStrings::RevString, VPackValue(TRI_RidToString(rev.get())));
+        builder->add(StaticStrings::RevString, VPackValue(TRI_RidToString(rev.value())));
       }
     }
     document = builder->slice();
   }
 
   OperationOptions options;
-  options.ignoreRevs = !rev.is_initialized();
+  options.ignoreRevs = !rev.has_value();
   options.waitForSync = waitForSync;
   options.returnNew = returnNew;
   options.returnOld = returnOld;
@@ -590,7 +591,7 @@ OperationResult GraphOperations::createDocument(transaction::Methods* trx,
 
 OperationResult GraphOperations::updateEdge(const std::string& definitionName,
                                             const std::string& key, VPackSlice document,
-                                            boost::optional<TRI_voc_rid_t> rev,
+                                            std::optional<TRI_voc_rid_t> rev,
                                             bool waitForSync, bool returnOld,
                                             bool returnNew, bool keepNull) {
   OperationResult res;
@@ -607,7 +608,7 @@ OperationResult GraphOperations::updateEdge(const std::string& definitionName,
 
 OperationResult GraphOperations::replaceEdge(const std::string& definitionName,
                                              const std::string& key, VPackSlice document,
-                                             boost::optional<TRI_voc_rid_t> rev,
+                                             std::optional<TRI_voc_rid_t> rev,
                                              bool waitForSync, bool returnOld,
                                              bool returnNew, bool keepNull) {
   OperationResult res;
@@ -767,7 +768,7 @@ OperationResult GraphOperations::createEdge(const std::string& definitionName,
 
 OperationResult GraphOperations::updateVertex(const std::string& collectionName,
                                               const std::string& key, VPackSlice document,
-                                              boost::optional<TRI_voc_rid_t> rev,
+                                              std::optional<TRI_voc_rid_t> rev,
                                               bool waitForSync, bool returnOld,
                                               bool returnNew, bool keepNull) {
   std::vector<std::string> writeCollections;
@@ -788,7 +789,7 @@ OperationResult GraphOperations::updateVertex(const std::string& collectionName,
 
 OperationResult GraphOperations::replaceVertex(const std::string& collectionName,
                                                const std::string& key, VPackSlice document,
-                                               boost::optional<TRI_voc_rid_t> rev,
+                                               std::optional<TRI_voc_rid_t> rev,
                                                bool waitForSync, bool returnOld,
                                                bool returnNew, bool keepNull) {
   std::vector<std::string> writeCollections;
@@ -827,12 +828,12 @@ OperationResult GraphOperations::createVertex(const std::string& collectionName,
 
 OperationResult GraphOperations::removeEdgeOrVertex(const std::string& collectionName,
                                                     const std::string& key,
-                                                    boost::optional<TRI_voc_rid_t> rev,
+                                                    std::optional<TRI_voc_rid_t> rev,
                                                     bool waitForSync, bool returnOld) {
   OperationOptions options;
   options.waitForSync = waitForSync;
   options.returnOld = returnOld;
-  options.ignoreRevs = !rev.is_initialized();
+  options.ignoreRevs = !rev.has_value();
 
   VPackBufferPtr searchBuffer = _getSearchSlice(key, rev);
   VPackSlice search{searchBuffer->data()};
@@ -871,10 +872,9 @@ OperationResult GraphOperations::removeEdgeOrVertex(const std::string& collectio
     edgeCollections.emplace(it);  // but also to edgeCollections for later iteration
   }
 
-  auto ctx = std::make_shared<transaction::StandaloneSmartContext>(_vocbase);
   transaction::Options trxOptions;
   trxOptions.waitForSync = waitForSync;
-  transaction::Methods trx{ctx, {}, trxCollections, {}, trxOptions};
+  transaction::Methods trx{ctx(), {}, trxCollections, {}, trxOptions};
 
   res = trx.begin();
 
@@ -902,7 +902,7 @@ OperationResult GraphOperations::removeEdgeOrVertex(const std::string& collectio
 
       arangodb::aql::Query query(false, _vocbase, queryString, bindVars,
                                  nullptr, arangodb::aql::PART_DEPENDENT);
-      query.setTransactionContext(ctx);  // hack to share  the same transaction
+      query.setTransactionContext(ctx());  // hack to share the same transaction
 
       auto queryResult = query.executeSync(QueryRegistryFeature::registry());
 
@@ -922,7 +922,7 @@ OperationResult GraphOperations::removeEdgeOrVertex(const std::string& collectio
 
 OperationResult GraphOperations::removeVertex(const std::string& collectionName,
                                               const std::string& key,
-                                              boost::optional<TRI_voc_rid_t> rev,
+                                              std::optional<TRI_voc_rid_t> rev,
                                               bool waitForSync, bool returnOld) {
   return removeEdgeOrVertex(collectionName, key, rev, waitForSync, returnOld);
 }
@@ -948,13 +948,13 @@ bool GraphOperations::hasPermissionsFor(std::string const& collection, auth::Lev
                << " permissions for " << databaseName << "." << collection << ": ";
   std::string const logprefix = stringstream.str();
 
-  ExecContext const* execContext = ExecContext::CURRENT;
-  if (execContext == nullptr) {
+  ExecContext const& execContext = ExecContext::current();
+  if (!ExecContext::isAuthEnabled()) {
     LOG_TOPIC("08e1f", DEBUG, Logger::GRAPHS) << logprefix << "Permissions are turned off.";
     return true;
   }
 
-  if (execContext->canUseCollection(collection, level)) {
+  if (execContext.canUseCollection(collection, level)) {
     return true;
   }
 
@@ -971,8 +971,8 @@ Result GraphOperations::checkEdgeDefinitionPermissions(EdgeDefinition const& edg
                << "." << graph().name() << "`: ";
   std::string const logprefix = stringstream.str();
 
-  ExecContext const* execContext = ExecContext::CURRENT;
-  if (execContext == nullptr) {
+  ExecContext const& execContext = ExecContext::current();
+  if (!ExecContext::isAuthEnabled()) {
     LOG_TOPIC("18e8e", DEBUG, Logger::GRAPHS) << logprefix << "Permissions are turned off.";
     return TRI_ERROR_NO_ERROR;
   }
@@ -983,11 +983,11 @@ Result GraphOperations::checkEdgeDefinitionPermissions(EdgeDefinition const& edg
   setUnion(graphCollections, edgeDefinition.getTo());
   graphCollections.emplace(edgeDefinition.getName());
 
-  bool canUseDatabaseRW = execContext->canUseDatabase(auth::Level::RW);
+  bool canUseDatabaseRW = execContext.canUseDatabase(auth::Level::RW);
   for (auto const& col : graphCollections) {
     // We need RO on all collections. And, in case any collection does not
     // exist, we need RW on the database.
-    if (!execContext->canUseCollection(col, auth::Level::RO)) {
+    if (!execContext.canUseCollection(col, auth::Level::RO)) {
       LOG_TOPIC("e8a53", DEBUG, Logger::GRAPHS)
           << logprefix << "No read access to " << databaseName << "." << col;
       return TRI_ERROR_FORBIDDEN;

@@ -81,6 +81,13 @@
     return requestResult.role === "COORDINATOR";
   };
 
+  exports.clusterHealth = function () {
+    const arangosh = require('@arangodb/arangosh');
+    let requestResult = exports.arango.GET('/_admin/cluster/health');
+    arangosh.checkRequestResult(requestResult);
+    return requestResult.Health;
+  };
+  
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief processStatistics
   // //////////////////////////////////////////////////////////////////////////////
@@ -96,7 +103,7 @@
     arangosh.checkRequestResult(requestResult);
     return requestResult.system;
   };
-
+  
   // / @brief serverStatistics
   exports.serverStatistics = function () {
     const arangosh = require('@arangodb/arangosh');

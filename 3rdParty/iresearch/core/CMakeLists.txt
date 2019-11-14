@@ -523,6 +523,7 @@ target_link_libraries(${IResearch_TARGET_NAME}-static
   ${DL_LIBRARY}
   ${MSVC_ONLY_LIBRARIES}
   ${SIMD_LIBRARY_STATIC}
+  ${BT_LIBS}
 )
 
 # setup CRT

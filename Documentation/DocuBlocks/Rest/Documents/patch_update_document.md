@@ -63,7 +63,10 @@ The body of the request must contain a JSON document with the
 attributes to patch (the patch document). All attributes from the
 patch document will be added to the existing document if they do not
 yet exist, and overwritten in the existing document if they do exist
-there.
+there. 
+
+The value of the `_key` attribute as well as attributes
+used as sharding keys may not be changed.
 
 Setting an attribute value to *null* in the patch document will cause a
 value of *null* to be saved for the attribute by default.
@@ -84,6 +87,11 @@ an *HTTP 202* is returned (depending on *waitForSync*, see below),
 the *Etag* header field contains the new revision of the document
 (in double quotes) and the *Location* header contains a complete URL
 under which the document can be queried.
+
+Cluster only: The patch document _may_ contain  
+values for the collection's pre-defined shard keys. Values for the shard keys 
+are treated as hints to improve performance. Should the shard keys
+values be incorrect ArangoDB may answer with a *not found* error
 
 Optionally, the query parameter *waitForSync* can be used to force
 synchronization of the updated document operation to disk even in case

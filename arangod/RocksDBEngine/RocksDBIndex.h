@@ -121,7 +121,7 @@ class RocksDBIndex : public Index {
   virtual void recalculateEstimates() {}
 
   bool isPersistent() const override final { return true; }
-  
+
  protected:
   RocksDBIndex(TRI_idx_iid_t id, LogicalCollection& collection, std::string const& name,
                std::vector<std::vector<arangodb::basics::AttributeName>> const& attributes,

@@ -49,7 +49,7 @@ namespace engine_info_container_coordinator_test {
 TEST(EngineInfoContainerTest, it_should_always_start_with_an_open_snippet) {
   EngineInfoContainerCoordinator testee;
   QueryId res = testee.closeSnippet();
-  ASSERT_TRUE(res == 0);
+  ASSERT_EQ(res, 0);
 }
 
 TEST(EngineInfoContainerTest, it_should_be_able_to_add_more_snippets) {
@@ -60,14 +60,14 @@ TEST(EngineInfoContainerTest, it_should_be_able_to_add_more_snippets) {
   testee.openSnippet(remote);
 
   QueryId res1 = testee.closeSnippet();
-  ASSERT_TRUE(res1 != 0);
+  ASSERT_NE(res1, 0);
 
   QueryId res2 = testee.closeSnippet();
-  ASSERT_TRUE(res2 != res1);
-  ASSERT_TRUE(res2 != 0);
+  ASSERT_NE(res2, res1);
+  ASSERT_NE(res2, 0);
 
   QueryId res3 = testee.closeSnippet();
-  ASSERT_TRUE(res3 == 0);
+  ASSERT_EQ(res3, 0);
 }
 
 ///////////////////////////////////////////
@@ -122,7 +122,7 @@ TEST(EngineInfoContainerTest, it_should_create_an_executionengine_for_the_first_
     // We expect that the snippet injects a new engine into our
     // query.
     // However we have to return a mocked engine later
-    ASSERT_TRUE(eng != nullptr);
+    ASSERT_NE(eng, nullptr);
     // Throw it away
     delete eng;
   });
@@ -139,13 +139,14 @@ TEST(EngineInfoContainerTest, it_should_create_an_executionengine_for_the_first_
   EngineInfoContainerCoordinator testee;
   testee.addNode(&sNode);
 
+  std::vector<uint64_t> coordinatorQueryIds{};
   ExecutionEngineResult result =
-      testee.buildEngines(&query, &registry, dbname, restrictToShards, queryIds);
+      testee.buildEngines(query, &registry, dbname, restrictToShards, queryIds, coordinatorQueryIds);
   ASSERT_TRUE(result.ok());
   ExecutionEngine* engine = result.engine();
 
-  ASSERT_TRUE(engine != nullptr);
-  ASSERT_TRUE(engine == &myEngine);
+  ASSERT_NE(engine, nullptr);
+  ASSERT_EQ(engine, &myEngine);
 
   // The last engine should not be stored
   // It is not added to the registry
@@ -225,7 +226,7 @@ TEST(EngineInfoContainerTest,
     // We expect that the snippet injects a new engine into our
     // query.
     // However we have to return a mocked engine later
-    ASSERT_TRUE(eng != nullptr);
+    ASSERT_NE(eng, nullptr);
     // Throw it away
     delete eng;
   });
@@ -235,16 +236,16 @@ TEST(EngineInfoContainerTest,
   fakeit::When(Method(mockEngine, createBlocks))
       .Do([&](std::vector<ExecutionNode*> const& nodes,
               std::unordered_set<std::string> const&, MapRemoteToSnippet const&) {
-        EXPECT_TRUE(nodes.size() == 1);
-        EXPECT_TRUE(nodes[0] == &fNode);
+        EXPECT_EQ(nodes.size(), 1);
+        EXPECT_EQ(nodes[0], &fNode);
         return Result{TRI_ERROR_NO_ERROR};
       });
   fakeit::When(ConstOverloadedMethod(mockEngine, root, ExecutionBlock * ())).AlwaysReturn(&block);
 
   // Mock query clone
   fakeit::When(Method(mockQuery, clone)).Do([&](QueryPart part, bool withPlan) -> Query* {
-    EXPECT_TRUE(part == PART_DEPENDENT);
-    EXPECT_TRUE(withPlan == false);
+    EXPECT_EQ(part, PART_DEPENDENT);
+    EXPECT_FALSE(withPlan);
     return &queryClone;
   });
 
@@ -252,7 +253,7 @@ TEST(EngineInfoContainerTest,
     // We expect that the snippet injects a new engine into our
     // query.
     // However we have to return a mocked engine later
-    ASSERT_TRUE(eng != nullptr);
+    ASSERT_NE(eng, nullptr);
     // Throw it away
     delete eng;
   });
@@ -263,8 +264,8 @@ TEST(EngineInfoContainerTest,
   fakeit::When(Method(mockSecondEngine, createBlocks))
       .Do([&](std::vector<ExecutionNode*> const& nodes,
               std::unordered_set<std::string> const&, MapRemoteToSnippet const&) {
-        EXPECT_TRUE(nodes.size() == 1);
-        EXPECT_TRUE(nodes[0] == &sNode);
+        EXPECT_EQ(nodes.size(), 1);
+        EXPECT_EQ(nodes[0], &sNode);
         return Result{TRI_ERROR_NO_ERROR};
       });
   fakeit::When(ConstOverloadedMethod(mockSecondEngine, root, ExecutionBlock * ()))
@@ -273,12 +274,12 @@ TEST(EngineInfoContainerTest,
   // Mock the Registry
   fakeit::When(Method(mockRegistry, insert))
       .Do([&](QueryId id, Query* query, double timeout, bool isPrepared, bool keepLease) {
-        ASSERT_TRUE(id != 0);
-        ASSERT_TRUE(query != nullptr);
-        ASSERT_TRUE(isPrepared == true);
-        ASSERT_TRUE(keepLease == false);
-        ASSERT_TRUE(timeout == 600.0);
-        ASSERT_TRUE(query == &queryClone);
+        ASSERT_NE(id, 0);
+        ASSERT_NE(query, nullptr);
+        ASSERT_TRUE(isPrepared);
+        ASSERT_FALSE(keepLease);
+        ASSERT_EQ(timeout, 600.0);
+        ASSERT_EQ(query, &queryClone);
         secondId = id;
       });
 
@@ -296,16 +297,17 @@ TEST(EngineInfoContainerTest,
   // Close the second snippet
   testee.closeSnippet();
 
+  std::vector<uint64_t> coordinatorQueryIds{};
   ExecutionEngineResult result =
-      testee.buildEngines(&query, &registry, dbname, restrictToShards, queryIds);
+      testee.buildEngines(query, &registry, dbname, restrictToShards, queryIds, coordinatorQueryIds);
   ASSERT_TRUE(result.ok());
   ExecutionEngine* engine = result.engine();
 
-  ASSERT_TRUE(engine != nullptr);
-  ASSERT_TRUE(engine == &myEngine);
+  ASSERT_NE(engine, nullptr);
+  ASSERT_EQ(engine, &myEngine);
 
   // The second engine needs a generated id
-  ASSERT_TRUE(secondId != 0);
+  ASSERT_NE(secondId, 0);
   // We do not add anything to the ids
   ASSERT_TRUE(queryIds.empty());
 
@@ -335,7 +337,7 @@ TEST(EngineInfoContainerTest, snippets_are_a_stack_insert_node_always_into_top_s
     // We expect that the snippet injects a new engine into our
     // query.
     // However we have to return a mocked engine later
-    ASSERT_TRUE(eng != nullptr);
+    ASSERT_NE(eng, nullptr);
     // Throw it away
     delete eng;
   };
@@ -442,23 +444,23 @@ TEST(EngineInfoContainerTest, snippets_are_a_stack_insert_node_always_into_top_s
   fakeit::When(Method(mockEngine, createBlocks))
       .Do([&](std::vector<ExecutionNode*> const& nodes,
               std::unordered_set<std::string> const&, MapRemoteToSnippet const&) {
-        EXPECT_TRUE(nodes.size() == 3);
-        EXPECT_TRUE(nodes[0] == &fbNode);
-        EXPECT_TRUE(nodes[1] == &sbNode);
-        EXPECT_TRUE(nodes[2] == &tbNode);
+        EXPECT_EQ(nodes.size(), 3);
+        EXPECT_EQ(nodes[0], &fbNode);
+        EXPECT_EQ(nodes[1], &sbNode);
+        EXPECT_EQ(nodes[2], &tbNode);
         return Result{TRI_ERROR_NO_ERROR};
       });
   fakeit::When(ConstOverloadedMethod(mockEngine, root, ExecutionBlock * ())).AlwaysReturn(&block);
 
   fakeit::When(Method(mockQuery, clone))
       .Do([&](QueryPart part, bool withPlan) -> Query* {
-        EXPECT_TRUE(part == PART_DEPENDENT);
-        EXPECT_TRUE(withPlan == false);
+        EXPECT_EQ(part, PART_DEPENDENT);
+        EXPECT_FALSE(withPlan);
         return &queryClone;
       })
       .Do([&](QueryPart part, bool withPlan) -> Query* {
-        EXPECT_TRUE(part == PART_DEPENDENT);
-        EXPECT_TRUE(withPlan == false);
+        EXPECT_EQ(part, PART_DEPENDENT);
+        EXPECT_FALSE(withPlan);
         return &querySecondClone;
       });
 
@@ -469,8 +471,8 @@ TEST(EngineInfoContainerTest, snippets_are_a_stack_insert_node_always_into_top_s
   fakeit::When(Method(mockSecondEngine, createBlocks))
       .Do([&](std::vector<ExecutionNode*> const& nodes,
               std::unordered_set<std::string> const&, MapRemoteToSnippet const&) {
-        EXPECT_TRUE(nodes.size() == 1);
-        EXPECT_TRUE(nodes[0] == &aNode);
+        EXPECT_EQ(nodes.size(), 1);
+        EXPECT_EQ(nodes[0], &aNode);
         return Result{TRI_ERROR_NO_ERROR};
       });
   fakeit::When(ConstOverloadedMethod(mockSecondEngine, root, ExecutionBlock * ()))
@@ -483,8 +485,8 @@ TEST(EngineInfoContainerTest, snippets_are_a_stack_insert_node_always_into_top_s
   fakeit::When(Method(mockThirdEngine, createBlocks))
       .Do([&](std::vector<ExecutionNode*> const& nodes,
               std::unordered_set<std::string> const&, MapRemoteToSnippet const&) {
-        EXPECT_TRUE(nodes.size() == 1);
-        EXPECT_TRUE(nodes[0] == &bNode);
+        EXPECT_EQ(nodes.size(), 1);
+        EXPECT_EQ(nodes[0], &bNode);
         return Result{TRI_ERROR_NO_ERROR};
       });
   fakeit::When(ConstOverloadedMethod(mockThirdEngine, root, ExecutionBlock * ()))
@@ -496,20 +498,20 @@ TEST(EngineInfoContainerTest, snippets_are_a_stack_insert_node_always_into_top_s
   // independent which is is fine as well for the production code.
   fakeit::When(Method(mockRegistry, insert))
       .Do([&](QueryId id, Query* query, double timeout, bool isPrepared, bool keepLease) {
-        ASSERT_TRUE(id != 0);
-        ASSERT_TRUE(query != nullptr);
-        ASSERT_TRUE(isPrepared == true);
-        ASSERT_TRUE(keepLease == false);
-        ASSERT_TRUE(timeout == 600.0);
-        ASSERT_TRUE(query == &queryClone);
+        ASSERT_NE(id, 0);
+        ASSERT_NE(query, nullptr);
+        ASSERT_TRUE(isPrepared);
+        ASSERT_FALSE(keepLease);
+        ASSERT_EQ(timeout, 600.0);
+        ASSERT_EQ(query, &queryClone);
         secondId = id;
       })
       .Do([&](QueryId id, Query* query, double timeout, bool isPrepared, bool keepLease) {
-        ASSERT_TRUE(id != 0);
-        ASSERT_TRUE(query != nullptr);
-        ASSERT_TRUE(timeout == 600.0);
-        ASSERT_TRUE(keepLease == false);
-        ASSERT_TRUE(query == &querySecondClone);
+        ASSERT_NE(id, 0);
+        ASSERT_NE(query, nullptr);
+        ASSERT_EQ(timeout, 600.0);
+        ASSERT_FALSE(keepLease);
+        ASSERT_EQ(query, &querySecondClone);
         thirdId = id;
       });
 
@@ -532,13 +534,14 @@ TEST(EngineInfoContainerTest, snippets_are_a_stack_insert_node_always_into_top_s
 
   testee.addNode(&tbNode);
 
+  std::vector<uint64_t> coordinatorQueryIds{};
   ExecutionEngineResult result =
-      testee.buildEngines(&query, &registry, dbname, restrictToShards, queryIds);
+      testee.buildEngines(query, &registry, dbname, restrictToShards, queryIds, coordinatorQueryIds);
 
   ASSERT_TRUE(result.ok());
   ExecutionEngine* engine = result.engine();
-  ASSERT_TRUE(engine != nullptr);
-  ASSERT_TRUE(engine == &myEngine);
+  ASSERT_NE(engine, nullptr);
+  ASSERT_EQ(engine, &myEngine);
   // We do not add anything to the ids
   ASSERT_TRUE(queryIds.empty());
 
@@ -624,7 +627,7 @@ TEST(EngineInfoContainerTest, error_cases_cloning_of_a_query_fails_throws_an_err
     // We expect that the snippet injects a new engine into our
     // query.
     // However we have to return a mocked engine later
-    ASSERT_TRUE(eng != nullptr);
+    ASSERT_NE(eng, nullptr);
     // Throw it away
     delete eng;
   });
@@ -637,7 +640,7 @@ TEST(EngineInfoContainerTest, error_cases_cloning_of_a_query_fails_throws_an_err
     // We expect that the snippet injects a new engine into our
     // query.
     // However we have to return a mocked engine later
-    ASSERT_TRUE(eng != nullptr);
+    ASSERT_NE(eng, nullptr);
     // Throw it away
     delete eng;
   });
@@ -651,9 +654,9 @@ TEST(EngineInfoContainerTest, error_cases_cloning_of_a_query_fails_throws_an_err
   fakeit::When(OverloadedMethod(mockRegistry, destroy,
                                 void(std::string const&, QueryId, int, bool)))
       .Do([&](std::string const& vocbase, QueryId id, int errorCode, bool ignoreOpened) {
-        ASSERT_TRUE(vocbase == dbname);
-        ASSERT_TRUE(id == secondId);
-        ASSERT_TRUE(errorCode == TRI_ERROR_INTERNAL);
+        ASSERT_EQ(vocbase, dbname);
+        ASSERT_EQ(id, secondId);
+        ASSERT_EQ(errorCode, TRI_ERROR_INTERNAL);
       });
 
   // ------------------------------
@@ -681,29 +684,30 @@ TEST(EngineInfoContainerTest, error_cases_cloning_of_a_query_fails_throws_an_err
   // Mock the Registry
   fakeit::When(Method(mockRegistry, insert))
       .Do([&](QueryId id, Query* query, double timeout, bool isPrepared, bool keepLease) {
-        ASSERT_TRUE(id != 0);
-        ASSERT_TRUE(query != nullptr);
-        ASSERT_TRUE(timeout == 600.0);
-        ASSERT_TRUE(isPrepared == true);
-        ASSERT_TRUE(keepLease == false);
-        ASSERT_TRUE(query == &queryClone);
+        ASSERT_NE(id, 0);
+        ASSERT_NE(query, nullptr);
+        ASSERT_EQ(timeout, 600.0);
+        ASSERT_TRUE(isPrepared);
+        ASSERT_FALSE(keepLease);
+        ASSERT_EQ(query, &queryClone);
         secondId = id;
       });
 
   // Mock query clone
   fakeit::When(Method(mockQuery, clone))
       .Do([&](QueryPart part, bool withPlan) -> Query* {
-        EXPECT_TRUE(part == PART_DEPENDENT);
-        EXPECT_TRUE(withPlan == false);
+        EXPECT_EQ(part, PART_DEPENDENT);
+        EXPECT_FALSE(withPlan);
         return &queryClone;
       })
       .Throw(arangodb::basics::Exception(TRI_ERROR_DEBUG, __FILE__, __LINE__));
 
+  std::vector<uint64_t> coordinatorQueryIds{};
   ExecutionEngineResult result =
-      testee.buildEngines(&query, &registry, dbname, restrictToShards, queryIds);
-  ASSERT_TRUE(!result.ok());
+      testee.buildEngines(query, &registry, dbname, restrictToShards, queryIds, coordinatorQueryIds);
+  ASSERT_FALSE(result.ok());
   // Make sure we check the right thing here
-  ASSERT_TRUE(result.errorNumber() == TRI_ERROR_DEBUG);
+  ASSERT_EQ(result.errorNumber(), TRI_ERROR_DEBUG);
 
   // Validate that the path up to intended error was taken
 
@@ -787,7 +791,7 @@ TEST(EngineInfoContainerTest, error_cases_cloning_of_a_query_fails_returns_a_nul
     // We expect that the snippet injects a new engine into our
     // query.
     // However we have to return a mocked engine later
-    ASSERT_TRUE(eng != nullptr);
+    ASSERT_NE(eng, nullptr);
     // Throw it away
     delete eng;
   });
@@ -800,7 +804,7 @@ TEST(EngineInfoContainerTest, error_cases_cloning_of_a_query_fails_returns_a_nul
     // We expect that the snippet injects a new engine into our
     // query.
     // However we have to return a mocked engine later
-    ASSERT_TRUE(eng != nullptr);
+    ASSERT_NE(eng, nullptr);
     // Throw it away
     delete eng;
   });
@@ -814,9 +818,9 @@ TEST(EngineInfoContainerTest, error_cases_cloning_of_a_query_fails_returns_a_nul
   fakeit::When(OverloadedMethod(mockRegistry, destroy,
                                 void(std::string const&, QueryId, int, bool)))
       .Do([&](std::string const& vocbase, QueryId id, int errorCode, bool ignoreOpened) {
-        ASSERT_TRUE(vocbase == dbname);
-        ASSERT_TRUE(id == secondId);
-        ASSERT_TRUE(errorCode == TRI_ERROR_INTERNAL);
+        ASSERT_EQ(vocbase, dbname);
+        ASSERT_EQ(id, secondId);
+        ASSERT_EQ(errorCode, TRI_ERROR_INTERNAL);
       });
 
   // ------------------------------
@@ -844,33 +848,34 @@ TEST(EngineInfoContainerTest, error_cases_cloning_of_a_query_fails_returns_a_nul
   // Mock the Registry
   fakeit::When(Method(mockRegistry, insert))
       .Do([&](QueryId id, Query* query, double timeout, bool isPrepared, bool keepLease) {
-        ASSERT_TRUE(id != 0);
-        ASSERT_TRUE(query != nullptr);
-        ASSERT_TRUE(timeout == 600.0);
-        ASSERT_TRUE(isPrepared == true);
-        ASSERT_TRUE(keepLease == false);
-        ASSERT_TRUE(query == &queryClone);
+        ASSERT_NE(id, 0);
+        ASSERT_NE(query, nullptr);
+        ASSERT_EQ(timeout, 600.0);
+        ASSERT_TRUE(isPrepared);
+        ASSERT_FALSE(keepLease);
+        ASSERT_EQ(query, &queryClone);
         secondId = id;
       });
 
   // Mock query clone
   fakeit::When(Method(mockQuery, clone))
       .Do([&](QueryPart part, bool withPlan) -> Query* {
-        EXPECT_TRUE(part == PART_DEPENDENT);
-        EXPECT_TRUE(withPlan == false);
+        EXPECT_EQ(part, PART_DEPENDENT);
+        EXPECT_FALSE(withPlan);
         return &queryClone;
       })
       .Do([&](QueryPart part, bool withPlan) -> Query* {
-        EXPECT_TRUE(part == PART_DEPENDENT);
-        EXPECT_TRUE(withPlan == false);
+        EXPECT_EQ(part, PART_DEPENDENT);
+        EXPECT_FALSE(withPlan);
         return nullptr;
       });
 
+  std::vector<uint64_t> coordinatorQueryIds{};
   ExecutionEngineResult result =
-      testee.buildEngines(&query, &registry, dbname, restrictToShards, queryIds);
-  ASSERT_TRUE(!result.ok());
+      testee.buildEngines(query, &registry, dbname, restrictToShards, queryIds, coordinatorQueryIds);
+  ASSERT_FALSE(result.ok());
   // Make sure we check the right thing here
-  ASSERT_TRUE(result.errorNumber() == TRI_ERROR_INTERNAL);
+  ASSERT_EQ(result.errorNumber(), TRI_ERROR_INTERNAL);
 
   // Validate that the path up to intended error was taken
 

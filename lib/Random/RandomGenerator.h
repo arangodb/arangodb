@@ -78,6 +78,7 @@ class RandomGenerator {
  public:
   static void initialize(RandomType);
   static void shutdown();
+  static void ensureDeviceIsInitialized();
 
   static void seed(uint64_t);
 
@@ -90,8 +91,6 @@ class RandomGenerator {
   static uint64_t interval(uint64_t);
 
  private:
-  static void ensureDeviceIsInitialized();
-
   static RandomType _type;
   static thread_local std::unique_ptr<RandomDevice> _device;
 };

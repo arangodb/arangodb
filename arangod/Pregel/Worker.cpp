@@ -35,8 +35,10 @@
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/system-compiler.h"
-#include "Cluster/ClusterComm.h"
 #include "Cluster/ServerState.h"
+#include "Futures/Utilities.h"
+#include "Network/NetworkFeature.h"
+#include "Network/Methods.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "VocBase/ticks.h"
@@ -167,9 +169,13 @@ void Worker<V, E, M>::setupWorker() {
     TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
     Scheduler* scheduler = SchedulerFeature::SCHEDULER;
     auto self = shared_from_this();
-    scheduler->queue(RequestLane::INTERNAL_LOW, [self, this, cb] {
+    bool queued = scheduler->queue(RequestLane::INTERNAL_LOW, [self, this, cb] {
       _graphStore->loadShards(&_config, cb);
     });
+    if (!queued) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUEUE_FULL,
+                                     "No available thread to load shards");
+    }
   }
 }
 
@@ -330,7 +336,7 @@ void Worker<V, E, M>::_startProcessing() {
   
   auto self = shared_from_this();
   for (size_t i = 0; i < numT; i++) {
-    scheduler->queue(RequestLane::INTERNAL_LOW, [self, this, i, numT, numSegments] {
+    bool queued = scheduler->queue(RequestLane::INTERNAL_LOW, [self, this, i, numT, numSegments] {
       if (_state != WorkerState::COMPUTING) {
         LOG_TOPIC("f0e3d", WARN, Logger::PREGEL) << "Execution aborted prematurely.";
         return;
@@ -345,6 +351,10 @@ void Worker<V, E, M>::_startProcessing() {
         _finishedProcessing();  // last thread turns the lights out
       }
     });
+    if (!queued) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUEUE_FULL,
+                                     "No thread available to start processing");
+    }
   }
   
   // TRI_ASSERT(_runningThreads == i);
@@ -566,7 +576,8 @@ void Worker<V, E, M>::_continueAsync() {
   // wait for new messages before beginning to process
   int64_t milli = _writeCache->containedMessageCount() < _messageBatchSize ? 50 : 5;
   // start next iteration in $milli mseconds.
-  _workHandle = SchedulerFeature::SCHEDULER->queueDelay(
+  bool queued = false;
+  std::tie(queued, _workHandle) = SchedulerFeature::SCHEDULER->queueDelay(
       RequestLane::INTERNAL_LOW, std::chrono::milliseconds(milli), [this](bool cancelled) {
         if (!cancelled) {
           {  // swap these pointers atomically
@@ -584,6 +595,10 @@ void Worker<V, E, M>::_continueAsync() {
           _startProcessing();
         }
       });
+  if (!queued) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_QUEUE_FULL, "No thread available to continue execution.");
+  }
 }
 
 template <typename V, typename E, typename M>
@@ -704,7 +719,7 @@ void Worker<V, E, M>::compensateStep(VPackSlice const& data) {
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
   auto self = shared_from_this();
-  scheduler->queue(RequestLane::INTERNAL_LOW, [self, this] {
+  bool queued = scheduler->queue(RequestLane::INTERNAL_LOW, [self, this] {
     if (_state != WorkerState::RECOVERING) {
       LOG_TOPIC("554e2", WARN, Logger::PREGEL) << "Compensation aborted prematurely.";
       return;
@@ -741,6 +756,10 @@ void Worker<V, E, M>::compensateStep(VPackSlice const& data) {
     package.close();
     _callConductor(Utils::finishedRecoveryPath, package);
   });
+  if (!queued) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_QUEUE_FULL, "No thread available to queue compensation.");
+  }
 }
 
 template <typename V, typename E, typename M>
@@ -757,33 +776,35 @@ void Worker<V, E, M>::finalizeRecovery(VPackSlice const& data) {
   LOG_TOPIC("17f3c", INFO, Logger::PREGEL) << "Recovery finished";
 }
 
-class WorkerCb : public arangodb::ClusterCommCallback {
-  bool operator()(ClusterCommResult*) override {
-    return true;
-  }
-};
-
 template <typename V, typename E, typename M>
 void Worker<V, E, M>::_callConductor(std::string const& path, VPackBuilder const& message) {
   if (ServerState::instance()->isRunningInCluster() == false) {
     TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
     Scheduler* scheduler = SchedulerFeature::SCHEDULER;
     auto self = shared_from_this();
-    scheduler->queue(RequestLane::INTERNAL_LOW, [self, path, message] {
+    bool queued = scheduler->queue(RequestLane::INTERNAL_LOW, [this, self, path, message] {
       VPackBuilder response;
-      PregelFeature::handleConductorRequest(path, message.slice(), response);
+      PregelFeature::handleConductorRequest(*_config.vocbase(), path,
+                                            message.slice(), response);
     });
+    if (!queued) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUEUE_FULL,
+                                     "No thread available to call conductor");
+    }
   } else {
-    std::shared_ptr<ClusterComm> cc = ClusterComm::instance();
+
     std::string baseUrl = Utils::baseUrl(_config.database(), Utils::conductorPrefix);
-    CoordTransactionID coordinatorTransactionID = TRI_NewTickServer();
-    std::unordered_map<std::string, std::string> headers;
-    auto body = std::make_shared<std::string const>(message.toJson());
-    cc->asyncRequest(coordinatorTransactionID, "server:" + _config.coordinatorId(),
-                     rest::RequestType::POST, baseUrl + path, body, headers,
-                     std::make_shared<WorkerCb>(), // noop callback
-                     120.0,  // timeout
-                     true);  // single request, no answer expected
+    
+    VPackBuffer<uint8_t> buffer;
+    buffer.append(message.data(), message.size());
+    
+    application_features::ApplicationServer& server = _config.vocbase()->server();
+    auto const& nf = server.getFeature<arangodb::NetworkFeature>();
+    network::ConnectionPool* pool = nf.pool();
+    
+    network::sendRequest(pool, "server:" + _config.coordinatorId(),
+                         fuerte::RestVerb::Post, baseUrl + path, std::move(buffer));
+    
   }
 }
 
@@ -794,22 +815,28 @@ void Worker<V, E, M>::_callConductorWithResponse(std::string const& path,
   LOG_TOPIC("6d349", TRACE, Logger::PREGEL) << "Calling the conductor";
   if (ServerState::instance()->isRunningInCluster() == false) {
     VPackBuilder response;
-    PregelFeature::handleConductorRequest(path, message.slice(), response);
+    PregelFeature::handleConductorRequest(*_config.vocbase(), path, message.slice(), response);
     handle(response.slice());
   } else {
-    std::shared_ptr<ClusterComm> cc = ClusterComm::instance();
     std::string baseUrl = Utils::baseUrl(_config.database(), Utils::conductorPrefix);
-    CoordTransactionID coordinatorTransactionID = TRI_NewTickServer();
-    std::unordered_map<std::string, std::string> headers;
+    
+    application_features::ApplicationServer& server = _config.vocbase()->server();
+    auto const& nf = server.getFeature<arangodb::NetworkFeature>();
+    network::ConnectionPool* pool = nf.pool();
+    
+    VPackBuffer<uint8_t> buffer;
+    buffer.append(message.data(), message.size());
+    
+    
+    network::RequestOptions reqOpts;
+    reqOpts.skipScheduler = true;
 
-    std::unique_ptr<ClusterCommResult> result =
-        cc->syncRequest(coordinatorTransactionID,
-                        "server:" + _config.coordinatorId(), rest::RequestType::POST,
-                        baseUrl + path, message.toJson(), headers, 120.0);
-    if (result->status == CL_COMM_SENT || result->status == CL_COMM_RECEIVED) {
-      handle(result->answer->payload());
-    } else {
-      handle(VPackSlice::noneSlice());
+    network::Response r = network::sendRequest(pool, "server:" + _config.coordinatorId(),
+                                               fuerte::RestVerb::Post,
+                                               baseUrl + path, std::move(buffer), reqOpts).get();
+    
+    if (handle) {
+      handle(r.slice());
     }
   }
 }

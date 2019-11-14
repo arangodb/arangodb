@@ -49,9 +49,9 @@
 
 /// @brief cause a segmentation violation
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
-void TRI_SegfaultDebugging(char const* value);
+void TRI_TerminateDebugging(char const* value);
 #else
-inline void TRI_SegfaultDebugging(char const*) {}
+inline void TRI_TerminateDebugging(char const*) {}
 #endif
 
 /// @brief check whether we should fail at a failure point

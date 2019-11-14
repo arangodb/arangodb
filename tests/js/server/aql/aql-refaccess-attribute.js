@@ -54,13 +54,15 @@ function ahuacatlRefAccessAttributeTestSuite () {
 /// @brief set up
 ////////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
+    setUpAll : function () {
       internal.db._drop("UnitTestsAhuacatlRefAccess");
       collection = internal.db._create("UnitTestsAhuacatlRefAccess");
 
+      let docs = [];
       for (var i = 1; i <= 10; ++i) {
-        collection.save({ "val" : i });
+        docs.push({ "val" : i });
       }
+      collection.insert(docs);
 
       collection.ensureSkiplist("val");
     },
@@ -69,7 +71,7 @@ function ahuacatlRefAccessAttributeTestSuite () {
 /// @brief tear down
 ////////////////////////////////////////////////////////////////////////////////
 
-    tearDown : function () {
+    tearDownAll : function () {
       internal.db._drop("UnitTestsAhuacatlRefAccess");
     },
 

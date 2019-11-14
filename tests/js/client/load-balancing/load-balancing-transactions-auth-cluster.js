@@ -274,6 +274,124 @@ function TransactionsSuite () {
       }
     },
 
+    testCreateAndCommitDifferentUser: function() {
+      const obj = { collections: { read: cn } };
+
+      let url = "/_api/transaction";
+      let result = sendRequest(users[0], 'POST', url + "/begin", obj, true);
+
+      assertEqual(result.status, 201);
+      assertFalse(result.body.result.id === undefined);
+
+      let trx1 = result.body.result;
+
+      try {
+        // commit with different user
+        result = sendRequest(users[1], 'PUT', url + "/" + encodeURIComponent(trx1.id), {}, false);
+        // should fail with not found
+        assertEqual(result.status, 404);
+
+        result = sendRequest(users[0], 'PUT', url + "/" + encodeURIComponent(trx1.id), {}, false);
+        assertEqual(trx1.id, result.body.result.id);
+        assertEqual("committed", result.body.result.status);
+        
+        result = sendRequest(users[0], 'GET', url, {}, true);
+        assertNotInList(result.body.transactions, trx1);
+      } finally {
+        sendRequest(users[0], 'DELETE', '/_api/transaction/' + encodeURIComponent(trx1.id), {}, true);
+      }
+    },
+    
+    testCreateAndAbortDifferentUser: function() {
+      const obj = { collections: { read: cn } };
+
+      let url = "/_api/transaction";
+      let result = sendRequest(users[0], 'POST', url + "/begin", obj, true);
+
+      assertEqual(result.status, 201);
+      assertFalse(result.body.result.id === undefined);
+
+      let trx1 = result.body.result;
+
+      try {
+        // abort with different user
+        result = sendRequest(users[1], 'DELETE', '/_api/transaction/' + encodeURIComponent(trx1.id), {}, true);
+        // should fail with not found
+        assertEqual(result.status, 404);
+
+        result = sendRequest(users[0], 'DELETE', '/_api/transaction/' + encodeURIComponent(trx1.id), {}, true);
+
+        assertEqual(result.status, 200);
+        assertEqual(trx1.id, result.body.result.id);
+        assertEqual("aborted", result.body.result.status);
+        
+        result = sendRequest(users[0], 'GET', url, {}, true);
+        assertNotInList(result.body.transactions, trx1);
+      } finally {
+        sendRequest(users[0], 'DELETE', '/_api/transaction/' + encodeURIComponent(trx1.id), {}, true);
+      }
+    },
+
+    testCreateAndGetDifferentUser: function() {
+      const obj = { collections: { read: cn } };
+
+      let url = "/_api/transaction";
+      let result = sendRequest(users[0], 'POST', url + "/begin", obj, true);
+
+      assertEqual(result.status, 201);
+      assertFalse(result.body.result.id === undefined);
+
+      let trx1 = result.body.result;
+
+      try {
+        // abort with different user
+        result = sendRequest(users[1], 'GET', '/_api/transaction/' + encodeURIComponent(trx1.id), {}, true);
+        // should fail with not found
+        assertEqual(result.status, 404);
+
+        result = sendRequest(users[0], 'DELETE', '/_api/transaction/' + encodeURIComponent(trx1.id), {}, true);
+
+        assertEqual(result.status, 200);
+        assertEqual(trx1.id, result.body.result.id);
+        assertEqual("aborted", result.body.result.status);
+        
+        result = sendRequest(users[0], 'GET', url, {}, true);
+        assertNotInList(result.body.transactions, trx1);
+      } finally {
+        sendRequest(users[0], 'DELETE', '/_api/transaction/' + encodeURIComponent(trx1.id), {}, true);
+      }
+    },
+
+    testCreateAndGetListDifferentUser: function() {
+      const obj = { collections: { read: cn } };
+
+      let url = "/_api/transaction";
+      let result = sendRequest(users[0], 'POST', url + "/begin", obj, true);
+
+      assertEqual(result.status, 201);
+      assertFalse(result.body.result.id === undefined);
+
+      let trx1 = result.body.result;
+
+      try {
+        // get list with different user
+        result = sendRequest(users[1], 'GET', url, {}, true);
+        // should not find it in list
+        assertNotInList(result.body.transactions, trx1);
+
+        result = sendRequest(users[0], 'DELETE', '/_api/transaction/' + encodeURIComponent(trx1.id), {}, true);
+
+        assertEqual(result.status, 200);
+        assertEqual(trx1.id, result.body.result.id);
+        assertEqual("aborted", result.body.result.status);
+        
+        result = sendRequest(users[0], 'GET', url, {}, true);
+        assertNotInList(result.body.transactions, trx1);
+      } finally {
+        sendRequest(users[0], 'DELETE', '/_api/transaction/' + encodeURIComponent(trx1.id), {}, true);
+      }
+    },
+
   };
 }
 

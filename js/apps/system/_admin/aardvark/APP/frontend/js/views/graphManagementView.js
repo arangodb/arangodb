@@ -56,22 +56,22 @@
     hideSmartGraphOptions: function () {
       $('#row_general-numberOfShards').show();
       $('#row_general-replicationFactor').show();
-      $('#row_general-minReplicationFactor').show();
+      $('#row_general-writeConcern').show();
       $('#smartGraphInfo').hide();
       $('#row_new-numberOfShards').hide();
       $('#row_new-replicationFactor').hide();
-      $('#row_new-minReplicationFactor').hide();
+      $('#row_new-writeConcern').hide();
       $('#row_new-smartGraphAttribute').hide();
     },
 
     showSmartGraphOptions: function () {
       $('#row_general-numberOfShards').hide();
       $('#row_general-replicationFactor').hide();
-      $('#row_general-minReplicationFactor').hide();
+      $('#row_general-writeConcern').hide();
       $('#smartGraphInfo').show();
       $('#row_new-numberOfShards').show();
       $('#row_new-replicationFactor').show();
-      $('#row_new-minReplicationFactor').show();
+      $('#row_new-writeConcern').show();
       $('#row_new-smartGraphAttribute').show();
     },
 
@@ -676,7 +676,7 @@
             numberOfShards: parseInt($('#new-numberOfShards').val()),
             smartGraphAttribute: $('#new-smartGraphAttribute').val(),
             replicationFactor: parseInt($('#new-replicationFactor').val()),
-            minReplicationFactor: parseInt($('#new-minReplicationFactor').val()),
+            minReplicationFactor: parseInt($('#new-writeConcern').val()),
           };
         }
       } else {
@@ -695,12 +695,12 @@
               };
             }
           }
-          if ($('#general-minReplicationFactor').val().length > 0) {
+          if ($('#general-writeConcern').val().length > 0) {
             if (newCollectionObject.options) {
-              newCollectionObject.options.minReplicationFactor = parseInt($('#general-minReplicationFactor').val());
+              newCollectionObject.options.minReplicationFactor = parseInt($('#general-writeConcern').val());
             } else {
               newCollectionObject.options = {
-                minReplicationFactor: parseInt($('#general-minReplicationFactor').val())
+                minReplicationFactor: parseInt($('#general-writeConcern').val())
               };
             }
           }
@@ -821,8 +821,8 @@
         if (graph.get('minReplicationFactor')) {
           tableContent.push(
             window.modalView.createReadOnlyEntry(
-              'minReplicationFactor',
-              'Minimal Replication factor',
+              'writeConcern',
+              'Minimum replication factor',
               graph.get('minReplicationFactor'),
               'Total number of copies of the data in the cluster. If we get below this value the collection will be read-only until enough copies are created.'
             )
@@ -894,10 +894,10 @@
 
         tableContent.push(
           window.modalView.createTextEntry(
-            'new-minReplicationFactor',
-            'Minimal Replication factor',
+            'new-writeConcern',
+            'Minimum replication factor',
             '',
-                'Numeric value. Must be at least 1 and must be smaller or equal compared to the replicationFactor. Minimal number of copies of the data in the cluster to be in sync in order to allow writes.',
+                'Numeric value. Must be at least 1 and must be smaller or equal compared to the replication factor. Minimal number of copies of the data in the cluster to be in sync in order to allow writes.',
             '',
             false,
             [
@@ -964,10 +964,10 @@
         );
         tableContent.push(
           window.modalView.createTextEntry(
-            'general-minReplicationFactor',
-            'Minimal replication factor',
+            'general-writeConcern',
+            'Minimum replication factor',
             '',
-            'Numeric value. Must be at least 1. Must be smaller or equal compared to the replicationFactor. Total number of copies of the data in the cluster to be in sync. If we get below this value the collection will be read-only until enough copies are created.',
+            'Numeric value. Must be at least 1. Must be smaller or equal compared to the replication factor. Total number of copies of the data in the cluster to be in sync. If we get below this value the collection will be read-only until enough copies are created.',
             '',
             false,
             [

@@ -68,9 +68,9 @@ struct IndexIteratorOptions;
 /// at the index itself
 class IndexIterator {
  public:
-  typedef std::function<void(LocalDocumentId const& token)> LocalDocumentIdCallback;
-  typedef std::function<void(LocalDocumentId const& token, velocypack::Slice doc)> DocumentCallback;
-  typedef std::function<void(LocalDocumentId const& token, velocypack::Slice extra)> ExtraCallback;
+  typedef std::function<bool(LocalDocumentId const& token)> LocalDocumentIdCallback;
+  typedef std::function<bool(LocalDocumentId const& token, velocypack::Slice doc)> DocumentCallback;
+  typedef std::function<bool(LocalDocumentId const& token, velocypack::Slice extra)> ExtraCallback;
 
  public:
   IndexIterator(IndexIterator const&) = delete;
@@ -79,7 +79,7 @@ class IndexIterator {
 
   IndexIterator(LogicalCollection*, transaction::Methods*);
 
-  virtual ~IndexIterator() {}
+  virtual ~IndexIterator() = default;
 
   virtual char const* typeName() const = 0;
 
@@ -137,7 +137,7 @@ class EmptyIndexIterator final : public IndexIterator {
   EmptyIndexIterator(LogicalCollection* collection, transaction::Methods* trx)
       : IndexIterator(collection, trx) {}
 
-  ~EmptyIndexIterator() {}
+  ~EmptyIndexIterator() = default;
 
   char const* typeName() const override { return "empty-index-iterator"; }
 

@@ -24,6 +24,7 @@
 #include "EndpointFeature.h"
 
 #include "Basics/application-exit.h"
+#include "FeaturePhases/AqlFeaturePhase.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -39,12 +40,12 @@ using namespace arangodb::rest;
 namespace arangodb {
 
 EndpointFeature::EndpointFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Endpoint"), _reuseAddress(true), _backlogSize(64) {
+    : HttpEndpointProvider(server, "Endpoint"), _reuseAddress(true), _backlogSize(64) {
   setOptional(true);
   requiresElevatedPrivileges(true);
-  startsAfter("AQLPhase");
+  startsAfter<application_features::AqlFeaturePhase>();
 
-  startsAfter("Server");
+  startsAfter<ServerFeature>();
 
   // if our default value is too high, we'll use half of the max value provided
   // by the system

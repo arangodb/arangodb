@@ -230,6 +230,8 @@
 
   c.save(Array(10000).fill().map((e, i, a) => Object({_key: "test" + i, value: i})));
 
+  let analyzer = analyzers.save("custom", "delimiter", { delimiter : " " }, [ "frequency" ]);
+
   // setup a view
   try {
     c = db._create("UnitTestsDumpViewCollection");
@@ -247,7 +249,7 @@
         "UnitTestsDumpViewCollection": {
           includeAllFields: true,
           fields: {
-            text: { analyzers: [ "text_en" ] }
+            text: { analyzers: [ "text_en", analyzer.name ] }
           }
         }
       }

@@ -154,6 +154,8 @@ void RocksDBIndex::toVelocyPack(VPackBuilder& builder,
     TRI_ASSERT(_objectId != 0);
     builder.add("objectId", VPackValue(std::to_string(_objectId)));
   }
+  builder.add(arangodb::StaticStrings::IndexUnique, VPackValue(unique()));
+  builder.add(arangodb::StaticStrings::IndexSparse, VPackValue(sparse()));
 }
 
 void RocksDBIndex::createCache() {
@@ -189,7 +191,7 @@ Result RocksDBIndex::drop() {
   // edge index needs to be dropped with prefixSameAsStart = false
   // otherwise full index scan will not work
   bool const prefixSameAsStart = this->type() != Index::TRI_IDX_TYPE_EDGE_INDEX;
-  bool const useRangeDelete = coll->numberDocuments() >= 32 * 1024;
+  bool const useRangeDelete = coll->meta().numberDocuments() >= 32 * 1024;
 
   arangodb::Result r =
       rocksutils::removeLargeRange(rocksutils::globalRocksDB(), this->getBounds(),

@@ -155,14 +155,16 @@ std::string Thread::stringify(ThreadState state) {
 }
 
 /// @brief constructs a thread
-Thread::Thread(std::string const& name, bool deleteOnExit, std::uint32_t terminationTimeout)
-    : _deleteOnExit(deleteOnExit),
+Thread::Thread(application_features::ApplicationServer& server, std::string const& name,
+               bool deleteOnExit, std::uint32_t terminationTimeout)
+    : _server(server),
       _threadStructInitialized(false),
       _refs(0),
       _name(name),
       _thread(),
       _threadNumber(0),
       _terminationTimeout(terminationTimeout),
+      _deleteOnExit(deleteOnExit),
       _finishedCondition(nullptr),
       _state(ThreadState::CREATED) {
   TRI_InitThread(&_thread);
@@ -252,12 +254,10 @@ bool Thread::isStopping() const {
 
 /// @brief starts the thread
 bool Thread::start(ConditionVariable* finishedCondition) {
-  if (!isSystem() && !ApplicationServer::isPrepared()) {
+  if (!isSystem() && !_server.isPrepared()) {
     LOG_TOPIC("6ba8a", FATAL, arangodb::Logger::FIXME)
-        << "trying to start a thread '" << _name << "' before prepare has finished, current state: "
-        << (ApplicationServer::server == nullptr
-                ? -1
-                : (int)ApplicationServer::server->state());
+        << "trying to start a thread '" << _name
+        << "' before prepare has finished, current state: " << (int)_server.state();
     FATAL_ERROR_ABORT();
   }
 

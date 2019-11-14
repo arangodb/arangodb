@@ -52,7 +52,7 @@ class BenchFeature final : public application_features::ApplicationFeature {
   void unprepare() override final;
 
   bool async() const { return _async; }
-  uint64_t concurrency() const { return _concurreny; }
+  uint64_t concurrency() const { return _concurrency; }
   uint64_t operations() const { return _operations; }
   uint64_t batchSize() const { return _batchSize; }
   bool keepAlive() const { return _keepAlive; }
@@ -71,12 +71,12 @@ class BenchFeature final : public application_features::ApplicationFeature {
 
  private:
   void status(std::string const& value);
-  bool report(ClientFeature*, std::vector<BenchRunResult>);
+  bool report(ClientFeature&, std::vector<BenchRunResult>);
   void printResult(BenchRunResult const& result);
   bool writeJunitReport(BenchRunResult const& result);
 
   bool _async;
-  uint64_t _concurreny;
+  uint64_t _concurrency;
   uint64_t _operations;
   uint64_t _batchSize;
   bool _keepAlive;

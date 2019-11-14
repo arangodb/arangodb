@@ -22,6 +22,7 @@
 
 #include "MaxMapCountFeature.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
@@ -47,7 +48,7 @@ bool MaxMapCountFeature::_doCheck = false;
 MaxMapCountFeature::MaxMapCountFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "MaxMapCount") {
   setOptional(false);
-  startsAfter("GreetingsPhase");
+  startsAfter<application_features::GreetingsFeaturePhase>();
 }
 
 void MaxMapCountFeature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {

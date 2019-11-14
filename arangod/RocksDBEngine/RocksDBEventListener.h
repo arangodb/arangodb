@@ -36,29 +36,29 @@ namespace arangodb {
 
 class RocksDBEventListenerThread : public arangodb::Thread {
 public:
+ explicit RocksDBEventListenerThread(application_features::ApplicationServer& server,
+                                     std::string const& name)
+     : Thread(server, name) {}
+ ~RocksDBEventListenerThread();
 
-  explicit RocksDBEventListenerThread(std::string const& name) : Thread(name) {}
-  ~RocksDBEventListenerThread();
+ void queueShaCalcFile(std::string const& pathName);
 
-  void queueShaCalcFile(std::string const& pathName);
+ void queueDeleteFile(std::string const& pathName);
 
-  void queueDeleteFile(std::string const& pathName);
+ void signalLoop();
 
-  void signalLoop();
+ static bool shaCalcFile(std::string const& filename);
 
-  static bool shaCalcFile(std::string const& filename);
+ static bool deleteFile(std::string const& filename);
 
-  static bool deleteFile(std::string const& filename);
+ static void checkMissingShaFiles(std::string const& pathname, int64_t requireAge);
 
-  static void checkMissingShaFiles(std::string const& pathname,
-                                   int64_t requireAge);
+protected:
+ void run() override;
 
- protected:
-  void run() override;
-
-  struct actionNeeded_t {
-    enum { CALC_SHA, DELETE_ACTION } _action;
-    std::string _path;
+ struct actionNeeded_t {
+   enum { CALC_SHA, DELETE_ACTION } _action;
+   std::string _path;
   };
 
   basics::ConditionVariable _loopingCondvar;
@@ -79,7 +79,7 @@ public:
 ////////////////////////////////////////////////////////////////////////////////
 class RocksDBEventListener : public rocksdb::EventListener {
  public:
-  RocksDBEventListener();
+  explicit RocksDBEventListener(application_features::ApplicationServer&);
   virtual ~RocksDBEventListener();
 
   void OnFlushCompleted(rocksdb::DB* db, const rocksdb::FlushJobInfo& flush_job_info) override;

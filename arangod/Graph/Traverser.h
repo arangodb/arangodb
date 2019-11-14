@@ -73,7 +73,7 @@ class TraversalPath {
 
   TraversalPath() : _readDocuments(0) {}
 
-  virtual ~TraversalPath() {}
+  virtual ~TraversalPath() = default;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Builds the complete path as VelocyPack

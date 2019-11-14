@@ -124,7 +124,7 @@ BaseEngine::BaseEngine(TRI_vocbase_t& vocbase,
       _collections.add(name, AccessMode::Type::READ);
       shards.emplace_back(std::move(name));
     }
-    _vertexShards.emplace(collection.key.copyString(), std::move(shards));
+    _vertexShards.try_emplace(collection.key.copyString(), std::move(shards));
   }
 
   // FIXME: in the future this needs to be replaced with
@@ -141,7 +141,7 @@ BaseEngine::BaseEngine(TRI_vocbase_t& vocbase,
       inaccessible.insert(shard.copyString());
     }
     _trx = aql::AqlTransaction::create(ctx, _collections.collections(), trxOpts,
-                                       true, inaccessible);
+                                       true, std::move(inaccessible));
   } else {
     _trx = aql::AqlTransaction::create(ctx, _collections.collections(), trxOpts, /*isMainTransaction*/true);
   }
@@ -172,18 +172,29 @@ BaseEngine::BaseEngine(TRI_vocbase_t& vocbase,
     }
   }
 
-  _trx->begin();  // We begin the transaction before we lock.
-                  // We also setup indexes before we lock.
+  // We begin the transaction before we lock.
+  // We also setup indexes before we lock.
+  Result res = _trx->begin();  
+  if (res.fail()) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
 }
 
 BaseEngine::~BaseEngine() {
   if (_trx) {
     try {
-      _trx->commit();
+      if (_trx->status() == transaction::Status::RUNNING) {
+        Result res = _trx->commit();
+        if (res.fail()) {
+          LOG_TOPIC("315cf", ERR, Logger::CLUSTER)
+            << "BaseEngine could not commit: " 
+            << res.errorMessage() 
+            << ", current status: " << transaction::statusString(_trx->status());
+        }
+      }
     } catch (...) {
-      // If we could not commit
+      // If we could not abort
       // we are in a bad state.
-      // This is a READ-ONLY trx
     }
   }
   delete _query;
@@ -272,7 +283,7 @@ BaseTraverserEngine::BaseTraverserEngine(TRI_vocbase_t& vocbase,
                                          VPackSlice info, bool needToLock)
     : BaseEngine(vocbase, ctx, info, needToLock), _opts(nullptr) {}
 
-BaseTraverserEngine::~BaseTraverserEngine() {}
+BaseTraverserEngine::~BaseTraverserEngine() = default;
 
 void BaseTraverserEngine::getEdges(VPackSlice vertex, size_t depth, VPackBuilder& builder) {
   // We just hope someone has locked the shards properly. We have no clue...
@@ -416,7 +427,7 @@ ShortestPathEngine::ShortestPathEngine(TRI_vocbase_t& vocbase,
   _opts->activateCache(false, nullptr);
 }
 
-ShortestPathEngine::~ShortestPathEngine() {}
+ShortestPathEngine::~ShortestPathEngine() = default;
 
 void ShortestPathEngine::getEdges(VPackSlice vertex, bool backward, VPackBuilder& builder) {
   // We just hope someone has locked the shards properly. We have no clue...
@@ -503,7 +514,7 @@ TraverserEngine::TraverserEngine(TRI_vocbase_t& vocbase,
   _opts->activateCache(false, nullptr);
 }
 
-TraverserEngine::~TraverserEngine() {}
+TraverserEngine::~TraverserEngine() = default;
 
 void TraverserEngine::smartSearch(VPackSlice, VPackBuilder&) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_ONLY_ENTERPRISE);

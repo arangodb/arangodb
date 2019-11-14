@@ -48,7 +48,7 @@ class ShardingStrategyNone final : public ShardingStrategy {
 
   int getResponsibleShard(arangodb::velocypack::Slice, bool docComplete,
                           ShardID& shardID, bool& usesDefaultShardKeys,
-                          std::string const& key = "") override;
+                          arangodb::velocypack::StringRef const& key) override;
 };
 
 /// @brief a sharding class used to indicate that the selected sharding strategy
@@ -68,7 +68,7 @@ class ShardingStrategyOnlyInEnterprise final : public ShardingStrategy {
   /// sharding is only available in the enterprise edition
   int getResponsibleShard(arangodb::velocypack::Slice, bool docComplete,
                           ShardID& shardID, bool& usesDefaultShardKeys,
-                          std::string const& key = "") override;
+                          arangodb::velocypack::StringRef const& key) override;
 
  private:
   /// @brief name of the sharding strategy we are replacing
@@ -82,14 +82,15 @@ class ShardingStrategyHashBase : public ShardingStrategy {
 
   virtual int getResponsibleShard(arangodb::velocypack::Slice, bool docComplete,
                                   ShardID& shardID, bool& usesDefaultShardKeys,
-                                  std::string const& key = "") override;
+                                  arangodb::velocypack::StringRef const& key) override;
 
   /// @brief does not really matter here
   bool usesDefaultShardKeys() override { return _usesDefaultShardKeys; }
 
   virtual uint64_t hashByAttributes(arangodb::velocypack::Slice slice,
                                     std::vector<std::string> const& attributes,
-                                    bool docComplete, int& error, std::string const& key);
+                                    bool docComplete, int& error,
+                                    arangodb::velocypack::StringRef const& key);
 
  private:
   void determineShards();
@@ -126,7 +127,7 @@ class ShardingStrategyEnterpriseBase : public ShardingStrategyHashBase {
   /// will affect the data distribution, which we want to avoid
   uint64_t hashByAttributes(arangodb::velocypack::Slice slice,
                             std::vector<std::string> const& attributes, bool docComplete,
-                            int& error, std::string const& key) override final;
+                            int& error, arangodb::velocypack::StringRef const& key) override final;
 };
 
 /// @brief old version of the sharding used in the enterprise edition

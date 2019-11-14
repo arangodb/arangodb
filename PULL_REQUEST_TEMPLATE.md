@@ -75,7 +75,7 @@ Additionally:
 > Bugs and features should furthermore be documented in the changelog so that
 > developers and users have a concise overview. 
 
-- [ ] Added a *Changelog Entry* 
+- [ ] Added a *Changelog Entry* (referencing the corresponding public or internal issue number)
 - [ ] Added entry to *Release Notes* 
 - [ ] Added a new section in the *Manual* 
 - [ ] Added a new section in the *http API* 

@@ -54,16 +54,19 @@ function optimizerRuleTestSuite () {
 /// @brief set up
 ////////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
+    setUpAll : function () {
       db._drop(cn);
       c = db._create(cn);
+      for (let i = 0; i < 100; ++i) {
+        c.save({ _key: "test" + i, value: i });
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tear down
 ////////////////////////////////////////////////////////////////////////////////
 
-    tearDown : function () {
+    tearDownAll : function () {
       db._drop(cn);
       c = null;
     },
@@ -204,7 +207,6 @@ function optimizerRuleTestSuite () {
     testCollection1 : function () {
       var expected = [ ];
       for (var i = 0; i < 100; ++i) {
-        c.save({ _key: "test" + i, value: i });
         expected.push("test" + i + "-" + i);
       }
 
@@ -228,9 +230,6 @@ function optimizerRuleTestSuite () {
 
     testCollection2 : function () {
       var expected = [ "test43-43", "test44-44" ];
-      for (var i = 0; i < 100; ++i) {
-        c.save({ _key: "test" + i, value: i });
-      }
 
       var query = "FOR i IN " + cn + " LET result = CONCAT(i._key, '-', i.value) FILTER i.value > 42 SORT i.value LIMIT 2 RETURN result";
       var planDisabled   = AQL_EXPLAIN(query, { }, paramDisabled);
@@ -248,9 +247,6 @@ function optimizerRuleTestSuite () {
 
     testCollection3 : function () {
       var expected = [ "test0-0", "test1-1" ];
-      for (var i = 0; i < 100; ++i) {
-        c.save({ _key: "test" + i, value: i });
-      }
 
       var query = "FOR i IN " + cn + " LET result = CONCAT(i._key, '-', i.value) SORT i.value LIMIT 2 RETURN result";
       var planDisabled   = AQL_EXPLAIN(query, { }, paramDisabled);

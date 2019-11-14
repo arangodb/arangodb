@@ -35,7 +35,8 @@ namespace arangodb {
 
 class RestQueryHandler : public RestVocbaseBaseHandler {
  public:
-  RestQueryHandler(GeneralRequest*, GeneralResponse*);
+  RestQueryHandler(application_features::ApplicationServer&, GeneralRequest*,
+                   GeneralResponse*);
 
  public:
   char const* name() const override final { return "RestQueryHandler"; }
@@ -69,19 +70,19 @@ class RestQueryHandler : public RestVocbaseBaseHandler {
   /// @brief removes the slow log
   //////////////////////////////////////////////////////////////////////////////
 
-  bool deleteQuerySlow();
+  void deleteQuerySlow();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief interrupts a named query
   //////////////////////////////////////////////////////////////////////////////
 
-  bool deleteQuery(std::string const& name);
+  void deleteQuery(std::string const& name);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief interrupts a query
   //////////////////////////////////////////////////////////////////////////////
 
-  bool deleteQuery();
+  void deleteQuery();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief changes the settings
@@ -95,7 +96,7 @@ class RestQueryHandler : public RestVocbaseBaseHandler {
 
   bool parseQuery();
 
-  virtual uint32_t forwardingTarget() override;
+  virtual std::string forwardingTarget() override;
 };
 }  // namespace arangodb
 

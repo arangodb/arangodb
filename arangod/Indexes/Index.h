@@ -224,6 +224,9 @@ class Index {
   /// @brief whether or not any attribute is expanded
   inline bool hasExpansion() const { return _useExpansion; }
 
+  /// @brief if index needs explicit reversal and wouldn`t be reverted by storage rollback
+  virtual bool needsReversal() const { return false; } 
+
   /// @brief whether or not the index covers all the attributes passed in
   virtual bool covers(std::unordered_set<std::string> const& attributes) const;
 
@@ -249,7 +252,7 @@ class Index {
   static IndexType type(char const* type, size_t len);
 
   static IndexType type(std::string const& type);
-  
+
  public:
 
   virtual char const* typeName() const = 0;
@@ -309,7 +312,7 @@ class Index {
   virtual bool isHidden() const = 0;
 
   /// @brief if true this index should not be shown externally
-  virtual bool inProgress() const { return false; };
+  virtual bool inProgress() const { return false; }
 
   /// @brief whether or not the index has a selectivity estimate
   virtual bool hasSelectivityEstimate() const = 0;
@@ -344,7 +347,7 @@ class Index {
     /// @brief serialize selectivity estimates
     Estimates = 4,
     /// @brief serialize object ids for persistence
-    Internals = 8,
+    Internals = 8
   };
 
   /// @brief helper for building flags

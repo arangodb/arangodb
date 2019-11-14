@@ -47,7 +47,6 @@ class IResearchViewMetaTest : public ::testing::Test {
   }
 
   ~IResearchViewMetaTest() {
-    arangodb::application_features::ApplicationServer::server = nullptr;
     arangodb::EngineSelectorFeature::ENGINE = nullptr;
   }
 };
@@ -241,7 +240,7 @@ TEST_F(IResearchViewMetaTest, test_readCustomizedValues) {
         "\"threshold\": -0.5 } }");
     EXPECT_TRUE((true == metaState.init(json->slice(), errorField)));
     EXPECT_TRUE(false == meta.init(json->slice(), errorField));
-    EXPECT_TRUE((std::string("consolidationPolicy=>threshold") == errorField));
+    EXPECT_TRUE((std::string("consolidationPolicy.threshold") == errorField));
   }
 
   {
@@ -251,7 +250,7 @@ TEST_F(IResearchViewMetaTest, test_readCustomizedValues) {
         "\"threshold\": 1.5 } }");
     EXPECT_TRUE((true == metaState.init(json->slice(), errorField)));
     EXPECT_TRUE(false == meta.init(json->slice(), errorField));
-    EXPECT_TRUE((std::string("consolidationPolicy=>threshold") == errorField));
+    EXPECT_TRUE((std::string("consolidationPolicy.threshold") == errorField));
   }
 
   // consolidation policy "tier"
@@ -263,7 +262,7 @@ TEST_F(IResearchViewMetaTest, test_readCustomizedValues) {
         "} }");
     EXPECT_TRUE((true == metaState.init(json->slice(), errorField)));
     EXPECT_TRUE(false == meta.init(json->slice(), errorField));
-    EXPECT_TRUE((std::string("consolidationPolicy=>segmentsMin") == errorField));
+    EXPECT_TRUE((std::string("consolidationPolicy.segmentsMin") == errorField));
   }
 
   {
@@ -273,7 +272,7 @@ TEST_F(IResearchViewMetaTest, test_readCustomizedValues) {
         "} }");
     EXPECT_TRUE((true == metaState.init(json->slice(), errorField)));
     EXPECT_TRUE(false == meta.init(json->slice(), errorField));
-    EXPECT_TRUE((std::string("consolidationPolicy=>segmentsMax") == errorField));
+    EXPECT_TRUE((std::string("consolidationPolicy.segmentsMax") == errorField));
   }
 
   {
@@ -283,7 +282,7 @@ TEST_F(IResearchViewMetaTest, test_readCustomizedValues) {
         "\"segmentsBytesFloor\": -1  } }");
     EXPECT_TRUE((true == metaState.init(json->slice(), errorField)));
     EXPECT_TRUE(false == meta.init(json->slice(), errorField));
-    EXPECT_TRUE((std::string("consolidationPolicy=>segmentsBytesFloor") == errorField));
+    EXPECT_TRUE((std::string("consolidationPolicy.segmentsBytesFloor") == errorField));
   }
 
   {
@@ -293,7 +292,7 @@ TEST_F(IResearchViewMetaTest, test_readCustomizedValues) {
         "\"segmentsBytesMax\": -1  } }");
     EXPECT_TRUE((true == metaState.init(json->slice(), errorField)));
     EXPECT_TRUE(false == meta.init(json->slice(), errorField));
-    EXPECT_TRUE((std::string("consolidationPolicy=>segmentsBytesMax") == errorField));
+    EXPECT_TRUE((std::string("consolidationPolicy.segmentsBytesMax") == errorField));
   }
 
   {
@@ -302,7 +301,7 @@ TEST_F(IResearchViewMetaTest, test_readCustomizedValues) {
         "{ \"consolidationPolicy\": { \"type\": \"invalid\" } }");
     EXPECT_TRUE((true == metaState.init(json->slice(), errorField)));
     EXPECT_TRUE(false == meta.init(json->slice(), errorField));
-    EXPECT_TRUE((std::string("consolidationPolicy=>type") == errorField));
+    EXPECT_EQ(std::string("consolidationPolicy.type"), errorField);
   }
 
   {
@@ -336,7 +335,7 @@ TEST_F(IResearchViewMetaTest, test_readCustomizedValues) {
         arangodb::velocypack::Parser::fromJson("{ \"primarySort\": [ 1 ] }");
     EXPECT_TRUE((true == metaState.init(json->slice(), errorField)));
     EXPECT_TRUE(false == meta.init(json->slice(), errorField));
-    EXPECT_TRUE("primarySort=>[0]" == errorField);
+    EXPECT_EQ("primarySort[0]", errorField);
   }
 
   {
@@ -345,7 +344,7 @@ TEST_F(IResearchViewMetaTest, test_readCustomizedValues) {
         "{ \"primarySort\": [ { \"field\":{ }, \"direction\":\"aSc\" } ] }");
     EXPECT_TRUE((true == metaState.init(json->slice(), errorField)));
     EXPECT_TRUE(false == meta.init(json->slice(), errorField));
-    EXPECT_TRUE("primarySort=>[0]=>field" == errorField);
+    EXPECT_EQ("primarySort[0].field", errorField);
   }
 
   {
@@ -354,7 +353,7 @@ TEST_F(IResearchViewMetaTest, test_readCustomizedValues) {
         "{ \"primarySort\": [ { \"field\":{ }, \"asc\":true } ] }");
     EXPECT_TRUE((true == metaState.init(json->slice(), errorField)));
     EXPECT_TRUE(false == meta.init(json->slice(), errorField));
-    EXPECT_TRUE("primarySort=>[0]=>field" == errorField);
+    EXPECT_EQ("primarySort[0].field", errorField);
   }
 
   {
@@ -364,7 +363,7 @@ TEST_F(IResearchViewMetaTest, test_readCustomizedValues) {
         "\"direction\":\"xxx\" }, 4 ] }");
     EXPECT_TRUE((true == metaState.init(json->slice(), errorField)));
     EXPECT_TRUE(false == meta.init(json->slice(), errorField));
-    EXPECT_TRUE("primarySort=>[0]=>direction" == errorField);
+    EXPECT_EQ("primarySort[0].direction", errorField);
   }
 
   {
@@ -374,7 +373,7 @@ TEST_F(IResearchViewMetaTest, test_readCustomizedValues) {
         "4 ] }");
     EXPECT_TRUE((true == metaState.init(json->slice(), errorField)));
     EXPECT_TRUE(false == meta.init(json->slice(), errorField));
-    EXPECT_TRUE("primarySort=>[0]=>asc" == errorField);
+    EXPECT_TRUE("primarySort[0].asc" == errorField);
   }
 
   {
@@ -384,7 +383,7 @@ TEST_F(IResearchViewMetaTest, test_readCustomizedValues) {
         "\"direction\":\"aSc\" }, 4 ] }");
     EXPECT_TRUE((true == metaState.init(json->slice(), errorField)));
     EXPECT_TRUE(false == meta.init(json->slice(), errorField));
-    EXPECT_TRUE("primarySort=>[1]" == errorField);
+    EXPECT_TRUE("primarySort[1]" == errorField);
   }
 
   {
@@ -394,7 +393,7 @@ TEST_F(IResearchViewMetaTest, test_readCustomizedValues) {
         "\"field\":1, \"direction\":\"aSc\" } ] }");
     EXPECT_TRUE((true == metaState.init(json->slice(), errorField)));
     EXPECT_TRUE(false == meta.init(json->slice(), errorField));
-    EXPECT_TRUE("primarySort=>[1]=>field" == errorField);
+    EXPECT_TRUE("primarySort[1].field" == errorField);
   }
 
   // .............................................................................

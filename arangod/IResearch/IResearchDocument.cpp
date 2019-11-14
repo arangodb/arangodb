@@ -181,7 +181,7 @@ inline bool canHandleValue(std::string const& key, VPackSlice const& value,
       return true;
     case VPackValueType::Custom:
       TRI_ASSERT(key == arangodb::StaticStrings::IdString);
-      // intentionally falls through
+      [[fallthrough]];
     case VPackValueType::String:
       return !context._analyzers.empty();
     default:
@@ -556,7 +556,7 @@ bool FieldIterator::setAttributeValue(IResearchLinkMeta const& context) {
       return true;
     case VPackValueType::Custom:
       TRI_ASSERT(nameBuffer() == arangodb::StaticStrings::IdString);
-      // intentionally falls through
+      [[fallthrough]];
     case VPackValueType::String:
       resetAnalyzers(context);  // reset string analyzers
       return setStringValue(value, *_begin);

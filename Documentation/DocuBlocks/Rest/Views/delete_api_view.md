@@ -1,20 +1,20 @@
 @startDocuBlock delete_api_view
-@brief drops a view
+@brief drops a View
 
-@RESTHEADER{DELETE /_api/view/{view-name}, Drops a view, deleteView}
+@RESTHEADER{DELETE /_api/view/{view-name}, Drops a View, deleteView}
 
 @RESTURLPARAMETERS
 
 @RESTURLPARAM{view-name,string,required}
-The name of the view to drop.
+The name of the View to drop.
 
 @RESTDESCRIPTION
-Drops the view identified by *view-name*.
+Drops the View identified by *view-name*.
 
 If the view was successfully dropped, an object is returned with
 the following attributes:
 - *error*: *false*
-- *id*: The identifier of the dropped view
+- *id*: The identifier of the dropped View
 
 @RESTRETURNCODES
 
@@ -28,7 +28,7 @@ If the *view-name* is unknown, then a *HTTP 404* is returned.
 
 Using an identifier:
 
-@EXAMPLE_ARANGOSH_RUN{RestViewDeleteViewIdentifier}
+@EXAMPLE_ARANGOSH_RUN{RestViewDeleteViewIdentifierArangoSearch}
     var viewName = "testView";
     var viewType = "arangosearch";
 
@@ -43,7 +43,7 @@ Using an identifier:
 
 Using a name:
 
-@EXAMPLE_ARANGOSH_RUN{RestViewDeleteViewName}
+@EXAMPLE_ARANGOSH_RUN{RestViewDeleteViewNameArangoSearch}
     var viewName = "testView";
     var viewType = "arangosearch";
 

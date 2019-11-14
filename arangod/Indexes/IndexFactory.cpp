@@ -146,7 +146,7 @@ bool IndexTypeFactory::equal(arangodb::Index::IndexType type,
 
         bool found = false;
 
-        for (auto const& vr : VPackArrayIterator(r)) {
+        for (VPackSlice vr : VPackArrayIterator(r)) {
           if (arangodb::basics::VelocyPackHelper::equal(v, vr, false)) {
             found = true;
             break;
@@ -172,19 +172,19 @@ bool IndexTypeFactory::equal(arangodb::Index::IndexType type,
 void IndexFactory::clear() { _factories.clear(); }
 
 Result IndexFactory::emplace(std::string const& type, IndexTypeFactory const& factory) {
-  auto* feature = arangodb::application_features::ApplicationServer::lookupFeature(
-      "Bootstrap");
-  auto* bootstrapFeature = dynamic_cast<BootstrapFeature*>(feature);
-
-  // ensure new factories are not added at runtime since that would require
-  // additional locks
-  if (bootstrapFeature && bootstrapFeature->isReady()) {
-    return arangodb::Result(TRI_ERROR_INTERNAL,
-                            std::string("index factory registration is only "
-                                        "allowed during server startup"));
+  auto& server = arangodb::application_features::ApplicationServer::server();
+  if (server.hasFeature<BootstrapFeature>()) {
+    auto& feature = server.getFeature<BootstrapFeature>();
+    // ensure new factories are not added at runtime since that would require
+    // additional locks
+    if (feature.isReady()) {
+      return arangodb::Result(TRI_ERROR_INTERNAL,
+                              std::string("index factory registration is only "
+                                          "allowed during server startup"));
+    }
   }
 
-  if (!_factories.emplace(type, &factory).second) {
+  if (!_factories.try_emplace(type, &factory).second) {
     return arangodb::Result(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER, std::string("index factory previously registered during index factory "
                                                                                "registration for index type '") +
                                                                        type +
@@ -333,7 +333,9 @@ TRI_idx_iid_t IndexFactory::validateSlice(arangodb::velocypack::Slice info,
   return iid;
 }
 
-Result IndexFactory::validateFieldsDefinition(VPackSlice definition, size_t minFields, size_t maxFields) {
+Result IndexFactory::validateFieldsDefinition(VPackSlice definition, 
+                                              size_t minFields, size_t maxFields,
+                                              bool allowSubAttributes) {
   if (basics::VelocyPackHelper::getBooleanValue(definition, StaticStrings::Error, false)) {
     // We have an error here.
     return Result(TRI_ERROR_BAD_PARAMETER);
@@ -346,7 +348,7 @@ Result IndexFactory::validateFieldsDefinition(VPackSlice definition, size_t minF
     std::regex const idRegex("^(.+\\.)?" + StaticStrings::IdString + "$", std::regex::ECMAScript);
 
     // "fields" is a list of fields
-    for (auto const& it : VPackArrayIterator(fieldsSlice)) {
+    for (VPackSlice it : VPackArrayIterator(fieldsSlice)) {
       if (!it.isString()) {
         return Result(TRI_ERROR_BAD_PARAMETER,
                       "index field names must be non-empty strings");
@@ -364,7 +366,12 @@ Result IndexFactory::validateFieldsDefinition(VPackSlice definition, size_t minF
         return Result(TRI_ERROR_BAD_PARAMETER,
                       "duplicate attribute name in index fields list");
       }
-      
+
+      if (!allowSubAttributes && f.find('.') != std::string::npos) { 
+        return Result(TRI_ERROR_BAD_PARAMETER,
+                      "cannot index a sub-attribute in this type of index");
+      }
+
       if (std::regex_match(f.toString(), idRegex)) {
         return Result(TRI_ERROR_BAD_PARAMETER,
                       "_id attribute cannot be indexed");
@@ -386,10 +393,11 @@ Result IndexFactory::validateFieldsDefinition(VPackSlice definition, size_t minF
 /// @brief process the fields list, deduplicate it, and add it to the json
 Result IndexFactory::processIndexFields(VPackSlice definition, VPackBuilder& builder,
                                         size_t minFields, size_t maxFields,
-                                        bool create, bool allowExpansion) {
+                                        bool create, bool allowExpansion,
+                                        bool allowSubAttributes) {
   TRI_ASSERT(builder.isOpenObject());
 
-  Result res = validateFieldsDefinition(definition, minFields, maxFields);
+  Result res = validateFieldsDefinition(definition, minFields, maxFields, allowSubAttributes);
   if (res.fail()) {
     return res;
   }
@@ -402,7 +410,7 @@ Result IndexFactory::processIndexFields(VPackSlice definition, VPackBuilder& bui
   builder.openArray();
 
   // "fields" is a list of fields when we have got here
-  for (auto const& it : VPackArrayIterator(fieldsSlice)) {
+  for (VPackSlice it : VPackArrayIterator(fieldsSlice)) {
     std::vector<basics::AttributeName> temp;
     TRI_ParseAttributeString(it.stringRef(), temp, allowExpansion);
 
@@ -477,7 +485,7 @@ Result IndexFactory::enhanceJsonIndexGeneric(VPackSlice definition,
 /// @brief enhances the json of a ttl index
 Result IndexFactory::enhanceJsonIndexTtl(VPackSlice definition,
                                          VPackBuilder& builder, bool create) {
-  Result res = processIndexFields(definition, builder, 1, 1, create, false);
+  Result res = processIndexFields(definition, builder, 1, 1, create, false, false);
   
   auto value = definition.get(arangodb::StaticStrings::IndexUnique);
   if (value.isBoolean() && value.getBoolean()) {

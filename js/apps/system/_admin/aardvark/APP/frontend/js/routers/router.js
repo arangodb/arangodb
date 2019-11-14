@@ -225,9 +225,6 @@
 
       // foxxes
       this.foxxList = new window.FoxxCollection();
-      window.foxxInstallView = new window.FoxxInstallView({
-        collection: this.foxxList
-      });
 
       // foxx repository
       this.foxxRepo = new window.FoxxRepository();

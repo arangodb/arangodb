@@ -29,6 +29,9 @@
 #include "Basics/asio_ns.h"
 
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
 namespace rest {
   
 class IoContext {
@@ -37,32 +40,35 @@ class IoContext {
  private:
   
   class IoThread final : public Thread {
-  public:
-    explicit IoThread(IoContext& iocontext);
+   public:
+    explicit IoThread(application_features::ApplicationServer&, IoContext&);
+    explicit IoThread(IoThread const&);
     ~IoThread();
     void run() override;
     
-  private:
+   private:
     IoContext& _iocontext;
   };
   
-public:
+ public:
   
   asio_ns::io_context io_context;
   
  private:
-  
+  application_features::ApplicationServer& _server;
   IoThread _thread;
   asio_ns::io_context::work _asioWork;
   std::atomic<unsigned> _clients;
 
  public:
-  IoContext();
+  explicit IoContext(application_features::ApplicationServer&);
+  explicit IoContext(IoContext const&);
   ~IoContext();
   
   int clients() const noexcept {
     return _clients.load(std::memory_order_acquire);
   }
+
   void incClients() noexcept {
     _clients.fetch_add(1, std::memory_order_release);
   }

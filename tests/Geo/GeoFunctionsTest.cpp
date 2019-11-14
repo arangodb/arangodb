@@ -33,18 +33,18 @@
 #include "Aql/ExpressionContext.h"
 #include "Aql/Functions.h"
 #include "Aql/Query.h"
-#include "Basics/SmallVector.h"
+#include "Containers/SmallVector.h"
 #include "Transaction/Methods.h"
-
-#include "lib/Random/RandomGenerator.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
+#include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
+using namespace arangodb::containers;
 
 namespace arangodb {
 namespace tests {
@@ -101,7 +101,7 @@ class GeoEqualsPointTest : public GeoEqualsTest {};
 
       AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
       EXPECT_TRUE(resC.slice().isBoolean());
-      EXPECT_TRUE(resC.slice().getBool() == true);
+      EXPECT_TRUE(resC.slice().getBool());
     }
 
     TEST_F(GeoEqualsPointTest, checking_two_unequal_points) {
@@ -129,7 +129,7 @@ class GeoEqualsPointTest : public GeoEqualsTest {};
 
       AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
       EXPECT_TRUE(resC.slice().isBoolean());
-      EXPECT_TRUE(resC.slice().getBool() == false);
+      EXPECT_FALSE(resC.slice().getBool());
     }
 
 } // geo_equals_point
@@ -153,7 +153,7 @@ class GeoEqualsMultipointTest : public GeoEqualsTest {  };
 
       AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
       EXPECT_TRUE(resC.slice().isBoolean());
-      EXPECT_TRUE(resC.slice().getBool() == true);
+      EXPECT_TRUE(resC.slice().getBool());
     }
 
     TEST_F(GeoEqualsMultipointTest, checking_two_unequal_multipoints) {
@@ -177,7 +177,7 @@ class GeoEqualsMultipointTest : public GeoEqualsTest {  };
 
       AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
       EXPECT_TRUE(resC.slice().isBoolean());
-      EXPECT_TRUE(resC.slice().getBool() == false);
+      EXPECT_FALSE(resC.slice().getBool());
     }
 
 
@@ -202,7 +202,7 @@ namespace geo_equals_polygon {
       AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
       resC.destroy();
       EXPECT_TRUE(resC.slice().isBoolean());
-      EXPECT_TRUE(resC.slice().getBool() == true);
+      EXPECT_TRUE(resC.slice().getBool());
     }
 
     TEST_F(GeoEqualsPolygonTest, checking_two_equal_more_detailed_polygons) {
@@ -221,7 +221,7 @@ namespace geo_equals_polygon {
 
       AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
       EXPECT_TRUE(resC.slice().isBoolean());
-      EXPECT_TRUE(resC.slice().getBool() == true);
+      EXPECT_TRUE(resC.slice().getBool());
     }
 
     TEST_F(GeoEqualsPolygonTest, checking_two_unequal_polygons) {
@@ -245,7 +245,7 @@ namespace geo_equals_polygon {
 
       AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
       EXPECT_TRUE(resC.slice().isBoolean());
-      EXPECT_TRUE(resC.slice().getBool() == false);
+      EXPECT_FALSE(resC.slice().getBool());
     }
 
     TEST_F(GeoEqualsPolygonTest, checking_two_nested_equal_polygons) {
@@ -264,7 +264,7 @@ namespace geo_equals_polygon {
 
       AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
       EXPECT_TRUE(resC.slice().isBoolean());
-      EXPECT_TRUE(resC.slice().getBool() == true);
+      EXPECT_TRUE(resC.slice().getBool());
     }
 
     TEST_F(GeoEqualsPolygonTest, checking_two_unequal_nested_polygons_outer_loop_difference) {
@@ -288,7 +288,7 @@ namespace geo_equals_polygon {
 
       AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
       EXPECT_TRUE(resC.slice().isBoolean());
-      EXPECT_TRUE(resC.slice().getBool() == false);
+      EXPECT_FALSE(resC.slice().getBool());
     }
 
     TEST_F(GeoEqualsPolygonTest, checking_two_unequal_nested_polygons_inner_loop_difference) {
@@ -312,7 +312,7 @@ namespace geo_equals_polygon {
 
       AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
       EXPECT_TRUE(resC.slice().isBoolean());
-      EXPECT_TRUE(resC.slice().getBool() == false);
+      EXPECT_FALSE(resC.slice().getBool());
     }
 
     TEST_F(GeoEqualsPolygonTest, checking_two_unequal_nested_polygons_inner_and_outer_polygons) {
@@ -336,12 +336,12 @@ namespace geo_equals_polygon {
 
       AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
       EXPECT_TRUE(resC.slice().isBoolean());
-      EXPECT_TRUE(resC.slice().getBool() == false);
+      EXPECT_FALSE(resC.slice().getBool());
     }
 
     TEST_F(GeoEqualsPolygonTest, checking_only_one_polygon_first_parameter) {
       fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
-        ASSERT_TRUE(code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+        ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
       });
 
       char const* polyA = "[[1.0, 2.0], [3.0, 4.0], [5.0, 6.0], [1.0, 2.0]]";
@@ -367,7 +367,7 @@ namespace geo_equals_polygon {
 
     TEST_F(GeoEqualsPolygonTest, checking_only_one_polygon_second_parameter) {
       fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
-        ASSERT_TRUE(code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+        ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
       });
 
       char const* polyA = "[[1.0, 2.0], [3.0, 4.0], [5.0, 6.0], [1.0, 2.0]]";
@@ -412,7 +412,7 @@ namespace geo_equals_linestring {
 
       AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
       EXPECT_TRUE(resC.slice().isBoolean());
-      EXPECT_TRUE(resC.slice().getBool() == true);
+      EXPECT_TRUE(resC.slice().getBool());
     }
 
     TEST_F(GeoEqualsLinestringTest, checking_two_unequal_linestrings) {
@@ -437,7 +437,7 @@ namespace geo_equals_linestring {
 
       AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
       EXPECT_TRUE(resC.slice().isBoolean());
-      EXPECT_TRUE(resC.slice().getBool() == false);
+      EXPECT_FALSE(resC.slice().getBool());
     }
 } // geo_equals_linestring
 
@@ -460,7 +460,7 @@ namespace geo_equals_multilinestring {
 
       AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
       EXPECT_TRUE(resC.slice().isBoolean());
-      EXPECT_TRUE(resC.slice().getBool() == true);
+      EXPECT_TRUE(resC.slice().getBool());
     }
 
     TEST_F(GeoEqualsMultilinestringTest, checking_two_unequal_multilinestrings) {
@@ -485,7 +485,7 @@ namespace geo_equals_multilinestring {
 
       AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
       EXPECT_TRUE(resC.slice().isBoolean());
-      EXPECT_TRUE(resC.slice().getBool() == false);
+      EXPECT_FALSE(resC.slice().getBool());
     }
 }  // geo_equals_multilinestring
 
@@ -494,7 +494,7 @@ namespace geo_equals_mixings {
 
     TEST_F(GeoEqualsMixedTypeTest, checking_polygon_with_multilinestring) {
       fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
-        ASSERT_TRUE(code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+        ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
       });
 
       char const* polyA = "[ [[1.0, 2.0], [3.0, 4.0], [3.3, 4.4], [1.0, 2.0]] ]";
@@ -518,12 +518,12 @@ namespace geo_equals_mixings {
 
       AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
       EXPECT_TRUE(resC.slice().isBoolean());
-      EXPECT_TRUE(resC.slice().getBool() == false);
+      EXPECT_FALSE(resC.slice().getBool());
     }
 
     TEST_F(GeoEqualsMixedTypeTest, checking_multipoint_with_multilinestring) {
       fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
-        ASSERT_TRUE(code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+        ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
       });
 
       char const* polyA = "[ [1.0, 2.0], [3.0, 4.0], [1.0, 2.0], [5.0, 6.0] ]";
@@ -546,7 +546,7 @@ namespace geo_equals_mixings {
 
       AqlValue resC = Functions::GeoEquals(&expressionContext, &trx, paramsC);
       EXPECT_TRUE(resC.slice().isBoolean());
-      EXPECT_TRUE(resC.slice().getBool() == false);
+      EXPECT_FALSE(resC.slice().getBool());
     }
 }  // geo_equals_mixings
 

@@ -36,7 +36,7 @@
 #include "Replication/common-defines.h"
 #include "Replication/utilities.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RocksDBEngine/RocksDBCollection.h"
+#include "RocksDBEngine/RocksDBMetaCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBMethods.h"
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
@@ -162,7 +162,7 @@ std::tuple<Result, TRI_voc_cid_t, uint64_t> RocksDBReplicationContext::bindColle
 
   uint64_t numberDocuments;
   bool isNumberDocsExclusive = false;
-  auto* rcoll = static_cast<RocksDBCollection*>(logical->getPhysical());
+  auto* rcoll = static_cast<RocksDBMetaCollection*>(logical->getPhysical());
   if (_snapshot == nullptr) {
     // only DBServers require a corrected document count
     const double to = ServerState::instance()->isDBServer() ? 10.0 : 1.0;
@@ -174,15 +174,15 @@ std::tuple<Result, TRI_voc_cid_t, uint64_t> RocksDBReplicationContext::bindColle
     } else {
       lockGuard.cancel();
     }
-    numberDocuments = rcoll->numberDocuments();
+    numberDocuments = rcoll->meta().numberDocuments();
     lazyCreateSnapshot();
   } else {  // fetch non-exclusive
-    numberDocuments = rcoll->numberDocuments();
+    numberDocuments = rcoll->meta().numberDocuments();
   }
   TRI_ASSERT(_snapshot != nullptr);
 
   auto iter = std::make_unique<CollectionIterator>(vocbase, logical, true, _snapshot);
-  auto result = _iterators.emplace(cid, std::move(iter));
+  auto result = _iterators.try_emplace(cid, std::move(iter));
   TRI_ASSERT(result.second);
 
   CollectionIterator* cIter = result.first->second.get();
@@ -363,7 +363,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(TRI_vocbase_t& vocbase
   RocksDBKey docKey;
   VPackBuilder tmpHashBuilder;
   rocksdb::TransactionDB* db = globalRocksDB();
-  auto* rcoll = static_cast<RocksDBCollection*>(cIter->logical->getPhysical());
+  auto* rcoll = static_cast<RocksDBMetaCollection*>(cIter->logical->getPhysical());
   const uint64_t cObjectId = rcoll->objectId();
   uint64_t snapNumDocs = 0;
 
@@ -440,8 +440,9 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(TRI_vocbase_t& vocbase
       LOG_TOPIC("4986d", WARN, Logger::REPLICATION)
           << "inconsistent collection count detected, "
           << "an offet of " << adjustment << " will be applied";
-      auto* rcoll = static_cast<RocksDBCollection*>(cIter->logical->getPhysical());
-      rcoll->adjustNumberDocuments(static_cast<TRI_voc_rid_t>(0), adjustment);
+      auto* rcoll = static_cast<RocksDBMetaCollection*>(cIter->logical->getPhysical());
+      auto seq = rocksutils::latestSequenceNumber();
+      rcoll->meta().adjustNumberDocuments(seq, static_cast<TRI_voc_rid_t>(0), adjustment);
     }
   }
 
@@ -519,7 +520,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(TRI_vocbase_t& vocbase,
   b.reserve(8192);
   char ridBuffer[21];  // temporary buffer for stringifying revision ids
   rocksdb::TransactionDB* db = globalRocksDB();
-  auto* rcoll = static_cast<RocksDBCollection*>(cIter->logical->getPhysical());
+  auto* rcoll = static_cast<RocksDBMetaCollection*>(cIter->logical->getPhysical());
   const uint64_t cObjectId = rcoll->objectId();
 
   b.openArray(true);
@@ -632,16 +633,16 @@ arangodb::Result RocksDBReplicationContext::dumpDocuments(
   // reserve some space in the result builder to avoid frequent reallocations
   b.reserve(8192);
   rocksdb::TransactionDB* db = globalRocksDB();
-  auto* rcoll = static_cast<RocksDBCollection*>(cIter->logical->getPhysical());
+  auto* rcoll = static_cast<RocksDBMetaCollection*>(cIter->logical->getPhysical());
   const uint64_t cObjectId = rcoll->objectId();
 
-  auto buffer = b.buffer();
+  auto& buffer = b.bufferRef();
   bool hasMore = true;
   b.openArray(true);
   size_t oldPos = from;
   size_t offset = 0;
 
-  for (auto const& it : VPackArrayIterator(ids)) {
+  for (VPackSlice it : VPackArrayIterator(ids)) {
     if (!it.isNumber()) {
       return rv.reset(TRI_ERROR_BAD_PARAMETER);
     }
@@ -692,7 +693,7 @@ arangodb::Result RocksDBReplicationContext::dumpDocuments(
         hasMore = cIter->hasMore();
       }
 
-      if (buffer->byteSize() > maxChunkSize) {
+      if (buffer.byteSize() > maxChunkSize) {
         // result is big enough so that we abort prematurely
         full = true;
       }
@@ -840,7 +841,7 @@ void RocksDBReplicationContext::CollectionIterator::setSorted(bool sorted) {
       auto primaryIndex = static_cast<RocksDBPrimaryIndex*>(index.get());
       bounds = RocksDBKeyBounds::PrimaryIndex(primaryIndex->objectId());
     } else {
-      auto* rcoll = static_cast<RocksDBCollection*>(logical->getPhysical());
+      auto* rcoll = static_cast<RocksDBMetaCollection*>(logical->getPhysical());
       bounds = RocksDBKeyBounds::CollectionDocuments(rcoll->objectId());
     }
     _upperLimit = bounds.end();
@@ -905,7 +906,7 @@ RocksDBReplicationContext::CollectionIterator* RocksDBReplicationContext::getCol
 
     if (nullptr != logical) {
       auto result =
-          _iterators.emplace(cid, std::make_unique<CollectionIterator>(vocbase, logical, sorted,
+          _iterators.try_emplace(cid, std::make_unique<CollectionIterator>(vocbase, logical, sorted,
                                                                        _snapshot));
 
       if (result.second) {

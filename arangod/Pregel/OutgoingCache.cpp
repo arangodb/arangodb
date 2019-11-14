@@ -28,8 +28,10 @@
 
 #include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
-#include "Cluster/ClusterComm.h"
 #include "Cluster/ServerState.h"
+#include "Futures/Utilities.h"
+#include "Network/NetworkFeature.h"
+#include "Network/Methods.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Iterator.h>
@@ -47,7 +49,7 @@ OutCache<M>::OutCache(WorkerConfig* state, MessageFormat<M> const* format)
 // ================= ArrayOutCache ==================
 
 template <typename M>
-ArrayOutCache<M>::~ArrayOutCache() {}
+ArrayOutCache<M>::~ArrayOutCache() = default;
 
 template <typename M>
 void ArrayOutCache<M>::_removeContainedMessages() {
@@ -90,8 +92,15 @@ void ArrayOutCache<M>::flushMessages() {
   VPackOptions options = VPackOptions::Defaults;
   options.buildUnindexedArrays = true;
   options.buildUnindexedObjects = true;
+    
+  application_features::ApplicationServer& server = this->_config->vocbase()->server();
+  auto const& nf = server.getFeature<arangodb::NetworkFeature>();
+  network::ConnectionPool* pool = nf.pool();
+  
+  network::RequestOptions reqOpts;
+  reqOpts.skipScheduler = true;
 
-  std::vector<ClusterCommRequest> requests;
+  std::vector<futures::Future<network::Response>> responses;
   for (auto const& it : _shardMap) {
     PregelShard shard = it.first;
     std::unordered_map<VPackStringRef, std::vector<M>> const& vertexMessageMap = it.second;
@@ -99,7 +108,8 @@ void ArrayOutCache<M>::flushMessages() {
       continue;
     }
 
-    VPackBuilder data(&options);
+    VPackBuffer<uint8_t> buffer;
+    VPackBuilder data(buffer, &options);
     data.openObject();
     data.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
     data.add(Utils::executionNumberKey, VPackValue(this->_config->executionNumber()));
@@ -125,14 +135,13 @@ void ArrayOutCache<M>::flushMessages() {
     data.close();
     // add a request
     ShardID const& shardId = this->_config->globalShardIDs()[shard];
-    auto body = std::make_shared<std::string>(data.toJson());
-    requests.emplace_back("shard:" + shardId, rest::RequestType::POST,
-                          this->_baseUrl + Utils::messagesPath, body);
+    
+    responses.emplace_back(network::sendRequest(pool, "shard:" + shardId, fuerte::RestVerb::Post,
+                                                this->_baseUrl + Utils::messagesPath, std::move(buffer), reqOpts));
   }
-
-  ClusterComm::instance()->performRequests(requests, 120,
-                                           LogTopic("Pregel message transfer"), false);
-  Utils::printResponses(requests);
+  
+  futures::collectAll(responses).wait();
+  
   this->_removeContainedMessages();
 }
 
@@ -144,7 +153,7 @@ CombiningOutCache<M>::CombiningOutCache(WorkerConfig* state, MessageFormat<M> co
     : OutCache<M>(state, format), _combiner(combiner) {}
 
 template <typename M>
-CombiningOutCache<M>::~CombiningOutCache() {}
+CombiningOutCache<M>::~CombiningOutCache() = default;
 
 template <typename M>
 void CombiningOutCache<M>::_removeContainedMessages() {
@@ -171,7 +180,7 @@ void CombiningOutCache<M>::appendMessage(PregelShard shard,
     if (it != vertexMap.end()) {  // more than one message
       _combiner->combine(vertexMap[key], data);
     } else {  // first message for this vertex
-      vertexMap.emplace(key, data);
+      vertexMap.try_emplace(key, data);
 
       if (++(this->_containedMessages) >= this->_batchSize) {
         // LOG_TOPIC("23bc7", INFO, Logger::PREGEL) << "Hit buffer limit";
@@ -195,7 +204,11 @@ void CombiningOutCache<M>::flushMessages() {
   options.buildUnindexedArrays = true;
   options.buildUnindexedObjects = true;
 
-  std::vector<ClusterCommRequest> requests;
+  application_features::ApplicationServer& server = this->_config->vocbase()->server();
+  auto const& nf = server.getFeature<arangodb::NetworkFeature>();
+  network::ConnectionPool* pool = nf.pool();
+
+  std::vector<futures::Future<network::Response>> responses;
   for (auto const& it : _shardMap) {
     PregelShard shard = it.first;
     std::unordered_map<VPackStringRef, M> const& vertexMessageMap = it.second;
@@ -203,7 +216,8 @@ void CombiningOutCache<M>::flushMessages() {
       continue;
     }
 
-    VPackBuilder data(&options);
+    VPackBuffer<uint8_t> buffer;
+    VPackBuilder data(buffer, &options);
     data.openObject();
     data.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
     data.add(Utils::executionNumberKey, VPackValue(this->_config->executionNumber()));
@@ -226,13 +240,18 @@ void CombiningOutCache<M>::flushMessages() {
     data.close();
     // add a request
     ShardID const& shardId = this->_config->globalShardIDs()[shard];
-    auto body = std::make_shared<std::string>(data.toJson());
-    requests.emplace_back("shard:" + shardId, rest::RequestType::POST,
-                          this->_baseUrl + Utils::messagesPath, body);
+    
+    network::RequestOptions reqOpts;
+    reqOpts.timeout = network::Timeout(180);
+    reqOpts.skipScheduler = true;
+    
+    responses.emplace_back(network::sendRequest(pool, "shard:" + shardId, fuerte::RestVerb::Post,
+                                                this->_baseUrl + Utils::messagesPath, std::move(buffer),
+                                                reqOpts));
   }
-
-  ClusterComm::instance()->performRequests(requests, 180, LogTopic("Pregel"), false);
-  Utils::printResponses(requests);
+  
+  futures::collectAll(responses).wait();
+  
   _removeContainedMessages();
 }
 

@@ -23,6 +23,7 @@
 #include "StatisticsFeature.h"
 
 #include "Basics/application-exit.h"
+#include "FeaturePhases/AqlFeaturePhase.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -73,6 +74,12 @@ StatisticsDistribution TRI_IoTimeDistributionStatistics(TRI_RequestTimeDistribut
 StatisticsDistribution TRI_QueueTimeDistributionStatistics(TRI_RequestTimeDistributionVectorStatistics);
 StatisticsDistribution TRI_RequestTimeDistributionStatistics(TRI_RequestTimeDistributionVectorStatistics);
 StatisticsDistribution TRI_TotalTimeDistributionStatistics(TRI_RequestTimeDistributionVectorStatistics);
+StatisticsDistribution TRI_BytesReceivedDistributionStatisticsUser(TRI_BytesReceivedDistributionVectorStatistics);
+StatisticsDistribution TRI_BytesSentDistributionStatisticsUser(TRI_BytesSentDistributionVectorStatistics);
+StatisticsDistribution TRI_IoTimeDistributionStatisticsUser(TRI_RequestTimeDistributionVectorStatistics);
+StatisticsDistribution TRI_QueueTimeDistributionStatisticsUser(TRI_RequestTimeDistributionVectorStatistics);
+StatisticsDistribution TRI_RequestTimeDistributionStatisticsUser(TRI_RequestTimeDistributionVectorStatistics);
+StatisticsDistribution TRI_TotalTimeDistributionStatisticsUser(TRI_RequestTimeDistributionVectorStatistics);
 
 }  // namespace basics
 }  // namespace arangodb
@@ -81,9 +88,10 @@ StatisticsDistribution TRI_TotalTimeDistributionStatistics(TRI_RequestTimeDistri
 // --SECTION--                                                  StatisticsThread
 // -----------------------------------------------------------------------------
 
-class arangodb::StatisticsThread final : public Thread {
+class StatisticsThread final : public Thread {
  public:
-  StatisticsThread() : Thread("Statistics") {}
+  explicit StatisticsThread(ApplicationServer& server) 
+    : Thread(server, "Statistics") {}
   ~StatisticsThread() { shutdown(); }
 
  public:
@@ -132,8 +140,8 @@ StatisticsFeature::StatisticsFeature(application_features::ApplicationServer& se
     : ApplicationFeature(server, "Statistics"),
       _statistics(true),
       _descriptions(new stats::Descriptions()) {
-  startsAfter("AQLPhase");
   setOptional(true);
+  startsAfter<AqlFeaturePhase>();
 }
 
 void StatisticsFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -159,7 +167,7 @@ void StatisticsFeature::prepare() {
 
   STATISTICS = this;
 
-  ServerStatistics::initialize();
+  ServerStatistics::initialize(StatisticsFeature::time());
   ConnectionStatistics::initialize();
   RequestStatistics::initialize();
 }
@@ -167,16 +175,14 @@ void StatisticsFeature::prepare() {
 void StatisticsFeature::start() {
   TRI_ASSERT(isEnabled());
 
-  auto* sysDbFeature =
-      arangodb::application_features::ApplicationServer::lookupFeature<arangodb::SystemDatabaseFeature>();
-
-  if (!sysDbFeature) {
+  if (!server().hasFeature<arangodb::SystemDatabaseFeature>()) {
     LOG_TOPIC("9b551", FATAL, arangodb::Logger::STATISTICS)
         << "could not find feature 'SystemDatabase'";
     FATAL_ERROR_EXIT();
   }
+  auto& sysDbFeature = server().getFeature<arangodb::SystemDatabaseFeature>();
 
-  auto vocbase = sysDbFeature->use();
+  auto vocbase = sysDbFeature.use();
 
   if (!vocbase) {
     LOG_TOPIC("cff56", FATAL, arangodb::Logger::STATISTICS)
@@ -184,7 +190,7 @@ void StatisticsFeature::start() {
     FATAL_ERROR_EXIT();
   }
 
-  _statisticsThread.reset(new StatisticsThread);
+  _statisticsThread.reset(new StatisticsThread(server()));
   _statisticsWorker.reset(new StatisticsWorker(*vocbase));
 
   if (!_statisticsThread->start()) {

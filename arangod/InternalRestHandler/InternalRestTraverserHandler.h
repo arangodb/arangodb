@@ -33,7 +33,8 @@ class TraverserEngineRegistry;
 
 class InternalRestTraverserHandler : public RestVocbaseBaseHandler {
  public:
-  explicit InternalRestTraverserHandler(GeneralRequest*, GeneralResponse*,
+  explicit InternalRestTraverserHandler(application_features::ApplicationServer&,
+                                        GeneralRequest*, GeneralResponse*,
                                         traverser::TraverserEngineRegistry*);
 
  public:

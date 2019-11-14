@@ -24,13 +24,9 @@
 #define APPLICATION_FEATURES_QUERY_REGISTRY_FEATUREx_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "Aql/QueryRegistry.h"
 
 namespace arangodb {
-
-namespace aql {
-
-class QueryRegistry;
-}
 
 class QueryRegistryFeature final : public application_features::ApplicationFeature {
  public:

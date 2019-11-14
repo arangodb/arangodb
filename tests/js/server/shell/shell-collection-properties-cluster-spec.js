@@ -248,11 +248,11 @@ describe('Replication factor constraints', function() {
          "_jobs", "_modules", "_queues", "_routing",
          "_statistics" , "_statistics15" , "_statisticsRaw" ,"_users"
         ].forEach(name => {
-          if(name === "_graphs"){
+          if(name === "_users"){
             expect(db[name].properties()['replicationFactor']).to.equal(2);
           } else if(db[name]){
             expect(db[name].properties()['replicationFactor']).to.equal(2);
-            expect(db[name].properties()['distributeShardsLike']).to.equal("_graphs");
+            expect(db[name].properties()['distributeShardsLike']).to.equal("_users");
           }
 
         });

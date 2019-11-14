@@ -29,15 +29,15 @@
 
 #include "RowFetcherHelper.h"
 
-#include "Aql/AllRowsFetcher.h"
 #include "Aql/AqlItemBlock.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionNode.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/ResourceUsage.h"
 #include "Aql/SortExecutor.h"
+#include "Aql/ConstrainedSortExecutor.h"
 #include "Aql/SortRegister.h"
+#include "Aql/Stats.h"
 #include "Aql/Variable.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
@@ -81,9 +81,8 @@ class SortExecutorTest : public ::testing::Test {
   SortRegister sortReg;
   std::vector<SortRegister> sortRegisters;
 
-
   SortExecutorTest()
-      : itemBlockManager(&monitor),
+      : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
         block(new AqlItemBlock(itemBlockManager, 1000, 1)),
         trx(mockTrx.get()),
         ctxt(mockContext.get()),
@@ -98,8 +97,8 @@ class SortExecutorTest : public ::testing::Test {
 
 TEST_F(SortExecutorTest, no_rows_upstream_producer_doesnt_wait) {
   SortExecutorInfos infos(std::move(sortRegisters),
-        /*limit (ignored for default sort)*/ 0, itemBlockManager, 1, 1,
-        {}, {0}, &trx, false);
+                          /*limit (ignored for default sort)*/ 0,
+                          itemBlockManager, 1, 1, {}, {0}, &trx, false);
   VPackBuilder input;
   AllRowsFetcherHelper fetcher(input.steal(), false);
   SortExecutor testee(fetcher, infos);
@@ -111,14 +110,14 @@ TEST_F(SortExecutorTest, no_rows_upstream_producer_doesnt_wait) {
   OutputAqlItemRow result{std::move(block), infos.getOutputRegisters(),
                           infos.registersToKeep(), infos.registersToClear()};
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(!result.produced());
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_FALSE(result.produced());
 }
 
 TEST_F(SortExecutorTest, no_rows_upstream_producer_waits) {
   SortExecutorInfos infos(std::move(sortRegisters),
-        /*limit (ignored for default sort)*/ 0, itemBlockManager, 1, 1,
-        {}, {0}, &trx, false);
+                          /*limit (ignored for default sort)*/ 0,
+                          itemBlockManager, 1, 1, {}, {0}, &trx, false);
   VPackBuilder input;
   AllRowsFetcherHelper fetcher(input.steal(), true);
   SortExecutor testee(fetcher, infos);
@@ -130,18 +129,19 @@ TEST_F(SortExecutorTest, no_rows_upstream_producer_waits) {
   OutputAqlItemRow result{std::move(block), infos.getOutputRegisters(),
                           infos.registersToKeep(), infos.registersToClear()};
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::WAITING);
-  ASSERT_TRUE(!result.produced());
+  ASSERT_EQ(state, ExecutionState::WAITING);
+  ASSERT_FALSE(result.produced());
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(!result.produced());
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_FALSE(result.produced());
 }
+
 
 TEST_F(SortExecutorTest, rows_upstream_we_are_waiting_for_list_of_numbers) {
   SortExecutorInfos infos(std::move(sortRegisters),
-        /*limit (ignored for default sort)*/ 0, itemBlockManager, 1, 1,
-        {}, {0}, &trx, false);
+                          /*limit (ignored for default sort)*/ 0,
+                          itemBlockManager, 1, 1, {}, {0}, &trx, false);
   std::shared_ptr<VPackBuilder> input =
       VPackParser::fromJson("[[5],[3],[1],[2],[4]]");
   AllRowsFetcherHelper fetcher(input->steal(), true);
@@ -156,63 +156,63 @@ TEST_F(SortExecutorTest, rows_upstream_we_are_waiting_for_list_of_numbers) {
   // Wait, 5, Wait, 3, Wait, 1, Wait, 2, Wait, 4, HASMORE
   for (size_t i = 0; i < 5; ++i) {
     std::tie(state, stats) = testee.produceRows(result);
-    ASSERT_TRUE(state == ExecutionState::WAITING);
-    ASSERT_TRUE(!result.produced());
+    ASSERT_EQ(state, ExecutionState::WAITING);
+    ASSERT_FALSE(result.produced());
   }
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_EQ(state, ExecutionState::HASMORE);
   ASSERT_TRUE(result.produced());
 
   result.advanceRow();
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_EQ(state, ExecutionState::HASMORE);
   ASSERT_TRUE(result.produced());
 
   result.advanceRow();
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_EQ(state, ExecutionState::HASMORE);
   ASSERT_TRUE(result.produced());
 
   result.advanceRow();
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::HASMORE);
+  ASSERT_EQ(state, ExecutionState::HASMORE);
   ASSERT_TRUE(result.produced());
 
   result.advanceRow();
 
   std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_TRUE(state == ExecutionState::DONE);
+  ASSERT_EQ(state, ExecutionState::DONE);
   ASSERT_TRUE(result.produced());
 
   block = result.stealBlock();
   AqlValue v = block->getValue(0, 0);
   ASSERT_TRUE(v.isNumber());
   int64_t number = v.toInt64();
-  ASSERT_TRUE(number == 1);
+  ASSERT_EQ(number, 1);
 
   v = block->getValue(1, 0);
   ASSERT_TRUE(v.isNumber());
   number = v.toInt64();
-  ASSERT_TRUE(number == 2);
+  ASSERT_EQ(number, 2);
 
   v = block->getValue(2, 0);
   ASSERT_TRUE(v.isNumber());
   number = v.toInt64();
-  ASSERT_TRUE(number == 3);
+  ASSERT_EQ(number, 3);
 
   v = block->getValue(3, 0);
   ASSERT_TRUE(v.isNumber());
   number = v.toInt64();
-  ASSERT_TRUE(number == 4);
+  ASSERT_EQ(number, 4);
 
   v = block->getValue(4, 0);
   ASSERT_TRUE(v.isNumber());
   number = v.toInt64();
-  ASSERT_TRUE(number == 5);
+  ASSERT_EQ(number, 5);
 }
 
 }  // namespace aql

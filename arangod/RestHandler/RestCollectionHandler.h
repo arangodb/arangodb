@@ -25,6 +25,7 @@
 #define ARANGOD_REST_HANDLER_REST_COLLECTION_HANDLER_H 1
 
 #include "RestHandler/RestVocbaseBaseHandler.h"
+#include "Transaction/Methods.h"
 #include "VocBase/Methods/Collections.h"
 
 namespace arangodb {
@@ -33,34 +34,47 @@ class LogicalCollection;
 
 class RestCollectionHandler : public arangodb::RestVocbaseBaseHandler {
  public:
-  RestCollectionHandler(GeneralRequest*, GeneralResponse*);
+  RestCollectionHandler(application_features::ApplicationServer&,
+                        GeneralRequest*, GeneralResponse*);
 
  public:
   char const* name() const override final { return "RestCollectionHandler"; }
   RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
   RestStatus execute() override final;
+  
+  void shutdownExecute(bool isFinalized) noexcept override final;
 
  protected:
-  void collectionRepresentation(VPackBuilder& builder, std::string const& name,
-                                bool showProperties, bool showFigures,
-                                bool showCount, bool detailedCount);
-
-  void collectionRepresentation(arangodb::velocypack::Builder& builder,
-                                LogicalCollection& coll, bool showProperties,
+  void collectionRepresentation(std::string const& name, bool showProperties,
                                 bool showFigures, bool showCount, bool detailedCount);
 
-  void collectionRepresentation(VPackBuilder& builder, methods::Collections::Context& ctxt,
-                                bool showProperties, bool showFigures,
-                                bool showCount, bool detailedCount);
+  void collectionRepresentation(LogicalCollection& coll, bool showProperties,
+                                bool showFigures, bool showCount, bool detailedCount);
+
+  void collectionRepresentation(methods::Collections::Context& ctxt, bool showProperties,
+                                bool showFigures, bool showCount, bool detailedCount);
+
+  futures::Future<futures::Unit> collectionRepresentationAsync(
+      methods::Collections::Context& ctxt, bool showProperties,
+      bool showFigures, bool showCount, bool detailedCount);
 
   virtual Result handleExtraCommandPut(LogicalCollection& coll, std::string const& command,
                                        velocypack::Builder& builder) = 0;
 
  private:
-  void handleCommandGet();
+  void standardResponse();
+  void initializeTransaction(LogicalCollection&);
+
+ private:
+  RestStatus handleCommandGet();
   void handleCommandPost();
-  void handleCommandPut();
+  RestStatus handleCommandPut();
   void handleCommandDelete();
+
+ private:
+  VPackBuilder _builder;
+  std::unique_ptr<transaction::Methods> _activeTrx;
+  std::unique_ptr<methods::Collections::Context> _ctxt;
 };
 
 }  // namespace arangodb

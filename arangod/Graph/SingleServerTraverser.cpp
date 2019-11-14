@@ -38,7 +38,7 @@ using namespace arangodb::graph;
 SingleServerTraverser::SingleServerTraverser(TraverserOptions* opts, transaction::Methods* trx)
     : Traverser(opts, trx) {}
 
-SingleServerTraverser::~SingleServerTraverser() {}
+SingleServerTraverser::~SingleServerTraverser() = default;
 
 void SingleServerTraverser::addVertexToVelocyPack(arangodb::velocypack::StringRef vid, VPackBuilder& result) {
   _opts->cache()->insertVertexIntoResult(vid, result);

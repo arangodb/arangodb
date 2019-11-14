@@ -24,8 +24,6 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/GreetingsPhase.h"
 #include "Futures/Future.h"
 #include "Futures/Utilities.h"
 
@@ -715,13 +713,13 @@ TEST(FutureTest, finish) {
   f.wait();
   
   // the callback has executed
-  ASSERT_TRUE(42 == *x);
+  ASSERT_EQ(42, *x);
   
   std::this_thread::yield();
   
   // the callback has been destructed
   // and has released its reference to x
-  ASSERT_TRUE(1 == x.use_count());
+  ASSERT_EQ(1, x.use_count());
 }
   
 TEST(FutureTest, detachRace) {

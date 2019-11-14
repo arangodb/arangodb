@@ -54,11 +54,10 @@ static bool canExpose(v8::Isolate* isolate, v8::Local<v8::Name> property) {
     return true;
   }
 
-  arangodb::V8SecurityFeature* v8security =
-      arangodb::application_features::ApplicationServer::getFeature<arangodb::V8SecurityFeature>(
-          "V8Security");
-  TRI_ASSERT(v8security != nullptr);
-  return v8security->shouldExposeEnvironmentVariable(isolate, utf8String);
+  auto& server = arangodb::application_features::ApplicationServer::server();
+  arangodb::V8SecurityFeature& v8security =
+      server.getFeature<arangodb::V8SecurityFeature>();
+  return v8security.shouldExposeEnvironmentVariable(isolate, utf8String);
 }
 
 static void EnvGetter(v8::Local<v8::Name> property,

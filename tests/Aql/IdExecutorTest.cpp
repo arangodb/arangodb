@@ -25,13 +25,12 @@
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/ConstFetcher.h"
-#include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/IdExecutor.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Aql/OutputAqlItemRow.h"
 #include "Aql/ResourceUsage.h"
-
-#include "tests/Aql/RowFetcherHelper.h"
+#include "Aql/Stats.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
@@ -44,7 +43,7 @@ namespace tests {
 namespace aql {
 
 class IdExecutorTest : public ::testing::Test {
-protected: 
+ protected:
   ExecutionState state;
 
   ResourceMonitor monitor;
@@ -57,7 +56,7 @@ protected:
   OutputAqlItemRow row;
 
   IdExecutorTest()
-      : itemBlockManager(&monitor),
+      : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
         block(new AqlItemBlock(itemBlockManager, 1000, 1)),
         outputRegisters(make_shared_unordered_set()),
         registersToKeep(make_shared_unordered_set({0})),
@@ -67,38 +66,27 @@ protected:
 
 TEST_F(IdExecutorTest, there_are_no_rows_upstream) {
   ConstFetcherHelper fetcher(itemBlockManager, nullptr);
-  IdExecutor<ConstFetcher> testee(fetcher, infos);
+  IdExecutor<::arangodb::aql::BlockPassthrough::Enable, ConstFetcher> testee(fetcher, infos);
   NoStats stats{};
 
   std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(!row.produced());
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_FALSE(row.produced());
 }
 
 TEST_F(IdExecutorTest, there_are_rows_in_the_upstream) {
   auto input = VPackParser::fromJson("[ [true], [false], [true] ]");
   ConstFetcherHelper fetcher(itemBlockManager, input->buffer());
-  IdExecutor<ConstFetcher> testee(fetcher, infos);
+  IdExecutor<::arangodb::aql::BlockPassthrough::Enable, ConstFetcher> testee(fetcher, infos);
   NoStats stats{};
 
+  // This block consumes all rows at once.
   std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_TRUE(state == ExecutionState::HASMORE);
-  ASSERT_TRUE(row.produced());
-  row.advanceRow();
+  ASSERT_EQ(state, ExecutionState::DONE);
 
   std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_TRUE(state == ExecutionState::HASMORE);
-  ASSERT_TRUE(row.produced());
-  row.advanceRow();
-
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(row.produced());
-  row.advanceRow();
-
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_TRUE(state == ExecutionState::DONE);
-  ASSERT_TRUE(!row.produced());
+  ASSERT_EQ(state, ExecutionState::DONE);
+  ASSERT_FALSE(row.produced());
 
   // verify result
   AqlValue value;
@@ -106,7 +94,7 @@ TEST_F(IdExecutorTest, there_are_rows_in_the_upstream) {
   for (std::size_t index = 0; index < 3; index++) {
     value = block->getValue(index, 0);
     ASSERT_TRUE(value.isBoolean());
-    ASSERT_TRUE(value.toBoolean() == input->slice().at(index).at(0).getBool());
+    ASSERT_EQ(value.toBoolean(), input->slice().at(index).at(0).getBool());
   }
 }
 

@@ -23,6 +23,8 @@
 #include "ClientFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/CommunicationFeaturePhase.h"
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Basics/FileUtils.h"
 #include "Basics/application-exit.h"
 #include "Endpoint/Endpoint.h"
@@ -46,10 +48,8 @@ namespace arangodb {
 
 ClientFeature::ClientFeature(application_features::ApplicationServer& server,
                              bool allowJwtSecret, double connectionTimeout, double requestTimeout)
-    : ApplicationFeature(server, "Client"),
+    : HttpEndpointProvider(server, "Client"),
       _databaseName("_system"),
-      _authentication(true),
-      _askJwtSecret(false),
       _endpoint(Endpoint::defaultEndpoint(Endpoint::TransportType::HTTP)),
       _username("root"),
       _password(""),
@@ -58,11 +58,14 @@ ClientFeature::ClientFeature(application_features::ApplicationServer& server,
       _requestTimeout(requestTimeout),
       _maxPacketSize(1024 * 1024 * 1024),
       _sslProtocol(TLS_V12),
-      _allowJwtSecret(allowJwtSecret),
       _retries(DEFAULT_RETRIES),
+      _authentication(true),
+      _askJwtSecret(false),
+      _allowJwtSecret(allowJwtSecret),
       _warn(false),
       _warnConnect(true),
-      _haveServerPassword(false)
+      _haveServerPassword(false),
+      _forceJson(false)
 #if _WIN32
       ,
       _codePage(65001),  // default to UTF8
@@ -71,8 +74,8 @@ ClientFeature::ClientFeature(application_features::ApplicationServer& server,
 {
   setOptional(true);
   requiresElevatedPrivileges(false);
-  startsAfter("CommunicationPhase");
-  startsAfter("GreetingsPhase");
+  startsAfter<CommunicationFeaturePhase>();
+  startsAfter<GreetingsFeaturePhase>();
 }
 
 void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -101,6 +104,12 @@ void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      "authentication is required, the user will be prompted "
                      "for a password",
                      new StringParameter(&_password));
+
+  options->addOption("--server.force-json",
+                     "force to not use VelocyPack for easier debugging",
+                     new BooleanParameter(&_forceJson),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden))
+    .setIntroducedIn(30600);
 
   if (_allowJwtSecret) {
     // currently the option is only present for arangosh, but none
@@ -231,11 +240,10 @@ void ClientFeature::readPassword() {
   std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
   try {
-    ConsoleFeature* console =
-        ApplicationServer::getFeature<ConsoleFeature>("Console");
+    ConsoleFeature& console = server().getFeature<ConsoleFeature>();
 
-    if (console->isEnabled()) {
-      _password = console->readPassword("Please specify a password: ");
+    if (console.isEnabled()) {
+      _password = console.readPassword("Please specify a password: ");
       return;
     }
   } catch (...) {
@@ -250,11 +258,10 @@ void ClientFeature::readJwtSecret() {
   std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
   try {
-    ConsoleFeature* console =
-        ApplicationServer::getFeature<ConsoleFeature>("Console");
+    ConsoleFeature& console = server().getFeature<ConsoleFeature>();
 
-    if (console->isEnabled()) {
-      _jwtSecret = console->readPassword("Please specify the JWT secret: ");
+    if (console.isEnabled()) {
+      _jwtSecret = console.readPassword("Please specify the JWT secret: ");
       return;
     }
   } catch (...) {
@@ -292,7 +299,7 @@ void ClientFeature::prepare() {
   if (_askJwtSecret) {
     // ask for a jwt secret
     readJwtSecret();
-  } else if(!_jwtSecretFile.empty()) {
+  } else if (!_jwtSecretFile.empty()) {
     loadJwtSecretFile();
   } else if (_authentication && _haveServerPassword) {
     // ask for a password

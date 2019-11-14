@@ -80,6 +80,9 @@ struct Variable {
   static Variable* varFromVPack(Ast* ast, arangodb::velocypack::Slice const& base,
                                 char const* variableName, bool optional = false);
 
+
+  bool isEqualTo(Variable const& other) const;
+
   /// @brief variable name
   std::string name;
 

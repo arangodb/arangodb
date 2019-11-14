@@ -25,21 +25,24 @@
 /// @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <iostream>
+
 #include "gtest/gtest.h"
 
 #include "fakeit.hpp"
+
+#include <velocypack/Parser.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+
+#include "Mocks/LogLevels.h"
 
 #include "Agency/AgentInterface.h"
 #include "Agency/FailedFollower.h"
 #include "Agency/MoveShard.h"
 #include "Agency/Node.h"
-#include "lib/Basics/StringUtils.h"
-#include "lib/Random/RandomGenerator.h"
-
-#include <velocypack/Parser.h>
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
-#include <iostream>
+#include "Basics/StringUtils.h"
+#include "Random/RandomGenerator.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -114,7 +117,9 @@ Node createNode(char const* c) {
 
 Node createRootNode() { return createNode(agency); }
 
-class FailedFollowerTest : public ::testing::Test {
+class FailedFollowerTest
+    : public ::testing::Test,
+      public arangodb::tests::LogSuppressor<arangodb::Logger::SUPERVISION, arangodb::LogLevel::ERR> {
  protected:
   std::shared_ptr<Builder> transBuilder;
   Node baseStructure;
@@ -139,29 +144,29 @@ TEST_F(FailedFollowerTest, creating_a_job_should_create_a_job_in_todo) {
   std::string jobId = "1";
   When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
     auto expectedJobKey = "/arango/Target/ToDo/" + jobId;
-    EXPECT_TRUE(std::string(q->slice().typeName()) == "array");
-    EXPECT_TRUE(q->slice().length() == 1);
-    EXPECT_TRUE(std::string(q->slice()[0].typeName()) == "array");
-    EXPECT_TRUE(q->slice()[0].length() == 1);  // we always simply override! no preconditions...
-    EXPECT_TRUE(std::string(q->slice()[0][0].typeName()) == "object");
-    EXPECT_TRUE(q->slice()[0][0].length() == 1);  // should ONLY do an entry in todo
+    EXPECT_EQ(std::string(q->slice().typeName()), "array");
+    EXPECT_EQ(q->slice().length(), 1);
+    EXPECT_EQ(std::string(q->slice()[0].typeName()), "array");
+    EXPECT_EQ(q->slice()[0].length(), 1);  // we always simply override! no preconditions...
+    EXPECT_EQ(std::string(q->slice()[0][0].typeName()), "object");
+    EXPECT_EQ(q->slice()[0][0].length(), 1);  // should ONLY do an entry in todo
     EXPECT_TRUE(std::string(q->slice()[0][0].get(expectedJobKey).typeName()) ==
                 "object");
 
     auto job = q->slice()[0][0].get(expectedJobKey);
-    EXPECT_TRUE(std::string(job.get("creator").typeName()) == "string");
-    EXPECT_TRUE(std::string(job.get("type").typeName()) == "string");
-    EXPECT_TRUE(job.get("type").copyString() == "failedFollower");
-    EXPECT_TRUE(std::string(job.get("database").typeName()) == "string");
-    EXPECT_TRUE(job.get("database").copyString() == DATABASE);
-    EXPECT_TRUE(std::string(job.get("collection").typeName()) == "string");
-    EXPECT_TRUE(job.get("collection").copyString() == COLLECTION);
-    EXPECT_TRUE(std::string(job.get("shard").typeName()) == "string");
-    EXPECT_TRUE(job.get("shard").copyString() == SHARD);
-    EXPECT_TRUE(std::string(job.get("fromServer").typeName()) == "string");
-    EXPECT_TRUE(job.get("fromServer").copyString() == SHARD_FOLLOWER1);
-    EXPECT_TRUE(std::string(job.get("jobId").typeName()) == "string");
-    EXPECT_TRUE(std::string(job.get("timeCreated").typeName()) == "string");
+    EXPECT_EQ(std::string(job.get("creator").typeName()), "string");
+    EXPECT_EQ(std::string(job.get("type").typeName()), "string");
+    EXPECT_EQ(job.get("type").copyString(), "failedFollower");
+    EXPECT_EQ(std::string(job.get("database").typeName()), "string");
+    EXPECT_EQ(job.get("database").copyString(), DATABASE);
+    EXPECT_EQ(std::string(job.get("collection").typeName()), "string");
+    EXPECT_EQ(job.get("collection").copyString(), COLLECTION);
+    EXPECT_EQ(std::string(job.get("shard").typeName()), "string");
+    EXPECT_EQ(job.get("shard").copyString(), SHARD);
+    EXPECT_EQ(std::string(job.get("fromServer").typeName()), "string");
+    EXPECT_EQ(job.get("fromServer").copyString(), SHARD_FOLLOWER1);
+    EXPECT_EQ(std::string(job.get("jobId").typeName()), "string");
+    EXPECT_EQ(std::string(job.get("timeCreated").typeName()), "string");
 
     return fakeWriteResult;
   });
@@ -186,7 +191,7 @@ TEST_F(FailedFollowerTest, if_collection_is_missing_job_should_just_finish) {
     builder.reset(new VPackBuilder());
     if (s.isObject()) {
       builder->add(VPackValue(VPackValueType::Object));
-      for (auto const& it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {
@@ -210,11 +215,11 @@ TEST_F(FailedFollowerTest, if_collection_is_missing_job_should_just_finish) {
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
-    EXPECT_TRUE(std::string(q->slice().typeName()) == "array");
-    EXPECT_TRUE(q->slice().length() == 1);
-    EXPECT_TRUE(std::string(q->slice()[0].typeName()) == "array");
-    EXPECT_TRUE(q->slice()[0].length() == 1);  // we always simply override! no preconditions...
-    EXPECT_TRUE(std::string(q->slice()[0][0].typeName()) == "object");
+    EXPECT_EQ(std::string(q->slice().typeName()), "array");
+    EXPECT_EQ(q->slice().length(), 1);
+    EXPECT_EQ(std::string(q->slice()[0].typeName()), "array");
+    EXPECT_EQ(q->slice()[0].length(), 1);  // we always simply override! no preconditions...
+    EXPECT_EQ(std::string(q->slice()[0][0].typeName()), "object");
 
     auto writes = q->slice()[0][0];
     EXPECT_TRUE(std::string(writes.get("/arango/Target/ToDo/1").typeName()) ==
@@ -241,7 +246,7 @@ TEST_F(FailedFollowerTest, distributeshardslike_should_fail_immediately) {
     builder.reset(new VPackBuilder());
     if (s.isObject()) {
       builder->add(VPackValue(VPackValueType::Object));
-      for (auto const& it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {
@@ -269,11 +274,11 @@ TEST_F(FailedFollowerTest, distributeshardslike_should_fail_immediately) {
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, write)).AlwaysDo([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
-    EXPECT_TRUE(std::string(q->slice().typeName()) == "array");
-    EXPECT_TRUE(q->slice().length() == 1);
-    EXPECT_TRUE(std::string(q->slice()[0].typeName()) == "array");
-    EXPECT_TRUE(q->slice()[0].length() == 1);  // we always simply override! no preconditions...
-    EXPECT_TRUE(std::string(q->slice()[0][0].typeName()) == "object");
+    EXPECT_EQ(std::string(q->slice().typeName()), "array");
+    EXPECT_EQ(q->slice().length(), 1);
+    EXPECT_EQ(std::string(q->slice()[0].typeName()), "array");
+    EXPECT_EQ(q->slice()[0].length(), 1);  // we always simply override! no preconditions...
+    EXPECT_EQ(std::string(q->slice()[0][0].typeName()), "object");
 
     auto writes = q->slice()[0][0];
     EXPECT_TRUE(std::string(writes.get("/arango/Target/ToDo/1").typeName()) ==
@@ -300,7 +305,7 @@ TEST_F(FailedFollowerTest, if_follower_is_healthy_again_we_fail_the_job) {
     builder.reset(new VPackBuilder());
     if (s.isObject()) {
       builder->add(VPackValue(VPackValueType::Object));
-      for (auto const& it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {
@@ -363,7 +368,7 @@ TEST_F(FailedFollowerTest, if_there_is_no_healthy_free_server_at_start_just_fini
     builder.reset(new VPackBuilder());
     if (s.isObject()) {
       builder->add(VPackValue(VPackValueType::Object));
-      for (auto const& it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {
@@ -403,11 +408,11 @@ TEST_F(FailedFollowerTest, abort_any_moveshard_job_blocking) {
 
   Builder moveShardBuilder;
   When(Method(moveShardMockAgent, write)).Do([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
-    EXPECT_TRUE(std::string(q->slice().typeName()) == "array");
-    EXPECT_TRUE(q->slice().length() == 1);
-    EXPECT_TRUE(std::string(q->slice()[0].typeName()) == "array");
+    EXPECT_EQ(std::string(q->slice().typeName()), "array");
+    EXPECT_EQ(q->slice().length(), 1);
+    EXPECT_EQ(std::string(q->slice()[0].typeName()), "array");
     EXPECT_TRUE(q->slice()[0].length() > 0);  // preconditions!
-    EXPECT_TRUE(std::string(q->slice()[0][0].typeName()) == "object");
+    EXPECT_EQ(std::string(q->slice()[0][0].typeName()), "object");
     EXPECT_TRUE(std::string(q->slice()[0][0].get("/arango/Target/ToDo/2").typeName()) ==
                 "object");
     moveShardBuilder.add(q->slice()[0][0].get("/arango/Target/ToDo/2"));
@@ -426,7 +431,7 @@ TEST_F(FailedFollowerTest, abort_any_moveshard_job_blocking) {
     std::unique_ptr<Builder> builder(new Builder());
     if (s.isObject()) {
       VPackObjectBuilder b(builder.get());
-      for (auto const& it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {
@@ -460,10 +465,10 @@ TEST_F(FailedFollowerTest, abort_any_moveshard_job_blocking) {
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, write)).Do([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
     // check that moveshard is being moved to failed
-    EXPECT_TRUE(std::string(q->slice().typeName()) == "array");
-    EXPECT_TRUE(q->slice().length() == 1);
-    EXPECT_TRUE(std::string(q->slice()[0].typeName()) == "array");
-    EXPECT_TRUE(std::string(q->slice()[0][0].typeName()) == "object");
+    EXPECT_EQ(std::string(q->slice().typeName()), "array");
+    EXPECT_EQ(q->slice().length(), 1);
+    EXPECT_EQ(std::string(q->slice()[0].typeName()), "array");
+    EXPECT_EQ(std::string(q->slice()[0][0].typeName()), "object");
     EXPECT_TRUE(std::string(q->slice()[0][0].get("/arango/Target/Failed/2").typeName()) ==
                 "object");
     return fakeWriteResult;
@@ -482,7 +487,7 @@ TEST_F(FailedFollowerTest, successfully_started_jbo_should_finish_immediately) {
     std::unique_ptr<Builder> builder(new Builder());
     if (s.isObject()) {
       VPackObjectBuilder b(builder.get());
-      for (auto const& it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {
@@ -518,13 +523,13 @@ TEST_F(FailedFollowerTest, successfully_started_jbo_should_finish_immediately) {
                      "/shards/" + SHARD;
     EXPECT_TRUE(std::string(writes.get("/arango/Target/Finished/1").typeName()) ==
                 "object");
-    EXPECT_TRUE(std::string(writes.get(planEntry).typeName()) == "array");
-    EXPECT_TRUE(writes.get(planEntry).length() == 4);
-    EXPECT_TRUE(writes.get(planEntry)[0].copyString() == "leader");
+    EXPECT_EQ(std::string(writes.get(planEntry).typeName()), "array");
+    EXPECT_EQ(writes.get(planEntry).length(), 4);
+    EXPECT_EQ(writes.get(planEntry)[0].copyString(), "leader");
     auto freeEntry = writes.get(planEntry)[1].copyString();
-    EXPECT_TRUE(freeEntry.compare(0, 4, FREE_SERVER) == 0);
-    EXPECT_TRUE(writes.get(planEntry)[2].copyString() == "follower2");
-    EXPECT_TRUE(writes.get(planEntry)[3].copyString() == "follower1");
+    EXPECT_EQ(freeEntry.compare(0, 4, FREE_SERVER), 0);
+    EXPECT_EQ(writes.get(planEntry)[2].copyString(), "follower2");
+    EXPECT_EQ(writes.get(planEntry)[3].copyString(), "follower1");
 
     EXPECT_TRUE(writes.get("/arango/Plan/Version").get("op").copyString() ==
                 "increment");
@@ -532,7 +537,7 @@ TEST_F(FailedFollowerTest, successfully_started_jbo_should_finish_immediately) {
                 "object");
 
     auto preconditions = q->slice()[0][1];
-    EXPECT_TRUE(std::string(preconditions.typeName()) == "object");
+    EXPECT_EQ(std::string(preconditions.typeName()), "object");
     auto healthStat =
         std::string("/arango/Supervision/Health/") + freeEntry + "/Status";
     EXPECT_TRUE(preconditions.get(healthStat).get("old").copyString() ==
@@ -567,7 +572,7 @@ TEST_F(FailedFollowerTest, job_should_handle_distributeshardslike) {
     std::unique_ptr<Builder> builder(new Builder());
     if (s.isObject()) {
       VPackObjectBuilder b(builder.get());
-      for (auto const& it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {
@@ -616,13 +621,13 @@ TEST_F(FailedFollowerTest, job_should_handle_distributeshardslike) {
                 "object");
     auto entry = std::string("/arango/Plan/Collections/") + DATABASE + "/" +
                  COLLECTION + "/shards/" + SHARD;
-    EXPECT_TRUE(std::string(writes.get(entry).typeName()) == "array");
-    EXPECT_TRUE(writes.get(entry).length() == 4);
-    EXPECT_TRUE(writes.get(entry)[0].copyString() == "leader");
+    EXPECT_EQ(std::string(writes.get(entry).typeName()), "array");
+    EXPECT_EQ(writes.get(entry).length(), 4);
+    EXPECT_EQ(writes.get(entry)[0].copyString(), "leader");
     auto freeEntry = writes.get(entry)[1].copyString();
-    EXPECT_TRUE(writes.get(entry)[1].copyString().compare(0, 4, FREE_SERVER) == 0);
-    EXPECT_TRUE(writes.get(entry)[2].copyString() == "follower2");
-    EXPECT_TRUE(writes.get(entry)[3].copyString() == "follower1");
+    EXPECT_EQ(writes.get(entry)[1].copyString().compare(0, 4, FREE_SERVER), 0);
+    EXPECT_EQ(writes.get(entry)[2].copyString(), "follower2");
+    EXPECT_EQ(writes.get(entry)[3].copyString(), "follower1");
     EXPECT_TRUE(std::string(writes
                                 .get("/arango/Plan/Collections/" + DATABASE + "/linkedcollection1/shards/s100")
                                 .typeName()) == "array");
@@ -677,7 +682,7 @@ TEST_F(FailedFollowerTest, job_should_handle_distributeshardslike) {
                 "object");
 
     auto preconditions = q->slice()[0][1];
-    EXPECT_TRUE(std::string(preconditions.typeName()) == "object");
+    EXPECT_EQ(std::string(preconditions.typeName()), "object");
     auto healthStat =
         std::string("/arango/Supervision/Health/") + freeEntry + "/Status";
     EXPECT_TRUE(preconditions.get(healthStat).get("old").copyString() ==
@@ -712,7 +717,7 @@ TEST_F(FailedFollowerTest, job_should_timeout_after_a_while) {
     std::unique_ptr<Builder> builder(new Builder());
     if (s.isObject()) {
       VPackObjectBuilder b(builder.get());
-      for (auto const& it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {
@@ -725,7 +730,7 @@ TEST_F(FailedFollowerTest, job_should_timeout_after_a_while) {
         VPackBuilder timedOutJob;
         {
           VPackObjectBuilder a(&timedOutJob);
-          for (auto const& it : VPackObjectIterator(todoJob.slice())) {
+          for (auto it : VPackObjectIterator(todoJob.slice())) {
             if (it.key.copyString() == "timeCreated") {
               timedOutJob.add("timeCreated",
                               VPackValue("2015-01-01T00:00:00Z"));
@@ -775,7 +780,7 @@ TEST_F(FailedFollowerTest, job_should_be_abortable_in_todo) {
     std::unique_ptr<Builder> builder(new Builder());
     if (s.isObject()) {
       VPackObjectBuilder b(builder.get());
-      for (auto const& it : VPackObjectIterator(s)) {
+      for (auto it : VPackObjectIterator(s)) {
         auto childBuilder =
             createTestStructure(it.value, path + "/" + it.key.copyString());
         if (childBuilder) {

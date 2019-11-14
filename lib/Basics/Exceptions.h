@@ -34,9 +34,6 @@
 #include "Basics/error.h"
 #include "Basics/voc-errors.h"
 
-/// @brief diagnostic output
-#define DIAGNOSTIC_INFORMATION(e) e.what()
-
 /// @brief throws an arango exception with an error code
 #define THROW_ARANGO_EXCEPTION(code) \
   throw arangodb::basics::Exception(code, __FILE__, __LINE__)
@@ -90,7 +87,7 @@ class Exception final : public virtual std::exception {
 
   Exception(int code, char const* errorMessage, char const* file, int line);
 
-  ~Exception();
+  ~Exception() = default;
 
  public:
   char const* what() const noexcept override;

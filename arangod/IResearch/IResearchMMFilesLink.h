@@ -76,6 +76,8 @@ class IResearchMMFilesLink final : public arangodb::MMFilesIndex, public IResear
   bool isSorted() const override { return IResearchLink::isSorted(); }
 
   bool isHidden() const override { return IResearchLink::isHidden(); }
+
+  bool needsReversal() const override { return true; } 
   
   void load() override { IResearchLink::load(); }
 

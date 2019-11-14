@@ -98,7 +98,7 @@ static void JS_ServerStatistics(v8::FunctionCallbackInfo<v8::Value> const& args)
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
 
-  ServerStatistics info = ServerStatistics::statistics();
+  ServerStatistics const& info = ServerStatistics::statistics();
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
@@ -107,12 +107,24 @@ static void JS_ServerStatistics(v8::FunctionCallbackInfo<v8::Value> const& args)
   result->Set(TRI_V8_ASCII_STRING(isolate, "physicalMemory"),
               v8::Number::New(isolate, (double)TRI_PhysicalMemory));
 
-  v8::Handle<v8::Object> v8CountersObj = v8::Object::New(isolate);
-  V8DealerFeature* dealer =
-      application_features::ApplicationServer::getFeature<V8DealerFeature>(
-          "V8Dealer");
+  // transaction info
+  auto const& ts = info._transactionsStatistics;
+  v8::Handle<v8::Object> v8TransactionInfoObj = v8::Object::New(isolate);
+  v8TransactionInfoObj->Set(TRI_V8_ASCII_STRING(isolate, "started"),
+              v8::Number::New(isolate, (double)ts._transactionsStarted));
+  v8TransactionInfoObj->Set(TRI_V8_ASCII_STRING(isolate, "aborted"),
+              v8::Number::New(isolate, (double)ts._transactionsAborted));
+  v8TransactionInfoObj->Set(TRI_V8_ASCII_STRING(isolate, "committed"),
+              v8::Number::New(isolate, (double)ts._transactionsCommitted));
+  v8TransactionInfoObj->Set(TRI_V8_ASCII_STRING(isolate, "intermediateCommits"),
+              v8::Number::New(isolate, (double)ts._intermediateCommits));
+  result->Set(TRI_V8_ASCII_STRING(isolate, "transactions"), v8TransactionInfoObj);
 
-  auto v8Counters = dealer->getCurrentContextNumbers();
+  // v8 counters
+  auto& server = application_features::ApplicationServer::server();
+  V8DealerFeature& dealer = server.getFeature<V8DealerFeature>();
+  auto v8Counters = dealer.getCurrentContextNumbers();
+  v8::Handle<v8::Object> v8CountersObj = v8::Object::New(isolate);
   v8CountersObj->Set(TRI_V8_ASCII_STRING(isolate, "available"),
                      v8::Number::New(isolate, static_cast<int32_t>(v8Counters.available)));
   v8CountersObj->Set(TRI_V8_ASCII_STRING(isolate, "busy"),
@@ -124,7 +136,7 @@ static void JS_ServerStatistics(v8::FunctionCallbackInfo<v8::Value> const& args)
   v8CountersObj->Set(TRI_V8_ASCII_STRING(isolate, "max"),
                      v8::Number::New(isolate, static_cast<int32_t>(v8Counters.max)));
 
-  auto memoryStatistics = dealer->getCurrentMemoryNumbers();
+  auto memoryStatistics = dealer.getCurrentMemoryNumbers();
 
   v8::Handle<v8::Array> v8ListOfMemory = v8::Array::New(isolate, static_cast<int>(memoryStatistics.size()));
   uint32_t pos = 0;
@@ -146,7 +158,7 @@ static void JS_ServerStatistics(v8::FunctionCallbackInfo<v8::Value> const& args)
 
   v8CountersObj->Set(TRI_V8_ASCII_STRING(isolate, "memory"),
                      v8ListOfMemory);
-  
+
   result->Set(TRI_V8_ASCII_STRING(isolate, "v8Context"), v8CountersObj);
 
   v8::Handle<v8::Object> counters = v8::Object::New(isolate);
@@ -212,7 +224,7 @@ static void JS_ClientStatistics(v8::FunctionCallbackInfo<v8::Value> const& args)
   StatisticsDistribution bytesSent;
   StatisticsDistribution bytesReceived;
 
-  RequestStatistics::fill(totalTime, requestTime, queueTime, ioTime, bytesSent, bytesReceived);
+  RequestStatistics::fill(totalTime, requestTime, queueTime, ioTime, bytesSent, bytesReceived, stats::RequestStatisticsSource::ALL);
 
   FillDistribution(isolate, result, TRI_V8_ASCII_STRING(isolate, "totalTime"), totalTime);
   FillDistribution(isolate, result, TRI_V8_ASCII_STRING(isolate, "requestTime"), requestTime);

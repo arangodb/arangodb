@@ -45,8 +45,9 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestImportHandler::RestImportHandler(GeneralRequest* request, GeneralResponse* response)
-    : RestVocbaseBaseHandler(request, response),
+RestImportHandler::RestImportHandler(application_features::ApplicationServer& server,
+                                     GeneralRequest* request, GeneralResponse* response)
+    : RestVocbaseBaseHandler(server, request, response),
       _onDuplicateAction(DUPLICATE_ERROR),
       _ignoreMissing(false) {}
 
@@ -316,8 +317,6 @@ bool RestImportHandler::createFromJson(std::string const& type) {
 
     // auto detect import type by peeking at first non-whitespace character
 
-    // json required here
-    TRI_ASSERT(_request->contentType() == ContentType::JSON);
     VPackStringRef body = _request->rawPayload();
 
     char const* ptr = body.data();
@@ -371,10 +370,7 @@ bool RestImportHandler::createFromJson(std::string const& type) {
 
   VPackBuilder tmpBuilder;
 
-  if (linewise) {
-    // json required here
-    TRI_ASSERT(_request->contentType() == ContentType::JSON);
-    
+  if (linewise) {    
     // each line is a separate JSON document
     VPackStringRef body = _request->rawPayload();
     char const* ptr = body.data();
@@ -939,7 +935,7 @@ Result RestImportHandler::performImport(SingleCollectionTransaction& trx,
           VPackSlice resultSlice = opResult.slice();
           if (resultSlice.isArray()) {
             size_t pos = 0;
-            for (auto const& it : VPackArrayIterator(resultSlice)) {
+            for (VPackSlice it : VPackArrayIterator(resultSlice)) {
               if (!it.hasKey(StaticStrings::Error) ||
                   !it.get(StaticStrings::Error).getBool()) {
                 ++result._numUpdated;

@@ -39,7 +39,7 @@ ActionDescription::ActionDescription(std::map<std::string, std::string> const& d
 }
 
 /// @brief Default dtor
-ActionDescription::~ActionDescription() {}
+ActionDescription::~ActionDescription() = default;
 
 /// @brief Does this description have a "p" parameter?
 bool ActionDescription::has(std::string const& p) const {

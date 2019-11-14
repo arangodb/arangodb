@@ -26,7 +26,13 @@
 #include "InputAqlItemRow.h"
 
 #include "Aql/AqlItemBlockManager.h"
+#include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/AqlValue.h"
+#include "Aql/Range.h"
+#include "Basics/StaticStrings.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
 
 #include <utility>
 
@@ -42,7 +48,8 @@ bool InputAqlItemRow::internalBlockIs(SharedAqlItemBlockPtr const& other) const 
 SharedAqlItemBlockPtr InputAqlItemRow::cloneToBlock(AqlItemBlockManager& manager,
                                                     std::unordered_set<RegisterId> const& registers,
                                                     size_t newNrRegs) const {
-  SharedAqlItemBlockPtr block = manager.requestBlock(1, static_cast<RegisterId>(newNrRegs));
+  SharedAqlItemBlockPtr block =
+      manager.requestBlock(1, static_cast<RegisterId>(newNrRegs));
   if (isInitialized()) {
     std::unordered_set<AqlValue> cache;
     TRI_ASSERT(getNrRegisters() <= newNrRegs);
@@ -114,6 +121,7 @@ SharedAqlItemBlockPtr InputAqlItemRow::cloneToBlock(AqlItemBlockManager& manager
 ///                  such that actual indices start at 2
 void InputAqlItemRow::toVelocyPack(transaction::Methods* trx, VPackBuilder& result) const {
   TRI_ASSERT(isInitialized());
+  TRI_ASSERT(result.isOpenObject());
   VPackOptions options(VPackOptions::Defaults);
   options.buildUnindexedArrays = true;
   options.buildUnindexedObjects = true;
@@ -126,9 +134,7 @@ void InputAqlItemRow::toVelocyPack(transaction::Methods* trx, VPackBuilder& resu
 
   result.add("nrItems", VPackValue(1));
   result.add("nrRegs", VPackValue(getNrRegisters()));
-  result.add("error", VPackValue(false));
-  // Backwards compatbility 3.3
-  result.add("exhausted", VPackValue(false));
+  result.add(StaticStrings::Error, VPackValue(false));
 
   enum State {
     Empty,       // saw an empty value
@@ -178,9 +184,15 @@ void InputAqlItemRow::toVelocyPack(transaction::Methods* trx, VPackBuilder& resu
   };
 
   size_t pos = 2;  // write position in raw
-  for (RegisterId column = 0; column < getNrRegisters(); column++) {
-    AqlValue const& a = getValue(column);
-
+  // We use column == 0 to simulate a shadowRow
+  // this is only relevant if all participants can use shadow rows
+  RegisterId startRegister = 0;
+  if (block().getFormatType() == SerializationFormat::CLASSIC) {
+    // Skip over the shadowRows
+    startRegister = 1;
+  }
+  for (RegisterId column = startRegister; column < getNrRegisters() + 1; column++) {
+    AqlValue const& a = column == 0 ? AqlValue{} : getValue(column - 1);
     // determine current state
     if (a.isEmpty()) {
       currentState = Empty;
@@ -192,7 +204,7 @@ void InputAqlItemRow::toVelocyPack(transaction::Methods* trx, VPackBuilder& resu
       if (it == table.end()) {
         currentState = Next;
         a.toVelocyPack(trx, raw, false);
-        table.emplace(a, pos++);
+        table.try_emplace(a, pos++);
       } else {
         currentState = Positional;
         tablePos = it->second;
@@ -236,4 +248,143 @@ void InputAqlItemRow::toVelocyPack(transaction::Methods* trx, VPackBuilder& resu
 
   raw.close();
   result.add("raw", raw.slice());
+}
+
+InputAqlItemRow::InputAqlItemRow(SharedAqlItemBlockPtr const& block, size_t baseIndex)
+    : _block(block), _baseIndex(baseIndex) {
+  TRI_ASSERT(_block != nullptr);
+}
+
+InputAqlItemRow::InputAqlItemRow(SharedAqlItemBlockPtr&& block, size_t baseIndex) noexcept
+    : _block(std::move(block)), _baseIndex(baseIndex) {
+  TRI_ASSERT(_block != nullptr);
+  TRI_ASSERT(_baseIndex < _block->size());
+  TRI_ASSERT(!_block->isShadowRow(baseIndex));
+}
+
+AqlValue const& InputAqlItemRow::getValue(RegisterId registerId) const {
+  TRI_ASSERT(isInitialized());
+  TRI_ASSERT(registerId < getNrRegisters());
+  return block().getValueReference(_baseIndex, registerId);
+}
+
+AqlValue InputAqlItemRow::stealValue(RegisterId registerId) {
+  TRI_ASSERT(isInitialized());
+  TRI_ASSERT(registerId < getNrRegisters());
+  AqlValue const& a = block().getValueReference(_baseIndex, registerId);
+  if (!a.isEmpty() && a.requiresDestruction()) {
+    // Now no one is responsible for AqlValue a
+    block().steal(a);
+  }
+  // This cannot fail, caller needs to take immediate ownership.
+  return a;
+}
+
+RegisterCount InputAqlItemRow::getNrRegisters() const noexcept { return block().getNrRegs(); }
+
+bool InputAqlItemRow::operator==(InputAqlItemRow const& other) const noexcept {
+  return this->_block == other._block && this->_baseIndex == other._baseIndex;
+}
+
+bool InputAqlItemRow::operator!=(InputAqlItemRow const& other) const noexcept {
+  return !(*this == other);
+}
+
+bool InputAqlItemRow::equates(InputAqlItemRow const& other) const noexcept {
+  if (!isInitialized() || !other.isInitialized()) {
+    return isInitialized() == other.isInitialized();
+  }
+  TRI_ASSERT(getNrRegisters() == other.getNrRegisters());
+  if (getNrRegisters() != other.getNrRegisters()) {
+    return false;
+  }
+  // NOLINTNEXTLINE(modernize-use-transparent-functors)
+  auto const eq = std::equal_to<AqlValue>{};
+  for (RegisterId i = 0; i < getNrRegisters(); ++i) {
+    if (!eq(getValue(i), other.getValue(i))) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+bool InputAqlItemRow::isInitialized() const noexcept {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  if (_block != nullptr) {
+    TRI_ASSERT(!block().isShadowRow(_baseIndex));
+  }
+#endif
+  return _block != nullptr;
+}
+
+InputAqlItemRow::operator bool() const noexcept { return isInitialized(); }
+
+bool InputAqlItemRow::isFirstDataRowInBlock() const noexcept {
+  TRI_ASSERT(isInitialized());
+  TRI_ASSERT(_baseIndex < block().size());
+
+  auto const& shadowRowIndexes = block().getShadowRowIndexes();
+
+  // Count the number of shadow rows before this row.
+  size_t const numShadowRowsBeforeCurrentRow = [&]() {
+    auto const& begin = shadowRowIndexes.cbegin();
+    auto const& end = shadowRowIndexes.cend();
+
+    // this is the last shadow row after _baseIndex, i.e.
+    // nextShadowRowIt := min { it \in shadowRowIndexes | _baseIndex <= it }
+    auto const nextShadowRowIt = shadowRowIndexes.lower_bound(_baseIndex);
+    // But, as _baseIndex must not be a shadow row, it's actually
+    // nextShadowRowIt = min { it \in shadowRowIndexes | _baseIndex < it }
+    // so the same as shadowRowIndexes.upper_bound(_baseIndex)
+    TRI_ASSERT(nextShadowRowIt == end || _baseIndex < *nextShadowRowIt);
+
+    return std::distance(begin, nextShadowRowIt);
+  }();
+  TRI_ASSERT(numShadowRowsBeforeCurrentRow <= shadowRowIndexes.size());
+
+  return numShadowRowsBeforeCurrentRow == _baseIndex;
+}
+
+bool InputAqlItemRow::isLastRowInBlock() const noexcept {
+  TRI_ASSERT(isInitialized());
+  TRI_ASSERT(_baseIndex < block().size());
+  return _baseIndex + 1 == block().size();
+}
+
+bool InputAqlItemRow::blockHasMoreDataRowsAfterThis() const noexcept {
+  TRI_ASSERT(isInitialized());
+  TRI_ASSERT(_baseIndex < block().size());
+
+  auto const& shadowRowIndexes = block().getShadowRowIndexes();
+
+  // Count the number of shadow rows after this row.
+  size_t const numShadowRowsAfterCurrentRow = [&]() {
+    auto const& end = shadowRowIndexes.cend();
+
+    // this is the last shadow row after _baseIndex, i.e.
+    // nextShadowRowIt := min { it \in shadowRowIndexes | _baseIndex <= it }
+    auto const nextShadowRowIt = shadowRowIndexes.lower_bound(_baseIndex);
+    // But, as _baseIndex must not be a shadow row, it's actually
+    // nextShadowRowIt = min { it \in shadowRowIndexes | _baseIndex < it }
+    // so the same as shadowRowIndexes.upper_bound(_baseIndex)
+    TRI_ASSERT(nextShadowRowIt == end || _baseIndex < *nextShadowRowIt);
+
+    return std::distance(nextShadowRowIt, end);
+  }();
+
+  // block().size() is strictly greater than baseIndex
+  size_t const totalRowsAfterCurrentRow = block().size() - _baseIndex - 1;
+
+  return totalRowsAfterCurrentRow > numShadowRowsAfterCurrentRow;
+}
+
+AqlItemBlock& InputAqlItemRow::block() noexcept {
+  TRI_ASSERT(_block != nullptr);
+  return *_block;
+}
+
+AqlItemBlock const& InputAqlItemRow::block() const noexcept {
+  TRI_ASSERT(_block != nullptr);
+  return *_block;
 }

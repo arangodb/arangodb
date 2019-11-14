@@ -22,12 +22,12 @@
 
 #include "RebootTracker.h"
 
+#include "Basics/Exceptions.h"
+#include "Basics/MutexLocker.h"
+#include "Basics/ScopeGuard.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "lib/Basics/Exceptions.h"
-#include "lib/Basics/MutexLocker.h"
-#include "lib/Basics/ScopeGuard.h"
-#include "lib/Logger/LogMacros.h"
-#include "lib/Logger/Logger.h"
 
 #include <algorithm>
 
@@ -98,7 +98,7 @@ void RebootTracker::updateServerState(std::unordered_map<ServerID, RebootId> con
   for (auto const& newIt : state) {
     auto const& serverId = newIt.first;
     auto const& rebootId = newIt.second;
-    auto rv = _rebootIds.emplace(serverId, rebootId);
+    auto const rv = _rebootIds.try_emplace(serverId, rebootId);
     auto const inserted = rv.second;
     // If we inserted a new server, we may NOT already have any callbacks for
     // it!
@@ -166,11 +166,9 @@ CallbackGuard RebootTracker::callMeOnChange(RebootTracker::PeerState const& peer
     unregisterCallback(peerState, callbackId);
   });
 
-  auto emplaceRv =
-      callbackMap.emplace(callbackId, DescriptedCallback{std::move(callback),
+  auto const [iterator, inserted] =
+      callbackMap.try_emplace(callbackId, DescriptedCallback{std::move(callback),
                                                          std::move(callbackDescription)});
-  auto const iterator = emplaceRv.first;
-  bool const inserted = emplaceRv.second;
   TRI_ASSERT(inserted);
   TRI_ASSERT(callbackId == iterator->first);
 

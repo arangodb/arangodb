@@ -49,7 +49,7 @@ function runSetup () {
   var c = db._create('UnitTestsRecovery');
   c.save({ _key: 'crashme' }, true); // wait for sync
 
-  internal.debugSegfault('crashing server');
+  internal.debugTerminate('crashing server');
 }
 
 // //////////////////////////////////////////////////////////////////////////////

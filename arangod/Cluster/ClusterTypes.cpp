@@ -21,3 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ClusterTypes.h"
+
+std::ostream& operator<< (std::ostream& o, arangodb::RebootId const& r) {
+  return r.print(o);
+}

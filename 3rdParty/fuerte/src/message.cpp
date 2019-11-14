@@ -20,115 +20,95 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <fuerte/message.h>
 #include <fuerte/detail/vst.h>
+#include <fuerte/message.h>
 
-
-#include <sstream>
 #include <velocypack/Validator.h>
 #include <velocypack/velocypack-aliases.h>
+#include <sstream>
 
+#include <iostream>
 
 namespace arangodb { namespace fuerte { inline namespace v1 {
-  
+
 ///////////////////////////////////////////////
 // class MessageHeader
 ///////////////////////////////////////////////
 
-void MessageHeader::addMeta(std::string const& key, std::string const& value) {
-  meta.emplace(key, value);
-}
-  
-void MessageHeader::addMeta(StringMap const& map) {
-  for(auto& pair : map) {
-    meta.insert(pair);
+void MessageHeader::setMeta(StringMap map) {
+  if (!this->_meta.empty()) {
+    for (auto& pair : map) {
+      this->addMeta(pair.first, pair.second);
+    }
+  } else {
+    this->_meta = std::move(map);
   }
 }
 
 // Get value for header metadata key, returns empty string if not found.
-std::string const& MessageHeader::metaByKey(std::string const& key) const {
+std::string const& MessageHeader::metaByKey(std::string const& key,
+                                            bool& found) const {
   static std::string emptyString("");
-  if (meta.empty()) {
+  if (_meta.empty()) {
+    found = false;
     return emptyString;
   }
-  auto const& found = meta.find(key);
-  if (found == meta.end()) {
+  auto const& it = _meta.find(key);
+  if (it == _meta.end()) {
+    found = false;
     return emptyString;
   } else {
-    return found->second;
+    found = true;
+    return it->second;
   }
 }
-  
 
-void MessageHeader::contentType(std::string const& type) {
-  addMeta(fu_content_type_key, type);
-}
-
-void MessageHeader::contentType(ContentType type) {
-  contentType(to_string(type));
-}
-  
 ///////////////////////////////////////////////
 // class RequestHeader
 ///////////////////////////////////////////////
-  
-// accept header accessors
-std::string RequestHeader::acceptTypeString() const {
-  return metaByKey(fu_accept_key);
-}
-
-ContentType RequestHeader::acceptType() const {
-  return to_ContentType(acceptTypeString());
-}
 
 void RequestHeader::acceptType(std::string const& type) {
-  addMeta(fu_accept_key, type);
-}
+   addMeta(fu_accept_key, type);
+ }
 
-void RequestHeader::acceptType(ContentType type) {
-  acceptType(to_string(type));
-}
-  
 void RequestHeader::addParameter(std::string const& key,
                                  std::string const& value) {
-  parameters.emplace(key, value);
+  parameters.try_emplace(key, value);
 }
-  
+
 /// @brief analyze path and split into components
 /// strips /_db/<name> prefix, sets db name and fills parameters
 void RequestHeader::parseArangoPath(std::string const& p) {
   size_t pos = p.rfind('?');
   if (pos != std::string::npos) {
     this->path = p.substr(0, pos);
-    
+
     while (pos != std::string::npos && pos + 1 < p.length()) {
       size_t pos2 = p.find('=', pos + 1);
       if (pos2 == std::string::npos) {
         break;
       }
-      std::string key = p.substr(pos + 1, pos2 - pos -1);
-      pos = p.find('&', pos2 + 1); // points to next '&' or string::npos
-      std::string value = pos == std::string::npos ? p.substr(pos2 + 1) :
-                                                     p.substr(pos2 + 1, pos - pos2 - 1);
+      std::string key = p.substr(pos + 1, pos2 - pos - 1);
+      pos = p.find('&', pos2 + 1);  // points to next '&' or string::npos
+      std::string value = pos == std::string::npos
+                              ? p.substr(pos2 + 1)
+                              : p.substr(pos2 + 1, pos - pos2 - 1);
       this->parameters.emplace(std::move(key), std::move(value));
     }
   } else {
     this->path = p;
   }
-  
+
   // extract database prefix /_db/<name>/
   const char* q = this->path.c_str();
-  if (this->path.size() >= 4 && q[0] == '/' && q[1] == '_' &&
-      q[2] == 'd' && q[3] == 'b' && q[4] == '/') {
+  if (this->path.size() >= 4 && q[0] == '/' && q[1] == '_' && q[2] == 'd' &&
+      q[3] == 'b' && q[4] == '/') {
     // request contains database name
     q += 5;
     const char* pathBegin = q;
     // read until end of database name
-    while (*q != '\0') {
-      if (*q == '/' || *q == '?' || *q == ' ' || *q == '\n' ||
-          *q == '\r') {
-        break;
-      }
+    while (*q != '\0' && *q != '/' && *q != '?' &&
+           *q != ' ' && *q != '\n' && *q != '\r') {
       ++q;
     }
     this->database = std::string(pathBegin, q - pathBegin);
@@ -145,11 +125,10 @@ void RequestHeader::parseArangoPath(std::string const& p) {
 ///////////////////////////////////////////////
 
 // content-type header accessors
-std::string Message::contentTypeString() const {
-  return messageHeader().contentTypeString();
-}
 
-ContentType Message::contentType() const { return  messageHeader().contentType(); }
+ContentType Message::contentType() const {
+  return messageHeader().contentType();
+}
 
 bool Message::isContentTypeJSON() const {
   return (contentType() == ContentType::Json);
@@ -170,18 +149,13 @@ bool Message::isContentTypeText() const {
 ///////////////////////////////////////////////
 // class Request
 ///////////////////////////////////////////////
-  
+
 constexpr std::chrono::milliseconds Request::defaultTimeout;
-  
-// accept header accessors
-std::string Request::acceptTypeString() const {
-  return header.acceptTypeString();
-}
 
 ContentType Request::acceptType() const { return header.acceptType(); }
 
 //// add payload add VelocyPackData
-void Request::addVPack(VPackSlice const& slice) {
+void Request::addVPack(VPackSlice const slice) {
 #ifdef FUERTE_CHECKED_MODE
   // FUERTE_LOG_ERROR << "Checking data that is added to the message: " <<
   // std::endl;
@@ -251,13 +225,13 @@ std::vector<VPackSlice> Response::slices() const {
   std::vector<VPackSlice> slices;
   if (isContentTypeVPack()) {
     VPackValidator validator;
-    
+
     auto length = _payload.byteSize() - _payloadOffset;
     auto cursor = _payload.data() + _payloadOffset;
     while (length) {
       // will throw on an error
       validator.validate(cursor, length, true);
-      
+
       slices.emplace_back(cursor);
       auto sliceSize = slices.back().byteSize();
       if (length < sliceSize) {
@@ -278,16 +252,24 @@ asio_ns::const_buffer Response::payload() const {
 size_t Response::payloadSize() const {
   return _payload.byteSize() - _payloadOffset;
 }
-  
+
 std::shared_ptr<velocypack::Buffer<uint8_t>> Response::copyPayload() const {
   auto buffer = std::make_shared<velocypack::Buffer<uint8_t>>();
   buffer->append(_payload.data() + _payloadOffset,
                  _payload.byteSize() - _payloadOffset);
   return buffer;
 }
-  
-void Response::setPayload(VPackBuffer<uint8_t> buffer, size_t payloadOffset) {
-  _payloadOffset = payloadOffset;
-  _payload = std::move(buffer);
+
+std::shared_ptr<velocypack::Buffer<uint8_t>> Response::stealPayload() {
+  if (_payloadOffset == 0) {
+    return std::make_shared<velocypack::Buffer<uint8_t>>(std::move(_payload));
+  }
+
+  auto buffer = std::make_shared<velocypack::Buffer<uint8_t>>();
+  buffer->append(_payload.data() + _payloadOffset,
+                 _payload.byteSize() - _payloadOffset);
+  _payload.clear();
+  _payloadOffset = 0;
+  return buffer;
 }
 }}}  // namespace arangodb::fuerte::v1

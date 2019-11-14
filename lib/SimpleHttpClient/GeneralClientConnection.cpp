@@ -40,7 +40,7 @@
 #include "GeneralClientConnection.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/CommunicationPhase.h"
+#include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/debugging.h"
 #include "Basics/error.h"
@@ -209,9 +209,8 @@ bool GeneralClientConnection::prepare(TRI_socket_t socket, double timeout, bool 
   double start = TRI_microtime();
   int res;
 
-  auto comm =
-      application_features::ApplicationServer::getFeature<arangodb::application_features::CommunicationFeaturePhase>(
-          "CommunicationPhase");
+  auto& server = application_features::ApplicationServer::server();
+  auto& comm = server.getFeature<application_features::CommunicationFeaturePhase>();
 
 #ifdef TRI_HAVE_POLL_H
   // Here we have poll, on all other platforms we use select
@@ -250,7 +249,7 @@ bool GeneralClientConnection::prepare(TRI_socket_t socket, double timeout, bool 
     }
 
     if (res == 0) {
-      if (isInterrupted() || !comm->getCommAllowed()) {
+      if (isInterrupted() || !comm.getCommAllowed()) {
         _errorDetails = std::string("command locally aborted");
         TRI_set_errno(TRI_ERROR_REQUEST_CANCELED);
         return false;
@@ -332,7 +331,7 @@ bool GeneralClientConnection::prepare(TRI_socket_t socket, double timeout, bool 
       timeout = timeout - (end - start);
       start = end;
     } else if (res == 0) {
-      if (isInterrupted() || !comm->getCommAllowed()) {
+      if (isInterrupted() || !comm.getCommAllowed()) {
         _errorDetails = std::string("command locally aborted");
         TRI_set_errno(TRI_ERROR_REQUEST_CANCELED);
         return false;
@@ -349,7 +348,7 @@ bool GeneralClientConnection::prepare(TRI_socket_t socket, double timeout, bool 
 #endif
 
   if (res > 0) {
-    if (isInterrupted() || !comm->getCommAllowed()) {
+    if (isInterrupted() || !comm.getCommAllowed()) {
       _errorDetails = std::string("command locally aborted");
       TRI_set_errno(TRI_ERROR_REQUEST_CANCELED);
       return false;

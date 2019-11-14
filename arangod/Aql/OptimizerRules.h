@@ -154,8 +154,7 @@ ExecutionNode* distributeInClusterRuleSmartEdgeCollection(ExecutionPlan*, Subque
 void removeSatelliteJoinsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                               OptimizerRule const&);
 
-void smartJoinsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                    OptimizerRule const&);
+void smartJoinsRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);
 #endif
 
 /// @brief try to restrict fragments to a single shard if possible
@@ -256,8 +255,18 @@ void sortLimitRule(Optimizer*, std::unique_ptr<aql::ExecutionPlan>, OptimizerRul
 void optimizeSubqueriesRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);
 
 /// @brief replace legacy JS functions in the plan.
-void replaceNearWithinFulltext(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                               OptimizerRule const&);
+void replaceNearWithinFulltextRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
+                                   OptimizerRule const&);
+
+/// @brief move filters into EnumerateCollection nodes
+void moveFiltersIntoEnumerateRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
+                                  OptimizerRule const&);
+
+/// @brief parallelize Gather nodes (cluster-only)
+void parallelizeGatherRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);
+
+//// @brief splice in subqueries
+void spliceSubqueriesRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);
 
 }  // namespace aql
 }  // namespace arangodb

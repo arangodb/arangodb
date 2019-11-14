@@ -117,10 +117,6 @@ static inline v8::Local<v8::String> v8Utf8StringFactory(v8::Isolate* isolate,
   do {                                                              \
   } while (0)
 
-#define TRI_CONTEXT                                                 \
-  auto context = isolate->GetCurrentContext();
-
-
 /// @brief shortcut for throwing an exception with an error code
 #define TRI_V8_SET_EXCEPTION(code)        \
   do {                                    \
@@ -325,15 +321,6 @@ static inline v8::Local<v8::String> v8Utf8StringFactory(v8::Isolate* isolate,
           .FromMaybe(v8::Local<v8::String>()));                                  \
   return
 
-/// @brief return a string which you know the length of
-///   implicitly requires 'args and 'isolate' to be available
-/// @param WHAT the name of the char* variable
-/// @param WHATLEn the name of the int variable containing the length of WHAT
-#define TRI_V8_RETURN_PAIR_STRING(WHAT, WHATLEN)                                         \
-  args.GetReturnValue().Set(                                                             \
-      v8::String::NewFromUtf8(isolate, WHAT, v8::NewStringType::kNormal, (int)WHATLEN)); \
-  return
-
 #define TRI_IGETC isolate->GetCurrentContext()
 
 #define TRI_GET_INT32(VAL) VAL->Int32Value(TRI_IGETC).FromMaybe(0)
@@ -359,13 +346,6 @@ inline bool TRI_HasProperty(v8::Local<v8::Context> &context, v8::Isolate* isolat
   return obj->Has(context, key).FromMaybe(false);
 }
 
-inline bool TRI_HasOwnProperty(v8::Local<v8::Context> &context, v8::Isolate* isolate, v8::Local<v8::Object> &obj, char const *key) {
-  return obj->HasOwnProperty(context, TRI_V8_ASCII_STRING(isolate, key)).FromMaybe(false);
-}
-inline bool TRI_HasOwnProperty(v8::Local<v8::Context> &context, v8::Isolate* isolate, v8::Local<v8::Object> &obj, v8::Local<v8::String> &key) {
-  return obj->HasOwnProperty(context, key).FromMaybe(false);
-}
-
 inline v8::Local<v8::Value> TRI_GetProperty(v8::Local<v8::Context> &context, v8::Isolate* isolate, v8::Local<v8::Object> const& obj, char const *key) {
   return obj->Get(context, TRI_V8_ASCII_STRING(isolate, key)).FromMaybe(v8::Local<v8::Value>());
 }
@@ -389,7 +369,7 @@ inline v8::Local<v8::String> TRI_ObjectToString(v8::Local<v8::Context> &context,
   return val->ToString(context).FromMaybe(v8::Local<v8::String>());
 }
 
-/// @brief retrieve the instance of the TRI_v8_global of the current thread
+/// @brief retrieve the instance of the TRI_v8_global_t of the current thread
 ///   implicitly creates a variable 'v8g' with a pointer to it.
 ///   implicitly requires 'isolate' to be available
 #define TRI_GET_GLOBALS()                               \
@@ -653,6 +633,9 @@ struct TRI_v8_global_t {
 
   /// @brief "requestBody" key name
   v8::Persistent<v8::String> RequestBodyKey;
+
+  /// @brief "rawRequestBody" key name
+  v8::Persistent<v8::String> RawRequestBodyKey;
 
   /// @brief "requestType" key name
   v8::Persistent<v8::String> RequestTypeKey;

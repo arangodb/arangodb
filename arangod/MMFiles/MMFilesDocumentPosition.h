@@ -68,7 +68,7 @@ class MMFilesDocumentPosition {
     return *this;
   }
 
-  ~MMFilesDocumentPosition() {}
+  ~MMFilesDocumentPosition() = default;
 
   inline void clear() noexcept {
     _localDocumentId.clear();

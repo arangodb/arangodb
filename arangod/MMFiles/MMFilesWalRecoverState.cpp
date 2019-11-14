@@ -85,9 +85,9 @@ static inline T numericValue(VPackSlice const& slice, char const* attribute) {
 }  // namespace
 
 /// @brief creates the recover state
-MMFilesWalRecoverState::MMFilesWalRecoverState(bool ignoreRecoveryErrors,
+MMFilesWalRecoverState::MMFilesWalRecoverState(DatabaseFeature& feature, bool ignoreRecoveryErrors,
                                                TRI_voc_tick_t& recoveryTick)
-    : databaseFeature(nullptr),
+    : databaseFeature(feature),
       failedTransactions(),
       lastTick(0),
       logfilesToProcess(),
@@ -99,10 +99,7 @@ MMFilesWalRecoverState::MMFilesWalRecoverState(bool ignoreRecoveryErrors,
       maxRevisionId(0),
       recoveryTick(recoveryTick),
       lastDatabaseId(0),
-      lastCollectionId(0) {
-  databaseFeature = application_features::ApplicationServer::getFeature<DatabaseFeature>(
-      "Database");
-}
+      lastCollectionId(0) {}
 
 /// @brief destroys the recover state
 MMFilesWalRecoverState::~MMFilesWalRecoverState() { releaseResources(); }
@@ -134,13 +131,13 @@ TRI_vocbase_t* MMFilesWalRecoverState::useDatabase(TRI_voc_tick_t databaseId) {
     return (*it).second;
   }
 
-  TRI_vocbase_t* vocbase = databaseFeature->useDatabase(databaseId);
+  TRI_vocbase_t* vocbase = databaseFeature.useDatabase(databaseId);
 
   if (vocbase == nullptr) {
     return nullptr;
   }
 
-  openedDatabases.emplace(databaseId, vocbase);
+  openedDatabases.try_emplace(databaseId, vocbase);
   return vocbase;
 }
 
@@ -231,7 +228,7 @@ arangodb::LogicalCollection* MMFilesWalRecoverState::useCollection(TRI_vocbase_t
   // disable secondary indexes for the moment
   physical->useSecondaryIndexes(false);
 
-  openedCollections.emplace(collectionId, collection);
+  openedCollections.try_emplace(collectionId, collection);
   res = TRI_ERROR_NO_ERROR;
   return collection.get();
 }
@@ -401,7 +398,7 @@ bool MMFilesWalRecoverState::InitialScanMarker(MMFilesMarker const* marker, void
       // it
       TRI_voc_tick_t const databaseId = MMFilesDatafileHelper::DatabaseId(marker);
       TRI_voc_tid_t const tid = MMFilesDatafileHelper::TransactionId(marker);
-      state->failedTransactions.emplace(tid, std::make_pair(databaseId, false));
+      state->failedTransactions.try_emplace(tid, std::make_pair(databaseId, false));
       break;
     }
 
@@ -1046,10 +1043,10 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
             // in case we detect that this collection is going to be deleted
             // anyway,
             // set the sync properties to false temporarily
-            bool oldSync = state->databaseFeature->forceSyncProperties();
-            state->databaseFeature->forceSyncProperties(false);
+            bool oldSync = state->databaseFeature.forceSyncProperties();
+            state->databaseFeature.forceSyncProperties(false);
             // restore the old behavior afterwards
-            TRI_DEFER(state->databaseFeature->forceSyncProperties(oldSync));
+            TRI_DEFER(state->databaseFeature.forceSyncProperties(oldSync));
 
             collection = vocbase->createCollection(b2.slice());
           } else {
@@ -1139,10 +1136,10 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
             // in case we detect that this view is going to be deleted
             // anyway,
             // set the sync properties to false temporarily
-            bool oldSync = state->databaseFeature->forceSyncProperties();
-            state->databaseFeature->forceSyncProperties(false);
+            bool oldSync = state->databaseFeature.forceSyncProperties();
+            state->databaseFeature.forceSyncProperties(false);
             // restore the old behavior afterwards
-            TRI_DEFER(state->databaseFeature->forceSyncProperties(oldSync));
+            TRI_DEFER(state->databaseFeature.forceSyncProperties(oldSync));
           }
 
           auto res = arangodb::LogicalView::create(view, *vocbase, payloadSlice);
@@ -1187,7 +1184,7 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
         if (vocbase != nullptr) {
           // remove already existing database
           // TODO: how to signal a dropDatabase failure here?
-          state->databaseFeature->dropDatabase(databaseId, true, false);
+          state->databaseFeature.dropDatabase(databaseId, true, false);
         }
 
         VPackSlice const nameSlice = payloadSlice.get("name");
@@ -1209,25 +1206,32 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
             ",\"tasks\":{}}";
 
         // remove already existing database with same name
-        vocbase = state->databaseFeature->lookupDatabase(nameString);
+        vocbase = state->databaseFeature.lookupDatabase(nameString);
 
         if (vocbase != nullptr) {
           TRI_voc_tick_t otherId = vocbase->id();
 
           state->releaseDatabase(otherId);
           // TODO: how to signal a dropDatabase failure here?
-          state->databaseFeature->dropDatabase(nameString, true, false);
+          state->databaseFeature.dropDatabase(nameString, true, false);
         }
 
         MMFilesPersistentIndexFeature::dropDatabase(databaseId);
 
         vocbase = nullptr;
-        int res = state->databaseFeature->createDatabase(databaseId, nameString, vocbase);
 
-        if (res != TRI_ERROR_NO_ERROR) {
+        arangodb::CreateDatabaseInfo info(state->databaseFeature.server());
+        auto res = info.load(payloadSlice, VPackSlice::emptyArraySlice());
+        if (res.fail()) {
+          THROW_ARANGO_EXCEPTION(res);
+        }
+
+        res = state->databaseFeature.createDatabase(std::move(info), vocbase);
+
+        if (res.fail()) {
           LOG_TOPIC("9c045", WARN, arangodb::Logger::ENGINES)
               << "cannot create database " << databaseId << ": "
-              << TRI_errno_string(res);
+              << res.errorMessage();
           ++state->errorCount;
           return state->canContinue();
         }
@@ -1371,7 +1375,7 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
         /*TRI_vocbase_t* vocbase = */ state->releaseDatabase(databaseId);
 
         // ignore any potential error returned by this call
-        state->databaseFeature->dropDatabase(databaseId, true, state->isDropped(databaseId));
+        state->databaseFeature.dropDatabase(databaseId, true, state->isDropped(databaseId));
 
         MMFilesPersistentIndexFeature::dropDatabase(databaseId);
         break;

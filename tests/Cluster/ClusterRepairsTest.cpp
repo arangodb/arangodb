@@ -20,24 +20,25 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <iostream>
+#include <typeinfo>
+
 #include "gtest/gtest.h"
-
-#include "Basics/ScopeGuard.h"
-#include "Cluster/ClusterRepairs.h"
-#include "Cluster/ServerState.h"
-
-#include "Agency/AddFollower.h"
-#include "Agency/FailedLeader.h"
-#include "Agency/MoveShard.h"
-#include "arangod/Cluster/ResultT.h"
-#include "lib/Random/RandomGenerator.h"
 
 #include <boost/core/demangle.hpp>
 #include <boost/date_time.hpp>
 #include <boost/range/combine.hpp>
 
-#include <iostream>
-#include <typeinfo>
+#include "Mocks/LogLevels.h"
+
+#include "Agency/AddFollower.h"
+#include "Agency/FailedLeader.h"
+#include "Agency/MoveShard.h"
+#include "Basics/ScopeGuard.h"
+#include "Cluster/ClusterRepairs.h"
+#include "Cluster/ResultT.h"
+#include "Cluster/ServerState.h"
+#include "Random/RandomGenerator.h"
 
 using namespace arangodb;
 using namespace arangodb::consensus;
@@ -193,9 +194,9 @@ class ClusterRepairsTest : public ::testing::Test {
         auto const& expectedResult = it.get<0>().second;
         auto const& actualResult = it.get<1>().second;
 
-        ASSERT_TRUE(expectedResult.ok() == actualResult.ok());
+        ASSERT_EQ(expectedResult.ok(), actualResult.ok());
         if (expectedResult.ok()) {
-          ASSERT_TRUE(expectedResult.get().size() == actualResult.get().size());
+          ASSERT_EQ(expectedResult.get().size(), actualResult.get().size());
         }
       }
     }
@@ -208,8 +209,8 @@ class ClusterRepairsTest : public ::testing::Test {
       std::string const& expectedCollection = it.get<1>().first;
       ResultT<std::vector<RepairOperation>> const& expectedResult = it.get<1>().second;
 
-      ASSERT_TRUE(collection == expectedCollection);
-      ASSERT_TRUE(repairResult.ok() == expectedResult.ok());
+      ASSERT_EQ(collection, expectedCollection);
+      ASSERT_EQ(repairResult.ok(), expectedResult.ok());
       if (expectedResult.ok()) {
         std::list<RepairOperation> const& repairOperations = repairResult.get();
         std::vector<RepairOperation> const& expectedOperations = expectedResult.get();
@@ -218,28 +219,25 @@ class ClusterRepairsTest : public ::testing::Test {
           auto const& repairOpIt = it.get<0>();
           auto const& expectedRepairOpIt = it.get<1>();
 
-          ASSERT_TRUE(repairOpIt == expectedRepairOpIt);
+          ASSERT_EQ(repairOpIt, expectedRepairOpIt);
         }
       } else {
-        ASSERT_TRUE(repairResult == expectedResult);
+        ASSERT_EQ(repairResult, expectedResult);
       }
     }
   }
 };
 
-class ClusterRepairsTestBrokenDistribution : public ClusterRepairsTest {
-protected:
+class ClusterRepairsTestBrokenDistribution
+    : public ClusterRepairsTest,
+      public tests::LogSuppressor<Logger::CLUSTER, LogLevel::FATAL>,
+      public tests::LogSuppressor<Logger::FIXME, LogLevel::FATAL> {
+ protected:
   // save old manager (may be null)
   std::unique_ptr<AgencyCommManager> oldManager;
 
   ClusterRepairsTestBrokenDistribution()
       : oldManager(std::move(AgencyCommManager::MANAGER)) {
-    // Disable cluster logging
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(),
-                                    arangodb::LogLevel::FATAL);
-    TRI_DEFER(arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(),
-                                              arangodb::LogLevel::DEFAULT));
-
     // get a new manager
     AgencyCommManager::initialize("testArangoAgencyPrefix");
   }
@@ -269,13 +267,13 @@ TEST_F(ClusterRepairsTestBrokenDistribution,
   ASSERT_TRUE(result.ok());
   std::map<CollectionID, ResultT<std::list<RepairOperation>>> operationResultByCollectionId =
       result.get();
-  ASSERT_TRUE(operationResultByCollectionId.size() == 1);
+  ASSERT_EQ(operationResultByCollectionId.size(), 1);
   ASSERT_TRUE(operationResultByCollectionId.find("11111111") !=
               operationResultByCollectionId.end());
   ResultT<std::list<RepairOperation>> collectionResult =
       operationResultByCollectionId.at("11111111");
 
-  ASSERT_TRUE(collectionResult.errorNumber() == TRI_ERROR_CLUSTER_REPAIRS_NOT_ENOUGH_HEALTHY);
+  ASSERT_EQ(collectionResult.errorNumber(), TRI_ERROR_CLUSTER_REPAIRS_NOT_ENOUGH_HEALTHY);
   ASSERT_TRUE(0 == strcmp(TRI_errno_string(collectionResult.errorNumber()),
                           "not enough (healthy) db servers"));
   ASSERT_TRUE(collectionResult.fail());
@@ -292,13 +290,13 @@ TEST_F(ClusterRepairsTestBrokenDistribution,
   ASSERT_TRUE(result.ok());
   std::map<CollectionID, ResultT<std::list<RepairOperation>>> operationResultByCollectionId =
       result.get();
-  ASSERT_TRUE(operationResultByCollectionId.size() == 1);
+  ASSERT_EQ(operationResultByCollectionId.size(), 1);
   ASSERT_TRUE(operationResultByCollectionId.find("11111111") !=
               operationResultByCollectionId.end());
   ResultT<std::list<RepairOperation>> collectionResult =
       operationResultByCollectionId.at("11111111");
 
-  ASSERT_TRUE(collectionResult.errorNumber() == TRI_ERROR_CLUSTER_REPAIRS_NOT_ENOUGH_HEALTHY);
+  ASSERT_EQ(collectionResult.errorNumber(), TRI_ERROR_CLUSTER_REPAIRS_NOT_ENOUGH_HEALTHY);
   ASSERT_TRUE(0 == strcmp(TRI_errno_string(collectionResult.errorNumber()),
                           "not enough (healthy) db servers"));
   ASSERT_TRUE(collectionResult.fail());
@@ -411,39 +409,39 @@ TEST_F(ClusterRepairsTestBrokenDistribution, collections_with_triggered_failures
 
 TEST(ClusterRepairsTestVersionSort, different_version_strings) {
   // Disable cluster logging
-  arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(), arangodb::LogLevel::FATAL);
-  TRI_DEFER(arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(),
-                                            arangodb::LogLevel::DEFAULT));
+  arangodb::tests::LogSuppressor<Logger::CLUSTER, LogLevel::FATAL> suppressor;
 
   // General functionality check
   EXPECT_TRUE(VersionSort()("s2", "s10"));
-  EXPECT_TRUE(!VersionSort()("s10", "s2"));
+  EXPECT_FALSE(VersionSort()("s10", "s2"));
 
   EXPECT_TRUE(VersionSort()("s5", "s7"));
-  EXPECT_TRUE(!VersionSort()("s7", "s5"));
+  EXPECT_FALSE(VersionSort()("s7", "s5"));
 
   // Make sure sorting by the last char works
   EXPECT_TRUE(VersionSort()("s100a", "s0100b"));
-  EXPECT_TRUE(!VersionSort()("s0100b", "s100a"));
+  EXPECT_FALSE(VersionSort()("s0100b", "s100a"));
 
   // Make sure the ints aren't casted into signed chars and overflow
   EXPECT_TRUE(VersionSort()("s126", "s129"));
-  EXPECT_TRUE(!VersionSort()("s129", "s126"));
+  EXPECT_FALSE(VersionSort()("s129", "s126"));
 
   // Make sure the ints aren't casted into unsigned chars and overflow
   EXPECT_TRUE(VersionSort()("s254", "s257"));
-  EXPECT_TRUE(!VersionSort()("s257", "s254"));
+  EXPECT_FALSE(VersionSort()("s257", "s254"));
 
   // Regression test
   EXPECT_TRUE(VersionSort()("s1000057", "s1000065"));
-  EXPECT_TRUE(!VersionSort()("s1000065", "s1000057"));
+  EXPECT_FALSE(VersionSort()("s1000065", "s1000057"));
 
   EXPECT_TRUE(VersionSort()("s1000050", "s1000064"));
-  EXPECT_TRUE(!VersionSort()("s1000064", "s1000050"));
+  EXPECT_FALSE(VersionSort()("s1000064", "s1000050"));
 }
 
-class ClusterRepairsTestOperations : public ClusterRepairsTest {
-protected:
+class ClusterRepairsTestOperations
+    : public ClusterRepairsTest,
+      public tests::LogSuppressor<Logger::CLUSTER, LogLevel::FATAL> {
+ protected:
   std::unique_ptr<AgencyCommManager> oldManager;
   std::string const oldServerId;
   RepairOperationToTransactionVisitor conversionVisitor;
@@ -462,12 +460,6 @@ protected:
       : oldManager(std::move(AgencyCommManager::MANAGER)),
         oldServerId(ServerState::instance()->getId()),
         conversionVisitor(mockJobIdGenerator, mockJobCreationTimestampGenerator) {
-    // Disable cluster logging
-    arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(),
-                                    arangodb::LogLevel::FATAL);
-    TRI_DEFER(arangodb::LogTopic::setLogLevel(arangodb::Logger::CLUSTER.name(),
-                                              arangodb::LogLevel::DEFAULT));
-
     // get a new manager
     AgencyCommManager::initialize("testArangoAgencyPrefix");
   }
@@ -488,11 +480,9 @@ TEST_F(ClusterRepairsTestOperations,
                                   _collectionReplicationFactor = 3,
                                   _protoReplicationFactor = 3,
                                   _renameDistributeShardsLike = true};
-  AgencyWriteTransaction trx;
-  boost::optional<uint64_t> jobid;
-  std::tie(trx, jobid) = conversionVisitor(operation);
+  auto [trx, jobid] = conversionVisitor(operation);
 
-  ASSERT_FALSE(jobid.is_initialized());
+  ASSERT_FALSE(jobid.has_value());
 
   VPackBufferPtr protoCollIdVPack = R"=("789876")="_vpack;
   Slice protoCollIdSlice = Slice(protoCollIdVPack->data());
@@ -526,7 +516,7 @@ TEST_F(ClusterRepairsTestOperations,
 
   trx.clientId = expectedTrx.clientId = "dummy-client-id";
 
-  ASSERT_TRUE(trx == expectedTrx);
+  ASSERT_EQ(trx, expectedTrx);
 }
 
 TEST_F(ClusterRepairsTestOperations,
@@ -541,7 +531,7 @@ TEST_F(ClusterRepairsTestOperations,
                                   _renameDistributeShardsLike = true};
   BeginRepairsOperation other = operation;
 
-  ASSERT_TRUE(operation == other);
+  ASSERT_EQ(operation, other);
 
   (other = operation).database = "differing database";
   ASSERT_FALSE(operation == other);
@@ -572,11 +562,9 @@ TEST_F(ClusterRepairsTestOperations,
                                   _protoReplicationFactor = 4,
                                   _renameDistributeShardsLike = false};
 
-  AgencyWriteTransaction trx;
-  boost::optional<uint64_t> jobid;
-  std::tie(trx, jobid) = conversionVisitor(operation);
+  auto [trx, jobid] = conversionVisitor(operation);
 
-  ASSERT_FALSE(jobid.is_initialized());
+  ASSERT_FALSE(jobid.has_value());
 
   VPackBufferPtr protoCollIdVPack = R"=("789876")="_vpack;
   Slice protoCollIdSlice = Slice(protoCollIdVPack->data());
@@ -601,7 +589,7 @@ TEST_F(ClusterRepairsTestOperations,
 
   trx.clientId = expectedTrx.clientId = "dummy-client-id";
 
-  ASSERT_TRUE(trx == expectedTrx);
+  ASSERT_EQ(trx, expectedTrx);
 }
 
 TEST_F(ClusterRepairsTestOperations,
@@ -615,11 +603,9 @@ TEST_F(ClusterRepairsTestOperations,
                                   _protoReplicationFactor = 5,
                                   _renameDistributeShardsLike = true};
 
-  AgencyWriteTransaction trx;
-  boost::optional<uint64_t> jobid;
-  std::tie(trx, jobid) = conversionVisitor(operation);
+  auto [trx, jobid] = conversionVisitor(operation);
 
-  ASSERT_FALSE(jobid.is_initialized());
+  ASSERT_FALSE(jobid.has_value());
 
   VPackBufferPtr protoCollIdVPack = R"=("789876")="_vpack;
   Slice protoCollIdSlice = Slice(protoCollIdVPack->data());
@@ -655,7 +641,7 @@ TEST_F(ClusterRepairsTestOperations,
 
   trx.clientId = expectedTrx.clientId = "dummy-client-id";
 
-  ASSERT_TRUE(trx == expectedTrx);
+  ASSERT_EQ(trx, expectedTrx);
 }
 
 TEST_F(ClusterRepairsTestOperations, a_finishrepairsoperation_converted_into_an_agencytransaction) {
@@ -673,11 +659,9 @@ TEST_F(ClusterRepairsTestOperations, a_finishrepairsoperation_converted_into_an_
                   "shard2", "protoShard2", {"dbServer2", "dbServer3"})},
       _replicationFactor = 3};
 
-  AgencyWriteTransaction trx;
-  boost::optional<uint64_t> jobid;
-  std::tie(trx, jobid) = conversionVisitor(operation);
+  auto [trx, jobid] = conversionVisitor(operation);
 
-  ASSERT_FALSE(jobid.is_initialized());
+  ASSERT_FALSE(jobid.has_value());
 
   VPackBufferPtr protoIdVPack = R"=("789876")="_vpack;
   Slice protoIdSlice = Slice(protoIdVPack->data());
@@ -724,7 +708,7 @@ TEST_F(ClusterRepairsTestOperations, a_finishrepairsoperation_converted_into_an_
 
   trx.clientId = expectedTrx.clientId = "dummy-client-id";
 
-  ASSERT_TRUE(trx == expectedTrx);
+  ASSERT_EQ(trx, expectedTrx);
 }
 
 TEST_F(ClusterRepairsTestOperations, a_finishrepairsoperation_compared_via_eqeq) {
@@ -744,7 +728,7 @@ TEST_F(ClusterRepairsTestOperations, a_finishrepairsoperation_compared_via_eqeq)
 
   FinishRepairsOperation other = operation;
 
-  ASSERT_TRUE(operation == other);
+  ASSERT_EQ(operation, other);
 
   (other = operation).database = "differing database";
   ASSERT_FALSE(operation == other);
@@ -795,11 +779,9 @@ TEST_F(ClusterRepairsTestOperations, a_moveshardoperation_converted_into_an_agen
   conversionVisitor =
       RepairOperationToTransactionVisitor(jobIdGenerator, jobCreationTimestampGenerator);
 
-  AgencyWriteTransaction trx;
-  boost::optional<uint64_t> jobId;
-  std::tie(trx, jobId) = conversionVisitor(operation);
+  auto [trx, jobId] = conversionVisitor(operation);
 
-  ASSERT_TRUE(jobId.is_initialized());
+  ASSERT_TRUE(jobId.has_value());
   // "timeCreated": "2018-03-07T15:20:01.284Z",
   VPackBufferPtr todoVPack = R"=(
           {
@@ -818,14 +800,14 @@ TEST_F(ClusterRepairsTestOperations, a_moveshardoperation_converted_into_an_agen
   Slice todoSlice = Slice(todoVPack->data());
 
   AgencyWriteTransaction expectedTrx{
-      AgencyOperation{"Target/ToDo/" + std::to_string(jobId.get()),
+      AgencyOperation{"Target/ToDo/" + std::to_string(jobId.value()),
                       AgencyValueOperationType::SET, todoSlice},
-      AgencyPrecondition{"Target/ToDo/" + std::to_string(jobId.get()),
+      AgencyPrecondition{"Target/ToDo/" + std::to_string(jobId.value()),
                          AgencyPrecondition::Type::EMPTY, true}};
 
   trx.clientId = expectedTrx.clientId = "dummy-client-id";
 
-  ASSERT_TRUE(trx == expectedTrx);
+  ASSERT_EQ(trx, expectedTrx);
 }
 
 TEST_F(ClusterRepairsTestOperations, a_moveshardoperation_compared_via_eqeq) {
@@ -841,7 +823,7 @@ TEST_F(ClusterRepairsTestOperations, a_moveshardoperation_compared_via_eqeq) {
 
   MoveShardOperation other = operation;
 
-  ASSERT_TRUE(operation == other);
+  ASSERT_EQ(operation, other);
 
   (other = operation).database = "differing database";
   ASSERT_FALSE(operation == other);
@@ -892,11 +874,9 @@ TEST_F(ClusterRepairsTestOperations,
   Slice previousServerOrderSlice = Slice(previousServerOrderVPack->data());
   Slice correctServerOrderSlice = Slice(correctServerOrderVPack->data());
 
-  AgencyWriteTransaction trx;
-  boost::optional<uint64_t> jobid;
-  std::tie(trx, jobid) = conversionVisitor(operation);
+  auto [trx, jobId] = conversionVisitor(operation);
 
-  ASSERT_FALSE(jobid.is_initialized());
+  ASSERT_FALSE(jobId.has_value());
 
   AgencyWriteTransaction expectedTrx{
       AgencyOperation{"Plan/Collections/myDbName/123456/shards/s1",
@@ -908,7 +888,7 @@ TEST_F(ClusterRepairsTestOperations,
 
   trx.clientId = expectedTrx.clientId = "dummy-client-id";
 
-  ASSERT_TRUE(trx == expectedTrx);
+  ASSERT_EQ(trx, expectedTrx);
 }
 
 TEST_F(ClusterRepairsTestOperations, a_fixserverorderoperation_compared_via_eqeq) {
@@ -928,7 +908,7 @@ TEST_F(ClusterRepairsTestOperations, a_fixserverorderoperation_compared_via_eqeq
 
   FixServerOrderOperation other = operation;
 
-  ASSERT_TRUE(operation == other);
+  ASSERT_EQ(operation, other);
 
   (other = operation).database = "differing database";
   ASSERT_FALSE(operation == other);

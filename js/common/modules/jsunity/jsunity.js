@@ -378,6 +378,10 @@ var jsUnity = exports.jsUnity = (function () {
       jsUnity.log.info(plural(total, "test") + " found");
     },
 
+    beginSetUpAll: function(index, testName) {},
+
+    endSetUpAll: function(index, testName) {},
+        
     beginSetUp: function(index, testName) {},
 
     endSetUp: function(index, testName) {},
@@ -398,6 +402,10 @@ var jsUnity = exports.jsUnity = (function () {
     beginTeardown: function(index, testName) {},
 
     endTeardown: function(index, testName) {},
+    
+    beginTeardownAll: function(index, testName) {},
+
+    endTeardownAll: function(index, testName) {},
     
     end: function (passed, failed, duration) {
       jsUnity.log.info(plural(passed, "test") + " passed");
@@ -507,7 +515,9 @@ var jsUnity = exports.jsUnity = (function () {
         var runSuite;
 
         try {
+          this.results.beginSetUpAll(suite.scope);
           setUpAll(suite.suiteName);
+          this.results.endSetUpAll(suite.scope);
           runSuite = true;
         } catch (setUpAllError) {
           runSuite = false;
@@ -583,7 +593,9 @@ var jsUnity = exports.jsUnity = (function () {
         }
         
         try {
+          this.results.beginTeardownAll(suite.scope);
           tearDownAll(suite.suiteName);
+          this.results.endTeardownAll(suite.scope);
         } catch (tearDownAllError) {
           if (tearDownAllError.stack !== undefined) {
             this.results.fail(0, suite.suiteName,

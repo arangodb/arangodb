@@ -35,24 +35,26 @@
 #include "Aql/AqlValue.h"
 #include "Aql/Function.h"
 #include "Basics/ConditionLocker.h"
-#include "Basics/SmallVector.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
-#include "Containers.h"
-#include "IResearchCommon.h"
-#include "IResearchFeature.h"
-#include "IResearchLinkCoordinator.h"
-#include "IResearchLinkHelper.h"
-#include "IResearchMMFilesLink.h"
-#include "IResearchRocksDBLink.h"
-#include "IResearchRocksDBRecoveryHelper.h"
-#include "IResearchView.h"
-#include "IResearchViewCoordinator.h"
+#include "ClusterEngine/ClusterEngine.h"
+#include "Containers/SmallVector.h"
+#include "FeaturePhases/V8FeaturePhase.h"
+#include "IResearch/Containers.h"
+#include "IResearch/IResearchCommon.h"
+#include "IResearch/IResearchFeature.h"
+#include "IResearch/IResearchLinkCoordinator.h"
+#include "IResearch/IResearchLinkHelper.h"
+#include "IResearch/IResearchMMFilesLink.h"
+#include "IResearch/IResearchRocksDBLink.h"
+#include "IResearch/IResearchRocksDBRecoveryHelper.h"
+#include "IResearch/IResearchView.h"
+#include "IResearch/IResearchViewCoordinator.h"
 #include "Logger/LogMacros.h"
 #include "MMFiles/MMFilesEngine.h"
-#include "RestServer/DatabasePathFeature.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/DatabasePathFeature.h"
 #include "RestServer/FlushFeature.h"
 #include "RestServer/UpgradeFeature.h"
 #include "RestServer/ViewTypesFeature.h"
@@ -134,10 +136,9 @@ class IResearchLogTopic final : public arangodb::LogTopic {
   }
 };  // IResearchLogTopic
 
-// template <char const *name>
-arangodb::aql::AqlValue dummyFilterFunc(arangodb::aql::ExpressionContext*,
-                                        arangodb::transaction::Methods*,
-                                        arangodb::SmallVector<arangodb::aql::AqlValue> const&) {
+arangodb::aql::AqlValue dummyFilterFunc(
+    arangodb::aql::ExpressionContext*, arangodb::transaction::Methods*,
+    ::arangodb::containers::SmallVector<arangodb::aql::AqlValue> const&) {
   THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_NOT_IMPLEMENTED,
       "ArangoSearch filter functions EXISTS, STARTS_WITH, IN_RANGE, PHRASE, MIN_MATCH, "
@@ -147,9 +148,47 @@ arangodb::aql::AqlValue dummyFilterFunc(arangodb::aql::ExpressionContext*,
       " Please ensure function signature is correct.");
 }
 
-arangodb::aql::AqlValue dummyScorerFunc(arangodb::aql::ExpressionContext*,
-                                        arangodb::transaction::Methods*,
-                                        arangodb::SmallVector<arangodb::aql::AqlValue> const&) {
+/// function body for ArangoSearchContext functions ANALYZER/BOOST. 
+/// Just returns its first argument as outside ArangoSearch context
+/// there is nothing to do with search stuff, but optimization could roll.
+arangodb::aql::AqlValue dummyContextFunc(
+    arangodb::aql::ExpressionContext*, arangodb::transaction::Methods*,
+    ::arangodb::containers::SmallVector<arangodb::aql::AqlValue> const& args) {
+  TRI_ASSERT(!args.empty()); //ensured by function signature
+  return args[0];
+}
+
+/// Executes MIN_MATCH function with const parameters locally the same way it will be done in ArangoSearch on runtime
+/// This will allow optimize out MIN_MATCH call if all arguments are const
+arangodb::aql::AqlValue dummyMinMatchContextFunc(
+    arangodb::aql::ExpressionContext*, arangodb::transaction::Methods*,
+    ::arangodb::containers::SmallVector<arangodb::aql::AqlValue> const& args) {
+  TRI_ASSERT(args.size() > 1); // ensured by function signature
+  auto& minMatchValue = args.back();
+  if (ADB_LIKELY(minMatchValue.isNumber())) {
+    auto matchesLeft = minMatchValue.toInt64();
+    const auto argsCount = args.size() - 1;
+    for (size_t i = 0; i < argsCount && matchesLeft > 0; ++i) {
+      auto& currValue = args[i];
+      if (currValue.toBoolean()) {
+        matchesLeft--;
+      }
+    }
+    return arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool(matchesLeft == 0));
+  } else {
+    auto message = std::string("'MIN_MATCH' AQL function: ")
+                     .append(" last argument has invalid type '") 
+                     .append(minMatchValue.getTypeString())
+                     .append("' (numeric expected)");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_BAD_PARAMETER,
+      message);
+  }
+}
+
+arangodb::aql::AqlValue dummyScorerFunc(
+    arangodb::aql::ExpressionContext*, arangodb::transaction::Methods*,
+    ::arangodb::containers::SmallVector<arangodb::aql::AqlValue> const&) {
   THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_NOT_IMPLEMENTED,
       "ArangoSearch scorer functions BM25() and TFIDF() are designed to "
@@ -182,17 +221,20 @@ bool upgradeSingleServerArangoSearchView0_1(
   // potentially rely on the original behavior, to be affected.
   struct ServerRoleGuard {
     ServerRoleGuard() {
-      auto const* clusterFeature = ApplicationServer::lookupFeature<arangodb::ClusterFeature>("Cluster");
+      auto& server = ApplicationServer::server();
       auto* state = arangodb::ServerState::instance();
 
-      if (state && clusterFeature && !clusterFeature->isEnabled()) {
-        auto const role = arangodb::ServerState::stringToRole(clusterFeature->myRole());
+      if (state && server.hasFeature<arangodb::ClusterFeature>()) {
+        auto const& clusterFeature = server.getFeature<arangodb::ClusterFeature>();
+        if (!clusterFeature.isEnabled()) {
+          auto const role = arangodb::ServerState::stringToRole(clusterFeature.myRole());
 
-        // only for cluster
-        if (arangodb::ServerState::isClusterRole(role)) {
-          _originalRole = state->getRole();
-          state->setRole(role);
-          _state = state;
+          // only for cluster
+          if (arangodb::ServerState::isClusterRole(role)) {
+            _originalRole = state->getRole();
+            state->setRole(role);
+            _state = state;
+          }
         }
       }
     }
@@ -222,10 +264,7 @@ bool upgradeSingleServerArangoSearchView0_1(
     arangodb::Result res;
 
     builder.openObject();
-    res = view->properties(builder,
-                           arangodb::LogicalDataSource::makeFlags(
-                               arangodb::LogicalDataSource::Serialize::Detailed,
-                               arangodb::LogicalDataSource::Serialize::ForPersistence));  // get JSON with meta + 'version'
+    res = view->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence); // get JSON with meta + 'version'
     builder.close();
 
     if (!res.ok()) {
@@ -255,8 +294,7 @@ bool upgradeSingleServerArangoSearchView0_1(
 
     builder.clear();
     builder.openObject();
-    res = view->properties(builder, arangodb::LogicalDataSource::makeFlags(
-                                        arangodb::LogicalDataSource::Serialize::Detailed));  // get JSON with end-user definition
+    res = view->properties(builder, arangodb::LogicalDataSource::Serialization::Properties); // get JSON with end-user definition
     builder.close();
 
     if (!res.ok()) {
@@ -269,21 +307,21 @@ bool upgradeSingleServerArangoSearchView0_1(
 
     irs::utf8_path dataPath;
 
-    auto* dbPathFeature = ApplicationServer::lookupFeature<arangodb::DatabasePathFeature>("DatabasePath");
-
-    if (!dbPathFeature) {
+    auto& server = ApplicationServer::server();
+    if (!server.hasFeature<arangodb::DatabasePathFeature>()) {
       LOG_TOPIC("67c7e", WARN, arangodb::iresearch::TOPIC)
           << "failure to find feature 'DatabasePath' while upgrading "
              "IResearchView from version 0 to version 1";
 
       return false;  // required feature is missing
     }
+    auto& dbPathFeature = server.getFeature<arangodb::DatabasePathFeature>();
 
     // original algorithm for computing data-store path
     static const std::string subPath("databases");
     static const std::string dbPath("database-");
 
-    dataPath = irs::utf8_path(dbPathFeature->directory());
+    dataPath = irs::utf8_path(dbPathFeature.directory());
     dataPath /= subPath;
     dataPath /= dbPath;
     dataPath += std::to_string(vocbase.id());
@@ -358,52 +396,47 @@ bool upgradeSingleServerArangoSearchView0_1(
 
 void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
   using arangodb::iresearch::addFunction;
+  
   auto flags =
       arangodb::aql::Function::makeFlags(arangodb::aql::Function::Flags::Deterministic,
                                          arangodb::aql::Function::Flags::Cacheable,
                                          arangodb::aql::Function::Flags::CanRunOnDBServer);
-  addFunction(functions, {"EXISTS", ".|.,.", flags, &dummyFilterFunc});  // (attribute, [ // "analyzer"|"type"|"string"|"numeric"|"bool"|"null" // ])
-  addFunction(functions, {"STARTS_WITH", ".,.|.", flags, &dummyFilterFunc});  // (attribute, prefix, scoring-limit)
-  addFunction(functions, {"PHRASE", ".,.|.+", flags, &dummyFilterFunc});  // (attribute, input [, offset, input... ] [, analyzer])
-  addFunction(functions, {"IN_RANGE", ".,.,.,.,.", flags, &dummyFilterFunc});  // (attribute, lower, upper, include lower, include upper)
-  addFunction(functions, {"MIN_MATCH", ".,.|.+", flags, &dummyFilterFunc});  // (filter expression [, filter expression, ... ], min match count)
-  addFunction(functions, {"BOOST", ".,.", flags, &dummyFilterFunc});  // (filter expression, boost)
-  addFunction(functions, {"ANALYZER", ".,.", flags, &dummyFilterFunc});  // (filter expression, analyzer)
+  addFunction(functions, { "EXISTS", ".|.,.", flags, &dummyFilterFunc });  // (attribute, [ // "analyzer"|"type"|"string"|"numeric"|"bool"|"null" // ])
+  addFunction(functions, { "STARTS_WITH", ".,.|.", flags, &dummyFilterFunc });  // (attribute, prefix, scoring-limit)
+  addFunction(functions, { "PHRASE", ".,.|.+", flags, &dummyFilterFunc });  // (attribute, input [, offset, input... ] [, analyzer])
+  addFunction(functions, { "IN_RANGE", ".,.,.,.,.", flags, &dummyFilterFunc });  // (attribute, lower, upper, include lower, include upper)
+  addFunction(functions, { "MIN_MATCH", ".,.|.+", flags, &dummyMinMatchContextFunc });  // (filter expression [, filter expression, ... ], min match count)
+  addFunction(functions, { "BOOST", ".,.", flags, &dummyContextFunc });  // (filter expression, boost)
+  addFunction(functions, { "ANALYZER", ".,.", flags, &dummyContextFunc });  // (filter expression, analyzer)
 }
 
-void registerIndexFactory() {
-  static const std::map<std::string, arangodb::IndexTypeFactory const*> factories = {
-      {"ClusterEngine", &arangodb::iresearch::IResearchLinkCoordinator::factory()},
-      {"MMFilesEngine", &arangodb::iresearch::IResearchMMFilesLink::factory()},
-      {"RocksDBEngine", &arangodb::iresearch::IResearchRocksDBLink::factory()}};
+namespace {
+template <typename T>
+void registerSingleFactory(arangodb::application_features::ApplicationServer& server,
+                           arangodb::IndexTypeFactory const& factory) {
   auto const& indexType = arangodb::iresearch::DATA_SOURCE_TYPE.name();
-
-  // register 'arangosearch' link
-  for (auto& entry : factories) {
-    auto* engine =
-        arangodb::application_features::ApplicationServer::lookupFeature<arangodb::StorageEngine>(
-            entry.first);
-
-    // valid situation if not running with the specified storage engine
-    if (!engine) {
-      LOG_TOPIC("a562d", WARN, arangodb::iresearch::TOPIC)
-          << "failed to find feature '" << entry.first
-          << "' while registering index type '" << indexType << "', skipping";
-      continue;
-    }
-
-    // ok to const-cast since this should only be called on startup
-    auto& indexFactory = const_cast<arangodb::IndexFactory&>(engine->indexFactory());
-    auto res = indexFactory.emplace(indexType, *(entry.second));
-
+  if (server.hasFeature<T>()) {
+    auto& engine = server.getFeature<T>();
+    auto& engineFactory = const_cast<arangodb::IndexFactory&>(engine.indexFactory());
+    arangodb::Result res = engineFactory.emplace(indexType, factory);
     if (!res.ok()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           res.errorNumber(),
           std::string("failure registering IResearch link factory with index "
                       "factory from feature '") +
-              entry.first + "': " + res.errorMessage());
+              engine.name() + "': " + res.errorMessage());
     }
   }
+}
+}  // namespace
+
+void registerIndexFactory(arangodb::application_features::ApplicationServer& server) {
+  registerSingleFactory<arangodb::ClusterEngine>(
+      server, arangodb::iresearch::IResearchLinkCoordinator::factory());
+  registerSingleFactory<arangodb::MMFilesEngine>(
+      server, arangodb::iresearch::IResearchMMFilesLink::factory());
+  registerSingleFactory<arangodb::RocksDBEngine>(
+      server, arangodb::iresearch::IResearchRocksDBLink::factory());
 }
 
 void registerScorers(arangodb::aql::AqlFunctionFeature& functions) {
@@ -447,13 +480,11 @@ void registerRecoveryHelper() {
 }
 
 void registerUpgradeTasks() {
-  auto* upgrade =
-      arangodb::application_features::ApplicationServer::lookupFeature<arangodb::UpgradeFeature>(
-          "Upgrade");
-
-  if (!upgrade) {
+  auto& server = arangodb::application_features::ApplicationServer::server();
+  if (!server.hasFeature<arangodb::UpgradeFeature>()) {
     return;  // nothing to register with (OK if no tasks actually need to be applied)
   }
+  auto& upgrade = server.getFeature<arangodb::UpgradeFeature>();
 
   // move IResearch data-store from IResearchView to IResearchLink
   {
@@ -467,27 +498,25 @@ void registerUpgradeTasks() {
                         | arangodb::methods::Upgrade::Flags::CLUSTER_LOCAL;
     task.databaseFlags = arangodb::methods::Upgrade::Flags::DATABASE_UPGRADE;
     task.action = &upgradeSingleServerArangoSearchView0_1;
-    upgrade->addTask(std::move(task));
+    upgrade.addTask(std::move(task));
   }
 }
 
 void registerViewFactory() {
   auto& viewType = arangodb::iresearch::DATA_SOURCE_TYPE;
-  auto* viewTypes =
-      arangodb::application_features::ApplicationServer::getFeature<arangodb::ViewTypesFeature>();
-
-  TRI_ASSERT(viewTypes);
+  auto& server = arangodb::application_features::ApplicationServer::server();
+  auto& viewTypes = server.getFeature<arangodb::ViewTypesFeature>();
 
   arangodb::Result res;
 
   // DB server in custer or single-server
   if (arangodb::ServerState::instance()->isCoordinator()) {
-    res = viewTypes->emplace(viewType,
-                             arangodb::iresearch::IResearchViewCoordinator::factory());
+    res = viewTypes.emplace(viewType,
+                            arangodb::iresearch::IResearchViewCoordinator::factory());
   } else if (arangodb::ServerState::instance()->isDBServer()) {
-    res = viewTypes->emplace(viewType, arangodb::iresearch::IResearchView::factory());
+    res = viewTypes.emplace(viewType, arangodb::iresearch::IResearchView::factory());
   } else if (arangodb::ServerState::instance()->isSingleServer()) {
-    res = viewTypes->emplace(viewType, arangodb::iresearch::IResearchView::factory());
+    res = viewTypes.emplace(viewType, arangodb::iresearch::IResearchView::factory());
   } else {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_FAILED,
@@ -545,7 +574,9 @@ namespace arangodb {
 namespace iresearch {
 
 bool isFilter(arangodb::aql::Function const& func) noexcept {
-  return func.implementation == &dummyFilterFunc;
+  return func.implementation == &dummyFilterFunc ||
+         func.implementation == &dummyContextFunc ||
+         func.implementation == &dummyMinMatchContextFunc;
 }
 
 bool isScorer(arangodb::aql::Function const& func) noexcept {
@@ -556,8 +587,8 @@ class IResearchFeature::Async {
  public:
   typedef std::function<bool(size_t& timeoutMsec, bool timeout)> Fn;
 
-  explicit Async(size_t poolSize = 0);
-  Async(size_t poolSize, Async&& other);
+  explicit Async(IResearchFeature& feature, size_t poolSize = 0);
+  Async(IResearchFeature& feature, size_t poolSize, Async&& other);
   ~Async();
 
   void emplace(std::shared_ptr<ResourceMutex> const& mutex,
@@ -597,10 +628,14 @@ class IResearchFeature::Async {
                                     // to store pointer for move-assignment)
     mutable bool _wasNotified;  // a notification was raised from another thread
 
-    explicit Thread(std::string const& name)
-        : arangodb::Thread(name), _next(nullptr), _terminate(nullptr), _wasNotified(false) {}
+    explicit Thread(arangodb::application_features::ApplicationServer& server,
+                    std::string const& name)
+        : arangodb::Thread(server, name),
+          _next(nullptr),
+          _terminate(nullptr),
+          _wasNotified(false) {}
     Thread(Thread&& other)  // used in constructor before tasks are started
-        : arangodb::Thread(other.name()),
+        : arangodb::Thread(other._server, other.name()),
           _next(nullptr),
           _terminate(nullptr),
           _wasNotified(false) {}
@@ -760,11 +795,13 @@ void IResearchFeature::Async::Thread::run() {
   _tasks.clear();
 }
 
-IResearchFeature::Async::Async(size_t poolSize) : _terminate(false) {
+IResearchFeature::Async::Async(IResearchFeature& feature, size_t poolSize)
+    : _terminate(false) {
   poolSize = std::max(size_t(1), poolSize);  // need at least one thread
 
   for (size_t i = 0; i < poolSize; ++i) {
-    _pool.emplace_back(std::string("ArangoSearch #") + std::to_string(i));
+    _pool.emplace_back(feature.server(),
+                       std::string("ArangoSearch #") + std::to_string(i));
   }
 
   auto* last = &(_pool.back());
@@ -777,8 +814,8 @@ IResearchFeature::Async::Async(size_t poolSize) : _terminate(false) {
   }
 }
 
-IResearchFeature::Async::Async(size_t poolSize, Async&& other)
-    : Async(poolSize) {
+IResearchFeature::Async::Async(IResearchFeature& feature, size_t poolSize, Async&& other)
+    : Async(feature, poolSize) {
   other.stop(&_pool[0]);
 }
 
@@ -848,15 +885,16 @@ void IResearchFeature::Async::stop(Thread* redelegate /*= nullptr*/) {
 
 IResearchFeature::IResearchFeature(arangodb::application_features::ApplicationServer& server)
     : ApplicationFeature(server, IResearchFeature::name()),
-      _async(std::make_unique<Async>()),
+      _async(std::make_unique<Async>(*this)),
       _running(false),
       _threads(0),
       _threadsLimit(0) {
   setOptional(true);
-  startsAfter("V8Phase");
-  startsAfter("ArangoSearchAnalyzer");  // used for retrieving IResearch analyzers
-                                        // for functions
-  startsAfter("AQLFunctions");
+  startsAfter<arangodb::application_features::V8FeaturePhase>();
+
+  startsAfter<IResearchAnalyzerFeature>();  // used for retrieving IResearch
+                                            // analyzers for functions
+  startsAfter<arangodb::aql::AqlFunctionFeature>();
 }
 
 void IResearchFeature::async(std::shared_ptr<ResourceMutex> const& mutex, Async::Fn&& fn) {
@@ -903,7 +941,7 @@ void IResearchFeature::prepare() {
   ::iresearch::scorers::init();
 
   // register 'arangosearch' index
-  registerIndexFactory();
+  registerIndexFactory(server());
 
   // register 'arangosearch' view
   registerViewFactory();
@@ -919,7 +957,7 @@ void IResearchFeature::prepare() {
     auto poolSize = computeThreadPoolSize(_threads, _threadsLimit);
 
     if (_async->poolSize() != poolSize) {
-      _async = std::make_unique<Async>(poolSize, std::move(*_async));
+      _async = std::make_unique<Async>(*this, poolSize, std::move(*_async));
     }
 
     _async->start();
@@ -933,13 +971,10 @@ void IResearchFeature::start() {
 
   // register IResearchView filters
   {
-    auto* functions =
-        arangodb::application_features::ApplicationServer::lookupFeature<arangodb::aql::AqlFunctionFeature>(
-            "AQLFunctions");
-
-    if (functions) {
-      registerFilters(*functions);
-      registerScorers(*functions);
+    if (server().hasFeature<arangodb::aql::AqlFunctionFeature>()) {
+      auto& functions = server().getFeature<arangodb::aql::AqlFunctionFeature>();
+      registerFilters(functions);
+      registerScorers(functions);
     } else {
       LOG_TOPIC("462d7", WARN, arangodb::iresearch::TOPIC)
           << "failure to find feature 'AQLFunctions' while registering "

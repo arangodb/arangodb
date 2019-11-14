@@ -24,10 +24,10 @@
 #define ARANGOD_FUTURES_SHARED_STATE_H 1
 
 #include <atomic>
+#include <function2.hpp>
 
 #include "Basics/debugging.h"
 #include "Futures/Try.h"
-#include "Futures/function2/function2.hpp"
 
 namespace arangodb {
 namespace futures {
@@ -56,12 +56,12 @@ class SharedState {
     Done = 1 << 3,
   };
 
-  /// Allow us to savely pass a core pointer to the Scheduler
+  /// Allow us to safely pass a core pointer to the Scheduler
   struct SharedStateScope {
-    explicit SharedStateScope(SharedState* state) : _state(state) {}
+    explicit SharedStateScope(SharedState* state) noexcept : _state(state) {}
     SharedStateScope(SharedStateScope const&) = delete;
     SharedStateScope& operator=(SharedStateScope const&) = delete;
-    SharedStateScope(SharedStateScope&& o) : _state(o._state) {
+    SharedStateScope(SharedStateScope&& o) noexcept : _state(o._state) {
       o._state = nullptr;
     }
 
@@ -130,11 +130,11 @@ class SharedState {
   ///   but the referenced result may or may not have been modified, including
   ///   possibly moved-out, depending on what the callback did; some but not
   ///   all callbacks modify (possibly move-out) the result.)
-  Try<T>& getTry() {
+  Try<T>& getTry() noexcept {
     TRI_ASSERT(hasResult());
     return _result;
   }
-  Try<T> const& getTry() const {
+  Try<T> const& getTry() const noexcept {
     TRI_ASSERT(hasResult());
     return _result;
   }
@@ -151,9 +151,8 @@ class SharedState {
   void setCallback(F&& func) {
     TRI_ASSERT(!hasCallback());
 
-    // construct _callback first; if that fails, context_ will not leak
+    // construct _callback first; TODO maybe try to avoid this?
     _callback = std::forward<F>(func);
-    //::new (&_callback) Callback(std::forward<F>(func));
 
     auto state = _state.load(std::memory_order_acquire);
     while (true) {
@@ -164,19 +163,14 @@ class SharedState {
             return;
           }
           TRI_ASSERT(state == State::OnlyResult);  // race with setResult
-#ifndef _MSC_VER
           [[fallthrough]];
-#endif
-
         case State::OnlyResult:
+          // acquire is actually correct here
           if (_state.compare_exchange_strong(state, State::Done, std::memory_order_acquire)) {
             doCallback();
             return;
           }
-#ifndef _MSC_VER
           [[fallthrough]];
-#endif
-
         default:
           TRI_ASSERT(false);  // unexpected state
       }
@@ -204,18 +198,14 @@ class SharedState {
             return;
           }
           TRI_ASSERT(state == State::OnlyCallback);  // race with setCallback
-#ifndef _MSC_VER
           [[fallthrough]];
-#endif
-
         case State::OnlyCallback:
+          // acquire is actually correct here
           if (_state.compare_exchange_strong(state, State::Done, std::memory_order_acquire)) {
             doCallback();
             return;
           }
-#ifndef _MSC_VER
           [[fallthrough]];
-#endif
 
         default:
           TRI_ASSERT(false);  // unexpected state
@@ -271,16 +261,11 @@ class SharedState {
   void doCallback() {
     TRI_ASSERT(_state == State::Done);
     TRI_ASSERT(_callback);
-    // TRI_ASSERT(SchedulerFeature::SCHEDULER);
-
-    // in case the scheduler throws away this lamda
+    
     _attached.fetch_add(1);
-    SharedStateScope scope(this);  // will call detachOne()
+    // SharedStateScope makes this exception safe
+    SharedStateScope scope(this); // will call detachOne()
     _callback(std::move(_result));
-    /*SchedulerFeature::SCHEDULER->postContinuation([ref(std::move(scope))]() {
-      SharedState* state = ref._state;
-      state->_callback(std::move(state->_result));
-    });*/
   }
 
  private:

@@ -27,28 +27,28 @@
 #include "RestAdminStatisticsHandler.h"
 #include "GeneralServer/ServerSecurityFeature.h"
 #include "Statistics/Descriptions.h"
+#include "Statistics/RequestStatistics.h"
 #include "Statistics/StatisticsFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestAdminStatisticsHandler::RestAdminStatisticsHandler(GeneralRequest* request,
+RestAdminStatisticsHandler::RestAdminStatisticsHandler(application_features::ApplicationServer& server,
+                                                       GeneralRequest* request,
                                                        GeneralResponse* response)
-    : RestBaseHandler(request, response) {}
+    : RestBaseHandler(server, request, response) {}
 
 RestStatus RestAdminStatisticsHandler::execute() {
   if (_request->requestType() != rest::RequestType::GET) {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
     return RestStatus::DONE;
   }
-  
-  ServerSecurityFeature* security =
-      application_features::ApplicationServer::getFeature<ServerSecurityFeature>(
-          "ServerSecurity");
-  TRI_ASSERT(security != nullptr);
-  
-  if (!security->canAccessHardenedApi()) {
+
+  auto& server = application_features::ApplicationServer::server();
+  ServerSecurityFeature& security = server.getFeature<ServerSecurityFeature>();
+
+  if (!security.canAccessHardenedApi()) {
     // dont leak information about server internals here
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN); 
     return RestStatus::DONE;
@@ -86,8 +86,12 @@ void RestAdminStatisticsHandler::getStatistics() {
   tmp.close();  // system
 
   tmp.add("client", VPackValue(VPackValueType::Object, true));
-  desc->clientStatistics(tmp);
+  desc->clientStatistics(tmp, stats::RequestStatisticsSource::ALL);
   tmp.close();  // client
+
+  tmp.add("clientUser", VPackValue(VPackValueType::Object, true));
+  desc->clientStatistics(tmp, stats::RequestStatisticsSource::USER);
+  tmp.close();  // clientUser
 
   tmp.add("http", VPackValue(VPackValueType::Object, true));
   desc->httpStatistics(tmp);

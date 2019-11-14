@@ -29,6 +29,8 @@
 #include "Basics/Thread.h"
 
 namespace arangodb {
+class FlushFeature;
+
 class FlushThread final : public Thread {
  private:
   FlushThread(FlushThread const&) = delete;
@@ -36,7 +38,7 @@ class FlushThread final : public Thread {
 
  public:
   /// flush interval in microseconds
-  explicit FlushThread(uint64_t flushInterval);
+  explicit FlushThread(FlushFeature& feature, uint64_t flushInterval);
   ~FlushThread() { shutdown(); }
 
  public:
@@ -51,6 +53,9 @@ class FlushThread final : public Thread {
  private:
   /// @brief condition variable for the thread
   basics::ConditionVariable _condition;
+
+  /// @brief reference to the owning feature
+  FlushFeature& _feature;
 
   /// @brief wait interval for the flusher thread when idle (in microseconds)
   uint64_t const _flushInterval;

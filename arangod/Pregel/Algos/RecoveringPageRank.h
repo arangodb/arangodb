@@ -32,14 +32,15 @@ namespace algos {
 
 /// PageRank
 struct RecoveringPageRank : public SimpleAlgorithm<float, float, float> {
-  explicit RecoveringPageRank(arangodb::velocypack::Slice params)
-      : SimpleAlgorithm("PageRank", params) {}
+  explicit RecoveringPageRank(application_features::ApplicationServer& server,
+                              arangodb::velocypack::Slice params)
+      : SimpleAlgorithm(server, "PageRank", params) {}
 
   bool supportsCompensation() const override { return true; }
   MasterContext* masterContext(VPackSlice userParams) const override;
 
   GraphFormat<float, float>* inputFormat() const override {
-    return new VertexGraphFormat<float, float>(_resultField, 0);
+    return new VertexGraphFormat<float, float>(_server, _resultField, 0);
   }
 
   MessageFormat<float>* messageFormat() const override {

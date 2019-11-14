@@ -36,10 +36,11 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestUploadHandler::RestUploadHandler(GeneralRequest* request, GeneralResponse* response)
-    : RestVocbaseBaseHandler(request, response) {}
+RestUploadHandler::RestUploadHandler(application_features::ApplicationServer& server,
+                                     GeneralRequest* request, GeneralResponse* response)
+    : RestVocbaseBaseHandler(server, request, response) {}
 
-RestUploadHandler::~RestUploadHandler() {}
+RestUploadHandler::~RestUploadHandler() = default;
 
 RestStatus RestUploadHandler::execute() {
   // extract the request type

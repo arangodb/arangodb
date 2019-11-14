@@ -35,8 +35,10 @@
 using namespace arangodb;
 using namespace arangodb::rest;
 
-RestAuthReloadHandler::RestAuthReloadHandler(GeneralRequest* request, GeneralResponse* response)
-    : RestBaseHandler(request, response) {}
+RestAuthReloadHandler::RestAuthReloadHandler(application_features::ApplicationServer& server,
+                                             GeneralRequest* request,
+                                             GeneralResponse* response)
+    : RestBaseHandler(server, request, response) {}
 
 RestStatus RestAuthReloadHandler::execute() {
   auth::UserManager* um = AuthenticationFeature::instance()->userManager();

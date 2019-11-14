@@ -25,6 +25,8 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "V8/JavaScriptSecurityContext.h"
 #include "V8/v8-globals.h"
@@ -40,8 +42,9 @@ using namespace arangodb::rest;
 
 namespace arangodb {
 
-RestTasksHandler::RestTasksHandler(GeneralRequest* request, GeneralResponse* response)
-    : RestVocbaseBaseHandler(request, response) {}
+RestTasksHandler::RestTasksHandler(application_features::ApplicationServer& server,
+                                   GeneralRequest* request, GeneralResponse* response)
+    : RestVocbaseBaseHandler(server, request, response) {}
 
 RestStatus RestTasksHandler::execute() {
   auto const type = _request->requestType();
@@ -71,22 +74,26 @@ RestStatus RestTasksHandler::execute() {
 }
 
 /// @brief returns the short id of the server which should handle this request
-uint32_t RestTasksHandler::forwardingTarget() {
+std::string RestTasksHandler::forwardingTarget() {
   rest::RequestType const type = _request->requestType();
   if (type != rest::RequestType::POST && type != rest::RequestType::PUT &&
       type != rest::RequestType::GET && type != rest::RequestType::DELETE_REQ) {
-    return 0;
+    return "";
   }
 
   std::vector<std::string> const& suffixes = _request->suffixes();
   if (suffixes.size() < 1) {
-    return 0;
+    return "";
   }
 
   uint64_t tick = arangodb::basics::StringUtils::uint64(suffixes[0]);
   uint32_t sourceServer = TRI_ExtractServerIdFromTick(tick);
 
-  return (sourceServer == ServerState::instance()->getShortId()) ? 0 : sourceServer;
+  if (sourceServer == ServerState::instance()->getShortId()) {
+    return "";
+  }
+  auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+  return ci.getCoordinatorByShortID(sourceServer);
 }
 
 void RestTasksHandler::getTasks() {
@@ -138,13 +145,11 @@ void RestTasksHandler::registerTask(bool byId) {
     }
   }
 
-  ExecContext const* exec = ExecContext::CURRENT;
-  if (exec != nullptr) {
-    if (exec->databaseAuthLevel() != auth::Level::RW) {
-      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
-                    "registering a task needs db RW permissions");
-      return;
-    }
+  ExecContext const& exec = ExecContext::current();
+  if (exec.databaseAuthLevel() != auth::Level::RW) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
+                  "registering a task needs db RW permissions");
+    return;
   }
 
   // job id
@@ -178,15 +183,12 @@ void RestTasksHandler::registerTask(bool byId) {
       VelocyPackHelper::getStringValue(body, "runAsUser", "");
 
   // only the superroot is allowed to run tasks as an arbitrary user
-  TRI_ASSERT(exec == ExecContext::CURRENT);
-  if (exec != nullptr) {
-    if (runAsUser.empty()) {  // execute task as the same user
-      runAsUser = exec->user();
-    } else if (exec->user() != runAsUser) {
-      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
-                    "cannot run task as a different user");
-      return;
-    }
+  if (runAsUser.empty()) {  // execute task as the same user
+    runAsUser = exec.user();
+  } else if (exec.user() != runAsUser) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
+                  "cannot run task as a different user");
+    return;
   }
 
   // extract the command
@@ -279,13 +281,11 @@ void RestTasksHandler::deleteTask() {
     return;
   }
 
-  ExecContext const* exec = ExecContext::CURRENT;
-  if (exec != nullptr) {
-    if (exec->databaseAuthLevel() != auth::Level::RW) {
-      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
-                    "unregister task needs db RW permissions");
-      return;
-    }
+  ExecContext const& exec = ExecContext::current();
+  if (exec.databaseAuthLevel() != auth::Level::RW) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
+                  "unregister task needs db RW permissions");
+    return;
   }
 
   int res = Task::unregisterTask(suffixes[0], true);

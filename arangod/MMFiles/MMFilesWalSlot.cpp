@@ -28,7 +28,7 @@
 using namespace arangodb;
 
 // create a slot
-// cppcheck-suppress uninitMemberVar
+// cppcheck-suppress uninitMemberVarPrivate
 MMFilesWalSlot::MMFilesWalSlot()
     : _tick(0), _logfile(nullptr), _mem(nullptr), _size(0), _status(StatusType::UNUSED) {}
 

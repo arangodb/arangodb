@@ -62,6 +62,13 @@ inline void ADB_WindowsExitFunction(int, void*) {}
 
 #include <regex>
 
+#if (_MSC_VER >= 1)
+// Disable a warning caused by the call to ADB_WindowsExitFunction() in
+// ~ArangoGlobalContext().
+#pragma warning(push)
+#pragma warning(disable : 4722)  // destructor never returns, potential memory leak
+#endif
+
 using namespace arangodb;
 using namespace arangodb::basics;
 
@@ -379,3 +386,7 @@ void ArangoGlobalContext::normalizePath(std::string& path, char const* whichPath
     }
   }
 }
+
+#if (_MSC_VER >= 1)
+#pragma warning(pop)
+#endif

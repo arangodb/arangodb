@@ -41,9 +41,9 @@ function optimizerRuleTestSuite () {
   var ruleName = "distribute-in-cluster";
   // various choices to control the optimizer: 
   var rulesNone        = { optimizer: { rules: [ "-all" ] } };
-  var rulesAll         = { optimizer: { rules: [ "+all", "-reduce-extraction-to-projection" ] } };
+  var rulesAll         = { optimizer: { rules: [ "+all", "-reduce-extraction-to-projection", "-parallelize-gather" ] } };
   var thisRuleEnabled  = { optimizer: { rules: [ "-all", "+" + ruleName ] } };
-  var thisRuleDisabled = { optimizer: { rules: [ "+all", "-reduce-extraction-to-projection", "-" + ruleName ] } };
+  var thisRuleDisabled = { optimizer: { rules: [ "+all", "-reduce-extraction-to-projection", "-parallelize-gather", "-" + ruleName ] } };
   var maxPlans         = { optimizer: { rules: [ "-all" ] }, maxNumberOfPlans: 1 };
 
   var cn1 = "UnitTestsAqlOptimizerRuleUndist1";
@@ -61,7 +61,7 @@ function optimizerRuleTestSuite () {
     /// @brief set up
     ////////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
+    setUpAll : function () {
       var i;
       db._drop(cn1);
       db._drop(cn2);
@@ -77,7 +77,7 @@ function optimizerRuleTestSuite () {
     /// @brief tear down
     ////////////////////////////////////////////////////////////////////////////////
 
-    tearDown : function () {
+    tearDownAll : function () {
       db._drop(cn1);
       db._drop(cn2);
     },
@@ -647,14 +647,15 @@ function interactionOtherRulesTestSuite () {
   var undist = "undistribute-remove-after-enum-coll"; // Rule 3
 
   // various choices to control the optimizer: 
-  var allRules         = { optimizer: { rules: [ "+all", "-reduce-extraction-to-projection" ] } };
+  var allRules         = { optimizer: { rules: [ "+all", "-reduce-extraction-to-projection", "-move-filters-into-enumerate" ] } };
   var allRulesNoInter  = 
-    { optimizer: { rules: [ "+all", "-interchange-adjacent-enumerations", "-reduce-extraction-to-projection" ] } };
-  var ruleDisabled   = { optimizer: { rules: [ "+all", "-" + undist ] } };
+    { optimizer: { rules: [ "+all", "-interchange-adjacent-enumerations", "-reduce-extraction-to-projection", "-move-filters-into-enumerate" ] } };
+  var ruleDisabled   = { optimizer: { rules: [ "+all", "-" + undist, "-move-filters-into-enumerate" ] } };
   var ruleDisabledNoInter  = 
     { optimizer: { rules: [ "+all", 
                             "-interchange-adjacent-enumerations", 
                             "-reduce-extraction-to-projection",
+                            "-move-filters-into-enumerate",
                             "-" + undist ] } };
 
   var cn1 = "UnitTestsAql1";

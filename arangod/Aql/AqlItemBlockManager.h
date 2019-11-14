@@ -24,23 +24,31 @@
 #ifndef ARANGOD_AQL_AQL_ITEM_BLOCK_MANAGER_H
 #define ARANGOD_AQL_AQL_ITEM_BLOCK_MANAGER_H 1
 
-#include "Aql/SharedAqlItemBlockPtr.h"
+#include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
 
 #include <array>
+#include <cstddef>
 
 namespace arangodb {
+
+namespace velocypack {
+class Slice;
+}
+
 namespace aql {
 
 class AqlItemBlock;
+class SharedAqlItemBlockPtr;
 struct ResourceMonitor;
 
 class AqlItemBlockManager {
   friend class SharedAqlItemBlockPtr;
+
  public:
   /// @brief create the manager
-  explicit AqlItemBlockManager(ResourceMonitor*);
+  explicit AqlItemBlockManager(ResourceMonitor*, SerializationFormat format);
 
   /// @brief destroy the manager
   TEST_VIRTUAL ~AqlItemBlockManager();
@@ -52,20 +60,20 @@ class AqlItemBlockManager {
   /// @brief request a block and initialize it from the slice
   TEST_VIRTUAL SharedAqlItemBlockPtr requestAndInitBlock(velocypack::Slice slice);
 
-  TEST_VIRTUAL ResourceMonitor* resourceMonitor() const noexcept { return _resourceMonitor; }
+  TEST_VIRTUAL ResourceMonitor* resourceMonitor() const noexcept;
+
+  SerializationFormat getFormatType() const { return _format; }
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   // Only used for the mocks in the catch tests. Other code should always use
   // SharedAqlItemBlockPtr which in turn call returnBlock()!
-  static void deleteBlock(AqlItemBlock* block) {
-    delete block;
-  }
+  static void deleteBlock(AqlItemBlock* block);
 #endif
 
 #ifndef ARANGODB_USE_GOOGLE_TESTS
  protected:
 #else
- // make returnBlock public for tests so it can be mocked
+  // make returnBlock public for tests so it can be mocked
  public:
 #endif
   /// @brief return a block to the manager
@@ -74,6 +82,7 @@ class AqlItemBlockManager {
 
  private:
   ResourceMonitor* _resourceMonitor;
+  SerializationFormat const _format;
 
   static constexpr size_t numBuckets = 12;
   static constexpr size_t numBlocksPerBucket = 7;
@@ -85,62 +94,15 @@ class AqlItemBlockManager {
     Bucket();
     ~Bucket();
 
-    bool empty() const noexcept { return numItems == 0; }
+    bool empty() const noexcept;
 
-    bool full() const noexcept { return (numItems == numBlocksPerBucket); }
+    bool full() const noexcept;
 
-    AqlItemBlock* pop() noexcept {
-      TRI_ASSERT(!empty());
-      TRI_ASSERT(numItems > 0);
-      AqlItemBlock* result = blocks[--numItems];
-      TRI_ASSERT(result != nullptr);
-      blocks[numItems] = nullptr;
-      return result;
-    }
+    AqlItemBlock* pop() noexcept;
 
-    void push(AqlItemBlock* block) noexcept {
-      TRI_ASSERT(!full());
-      TRI_ASSERT(blocks[numItems] == nullptr);
-      blocks[numItems++] = block;
-      TRI_ASSERT(numItems <= numBlocksPerBucket);
-    }
+    void push(AqlItemBlock* block) noexcept;
 
-    static size_t getId(size_t targetSize) noexcept {
-      if (targetSize <= 1) {
-        return 0;
-      }
-      if (targetSize <= 10) {
-        return 1;
-      }
-      if (targetSize <= 20) {
-        return 2;
-      }
-      if (targetSize <= 40) {
-        return 3;
-      }
-      if (targetSize <= 100) {
-        return 4;
-      }
-      if (targetSize <= 200) {
-        return 5;
-      }
-      if (targetSize <= 400) {
-        return 6;
-      }
-      if (targetSize <= 1000) {
-        return 7;
-      }
-      if (targetSize <= 2000) {
-        return 8;
-      }
-      if (targetSize <= 4000) {
-        return 9;
-      }
-      if (targetSize <= 10000) {
-        return 10;
-      }
-      return 11;
-    }
+    static size_t getId(size_t targetSize) noexcept;
   };
 
   Bucket _buckets[numBuckets];

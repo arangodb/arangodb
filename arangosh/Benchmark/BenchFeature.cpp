@@ -37,6 +37,7 @@
 #include "Benchmark/BenchmarkCounter.h"
 #include "Benchmark/BenchmarkOperation.h"
 #include "Benchmark/BenchmarkThread.h"
+#include "FeaturePhases/BasicFeaturePhaseClient.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Shell/ClientFeature.h"
@@ -62,7 +63,7 @@ BenchFeature* ARANGOBENCH;
 BenchFeature::BenchFeature(application_features::ApplicationServer& server, int* result)
     : ApplicationFeature(server, "Bench"),
       _async(false),
-      _concurreny(1),
+      _concurrency(1),
       _operations(1000),
       _batchSize(0),
       _keepAlive(true),
@@ -81,7 +82,7 @@ BenchFeature::BenchFeature(application_features::ApplicationServer& server, int*
       _result(result) {
   requiresElevatedPrivileges(false);
   setOptional(false);
-  startsAfter("BasicsPhase");
+  startsAfter<application_features::BasicFeaturePhaseClient>();
 }
 
 void BenchFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -89,7 +90,7 @@ void BenchFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options->addOption("--concurrency",
                      "number of parallel threads and connections",
-                     new UInt64Parameter(&_concurreny));
+                     new UInt64Parameter(&_concurrency));
 
   options->addOption("--requests", "total number of operations",
                      new UInt64Parameter(&_operations));
@@ -173,10 +174,9 @@ void BenchFeature::updateStartCounter() { ++_started; }
 int BenchFeature::getStartCounter() { return _started; }
 
 void BenchFeature::start() {
-  ClientFeature* client = application_features::ApplicationServer::getFeature<ClientFeature>(
-      "Client");
-  client->setRetries(3);
-  client->setWarn(true);
+  ClientFeature& client = server().getFeature<HttpEndpointProvider, ClientFeature>();
+  client.setRetries(3);
+  client.setWarn(true);
 
   int ret = EXIT_SUCCESS;
 
@@ -192,7 +192,7 @@ void BenchFeature::start() {
     FATAL_ERROR_EXIT();
   }
 
-  double const stepSize = (double)_operations / (double)_concurreny;
+  double const stepSize = (double)_operations / (double)_concurrency;
   int64_t realStep = (int64_t)stepSize;
 
   if (stepSize - (double)((int64_t)stepSize) > 0.0) {
@@ -217,18 +217,19 @@ void BenchFeature::start() {
     ConditionVariable startCondition;
     // start client threads
     _started = 0;
-    for (uint64_t i = 0; i < _concurreny; ++i) {
+    for (uint64_t i = 0; i < _concurrency; ++i) {
       BenchmarkThread* thread =
-          new BenchmarkThread(benchmark.get(), &startCondition, &BenchFeature::updateStartCounter,
-                              static_cast<int>(i), (unsigned long)_batchSize,
-                              &operationsCounter, client, _keepAlive, _async, _verbose);
+          new BenchmarkThread(server(), benchmark.get(), &startCondition,
+                              &BenchFeature::updateStartCounter, static_cast<int>(i),
+                              (unsigned long)_batchSize, &operationsCounter,
+                              client, _keepAlive, _async, _verbose);
       thread->setOffset((size_t)(i * realStep));
       thread->start();
       threads.push_back(thread);
     }
 
     // give all threads a chance to start so they will not miss the broadcast
-    while (getStartCounter() < (int)_concurreny) {
+    while (getStartCounter() < (int)_concurrency) {
       std::this_thread::sleep_for(std::chrono::milliseconds(5));
     }
 
@@ -271,7 +272,7 @@ void BenchFeature::start() {
     double time = TRI_microtime() - start;
     double requestTime = 0.0;
 
-    for (size_t i = 0; i < static_cast<size_t>(_concurreny); ++i) {
+    for (size_t i = 0; i < static_cast<size_t>(_concurrency); ++i) {
       requestTime += threads[i]->getTime();
     }
 
@@ -285,7 +286,7 @@ void BenchFeature::start() {
         operationsCounter.incompleteFailures(),
         requestTime,
     });
-    for (size_t i = 0; i < static_cast<size_t>(_concurreny); ++i) {
+    for (size_t i = 0; i < static_cast<size_t>(_concurrency); ++i) {
       delete threads[i];
     }
     threads.clear();
@@ -305,7 +306,7 @@ void BenchFeature::start() {
   *_result = ret;
 }
 
-bool BenchFeature::report(ClientFeature* client, std::vector<BenchRunResult> results) {
+bool BenchFeature::report(ClientFeature& client, std::vector<BenchRunResult> results) {
   std::cout << std::endl;
 
   std::cout << "Total number of operations: " << _operations << ", runs: " << _runs
@@ -314,10 +315,10 @@ bool BenchFeature::report(ClientFeature* client, std::vector<BenchRunResult> res
             << ", replication factor: " << _replicationFactor
             << ", number of shards: " << _numberOfShards
             << ", wait for sync: " << (_waitForSync ? "true" : "false")
-            << ", concurrency level (threads): " << _concurreny << std::endl;
+            << ", concurrency level (threads): " << _concurrency << std::endl;
 
   std::cout << "Test case: " << _testCase << ", complexity: " << _complexity
-            << ", database: '" << client->databaseName() << "', collection: '"
+            << ", database: '" << client.databaseName() << "', collection: '"
             << _collection << "'" << std::endl;
 
   std::sort(results.begin(), results.end(),
@@ -404,14 +405,14 @@ void BenchFeature::printResult(BenchRunResult const& result) {
             << result.requestTime << " s" << std::endl;
 
   std::cout << "Request/response duration (per thread): " << std::fixed
-            << (result.requestTime / (double)_concurreny) << " s" << std::endl;
+            << (result.requestTime / (double)_concurrency) << " s" << std::endl;
 
   std::cout << "Time needed per operation: " << std::fixed
             << (result.time / _operations) << " s" << std::endl;
 
   std::cout << "Time needed per operation per thread: " << std::fixed
-            << (result.time / (double)_operations * (double)_concurreny) << " s"
-            << std::endl;
+            << (result.time / (double)_operations * (double)_concurrency)
+            << " s" << std::endl;
 
   std::cout << "Operations per second rate: " << std::fixed
             << ((double)_operations / result.time) << std::endl;

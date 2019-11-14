@@ -71,7 +71,7 @@ class GeneralServer;
 //     responses are identified by a request id.
 //
 // (4) Error handling: In case of an error `addErrorResponse()` will be
-//     called. This will call `addResponse()` with an error indicator, which in
+//     called. This will call `sendResponse()` with an error indicator, which in
 //     turn will end the responding request.
 //
 class CommTask : public std::enable_shared_from_this<CommTask> {
@@ -114,7 +114,7 @@ protected:
   /// response if execution is supposed to be aborted
   Flow prepareExecution(GeneralRequest&);
 
-  /// Must be called from addResponse, before response is rendered
+  /// Must be called from sendResponse, before response is rendered
   void finishExecution(GeneralResponse&) const;
 
   /// Push this request into the execution pipeline

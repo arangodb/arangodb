@@ -54,7 +54,7 @@ struct TypedBuffer {
   static_assert(std::is_default_constructible<T>::value, "");
   
   /// close file (see close() )
-  virtual ~TypedBuffer() {}
+  virtual ~TypedBuffer() = default;
   TypedBuffer() : _begin(nullptr), _end(nullptr), _capacity(nullptr) {}
 
   /// end usage of the structure

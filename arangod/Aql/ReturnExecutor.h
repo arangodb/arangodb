@@ -74,12 +74,12 @@ class ReturnExecutorInfos : public ExecutorInfos {
 class ReturnExecutor {
  public:
   struct Properties {
-    static const bool preservesOrder = true;
+    static constexpr bool preservesOrder = true;
     // The return executor is now only used for projecting some register to
     // register 0. So it does not pass through, but copy one column into a new
     // block with only this column.
-    static const bool allowsBlockPassthrough = false;
-    static const bool inputSizeRestrictsOutputSize = true;
+    static constexpr BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Disable;
+    static constexpr bool inputSizeRestrictsOutputSize = true;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = ReturnExecutorInfos;

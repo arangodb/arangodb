@@ -69,16 +69,28 @@ window.ArangoDocument = Backbone.Collection.extend({
     });
   },
 
-  createTypeDocument: function (collectionID, key, callback, returnNew) {
-    var newDocument;
+  createTypeDocument: function (collectionID, key, callback, returnNew,
+                                smartJoinAttribute, smartJoinAttributeValue,
+                                smartGraphAttribute, smartGraphAttributeValue) {
+    var newDocument = {};
 
-    if (key) {
-      newDocument = JSON.stringify({
-        _key: key
-      });
-    } else {
-      newDocument = JSON.stringify({});
+    if (smartJoinAttribute && smartJoinAttributeValue && key) {
+      // case: smartJoin, bot value are needed and NOT optional
+      newDocument._key = smartJoinAttributeValue + ':' + key;
+      newDocument[smartJoinAttribute] = smartJoinAttributeValue;
+    } else if (smartGraphAttribute && smartGraphAttributeValue) {
+      // case: smartGraph with value
+      // other to smartJoin, we can:
+      // 1.) Create without smartGraphAttribute and without smartGraphAttributeValue
+      // 2.) Create only with smartGraphAttributeValue
+      if (key) {
+        newDocument._key = smartGraphAttributeValue + ':' + key;
+      }
+      newDocument[smartGraphAttribute] = smartGraphAttributeValue;
+    } else if (key) {
+      newDocument._key = key;
     }
+    newDocument = JSON.stringify(newDocument);
 
     var url = arangoHelper.databaseUrl('/_api/document?collection=' + encodeURIComponent(collectionID));
 

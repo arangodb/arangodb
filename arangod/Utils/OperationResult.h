@@ -57,11 +57,10 @@ struct OperationResult {
 
   // move
   OperationResult(OperationResult&& other) = default;
-  OperationResult& operator=(OperationResult&& other) {
+  OperationResult& operator=(OperationResult&& other) noexcept {
     if (this != &other) {
       result = std::move(other.result);
       buffer = std::move(other.buffer);
-      customTypeHandler = std::move(other.customTypeHandler);
       _options = other._options;
       countErrorCodes = std::move(other.countErrorCodes);
     }
@@ -69,32 +68,32 @@ struct OperationResult {
   }
 
   // create result with details
-  OperationResult(Result&& result, std::shared_ptr<VPackBuffer<uint8_t>> const& buffer,
-                  std::shared_ptr<VPackCustomTypeHandler> const& handler,
-                  OperationOptions const& options = {},
-                  std::unordered_map<int, size_t> const& countErrorCodes =
-                      std::unordered_map<int, size_t>())
+  OperationResult(Result result, std::shared_ptr<VPackBuffer<uint8_t>> buffer,
+                  OperationOptions options = {},
+                  std::unordered_map<int, size_t> countErrorCodes = std::unordered_map<int, size_t>())
       : result(std::move(result)),
-        buffer(buffer),
-        customTypeHandler(handler),
-        _options(options),
-        countErrorCodes(countErrorCodes) {
-    if (result.ok()) {
-      TRI_ASSERT(buffer != nullptr);
-      TRI_ASSERT(buffer->data() != nullptr);
+        buffer(std::move(buffer)),
+        _options(std::move(options)),
+        countErrorCodes(std::move(countErrorCodes)) {
+    if (this->result.ok()) {
+      TRI_ASSERT(this->buffer != nullptr);
+      TRI_ASSERT(this->buffer->data() != nullptr);
     }
   }
 
   ~OperationResult() = default;
 
   // Result-like interface
-  bool ok() const { return result.ok(); }
-  bool fail() const { return result.fail(); }
-  int errorNumber() const { return result.errorNumber(); }
-  bool is(int errorNumber) const { return result.errorNumber() == errorNumber; }
-  bool isNot(int errorNumber) const { return !is(errorNumber); }
+  bool ok() const noexcept { return result.ok(); }
+  bool fail() const noexcept { return result.fail(); }
+  int errorNumber() const noexcept { return result.errorNumber(); }
+  bool is(int errorNumber) const noexcept {
+    return result.errorNumber() == errorNumber;
+  }
+  bool isNot(int errorNumber) const noexcept { return !is(errorNumber); }
   std::string errorMessage() const { return result.errorMessage(); }
 
+  inline bool hasSlice() const { return buffer != nullptr; }
   inline VPackSlice slice() const {
     TRI_ASSERT(buffer != nullptr);
     return VPackSlice(buffer->data());
@@ -103,7 +102,6 @@ struct OperationResult {
   Result result;
   // TODO: add a slice that points to either buffer or raw data
   std::shared_ptr<VPackBuffer<uint8_t>> buffer;
-  std::shared_ptr<VPackCustomTypeHandler> customTypeHandler;
   OperationOptions _options;
 
   // Executive summary for baby operations: reports all errors that did occur

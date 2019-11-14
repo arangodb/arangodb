@@ -26,7 +26,6 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Basics/memory.h"
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
 #include "MMFiles/MMFilesEdgeIndex.h"
@@ -37,17 +36,12 @@
 #include "MMFiles/MMFilesPrimaryIndex.h"
 #include "MMFiles/MMFilesSkiplistIndex.h"
 #include "MMFiles/MMFilesTtlIndex.h"
-#include "MMFiles/mmfiles-fulltext-index.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Builder.h>
-#include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
-#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
-
-#include "IResearch/IResearchMMFilesLink.h"
 
 using namespace arangodb;
 
@@ -374,7 +368,7 @@ void MMFilesIndexFactory::fillSystemIndexes(arangodb::LogicalCollection& col,
 void MMFilesIndexFactory::prepareIndexes(
     LogicalCollection& col, arangodb::velocypack::Slice const& indexesSlice,
     std::vector<std::shared_ptr<arangodb::Index>>& indexes) const {
-  for (auto const& v : VPackArrayIterator(indexesSlice)) {
+  for (VPackSlice v : VPackArrayIterator(indexesSlice)) {
     if (!validateFieldsDefinition(v, 0, SIZE_MAX).ok()) {
       continue;
     }

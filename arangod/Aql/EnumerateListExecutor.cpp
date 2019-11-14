@@ -26,17 +26,30 @@
 #include "EnumerateListExecutor.h"
 
 #include "Aql/AqlValue.h"
-#include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Aql/OutputAqlItemRow.h"
 #include "Aql/SingleRowFetcher.h"
-#include "Basics/Common.h"
+#include "Aql/Stats.h"
 #include "Basics/Exceptions.h"
-
-#include <lib/Logger/LogMacros.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
+
+namespace {
+void throwArrayExpectedException(AqlValue const& value) {
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_QUERY_ARRAY_EXPECTED,
+      std::string("collection or ") + TRI_errno_string(TRI_ERROR_QUERY_ARRAY_EXPECTED) +
+          std::string(
+              " as operand to FOR loop; you provided a value of type '") +
+          value.getTypeString() + std::string("'"));
+}
+} // namespace
+
+constexpr bool EnumerateListExecutor::Properties::preservesOrder;
+constexpr BlockPassthrough EnumerateListExecutor::Properties::allowsBlockPassthrough;
+constexpr bool EnumerateListExecutor::Properties::inputSizeRestrictsOutputSize;
 
 EnumerateListExecutorInfos::EnumerateListExecutorInfos(
     RegisterId inputRegister, RegisterId outputRegister,
@@ -52,6 +65,14 @@ EnumerateListExecutorInfos::EnumerateListExecutorInfos(
       _inputRegister(inputRegister),
       _outputRegister(outputRegister) {}
 
+RegisterId EnumerateListExecutorInfos::getInputRegister() const noexcept {
+  return _inputRegister;
+}
+
+RegisterId EnumerateListExecutorInfos::getOutputRegister() const noexcept {
+  return _outputRegister;
+}
+
 EnumerateListExecutor::EnumerateListExecutor(Fetcher& fetcher, EnumerateListExecutorInfos& infos)
     : _infos(infos),
       _fetcher(fetcher),
@@ -65,7 +86,6 @@ std::pair<ExecutionState, NoStats> EnumerateListExecutor::produceRows(OutputAqlI
     // HIT in first run, because pos and length are initiliazed
     // both with 0
 
-    // if (_inputArrayPosition == _inputArrayLength || _inputArrayPosition == _inputArrayLength - 1) {
     if (_inputArrayPosition == _inputArrayLength) {
       // we need to set position back to zero
       // because we finished iterating over existing array
@@ -94,6 +114,9 @@ std::pair<ExecutionState, NoStats> EnumerateListExecutor::produceRows(OutputAqlI
       if (inputList.isDocvec()) {
         _inputArrayLength = inputList.docvecSize();
       } else {
+        if (!inputList.isArray()) {
+          throwArrayExpectedException(inputList);
+        }
         _inputArrayLength = inputList.length();
       }
     }

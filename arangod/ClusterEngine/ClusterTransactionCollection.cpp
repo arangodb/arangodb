@@ -22,6 +22,7 @@
 
 #include "ClusterTransactionCollection.h"
 #include "Basics/Exceptions.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -37,10 +38,9 @@ ClusterTransactionCollection::ClusterTransactionCollection(TransactionState* trx
                                                            TRI_voc_cid_t cid,
                                                            AccessMode::Type accessType,
                                                            int nestingLevel)
-    : TransactionCollection(trx, cid, accessType, nestingLevel),
-      _lockType(AccessMode::Type::NONE) {}
+    : TransactionCollection(trx, cid, accessType, nestingLevel) {}
 
-ClusterTransactionCollection::~ClusterTransactionCollection() {}
+ClusterTransactionCollection::~ClusterTransactionCollection() = default;
 
 /// @brief whether or not any write operations for the collection happened
 bool ClusterTransactionCollection::hasOperations() const {
@@ -69,13 +69,14 @@ int ClusterTransactionCollection::use(int nestingLevel) {
 
   if (_collection == nullptr) {
     // open the collection
-    ClusterInfo* ci = ClusterInfo::instance();
-    if (ci == nullptr) {
+    if (_transaction->vocbase().server().isStopping()) {
       return TRI_ERROR_SHUTTING_DOWN;
     }
+    ClusterInfo& ci =
+        _transaction->vocbase().server().getFeature<ClusterFeature>().clusterInfo();
 
     _collection =
-        ci->getCollectionNT(_transaction->vocbase().name(), std::to_string(_cid));
+        ci.getCollectionNT(_transaction->vocbase().name(), std::to_string(_cid));
     if (_collection == nullptr) {
       return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
     }
@@ -91,12 +92,10 @@ int ClusterTransactionCollection::use(int nestingLevel) {
     // r/w lock the collection
     int res = doLock(_accessType, nestingLevel);
 
-    if (res == TRI_ERROR_LOCKED) {
-      // TRI_ERROR_LOCKED is not an error, but it indicates that the lock
-      // operation has actually acquired the lock (and that the lock has not
-      // been held before)
-      res = TRI_ERROR_NO_ERROR;
-    } else if (res != TRI_ERROR_NO_ERROR) {
+    // TRI_ERROR_LOCKED is not an error, but it indicates that the lock
+    // operation has actually acquired the lock (and that the lock has not
+    // been held before)
+    if (res != TRI_ERROR_NO_ERROR && res != TRI_ERROR_LOCKED) {
       return res;
     }
   }

@@ -91,7 +91,7 @@ using namespace arangodb;
 using namespace arangodb::basics;
 
 StatisticsWorker::StatisticsWorker(TRI_vocbase_t& vocbase)
-    : Thread("StatisticsWorker"), _gcTask(GC_STATS), _vocbase(vocbase) {
+    : Thread(vocbase.server(), "StatisticsWorker"), _gcTask(GC_STATS), _vocbase(vocbase) {
   _bytesSentDistribution.openArray();
 
   for (auto const& val : TRI_BytesSentDistributionVectorStatistics) {
@@ -138,10 +138,8 @@ void StatisticsWorker::collectGarbage() {
 }
 
 void StatisticsWorker::collectGarbage(std::string const& name, double start) const {
-  auto queryRegistryFeature =
-      application_features::ApplicationServer::getFeature<QueryRegistryFeature>(
-          "QueryRegistry");
-  auto _queryRegistry = queryRegistryFeature->queryRegistry();
+  auto& queryRegistryFeature = _server.getFeature<QueryRegistryFeature>();
+  auto _queryRegistry = queryRegistryFeature.queryRegistry();
   auto bindVars = _bindVars.get();
 
   bindVars->clear();
@@ -258,10 +256,8 @@ void StatisticsWorker::historianAverage() {
 
 std::shared_ptr<arangodb::velocypack::Builder> StatisticsWorker::lastEntry(
     std::string const& collectionName, double start) const {
-  auto queryRegistryFeature =
-      application_features::ApplicationServer::getFeature<QueryRegistryFeature>(
-          "QueryRegistry");
-  auto _queryRegistry = queryRegistryFeature->queryRegistry();
+  auto& queryRegistryFeature = _server.getFeature<QueryRegistryFeature>();
+  auto _queryRegistry = queryRegistryFeature.queryRegistry();
   auto bindVars = _bindVars.get();
 
   bindVars->clear();
@@ -291,10 +287,8 @@ std::shared_ptr<arangodb::velocypack::Builder> StatisticsWorker::lastEntry(
 }
 
 void StatisticsWorker::compute15Minute(VPackBuilder& builder, double start) {
-  auto queryRegistryFeature =
-      application_features::ApplicationServer::getFeature<QueryRegistryFeature>(
-          "QueryRegistry");
-  auto _queryRegistry = queryRegistryFeature->queryRegistry();
+  auto& queryRegistryFeature = _server.getFeature<QueryRegistryFeature>();
+  auto _queryRegistry = queryRegistryFeature.queryRegistry();
   auto bindVars = _bindVars.get();
 
   bindVars->clear();
@@ -840,13 +834,9 @@ void StatisticsWorker::generateRawStatistics(VPackBuilder& builder, double const
   StatisticsDistribution bytesSent;
   StatisticsDistribution bytesReceived;
 
-  RequestStatistics::fill(totalTime, requestTime, queueTime, ioTime, bytesSent, bytesReceived);
+  RequestStatistics::fill(totalTime, requestTime, queueTime, ioTime, bytesSent, bytesReceived, stats::RequestStatisticsSource::ALL);
 
-  ServerStatistics serverInfo = ServerStatistics::statistics();
-
-  V8DealerFeature* dealer =
-      application_features::ApplicationServer::getFeature<V8DealerFeature>(
-          "V8Dealer");
+  ServerStatistics const& serverInfo = ServerStatistics::statistics();
 
   builder.openObject();
   if (!_clusterId.empty()) {
@@ -924,15 +914,24 @@ void StatisticsWorker::generateRawStatistics(VPackBuilder& builder, double const
   builder.add("server", VPackValue(VPackValueType::Object));
   builder.add("uptime", VPackValue(serverInfo._uptime));
   builder.add("physicalMemory", VPackValue(TRI_PhysicalMemory));
+  builder.add("transactions", VPackValue(VPackValueType::Object));
+  builder.add("started", VPackValue(serverInfo._transactionsStatistics._transactionsStarted));
+  builder.add("aborted", VPackValue(serverInfo._transactionsStatistics._transactionsAborted));
+  builder.add("committed", VPackValue(serverInfo._transactionsStatistics._transactionsCommitted));
+  builder.add("intermediateCommits", VPackValue(serverInfo._transactionsStatistics._intermediateCommits));
+  builder.close();
 
   // export v8 statistics
   builder.add("v8Context", VPackValue(VPackValueType::Object));
   V8DealerFeature::Statistics v8Counters{};
   // std::vector<V8DealerFeature::MemoryStatistics> memoryStatistics;
   // V8 may be turned off on a server
-  if (dealer && dealer->isEnabled()) {
-    v8Counters = dealer->getCurrentContextNumbers();
-    // see below: memoryStatistics = dealer->getCurrentMemoryNumbers();
+  if (_server.hasFeature<V8DealerFeature>()) {
+    V8DealerFeature& dealer = _server.getFeature<V8DealerFeature>();
+    if (dealer.isEnabled()) {
+      v8Counters = dealer.getCurrentContextNumbers();
+      // see below: memoryStatistics = dealer.getCurrentMemoryNumbers();
+    }
   }
   builder.add("available", VPackValue(v8Counters.available));
   builder.add("busy", VPackValue(v8Counters.busy));
@@ -960,12 +959,11 @@ void StatisticsWorker::generateRawStatistics(VPackBuilder& builder, double const
   builder.add("threads", VPackValue(VPackValueType::Object));
   SchedulerFeature::SCHEDULER->toVelocyPack(builder);
   builder.close();
-  
+
   // export ttl statistics
-  TtlFeature* ttlFeature =
-      application_features::ApplicationServer::getFeature<TtlFeature>("Ttl");
+  TtlFeature& ttlFeature = _server.getFeature<TtlFeature>();
   builder.add(VPackValue("ttl"));
-  ttlFeature->statsToVelocyPack(builder);
+  ttlFeature.statsToVelocyPack(builder);
 
   builder.close();
 
@@ -1026,81 +1024,6 @@ void StatisticsWorker::saveSlice(VPackSlice const& slice, std::string const& col
   }
 }
 
-void StatisticsWorker::createCollections() const {
-  createCollection(statisticsRawCollection);
-  createCollection(statisticsCollection);
-  createCollection(statistics15Collection);
-}
-
-void StatisticsWorker::createCollection(std::string const& collection) const {
-  VPackBuilder s;
-
-  s.openObject();
-  s.add("isSystem", VPackValue(true));
-  s.add("journalSize", VPackValue(8 * 1024 * 1024));
-
-  if (ServerState::instance()->isRunningInCluster() &&
-      ServerState::instance()->isCoordinator()) {
-    auto clusterFeature =
-        application_features::ApplicationServer::getFeature<ClusterFeature>(
-            "Cluster");
-    s.add("replicationFactor", VPackValue(clusterFeature->systemReplicationFactor()));
-    s.add("distributeShardsLike", VPackValue("_graphs"));
-  }
-
-  s.close();
-
-  auto r = methods::Collections::create(
-    _vocbase, // collection vocbase
-    collection, // collection name
-    TRI_COL_TYPE_DOCUMENT, // collection type
-                                   s.slice(), false, true,
-                                   [](std::shared_ptr<LogicalCollection> const&) -> void {});
-
-  if (r.is(TRI_ERROR_SHUTTING_DOWN)) {
-    // this is somewhat an expected error
-    return;
-  }
-
-  // check if the collection already existed. this is acceptable too
-  if (r.fail() && !r.is(TRI_ERROR_ARANGO_DUPLICATE_NAME)) {
-    LOG_TOPIC("e32fd", WARN, Logger::STATISTICS)
-        << "could not create statistics collection '" << collection
-        << "': error: " << r.errorMessage();
-  }
-
-  // check if the index on the collection must be created
-  r = methods::Collections::lookup(
-    _vocbase, // vocbase to search
-    collection, // collection to find
-    [&](std::shared_ptr<LogicalCollection> const& coll)->void { // callback if found
-        TRI_ASSERT(coll);
-
-        VPackBuilder t;
-
-        t.openObject();
-        t.add("collection", VPackValue(collection));
-        t.add("type", VPackValue("skiplist"));
-        t.add("unique", VPackValue(false));
-        t.add("sparse", VPackValue(false));
-
-        t.add("fields", VPackValue(VPackValueType::Array));
-        t.add(VPackValue("time"));
-        t.close();
-        t.close();
-
-        VPackBuilder output;
-        Result idxRes = methods::Indexes::ensureIndex(coll.get(), t.slice(), true, output);
-
-        if (!idxRes.ok()) {
-          LOG_TOPIC("7356a", WARN, Logger::STATISTICS)
-              << "could not create the skiplist index for statistics "
-                 "collection '"
-              << collection << "': error: " << idxRes.errorMessage();
-        }
-      });
-}
-
 void StatisticsWorker::beginShutdown() {
   Thread::beginShutdown();
 
@@ -1123,8 +1046,6 @@ void StatisticsWorker::run() {
       // compute cluster id just once
       _clusterId = ServerState::instance()->getId();
     }
-
-    createCollections();
   } catch (...) {
     // do not fail hard here, as we are inside a thread!
   }

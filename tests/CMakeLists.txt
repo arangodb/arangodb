@@ -7,6 +7,9 @@ endforeach()
 ################################################################################
 ## IResearch
 ################################################################################
+if (WINDOWS)
+  set(RCFILE Maintenance/json.rc)
+endif ()
 
 set(ARANGODB_TESTS_SOURCES
   Agency/ActiveFailoverTest.cpp
@@ -20,9 +23,12 @@ set(ARANGODB_TESTS_SOURCES
   Agency/RemoveFollowerTest.cpp
   Agency/StoreTest.cpp
   Agency/SupervisionTest.cpp
-  Aql/AqlHelper.cpp
-  Aql/AqlItemRowTest.cpp
   Aql/AllRowsFetcherTest.cpp
+  Aql/AqlHelper.cpp
+  Aql/AqlItemBlockTest.cpp
+  Aql/AqlItemRowPrinter.cpp
+  Aql/AqlItemRowTest.cpp
+  Aql/AqlShadowRowTest.cpp
   Aql/CalculationExecutorTest.cpp
   Aql/CountCollectExecutorTest.cpp
   Aql/DateFunctionsTest.cpp
@@ -33,13 +39,20 @@ set(ARANGODB_TESTS_SOURCES
   Aql/EnumerateListExecutorTest.cpp
   Aql/ExecutionBlockImplTest.cpp
   Aql/ExecutionBlockImplTestInstances.cpp
+  Aql/ExecutionNodeTest.cpp
   Aql/ExecutorTestHelper.cpp
   Aql/FilterExecutorTest.cpp
   Aql/HashedCollectExecutorTest.cpp
   Aql/IdExecutorTest.cpp
+  Aql/IndexNodeTest.cpp
+  Aql/InsertExecutorTest.cpp
   Aql/LimitExecutorTest.cpp
+  Aql/MultiDepFetcherHelper.cpp
   Aql/MultiDependencySingleRowFetcherTest.cpp
   Aql/NoResultsExecutorTest.cpp
+  Aql/QueryHelper.cpp
+  Aql/RemoveExecutorTest.cpp
+  Aql/ReplaceExecutorTest.cpp
   Aql/ReturnExecutorTest.cpp
   Aql/RowFetcherHelper.cpp
   Aql/ShortestPathExecutorTest.cpp
@@ -47,14 +60,17 @@ set(ARANGODB_TESTS_SOURCES
   Aql/SortExecutorTest.cpp
   Aql/SortLimit-test.cpp
   Aql/SortedCollectExecutorTest.cpp
+  Aql/SpliceSubqueryOptimizerRuleTest.cpp
+  Aql/SubqueryEndExecutorTest.cpp
+  Aql/SubqueryStartExecutorTest.cpp
   Aql/TestEmptyExecutorHelper.cpp
   Aql/TestExecutorHelper.cpp
   Aql/TraversalExecutorTest.cpp
+  Aql/UpdateExecutorTest.cpp
+  Aql/UpsertExecutorTest.cpp
   Aql/VelocyPackHelper.cpp
   Aql/WaitingExecutionBlockMock.cpp
   Auth/UserManagerTest.cpp
-  Basics/associative-multi-pointer-test.cpp
-  Basics/associative-multi-pointer-nohashcache-test.cpp
   Basics/conversions-test.cpp
   Basics/csv-test.cpp
   Basics/datetime.cpp
@@ -63,21 +79,21 @@ set(ARANGODB_TESTS_SOURCES
   Basics/hashes-test.cpp
   Basics/icu-helper.cpp
   Basics/json-test.cpp
-  Basics/skiplist-test.cpp
+  Basics/overload-test.cpp
   Basics/priorityqueue-test.cpp
   Basics/string-buffer-test.cpp
+  Basics/string-test.cpp
   Basics/string-utf8-normalize-test.cpp
   Basics/string-utf8-test.cpp
-  Basics/string-test.cpp
   Basics/structure-size-test.cpp
   Basics/vector-test.cpp
   Basics/ApplicationServerTest.cpp
   Basics/AttributeNameParserTest.cpp
   Basics/CompileTimeStrlenTest.cpp
   Basics/EndpointTest.cpp
-  Basics/HashSetTest.cpp
   Basics/InifileParserTest.cpp
   Basics/LoggerTest.cpp
+  Basics/RandomTest.cpp
   Basics/StringBufferTest.cpp
   Basics/StringUtilsTest.cpp
   Basics/VelocyPackHelper-test.cpp
@@ -96,11 +112,15 @@ set(ARANGODB_TESTS_SOURCES
   Cache/TransactionalStore.cpp
   Cache/TransactionManager.cpp
   Cache/TransactionsWithBackingStore.cpp
+  Cluster/AgencyPathsTest.cpp
   Cluster/ClusterCommTest.cpp
   Cluster/ClusterHelpersTest.cpp
-  Cluster/ClusterInfo-test.cpp
   Cluster/ClusterRepairsTest.cpp
   Cluster/RebootTrackerTest.cpp
+  Containers/associative-multi-pointer-test.cpp
+  Containers/associative-multi-pointer-nohashcache-test.cpp
+  Containers/HashSetTest.cpp
+  Containers/skiplist-test.cpp
   Futures/Future-test.cpp
   Futures/Promise-test.cpp
   Futures/Try-test.cpp
@@ -125,6 +145,8 @@ set(ARANGODB_TESTS_SOURCES
   IResearch/IResearchComparer-test.cpp
   IResearch/IResearchDocument-test.cpp
   IResearch/IResearchFeature-test.cpp
+  IResearch/IResearchFilterArrayIn-test.cpp
+  IResearch/IResearchFilterArrayInterval-test.cpp
   IResearch/IResearchFilterBoolean-test.cpp
   IResearch/IResearchFilterCompare-test.cpp
   IResearch/IResearchFilterFunction-test.cpp
@@ -135,8 +157,8 @@ set(ARANGODB_TESTS_SOURCES
   IResearch/IResearchLinkHelper-test.cpp
   IResearch/IResearchLinkMeta-test.cpp
   IResearch/IResearchOrder-test.cpp
-  IResearch/IResearchQueryAnd-test.cpp
   IResearch/IResearchQueryAggregate-test.cpp
+  IResearch/IResearchQueryAnd-test.cpp
   IResearch/IResearchQueryBooleanTerm-test.cpp
   IResearch/IResearchQueryComplexBoolean-test.cpp
   IResearch/IResearchQueryExists-test.cpp
@@ -170,8 +192,13 @@ set(ARANGODB_TESTS_SOURCES
   Maintenance/MaintenanceFeatureTest.cpp
   Maintenance/MaintenanceRestHandlerTest.cpp
   Maintenance/MaintenanceTest.cpp
+  ${RCFILE}
+  Mocks/LogLevels.cpp
   Mocks/StorageEngineMock.cpp
   Mocks/Servers.cpp
+  Network/ConnectionPoolTest.cpp
+  Network/MethodsTest.cpp
+  Network/UtilsTest.cpp
   Pregel/typedbuffer.cpp
   Replication/ReplicationClientsProgressTrackerTest.cpp
   RestHandler/RestAnalyzerHandler-test.cpp
@@ -226,23 +253,32 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL GNU)
 endif()
 
 target_link_libraries(arangodbtests
+  arango_agency
+  arango_cluster_engine
+  arango_mmfiles
+  arango_rocksdb
+  arango_v8server
   arangoserver
-  rocksdb
   fuerte
-  gtest
+  rocksdb
   snappy
+  gtest
+  boost_boost
 )
+
+if (USE_ENTERPRISE)
+  target_link_libraries(arangodbtests arango_rclone)
+endif()
 
 target_include_directories(arangodbtests PRIVATE
   ${INCLUDE_DIRECTORIES}
 )
 
-
-if(MSVC)
+if(MSVC AND FAIL_ON_WARNINGS)
   target_compile_options(arangodbtests PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
 endif()
 
-if (DARWIN)
+if (DARWIN AND FAIL_ON_WARNINGS)
   # Missing Braces is broken in older CLangs - disable them here.
   target_compile_options(arangodbtests PRIVATE -Werror -Wno-missing-braces)
 endif()
@@ -254,6 +290,11 @@ target_include_directories(arangodbtests SYSTEM PRIVATE
   ${CMAKE_SOURCE_DIR}/3rdParty/fakeit-gtest
   ${CMAKE_SOURCE_DIR}/3rdParty/rocksdb/${ARANGO_ROCKSDB_VERSION}/third-party/gtest-1.8.1/fused-src
 )
+
+# older macos has no uncaught exceptions
+if (DARWIN)
+  target_compile_definitions(arangodbtests PUBLIC CATCH_CONFIG_NO_CPP17_UNCAUGHT_EXCEPTIONS)
+endif()
 
 find_package(OpenSSL REQUIRED)
 list(APPEND IRESEARCH_LIB_RESOURCES

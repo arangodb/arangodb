@@ -31,18 +31,21 @@
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Aql/OutputAqlItemRow.h"
 #include "Aql/Query.h"
 #include "Aql/SingleRowFetcher.h"
-#include "Basics/Common.h"
+#include "Aql/Stats.h"
 #include "Transaction/Methods.h"
 #include "Utils/OperationCursor.h"
-
-#include <lib/Logger/LogMacros.h>
 
 #include <utility>
 
 using namespace arangodb;
 using namespace arangodb::aql;
+
+constexpr bool EnumerateCollectionExecutor::Properties::preservesOrder;
+constexpr BlockPassthrough EnumerateCollectionExecutor::Properties::allowsBlockPassthrough;
+constexpr bool EnumerateCollectionExecutor::Properties::inputSizeRestrictsOutputSize;
 
 EnumerateCollectionExecutorInfos::EnumerateCollectionExecutorInfos(
     RegisterId outputRegister, RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
@@ -51,23 +54,70 @@ EnumerateCollectionExecutorInfos::EnumerateCollectionExecutorInfos(
     // cppcheck-suppress passedByValue
     std::unordered_set<RegisterId> registersToKeep, ExecutionEngine* engine,
     Collection const* collection, Variable const* outVariable, bool produceResult,
-    std::vector<std::string> const& projections, transaction::Methods* trxPtr,
+    Expression* filter,
+    std::vector<std::string> const& projections, 
     std::vector<size_t> const& coveringIndexAttributePositions,
     bool useRawDocumentPointers, bool random)
     : ExecutorInfos(make_shared_unordered_set(),
                     make_shared_unordered_set({outputRegister}),
                     nrInputRegisters, nrOutputRegisters,
                     std::move(registersToClear), std::move(registersToKeep)),
-      _outputRegisterId(outputRegister),
       _engine(engine),
       _collection(collection),
       _outVariable(outVariable),
+      _filter(filter),
       _projections(projections),
-      _trxPtr(trxPtr),
       _coveringIndexAttributePositions(coveringIndexAttributePositions),
+      _outputRegisterId(outputRegister),
       _useRawDocumentPointers(useRawDocumentPointers),
       _produceResult(produceResult),
       _random(random) {}
+
+ExecutionEngine* EnumerateCollectionExecutorInfos::getEngine() {
+  return _engine;
+}
+
+Collection const* EnumerateCollectionExecutorInfos::getCollection() const {
+  return _collection;
+}
+
+Variable const* EnumerateCollectionExecutorInfos::getOutVariable() const {
+  return _outVariable;
+}
+
+Query* EnumerateCollectionExecutorInfos::getQuery() const {
+  return _engine->getQuery();
+}
+
+transaction::Methods* EnumerateCollectionExecutorInfos::getTrxPtr() const {
+  return _engine->getQuery()->trx();
+}
+
+Expression* EnumerateCollectionExecutorInfos::getFilter() const {
+  return _filter;
+}
+
+std::vector<std::string> const& EnumerateCollectionExecutorInfos::getProjections() const noexcept {
+  return _projections;
+}
+
+std::vector<size_t> const& EnumerateCollectionExecutorInfos::getCoveringIndexAttributePositions() const
+    noexcept {
+  return _coveringIndexAttributePositions;
+}
+
+bool EnumerateCollectionExecutorInfos::getProduceResult() const {
+  return _produceResult;
+}
+
+bool EnumerateCollectionExecutorInfos::getUseRawDocumentPointers() const {
+  return _useRawDocumentPointers;
+}
+
+bool EnumerateCollectionExecutorInfos::getRandom() const { return _random; }
+RegisterId EnumerateCollectionExecutorInfos::getOutputRegisterId() const {
+  return _outputRegisterId;
+}
 
 EnumerateCollectionExecutor::EnumerateCollectionExecutor(Fetcher& fetcher, Infos& infos)
     : _infos(infos),
@@ -75,12 +125,13 @@ EnumerateCollectionExecutor::EnumerateCollectionExecutor(Fetcher& fetcher, Infos
       _documentProducer(nullptr),
       _documentProducingFunctionContext(_input, nullptr, _infos.getOutputRegisterId(),
                                         _infos.getProduceResult(),
-                                        _infos.getProjections(), _infos.getTrxPtr(),
+                                        _infos.getQuery(), _infos.getFilter(),
+                                        _infos.getProjections(), 
                                         _infos.getCoveringIndexAttributePositions(),
                                         true, _infos.getUseRawDocumentPointers(), false),
       _state(ExecutionState::HASMORE),
-      _input(InputAqlItemRow{CreateInvalidInputRowHint{}}),
-      _cursorHasMore(false) {
+      _cursorHasMore(false),
+      _input(InputAqlItemRow{CreateInvalidInputRowHint{}}) {
   _cursor = std::make_unique<OperationCursor>(
       _infos.getTrxPtr()->indexScan(_infos.getCollection()->name(),
                                     (_infos.getRandom()
@@ -95,8 +146,9 @@ EnumerateCollectionExecutor::EnumerateCollectionExecutor(Fetcher& fetcher, Infos
                                        std::to_string(maxWait) + ")");
   }
   if (_infos.getProduceResult()) {
-    this->setProducingFunction(buildCallback<false>(_documentProducingFunctionContext));
+    _documentProducer = buildDocumentCallback<false, false>(_documentProducingFunctionContext);
   }
+  _documentSkipper = buildDocumentCallback<false, true>(_documentProducingFunctionContext);
 }
 
 EnumerateCollectionExecutor::~EnumerateCollectionExecutor() = default;
@@ -106,16 +158,9 @@ std::pair<ExecutionState, EnumerateCollectionStats> EnumerateCollectionExecutor:
   TRI_IF_FAILURE("EnumerateCollectionExecutor::produceRows") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-  /*  // Allocate this on the stack, not the heap.
-    struct {
-      EnumerateCollectionExecutor& executor;
-      OutputAqlItemRow& output;
-      EnumerateCollectionStats stats;
-    } context{*this, output, {}};
-    // just a shorthand
-    EnumerateCollectionStats& stats = context.stats;*/
   EnumerateCollectionStats stats{};
   TRI_ASSERT(_documentProducingFunctionContext.getAndResetNumScanned() == 0);
+  TRI_ASSERT(_documentProducingFunctionContext.getAndResetNumFiltered() == 0);
   _documentProducingFunctionContext.setOutputRow(&output);
 
   while (true) {
@@ -149,12 +194,14 @@ std::pair<ExecutionState, EnumerateCollectionStats> EnumerateCollectionExecutor:
     } else {
       // performance optimization: we do not need the documents at all,
       // so just call next()
+      TRI_ASSERT(!_documentProducingFunctionContext.hasFilter());
       _cursorHasMore =
           _cursor->next(getNullCallback<false>(_documentProducingFunctionContext),
                         output.numRowsLeft() /*atMost*/);
     }
 
     stats.incrScanned(_documentProducingFunctionContext.getAndResetNumScanned());
+    stats.incrFiltered(_documentProducingFunctionContext.getAndResetNumFiltered());
 
     if (_state == ExecutionState::DONE && !_cursorHasMore) {
       return {_state, stats};
@@ -163,7 +210,8 @@ std::pair<ExecutionState, EnumerateCollectionStats> EnumerateCollectionExecutor:
   }
 }
 
-std::tuple<ExecutionState, EnumerateCollectionStats, size_t> EnumerateCollectionExecutor::skipRows(size_t const toSkip) {
+std::tuple<ExecutionState, EnumerateCollectionStats, size_t> EnumerateCollectionExecutor::skipRows(
+    size_t const toSkip) {
   EnumerateCollectionStats stats{};
   TRI_IF_FAILURE("EnumerateCollectionExecutor::skipRows") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -173,12 +221,12 @@ std::tuple<ExecutionState, EnumerateCollectionStats, size_t> EnumerateCollection
     std::tie(_state, _input) = _fetcher.fetchRow();
 
     if (_state == ExecutionState::WAITING) {
-      return std::make_tuple(_state, stats, 0); // tupple, cannot use initializer list due to build failure
+      return std::make_tuple(_state, stats, 0);  // tuple, cannot use initializer list due to build failure
     }
 
     if (!_input) {
       TRI_ASSERT(_state == ExecutionState::DONE);
-      return std::make_tuple(_state, stats, 0); // tupple, cannot use initializer list due to build failure
+      return std::make_tuple(_state, stats, 0);  // tuple, cannot use initializer list due to build failure
     }
 
     _cursor->reset();
@@ -186,17 +234,31 @@ std::tuple<ExecutionState, EnumerateCollectionStats, size_t> EnumerateCollection
   }
 
   TRI_ASSERT(_input.isInitialized());
+  TRI_ASSERT(_documentProducingFunctionContext.getAndResetNumScanned() == 0);
+  TRI_ASSERT(_documentProducingFunctionContext.getAndResetNumFiltered() == 0);
 
   uint64_t actuallySkipped = 0;
-  _cursor->skip(toSkip, actuallySkipped);
+  if (_infos.getFilter() == nullptr) {
+    _cursor->skip(toSkip, actuallySkipped);
+    stats.incrScanned(actuallySkipped);
+    _documentProducingFunctionContext.getAndResetNumScanned();
+  } else {
+    _cursor->nextDocument(_documentSkipper, toSkip);
+    size_t filtered = _documentProducingFunctionContext.getAndResetNumFiltered();
+    size_t scanned = _documentProducingFunctionContext.getAndResetNumScanned();
+    TRI_ASSERT(scanned >= filtered);
+    stats.incrFiltered(filtered);
+    stats.incrScanned(scanned);
+    actuallySkipped = scanned - filtered;
+  }
   _cursorHasMore = _cursor->hasMore();
-  stats.incrScanned(actuallySkipped);
 
   if (_state == ExecutionState::DONE && !_cursorHasMore) {
-    return std::make_tuple(ExecutionState::DONE, stats, actuallySkipped); // tupple, cannot use initializer list due to build failure
+    return std::make_tuple(ExecutionState::DONE, stats,
+                           actuallySkipped);  // tuple, cannot use initializer list due to build failure
   }
 
-  return std::make_tuple(ExecutionState::HASMORE, stats, actuallySkipped); // tupple, cannot use initializer list due to build failure
+  return std::make_tuple(ExecutionState::HASMORE, stats, actuallySkipped);  // tuple, cannot use initializer list due to build failure
 }
 
 void EnumerateCollectionExecutor::initializeCursor() {
@@ -205,6 +267,14 @@ void EnumerateCollectionExecutor::initializeCursor() {
   setAllowCoveringIndexOptimization(true);
   _cursorHasMore = false;
   _cursor->reset();
+}
+
+void EnumerateCollectionExecutor::setAllowCoveringIndexOptimization(bool const allowCoveringIndexOptimization) {
+  _documentProducingFunctionContext.setAllowCoveringIndexOptimization(allowCoveringIndexOptimization);
+}
+
+bool EnumerateCollectionExecutor::getAllowCoveringIndexOptimization() const noexcept {
+  return _documentProducingFunctionContext.getAllowCoveringIndexOptimization();
 }
 
 #ifndef USE_ENTERPRISE

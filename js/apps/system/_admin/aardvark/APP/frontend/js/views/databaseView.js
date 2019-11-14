@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global window, Backbone, $, arangoHelper, templateEngine, Joi */
+/* global window, Backbone, $, arangoHelper, templateEngine, Joi, frontendConfig */
 (function () {
   'use strict';
 
@@ -70,7 +70,7 @@
 
       var callback = function (error, db) {
         if (error) {
-          arangoHelper.arangoError('DB', 'Could not get current db properties');
+          arangoHelper.arangoError('DB', 'Could not get current database properties');
         } else {
           self.currentDB = db;
 
@@ -134,12 +134,12 @@
       return $('#selectDatabases').val();
     },
 
-    handleError: function (status, text, dbname) {
-      if (status === 409) {
+    handleError: function (err, dbname) {
+      if (err.status === 409) {
         arangoHelper.arangoError('DB', 'Database ' + dbname + ' already exists.');
-      } else if (status === 400) {
-        arangoHelper.arangoError('DB', 'Invalid Parameters');
-      } else if (status === 403) {
+      } else if (err.status === 400) {
+        arangoHelper.arangoError('DB', 'Invalid Parameters: ' + err.responseJSON.errorMessage);
+      } else if (err.status === 403) {
         arangoHelper.arangoError('DB', 'Insufficent rights. Execute this from _system database');
       }
     },
@@ -154,11 +154,11 @@
         return false;
       }
       if (db.indexOf('_') === 0) {
-        arangoHelper.arangoError('DB ', 'Databasename should not start with _');
+        arangoHelper.arangoError('DB ', 'Database name should not start with _');
         return false;
       }
       if (!db.match(/^[a-zA-Z][a-zA-Z0-9_-]*$/)) {
-        arangoHelper.arangoError('DB', 'Databasename may only contain numbers, letters, _ and -');
+        arangoHelper.arangoError('DB', 'Database name may only contain numbers, letters, _ and -');
         return false;
       }
       return true;
@@ -186,8 +186,17 @@
       var dbname = $('#newDatabaseName').val();
       var userName = $('#newUser').val();
 
+      var sharding = $('#newSharding').val();
+      var replicationFactor = $('#new-replication-factor').val();
+      var writeConcern = $('#new-write-concern').val();
+
       var options = {
         name: dbname,
+        "options" : {
+          "sharding" : sharding,
+          "replicationFactor" : Number(replicationFactor),
+          "minReplicationFactor" : Number(writeConcern),
+        },
         users: [{
           username: userName
         }]
@@ -195,7 +204,7 @@
 
       this.collection.create(options, {
         error: function (data, err) {
-          self.handleError(err.status, err.statusText, dbname);
+          self.handleError(err, dbname);
         },
         success: function (data) {
           if (window.location.hash === '#databases') {
@@ -326,9 +335,28 @@
     },
 
     createAddDatabaseModal: function () {
+      var self = this;
+      $.ajax({
+        type: 'GET',
+        cache: false,
+        url: arangoHelper.databaseUrl('/_admin/server/databaseDefaults'), //get default properties
+        contentType: 'application/json',
+        processData: false,
+        success: function (data) {
+          self.createAddDatabaseModalReal(data);
+        },
+        error: function () {
+          arangoHelper.arangoError('Engine', 'Could not fetch ArangoDB Database defaults.');
+        }
+      });
+    },
+
+    createAddDatabaseModalReal: function (data) {
+      var dbDefaultProperties = data;
       var buttons = [];
       var tableContent = [];
 
+      // Database Name
       tableContent.push(
         window.modalView.createTextEntry(
           'newDatabaseName',
@@ -354,6 +382,67 @@
         )
       );
 
+      if (window.App.isCluster) {
+        // (id, label, value, info, placeholder, mandatory, regexp) 
+        // ReplicationFactor
+        tableContent.push(
+          window.modalView.createTextEntry(
+            'new-replication-factor',
+            'Replication factor',
+            dbDefaultProperties.replicationFactor,
+            'Numeric value. Must be at least 1. Total number of copies of the data in the cluster',
+            'Default replication factor',
+            false,
+            [
+              {
+                rule: Joi.string().allow('').optional().regex(/^([1-9]|10)$/),
+                msg: 'Must be a number between 1 and 10.'
+              }
+            ]
+          )
+        );
+
+        tableContent.push(
+          window.modalView.createTextEntry(
+            'new-write-concern',
+            'Minimum replication factor',
+            dbDefaultProperties.minReplicationFactor,
+            'Numeric value. Must be at least 1 and must be smaller or equal compared to the replication factor. Minimal number of copies of the data in the cluster to be in sync in order to allow writes.',
+            'Default minimum replication factor',
+            false,
+            [
+              {
+                rule: Joi.string().allow('').optional().regex(/^[1-9]*$/),
+                msg: 'Must be a number. Must be at least 1 and has to be smaller or equal compared to the replicationFactor.'
+              }
+            ]
+          )
+        );
+      }
+
+      // OneShard
+      //if enterprise
+      if (window.App.isCluster && frontendConfig.isEnterprise) {
+        var sharding = [ { value : "",
+                           label : "flexible"
+                         },
+                         { value : "single",
+                           label : "single"
+                         }
+                       ];
+
+        tableContent.push(
+          window.modalView.createSelectEntry(
+            'newSharding',
+            'Sharding',
+            'flexible',
+            'some nice description TODO',
+            sharding
+          )
+        );
+      }
+
+      // User Set-UP
       var users = [];
       window.App.userCollection.each(function (user) {
         users.push({
@@ -376,6 +465,7 @@
           users
         )
       );
+
       buttons.push(
         window.modalView.createSuccessButton(
           'Create',

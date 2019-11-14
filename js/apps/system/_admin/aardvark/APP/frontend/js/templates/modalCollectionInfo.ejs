@@ -1,6 +1,10 @@
 <%
-    var figuresData = content.figures;
+    var figuresData = content.figures || {};
     var revision    = content.revision;
+
+    if (!figuresData.figures) {
+      figuresData.figures = {};
+    }
 %>
 
         <table id="collectionInfoTable" class="arango-table">
@@ -75,42 +79,9 @@
 
           <% if (figuresData.numberOfShards) { %>
             <tr>
-              <th class="collectionInfoTh2">Shards:</th>
+              <th class="collectionInfoTh2">Number of shards:</th>
               <th class="collectionInfoTh">
                 <div class="modal-text"><%=figuresData.numberOfShards%></div>
-              </th>
-              <th class="collectionInfoTh">
-              </th>
-            </tr>
-          <% } %>
-          
-          <% if (figuresData.distributeShardsLike) { %>
-            <tr>
-              <th class="collectionInfoTh2">Distribute shards like:</th>
-              <th class="collectionInfoTh">
-                <div class="modal-text"><%=figuresData.distributeShardsLike%></div>
-              </th>
-              <th class="collectionInfoTh">
-              </th>
-            </tr>
-          <% } %>
-
-          <% if (figuresData.shardKeys) { %>
-            <tr>
-              <th class="collectionInfoTh2">Shard keys:</th>
-              <th class="collectionInfoTh">
-                <div class="modal-text"><%=JSON.stringify(figuresData.shardKeys)%></div>
-              </th>
-              <th class="collectionInfoTh">
-              </th>
-            </tr>
-          <% } %>
-          
-          <% if (figuresData.smartJoinAttribute) { %>
-            <tr>
-              <th class="collectionInfoTh2">Smart join attribute:</th>
-              <th class="collectionInfoTh">
-                <div class="modal-text"><%=figuresData.smartJoinAttribute%></div>
               </th>
               <th class="collectionInfoTh">
               </th>
@@ -127,7 +98,40 @@
               </th>
             </tr>
           <% } %>
+          
+          <% if (figuresData.shardKeys) { %>
+            <tr>
+              <th class="collectionInfoTh2">Shard keys:</th>
+              <th class="collectionInfoTh">
+                <div class="modal-text"><%=JSON.stringify(figuresData.shardKeys)%></div>
+              </th>
+              <th class="collectionInfoTh">
+              </th>
+            </tr>
+          <% } %>
 
+          <% if (figuresData.distributeShardsLike) { %>
+            <tr>
+              <th class="collectionInfoTh2">Distribute shards like:</th>
+              <th class="collectionInfoTh">
+                <div class="modal-text"><%=figuresData.distributeShardsLike%></div>
+              </th>
+              <th class="collectionInfoTh">
+              </th>
+            </tr>
+          <% } %>
+
+          <% if (figuresData.smartJoinAttribute) { %>
+            <tr>
+              <th class="collectionInfoTh2">Smart join attribute:</th>
+              <th class="collectionInfoTh">
+                <div class="modal-text"><%=figuresData.smartJoinAttribute%></div>
+              </th>
+              <th class="collectionInfoTh">
+              </th>
+            </tr>
+          <% } %>
+          
           <% if (figuresData.indexBuckets) { %>
             <tr>
               <th class="collectionInfoTh2">Index buckets:</th>

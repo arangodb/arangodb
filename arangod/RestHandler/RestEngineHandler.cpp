@@ -33,8 +33,9 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestEngineHandler::RestEngineHandler(GeneralRequest* request, GeneralResponse* response)
-    : RestBaseHandler(request, response) {}
+RestEngineHandler::RestEngineHandler(application_features::ApplicationServer& server,
+                                     GeneralRequest* request, GeneralResponse* response)
+    : RestBaseHandler(server, request, response) {}
 
 RestStatus RestEngineHandler::execute() {
   // extract the sub-request type
@@ -63,12 +64,10 @@ void RestEngineHandler::handleGet() {
     return;
   }
 
-  ServerSecurityFeature* security =
-      application_features::ApplicationServer::getFeature<ServerSecurityFeature>(
-          "ServerSecurity");
-  TRI_ASSERT(security != nullptr);
+  auto& server = application_features::ApplicationServer::server();
+  ServerSecurityFeature& security = server.getFeature<ServerSecurityFeature>();
 
-  if (!security->canAccessHardenedApi()) {
+  if (!security.canAccessHardenedApi()) {
     // dont leak information about server internals here
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
     return; 

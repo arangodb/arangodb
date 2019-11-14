@@ -60,10 +60,10 @@ arangodb::Result canUseAnalyzers( // validate
   arangodb::iresearch::IResearchLinkMeta const& meta, // metadata
   TRI_vocbase_t const& defaultVocbase // default vocbase
 ) {
-  auto* sysDatabase = arangodb::application_features::ApplicationServer::lookupFeature< // find feature
-    arangodb::SystemDatabaseFeature // featue type
-  >();
-  auto sysVocbase = sysDatabase ? sysDatabase->use() : nullptr;
+  auto& server = defaultVocbase.server();
+  auto sysVocbase = server.hasFeature<arangodb::SystemDatabaseFeature>()
+                        ? server.getFeature<arangodb::SystemDatabaseFeature>().use()
+                        : nullptr;
 
   for (auto& entry: meta._analyzers) {
     if (!entry._pool) {
@@ -225,6 +225,9 @@ arangodb::Result modifyLinks( // modify links
     arangodb::velocypack::Slice const& links, // modified link definitions
     std::unordered_set<TRI_voc_cid_t> const& stale = {} // stale links
 ) {
+  LOG_TOPIC("4bdd2", DEBUG, arangodb::iresearch::TOPIC)
+      << "link modification request for view '" << view.name() << "', original definition:" << links.toString();
+
   if (!links.isObject()) {
     return arangodb::Result( // result
       TRI_ERROR_BAD_PARAMETER, // code
@@ -288,6 +291,9 @@ arangodb::Result modifyLinks( // modify links
     normalized.close();
     link = normalized.slice(); // use normalized definition for index creation
 
+    LOG_TOPIC("4bdd1", DEBUG, arangodb::iresearch::TOPIC)
+        << "link modification request for view '" << view.name() << "', normalized definition:" << link.toString();
+
     static const std::function<bool(irs::string_ref const& key)> acceptor = [](
         irs::string_ref const& key // json key
     )->bool {
@@ -319,7 +325,7 @@ arangodb::Result modifyLinks( // modify links
     std::string error;
     arangodb::iresearch::IResearchLinkMeta linkMeta;
 
-    if (!linkMeta.init(namedJson.slice(), true, error)) { // validated and normalized with 'isCreation=true' above via normalize(...)
+    if (!linkMeta.init(namedJson.slice(), true, error, &view.vocbase())) { // validated and normalized with 'isCreation=true' above via normalize(...)
       return arangodb::Result(
         TRI_ERROR_BAD_PARAMETER,
         std::string("error parsing link parameters from json for arangosearch view '") + view.name() + "' collection '" + collectionName + "' error '" + error + "'"
@@ -352,7 +358,7 @@ arangodb::Result modifyLinks( // modify links
     return arangodb::Result(); // nothing to update
   }
 
-  arangodb::ExecContextScope scope(arangodb::ExecContext::superuser()); // required to remove links from non-RW collections
+  arangodb::ExecContextSuperuserScope scope; // required to remove links from non-RW collections
 
   {
     std::unordered_set<TRI_voc_cid_t> collectionsToRemove; // track removal for potential reindex
@@ -768,8 +774,7 @@ namespace iresearch {
     }
 
     // check link auth as per https://github.com/arangodb/backlog/issues/459
-    if (arangodb::ExecContext::CURRENT // have context
-        && !arangodb::ExecContext::CURRENT->canUseCollection(vocbase.name(), collection->name(), arangodb::auth::Level::RO)) {
+    if (!arangodb::ExecContext::current().canUseCollection(vocbase.name(), collection->name(), arangodb::auth::Level::RO)) {
       return arangodb::Result( // result
         TRI_ERROR_FORBIDDEN, // code
         std::string("while validating arangosearch link definition, error: collection '") + collectionName.copyString() + "' not authorized for read access"
@@ -798,14 +803,7 @@ namespace iresearch {
             continue; 
           }
           auto analyzerVocbase = IResearchAnalyzerFeature::extractVocbaseName(analyzer._pool->name());
-          if (ADB_UNLIKELY(analyzerVocbase.empty())) { 
-            // in case of absent system database analyzer name will not be normalized
-            // and may not contain database prefix. But in that case analyzer will be
-            // considered local for current database and this is perefectly fine.
-            continue;
-          }
-          if (analyzerVocbase != arangodb::StaticStrings::SystemDatabase &&
-              analyzerVocbase != currentVocbase) {
+          if (!IResearchAnalyzerFeature::analyzerReachableFromDb(analyzerVocbase, currentVocbase, true)) {
             return arangodb::Result(
                 TRI_ERROR_BAD_PARAMETER,
                 std::string("Analyzer '").append(analyzer._pool->name())

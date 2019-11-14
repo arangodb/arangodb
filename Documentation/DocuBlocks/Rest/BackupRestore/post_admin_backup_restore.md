@@ -8,8 +8,6 @@ Restores a consistent backup from a
 snapshot in time, with a given id. The backup snapshot must reside on
 the ArangoDB service locally.
 
-The request may contain an object with the following attributes:
-
 @RESTBODYPARAM{id,string,required,string}
 The id of the backup to restore from.
 
@@ -55,16 +53,22 @@ are detailed in the returned error document.
     var startTime = require("internal").time();
     var failureSeen = false;
     while (require("internal").time() - startTime < 10) {
-      var r = internal.arango.GET("/_api/version");
-      if (r.error === true) {
-        failureSeen = true;
-      } else {
-        if (failureSeen) {
-          break;
+      try {
+        // GET can throw exceptions
+        var r = internal.arango.GET("/_api/version");
+        if (r.error === true) {
+          failureSeen = true;
+        } else {
+          if (failureSeen) {
+            break;
+          }
         }
+      } catch(err) {
       }
       require("internal").wait(0.1);
     }
 @END_EXAMPLE_ARANGOSH_RUN
+
+The `result` object returns the `id` of the fail safe hot backup to return to, if necessary. And the all telling `isCluster` boolean attribute.
 
 @endDocuBlock

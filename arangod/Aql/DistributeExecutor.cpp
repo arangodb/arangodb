@@ -22,7 +22,12 @@
 
 #include "DistributeExecutor.h"
 
+#include "Aql/ClusterNodes.h"
 #include "Aql/Collection.h"
+#include "Aql/ExecutionEngine.h"
+#include "Aql/Query.h"
+#include "Aql/RegisterPlan.h"
+#include "Basics/StaticStrings.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Collection.h>
@@ -40,6 +45,7 @@ ExecutionBlockImpl<DistributeExecutor>::ExecutionBlockImpl(
       _infos(std::move(infos)),
       _query(*engine->getQuery()),
       _collection(collection),
+      _logCol(_collection->getCollection()),
       _index(0),
       _regId(regId),
       _alternativeRegId(alternativeRegId),
@@ -73,6 +79,9 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<DistributeEx
 
 std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<DistributeExecutor>::getSomeForShardWithoutTrace(
     size_t atMost, std::string const& shardId) {
+  if (getQuery().killed()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+  }
   // NOTE: We do not need to retain these, the getOrSkipSome is required to!
   size_t skipped = 0;
   SharedAqlItemBlockPtr result = nullptr;
@@ -96,6 +105,9 @@ std::pair<ExecutionState, size_t> ExecutionBlockImpl<DistributeExecutor>::skipSo
 
 std::pair<ExecutionState, size_t> ExecutionBlockImpl<DistributeExecutor>::skipSomeForShardWithoutTrace(
     size_t atMost, std::string const& shardId) {
+  if (getQuery().killed()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+  }
   // NOTE: We do not need to retain these, the getOrSkipSome is required to!
   size_t skipped = 0;
   SharedAqlItemBlockPtr result = nullptr;
@@ -209,6 +221,7 @@ bool ExecutionBlockImpl<DistributeExecutor>::hasMoreForClientId(size_t clientId)
 /// current one.
 std::pair<ExecutionState, bool> ExecutionBlockImpl<DistributeExecutor>::getBlockForClient(
     size_t atMost, size_t clientId) {
+  
   if (_buffer.empty()) {
     _index = 0;  // position in _buffer
     _pos = 0;    // position in _buffer.at(_index)
@@ -219,6 +232,9 @@ std::pair<ExecutionState, bool> ExecutionBlockImpl<DistributeExecutor>::getBlock
 
   while (buf.size() < atMost) {
     if (_index == _buffer.size()) {
+      if (getQuery().killed()) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+      }
       auto res = getBlock(atMost);
       if (res.first == ExecutionState::WAITING) {
         return {res.first, false};
@@ -257,6 +273,10 @@ std::pair<ExecutionState, bool> ExecutionBlockImpl<DistributeExecutor>::getBlock
 /// attributes <shardKeys> of the Aql value <val> to determine to which shard
 /// the row should be sent and return its clientId
 size_t ExecutionBlockImpl<DistributeExecutor>::sendToClient(SharedAqlItemBlockPtr cur) {
+  if (getQuery().killed()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+  }
+
   // inspect cur in row _pos and check to which shard it should be sent . .
   AqlValue val = cur->getValueReference(_pos, _regId);
 
@@ -264,7 +284,7 @@ size_t ExecutionBlockImpl<DistributeExecutor>::sendToClient(SharedAqlItemBlockPt
 
   bool usedAlternativeRegId = false;
 
-  if (input.isNull() && _alternativeRegId != ExecutionNode::MaxRegisterId) {
+  if (input.isNull() && _alternativeRegId != RegisterPlan::MaxRegisterId) {
     // value is set, but null
     // check if there is a second input register available (UPSERT makes use of
     // two input registers,
@@ -343,20 +363,28 @@ size_t ExecutionBlockImpl<DistributeExecutor>::sendToClient(SharedAqlItemBlockPt
   }
 
   std::string shardId;
-  auto collInfo = _collection->getCollection();
-
-  int res = collInfo->getResponsibleShard(value, true, shardId);
+  int res = _logCol->getResponsibleShard(value, true, shardId);
 
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
   }
 
   TRI_ASSERT(!shardId.empty());
-
+  if (_type == ScatterNode::ScatterType::SERVER) {
+    // Special case for server based distribution.
+    shardId = _collection->getServerForShard(shardId);
+    TRI_ASSERT(!shardId.empty());
+  }
   return getClientId(shardId);
 }
 
+Query const& ExecutionBlockImpl<DistributeExecutor>::getQuery() const noexcept { return _query; }
+
 /// @brief create a new document key
 std::string ExecutionBlockImpl<DistributeExecutor>::createKey(VPackSlice input) const {
-  return _collection->getCollection()->createKey(input);
+  return _logCol->createKey(input);
+}
+
+ExecutorInfos const& ExecutionBlockImpl<DistributeExecutor>::infos() const {
+  return _infos;
 }

@@ -25,6 +25,7 @@
 #define ARANGOD_REST_HANDLER_REST_AGENCY_PRIV_HANDLER_H 1
 
 #include "Agency/Agent.h"
+#include "Logger/LogMacros.h"
 #include "RestHandler/RestBaseHandler.h"
 
 namespace arangodb {
@@ -58,7 +59,8 @@ struct sto<uint32_t> {
 
 class RestAgencyPrivHandler : public arangodb::RestBaseHandler {
  public:
-  RestAgencyPrivHandler(GeneralRequest*, GeneralResponse*, consensus::Agent*);
+  RestAgencyPrivHandler(application_features::ApplicationServer&,
+                        GeneralRequest*, GeneralResponse*, consensus::Agent*);
 
  public:
   char const* name() const override final { return "RestAgencyPrivHandler"; }

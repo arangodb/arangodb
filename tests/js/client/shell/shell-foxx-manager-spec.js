@@ -11,6 +11,7 @@ const aql = arangodb.aql;
 const basePath = fs.makeAbsolute(fs.join(require('internal').pathForTesting('common'), 'test-data', 'apps'));
 const expect = require('chai').expect;
 const download = require('internal').download;
+const origin = arango.getEndpoint().replace(/\+vpp/, '').replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:').replace(/^vst:/, 'http:');
 
 describe('Foxx Manager', function () {
   describe('(CRUD operation) ', function () {
@@ -73,7 +74,7 @@ describe('Foxx Manager', function () {
 
       it('should be available', function () {
         FoxxManager.install(setupTeardownApp, mount);
-        const url = `${arango.getEndpoint().replace('tcp://', 'http://')}${mount}/test`;
+        const url = `${origin}${mount}/test`;
         const res = download(url);
         expect(res.code).to.equal(200);
         expect(res.body).to.equal('true');
@@ -235,7 +236,7 @@ describe('Foxx Manager', function () {
           FoxxManager.install(malformedSetupApp, mount);
         } catch (e) {
         }
-        const url = `${arango.getEndpoint().replace('tcp://', 'http://')}${mount}/test`;
+        const url = `${origin}${mount}/test`;
         const res = download(url);
         expect(res.code).to.equal(404);
       });
@@ -276,7 +277,7 @@ describe('Foxx Manager', function () {
           FoxxManager.install(malformedSetupApp, mount);
         } catch (e) {
         }
-        const url = `${arango.getEndpoint().replace('tcp://', 'http://')}${mount}/test`;
+        const url = `${origin}${mount}/test`;
         const res = download(url);
         expect(res.code).to.equal(404);
       });
@@ -322,7 +323,7 @@ describe('Foxx Manager', function () {
           FoxxManager.install(malformedSetupApp, mount);
         } catch (e) {
         }
-        const url = `${arango.getEndpoint().replace('tcp://', 'http://')}${mount}/test`;
+        const url = `${origin}${mount}/test`;
         const res = download(url);
         expect(res.code).to.equal(404);
       });
@@ -352,8 +353,7 @@ describe('Foxx Manager', function () {
 
       it('should be available after install', function () {
         FoxxManager.install(setupHealApp, mount);
-        let endpoint = arango.getEndpoint().replace('tcp://', 'http://');
-        const url = endpoint + mount;
+        const url = origin + mount;
         const res = download(url);
         expect(res.code).to.equal(200);
         expect(res.body).to.equal('true');
@@ -362,8 +362,7 @@ describe('Foxx Manager', function () {
       it('should be available after replace', function () {
         { // set up some service
           FoxxManager.install(setupMinimalApp, mount);
-          let endpoint = arango.getEndpoint().replace('tcp://', 'http://');
-          const url = endpoint + mount;
+          const url = origin + mount;
           const res = download(url);
           expect(res.code).to.equal(200);
           expect(JSON.parse(res.body)).to.deep.equal({hello: 'world'});
@@ -371,8 +370,7 @@ describe('Foxx Manager', function () {
 
         { // replace it and call heal() during setup
           FoxxManager.replace(setupHealApp, mount);
-          let endpoint = arango.getEndpoint().replace('tcp://', 'http://');
-          const url = endpoint + mount;
+          const url = origin + mount;
           const res = download(url);
           expect(res.code).to.equal(200);
           expect(res.body).to.equal('true');
@@ -382,8 +380,7 @@ describe('Foxx Manager', function () {
       it('should be available after upgrade', function () {
         { // set up some service
           FoxxManager.install(setupMinimalApp, mount);
-          let endpoint = arango.getEndpoint().replace('tcp://', 'http://');
-          const url = endpoint + mount;
+          const url = origin + mount;
           const res = download(url);
           expect(res.code).to.equal(200);
           expect(JSON.parse(res.body)).to.deep.equal({hello: 'world'});
@@ -391,8 +388,7 @@ describe('Foxx Manager', function () {
 
         { // upgrade it and call heal() during setup
           FoxxManager.upgrade(setupHealApp, mount);
-          let endpoint = arango.getEndpoint().replace('tcp://', 'http://');
-          const url = endpoint + mount;
+          const url = origin + mount;
           const res = download(url);
           expect(res.code).to.equal(200);
           expect(res.body).to.equal('true');

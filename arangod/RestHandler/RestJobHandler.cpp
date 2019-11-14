@@ -28,6 +28,8 @@
 
 #include "Basics/StringUtils.h"
 #include "Basics/conversions.h"
+#include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AsyncJobManager.h"
 #include "VocBase/ticks.h"
@@ -36,9 +38,10 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestJobHandler::RestJobHandler(GeneralRequest* request, GeneralResponse* response,
+RestJobHandler::RestJobHandler(application_features::ApplicationServer& server,
+                               GeneralRequest* request, GeneralResponse* response,
                                AsyncJobManager* jobManager)
-    : RestBaseHandler(request, response), _jobManager(jobManager) {
+    : RestBaseHandler(server, request, response), _jobManager(jobManager) {
   TRI_ASSERT(jobManager != nullptr);
 }
 
@@ -74,7 +77,9 @@ void RestJobHandler::putJob() {
   uint64_t jobId = StringUtils::uint64(value);
 
   AsyncJobResult::Status status;
-  GeneralResponse* response = _jobManager->getJobResult(jobId, status, true);  // gets job and removes it from the manager
+  uint64_t messageId = _response->messageId();
+  std::unique_ptr<GeneralResponse> response;
+  response.reset(_jobManager->getJobResult(jobId, status, true));  // gets job and removes it from the manager
 
   if (status == AsyncJobResult::JOB_UNDEFINED) {
     // unknown or already fetched job
@@ -89,14 +94,13 @@ void RestJobHandler::putJob() {
   }
 
   TRI_ASSERT(status == AsyncJobResult::JOB_DONE);
-  TRI_ASSERT(response != nullptr);
-
+  TRI_ASSERT(response.get() != nullptr);
+  _response.reset(response.release());
+  _response->setMessageId(messageId);
   // return the original response
-  _response.reset(response);
 
   // plus a new header
-  static std::string const xArango = "x-arango-async-id";
-  _response->setHeaderNC(xArango, value);
+  _response->setHeaderNC(StaticStrings::AsyncId, value);
 }
 
 void RestJobHandler::putJobMethod() {
@@ -240,20 +244,24 @@ void RestJobHandler::deleteJob() {
 }
 
 /// @brief returns the short id of the server which should handle this request
-uint32_t RestJobHandler::forwardingTarget() {
+std::string RestJobHandler::forwardingTarget() {
   rest::RequestType const type = _request->requestType();
   if (type != rest::RequestType::GET && type != rest::RequestType::PUT &&
       type != rest::RequestType::DELETE_REQ) {
-    return 0;
+    return "";
   }
 
   std::vector<std::string> const& suffixes = _request->suffixes();
   if (suffixes.size() < 1) {
-    return 0;
+    return "";
   }
 
   uint64_t tick = arangodb::basics::StringUtils::uint64(suffixes[0]);
   uint32_t sourceServer = TRI_ExtractServerIdFromTick(tick);
 
-  return (sourceServer == ServerState::instance()->getShortId()) ? 0 : sourceServer;
+  if (sourceServer == ServerState::instance()->getShortId()) {
+    return "";
+  }
+  auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+  return ci.getCoordinatorByShortID(sourceServer);
 }

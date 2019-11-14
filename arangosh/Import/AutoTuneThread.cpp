@@ -58,8 +58,9 @@ using namespace arangodb::import;
 //
 ////////////////////////////////////////////////////////////////////////////////
 
-AutoTuneThread::AutoTuneThread(ImportHelper& importHelper)
-    : Thread("AutoTuneThread"),
+AutoTuneThread::AutoTuneThread(application_features::ApplicationServer& server,
+                               ImportHelper& importHelper)
+    : Thread(server, "AutoTuneThread"),
       _importHelper(importHelper),
       _nextSend(std::chrono::steady_clock::now()),
       _pace(std::chrono::milliseconds(1000 / importHelper.getThreadCount())) {}
@@ -85,7 +86,7 @@ void AutoTuneThread::run() {
       uint64_t current_max = _importHelper.getMaxUploadSize();
       current_max *= _importHelper.getThreadCount();
       uint64_t ten_second_actual = _importHelper.rotatePeriodByteCount();
-      uint64_t new_max = current_max;
+      uint64_t new_max;
 
       // is current_max way too big
       if (ten_second_actual < current_max && 10 < ten_second_actual) {

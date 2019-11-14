@@ -41,13 +41,15 @@
 
 #include "ShapeContainer.h"
 
-#include "Basics/debugging.h"
+#include "Basics/Exceptions.h"
 #include "Basics/voc-errors.h"
+#include "Geo/Ellipsoid.h"
 #include "Geo/GeoParams.h"
-#include "Geo/Utils.h"
 #include "Geo/S2/S2MultiPointRegion.h"
 #include "Geo/S2/S2MultiPolyline.h"
 #include "Geo/Shapes.h"
+#include "Geo/Utils.h"
+#include "Geo/karney/geodesic.h"
 #include "Logger/LogMacros.h"
 
 using namespace arangodb;
@@ -186,7 +188,8 @@ double ShapeContainer::distanceFromCentroid(S2Point const& other) const noexcept
   return centroid().Angle(other) * geo::kEarthRadiusInMeters;
 }
 
-double ShapeContainer::distanceFromCentroid(S2Point const& other, Ellipsoid const& e) const noexcept {
+double ShapeContainer::distanceFromCentroid(S2Point const& other,
+                                            Ellipsoid const& e) const noexcept {
   return geo::utils::geodesicDistance(S2LatLng(centroid()), S2LatLng(other), e);
 }
 
@@ -685,4 +688,68 @@ bool ShapeContainer::intersects(ShapeContainer const* cc) const {
   return false;
 }
 
-S2Region const* ShapeContainer::region() const { return _data; }
+/// @brief calculate area of polygon or multipolygon
+double ShapeContainer::area(geo::Ellipsoid const& e) {
+  if (!isAreaType()) {
+    return 0.0;
+  }
+
+  // TODO: perhaps remove in favor of one code-path below ?
+  if (e.flattening() == 0.0) {
+    switch (_type) {
+      case Type::S2_LATLNGRECT:
+        return static_cast<S2LatLngRect*>(_data)->Area() * kEarthRadiusInMeters * kEarthRadiusInMeters;
+      case Type::S2_POLYGON:
+        return static_cast<S2Polygon*>(_data)->GetArea() * kEarthRadiusInMeters * kEarthRadiusInMeters;
+      default:
+        TRI_ASSERT(false);
+        return 0.0;
+    }
+  }
+
+  double area = 0.0;
+  struct geod_geodesic g;
+  geod_init(&g, e.equator_radius(), e.flattening());
+  double A = 0.0;
+  double P = 0.0;
+
+  switch (_type) {
+    case Type::S2_LATLNGRECT: {
+      struct geod_polygon p;
+      geod_polygon_init(&p, 0);
+
+      S2LatLngRect const* rect = static_cast<S2LatLngRect*>(_data);
+      geod_polygon_addpoint(&g, &p, rect->lat_lo().degrees(), rect->lng_lo().degrees());
+      geod_polygon_addpoint(&g, &p, rect->lat_lo().degrees(), rect->lng_hi().degrees());
+      geod_polygon_addpoint(&g, &p, rect->lat_hi().degrees(), rect->lng_hi().degrees());
+      geod_polygon_addpoint(&g, &p, rect->lat_hi().degrees(), rect->lng_lo().degrees());
+
+      geod_polygon_compute(&g, &p, 0, 1, &A, &P);
+      area = A;
+    } break;
+
+    case Type::S2_POLYGON: {
+      struct geod_polygon p;
+
+      S2Polygon const* poly = static_cast<S2Polygon*>(_data);
+      for (int k = 0; k < poly->num_loops(); k++) {
+        geod_polygon_init(&p, 0);
+
+        S2Loop const* loop = poly->loop(k);
+        for (int n = 0; n < loop->num_vertices(); n++) {
+          S2LatLng latLng(loop->vertex(n));
+          geod_polygon_addpoint(&g, &p, latLng.lat().degrees(), latLng.lng().degrees());
+        }
+
+        geod_polygon_compute(&g, &p, /*reverse*/ false, /*sign*/ true, &A, &P);
+        area += A;
+      }
+    } break;
+
+    default:
+      TRI_ASSERT(false);
+      return 0;
+  }
+
+  return area;
+}

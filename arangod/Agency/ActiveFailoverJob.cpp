@@ -57,7 +57,7 @@ ActiveFailoverJob::ActiveFailoverJob(Node const& snapshot, AgentInterface* agent
   }
 }
 
-ActiveFailoverJob::~ActiveFailoverJob() {}
+ActiveFailoverJob::~ActiveFailoverJob() = default;
 
 void ActiveFailoverJob::run(bool& aborts) { runHelper(_server, "", aborts); }
 

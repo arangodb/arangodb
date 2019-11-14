@@ -43,7 +43,7 @@ using namespace arangodb;
 AgencyCallbackRegistry::AgencyCallbackRegistry(std::string const& callbackBasePath)
     : _agency(), _callbackBasePath(callbackBasePath) {}
 
-AgencyCallbackRegistry::~AgencyCallbackRegistry() {}
+AgencyCallbackRegistry::~AgencyCallbackRegistry() = default;
 
 bool AgencyCallbackRegistry::registerCallback(std::shared_ptr<AgencyCallback> cb) {
   uint32_t rand;
@@ -51,7 +51,7 @@ bool AgencyCallbackRegistry::registerCallback(std::shared_ptr<AgencyCallback> cb
     WRITE_LOCKER(locker, _lock);
     while (true) {
       rand = RandomGenerator::interval(UINT32_MAX);
-      if (_endpoints.emplace(rand, cb).second) {
+      if (_endpoints.try_emplace(rand, cb).second) {
         break;
       }
     }
@@ -87,14 +87,24 @@ std::shared_ptr<AgencyCallback> AgencyCallbackRegistry::getCallback(uint32_t id)
 }
 
 bool AgencyCallbackRegistry::unregisterCallback(std::shared_ptr<AgencyCallback> cb) {
-  WRITE_LOCKER(locker, _lock);
+  bool found = false;
+  uint32_t endpointToDelete = 0;
+  {
+    READ_LOCKER(locker, _lock);
 
-  for (auto const& it : _endpoints) {
-    if (it.second.get() == cb.get()) {
-      _agency.unregisterCallback(cb->key, getEndpointUrl(it.first));
-      _endpoints.erase(it.first);
-      return true;
+    for (auto const& it : _endpoints) {
+      if (it.second.get() == cb.get()) {
+        _agency.unregisterCallback(cb->key, getEndpointUrl(it.first));
+        endpointToDelete = it.first;
+        found = true;
+        break;
+      }
     }
+  }
+  if (found) {
+    WRITE_LOCKER(locker, _lock);
+    _endpoints.erase(endpointToDelete);
+    return true;
   }
   return false;
 }

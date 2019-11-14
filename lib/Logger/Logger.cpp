@@ -410,7 +410,7 @@ void Logger::log(char const* function, char const* file, int line,
 /// @brief initializes the logging component
 ////////////////////////////////////////////////////////////////////////////////
 
-void Logger::initialize(bool threaded) {
+void Logger::initialize(application_features::ApplicationServer& server, bool threaded) {
   MUTEX_LOCKER(locker, _initializeMutex);
 
   if (_active) {
@@ -425,7 +425,7 @@ void Logger::initialize(bool threaded) {
   _threaded = threaded;
 
   if (threaded) {
-    _loggingThread = std::make_unique<LogThread>("Logging");
+    _loggingThread = std::make_unique<LogThread>(server, "Logging");
     _loggingThread->start();
   }
 }

@@ -21,14 +21,14 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/Format.h"
 #include "vst.h"
+#include "Basics/Format.h"
 
-#include <boost/algorithm/string.hpp>
-#include <fuerte/helper.h>
-#include <fuerte/types.h>
 #include <fuerte/FuerteLogger.h>
 #include <fuerte/detail/vst.h>
+#include <fuerte/helper.h>
+#include <fuerte/types.h>
+#include <boost/algorithm/string.hpp>
 
 #include <velocypack/HexDump.h>
 #include <velocypack/Iterator.h>
@@ -66,12 +66,14 @@ size_t ChunkHeader::writeHeaderToVST1_0(size_t chunkDataLen,
   if (isFirst() && numberOfChunks() > 1) {
     // Use extended header
     hdrLength = maxChunkHeaderSize;
-    basics::uintToPersistentLittleEndian<uint64_t>(hdr + 16, _messageLength);  // total message length
+    basics::uintToPersistentLE<uint64_t>(
+        hdr + 16, _messageLength);  // total message length
   } // else Use minimal header
-  basics::uintToPersistentLittleEndian<uint32_t>(hdr + 0, hdrLength + chunkDataLen);  // chunk length (header+data)
-  basics::uintToPersistentLittleEndian<uint32_t>(hdr + 4, _chunkX);  // chunkX
-  basics::uintToPersistentLittleEndian<uint64_t>(hdr + 8, _messageID);  // messageID
-  
+  basics::uintToPersistentLE<uint32_t>(
+      hdr + 0, hdrLength + chunkDataLen);  // chunk length (header+data)
+  basics::uintToPersistentLE<uint32_t>(hdr + 4, _chunkX);     // chunkX
+  basics::uintToPersistentLE<uint64_t>(hdr + 8, _messageID);  // messageID
+
   // Now add hdr to buffer
   buffer.append(hdr, hdrLength);
   return hdrLength;
@@ -85,10 +87,12 @@ size_t ChunkHeader::writeHeaderToVST1_1(size_t chunkDataLen,
     buffer.reserve(maxChunkHeaderSize);
   }
   uint8_t* hdr = buffer.data() + buffer.size();
-  basics::uintToPersistentLittleEndian<uint32_t>(hdr + 0, maxChunkHeaderSize + chunkDataLen);
-  basics::uintToPersistentLittleEndian<uint32_t>(hdr + 4, _chunkX);  // chunkX
-  basics::uintToPersistentLittleEndian<uint64_t>(hdr + 8, _messageID);  // messageID
-  basics::uintToPersistentLittleEndian<uint64_t>(hdr + 16, _messageLength);  // total message length
+  basics::uintToPersistentLE<uint32_t>(hdr + 0,
+                                       maxChunkHeaderSize + chunkDataLen);
+  basics::uintToPersistentLE<uint32_t>(hdr + 4, _chunkX);     // chunkX
+  basics::uintToPersistentLE<uint64_t>(hdr + 8, _messageID);  // messageID
+  basics::uintToPersistentLE<uint64_t>(hdr + 16,
+                                       _messageLength);  // total message length
 
   buffer.advance(maxChunkHeaderSize);
   return maxChunkHeaderSize;
@@ -116,8 +120,7 @@ void message::requestHeader(RequestHeader const& header,
     throw std::runtime_error("database for message not set");
   }
   builder.add(VPackValue(header.database));
-  FUERTE_LOG_DEBUG << "MessageHeader.database=" << header.database
-                   << std::endl;
+  FUERTE_LOG_DEBUG << "MessageHeader.database=" << header.database << std::endl;
 
   // 3 - RestVerb
   if (header.restVerb == RestVerb::Illegal) {
@@ -147,23 +150,25 @@ void message::requestHeader(RequestHeader const& header,
   }
 
   // 6 - meta
-  if (!header.meta.empty()) {
+  {
     VPackObjectBuilder guard(&builder);
-    for (auto const& item : header.meta) {
-      builder.add(item.first, VPackValue(item.second));
+    if (header.acceptType() != ContentType::Custom) {
+      builder.add(fu_accept_key, VPackValue(to_string(header.acceptType())));
     }
-  } else {
-    builder.add(VPackSlice::emptyObjectSlice());
+    if (header.contentType() != ContentType::Custom) {
+      builder.add(fu_content_type_key,
+                  VPackValue(to_string(header.contentType())));
+    }
+    for (auto const& pair : header.meta()) {  // iequals for data from server
+      builder.add(pair.first, VPackValue(pair.second));
+    }
   }
-
-  builder.close(); // </array>
+  builder.close();  // </array>
 }
 
 /// @brief creates a slice containing a VST response-message header.
 void message::responseHeader(ResponseHeader const& header,
                              VPackBuffer<uint8_t>& buffer) {
-  static std::string const message = " for message not set";
-
   VPackBuilder builder(buffer);
   assert(builder.isClosed());
   builder.openArray();
@@ -187,23 +192,28 @@ void message::responseHeader(ResponseHeader const& header,
 
   // 3 - meta (not optional even if empty)
   builder.openObject();
-  if (!header.meta.empty()) {
-    for (auto const& item : header.meta) {
-      builder.add(item.first, VPackValue(item.second));
+  builder.add(fu_content_type_key,
+              VPackValue(to_string(header.contentType())));
+  if (!header.meta().empty()) {
+    for (auto const& pair : header.meta()) {
+      if (boost::iequals(fu_content_type_key, pair.first)) {
+         continue;
+       }
+      builder.add(pair.first, VPackValue(pair.second));
     }
   }
   builder.close();
 }
 
 /// @brief creates a slice containing a VST auth message with JWT encryption
-void message::authJWT(std::string const& token,
-                      VPackBuffer<uint8_t>& buffer) {
+void message::authJWT(std::string const& token, VPackBuffer<uint8_t>& buffer) {
   VPackBuilder builder(buffer);
   builder.openArray();
-  builder.add(VPackValue(1)); // version
-  builder.add(VPackValue(static_cast<int>(MessageType::Authentication)));  // type
-  builder.add(VPackValue("jwt")); // encryption
-  builder.add(VPackValue(token)); // token
+  builder.add(VPackValue(1));  // version
+  builder.add(
+      VPackValue(static_cast<int>(MessageType::Authentication)));  // type
+  builder.add(VPackValue("jwt"));                                  // encryption
+  builder.add(VPackValue(token));                                  // token
   builder.close();
 }
 
@@ -213,65 +223,65 @@ void message::authBasic(std::string const& username,
                         VPackBuffer<uint8_t>& buffer) {
   VPackBuilder builder(buffer);
   builder.openArray();
-  builder.add(VPackValue(1)); // version
-  builder.add(VPackValue(static_cast<int>(MessageType::Authentication))); // type
-  builder.add(VPackValue("plain")); // encryption
-  builder.add(VPackValue(username)); // user
-  builder.add(VPackValue(password)); // password
+  builder.add(VPackValue(1));  // version
+  builder.add(
+      VPackValue(static_cast<int>(MessageType::Authentication)));  // type
+  builder.add(VPackValue("plain"));                                // encryption
+  builder.add(VPackValue(username));                               // user
+  builder.add(VPackValue(password));                               // password
   builder.close();
 }
-  
+
 /// @brief take existing buffers and partitions into chunks
 /// @param buffer is containing the metadata. If non empty this is going to be
 ///        used as message header
 /// @param payload the payload that is going to be partitioned
-void message::prepareForNetwork(VSTVersion vstVersion,
-                                MessageID messageId,
+void message::prepareForNetwork(VSTVersion vstVersion, MessageID messageId,
                                 VPackBuffer<uint8_t>& buffer,
                                 asio_ns::const_buffer payload,
                                 std::vector<asio_ns::const_buffer>& result) {
-  
   // Split message into chunks
   // we assume that the message header is already in the buffer
   size_t msgLength = buffer.size() + payload.size();
   assert(msgLength > 0);
-  
+
   // builds a list of chunks that are ready to be sent to the server.
   // The resulting set of chunks are added to the given result vector.
-  
+
   // calculate intended number of chunks
   const size_t maxDataLength = defaultMaxChunkSize - maxChunkHeaderSize;
-  const size_t numChunks =  (msgLength + maxDataLength - 1) / maxDataLength;
+  const size_t numChunks = (msgLength + maxDataLength - 1) / maxDataLength;
   assert(maxDataLength > 0);
   assert(numChunks > 0);
-  
+
   // we allocate enough space so that pointers into it stay valid
   const size_t spaceNeeded = numChunks * maxChunkHeaderSize;
   buffer.reserve(spaceNeeded);
-  
+
   asio_ns::const_buffer header(buffer.data(), buffer.size());
   result.reserve((2 * numChunks) + 1);
-  
+
   uint32_t chunkIndex = 0;
   uint8_t const* begin = reinterpret_cast<uint8_t const*>(payload.data());
 #ifdef FUERTE_DEBUG
-  uint8_t const* end = reinterpret_cast<uint8_t const*>(payload.data()) + payload.size();
+  uint8_t const* end =
+      reinterpret_cast<uint8_t const*>(payload.data()) + payload.size();
 #endif
-  
+
   size_t remaining = msgLength;
   while (remaining > 0) {
-    
     // begin writing a new chunk
     ChunkHeader chunk;
-    chunk._chunkX = (chunkIndex == 0) ? ((numChunks << 1) | 1) : (chunkIndex << 1);
+    chunk._chunkX =
+        (chunkIndex == 0) ? ((numChunks << 1) | 1) : (chunkIndex << 1);
     chunk._messageID = messageId;
     chunk._messageLength = msgLength;
-    
+
     // put data into the chunk
     size_t chunkDataLen = std::min(maxDataLength, remaining);
     remaining -= chunkDataLen;
     assert(chunkDataLen > 0);
-    
+
     size_t chunkHdrLen = 0;
     size_t chunkOffset = buffer.byteSize();
     switch (vstVersion) {
@@ -285,22 +295,24 @@ void message::prepareForNetwork(VSTVersion vstVersion,
         throw std::logic_error("Unknown VST version");
     }
     assert(chunkHdrLen > 0 && chunkHdrLen <= maxChunkHeaderSize);
-    
+
     // Add chunk buffer
     result.emplace_back(buffer.data() + chunkOffset, chunkHdrLen);
-    if (chunkIndex == 0) { // stuff in message header
+    if (chunkIndex == 0) {  // stuff in message header
       assert(header.size() <= chunkDataLen);
       result.emplace_back(header);
       chunkDataLen -= header.size();
     }
     if (chunkDataLen > 0) {
       assert(payload.size() > 0);
+#ifdef FUERTE_DEBUG
       assert(begin < end);
+#endif
       // Add chunk data buffer
       result.emplace_back(begin, chunkDataLen);
       begin += chunkDataLen;
     }
-    
+
     chunkIndex++;
     assert(chunkIndex <= numChunks);
   }
@@ -311,9 +323,10 @@ void message::prepareForNetwork(VSTVersion vstVersion,
 
 // prepareForNetwork prepares the internal structures for
 // writing the request to the network.
-std::vector<asio_ns::const_buffer> RequestItem::prepareForNetwork(VSTVersion vstVersion) {
+std::vector<asio_ns::const_buffer> RequestItem::prepareForNetwork(
+    VSTVersion vstVersion) {
   // setting defaults
-  _request->header.setVersion(1); // always set to 1
+  _request->header.setVersion(1);  // always set to 1
   if (_request->header.database.empty()) {
     _request->header.database = "_system";
   }
@@ -324,7 +337,7 @@ std::vector<asio_ns::const_buffer> RequestItem::prepareForNetwork(VSTVersion vst
   assert(_buffer.size() > 0);
   // message header has to go into the first chunk
   asio_ns::const_buffer payload = _request->payload();
-  
+
   // _buffer content will be used as message header
   std::vector<asio_ns::const_buffer> result;
   message::prepareForNetwork(vstVersion, _messageID, _buffer, payload, result);
@@ -339,78 +352,83 @@ namespace parser {
 
 /// @brief readChunkVST1_0 reads a chunk header in VST1.0 format.
 /// @return true if chunk is complete
-ChunkState readChunkVST1_0(Chunk& chunk, uint8_t const* hdr, std::size_t avail) {
+ChunkState readChunkVST1_0(Chunk& chunk, uint8_t const* hdr,
+                           std::size_t avail) {
   if (avail < minChunkHeaderSize) {
     return ChunkState::Incomplete;
   }
-  
-  chunk.header._chunkLength = basics::uintFromPersistentLittleEndian<uint32_t>(hdr + 0);
-  chunk.header._chunkX = basics::uintFromPersistentLittleEndian<uint32_t>(hdr + 4);
-  chunk.header._messageID = basics::uintFromPersistentLittleEndian<uint64_t>(hdr + 8);
-  
+
+  chunk.header._chunkLength = basics::uintFromPersistentLE<uint32_t>(hdr + 0);
+  chunk.header._chunkX = basics::uintFromPersistentLE<uint32_t>(hdr + 4);
+  chunk.header._messageID = basics::uintFromPersistentLE<uint64_t>(hdr + 8);
+
   if (avail < chunk.header._chunkLength) {
     return ChunkState::Incomplete;
   }
-  
+
   size_t hdrLen = minChunkHeaderSize;
   if (chunk.header.isFirst()) {
     if (chunk.header.numberOfChunks() > 1) {
       if (avail < maxChunkHeaderSize) {
         return ChunkState::Incomplete;
       }
-      
-      hdrLen = maxChunkHeaderSize; // first chunk header is bigger
+
+      hdrLen = maxChunkHeaderSize;  // first chunk header is bigger
       // First chunk, numberOfChunks>1 -> read messageLength
       chunk.header._messageLength =
-      basics::uintFromPersistentLittleEndian<uint64_t>(hdr + 16);
+          basics::uintFromPersistentLE<uint64_t>(hdr + 16);
     } else {
       chunk.header._messageLength = chunk.header._chunkLength - hdrLen;
     }
-  } else { // not needed / known otherwise
+  } else {  // not needed / known otherwise
     chunk.header._messageLength = 0;
   }
-  
+
   assert(avail >= chunk.header._chunkLength);
   if (hdrLen > chunk.header._chunkLength) {
-    return ChunkState::Invalid; // chunk incomplete / invalid chunk length
+    return ChunkState::Invalid;  // chunk incomplete / invalid chunk length
   }
 
   size_t contentLength = chunk.header._chunkLength - hdrLen;
 
   FUERTE_LOG_VSTCHUNKTRACE << "readChunkHeaderVST1_0: got " << contentLength
-                           << " data bytes after " << hdrLen << " header bytes\n";
+                           << " data bytes after " << hdrLen
+                           << " header bytes\n";
   chunk.body = asio_ns::const_buffer(hdr + hdrLen, contentLength);
-  
+
   return ChunkState::Complete;
 }
 
 /// @brief readChunkVST1_1 reads a chunk header in VST1.1 format.
-ChunkState readChunkVST1_1(Chunk& chunk, uint8_t const* hdr, std::size_t avail) {
+ChunkState readChunkVST1_1(Chunk& chunk, uint8_t const* hdr,
+                           std::size_t avail) {
   if (avail < maxChunkHeaderSize) {
     return ChunkState::Incomplete;
   }
 
-  chunk.header._chunkLength = basics::uintFromPersistentLittleEndian<uint32_t>(hdr + 0);
-  chunk.header._chunkX = basics::uintFromPersistentLittleEndian<uint32_t>(hdr + 4);
-  chunk.header._messageID = basics::uintFromPersistentLittleEndian<uint64_t>(hdr + 8);
-  chunk.header._messageLength = basics::uintFromPersistentLittleEndian<uint64_t>(hdr + 16);
-  
+  chunk.header._chunkLength = basics::uintFromPersistentLE<uint32_t>(hdr + 0);
+  chunk.header._chunkX = basics::uintFromPersistentLE<uint32_t>(hdr + 4);
+  chunk.header._messageID = basics::uintFromPersistentLE<uint64_t>(hdr + 8);
+  chunk.header._messageLength =
+      basics::uintFromPersistentLE<uint64_t>(hdr + 16);
+
   if (avail < chunk.header._chunkLength) {
     return ChunkState::Incomplete;
   }
-  
+
   if (maxChunkHeaderSize > chunk.header._chunkLength) {
-    return ChunkState::Invalid; // invalid chunk length
+    return ChunkState::Invalid;  // invalid chunk length
   }
-  
+
   size_t contentLength = chunk.header._chunkLength - maxChunkHeaderSize;
   FUERTE_LOG_VSTCHUNKTRACE << "readChunkHeaderVST1_1: got " << contentLength
-                           << " data bytes after " << maxChunkHeaderSize << " bytes\n";
+                           << " data bytes after " << maxChunkHeaderSize
+                           << " bytes\n";
   chunk.body = asio_ns::const_buffer(hdr + maxChunkHeaderSize, contentLength);
-  
+
   return ChunkState::Complete;
 }
-  
+
 /// @brief verifies header input and checks correct length
 /// @return message type or MessageType::Undefined on an error
 MessageType validateAndExtractMessageType(uint8_t const* const vpStart,
@@ -419,23 +437,25 @@ MessageType validateAndExtractMessageType(uint8_t const* const vpStart,
   VPackOptions validationOptions = VPackOptions::Defaults;
   validationOptions.validateUtf8Strings = true;
   VPackValidator validator(&validationOptions);
-  
+
   try {
     // isSubPart allows the slice to be shorter than the checked buffer.
     validator.validate(vpStart, length, /*isSubPart*/ true);
     FUERTE_LOG_VSTTRACE << "validation done\n";
   } catch (std::exception const& e) {
     FUERTE_LOG_VSTTRACE << "len: " << length
-    << std::string(reinterpret_cast<char const*>(vpStart), length);
-    throw std::runtime_error(std::string("error during validation of incoming VPack (HEADER): ") +
-                             e.what());
+                        << std::string(reinterpret_cast<char const*>(vpStart),
+                                       length);
+    throw std::runtime_error(
+        std::string("error during validation of incoming VPack (HEADER): ") +
+        e.what());
   }
   VPackSlice slice = VPackSlice(vpStart);
-  if (!slice.isArray())  {
+  if (!slice.isArray()) {
     return MessageType::Undefined;
   }
   hLength = slice.byteSize();
-  
+
   VPackSlice vSlice = slice.at(0);
   if (!vSlice.isNumber<short>() || vSlice.getNumber<int>() != 1) {
     FUERTE_LOG_ERROR << "VST message header has an unsupported version";
@@ -451,41 +471,41 @@ MessageType validateAndExtractMessageType(uint8_t const* const vpStart,
 RequestHeader requestHeaderFromSlice(VPackSlice const& headerSlice) {
   assert(headerSlice.isArray());
   RequestHeader header;
-#ifdef FUERTE_DEBUG
-  header.byteSize = headerSlice.byteSize();  // for debugging
-#endif
 
-  header.setVersion( headerSlice.at(0).getNumber<short>()); // version
-  assert(headerSlice.at(1).getNumber<int>() == static_cast<int>(MessageType::Request));
+  header.setVersion(headerSlice.at(0).getNumber<short>());  // version
+  assert(headerSlice.at(1).getNumber<int>() ==
+         static_cast<int>(MessageType::Request));
   header.database = headerSlice.at(2).copyString();  // databse
-  header.restVerb = static_cast<RestVerb>(headerSlice.at(3).getInt());  // rest verb
+  header.restVerb =
+      static_cast<RestVerb>(headerSlice.at(3).getInt());  // rest verb
   header.path = headerSlice.at(4).copyString();           // request (path)
-  header.parameters = sliceToStringMap(headerSlice.at(5));  // query params
-  header.meta = sliceToStringMap(headerSlice.at(6));        // meta
-
+  for (auto it : VPackObjectIterator(headerSlice.at(5))) {  // query params
+    header.parameters.emplace(it.key.copyString(), it.value.copyString());
+  }
+  for (auto it : VPackObjectIterator(headerSlice.at(6))) {  // meta (headers)
+    std::string key = it.key.copyString();
+    toLowerInPlace(key);
+    header.addMeta(std::move(key), it.value.copyString());
+  }
   return header;
 };
-  
-  
+
 ResponseHeader responseHeaderFromSlice(VPackSlice const& headerSlice) {
   assert(headerSlice.isArray());
   ResponseHeader header;
-#ifdef FUERTE_DEBUG
-  header.byteSize = headerSlice.byteSize();  // for debugging
-#endif
-  
-  header.setVersion(headerSlice.at(0).getNumber<short>()); // version
-  assert(headerSlice.at(1).getNumber<int>() == static_cast<int>(MessageType::Response));
+
+  header.setVersion(headerSlice.at(0).getNumber<short>());  // version
+  assert(headerSlice.at(1).getNumber<int>() ==
+         static_cast<int>(MessageType::Response));
   header.responseCode = headerSlice.at(2).getNumber<StatusCode>();
-  // header.contentType(ContentType::VPack); // empty meta
   if (headerSlice.length() >= 4) {
     VPackSlice meta = headerSlice.at(3);
     assert(meta.isObject());
     if (meta.isObject()) {
       for (auto it : VPackObjectIterator(meta)) {
         std::string key = it.key.copyString();
-        boost::algorithm::to_lower(key); // in-place
-        header.meta.emplace(std::move(key), it.value.copyString());
+        toLowerInPlace(key);
+        header.addMeta(std::move(key), it.value.copyString());
       }
     }
   }
@@ -493,9 +513,9 @@ ResponseHeader responseHeaderFromSlice(VPackSlice const& headerSlice) {
     header.contentType(ContentType::VPack);
   }
   return header;
-};
+}
 
-// Validates if payload consitsts of valid velocypack slices
+// Validates if payload consists of valid velocypack slices
 std::size_t validateAndCount(uint8_t const* const vpStart, std::size_t length) {
   // start points to the begin of a velocypack
   uint8_t const* cursor = vpStart;
@@ -542,13 +562,13 @@ void RequestItem::addChunk(Chunk const& chunk) {
   // Copy _data to response buffer
   FUERTE_LOG_VSTCHUNKTRACE << "RequestItem::addChunk: adding "
                            << chunk.body.size() << " bytes to buffer\n";
-  
+
   // Gather number of chunk info
   if (chunk.header.isFirst()) {
     _responseNumberOfChunks = chunk.header.numberOfChunks();
     _responseChunks.reserve(_responseNumberOfChunks);
     FUERTE_LOG_VSTCHUNKTRACE << "RequestItem::addChunk: set #chunks to "
-    << _responseNumberOfChunks << "\n";
+                             << _responseNumberOfChunks << "\n";
     assert(_buffer.empty());
     if (_buffer.capacity() < chunk.header.messageLength()) {
       _buffer.reserve(chunk.header.messageLength() - _buffer.capacity());
@@ -558,7 +578,8 @@ void RequestItem::addChunk(Chunk const& chunk) {
   size_t offset = _buffer.size();
   _buffer.append(begin, chunk.body.size());
   // Add chunk to index list
-  _responseChunks.push_back(ChunkInfo{chunk.header.index(), offset, chunk.body.size()});
+  _responseChunks.push_back(
+      ChunkInfo{chunk.header.index(), offset, chunk.body.size()});
 }
 
 static bool chunkByIndex(const RequestItem::ChunkInfo& a,
@@ -594,8 +615,7 @@ std::unique_ptr<VPackBuffer<uint8_t>> RequestItem::assemble() {
   if (!reject) {
     FUERTE_LOG_VSTCHUNKTRACE
         << "RequestItem::assemble: fast-path, chunks are in order" << std::endl;
-    return std::unique_ptr<VPackBuffer<uint8_t>>(
-        new VPackBuffer<uint8_t>(std::move(_buffer)));
+    return std::make_unique<VPackBuffer<uint8_t>>(std::move(_buffer));
   }
 
   // We now have all chunks. Sort them by index.
@@ -606,7 +626,7 @@ std::unique_ptr<VPackBuffer<uint8_t>> RequestItem::assemble() {
   FUERTE_LOG_VSTCHUNKTRACE << "RequestItem::assemble: build response buffer"
                            << std::endl;
 
-  auto buffer = std::unique_ptr<VPackBuffer<uint8_t>>(new VPackBuffer<uint8_t>());
+  auto buffer = std::make_unique<VPackBuffer<uint8_t>>();
   for (ChunkInfo const& info : _responseChunks) {
     buffer->append(_buffer.data() + info.offset, info.size);
   }

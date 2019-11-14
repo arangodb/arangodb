@@ -232,7 +232,11 @@ void IResearchRocksDBRecoveryHelper::PutCF(
       &ctx), // aliasing ctor
     *coll, arangodb::AccessMode::Type::WRITE);
 
-  trx.begin();
+  Result res = trx.begin();
+
+  if (res.fail()) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
 
   for (std::shared_ptr<arangodb::Index> const& link : links) {
     IndexId indexId(coll->vocbase().id(), coll->id(), link->id());
@@ -252,9 +256,11 @@ void IResearchRocksDBRecoveryHelper::PutCF(
     impl.insert(trx, docId, doc, arangodb::Index::OperationMode::internal);
   }
 
-  trx.commit();
+  res = trx.commit();
 
-  return;
+  if (res.fail()) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
 }
 
 // common implementation for DeleteCF / SingleDeleteCF
@@ -288,7 +294,11 @@ void IResearchRocksDBRecoveryHelper::handleDeleteCF(
       &ctx), // aliasing ctor
     *coll, arangodb::AccessMode::Type::WRITE);
 
-  trx.begin();
+  Result res = trx.begin();
+
+  if (res.fail()) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
 
   for (std::shared_ptr<arangodb::Index> const& link : links) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -302,7 +312,11 @@ void IResearchRocksDBRecoveryHelper::handleDeleteCF(
                 arangodb::Index::OperationMode::internal);
   }
 
-  trx.commit();
+  res = trx.commit();
+
+  if (res.fail()) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
 }
 
 void IResearchRocksDBRecoveryHelper::LogData(

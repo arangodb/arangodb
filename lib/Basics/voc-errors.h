@@ -658,11 +658,17 @@ constexpr int TRI_ERROR_REPLICATION_WRONG_CHECKSUM                              
 /// Will be raised when a shard is not empty and the follower tries a shortcut
 constexpr int TRI_ERROR_REPLICATION_SHARD_NONEMPTY                              = 1417;
 
-/// 1452: ERROR_CLUSTER_SERVER_UNKNOWN
+/// 1449: ERROR_CLUSTER_SERVER_UNKNOWN
 /// "got a request from an unkown server"
 /// Will be raised on some occasions when one server gets a request from
 /// another, which has not (yet?) been made known via the agency.
-constexpr int TRI_ERROR_CLUSTER_SERVER_UNKNOWN                                  = 1452;
+constexpr int TRI_ERROR_CLUSTER_SERVER_UNKNOWN                                  = 1449;
+
+/// 1450: ERROR_CLUSTER_TOO_MANY_SHARDS
+/// "too many shards"
+/// Will be raised when the number of shards for a collection is higher than
+/// allowed.
+constexpr int TRI_ERROR_CLUSTER_TOO_MANY_SHARDS                                 = 1450;
 
 /// 1453: ERROR_CLUSTER_COLLECTION_ID_EXISTS
 /// "collection ID already exists"
@@ -1369,13 +1375,13 @@ constexpr int TRI_ERROR_GRAPH_DUPLICATE                                         
 constexpr int TRI_ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST                         = 1926;
 
 /// 1927: ERROR_GRAPH_WRONG_COLLECTION_TYPE_VERTEX
-/// "not a vertex collection"
+/// "collection not a vertex collection"
 /// the collection is not a vertex collection.
 constexpr int TRI_ERROR_GRAPH_WRONG_COLLECTION_TYPE_VERTEX                      = 1927;
 
 /// 1928: ERROR_GRAPH_NOT_IN_ORPHAN_COLLECTION
-/// "not in orphan collection"
-/// Vertex collection not in orphan collection of the graph.
+/// "collection is not in list of orphan collections"
+/// Vertex collection not in list of orphan collections of the graph.
 constexpr int TRI_ERROR_GRAPH_NOT_IN_ORPHAN_COLLECTION                          = 1928;
 
 /// 1929: ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF
@@ -1483,6 +1489,11 @@ constexpr int TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_WRITE                           
 /// "could not read from server"
 /// Will be raised when the client could not read data.
 constexpr int TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_READ                            = 2003;
+
+/// 2019: ERROR_WAS_ERLAUBE
+/// "was erlaube?!"
+/// Will be raised if was erlaube?!
+constexpr int TRI_ERROR_WAS_ERLAUBE                                             = 2019;
 
 /// 2100: ERROR_COMMUNICATOR_REQUEST_ABORTED
 /// "Request aborted"
@@ -1790,16 +1801,6 @@ constexpr int TRI_ERROR_AGENCY_CANNOT_REBUILD_DBS                               
 /// General supervision failure.
 constexpr int TRI_ERROR_SUPERVISION_GENERAL_FAILURE                             = 20501;
 
-/// 21001: ERROR_DISPATCHER_IS_STOPPING
-/// "dispatcher stopped"
-/// Will be returned if a shutdown is in progress.
-constexpr int TRI_ERROR_DISPATCHER_IS_STOPPING                                  = 21001;
-
-/// 21002: ERROR_QUEUE_UNKNOWN
-/// "named queue does not exist"
-/// Will be returned if a queue with this name does not exist.
-constexpr int TRI_ERROR_QUEUE_UNKNOWN                                           = 21002;
-
 /// 21003: ERROR_QUEUE_FULL
 /// "named queue is full"
 /// Will be returned if a queue with this name is full.
@@ -1875,6 +1876,11 @@ constexpr int TRI_ERROR_LOCAL_LOCK_RETRY                                        
 /// " "hot backup conflict""
 ///  "Conflict of multiple hot backup processes."
 constexpr int TRI_ERROR_HOT_BACKUP_CONFLICT                                     =  7011;
+
+///  7012: ERROR_HOT_BACKUP_DBSERVERS_AWOL
+/// " "hot backup not all db servers reachable""
+///  "One or more db servers could not be reached for hot backup inquiry"
+constexpr int TRI_ERROR_HOT_BACKUP_DBSERVERS_AWOL                               =  7012;
 
 
 /// register all errors for ArangoDB

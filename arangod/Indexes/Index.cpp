@@ -21,28 +21,30 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Aql/Ast.h"
-#include "Aql/AstNode.h"
-#include "Aql/Variable.h"
-#include "Basics/Exceptions.h"
-#include "Basics/HashSet.h"
-#include "Basics/StaticStrings.h"
-#include "Basics/StringUtils.h"
-#include "Basics/VelocyPackHelper.h"
-#include "Basics/datetime.h"
-#include "Cluster/ServerState.h"
-#include "Index.h"
-#include "IResearch/IResearchCommon.h"
-#include "StorageEngine/EngineSelectorFeature.h"
-#include "StorageEngine/StorageEngine.h"
-#include "VocBase/LogicalCollection.h"
-#include "VocBase/ticks.h"
+#include <iostream>
 
 #include <date/date.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
-#include <iostream>
+
+#include "Index.h"
+
+#include "Aql/Ast.h"
+#include "Aql/AstNode.h"
+#include "Aql/Variable.h"
+#include "Basics/Exceptions.h"
+#include "Basics/StaticStrings.h"
+#include "Basics/StringUtils.h"
+#include "Basics/VelocyPackHelper.h"
+#include "Basics/datetime.h"
+#include "Cluster/ServerState.h"
+#include "Containers/HashSet.h"
+#include "IResearch/IResearchCommon.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/StorageEngine.h"
+#include "VocBase/LogicalCollection.h"
+#include "VocBase/ticks.h"
 
 using namespace arangodb;
 using namespace std::chrono;
@@ -76,7 +78,7 @@ std::vector<std::vector<arangodb::basics::AttributeName>> parseFields(VPackSlice
   size_t const n = static_cast<size_t>(fields.length());
   result.reserve(n);
 
-  for (auto const& name : VPackArrayIterator(fields)) {
+  for (VPackSlice name : VPackArrayIterator(fields)) {
     if (!name.isString()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED,
                                      "invalid index description");
@@ -248,7 +250,7 @@ Index::Index(TRI_idx_iid_t iid, arangodb::LogicalCollection& collection, VPackSl
       _sparse(arangodb::basics::VelocyPackHelper::getBooleanValue(slice, arangodb::StaticStrings::IndexSparse,
                                                                   false)) {}
 
-Index::~Index() {}
+Index::~Index() = default;
 
 void Index::name(std::string const& newName) {
   if (_name.empty()) {
@@ -288,7 +290,7 @@ void Index::validateFields(VPackSlice const& slice) {
     return;
   }
 
-  for (auto const& name : VPackArrayIterator(fields)) {
+  for (VPackSlice name : VPackArrayIterator(fields)) {
     if (!name.isString()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED,
                                      "invalid index description");
@@ -408,12 +410,10 @@ bool Index::validateName(char const* key) {
 namespace {
 bool validatePrefix(char const* key, size_t* split) {
   char const* p = key;
-  char c = *p;
 
   // find divider
-
   while (1) {
-    c = *p;
+    char c = *p;
 
     if (c == '\0') {
       return false;
@@ -819,7 +819,7 @@ bool Index::canUseConditionPart(arangodb::aql::AstNode const* access,
   }
 
   // test if the reference variable is contained on both sides of the expression
-  arangodb::HashSet<aql::Variable const*> variables;
+  ::arangodb::containers::HashSet<aql::Variable const*> variables;
   if (op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN &&
       (other->type == arangodb::aql::NODE_TYPE_EXPANSION ||
        other->type == arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS)) {
@@ -860,11 +860,11 @@ void Index::expandInSearchValues(VPackSlice const base, VPackBuilder& result) co
   TRI_ASSERT(base.isArray());
 
   VPackArrayBuilder baseGuard(&result);
-  for (auto const& oneLookup : VPackArrayIterator(base)) {
+  for (VPackSlice oneLookup : VPackArrayIterator(base)) {
     TRI_ASSERT(oneLookup.isArray());
 
     bool usesIn = false;
-    for (auto const& it : VPackArrayIterator(oneLookup)) {
+    for (VPackSlice it : VPackArrayIterator(oneLookup)) {
       if (it.hasKey(StaticStrings::IndexIn)) {
         usesIn = true;
         break;
@@ -906,7 +906,7 @@ void Index::expandInSearchValues(VPackSlice const base, VPackBuilder& result) co
                 arangodb::basics::VelocyPackHelper::VPackHash(),
                 arangodb::basics::VelocyPackHelper::VPackEqual());
 
-        for (auto const& el : VPackArrayIterator(inList)) {
+        for (VPackSlice el : VPackArrayIterator(inList)) {
           tmp.emplace(el);
         }
         auto& vector = elements[i];
@@ -1025,7 +1025,7 @@ double Index::getTimestamp(arangodb::velocypack::Slice const& doc,
   if (value.isString()) {
     // string value. we expect it to be YYYY-MM-DD etc.
     tp_sys_clock_ms tp;
-    if (basics::parseDateTime(value.copyString(), tp)) {
+    if (basics::parseDateTime(value.stringRef(), tp)) {
       return static_cast<double>(
           std::chrono::duration_cast<std::chrono::seconds>(tp.time_since_epoch())
               .count());

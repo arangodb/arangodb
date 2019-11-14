@@ -41,6 +41,10 @@
 
 using namespace arangodb;
 using namespace arangodb::aql;
+
+constexpr bool ShortestPathExecutor::Properties::preservesOrder;
+constexpr BlockPassthrough ShortestPathExecutor::Properties::allowsBlockPassthrough;
+constexpr bool ShortestPathExecutor::Properties::inputSizeRestrictsOutputSize;
 using namespace arangodb::graph;
 
 namespace {

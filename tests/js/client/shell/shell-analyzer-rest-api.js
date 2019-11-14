@@ -246,41 +246,48 @@ function testSuite() {
     },
     
     testAnalyzerLinks : function() {
-      let body = JSON.stringify({
-        name : name,
-        type : "text",
-        properties : { locale: "en.UTF-8", stopwords: [ ] },
-      });
+      try {
+        let body = JSON.stringify({
+          name : name,
+          type : "text",
+          properties : { locale: "en.UTF-8", stopwords: [ ] },
+        });
 
-      let result = arango.POST_RAW("/_api/analyzer", body);
-      assertFalse(result.error);
+        let result = arango.POST_RAW("/_api/analyzer", body);
+        assertFalse(result.error);
 
-      let col = db._create("ulfColTestLinks");
-      let view = db._createView("ulfViewTestLinks", "arangosearch", {});
-      var properties = {
-        links : {
-          [col.name()] : {
-            includeAllFields : true,
-            storeValues : "id",
-            fields : {
-              text : { analyzers : [name] }
+        let col = db._create("ulfColTestLinks");
+        let view = db._createView("ulfViewTestLinks", "arangosearch", {});
+        var properties = {
+          links : {
+            [col.name()] : {
+              includeAllFields : true,
+              storeValues : "id",
+              fields : {
+                text : { analyzers : [name] }
+              }
             }
           }
-        }
-      };
-      view.properties(properties);
+        };
+        view.properties(properties);
 
-      result = arango.DELETE("/_api/analyzer/" + name);
+        result = arango.DELETE("/_api/analyzer/" + name);
 
-      assertTrue(result.error);
-      assertEqual(result.code, 409); // can not delete -- referencded by link
-      assertEqual(result.errorNum, error.ERROR_ARANGO_CONFLICT.code);
+        assertTrue(result.error);
+        assertEqual(result.code, 409); // can not delete -- referencded by link
+        assertEqual(result.errorNum, error.ERROR_ARANGO_CONFLICT.code);
 
-      // delete with force - must succeed
-      result = arango.DELETE("/_api/analyzer/" + name + "?force=true");
-      assertFalse(result.error);
-
-      db._drop(col.name());
+        // delete with force - must succeed
+        result = arango.DELETE("/_api/analyzer/" + name + "?force=true");
+        assertFalse(result.error);
+      } finally {
+        try {
+          db._drop("ulfColTestLinks");
+        } catch (_) {}
+        try {
+          db._dropView("ulfViewTestLinks");
+        } catch (_) {}
+      }
     }
   }; // return
 } // end of suite

@@ -24,8 +24,8 @@
 #ifndef ARANGOD_IRESEARCH__IRESEARCH_VIEW_H
 #define ARANGOD_IRESEARCH__IRESEARCH_VIEW_H 1
 
-#include "IResearchViewMeta.h"
-#include "Basics/HashSet.h"
+#include "Containers/HashSet.h"
+#include "IResearch/IResearchViewMeta.h"
 #include "Transaction/Status.h"
 #include "VocBase/LogicalView.h"
 
@@ -153,15 +153,14 @@ class IResearchView final: public arangodb::LogicalView {
   ///        if mode == Find && list found doesn't match then return nullptr
   /// @param key the specified key will be as snapshot indentifier
   ///        in a transaction
-  /// 	     (nullptr == view address will be used)
+  ///        (nullptr == view address will be used)
   /// @return pointer to an index reader containing the datastore record
   ///         snapshot associated with 'state'
   ///         (nullptr == no view snapshot associated with the specified state)
   ///         if force == true && no snapshot -> associate current snapshot
   ////////////////////////////////////////////////////////////////////////////////
-  Snapshot const* snapshot(transaction::Methods& trx,
-                           SnapshotMode mode = SnapshotMode::Find,
-                           arangodb::HashSet<TRI_voc_cid_t> const* shards = nullptr,
+  Snapshot const* snapshot(transaction::Methods& trx, SnapshotMode mode = SnapshotMode::Find,
+                           ::arangodb::containers::HashSet<TRI_voc_cid_t> const* shards = nullptr,
                            void const* key = nullptr) const;
 
   //////////////////////////////////////////////////////////////////////////////
@@ -190,9 +189,9 @@ class IResearchView final: public arangodb::LogicalView {
   /// @brief fill and return a JSON description of a IResearchView object
   ///        only fields describing the view itself, not 'link' descriptions
   //////////////////////////////////////////////////////////////////////////////
-  virtual arangodb::Result appendVelocyPackImpl(  // append definition
-      arangodb::velocypack::Builder& builder,     // definition destination
-      std::underlying_type<Serialize>::type flags) const override;
+  virtual arangodb::Result appendVelocyPackImpl(
+      arangodb::velocypack::Builder& builder,
+      Serialization context) const override;
 
   ///////////////////////////////////////////////////////////////////////////////
   /// @brief drop this IResearch View

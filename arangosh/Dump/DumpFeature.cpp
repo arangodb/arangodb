@@ -42,6 +42,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/application-exit.h"
 #include "Basics/system-functions.h"
+#include "FeaturePhases/BasicFeaturePhaseClient.h"
 #include "Maskings/Maskings.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Random/RandomGenerator.h"
@@ -569,12 +570,12 @@ DumpFeature::JobData::JobData(ManagedDirectory& dir, DumpFeature& feat,
 
 DumpFeature::DumpFeature(application_features::ApplicationServer& server, int& exitCode)
     : ApplicationFeature(server, DumpFeature::featureName()),
-      _clientManager{Logger::DUMP},
-      _clientTaskQueue{::processJob, ::handleJobResult},
+      _clientManager{server, Logger::DUMP},
+      _clientTaskQueue{server, ::processJob, ::handleJobResult},
       _exitCode{exitCode} {
   requiresElevatedPrivileges(false);
   setOptional(false);
-  startsAfter("BasicsPhase");
+  startsAfter<application_features::BasicFeaturePhaseClient>();
 
   using arangodb::basics::FileUtils::buildFilename;
   using arangodb::basics::FileUtils::currentDirectory;
@@ -1080,7 +1081,7 @@ void DumpFeature::start() {
   double const start = TRI_microtime();
 
   // set up the output directory, not much else
-  _directory = std::make_unique<ManagedDirectory>(_options.outputPath,
+  _directory = std::make_unique<ManagedDirectory>(server(), _options.outputPath,
                                                   !_options.overwrite, true,
                                                   _options.useGzip);
   if (_directory->status().fail()) {
@@ -1088,7 +1089,6 @@ void DumpFeature::start() {
       case TRI_ERROR_FILE_EXISTS:
         LOG_TOPIC("efed0", FATAL, Logger::DUMP) << "cannot write to output directory '"
                                        << _options.outputPath << "'";
-
         break;
       case TRI_ERROR_CANNOT_OVERWRITE_FILE:
         LOG_TOPIC("bd7fe", FATAL, Logger::DUMP)
@@ -1104,8 +1104,7 @@ void DumpFeature::start() {
   }
 
   // get database name to operate on
-  auto client = application_features::ApplicationServer::getFeature<ClientFeature>(
-      "Client");
+  auto& client = server().getFeature<HttpEndpointProvider, ClientFeature>();
 
   // get a client to use in main thread
   auto httpClient = _clientManager.getConnectedClient(_options.force, true, true);
@@ -1139,8 +1138,8 @@ void DumpFeature::start() {
 
   if (_options.progress) {
     LOG_TOPIC("f3a1f", INFO, Logger::DUMP)
-        << "Connected to ArangoDB '" << client->endpoint() << "', database: '"
-        << client->databaseName() << "', username: '" << client->username() << "'";
+        << "Connected to ArangoDB '" << client.endpoint() << "', database: '"
+        << client.databaseName() << "', username: '" << client.username() << "'";
 
     LOG_TOPIC("5e989", INFO, Logger::DUMP)
         << "Writing dump to output directory '" << _directory->path()
@@ -1156,7 +1155,7 @@ void DumpFeature::start() {
     std::tie(res, databases) = ::getDatabases(*httpClient);
   } else {
     // use just the single database that was specified
-    databases.push_back(client->databaseName());
+    databases.push_back(client.databaseName());
   }
 
   if (res.ok()) {
@@ -1164,11 +1163,12 @@ void DumpFeature::start() {
       if (_options.allDatabases) {
         // inject current database
         LOG_TOPIC("4af42", INFO, Logger::DUMP) << "Dumping database '" << db << "'";
-        client->setDatabaseName(db);
+        client.setDatabaseName(db);
         httpClient = _clientManager.getConnectedClient(_options.force, false, true);
 
-        _directory = std::make_unique<ManagedDirectory>(arangodb::basics::FileUtils::buildFilename(_options.outputPath, db),
-                                                        true, true);
+        _directory = std::make_unique<ManagedDirectory>(
+            server(), arangodb::basics::FileUtils::buildFilename(_options.outputPath, db),
+            true, true);
 
         if (_directory->status().fail()) {
           res = _directory->status();

@@ -41,8 +41,8 @@ TEST(CompileTimStrlenTest, test_compile_time_strlen) {
   static_assert(arangodb::compileTimeStrlen("the quick brown fox") == 19,
                 "invalid compile time strlen value");
 
-  EXPECT_TRUE(arangodb::compileTimeStrlen("") == 0U);
-  EXPECT_TRUE(arangodb::compileTimeStrlen("foo") == 3U);
-  EXPECT_TRUE(arangodb::compileTimeStrlen("foobarbaz") == 9U);
-  EXPECT_TRUE(arangodb::compileTimeStrlen("the quick brown fox") == 19U);
+  EXPECT_EQ(arangodb::compileTimeStrlen(""), 0U);
+  EXPECT_EQ(arangodb::compileTimeStrlen("foo"), 3U);
+  EXPECT_EQ(arangodb::compileTimeStrlen("foobarbaz"), 9U);
+  EXPECT_EQ(arangodb::compileTimeStrlen("the quick brown fox"), 19U);
 }

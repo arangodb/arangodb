@@ -273,7 +273,7 @@ template <typename T, bool inObject>
 static inline void AddValue(BuilderContext& context,
                             arangodb::velocypack::StringRef const& attributeName, T const& value) {
   if (inObject) {
-    context.builder.addUnchecked(attributeName.begin(), attributeName.size(), value);
+    context.builder.addUnchecked(attributeName.data(), attributeName.size(), value);
   } else {
     context.builder.add(value);
   }
@@ -312,10 +312,15 @@ static int V8ToVPack(BuilderContext& context, v8::Handle<v8::Value> const parame
           VPackValue(parameter->ToUint32(context.context).ToLocalChecked()->Value()));
       return TRI_ERROR_NO_ERROR;
     }
-
-    AddValue<VPackValue, inObject>(
-        context, attributeName,
-        VPackValue(parameter->ToNumber(context.context).ToLocalChecked()->Value()));
+        
+    double value = parameter->ToNumber(context.context).ToLocalChecked()->Value();
+    if (std::isnan(value) || !std::isfinite(value)) {
+      AddValue<VPackValue, inObject>(context, attributeName, VPackValue(VPackValueType::Null));
+    } else {
+      AddValue<VPackValue, inObject>(
+          context, attributeName,
+          VPackValue(parameter->ToNumber(context.context).ToLocalChecked()->Value()));
+    }
     return TRI_ERROR_NO_ERROR;
   }
 
@@ -379,10 +384,15 @@ static int V8ToVPack(BuilderContext& context, v8::Handle<v8::Value> const parame
       }
 
       if (parameter->IsNumberObject()) {
-        AddValue<VPackValue, inObject>(context, attributeName,
-                                       VPackValue(v8::Handle<v8::NumberObject>::Cast(parameter)
-                                                      ->NumberValue(context.context)
-                                                      .FromMaybe(0.0)));
+        double value = v8::Handle<v8::NumberObject>::Cast(parameter)->NumberValue(context.context).FromMaybe(0.0);
+        if (std::isnan(value) || !std::isfinite(value)) {
+          AddValue<VPackValue, inObject>(context, attributeName, VPackValue(VPackValueType::Null));
+        } else {
+          AddValue<VPackValue, inObject>(context, attributeName,
+                                         VPackValue(v8::Handle<v8::NumberObject>::Cast(parameter)
+                                                        ->NumberValue(context.context)
+                                                        .FromMaybe(0.0)));
+        }
         return TRI_ERROR_NO_ERROR;
       }
 

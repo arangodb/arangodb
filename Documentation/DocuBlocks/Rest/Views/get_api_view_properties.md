@@ -1,7 +1,7 @@
 @startDocuBlock get_api_view_properties
-@brief reads the properties of the specified view
+@brief reads the properties of the specified View
 
-@RESTHEADER{GET /_api/view/{view-name}/properties, Read properties of a view, getView}
+@RESTHEADER{GET /_api/view/{view-name}/properties, Read properties of a View, getView}
 
 @RESTURLPARAMETERS
 
@@ -9,14 +9,11 @@
 Returns an object containing the definition of the view identified by *view-name*.
 
 @RESTURLPARAM{view-name,string,required}
-The name of the view.
+The name of the View.
 
 @RESTDESCRIPTION
-The result is an object describing the view with the following attributes:
-- *id*: The identifier of the view
-- *name*: The name of the view
-- *type*: The type of the view as string
-- any additional view implementation specific properties
+The result is an object with a full description of a specific View, including
+View type dependent properties.
 
 @RESTRETURNCODES
 
@@ -30,7 +27,7 @@ If the *view-name* is unknown, then a *HTTP 404* is returned.
 
 Using an identifier:
 
-@EXAMPLE_ARANGOSH_RUN{RestViewGetViewPropertiesIdentifier}
+@EXAMPLE_ARANGOSH_RUN{RestViewGetViewPropertiesIdentifierArangoSearch}
     var viewName = "products";
     var viewType = "arangosearch";
 
@@ -47,7 +44,7 @@ Using an identifier:
 
 Using a name:
 
-@EXAMPLE_ARANGOSH_RUN{RestViewGetViewPropertiesName}
+@EXAMPLE_ARANGOSH_RUN{RestViewGetViewPropertiesNameArangoSearch}
     var viewName = "products";
     var viewType = "arangosearch";
 

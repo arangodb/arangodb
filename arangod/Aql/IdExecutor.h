@@ -23,12 +23,13 @@
 #ifndef ARANGOD_AQL_ID_EXECUTOR_H
 #define ARANGOD_AQL_ID_EXECUTOR_H
 
+#include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutorInfos.h"
-#include "Aql/Stats.h"
-#include "Aql/Variable.h"
+#include "Aql/SharedAqlItemBlockPtr.h"
 
-#include "Aql/ExecutionBlockImpl.h"
+#include <tuple>
+#include <utility>
 
 namespace arangodb {
 namespace transaction {
@@ -36,114 +37,67 @@ class Methods;
 }
 
 namespace aql {
-
-class ConstFetcher;
-class AqlItemMatrix;
+class ExecutionEngine;
+class ExecutionNode;
 class ExecutorInfos;
 class NoStats;
 class OutputAqlItemRow;
-struct SortRegister;
 
 class IdExecutorInfos : public ExecutorInfos {
  public:
   IdExecutorInfos(RegisterId nrInOutRegisters, std::unordered_set<RegisterId> registersToKeep,
-                  std::unordered_set<RegisterId> registersToClear);
+                  std::unordered_set<RegisterId> registersToClear,
+                  std::string distributeId = {""},
+                  bool isResponsibleForInitializeCursor = true);
 
   IdExecutorInfos() = delete;
   IdExecutorInfos(IdExecutorInfos&&) = default;
   IdExecutorInfos(IdExecutorInfos const&) = delete;
   ~IdExecutorInfos() = default;
+
+  std::string const& distributeId();
+
+  [[nodiscard]] bool isResponsibleForInitializeCursor() const;
+
+ private:
+  std::string const _distributeId;
+
+  bool const _isResponsibleForInitializeCursor;
 };
 
 // forward declaration
-template <class T>
+template <BlockPassthrough usePassThrough, class T>
 class IdExecutor;
 
 // (empty) implementation of IdExecutor<void>
 template <>
-class IdExecutor<void> {};
+class IdExecutor<BlockPassthrough::Enable, void> {};
 
 // implementation of ExecutionBlockImpl<IdExecutor<void>>
 template <>
-class ExecutionBlockImpl<IdExecutor<void>> : public ExecutionBlock {
+class ExecutionBlockImpl<IdExecutor<BlockPassthrough::Enable, void>> : public ExecutionBlock {
  public:
   ExecutionBlockImpl(ExecutionEngine* engine, ExecutionNode const* node,
-                     RegisterId outputRegister, bool doCount)
-      : ExecutionBlock(engine, node),
-        _currentDependency(0),
-        _outputRegister(outputRegister),
-        _doCount(doCount) {
-    // already insert ourselves into the statistics results
-    if (_profile >= PROFILE_LEVEL_BLOCKS) {
-      _engine->_stats.nodes.emplace(node->id(), ExecutionStats::Node());
-    }
-  }
+                     RegisterId outputRegister, bool doCount);
 
   ~ExecutionBlockImpl() override = default;
 
-  std::pair<ExecutionState, SharedAqlItemBlockPtr> getSome(size_t atMost) override {
-    traceGetSomeBegin(atMost);
-    if (isDone()) {
-      return traceGetSomeEnd(ExecutionState::DONE, nullptr);
-    }
+  std::pair<ExecutionState, SharedAqlItemBlockPtr> getSome(size_t atMost) override;
 
-    ExecutionState state;
-    SharedAqlItemBlockPtr block;
-    std::tie(state, block) = currentDependency().getSome(atMost);
+  std::pair<ExecutionState, size_t> skipSome(size_t atMost) override;
 
-    countStats(block);
-
-    if (state == ExecutionState::DONE) {
-      nextDependency();
-    }
-
-    return traceGetSomeEnd(state, block);
-  }
-
-  std::pair<ExecutionState, size_t> skipSome(size_t atMost) override {
-    traceSkipSomeBegin(atMost);
-    if (isDone()) {
-      return traceSkipSomeEnd(ExecutionState::DONE, 0);
-    }
-
-    ExecutionState state;
-    size_t skipped;
-    std::tie(state, skipped) = currentDependency().skipSome(atMost);
-
-    if (state == ExecutionState::DONE) {
-      nextDependency();
-    }
-
-    return traceSkipSomeEnd(state, skipped);
-  }
-
-  RegisterId getOutputRegisterId() const noexcept { return _outputRegister; }
+  [[nodiscard]] RegisterId getOutputRegisterId() const noexcept;
 
  private:
-  bool isDone() const noexcept {
-    // I'd like to assert this in the constructor, but the dependencies are
-    // added after construction.
-    TRI_ASSERT(!_dependencies.empty());
-    return _currentDependency >= _dependencies.size();
-  }
+  [[nodiscard]] bool isDone() const noexcept;
 
-  ExecutionBlock& currentDependency() const {
-    TRI_ASSERT(_currentDependency < _dependencies.size());
-    TRI_ASSERT(_dependencies[_currentDependency] != nullptr);
-    return *_dependencies[_currentDependency];
-  }
+  [[nodiscard]] ExecutionBlock& currentDependency() const;
 
-  void nextDependency() noexcept { ++_currentDependency; }
+  void nextDependency() noexcept;
 
-  bool doCount() const noexcept { return _doCount; }
+  [[nodiscard]] bool doCount() const noexcept;
 
-  void countStats(SharedAqlItemBlockPtr& block) {
-    if (doCount() && block != nullptr) {
-      CountStats stats;
-      stats.setCounted(block->size());
-      _engine->_stats += stats;
-    }
-  }
+  void countStats(SharedAqlItemBlockPtr& block);
 
  private:
   size_t _currentDependency;
@@ -151,14 +105,14 @@ class ExecutionBlockImpl<IdExecutor<void>> : public ExecutionBlock {
   bool const _doCount;
 };
 
-template <class UsedFetcher>
+template <BlockPassthrough usePassThrough, class UsedFetcher>
 // cppcheck-suppress noConstructor
 class IdExecutor {
  public:
   struct Properties {
-    static const bool preservesOrder = true;
-    static const bool allowsBlockPassthrough = true;
-    static const bool inputSizeRestrictsOutputSize = false;
+    static constexpr bool preservesOrder = true;
+    static constexpr BlockPassthrough allowsBlockPassthrough = usePassThrough;
+    static constexpr bool inputSizeRestrictsOutputSize = false;
   };
   // Only Supports SingleRowFetcher and ConstFetcher
   using Fetcher = UsedFetcher;
@@ -176,10 +130,11 @@ class IdExecutor {
    */
   std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
 
-  inline std::tuple<ExecutionState, Stats, SharedAqlItemBlockPtr> fetchBlockForPassthrough(size_t atMost) {
-    auto rv = _fetcher.fetchBlockForPassthrough(atMost);
-    return {rv.first, {}, std::move(rv.second)};
-  }
+  template <BlockPassthrough allowPass = usePassThrough, typename = std::enable_if_t<allowPass == BlockPassthrough::Enable>>
+  std::tuple<ExecutionState, Stats, SharedAqlItemBlockPtr> fetchBlockForPassthrough(size_t atMost);
+
+  template <BlockPassthrough allowPass = usePassThrough, typename = std::enable_if_t<allowPass == BlockPassthrough::Disable>>
+  std::tuple<ExecutionState, NoStats, size_t> skipRows(size_t atMost);
 
  private:
   Fetcher& _fetcher;

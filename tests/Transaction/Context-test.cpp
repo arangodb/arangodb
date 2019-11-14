@@ -38,6 +38,7 @@
 #include <velocypack/Parser.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "../IResearch/common.h"
 #include "gtest/gtest.h"
 
 using namespace arangodb;
@@ -53,19 +54,20 @@ class TransactionContextTest : public ::testing::Test {
   TRI_vocbase_t vocbase;
 
   TransactionContextTest()
-      : vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase") {}
+      : vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                testDBInfo(setup.server.server())) {}
 };
 
 TEST_F(TransactionContextTest, StandaloneContext) {
   transaction::StandaloneContext ctx(vocbase);
-  EXPECT_TRUE(!ctx.isEmbeddable());
-  EXPECT_TRUE(ctx.getParentTransaction() == nullptr);
+  EXPECT_FALSE(ctx.isEmbeddable());
+  EXPECT_EQ(ctx.getParentTransaction(), nullptr);
 
   std::vector<std::string*> strings;
   for (int i = 0; i < 10; i++) {
     std::string* str = ctx.leaseString();
     if (i > 0) {
-      EXPECT_TRUE(strings.back() != str);
+      EXPECT_NE(strings.back(), str);
     }
     strings.push_back(str);
   }
@@ -80,7 +82,7 @@ TEST_F(TransactionContextTest, StandaloneContext) {
   for (int i = 0; i < 10; i++) {
     auto* b = ctx.leaseBuilder();
     if (i > 0) {
-      EXPECT_TRUE(builders.back() != b);
+      EXPECT_NE(builders.back(), b);
     }
     builders.push_back(b);
   }
@@ -113,12 +115,14 @@ TEST_F(TransactionContextTest, StandaloneSmartContext) {
 
   VPackSlice trxSlice = result.slice();
   ASSERT_TRUE(trxSlice.isArray());
-  ASSERT_TRUE(trxSlice.length() == 2);
+  ASSERT_EQ(trxSlice.length(), 2);
 
-  aql::QueryString queryString{
-      "FOR doc IN @@collection "
-      "FILTER doc.hello != '' "
-      "RETURN doc"};
+  aql::QueryString queryString{R"aql(
+    FOR doc IN @@collection
+      FILTER doc.hello != ''
+      SORT doc.hello
+      RETURN doc
+  )aql"};
 
   auto bindVars = std::make_shared<VPackBuilder>();
   bindVars->add(VPackValue(VPackValueType::Object));
@@ -134,7 +138,7 @@ TEST_F(TransactionContextTest, StandaloneSmartContext) {
     ASSERT_TRUE(qres.ok());
     VPackSlice aqlSlice = qres.data->slice();
     ASSERT_TRUE(aqlSlice.isArray());
-    ASSERT_TRUE(aqlSlice.length() == 2);
+    ASSERT_EQ(aqlSlice.length(), 2);
     ASSERT_TRUE(aqlSlice.at(0).get("hello").isEqualString("world1"));
   }
 
@@ -151,7 +155,7 @@ TEST_F(TransactionContextTest, StandaloneSmartContext) {
     ASSERT_TRUE(qres.ok());
     VPackSlice aqlSlice = qres.data->slice();
     ASSERT_TRUE(aqlSlice.isArray());
-    ASSERT_TRUE(aqlSlice.length() == 1);
+    ASSERT_EQ(aqlSlice.length(), 1);
     ASSERT_TRUE(aqlSlice.at(0).get("hello").isEqualString("world2"));
   }
 }  // SECTION("StandaloneSmartContext")

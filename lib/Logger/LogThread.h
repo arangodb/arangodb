@@ -30,6 +30,9 @@
 #include <boost/lockfree/queue.hpp>
 
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
 namespace basics {
 class ConditionVariable;
 }
@@ -43,7 +46,8 @@ class LogThread final : public Thread {
   static void flush();
 
  public:
-  explicit LogThread(std::string const& name);
+  explicit LogThread(application_features::ApplicationServer& server,
+                     std::string const& name);
   ~LogThread();
 
  public:

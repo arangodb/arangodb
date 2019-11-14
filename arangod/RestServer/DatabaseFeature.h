@@ -29,11 +29,14 @@
 #include "Basics/Thread.h"
 #include "Utils/VersionTracker.h"
 #include "VocBase/voc-types.h"
+#include "VocBase/Methods/Databases.h"
 
 struct TRI_vocbase_t;
 
 namespace arangodb {
-
+namespace application_features {
+class ApplicationServer;
+}
 class LogicalCollection;
 
 }
@@ -54,7 +57,7 @@ class DatabaseManagerThread final : public Thread {
   DatabaseManagerThread(DatabaseManagerThread const&) = delete;
   DatabaseManagerThread& operator=(DatabaseManagerThread const&) = delete;
 
-  DatabaseManagerThread();
+  explicit DatabaseManagerThread(application_features::ApplicationServer&);
   ~DatabaseManagerThread();
 
   void run() override;
@@ -81,17 +84,20 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   void unprepare() override final;
 
   // used by catch tests
-  #ifdef ARANGODB_USE_GOOGLE_TESTS
-    inline int loadDatabases(velocypack::Slice const& databases) {
-      return iterateDatabases(databases);
-    }
-  #endif
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  inline int loadDatabases(velocypack::Slice const& databases) {
+    return iterateDatabases(databases);
+  }
+#endif
 
   /// @brief will be called when the recovery phase has run
   /// this will call the engine-specific recoveryDone() procedures
   /// and will execute engine-unspecific operations (such as starting
   /// the replication appliers) for all databases
   void recoveryDone();
+
+  /// @brief enumerate all databases
+  void enumerate(std::function<void(TRI_vocbase_t*)> const& callback);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief register a callback
@@ -110,17 +116,18 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   std::vector<std::string> getDatabaseNames();
   std::vector<std::string> getDatabaseNamesForUser(std::string const& user);
 
-  int createDatabase(TRI_voc_tick_t id, std::string const& name, TRI_vocbase_t*& result);
+  Result createDatabase(arangodb::CreateDatabaseInfo&& , TRI_vocbase_t*& result);
+
   int dropDatabase(std::string const& name, bool waitForDeletion, bool removeAppsDirectory);
   int dropDatabase(TRI_voc_tick_t id, bool waitForDeletion, bool removeAppsDirectory);
 
   void inventory(arangodb::velocypack::Builder& result, TRI_voc_tick_t,
                  std::function<bool(arangodb::LogicalCollection const*)> const& nameFilter);
 
-  TRI_vocbase_t* useDatabase(std::string const& name);
-  TRI_vocbase_t* useDatabase(TRI_voc_tick_t id);
+  TRI_vocbase_t* useDatabase(std::string const& name) const;
+  TRI_vocbase_t* useDatabase(TRI_voc_tick_t id) const;
 
-  TRI_vocbase_t* lookupDatabase(std::string const& name);
+  TRI_vocbase_t* lookupDatabase(std::string const& name) const;
   void enumerateDatabases(std::function<void(TRI_vocbase_t& vocbase)> const& func);
   std::string translateCollectionName(std::string const& dbName,
                                       std::string const& collectionName);
@@ -179,8 +186,8 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   std::atomic<DatabasesLists*> _databasesLists;
   // TODO: Make this again a template once everybody has gcc >= 4.9.2
   // arangodb::basics::DataProtector<64>
-  arangodb::basics::DataProtector _databasesProtector;
-  arangodb::Mutex _databasesMutex;
+  mutable arangodb::basics::DataProtector _databasesProtector;
+  mutable arangodb::Mutex _databasesMutex;
 
   bool _isInitiallyEmpty;
   bool _checkVersion;

@@ -42,7 +42,7 @@ class IAggregator {
 
  public:
   IAggregator() {}
-  virtual ~IAggregator() {}
+  virtual ~IAggregator() = default;
 
   /// @brief Used when updating aggregator value locally
   virtual void aggregate(void const* valuePtr) = 0;

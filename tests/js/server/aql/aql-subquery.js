@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, AQL_EXPLAIN */
+/*global AQL_EXPLAIN */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for Ahuacatl, subqueries
@@ -29,9 +29,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
+const { assertEqual, assertTrue } = jsunity.jsUnity.assertions;
 var helper = require("@arangodb/aql-helper");
 var getQueryResults = helper.getQueryResults;
 var findExecutionNodes = helper.findExecutionNodes;
+const { db } = require("@arangodb");
+const isCoordinator = require('@arangodb/cluster').isCoordinator();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -40,10 +43,6 @@ var findExecutionNodes = helper.findExecutionNodes;
 function ahuacatlSubqueryTestSuite () {
 
   return {
-
-    setUp : function () {},
-
-    tearDown : function () {},
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test subquery evaluation
@@ -182,11 +181,36 @@ function ahuacatlSubqueryTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSubqueryOutVariableName : function () {
-      var XPResult = AQL_EXPLAIN("FOR u IN _users LET theLetVariable = (FOR j IN _users RETURN j) RETURN theLetVariable");
+      const explainResult = AQL_EXPLAIN("FOR u IN _users LET theLetVariable = (FOR j IN _users RETURN j) RETURN theLetVariable",
+        {}, {optimizer: {rules: ['-splice-subqueries']}});
 
-      var SubqueryNode = findExecutionNodes(XPResult, "SubqueryNode")[0];
+      const subqueryNode = findExecutionNodes(explainResult, "SubqueryNode")[0];
 
-      assertEqual(SubqueryNode.outVariable.name, "theLetVariable");
+      assertEqual(subqueryNode.outVariable.name, "theLetVariable");
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test splice-subqueries optimization
+////////////////////////////////////////////////////////////////////////////////
+
+    testSpliceSubqueryOutVariableName : function () {
+      const explainResult = AQL_EXPLAIN("FOR u IN _users LET theLetVariable = (FOR j IN _users RETURN j) RETURN theLetVariable");
+
+      { // TODO Remove this block as soon as subquery splicing is enabled in the cluster again.
+        //  It's here so the test will fail as soon as that happens, so the actual test will not be forgotten
+        //  to be re-enabled.
+        const isCluster = require("@arangodb/cluster").isCluster();
+        if (isCluster) {
+          const numSubqueryEndNode = findExecutionNodes(explainResult, "SubqueryEndNode").length;
+
+          assertEqual(0, numSubqueryEndNode);
+          return;
+        }
+      }
+
+      const subqueryEndNode = findExecutionNodes(explainResult, "SubqueryEndNode")[0];
+
+      assertEqual(subqueryEndNode.outVariable.name, "theLetVariable");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -324,7 +348,130 @@ function ahuacatlSubqueryTestSuite () {
       assertEqual(expected, actual);
     },
 
-  };
+////////////////////////////////////////////////////////////////////////////////
+/// @brief this tests a rather complex interna of AQL execution combinations
+/// A subquery should only be executed if it has an input row
+/// A count collect block will produce an output even if it does not get an input
+/// specifically it will rightfully count 0.
+/// The insert block will write into the collection if it gets an input.
+/// So the assertion here is, that if a subquery has no input, than all it's
+/// Parts do not have side-effects, but the subquery still prduces valid results
+////////////////////////////////////////////////////////////////////////////////
+    testCollectWithinEmptyNestedSubquery: function () {
+      const colName = "UnitTestSubqueryCollection";
+      try {
+        db._create(colName);
+        const query = `
+          FOR k IN 1..2
+            LET sub1 = (
+              FOR x IN []
+                LET sub2 = (
+                  COLLECT WITH COUNT INTO q
+                  INSERT {counted: q} INTO ${colName}
+                  RETURN NEW
+                )
+                RETURN sub2
+            )
+            RETURN [k, sub1]
+        `;
+        const expected = [ [1, []], [2, []]];
+
+        var actual = getQueryResults(query);
+        assertEqual(expected, actual);
+        assertEqual(db[colName].count(), 0);
+      } finally {
+        db._drop(colName);
+      }
+      
+    },
+
+    testCollectionAccessSubquery: function () {
+      const colName = "UnitTestSubqueryCollection";
+      try {
+        const col = db._create(colName, {numberOfShards: 9});
+        let dbServers = 0;
+        if (isCoordinator) {
+          dbServers = Object.values(col.shards(true)).filter((value, index, self) => {
+            return self.indexOf(value) === index;
+          }).length;
+        }
+        const docs = [];
+        const expected = new Map();
+        for (let i = 0; i < 2000; ++i) {
+          docs.push({value: i, mod100: i % 100});
+          const oldValue = expected.get(i % 100) || [];
+          oldValue.push(i);
+          expected.set(i % 100, oldValue);
+        }
+        col.save(docs);
+
+        // Now we do a left outer join on the same collection
+        const query = `
+          FOR left IN ${colName}
+            LET rightJoin = (
+              FOR right IN ${colName}
+                FILTER left.mod100 == right.mod100
+                RETURN right.value
+            )
+            RETURN {key: left.mod100, value: rightJoin}
+        `;
+        // First NoIndex variant
+        {
+          const cursor = db._query(query);
+          const actual = cursor.toArray();
+          const {scannedFull, scannedIndex, filtered, httpRequests} = cursor.getExtra().stats;
+          assertEqual(scannedFull, 4002000);
+          assertEqual(scannedIndex, 0);
+          assertEqual(filtered, 3960000);
+          if (isCoordinator) {
+            assertTrue(httpRequests <= 4003 * dbServers + 1, httpRequests);
+          } else {
+            assertEqual(httpRequests, 0);
+          }
+          const foundKeys = new Map();
+          for (const {key, value} of actual) {
+            assertTrue(expected.has(key));
+            // Use sort here as no ordering is guaranteed by query.
+            assertEqual(expected.get(key).sort(), value.sort());
+            foundKeys.set(key, (foundKeys.get(key) || 0) + 1);
+          }
+          assertEqual(foundKeys.size, expected.size);
+          for (const value of foundKeys.values()) {
+            assertEqual(value, 20);
+          }
+        }
+        // Second with Index
+        {
+          col.ensureHashIndex("mod100");
+
+          const cursor = db._query(query);
+          const actual = cursor.toArray();
+          const {scannedFull, scannedIndex, filtered, httpRequests} = cursor.getExtra().stats;
+          assertEqual(scannedFull, 2000);
+          assertEqual(scannedIndex, 40000);
+          assertEqual(filtered, 0);
+          if (isCoordinator) {
+            assertTrue(httpRequests <= 4003 * dbServers + 1, httpRequests);
+          } else {
+            assertEqual(httpRequests, 0);
+          }
+          const foundKeys = new Map();
+          for (const {key, value} of actual) {
+            assertTrue(expected.has(key));
+            // Use sort here as no ordering is guaranteed by query.
+            assertEqual(expected.get(key).sort(), value.sort());
+            foundKeys.set(key, (foundKeys.get(key) || 0) + 1);
+          }
+          assertEqual(foundKeys.size, expected.size);
+          for (const value of foundKeys.values()) {
+            assertEqual(value, 20);
+          }
+        }        
+      } finally {
+        db._drop(colName);
+      }
+    }
+  }; 
 }
 
 jsunity.run(ahuacatlSubqueryTestSuite);

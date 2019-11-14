@@ -8,6 +8,18 @@ include(ExternalProject)
 
 remove_definitions("-DUSE_ENTERPRISE=1")
 
+# Disable IPO for 3rdParty libs. This is because they currently all use old
+# cmake versions, missing policy CMP0069.
+# Hopefully this can be removed later - just try it out and look for warnings in
+# cmake's output. Also, you can use the compile_commands.json optionally emitted
+# by cmake (see CMAKE_EXPORT_COMPILE_COMMANDS) and jq to get a list of files we
+# do not compile with IPO (assuming gcc or clang) with this command:
+#   < compile_commands.json jq '.[] | select(.command | test("-flto") | not) | .file' -r
+if (${IPO_ENABLED})
+    message ("Disabling IPO for 3rdParty libraries")
+    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION False)
+endif ()
+
 ################################################################################
 ## ZLIB
 ################################################################################
@@ -229,17 +241,17 @@ endif()
 ################################################################################
 add_definitions(-DCURL_STATICLIB=1)
 
-set(ENABLE_MANUAL OFF CACHE type BOOL)
-set(BUILD_CURL_EXE OFF CACHE type BOOL)
-set(BUILD_SHARED_LIBS OFF CACHE type BOOL)
-set(BUILD_TESTING OFF CACHE type BOOL)
-set(CURL_STATICLIB ON CACHE type BOOL)
-set(HTTP_ONLY ON CACHE type BOOL)
-set(CMAKE_USE_LIBSSH2 OFF CACHE type BOOL)
-set(CMAKE_USE_OPENSSL ON CACHE type BOOL)
+set(ENABLE_MANUAL OFF CACHE BOOL "Enable manual")
+set(BUILD_CURL_EXE OFF CACHE BOOL "Build curl.exe")
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build shared libraries")
+set(BUILD_TESTING OFF CACHE BOOL "Build testing")
+set(CURL_STATICLIB ON CACHE BOOL "Curl static library")
+set(HTTP_ONLY ON CACHE BOOL "HTTP only")
+set(CMAKE_USE_LIBSSH2 OFF CACHE BOOL "Use libssh2")
+set(CMAKE_USE_OPENSSL ON CACHE BOOL "Use OpenSSL")
 # mop: super important...if this is off curl will not handle request timeouts < 1000ms
-set(ENABLE_THREADED_RESOLVER ON CACHE type BOOL)
-set(CURL_VERSION "7.63.0")
+set(ENABLE_THREADED_RESOLVER ON CACHE BOOL "Enable threaded resolver")
+set(CURL_VERSION "7.66.0")
 set(CURL_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/curl/curl-${CURL_VERSION}")
 add_subdirectory(${CURL_SRC_DIR})
 

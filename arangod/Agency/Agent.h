@@ -26,7 +26,6 @@
 
 #include "Agency/AgencyCommon.h"
 #include "Agency/AgencyStrings.h"
-#include "Agency/AgentCallback.h"
 #include "Agency/AgentConfiguration.h"
 #include "Agency/AgentInterface.h"
 #include "Agency/Compactor.h"
@@ -46,7 +45,7 @@ namespace consensus {
 class Agent final : public arangodb::Thread, public AgentInterface {
  public:
   /// @brief Construct with program options
-  explicit Agent(config_t const&);
+  explicit Agent(application_features::ApplicationServer& server, config_t const&);
 
   /// @brief Clean up
   ~Agent();
@@ -145,7 +144,14 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   /// @brief Resign leadership
   void resign(term_t otherTerm = 0);
 
+  /// @brief collect store callbacks for removal
+  void trashStoreCallback(std::string const& url, velocypack::Slice body);
+
  private:
+
+  /// @brief empty callback trash bin
+  void emptyCbTrashBin();
+
   /// @brief Invoked by leader to replicate log entries ($5.3);
   ///        also used as heartbeat ($5.2).
   void sendAppendEntriesRPC();
@@ -159,7 +165,7 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   ///        also used as heartbeat ($5.2). This is the version used by
   ///        the constituent to send out empty heartbeats to keep
   ///        the term alive.
-  void sendEmptyAppendEntriesRPC(std::string followerId);
+  void sendEmptyAppendEntriesRPC(std::string const& followerId);
 
   /// @brief 1. Deal with appendEntries to slaves.
   ///        2. Report success of write processes.
@@ -169,7 +175,7 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   bool booting();
 
   /// @brief Gossip in
-  query_t gossip(query_t const&, bool callback = false, size_t version = 0);
+  query_t gossip(velocypack::Slice, bool callback = false, size_t version = 0);
 
   /// @brief Persisted agents
   bool persistedAgents();
@@ -402,6 +408,11 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   ///
   mutable arangodb::Mutex _ioLock;
 
+  /// @brief Callback trash bin lock
+  ///   _callbackTrashBin
+  ///
+  mutable arangodb::Mutex _cbtLock;
+
   /// @brief RAFT consistency lock:
   ///   _readDB and _commitIndex
   /// Allows reading from one or both if used alone.
@@ -454,6 +465,10 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   /// @brief Keep track of when I last took on leadership, this is seconds
   /// since the epoch of the steady clock.
   std::atomic<int64_t> _leaderSince;
+
+  /// @brief Container for callbacks for removal
+  std::unordered_map<std::string, std::unordered_set<std::string>> _callbackTrashBin;
+  std::chrono::time_point<std::chrono::steady_clock> _callbackLastPurged;
 
   /// @brief Ids of ongoing transactions, used for inquire:
   std::unordered_set<std::string> _ongoingTrxs;

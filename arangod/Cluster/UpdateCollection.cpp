@@ -78,7 +78,7 @@ UpdateCollection::UpdateCollection(MaintenanceFeature& feature, ActionDescriptio
   }
 }
 
-UpdateCollection::~UpdateCollection() {}
+UpdateCollection::~UpdateCollection() = default;
 
 bool UpdateCollection::first() {
   auto const& database = _description.get(DATABASE);

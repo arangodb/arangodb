@@ -50,11 +50,12 @@ namespace arangobench {
 
 class BenchmarkThread : public arangodb::Thread {
  public:
-  BenchmarkThread(BenchmarkOperation* operation, basics::ConditionVariable* condition,
+  BenchmarkThread(application_features::ApplicationServer& server,
+                  BenchmarkOperation* operation, basics::ConditionVariable* condition,
                   void (*callback)(), int threadNumber, const unsigned long batchSize,
                   BenchmarkCounter<unsigned long>* operationsCounter,
-                  ClientFeature* client, bool keepAlive, bool async, bool verbose)
-      : Thread("BenchmarkThread"),
+                  ClientFeature& client, bool keepAlive, bool async, bool verbose)
+      : Thread(server, "BenchmarkThread"),
         _operation(operation),
         _startCondition(condition),
         _callback(callback),
@@ -64,9 +65,9 @@ class BenchmarkThread : public arangodb::Thread {
         _operationsCounter(operationsCounter),
         _client(client),
         _headers(),
-        _databaseName(client->databaseName()),
-        _username(client->username()),
-        _password(client->password()),
+        _databaseName(client.databaseName()),
+        _username(client.username()),
+        _password(client.password()),
         _keepAlive(keepAlive),
         _async(async),
         _httpClient(nullptr),
@@ -85,7 +86,7 @@ class BenchmarkThread : public arangodb::Thread {
 
   void run() override {
     try {
-      _httpClient = _client->createHttpClient();
+      _httpClient = _client.createHttpClient();
     } catch (...) {
       LOG_TOPIC("b69d7", FATAL, arangodb::Logger::FIXME)
           << "cannot create server connection, giving up!";
@@ -440,7 +441,7 @@ class BenchmarkThread : public arangodb::Thread {
   /// @brief client feature
   //////////////////////////////////////////////////////////////////////////////
 
-  ClientFeature* _client;
+  ClientFeature& _client;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief extra request headers
