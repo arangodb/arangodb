@@ -1,6 +1,8 @@
 v3.5.3 (XXXX-XX-XX)
 -------------------
 
+* Fixed internal issue #4647: dead Coordinators are not removed for agency.
+
 * Fixed UPSERT matching.
 
   Empty objects in the `UPSERT { ... }` expression will not be omitted anymore:
