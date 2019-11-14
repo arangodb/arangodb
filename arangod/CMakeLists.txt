@@ -52,6 +52,7 @@ add_library(arango_iresearch
   IResearch/ApplicationServerHelper.h IResearch/ApplicationServerHelper.cpp
   IResearch/Containers.cpp IResearch/Containers.h
   IResearch/IResearchAnalyzerFeature.cpp IResearch/IResearchAnalyzerFeature.h
+  IResearch/IResearchAnalyzerCollectionFeature.cpp
   IResearch/IResearchCommon.cpp IResearch/IResearchCommon.h
   IResearch/IResearchKludge.cpp IResearch/IResearchKludge.h
   IResearch/IResearchLink.cpp IResearch/IResearchLink.h
@@ -282,13 +283,16 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/IndexExecutor.cpp
   Aql/IndexHint.cpp
   Aql/IndexNode.cpp
+  Aql/IndexNodeOptimizerRules.cpp
   Aql/InputAqlItemRow.cpp
+  Aql/InsertModifier.cpp
   Aql/KShortestPathsExecutor.cpp
   Aql/KShortestPathsNode.cpp
   Aql/LimitExecutor.cpp
   Aql/MaterializeExecutor.cpp
   Aql/ModificationExecutor.cpp
-  Aql/ModificationExecutorTraits.cpp
+  Aql/ModificationExecutorHelpers.cpp
+  Aql/ModificationExecutorInfos.cpp
   Aql/ModificationNodes.cpp
   Aql/ModificationOptions.cpp
   Aql/MultiDependencySingleRowFetcher.cpp
@@ -314,6 +318,7 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/QuerySnippet.cpp
   Aql/QueryString.cpp
   Aql/Range.cpp
+  Aql/RemoveModifier.cpp
   Aql/RegexCache.cpp
   Aql/RegisterPlan.cpp
   Aql/RemoteExecutor.cpp
@@ -328,6 +333,7 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/ShortStringStorage.cpp
   Aql/ShortestPathExecutor.cpp
   Aql/ShortestPathNode.cpp
+  Aql/SimpleModifier.cpp
   Aql/SingleRemoteModificationExecutor.cpp
   Aql/SingleRowFetcher.cpp
   Aql/SortCondition.cpp
@@ -344,7 +350,10 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/TraversalConditionFinder.cpp
   Aql/TraversalExecutor.cpp
   Aql/TraversalNode.cpp
+  Aql/UnsortedGatherExecutor.cpp
   Aql/UnsortingGatherExecutor.cpp
+  Aql/UpdateReplaceModifier.cpp
+  Aql/UpsertModifier.cpp
   Aql/V8Executor.cpp
   Aql/Variable.cpp
   Aql/VariableGenerator.cpp

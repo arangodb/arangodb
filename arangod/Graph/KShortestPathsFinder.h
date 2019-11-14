@@ -33,6 +33,7 @@
 #include <velocypack/StringRef.h>
 
 #include <list>
+#include <optional>
 
 namespace arangodb {
 
@@ -141,9 +142,9 @@ class KShortestPathsFinder : public ShortestPathFinder {
     void setWeight(double weight) { _weight = weight; }
 
     DijkstraInfo(VertexRef const& vertex, Edge const&& edge, VertexRef const& pred, double weight)
-      : _vertex(vertex), _edge(std::move(edge)), _pred(pred), _weight(weight), _done(false) {}
+        : _vertex(vertex), _edge(std::move(edge)), _pred(pred), _weight(weight), _done(false) {}
     explicit DijkstraInfo(VertexRef const& vertex)
-      : _vertex(vertex), _weight(0), _done(true) {}
+        : _vertex(vertex), _weight(0), _done(true) {}
   };
 
   typedef ShortestPathPriorityQueue<VertexRef, DijkstraInfo, double> Frontier;
@@ -154,10 +155,13 @@ class KShortestPathsFinder : public ShortestPathFinder {
     VertexRef _centre;
     Direction _direction;
     Frontier _frontier;
+    // The distance of the last node that has been fully expanded
+    // from _centre
+    double _closest;
 
     Ball() {}
     Ball(VertexRef const& centre, Direction direction)
-        : _centre(centre), _direction(direction) {
+        : _centre(centre), _direction(direction), _closest(0) {
       _frontier.insert(centre, std::make_unique<DijkstraInfo>(centre));
     }
     ~Ball() = default;
@@ -193,7 +197,7 @@ class KShortestPathsFinder : public ShortestPathFinder {
     std::vector<size_t> _paths;
 
     explicit FoundVertex(VertexRef const& vertex)
-      : _vertex(vertex), _hasCachedOutNeighbours(false), _hasCachedInNeighbours(false) {}
+        : _vertex(vertex), _hasCachedOutNeighbours(false), _hasCachedInNeighbours(false) {}
   };
   // Contains the vertices that were found while searching
   // for a shortest path between start and end together with
@@ -246,9 +250,10 @@ class KShortestPathsFinder : public ShortestPathFinder {
   void computeNeighbourhoodOfVertex(VertexRef vertex, Direction direction,
                                     std::vector<Step>& steps);
 
-  bool advanceFrontier(Ball& source, Ball const& target,
+  void advanceFrontier(Ball& source, Ball const& target,
                        std::unordered_set<VertexRef> const& forbiddenVertices,
-                       std::unordered_set<Edge> const& forbiddenEdges, VertexRef& join);
+                       std::unordered_set<Edge> const& forbiddenEdges,
+                       VertexRef& join, std::optional<double>& currentBest);
 
  private:
   bool _pathAvailable;

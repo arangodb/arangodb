@@ -139,10 +139,9 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
                          GeneralRequest*, GeneralResponse*);
   ~RestVocbaseBaseHandler();
 
-  virtual bool cancel() override {
+  virtual void cancel() override {
+    RestBaseHandler::cancel();
     _context.cancel();
-
-    return RestBaseHandler::cancel();
   }
 
  protected:

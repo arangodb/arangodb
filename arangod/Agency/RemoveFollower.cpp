@@ -189,9 +189,9 @@ bool RemoveFollower::start(bool&) {
   for (VPackSlice srv : VPackArrayIterator(planned)) {
     std::string serverName = srv.copyString();
     if (checkServerHealth(_snapshot, serverName) == "GOOD") {
-      overview.emplace(serverName, 0);
+      overview.try_emplace(serverName, 0);
     } else {
-      overview.emplace(serverName, -1);
+      overview.try_emplace(serverName, -1);
       if (serverName == planned[0].copyString()) {
         leaderBad = true;
       }

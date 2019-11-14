@@ -31,6 +31,7 @@
 #include "Aql/Range.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
@@ -581,9 +582,7 @@ void AqlItemBlock::toVelocyPack(velocypack::Options const* const trxOptions, VPa
 
   result.add("nrItems", VPackValue(_nrItems));
   result.add("nrRegs", VPackValue(_nrRegs));
-  result.add("error", VPackValue(false));
-  // Backwards compatbility 3.3
-  result.add("exhausted", VPackValue(false));
+  result.add(StaticStrings::Error, VPackValue(false));
 
   enum State {
     Empty,       // saw an empty value
@@ -654,7 +653,7 @@ void AqlItemBlock::toVelocyPack(velocypack::Options const* const trxOptions, VPa
         if (it == table.end()) {
           currentState = Next;
           a.toVelocyPack(trxOptions, raw, false);
-          table.emplace(a, pos++);
+          table.try_emplace(a, pos++);
         } else {
           currentState = Positional;
           tablePos = it->second;

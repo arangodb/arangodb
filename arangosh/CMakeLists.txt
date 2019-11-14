@@ -18,11 +18,11 @@ set(LIB_ARANGO_SHELL_SOURCES
   V8Client/ArangoClientHelper.cpp
 )
 
-add_library(lib_arango_shell STATIC
+add_library(arango_shell STATIC
   ${LIB_ARANGO_SHELL_SOURCES}
 )
 
-target_link_libraries(lib_arango_shell
+target_link_libraries(arango_shell
   arango
   ${MSVC_LIBS}
   ${SYSTEM_LIBRARIES}
@@ -59,7 +59,7 @@ target_link_libraries(${BIN_ARANGOBENCH}
   ${SYSTEM_LIBRARIES}
   boost_system
   boost_boost
-  lib_arango_shell
+  arango_shell
 )
 
 install(
@@ -118,7 +118,7 @@ target_link_libraries(${BIN_ARANGOBACKUP}
   ${SYSTEM_LIBRARIES}
   boost_system
   boost_boost
-  lib_arango_shell
+  arango_shell
 )
 
 install(
@@ -177,7 +177,7 @@ target_link_libraries(${BIN_ARANGODUMP}
   ${SYSTEM_LIBRARIES}
   boost_system
   boost_boost
-  lib_arango_shell
+  arango_shell
 )
 
 install(
@@ -233,7 +233,7 @@ target_link_libraries(${BIN_ARANGOEXPORT}
   ${SYSTEM_LIBRARIES}
   boost_system
   boost_boost
-  lib_arango_shell
+  arango_shell
 )
 
 install(
@@ -293,7 +293,7 @@ target_link_libraries(${BIN_ARANGOIMPORT}
   fuerte
   boost_system
   boost_boost
-  lib_arango_shell
+  arango_shell
 )
 
 install(
@@ -358,7 +358,7 @@ target_link_libraries(${BIN_ARANGORESTORE}
   ${SYSTEM_LIBRARIES}
   boost_system
   boost_boost
-  lib_arango_shell
+  arango_shell
 )
 
 install(
@@ -423,7 +423,7 @@ target_link_libraries(${BIN_ARANGOSH}
   ${SYSTEM_LIBRARIES}
   boost_system
   boost_boost
-  lib_arango_shell
+  arango_shell
 )
 
 install(
@@ -479,7 +479,7 @@ target_link_libraries(${BIN_ARANGOVPACK}
   ${SYSTEM_LIBRARIES}
   boost_system
   boost_boost
-  lib_arango_shell
+  arango_shell
 )
 
 install(

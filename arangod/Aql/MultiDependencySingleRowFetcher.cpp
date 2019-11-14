@@ -335,7 +335,7 @@ bool MultiDependencySingleRowFetcher::isAtShadowRow(DependencyInfo const& depInf
 }
 
 bool MultiDependencySingleRowFetcher::fetchBlockIfNecessary(size_t const dependency,
-                                                                         size_t const atMost) {
+                                                            size_t const atMost) {
   MultiDependencySingleRowFetcher::DependencyInfo& depInfo = _dependencyInfos[dependency];
   if (!indexIsValid(depInfo) && !isDone(depInfo)) {
     // This returns the AqlItemBlock to the ItemBlockManager before fetching a

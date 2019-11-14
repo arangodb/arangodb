@@ -69,7 +69,7 @@ void MMFilesTransactionContextData::pinData(LogicalCollection* collection) {
   }
 
   try {
-    _ditches.emplace(cid, ditch);
+    _ditches.try_emplace(cid, ditch);
   } catch (...) {
     ditch->ditches()->freeMMFilesDocumentDitch(ditch, true);
     throw;

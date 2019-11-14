@@ -24,6 +24,7 @@
 #include "AttributeWeightShortestPathFinder.h"
 
 #include "Basics/Exceptions.h"
+#include "Basics/tryEmplaceHelper.h"
 #include "Graph/EdgeCursor.h"
 #include "Graph/EdgeDocumentToken.h"
 #include "Graph/ShortestPathOptions.h"
@@ -272,16 +273,20 @@ bool AttributeWeightShortestPathFinder::shortestPath(arangodb::velocypack::Slice
 }
 
 void AttributeWeightShortestPathFinder::inserter(
-    std::unordered_map<arangodb::velocypack::StringRef, size_t>& candidates,
-    std::vector<std::unique_ptr<Step>>& result,
-    arangodb::velocypack::StringRef const& s, arangodb::velocypack::StringRef const& t,
-    double currentWeight, EdgeDocumentToken&& edge) {
-  auto cand = candidates.find(t);
-  if (cand == candidates.end()) {
-    // Add weight
+  std::unordered_map<arangodb::velocypack::StringRef, size_t>& candidates,
+  std::vector<std::unique_ptr<Step>>& result,
+  arangodb::velocypack::StringRef const& s, arangodb::velocypack::StringRef const& t,
+  double currentWeight, EdgeDocumentToken&& edge) {
+
+  auto [cand, emplaced] = candidates.try_emplace(
+    t,
+    arangodb::lazyConstruct([&]{
     result.emplace_back(std::make_unique<Step>(t, s, currentWeight, std::move(edge)));
-    candidates.emplace(t, result.size() - 1);
-  } else {
+      return result.size() - 1;
+    })
+  );
+
+  if (!emplaced) {
     // Compare weight
     auto& old = result[cand->second];
     auto oldWeight = old->weight();

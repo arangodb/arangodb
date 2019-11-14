@@ -101,7 +101,7 @@ EngineInfoContainerDBServerServerBased::TraverserEngineShardLists::TraverserEngi
       }
     }
 #endif
-    _vertexCollections.emplace(col->name(), std::move(shards));
+    _vertexCollections.try_emplace(col->name(), std::move(shards));
   }
 }
 
@@ -364,11 +364,11 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
       LOG_TOPIC("41082", TRACE, Logger::AQL) << infoSlice.toJson();
       return {code, message};
     }
-    auto slices = res.response->slices();
-    if (slices.empty()) {
+
+    VPackSlice response = res.response->slice();
+    if (response.isNone()) {
       return {TRI_ERROR_INTERNAL, "malformed response while building engines"};
     }
-    VPackSlice response = slices[0];
     auto result = parseResponse(response, queryIds, server, serverDest, didCreateEngine);
     if (!result.ok()) {
       return result;

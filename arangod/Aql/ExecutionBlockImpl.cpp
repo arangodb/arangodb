@@ -48,7 +48,6 @@
 #include "Aql/LimitExecutor.h"
 #include "Aql/MaterializeExecutor.h"
 #include "Aql/ModificationExecutor.h"
-#include "Aql/ModificationExecutorTraits.h"
 #include "Aql/MultiDependencySingleRowFetcher.h"
 #include "Aql/NoResultsExecutor.h"
 #include "Aql/Query.h"
@@ -65,9 +64,13 @@
 #include "Aql/SubqueryExecutor.h"
 #include "Aql/SubqueryStartExecutor.h"
 #include "Aql/TraversalExecutor.h"
+#include "Aql/UnsortedGatherExecutor.h"
 #include "Aql/UnsortingGatherExecutor.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
+
+#include "Aql/SimpleModifier.h"
+#include "Aql/UpsertModifier.h"
 
 #include <type_traits>
 
@@ -118,7 +121,7 @@ ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine,
       _state(InternalState::FETCH_DATA) {
   // already insert ourselves into the statistics results
   if (_profile >= PROFILE_LEVEL_BLOCKS) {
-    _engine->_stats.nodes.emplace(node->id(), ExecutionStats::Node());
+    _engine->_stats.nodes.try_emplace(node->id(), ExecutionStats::Node());
   }
 }
 
@@ -375,7 +378,9 @@ static SkipVariants constexpr skipType() {
            std::is_same<Executor, SortingGatherExecutor>::value ||
            // TODO enable this:
            // std::is_same<Executor, UnsortingGatherExecutor>::value ||
-           std::is_same<Executor, MaterializeExecutor>::value),
+           std::is_same<Executor, UnsortedGatherExecutor>::value ||
+           std::is_same<Executor, MaterializeExecutor<RegisterId>>::value ||
+           std::is_same<Executor, MaterializeExecutor<std::string const&>>::value),
       "Unexpected executor for SkipVariants::EXECUTOR");
 
   // The LimitExecutor will not work correctly with SkipVariants::FETCHER!
@@ -874,22 +879,15 @@ template class ::arangodb::aql::ExecutionBlockImpl<
     IdExecutor<BlockPassthrough::Enable, SingleRowFetcher<BlockPassthrough::Enable>>>;
 template class ::arangodb::aql::ExecutionBlockImpl<IndexExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<LimitExecutor>;
-template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<Insert, SingleBlockFetcher<BlockPassthrough::Disable>>>;
-template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<Insert, AllRowsFetcher>>;
-template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<Remove, SingleBlockFetcher<BlockPassthrough::Disable>>>;
-template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<Remove, AllRowsFetcher>>;
-template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<Replace, SingleBlockFetcher<BlockPassthrough::Disable>>>;
-template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<Replace, AllRowsFetcher>>;
-template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<Update, SingleBlockFetcher<BlockPassthrough::Disable>>>;
-template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<Update, AllRowsFetcher>>;
-template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<Upsert, SingleBlockFetcher<BlockPassthrough::Disable>>>;
-template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<Upsert, AllRowsFetcher>>;
+
+// IndexTag, Insert, Remove, Update,Replace, Upsert are only tags for this one
 template class ::arangodb::aql::ExecutionBlockImpl<SingleRemoteModificationExecutor<IndexTag>>;
 template class ::arangodb::aql::ExecutionBlockImpl<SingleRemoteModificationExecutor<Insert>>;
 template class ::arangodb::aql::ExecutionBlockImpl<SingleRemoteModificationExecutor<Remove>>;
 template class ::arangodb::aql::ExecutionBlockImpl<SingleRemoteModificationExecutor<Update>>;
 template class ::arangodb::aql::ExecutionBlockImpl<SingleRemoteModificationExecutor<Replace>>;
 template class ::arangodb::aql::ExecutionBlockImpl<SingleRemoteModificationExecutor<Upsert>>;
+
 template class ::arangodb::aql::ExecutionBlockImpl<NoResultsExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<ReturnExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<ShortestPathExecutor>;
@@ -903,4 +901,17 @@ template class ::arangodb::aql::ExecutionBlockImpl<SubqueryStartExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<TraversalExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<SortingGatherExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<MaterializeExecutor>;
+template class ::arangodb::aql::ExecutionBlockImpl<UnsortedGatherExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<UnsortingGatherExecutor>;
+
+template class ::arangodb::aql::ExecutionBlockImpl<MaterializeExecutor<RegisterId>>;
+template class ::arangodb::aql::ExecutionBlockImpl<MaterializeExecutor<std::string const&>>;
+
+template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<AllRowsFetcher, InsertModifier>>;
+template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, InsertModifier>>;
+template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<AllRowsFetcher, RemoveModifier>>;
+template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, RemoveModifier>>;
+template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<AllRowsFetcher, UpdateReplaceModifier>>;
+template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, UpdateReplaceModifier>>;
+template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<AllRowsFetcher, UpsertModifier>>;
+template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, UpsertModifier>>;

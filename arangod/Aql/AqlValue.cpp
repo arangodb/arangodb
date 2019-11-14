@@ -908,6 +908,7 @@ v8::Handle<v8::Value> AqlValue::toV8(v8::Isolate* isolate, transaction::Methods*
     }
     case RANGE: {
       size_t const n = _data.range->size();
+      Range::throwIfTooBigForMaterialization(n);
       v8::Handle<v8::Array> result = v8::Array::New(isolate, static_cast<int>(n));
 
       for (uint32_t i = 0; i < n; ++i) {
@@ -965,8 +966,9 @@ void AqlValue::toVelocyPack(VPackOptions const* options, arangodb::velocypack::B
       break;
     }
     case RANGE: {
-      builder.openArray();
+      builder.openArray(true);
       size_t const n = _data.range->size();
+      Range::throwIfTooBigForMaterialization(n);
       for (size_t i = 0; i < n; ++i) {
         builder.add(VPackValue(_data.range->at(i)));
       }

@@ -82,7 +82,7 @@ std::string readGloballyUniqueId(arangodb::velocypack::Slice info) {
     return guid;
   }
 
-  auto version = arangodb::basics::VelocyPackHelper::readNumericValue<uint32_t>(
+  auto version = arangodb::basics::VelocyPackHelper::getNumericValue<uint32_t>(
       info, "version", static_cast<uint32_t>(LogicalCollection::currentVersion()));
 
   // predictable UUID for legacy collections
@@ -109,9 +109,9 @@ arangodb::LogicalDataSource::Type const& readType(arangodb::velocypack::Slice in
 
   // arbitrary system-global value for unknown
   static const auto& unknown =
-      arangodb::LogicalDataSource::Type::emplace(arangodb::velocypack::StringRef(""));
+      arangodb::LogicalDataSource::Type::emplace(arangodb::velocypack::StringRef());
 
-  switch (Helper::readNumericValue<TRI_col_type_e, int>(info, key, def)) {
+  switch (Helper::getNumericValue<TRI_col_type_e, int>(info, key, def)) {
     case TRI_col_type_e::TRI_COL_TYPE_DOCUMENT:
       return document;
     case TRI_col_type_e::TRI_COL_TYPE_EDGE:
@@ -137,21 +137,21 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
           ::readStringValue(info, StaticStrings::DataSourceName, ""), planVersion,
           TRI_vocbase_t::IsSystemName(
               ::readStringValue(info, StaticStrings::DataSourceName, "")) &&
-              Helper::readBooleanValue(info, StaticStrings::DataSourceSystem, false),
-          Helper::readBooleanValue(info, StaticStrings::DataSourceDeleted, false)),
-      _version(static_cast<Version>(Helper::readNumericValue<uint32_t>(info, "version",
+              Helper::getBooleanValue(info, StaticStrings::DataSourceSystem, false),
+          Helper::getBooleanValue(info, StaticStrings::DataSourceDeleted, false)),
+      _version(static_cast<Version>(Helper::getNumericValue<uint32_t>(info, "version",
                                                     static_cast<uint32_t>(currentVersion())))),
       _v8CacheVersion(0),
-      _type(Helper::readNumericValue<TRI_col_type_e, int>(info, StaticStrings::DataSourceType,
+      _type(Helper::getNumericValue<TRI_col_type_e, int>(info, StaticStrings::DataSourceType,
                                                           TRI_COL_TYPE_UNKNOWN)),
-      _status(Helper::readNumericValue<TRI_vocbase_col_status_e, int>(
+      _status(Helper::getNumericValue<TRI_vocbase_col_status_e, int>(
           info, "status", TRI_VOC_COL_STATUS_CORRUPTED)),
       _isAStub(isAStub),
 #ifdef USE_ENTERPRISE
-      _isSmart(Helper::readBooleanValue(info, StaticStrings::IsSmart, false)),
+      _isSmart(Helper::getBooleanValue(info, StaticStrings::IsSmart, false)),
 #endif
-      _waitForSync(Helper::readBooleanValue(info, StaticStrings::WaitForSyncString, false)),
-      _allowUserKeys(Helper::readBooleanValue(info, "allowUserKeys", true)),
+      _waitForSync(Helper::getBooleanValue(info, StaticStrings::WaitForSyncString, false)),
+      _allowUserKeys(Helper::getBooleanValue(info, "allowUserKeys", true)),
 #ifdef USE_ENTERPRISE
       _smartJoinAttribute(
           ::readStringValue(info, StaticStrings::SmartJoinAttribute, "")),
@@ -619,7 +619,8 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
 
 arangodb::Result LogicalCollection::appendVelocyPack(arangodb::velocypack::Builder& result,
                                                      Serialization context) const {
-  bool const forPersistence = (context == Serialization::Persistence);
+  bool const forPersistence = (context == Serialization::Persistence || context == Serialization::PersistenceWithInProgress);
+  bool const showInProgress = (context == Serialization::PersistenceWithInProgress);
 
   // We write into an open object
   TRI_ASSERT(result.isOpenObject());
@@ -662,8 +663,8 @@ arangodb::Result LogicalCollection::appendVelocyPack(arangodb::velocypack::Build
   if (forPersistence) {
     indexFlags = Index::makeFlags(Index::Serialize::Internals);
   }
-  auto filter = [indexFlags, forPersistence](arangodb::Index const* idx, decltype(Index::makeFlags())& flags) {
-    if (forPersistence || (!idx->inProgress() && !idx->isHidden())) {
+  auto filter = [indexFlags, forPersistence, showInProgress](arangodb::Index const* idx, decltype(Index::makeFlags())& flags) {
+    if ((forPersistence || !idx->isHidden()) && (showInProgress || !idx->inProgress())) {
       flags = indexFlags;
       return true;
     }

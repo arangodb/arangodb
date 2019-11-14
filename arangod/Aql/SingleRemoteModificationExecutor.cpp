@@ -30,7 +30,7 @@
 #include "Basics/StaticStrings.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
-#include "ModificationExecutorTraits.h"
+#include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <algorithm>
