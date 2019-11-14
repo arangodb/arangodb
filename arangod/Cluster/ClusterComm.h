@@ -465,7 +465,7 @@ class ClusterComm {
   /// new instances or copy them, except we ourselves.
   //////////////////////////////////////////////////////////////////////////////
 
-  ClusterComm(application_features::ApplicationServer&);
+  explicit ClusterComm(application_features::ApplicationServer&);
   explicit ClusterComm(ClusterComm const&);     // not implemented
   void operator=(ClusterComm const&);  // not implemented
 

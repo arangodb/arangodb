@@ -182,7 +182,7 @@ void QuerySnippet::serializeIntoBuilder(ServerID const& server, ShardLocking& sh
     // it needs to expose it's input register by all means
     internalGather->setVarsUsedLater(_nodes.front()->getVarsUsedLater());
     internalGather->setRegsToClear({});
-    nodeAliases.emplace(internalGather->id(), std::numeric_limits<size_t>::max());
+    nodeAliases.try_emplace(internalGather->id(), std::numeric_limits<size_t>::max());
 
     ScatterNode* internalScatter = nullptr;
     if (lastIsRemote) {
@@ -194,7 +194,7 @@ void QuerySnippet::serializeIntoBuilder(ServerID const& server, ShardLocking& sh
       internalScatter->addDependency(lastNode);
       // Let the local Scatter node distribute data by SHARD
       internalScatter->setScatterType(ScatterNode::ScatterType::SHARD);
-      nodeAliases.emplace(internalScatter->id(), std::numeric_limits<size_t>::max());
+      nodeAliases.try_emplace(internalScatter->id(), std::numeric_limits<size_t>::max());
 
       if (_globalScatter->getType() == ExecutionNode::DISTRIBUTE) {
         {
@@ -232,7 +232,7 @@ void QuerySnippet::serializeIntoBuilder(ServerID const& server, ShardLocking& sh
 
       DistributeConsumerNode* consumer =
           createConsumerNode(plan, internalScatter, distIds[0]);
-      nodeAliases.emplace(consumer->id(), std::numeric_limits<size_t>::max());
+      nodeAliases.try_emplace(consumer->id(), std::numeric_limits<size_t>::max());
       // now wire up the temporary nodes
       TRI_ASSERT(_nodes.size() > 1);
       ExecutionNode* secondToLast = _nodes[_nodes.size() - 2];
@@ -258,7 +258,7 @@ void QuerySnippet::serializeIntoBuilder(ServerID const& server, ShardLocking& sh
           DistributeConsumerNode* consumer =
               createConsumerNode(plan, internalScatter, distIds[i]);
           consumer->isResponsibleForInitializeCursor(false);
-          nodeAliases.emplace(consumer->id(), std::numeric_limits<size_t>::max());
+          nodeAliases.try_emplace(consumer->id(), std::numeric_limits<size_t>::max());
           previous = consumer;
           continue;
         }
@@ -274,7 +274,7 @@ void QuerySnippet::serializeIntoBuilder(ServerID const& server, ShardLocking& sh
           clone->addDependency(previous);
         }
         TRI_ASSERT(clone->id() != current->id());
-        nodeAliases.emplace(clone->id(), current->id());
+        nodeAliases.try_emplace(clone->id(), current->id());
         previous = clone;
       }
       TRI_ASSERT(previous != nullptr);

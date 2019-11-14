@@ -125,31 +125,29 @@ class ProgramOptions {
   }
 
   // adds a section to the options
-  void addSection(Section const& section) {
+  auto addSection(Section const& section) {
     checkIfSealed();
 
-    auto it = _sections.find(section.name);
-
-    if (it == _sections.end()) {
-      // section not present
-      _sections.emplace(section.name, section);
-    } else {
+    auto [it, emplaced] = _sections.try_emplace(section.name, section);
+    if (!emplaced) {
       // section already present. check if we need to update it
-      if (!section.description.empty() && (*it).second.description.empty()) {
+      Section& sec = it->second;
+      if (!section.description.empty() && sec.description.empty()) {
         // copy over description
-        (*it).second.description = section.description;
+        sec.description = section.description;
       }
     }
+    return it;
   }
 
   // adds a (regular) section to the program options
-  void addSection(std::string const& name, std::string const& description) {
-    addSection(Section(name, description, "", false, false));
+  auto addSection(std::string const& name, std::string const& description) {
+    return addSection(Section(name, description, "", false, false));
   }
 
   // adds an enterprise-only section to the program options
-  void addEnterpriseSection(std::string const& name, std::string const& description) {
-    addSection(EnterpriseSection(name, description, "", false, false));
+  auto addEnterpriseSection(std::string const& name, std::string const& description) {
+    return addSection(EnterpriseSection(name, description, "", false, false));
   }
 
   // adds an option to the program options
@@ -181,7 +179,7 @@ class ProgramOptions {
   void printSectionsHelp() const;
 
   // returns a VPack representation of the option values, with optional
-  // filters applied to filter out specific options. 
+  // filters applied to filter out specific options.
   // the filter function is expected to return true
   // for any options that should become part of the result
   arangodb::velocypack::Builder toVPack(bool onlyTouched, bool detailed,

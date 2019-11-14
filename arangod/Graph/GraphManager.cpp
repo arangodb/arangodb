@@ -29,7 +29,6 @@
 #include <velocypack/velocypack-aliases.h>
 #include <array>
 #include <boost/range/join.hpp>
-#include <boost/variant.hpp>
 #include <utility>
 
 #include "Aql/AstNode.h"
@@ -112,7 +111,7 @@ OperationResult GraphManager::createCollection(std::string const& name, TRI_col_
       vocbase.server().getFeature<ClusterFeature>().forceOneShard() ||
       (vocbase.sharding() == "single" && 
        options.get(StaticStrings::DistributeShardsLike).isNone() &&
-       arangodb::basics::VelocyPackHelper::readNumericValue<uint64_t>(options, StaticStrings::NumberOfShards, 0) <= 1);
+       arangodb::basics::VelocyPackHelper::getNumericValue<uint64_t>(options, StaticStrings::NumberOfShards, 0) <= 1);
     
     if (forceOneShard) {
       // force a single shard with shards distributed like "_graph"

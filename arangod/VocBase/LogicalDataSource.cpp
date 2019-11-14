@@ -121,7 +121,7 @@ bool readIsSystem(arangodb::velocypack::Slice definition) {
   }
 
   // same condition as in LogicalCollection
-  return arangodb::basics::VelocyPackHelper::readBooleanValue(
+  return arangodb::basics::VelocyPackHelper::getBooleanValue(
       definition, arangodb::StaticStrings::DataSourceSystem, false);
 }
 
@@ -148,8 +148,7 @@ namespace arangodb {
   static std::mutex mutex;
   static std::map<arangodb::velocypack::StringRef, LogicalDataSource::Type, Less> types;
   std::lock_guard<std::mutex> lock(mutex);
-  auto itr = types.emplace(name, Type());
-
+  auto itr = types.try_emplace(name, Type());
   if (itr.second && name.data()) {
     const_cast<std::string&>(itr.first->second._name) = name.toString();  // update '_name'
     const_cast<arangodb::velocypack::StringRef&>(itr.first->first) =
@@ -170,7 +169,7 @@ LogicalDataSource::LogicalDataSource(Category const& category, Type const& type,
           basics::VelocyPackHelper::getStringValue(definition, StaticStrings::DataSourceName,
                                                    ""),
           planVersion, readIsSystem(definition),
-          basics::VelocyPackHelper::readBooleanValue(definition, StaticStrings::DataSourceDeleted,
+          basics::VelocyPackHelper::getBooleanValue(definition, StaticStrings::DataSourceDeleted,
                                                      false)) {}
 
 LogicalDataSource::LogicalDataSource(Category const& category, Type const& type,
@@ -207,7 +206,7 @@ Result LogicalDataSource::properties(velocypack::Builder& builder,
   // note: includeSystem and forPersistence are not 100% synonymous,
   // however, for our purposes this is an okay mapping; we only set
   // includeSystem if we are persisting the properties
-  if (context == Serialization::Persistence) {
+  if (context == Serialization::Persistence || context == Serialization::PersistenceWithInProgress) {
     builder.add(StaticStrings::DataSourceDeleted, velocypack::Value(deleted()));
     builder.add(StaticStrings::DataSourceSystem, velocypack::Value(system()));
 

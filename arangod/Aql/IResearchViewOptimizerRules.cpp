@@ -173,7 +173,7 @@ bool optimizeSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
 
     if (current->getType() == EN::CALCULATION) {
       // pick up the meanings of variables as we walk the plan
-      variableDefinitions.emplace(
+      variableDefinitions.try_emplace(
           ExecutionNode::castTo<CalculationNode const*>(current)->outVariable()->id,
           ExecutionNode::castTo<CalculationNode const*>(current)->expression()->node());
     }
@@ -449,7 +449,7 @@ void scatterViewInClusterRule(arangodb::aql::Optimizer* opt,
   plan->findNodesOfType(nodes, ExecutionNode::SUBQUERY, true);
 
   for (auto& it : nodes) {
-    subqueries.emplace(EN::castTo<SubqueryNode const*>(it)->getSubquery(), it);
+    subqueries.try_emplace(EN::castTo<SubqueryNode const*>(it)->getSubquery(), it);
   }
 
   // we are a coordinator. now look in the plan for nodes of type

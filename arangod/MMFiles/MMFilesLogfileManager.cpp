@@ -980,7 +980,7 @@ void MMFilesLogfileManager::relinkLogfile(MMFilesWalLogfile* logfile) {
   MMFilesWalLogfile::IdType const id = logfile->id();
 
   WRITE_LOCKER(writeLocker, _logfilesLock);
-  _logfiles.emplace(id, logfile);
+  _logfiles.try_emplace(id, logfile);
 }
 
 // removes logfiles that are allowed to be removed
@@ -1178,7 +1178,7 @@ TRI_voc_tick_t MMFilesLogfileManager::addLogfileBarrier(TRI_voc_tick_t databaseI
 
   {
     WRITE_LOCKER(barrierLock, _barriersLock);
-    _barriers.emplace(id, logfileBarrier.get());
+    _barriers.try_emplace(id, logfileBarrier.get());
   }
 
   logfileBarrier.release();
@@ -2184,7 +2184,7 @@ int MMFilesLogfileManager::inventory() {
         TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(id));
 
         WRITE_LOCKER(writeLocker, _logfilesLock);
-        _logfiles.emplace(id, nullptr);
+        _logfiles.try_emplace(id, nullptr);
       }
     }
   }
@@ -2348,7 +2348,7 @@ int MMFilesLogfileManager::createReserveLogfile(uint32_t size) {
 
   {
     WRITE_LOCKER(writeLocker, _logfilesLock);
-    _logfiles.emplace(id, logfile.get());
+    _logfiles.try_emplace(id, logfile.get());
   }
   logfile.release();
 

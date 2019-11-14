@@ -34,10 +34,6 @@
 #include <velocypack/Collection.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include "Logger/LogMacros.h"
-
-class CollectionNameResolver;
-
 using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::aql::ModificationExecutorHelpers;

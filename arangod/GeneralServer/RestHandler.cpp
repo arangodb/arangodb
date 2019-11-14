@@ -141,6 +141,29 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
   std::map<std::string, std::string> headers{_request->headers().begin(),
                                              _request->headers().end()};
 
+  if (headers.find(StaticStrings::Authorization) == headers.end()) {
+    // No authorization header is set, this is in particular the case if this
+    // request is coming in with VelocyStream, where the authentication happens
+    // once at the beginning of the connection and not with every request.
+    // In this case, we have to produce a proper JWT token as authorization:
+      auto auth = AuthenticationFeature::instance();
+    if (auth != nullptr && auth->isActive()) {
+      // when in superuser mode, username is empty
+      // in this case ClusterComm will add the default superuser token
+      std::string const& username = _request->user();
+      if (!username.empty()) {
+        VPackBuilder builder;
+        {
+          VPackObjectBuilder payload{&builder};
+          payload->add("preferred_username", VPackValue(username));
+        }
+        VPackSlice slice = builder.slice();
+        headers.emplace(StaticStrings::Authorization,
+                        "bearer " + auth->tokenCache().generateJwt(slice));
+      }
+    }
+  }
+
   network::RequestOptions options;
   options.database = dbname;
   options.timeout = network::Timeout(300);
@@ -187,7 +210,7 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
     for (auto const& it : resultHeaders) {
       _response->setHeader(it.first, it.second);
     }
-    _response->setHeader(StaticStrings::RequestForwardedTo, serverId);
+    _response->setHeaderNC(StaticStrings::RequestForwardedTo, serverId);
 
     return Result();
   };
@@ -261,7 +284,7 @@ void RestHandler::runHandlerStateMachine() {
         if (_state == HandlerState::PAUSED) {
           shutdownExecute(false);
           LOG_TOPIC("23a33", DEBUG, Logger::COMMUNICATION)
-              << "Pausing rest handler execution";
+              << "Pausing rest handler execution " << this;
           return;  // stop state machine
         }
         break;
@@ -272,7 +295,7 @@ void RestHandler::runHandlerStateMachine() {
         if (_state == HandlerState::PAUSED) {
           shutdownExecute(/*isFinalized*/false);
           LOG_TOPIC("23727", DEBUG, Logger::COMMUNICATION)
-              << "Pausing rest handler execution";
+              << "Pausing rest handler execution " << this;
           return;  // stop state machine
         }
         break;
@@ -280,7 +303,7 @@ void RestHandler::runHandlerStateMachine() {
 
       case HandlerState::PAUSED:
         LOG_TOPIC("ae26f", DEBUG, Logger::COMMUNICATION)
-            << "Resuming rest handler execution";
+            << "Resuming rest handler execution " << this;
         _state = HandlerState::CONTINUED;
         break;
 
@@ -289,7 +312,7 @@ void RestHandler::runHandlerStateMachine() {
         RestHandler::CURRENT_HANDLER = this;
 
         // shutdownExecute is noexcept
-        shutdownExecute(true);
+        shutdownExecute(true); // may not be moved down
 
         RestHandler::CURRENT_HANDLER = nullptr;
         _state = HandlerState::DONE;
@@ -351,12 +374,13 @@ void RestHandler::prepareEngine() {
   _state = HandlerState::FAILED;
 }
 
-/// Execute the rest handler state machine
+/// Execute the rest handler state machine. Retry the wakeup,
+/// returns true if _state == PAUSED, false otherwise
 bool RestHandler::wakeupHandler() {
   RECURSIVE_MUTEX_LOCKER(_executionMutex, _executionMutexOwner);
   if (_state == HandlerState::PAUSED) {
-    runHandlerStateMachine();
-    return true;
+    runHandlerStateMachine(); // may change _state
+    return _state == HandlerState::PAUSED;
   }
   return false;
 }
@@ -480,7 +504,7 @@ void RestHandler::compressResponse() {
     switch (_request->acceptEncoding()) {
       case rest::EncodingType::DEFLATE:
         _response->deflate();
-        _response->setHeader(StaticStrings::ContentEncoding, StaticStrings::EncodingDeflate);
+        _response->setHeaderNC(StaticStrings::ContentEncoding, StaticStrings::EncodingDeflate);
         break;
 
       default:

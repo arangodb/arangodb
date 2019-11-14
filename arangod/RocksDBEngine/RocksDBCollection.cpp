@@ -75,7 +75,7 @@ RocksDBCollection::RocksDBCollection(LogicalCollection& collection,
       _cache(nullptr),
       _cacheEnabled(
           !collection.system() &&
-          basics::VelocyPackHelper::readBooleanValue(info, "cacheEnabled", false) &&
+          basics::VelocyPackHelper::getBooleanValue(info, "cacheEnabled", false) &&
           CacheManagerFeature::MANAGER != nullptr),
       _numIndexCreations(0) {
   TRI_ASSERT(_logicalCollection.isAStub() || _objectId != 0);
@@ -111,7 +111,7 @@ Result RocksDBCollection::updateProperties(VPackSlice const& slice, bool doSync)
 
   _cacheEnabled =
       !isSys &&
-      basics::VelocyPackHelper::readBooleanValue(slice, "cacheEnabled", _cacheEnabled) &&
+      basics::VelocyPackHelper::getBooleanValue(slice, "cacheEnabled", _cacheEnabled) &&
       CacheManagerFeature::MANAGER != nullptr;
   primaryIndex()->setCacheEnabled(_cacheEnabled);
 
@@ -404,7 +404,7 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
     if (!engine->inRecovery()) {  // write new collection marker
       auto builder = _logicalCollection.toVelocyPackIgnore(
           {"path", "statusString"},
-          LogicalDataSource::Serialization::Persistence);
+          LogicalDataSource::Serialization::PersistenceWithInProgress);
       VPackBuilder indexInfo;
       idx->toVelocyPack(indexInfo, Index::makeFlags(Index::Serialize::Internals));
       res = engine->writeCreateCollectionMarker(_logicalCollection.vocbase().id(),
@@ -486,7 +486,7 @@ bool RocksDBCollection::dropIndex(TRI_idx_iid_t iid) {
   auto builder =  // RocksDB path
       _logicalCollection.toVelocyPackIgnore(
           {"path", "statusString"},
-          LogicalDataSource::Serialization::Persistence);
+          LogicalDataSource::Serialization::PersistenceWithInProgress);
 
   // log this event in the WAL and in the collection meta-data
   res = engine->writeCreateCollectionMarker( // write marker
@@ -857,7 +857,7 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
     if (options.returnNew) {
       resultMdr.setManaged(newSlice.begin());
       TRI_ASSERT(resultMdr.revisionId() == revisionId);
-    } else if(!options.silent) {  //  need to pass revId manually
+    } else if (!options.silent) {  //  need to pass revId manually
       transaction::BuilderLeaser keyBuilder(trx);
       keyBuilder->openObject(/*unindexed*/true);
       keyBuilder->add(StaticStrings::KeyString, transaction::helpers::extractKeyFromDocument(newSlice));

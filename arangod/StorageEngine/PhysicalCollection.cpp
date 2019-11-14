@@ -221,7 +221,7 @@ Result PhysicalCollection::mergeObjectsForUpdate(
         }  // else do nothing
       } else {
         // regular attribute
-        newValues.emplace(key, current.value);
+        newValues.try_emplace(key, current.value);
       }
 
       it.next();

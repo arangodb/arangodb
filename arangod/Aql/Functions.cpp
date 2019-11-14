@@ -30,6 +30,7 @@
 #include "Aql/ExpressionContext.h"
 #include "Aql/Function.h"
 #include "Aql/Query.h"
+#include "Aql/Range.h"
 #include "Aql/V8Executor.h"
 #include "Basics/Exceptions.h"
 #include "Basics/HybridLogicalClock.h"
@@ -4249,14 +4250,14 @@ AqlValue Functions::RandomToken(ExpressionContext*, transaction::Methods*,
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
 
   int64_t const length = value.toInt64();
-  if (length <= 0 || length > 65536) {
+  if (length < 0 || length > 65536) {
     THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
                                   "RANDOM_TOKEN");
   }
 
-  UniformCharacter JSNumGenerator(
+  UniformCharacter generator(
       "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789");
-  return AqlValue(JSNumGenerator.random(static_cast<size_t>(length)));
+  return AqlValue(generator.random(static_cast<size_t>(length)));
 }
 
 /// @brief function MD5
@@ -4521,9 +4522,9 @@ AqlValue Functions::Sorted(ExpressionContext* expressionContext, transaction::Me
   std::map<VPackSlice, size_t, arangodb::basics::VelocyPackHelper::VPackLess<true>> values(less);
   for (VPackSlice it : VPackArrayIterator(slice)) {
     if (!it.isNone()) {
-      auto f = values.emplace(it, 1);
-      if (!f.second) {
-        ++(*f.first).second;
+      auto [itr, emplaced] = values.try_emplace(it, 1);
+      if (!emplaced) {
+        ++itr->second;
       }
     }
   }
@@ -4671,7 +4672,7 @@ AqlValue Functions::Intersection(ExpressionContext* expressionContext,
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
 
-        values.emplace(it, 1);
+        values.try_emplace(it, 1);
       } else {
         // check if we have seen the same element before
         auto found = values.find(it);
@@ -5608,7 +5609,7 @@ AqlValue Functions::Minus(ExpressionContext* expressionContext, transaction::Met
 
   VPackArrayIterator it(arraySlice);
   while (it.valid()) {
-    contains.emplace(it.value(), it.index());
+    contains.try_emplace(it.value(), it.index());
     it.next();
   }
 
@@ -6736,12 +6737,16 @@ AqlValue Functions::Range(ExpressionContext* expressionContext, transaction::Met
   }
 
   transaction::BuilderLeaser builder(trx);
-  builder->openArray();
+  builder->openArray(true);
   if (step < 0.0 && to <= from) {
+    TRI_ASSERT(step != 0.0);
+    Range::throwIfTooBigForMaterialization(static_cast<uint64_t>((from - to) / -step));
     for (; from >= to; from += step) {
       builder->add(VPackValue(from));
     }
   } else {
+    TRI_ASSERT(step != 0.0);
+    Range::throwIfTooBigForMaterialization(static_cast<uint64_t>((to - from) / step));
     for (; from <= to; from += step) {
       builder->add(VPackValue(from));
     }
