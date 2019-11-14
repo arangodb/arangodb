@@ -53,6 +53,7 @@ AqlValueMaterializer::AqlValueMaterializer(AqlValueMaterializer const& other)
 AqlValueMaterializer& AqlValueMaterializer::operator=(AqlValueMaterializer const& other) {
   if (this != &other) {
     TRI_ASSERT(trx == other.trx);  // must be from same transaction
+    trx = other.trx; // to shut up cppcheck
     options = other.options;
     if (hasCopied) {
       // destroy our own slice
@@ -80,6 +81,7 @@ AqlValueMaterializer::AqlValueMaterializer(AqlValueMaterializer&& other) noexcep
 AqlValueMaterializer& AqlValueMaterializer::operator=(AqlValueMaterializer&& other) noexcept {
   if (this != &other) {
     TRI_ASSERT(trx == other.trx);  // must be from same transaction
+    trx = other.trx; // to shut up cppcheck
     options = other.options;
     if (hasCopied) {
       // destroy our own slice
