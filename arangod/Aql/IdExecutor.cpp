@@ -32,6 +32,7 @@
 #include "Aql/Stats.h"
 
 #include <algorithm>
+#include <utility>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -52,7 +53,7 @@ ExecutionBlockImpl<IdExecutor<BlockPassthrough::Enable, void>>::ExecutionBlockIm
       _doCount(doCount) {
   // already insert ourselves into the statistics results
   if (_profile >= PROFILE_LEVEL_BLOCKS) {
-    _engine->_stats.nodes.emplace(node->id(), ExecutionStats::Node());
+    _engine->_stats.nodes.try_emplace(node->id(), ExecutionStats::Node());
   }
 }
 
@@ -130,13 +131,18 @@ IdExecutorInfos::IdExecutorInfos(RegisterId nrInOutRegisters,
                                  std::unordered_set<RegisterId> registersToKeep,
                                  // cppcheck-suppress passedByValue
                                  std::unordered_set<RegisterId> registersToClear,
-                                 std::string const& distributeId,
-                                 bool isResponsibleForInitializeCursor)
+                                 std::string distributeId, bool isResponsibleForInitializeCursor)
     : ExecutorInfos(make_shared_unordered_set(), make_shared_unordered_set(),
                     nrInOutRegisters, nrInOutRegisters,
                     std::move(registersToClear), std::move(registersToKeep)),
-      _distributeId(distributeId),
+      _distributeId(std::move(distributeId)),
       _isResponsibleForInitializeCursor(isResponsibleForInitializeCursor) {}
+
+std::string const& IdExecutorInfos::distributeId() { return _distributeId; }
+
+bool IdExecutorInfos::isResponsibleForInitializeCursor() const {
+  return _isResponsibleForInitializeCursor;
+}
 
 template <BlockPassthrough usePassThrough, class UsedFetcher>
 IdExecutor<usePassThrough, UsedFetcher>::IdExecutor(Fetcher& fetcher, IdExecutorInfos& infos)

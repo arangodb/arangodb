@@ -70,33 +70,42 @@ bool KShortestPathsFinder::computeShortestPath(VertexRef const& start, VertexRef
                                                std::unordered_set<VertexRef> const& forbiddenVertices,
                                                std::unordered_set<Edge> const& forbiddenEdges,
                                                Path& result) {
-  bool found = false;
   Ball left(start, FORWARD);
   Ball right(end, BACKWARD);
   VertexRef join;
 
   result.clear();
 
-  while (!left._frontier.empty() && !right._frontier.empty() && !found) {
+  auto currentBest = std::optional<double>{};
+
+  // We will not improve anymore if we have found a best path and the smallest
+  // combined distance between left and right is bigger than that path
+  while (!left._frontier.empty() && !right._frontier.empty() &&
+         !(currentBest.has_value() &&
+           (left._closest + right._closest > currentBest.value()))) {
     _options.isQueryKilledCallback();
 
     // Choose the smaller frontier to expand.
     if (left._frontier.size() < right._frontier.size()) {
-      found = advanceFrontier(left, right, forbiddenVertices, forbiddenEdges, join);
+      advanceFrontier(left, right, forbiddenVertices, forbiddenEdges, join, currentBest);
     } else {
-      found = advanceFrontier(right, left, forbiddenVertices, forbiddenEdges, join);
+      advanceFrontier(right, left, forbiddenVertices, forbiddenEdges, join, currentBest);
     }
   }
-  if (found) {
+
+  if (currentBest.has_value()) {
     reconstructPath(left, right, join, result);
+    return true;
+  } else {
+    // No path found
+    return false;
   }
-  return found;
 }
 
 void KShortestPathsFinder::computeNeighbourhoodOfVertexCache(VertexRef vertex,
                                                              Direction direction,
                                                              std::vector<Step>*& res) {
-  auto lookup = _vertexCache.emplace(vertex, FoundVertex(vertex)).first;
+  auto lookup = _vertexCache.try_emplace(vertex, FoundVertex(vertex)).first;
   auto& cache = lookup->second;  // want to update the cached vertex in place
 
   switch (direction) {
@@ -178,10 +187,11 @@ void KShortestPathsFinder::computeNeighbourhoodOfVertex(VertexRef vertex, Direct
   }
 }
 
-bool KShortestPathsFinder::advanceFrontier(Ball& source, Ball const& target,
+void KShortestPathsFinder::advanceFrontier(Ball& source, Ball const& target,
                                            std::unordered_set<VertexRef> const& forbiddenVertices,
                                            std::unordered_set<Edge> const& forbiddenEdges,
-                                           VertexRef& join) {
+                                           VertexRef& join,
+                                           std::optional<double>& currentBest) {
   VertexRef vr;
   DijkstraInfo *v, *w;
   std::vector<Step>* neighbours;
@@ -190,7 +200,7 @@ bool KShortestPathsFinder::advanceFrontier(Ball& source, Ball const& target,
   TRI_ASSERT(v != nullptr);
   TRI_ASSERT(vr == v->_vertex);
   if (!success) {
-    return false;
+    return;
   }
 
   computeNeighbourhoodOfVertexCache(vr, source._direction, neighbours);
@@ -217,14 +227,17 @@ bool KShortestPathsFinder::advanceFrontier(Ball& source, Ball const& target,
     }
   }
   v->_done = true;
+  source._closest = v->_weight;
 
   w = target._frontier.find(v->_vertex);
   if (w != nullptr && w->_done) {
-    join = v->_vertex;
-    return true;
+    // The total weight of the found path
+    double totalWeight = v->_weight + w->_weight;
+    if (!currentBest.has_value() || totalWeight < currentBest.value()) {
+      join = v->_vertex;
+      currentBest = totalWeight;
+    }
   }
-
-  return false;
 }
 
 void KShortestPathsFinder::reconstructPath(Ball const& left, Ball const& right,

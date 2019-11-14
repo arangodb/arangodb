@@ -499,16 +499,16 @@ bool Utf8Helper::tokenize(std::set<std::string>& words,
 /// @brief builds a regex matcher for the specified pattern
 ////////////////////////////////////////////////////////////////////////////////
 
-icu::RegexMatcher* Utf8Helper::buildMatcher(std::string const& pattern) {
+std::unique_ptr<icu::RegexMatcher> Utf8Helper::buildMatcher(std::string const& pattern) {
   UErrorCode status = U_ZERO_ERROR;
 
   auto matcher =
     std::make_unique<icu::RegexMatcher>(icu::UnicodeString::fromUTF8(pattern), 0, status);
   if (U_FAILURE(status)) {
-    return nullptr;
+    matcher.reset();
   }
 
-  return matcher.release();
+  return matcher;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

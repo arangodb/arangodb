@@ -43,6 +43,7 @@
 #include "Aql/QueryExecutionState.h"
 #include "Aql/QueryList.h"
 #include "Aql/QueryRegistry.h"
+#include "Aql/QueryResultV8.h"
 #include "Aql/QueryString.h"
 #include "Basics/HybridLogicalClock.h"
 #include "Basics/MutexLocker.h"
@@ -768,19 +769,7 @@ static void JS_ExecuteAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
   arangodb::aql::Query query(true, vocbase, aql::QueryString(queryString),
                              bindVars, options, arangodb::aql::PART_MAIN);
 
-  std::shared_ptr<arangodb::aql::SharedQueryState> ss = query.sharedState();
-  ss->setContinueCallback();
-
-  aql::QueryResultV8 queryResult;
-  while (true) {
-    auto state =
-        query.executeV8(isolate, static_cast<arangodb::aql::QueryRegistry*>(queryRegistry),
-                        queryResult);
-    if (state != aql::ExecutionState::WAITING) {
-      break;
-    }
-    ss->waitForAsyncResponse();
-  }
+  arangodb::aql::QueryResultV8 queryResult = query.executeV8(isolate, queryRegistry);
 
   if (queryResult.result.fail()) {
     if (queryResult.result.is(TRI_ERROR_REQUEST_CANCELED)) {
@@ -801,26 +790,27 @@ static void JS_ExecuteAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // return the array value as it is. this is a performance optimization
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
-  if (!queryResult.data.IsEmpty()) {
-    result->Set(TRI_V8_ASCII_STRING(isolate, "json"), queryResult.data);
+  if (!queryResult.v8Data.IsEmpty()) {
+    result->Set(TRI_V8_ASCII_STRING(isolate, "json"), queryResult.v8Data);
   }
 
   if (queryResult.extra != nullptr) {
-    VPackSlice stats = queryResult.extra->slice().get("stats");
+    VPackSlice extra = queryResult.extra->slice();
+    VPackSlice stats = extra.get("stats");
     if (!stats.isNone()) {
       result->Set(TRI_V8_ASCII_STRING(isolate, "stats"), TRI_VPackToV8(isolate, stats));
     }
-    VPackSlice warnings = queryResult.extra->slice().get("warnings");
+    VPackSlice warnings = extra.get("warnings");
     if (warnings.isNone()) {
       result->Set(TRI_V8_ASCII_STRING(isolate, "warnings"), v8::Array::New(isolate));
     } else {
       result->Set(TRI_V8_ASCII_STRING(isolate, "warnings"), TRI_VPackToV8(isolate, warnings));
     }
-    VPackSlice profile = queryResult.extra->slice().get("profile");
+    VPackSlice profile = extra.get("profile");
     if (!profile.isNone()) {
       result->Set(TRI_V8_ASCII_STRING(isolate, "profile"), TRI_VPackToV8(isolate, profile));
     }
-    VPackSlice plan = queryResult.extra->slice().get("plan");
+    VPackSlice plan = extra.get("plan");
     if (!plan.isNone()) {
       result->Set(TRI_V8_ASCII_STRING(isolate, "plan"), TRI_VPackToV8(isolate, plan));
     }

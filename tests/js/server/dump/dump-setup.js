@@ -230,6 +230,8 @@
 
   c.save(Array(10000).fill().map((e, i, a) => Object({_key: "test" + i, value: i})));
 
+  let analyzer = analyzers.save("custom", "delimiter", { delimiter : " " }, [ "frequency" ]);
+
   // setup a view
   try {
     c = db._create("UnitTestsDumpViewCollection");
@@ -247,7 +249,7 @@
         "UnitTestsDumpViewCollection": {
           includeAllFields: true,
           fields: {
-            text: { analyzers: [ "text_en" ] }
+            text: { analyzers: [ "text_en", analyzer.name ] }
           }
         }
       }
@@ -255,6 +257,18 @@
 
     c.save(Array(5000).fill().map((e, i, a) => Object({_key: "test" + i, value: i})));
     c.save({ value: -1, text: "the red foxx jumps over the pond" });
+  } catch (err) { }
+
+  // setup a view on _analyzers collection
+  try {
+    let view = db._createView("analyzersView", "arangosearch", {
+      links: {
+        _analyzers : {
+          includeAllFields: true,
+          analyzers: [ analyzer.name ]
+        }
+      }
+    });
   } catch (err) { }
 
   // Install Foxx

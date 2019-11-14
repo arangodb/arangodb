@@ -72,9 +72,7 @@ class RestBaseHandler : public rest::RestHandler {
   void generateCanceled();
 
  protected:
-  /// @brief parses the body as VelocyPack
-  std::shared_ptr<arangodb::velocypack::Builder> parseVelocyPackBody(bool& success);
-
+  
   /// @brief parses the body as VelocyPack, generates body
   arangodb::velocypack::Slice parseVPackBody(bool& success);
 

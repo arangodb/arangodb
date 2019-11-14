@@ -94,10 +94,7 @@ class SubqueryExecutor {
    */
   std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
 
-  inline std::tuple<ExecutionState, Stats, SharedAqlItemBlockPtr> fetchBlockForPassthrough(size_t atMost) {
-    auto rv = _fetcher.fetchBlockForPassthrough(atMost);
-    return {rv.first, {}, std::move(rv.second)};
-  }
+  std::tuple<ExecutionState, Stats, SharedAqlItemBlockPtr> fetchBlockForPassthrough(size_t atMost);
 
  private:
   /**

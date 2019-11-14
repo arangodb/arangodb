@@ -34,8 +34,7 @@
 #include <memory>
 #include <queue>
 
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
 
 class AqlItemBlock;
 class ExecutionEngine;
@@ -43,6 +42,7 @@ class ExecutionNode;
 class InputAqlItemRow;
 class OutputAqlItemRow;
 class Query;
+class ShadowAqlItemRow;
 
 /**
  * @brief This is the implementation class of AqlExecutionBlocks.
@@ -98,8 +98,12 @@ class ExecutionBlockImpl final : public ExecutionBlock {
       typename aql::DependencyProxy<Executor::Properties::allowsBlockPassthrough>;
 
   static_assert(
-    Executor::Properties::allowsBlockPassthrough == BlockPassthrough::Disable || Executor::Properties::preservesOrder,
+      Executor::Properties::allowsBlockPassthrough == BlockPassthrough::Disable ||
+          Executor::Properties::preservesOrder,
       "allowsBlockPassthrough must imply preservesOrder, but does not!");
+
+ private:
+  enum class InternalState { FETCH_DATA, FETCH_SHADOWROWS, DONE };
 
  public:
   /**
@@ -142,7 +146,7 @@ class ExecutionBlockImpl final : public ExecutionBlock {
    *           Guaranteed to be non nullptr in the HASMORE case, maybe a nullptr
    *           in DONE. Is a nullptr in WAITING.
    */
-  std::pair<ExecutionState, SharedAqlItemBlockPtr> getSome(size_t atMost) override;
+  [[nodiscard]] std::pair<ExecutionState, SharedAqlItemBlockPtr> getSome(size_t atMost) override;
 
   /**
    * @brief Like get some, but lines are skipped and not returned.
@@ -162,9 +166,9 @@ class ExecutionBlockImpl final : public ExecutionBlock {
    *                   skipped. On WAITING this is always 0. On any other state
    *                   this is between 0 and atMost.
    */
-  std::pair<ExecutionState, size_t> skipSome(size_t atMost) override;
+  [[nodiscard]] std::pair<ExecutionState, size_t> skipSome(size_t atMost) override;
 
-  std::pair<ExecutionState, Result> initializeCursor(InputAqlItemRow const& input) override;
+  [[nodiscard]] std::pair<ExecutionState, Result> initializeCursor(InputAqlItemRow const& input) override;
 
   Infos const& infos() const;
 
@@ -172,18 +176,18 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   /// Special implementation for all Executors that need to implement Shutdown
   /// Most do not, we might be able to move their shutdown logic to a more
   /// central place.
-  std::pair<ExecutionState, Result> shutdown(int) override;
+  [[nodiscard]] std::pair<ExecutionState, Result> shutdown(int) override;
 
  private:
   /**
    * @brief Inner getSome() part, without the tracing calls.
    */
-  std::pair<ExecutionState, SharedAqlItemBlockPtr> getSomeWithoutTrace(size_t atMost);
+  [[nodiscard]] std::pair<ExecutionState, SharedAqlItemBlockPtr> getSomeWithoutTrace(size_t atMost);
 
   /**
    * @brief Inner getSome() part, without the tracing calls.
    */
-  std::pair<ExecutionState, size_t> skipSomeOnceWithoutTrace(size_t atMost);
+  [[nodiscard]] std::pair<ExecutionState, size_t> skipSomeOnceWithoutTrace(size_t atMost);
 
   /**
    * @brief Allocates a new AqlItemBlock and returns it, with the specified
@@ -198,17 +202,21 @@ class ExecutionBlockImpl final : public ExecutionBlock {
    *        a nullptr. This happens only if upstream is WAITING, or
    *        respectively, if it is DONE and did not return a new block.
    */
-  std::pair<ExecutionState, SharedAqlItemBlockPtr> requestWrappedBlock(size_t nrItems,
-                                                                       RegisterId nrRegs);
+  [[nodiscard]] std::pair<ExecutionState, SharedAqlItemBlockPtr> requestWrappedBlock(
+      size_t nrItems, RegisterId nrRegs);
 
-  std::unique_ptr<OutputAqlItemRow> createOutputRow(SharedAqlItemBlockPtr& newBlock) const;
+  [[nodiscard]] std::unique_ptr<OutputAqlItemRow> createOutputRow(SharedAqlItemBlockPtr& newBlock) const;
 
-  Query const& getQuery() const;
+  [[nodiscard]] Query const& getQuery() const;
 
-  Executor& executor();
+  [[nodiscard]] Executor& executor();
 
   /// @brief request an AqlItemBlock from the memory manager
-  SharedAqlItemBlockPtr requestBlock(size_t nrItems, RegisterCount nrRegs);
+  [[nodiscard]] SharedAqlItemBlockPtr requestBlock(size_t nrItems, RegisterCount nrRegs);
+
+  void resetAfterShadowRow();
+
+  [[nodiscard]] ExecutionState fetchShadowRowInternal();
 
  private:
   /**
@@ -236,9 +244,10 @@ class ExecutionBlockImpl final : public ExecutionBlock {
 
   Query const& _query;
 
+  InternalState _state;
+
   size_t _skipped{};
 };
 
-}  // namespace aql
-}  // namespace arangodb
+}  // namespace arangodb::aql
 #endif

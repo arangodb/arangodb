@@ -68,7 +68,7 @@ struct DBUser {
 
 class CreateDatabaseInfo {
  public:
-  CreateDatabaseInfo(application_features::ApplicationServer&);
+  explicit CreateDatabaseInfo(application_features::ApplicationServer&);
   Result load(std::string const& name, uint64_t id);
 
   Result load(uint64_t id, VPackSlice const& options,
@@ -120,6 +120,9 @@ class CreateDatabaseInfo {
     return _sharding;
   }
 
+  ShardingPrototype shardingPrototype() const;
+  void shardingPrototype(ShardingPrototype type);
+
   void allowSystemDB(bool s) { _isSystemDB = s; }
 
  private:
@@ -133,11 +136,12 @@ class CreateDatabaseInfo {
 
   std::uint64_t _id = 0;
   std::string _name = "";
+  std::string _sharding = "flexible";
   std::vector<DBUser> _users;
 
   std::uint32_t _replicationFactor = 1;
   std::uint32_t _writeConcern = 1;
-  std::string _sharding = "flexible";
+  ShardingPrototype _shardingPrototype = ShardingPrototype::Undefined;
 
   bool _validId = false;
   bool _valid = false;  // required because TRI_ASSERT needs variable in Release mode.
