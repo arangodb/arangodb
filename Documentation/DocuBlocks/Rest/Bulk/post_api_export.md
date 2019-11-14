@@ -46,9 +46,8 @@ by clients. If not set, a server-defined value will be used.
 
 @RESTBODYPARAM{restrict,object,optional,post_api_export_restrictions}
 an object containing an array of attribute names that will be 
-included or excluded when returning result documents.
-
-Not specifying *restrict* will by default return all attributes of each document.
+included or excluded when returning result documents. Not specifying
+*restrict* will by default return all attributes of each document.
 
 @RESTSTRUCT{type,post_api_export_restrictions,string,required,string}
 has to be be set to either *include* or *exclude* depending on which you want to use
@@ -57,7 +56,6 @@ has to be be set to either *include* or *exclude* depending on which you want to
 Contains an array of attribute names to *include* or *exclude*. Matching of attribute names
 for *inclusion* or *exclusion* will be done on the top level only.
 Specifying names of nested attributes is not supported at the moment.
-
 
 @RESTQUERYPARAMETERS
 
