@@ -215,7 +215,7 @@ RestStatus RestIndexHandler::getSelectivityEstimates() {
   builder.add(StaticStrings::Code, VPackValue(static_cast<int>(rest::ResponseCode::OK)));
   builder.add("indexes", VPackValue(VPackValueType::Object));
   for (std::shared_ptr<Index> idx : idxs) {
-    if (idx->inProgress()) {
+    if (idx->inProgress() || idx->isHidden()) {
       continue;
     }
     std::string name = coll->name();
