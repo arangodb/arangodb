@@ -155,25 +155,23 @@ class SharedState {
     _callback = std::forward<F>(func);
 
     auto state = _state.load(std::memory_order_acquire);
-    while (true) {
-      switch (state) {
-        case State::Start:
-          if (_state.compare_exchange_strong(state, State::OnlyCallback,
-                                             std::memory_order_release)) {
-            return;
-          }
-          TRI_ASSERT(state == State::OnlyResult);  // race with setResult
-          [[fallthrough]];
-        case State::OnlyResult:
-          // acquire is actually correct here
-          if (_state.compare_exchange_strong(state, State::Done, std::memory_order_acquire)) {
-            doCallback();
-            return;
-          }
-          [[fallthrough]];
-        default:
-          TRI_ASSERT(false);  // unexpected state
-      }
+    switch (state) {
+      case State::Start:
+        if (_state.compare_exchange_strong(state, State::OnlyCallback,
+                                           std::memory_order_release)) {
+          return;
+        }
+        TRI_ASSERT(state == State::OnlyResult);  // race with setResult
+        [[fallthrough]];
+      case State::OnlyResult:
+        // acquire is actually correct here
+        if (_state.compare_exchange_strong(state, State::Done, std::memory_order_acquire)) {
+          doCallback();
+          return;
+        }
+        [[fallthrough]];
+      default:
+        TRI_ASSERT(false);  // unexpected state
     }
   }
 
@@ -191,25 +189,24 @@ class SharedState {
     ::new (&_result) Try<T>(std::move(t));
 
     auto state = _state.load(std::memory_order_acquire);
-    while (true) {
-      switch (state) {
-        case State::Start:
-          if (_state.compare_exchange_strong(state, State::OnlyResult, std::memory_order_release)) {
-            return;
-          }
-          TRI_ASSERT(state == State::OnlyCallback);  // race with setCallback
-          [[fallthrough]];
-        case State::OnlyCallback:
-          // acquire is actually correct here
-          if (_state.compare_exchange_strong(state, State::Done, std::memory_order_acquire)) {
-            doCallback();
-            return;
-          }
-          [[fallthrough]];
 
-        default:
-          TRI_ASSERT(false);  // unexpected state
-      }
+    switch (state) {
+      case State::Start:
+        if (_state.compare_exchange_strong(state, State::OnlyResult, std::memory_order_release)) {
+          return;
+        }
+        TRI_ASSERT(state == State::OnlyCallback);  // race with setCallback
+        [[fallthrough]];
+      case State::OnlyCallback:
+        // acquire is actually correct here
+        if (_state.compare_exchange_strong(state, State::Done, std::memory_order_acquire)) {
+          doCallback();
+          return;
+        }
+        [[fallthrough]];
+
+      default:
+        TRI_ASSERT(false);  // unexpected state
     }
   }
 

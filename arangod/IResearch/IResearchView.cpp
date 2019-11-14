@@ -360,11 +360,12 @@ arangodb::Result IResearchView::appendVelocyPackImpl(  // append JSON
   static const std::function<bool(irs::string_ref const& key)> persistenceAcceptor =
     [](irs::string_ref const&) -> bool { return true; };
 
-  auto& acceptor = context == Serialization::Persistence || context == Serialization::Inventory
+  auto& acceptor = 
+    (context == Serialization::Persistence || context == Serialization::PersistenceWithInProgress || context == Serialization::Inventory)
     ? persistenceAcceptor
     : propertiesAcceptor;
 
-  if (context == Serialization::Persistence) {
+    if (context == Serialization::Persistence || context == Serialization::PersistenceWithInProgress) {
     if (arangodb::ServerState::instance()->isSingleServer()) {
       auto res = arangodb::LogicalViewHelperStorageEngine::properties(builder, *this);
 
@@ -401,7 +402,7 @@ arangodb::Result IResearchView::appendVelocyPackImpl(  // append JSON
       return {};
     }
 
-    if (context == Serialization::Persistence) {
+    if (context == Serialization::Persistence || context == Serialization::PersistenceWithInProgress) {
       IResearchViewMetaState metaState;
 
       for (auto& entry : _links) {
