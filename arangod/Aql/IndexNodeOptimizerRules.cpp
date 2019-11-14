@@ -38,17 +38,16 @@ namespace {
     // check all node attributes to be in index
     for (auto& nodeAttr : node.attrs) {
       for (auto& index : indexNode->getIndexes()) {
-        auto const& ind = index.getIndex();
-        if (!ind->hasCoveringIterator()) {
+        if (!index->hasCoveringIterator()) {
           continue;
         }
-        auto indexId = ind->id();
+        auto indexId = index->id();
         // use one index only
         if (commonIndexId != 0 && commonIndexId != indexId) {
           continue;
         }
         size_t indexFieldNum = 0;
-        for (auto const& field : ind->fields()) {
+        for (auto const& field : index->fields()) {
           if (arangodb::basics::AttributeName::isIdentical(nodeAttr.attr, field, false)) {
             if (commonIndexId == 0) {
               commonIndexId = indexId;

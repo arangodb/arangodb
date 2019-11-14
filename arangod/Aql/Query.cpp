@@ -841,7 +841,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
               TRI_VPackToV8(isolate, cacheEntry->_queryResult->slice(),
                             queryResult.context->getVPackOptions());
           TRI_ASSERT(values->IsArray());
-          queryResult.data = v8::Handle<v8::Array>::Cast(values);
+          queryResult.v8Data = v8::Handle<v8::Array>::Cast(values);
           queryResult.extra = cacheEntry->_stats;
           queryResult.cached = true;
           return queryResult;
@@ -933,7 +933,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
       throw;
     }
 
-    queryResult.data = resArray;
+    queryResult.v8Data = resArray;
     queryResult.context = _trx->transactionContext();
 
     if (useQueryCache && _warnings.empty()) {
