@@ -213,7 +213,8 @@ void arangodb::aql::lateDocumentMaterializationRule(arangodb::aql::Optimizer* op
       std::vector<NodeWithAttrs> nodesToChange;
       TRI_idx_iid_t commonIndexId = 0; // use one index only
       while (current != loop) {
-        switch (current->getType()) {
+        auto type = current->getType();
+        switch (type) {
           case arangodb::aql::ExecutionNode::SORT:
             if (sortNode == nullptr) { // we need nearest to limit sort node, so keep selected if any
               sortNode = current;
@@ -255,19 +256,19 @@ void arangodb::aql::lateDocumentMaterializationRule(arangodb::aql::Optimizer* op
           default: // make clang happy
             break;
         }
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-        // Currently only calculation nodes expected to use loop variable and we successfully replaced
-        // all references to loop variable. However if some other node types will begin to use
-        // loop variable assertion below will be triggered and this rule should be updated
-        if (!stopSearch && current->getType() != arangodb::aql::ExecutionNode::CALCULATION) {
+        // Currently only calculation and subquery nodes expected to use loop variable.
+        // We successfully replaced all references to loop variable in calculation nodes only.
+        // However if some other node types will begin to use loop variable
+        // assertion below will be triggered and this rule should be updated.
+        // Subquery node is planned to be supported later.
+        if (!stopSearch && type != arangodb::aql::ExecutionNode::CALCULATION) {
           ::arangodb::containers::HashSet<Variable const*> currentUsedVars;
           current->getVariablesUsedHere(currentUsedVars);
           if (currentUsedVars.find(indexNode->outVariable()) != currentUsedVars.end()) {
-            TRI_ASSERT(false);
+            TRI_ASSERT(arangodb::aql::ExecutionNode::SUBQUERY == type);
             stopSearch = true;
           }
         }
-#endif
         if (stopSearch) {
           // we have a doc body used before selected SortNode. Forget it, let`s look for better sort to use
           sortNode = nullptr;
