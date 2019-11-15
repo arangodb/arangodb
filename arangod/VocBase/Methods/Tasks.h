@@ -59,6 +59,7 @@ class Task : public std::enable_shared_from_this<Task> {
 
  private:
   static Mutex _tasksLock;
+  // id => [ user, task ]
   static std::unordered_map<std::string, std::pair<std::string, std::shared_ptr<Task>>> _tasks;
 
  public:

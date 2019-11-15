@@ -173,7 +173,7 @@ RestStatus RestWalAccessHandler::execute() {
   std::vector<std::string> suffixes = _request->decodedSuffixes();
   if (suffixes.empty()) {
     generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "expected GET _api/wal/[tail|range|lastTick]>");
+                  "expected GET /_api/wal/[tail|range|lastTick|open-transactions]>");
     return RestStatus::DONE;
   }
 
@@ -195,7 +195,7 @@ RestStatus RestWalAccessHandler::execute() {
   } else {
     generateError(
         ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-        "expected GET _api/wal/[tail|range|lastTick|open-transactions]>");
+        "expected GET /_api/wal/[tail|range|lastTick|open-transactions]>");
   }
 
   return RestStatus::DONE;
