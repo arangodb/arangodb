@@ -73,8 +73,7 @@ class UnsortingGatherExecutor {
   [[nodiscard]] auto produceRows(OutputAqlItemRow& output)
       -> std::pair<ExecutionState, Stats>;
 
-  // TODO implement this
-  // std::tuple<ExecutionState, NoStats, size_t> skipRows(size_t atMost);
+  [[nodiscard]] auto skipRows(size_t atMost) -> std::tuple<ExecutionState, NoStats, size_t>;
 
  private:
   [[nodiscard]] auto numDependencies() const
@@ -85,11 +84,13 @@ class UnsortingGatherExecutor {
   [[nodiscard]] auto currentDependency() const noexcept -> size_t;
   [[nodiscard]] auto fetchNextRow(size_t atMost)
       -> std::pair<ExecutionState, InputAqlItemRow>;
+  [[nodiscard]] auto skipNextRows(size_t atMost) -> std::pair<ExecutionState, size_t>;
   auto advanceDependency() noexcept -> void;
 
  private:
   Fetcher& _fetcher;
   size_t _currentDependency{0};
+  size_t _skipped{0};
 };
 
 }  // namespace arangodb::aql

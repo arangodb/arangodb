@@ -84,6 +84,15 @@ auto UnsortingGatherExecutor::fetchNextRow(size_t atMost)
   return res;
 }
 
+auto UnsortingGatherExecutor::skipNextRows(size_t atMost)
+    -> std::pair<ExecutionState, size_t> {
+  auto res = fetcher().skipRowsForDependency(currentDependency(), atMost);
+  if (res.first == ExecutionState::DONE) {
+    advanceDependency();
+  }
+  return res;
+}
+
 auto UnsortingGatherExecutor::done() const noexcept -> bool {
   return _currentDependency >= numDependencies();
 }
@@ -97,7 +106,25 @@ auto UnsortingGatherExecutor::advanceDependency() noexcept -> void {
   ++_currentDependency;
 }
 
-// std::tuple<ExecutionState, UnsortingGatherExecutor::Stats, size_t> UnsortingGatherExecutor::skipRows(size_t atMost) {
-//   TRI_ASSERT(false);
-//   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-// }
+auto UnsortingGatherExecutor::skipRows(size_t const atMost)
+    -> std::tuple<ExecutionState, UnsortingGatherExecutor::Stats, size_t> {
+  auto const rowsLeftToSkip = [&atMost, &skipped = this->_skipped]() {
+    TRI_ASSERT(atMost >= skipped);
+    return atMost - skipped;
+  };
+  while (rowsLeftToSkip() > 0 && !done()) {
+    // Note that skipNextRow may return DONE (because the current dependency is
+    // DONE), and also return an unitialized row in that case, but we are not
+    // DONE completely - that's what `done()` is for.
+    auto [state, skipped] = skipNextRows(rowsLeftToSkip());
+    _skipped += skipped;
+    if (state == ExecutionState::WAITING) {
+      return {state, {}, 0};
+    }
+  }
+
+  auto state = done() ? ExecutionState::DONE : ExecutionState::HASMORE;
+  auto skipped = size_t{0};
+  std::swap(skipped, _skipped);
+  return {state, {}, skipped};
+}

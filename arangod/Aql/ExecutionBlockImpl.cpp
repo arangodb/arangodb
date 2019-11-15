@@ -42,7 +42,6 @@
 #include "Aql/IResearchViewExecutor.h"
 #include "Aql/IdExecutor.h"
 #include "Aql/IndexExecutor.h"
-#include "Aql/IndexNode.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/KShortestPathsExecutor.h"
 #include "Aql/LimitExecutor.h"
@@ -66,8 +65,6 @@
 #include "Aql/TraversalExecutor.h"
 #include "Aql/UnsortedGatherExecutor.h"
 #include "Aql/UnsortingGatherExecutor.h"
-#include "Transaction/Context.h"
-#include "Transaction/Methods.h"
 
 #include "Aql/SimpleModifier.h"
 #include "Aql/UpsertModifier.h"
@@ -376,8 +373,7 @@ static SkipVariants constexpr skipType() {
            std::is_same<Executor, LimitExecutor>::value ||
            std::is_same<Executor, ConstrainedSortExecutor>::value ||
            std::is_same<Executor, SortingGatherExecutor>::value ||
-           // TODO enable this:
-           // std::is_same<Executor, UnsortingGatherExecutor>::value ||
+           std::is_same<Executor, UnsortingGatherExecutor>::value ||
            std::is_same<Executor, UnsortedGatherExecutor>::value ||
            std::is_same<Executor, MaterializeExecutor<RegisterId>>::value ||
            std::is_same<Executor, MaterializeExecutor<std::string const&>>::value),
