@@ -110,64 +110,6 @@ struct LinkTrxState final : public arangodb::TransactionState::Cookie {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief approximate data store directory instance size
-////////////////////////////////////////////////////////////////////////////////
-size_t directoryMemory(irs::directory const& directory, TRI_idx_iid_t id) noexcept {
-  size_t size = 0;
-
-  try {
-    directory.visit([&directory, &size](std::string& file) -> bool {
-      uint64_t length;
-
-      size += directory.length(length, file) ? length : 0;
-
-      return true;
-    });
-  } catch (arangodb::basics::Exception& e) {
-    LOG_TOPIC("e6cb2", WARN, arangodb::iresearch::TOPIC)
-        << "caught exception while calculating size of arangosearch link '"
-        << id << "': " << e.code() << " " << e.what();
-    IR_LOG_EXCEPTION();
-  } catch (std::exception const& e) {
-    LOG_TOPIC("7e623", WARN, arangodb::iresearch::TOPIC)
-        << "caught exception while calculating size of arangosearch link '"
-        << id << "': " << e.what();
-    IR_LOG_EXCEPTION();
-  } catch (...) {
-    LOG_TOPIC("21d6a", WARN, arangodb::iresearch::TOPIC)
-        << "caught exception while calculating size of arangosearch link '" << id << "'";
-    IR_LOG_EXCEPTION();
-  }
-
-  return size;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief compute the data path to user for iresearch data store
-///        get base path from DatabaseServerFeature (similar to MMFilesEngine)
-///        the path is hardcoded to reside under:
-///        <DatabasePath>/<IResearchLink::type()>-<link id>
-///        similar to the data path calculation for collections
-////////////////////////////////////////////////////////////////////////////////
-irs::utf8_path getPersistedPath(arangodb::DatabasePathFeature const& dbPathFeature,
-                                arangodb::iresearch::IResearchLink const& link) {
-  irs::utf8_path dataPath(dbPathFeature.directory());
-  static const std::string subPath("databases");
-  static const std::string dbPath("database-");
-
-  dataPath /= subPath;
-  dataPath /= dbPath;
-  dataPath += std::to_string(link.collection().vocbase().id());
-  dataPath /= arangodb::iresearch::DATA_SOURCE_TYPE.name();
-  dataPath += "-";
-  dataPath += std::to_string(link.collection().id());  // has to be 'id' since this can be a per-shard collection
-  dataPath += "_";
-  dataPath += std::to_string(link.id());
-
-  return dataPath;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief inserts ArangoDB document into an IResearch data store
 ////////////////////////////////////////////////////////////////////////////////
 inline arangodb::Result insertDocument(irs::index_writer::documents_context& ctx,
