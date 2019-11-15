@@ -119,7 +119,7 @@ SharedAqlItemBlockPtr InputAqlItemRow::cloneToBlock(AqlItemBlockManager& manager
 ///                  corresponding position
 ///  "raw":     List of actual values, positions 0 and 1 are always null
 ///                  such that actual indices start at 2
-void InputAqlItemRow::toVelocyPack(transaction::Methods* trx, VPackBuilder& result) const {
+void InputAqlItemRow::toVelocyPack(velocypack::Options const* const trxOptions, VPackBuilder& result) const {
   TRI_ASSERT(isInitialized());
   TRI_ASSERT(result.isOpenObject());
   VPackOptions options(VPackOptions::Defaults);
@@ -203,7 +203,7 @@ void InputAqlItemRow::toVelocyPack(transaction::Methods* trx, VPackBuilder& resu
 
       if (it == table.end()) {
         currentState = Next;
-        a.toVelocyPack(trx, raw, false);
+        a.toVelocyPack(trxOptions, raw, false);
         table.try_emplace(a, pos++);
       } else {
         currentState = Positional;

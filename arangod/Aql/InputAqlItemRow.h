@@ -33,11 +33,9 @@
 #include <unordered_set>
 
 namespace arangodb {
-namespace transaction {
-class Methods;
-}
 namespace velocypack {
 class Builder;
+struct Options;
 }
 namespace aql {
 
@@ -133,7 +131,7 @@ class InputAqlItemRow {
   /// @brief toVelocyPack, transfer a single AqlItemRow to Json, the result can
   /// be used to recreate the AqlItemBlock via the Json constructor
   /// Uses the same API as an AqlItemBlock with only a single row
-  void toVelocyPack(transaction::Methods* trx, arangodb::velocypack::Builder&) const;
+  void toVelocyPack(velocypack::Options const*, arangodb::velocypack::Builder&) const;
 
  private:
   AqlItemBlock& block() noexcept;
