@@ -362,8 +362,6 @@ void lateDocumentMaterializationArangoSearchRule(Optimizer* opt,
         if (!calcNodes.empty()) {
           viewNode.replaceViewVariables(calcNodes);
         }
-        // clear saved data
-        viewNode.clearViewVariables();
         // 2. We need to notify view - it should not materialize documents, but produce only localDocIds
         // 3. We need to add materializer after limit node to do materialization
         Ast* ast = plan->getAst();
@@ -384,6 +382,8 @@ void lateDocumentMaterializationArangoSearchRule(Optimizer* opt,
         materializeDependency->addParent(materializeNode);
         modified = true;
       }
+      // clear possibly saved data
+      viewNode.clearViewVariables();
     }
   }
 }
