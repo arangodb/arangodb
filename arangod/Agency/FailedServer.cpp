@@ -72,7 +72,7 @@ bool FailedServer::start(bool& aborts) {
     LOG_TOPIC("a04da", INFO, Logger::SUPERVISION) << reason.str();
     finish(_server, "", false, reason.str());
     return false;
-  } else if(!status.second) {
+  } else if (!status.second) {
     std::stringstream reason;
     reason << "Server " << _server << " no longer in health. Already removed. Abort.";
     LOG_TOPIC("1479a", INFO, Logger::SUPERVISION) << reason.str();
@@ -177,7 +177,7 @@ bool FailedServer::start(bool& aborts) {
             for (auto const& shard : collection.hasAsChildren("shards").first) {
               size_t pos = 0;
 
-              for (auto const& it : VPackArrayIterator(shard.second->slice())) {
+              for (VPackSlice it : VPackArrayIterator(shard.second->slice())) {
                 auto dbs = it.copyString();
 
                 if (dbs == _server || dbs == "_" + _server) {

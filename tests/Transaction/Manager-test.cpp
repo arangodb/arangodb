@@ -61,7 +61,7 @@ static arangodb::aql::QueryResult executeQuery(TRI_vocbase_t& vocbase,
   while (true) {
     auto state = query.execute(arangodb::QueryRegistryFeature::registry(), result);
     if (state == arangodb::aql::ExecutionState::WAITING) {
-      ss->waitForAsyncResponse();
+      ss->waitForAsyncWakeup();
     } else {
       break;
     }
@@ -414,7 +414,7 @@ TEST_F(TransactionManagerTest, abort_transactions_with_matcher) {
   ASSERT_EQ(mgr->getManagedTrxStatus(tid), transaction::Status::RUNNING);
 
   //
-  mgr->abortManagedTrx([](TransactionState const& state) -> bool {
+  mgr->abortManagedTrx([](TransactionState const& state, std::string const& /*user*/) -> bool {
     TransactionCollection* tcoll = state.collection(42, AccessMode::Type::NONE);
     return tcoll != nullptr;
   });

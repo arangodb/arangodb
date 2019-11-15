@@ -73,6 +73,7 @@ ExecutionBlock::ExecutionBlock(ExecutionEngine* engine, ExecutionNode const* ep)
       _trx(engine->getQuery()->trx()),
       _shutdownResult(TRI_ERROR_NO_ERROR),
       _done(false),
+      _isInSplicedSubquery(ep != nullptr ? ep->isInSplicedSubquery() : false),
       _exeNode(ep),
       _dependencyPos(_dependencies.end()),
       _profile(engine->getQuery()->queryOptions().getProfileLevel()),
@@ -170,7 +171,7 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlock::traceGetSomeEnd
     if (it != _engine->_stats.nodes.end()) {
       it->second += stats;
     } else {
-      _engine->_stats.nodes.emplace(en->id(), stats);
+      _engine->_stats.nodes.try_emplace(en->id(), stats);
     }
 
     if (_profile >= PROFILE_LEVEL_TRACE_1) {
@@ -189,10 +190,7 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlock::traceGetSomeEnd
               << "getSome type=" << node->getTypeString() << " result: nullptr";
         } else {
           VPackBuilder builder;
-          {
-            VPackObjectBuilder guard(&builder);
-            result->toVelocyPack(transaction(), builder);
-          }
+          result->toSimpleVPack(transaction(), builder);
           auto options = transaction()->transactionContextPtr()->getVPackOptions();
           LOG_TOPIC("fcd9c", INFO, Logger::QUERIES)
               << "[query#" << queryId << "] "
@@ -240,7 +238,7 @@ std::pair<ExecutionState, size_t> ExecutionBlock::traceSkipSomeEnd(
     if (it != _engine->_stats.nodes.end()) {
       it->second += stats;
     } else {
-      _engine->_stats.nodes.emplace(en->id(), stats);
+      _engine->_stats.nodes.try_emplace(en->id(), stats);
     }
 
     if (_profile >= PROFILE_LEVEL_TRACE_1) {
@@ -283,4 +281,8 @@ void ExecutionBlock::addDependency(ExecutionBlock* ep) {
              _dependencies.end());
   _dependencies.emplace_back(ep);
   _dependencyPos = _dependencies.end();
+}
+
+bool ExecutionBlock::isInSplicedSubquery() const noexcept {
+  return _isInSplicedSubquery;
 }

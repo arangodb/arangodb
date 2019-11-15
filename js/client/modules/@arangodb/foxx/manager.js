@@ -236,7 +236,7 @@ var moveAppToServer = function (serviceInfo) {
   if (!filePath) {
     throwBadParameter('Invalid file: ' + serviceInfo + '. Has to be a direcotry or zip archive');
   }
-  var response = arango.SEND_FILE('/_api/upload', filePath);
+  var response = arango.SEND_FILE('/_api/upload', filePath, {'content-type': 'application/zip'});
   if (shouldDelete) {
     try {
       fs.remove(filePath);

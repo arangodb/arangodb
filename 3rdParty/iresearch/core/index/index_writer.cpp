@@ -2043,6 +2043,11 @@ index_writer::pending_context_t index_writer::flush_all(const before_commit_f& b
       // pending consolidation request
       pending_candidates_count += candidates.size();
     } else {
+      // during consolidation doc_mask could be already populated even for just merged segment
+      if (pending_segment.segment.meta.docs_count != pending_segment.segment.meta.live_docs_count) {
+        index_utils::read_document_mask(docs_mask, dir, pending_segment.segment.meta);
+      }
+      bool docs_mask_modified = false;
       // pending already imported/consolidated segment, apply deletes
       // mask documents matching filters from segment_contexts (i.e. from new operations)
       for (auto& modifications: ctx->pending_segment_contexts_) {
@@ -2057,13 +2062,18 @@ index_writer::pending_context_t index_writer::flush_all(const before_commit_f& b
           modifications_end - modifications_begin
         );
 
-        add_document_mask_modified_records(
+        docs_mask_modified |= add_document_mask_modified_records(
           modification_queries,
           docs_mask,
           cached_readers_, // reader cache for segments
           pending_segment.segment.meta,
           pending_segment.generation
         );
+      }
+
+      // if mask left untouched, reset it, to prevent unnecessary writes
+      if (!docs_mask_modified) {
+        docs_mask.clear();
       }
     }
 

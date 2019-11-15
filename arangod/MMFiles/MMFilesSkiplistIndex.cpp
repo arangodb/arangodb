@@ -172,7 +172,7 @@ MMFilesSkiplistLookupBuilder::MMFilesSkiplistLookupBuilder(
           } else {
             _includeUpper = false;
           }
-          // intentionally falls through
+          [[fallthrough]];
         case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE:
           if (isReverseOrder) {
             value->toVelocyPackValue(*(_lowerBuilder.get()));
@@ -186,7 +186,7 @@ MMFilesSkiplistLookupBuilder::MMFilesSkiplistLookupBuilder(
           } else {
             _includeLower = false;
           }
-          // intentionally falls through
+          [[fallthrough]];
         case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE:
           if (isReverseOrder) {
             value->toVelocyPackValue(*(_upperBuilder.get()));
@@ -317,7 +317,7 @@ MMFilesSkiplistInLookupBuilder::MMFilesSkiplistInLookupBuilder(
         } else {
           _includeUpper = false;
         }
-        // intentionally falls through
+        [[fallthrough]];
       case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE:
         if (isReverseOrder) {
           TRI_ASSERT(lower == nullptr);
@@ -333,7 +333,7 @@ MMFilesSkiplistInLookupBuilder::MMFilesSkiplistInLookupBuilder(
         } else {
           _includeLower = false;
         }
-        // intentionally falls through
+        [[fallthrough]];
       case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE:
         if (isReverseOrder) {
           TRI_ASSERT(upper == nullptr);
@@ -350,7 +350,7 @@ MMFilesSkiplistInLookupBuilder::MMFilesSkiplistInLookupBuilder(
         tmp->clear();
         unique_set.clear();
         value->toVelocyPackValue(*(tmp.get()));
-        for (auto const& it : VPackArrayIterator(tmp->slice())) {
+        for (VPackSlice it : VPackArrayIterator(tmp->slice())) {
           unique_set.emplace(it);
         }
         TRI_IF_FAILURE("Index::permutationIN") {
@@ -820,8 +820,9 @@ Result MMFilesSkiplistIndex::insert(transaction::Methods& trx,
     std::string existingId;
 
     _collection.getPhysical()->readDocumentWithCallback(
-        &trx, rev, [&existingId](LocalDocumentId const&, velocypack::Slice doc) -> void {
+        &trx, rev, [&existingId](LocalDocumentId const&, velocypack::Slice doc) {
           existingId = doc.get(StaticStrings::KeyString).copyString();
+          return true; // return value does not matter here
         });
 
     if (mode == OperationMode::internal) {
@@ -1115,7 +1116,7 @@ bool MMFilesSkiplistIndex::findMatchingConditions(
         if (first->getMember(1)->isArray()) {
           usesIn = true;
         }
-        // intentionally falls through
+        [[fallthrough]];
       case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ:
         TRI_ASSERT(conditions.size() == 1);
         break;

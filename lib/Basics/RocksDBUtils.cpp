@@ -37,7 +37,7 @@ namespace rocksutils {
 static bool hasObjectIds(VPackSlice const& inputSlice) {
   bool rv = false;
   if (inputSlice.isObject()) {
-    for (auto const& objectPair : arangodb::velocypack::ObjectIterator(inputSlice)) {
+    for (auto objectPair : arangodb::velocypack::ObjectIterator(inputSlice)) {
       if (arangodb::velocypack::StringRef(objectPair.key) == "objectId") {
         return true;
       }
@@ -47,7 +47,7 @@ static bool hasObjectIds(VPackSlice const& inputSlice) {
       }
     }
   } else if (inputSlice.isArray()) {
-    for (auto const& slice : arangodb::velocypack::ArrayIterator(inputSlice)) {
+    for (auto slice : arangodb::velocypack::ArrayIterator(inputSlice)) {
       if (rv) {
         return rv;
       }
@@ -60,7 +60,7 @@ static bool hasObjectIds(VPackSlice const& inputSlice) {
 static VPackBuilder& stripObjectIdsImpl(VPackBuilder& builder, VPackSlice const& inputSlice) {
   if (inputSlice.isObject()) {
     builder.openObject();
-    for (auto const& objectPair : arangodb::velocypack::ObjectIterator(inputSlice)) {
+    for (auto objectPair : arangodb::velocypack::ObjectIterator(inputSlice)) {
       if (arangodb::velocypack::StringRef(objectPair.key) == "objectId") {
         continue;
       }
@@ -70,7 +70,7 @@ static VPackBuilder& stripObjectIdsImpl(VPackBuilder& builder, VPackSlice const&
     builder.close();
   } else if (inputSlice.isArray()) {
     builder.openArray();
-    for (auto const& slice : arangodb::velocypack::ArrayIterator(inputSlice)) {
+    for (auto slice : arangodb::velocypack::ArrayIterator(inputSlice)) {
       stripObjectIdsImpl(builder, slice);
     }
     builder.close();

@@ -285,7 +285,7 @@ void ScorerReplacer::replace(aql::CalculationNode& node) {
       // create variable
       auto* var = ast->variables()->createTemporaryVariable();
 
-      it = _dedup.emplace(key, var).first;
+      it = _dedup.try_emplace(key, var).first;
     }
 
     return ast->createNodeReference(it->second);

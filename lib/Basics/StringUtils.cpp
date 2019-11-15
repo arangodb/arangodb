@@ -488,13 +488,12 @@ std::vector<std::string> split(std::string const& source, std::string const& del
 
 std::string trim(std::string const& sourceStr, std::string const& trimStr) {
   size_t s = sourceStr.find_first_not_of(trimStr);
-  size_t e = sourceStr.find_last_not_of(trimStr);
 
   if (s == std::string::npos) {
     return std::string();
-  } else {
-    return std::string(sourceStr, s, e - s + 1);
   }
+  size_t e = sourceStr.find_last_not_of(trimStr);
+  return std::string(sourceStr, s, e - s + 1);
 }
 
 void trimInPlace(std::string& str, std::string const& trimStr) {
@@ -517,9 +516,8 @@ std::string lTrim(std::string const& str, std::string const& trimStr) {
 
   if (s == std::string::npos) {
     return std::string();
-  } else {
-    return std::string(str, s);
-  }
+  } 
+  return std::string(str, s);
 }
 
 std::string rTrim(std::string const& sourceStr, std::string const& trimStr) {
@@ -645,71 +643,97 @@ std::string replace(std::string const& sourceStr, std::string const& fromStr,
   return std::string(ptr, k);
 }
 
-void tolowerInPlace(std::string* str) {
+void tolowerInPlace(std::string& str) {
+  // unrolled version of
+  // for (auto& c : str) {
+  //   c = StringUtils::tolower(c);
+  // }
+  auto pos = str.data();
+  auto end = pos + str.size();
 
-  if (str->empty()) {
-    return;
-  }
+  while (pos != end) {
+    size_t len = end - pos;
+    if (len > 4) {
+      len = 4;
+    }
 
-  for (std::string::iterator i = str->begin(); i != str->end(); ++i) {
-    *i = ::tolower(*i);
+    switch (len) {
+      case 4:
+        pos[3] = StringUtils::tolower(pos[3]);
+        [[fallthrough]];
+      case 3:
+        pos[2] = StringUtils::tolower(pos[2]);
+        [[fallthrough]];
+      case 2:
+        pos[1] = StringUtils::tolower(pos[1]);
+        [[fallthrough]];
+      case 1:
+        pos[0] = StringUtils::tolower(pos[0]);
+    }
+    pos += len;
   }
 }
 
 std::string tolower(std::string&& str) {
-
-  std::transform(
-    str.begin(), str.end(), str.begin(), [](unsigned char c){ return ::tolower(c); });
-
+  tolowerInPlace(str);
   return std::move(str);
 }
 
 std::string tolower(std::string const& str) {
-
-  size_t len = str.length();
-
-  if (len == 0) {
-    return "";
-  }
-
   std::string result;
-  result.reserve(len);
+  result.resize(str.size());
 
-  char const* ptr = str.c_str();
-
-  for (; 0 < len; len--, ptr++) {
-    result.push_back(static_cast<char>(::tolower(*ptr)));
+  size_t i = 0;
+  for (auto& c : result) {
+    c = StringUtils::tolower(str[i++]);
   }
 
   return result;
 }
 
-void toupperInPlace(std::string* str) {
-  size_t len = str->length();
+void toupperInPlace(std::string& str) {
+  // unrolled version of
+  // for (auto& c : str) {
+  //   c = StringUtils::toupper(c);
+  // }
+  auto pos = str.data();
+  auto end = pos + str.size();
 
-  if (len == 0) {
-    return;
-  }
+  while (pos != end) {
+    size_t len = end - pos;
+    if (len > 4) {
+      len = 4;
+    }
 
-  for (std::string::iterator i = str->begin(); i != str->end(); ++i) {
-    *i = ::toupper(*i);
+    switch (len) {
+      case 4:
+        pos[3] = StringUtils::toupper(pos[3]);
+        [[fallthrough]];
+      case 3:
+        pos[2] = StringUtils::toupper(pos[2]);
+        [[fallthrough]];
+      case 2:
+        pos[1] = StringUtils::toupper(pos[1]);
+        [[fallthrough]];
+      case 1:
+        pos[0] = StringUtils::toupper(pos[0]);
+    }
+    pos += len;
   }
 }
 
+std::string toupper(std::string&& str) {
+  toupperInPlace(str);
+  return std::move(str);
+}
+
 std::string toupper(std::string const& str) {
-  size_t len = str.length();
-
-  if (len == 0) {
-    return "";
-  }
-
   std::string result;
-  result.reserve(len);
+  result.resize(str.size());
 
-  char const* ptr = str.c_str();
-
-  for (; 0 < len; len--, ptr++) {
-    result.push_back(static_cast<char>(::toupper(*ptr)));
+  size_t i = 0;
+  for (auto& c : result) {
+    c = StringUtils::toupper(str[i++]);
   }
 
   return result;
@@ -842,20 +866,12 @@ std::string urlEncode(std::string const& str) {
   return urlEncode(str.c_str(), str.size());
 }
 
-std::string urlEncode(char const* src) {
-  if (src != nullptr) {
-    size_t len = strlen(src);
-    return urlEncode(src, len);
-  }
-  return "";
-}
-
 std::string urlEncode(char const* src, size_t const len) {
   static char hexChars[16] = {'0', '1', '2', '3', '4', '5', '6', '7',
                               '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
 
   char const* end = src + len;
-  
+
   // cppcheck-suppress unsignedPositive
   if (len >= (SIZE_MAX - 1) / 3) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -1401,7 +1417,7 @@ bool boolean(std::string const& str) {
     return false;
   }
   std::string lower = trim(str);
-  tolowerInPlace(&lower);
+  tolowerInPlace(lower);
 
   if (lower == "true" || lower == "yes" || lower == "on" || lower == "y" ||
       lower == "1" || lower == "✓") {
@@ -1434,61 +1450,61 @@ uint64_t uint64_trusted(char const* value, size_t length) {
   switch (length) {
     case 20:
       result += (value[length - 20] - '0') * 10000000000000000000ULL;
-    // intentionally falls through
+    [[fallthrough]];
     case 19:
       result += (value[length - 19] - '0') * 1000000000000000000ULL;
-    // intentionally falls through
+    [[fallthrough]];
     case 18:
       result += (value[length - 18] - '0') * 100000000000000000ULL;
-    // intentionally falls through
+    [[fallthrough]];
     case 17:
       result += (value[length - 17] - '0') * 10000000000000000ULL;
-    // intentionally falls through
+    [[fallthrough]];
     case 16:
       result += (value[length - 16] - '0') * 1000000000000000ULL;
-    // intentionally falls through
+    [[fallthrough]];
     case 15:
       result += (value[length - 15] - '0') * 100000000000000ULL;
-    // intentionally falls through
+    [[fallthrough]];
     case 14:
       result += (value[length - 14] - '0') * 10000000000000ULL;
-    // intentionally falls through
+    [[fallthrough]];
     case 13:
       result += (value[length - 13] - '0') * 1000000000000ULL;
-    // intentionally falls through
+    [[fallthrough]];
     case 12:
       result += (value[length - 12] - '0') * 100000000000ULL;
-    // intentionally falls through
+    [[fallthrough]];
     case 11:
       result += (value[length - 11] - '0') * 10000000000ULL;
-    // intentionally falls through
+    [[fallthrough]];
     case 10:
       result += (value[length - 10] - '0') * 1000000000ULL;
-    // intentionally falls through
+    [[fallthrough]];
     case 9:
       result += (value[length - 9] - '0') * 100000000ULL;
-    // intentionally falls through
+    [[fallthrough]];
     case 8:
       result += (value[length - 8] - '0') * 10000000ULL;
-    // intentionally falls through
+    [[fallthrough]];
     case 7:
       result += (value[length - 7] - '0') * 1000000ULL;
-    // intentionally falls through
+    [[fallthrough]];
     case 6:
       result += (value[length - 6] - '0') * 100000ULL;
-    // intentionally falls through
+    [[fallthrough]];
     case 5:
       result += (value[length - 5] - '0') * 10000ULL;
-    // intentionally falls through
+    [[fallthrough]];
     case 4:
       result += (value[length - 4] - '0') * 1000ULL;
-    // intentionally falls through
+    [[fallthrough]];
     case 3:
       result += (value[length - 3] - '0') * 100ULL;
-    // intentionally falls through
+    [[fallthrough]];
     case 2:
       result += (value[length - 2] - '0') * 10ULL;
-    // intentionally falls through
+    [[fallthrough]];
     case 1:
       result += (value[length - 1] - '0');
   }

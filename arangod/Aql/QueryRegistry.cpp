@@ -93,12 +93,30 @@ void QueryRegistry::insert(QueryId id, Query* query, double ttl,
       THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
     }
 
-    auto result = _queries[vocbase.name()].emplace(id, std::move(p));
+    auto result = _queries[vocbase.name()].try_emplace(id, std::move(p));
     if (!result.second) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_INTERNAL, "query with given vocbase and id already there");
     }
   }
+}
+
+/// @brief kill a query
+bool QueryRegistry::kill(TRI_vocbase_t* vocbase, QueryId id) {
+  READ_LOCKER(writeLocker, _lock);
+
+  auto m = _queries.find(vocbase->name());
+  if (m == _queries.end()) {
+    return false;
+  }
+  auto q = m->second.find(id);
+  if (q == m->second.end()) {
+    return false;
+  }
+
+  std::unique_ptr<QueryInfo>& qi = q->second;
+  qi->_query->setKilled();
+  return true;
 }
 
 /// @brief open

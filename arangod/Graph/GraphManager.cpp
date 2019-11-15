@@ -29,7 +29,6 @@
 #include <velocypack/velocypack-aliases.h>
 #include <array>
 #include <boost/range/join.hpp>
-#include <boost/variant.hpp>
 #include <utility>
 
 #include "Aql/AstNode.h"
@@ -65,7 +64,7 @@ using VelocyPackHelper = basics::VelocyPackHelper;
 namespace {
 static bool ArrayContainsCollection(VPackSlice array, std::string const& colName) {
   TRI_ASSERT(array.isArray());
-  for (auto const& it : VPackArrayIterator(array)) {
+  for (VPackSlice it : VPackArrayIterator(array)) {
     if (it.copyString() == colName) {
       return true;
     }
@@ -81,7 +80,7 @@ std::shared_ptr<transaction::Context> GraphManager::ctx() const {
   }
 
   return transaction::StandaloneContext::Create(_vocbase);
-};
+}
 
 OperationResult GraphManager::createEdgeCollection(std::string const& name,
                                                    bool waitForSync, VPackSlice options) {
@@ -97,18 +96,40 @@ OperationResult GraphManager::createCollection(std::string const& name, TRI_col_
                                                bool waitForSync, VPackSlice options) {
   TRI_ASSERT(colType == TRI_COL_TYPE_DOCUMENT || colType == TRI_COL_TYPE_EDGE);
 
+  auto& vocbase = ctx()->vocbase();
+  
+  VPackBuilder helper;
+  helper.openObject();
+
   if (ServerState::instance()->isCoordinator()) {
-    Result res = ShardingInfo::validateShardsAndReplicationFactor(options, ctx()->vocbase().server());
+    Result res = ShardingInfo::validateShardsAndReplicationFactor(options, vocbase.server());
     if (res.fail()) {
       return OperationResult(res);
     }
+
+    bool forceOneShard = 
+      vocbase.server().getFeature<ClusterFeature>().forceOneShard() ||
+      (vocbase.sharding() == "single" && 
+       options.get(StaticStrings::DistributeShardsLike).isNone() &&
+       arangodb::basics::VelocyPackHelper::getNumericValue<uint64_t>(options, StaticStrings::NumberOfShards, 0) <= 1);
+    
+    if (forceOneShard) {
+      // force a single shard with shards distributed like "_graph"
+      helper.add(StaticStrings::NumberOfShards, VPackValue(1));
+      helper.add(StaticStrings::DistributeShardsLike, VPackValue(vocbase.shardingPrototypeName()));
+    }
   }
 
+  helper.close();
+    
+  VPackBuilder mergedBuilder =
+      VPackCollection::merge(options, helper.slice(), false, true);
+
   auto res = arangodb::methods::Collections::create(  // create collection
-      ctx()->vocbase(),                               // collection vocbase
+      vocbase,                                        // collection vocbase
       name,                                           // collection name
       colType,                                        // collection type
-      options,                                        // collection properties
+      mergedBuilder.slice(),                          // collection properties
       waitForSync, true, false, [](std::shared_ptr<LogicalCollection> const&) -> void {});
 
   return OperationResult(res);
@@ -454,7 +475,7 @@ Result GraphManager::applyOnAllGraphs(std::function<Result(std::unique_ptr<Graph
             "Cannot read graphs from _graphs collection"};
   }
   Result res;
-  for (auto const& it : VPackArrayIterator(graphsSlice)) {
+  for (VPackSlice it : VPackArrayIterator(graphsSlice)) {
     std::unique_ptr<Graph> graph;
     try {
       graph = Graph::fromPersistence(it.resolveExternals(), _vocbase);

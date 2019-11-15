@@ -28,6 +28,7 @@
 #include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/OutputAqlItemRow.h"
+#include "Aql/ShadowAqlItemRow.h"
 
 #include "Basics/VelocyPackHelper.h"
 

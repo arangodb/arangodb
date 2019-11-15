@@ -262,23 +262,6 @@ bool transaction::Methods::removeStatusChangeCallback(StatusChangeCallback const
   getDataSourceRegistrationCallbacks().clear();
 }
 
-/// @brief Get the field names of the used index
-std::vector<std::vector<std::string>> transaction::Methods::IndexHandle::fieldNames() const {
-  return _index->fieldNames();
-}
-
-/// @brief IndexHandle getter method
-std::shared_ptr<arangodb::Index> transaction::Methods::IndexHandle::getIndex() const {
-  return _index;
-}
-
-/// @brief IndexHandle toVelocyPack method passthrough
-void transaction::Methods::IndexHandle::toVelocyPack(
-    arangodb::velocypack::Builder& builder,
-    std::underlying_type<Index::Serialize>::type flags) const {
-  _index->toVelocyPack(builder, flags);
-}
-
 TRI_vocbase_t& transaction::Methods::vocbase() const {
   return _state->vocbase();
 }
@@ -539,7 +522,7 @@ bool transaction::Methods::sortOrs(arangodb::aql::Ast* ast, arangodb::aql::AstNo
       try {
         std::string conditionString =
             conditionData->first->toString() + " - " +
-            std::to_string(conditionData->second.getIndex()->id());
+            std::to_string(conditionData->second->id());
         isUnique = seenIndexConditions.emplace(std::move(conditionString)).second;
         // we already saw the same combination of index & condition
         // don't add it again
@@ -572,6 +555,8 @@ std::pair<bool, bool> transaction::Methods::findIndexHandleForAndNode(
   auto considerIndex = [&bestIndex, &bestCost, &bestSupportsFilter, &bestSupportsSort,
                         &indexes, node, reference, itemsInCollection,
                         &sortCondition](std::shared_ptr<Index> const& idx) -> void {
+    TRI_ASSERT(!idx->inProgress());
+
     double filterCost = 0.0;
     double sortCost = 0.0;
     size_t itemsInIndex = itemsInCollection;
@@ -1082,6 +1067,7 @@ OperationResult transaction::Methods::anyLocal(std::string const& collectionName
   cursor.nextDocument(
       [&resultBuilder](LocalDocumentId const& token, VPackSlice slice) {
         resultBuilder.add(slice);
+        return true;
       },
       1);
 
@@ -1643,8 +1629,8 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
 
     if (res.fail()) {
       // Error reporting in the babies case is done outside of here,
-      if (res.is(TRI_ERROR_ARANGO_CONFLICT) && !isBabies) {
-        TRI_ASSERT(prevDocResult.revisionId() != 0);
+      if (res.is(TRI_ERROR_ARANGO_CONFLICT) && !isBabies && prevDocResult.revisionId() != 0) {
+        TRI_ASSERT(didReplace);
         
         arangodb::velocypack::StringRef key = value.get(StaticStrings::KeyString).stringRef();
         buildDocumentIdentity(collection.get(), resultBuilder, cid, key, prevDocResult.revisionId(),
@@ -1654,7 +1640,7 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
     }
 
     if (!options.silent) {
-      const bool showReplaced = (options.returnOld && didReplace);
+      bool const showReplaced = (options.returnOld && didReplace);
       TRI_ASSERT(!options.returnNew || !docResult.empty());
       TRI_ASSERT(!showReplaced || !prevDocResult.empty());
 
@@ -1679,7 +1665,7 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
   std::unordered_map<int, size_t> errorCounter;
   if (value.isArray()) {
     VPackArrayBuilder b(&resultBuilder);
-    for (auto const& s : VPackArrayIterator(value)) {
+    for (VPackSlice s : VPackArrayIterator(value)) {
       res = workForOneDocument(s, true);
       if (res.fail()) {
         createBabiesError(resultBuilder, errorCounter, res);
@@ -2257,7 +2243,7 @@ Future<OperationResult> transaction::Methods::removeLocal(std::string const& col
   std::unordered_map<int, size_t> errorCounter;
   if (value.isArray()) {
     VPackArrayBuilder guard(&resultBuilder);
-    for (auto const& s : VPackArrayIterator(value)) {
+    for (VPackSlice s : VPackArrayIterator(value)) {
       res = workForOneDocument(s, true);
       if (res.fail()) {
         createBabiesError(resultBuilder, errorCounter, res);
@@ -2346,6 +2332,7 @@ OperationResult transaction::Methods::allLocal(std::string const& collectionName
 
   auto cb = [&resultBuilder](LocalDocumentId const& token, VPackSlice slice) {
     resultBuilder.add(slice);
+    return true;
   };
   cursor.allDocuments(cb, 1000);
 
@@ -2467,20 +2454,24 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
     if (pool != nullptr) {
       // nullptr only happens on controlled shutdown
       std::string path =
-          "/_db/" + arangodb::basics::StringUtils::urlEncode(vocbase().name()) +
           "/_api/collection/" + arangodb::basics::StringUtils::urlEncode(collectionName) +
-          "/truncate?isSynchronousReplication=" + ServerState::instance()->getId();
+          "/truncate";
       VPackBuffer<uint8_t> body;
 
       // Now prepare the requests:
       std::vector<network::FutureRes> futures;
       futures.reserve(followers->size());
+      
+      network::RequestOptions reqOpts;
+      reqOpts.database = vocbase().name();
+      reqOpts.timeout = network::Timeout(600);
+      reqOpts.param(StaticStrings::IsSynchronousReplicationString, ServerState::instance()->getId());
 
       for (auto const& f : *followers) {
         network::Headers headers;
         ClusterTrxMethods::addTransactionHeader(*this, f, headers);
         auto future = network::sendRequest(pool, "server:" + f, fuerte::RestVerb::Put,
-                                           path, body, std::move(headers));
+                                           path, body, reqOpts, std::move(headers));
         futures.emplace_back(std::move(future));
       }
 
@@ -2609,7 +2600,7 @@ futures::Future<OperationResult> transaction::Methods::countCoordinatorHelper(
   // return number from cache
   VPackBuilder resultBuilder;
   resultBuilder.add(VPackValue(documents));
-  return OperationResult(Result(), resultBuilder.buffer());
+  return OperationResult(Result(), resultBuilder.steal());
 }
 
 /// @brief count the number of documents in a collection
@@ -2734,22 +2725,6 @@ bool transaction::Methods::getBestIndexHandleForFilterCondition(
   return false;
 }
 
-/// @brief Get the index features:
-///        Returns the covered attributes, and sets the first bool value
-///        to isSorted and the second bool value to isSparse
-std::vector<std::vector<arangodb::basics::AttributeName>> transaction::Methods::getIndexFeatures(
-    IndexHandle const& indexHandle, bool& isSorted, bool& isSparse) {
-  auto idx = indexHandle.getIndex();
-  if (nullptr == idx) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                   "The index id cannot be empty.");
-  }
-
-  isSorted = idx->isSorted();
-  isSparse = idx->sparse();
-  return idx->fields();
-}
-
 /// @brief Gets the best fitting index for an AQL sort condition
 /// note: the caller must have read-locked the underlying collection when
 /// calling this method
@@ -2766,6 +2741,8 @@ bool transaction::Methods::getIndexForSortCondition(
 
     auto considerIndex = [reference, sortCondition, itemsInIndex, &bestCost, &bestIndex,
                           &coveredAttributes](std::shared_ptr<Index> const& idx) -> void {
+      TRI_ASSERT(!idx->inProgress());
+
       Index::SortCosts costs =
           idx->supportsSortCondition(sortCondition, reference, itemsInIndex);
       if (costs.supportsCondition &&
@@ -2827,20 +2804,20 @@ bool transaction::Methods::getIndexForSortCondition(
 /// note: the caller must have read-locked the underlying collection when
 /// calling this method
 std::unique_ptr<IndexIterator> transaction::Methods::indexScanForCondition(
-    IndexHandle const& indexId, arangodb::aql::AstNode const* condition,
+    IndexHandle const& idx, arangodb::aql::AstNode const* condition,
     arangodb::aql::Variable const* var, IndexIteratorOptions const& opts) {
   if (_state->isCoordinator()) {
     // The index scan is only available on DBServers and Single Server.
     THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_ONLY_ON_DBSERVER);
   }
 
-  auto idx = indexId.getIndex();
   if (nullptr == idx) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "The index id cannot be empty.");
   }
 
   // Now create the Iterator
+  TRI_ASSERT(!idx->inProgress());
   return idx->iteratorForCondition(this, condition, var, opts);
 }
 
@@ -3031,7 +3008,7 @@ Result transaction::Methods::unlockRecursive(TRI_voc_cid_t cid, AccessMode::Type
 
 /// @brief get list of indexes for a collection
 std::vector<std::shared_ptr<Index>> transaction::Methods::indexesForCollection(
-    std::string const& collectionName, bool withHidden) {
+    std::string const& collectionName) {
   if (_state->isCoordinator()) {
     return indexesForCollectionCoordinator(collectionName);
   }
@@ -3040,13 +3017,12 @@ std::vector<std::shared_ptr<Index>> transaction::Methods::indexesForCollection(
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
   std::shared_ptr<LogicalCollection> const& document = trxCollection(cid)->collection();
   std::vector<std::shared_ptr<Index>> indexes = document->getIndexes();
-  if (!withHidden) {
-    indexes.erase(std::remove_if(indexes.begin(), indexes.end(),
-                                 [](std::shared_ptr<Index> x) {
-                                   return x->isHidden();
-                                 }),
-                  indexes.end());
-  }
+    
+  indexes.erase(std::remove_if(indexes.begin(), indexes.end(),
+                               [](std::shared_ptr<Index> const& x) {
+                                 return x->isHidden();
+                               }),
+                indexes.end());
   return indexes;
 }
 
@@ -3077,28 +3053,35 @@ std::vector<std::shared_ptr<Index>> transaction::Methods::indexesForCollectionCo
     collection->clusterIndexEstimates(true);
   }
 
-  return collection->getIndexes();
+  std::vector<std::shared_ptr<Index>> indexes = collection->getIndexes();
+    
+  indexes.erase(std::remove_if(indexes.begin(), indexes.end(),
+                               [](std::shared_ptr<Index> const& x) {
+                                 return x->isHidden();
+                               }),
+                indexes.end());
+  return indexes;
 }
 
 /// @brief get the index by it's identifier. Will either throw or
 ///        return a valid index. nullptr is impossible.
 transaction::Methods::IndexHandle transaction::Methods::getIndexByIdentifier(
-    std::string const& collectionName, std::string const& indexHandle) {
+    std::string const& collectionName, std::string const& idxId) {
+  
+  if (idxId.empty()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                   "The index id cannot be empty.");
+  }
+
+  if (!arangodb::Index::validateId(idxId.c_str())) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_INDEX_HANDLE_BAD);
+  }
+  
   if (_state->isCoordinator()) {
-    if (indexHandle.empty()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                     "The index id cannot be empty.");
-    }
-
-    if (!arangodb::Index::validateId(indexHandle.c_str())) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_INDEX_HANDLE_BAD);
-    }
-
-    std::shared_ptr<Index> idx = indexForCollectionCoordinator(collectionName, indexHandle);
-
+    std::shared_ptr<Index> idx = indexForCollectionCoordinator(collectionName, idxId);
     if (idx == nullptr) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_INDEX_NOT_FOUND,
-                                     "Could not find index '" + indexHandle +
+                                     "Could not find index '" + idxId +
                                          "' in collection '" + collectionName +
                                          "'.");
     }
@@ -3110,20 +3093,13 @@ transaction::Methods::IndexHandle transaction::Methods::getIndexByIdentifier(
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
   std::shared_ptr<LogicalCollection> const& document = trxCollection(cid)->collection();
 
-  if (indexHandle.empty()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                   "The index id cannot be empty.");
-  }
 
-  if (!arangodb::Index::validateId(indexHandle.c_str())) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_INDEX_HANDLE_BAD);
-  }
-  TRI_idx_iid_t iid = arangodb::basics::StringUtils::uint64(indexHandle);
+  TRI_idx_iid_t iid = arangodb::basics::StringUtils::uint64(idxId);
   std::shared_ptr<arangodb::Index> idx = document->lookupIndex(iid);
 
   if (idx == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_INDEX_NOT_FOUND,
-                                   "Could not find index '" + indexHandle +
+                                   "Could not find index '" + idxId +
                                        "' in collection '" + collectionName +
                                        "'.");
   }
@@ -3170,26 +3146,28 @@ Future<Result> Methods::replicateOperations(
   }
 
   // path and requestType are different for insert/remove/modify.
+  
+  network::RequestOptions reqOpts;
+  reqOpts.database = vocbase().name();
+  reqOpts.param(StaticStrings::IsRestoreString, "true");
+  reqOpts.param(StaticStrings::IsSynchronousReplicationString, ServerState::instance()->getId());
 
-  std::stringstream pathStream;
-  pathStream << "/_db/" << arangodb::basics::StringUtils::urlEncode(vocbase().name())
-             << "/_api/document/"
-             << arangodb::basics::StringUtils::urlEncode(collection->name());
+  std::string url = "/_api/document/";
+  url.append(arangodb::basics::StringUtils::urlEncode(collection->name()));
   if (operation != TRI_VOC_DOCUMENT_OPERATION_INSERT && !value.isArray()) {
     TRI_ASSERT(value.isObject());
     TRI_ASSERT(value.hasKey(StaticStrings::KeyString));
-    pathStream << "/" << value.get(StaticStrings::KeyString).copyString();
+    url.push_back('/');
+    VPackValueLength len;
+    const char* ptr = value.get(StaticStrings::KeyString).getString(len);
+    url.append(ptr, len);
   }
-  pathStream << "?isRestore=true&isSynchronousReplication="
-             << ServerState::instance()->getId() << "&"
-             << StaticStrings::SilentString << "=true";
 
   arangodb::fuerte::RestVerb requestType = arangodb::fuerte::RestVerb::Illegal;
   switch (operation) {
     case TRI_VOC_DOCUMENT_OPERATION_INSERT:
       requestType = arangodb::fuerte::RestVerb::Post;
-      pathStream << "&" << StaticStrings::OverWrite << "="
-                 << (options.overwrite ? "true" : "false");
+      reqOpts.param(StaticStrings::OverWrite, (options.overwrite ? "true" : "false"));
       break;
     case TRI_VOC_DOCUMENT_OPERATION_UPDATE:
       requestType = arangodb::fuerte::RestVerb::Patch;
@@ -3204,8 +3182,6 @@ Future<Result> Methods::replicateOperations(
     default:
       TRI_ASSERT(false);
   }
-
-  std::string const path{pathStream.str()};
 
   transaction::BuilderLeaser payload(this);
   auto doOneDoc = [&](VPackSlice const& doc, VPackSlice result) {
@@ -3243,23 +3219,20 @@ Future<Result> Methods::replicateOperations(
     // nothing to do
     return Result();
   }
-
+  
+  reqOpts.timeout = network::Timeout(chooseTimeout(count, payload->size()));
+  
   // Now prepare the requests:
   std::vector<Future<network::Response>> futures;
   futures.reserve(followerList->size());
-  network::Timeout const timeout(chooseTimeout(count, payload->size()));
+
   auto* pool = vocbase().server().getFeature<NetworkFeature>().pool();
   for (auto const& f : *followerList) {
-    // TODO we could steal the payload at least once
-    VPackBuffer<uint8_t> buffer;
-    buffer.append(payload->data(), payload->size());
-
     network::Headers headers;
     ClusterTrxMethods::addTransactionHeader(*this, f, headers);
-    auto future = network::sendRequestRetry(pool, "server:" + f, requestType,
-                                            path, std::move(buffer), timeout,
-                                            headers, /*retryNotFound*/ true);
-    futures.emplace_back(std::move(future));
+    futures.emplace_back(network::sendRequestRetry(pool, "server:" + f, requestType,
+                                                   url, *(payload->buffer()), reqOpts,
+                                                   std::move(headers)));
   }
 
   // If any would-be-follower refused to follow there are two possiblities:

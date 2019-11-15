@@ -118,11 +118,15 @@ endif()
 ### setup ccache
 ################################################################################
 
-find_program(CCACHE_FOUND ccache)
+option(USE_CCACHE "Use CCACHE if present" ON)
 
-if(CCACHE_FOUND)
-  set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ccache)
-endif(CCACHE_FOUND)
+if (USE_CCACHE)
+  find_program(CCACHE_FOUND ccache)
+
+  if(CCACHE_FOUND)
+    set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ccache)
+  endif(CCACHE_FOUND)
+endif()
 
 if (USE_OPTIMIZE_FOR_ARCHITECTURE)
   include(OptimizeForArchitecture)

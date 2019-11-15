@@ -23,7 +23,10 @@
 
 #include "Manager.h"
 
+#include "Aql/Query.h"
+#include "Aql/QueryList.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/ScopeGuard.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/system-functions.h"
 #include "Cluster/ClusterFeature.h"
@@ -32,10 +35,10 @@
 #include "Futures/Utilities.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/LogMacros.h"
-#include "Logger/Logger.h"
-#include "Logger/LoggerStream.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
+#include "Network/Utils.h"
+#include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionState.h"
@@ -71,6 +74,8 @@ std::string currentUser() {
 
 namespace arangodb {
 namespace transaction {
+
+size_t constexpr Manager::maxTransactionSize;
 
 namespace {
 struct MGMethods final : arangodb::transaction::Methods {
@@ -122,9 +127,12 @@ void Manager::registerTransaction(TRI_voc_tid_t transactionId,
 
     try {
       // insert into currently running list of transactions
-      _transactions[bucket]._activeTransactions.emplace(transactionId, std::move(data));
+      _transactions[bucket]._activeTransactions.try_emplace(transactionId, std::move(data));
     } catch (...) {
       _nrRunning.fetch_sub(1, std::memory_order_relaxed);
+      if (!isReadOnlyTransaction) {
+        _rwLock.unlockRead();
+      }
       throw;
     }
   }
@@ -133,6 +141,13 @@ void Manager::registerTransaction(TRI_voc_tid_t transactionId,
 // unregisters a transaction
 void Manager::unregisterTransaction(TRI_voc_tid_t transactionId, bool markAsFailed,
                                     bool isReadOnlyTransaction) {
+  // always perform an unlock when we leave this function
+  auto guard = scopeGuard([this, &isReadOnlyTransaction]() {
+    if (!isReadOnlyTransaction) {
+      _rwLock.unlockRead();
+    }
+  });
+
   uint64_t r = _nrRunning.fetch_sub(1, std::memory_order_relaxed);
   TRI_ASSERT(r > 0);
 
@@ -146,9 +161,6 @@ void Manager::unregisterTransaction(TRI_voc_tid_t transactionId, bool markAsFail
     if (markAsFailed) {
       _transactions[bucket]._failedTransactions.emplace(transactionId);
     }
-  }
-  if (!isReadOnlyTransaction) {
-    _rwLock.unlockRead();
   }
 }
 
@@ -263,8 +275,7 @@ void Manager::registerAQLTrx(TransactionState* state) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_INTERNAL,
                                      std::string("transaction ID ") + std::to_string(tid) + "' already used in registerAQLTrx");
     }
-    buck._managed.emplace(std::piecewise_construct, std::forward_as_tuple(tid),
-                          std::forward_as_tuple(MetaType::StandaloneAQL, state));
+    buck._managed.try_emplace(tid, MetaType::StandaloneAQL, state);
   }
 }
 
@@ -356,6 +367,9 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
   if (_disallowInserts.load(std::memory_order_acquire)) {
     return res.reset(TRI_ERROR_SHUTTING_DOWN);
   }
+
+  LOG_TOPIC("7bd2d", DEBUG, Logger::TRANSACTIONS)
+    << "managed trx creating: '" << tid << "'";
 
   const size_t bucket = getBucket(tid);
 
@@ -464,10 +478,13 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
                        std::string("transaction ID '") + std::to_string(tid) + "' already used in createManagedTrx insert");
     }
     TRI_ASSERT(state->id() == tid);
-    _transactions[bucket]._managed.emplace(std::piecewise_construct,
-                                           std::forward_as_tuple(tid),
-                                           std::forward_as_tuple(MetaType::Managed,
-                                                                 state.release()));
+    bool emplaced = _transactions[bucket]._managed.try_emplace(
+        tid,
+        MetaType::Managed, state.get()
+    ).second;
+    if (emplaced) {
+      state.release();
+    }
   }
 
   LOG_TOPIC("d6806", DEBUG, Logger::TRANSACTIONS) << "created managed trx '" << tid << "'";
@@ -830,7 +847,7 @@ bool Manager::garbageCollect(bool abortAll) {
 }
 
 /// @brief abort all transactions matching
-bool Manager::abortManagedTrx(std::function<bool(TransactionState const&)> cb) {
+bool Manager::abortManagedTrx(std::function<bool(TransactionState const&, std::string const&)> cb) {
   ::arangodb::containers::SmallVector<TRI_voc_tid_t, 64>::allocator_type::arena_type arena;
   ::arangodb::containers::SmallVector<TRI_voc_tid_t, 64> toAbort{arena};
 
@@ -844,7 +861,7 @@ bool Manager::abortManagedTrx(std::function<bool(TransactionState const&)> cb) {
       if (mtrx.type == MetaType::Managed) {
         TRI_ASSERT(mtrx.state != nullptr);
         TRY_READ_LOCKER(tryGuard, mtrx.rwlock);  // needs lock to access state
-        if (tryGuard.isLocked() && cb(*mtrx.state)) {
+        if (tryGuard.isLocked() && cb(*mtrx.state, mtrx.user)) {
           toAbort.emplace_back(it->first);
         }
       }
@@ -882,7 +899,9 @@ void Manager::toVelocyPack(VPackBuilder& builder, std::string const& database,
     auto auth = AuthenticationFeature::instance();
 
     network::RequestOptions options;
+    options.database = database;
     options.timeout = network::Timeout(30.0);
+    options.param("local", "true");
 
     VPackBuffer<uint8_t> body;
 
@@ -895,24 +914,22 @@ void Manager::toVelocyPack(VPackBuilder& builder, std::string const& database,
       network::Headers headers;
       if (auth != nullptr && auth->isActive()) {
         if (!username.empty()) {
-          VPackBuilder builder;
+          VPackBuilder authBuilder;
           {
-            VPackObjectBuilder payload{&builder};
+            VPackObjectBuilder payload{&authBuilder};
             payload->add("preferred_username", VPackValue(username));
           }
-          VPackSlice slice = builder.slice();
-          headers.emplace(StaticStrings::Authorization,
+          VPackSlice slice = authBuilder.slice();
+          headers.try_emplace(StaticStrings::Authorization,
                           "bearer " + auth->tokenCache().generateJwt(slice));
         } else {
-          headers.emplace(StaticStrings::Authorization,
+          headers.try_emplace(StaticStrings::Authorization,
                           "bearer " + auth->tokenCache().jwtToken());
         }
       }
 
       auto f = network::sendRequest(pool, "server:" + coordinator, fuerte::RestVerb::Get,
-                                    "/_db/" + database +
-                                        "/_api/transaction?local=true",
-                                    body, std::move(headers), options);
+                                    "/_api/transaction", body, options, std::move(headers));
       futures.emplace_back(std::move(f));
     }
 
@@ -930,7 +947,7 @@ void Manager::toVelocyPack(VPackBuilder& builder, std::string const& database,
             if (slice.isObject()) {
               slice = slice.get("transactions");
               if (slice.isArray()) {
-                for (auto const& it : VPackArrayIterator(slice)) {
+                for (VPackSlice it : VPackArrayIterator(slice)) {
                   builder.add(it);
                 }
               }
@@ -950,6 +967,94 @@ void Manager::toVelocyPack(VPackBuilder& builder, std::string const& database,
       builder.close();
     }
   });
+}
+
+Result Manager::abortAllManagedWriteTrx(std::string const& username, bool fanout) {
+  LOG_TOPIC("bba16", INFO, Logger::QUERIES) << "aborting all " << (fanout ? "" : "local ") << "write transactions";
+  Result res;
+
+  DatabaseFeature& databaseFeature = _feature.server().getFeature<DatabaseFeature>();
+  databaseFeature.enumerate([](TRI_vocbase_t* vocbase) {
+    auto queryList = vocbase->queryList();
+    TRI_ASSERT(queryList != nullptr);
+    // we are only interested in killed write queries
+    queryList->kill([](aql::Query& query) {
+      auto* state = query.trx()->state();
+      return state && !state->isReadOnlyTransaction();
+    }, false);
+  });
+
+  // abort local transactions
+  abortManagedTrx([](TransactionState const& state, std::string const& user) {
+    return ::authorized(user) && !state.isReadOnlyTransaction();
+  });
+
+  if (fanout &&
+      ServerState::instance()->isCoordinator()) {
+    auto& ci = _feature.server().getFeature<ClusterFeature>().clusterInfo();
+
+    NetworkFeature const& nf = _feature.server().getFeature<NetworkFeature>();
+    network::ConnectionPool* pool = nf.pool();
+    if (pool == nullptr) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+    }
+
+    std::vector<network::FutureRes> futures;
+    auto auth = AuthenticationFeature::instance();
+
+    network::RequestOptions options;
+    options.timeout = network::Timeout(30.0);
+
+    VPackBuffer<uint8_t> body;
+
+    for (auto const& coordinator : ci.getCurrentCoordinators()) {
+      if (coordinator == ServerState::instance()->getId()) {
+        // ourselves!
+        continue;
+      }
+
+      network::Headers headers;
+      if (auth != nullptr && auth->isActive()) {
+        if (!username.empty()) {
+          VPackBuilder builder;
+          {
+            VPackObjectBuilder payload{&builder};
+            payload->add("preferred_username", VPackValue(username));
+          }
+          VPackSlice slice = builder.slice();
+          headers.try_emplace(StaticStrings::Authorization,
+                          "bearer " + auth->tokenCache().generateJwt(slice));
+        } else {
+          headers.try_emplace(StaticStrings::Authorization,
+                          "bearer " + auth->tokenCache().jwtToken());
+        }
+      }
+
+      auto f = network::sendRequest(pool, "server:" + coordinator, fuerte::RestVerb::Delete,
+                                    "/_db/_system/_api/transaction/write?local=true",
+                                    body, options, std::move(headers));
+      futures.emplace_back(std::move(f));
+    }
+
+    if (!futures.empty()) {
+      auto responses = futures::collectAll(futures).get();
+      for (auto const& it : responses) {
+        if (!it.hasValue()) {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE);
+        }
+        auto& resp = it.get();
+        if (resp.response && resp.response->statusCode() != fuerte::StatusOK) {
+          auto slices = resp.response->slices();
+          if (!slices.empty()) {
+            VPackSlice slice = slices[0];
+            res.reset(network::resultFromBody(slice, TRI_ERROR_FAILED));
+          }
+        }
+      }
+    }
+  }
+
+  return res;
 }
 
 }  // namespace transaction

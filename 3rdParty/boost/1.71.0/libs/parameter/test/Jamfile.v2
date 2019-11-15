@@ -1,0 +1,947 @@
+# Copyright David Abrahams, Daniel Wallin 2006.
+# Copyright Cromwell D. Enage 2017.
+# Distributed under the Boost Software License, Version 1.0.
+# (See accompanying file LICENSE_1_0.txt or copy at
+# http://www.boost.org/LICENSE_1_0.txt)
+
+# Boost Parameter Library test Jamfile
+
+import testing ;
+
+project boost/parameter
+    :
+        default-build
+        <warnings>off
+    ;
+
+import python ;
+
+alias parameter_standard_tests
+    :
+    [ run maybe.cpp : : : : : <preserve-target-tests>off ]
+    [ run singular.cpp : : : : : <preserve-target-tests>off ]
+    [ run tutorial.cpp : : : : : <preserve-target-tests>off ]
+    [ run compose.cpp
+        :
+        :
+        :
+            <define>BOOST_PARAMETER_COMPOSE_MAX_ARITY=3
+        :
+        :
+            <preserve-target-tests>off
+    ]
+    [ run sfinae.cpp
+        :
+        :
+        :
+            <define>BOOST_PARAMETER_MAX_ARITY=2
+            <define>BOOST_PARAMETER_EXPONENTIAL_OVERLOAD_THRESHOLD_ARITY=3
+        :
+        :
+            <preserve-target-tests>off
+    ]
+    [ run efficiency.cpp
+        :
+        :
+        :
+        :
+        :
+            <variant>release
+            <preserve-target-tests>off
+    ]
+    [ run evaluate_category.cpp
+        :
+        :
+        :
+            <define>BOOST_PARAMETER_MAX_ARITY=4
+            <define>BOOST_PARAMETER_EXPONENTIAL_OVERLOAD_THRESHOLD_ARITY=5
+        :
+        :
+            <preserve-target-tests>off
+    ]
+    [ run evaluate_category_16.cpp
+        :
+        :
+        :
+            <define>BOOST_PARAMETER_MAX_ARITY=16
+            <define>BOOST_PARAMETER_EXPONENTIAL_OVERLOAD_THRESHOLD_ARITY=0
+        :
+        :
+            <preserve-target-tests>off
+    ]
+    [ run parameterized_inheritance.cpp
+        :
+        :
+        :
+            <define>BOOST_PARAMETER_COMPOSE_MAX_ARITY=3
+        :
+        :
+            <preserve-target-tests>off
+    ]
+    [ run preprocessor_eval_cat_no_spec.cpp
+        :
+        :
+        :
+            <define>BOOST_PARAMETER_COMPOSE_MAX_ARITY=8
+        :
+        :
+            <preserve-target-tests>off
+    ]
+    [ run optional_deduced_sfinae.cpp
+        :
+        :
+        :
+            <define>BOOST_PARAMETER_MAX_ARITY=2
+            <define>BOOST_PARAMETER_EXPONENTIAL_OVERLOAD_THRESHOLD_ARITY=2
+        :
+        :
+            <preserve-target-tests>off
+    ]
+    [ run preprocessor_eval_category.cpp
+        :
+        :
+        :
+            <define>BOOST_PARAMETER_MAX_ARITY=4
+            <define>BOOST_PARAMETER_EXPONENTIAL_OVERLOAD_THRESHOLD_ARITY=5
+        :
+        :
+            <preserve-target-tests>off
+    ]
+    [ run normalized_argument_types.cpp
+        :
+        :
+        :
+            <define>BOOST_PARAMETER_MAX_ARITY=2
+            <define>BOOST_PARAMETER_EXPONENTIAL_OVERLOAD_THRESHOLD_ARITY=3
+        :
+        :
+            <preserve-target-tests>off
+    ]
+    [ run basics.cpp
+        :
+        :
+        :
+            <define>BOOST_PARAMETER_MAX_ARITY=4
+            <define>BOOST_PARAMETER_EXPONENTIAL_OVERLOAD_THRESHOLD_ARITY=5
+        :
+        :
+            <preserve-target-tests>off
+    ]
+    [ run mpl.cpp
+        :
+        :
+        :
+            <define>BOOST_PARAMETER_MAX_ARITY=4
+            <define>BOOST_PARAMETER_EXPONENTIAL_OVERLOAD_THRESHOLD_ARITY=5
+        :
+        :
+            <preserve-target-tests>off
+    ]
+    [ run preprocessor.cpp
+        :
+        :
+        :
+            <define>BOOST_PARAMETER_MAX_ARITY=4
+            <define>BOOST_PARAMETER_EXPONENTIAL_OVERLOAD_THRESHOLD_ARITY=5
+        :
+        :
+            <preserve-target-tests>off
+    ]
+    [ run preprocessor_deduced.cpp
+        :
+        :
+        :
+            <define>BOOST_PARAMETER_MAX_ARITY=4
+            <define>BOOST_PARAMETER_EXPONENTIAL_OVERLOAD_THRESHOLD_ARITY=5
+        :
+        :
+            <preserve-target-tests>off
+    ]
+    [ run deduced.cpp
+        :
+        :
+        :
+            <define>BOOST_PARAMETER_MAX_ARITY=4
+            <define>BOOST_PARAMETER_EXPONENTIAL_OVERLOAD_THRESHOLD_ARITY=5
+        :
+        :
+            <preserve-target-tests>off
+    ]
+    [ run deduced_dependent_predicate.cpp
+        :
+        :
+        :
+            <define>BOOST_PARAMETER_MAX_ARITY=4
+            <define>BOOST_PARAMETER_EXPONENTIAL_OVERLOAD_THRESHOLD_ARITY=5
+        :
+        :
+            <preserve-target-tests>off
+    ]
+    [ run earwicker.cpp
+        :
+        :
+        :
+            <define>BOOST_PARAMETER_MAX_ARITY=4
+            <define>BOOST_PARAMETER_EXPONENTIAL_OVERLOAD_THRESHOLD_ARITY=5
+        :
+        :
+            <preserve-target-tests>off
+    ]
+    [ run macros.cpp
+        :
+        :
+        :
+            <define>BOOST_PARAMETER_MAX_ARITY=4
+            <define>BOOST_PARAMETER_EXPONENTIAL_OVERLOAD_THRESHOLD_ARITY=5
+        :
+        :
+            <preserve-target-tests>off
+    ]
+    [ compile unwrap_cv_reference.cpp ]
+    [ compile ntp.cpp
+        :
+            <define>BOOST_PARAMETER_MAX_ARITY=4
+            <define>BOOST_PARAMETER_EXPONENTIAL_OVERLOAD_THRESHOLD_ARITY=0
+    ]
+    [ compile function_type_tpl_param.cpp ]
+    [ compile-fail duplicates.cpp
+        :
+            <define>BOOST_PARAMETER_MAX_ARITY=4
+            <define>BOOST_PARAMETER_EXPONENTIAL_OVERLOAD_THRESHOLD_ARITY=5
+        :
+            duplicates_fail
+    ]
+    [ compile-fail deduced_unmatched_arg.cpp
+        :
+            <define>BOOST_PARAMETER_MAX_ARITY=4
+            <define>BOOST_PARAMETER_EXPONENTIAL_OVERLOAD_THRESHOLD_ARITY=5
+        :
+            deduced_unmatched_arg_fail
+    ]
+    [ compile-fail basics.cpp
+        :
+            <define>BOOST_PARAMETER_MAX_ARITY=4
+            <define>BOOST_PARAMETER_EXPONENTIAL_OVERLOAD_THRESHOLD_ARITY=5
+            <define>LIBS_PARAMETER_TEST_COMPILE_FAILURE
+        :
+            basics_fail
+    ]
+    [ compile-fail compose.cpp
+        :
+            <define>BOOST_PARAMETER_COMPOSE_MAX_ARITY=3
+            <define>LIBS_PARAMETER_TEST_COMPILE_FAILURE_0
+        :
+            compose_fail_0
+    ]
+    [ compile-fail compose.cpp
+        :
+            <define>BOOST_PARAMETER_COMPOSE_MAX_ARITY=3
+            <define>LIBS_PARAMETER_TEST_COMPILE_FAILURE_1
+        :
+            compose_fail_1
+    ]
+    [ compile-fail evaluate_category.cpp
+        :
+            <define>BOOST_PARAMETER_MAX_ARITY=4
+            <define>BOOST_PARAMETER_EXPONENTIAL_OVERLOAD_THRESHOLD_ARITY=5
+            <define>LIBS_PARAMETER_TEST_COMPILE_FAILURE
+        :
+            evaluate_category_fail
+    ]
+    [ compile-fail preprocessor_deduced.cpp
+        :
+            <define>BOOST_PARAMETER_MAX_ARITY=4
+            <define>BOOST_PARAMETER_EXPONENTIAL_OVERLOAD_THRESHOLD_ARITY=5
+            <define>LIBS_PARAMETER_TEST_COMPILE_FAILURE
+        :
+            preprocessor_deduced_fail
+    ]
+    [ compile-fail deduced.cpp
+        :
+            <define>BOOST_PARAMETER_MAX_ARITY=4
+            <define>BOOST_PARAMETER_EXPONENTIAL_OVERLOAD_THRESHOLD_ARITY=5
+            <define>LIBS_PARAMETER_TEST_COMPILE_FAILURE
+        :
+            deduced_fail
+    ]
+    ;
+
+alias parameter_literate_tests
+    :
+    [ run literate/building-argumentpacks0.cpp
+        :
+        :
+        :
+            <define>BOOST_PARAMETER_MAX_ARITY=2
+            <define>BOOST_PARAMETER_EXPONENTIAL_OVERLOAD_THRESHOLD_ARITY=3
+        :
+        :
+            <preserve-target-tests>off
+    ]
+    [ run literate/deduced-parameters0.cpp
+        :
+        :
+        :
+            <define>BOOST_PARAMETER_MAX_ARITY=5
+            <define>BOOST_PARAMETER_EXPONENTIAL_OVERLOAD_THRESHOLD_ARITY=6
+        :
+        :
+            <preserve-target-tests>off
+    ]
+    [ run literate/deduced-template-parameters0.cpp
+        :
+        :
+        :
+            <define>BOOST_PARAMETER_MAX_ARITY=4
+            <define>BOOST_PARAMETER_EXPONENTIAL_OVERLOAD_THRESHOLD_ARITY=5
+        :
+        :
+            <preserve-target-tests>off
+    ]
+    [ run literate/default-expression-evaluation0.cpp
+        :
+        :
+        :
+            <define>BOOST_PARAMETER_MAX_ARITY=5
+            <define>BOOST_PARAMETER_EXPONENTIAL_OVERLOAD_THRESHOLD_ARITY=6
+        :
+        :
+            <preserve-target-tests>off
+    ]
+    [ run literate/extracting-parameter-types0.cpp
+        :
+        :
+        :
+        :
+        :
+            <preserve-target-tests>off
+    ]
+    [ run literate/extracting-parameter-types1.cpp
+        :
+        :
+        :
+        :
+        :
+            <preserve-target-tests>off
+    ]
+    [ run literate/fine-grained-name-control0.cpp
+        :
+        :
+        :
+            <define>BOOST_PARAMETER_MAX_ARITY=2
+            <define>BOOST_PARAMETER_EXPONENTIAL_OVERLOAD_THRESHOLD_ARITY=3
+        :
+        :
+            <preserve-target-tests>off
+    ]
+    [ run literate/lazy-default-computation0.cpp
+        :
+        :
+        :
+        :
+        :
+            <preserve-target-tests>off
+    ]
+    [ run literate/lazy-default-computation1.cpp
+        :
+        :
+        :
+        :
+        :
+            <preserve-target-tests>off
+    ]
+    [ run literate/namespaces0.cpp
+        :
+        :
+        :
+            <define>BOOST_PARAMETER_MAX_ARITY=2
+            <define>BOOST_PARAMETER_EXPONENTIAL_OVERLOAD_THRESHOLD_ARITY=3
+        :
+        :
+            <preserve-target-tests>off
+    ]
+    [ run literate/namespaces1.cpp
+        :
+        :
+        :
+            <define>BOOST_PARAMETER_MAX_ARITY=2
+            <define>BOOST_PARAMETER_EXPONENTIAL_OVERLOAD_THRESHOLD_ARITY=3
+        :
+        :
+            <preserve-target-tests>off
+    ]
+    [ run literate/namespaces2.cpp
+        :
+        :
+        :
+            <define>BOOST_PARAMETER_MAX_ARITY=2
+            <define>BOOST_PARAMETER_EXPONENTIAL_OVERLOAD_THRESHOLD_ARITY=3
+        :
+        :
+            <preserve-target-tests>off
+    ]
+    [ run literate/namespaces3.cpp
+        :
+        :
+        :
+            <define>BOOST_PARAMETER_MAX_ARITY=2
+            <define>BOOST_PARAMETER_EXPONENTIAL_OVERLOAD_THRESHOLD_ARITY=3
+        :
+        :
+            <preserve-target-tests>off
+    ]
+    [ run literate/parameter-enabled-constructors0.cpp
+        :
+        :
+        :
+            <define>BOOST_PARAMETER_MAX_ARITY=2
+            <define>BOOST_PARAMETER_EXPONENTIAL_OVERLOAD_THRESHOLD_ARITY=3
+        :
+        :
+            <preserve-target-tests>off
+    ]
+    [ run literate/parameter-enabled-function-call-operators0.cpp
+        :
+        :
+        :
+            <define>BOOST_PARAMETER_MAX_ARITY=2
+            <define>BOOST_PARAMETER_EXPONENTIAL_OVERLOAD_THRESHOLD_ARITY=3
+        :
+        :
+            <preserve-target-tests>off
+    ]
+    [ run literate/parameter-enabled-member-functions0.cpp
+        :
+        :
+        :
+            <define>BOOST_PARAMETER_MAX_ARITY=2
+            <define>BOOST_PARAMETER_EXPONENTIAL_OVERLOAD_THRESHOLD_ARITY=3
+        :
+        :
+            <preserve-target-tests>off
+    ]
+    [ run literate/predicate-requirements0.cpp
+        :
+        :
+        :
+            <define>BOOST_PARAMETER_MAX_ARITY=5
+            <define>BOOST_PARAMETER_EXPONENTIAL_OVERLOAD_THRESHOLD_ARITY=6
+        :
+        :
+            <preserve-target-tests>off
+    ]
+    [ run literate/static-member-functions0.cpp
+        :
+        :
+        :
+            <define>BOOST_PARAMETER_MAX_ARITY=2
+            <define>BOOST_PARAMETER_EXPONENTIAL_OVERLOAD_THRESHOLD_ARITY=3
+        :
+        :
+            <preserve-target-tests>off
+    ]
+    [ run literate/top-level0.cpp
+        :
+        :
+        :
+            <define>BOOST_PARAMETER_MAX_ARITY=3
+            <define>BOOST_PARAMETER_EXPONENTIAL_OVERLOAD_THRESHOLD_ARITY=4
+        :
+        :
+            <preserve-target-tests>off
+    ]
+    [ compile literate/class-template-skeleton0.cpp
+        :
+            <define>BOOST_PARAMETER_MAX_ARITY=4
+            <define>BOOST_PARAMETER_EXPONENTIAL_OVERLOAD_THRESHOLD_ARITY=5
+    ]
+    [ compile literate/defining-the-keywords0.cpp ]
+    [ compile literate/defining-the-keywords1.cpp ]
+    [ compile literate/exercising-the-code-so-far0.cpp
+        :
+            <define>BOOST_PARAMETER_MAX_ARITY=4
+            <define>BOOST_PARAMETER_EXPONENTIAL_OVERLOAD_THRESHOLD_ARITY=5
+    ]
+    [ compile literate/handling-out-parameters0.cpp
+        :
+            <define>BOOST_PARAMETER_MAX_ARITY=5
+            <define>BOOST_PARAMETER_EXPONENTIAL_OVERLOAD_THRESHOLD_ARITY=6
+    ]
+    [ compile literate/headers-and-namespaces0.cpp ]
+    [ compile literate/optional-parameters0.cpp
+        :
+            <define>BOOST_PARAMETER_MAX_ARITY=5
+            <define>BOOST_PARAMETER_EXPONENTIAL_OVERLOAD_THRESHOLD_ARITY=6
+    ]
+    [ compile literate/parameter-enabled-member-functions1.cpp
+        :
+            <define>BOOST_PARAMETER_MAX_ARITY=2
+            <define>BOOST_PARAMETER_EXPONENTIAL_OVERLOAD_THRESHOLD_ARITY=3
+    ]
+    [ compile literate/required-parameters0.cpp
+        :
+            <define>BOOST_PARAMETER_MAX_ARITY=2
+            <define>BOOST_PARAMETER_EXPONENTIAL_OVERLOAD_THRESHOLD_ARITY=3
+    ]
+    [ compile literate/template-keywords0.cpp ]
+    [ compile literate/template-keywords1.cpp ]
+    [ compile literate/writing-the-function0.cpp
+        :
+            <define>BOOST_PARAMETER_MAX_ARITY=5
+            <define>BOOST_PARAMETER_EXPONENTIAL_OVERLOAD_THRESHOLD_ARITY=6
+    ]
+    ;
+
+alias parameter_python_test
+    :
+    :
+        # Python fails for clang on linux with cxxstd set to 14
+        <target-os>linux
+        <toolset>clang
+        <cxxstd>14
+    ;
+
+alias parameter_python_test
+    :
+    :
+        # Python fails for clang on linux with cxxstd set to 1z
+        <target-os>linux
+        <toolset>clang
+        <cxxstd>1z
+    ;
+
+alias parameter_python_test
+    :
+    :
+        # Python fails for xcode 8.3.0 on osx
+        # so we turn off this test for this compiler completely for now
+        <target-os>darwin
+        # TODO: Differentiate by xcode version or by clang version
+    ;
+
+alias parameter_python_test
+    :
+    :
+        # Python fails for mingw compilers with cxxstd set to 11 or higher
+        # because of a Python header problem
+        # so we turn off this test for this compiler completely
+        <target-os>windows
+        <toolset>gcc
+        <address-model>32
+    ;
+
+alias parameter_python_test
+    :
+    :
+        # Python fails for clang-linux compilers with cxxstd set to 11 or higher
+        # because of a Python header problem
+        # so we turn off this test for this compiler completely
+        <target-os>windows
+        <toolset>clang-linux
+        <address-model>32
+    ;
+
+alias parameter_python_test
+    :
+    :
+        # Python fails for windows compilers with 64-bit addressing set
+        # because of a Python header problem
+        <target-os>windows
+        <address-model>64
+    ;
+
+alias parameter_python_test
+    :
+    [ bpl-test python_test ]
+    ;
+
+alias parameter_macros_eval_category
+    :
+    :
+        <target-os>linux
+        <toolset>gcc
+        <toolset-gcc:version>4.8
+    ;
+
+alias parameter_macros_eval_category
+    :
+    :
+        # This test fails for xcode 7.3.0 on osx
+        # so we turn off this test for this compiler for now
+        <target-os>darwin
+        <cxxstd>03
+        # TODO: Differentiate by xcode version or by clang version
+    ;
+
+alias parameter_macros_eval_category
+    :
+    :
+        <target-os>windows
+        <toolset>gcc
+    ;
+
+alias parameter_macros_eval_category
+    :
+    [ run macros_eval_category.cpp
+        :
+        :
+        :
+            <define>BOOST_PARAMETER_COMPOSE_MAX_ARITY=10
+            <define>BOOST_PARAMETER_MAX_ARITY=10
+            <define>BOOST_PARAMETER_EXPONENTIAL_OVERLOAD_THRESHOLD_ARITY=0
+        :
+            macros_eval_category_cxx98
+        :
+            <preserve-target-tests>off
+    ]
+    :
+        <cxxstd>98
+    ;
+
+alias parameter_macros_eval_category
+    :
+    [ run macros_eval_category.cpp
+        :
+        :
+        :
+            <define>BOOST_PARAMETER_COMPOSE_MAX_ARITY=10
+            <define>BOOST_PARAMETER_MAX_ARITY=10
+            <define>BOOST_PARAMETER_EXPONENTIAL_OVERLOAD_THRESHOLD_ARITY=0
+        :
+            macros_eval_category_cxx03
+        :
+            <preserve-target-tests>off
+    ]
+    :
+        <cxxstd>03
+    ;
+
+alias parameter_macros_eval_category
+    :
+    [ run macros_eval_category.cpp
+        :
+        :
+        :
+            <define>BOOST_PARAMETER_COMPOSE_MAX_ARITY=10
+            <define>BOOST_PARAMETER_MAX_ARITY=10
+            <define>BOOST_PARAMETER_EXPONENTIAL_OVERLOAD_THRESHOLD_ARITY=11
+        :
+        :
+            <preserve-target-tests>off
+    ]
+    ;
+
+alias parameter_evaluate_category_10
+    :
+    [ run evaluate_category_10.cpp
+        :
+        :
+        :
+            <define>BOOST_PARAMETER_EXPONENTIAL_OVERLOAD_THRESHOLD_ARITY=0
+        :
+            evaluate_category_10_gcc_4_8_linux
+        :
+            <preserve-target-tests>off
+    ]
+    :
+        <target-os>linux
+        <toolset>gcc
+        <toolset-gcc:version>4.8
+    ;
+
+alias parameter_evaluate_category_10
+    :
+    [ run evaluate_category_10.cpp
+        :
+        :
+        :
+            <define>BOOST_PARAMETER_EXPONENTIAL_OVERLOAD_THRESHOLD_ARITY=0
+        :
+            evaluate_category_10_mingw
+        :
+            <preserve-target-tests>off
+    ]
+    :
+        <target-os>windows
+        <toolset>gcc
+    ;
+
+alias parameter_evaluate_category_10
+    :
+    [ run evaluate_category_10.cpp
+        :
+        :
+        :
+        :
+            evaluate_category_10_cxx98
+        :
+            <preserve-target-tests>off
+    ]
+    :
+        <cxxstd>98
+    ;
+
+alias parameter_evaluate_category_10
+    :
+    [ run evaluate_category_10.cpp
+        :
+        :
+        :
+            <define>BOOST_PARAMETER_EXPONENTIAL_OVERLOAD_THRESHOLD_ARITY=0
+        :
+            evaluate_category_10_cxx03
+        :
+            <preserve-target-tests>off
+    ]
+    :
+        <cxxstd>03
+    ;
+
+alias parameter_evaluate_category_10
+    :
+    [ run evaluate_category_10.cpp
+        :
+        :
+        :
+            <define>BOOST_PARAMETER_COMPOSE_MAX_ARITY=10
+            <define>BOOST_PARAMETER_MAX_ARITY=10
+            <define>BOOST_PARAMETER_EXPONENTIAL_OVERLOAD_THRESHOLD_ARITY=11
+        :
+        :
+            <preserve-target-tests>off
+    ]
+    ;
+
+alias parameter_preprocessor_eval_cat_8
+    :
+    [ run preprocessor_eval_cat_8.cpp
+        :
+        :
+        :
+            <define>BOOST_PARAMETER_COMPOSE_MAX_ARITY=8
+            <define>BOOST_PARAMETER_EXPONENTIAL_OVERLOAD_THRESHOLD_ARITY=0
+        :
+            preproc_eval_cat_8_mingw
+        :
+            <preserve-target-tests>off
+    ]
+    :
+        <target-os>windows
+        <toolset>gcc
+    ;
+
+alias parameter_preprocessor_eval_cat_8
+    :
+    [ run preprocessor_eval_cat_8.cpp
+        :
+        :
+        :
+            <define>BOOST_PARAMETER_COMPOSE_MAX_ARITY=8
+            <define>BOOST_PARAMETER_MAX_ARITY=8
+            <define>BOOST_PARAMETER_EXPONENTIAL_OVERLOAD_THRESHOLD_ARITY=9
+        :
+        :
+            <preserve-target-tests>off
+    ]
+    ;
+
+alias parameter_preprocessor_eval_cat_fail
+    :
+    :
+        # This test fails for xcode 7.3.0 and xcode 8.3.0 on osx
+        # so we turn off this test for this compiler for now
+        <target-os>darwin
+        <cxxstd>03
+        # TODO: Differentiate by xcode version or by clang version
+    ;
+
+alias parameter_preprocessor_eval_cat_fail
+    :
+    :
+        <target-os>windows
+        <toolset>gcc
+    ;
+
+alias parameter_preprocessor_eval_cat_fail
+    :
+    [ compile-fail preprocessor_eval_category.cpp
+        :
+            <define>BOOST_PARAMETER_MAX_ARITY=8
+            <define>BOOST_PARAMETER_EXPONENTIAL_OVERLOAD_THRESHOLD_ARITY=9
+            <define>LIBS_PARAMETER_TEST_COMPILE_FAILURE
+        :
+            preproc_eval_cat_fail
+    ]
+    ;
+
+alias parameter_vendor_specific_fail_tests ;
+
+alias parameter_vendor_specific_fail_tests
+    :
+    [ compile-fail preprocessor_deduced.cpp
+        :
+            <define>BOOST_PARAMETER_MAX_ARITY=4
+            <define>BOOST_PARAMETER_EXPONENTIAL_OVERLOAD_THRESHOLD_ARITY=5
+            <define>LIBS_PARAMETER_TEST_COMPILE_FAILURE_VENDOR_SPECIFIC
+        :
+            preproc_deduced_fail_msvc08
+    ]
+    :
+        <toolset>msvc
+        <toolset-msvc:version>8.0
+    ;
+
+alias parameter_vendor_specific_fail_tests
+    :
+    [ compile-fail preprocessor_deduced.cpp
+        :
+            <define>BOOST_PARAMETER_MAX_ARITY=4
+            <define>BOOST_PARAMETER_EXPONENTIAL_OVERLOAD_THRESHOLD_ARITY=5
+            <define>LIBS_PARAMETER_TEST_COMPILE_FAILURE_VENDOR_SPECIFIC
+        :
+            preproc_deduced_fail_msvc09
+    ]
+    :
+        <toolset>msvc
+        <toolset-msvc:version>9.0
+    ;
+
+alias parameter_vendor_specific_fail_tests
+    :
+    [ compile-fail preprocessor_deduced.cpp
+        :
+            <define>BOOST_PARAMETER_MAX_ARITY=4
+            <define>BOOST_PARAMETER_EXPONENTIAL_OVERLOAD_THRESHOLD_ARITY=5
+            <define>LIBS_PARAMETER_TEST_COMPILE_FAILURE_VENDOR_SPECIFIC
+        :
+            preproc_deduced_fail_msvc10
+    ]
+    :
+        <toolset>msvc
+        <toolset-msvc:version>10.0
+    ;
+
+alias parameter_vendor_specific_fail_tests
+    :
+    [ compile-fail compose.cpp
+        :
+            <define>BOOST_PARAMETER_COMPOSE_MAX_ARITY=3
+            <define>LIBS_PARAMETER_TEST_COMPILE_FAILURE_VENDOR_SPECIFIC
+        :
+            compose_fail_msvc11
+    ]
+    [ compile-fail preprocessor_deduced.cpp
+        :
+            <define>BOOST_PARAMETER_MAX_ARITY=4
+            <define>BOOST_PARAMETER_EXPONENTIAL_OVERLOAD_THRESHOLD_ARITY=5
+            <define>LIBS_PARAMETER_TEST_COMPILE_FAILURE_VENDOR_SPECIFIC
+        :
+            preproc_deduced_fail_msvc11
+    ]
+    :
+        <toolset>msvc
+        <toolset-msvc:version>11.0
+    ;
+
+alias parameter_vendor_specific_fail_tests
+    :
+    [ compile-fail evaluate_category.cpp
+        :
+            <define>BOOST_PARAMETER_MAX_ARITY=4
+            <define>BOOST_PARAMETER_EXPONENTIAL_OVERLOAD_THRESHOLD_ARITY=5
+            <define>LIBS_PARAMETER_TEST_COMPILE_FAILURE_VENDOR_SPECIFIC
+        :
+            evaluate_category_fail_msvc12
+    ]
+    [ compile-fail preprocessor_eval_category.cpp
+        :
+            <define>BOOST_PARAMETER_MAX_ARITY=8
+            <define>BOOST_PARAMETER_EXPONENTIAL_OVERLOAD_THRESHOLD_ARITY=9
+            <define>LIBS_PARAMETER_TEST_COMPILE_FAILURE_VENDOR_SPECIFIC
+        :
+            preproc_eval_cat_fail_msvc12
+    ]
+    [ compile-fail preprocessor_eval_cat_no_spec.cpp
+        :
+            <define>BOOST_PARAMETER_COMPOSE_MAX_ARITY=8
+            <define>LIBS_PARAMETER_TEST_COMPILE_FAILURE_VENDOR_SPECIFIC
+        :
+            preproc_eval_cat_no_spec_fail_msvc12
+    ]
+    :
+        <toolset>msvc
+        <toolset-msvc:version>12.0
+    ;
+
+alias parameter_vendor_specific_fail_tests
+    :
+    [ compile-fail evaluate_category.cpp
+        :
+            <define>BOOST_PARAMETER_MAX_ARITY=4
+            <define>BOOST_PARAMETER_EXPONENTIAL_OVERLOAD_THRESHOLD_ARITY=5
+            <define>LIBS_PARAMETER_TEST_COMPILE_FAILURE_VENDOR_SPECIFIC
+        :
+            evaluate_category_fail_msvc14_0
+    ]
+    [ compile-fail preprocessor_eval_category.cpp
+        :
+            <define>BOOST_PARAMETER_MAX_ARITY=8
+            <define>BOOST_PARAMETER_EXPONENTIAL_OVERLOAD_THRESHOLD_ARITY=9
+            <define>LIBS_PARAMETER_TEST_COMPILE_FAILURE_VENDOR_SPECIFIC
+        :
+            preproc_eval_cat_fail_msvc14_0
+    ]
+    [ compile-fail preprocessor_eval_cat_no_spec.cpp
+        :
+            <define>BOOST_PARAMETER_COMPOSE_MAX_ARITY=8
+            <define>LIBS_PARAMETER_TEST_COMPILE_FAILURE_VENDOR_SPECIFIC
+        :
+            preproc_eval_cat_no_spec_fail_msvc14_0
+    ]
+    :
+        <toolset>msvc
+        <toolset-msvc:version>14.0
+    ;
+
+alias parameter_vendor_specific_fail_tests
+    :
+    [ compile-fail evaluate_category.cpp
+        :
+            <define>BOOST_PARAMETER_MAX_ARITY=4
+            <define>BOOST_PARAMETER_EXPONENTIAL_OVERLOAD_THRESHOLD_ARITY=5
+            <define>LIBS_PARAMETER_TEST_COMPILE_FAILURE_VENDOR_SPECIFIC
+        :
+            evaluate_category_fail_msvc14_1
+    ]
+    [ compile-fail preprocessor_eval_category.cpp
+        :
+            <define>BOOST_PARAMETER_MAX_ARITY=8
+            <define>BOOST_PARAMETER_EXPONENTIAL_OVERLOAD_THRESHOLD_ARITY=9
+            <define>LIBS_PARAMETER_TEST_COMPILE_FAILURE_VENDOR_SPECIFIC
+        :
+            preproc_eval_cat_fail_msvc14_1
+    ]
+    [ compile-fail preprocessor_eval_cat_no_spec.cpp
+        :
+            <define>BOOST_PARAMETER_COMPOSE_MAX_ARITY=8
+            <define>LIBS_PARAMETER_TEST_COMPILE_FAILURE_VENDOR_SPECIFIC
+        :
+            preproc_eval_cat_no_spec_fail_msvc14_1
+    ]
+    :
+        <toolset>msvc
+        <toolset-msvc:version>14.1
+    ;
+
+# TODO: Replace with "undeprecated" version.
+test-suite "parameter"
+    :
+        parameter_macros_eval_category
+        parameter_evaluate_category_10
+        parameter_preprocessor_eval_cat_8
+        parameter_preprocessor_eval_cat_fail
+        parameter_standard_tests
+        parameter_literate_tests
+        parameter_python_test
+        parameter_vendor_specific_fail_tests
+    ;

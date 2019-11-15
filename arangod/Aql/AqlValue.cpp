@@ -241,11 +241,11 @@ AqlValue AqlValue::at(int64_t position, bool& mustDestroy, bool doCopy) const {
   switch (type()) {
     case VPACK_SLICE_POINTER:
       doCopy = false;
-    // intentionally falls through
+    [[fallthrough]];
     case VPACK_INLINE:
-    // intentionally falls through
+    [[fallthrough]];
     case VPACK_MANAGED_SLICE:
-    // intentionally falls through
+    [[fallthrough]];
     case VPACK_MANAGED_BUFFER: {
       VPackSlice s(slice());
       if (s.isArray()) {
@@ -318,11 +318,11 @@ AqlValue AqlValue::at(int64_t position, size_t n, bool& mustDestroy, bool doCopy
   switch (type()) {
     case VPACK_SLICE_POINTER:
       doCopy = false;
-    // intentionally falls through
+    [[fallthrough]];
     case VPACK_INLINE:
-    // intentionally falls through
+    [[fallthrough]];
     case VPACK_MANAGED_SLICE:
-    // intentionally falls through
+    [[fallthrough]];
     case VPACK_MANAGED_BUFFER: {
       VPackSlice s(slice());
       if (s.isArray()) {
@@ -392,11 +392,11 @@ AqlValue AqlValue::getKeyAttribute(bool& mustDestroy, bool doCopy) const {
   switch (type()) {
     case VPACK_SLICE_POINTER:
       doCopy = false;
-    // intentionally falls through
+    [[fallthrough]];
     case VPACK_INLINE:
-    // intentionally falls through
+    [[fallthrough]];
     case VPACK_MANAGED_SLICE:
-    // intentionally falls through
+    [[fallthrough]];
     case VPACK_MANAGED_BUFFER: {
       VPackSlice s(slice());
       if (s.isObject()) {
@@ -431,11 +431,11 @@ AqlValue AqlValue::getIdAttribute(CollectionNameResolver const& resolver,
   switch (type()) {
     case VPACK_SLICE_POINTER:
       doCopy = false;
-    // intentionally falls through
+    [[fallthrough]];
     case VPACK_INLINE:
-    // intentionally falls through
+    [[fallthrough]];
     case VPACK_MANAGED_SLICE:
-    // intentionally falls through
+    [[fallthrough]];
     case VPACK_MANAGED_BUFFER: {
       VPackSlice s(slice());
       if (s.isObject()) {
@@ -474,11 +474,11 @@ AqlValue AqlValue::getFromAttribute(bool& mustDestroy, bool doCopy) const {
   switch (type()) {
     case VPACK_SLICE_POINTER:
       doCopy = false;
-    // intentionally falls through
+    [[fallthrough]];
     case VPACK_INLINE:
-    // intentionally falls through
+    [[fallthrough]];
     case VPACK_MANAGED_SLICE:
-    // intentionally falls through
+    [[fallthrough]];
     case VPACK_MANAGED_BUFFER: {
       VPackSlice s(slice());
       if (s.isObject()) {
@@ -512,11 +512,11 @@ AqlValue AqlValue::getToAttribute(bool& mustDestroy, bool doCopy) const {
   switch (type()) {
     case VPACK_SLICE_POINTER:
       doCopy = false;
-    // intentionally falls through
+    [[fallthrough]];
     case VPACK_INLINE:
-    // intentionally falls through
+    [[fallthrough]];
     case VPACK_MANAGED_SLICE:
-    // intentionally falls through
+    [[fallthrough]];
     case VPACK_MANAGED_BUFFER: {
       VPackSlice s(slice());
       if (s.isObject()) {
@@ -551,11 +551,11 @@ AqlValue AqlValue::get(CollectionNameResolver const& resolver,
   switch (type()) {
     case VPACK_SLICE_POINTER:
       doCopy = false;
-    // intentionally falls through
+    [[fallthrough]];
     case VPACK_INLINE:
-    // intentionally falls through
+    [[fallthrough]];
     case VPACK_MANAGED_SLICE:
-    // intentionally falls through
+    [[fallthrough]];
     case VPACK_MANAGED_BUFFER: {
       VPackSlice s(slice());
       if (s.isObject()) {
@@ -596,11 +596,11 @@ AqlValue AqlValue::get(CollectionNameResolver const& resolver,
   switch (type()) {
     case VPACK_SLICE_POINTER:
       doCopy = false;
-    // intentionally falls through
+    [[fallthrough]];
     case VPACK_INLINE:
-    // intentionally falls through
+    [[fallthrough]];
     case VPACK_MANAGED_SLICE:
-    // intentionally falls through
+    [[fallthrough]];
     case VPACK_MANAGED_BUFFER: {
       VPackSlice s(slice());
       if (s.isObject()) {
@@ -645,11 +645,11 @@ AqlValue AqlValue::get(CollectionNameResolver const& resolver,
   switch (type()) {
     case VPACK_SLICE_POINTER:
       doCopy = false;
-    // intentionally falls through
+    [[fallthrough]];
     case VPACK_INLINE:
-    // intentionally falls through
+    [[fallthrough]];
     case VPACK_MANAGED_SLICE:
-    // intentionally falls through
+    [[fallthrough]];
     case VPACK_MANAGED_BUFFER: {
       VPackSlice s(slice());
       if (s.isObject()) {
@@ -910,6 +910,7 @@ v8::Handle<v8::Value> AqlValue::toV8(v8::Isolate* isolate, transaction::Methods*
     }
     case RANGE: {
       size_t const n = _data.range->size();
+      Range::throwIfTooBigForMaterialization(n);
       v8::Handle<v8::Array> result = v8::Array::New(isolate, static_cast<int>(n));
 
       for (uint32_t i = 0; i < n; ++i) {
@@ -939,7 +940,7 @@ void AqlValue::toVelocyPack(transaction::Methods* trx, arangodb::velocypack::Bui
       if (!resolveExternals && isManagedDocument()) {
         builder.addExternal(_data.pointer);
         break;
-      }  // intentionally falls through
+      }  [[fallthrough]];
     case VPACK_INLINE:
     case VPACK_MANAGED_SLICE:
     case VPACK_MANAGED_BUFFER: {
@@ -967,8 +968,9 @@ void AqlValue::toVelocyPack(transaction::Methods* trx, arangodb::velocypack::Bui
       break;
     }
     case RANGE: {
-      builder.openArray();
+      builder.openArray(true);
       size_t const n = _data.range->size();
+      Range::throwIfTooBigForMaterialization(n);
       for (size_t i = 0; i < n; ++i) {
         builder.add(VPackValue(_data.range->at(i)));
       }
@@ -1622,6 +1624,7 @@ AqlValueMaterializer::AqlValueMaterializer(AqlValueMaterializer const& other)
 AqlValueMaterializer& AqlValueMaterializer::operator=(AqlValueMaterializer const& other) {
   if (this != &other) {
     TRI_ASSERT(trx == other.trx);  // must be from same transaction
+    trx = other.trx; // to shut up cppcheck
     if (hasCopied) {
       // destroy our own slice
       materialized.destroy();
@@ -1645,6 +1648,7 @@ AqlValueMaterializer::AqlValueMaterializer(AqlValueMaterializer&& other) noexcep
 AqlValueMaterializer& AqlValueMaterializer::operator=(AqlValueMaterializer&& other) noexcept {
   if (this != &other) {
     TRI_ASSERT(trx == other.trx);  // must be from same transaction
+    trx = other.trx; // to shut up cppcheck
     if (hasCopied) {
       // destroy our own slice
       materialized.destroy();

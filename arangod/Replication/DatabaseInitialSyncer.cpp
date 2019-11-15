@@ -108,9 +108,7 @@ DatabaseInitialSyncer::DatabaseInitialSyncer(TRI_vocbase_t& vocbase,
       _config{_state.applier,    _state.barrier, _batch,
               _state.connection, false,          _state.master,
               _progress,         _state,         vocbase} {
-  _state.vocbases.emplace(std::piecewise_construct,
-                          std::forward_as_tuple(vocbase.name()),
-                          std::forward_as_tuple(vocbase));
+  _state.vocbases.try_emplace(vocbase.name(), vocbase);
 
   if (configuration._database.empty()) {
     _state.databaseName = vocbase.name();
@@ -351,7 +349,7 @@ Result DatabaseInitialSyncer::parseCollectionDumpMarker(transaction::Methods& tr
   TRI_replication_operation_e type = REPLICATION_INVALID;
   VPackSlice doc;
 
-  for (auto const& it : VPackObjectIterator(marker, true)) {
+  for (auto it : VPackObjectIterator(marker, true)) {
     if (it.key.isEqualString(kTypeString)) {
       if (it.value.isNumber()) {
         type = static_cast<TRI_replication_operation_e>(it.value.getNumber<int>());
@@ -1095,7 +1093,7 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
   if (phase == PHASE_VALIDATE) {
     // validation phase just returns ok if we got here (aborts above if data is
     // invalid)
-    _config.progress.processedCollections.emplace(masterCid, masterName);
+    _config.progress.processedCollections.try_emplace(masterCid, masterName);
 
     return Result();
   }
@@ -1415,10 +1413,28 @@ Result DatabaseInitialSyncer::handleCollectionsAndViews(VPackSlice const& collSl
     collections.emplace_back(parameters, indexes);
   }
 
-  // STEP 1: validate collection declarations from master
+  // STEP 1: now that the collections exist create the views
+  // this should be faster than re-indexing afterwards
   // ----------------------------------------------------------------------------------
 
-  // STEP 2: drop and re-create collections locally if they are also present on
+  if (!_config.applier._skipCreateDrop &&
+      _config.applier._restrictCollections.empty() &&
+      viewSlices.isArray()) {
+    // views are optional, and 3.3 and before will not send any view data
+    Result r = handleViewCreation(viewSlices);  // no requests to master
+    if (r.fail()) {
+      LOG_TOPIC("96cda", ERR, Logger::REPLICATION)
+          << "Error during intial sync view creation: " << r.errorMessage();
+      return r;
+    }
+  } else {
+    _config.progress.set("view creation skipped because of configuration");
+  }
+
+  // STEP 2: validate collection declarations from master
+  // ----------------------------------------------------------------------------------
+
+  // STEP 3: drop and re-create collections locally if they are also present on
   // the master
   //  ------------------------------------------------------------------------------------
 
@@ -1430,23 +1446,6 @@ Result DatabaseInitialSyncer::handleCollectionsAndViews(VPackSlice const& collSl
     if (r.fail()) {
       return r;
     }
-  }
-
-  // STEP 3: now that the collections exist create the views
-  // this should be faster than re-indexing afterwards
-  // ----------------------------------------------------------------------------------
-
-  if (!_config.applier._skipCreateDrop &&
-      _config.applier._restrictCollections.empty() && viewSlices.isArray()) {
-    // views are optional, and 3.3 and before will not send any view data
-    Result r = handleViewCreation(viewSlices);  // no requests to master
-    if (r.fail()) {
-      LOG_TOPIC("96cda", ERR, Logger::REPLICATION)
-          << "Error during intial sync view creation: " << r.errorMessage();
-      return r;
-    }
-  } else {
-    _config.progress.set("view creation skipped because of configuration");
   }
 
   // STEP 4: sync collection data from master and create initial indexes

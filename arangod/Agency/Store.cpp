@@ -296,6 +296,9 @@ std::vector<bool> Store::applyLogEntries(arangodb::velocypack::Builder const& qu
     
     auto const& nf = _server.getFeature<arangodb::NetworkFeature>();
     network::ConnectionPool* cp = nf.pool();
+    
+    network::RequestOptions reqOpts;
+    reqOpts.timeout = network::Timeout(2);
 
     // Callback
 
@@ -338,7 +341,7 @@ std::vector<bool> Store::applyLogEntries(arangodb::velocypack::Builder const& qu
         
         Agent* agent = _agent;
         network::sendRequest(cp, endpoint, fuerte::RestVerb::Post, path,
-                             *buffer, network::Timeout(1)).thenValue([=](network::Response r) {
+                             *buffer, reqOpts).thenValue([=](network::Response r) {
           if (r.fail() || r.response->statusCode() >= 400) {
             LOG_TOPIC("9dbf0", TRACE, Logger::AGENCY)
               << url << "(" << r.response->statusCode() << ", " << fuerte::to_string(r.error)
@@ -803,7 +806,7 @@ Store& Store::operator=(VPackSlice const& s) {
   }
 
   TRI_ASSERT(slice[2].isArray());
-  for (auto const& entry : VPackArrayIterator(slice[2])) {
+  for (VPackSlice entry : VPackArrayIterator(slice[2])) {
     TRI_ASSERT(entry.isObject());
     _observerTable.emplace(
         std::pair<std::string, std::string>(entry.keyAt(0).copyString(),
@@ -811,7 +814,7 @@ Store& Store::operator=(VPackSlice const& s) {
   }
 
   TRI_ASSERT(slice[3].isArray());
-  for (auto const& entry : VPackArrayIterator(slice[3])) {
+  for (VPackSlice entry : VPackArrayIterator(slice[3])) {
     TRI_ASSERT(entry.isObject());
     _observedTable.emplace(
         std::pair<std::string, std::string>(entry.keyAt(0).copyString(),

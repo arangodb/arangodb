@@ -1805,14 +1805,6 @@ function launchFinalize(options, instanceInfo, startTime) {
       device = options.sniffDevice;
     }
 
-    let pcapFile = fs.join(instanceInfo.rootDir, 'out.pcap');
-    let args = ['-ni', device, '-s0', '-w', pcapFile];
-    for (let port = 0; port < ports.length; port ++) {
-      if (port > 0) {
-        args.push('or');
-      }
-      args.push(ports[port]);
-    }
     let prog = 'tcpdump';
     if (platform.substr(0, 3) === 'win') {
       prog = 'c:/Program Files/Wireshark/tshark.exe';
@@ -1820,6 +1812,21 @@ function launchFinalize(options, instanceInfo, startTime) {
     if (options.sniffProgram !== undefined) {
       prog = options.sniffProgram;
     }
+
+    let pcapFile = fs.join(instanceInfo.rootDir, 'out.pcap');
+    let args;
+    if (prog === 'ngrep') {
+      args = ['-l', '-Wbyline', '-d', device];
+    } else {
+      args = ['-ni', device, '-s0', '-w', pcapFile];
+    }
+    for (let port = 0; port < ports.length; port ++) {
+      if (port > 0) {
+        args.push('or');
+      }
+      args.push(ports[port]);
+    }
+
     if (options.sniff === 'sudo') {
       args.unshift(prog);
       prog = 'sudo';

@@ -438,7 +438,7 @@ bool ServerState::integrateIntoCluster(ServerState::RoleEnum role,
     if (valueSlice.isObject()) {
       // map from server UUID to endpoint
       std::unordered_map<std::string, std::string> endpoints;
-      for (auto const& it : VPackObjectIterator(valueSlice)) {
+      for (auto it : VPackObjectIterator(valueSlice)) {
         std::string const serverId = it.key.copyString();
 
         if (!isUuid(serverId)) {
@@ -451,12 +451,12 @@ bool ServerState::integrateIntoCluster(ServerState::RoleEnum role,
         if (!endpointSlice.isString()) {
           continue;
         }
-        auto it2 = endpoints.emplace(endpointSlice.copyString(), serverId);
-        if (!it2.second && it2.first->first != serverId) {
+        auto const [idIter, emplaced] = endpoints.try_emplace(endpointSlice.copyString(), serverId);
+        if (!emplaced && idIter->first != serverId) {
           // duplicate entry!
           LOG_TOPIC("9a134", WARN, Logger::CLUSTER)
             << "found duplicate server entry for endpoint '"
-            << endpointSlice.copyString() << "', already used by other server " << it2.first->second
+            << endpointSlice.copyString() << "', already used by other server " << idIter->second
             << ". it looks like this is a (mis)configuration issue";
           // anyway, continue with startup
         }
@@ -610,7 +610,7 @@ bool ServerState::checkIfAgencyInitialized(AgencyComm& comm,
 bool ServerState::registerAtAgencyPhase1(AgencyComm& comm, ServerState::RoleEnum const& role) {
 
   // if the agency is not initialized, there is no point in continuing.
-  if(!checkIfAgencyInitialized(comm, role)) {
+  if (!checkIfAgencyInitialized(comm, role)) {
     return false;
   }
 

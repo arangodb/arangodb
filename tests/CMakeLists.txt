@@ -44,10 +44,15 @@ set(ARANGODB_TESTS_SOURCES
   Aql/FilterExecutorTest.cpp
   Aql/HashedCollectExecutorTest.cpp
   Aql/IdExecutorTest.cpp
+  Aql/IndexNodeTest.cpp
+  Aql/InsertExecutorTest.cpp
   Aql/LimitExecutorTest.cpp
   Aql/MultiDepFetcherHelper.cpp
   Aql/MultiDependencySingleRowFetcherTest.cpp
   Aql/NoResultsExecutorTest.cpp
+  Aql/QueryHelper.cpp
+  Aql/RemoveExecutorTest.cpp
+  Aql/ReplaceExecutorTest.cpp
   Aql/ReturnExecutorTest.cpp
   Aql/RowFetcherHelper.cpp
   Aql/ShortestPathExecutorTest.cpp
@@ -61,6 +66,8 @@ set(ARANGODB_TESTS_SOURCES
   Aql/TestEmptyExecutorHelper.cpp
   Aql/TestExecutorHelper.cpp
   Aql/TraversalExecutorTest.cpp
+  Aql/UpdateExecutorTest.cpp
+  Aql/UpsertExecutorTest.cpp
   Aql/VelocyPackHelper.cpp
   Aql/WaitingExecutionBlockMock.cpp
   Auth/UserManagerTest.cpp
@@ -72,11 +79,12 @@ set(ARANGODB_TESTS_SOURCES
   Basics/hashes-test.cpp
   Basics/icu-helper.cpp
   Basics/json-test.cpp
+  Basics/overload-test.cpp
   Basics/priorityqueue-test.cpp
   Basics/string-buffer-test.cpp
+  Basics/string-test.cpp
   Basics/string-utf8-normalize-test.cpp
   Basics/string-utf8-test.cpp
-  Basics/string-test.cpp
   Basics/structure-size-test.cpp
   Basics/vector-test.cpp
   Basics/ApplicationServerTest.cpp
@@ -255,6 +263,7 @@ target_link_libraries(arangodbtests
   rocksdb
   snappy
   gtest
+  boost_boost
 )
 
 if (USE_ENTERPRISE)
@@ -265,12 +274,11 @@ target_include_directories(arangodbtests PRIVATE
   ${INCLUDE_DIRECTORIES}
 )
 
-
-if(MSVC)
+if(MSVC AND FAIL_ON_WARNINGS)
   target_compile_options(arangodbtests PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
 endif()
 
-if (DARWIN)
+if (DARWIN AND FAIL_ON_WARNINGS)
   # Missing Braces is broken in older CLangs - disable them here.
   target_compile_options(arangodbtests PRIVATE -Werror -Wno-missing-braces)
 endif()

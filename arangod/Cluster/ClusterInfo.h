@@ -186,13 +186,13 @@ class CollectionInfoCurrent {
   /// @brief returns the error flag for a shardID
   //////////////////////////////////////////////////////////////////////////////
 
-  bool error(ShardID const& shardID) const { return getFlag("error", shardID); }
+  bool error(ShardID const& shardID) const { return getFlag(StaticStrings::Error, shardID); }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns the error flag for all shardIDs
   //////////////////////////////////////////////////////////////////////////////
 
-  std::unordered_map<ShardID, bool> error() const { return getFlag("error"); }
+  std::unordered_map<ShardID, bool> error() const { return getFlag(StaticStrings::Error); }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns the errorNum for one shardID
@@ -203,7 +203,7 @@ class CollectionInfoCurrent {
     if (it != _vpacks.end()) {
       VPackSlice slice = it->second->slice();
       return arangodb::basics::VelocyPackHelper::getNumericValue<int>(
-          slice, "errorNum", 0);
+          slice, StaticStrings::ErrorNum, 0);
     }
     return 0;
   }
@@ -218,7 +218,7 @@ class CollectionInfoCurrent {
     for (auto const& it : _vpacks) {
       int s =
           arangodb::basics::VelocyPackHelper::getNumericValue<int>(it.second->slice(),
-                                                                   "errorNum", 0);
+                                                                   StaticStrings::ErrorNum, 0);
       m.insert(std::make_pair(it.first, s));
     }
     return m;
@@ -237,7 +237,7 @@ class CollectionInfoCurrent {
 
       VPackSlice servers = slice.get("servers");
       if (servers.isArray()) {
-        for (auto const& server : VPackArrayIterator(servers)) {
+        for (VPackSlice server : VPackArrayIterator(servers)) {
           if (server.isString()) {
             v.push_back(server.copyString());
           }
@@ -260,7 +260,7 @@ class CollectionInfoCurrent {
 
       VPackSlice servers = slice.get(StaticStrings::FailoverCandidates);
       if (servers.isArray()) {
-        for (auto const& server : VPackArrayIterator(servers)) {
+        for (VPackSlice server : VPackArrayIterator(servers)) {
           TRI_ASSERT(server.isString());
           if (server.isString()) {
             v.push_back(server.copyString());
@@ -279,8 +279,8 @@ class CollectionInfoCurrent {
     auto it = _vpacks.find(shardID);
     if (it != _vpacks.end()) {
       VPackSlice slice = it->second->slice();
-      if (slice.isObject() && slice.hasKey("errorMessage")) {
-        return slice.get("errorMessage").copyString();
+      if (slice.isObject() && slice.hasKey(StaticStrings::ErrorMessage)) {
+        return slice.get(StaticStrings::ErrorMessage).copyString();
       }
     }
     return std::string();
@@ -297,7 +297,8 @@ class CollectionInfoCurrent {
   //////////////////////////////////////////////////////////////////////////////
 
  private:
-  bool getFlag(char const* name, ShardID const& shardID) const {
+  template <typename T>
+  bool getFlag(T const& name, ShardID const& shardID) const {
     auto it = _vpacks.find(shardID);
     if (it != _vpacks.end()) {
       return arangodb::basics::VelocyPackHelper::getBooleanValue(it->second->slice(),
@@ -310,13 +311,14 @@ class CollectionInfoCurrent {
   /// @brief local helper to return a map to boolean
   //////////////////////////////////////////////////////////////////////////////
 
-  std::unordered_map<ShardID, bool> getFlag(char const* name) const {
+  template <typename T>
+  std::unordered_map<ShardID, bool> getFlag(T const& name) const {
     std::unordered_map<ShardID, bool> m;
     for (auto const& it : _vpacks) {
       auto vpack = it.second;
       bool b = arangodb::basics::VelocyPackHelper::getBooleanValue(vpack->slice(),
                                                                    name, false);
-      m.insert(std::make_pair(it.first, b));
+      m.emplace(it.first, b);
     }
     return m;
   }

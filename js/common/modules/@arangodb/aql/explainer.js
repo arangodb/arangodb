@@ -821,6 +821,11 @@ function processQuery(query, explain, planIndex) {
     return variable(node.name);
   };
 
+  var lateVariableCallback = function () {
+    require("internal").print("Called");
+    return (node) => variableName(node);
+  };
+
   var buildExpression = function (node) {
     var binaryOperator = function (node, name) {
       var lhs = buildExpression(node.subNodes[0]);
@@ -1138,9 +1143,20 @@ function processQuery(query, explain, planIndex) {
         if (node.filter) {
           filter = '   ' + keyword('FILTER') + ' ' + buildExpression(node.filter) + '   ' + annotation('/* early pruning */');
         }
+        let indexAnnotation = '';
+        let indexVariables = '';
+        if (node.hasOwnProperty('outNmDocId')) {
+          indexAnnotation += '/* with late materialization */';
+          if (node.hasOwnProperty('IndexValuesVars') && node.IndexValuesVars.length > 0) {
+            indexVariables = node.IndexValuesVars.map(function (IndexValuesVar) {
+              return keyword(' LET ') + variableName(IndexValuesVar) + ' = ' + variableName(node.outVariable) + '.' + attribute(IndexValuesVar.field);
+            }).join('');
+          }
+        }
         node.indexes.forEach(function (idx, i) { iterateIndexes(idx, i, node, types, false); });
-        return `${keyword('FOR')} ${variableName(node.outVariable)} ${keyword('IN')} ${collection(node.collection)}   ${annotation(`/* ${types.join(', ')}${projection(node)}${node.satellite ? ', satellite' : ''}${restriction(node)}`)} */` + filter;
-      
+        return `${keyword('FOR')} ${variableName(node.outVariable)} ${keyword('IN')} ${collection(node.collection)}` + indexVariables +
+          `   ${annotation(`/* ${types.join(', ')}${projection(node)}${node.satellite ? ', satellite' : ''}${restriction(node)} */`)} ` + filter +
+          '   ' + annotation(indexAnnotation);
       case 'TraversalNode':
         if (node.hasOwnProperty("options")) {
           node.minMaxDepth = node.options.minDepth + '..' + node.options.maxDepth;
@@ -1464,6 +1480,10 @@ function processQuery(query, explain, planIndex) {
         return keyword('RETURN') + ' ' + variableName(node.inVariable);
       case 'SubqueryNode':
         return keyword('LET') + ' ' + variableName(node.outVariable) + ' = ...   ' + annotation('/* ' + (node.isConst ? 'const ' : '') + 'subquery */');
+      case 'SubqueryStartNode':
+        return `${keyword('LET')} ${variableName(node.subqueryOutVariable)} = ( ${annotation(`/* subquery begin */`)}` ;
+      case 'SubqueryEndNode':
+        return `) ${annotation(`/* subquery end */`)}`;
       case 'InsertNode': {
         modificationFlags = node.modificationFlags;
         let restrictString = '';
@@ -1640,12 +1660,20 @@ function processQuery(query, explain, planIndex) {
       case 'ScatterNode':
         return keyword('SCATTER');
       case 'GatherNode':
+        let gatherAnnotations = [];
+        if (node.parallelism === 'parallel') {
+          gatherAnnotations.push('parallel');
+        }
+        if (node.sortmode !== 'unset') {
+          gatherAnnotations.push('sort mode: ' + node.sortmode);
+        } 
         return keyword('GATHER') + ' ' + node.elements.map(function (node) {
           if (node.path && node.path.length) {
             return variableName(node.inVariable) + node.path.map(function (n) { return '.' + attribute(n); }) + ' ' + keyword(node.ascending ? 'ASC' : 'DESC');
           }
           return variableName(node.inVariable) + ' ' + keyword(node.ascending ? 'ASC' : 'DESC');
-        }).join(', ') + (node.sortmode === 'unset' ? '' : '  ' + annotation('/* sort mode: ' + node.sortmode + ' */'));
+        }).join(', ') + (gatherAnnotations.length ? '  ' + annotation('/* ' + gatherAnnotations.join(', ') + ' */') : '');
+
       case 'MaterializeNode':
       	return keyword('MATERIALIZE') + ' ' + variableName(node.outVariable);
     }
@@ -1653,7 +1681,7 @@ function processQuery(query, explain, planIndex) {
     return 'unhandled node type (' + node.type + ')';
   };
 
-  var level = 0, subqueries = [];
+  var level = 0, subqueries = [], subqueryCallbacks = [];
   var indent = function (level, isRoot) {
     return pad(1 + level + level) + (isRoot ? '* ' : '- ');
   };
@@ -1662,8 +1690,11 @@ function processQuery(query, explain, planIndex) {
     usedVariables = {};
     currentNode = node.id;
     isConst = true;
-    if (node.type === 'SubqueryNode') {
+    if (node.type === 'SubqueryNode' || node.type === 'SubqueryStartNode') {
       subqueries.push(level);
+    }
+    if (node.type === 'SubqueryEndNode' && subqueries.length > 0) {
+      level = subqueries.pop();
     }
   };
 
@@ -1676,6 +1707,7 @@ function processQuery(query, explain, planIndex) {
       'IndexRangeNode',
       'IndexNode',
       'TraversalNode',
+      'SubqueryStartNode',
       'SubqueryNode'].indexOf(node.type) !== -1) {
       level++;
     } else if (isLeafNode && subqueries.length > 0) {

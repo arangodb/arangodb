@@ -2113,8 +2113,8 @@ static void JS_Log(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   std::string prefix;
 
-  StringUtils::tolowerInPlace(&ls);
-  StringUtils::tolowerInPlace(&ts);
+  StringUtils::tolowerInPlace(ls);
+  StringUtils::tolowerInPlace(ts);
 
   LogTopic const* topicPtr = ts.empty() ? nullptr : LogTopic::lookup(ts);
   LogTopic const& topic = (topicPtr != nullptr) ? *topicPtr : Logger::FIXME;
@@ -4007,7 +4007,7 @@ static void JS_PBKDF2(v8::FunctionCallbackInfo<v8::Value> const& args) {
   SslInterface::Algorithm al = SslInterface::Algorithm::ALGORITHM_SHA1;
   if (args.Length() > 4 && !args[4]->IsUndefined()) {
     std::string algorithm = TRI_ObjectToString(isolate, args[4]);
-    StringUtils::tolowerInPlace(&algorithm);
+    StringUtils::tolowerInPlace(algorithm);
 
     if (algorithm == "sha1") {
       al = SslInterface::Algorithm::ALGORITHM_SHA1;
@@ -4061,7 +4061,7 @@ static void JS_HMAC(v8::FunctionCallbackInfo<v8::Value> const& args) {
   SslInterface::Algorithm al = SslInterface::Algorithm::ALGORITHM_SHA256;
   if (args.Length() > 2 && !args[2]->IsUndefined()) {
     std::string algorithm = TRI_ObjectToString(isolate, args[2]);
-    StringUtils::tolowerInPlace(&algorithm);
+    StringUtils::tolowerInPlace(algorithm);
 
     if (algorithm == "sha1") {
       al = SslInterface::Algorithm::ALGORITHM_SHA1;
@@ -5113,6 +5113,15 @@ void TRI_LogV8Exception(v8::Isolate* isolate, v8::TryCatch* tryCatch) {
 
       LOG_TOPIC("cb0bd", ERR, arangodb::Logger::FIXME) << "!" << l;
     }
+    auto stacktraceV8 =
+      tryCatch->StackTrace(TRI_IGETC).FromMaybe(v8::Local<v8::Value>());
+    TRI_Utf8ValueNFC stacktrace(isolate, stacktraceV8);
+
+    if (*stacktrace && stacktrace.length() > 0) {
+      LOG_TOPIC("cb0bf", DEBUG, arangodb::Logger::V8) << "!" <<
+        "stacktrace: " + std::string(*stacktrace) + "\n";
+    }
+
   }
 }
 

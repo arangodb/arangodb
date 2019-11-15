@@ -61,23 +61,23 @@ Result recalculateCountsOnAllDBServers(std::string const& dbname, std::string co
     return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
 
-  std::string const baseUrl =
-      "/_db/" + basics::StringUtils::urlEncode(dbname) + "/_api/collection/";
+  std::string const baseUrl = "/_api/collection/";
 
   VPackBuffer<uint8_t> body;
   network::Headers headers;
   network::RequestOptions options;
+  options.database = dbname;
   options.timeout = network::Timeout(600.0);
 
   // now we notify all leader and follower shards
   std::shared_ptr<ShardMap> shardList = collinfo->shardIds();
   std::vector<network::FutureRes> futures;
   for (auto const& shard : *shardList) {
-    for (ServerID const& server : shard.second) {
+    for (ServerID const& serverId : shard.second) {
       std::string uri = baseUrl + basics::StringUtils::urlEncode(shard.first) +
                         "/recalculateCount";
-      auto f = network::sendRequest(pool, "server:" + server, fuerte::RestVerb::Put,
-                                    std::move(uri), body, headers, options);
+      auto f = network::sendRequest(pool, "server:" + serverId, fuerte::RestVerb::Put,
+                                    std::move(uri), body, options, headers);
       futures.emplace_back(std::move(f));
     }
   }

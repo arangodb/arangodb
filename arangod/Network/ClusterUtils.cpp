@@ -111,7 +111,6 @@ OperationResult clusterResultDelete(arangodb::fuerte::StatusCode code,
     case fuerte::StatusOK:
     case fuerte::StatusAccepted:
     case fuerte::StatusCreated: {
-      OperationOptions options;
       options.waitForSync = (code != fuerte::StatusAccepted);
       return OperationResult(Result(), std::move(body), std::move(options), errorCounter);
     }

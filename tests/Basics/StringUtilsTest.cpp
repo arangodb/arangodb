@@ -43,6 +43,8 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace std;
 
+using namespace std::literals::string_literals;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
@@ -131,13 +133,38 @@ TEST_F(StringUtilsTest, test_Split3) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test_Tolower
+/// @brief test_tolower
 ////////////////////////////////////////////////////////////////////////////////
 
-TEST_F(StringUtilsTest, test_Tolower) {
-  string lower = StringUtils::tolower("HaLlO WoRlD!");
+TEST_F(StringUtilsTest, test_tolower) {
+  EXPECT_EQ(StringUtils::tolower(""), "");
+  EXPECT_EQ(StringUtils::tolower(" "), " ");
+  EXPECT_EQ(StringUtils::tolower("12345"), "12345");
+  EXPECT_EQ(StringUtils::tolower("a"), "a");
+  EXPECT_EQ(StringUtils::tolower("A"), "a");
+  EXPECT_EQ(StringUtils::tolower("ä"), "ä");
+  EXPECT_EQ(StringUtils::tolower("Ä"), "Ä");
+  EXPECT_EQ(StringUtils::tolower("HeLlO WoRlD!"), "hello world!");
+  EXPECT_EQ(StringUtils::tolower("hello-world-nono "), "hello-world-nono ");
+  EXPECT_EQ(StringUtils::tolower("HELLo-world-NONO "), "hello-world-nono ");
+  EXPECT_EQ(StringUtils::tolower(" The quick \r\nbrown Fox"), " the quick \r\nbrown fox");
+}
 
-  EXPECT_EQ(lower,  "hallo world!");
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test_toupper
+////////////////////////////////////////////////////////////////////////////////
+
+TEST_F(StringUtilsTest, test_toupper) {
+  EXPECT_EQ(StringUtils::toupper(""), "");
+  EXPECT_EQ(StringUtils::toupper(" "), " ");
+  EXPECT_EQ(StringUtils::toupper("12345"), "12345");
+  EXPECT_EQ(StringUtils::toupper("a"), "A");
+  EXPECT_EQ(StringUtils::toupper("A"), "A");
+  EXPECT_EQ(StringUtils::toupper("ä"), "ä");
+  EXPECT_EQ(StringUtils::toupper("Ä"), "Ä");
+  EXPECT_EQ(StringUtils::toupper("HeLlO WoRlD!"), "HELLO WORLD!");
+  EXPECT_EQ(StringUtils::toupper("hello-world-nono "), "HELLO-WORLD-NONO ");
+  EXPECT_EQ(StringUtils::toupper("HELLo-world-NONO "), "HELLO-WORLD-NONO ");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -145,38 +172,38 @@ TEST_F(StringUtilsTest, test_Tolower) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TEST_F(StringUtilsTest, test_uint64) {
-  EXPECT_EQ(0ULL,  StringUtils::uint64("abc"));
-  EXPECT_EQ(0ULL,  StringUtils::uint64("ABC"));
-  EXPECT_EQ(0ULL,  StringUtils::uint64(" foo"));
-  EXPECT_EQ(0ULL,  StringUtils::uint64(""));
-  EXPECT_EQ(0ULL,  StringUtils::uint64(" "));
-  EXPECT_EQ(12ULL,  StringUtils::uint64("012"));
-  EXPECT_EQ(12ULL,  StringUtils::uint64("00012"));
-  EXPECT_EQ(1234ULL,  StringUtils::uint64("1234"));
-  EXPECT_EQ(1234ULL,  StringUtils::uint64("1234a"));
+  EXPECT_EQ(0ULL,  StringUtils::uint64("abc"s));
+  EXPECT_EQ(0ULL,  StringUtils::uint64("ABC"s));
+  EXPECT_EQ(0ULL,  StringUtils::uint64(" foo"s));
+  EXPECT_EQ(0ULL,  StringUtils::uint64(""s));
+  EXPECT_EQ(0ULL,  StringUtils::uint64(" "s));
+  EXPECT_EQ(12ULL,  StringUtils::uint64("012"s));
+  EXPECT_EQ(12ULL,  StringUtils::uint64("00012"s));
+  EXPECT_EQ(1234ULL,  StringUtils::uint64("1234"s));
+  EXPECT_EQ(1234ULL,  StringUtils::uint64("1234a"s));
 #ifdef ARANGODB_STRING_UTILS_USE_FROM_CHARS
-  EXPECT_EQ(0ULL,  StringUtils::uint64("-1"));
-  EXPECT_EQ(0ULL,  StringUtils::uint64("-12345"));
+  EXPECT_EQ(0ULL,  StringUtils::uint64("-1"s));
+  EXPECT_EQ(0ULL,  StringUtils::uint64("-12345"s));
 #else
-  EXPECT_EQ(18446744073709551615ULL,  StringUtils::uint64("-1"));
-  EXPECT_EQ(18446744073709539271ULL,  StringUtils::uint64("-12345"));
+  EXPECT_EQ(18446744073709551615ULL,  StringUtils::uint64("-1"s));
+  EXPECT_EQ(18446744073709539271ULL,  StringUtils::uint64("-12345"s));
 #endif
-  EXPECT_EQ(1234ULL,  StringUtils::uint64("1234.56"));
-  EXPECT_EQ(0ULL,  StringUtils::uint64("1234567890123456789012345678901234567890"));
-  EXPECT_EQ(0ULL,  StringUtils::uint64("@"));
+  EXPECT_EQ(1234ULL,  StringUtils::uint64("1234.56"s));
+  EXPECT_EQ(0ULL,  StringUtils::uint64("1234567890123456789012345678901234567890"s));
+  EXPECT_EQ(0ULL,  StringUtils::uint64("@"s));
 
-  EXPECT_EQ(0ULL,  StringUtils::uint64("0"));
-  EXPECT_EQ(1ULL,  StringUtils::uint64("1"));
-  EXPECT_EQ(12ULL,  StringUtils::uint64("12"));
-  EXPECT_EQ(123ULL,  StringUtils::uint64("123"));
-  EXPECT_EQ(1234ULL,  StringUtils::uint64("1234"));
-  EXPECT_EQ(1234ULL,  StringUtils::uint64("01234"));
-  EXPECT_EQ(9ULL,  StringUtils::uint64("9"));
-  EXPECT_EQ(9ULL,  StringUtils::uint64("09"));
-  EXPECT_EQ(9ULL,  StringUtils::uint64("0009"));
-  EXPECT_EQ(12345678ULL,  StringUtils::uint64("12345678"));
-  EXPECT_EQ(1234567800ULL,  StringUtils::uint64("1234567800"));
-  EXPECT_EQ(1234567890123456ULL,  StringUtils::uint64("1234567890123456"));
+  EXPECT_EQ(0ULL,  StringUtils::uint64("0"s));
+  EXPECT_EQ(1ULL,  StringUtils::uint64("1"s));
+  EXPECT_EQ(12ULL,  StringUtils::uint64("12"s));
+  EXPECT_EQ(123ULL,  StringUtils::uint64("123"s));
+  EXPECT_EQ(1234ULL,  StringUtils::uint64("1234"s));
+  EXPECT_EQ(1234ULL,  StringUtils::uint64("01234"s));
+  EXPECT_EQ(9ULL,  StringUtils::uint64("9"s));
+  EXPECT_EQ(9ULL,  StringUtils::uint64("09"s));
+  EXPECT_EQ(9ULL,  StringUtils::uint64("0009"s));
+  EXPECT_EQ(12345678ULL,  StringUtils::uint64("12345678"s));
+  EXPECT_EQ(1234567800ULL,  StringUtils::uint64("1234567800"s));
+  EXPECT_EQ(1234567890123456ULL,  StringUtils::uint64("1234567890123456"s));
   EXPECT_EQ(UINT64_MAX,  StringUtils::uint64(std::to_string(UINT64_MAX)));
 }
 

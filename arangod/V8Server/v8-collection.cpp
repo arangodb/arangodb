@@ -834,7 +834,7 @@ static void JS_BinaryDocumentVocbaseCol(v8::FunctionCallbackInfo<v8::Value> cons
   {
     VPackObjectBuilder meta(builder.get());
 
-    for (auto const& it : VPackObjectIterator(opResult.slice().resolveExternals())) {
+    for (auto it : VPackObjectIterator(opResult.slice().resolveExternals())) {
       std::string key = it.key.copyString();
 
       if (key == StaticStrings::AttachmentString) {
@@ -964,13 +964,16 @@ static void JS_FiguresVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  auto builder = collection->figures().get();
+  auto opRes = collection->figures().get();
 
   trx.finish(TRI_ERROR_NO_ERROR);
+  
+  if (opRes.ok()) {
+    TRI_V8_RETURN(TRI_VPackToV8(isolate, opRes.slice()));
+  } else {
+    TRI_V8_RETURN_NULL();
+  }
 
-  v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, builder->slice());
-
-  TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
 }
 
@@ -1005,7 +1008,7 @@ static void JS_GetResponsibleShardVocbaseCol(v8::FunctionCallbackInfo<v8::Value>
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_THROW_EXCEPTION(res);
     }
-  } 
+  }
   if (!builder.slice().isObject()) {
     TRI_V8_THROW_EXCEPTION_USAGE("getResponsibleShard(<object>)");
   }

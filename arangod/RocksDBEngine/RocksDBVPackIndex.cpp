@@ -703,6 +703,7 @@ Result RocksDBVPackIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd
         auto success = _collection.getPhysical()->readDocumentWithCallback(&trx, docId,
            [&](LocalDocumentId const&, VPackSlice doc) {
              existingKey = transaction::helpers::extractKeyFromDocument(doc).copyString();
+             return true; // return value does not matter here
            });
         TRI_ASSERT(success);
         
@@ -919,7 +920,7 @@ std::unique_ptr<IndexIterator> RocksDBVPackIndex::lookup(transaction::Methods* t
 
   VPackSlice lastNonEq;
   leftSearch.openArray();
-  for (auto const& it : VPackArrayIterator(searchValues)) {
+  for (VPackSlice it : VPackArrayIterator(searchValues)) {
     TRI_ASSERT(it.isObject());
     VPackSlice eq = it.get(StaticStrings::IndexEq);
     if (eq.isNone()) {

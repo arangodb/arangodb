@@ -429,6 +429,7 @@ void DatabaseFeature::stop() {
   p.mode = arangodb::aql::QueryCacheMode::CACHE_ALWAYS_OFF;
   p.maxResultsCount = 0;
   p.maxResultsSize = 0;
+  p.maxEntrySize = 0;
   p.includeSystem = false;
   p.showBindVars = false;
 
@@ -593,10 +594,18 @@ Result DatabaseFeature::registerPostRecoveryCallback(std::function<Result()>&& c
 
   return Result();
 }
+  
+void DatabaseFeature::enumerate(std::function<void(TRI_vocbase_t*)> const& callback) {
+  auto unuser(_databasesProtector.use());
+  auto theLists = _databasesLists.load();
+
+  for (auto& p : theLists->_databases) {
+    callback(p.second);
+  }
+}
 
 /// @brief create a new database
-Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info, TRI_vocbase_t*& result){
-
+Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info, TRI_vocbase_t*& result) {
   std::string name = info.getName();
   auto dbId = info.getId();
   VPackBuilder markerBuilder;
@@ -1243,7 +1252,7 @@ int DatabaseFeature::iterateDatabases(VPackSlice const& databases) {
   ServerState::RoleEnum role = arangodb::ServerState::instance()->getRole();
 
   try {
-    for (auto const& it : VPackArrayIterator(databases)) {
+    for (VPackSlice it : VPackArrayIterator(databases)) {
       TRI_ASSERT(it.isObject());
 
       LOG_TOPIC("95f68", TRACE, Logger::FIXME) << "processing database: " << it.toJson();
@@ -1269,7 +1278,7 @@ int DatabaseFeature::iterateDatabases(VPackSlice const& databases) {
       arangodb::CreateDatabaseInfo info(server());
       info.allowSystemDB(true);
       auto res = info.load(it, VPackSlice::emptyArraySlice());
-      if(res.fail()){
+      if (res.fail()) {
         THROW_ARANGO_EXCEPTION(res);
       }
       auto database = engine->openDatabase(std::move(info), _upgrade);

@@ -67,7 +67,7 @@ MaskingsResult Maskings::fromFile(std::string const& filename) {
     return MaskingsResult(MaskingsResult::CANNOT_READ_FILE, msg);
   }
 
-  std::unique_ptr<Maskings> maskings(new Maskings{});
+  auto maskings = std::make_unique<Maskings>();
 
   maskings.get()->_randomSeed = RandomGenerator::interval(UINT64_MAX);
 
@@ -241,7 +241,7 @@ VPackValue Maskings::maskedItem(Collection& collection, std::vector<std::string>
 
 void Maskings::addMaskedArray(Collection& collection, VPackBuilder& builder,
                               std::vector<std::string>& path, VPackSlice const& data) {
-  for (auto const& entry : VPackArrayIterator(data)) {
+  for (VPackSlice entry : VPackArrayIterator(data)) {
     if (entry.isObject()) {
       VPackObjectBuilder ob(&builder);
       addMaskedObject(collection, builder, path, entry);

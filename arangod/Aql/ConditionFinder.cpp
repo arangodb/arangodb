@@ -29,6 +29,8 @@
 #include "Aql/IndexNode.h"
 #include "Aql/SortCondition.h"
 #include "Aql/SortNode.h"
+#include "Basics/tryEmplaceHelper.h"
+
 
 using namespace arangodb::aql;
 using EN = arangodb::aql::ExecutionNode;
@@ -93,7 +95,7 @@ bool ConditionFinder::before(ExecutionNode* en) {
     }
 
     case EN::CALCULATION: {
-      _variableDefinitions.emplace(
+      _variableDefinitions.try_emplace(
           ExecutionNode::castTo<CalculationNode const*>(en)->outVariable()->id,
           ExecutionNode::castTo<CalculationNode const*>(en)->expression()->node());
       TRI_IF_FAILURE("ConditionFinder::variableDefinition") {
@@ -146,16 +148,19 @@ bool ConditionFinder::before(ExecutionNode* en) {
         // will clear out usedIndexes
         IndexIteratorOptions opts;
         opts.ascending = !descending;
-        std::unique_ptr<ExecutionNode> newNode(
-            new IndexNode(_plan, _plan->nextId(), node->collection(),
-                          node->outVariable(), usedIndexes, std::move(condition), opts));
         TRI_IF_FAILURE("ConditionFinder::insertIndexNode") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
 
         // We keep this node's change
-        _changes->emplace(node->id(), newNode.get());
-        newNode.release();
+        _changes->try_emplace(
+            node->id(),
+            arangodb::lazyConstruct([&]{
+              return new IndexNode(_plan, _plan->nextId(), node->collection(),
+                          node->outVariable(), usedIndexes, std::move(condition), opts);
+            })
+        );
+
       }
 
       break;

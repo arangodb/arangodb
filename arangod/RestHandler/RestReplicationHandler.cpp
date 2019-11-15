@@ -171,7 +171,7 @@ static Result restoreDataParser(char const* ptr, char const* pos,
 
   type = REPLICATION_INVALID;
 
-  for (auto const& pair : VPackObjectIterator(slice, true)) {
+  for (auto pair : VPackObjectIterator(slice, true)) {
     if (!pair.key.isString()) {
       return Result{TRI_ERROR_HTTP_CORRUPTED_JSON,
                     "received invalid JSON data for collection '" +
@@ -730,8 +730,7 @@ void RestReplicationHandler::handleCommandClusterInventory() {
   LogicalView::enumerate(_vocbase, [&resultBuilder](LogicalView::ptr const& view) -> bool {
     if (view) {
       resultBuilder.openObject();
-      view->properties(resultBuilder, LogicalDataSource::makeFlags(
-                                          LogicalDataSource::Serialize::Detailed));
+      view->properties(resultBuilder, LogicalDataSource::Serialization::Inventory);
       // details, !forPersistence because on restore any datasource ids will
       // differ, so need an end-user representation
       resultBuilder.close();
@@ -1090,23 +1089,43 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
   std::string newId = StringUtils::itoa(newIdTick);
   toMerge.add("id", VPackValue(newId));
 
-  // Number of shards. Will be overwritten if not existent
-  VPackSlice const numberOfShardsSlice = parameters.get(StaticStrings::NumberOfShards);
-  if (!numberOfShardsSlice.isInteger()) {
-    // The information does not contain numberOfShards. Overwrite it.
-    VPackSlice const shards = parameters.get("shards");
-    if (shards.isObject()) {
-      numberOfShards = static_cast<uint64_t>(shards.length());
-    } else {
-      // "shards" not specified
-      // now check if numberOfShards property was given
-      if (numberOfShards == 0) {
-        // We take one shard if no value was given
-        numberOfShards = 1;
-      }
+  if (_vocbase.server().getFeature<ClusterFeature>().forceOneShard()) {
+    // force one shard, and force distributeShardsLike to be "_graphs"
+    toMerge.add(StaticStrings::NumberOfShards, VPackValue(1));
+    if (!_vocbase.IsSystemName(name)) {
+      // system-collections will be sharded normally. only user collections will get
+      // the forced sharding
+      toMerge.add(StaticStrings::DistributeShardsLike, VPackValue(_vocbase.shardingPrototypeName()));
     }
-    TRI_ASSERT(numberOfShards > 0);
-    toMerge.add(StaticStrings::NumberOfShards, VPackValue(numberOfShards));
+  } else {
+    // Number of shards. Will be overwritten if not existent
+    VPackSlice const numberOfShardsSlice = parameters.get(StaticStrings::NumberOfShards);
+    if (!numberOfShardsSlice.isInteger()) {
+      // The information does not contain numberOfShards. Overwrite it.
+      VPackSlice const shards = parameters.get("shards");
+      if (shards.isObject()) {
+        numberOfShards = static_cast<uint64_t>(shards.length());
+      } else {
+        // "shards" not specified
+        // now check if numberOfShards property was given
+        if (numberOfShards == 0) {
+          // We take one shard if no value was given
+          numberOfShards = 1;
+        }
+      }
+      TRI_ASSERT(numberOfShards > 0);
+      toMerge.add(StaticStrings::NumberOfShards, VPackValue(numberOfShards));
+    } else {
+      numberOfShards = numberOfShardsSlice.getUInt();
+    }
+    
+    if (_vocbase.sharding() == "single" && 
+        parameters.get(StaticStrings::DistributeShardsLike).isNone() &&
+        !_vocbase.IsSystemName(name) &&
+        numberOfShards <= 1) {
+      // shard like _graphs
+      toMerge.add(StaticStrings::DistributeShardsLike, VPackValue(_vocbase.shardingPrototypeName()));
+    }
   }
 
   // Replication Factor. Will be overwritten if not existent
@@ -1416,7 +1435,7 @@ Result RestReplicationHandler::processRestoreUsersBatch(std::string const& colle
       TRI_ASSERT(doc.isObject());
       // In the _users case we silently remove the _key value.
       bindVars->openObject();
-      for (auto const& it : VPackObjectIterator(doc)) {
+      for (auto it : VPackObjectIterator(doc)) {
         if (arangodb::velocypack::StringRef(it.key) != StaticStrings::KeyString &&
             arangodb::velocypack::StringRef(it.key) != StaticStrings::IdString) {
           bindVars->add(it.key);
@@ -1555,7 +1574,7 @@ Result RestReplicationHandler::processRestoreDataBatch(transaction::Methods& trx
         if (isUsersOnCoordinator) {
           // In the _users case we silently remove the _key value.
           builder.openObject();
-          for (auto const& it : VPackObjectIterator(doc)) {
+          for (auto it : VPackObjectIterator(doc)) {
             if (arangodb::velocypack::StringRef(it.key) != StaticStrings::KeyString &&
                 arangodb::velocypack::StringRef(it.key) != StaticStrings::IdString) {
               builder.add(it.key);
@@ -1902,8 +1921,8 @@ void RestReplicationHandler::handleCommandRestoreView() {
     if (view) {
       if (!overwrite) {
         generateError(GeneralResponse::responseCode(TRI_ERROR_ARANGO_DUPLICATE_NAME),
-                      TRI_ERROR_ARANGO_DUPLICATE_NAME, 
-                      std::string("unable to restore view '") + nameSlice.copyString() + ": " + 
+                      TRI_ERROR_ARANGO_DUPLICATE_NAME,
+                      std::string("unable to restore view '") + nameSlice.copyString() + ": " +
                       TRI_errno_string(TRI_ERROR_ARANGO_DUPLICATE_NAME));
         return;
       }
@@ -3092,7 +3111,7 @@ void RestReplicationHandler::registerTombstone(aql::QueryId id) const {
   std::string key = IdToTombstoneKey(_vocbase, id);
   {
     WRITE_LOCKER(writeLocker, RestReplicationHandler::_tombLock);
-    RestReplicationHandler::_tombstones.emplace(key, std::chrono::steady_clock::now() +
+    RestReplicationHandler::_tombstones.try_emplace(key, std::chrono::steady_clock::now() +
                                                          RestReplicationHandler::_tombstoneTimeout);
   }
   timeoutTombstones();

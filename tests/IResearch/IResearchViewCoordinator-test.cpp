@@ -240,14 +240,12 @@ TEST_F(IResearchViewCoordinatorTest, test_defaults) {
     EXPECT_TRUE(
         (true == view->visitCollections([](TRI_voc_cid_t) { return false; })));
 
-    // +system, +properties
+    // for persistence
     {
       arangodb::iresearch::IResearchViewMeta expectedMeta;
       arangodb::velocypack::Builder builder;
       builder.openObject();
-      view->properties(builder, arangodb::LogicalDataSource::makeFlags(
-                                    arangodb::LogicalDataSource::Serialize::Detailed,
-                                    arangodb::LogicalDataSource::Serialize::ForPersistence));
+      EXPECT_TRUE(view->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence).ok());
       builder.close();
       auto slice = builder.slice();
       arangodb::iresearch::IResearchViewMeta meta;
@@ -269,13 +267,12 @@ TEST_F(IResearchViewCoordinatorTest, test_defaults) {
       EXPECT_TRUE((meta.init(slice, error) && expectedMeta == meta));
     }
 
-    // -system, +properties
+    // properties
     {
       arangodb::iresearch::IResearchViewMeta expectedMeta;
       arangodb::velocypack::Builder builder;
       builder.openObject();
-      view->properties(builder, arangodb::LogicalDataSource::makeFlags(
-                                    arangodb::LogicalDataSource::Serialize::Detailed));
+      EXPECT_TRUE(view->properties(builder, arangodb::LogicalDataSource::Serialization::Properties).ok());
       builder.close();
       auto slice = builder.slice();
       arangodb::iresearch::IResearchViewMeta meta;
@@ -296,11 +293,11 @@ TEST_F(IResearchViewCoordinatorTest, test_defaults) {
       EXPECT_TRUE((meta.init(slice, error) && expectedMeta == meta));
     }
 
-    // -system, -properties
+    // list
     {
       arangodb::velocypack::Builder builder;
       builder.openObject();
-      view->properties(builder, arangodb::LogicalDataSource::makeFlags());
+      view->properties(builder, arangodb::LogicalDataSource::Serialization::List);
       builder.close();
       auto slice = builder.slice();
       arangodb::iresearch::IResearchViewMeta meta;
@@ -316,30 +313,6 @@ TEST_F(IResearchViewCoordinatorTest, test_defaults) {
                    arangodb::iresearch::DATA_SOURCE_TYPE.name()));
       EXPECT_TRUE((!slice.hasKey("planId")));
       EXPECT_TRUE((!slice.hasKey("deleted")));
-      EXPECT_TRUE((!slice.hasKey("properties")));
-    }
-
-    // +system, -properties
-    {
-      arangodb::velocypack::Builder builder;
-      builder.openObject();
-      view->properties(builder, arangodb::LogicalDataSource::makeFlags(
-                                    arangodb::LogicalDataSource::Serialize::ForPersistence));
-      builder.close();
-      auto slice = builder.slice();
-
-      EXPECT_TRUE((7 == slice.length()));
-      EXPECT_TRUE((slice.hasKey("globallyUniqueId") &&
-                   slice.get("globallyUniqueId").isString() &&
-                   false == slice.get("globallyUniqueId").copyString().empty()));
-      EXPECT_TRUE((slice.get("id").copyString() == "1"));
-      EXPECT_TRUE((slice.hasKey("isSystem") && slice.get("isSystem").isBoolean() &&
-                   false == slice.get("isSystem").getBoolean()));
-      EXPECT_TRUE((slice.get("name").copyString() == "testView"));
-      EXPECT_TRUE((slice.get("type").copyString() ==
-                   arangodb::iresearch::DATA_SOURCE_TYPE.name()));
-      EXPECT_TRUE((false == slice.get("deleted").getBool()));
-      EXPECT_TRUE((slice.hasKey("planId")));
       EXPECT_TRUE((!slice.hasKey("properties")));
     }
   }
@@ -710,8 +683,7 @@ TEST_F(IResearchViewCoordinatorTest, test_create_link_in_background) {
     ASSERT_NE(nullptr, logicalView);
     VPackBuilder builder;
     builder.openObject();
-    logicalView->properties(builder, arangodb::LogicalDataSource::makeFlags(
-                                         arangodb::LogicalDataSource::Serialize::Detailed));
+    logicalView->properties(builder, arangodb::LogicalDataSource::Serialization::Properties);
     builder.close();
     ASSERT_TRUE(builder.slice().hasKey("links"));
     auto links = builder.slice().get("links");
@@ -870,8 +842,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_properties) {
     {
       VPackBuilder builder;
       builder.openObject();
-      view->properties(builder, arangodb::LogicalDataSource::makeFlags(
-                                    arangodb::LogicalDataSource::Serialize::Detailed));
+      view->properties(builder, arangodb::LogicalDataSource::Serialization::Properties);
       builder.close();
 
       arangodb::iresearch::IResearchViewMeta meta;
@@ -909,9 +880,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_properties) {
       {
         VPackBuilder builder;
         builder.openObject();
-        fullyUpdatedView->properties(builder,
-                                     arangodb::LogicalDataSource::makeFlags(
-                                         arangodb::LogicalDataSource::Serialize::Detailed));
+        fullyUpdatedView->properties(builder, arangodb::LogicalDataSource::Serialization::Properties);
         builder.close();
 
         arangodb::iresearch::IResearchViewMeta meta;
@@ -928,8 +897,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_properties) {
       {
         VPackBuilder builder;
         builder.openObject();
-        view->properties(builder, arangodb::LogicalDataSource::makeFlags(
-                                      arangodb::LogicalDataSource::Serialize::Detailed));
+        view->properties(builder, arangodb::LogicalDataSource::Serialization::Properties);
         builder.close();
 
         arangodb::iresearch::IResearchViewMeta meta;
@@ -965,9 +933,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_properties) {
       {
         VPackBuilder builder;
         builder.openObject();
-        partiallyUpdatedView->properties(builder,
-                                         arangodb::LogicalDataSource::makeFlags(
-                                             arangodb::LogicalDataSource::Serialize::Detailed));
+        partiallyUpdatedView->properties(builder, arangodb::LogicalDataSource::Serialization::Properties);
         builder.close();
 
         arangodb::iresearch::IResearchViewMeta meta;
@@ -1038,9 +1004,7 @@ TEST_F(IResearchViewCoordinatorTest, test_overwrite_immutable_properties) {
     VPackBuilder builder;
 
     builder.openObject();
-    EXPECT_TRUE(view->properties(builder, arangodb::LogicalDataSource::makeFlags(
-                                              arangodb::LogicalDataSource::Serialize::Detailed))
-                    .ok());
+    EXPECT_TRUE(view->properties(builder, arangodb::LogicalDataSource::Serialization::Properties).ok());
     builder.close();
     EXPECT_TRUE(true == meta.init(builder.slice(), tmpString));
     EXPECT_TRUE(std::string("C") == irs::locale_utils::name(meta._locale));
@@ -1137,10 +1101,7 @@ TEST_F(IResearchViewCoordinatorTest, test_overwrite_immutable_properties) {
 
       builder.clear();
       builder.openObject();
-      EXPECT_TRUE(fullyUpdatedView
-                      ->properties(builder, arangodb::LogicalDataSource::makeFlags(
-                                                arangodb::LogicalDataSource::Serialize::Detailed))
-                      .ok());
+      EXPECT_TRUE(fullyUpdatedView->properties(builder, arangodb::LogicalDataSource::Serialization::Properties).ok());
       builder.close();
       EXPECT_TRUE(true == meta.init(builder.slice(), tmpString));
       EXPECT_TRUE(std::string("C") == irs::locale_utils::name(meta._locale));
@@ -1317,8 +1278,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
   {
     VPackBuilder info;
     info.openObject();
-    view->properties(info, arangodb::LogicalDataSource::makeFlags(
-                               arangodb::LogicalDataSource::Serialize::Detailed));
+    EXPECT_TRUE(view->properties(info, arangodb::LogicalDataSource::Serialization::Properties).ok());
     info.close();
 
     auto const properties = info.slice();
@@ -1391,7 +1351,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
     EXPECT_TRUE((false == index->hasSelectivityEstimate()));
     EXPECT_TRUE((false == index->implicitlyUnique()));
     EXPECT_TRUE((false == index->isSorted()));
-    EXPECT_TRUE((0 < index->memory()));
+    EXPECT_EQ(0, index->memory());
     EXPECT_TRUE((true == index->sparse()));
     EXPECT_TRUE(
         (arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK == index->type()));
@@ -1413,10 +1373,26 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
     EXPECT_TRUE(slice.get("view").isString());
     EXPECT_TRUE(view->guid() == slice.get("view").copyString());
     EXPECT_TRUE(slice.hasKey("figures"));
-    EXPECT_TRUE(slice.get("figures").isObject());
-    EXPECT_TRUE(slice.get("figures").hasKey("memory"));
-    EXPECT_TRUE(slice.get("figures").get("memory").isNumber());
-    EXPECT_TRUE(0 < slice.get("figures").get("memory").getUInt());
+    auto figuresSlice = slice.get("figures");
+    EXPECT_TRUE(figuresSlice.isObject());
+    EXPECT_TRUE(figuresSlice.hasKey("indexSize"));
+    EXPECT_TRUE(figuresSlice.get("indexSize").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("indexSize").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numFiles"));
+    EXPECT_TRUE(figuresSlice.get("numFiles").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numFiles").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numDocs"));
+    EXPECT_TRUE(figuresSlice.get("numDocs").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numDocs").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numLiveDocs"));
+    EXPECT_TRUE(figuresSlice.get("numLiveDocs").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numLiveDocs").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numBufferedDocs"));
+    EXPECT_TRUE(figuresSlice.get("numBufferedDocs").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numBufferedDocs").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numSegments"));
+    EXPECT_TRUE(figuresSlice.get("numSegments").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numSegments").getNumber<size_t>());
   }
 
   // test index in testCollection2
@@ -1438,7 +1414,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
     EXPECT_TRUE((false == index->hasSelectivityEstimate()));
     EXPECT_TRUE((false == index->implicitlyUnique()));
     EXPECT_TRUE((false == index->isSorted()));
-    EXPECT_TRUE((0 < index->memory()));
+    EXPECT_EQ(0, index->memory());
     EXPECT_TRUE((true == index->sparse()));
     EXPECT_TRUE(
         (arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK == index->type()));
@@ -1461,10 +1437,26 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
     EXPECT_TRUE(view->id() == 42);
     EXPECT_TRUE(view->guid() == slice.get("view").copyString());
     EXPECT_TRUE(slice.hasKey("figures"));
-    EXPECT_TRUE(slice.get("figures").isObject());
-    EXPECT_TRUE(slice.get("figures").hasKey("memory"));
-    EXPECT_TRUE(slice.get("figures").get("memory").isNumber());
-    EXPECT_TRUE(0 < slice.get("figures").get("memory").getUInt());
+    auto figuresSlice = slice.get("figures");
+    EXPECT_TRUE(figuresSlice.isObject());
+    EXPECT_TRUE(figuresSlice.hasKey("indexSize"));
+    EXPECT_TRUE(figuresSlice.get("indexSize").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("indexSize").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numFiles"));
+    EXPECT_TRUE(figuresSlice.get("numFiles").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numFiles").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numDocs"));
+    EXPECT_TRUE(figuresSlice.get("numDocs").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numDocs").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numLiveDocs"));
+    EXPECT_TRUE(figuresSlice.get("numLiveDocs").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numLiveDocs").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numBufferedDocs"));
+    EXPECT_TRUE(figuresSlice.get("numBufferedDocs").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numBufferedDocs").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numSegments"));
+    EXPECT_TRUE(figuresSlice.get("numSegments").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numSegments").getNumber<size_t>());
   }
 
   // test index in testCollection3
@@ -1485,7 +1477,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
     EXPECT_TRUE((false == index->hasSelectivityEstimate()));
     EXPECT_TRUE((false == index->implicitlyUnique()));
     EXPECT_TRUE((false == index->isSorted()));
-    EXPECT_TRUE((0 < index->memory()));
+    EXPECT_EQ(0, index->memory());
     EXPECT_TRUE((true == index->sparse()));
     EXPECT_TRUE(
         (arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK == index->type()));
@@ -1507,10 +1499,26 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
     EXPECT_TRUE(view->id() == 42);
     EXPECT_TRUE(view->guid() == slice.get("view").copyString());
     EXPECT_TRUE(slice.hasKey("figures"));
-    EXPECT_TRUE(slice.get("figures").isObject());
-    EXPECT_TRUE(slice.get("figures").hasKey("memory"));
-    EXPECT_TRUE(slice.get("figures").get("memory").isNumber());
-    EXPECT_TRUE(0 < slice.get("figures").get("memory").getUInt());
+    auto figuresSlice = slice.get("figures");
+    EXPECT_TRUE(figuresSlice.isObject());
+    EXPECT_TRUE(figuresSlice.hasKey("indexSize"));
+    EXPECT_TRUE(figuresSlice.get("indexSize").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("indexSize").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numFiles"));
+    EXPECT_TRUE(figuresSlice.get("numFiles").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numFiles").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numDocs"));
+    EXPECT_TRUE(figuresSlice.get("numDocs").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numDocs").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numLiveDocs"));
+    EXPECT_TRUE(figuresSlice.get("numLiveDocs").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numLiveDocs").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numBufferedDocs"));
+    EXPECT_TRUE(figuresSlice.get("numBufferedDocs").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numBufferedDocs").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numSegments"));
+    EXPECT_TRUE(figuresSlice.get("numSegments").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numSegments").getNumber<size_t>());
   }
 
   EXPECT_TRUE(view->properties(linksJson->slice(), true).ok());  // same properties -> should not affect plan version
@@ -1561,8 +1569,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
   {
     VPackBuilder info;
     info.openObject();
-    view->properties(info, arangodb::LogicalDataSource::makeFlags(
-                               arangodb::LogicalDataSource::Serialize::Detailed));
+    EXPECT_TRUE(view->properties(info, arangodb::LogicalDataSource::Serialization::Properties).ok());
     info.close();
 
     auto const properties = info.slice();
@@ -1621,7 +1628,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
     EXPECT_TRUE((false == index->hasSelectivityEstimate()));
     EXPECT_TRUE((false == index->implicitlyUnique()));
     EXPECT_TRUE((false == index->isSorted()));
-    EXPECT_TRUE((0 < index->memory()));
+    EXPECT_EQ(0, index->memory());
     EXPECT_TRUE((true == index->sparse()));
     EXPECT_TRUE(
         (arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK == index->type()));
@@ -1644,10 +1651,26 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
     EXPECT_TRUE(view->id() == 42);
     EXPECT_TRUE(view->guid() == slice.get("view").copyString());
     EXPECT_TRUE(slice.hasKey("figures"));
-    EXPECT_TRUE(slice.get("figures").isObject());
-    EXPECT_TRUE(slice.get("figures").hasKey("memory"));
-    EXPECT_TRUE(slice.get("figures").get("memory").isNumber());
-    EXPECT_TRUE(0 < slice.get("figures").get("memory").getUInt());
+    auto figuresSlice = slice.get("figures");
+    EXPECT_TRUE(figuresSlice.isObject());
+    EXPECT_TRUE(figuresSlice.hasKey("indexSize"));
+    EXPECT_TRUE(figuresSlice.get("indexSize").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("indexSize").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numFiles"));
+    EXPECT_TRUE(figuresSlice.get("numFiles").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numFiles").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numDocs"));
+    EXPECT_TRUE(figuresSlice.get("numDocs").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numDocs").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numLiveDocs"));
+    EXPECT_TRUE(figuresSlice.get("numLiveDocs").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numLiveDocs").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numBufferedDocs"));
+    EXPECT_TRUE(figuresSlice.get("numBufferedDocs").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numBufferedDocs").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numSegments"));
+    EXPECT_TRUE(figuresSlice.get("numSegments").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numSegments").getNumber<size_t>());
   }
 
   // test index in testCollection3
@@ -1669,7 +1692,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
     EXPECT_TRUE((false == index->hasSelectivityEstimate()));
     EXPECT_TRUE((false == index->implicitlyUnique()));
     EXPECT_TRUE((false == index->isSorted()));
-    EXPECT_TRUE((0 < index->memory()));
+    EXPECT_EQ(0, index->memory());
     EXPECT_TRUE((true == index->sparse()));
     EXPECT_TRUE(
         (arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK == index->type()));
@@ -1691,10 +1714,26 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
     EXPECT_TRUE(view->id() == 42);
     EXPECT_TRUE(view->guid() == slice.get("view").copyString());
     EXPECT_TRUE(slice.hasKey("figures"));
-    EXPECT_TRUE(slice.get("figures").isObject());
-    EXPECT_TRUE(slice.get("figures").hasKey("memory"));
-    EXPECT_TRUE(slice.get("figures").get("memory").isNumber());
-    EXPECT_TRUE(0 < slice.get("figures").get("memory").getUInt());
+    auto figuresSlice = slice.get("figures");
+    EXPECT_TRUE(figuresSlice.isObject());
+    EXPECT_TRUE(figuresSlice.hasKey("indexSize"));
+    EXPECT_TRUE(figuresSlice.get("indexSize").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("indexSize").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numFiles"));
+    EXPECT_TRUE(figuresSlice.get("numFiles").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numFiles").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numDocs"));
+    EXPECT_TRUE(figuresSlice.get("numDocs").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numDocs").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numLiveDocs"));
+    EXPECT_TRUE(figuresSlice.get("numLiveDocs").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numLiveDocs").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numBufferedDocs"));
+    EXPECT_TRUE(figuresSlice.get("numBufferedDocs").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numBufferedDocs").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numSegments"));
+    EXPECT_TRUE(figuresSlice.get("numSegments").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numSegments").getNumber<size_t>());
   }
 
   // drop view
@@ -1883,8 +1922,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
   {
     VPackBuilder info;
     info.openObject();
-    view->properties(info, arangodb::LogicalDataSource::makeFlags(
-                               arangodb::LogicalDataSource::Serialize::Detailed));
+    EXPECT_TRUE(view->properties(info, arangodb::LogicalDataSource::Serialization::Properties).ok());
     info.close();
 
     auto const properties = info.slice();
@@ -1943,7 +1981,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
     EXPECT_TRUE((false == index->hasSelectivityEstimate()));
     EXPECT_TRUE((false == index->implicitlyUnique()));
     EXPECT_TRUE((false == index->isSorted()));
-    EXPECT_TRUE((0 < index->memory()));
+    EXPECT_EQ(0, index->memory());
     EXPECT_TRUE((true == index->sparse()));
     EXPECT_TRUE(
         (arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK == index->type()));
@@ -1966,10 +2004,26 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
     EXPECT_TRUE(view->id() == 42);
     EXPECT_TRUE(view->guid() == slice.get("view").copyString());
     EXPECT_TRUE(slice.hasKey("figures"));
-    EXPECT_TRUE(slice.get("figures").isObject());
-    EXPECT_TRUE(slice.get("figures").hasKey("memory"));
-    EXPECT_TRUE(slice.get("figures").get("memory").isNumber());
-    EXPECT_TRUE(0 < slice.get("figures").get("memory").getUInt());
+    auto figuresSlice = slice.get("figures");
+    EXPECT_TRUE(figuresSlice.isObject());
+    EXPECT_TRUE(figuresSlice.hasKey("indexSize"));
+    EXPECT_TRUE(figuresSlice.get("indexSize").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("indexSize").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numFiles"));
+    EXPECT_TRUE(figuresSlice.get("numFiles").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numFiles").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numDocs"));
+    EXPECT_TRUE(figuresSlice.get("numDocs").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numDocs").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numLiveDocs"));
+    EXPECT_TRUE(figuresSlice.get("numLiveDocs").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numLiveDocs").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numBufferedDocs"));
+    EXPECT_TRUE(figuresSlice.get("numBufferedDocs").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numBufferedDocs").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numSegments"));
+    EXPECT_TRUE(figuresSlice.get("numSegments").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numSegments").getNumber<size_t>());
   }
 
   // test index in testCollection3
@@ -1990,7 +2044,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
     EXPECT_TRUE((false == index->hasSelectivityEstimate()));
     EXPECT_TRUE((false == index->implicitlyUnique()));
     EXPECT_TRUE((false == index->isSorted()));
-    EXPECT_TRUE((0 < index->memory()));
+    EXPECT_EQ(0, index->memory());
     EXPECT_TRUE((true == index->sparse()));
     EXPECT_TRUE(
         (arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK == index->type()));
@@ -2012,10 +2066,26 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
     EXPECT_TRUE(view->id() == 42);
     EXPECT_TRUE(view->guid() == slice.get("view").copyString());
     EXPECT_TRUE(slice.hasKey("figures"));
-    EXPECT_TRUE(slice.get("figures").isObject());
-    EXPECT_TRUE(slice.get("figures").hasKey("memory"));
-    EXPECT_TRUE(slice.get("figures").get("memory").isNumber());
-    EXPECT_TRUE(0 < slice.get("figures").get("memory").getUInt());
+    auto figuresSlice = slice.get("figures");
+    EXPECT_TRUE(figuresSlice.isObject());
+    EXPECT_TRUE(figuresSlice.hasKey("indexSize"));
+    EXPECT_TRUE(figuresSlice.get("indexSize").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("indexSize").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numFiles"));
+    EXPECT_TRUE(figuresSlice.get("numFiles").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numFiles").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numDocs"));
+    EXPECT_TRUE(figuresSlice.get("numDocs").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numDocs").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numLiveDocs"));
+    EXPECT_TRUE(figuresSlice.get("numLiveDocs").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numLiveDocs").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numBufferedDocs"));
+    EXPECT_TRUE(figuresSlice.get("numBufferedDocs").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numBufferedDocs").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numSegments"));
+    EXPECT_TRUE(figuresSlice.get("numSegments").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numSegments").getNumber<size_t>());
   }
 
   EXPECT_TRUE(view->properties(linksJson->slice(), true).ok());  // same properties -> should not affect plan version
@@ -2068,8 +2138,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
   {
     VPackBuilder info;
     info.openObject();
-    view->properties(info, arangodb::LogicalDataSource::makeFlags(
-                               arangodb::LogicalDataSource::Serialize::Detailed));
+    EXPECT_TRUE(view->properties(info, arangodb::LogicalDataSource::Serialization::Properties).ok());
     info.close();
 
     auto const properties = info.slice();
@@ -2142,7 +2211,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
     EXPECT_TRUE((false == index->hasSelectivityEstimate()));
     EXPECT_TRUE((false == index->implicitlyUnique()));
     EXPECT_TRUE((false == index->isSorted()));
-    EXPECT_TRUE((0 < index->memory()));
+    EXPECT_EQ(0, index->memory());
     EXPECT_TRUE((true == index->sparse()));
     EXPECT_TRUE(
         (arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK == index->type()));
@@ -2165,10 +2234,26 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
     EXPECT_TRUE(view->id() == 42);
     EXPECT_TRUE(view->guid() == slice.get("view").copyString());
     EXPECT_TRUE(slice.hasKey("figures"));
-    EXPECT_TRUE(slice.get("figures").isObject());
-    EXPECT_TRUE(slice.get("figures").hasKey("memory"));
-    EXPECT_TRUE(slice.get("figures").get("memory").isNumber());
-    EXPECT_TRUE(0 < slice.get("figures").get("memory").getUInt());
+    auto figuresSlice = slice.get("figures");
+    EXPECT_TRUE(figuresSlice.isObject());
+    EXPECT_TRUE(figuresSlice.hasKey("indexSize"));
+    EXPECT_TRUE(figuresSlice.get("indexSize").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("indexSize").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numFiles"));
+    EXPECT_TRUE(figuresSlice.get("numFiles").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numFiles").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numDocs"));
+    EXPECT_TRUE(figuresSlice.get("numDocs").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numDocs").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numLiveDocs"));
+    EXPECT_TRUE(figuresSlice.get("numLiveDocs").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numLiveDocs").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numBufferedDocs"));
+    EXPECT_TRUE(figuresSlice.get("numBufferedDocs").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numBufferedDocs").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numSegments"));
+    EXPECT_TRUE(figuresSlice.get("numSegments").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numSegments").getNumber<size_t>());
   }
 
   // test index in testCollection2
@@ -2190,7 +2275,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
     EXPECT_TRUE((false == index->hasSelectivityEstimate()));
     EXPECT_TRUE((false == index->implicitlyUnique()));
     EXPECT_TRUE((false == index->isSorted()));
-    EXPECT_TRUE((0 < index->memory()));
+    EXPECT_EQ(0, index->memory());
     EXPECT_TRUE((true == index->sparse()));
     EXPECT_TRUE(
         (arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK == index->type()));
@@ -2213,10 +2298,26 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
     EXPECT_TRUE(view->id() == 42);
     EXPECT_TRUE(view->guid() == slice.get("view").copyString());
     EXPECT_TRUE(slice.hasKey("figures"));
-    EXPECT_TRUE(slice.get("figures").isObject());
-    EXPECT_TRUE(slice.get("figures").hasKey("memory"));
-    EXPECT_TRUE(slice.get("figures").get("memory").isNumber());
-    EXPECT_TRUE(0 < slice.get("figures").get("memory").getUInt());
+    auto figuresSlice = slice.get("figures");
+    EXPECT_TRUE(figuresSlice.isObject());
+    EXPECT_TRUE(figuresSlice.hasKey("indexSize"));
+    EXPECT_TRUE(figuresSlice.get("indexSize").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("indexSize").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numFiles"));
+    EXPECT_TRUE(figuresSlice.get("numFiles").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numFiles").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numDocs"));
+    EXPECT_TRUE(figuresSlice.get("numDocs").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numDocs").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numLiveDocs"));
+    EXPECT_TRUE(figuresSlice.get("numLiveDocs").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numLiveDocs").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numBufferedDocs"));
+    EXPECT_TRUE(figuresSlice.get("numBufferedDocs").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numBufferedDocs").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numSegments"));
+    EXPECT_TRUE(figuresSlice.get("numSegments").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numSegments").getNumber<size_t>());
   }
 
   // test index in testCollection3
@@ -2238,7 +2339,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
     EXPECT_TRUE((false == index->hasSelectivityEstimate()));
     EXPECT_TRUE((false == index->implicitlyUnique()));
     EXPECT_TRUE((false == index->isSorted()));
-    EXPECT_TRUE((0 < index->memory()));
+    EXPECT_EQ(0, index->memory());
     EXPECT_TRUE((true == index->sparse()));
     EXPECT_TRUE(
         (arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK == index->type()));
@@ -2260,10 +2361,26 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
     EXPECT_TRUE(view->id() == 42);
     EXPECT_TRUE(view->guid() == slice.get("view").copyString());
     EXPECT_TRUE(slice.hasKey("figures"));
-    EXPECT_TRUE(slice.get("figures").isObject());
-    EXPECT_TRUE(slice.get("figures").hasKey("memory"));
-    EXPECT_TRUE(slice.get("figures").get("memory").isNumber());
-    EXPECT_TRUE(0 < slice.get("figures").get("memory").getUInt());
+    auto figuresSlice = slice.get("figures");
+    EXPECT_TRUE(figuresSlice.isObject());
+    EXPECT_TRUE(figuresSlice.hasKey("indexSize"));
+    EXPECT_TRUE(figuresSlice.get("indexSize").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("indexSize").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numFiles"));
+    EXPECT_TRUE(figuresSlice.get("numFiles").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numFiles").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numDocs"));
+    EXPECT_TRUE(figuresSlice.get("numDocs").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numDocs").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numLiveDocs"));
+    EXPECT_TRUE(figuresSlice.get("numLiveDocs").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numLiveDocs").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numBufferedDocs"));
+    EXPECT_TRUE(figuresSlice.get("numBufferedDocs").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numBufferedDocs").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numSegments"));
+    EXPECT_TRUE(figuresSlice.get("numSegments").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numSegments").getNumber<size_t>());
   }
 
   // partial update - empty delta
@@ -2507,8 +2624,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
   {
     VPackBuilder info;
     info.openObject();
-    view->properties(info, arangodb::LogicalDataSource::makeFlags(
-                               arangodb::LogicalDataSource::Serialize::Detailed));
+    EXPECT_TRUE(view->properties(info, arangodb::LogicalDataSource::Serialization::Properties).ok());
     info.close();
 
     auto const properties = info.slice();
@@ -2567,7 +2683,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
     EXPECT_TRUE((false == index->hasSelectivityEstimate()));
     EXPECT_TRUE((false == index->implicitlyUnique()));
     EXPECT_TRUE((false == index->isSorted()));
-    EXPECT_TRUE((0 < index->memory()));
+    EXPECT_EQ(0, index->memory());
     EXPECT_TRUE((true == index->sparse()));
     EXPECT_TRUE(
         (arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK == index->type()));
@@ -2590,10 +2706,26 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
     EXPECT_TRUE(view->id() == 42);
     EXPECT_TRUE(view->guid() == slice.get("view").copyString());
     EXPECT_TRUE(slice.hasKey("figures"));
-    EXPECT_TRUE(slice.get("figures").isObject());
-    EXPECT_TRUE(slice.get("figures").hasKey("memory"));
-    EXPECT_TRUE(slice.get("figures").get("memory").isNumber());
-    EXPECT_TRUE(0 < slice.get("figures").get("memory").getUInt());
+    auto figuresSlice = slice.get("figures");
+    EXPECT_TRUE(figuresSlice.isObject());
+    EXPECT_TRUE(figuresSlice.hasKey("indexSize"));
+    EXPECT_TRUE(figuresSlice.get("indexSize").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("indexSize").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numFiles"));
+    EXPECT_TRUE(figuresSlice.get("numFiles").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numFiles").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numDocs"));
+    EXPECT_TRUE(figuresSlice.get("numDocs").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numDocs").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numLiveDocs"));
+    EXPECT_TRUE(figuresSlice.get("numLiveDocs").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numLiveDocs").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numBufferedDocs"));
+    EXPECT_TRUE(figuresSlice.get("numBufferedDocs").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numBufferedDocs").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numSegments"));
+    EXPECT_TRUE(figuresSlice.get("numSegments").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numSegments").getNumber<size_t>());
   }
 
   // test index in testCollection3
@@ -2614,7 +2746,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
     EXPECT_TRUE((false == index->hasSelectivityEstimate()));
     EXPECT_TRUE((false == index->implicitlyUnique()));
     EXPECT_TRUE((false == index->isSorted()));
-    EXPECT_TRUE((0 < index->memory()));
+    EXPECT_EQ(0, index->memory());
     EXPECT_TRUE((true == index->sparse()));
     EXPECT_TRUE(
         (arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK == index->type()));
@@ -2636,10 +2768,26 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
     EXPECT_TRUE(view->id() == 42);
     EXPECT_TRUE(view->guid() == slice.get("view").copyString());
     EXPECT_TRUE(slice.hasKey("figures"));
-    EXPECT_TRUE(slice.get("figures").isObject());
-    EXPECT_TRUE(slice.get("figures").hasKey("memory"));
-    EXPECT_TRUE(slice.get("figures").get("memory").isNumber());
-    EXPECT_TRUE(0 < slice.get("figures").get("memory").getUInt());
+    auto figuresSlice = slice.get("figures");
+    EXPECT_TRUE(figuresSlice.isObject());
+    EXPECT_TRUE(figuresSlice.hasKey("indexSize"));
+    EXPECT_TRUE(figuresSlice.get("indexSize").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("indexSize").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numFiles"));
+    EXPECT_TRUE(figuresSlice.get("numFiles").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numFiles").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numDocs"));
+    EXPECT_TRUE(figuresSlice.get("numDocs").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numDocs").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numLiveDocs"));
+    EXPECT_TRUE(figuresSlice.get("numLiveDocs").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numLiveDocs").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numBufferedDocs"));
+    EXPECT_TRUE(figuresSlice.get("numBufferedDocs").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numBufferedDocs").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numSegments"));
+    EXPECT_TRUE(figuresSlice.get("numSegments").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numSegments").getNumber<size_t>());
   }
 
   EXPECT_TRUE(view->properties(linksJson->slice(), false).ok());  // same properties -> should not affect plan version
@@ -2707,8 +2855,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
   {
     VPackBuilder info;
     info.openObject();
-    view->properties(info, arangodb::LogicalDataSource::makeFlags(
-                               arangodb::LogicalDataSource::Serialize::Detailed));
+    EXPECT_TRUE(view->properties(info, arangodb::LogicalDataSource::Serialization::Properties).ok());
     info.close();
 
     auto const properties = info.slice();
@@ -2754,7 +2901,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
     EXPECT_TRUE((false == index->hasSelectivityEstimate()));
     EXPECT_TRUE((false == index->implicitlyUnique()));
     EXPECT_TRUE((false == index->isSorted()));
-    EXPECT_TRUE((0 < index->memory()));
+    EXPECT_EQ(0, index->memory());
     EXPECT_TRUE((true == index->sparse()));
     EXPECT_TRUE(
         (arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK == index->type()));
@@ -2777,10 +2924,26 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
     EXPECT_TRUE(view->id() == 42);
     EXPECT_TRUE(view->guid() == slice.get("view").copyString());
     EXPECT_TRUE(slice.hasKey("figures"));
-    EXPECT_TRUE(slice.get("figures").isObject());
-    EXPECT_TRUE(slice.get("figures").hasKey("memory"));
-    EXPECT_TRUE(slice.get("figures").get("memory").isNumber());
-    EXPECT_TRUE(0 < slice.get("figures").get("memory").getUInt());
+    auto figuresSlice = slice.get("figures");
+    EXPECT_TRUE(figuresSlice.isObject());
+    EXPECT_TRUE(figuresSlice.hasKey("indexSize"));
+    EXPECT_TRUE(figuresSlice.get("indexSize").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("indexSize").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numFiles"));
+    EXPECT_TRUE(figuresSlice.get("numFiles").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numFiles").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numDocs"));
+    EXPECT_TRUE(figuresSlice.get("numDocs").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numDocs").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numLiveDocs"));
+    EXPECT_TRUE(figuresSlice.get("numLiveDocs").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numLiveDocs").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numBufferedDocs"));
+    EXPECT_TRUE(figuresSlice.get("numBufferedDocs").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numBufferedDocs").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numSegments"));
+    EXPECT_TRUE(figuresSlice.get("numSegments").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numSegments").getNumber<size_t>());
   }
 
   // replace links with testCollection1 link
@@ -2837,8 +3000,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
   {
     VPackBuilder info;
     info.openObject();
-    view->properties(info, arangodb::LogicalDataSource::makeFlags(
-                               arangodb::LogicalDataSource::Serialize::Detailed));
+    EXPECT_TRUE(view->properties(info, arangodb::LogicalDataSource::Serialization::Properties).ok());
     info.close();
 
     auto const properties = info.slice();
@@ -2884,7 +3046,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
     EXPECT_TRUE((false == index->hasSelectivityEstimate()));
     EXPECT_TRUE((false == index->implicitlyUnique()));
     EXPECT_TRUE((false == index->isSorted()));
-    EXPECT_TRUE((0 < index->memory()));
+    EXPECT_EQ(0, index->memory());
     EXPECT_TRUE((true == index->sparse()));
     EXPECT_TRUE(
         (arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK == index->type()));
@@ -2907,10 +3069,26 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
     EXPECT_TRUE(view->id() == 42);
     EXPECT_TRUE(view->guid() == slice.get("view").copyString());
     EXPECT_TRUE(slice.hasKey("figures"));
-    EXPECT_TRUE(slice.get("figures").isObject());
-    EXPECT_TRUE(slice.get("figures").hasKey("memory"));
-    EXPECT_TRUE(slice.get("figures").get("memory").isNumber());
-    EXPECT_TRUE(0 < slice.get("figures").get("memory").getUInt());
+    auto figuresSlice = slice.get("figures");
+    EXPECT_TRUE(figuresSlice.isObject());
+    EXPECT_TRUE(figuresSlice.hasKey("indexSize"));
+    EXPECT_TRUE(figuresSlice.get("indexSize").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("indexSize").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numFiles"));
+    EXPECT_TRUE(figuresSlice.get("numFiles").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numFiles").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numDocs"));
+    EXPECT_TRUE(figuresSlice.get("numDocs").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numDocs").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numLiveDocs"));
+    EXPECT_TRUE(figuresSlice.get("numLiveDocs").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numLiveDocs").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numBufferedDocs"));
+    EXPECT_TRUE(figuresSlice.get("numBufferedDocs").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numBufferedDocs").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numSegments"));
+    EXPECT_TRUE(figuresSlice.get("numSegments").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numSegments").getNumber<size_t>());
   }
 
   // drop view
@@ -3102,8 +3280,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
   {
     VPackBuilder info;
     info.openObject();
-    view->properties(info, arangodb::LogicalDataSource::makeFlags(
-                               arangodb::LogicalDataSource::Serialize::Detailed));
+    EXPECT_TRUE(view->properties(info, arangodb::LogicalDataSource::Serialization::Properties).ok());
     info.close();
 
     auto const properties = info.slice();
@@ -3176,7 +3353,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
     EXPECT_TRUE((false == index->hasSelectivityEstimate()));
     EXPECT_TRUE((false == index->implicitlyUnique()));
     EXPECT_TRUE((false == index->isSorted()));
-    EXPECT_TRUE((0 < index->memory()));
+    EXPECT_EQ(0, index->memory());
     EXPECT_TRUE((true == index->sparse()));
     EXPECT_TRUE(
         (arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK == index->type()));
@@ -3199,10 +3376,26 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
     EXPECT_TRUE(view->id() == 42);
     EXPECT_TRUE(view->guid() == slice.get("view").copyString());
     EXPECT_TRUE(slice.hasKey("figures"));
-    EXPECT_TRUE(slice.get("figures").isObject());
-    EXPECT_TRUE(slice.get("figures").hasKey("memory"));
-    EXPECT_TRUE(slice.get("figures").get("memory").isNumber());
-    EXPECT_TRUE(0 < slice.get("figures").get("memory").getUInt());
+    auto figuresSlice = slice.get("figures");
+    EXPECT_TRUE(figuresSlice.isObject());
+    EXPECT_TRUE(figuresSlice.hasKey("indexSize"));
+    EXPECT_TRUE(figuresSlice.get("indexSize").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("indexSize").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numFiles"));
+    EXPECT_TRUE(figuresSlice.get("numFiles").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numFiles").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numDocs"));
+    EXPECT_TRUE(figuresSlice.get("numDocs").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numDocs").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numLiveDocs"));
+    EXPECT_TRUE(figuresSlice.get("numLiveDocs").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numLiveDocs").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numBufferedDocs"));
+    EXPECT_TRUE(figuresSlice.get("numBufferedDocs").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numBufferedDocs").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numSegments"));
+    EXPECT_TRUE(figuresSlice.get("numSegments").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numSegments").getNumber<size_t>());
   }
 
   // test index in testCollection2
@@ -3224,7 +3417,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
     EXPECT_TRUE((false == index->hasSelectivityEstimate()));
     EXPECT_TRUE((false == index->implicitlyUnique()));
     EXPECT_TRUE((false == index->isSorted()));
-    EXPECT_TRUE((0 < index->memory()));
+    EXPECT_EQ(0, index->memory());
     EXPECT_TRUE((true == index->sparse()));
     EXPECT_TRUE(
         (arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK == index->type()));
@@ -3247,10 +3440,26 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
     EXPECT_TRUE(view->id() == 42);
     EXPECT_TRUE(view->guid() == slice.get("view").copyString());
     EXPECT_TRUE(slice.hasKey("figures"));
-    EXPECT_TRUE(slice.get("figures").isObject());
-    EXPECT_TRUE(slice.get("figures").hasKey("memory"));
-    EXPECT_TRUE(slice.get("figures").get("memory").isNumber());
-    EXPECT_TRUE(0 < slice.get("figures").get("memory").getUInt());
+    auto figuresSlice = slice.get("figures");
+    EXPECT_TRUE(figuresSlice.isObject());
+    EXPECT_TRUE(figuresSlice.hasKey("indexSize"));
+    EXPECT_TRUE(figuresSlice.get("indexSize").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("indexSize").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numFiles"));
+    EXPECT_TRUE(figuresSlice.get("numFiles").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numFiles").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numDocs"));
+    EXPECT_TRUE(figuresSlice.get("numDocs").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numDocs").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numLiveDocs"));
+    EXPECT_TRUE(figuresSlice.get("numLiveDocs").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numLiveDocs").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numBufferedDocs"));
+    EXPECT_TRUE(figuresSlice.get("numBufferedDocs").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numBufferedDocs").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numSegments"));
+    EXPECT_TRUE(figuresSlice.get("numSegments").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numSegments").getNumber<size_t>());
   }
 
   // test index in testCollection3
@@ -3271,7 +3480,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
     EXPECT_TRUE((false == index->hasSelectivityEstimate()));
     EXPECT_TRUE((false == index->implicitlyUnique()));
     EXPECT_TRUE((false == index->isSorted()));
-    EXPECT_TRUE((0 < index->memory()));
+    EXPECT_EQ(0, index->memory());
     EXPECT_TRUE((true == index->sparse()));
     EXPECT_TRUE(
         (arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK == index->type()));
@@ -3293,10 +3502,26 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
     EXPECT_TRUE(view->id() == 42);
     EXPECT_TRUE(view->guid() == slice.get("view").copyString());
     EXPECT_TRUE(slice.hasKey("figures"));
-    EXPECT_TRUE(slice.get("figures").isObject());
-    EXPECT_TRUE(slice.get("figures").hasKey("memory"));
-    EXPECT_TRUE(slice.get("figures").get("memory").isNumber());
-    EXPECT_TRUE(0 < slice.get("figures").get("memory").getUInt());
+    auto figuresSlice = slice.get("figures");
+    EXPECT_TRUE(figuresSlice.isObject());
+    EXPECT_TRUE(figuresSlice.hasKey("indexSize"));
+    EXPECT_TRUE(figuresSlice.get("indexSize").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("indexSize").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numFiles"));
+    EXPECT_TRUE(figuresSlice.get("numFiles").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numFiles").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numDocs"));
+    EXPECT_TRUE(figuresSlice.get("numDocs").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numDocs").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numLiveDocs"));
+    EXPECT_TRUE(figuresSlice.get("numLiveDocs").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numLiveDocs").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numBufferedDocs"));
+    EXPECT_TRUE(figuresSlice.get("numBufferedDocs").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numBufferedDocs").getNumber<size_t>());
+    EXPECT_TRUE(figuresSlice.hasKey("numSegments"));
+    EXPECT_TRUE(figuresSlice.get("numSegments").isNumber());
+    EXPECT_EQ(0, figuresSlice.get("numSegments").getNumber<size_t>());
   }
 
   EXPECT_TRUE(view->properties(linksJson->slice(), false).ok());  // same properties -> should not affect plan version
@@ -3358,8 +3583,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
   {
     VPackBuilder info;
     info.openObject();
-    view->properties(info, arangodb::LogicalDataSource::makeFlags(
-                               arangodb::LogicalDataSource::Serialize::Detailed));
+    EXPECT_TRUE(view->properties(info, arangodb::LogicalDataSource::Serialization::Properties).ok());
     info.close();
 
     auto const properties = info.slice();
@@ -3498,8 +3722,7 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
     {
       VPackBuilder info;
       info.openObject();
-      view->properties(info, arangodb::LogicalDataSource::makeFlags(
-                                 arangodb::LogicalDataSource::Serialize::Detailed));
+      EXPECT_TRUE(view->properties(info, arangodb::LogicalDataSource::Serialization::Properties).ok());
       info.close();
 
       auto const properties = info.slice();
@@ -3548,7 +3771,7 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
       EXPECT_TRUE((false == index->hasSelectivityEstimate()));
       EXPECT_TRUE((false == index->implicitlyUnique()));
       EXPECT_TRUE((false == index->isSorted()));
-      EXPECT_TRUE((0 < index->memory()));
+      EXPECT_EQ(0, index->memory());
       EXPECT_TRUE((true == index->sparse()));
       EXPECT_TRUE((arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK ==
                    index->type()));
@@ -3571,10 +3794,26 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
       EXPECT_TRUE(view->id() == 42);
       EXPECT_TRUE(view->guid() == slice.get("view").copyString());
       EXPECT_TRUE(slice.hasKey("figures"));
-      EXPECT_TRUE(slice.get("figures").isObject());
-      EXPECT_TRUE(slice.get("figures").hasKey("memory"));
-      EXPECT_TRUE(slice.get("figures").get("memory").isNumber());
-      EXPECT_TRUE(0 < slice.get("figures").get("memory").getUInt());
+      auto figuresSlice = slice.get("figures");
+      EXPECT_TRUE(figuresSlice.isObject());
+      EXPECT_TRUE(figuresSlice.hasKey("indexSize"));
+      EXPECT_TRUE(figuresSlice.get("indexSize").isNumber());
+      EXPECT_EQ(0, figuresSlice.get("indexSize").getNumber<size_t>());
+      EXPECT_TRUE(figuresSlice.hasKey("numFiles"));
+      EXPECT_TRUE(figuresSlice.get("numFiles").isNumber());
+      EXPECT_EQ(0, figuresSlice.get("numFiles").getNumber<size_t>());
+      EXPECT_TRUE(figuresSlice.hasKey("numDocs"));
+      EXPECT_TRUE(figuresSlice.get("numDocs").isNumber());
+      EXPECT_EQ(0, figuresSlice.get("numDocs").getNumber<size_t>());
+      EXPECT_TRUE(figuresSlice.hasKey("numLiveDocs"));
+      EXPECT_TRUE(figuresSlice.get("numLiveDocs").isNumber());
+      EXPECT_EQ(0, figuresSlice.get("numLiveDocs").getNumber<size_t>());
+      EXPECT_TRUE(figuresSlice.hasKey("numBufferedDocs"));
+      EXPECT_TRUE(figuresSlice.get("numBufferedDocs").isNumber());
+      EXPECT_EQ(0, figuresSlice.get("numBufferedDocs").getNumber<size_t>());
+      EXPECT_TRUE(figuresSlice.hasKey("numSegments"));
+      EXPECT_TRUE(figuresSlice.get("numSegments").isNumber());
+      EXPECT_EQ(0, figuresSlice.get("numSegments").getNumber<size_t>());
     }
 
     EXPECT_TRUE(view->properties(linksJson->slice(), true).ok());  // same properties -> should not affect plan version
@@ -3619,8 +3858,7 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
     {
       VPackBuilder info;
       info.openObject();
-      view->properties(info, arangodb::LogicalDataSource::makeFlags(
-                                 arangodb::LogicalDataSource::Serialize::Detailed));
+      EXPECT_TRUE(view->properties(info, arangodb::LogicalDataSource::Serialization::Properties).ok());
       info.close();
 
       auto const properties = info.slice();
@@ -3737,10 +3975,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
 
     arangodb::velocypack::Builder builder;
     builder.openObject();
-    logicalView->properties(builder,
-                            arangodb::LogicalDataSource::makeFlags(
-                                arangodb::LogicalDataSource::Serialize::Detailed,
-                                arangodb::LogicalDataSource::Serialize::ForPersistence));  // 'forPersistence' to avoid auth check
+    EXPECT_TRUE(logicalView->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence).ok()); // 'forPersistence' to avoid auth check
     builder.close();
 
     auto slice = builder.slice();
@@ -3796,10 +4031,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
 
     arangodb::velocypack::Builder builder;
     builder.openObject();
-    logicalView->properties(builder,
-                            arangodb::LogicalDataSource::makeFlags(
-                                arangodb::LogicalDataSource::Serialize::Detailed,
-                                arangodb::LogicalDataSource::Serialize::ForPersistence));  // 'forPersistence' to avoid auth check
+    EXPECT_TRUE(logicalView->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence).ok()); // 'forPersistence' to avoid auth check
     builder.close();
 
     auto slice = builder.slice();
@@ -3903,10 +4135,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
 
       arangodb::velocypack::Builder builder;
       builder.openObject();
-      logicalView->properties(builder,
-                              arangodb::LogicalDataSource::makeFlags(
-                                  arangodb::LogicalDataSource::Serialize::Detailed,
-                                  arangodb::LogicalDataSource::Serialize::ForPersistence));  // 'forPersistence' to avoid auth check
+      EXPECT_TRUE(logicalView->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence).ok()); // 'forPersistence' to avoid auth check
       builder.close();
 
       auto slice = builder.slice();
@@ -3934,10 +4163,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
 
       arangodb::velocypack::Builder builder;
       builder.openObject();
-      logicalView->properties(builder,
-                              arangodb::LogicalDataSource::makeFlags(
-                                  arangodb::LogicalDataSource::Serialize::Detailed,
-                                  arangodb::LogicalDataSource::Serialize::ForPersistence));  // 'forPersistence' to avoid auth check
+      EXPECT_TRUE(logicalView->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence).ok()); // 'forPersistence' to avoid auth check
       builder.close();
 
       auto slice = builder.slice();
@@ -4484,10 +4710,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
 
     arangodb::velocypack::Builder builder;
     builder.openObject();
-    logicalView->properties(builder,
-                            arangodb::LogicalDataSource::makeFlags(
-                                arangodb::LogicalDataSource::Serialize::Detailed,
-                                arangodb::LogicalDataSource::Serialize::ForPersistence));  // 'forPersistence' to avoid auth check
+    EXPECT_TRUE(logicalView->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence).ok()); // 'forPersistence' to avoid auth check
     builder.close();
 
     auto slice = builder.slice();
@@ -4544,10 +4767,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
 
     arangodb::velocypack::Builder builder;
     builder.openObject();
-    logicalView->properties(builder,
-                            arangodb::LogicalDataSource::makeFlags(
-                                arangodb::LogicalDataSource::Serialize::Detailed,
-                                arangodb::LogicalDataSource::Serialize::ForPersistence));  // 'forPersistence' to avoid auth check
+    EXPECT_TRUE(logicalView->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence).ok()); // 'forPersistence' to avoid auth check
     builder.close();
 
     auto slice = builder.slice();
@@ -4650,10 +4870,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
 
       arangodb::velocypack::Builder builder;
       builder.openObject();
-      logicalView->properties(builder,
-                              arangodb::LogicalDataSource::makeFlags(
-                                  arangodb::LogicalDataSource::Serialize::Detailed,
-                                  arangodb::LogicalDataSource::Serialize::ForPersistence));  // 'forPersistence' to avoid auth check
+      EXPECT_TRUE(logicalView->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence).ok()); // 'forPersistence' to avoid auth check
       builder.close();
 
       auto slice = builder.slice();
@@ -4681,10 +4898,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
 
       arangodb::velocypack::Builder builder;
       builder.openObject();
-      logicalView->properties(builder,
-                              arangodb::LogicalDataSource::makeFlags(
-                                  arangodb::LogicalDataSource::Serialize::Detailed,
-                                  arangodb::LogicalDataSource::Serialize::ForPersistence));  // 'forPersistence' to avoid auth check
+      EXPECT_TRUE(logicalView->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence).ok()); // 'forPersistence' to avoid auth check
       builder.close();
 
       auto slice = builder.slice();
