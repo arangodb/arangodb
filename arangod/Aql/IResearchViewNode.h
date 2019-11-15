@@ -25,6 +25,7 @@
 #define ARANGOD_IRESEARCH__IRESEARCH_VIEW_NODE_H 1
 
 #include "Aql/ExecutionNode.h"
+#include "Aql/LateMaterializedOptimizerRulesCommon.h"
 #include "Aql/types.h"
 #include "IResearch/IResearchOrderFactory.h"
 #include "IResearch/IResearchViewSort.h"
@@ -175,7 +176,7 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
 
   std::shared_ptr<std::unordered_set<aql::RegisterId>> calcInputRegs() const;
 
-  inline bool isLateMaterialized() const {
+  bool isLateMaterialized() const {
     return _outNonMaterializedDocId != nullptr &&
            _outNonMaterializedColPtr != nullptr;
   }
@@ -197,6 +198,21 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
       _outNonMaterializedViewVars[viewVars.second.viewFieldNum] = viewVars.second.var;
     }
   }
+
+  using ViewVarsToBeReplaced = std::vector<std::pair<aql::latematerialized::AstData, aql::latematerialized::FieldData>>;
+
+  void replaceViewVariables(std::vector<aql::CalculationNode*>const& calcNodes);
+
+  void saveCalcNodesForViewVariables(std::vector<aql::latematerialized::NodeWithAttrs> const& nodesToChange);
+
+  bool canVariablesBeReplaced(aql::CalculationNode* calclulationNode) const;
+
+  void clearViewVariables() {
+    if (!_nodesToChange.empty()) {
+      std::unordered_map<aql::CalculationNode*, ViewVarsToBeReplaced> nodesToChange;
+      _nodesToChange.swap(nodesToChange);
+    }
+  };
 
  private:
   /// @brief the database
@@ -224,6 +240,8 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   /// @brief output variables to non-materialized document view sort references
   ViewValuesVars _outNonMaterializedViewVars;
 
+  /// @brief calculation node with ast nodes that can be replaced by view values (e.g. primary sort)
+  std::unordered_map<aql::CalculationNode*, ViewVarsToBeReplaced> _nodesToChange;
 
   /// @brief filter node to pass to the view
   aql::AstNode const* _filterCondition;

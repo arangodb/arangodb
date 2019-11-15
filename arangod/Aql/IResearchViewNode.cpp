@@ -1154,6 +1154,7 @@ aql::ExecutionNode* IResearchViewNode::clone(aql::ExecutionPlan* plan, bool with
   node->_options = _options;
   node->_volatilityMask = _volatilityMask;
   node->_sort = _sort;
+  node->_nodesToChange = _nodesToChange;
   if (outNonMaterializedColId != nullptr && outNonMaterializedDocId != nullptr) {
     node->setLateMaterialized(outNonMaterializedColId, outNonMaterializedDocId);
   }
@@ -1393,6 +1394,55 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
   TRI_ASSERT(_sort.first == nullptr || !_sort.first->empty()); // guaranteed by optimizer rule
   TRI_ASSERT(_sort.first == nullptr || materializeType != MaterializeType::LateMaterializedWithVars);
   return ::executors[getExecutorIndex(_sort.first != nullptr, ordered, materializeType)](&engine, this, std::move(executorInfos));
+}
+
+void IResearchViewNode::replaceViewVariables(std::vector<aql::CalculationNode*> const& calcNodes) {
+  TRI_ASSERT(!calcNodes.empty());
+  IResearchViewNode::ViewVarsInfo uniqueVariables;
+  auto ast = calcNodes.back()->expression()->ast();
+  for (auto calcNode : calcNodes) {
+    TRI_ASSERT(_nodesToChange.find(calcNode) != _nodesToChange.cend());
+    auto const& calcNodeData = _nodesToChange[calcNode];
+    std::transform(calcNodeData.cbegin(), calcNodeData.cend(), std::inserter(uniqueVariables, uniqueVariables.end()),
+      [ast](auto const& astAndFieldData) {
+        return std::make_pair(astAndFieldData.second.field, IResearchViewNode::ViewVariable{astAndFieldData.second.number,
+          ast->variables()->createTemporaryVariable()});
+      });
+  }
+  for (auto calcNode : calcNodes) {
+    TRI_ASSERT(_nodesToChange.find(calcNode) != _nodesToChange.cend());
+    auto const& calcNodeData = _nodesToChange[calcNode];
+    for (auto const& item : calcNodeData) {
+      auto it = uniqueVariables.find(item.second.field);
+      TRI_ASSERT(it != uniqueVariables.cend());
+      auto newNode = ast->createNodeReference(it->second.var);
+      if (item.first.parentNode != nullptr) {
+        TEMPORARILY_UNLOCK_NODE(item.first.parentNode);
+        item.first.parentNode->changeMember(item.first.childNumber, newNode);
+      } else {
+        TRI_ASSERT(calcNodeData.size() == 1);
+        calcNode->expression()->replaceNode(newNode);
+      }
+    }
+  }
+  setViewVariables(uniqueVariables);
+}
+
+bool IResearchViewNode::canVariablesBeReplaced(aql::CalculationNode* calclulationNode) const {
+  return _nodesToChange.find(calclulationNode) != _nodesToChange.cend(); // contains()
+}
+
+void IResearchViewNode::saveCalcNodesForViewVariables(std::vector<aql::latematerialized::NodeWithAttrs> const& nodesToChange) {
+  TRI_ASSERT(!nodesToChange.empty());
+  TRI_ASSERT(_nodesToChange.empty());
+  _nodesToChange.clear();
+  for (auto& node : nodesToChange) {
+    auto& calcNodeData = _nodesToChange[node.node];
+    std::transform(node.attrs.cbegin(), node.attrs.cend(), std::inserter(calcNodeData, calcNodeData.end()),
+      [](auto const& attrAndField) {
+        return std::make_pair(attrAndField.astData, attrAndField.fieldData);
+      });
+  }
 }
 
 }  // namespace iresearch

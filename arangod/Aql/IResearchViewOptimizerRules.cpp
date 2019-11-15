@@ -301,7 +301,9 @@ void lateDocumentMaterializationArangoSearchRule(Optimizer* opt,
       // without document body usage before that node.
       // this node could be appended with materializer
       bool stopSearch = false;
+      std::vector<aql::CalculationNode*> calcNodes; // nodes variables can be replaced
       while (current != loop) {
+        auto type = current->getType();
         switch (current->getType()) {
           case ExecutionNode::SORT:
             if (sortNode == nullptr) { // we need nearest to limit sort node, so keep selected if any
@@ -325,11 +327,20 @@ void lateDocumentMaterializationArangoSearchRule(Optimizer* opt,
           ::arangodb::containers::HashSet<Variable const*> currentUsedVars;
           current->getVariablesUsedHere(currentUsedVars);
           if (currentUsedVars.find(&viewNode.outVariable()) != currentUsedVars.end()) {
-            // we have a doc body used before selected SortNode. Forget it, let`s look for better sort to use
-            sortNode = nullptr;
             // this limit node affects only closest sort, if this sort is invalid
             // we need to check other limit node
             stopSearch = true;
+            if (type == ExecutionNode::CALCULATION) {
+              auto calcNode = ExecutionNode::castTo<CalculationNode*>(current);
+              if (viewNode.canVariablesBeReplaced(calcNode)) {
+                calcNodes.emplace_back(calcNode);
+                stopSearch = false;
+              }
+            }
+            if (stopSearch) {
+              // we have a doc body used before selected SortNode. Forget it, let`s look for better sort to use
+              sortNode = nullptr;
+            }
           }
         }
         if (stopSearch) {
@@ -339,8 +350,14 @@ void lateDocumentMaterializationArangoSearchRule(Optimizer* opt,
       }
       if (sortNode) {
         // we could apply late materialization
-        // 1. We need to notify view - it should not materialize documents, but produce only localDocIds
-        // 2. We need to add materializer after limit node to do materialization
+        // 1. Replace view variables in calculation node if need
+        if (!calcNodes.empty()) {
+          viewNode.replaceViewVariables(calcNodes);
+        }
+        // clear saved data
+        viewNode.clearViewVariables();
+        // 2. We need to notify view - it should not materialize documents, but produce only localDocIds
+        // 3. We need to add materializer after limit node to do materialization
         Ast* ast = plan->getAst();
         auto* localDocIdTmp = ast->variables()->createTemporaryVariable();
         auto* localColPtrTmp = ast->variables()->createTemporaryVariable();
@@ -370,14 +387,16 @@ namespace {
       size_t sortFieldNum = 0;
       for (auto const& field : primarySort.fields()) {
         if (arangodb::basics::AttributeName::isIdentical(nodeAttr.attr, field, false)) {
-          nodeAttr.fieldNum = sortFieldNum;
-          nodeAttr.field = &field;
+          nodeAttr.fieldData.number = sortFieldNum;
+          nodeAttr.fieldData.field = &field;
+          std::vector<arangodb::basics::AttributeName> empty;
+          nodeAttr.attr.swap(empty); // we do not need later
           break;
         }
         ++sortFieldNum;
       }
       // not found
-      if (nodeAttr.field == nullptr) {
+      if (nodeAttr.fieldData.field == nullptr) {
         return false;
       }
     }
@@ -385,11 +404,10 @@ namespace {
   }
 }
 
-bool replaceViewVariables(Ast* ast,
-                          ::arangodb::containers::SmallVector<ExecutionNode*> const& calcNodes,
-                          ::arangodb::containers::SmallVector<ExecutionNode*> const& viewNodes) {
+bool replaceViewVariables(arangodb::containers::SmallVector<ExecutionNode*> const& calcNodes,
+                          arangodb::containers::SmallVector<ExecutionNode*> const& viewNodes) {
   auto modified = false;
-  std::vector<latematerialized::NodeWithAttrs> nodesToChange; // for allocation optimization put here
+  std::vector<latematerialized::NodeWithAttrs> nodesToChange;
   for (auto* vNode : viewNodes) {
     TRI_ASSERT(vNode && ExecutionNode::ENUMERATE_IRESEARCH_VIEW == vNode->getType());
     auto& viewNode = *ExecutionNode::castTo<IResearchViewNode*>(vNode);
@@ -399,7 +417,7 @@ bool replaceViewVariables(Ast* ast,
       continue;
     }
     auto const& var = viewNode.outVariable();
-    auto stopSearch = false;
+    auto replaceNow = true;
     for (auto* cNode : calcNodes) {
       TRI_ASSERT(cNode && ExecutionNode::CALCULATION == cNode->getType());
       auto& calcNode = *ExecutionNode::castTo<CalculationNode*>(cNode);
@@ -409,43 +427,49 @@ bool replaceViewVariables(Ast* ast,
       // find attributes referenced to view node out variable
       if (!latematerialized::getReferencedAttributes(astNode, &var, node)) {
         // is not safe for optimization
-        //stopSearch = true;
-        //break;
+        replaceNow = false;
+        nodesToChange.clear();
       } else if (!node.attrs.empty()) {
         if (!attributesMatch(primarySort, node)) {
           // the node uses attributes which is not in view primary sort
-          //stopSearch = true;
-          //break;
+          replaceNow = false;
+          nodesToChange.clear();
         } else {
           nodesToChange.emplace_back(std::move(node));
         }
       }
     }
-    if (!(stopSearch || nodesToChange.empty())) {
-      IResearchViewNode::ViewVarsInfo uniqueVariables;
-      for (auto& node : nodesToChange) {
-        std::transform(node.attrs.cbegin(), node.attrs.cend(), std::inserter(uniqueVariables, uniqueVariables.end()),
-                       [ast](auto const& attrAndField) {
-                         return std::make_pair(attrAndField.field, IResearchViewNode::ViewVariable{attrAndField.fieldNum,
-                           ast->variables()->createTemporaryVariable()});
-                       });
-      }
-      for (auto& node : nodesToChange) {
-        for (auto& attr : node.attrs) {
-          auto it = uniqueVariables.find(attr.field);
-          TRI_ASSERT(it != uniqueVariables.cend());
-          auto newNode = ast->createNodeReference(it->second.var);
-          if (attr.astNode != nullptr) {
-            TEMPORARILY_UNLOCK_NODE(attr.astNode);
-            attr.astNode->changeMember(attr.astNodeChildNum, newNode);
-          } else {
-            TRI_ASSERT(node.attrs.size() == 1);
-            node.node->expression()->replaceNode(newNode);
+    if (!nodesToChange.empty()) {
+      if (replaceNow) {
+        TRI_ASSERT(!nodesToChange.empty());
+        IResearchViewNode::ViewVarsInfo uniqueVariables;
+        auto ast = nodesToChange.back().node->expression()->ast();
+        for (auto& node : nodesToChange) {
+          std::transform(node.attrs.cbegin(), node.attrs.cend(), std::inserter(uniqueVariables, uniqueVariables.end()),
+            [ast](auto const& attrAndField) {
+              return std::make_pair(attrAndField.fieldData.field, IResearchViewNode::ViewVariable{attrAndField.fieldData.number,
+                ast->variables()->createTemporaryVariable()});
+            });
+        }
+        for (auto& node : nodesToChange) {
+          for (auto& attr : node.attrs) {
+            auto it = uniqueVariables.find(attr.fieldData.field);
+            TRI_ASSERT(it != uniqueVariables.cend());
+            auto newNode = ast->createNodeReference(it->second.var);
+            if (attr.astData.parentNode != nullptr) {
+              TEMPORARILY_UNLOCK_NODE(attr.astData.parentNode);
+              attr.astData.parentNode->changeMember(attr.astData.childNumber, newNode);
+            } else {
+              TRI_ASSERT(node.attrs.size() == 1);
+              node.node->expression()->replaceNode(newNode);
+            }
           }
         }
+        viewNode.setViewVariables(uniqueVariables);
+        modified = true;
+      } else {
+        viewNode.saveCalcNodesForViewVariables(nodesToChange);
       }
-      modified = true;
-      viewNode.setViewVariables(uniqueVariables);
     }
     nodesToChange.clear();
   }
@@ -513,7 +537,7 @@ void handleViewsRule(Optimizer* opt,
 
     modified = true;
   }
-  modified |= replaceViewVariables(plan->getAst(), calcNodes, viewNodes);
+  modified |= replaceViewVariables(calcNodes, viewNodes);
 
   // ensure all replaced scorers are covered by corresponding view nodes
   scorerReplacer.visit([](Scorer const& scorer) -> bool {

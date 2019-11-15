@@ -52,18 +52,18 @@ namespace {
             if (commonIndexId == 0) {
               commonIndexId = indexId;
             }
-            nodeAttr.fieldNum = indexFieldNum;
-            nodeAttr.field = &field;
+            nodeAttr.fieldData.number = indexFieldNum;
+            nodeAttr.fieldData.field = &field;
             break;
           }
           ++indexFieldNum;
         }
-        if (commonIndexId != 0 || nodeAttr.field != nullptr) {
+        if (commonIndexId != 0 || nodeAttr.fieldData.field != nullptr) {
           break;
         }
       }
       // not found
-      if (nodeAttr.field == nullptr) {
+      if (nodeAttr.fieldData.field == nullptr) {
         return false;
       }
     }
@@ -163,20 +163,20 @@ void arangodb::aql::lateDocumentMaterializationRule(Optimizer* opt,
         IndexNode::IndexVarsInfo uniqueVariables;
         for (auto& node : nodesToChange) {
           std::transform(node.attrs.cbegin(), node.attrs.cend(), std::inserter(uniqueVariables, uniqueVariables.end()),
-                         [ast](auto const& attrAndField) {
-                           return std::make_pair(attrAndField.field, IndexNode::IndexVariable{attrAndField.fieldNum,
-                             ast->variables()->createTemporaryVariable()});
-                         });
+            [ast](auto const& attrAndField) {
+              return std::make_pair(attrAndField.fieldData.field, IndexNode::IndexVariable{attrAndField.fieldData.number,
+                ast->variables()->createTemporaryVariable()});
+            });
         }
         auto localDocIdTmp = ast->variables()->createTemporaryVariable();
         for (auto& node : nodesToChange) {
           for (auto& attr : node.attrs) {
-            auto it = uniqueVariables.find(attr.field);
+            auto it = uniqueVariables.find(attr.fieldData.field);
             TRI_ASSERT(it != uniqueVariables.cend());
             auto newNode = ast->createNodeReference(it->second.var);
-            if (attr.astNode != nullptr) {
-              TEMPORARILY_UNLOCK_NODE(attr.astNode);
-              attr.astNode->changeMember(attr.astNodeChildNum, newNode);
+            if (attr.astData.parentNode != nullptr) {
+              TEMPORARILY_UNLOCK_NODE(attr.astData.parentNode);
+              attr.astData.parentNode->changeMember(attr.astData.childNumber, newNode);
             } else {
               TRI_ASSERT(node.attrs.size() == 1);
               node.node->expression()->replaceNode(newNode);

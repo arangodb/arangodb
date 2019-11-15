@@ -39,13 +39,21 @@ struct Variable;
 
 namespace latematerialized {
 
+struct AstData {
+  AstNode* parentNode;
+  size_t childNumber;
+};
+
+struct FieldData {
+  std::vector<arangodb::basics::AttributeName> const* field;
+  size_t number;
+};
+
 struct NodeWithAttrs {
   struct AttributeAndField {
     std::vector<arangodb::basics::AttributeName> attr;
-    AstNode* astNode;
-    size_t astNodeChildNum;
-    size_t fieldNum;
-    std::vector<arangodb::basics::AttributeName> const* field;
+    AstData astData;
+    FieldData fieldData;
   };
 
   std::vector<AttributeAndField> attrs;

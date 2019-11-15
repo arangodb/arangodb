@@ -75,7 +75,7 @@ bool latematerialized::getReferencedAttributes(AstNode* node,
         if (!state.wasAccess) {
           state.nodeAttrs.attrs.emplace_back(
             NodeWithAttrs::AttributeAndField{std::vector<arangodb::basics::AttributeName>{
-              {std::string(node->getStringValue(), node->getStringLength()), false}}, parentNode, childNumber, 0, nullptr});
+              {std::string(node->getStringValue(), node->getStringLength()), false}}, {parentNode, childNumber}, {nullptr, 0}});
           state.wasAccess = true;
         } else {
           state.nodeAttrs.attrs.back().attr.emplace_back(std::string(node->getStringValue(), node->getStringLength()), false);
