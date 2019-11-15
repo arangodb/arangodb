@@ -197,17 +197,6 @@ function ahuacatlProfilerTestSuite () {
       ];
 
       const coordinatorBatches = (rowsPerShard) => addIntervals(fuzzyDBServerBatches(rowsPerShard), localCalls(rowsPerShard));
-      /*
-
-      const coordinatorBatches = rowsPerShard => {
-        const [dbMin, dbMax] = fuzzyDBServerBatches(rowsPerShard);
-        const [localMin, localMax] = localCalls(rowsPerShard);
-        // Bot the number of dbserver batches (due to WAITING), and the number of local batches (due to simple batch
-        // size), are lower bounds.
-        // The sum of dbserver batches and local batches is an upper bound.
-        return [Math.max(dbMin, localMin), dbMax + localMax];
-      };
-       */
 
       const genNodeList = (rowsPerShard, rowsPerServer) => [
         { type : SingletonBlock, calls : numberOfShards, items : numberOfShards },
