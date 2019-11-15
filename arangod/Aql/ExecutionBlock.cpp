@@ -70,7 +70,7 @@ std::string const& stateToString(aql::ExecutionState state) {
 
 ExecutionBlock::ExecutionBlock(ExecutionEngine* engine, ExecutionNode const* ep)
     : _engine(engine),
-      _trx(engine->getQuery()->trx()),
+      _trxVpackOptions(engine->getQuery()->trx()->transactionContextPtr()->getVPackOptions()),
       _shutdownResult(TRI_ERROR_NO_ERROR),
       _done(false),
       _isInSplicedSubquery(ep != nullptr ? ep->isInSplicedSubquery() : false),
@@ -190,7 +190,7 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlock::traceGetSomeEnd
               << "getSome type=" << node->getTypeString() << " result: nullptr";
         } else {
           VPackBuilder builder;
-          auto options = transaction()->transactionContextPtr()->getVPackOptions();
+          auto const options = trxVpackOptions();
           result->toSimpleVPack(options, builder);
           LOG_TOPIC("fcd9c", INFO, Logger::QUERIES)
               << "[query#" << queryId << "] "
@@ -272,7 +272,9 @@ ExecutionState ExecutionBlock::getHasMoreState() {
 
 ExecutionNode const* ExecutionBlock::getPlanNode() const { return _exeNode; }
 
-transaction::Methods* ExecutionBlock::transaction() const { return _trx; }
+velocypack::Options const* ExecutionBlock::trxVpackOptions() const noexcept {
+  return _trxVpackOptions;
+}
 
 void ExecutionBlock::addDependency(ExecutionBlock* ep) {
   TRI_ASSERT(ep != nullptr);
