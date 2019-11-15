@@ -76,7 +76,7 @@ bool agencyAsyncShouldTimeout(RequestMeta const& meta) {
 auto agencyAsyncWaitTime(RequestMeta const& meta) {
   clock::duration timeout = 0ms;
   if (meta.tries > 0) {
-    timeout = 1ms * clock::duration::rep(1lu << meta.tries);
+    timeout = 1ms * clock::duration::rep(static_cast<uint64_t>(1) << meta.tries);
   }
   // only wait as long as the timeout allows
   return std::min(timeout, (meta.startTime +
