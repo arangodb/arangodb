@@ -275,8 +275,7 @@ target_include_directories(arangodbtests PRIVATE
 )
 
 if(MSVC AND FAIL_ON_WARNINGS)
-  # C4996 warns about [[deprecated]]
-  target_compile_options(arangodbtests PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS /Wd4996)
+  target_compile_options(arangodbtests PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
 endif()
 
 if (DARWIN AND FAIL_ON_WARNINGS)

@@ -998,8 +998,7 @@ foreach(TARGET
 
   if (USE_FAIL_ON_WARNINGS)
     if (MSVC)
-      # C4996 warns about [[deprecated]]
-      target_compile_options(${TARGET} PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS /Wd4996)
+      target_compile_options(${TARGET} PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
     else ()
       target_compile_options(${TARGET} PRIVATE -Werror -Wno-error=deprecated-declarations)
     endif ()
