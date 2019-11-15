@@ -372,7 +372,7 @@ TEST(RocksDBHotBackupRestoreDirectories, test_createRestoringDirectory) {
   tests::mocks::MockAqlServer server;
   HotBackupFeature& feature = server.getFeature<HotBackupFeature>();
   RocksDBHotBackupRestoreTest testee(feature, VPackSlice(), report);
-  testee.createHotDirectory()
+  testee.createHotDirectory();
 
   retBool = testee.createRestoringDirectories(fullRestoringDir, restoringDir, restoringSearchDir);
 
