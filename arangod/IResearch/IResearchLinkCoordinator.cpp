@@ -140,8 +140,7 @@ void IResearchLinkCoordinator::toVelocyPack( // generate definition
   }
 
   if (arangodb::Index::hasFlag(flags, arangodb::Index::Serialize::Figures)) {
-    builder.add("figures",
-                arangodb::velocypack::Value(arangodb::velocypack::ValueType::Object));
+    builder.add("figures", VPackValue(VPackValueType::Object));
     toVelocyPackFigures(builder);
     builder.close();
   }

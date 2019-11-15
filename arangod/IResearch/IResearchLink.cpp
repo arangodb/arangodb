@@ -33,7 +33,6 @@
 #include "Aql/QueryCache.h"
 #include "Basics/LocalTaskQueue.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "IResearch/IResearchCommon.h"
@@ -109,39 +108,6 @@ struct LinkTrxState final : public arangodb::TransactionState::Cookie {
     _ctx.reset();
   }
 };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief approximate data store directory instance size
-////////////////////////////////////////////////////////////////////////////////
-size_t directoryMemory(irs::directory const& directory, TRI_idx_iid_t id) noexcept {
-  size_t size = 0;
-
-  try {
-    directory.visit([&directory, &size](std::string& file) -> bool {
-      uint64_t length;
-
-      size += directory.length(length, file) ? length : 0;
-
-      return true;
-    });
-  } catch (arangodb::basics::Exception& e) {
-    LOG_TOPIC("e6cb2", WARN, arangodb::iresearch::TOPIC)
-        << "caught exception while calculating size of arangosearch link '"
-        << id << "': " << e.code() << " " << e.what();
-    IR_LOG_EXCEPTION();
-  } catch (std::exception const& e) {
-    LOG_TOPIC("7e623", WARN, arangodb::iresearch::TOPIC)
-        << "caught exception while calculating size of arangosearch link '"
-        << id << "': " << e.what();
-    IR_LOG_EXCEPTION();
-  } catch (...) {
-    LOG_TOPIC("21d6a", WARN, arangodb::iresearch::TOPIC)
-        << "caught exception while calculating size of arangosearch link '" << id << "'";
-    IR_LOG_EXCEPTION();
-  }
-
-  return size;
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compute the data path to user for iresearch data store
@@ -391,11 +357,68 @@ void IResearchLink::batchInsert(
 
   auto& state = *(trx.state());
 
+  TRI_IF_FAILURE("ArangoSearch::BlockInsertsWithoutIndexCreationHint") {
+    if (!state.hasHint(transaction::Hints::Hint::INDEX_CREATION)) {
+      queue->setStatus(TRI_ERROR_DEBUG);
+      return;
+    }
+  }
+
   if (_dataStore._inRecovery && _engine->recoveryTick() <= _dataStore._recoveryTick) {
     LOG_TOPIC("7e228", TRACE, iresearch::TOPIC)
       << "skipping 'batchInsert', operation tick '" << _engine->recoveryTick()
       << "', recovery tick '" << _dataStore._recoveryTick << "'";
 
+    return;
+  }
+
+  auto batchInsertImpl = [this, &batch, &trx, &queue](irs::index_writer::documents_context& ctx) {
+    auto begin = batch.begin();
+    auto const end = batch.end();
+    try {
+      for (FieldIterator body(trx); begin != end; ++begin) {
+        auto const res = insertDocument(ctx, body, begin->second, begin->first, _meta, id());
+
+        if (!res.ok()) {
+          LOG_TOPIC("e5eb1", WARN, iresearch::TOPIC) << res.errorMessage();
+          queue->setStatus(res.errorNumber());
+
+          return;
+        }
+      }
+    }
+    catch (basics::Exception const& e) {
+      LOG_TOPIC("72aa5", WARN, iresearch::TOPIC)
+        << "caught exception while inserting batch into arangosearch link '" << id()
+        << "': " << e.code() << " " << e.what();
+      IR_LOG_EXCEPTION();
+      queue->setStatus(e.code());
+    }
+    catch (std::exception const& e) {
+      LOG_TOPIC("3cbae", WARN, iresearch::TOPIC)
+        << "caught exception while inserting batch into arangosearch link '" << id()
+        << "': " << e.what();
+      IR_LOG_EXCEPTION();
+      queue->setStatus(TRI_ERROR_INTERNAL);
+    }
+    catch (...) {
+      LOG_TOPIC("3da8d", WARN, iresearch::TOPIC)
+        << "caught exception while inserting batch into arangosearch link '" << id()
+        << "'";
+      IR_LOG_EXCEPTION();
+      queue->setStatus(TRI_ERROR_INTERNAL);
+    }
+  };
+
+  if (state.hasHint(transaction::Hints::Hint::INDEX_CREATION)) {
+    SCOPED_LOCK_NAMED(_asyncSelf->mutex(), lock);
+    auto ctx = _dataStore._writer->documents();
+    batchInsertImpl(ctx); // we need insert to succeed, so  we have things to cleanup in storage
+    TRI_IF_FAILURE("ArangoSearch::MisreportCreationInsertAsFailed") {
+      if (queue->status() == TRI_ERROR_NO_ERROR) {
+        queue->setStatus(TRI_ERROR_DEBUG);
+      }
+    }
     return;
   }
 
@@ -446,40 +469,7 @@ void IResearchLink::batchInsert(
   // ...........................................................................
   // below only during recovery after the 'checkpoint' marker, or post recovery
   // ...........................................................................
-
-  auto begin = batch.begin();
-  auto const end = batch.end();
-
-  try {
-    for (FieldIterator body(trx); begin != end; ++begin) {
-      auto const res = insertDocument(ctx->_ctx, body, begin->second, begin->first, _meta, id());
-
-      if (!res.ok()) {
-        LOG_TOPIC("e5eb1", WARN, iresearch::TOPIC) << res.errorMessage();
-        queue->setStatus(res.errorNumber());
-
-        return;
-      }
-    }
-  } catch (basics::Exception const& e) {
-    LOG_TOPIC("72aa5", WARN, iresearch::TOPIC)
-      << "caught exception while inserting batch into arangosearch link '" << id()
-      << "': " << e.code() << " " << e.what();
-    IR_LOG_EXCEPTION();
-    queue->setStatus(e.code());
-  } catch (std::exception const& e) {
-    LOG_TOPIC("3cbae", WARN, iresearch::TOPIC)
-      << "caught exception while inserting batch into arangosearch link '" << id()
-      << "': " << e.what();
-    IR_LOG_EXCEPTION();
-    queue->setStatus(TRI_ERROR_INTERNAL);
-  } catch (...) {
-    LOG_TOPIC("3da8d", WARN, iresearch::TOPIC)
-      << "caught exception while inserting batch into arangosearch link '" << id()
-      << "'";
-    IR_LOG_EXCEPTION();
-    queue->setStatus(TRI_ERROR_INTERNAL);
-  }
+  batchInsertImpl(ctx->_ctx);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1416,6 +1406,25 @@ Result IResearchLink::insert(
     }
   };
 
+  TRI_IF_FAILURE("ArangoSearch::BlockInsertsWithoutIndexCreationHint") {
+    if (!state.hasHint(transaction::Hints::Hint::INDEX_CREATION)) {
+      return Result(TRI_ERROR_DEBUG);
+    }
+  }
+
+  if (state.hasHint(transaction::Hints::Hint::INDEX_CREATION)) {
+    SCOPED_LOCK_NAMED(_asyncSelf->mutex(), lock);
+    auto ctx = _dataStore._writer->documents();
+
+    TRI_IF_FAILURE("ArangoSearch::MisreportCreationInsertAsFailed") {
+      auto res = insertImpl(ctx); // we need insert to succeed, so  we have things to cleanup in storage
+      if (res.fail()) {
+        return res;
+      }
+      return Result(TRI_ERROR_DEBUG);
+    }
+    return insertImpl(ctx);
+  }
   auto* key = this;
 
 // TODO FIXME find a better way to look up a ViewState
@@ -1498,24 +1507,6 @@ bool IResearchLink::matchesDefinition(VPackSlice const& slice) const {
     && _meta == other;
 }
 
-size_t IResearchLink::memory() const {
-  auto size = sizeof(IResearchLink); // includes empty members from parent
-
-  size += _meta.memory();
-
-  {
-    SCOPED_LOCK(_asyncSelf->mutex()); // '_dataStore' can be asynchronously modified
-
-    if (_dataStore) {
-      // FIXME TODO this is incorrect since '_storePersisted' is on disk and not in memory
-      size += directoryMemory(*(_dataStore._directory), id());
-      size += _dataStore._path.native().size() * sizeof(irs::utf8_path::native_char_t);
-    }
-  }
-
-  return size;
-}
-
 Result IResearchLink::properties(
     velocypack::Builder& builder,
     bool forPersistence) const {
@@ -1591,6 +1582,8 @@ Result IResearchLink::remove(
   TRI_ASSERT(trx.state());
 
   auto& state = *(trx.state());
+
+  TRI_ASSERT(!state.hasHint(transaction::Hints::Hint::INDEX_CREATION));
 
   if (_dataStore._inRecovery && _engine->recoveryTick() <= _dataStore._recoveryTick) {
     LOG_TOPIC("7d228", TRACE, iresearch::TOPIC)
@@ -1742,6 +1735,73 @@ Result IResearchLink::unload() {
   }
 
   return {};
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief lookup referenced analyzer
+////////////////////////////////////////////////////////////////////////////////
+AnalyzerPool::ptr IResearchLink::findAnalyzer(AnalyzerPool const& analyzer) const {
+  auto const it = _meta._analyzerDefinitions.find(irs::string_ref(analyzer.name()));
+
+  if (it == _meta._analyzerDefinitions.end()) {
+    return nullptr;
+  }
+
+  auto const pool = *it;
+
+  if (pool && analyzer == *pool) {
+    return pool;
+  }
+
+  return nullptr;
+}
+
+IResearchLink::Stats IResearchLink::stats() const {
+  Stats stats;
+
+  // '_dataStore' can be asynchronously modified
+  SCOPED_LOCK_NAMED(_asyncSelf->mutex(), lock);
+
+  if (_dataStore) {
+    stats.numBufferedDocs = _dataStore._writer->buffered_docs();
+
+    // copy of 'reader' is important to hold
+    // reference to the current snapshot
+    auto reader = _dataStore._reader;
+
+    if (!reader) {
+      return {};
+    }
+
+    stats.numSegments = reader->size();
+    stats.docsCount = reader->docs_count();
+    stats.liveDocsCount = reader->live_docs_count();
+    stats.numFiles = 1; // +1 for segments file
+
+    auto visitor = [&stats](std::string const& /*name*/,
+                            irs::segment_meta const& segment) noexcept {
+      stats.indexSize += segment.size;
+      stats.numFiles += segment.files.size();
+      return true;
+    };
+
+    reader->meta().meta.visit_segments(visitor);
+  }
+
+  return stats;
+}
+
+void IResearchLink::toVelocyPackStats(VPackBuilder& builder) const {
+  TRI_ASSERT(builder.isOpenObject());
+
+  auto const stats = this->stats();
+
+  builder.add("numBufferedDocs", VPackValue(stats.numBufferedDocs));
+  builder.add("numDocs", VPackValue(stats.docsCount));
+  builder.add("numLiveDocs", VPackValue(stats.liveDocsCount));
+  builder.add("numSegments", VPackValue(stats.numSegments));
+  builder.add("numFiles", VPackValue(stats.numFiles));
+  builder.add("indexSize", VPackValue(stats.indexSize));
 }
 
 }  // namespace iresearch

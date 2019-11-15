@@ -22,9 +22,14 @@
 
 #include "UpgradeFeature.h"
 
+#include "ApplicationFeatures/DaemonFeature.h"
 #include "ApplicationFeatures/HttpEndpointProvider.h"
+#include "ApplicationFeatures/GreetingsFeature.h"
+#include "ApplicationFeatures/SupervisorFeature.h"
 #include "Basics/application-exit.h"
+#include "Basics/ScopeGuard.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/ServerState.h"
 #include "FeaturePhases/AqlFeaturePhase.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/LogMacros.h"
@@ -32,6 +37,7 @@
 #include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "Pregel/PregelFeature.h"
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/BootstrapFeature.h"
 #include "RestServer/DatabaseFeature.h"
@@ -110,32 +116,40 @@ void UpgradeFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
            "'--database.upgrade-check false'";
     FATAL_ERROR_EXIT();
   }
-
+  
   if (!_upgrade) {
     LOG_TOPIC("ed226", TRACE, arangodb::Logger::FIXME)
         << "executing upgrade check: not disabling server features";
     return;
   }
-
+    
   LOG_TOPIC("23525", INFO, arangodb::Logger::FIXME)
-      << "executing upgrade procedure: disabling server features";
+        << "executing upgrade procedure: disabling server features";
 
-  server().forceDisableFeatures(_nonServerFeatures);
-  std::vector<std::type_index> otherFeaturesToDisable = {
-      std::type_index(typeid(BootstrapFeature)),
-      std::type_index(typeid(HttpEndpointProvider)),
-  };
-  server().forceDisableFeatures(otherFeaturesToDisable);
+  // if we run the upgrade, we need to disable a few features that may get
+  // in the way...
+  if (ServerState::instance()->isCoordinator()) {
+    std::vector<std::type_index> otherFeaturesToDisable = {
+        std::type_index(typeid(DaemonFeature)),
+        std::type_index(typeid(GreetingsFeature)),
+        std::type_index(typeid(pregel::PregelFeature)),
+        std::type_index(typeid(SupervisorFeature))
+    };
+    server().forceDisableFeatures(otherFeaturesToDisable);
+  } else {
+    server().forceDisableFeatures(_nonServerFeatures);
+    std::vector<std::type_index> otherFeaturesToDisable = {
+        std::type_index(typeid(BootstrapFeature)),
+        std::type_index(typeid(HttpEndpointProvider))
+    };
+    server().forceDisableFeatures(otherFeaturesToDisable);
+  }
 
   ReplicationFeature& replicationFeature = server().getFeature<ReplicationFeature>();
   replicationFeature.disableReplicationApplier();
 
   DatabaseFeature& database = server().getFeature<DatabaseFeature>();
   database.enableUpgrade();
-
-  ClusterFeature& cluster = server().getFeature<ClusterFeature>();
-  cluster.forceDisable();
-  ServerState::instance()->setRole(ServerState::ROLE_SINGLE);
 }
 
 void UpgradeFeature::prepare() {
@@ -149,7 +163,10 @@ void UpgradeFeature::start() {
 
   // upgrade the database
   if (_upgradeCheck) {
-    upgradeDatabase();
+    if (!ServerState::instance()->isCoordinator()) {
+      // no need to run local upgrades in the coordinator
+      upgradeLocalDatabase();
+    }
 
     if (!init.restoreAdmin() && !init.defaultPassword().empty() && um != nullptr) {
       um->updateUser("root", [&](auth::User& user) {
@@ -194,15 +211,20 @@ void UpgradeFeature::start() {
       *_result = EXIT_SUCCESS;
     }
 
-    LOG_TOPIC("7da27", INFO, arangodb::Logger::STARTUP)
-        << "server will now shut down due to upgrade, database initialization "
-           "or admin restoration.";
+    if (!ServerState::instance()->isCoordinator() || !_upgrade) {
+      LOG_TOPIC("7da27", INFO, arangodb::Logger::STARTUP)
+          << "server will now shut down due to upgrade, database initialization "
+             "or admin restoration.";
 
-    server().beginShutdown();
+      // in the non-coordinator case, we are already done now and will shut down.
+      // in the coordinator case, the actual upgrade is performed by the 
+      // ClusterUpgradeFeature, which is way later in the startup sequence.
+      server().beginShutdown();
+    }
   }
 }
 
-void UpgradeFeature::upgradeDatabase() {
+void UpgradeFeature::upgradeLocalDatabase() {
   LOG_TOPIC("05dff", TRACE, arangodb::Logger::FIXME) << "starting database init/upgrade";
 
   DatabaseFeature& databaseFeature = server().getFeature<DatabaseFeature>();
