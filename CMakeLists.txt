@@ -772,8 +772,6 @@ if (USE_MAINTAINER_MODE)
   find_package(BISON)
   # these are required for generateREADME.sh
   find_program(FGREP_EXECUTABLE fgrep)
-  find_program(MARKDOWN_EXECUTABLE markdown)
-  find_program(HTML2TEXT_EXECUTABLE html2text)
   find_program(SED_EXECUTABLE sed)
   find_program(AWK_EXECUTABLE awk)
 endif ()
@@ -810,7 +808,7 @@ set_property(CACHE USE_IPO PROPERTY STRINGS AUTO ON OFF)
 set(IPO_ENABLED False)
 
 # Determine value if IPO_ENABLED from USE_IPO and CMAKE_BUILD_TYPE
-if(USE_IPO STREQUAL "AUTO")
+if (USE_IPO STREQUAL "AUTO")
   # When USE_IPO=AUTO, enable IPO for optimized / release builds.
   # But to work around a g++ segfault triggered by using both -flto and
   # -fno-devirtualize-functions, we disable IPO when using google tests, because
@@ -827,7 +825,7 @@ if(USE_IPO STREQUAL "AUTO")
   else()
     set(IPO_ENABLED False)
   endif ()
-elseif(USE_IPO)
+elseif (USE_IPO)
   set(IPO_ENABLED True)
 else()
   set(IPO_ENABLED False)
@@ -835,6 +833,10 @@ endif()
 
 message(STATUS "IPO_ENABLED: ${IPO_ENABLED}")
 set(CMAKE_INTERPROCEDURAL_OPTIMIZATION ${IPO_ENABLED})
+  
+if (IPO_ENABLED)
+  add_definitions("-DARANGODB_USE_IPO=1")
+endif()
 
 ################################################################################
 ## LIBRARY RESOLV

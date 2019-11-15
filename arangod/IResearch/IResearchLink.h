@@ -165,7 +165,7 @@ class IResearchLink {
   /// @brief amount of memory in bytes occupied by this iResearch Link
   /// @note arangodb::Index override
   ////////////////////////////////////////////////////////////////////////////////
-  size_t memory() const;
+  void toVelocyPackStats(VPackBuilder& builder) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief fill and return a jSON description of a IResearchLink object
@@ -225,6 +225,18 @@ class IResearchLink {
   AnalyzerPool::ptr findAnalyzer(AnalyzerPool const& analyzer) const;
 
  protected:
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief index stats
+  //////////////////////////////////////////////////////////////////////////////
+  struct Stats {
+    size_t docsCount{};       // total number of documents
+    size_t liveDocsCount{};   // number of live documents
+    size_t numBufferedDocs{}; // number of buffered docs
+    size_t indexSize{};       // size of the index in bytes
+    size_t numSegments{};     // number of segments
+    size_t numFiles{};        // number of files
+  };
+
   typedef std::function<void(irs::directory&)> InitCallback;
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -244,6 +256,11 @@ class IResearchLink {
   /// @brief link was created during recovery
   ////////////////////////////////////////////////////////////////////////////////
   bool createdInRecovery() const noexcept { return _createdInRecovery; }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief get index stats for current snapshot
+  ////////////////////////////////////////////////////////////////////////////////
+  Stats stats() const;
 
  private:
   //////////////////////////////////////////////////////////////////////////////
