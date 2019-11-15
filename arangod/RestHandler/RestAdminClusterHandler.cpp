@@ -1074,7 +1074,6 @@ RestStatus RestAdminClusterHandler::handleGetMaintenance() {
 
 RestAdminClusterHandler::FutureVoid RestAdminClusterHandler::waitForSupervisionState(
     bool state, clock::time_point startTime) {
-  auto self(shared_from_this());
 
   if (startTime == clock::time_point()) {
     startTime = clock::now();
@@ -1089,9 +1088,9 @@ RestAdminClusterHandler::FutureVoid RestAdminClusterHandler::waitForSupervisionS
         auto waitFor = state ? "Maintenance" : "Normal";
         if (result.ok() && result.statusCode() == fuerte::StatusOK) {
           if (!result.value().isEqualString(waitFor)) {
-            if (clock::now() - startTime < 120.0s) {
+            if ((clock::now() - startTime) < 120.0s) {
               // wait again
-              return waitForSupervisionState(state);
+              return waitForSupervisionState(state, startTime);
             }
 
             generateError(rest::ResponseCode::REQUEST_TIMEOUT,

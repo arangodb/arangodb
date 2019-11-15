@@ -670,6 +670,7 @@ void ClusterFeature::unprepare() {
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
   }
 
+  _pool.reset();
   AgencyCommManager::MANAGER->stop();
 
   _clusterInfo->cleanup();
