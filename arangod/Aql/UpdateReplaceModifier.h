@@ -34,7 +34,7 @@ struct ModificationExecutorInfos;
 
 class UpdateReplaceModifierCompletion {
  public:
-  UpdateReplaceModifierCompletion(ModificationExecutorInfos& infos)
+  explicit UpdateReplaceModifierCompletion(ModificationExecutorInfos& infos)
       : _infos(infos) {}
   ~UpdateReplaceModifierCompletion() = default;
 

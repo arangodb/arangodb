@@ -1684,11 +1684,15 @@ int MMFilesCollection::fillIndexes(transaction::Methods& trx,
         continue;
       }
       MMFilesIndex* midx = static_cast<MMFilesIndex*>(idx.get());
-      if (midx->isPersistent()) {
-        continue;
+      if (midx->needsReversal()) {
+        midx->drop(); // index requires separate reversal and we promised (with INDEX_CREATION hint) we will drop on any failure
+      } else {
+        if (midx->isPersistent()) {
+          continue;
+        }
+        idx->unload();  // TODO: check is this safe? truncate not necessarily
+                        // feasible
       }
-      idx->unload();  // TODO: check is this safe? truncate not necessarily
-                      // feasible
     }
   };
 
@@ -2179,6 +2183,8 @@ std::shared_ptr<Index> MMFilesCollection::createIndex(arangodb::velocypack::Slic
       std::shared_ptr<transaction::Context>(std::shared_ptr<transaction::Context>(),
                                             &ctx),  // aliasing ctor
       _logicalCollection, AccessMode::Type::EXCLUSIVE);
+
+  trx.addHint(transaction::Hints::Hint::INDEX_CREATION);
 
   Result res = trx.begin();
 

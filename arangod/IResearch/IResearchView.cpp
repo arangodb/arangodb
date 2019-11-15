@@ -746,34 +746,6 @@ arangodb::Result IResearchView::commit() {
   return arangodb::Result();
 }
 
-size_t IResearchView::memory() const {
-  size_t size = sizeof(IResearchView);
-  ReadMutex mutex(_mutex);  // '_meta'/'_links' can be asynchronously updated
-  SCOPED_LOCK(mutex);
-
-  size += _meta.memory() - sizeof(IResearchViewMeta);  // sizeof(IResearchViewMeta) already part
-                                                       // of sizeof(IResearchView)
-  size += sizeof(decltype(_links)::value_type) * _links.size();
-
-  for (auto& entry : _links) {
-    if (!entry.second) {
-      continue;  // skip link placeholders
-    }
-
-    SCOPED_LOCK(entry.second->mutex());  // ensure link is not deallocated for
-                                         // the duration of the operation
-    auto* link = entry.second->get();
-
-    if (!link) {
-      continue;  // skip missing links
-    }
-
-    size += link->memory();
-  }
-
-  return size;
-}
-
 void IResearchView::open() {
   auto* engine = arangodb::EngineSelectorFeature::ENGINE;
 
