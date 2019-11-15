@@ -1000,7 +1000,7 @@ foreach(TARGET
     if (MSVC)
       target_compile_options(${TARGET} PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
     else ()
-      target_compile_options(${TARGET} PRIVATE -Werror -Wno-error=deprecated-declarations)
+      target_compile_options(${TARGET} PRIVATE -Werror)
     endif ()
   endif ()
 endforeach()

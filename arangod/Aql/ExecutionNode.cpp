@@ -1204,7 +1204,7 @@ const ::arangodb::containers::HashSet<const Variable*>& ExecutionNode::getVarsUs
   return _varsUsedLater;
 }
 
-void ExecutionNode::setVarsValid(::arangodb::containers::HashSet<const Variable*> const& v) {
+void ExecutionNode::setVarsValid(::arangodb::containers::HashSet<const Variable*>& v) {
   _varsValid = v;
 }
 

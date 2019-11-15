@@ -36,6 +36,13 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
+template <CalculationType calculationType>
+constexpr bool CalculationExecutor<calculationType>::Properties::preservesOrder;
+template <CalculationType calculationType>
+constexpr BlockPassthrough CalculationExecutor<calculationType>::Properties::allowsBlockPassthrough;
+template <CalculationType calculationType>
+constexpr bool CalculationExecutor<calculationType>::Properties::inputSizeRestrictsOutputSize;
+
 CalculationExecutorInfos::CalculationExecutorInfos(
     RegisterId outputRegister, RegisterId nrInputRegisters,
     RegisterId nrOutputRegisters, std::unordered_set<RegisterId> registersToClear,

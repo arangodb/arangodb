@@ -66,24 +66,24 @@ class ShadowAqlItemRow {
   /// @brief get the number of data registers in the underlying block.
   ///        Not all of these registers are necessarily filled by this
   ///        ShadowRow. There might be empty registers on deeper levels.
-  [[nodiscard]] RegisterCount getNrRegisters() const noexcept;
+  RegisterCount getNrRegisters() const noexcept;
 
   /// @brief a ShadowRow is relevant iff it indicates an end of subquery block on the subquery context
   ///        we are in right now. This will only be of importance on nested subqueries.
-  ///        Within the inner subquery all shadowrows of this inner are relevant. All shadowRows
+  ///        Within the inner subquery all shadowrows of this inner are relavant. All shadowRows
   ///        of the outer subquery are NOT relevant
   ///        Also note: There is a guarantee that a non-relevant shadowrow, can only be encountered
   ///        right after a shadowrow. And only in descending nesting level. (eg 1. inner most, 2. inner, 3. outer most)
-  [[nodiscard]] bool isRelevant() const noexcept;
+  bool isRelevant() const noexcept;
 
   /// @brief Test if this shadow row is initialized, eg has a block and has a valid depth.
-  [[nodiscard]] bool isInitialized() const;
+  bool isInitialized() const;
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   /**
    * @brief Compare the underlying block. Only for assertions.
    */
-  [[nodiscard]] bool internalBlockIs(SharedAqlItemBlockPtr const& other) const;
+  bool internalBlockIs(SharedAqlItemBlockPtr const& other) const;
 #endif
 
   /**
@@ -93,21 +93,21 @@ class ShadowAqlItemRow {
    *
    * @return Reference to the AqlValue stored in that variable.
    */
-  [[nodiscard]] AqlValue const& getValue(RegisterId registerId) const;
+  AqlValue const& getValue(RegisterId registerId) const;
 
   /// @brief get the depthValue of the shadow row as AqlValue
-  [[nodiscard]] AqlValue const& getShadowDepthValue() const;
+  AqlValue const& getShadowDepthValue() const;
 
   /// @brief get the depthValue of the shadow row as int64_t >= 0
   ///        NOTE: Innermost query will have depth 0. Outermost query wil have highest depth.
-  [[nodiscard]] uint64_t getDepth() const;
+  uint64_t getDepth() const;
 
   // Note that == and != here check whether the rows are *identical*, that is,
   // the same row in the same block.
   // TODO Make this a named method
-  [[nodiscard]] bool operator==(ShadowAqlItemRow const& other) const noexcept;
+  bool operator==(ShadowAqlItemRow const& other) const noexcept;
 
-  [[nodiscard]] bool operator!=(ShadowAqlItemRow const& other) const noexcept;
+  bool operator!=(ShadowAqlItemRow const& other) const noexcept;
 
   // This checks whether the rows are equivalent, in the sense that they hold
   // the same number of registers and their entry-AqlValues compare equal,
@@ -120,9 +120,9 @@ class ShadowAqlItemRow {
                              velocypack::Options const* option) const noexcept;
 
  private:
-  [[nodiscard]] AqlItemBlock& block() noexcept;
+  AqlItemBlock& block() noexcept;
 
-  [[nodiscard]] AqlItemBlock const& block() const noexcept;
+  AqlItemBlock const& block() const noexcept;
 
  private:
   /**

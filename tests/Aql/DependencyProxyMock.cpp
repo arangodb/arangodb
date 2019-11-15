@@ -26,7 +26,9 @@
 
 #include <velocypack/Options.h>
 
-namespace arangodb::tests::aql {
+namespace arangodb {
+namespace tests {
+namespace aql {
 
 using namespace arangodb::aql;
 
@@ -214,7 +216,9 @@ size_t MultiDependencyProxyMock<passBlocksThrough>::numFetchBlockCalls() const {
   return res;
 }
 
-}  // namespace arangodb::tests::aql
+}  // namespace aql
+}  // namespace tests
+}  // namespace arangodb
 
 template class ::arangodb::tests::aql::DependencyProxyMock<::arangodb::aql::BlockPassthrough::Enable>;
 template class ::arangodb::tests::aql::DependencyProxyMock<::arangodb::aql::BlockPassthrough::Disable>;

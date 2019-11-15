@@ -27,19 +27,17 @@
 #include "Basics/Exceptions.h"
 #include "Basics/voc-errors.h"
 
-#include <utility>
-
-namespace arangodb::aql {
-
+namespace arangodb {
+namespace aql {
 class ExecutionBlock;
 class ExecutionPlan;
 class ScatterNode;
 
 class DistributeConsumerNode : public ExecutionNode {
  public:
-  DistributeConsumerNode(ExecutionPlan* plan, size_t id, std::string distributeId)
+  DistributeConsumerNode(ExecutionPlan* plan, size_t id, std::string const& distributeId)
       : ExecutionNode(plan, id),
-        _distributeId(std::move(distributeId)),
+        _distributeId(distributeId),
         _isResponsibleForInitializeCursor(true) {}
 
   DistributeConsumerNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
@@ -108,6 +106,7 @@ class DistributeConsumerNode : public ExecutionNode {
   bool _isResponsibleForInitializeCursor;
 };
 
-}  // namespace arangodb::aql
+}  // namespace aql
+}  // namespace arangodb
 
 #endif

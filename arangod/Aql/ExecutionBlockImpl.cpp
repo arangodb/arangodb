@@ -640,7 +640,6 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<
   }
   return {ExecutionState::DONE, {errorCode}};
 }
-
 }  // namespace arangodb::aql
 
 namespace arangodb::aql {

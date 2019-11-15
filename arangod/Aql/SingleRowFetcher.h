@@ -61,6 +61,8 @@ class SingleRowFetcher {
  public:
   /**
    * @brief Fetch one new AqlItemRow from upstream.
+   *        **Guarantee**: the row returned is valid only
+   *        until the next call to fetchRow.
    *
    * @param atMost may be passed if a block knows the maximum it might want to
    *        fetch from upstream (should apply only to the LimitExecutor). Will
@@ -69,7 +71,7 @@ class SingleRowFetcher {
    *
    * @return A pair with the following properties:
    *         ExecutionState:
-   *           WAITING => IO going on, immediately return to caller.
+   *           WAITING => IO going on, immediatly return to caller.
    *           DONE => No more to expect from Upstream, if you are done with
    *                   this row return DONE to caller.
    *           HASMORE => There is potentially more from above, call again if

@@ -25,6 +25,8 @@
 #include "Aql/AqlItemBlock.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionState.h"
+#include "Aql/ExecutionStats.h"
+#include "Aql/ExecutorInfos.h"
 #include "Aql/QueryOptions.h"
 
 #include <velocypack/velocypack-aliases.h>
@@ -90,20 +92,24 @@ std::pair<arangodb::aql::ExecutionState, size_t> WaitingExecutionBlockMock::skip
   traceSkipSomeBegin(atMost);
   if (!_hasWaited) {
     _hasWaited = true;
-    return traceSkipSomeEnd(ExecutionState::WAITING, 0);
+    traceSkipSomeEnd(ExecutionState::WAITING, 0);
+    return {ExecutionState::WAITING, 0};
   }
   _hasWaited = false;
 
   if (_data.empty()) {
-    return traceSkipSomeEnd(ExecutionState::DONE, 0);
+    traceSkipSomeEnd(ExecutionState::DONE, 0);
+    return {ExecutionState::DONE, 0};
   }
 
   size_t skipped = _data.front()->size();
   _data.pop_front();
 
   if (_data.empty()) {
-    return traceSkipSomeEnd(ExecutionState::DONE, skipped);
+    traceSkipSomeEnd(ExecutionState::DONE, skipped);
+    return {ExecutionState::DONE, skipped};
   } else {
-    return traceSkipSomeEnd(ExecutionState::HASMORE, skipped);
+    traceSkipSomeEnd(ExecutionState::HASMORE, skipped);
+    return {ExecutionState::HASMORE, skipped};
   }
 }

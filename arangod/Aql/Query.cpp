@@ -499,7 +499,7 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
   }
 #endif
 
-  auto trx = AqlTransaction::create(ctx, _collections.collections(),
+  auto trx = AqlTransaction::create(std::move(ctx), _collections.collections(),
                                     _queryOptions.transactionOptions, _part == PART_MAIN,
                                     std::move(inaccessibleCollections));
   // create the transaction object, but do not start it yet

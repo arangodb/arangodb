@@ -39,6 +39,10 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
+constexpr bool HashedCollectExecutor::Properties::preservesOrder;
+constexpr BlockPassthrough HashedCollectExecutor::Properties::allowsBlockPassthrough;
+constexpr bool HashedCollectExecutor::Properties::inputSizeRestrictsOutputSize;
+
 static const AqlValue EmptyValue;
 
 HashedCollectExecutorInfos::HashedCollectExecutorInfos(

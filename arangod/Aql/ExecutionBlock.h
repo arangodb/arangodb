@@ -55,7 +55,7 @@ class ExecutionBlock {
 
  public:
   /// @brief batch size value
-  [[nodiscard]] static constexpr inline size_t DefaultBatchSize() { return 1000; }
+  static constexpr inline size_t DefaultBatchSize() { return 1000; }
 
   /// @brief Number to use when we skip all. Should really be inf, but don't
   /// use something near std::numeric_limits<size_t>::max() to avoid overflows
@@ -63,7 +63,7 @@ class ExecutionBlock {
   /// This is used as an argument for skipSome(), e.g. when counting everything.
   /// Setting this to any other value >0 does not (and must not) affect the
   /// results. It's only to reduce the number of necessary skipSome calls.
-  [[nodiscard]] static constexpr inline size_t SkipAllSize() { return 1000000000; }
+  static constexpr inline size_t SkipAllSize() { return 1000000000; }
 
   /// @brief Methods for execution
   /// Lifecycle is:
@@ -78,10 +78,10 @@ class ExecutionBlock {
   ///    DESTRUCTOR
 
   /// @brief initializeCursor, could be called multiple times
-  [[nodiscard]] virtual std::pair<ExecutionState, Result> initializeCursor(InputAqlItemRow const& input);
+  virtual std::pair<ExecutionState, Result> initializeCursor(InputAqlItemRow const& input);
 
   /// @brief shutdown, will be called exactly once for the whole query
-  [[nodiscard]] virtual std::pair<ExecutionState, Result> shutdown(int errorCode);
+  virtual std::pair<ExecutionState, Result> shutdown(int errorCode);
 
   /// @brief getSome, gets some more items, semantic is as follows: not
   /// more than atMost items may be delivered. The method tries to
@@ -90,39 +90,39 @@ class ExecutionBlock {
   /// if it returns an actual block, it must contain at least one item.
   /// getSome() also takes care of tracing and clearing registers; don't do it
   /// in getOrSkipSome() implementations.
-  [[nodiscard]] virtual std::pair<ExecutionState, SharedAqlItemBlockPtr> getSome(size_t atMost) = 0;
+  virtual std::pair<ExecutionState, SharedAqlItemBlockPtr> getSome(size_t atMost) = 0;
 
   // Trace the start of a getSome call
   void traceGetSomeBegin(size_t atMost);
 
   // Trace the end of a getSome call, potentially with result
-  [[nodiscard]] std::pair<ExecutionState, SharedAqlItemBlockPtr> traceGetSomeEnd(
+  std::pair<ExecutionState, SharedAqlItemBlockPtr> traceGetSomeEnd(
       ExecutionState state, SharedAqlItemBlockPtr result);
 
   void traceSkipSomeBegin(size_t atMost);
 
-  [[nodiscard]] std::pair<ExecutionState, size_t> traceSkipSomeEnd(std::pair<ExecutionState, size_t> res);
+  std::pair<ExecutionState, size_t> traceSkipSomeEnd(std::pair<ExecutionState, size_t> res);
 
-  [[nodiscard]] std::pair<ExecutionState, size_t> traceSkipSomeEnd(ExecutionState state, size_t skipped);
+  std::pair<ExecutionState, size_t> traceSkipSomeEnd(ExecutionState state, size_t skipped);
 
   /// @brief skipSome, skips some more items, semantic is as follows: not
   /// more than atMost items may be skipped. The method tries to
   /// skip a block of at most atMost items, however, it may skip
   /// less (for example if there are not enough items to come). The number of
   /// elements skipped is returned.
-  [[nodiscard]] virtual std::pair<ExecutionState, size_t> skipSome(size_t atMost) = 0;
+  virtual std::pair<ExecutionState, size_t> skipSome(size_t atMost) = 0;
 
-  [[nodiscard]] ExecutionState getHasMoreState();
+  ExecutionState getHasMoreState();
 
   // TODO: Can we get rid of this? Problem: Subquery Executor is using it.
-  [[nodiscard]] ExecutionNode const* getPlanNode() const;
+  ExecutionNode const* getPlanNode() const;
 
   [[nodiscard]] velocypack::Options const* trxVpackOptions() const noexcept;
 
   /// @brief add a dependency
   void addDependency(ExecutionBlock* ep);
 
-  [[nodiscard]] bool isInSplicedSubquery() const noexcept;
+  bool isInSplicedSubquery() const noexcept;
 
  protected:
   /// @brief the execution engine

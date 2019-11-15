@@ -235,7 +235,7 @@ std::unique_ptr<ExecutionBlock> SortNode::createBlock(
     auto it = getRegisterPlan()->varInfo.find(element.var->id);
     TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
     RegisterId id = it->second.registerId;
-    sortRegs.emplace_back(id, element);
+    sortRegs.push_back(SortRegister{id, element});
   }
   SortExecutorInfos infos(std::move(sortRegs), _limit, engine.itemBlockManager(),
                           getRegisterPlan()->nrRegs[previousNode->getDepth()],

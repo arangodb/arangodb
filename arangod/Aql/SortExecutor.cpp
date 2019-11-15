@@ -34,6 +34,10 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
+constexpr bool SortExecutor::Properties::preservesOrder;
+constexpr BlockPassthrough SortExecutor::Properties::allowsBlockPassthrough;
+constexpr bool SortExecutor::Properties::inputSizeRestrictsOutputSize;
+
 namespace {
 
 /// @brief OurLessThan
@@ -79,12 +83,15 @@ static std::shared_ptr<std::unordered_set<RegisterId>> mapSortRegistersToRegiste
   return set;
 }
 
-SortExecutorInfos::SortExecutorInfos(std::vector<SortRegister> sortRegisters,
-                                     std::size_t limit, AqlItemBlockManager& manager,
-                                     RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-                                     std::unordered_set<RegisterId> registersToClear,
-                                     std::unordered_set<RegisterId> registersToKeep,
-                                     velocypack::Options const* options, bool stable)
+SortExecutorInfos::SortExecutorInfos(
+    // cppcheck-suppress passedByValue
+    std::vector<SortRegister> sortRegisters, std::size_t limit,
+    AqlItemBlockManager& manager, RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
+    // cppcheck-suppress passedByValue
+    std::unordered_set<RegisterId> registersToClear,
+    // cppcheck-suppress passedByValue
+    std::unordered_set<RegisterId> registersToKeep,
+    velocypack::Options const* options, bool stable)
     : ExecutorInfos(mapSortRegistersToRegisterIds(sortRegisters), nullptr,
                     nrInputRegisters, nrOutputRegisters,
                     std::move(registersToClear), std::move(registersToKeep)),
@@ -96,7 +103,7 @@ SortExecutorInfos::SortExecutorInfos(std::vector<SortRegister> sortRegisters,
   TRI_ASSERT(!_sortRegisters.empty());
 }
 
-std::vector<SortRegister> const& SortExecutorInfos::sortRegisters() const noexcept {
+std::vector<SortRegister>& SortExecutorInfos::sortRegisters() {
   return _sortRegisters;
 }
 
@@ -104,12 +111,6 @@ bool SortExecutorInfos::stable() const { return _stable; }
 
 velocypack::Options const* SortExecutorInfos::vpackOptions() const noexcept {
   return _vpackOptions;
-}
-
-size_t SortExecutorInfos::limit() const noexcept { return _limit; }
-
-AqlItemBlockManager& SortExecutorInfos::itemBlockManager() noexcept {
-  return _manager;
 }
 
 SortExecutor::SortExecutor(Fetcher& fetcher, SortExecutorInfos& infos)

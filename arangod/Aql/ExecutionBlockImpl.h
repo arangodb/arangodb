@@ -170,7 +170,7 @@ class ExecutionBlockImpl final : public ExecutionBlock {
 
   [[nodiscard]] std::pair<ExecutionState, Result> initializeCursor(InputAqlItemRow const& input) override;
 
-  [[nodiscard]] Infos const& infos() const;
+  Infos const& infos() const;
 
   /// @brief shutdown, will be called exactly once for the whole query
   /// Special implementation for all Executors that need to implement Shutdown

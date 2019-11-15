@@ -42,6 +42,10 @@
 
 using namespace arangodb;
 using namespace arangodb::aql;
+
+constexpr bool KShortestPathsExecutor::Properties::preservesOrder;
+constexpr BlockPassthrough KShortestPathsExecutor::Properties::allowsBlockPassthrough;
+constexpr bool KShortestPathsExecutor::Properties::inputSizeRestrictsOutputSize;
 using namespace arangodb::graph;
 
 namespace {

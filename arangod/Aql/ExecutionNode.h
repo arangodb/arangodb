@@ -363,7 +363,7 @@ class ExecutionNode {
   ::arangodb::containers::HashSet<Variable const*> const& getVarsUsedLater() const;
 
   /// @brief setVarsValid
-  void setVarsValid(::arangodb::containers::HashSet<Variable const*> const& v);
+  void setVarsValid(::arangodb::containers::HashSet<Variable const*>& v);
 
   /// @brief getVarsValid, this returns the set of variables that is valid
   /// for items leaving this node, this includes those that will be set here

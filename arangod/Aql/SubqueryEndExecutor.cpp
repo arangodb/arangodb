@@ -35,6 +35,10 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
+constexpr bool SubqueryEndExecutor::Properties::preservesOrder;
+constexpr BlockPassthrough SubqueryEndExecutor::Properties::allowsBlockPassthrough;
+constexpr bool SubqueryEndExecutor::Properties::inputSizeRestrictsOutputSize;
+
 SubqueryEndExecutorInfos::SubqueryEndExecutorInfos(
     std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,
     std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters,
@@ -48,21 +52,17 @@ SubqueryEndExecutorInfos::SubqueryEndExecutorInfos(
       _outReg(outReg),
       _inReg(inReg) {}
 
+SubqueryEndExecutorInfos::SubqueryEndExecutorInfos(SubqueryEndExecutorInfos&& other) = default;
+
 SubqueryEndExecutorInfos::~SubqueryEndExecutorInfos() = default;
 
-bool SubqueryEndExecutorInfos::usesInputRegister() const noexcept {
+bool SubqueryEndExecutorInfos::usesInputRegister() const {
   return _inReg != RegisterPlan::MaxRegisterId;
 }
 
 velocypack::Options const* SubqueryEndExecutorInfos::vpackOptions() const noexcept {
   return _vpackOptions;
 }
-
-RegisterId SubqueryEndExecutorInfos::getOutputRegister() const noexcept {
-  return _outReg;
-}
-
-RegisterId SubqueryEndExecutorInfos::getInputRegister() const noexcept { return _inReg; }
 
 SubqueryEndExecutor::SubqueryEndExecutor(Fetcher& fetcher, SubqueryEndExecutorInfos& infos)
     : _fetcher(fetcher), _infos(infos), _accumulator(nullptr), _state(ACCUMULATE) {

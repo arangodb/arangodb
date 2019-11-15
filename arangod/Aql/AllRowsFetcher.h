@@ -57,6 +57,8 @@ class ShadowAqlItemRow;
  *     => If all rows have been Fetched, it will return DONE and an AqlItemMatrix, the Matrix will return results
  *     => Any later call will return DONE and a nullptr. So make sure you keep the Matrix.
  *     => This state can be left only if the shadowRow is fetched.
+ *   - fetchBlockForPassthrough()
+ *     => Cannot be used! Only required to make the code compile
  *   - preFetchNumberOfRows()
  *     => Will do the same as fetchAllRows, but NOT give out the data, it will only hold it internally.
  *     => On response it will inform the caller on exactly how many Rows will be returned until the next ShadowRow appears.

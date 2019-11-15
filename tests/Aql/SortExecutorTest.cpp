@@ -50,7 +50,9 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-namespace arangodb::tests::aql {
+namespace arangodb {
+namespace tests {
+namespace aql {
 
 class SortExecutorTest : public ::testing::Test {
  protected:
@@ -196,4 +198,6 @@ TEST_F(SortExecutorTest, rows_upstream_we_are_waiting_for_list_of_numbers) {
   ASSERT_EQ(number, 5);
 }
 
-}  // namespace arangodb::tests::aql
+}  // namespace aql
+}  // namespace tests
+}  // namespace arangodb

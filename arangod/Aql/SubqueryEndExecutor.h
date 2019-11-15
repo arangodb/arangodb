@@ -52,14 +52,14 @@ class SubqueryEndExecutorInfos : public ExecutorInfos {
                            RegisterId outReg);
 
   SubqueryEndExecutorInfos() = delete;
-  SubqueryEndExecutorInfos(SubqueryEndExecutorInfos&&) noexcept = default;
+  SubqueryEndExecutorInfos(SubqueryEndExecutorInfos&&);
   SubqueryEndExecutorInfos(SubqueryEndExecutorInfos const&) = delete;
   ~SubqueryEndExecutorInfos();
 
   [[nodiscard]] velocypack::Options const* vpackOptions() const noexcept;
-  [[nodiscard]] RegisterId getOutputRegister() const noexcept;
-  [[nodiscard]] bool usesInputRegister() const noexcept;
-  [[nodiscard]] RegisterId getInputRegister() const noexcept;
+  inline RegisterId getOutputRegister() const { return _outReg; }
+  bool usesInputRegister() const;
+  inline RegisterId getInputRegister() const { return _inReg; }
 
  private:
   velocypack::Options const* _vpackOptions;
