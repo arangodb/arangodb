@@ -17,34 +17,37 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Max Neunhoeffer
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef APPLICATION_FEATURES_BOOTSTRAP_FEATURE_H
-#define APPLICATION_FEATURES_BOOTSTRAP_FEATURE_H 1
+#ifndef APPLICATION_FEATURES_CLUSTER_UPGRADE_FEATURE_H
+#define APPLICATION_FEATURES_CLUSTER_UPGRADE_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {
 
-class BootstrapFeature final : public application_features::ApplicationFeature {
+// this feature is responsible for performing a cluster upgrade. 
+// it is only doing something in a coordinator, and only if the server was started 
+// with the option `--database.auto-upgrade true`. The feature is late in the
+// startup sequence, so it can use the full cluster functionality when run.
+// after the feature has executed the upgrade, it will shut down the server.
+class ClusterUpgradeFeature final : public application_features::ApplicationFeature {
  public:
-  explicit BootstrapFeature(application_features::ApplicationServer& server);
+  explicit ClusterUpgradeFeature(application_features::ApplicationServer& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void start() override final;
-  void unprepare() override final;
-
-  static std::string const& name() noexcept;
-
-  bool isReady() const { return _isReady; }
+  
+  void setBootstrapVersion();
 
  private:
-  void waitForHealthEntry();
- 
+  void tryClusterUpgrade();
+  bool upgradeCoordinator();
+
  private:
-  bool _isReady;
-  bool _bark;
+  std::string _upgradeMode;
 };
 
 }  // namespace arangodb
