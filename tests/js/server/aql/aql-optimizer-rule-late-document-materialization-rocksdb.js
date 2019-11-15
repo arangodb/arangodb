@@ -279,26 +279,6 @@ function lateDocumentMaterializationRuleTestSuite () {
         assertEqual(0, expected.size);
       }
     },
-    testQueryResultsWithBetweenCalc() {
-      for (i = 0; i < numOfCollectionIndexes; ++i) {
-        let query = "FOR d IN " + collectionNames[i] + " FILTER d.obj.a == 'a_val' SORT d.obj.c LET c = CONCAT(NOOPT(d.obj.d), '-C')  LIMIT 10 RETURN c";
-        let plan = AQL_EXPLAIN(query).plan;
-        if (!isCluster) {
-          assertNotEqual(-1, plan.rules.indexOf(ruleName));
-          let result = AQL_EXECUTE(query);
-          assertEqual(2, result.json.length);
-          let expected = new Set(['d_val-C', 'd_val_2-C']);
-          result.json.forEach(function(doc) {
-            assertTrue(expected.has(doc));
-            expected.delete(doc);
-          });
-          assertEqual(0, expected.size);
-        } else {
-          // on cluster this will not be applied as calculation node will be moved up
-          assertEqual(-1, plan.rules.indexOf(ruleName));
-        }
-      }
-    },
     testQueryResultsSkipSome() {
       for (i = 0; i < numOfCollectionIndexes; ++i) {
         let query = "FOR d IN " + collectionNames[i] + " FILTER d.obj.a == 'a_val' SORT d.obj.c DESC LIMIT 1, 1 RETURN d";
