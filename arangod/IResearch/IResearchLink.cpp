@@ -140,6 +140,7 @@ size_t directoryMemory(irs::directory const& directory, TRI_idx_iid_t id) noexce
   }
 
   return size;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compute the data path to user for iresearch data store
