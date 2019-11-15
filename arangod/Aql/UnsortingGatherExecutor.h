@@ -39,6 +39,14 @@ class OutputAqlItemRow;
 class IdExecutorInfos;
 class SharedAqlItemBlockPtr;
 
+/**
+* @brief Produces all rows from its dependencies, which may be more than one,
+* in some unspecified order. It is, purposefully, strictly synchronous, and
+* always waits for an answer before requesting the next row(s).
+*
+* The actual implementation fetches all available rows from the first
+* dependency, then from the second, and so forth. But that is not guaranteed.
+*/
 class UnsortingGatherExecutor {
  public:
   struct Properties {

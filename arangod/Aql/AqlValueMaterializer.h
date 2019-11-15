@@ -40,6 +40,7 @@ struct Options;
 
 namespace aql {
 
+/// @brief Helper class to materialize AqlValues (see AqlValue::materialize).
 struct AqlValueMaterializer {
   explicit AqlValueMaterializer(velocypack::Options const* options);
   explicit AqlValueMaterializer(arangodb::transaction::Methods* trx);

@@ -31,7 +31,7 @@
 #include <tuple>
 #include <utility>
 
-// TODO Clean up unused versions
+// TODO Clean up unused variants of the IdExecutor - some of them aren't in use anymore.
 
 namespace arangodb {
 namespace transaction {
