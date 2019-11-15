@@ -308,9 +308,10 @@ endif()
 
 if (USE_FAIL_ON_WARNINGS)
   if (MSVC)
-    target_compile_options(arango_v8 PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
-    target_compile_options(arango_geo PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
-    target_compile_options(arango PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+    # C4996 warns about [[deprecated]]
+    target_compile_options(arango_v8 PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS /Wd4996)
+    target_compile_options(arango_geo PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS /Wd4996)
+    target_compile_options(arango PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS /Wd4996)
   else ()
     target_compile_options(arango_v8 PRIVATE -Werror -Wno-error=deprecated-declarations)
     target_compile_options(arango_geo PRIVATE -Werror -Wno-error=deprecated-declarations)
