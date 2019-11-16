@@ -481,7 +481,7 @@ function iResearchAqlTestSuite () {
       assertEqual(result5.length, 1);
       assertEqual(result5[0].name, 'full');
       
-      var result6 = db._query("FOR doc IN UnitTestsView SEARCH ANALYZER(PHRASE(doc.text,  'quick ', 'brown', ' fox jumps'), 'text_en') OPTIONS { waitForSync : true } RETURN doc").toArray();
+      var result6 = db._query("FOR doc IN UnitTestsView SEARCH ANALYZER(PHRASE(doc.text,  'quick ', 0, 'brown', 0, [' fox',  ' jumps']), 'text_en') OPTIONS { waitForSync : true } RETURN doc").toArray();
 
       assertEqual(result6.length, 1);
       assertEqual(result6[0].name, 'full');
