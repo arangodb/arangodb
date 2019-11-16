@@ -1912,8 +1912,8 @@ arangodb::Result fromFuncMinMatch(irs::boolean_filter* filter, QueryContext cons
 arangodb::Result processPhraseArgs(
     irs::by_phrase* phrase, QueryContext const& ctx,
     FilterContext const& filterCtx, arangodb::aql::AstNode const& valueArgs,
-    size_t valueArgsBegin, size_t valueArgsEnd, irs::analysis::analyzer::ptr& analyzer, 
-    size_t offset, bool allowDefaultOffset) {
+    size_t valueArgsBegin, size_t valueArgsEnd, irs::analysis::analyzer::ptr& analyzer,
+    size_t offset, bool allowDefaultOffset, bool allowRecursion) {
   irs::string_ref value;
   bool expectingOffset = false;
   for (size_t idx = valueArgsBegin; idx < valueArgsEnd; ++idx) {
@@ -1925,13 +1925,20 @@ arangodb::Result processPhraseArgs(
     }
     if (currentArg->isArray() && (!expectingOffset || allowDefaultOffset)) {
       // array in array is processed with possible default 0 offsets!
-      auto subRes = processPhraseArgs(phrase, ctx, filterCtx, *currentArg, 0, currentArg->numMembers(), analyzer, offset, true);
-      if (subRes.fail()) {
-        return subRes;
+      // No array recursion allwed - anyone interested coud use FLATTEN to avoid recurring arrays
+      if (allowRecursion) {
+        auto subRes = processPhraseArgs(phrase, ctx, filterCtx, *currentArg, 0, currentArg->numMembers(), analyzer, offset, true, false);
+        if (subRes.fail()) {
+          return subRes;
+        }
+        expectingOffset = true;
+        offset = 0;
+        continue;
+      } else {
+        auto message = "'PHRASE' AQL function: recursive arrays not allowed at position "s + std::to_string(idx);
+        LOG_TOPIC("66c24", WARN, arangodb::iresearch::TOPIC) << message;
+        return { TRI_ERROR_BAD_PARAMETER, message };
       }
-      expectingOffset = true;
-      offset = 0;
-      continue;
     }
     ScopedAqlValue currentValue(*currentArg);
     if (phrase || currentValue.isConstant()) {
@@ -1958,6 +1965,10 @@ arangodb::Result processPhraseArgs(
         LOG_TOPIC("ac06b", WARN, arangodb::iresearch::TOPIC) << message;
         return { TRI_ERROR_BAD_PARAMETER, message };
       }
+    } else if (!phrase && !currentValue.isConstant()) {
+      // in case of non const node encountered we can not decide if it and following args are correct before execution
+      // so at this stage we say all is ok
+      return {};
     }
 
     if (phrase) {
@@ -1979,7 +1990,6 @@ arangodb::Result processPhraseArgs(
 // case 0 offset could be omitted e.g. <term1, term2, 2, term3> is equal to: <term1, 0, term2, 2, term3>
 // PHRASE(<attribute>, <value> [, <offset>, <value>, ...] [, <analyzer>])
 // PHRASE(<attribute>, '[' <value> [, <offset>, <value>, ...] ']' [,<analyzer>])
-
 arangodb::Result fromFuncPhrase(irs::boolean_filter* filter, QueryContext const& ctx,
                     FilterContext const& filterCtx, arangodb::aql::AstNode const& args) {
   if (!args.isDeterministic()) {
@@ -2033,7 +2043,6 @@ arangodb::Result fromFuncPhrase(irs::boolean_filter* filter, QueryContext const&
   size_t valueArgsBegin = 1;
   size_t valueArgsEnd = argc;
 
-
   irs::by_phrase* phrase = nullptr;
   irs::analysis::analyzer::ptr analyzer;
   size_t offset = 0;
@@ -2062,7 +2071,7 @@ arangodb::Result fromFuncPhrase(irs::boolean_filter* filter, QueryContext const&
     phrase->field(std::move(name));
     phrase->boost(filterCtx.boost);
   }
-  return processPhraseArgs(phrase, ctx, filterCtx, *valueArgs, valueArgsBegin, valueArgsEnd, analyzer, 0, false);
+  return processPhraseArgs(phrase, ctx, filterCtx, *valueArgs, valueArgsBegin, valueArgsEnd, analyzer, 0, false, true);
 }
 
 // STARTS_WITH(<attribute>, <prefix>, [<scoring-limit>])

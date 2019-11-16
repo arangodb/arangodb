@@ -2152,7 +2152,7 @@ TEST_F(IResearchQueryPhraseTest, test) {
     };
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN testView SEARCH ANALYZER(PHRASE(d.duplicated, [['a', 1, 'c'], 'd']), "
+      "FOR d IN testView SEARCH ANALYZER(PHRASE(d.duplicated, ['a', 1, 'c', 'd']), "
       "'test_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
@@ -2177,7 +2177,7 @@ TEST_F(IResearchQueryPhraseTest, test) {
     };
     auto result = arangodb::tests::executeQuery(
       vocbase,
-      "FOR d IN testView SEARCH PHRASE(d.duplicated, [['a', 1, 'c'], 'd'], "
+      "FOR d IN testView SEARCH PHRASE(d.duplicated, ['a', 1, 'c', 'd'], "
       "'test_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
     ASSERT_TRUE(result.result.ok());
     auto slice = result.data->slice();
@@ -2193,96 +2193,44 @@ TEST_F(IResearchQueryPhraseTest, test) {
 
     EXPECT_EQ(i, expected.size());
   }
+  // array recursion simple
+  {
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "FOR d IN testView SEARCH PHRASE(d.prefix, ['b', 1, ['t', 'e', 1, 'a']], "
+      "'test_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
+  }
   // array recursion
   {
-    std::vector<arangodb::velocypack::Slice> expected = {
-        insertedDocs[29].slice()
-    };
     auto result = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN testView SEARCH PHRASE(d.prefix, ['b', 1, ['t', 'e', 1, 'a']], 0, ['d'], 0, ['s', 0, 'f', 's'], 1, [[['a', 1, 'd']]], 0, 'f', "
       "'test_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
-    ASSERT_TRUE(result.result.ok());
-    auto slice = result.data->slice();
-    EXPECT_TRUE(slice.isArray());
-    size_t i = 0;
-
-    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
-      auto const resolved = itr.value().resolveExternals();
-      EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-        resolved, true)));
-    }
-
-    EXPECT_EQ(i, expected.size());
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
   // array recursion via []
   {
-    std::vector<arangodb::velocypack::Slice> expected = {
-        insertedDocs[29].slice()
-    };
     auto result = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN testView SEARCH PHRASE(d.prefix, [['b', 1, ['t', 'e', 1, 'a']], 0, ['d'], 0, ['s', 0, 'f', 's'], 1, [[['a', 1, 'd']]], 0, 'f'], "
       "'test_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
-    ASSERT_TRUE(result.result.ok());
-    auto slice = result.data->slice();
-    EXPECT_TRUE(slice.isArray());
-    size_t i = 0;
-
-    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
-      auto const resolved = itr.value().resolveExternals();
-      EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-        resolved, true)));
-    }
-
-    EXPECT_EQ(i, expected.size());
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
   // array recursion without analyzer
   {
-    std::vector<arangodb::velocypack::Slice> expected = {
-        insertedDocs[29].slice()
-    };
     auto result = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN testView SEARCH ANALYZER(PHRASE(d.prefix, ['b', 1, ['t', 'e', 1, 'a']], 0, ['d'], 0, ['s', 0, 'f', 's'], 1, [[['a', 1, 'd']]], 0, 'f'), "
       "'test_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
-    ASSERT_TRUE(result.result.ok());
-    auto slice = result.data->slice();
-    EXPECT_TRUE(slice.isArray());
-    size_t i = 0;
-
-    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
-      auto const resolved = itr.value().resolveExternals();
-      EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-        resolved, true)));
-    }
-
-    EXPECT_EQ(i, expected.size());
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
   // array recursion without analyzer via []
   {
-    std::vector<arangodb::velocypack::Slice> expected = {
-        insertedDocs[29].slice()
-    };
     auto result = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN testView SEARCH ANALYZER(PHRASE(d.prefix, [['b', 1, ['t', 'e', 1, 'a']], 0, ['d'], 0, ['s', 0, 'f', 's'], 1, [[['a', 1, 'd']]], 0, 'f']), "
       "'test_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
-    ASSERT_TRUE(result.result.ok());
-    auto slice = result.data->slice();
-    EXPECT_TRUE(slice.isArray());
-    size_t i = 0;
-
-    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
-      auto const resolved = itr.value().resolveExternals();
-      EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-        resolved, true)));
-    }
-
-    EXPECT_EQ(i, expected.size());
+    ASSERT_TRUE(result.result.is(TRI_ERROR_BAD_PARAMETER));
   }
 }
