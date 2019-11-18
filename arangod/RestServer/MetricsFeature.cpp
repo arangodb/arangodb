@@ -30,6 +30,7 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "RestServer/Metrics.h"
+#include "Statistics/StatisticsFeature.h"
 
 #include <chrono>
 #include <thread>
@@ -98,7 +99,8 @@ template<> struct printer<double> {
     for (size_t i = 0; i < buckets; ++i) {
       uint64_t n = hist.load(i);
       sum += n;
-      ret += name + "_bucket{le=\"" + std::to_string(le) + "\"} " + std::to_string(hist.load(i)) + "\n";
+      ret += name + "_bucket{le=\"" + std::to_string(le) + "\"} " +
+        std::to_string(hist.load(i)) + "\n";
       le += div;
     }
     ret += name + "_count " + std::to_string(sum) + "\n";
@@ -110,7 +112,7 @@ char const* _HELP ="#HELP ";
 char const* _TYPE ="#TYPE ";
 
 void MetricsFeature::toPrometheus(std::string& result) const {
-  std::lock_guard<std::mutex> guard(_lock);
+  { std::lock_guard<std::mutex> guard(_lock);
   for (auto const& i : _help) {
     if (!i.second.empty()) {
       result += _HELP + i.first + " " + i.second + "\n";
@@ -129,9 +131,11 @@ void MetricsFeature::toPrometheus(std::string& result) const {
         i.first + " " + std::to_string(_metrics.counter(i.first).load()) + "\n";
     }
     result += "\n";
-  }
+  }}
 
 
+  auto& sf = server().getFeature<StatisticsFeature>();
+  sf.toPrometheus(result, std::chrono::duration<double,std::milli>(std::chrono::system_clock::now().time_since_epoch()).count());
 
 }
   
