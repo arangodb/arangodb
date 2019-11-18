@@ -227,7 +227,7 @@ if (WIN32)
 
     foreach(V8_ONE_TARGET ${V8_TARGETS})
       # cmake eats semicolons or quotes them or, or, or so we can't use /t:a;b;c
-      ExternalProject_Add_Step(v8_build_${MS_TARGET_CONF_LOWER} v8_build_${V8_ONE_TARGET}
+      ExternalProject_Add_Step(v8_build_${MS_TARGET_CONF_LOWER} v8_build_${V8_ONE_TARGET}_${MS_TARGET_CONF_LOWER}
         WORKING_DIRECTORY
         ${V8_TARGET_DIR}/../gypfiles
         COMMAND
