@@ -1,5 +1,10 @@
 devel
 -----
+
+* Include ArangoSearch data in hotbackups.
+
+* Allow to restore 3.5 hotbackups in 3.6.
+
 * Fixed ArangoSearch index removes being discarded on commiting consolidation results with
   pending removes after some segments under consolidation were already committed 
 

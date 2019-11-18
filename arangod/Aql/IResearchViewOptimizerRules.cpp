@@ -293,7 +293,7 @@ void lateDocumentMaterializationArangoSearchRule(arangodb::aql::Optimizer* opt,
     if (arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW == loop->getType()) {
       auto & viewNode = *EN::castTo<IResearchViewNode*>(loop);
       if (viewNode.isLateMaterialized()) {
-        continue; //loop is aleady optimized
+        continue; // loop is already optimized
       }
       ExecutionNode* current = limitNode->getFirstDependency();
       ExecutionNode* sortNode = nullptr;
@@ -301,6 +301,7 @@ void lateDocumentMaterializationArangoSearchRule(arangodb::aql::Optimizer* opt,
       // without document body usage before that node.
       // this node could be appended with materializer
       bool stopSearch = false;
+      bool stickToSortNode = false;
       while (current != loop) {
         switch (current->getType()) {
           case arangodb::aql::ExecutionNode::SORT:
@@ -321,15 +322,21 @@ void lateDocumentMaterializationArangoSearchRule(arangodb::aql::Optimizer* opt,
           default: // make clang happy
             break;
         }
-        if (sortNode != nullptr) {
+        if (!stopSearch) {
           ::arangodb::containers::HashSet<Variable const*> currentUsedVars;
           current->getVariablesUsedHere(currentUsedVars);
           if (currentUsedVars.find(&viewNode.outVariable()) != currentUsedVars.end()) {
-            // we have a doc body used before selected SortNode. Forget it, let`s look for better sort to use
-            sortNode = nullptr;
-            // this limit node affects only closest sort, if this sort is invalid
-            // we need to check other limit node
-            stopSearch = true;
+            if (sortNode != nullptr) {
+              // we have a doc body used before selected SortNode. Forget it, let`s look for better sort to use
+              sortNode = nullptr;
+              // this limit node affects only closest sort, if this sort is invalid
+              // we need to check other limit node
+              stopSearch = true;
+            } else {
+              // we are between limit and sort nodes.
+              // late materialization could still be applied but we must insert MATERIALIZE node after sort not after limit
+              stickToSortNode = true;
+            }
           }
         }
         if (stopSearch) {
@@ -352,7 +359,7 @@ void lateDocumentMaterializationArangoSearchRule(arangodb::aql::Optimizer* opt,
 
         // on cluster we need to materialize node stay close to sort node on db server (to avoid network hop for materialization calls)
         // however on single server we move it to limit node to make materialization as lazy as possible
-        auto materializeDependency = ServerState::instance()->isCoordinator() ? sortNode : limitNode;
+        auto materializeDependency = ServerState::instance()->isCoordinator() || stickToSortNode ? sortNode : limitNode;
         auto* dependencyParent = materializeDependency->getFirstParent();
         TRI_ASSERT(dependencyParent);
         dependencyParent->replaceDependency(materializeDependency, materializeNode);
