@@ -292,7 +292,7 @@ function lateDocumentMaterializationArangoSearch2RuleTestSuite () {
       // However in cluster only first sort suitable, as later sorts depend 
       // on all db servers results and performed on coordinator
       plan.nodes.forEach(function(node) {
-        if( node.type === "MaterializeNode") {
+        if (node.type === "MaterializeNode") {
           assertFalse(materializeNodeFound); // no double materialization
           assertEqual(nodeDependency.limit, isCluster ? 6 : 3);
           materializeNodeFound = true;
@@ -317,7 +317,7 @@ function lateDocumentMaterializationArangoSearch2RuleTestSuite () {
       // on all db servers results and performed on coordinator
       let nodeDependency = null;
       plan.nodes.forEach(function(node) {
-        if( node.type === "MaterializeNode") {
+        if (node.type === "MaterializeNode") {
           assertFalse(materializeNodeFound);
           assertEqual(nodeDependency.limit, isCluster ? 6 : 3);
           materializeNodeFound = true;
