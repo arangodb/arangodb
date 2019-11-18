@@ -381,13 +381,20 @@ void lateDocumentMaterializationArangoSearchRule(Optimizer* opt,
           ::arangodb::containers::HashSet<Variable const*> currentUsedVars;
           current->getVariablesUsedHere(currentUsedVars);
           if (currentUsedVars.find(&viewNode.outVariable()) != currentUsedVars.end()) {
+            // Currently only calculation and subquery nodes expected to use loop variable.
+            // We successfully replace all references to loop variable in calculation nodes only.
+            // However if some other node types will begin to use loop variable
+            // assertion below will be triggered and this rule should be updated.
+            // Subquery node is planned to be supported later.
             auto invalid = true;
-            if (type == ExecutionNode::CALCULATION) {
+            if (ExecutionNode::CALCULATION == type) {
               auto calcNode = ExecutionNode::castTo<CalculationNode*>(current);
               if (viewNode.canVariablesBeReplaced(calcNode)) {
                 calcNodes.emplace_back(calcNode);
                 invalid = false;
               }
+            } else {
+              TRI_ASSERT(ExecutionNode::SUBQUERY == type);
             }
             if (invalid) {
               if (sortNode != nullptr) {
