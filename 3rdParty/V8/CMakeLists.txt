@@ -167,8 +167,7 @@ if (WIN32)
   list(APPEND V8_GYP_ARGS -Dtarget_arch=${V8_PROC_ARCH} -Dhost_arch=${V8_PROC_ARCH})
   list(APPEND V8_GYP_ARGS ../gypfiles/all.gyp)
 
-  list(APPEND V8_TARGET_ARCHS #"Debug"
-    "Release")
+  list(APPEND V8_TARGET_ARCHS "Debug" "Release")
   set(GYP_GENERATORS "msvs")
   set(DEPOT_TOOLS_WIN_TOOLCHAIN "0")
   set(GYP_MSVS_OVERRIDE_PATH "${CMAKE_CXX_COMPILER}")
