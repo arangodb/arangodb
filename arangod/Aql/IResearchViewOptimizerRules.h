@@ -36,7 +36,7 @@ class ExecutionPlan;
 
 namespace iresearch {
 
-/// @brief moves document materialization from view nodes to sort nodes
+/// @brief moves document materialization from view nodes to materialize nodes
 void lateDocumentMaterializationArangoSearchRule(arangodb::aql::Optimizer* opt,
                      std::unique_ptr<arangodb::aql::ExecutionPlan> plan,
                      arangodb::aql::OptimizerRule const& rule);

@@ -1,14 +1,32 @@
 devel
 -----
 
+* Include ArangoSearch data in hotbackups.
+
+* Allow to restore 3.5 hotbackups in 3.6.
+
+* Fixed ArangoSearch index removes being discarded on commiting consolidation results with
+  pending removes after some segments under consolidation were already committed 
+
+* Fixed an issue where removeServer left bihind current coordinators
+
+* Allow usage of AQL function `RANDOM_TOKEN` with an argument value of `0`. This
+  now produces an empty string, whereas in older versions this threw an invalid
+  value exception.
+
 * Add startup option `--rocksdb.exclusive-writes` to avoid write-write conflicts.
 
   This options allows for an easier transition from MMFiles to the RocksDB storage
   engine, but comes with a big performance penalty as all collections will be locked
   exclusively for writes.
 
-* Added new timeout option for AQL queries. If a query does not finish execution 
+* Added new timeout option for AQL queries. If a query does not finish execution
   within the given time in seconds it will be killed.
+
+* Fixed undefined behaviour with creation of ArangoSearch links with custom
+  analyzers in cluster environment.
+
+* Fixed internal issue #651: analyzer duplication in _analyzers collection.
 
 * Fixed internal issue #4597: rebalanceShards API cannot work on any database
   other than the _system database.

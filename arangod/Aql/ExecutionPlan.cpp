@@ -818,7 +818,7 @@ ExecutionNode* ExecutionPlan::registerNode(std::unique_ptr<ExecutionNode> node) 
   TRI_ASSERT(node->plan() == this);
   TRI_ASSERT(node->id() > 0);
   TRI_ASSERT(_ids.find(node->id()) == _ids.end());
-  auto[it, emplaced] = _ids.try_emplace(node->id(), node.get());  // take ownership
+  auto emplaced = _ids.try_emplace(node->id(), node.get()).second;  // take ownership
   TRI_ASSERT(emplaced);
   return node.release();
 }

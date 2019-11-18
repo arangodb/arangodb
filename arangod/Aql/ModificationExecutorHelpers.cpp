@@ -158,8 +158,6 @@ void ModificationExecutorHelpers::throwOperationResultException(
     return;
   }
 
-  std::string message;
-
   // Find the first relevant error for which we want to throw.
   // If _ignoreDocumentNotFound is true, then this is any error other than
   // TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, otherwise it is just any error.
