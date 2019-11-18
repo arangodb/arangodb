@@ -295,7 +295,7 @@ arangodb::Result MMFilesCollection::persistProperties() {
   try {
     auto infoBuilder = _logicalCollection.toVelocyPackIgnore(
         {"path", "statusString"},
-        LogicalDataSource::Serialization::Persistence);
+        LogicalDataSource::Serialization::PersistenceWithInProgress);
     MMFilesCollectionMarker marker(TRI_DF_MARKER_VPACK_CHANGE_COLLECTION,
                                    _logicalCollection.vocbase().id(),
                                    _logicalCollection.id(), infoBuilder.slice());
@@ -1684,11 +1684,15 @@ int MMFilesCollection::fillIndexes(transaction::Methods& trx,
         continue;
       }
       MMFilesIndex* midx = static_cast<MMFilesIndex*>(idx.get());
-      if (midx->isPersistent()) {
-        continue;
+      if (midx->needsReversal()) {
+        midx->drop(); // index requires separate reversal and we promised (with INDEX_CREATION hint) we will drop on any failure
+      } else {
+        if (midx->isPersistent()) {
+          continue;
+        }
+        idx->unload();  // TODO: check is this safe? truncate not necessarily
+                        // feasible
       }
-      idx->unload();  // TODO: check is this safe? truncate not necessarily
-                      // feasible
     }
   };
 
@@ -2180,6 +2184,8 @@ std::shared_ptr<Index> MMFilesCollection::createIndex(arangodb::velocypack::Slic
                                             &ctx),  // aliasing ctor
       _logicalCollection, AccessMode::Type::EXCLUSIVE);
 
+  trx.addHint(transaction::Hints::Hint::INDEX_CREATION);
+
   Result res = trx.begin();
 
   if (!res.ok()) {
@@ -2281,7 +2287,7 @@ std::shared_ptr<Index> MMFilesCollection::createIndex(transaction::Methods& trx,
   if (!engine->inRecovery()) {
     auto builder = _logicalCollection.toVelocyPackIgnore(
         {"path", "statusString"},
-        LogicalDataSource::Serialization::Persistence);
+        LogicalDataSource::Serialization::PersistenceWithInProgress);
     _logicalCollection.properties(builder.slice(),
                                   false);  // always a full-update
   }
@@ -2419,7 +2425,7 @@ bool MMFilesCollection::dropIndex(TRI_idx_iid_t iid) {
   {
     auto builder = _logicalCollection.toVelocyPackIgnore(
         {"path", "statusString"},
-        LogicalDataSource::Serialization::Persistence);
+        LogicalDataSource::Serialization::PersistenceWithInProgress);
 
     _logicalCollection.properties(builder.slice(),
                                   false);  // always a full-update

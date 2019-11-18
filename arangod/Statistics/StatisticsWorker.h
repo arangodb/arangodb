@@ -52,6 +52,7 @@ class StatisticsWorker final : public Thread {
   void computePerSeconds(velocypack::Builder& result, velocypack::Slice const& current,
                          velocypack::Slice const& prev);
   void generateRawStatistics(velocypack::Builder& result, double const& now);
+  void generateRawStatistics(std::string& result, double const& now);
 
   // calculate per 15 seconds statistics
   void historianAverage();

@@ -800,14 +800,153 @@ void StatisticsWorker::avgPercentDistributon(VPackBuilder& builder, VPackSlice c
 
   builder.openObject();
   builder.add("values", VPackValue(VPackValueType::Array));
-  for (auto const& n : result) {
-    builder.add(VPackValue(n));
+  for (auto const& i : result) {
+    builder.add(VPackValue(i));
   }
   builder.close();
 
   builder.add("cuts", cuts.slice());
 
   builder.close();
+}
+
+std::string const TYPE_("#TYPE ");
+std::string const HELP_("#HELP ");
+
+std::string const
+
+void StatisticsWorker::generateRawStatistics(std::string& result, double const& now) {
+    ProcessInfo info = TRI_ProcessInfoSelf();
+    uint64_t rss = static_cast<uint64_t>(info._residentSize);
+    double rssp = 0;
+
+    if (TRI_PhysicalMemory != 0) {
+        rssp = static_cast<double>(rss) / static_cast<double>(TRI_PhysicalMemory);
+    }
+
+    StatisticsCounter httpConnections;
+    StatisticsCounter totalRequests;
+    std::array<StatisticsCounter, MethodRequestsStatisticsSize> methodRequests;
+    StatisticsCounter asyncRequests;
+    StatisticsDistribution connectionTime;
+
+    ConnectionStatistics::fill(httpConnections, totalRequests, methodRequests,
+                               asyncRequests, connectionTime);
+
+    StatisticsDistribution totalTime;
+    StatisticsDistribution requestTime;
+    StatisticsDistribution queueTime;
+    StatisticsDistribution ioTime;
+    StatisticsDistribution bytesSent;
+    StatisticsDistribution bytesReceived;
+
+    RequestStatistics::fill(totalTime, requestTime, queueTime, ioTime, bytesSent, bytesReceived, stats::RequestStatisticsSource::ALL);
+
+    result += TYPE_ + "minorPageFaults counter\n" + HELP_ + "minorPageFaults Minor page faults\n" + "minorPageFaults " +
+            std::to_string(info._minorPageFaults);
+    // processStatistics()
+    /*builder.add("minorPageFaults", VPackValue(info._minorPageFaults));
+    builder.add("majorPageFaults", VPackValue(info._majorPageFaults));
+    if (info._scClkTck != 0) {
+        // prevent division by zero
+        builder.add("userTime", VPackValue(static_cast<double>(info._userTime) /
+                                           static_cast<double>(info._scClkTck)));
+        builder.add("systemTime", VPackValue(static_cast<double>(info._systemTime) /
+                                             static_cast<double>(info._scClkTck)));
+    }
+    builder.add("numberOfThreads", VPackValue(info._numberThreads));
+    builder.add("residentSize", VPackValue(rss));
+    builder.add("residentSizePercent", VPackValue(rssp));
+    builder.add("virtualSize", VPackValue(info._virtualSize));
+    builder.close();
+
+    // _clientStatistics()
+    builder.add("client", VPackValue(VPackValueType::Object));
+    builder.add("httpConnections", VPackValue(httpConnections._count));
+
+    VPackBuilder tmp = fillDistribution(connectionTime);
+    builder.add("connectionTime", tmp.slice());
+
+    tmp = fillDistribution(totalTime);
+    builder.add("totalTime", tmp.slice());
+
+    tmp = fillDistribution(requestTime);
+    builder.add("requestTime", tmp.slice());
+
+    tmp = fillDistribution(queueTime);
+    builder.add("queueTime", tmp.slice());
+
+    tmp = fillDistribution(ioTime);
+    builder.add("ioTime", tmp.slice());
+
+    tmp = fillDistribution(bytesSent);
+    builder.add("bytesSent", tmp.slice());
+
+    tmp = fillDistribution(bytesReceived);
+    builder.add("bytesReceived", tmp.slice());
+    builder.close();
+
+    // _httpStatistics()
+    builder.add("http", VPackValue(VPackValueType::Object));
+    builder.add("requestsTotal", VPackValue(totalRequests._count));
+    builder.add("requestsAsync", VPackValue(asyncRequests._count));
+    builder.add("requestsGet",
+                VPackValue(methodRequests[(int)rest::RequestType::GET]._count));
+    builder.add("requestsHead",
+                VPackValue(methodRequests[(int)rest::RequestType::HEAD]._count));
+    builder.add("requestsPost",
+                VPackValue(methodRequests[(int)rest::RequestType::POST]._count));
+    builder.add("requestsPut",
+                VPackValue(methodRequests[(int)rest::RequestType::PUT]._count));
+    builder.add("requestsPatch",
+                VPackValue(methodRequests[(int)rest::RequestType::PATCH]._count));
+    builder.add("requestsDelete",
+                VPackValue(methodRequests[(int)rest::RequestType::DELETE_REQ]._count));
+    builder.add("requestsOptions",
+                VPackValue(methodRequests[(int)rest::RequestType::OPTIONS]._count));
+    builder.add("requestsOther",
+                VPackValue(methodRequests[(int)rest::RequestType::ILLEGAL]._count));
+    builder.close();
+
+    // _serverStatistics()
+    builder.add("server", VPackValue(VPackValueType::Object));
+    builder.add("physicalMemory", VPackValue(TRI_PhysicalMemory));
+    builder.add("transactions", VPackValue(VPackValueType::Object));
+    builder.close();
+
+    // export v8 statistics
+    builder.add("v8Context", VPackValue(VPackValueType::Object));
+    V8DealerFeature::Statistics v8Counters{};
+    // std::vector<V8DealerFeature::MemoryStatistics> memoryStatistics;
+    // V8 may be turned off on a server
+    if (_server.hasFeature<V8DealerFeature>()) {
+        V8DealerFeature& dealer = _server.getFeature<V8DealerFeature>();
+        if (dealer.isEnabled()) {
+            v8Counters = dealer.getCurrentContextNumbers();
+            // see below: memoryStatistics = dealer.getCurrentMemoryNumbers();
+        }
+    }
+    builder.add("available", VPackValue(v8Counters.available));
+    builder.add("busy", VPackValue(v8Counters.busy));
+    builder.add("dirty", VPackValue(v8Counters.dirty));
+    builder.add("free", VPackValue(v8Counters.free));
+    builder.add("max", VPackValue(v8Counters.max));
+    builder.close();
+
+    // export threads statistics
+    builder.add("threads", VPackValue(VPackValueType::Object));
+    SchedulerFeature::SCHEDULER->toVelocyPack(builder);
+    builder.close();
+
+    // export ttl statistics
+    TtlFeature& ttlFeature = _server.getFeature<TtlFeature>();
+    builder.add(VPackValue("ttl"));
+    ttlFeature.statsToVelocyPack(builder);
+
+    builder.close();
+
+    builder.close();
+*/
 }
 
 void StatisticsWorker::generateRawStatistics(VPackBuilder& builder, double const& now) {
