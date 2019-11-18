@@ -22,16 +22,24 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ModificationNodes.h"
+#include "Aql/AllRowsFetcher.h"
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionPlan.h"
-#include "Aql/ModificationExecutor.h"
-#include "Aql/ModificationExecutorTraits.h"
 #include "Aql/Query.h"
+#include "Aql/SingleRowFetcher.h"
 #include "Aql/VariableGenerator.h"
 
+#include "Aql/ModificationExecutor.h"
+#include "Aql/ModificationExecutorHelpers.h"
+#include "Aql/SimpleModifier.h"
+#include "Aql/UpsertModifier.h"
+
 using namespace arangodb::aql;
+
+namespace arangodb {
+namespace aql {
 
 ModificationNode::ModificationNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
@@ -95,6 +103,14 @@ void ModificationNode::cloneCommon(ModificationNode* c) const {
   CollectionAccessingNode::cloneInto(*c);
 }
 
+///////////////////////////////////////////////////////////////////////////////
+/// REMOVE
+///
+using AllRowsRemoveExecutionBlock =
+    ExecutionBlockImpl<ModificationExecutor<AllRowsFetcher, RemoveModifier>>;
+using SingleRowRemoveExecutionBlock =
+    ExecutionBlockImpl<ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, RemoveModifier>>;
+
 RemoveNode::RemoveNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ModificationNode(plan, base),
       _inVariable(Variable::varFromVPack(plan->getAst(), base, "inVariable")) {}
@@ -121,7 +137,8 @@ std::unique_ptr<ExecutionBlock> RemoveNode::createBlock(
   RegisterId outputNew = variableToRegisterOptionalId(_outVariableNew);
   RegisterId outputOld = variableToRegisterOptionalId(_outVariableOld);
 
-  OperationOptions options = convertOptions(_options, _outVariableNew, _outVariableOld);
+  OperationOptions options =
+      ModificationExecutorHelpers::convertOptions(_options, _outVariableNew, _outVariableOld);
 
   ModificationExecutorInfos infos(
       inDocRegister, RegisterPlan::MaxRegisterId, RegisterPlan::MaxRegisterId,
@@ -136,11 +153,9 @@ std::unique_ptr<ExecutionBlock> RemoveNode::createBlock(
       IgnoreDocumentNotFound(_options.ignoreDocumentNotFound));
 
   if (_options.readCompleteInput) {
-    return std::make_unique<ExecutionBlockImpl<ModificationExecutor<Remove, AllRowsFetcher>>>(
-        &engine, this, std::move(infos));
+    return std::make_unique<AllRowsRemoveExecutionBlock>(&engine, this, std::move(infos));
   } else {
-    return std::make_unique<ExecutionBlockImpl<ModificationExecutor<Remove, SingleBlockFetcher<BlockPassthrough::Disable>>>>(
-        &engine, this, std::move(infos));
+    return std::make_unique<SingleRowRemoveExecutionBlock>(&engine, this, std::move(infos));
   }
 }
 
@@ -163,6 +178,14 @@ ExecutionNode* RemoveNode::clone(ExecutionPlan* plan, bool withDependencies,
 
   return cloneHelper(std::move(c), withDependencies, withProperties);
 }
+
+///////////////////////////////////////////////////////////////////////////////
+/// INSERT
+///
+using AllRowsInsertExecutionBlock =
+    ExecutionBlockImpl<ModificationExecutor<AllRowsFetcher, InsertModifier>>;
+using SingleRowInsertExecutionBlock =
+    ExecutionBlockImpl<ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, InsertModifier>>;
 
 InsertNode::InsertNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ModificationNode(plan, base),
@@ -194,7 +217,8 @@ std::unique_ptr<ExecutionBlock> InsertNode::createBlock(
   RegisterId outputNew = variableToRegisterOptionalId(_outVariableNew);
   RegisterId outputOld = variableToRegisterOptionalId(_outVariableOld);
 
-  OperationOptions options = convertOptions(_options, _outVariableNew, _outVariableOld);
+  OperationOptions options =
+      ModificationExecutorHelpers::convertOptions(_options, _outVariableNew, _outVariableOld);
 
   ModificationExecutorInfos infos(
       inputRegister, RegisterPlan::MaxRegisterId, RegisterPlan::MaxRegisterId,
@@ -209,11 +233,9 @@ std::unique_ptr<ExecutionBlock> InsertNode::createBlock(
       IgnoreDocumentNotFound(_options.ignoreDocumentNotFound));
 
   if (_options.readCompleteInput) {
-    return std::make_unique<ExecutionBlockImpl<ModificationExecutor<Insert, AllRowsFetcher>>>(
-        &engine, this, std::move(infos));
+    return std::make_unique<AllRowsInsertExecutionBlock>(&engine, this, std::move(infos));
   } else {
-    return std::make_unique<ExecutionBlockImpl<ModificationExecutor<Insert, SingleBlockFetcher<BlockPassthrough::Disable>>>>(
-        &engine, this, std::move(infos));
+    return std::make_unique<SingleRowInsertExecutionBlock>(&engine, this, std::move(infos));
   }
 }
 
@@ -240,6 +262,14 @@ ExecutionNode* InsertNode::clone(ExecutionPlan* plan, bool withDependencies,
 
   return cloneHelper(std::move(c), withDependencies, withProperties);
 }
+
+///////////////////////////////////////////////////////////////////////////////
+/// REMOVE
+///
+using AllRowsUpdateReplaceExecutionBlock =
+    ExecutionBlockImpl<ModificationExecutor<AllRowsFetcher, UpdateReplaceModifier>>;
+using SingleRowUpdateReplaceExecutionBlock =
+    ExecutionBlockImpl<ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, UpdateReplaceModifier>>;
 
 UpdateReplaceNode::UpdateReplaceNode(ExecutionPlan* plan,
                                      arangodb::velocypack::Slice const& base)
@@ -287,7 +317,8 @@ std::unique_ptr<ExecutionBlock> UpdateNode::createBlock(
   RegisterId outputNew = variableToRegisterOptionalId(_outVariableNew);
   RegisterId outputOld = variableToRegisterOptionalId(_outVariableOld);
 
-  OperationOptions options = convertOptions(_options, _outVariableNew, _outVariableOld);
+  OperationOptions options =
+      ModificationExecutorHelpers::convertOptions(_options, _outVariableNew, _outVariableOld);
 
   ModificationExecutorInfos infos(
       inDocRegister, inKeyRegister, RegisterPlan::MaxRegisterId, outputNew,
@@ -301,11 +332,11 @@ std::unique_ptr<ExecutionBlock> UpdateNode::createBlock(
       IsReplace(false) /*(needed by upsert)*/,
       IgnoreDocumentNotFound(_options.ignoreDocumentNotFound));
   if (_options.readCompleteInput) {
-    return std::make_unique<ExecutionBlockImpl<ModificationExecutor<Update, AllRowsFetcher>>>(
-        &engine, this, std::move(infos));
+    return std::make_unique<AllRowsUpdateReplaceExecutionBlock>(&engine, this,
+                                                                std::move(infos));
   } else {
-    return std::make_unique<ExecutionBlockImpl<ModificationExecutor<Update, SingleBlockFetcher<BlockPassthrough::Disable>>>>(
-        &engine, this, std::move(infos));
+    return std::make_unique<SingleRowUpdateReplaceExecutionBlock>(&engine, this,
+                                                                  std::move(infos));
   }
 }
 
@@ -362,7 +393,8 @@ std::unique_ptr<ExecutionBlock> ReplaceNode::createBlock(
 
   RegisterId outputOld = variableToRegisterOptionalId(_outVariableOld);
 
-  OperationOptions options = convertOptions(_options, _outVariableNew, _outVariableOld);
+  OperationOptions options =
+      ModificationExecutorHelpers::convertOptions(_options, _outVariableNew, _outVariableOld);
 
   ModificationExecutorInfos infos(
       inDocRegister, inKeyRegister, RegisterPlan::MaxRegisterId, outputNew,
@@ -373,14 +405,13 @@ std::unique_ptr<ExecutionBlock> ReplaceNode::createBlock(
       std::move(options), _collection, ProducesResults(producesResults()),
       ConsultAqlWriteFilter(_options.consultAqlWriteFilter),
       IgnoreErrors(_options.ignoreErrors), DoCount(countStats()),
-      IsReplace(false) /*(needed by upsert)*/,
-      IgnoreDocumentNotFound(_options.ignoreDocumentNotFound));
+      IsReplace(true), IgnoreDocumentNotFound(_options.ignoreDocumentNotFound));
   if (_options.readCompleteInput) {
-    return std::make_unique<ExecutionBlockImpl<ModificationExecutor<Replace, AllRowsFetcher>>>(
-        &engine, this, std::move(infos));
+    return std::make_unique<AllRowsUpdateReplaceExecutionBlock>(&engine, this,
+                                                                std::move(infos));
   } else {
-    return std::make_unique<ExecutionBlockImpl<ModificationExecutor<Replace, SingleBlockFetcher<BlockPassthrough::Disable>>>>(
-        &engine, this, std::move(infos));
+    return std::make_unique<SingleRowUpdateReplaceExecutionBlock>(&engine, this,
+                                                                  std::move(infos));
   }
 }
 
@@ -411,6 +442,14 @@ ExecutionNode* ReplaceNode::clone(ExecutionPlan* plan, bool withDependencies,
 
   return cloneHelper(std::move(c), withDependencies, withProperties);
 }
+
+///////////////////////////////////////////////////////////////////////////////
+/// UPSERT
+///
+using AllRowsUpsertExecutionBlock =
+    ExecutionBlockImpl<ModificationExecutor<AllRowsFetcher, UpsertModifier>>;
+using SingleRowUpsertExecutionBlock =
+    ExecutionBlockImpl<ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, UpsertModifier>>;
 
 UpsertNode::UpsertNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ModificationNode(plan, base),
@@ -456,7 +495,8 @@ std::unique_ptr<ExecutionBlock> UpsertNode::createBlock(
 
   RegisterId outputOld = variableToRegisterOptionalId(_outVariableOld);
 
-  OperationOptions options = convertOptions(_options, _outVariableNew, _outVariableOld);
+  OperationOptions options =
+      ModificationExecutorHelpers::convertOptions(_options, _outVariableNew, _outVariableOld);
 
   ModificationExecutorInfos infos(
       inDoc, insert, update, outputNew, outputOld, RegisterPlan::MaxRegisterId /*output*/,
@@ -469,11 +509,9 @@ std::unique_ptr<ExecutionBlock> UpsertNode::createBlock(
       IsReplace(_isReplace) /*(needed by upsert)*/,
       IgnoreDocumentNotFound(_options.ignoreDocumentNotFound));
   if (_options.readCompleteInput) {
-    return std::make_unique<ExecutionBlockImpl<ModificationExecutor<Upsert, AllRowsFetcher>>>(
-        &engine, this, std::move(infos));
+    return std::make_unique<AllRowsUpsertExecutionBlock>(&engine, this, std::move(infos));
   } else {
-    return std::make_unique<ExecutionBlockImpl<ModificationExecutor<Upsert, SingleBlockFetcher<BlockPassthrough::Disable>>>>(
-        &engine, this, std::move(infos));
+    return std::make_unique<SingleRowUpsertExecutionBlock>(&engine, this, std::move(infos));
   }
 }
 
@@ -501,3 +539,5 @@ ExecutionNode* UpsertNode::clone(ExecutionPlan* plan, bool withDependencies,
 
   return cloneHelper(std::move(c), withDependencies, withProperties);
 }
+}  // namespace aql
+}  // namespace arangodb

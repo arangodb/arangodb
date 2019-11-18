@@ -265,6 +265,10 @@ void SslClientConnection::init(uint64_t sslProtocol) {
       break;
 #endif
 
+    case TLS_GENERIC:
+      meth = TLS_client_method();
+      break;
+
     case SSL_UNKNOWN:
     default:
 #if OPENSSL_VERSION_NUMBER >= 0x10100000L
@@ -331,6 +335,7 @@ bool SslClientConnection::connectSocket() {
 #if OPENSSL_VERSION_NUMBER >= 0x10101000L
     case TLS_V13:
 #endif
+    case TLS_GENERIC:
     default:
       SSL_set_tlsext_host_name(_ssl, _endpoint->host().c_str());
   }

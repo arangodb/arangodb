@@ -269,7 +269,7 @@ std::string HttpConnection<ST>::buildRequestBody(Request const& req) {
 
   // construct request path ("/_db/<name>/" prefix)
   if (!req.header.database.empty()) {
-    header.append("/_db/");
+    header.append("/_db/", 5);
     http::urlEncode(header, req.header.database);
   }
   // must start with /, also turns /_db/abc into /_db/abc/

@@ -259,8 +259,7 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
           opts.forceProjection = true;
           auto inode = new IndexNode(plan.get(), plan->nextId(),
                                      en->collection(), en->outVariable(),
-                                     std::vector<transaction::Methods::IndexHandle>{
-                                         transaction::Methods::IndexHandle{picked}},
+                                     std::vector<transaction::Methods::IndexHandle>{picked},
                                      std::move(condition), opts);
           en->CollectionAccessingNode::cloneInto(*inode);
           en->DocumentProducingNode::cloneInto(plan.get(), *inode);
@@ -340,8 +339,7 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
         condition->normalize(plan.get());
         auto inode = new IndexNode(plan.get(), plan->nextId(), en->collection(),
                                    en->outVariable(),
-                                   std::vector<transaction::Methods::IndexHandle>{
-                                       transaction::Methods::IndexHandle{picked}},
+                                   std::vector<transaction::Methods::IndexHandle>{picked},
                                    std::move(condition), opts);
         plan->registerNode(inode);
         plan->replaceNode(n, inode);

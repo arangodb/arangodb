@@ -49,7 +49,6 @@
 #include "Aql/LimitExecutor.h"
 #include "Aql/MaterializeExecutor.h"
 #include "Aql/ModificationExecutor.h"
-#include "Aql/ModificationExecutorTraits.h"
 #include "Aql/MultiDependencySingleRowFetcher.h"
 #include "Aql/NoResultsExecutor.h"
 #include "Aql/Query.h"
@@ -57,6 +56,7 @@
 #include "Aql/ReturnExecutor.h"
 #include "Aql/ShadowAqlItemRow.h"
 #include "Aql/ShortestPathExecutor.h"
+#include "Aql/SimpleModifier.h"
 #include "Aql/SingleRemoteModificationExecutor.h"
 #include "Aql/SortExecutor.h"
 #include "Aql/SortRegister.h"
@@ -66,6 +66,8 @@
 #include "Aql/SubqueryExecutor.h"
 #include "Aql/SubqueryStartExecutor.h"
 #include "Aql/TraversalExecutor.h"
+#include "Aql/UnsortedGatherExecutor.h"
+#include "Aql/UpsertModifier.h"
 #include "Basics/system-functions.h"
 #include "Transaction/Context.h"
 
@@ -140,10 +142,11 @@ ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine,
       _executor(_rowFetcher, _infos),
       _outputItemRow(),
       _query(*engine->getQuery()),
-      _state(InternalState::FETCH_DATA) {
+      _state(InternalState::FETCH_DATA),
+      _lastRange{ExecutorState::HASMORE} {
   // already insert ourselves into the statistics results
   if (_profile >= PROFILE_LEVEL_BLOCKS) {
-    _engine->_stats.nodes.emplace(node->id(), ExecutionStats::Node());
+    _engine->_stats.nodes.try_emplace(node->id(), ExecutionStats::Node());
   }
 }
 
@@ -399,7 +402,9 @@ static SkipVariants constexpr skipType() {
            std::is_same<Executor, IdExecutor<BlockPassthrough::Disable, SingleRowFetcher<BlockPassthrough::Disable>>>::value ||
            std::is_same<Executor, ConstrainedSortExecutor>::value ||
            std::is_same<Executor, SortingGatherExecutor>::value ||
-           std::is_same<Executor, MaterializeExecutor>::value),
+           std::is_same<Executor, UnsortedGatherExecutor>::value ||
+           std::is_same<Executor, MaterializeExecutor<RegisterId>>::value ||
+           std::is_same<Executor, MaterializeExecutor<std::string const&>>::value),
       "Unexpected executor for SkipVariants::EXECUTOR");
 
   // The LimitExecutor will not work correctly with SkipVariants::FETCHER!
@@ -937,94 +942,100 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(AqlCallStack stack) {
   // TODO implement!
   TRI_ASSERT(false);
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  /// @brief reset all internal states after processing a shadow row.
-  template <class Executor>
-  void ExecutionBlockImpl<Executor>::resetAfterShadowRow() {
-    // cppcheck-suppress unreadVariable
-    constexpr bool customInit = hasInitializeCursor<decltype(_executor)>::value;
-    InitializeCursor<customInit>::init(_executor, _rowFetcher, _infos);
-  }
+}
+/// @brief reset all internal states after processing a shadow row.
+template <class Executor>
+void ExecutionBlockImpl<Executor>::resetAfterShadowRow() {
+  // cppcheck-suppress unreadVariable
+  constexpr bool customInit = hasInitializeCursor<decltype(_executor)>::value;
+  InitializeCursor<customInit>::init(_executor, _rowFetcher, _infos);
+}
 
-  template <class Executor>
-  ExecutionState ExecutionBlockImpl<Executor>::fetchShadowRowInternal() {
-    TRI_ASSERT(_state == InternalState::FETCH_SHADOWROWS);
-    TRI_ASSERT(!_outputItemRow->isFull());
-    ExecutionState state = ExecutionState::HASMORE;
-    ShadowAqlItemRow shadowRow{CreateInvalidShadowRowHint{}};
-    // TODO: Add lazy evaluation in case of LIMIT "lying" on done
-    std::tie(state, shadowRow) = _rowFetcher.fetchShadowRow();
-    if (state == ExecutionState::WAITING) {
-      TRI_ASSERT(!shadowRow.isInitialized());
-      return state;
-    }
-
-    if (state == ExecutionState::DONE) {
-      _state = InternalState::DONE;
-    }
-    if (shadowRow.isInitialized()) {
-      _outputItemRow->copyRow(shadowRow);
-      TRI_ASSERT(_outputItemRow->produced());
-      _outputItemRow->advanceRow();
-    } else {
-      if (_state != InternalState::DONE) {
-        _state = InternalState::FETCH_DATA;
-        resetAfterShadowRow();
-      }
-    }
+template <class Executor>
+ExecutionState ExecutionBlockImpl<Executor>::fetchShadowRowInternal() {
+  TRI_ASSERT(_state == InternalState::FETCH_SHADOWROWS);
+  TRI_ASSERT(!_outputItemRow->isFull());
+  ExecutionState state = ExecutionState::HASMORE;
+  ShadowAqlItemRow shadowRow{CreateInvalidShadowRowHint{}};
+  // TODO: Add lazy evaluation in case of LIMIT "lying" on done
+  std::tie(state, shadowRow) = _rowFetcher.fetchShadowRow();
+  if (state == ExecutionState::WAITING) {
+    TRI_ASSERT(!shadowRow.isInitialized());
     return state;
   }
 
-  template class ::arangodb::aql::ExecutionBlockImpl<CalculationExecutor<CalculationType::Condition>>;
-  template class ::arangodb::aql::ExecutionBlockImpl<CalculationExecutor<CalculationType::Reference>>;
-  template class ::arangodb::aql::ExecutionBlockImpl<CalculationExecutor<CalculationType::V8Condition>>;
-  template class ::arangodb::aql::ExecutionBlockImpl<ConstrainedSortExecutor>;
-  template class ::arangodb::aql::ExecutionBlockImpl<CountCollectExecutor>;
-  template class ::arangodb::aql::ExecutionBlockImpl<DistinctCollectExecutor>;
-  template class ::arangodb::aql::ExecutionBlockImpl<EnumerateCollectionExecutor>;
-  template class ::arangodb::aql::ExecutionBlockImpl<EnumerateListExecutor>;
-  template class ::arangodb::aql::ExecutionBlockImpl<FilterExecutor>;
-  template class ::arangodb::aql::ExecutionBlockImpl<HashedCollectExecutor>;
-  template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<false, true>>;
-  template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<true, true>>;
-  template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<false, true>>;
-  template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<true, true>>;
-  template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<false, false>>;
-  template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<true, false>>;
-  template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<false, false>>;
-  template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<true, false>>;
-  template class ::arangodb::aql::ExecutionBlockImpl<IdExecutor<BlockPassthrough::Enable, ConstFetcher>>;
-  template class ::arangodb::aql::ExecutionBlockImpl<
-      IdExecutor<BlockPassthrough::Enable, SingleRowFetcher<BlockPassthrough::Enable>>>;
-  template class ::arangodb::aql::ExecutionBlockImpl<
-      IdExecutor<BlockPassthrough::Disable, SingleRowFetcher<BlockPassthrough::Disable>>>;
-  template class ::arangodb::aql::ExecutionBlockImpl<IndexExecutor>;
-  template class ::arangodb::aql::ExecutionBlockImpl<LimitExecutor>;
-  template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<Insert, SingleBlockFetcher<BlockPassthrough::Disable>>>;
-  template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<Insert, AllRowsFetcher>>;
-  template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<Remove, SingleBlockFetcher<BlockPassthrough::Disable>>>;
-  template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<Remove, AllRowsFetcher>>;
-  template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<Replace, SingleBlockFetcher<BlockPassthrough::Disable>>>;
-  template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<Replace, AllRowsFetcher>>;
-  template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<Update, SingleBlockFetcher<BlockPassthrough::Disable>>>;
-  template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<Update, AllRowsFetcher>>;
-  template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<Upsert, SingleBlockFetcher<BlockPassthrough::Disable>>>;
-  template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<Upsert, AllRowsFetcher>>;
-  template class ::arangodb::aql::ExecutionBlockImpl<SingleRemoteModificationExecutor<IndexTag>>;
-  template class ::arangodb::aql::ExecutionBlockImpl<SingleRemoteModificationExecutor<Insert>>;
-  template class ::arangodb::aql::ExecutionBlockImpl<SingleRemoteModificationExecutor<Remove>>;
-  template class ::arangodb::aql::ExecutionBlockImpl<SingleRemoteModificationExecutor<Update>>;
-  template class ::arangodb::aql::ExecutionBlockImpl<SingleRemoteModificationExecutor<Replace>>;
-  template class ::arangodb::aql::ExecutionBlockImpl<SingleRemoteModificationExecutor<Upsert>>;
-  template class ::arangodb::aql::ExecutionBlockImpl<NoResultsExecutor>;
-  template class ::arangodb::aql::ExecutionBlockImpl<ReturnExecutor>;
-  template class ::arangodb::aql::ExecutionBlockImpl<ShortestPathExecutor>;
-  template class ::arangodb::aql::ExecutionBlockImpl<KShortestPathsExecutor>;
-  template class ::arangodb::aql::ExecutionBlockImpl<SortedCollectExecutor>;
-  template class ::arangodb::aql::ExecutionBlockImpl<SortExecutor>;
-  template class ::arangodb::aql::ExecutionBlockImpl<SubqueryEndExecutor>;
-  template class ::arangodb::aql::ExecutionBlockImpl<SubqueryExecutor<true>>;
-  template class ::arangodb::aql::ExecutionBlockImpl<SubqueryExecutor<false>>;
-  template class ::arangodb::aql::ExecutionBlockImpl<SubqueryStartExecutor>;
-  template class ::arangodb::aql::ExecutionBlockImpl<TraversalExecutor>;
-  template class ::arangodb::aql::ExecutionBlockImpl<SortingGatherExecutor>;
-  template class ::arangodb::aql::ExecutionBlockImpl<MaterializeExecutor>;
+  if (state == ExecutionState::DONE) {
+    _state = InternalState::DONE;
+  }
+  if (shadowRow.isInitialized()) {
+    _outputItemRow->copyRow(shadowRow);
+    TRI_ASSERT(_outputItemRow->produced());
+    _outputItemRow->advanceRow();
+  } else {
+    if (_state != InternalState::DONE) {
+      _state = InternalState::FETCH_DATA;
+      resetAfterShadowRow();
+    }
+  }
+  return state;
+}
+
+template class ::arangodb::aql::ExecutionBlockImpl<CalculationExecutor<CalculationType::Condition>>;
+template class ::arangodb::aql::ExecutionBlockImpl<CalculationExecutor<CalculationType::Reference>>;
+template class ::arangodb::aql::ExecutionBlockImpl<CalculationExecutor<CalculationType::V8Condition>>;
+template class ::arangodb::aql::ExecutionBlockImpl<ConstrainedSortExecutor>;
+template class ::arangodb::aql::ExecutionBlockImpl<CountCollectExecutor>;
+template class ::arangodb::aql::ExecutionBlockImpl<DistinctCollectExecutor>;
+template class ::arangodb::aql::ExecutionBlockImpl<EnumerateCollectionExecutor>;
+template class ::arangodb::aql::ExecutionBlockImpl<EnumerateListExecutor>;
+template class ::arangodb::aql::ExecutionBlockImpl<FilterExecutor>;
+template class ::arangodb::aql::ExecutionBlockImpl<HashedCollectExecutor>;
+template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<false, true>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<true, true>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<false, true>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<true, true>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<false, false>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<true, false>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<false, false>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<true, false>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IdExecutor<BlockPassthrough::Enable, ConstFetcher>>;
+template class ::arangodb::aql::ExecutionBlockImpl<
+    IdExecutor<BlockPassthrough::Enable, SingleRowFetcher<BlockPassthrough::Enable>>>;
+template class ::arangodb::aql::ExecutionBlockImpl<
+    IdExecutor<BlockPassthrough::Disable, SingleRowFetcher<BlockPassthrough::Disable>>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IndexExecutor>;
+template class ::arangodb::aql::ExecutionBlockImpl<LimitExecutor>;
+
+// IndexTag, Insert, Remove, Update,Replace, Upsert are only tags for this one
+template class ::arangodb::aql::ExecutionBlockImpl<SingleRemoteModificationExecutor<IndexTag>>;
+template class ::arangodb::aql::ExecutionBlockImpl<SingleRemoteModificationExecutor<Insert>>;
+template class ::arangodb::aql::ExecutionBlockImpl<SingleRemoteModificationExecutor<Remove>>;
+template class ::arangodb::aql::ExecutionBlockImpl<SingleRemoteModificationExecutor<Update>>;
+template class ::arangodb::aql::ExecutionBlockImpl<SingleRemoteModificationExecutor<Replace>>;
+template class ::arangodb::aql::ExecutionBlockImpl<SingleRemoteModificationExecutor<Upsert>>;
+
+template class ::arangodb::aql::ExecutionBlockImpl<NoResultsExecutor>;
+template class ::arangodb::aql::ExecutionBlockImpl<ReturnExecutor>;
+template class ::arangodb::aql::ExecutionBlockImpl<ShortestPathExecutor>;
+template class ::arangodb::aql::ExecutionBlockImpl<KShortestPathsExecutor>;
+template class ::arangodb::aql::ExecutionBlockImpl<SortedCollectExecutor>;
+template class ::arangodb::aql::ExecutionBlockImpl<SortExecutor>;
+template class ::arangodb::aql::ExecutionBlockImpl<SubqueryEndExecutor>;
+template class ::arangodb::aql::ExecutionBlockImpl<SubqueryExecutor<true>>;
+template class ::arangodb::aql::ExecutionBlockImpl<SubqueryExecutor<false>>;
+template class ::arangodb::aql::ExecutionBlockImpl<SubqueryStartExecutor>;
+template class ::arangodb::aql::ExecutionBlockImpl<TraversalExecutor>;
+template class ::arangodb::aql::ExecutionBlockImpl<SortingGatherExecutor>;
+template class ::arangodb::aql::ExecutionBlockImpl<UnsortedGatherExecutor>;
+
+template class ::arangodb::aql::ExecutionBlockImpl<MaterializeExecutor<RegisterId>>;
+template class ::arangodb::aql::ExecutionBlockImpl<MaterializeExecutor<std::string const&>>;
+
+template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<AllRowsFetcher, InsertModifier>>;
+template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, InsertModifier>>;
+template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<AllRowsFetcher, RemoveModifier>>;
+template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, RemoveModifier>>;
+template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<AllRowsFetcher, UpdateReplaceModifier>>;
+template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, UpdateReplaceModifier>>;
+template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<AllRowsFetcher, UpsertModifier>>;
+template class ::arangodb::aql::ExecutionBlockImpl<ModificationExecutor<SingleRowFetcher<BlockPassthrough::Disable>, UpsertModifier>>;

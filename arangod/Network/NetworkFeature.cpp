@@ -81,18 +81,22 @@ NetworkFeature::NetworkFeature(application_features::ApplicationServer& server,
 }
 
 void NetworkFeature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
-  options->addSection("--network", "Networking ");
+  options->addSection("network", "Configure cluster-internal networking");
 
   options->addOption("--network.io-threads", "number of network IO threads",
-                     new UInt32Parameter(&_numIOThreads));
+                     new UInt32Parameter(&_numIOThreads))
+                     .setIntroducedIn(30600);
   options->addOption("--network.max-open-connections",
                      "max open network connections",
-                     new UInt64Parameter(&_maxOpenConnections));
+                     new UInt64Parameter(&_maxOpenConnections))
+                     .setIntroducedIn(30600);
   options->addOption("--network.idle-connection-ttl",
                      "default time-to-live of idle connections (in milliseconds)",
-                     new UInt64Parameter(&_idleTtlMilli));
+                     new UInt64Parameter(&_idleTtlMilli))
+                     .setIntroducedIn(30600);
   options->addOption("--network.verify-hosts", "verify hosts when using TLS",
-                     new BooleanParameter(&_verifyHosts));
+                     new BooleanParameter(&_verifyHosts))
+                     .setIntroducedIn(30600);
 
   _gcfunc = [this](bool canceled) {
     if (canceled) {

@@ -44,6 +44,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/FilterExecutorTest.cpp
   Aql/HashedCollectExecutorTest.cpp
   Aql/IdExecutorTest.cpp
+  Aql/IndexNodeTest.cpp
   Aql/InsertExecutorTest.cpp
   Aql/LimitExecutorTest.cpp
   Aql/MultiDepFetcherHelper.cpp

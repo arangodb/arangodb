@@ -95,6 +95,8 @@ class MultiDependencySingleRowFetcher {
 
  public:
   std::pair<ExecutionState, size_t> preFetchNumberOfRows(size_t atMost);
+  std::pair<ExecutionState, size_t> preFetchNumberOfRowsForDependency(size_t dependency,
+                                                                      size_t atMost);
 
   // May only be called once, after the dependencies are injected.
   void initDependencies();
@@ -163,10 +165,7 @@ class MultiDependencySingleRowFetcher {
    * subquery level. If it returns false, there may or may not be more.
    */
   bool noMoreDataRows(DependencyInfo const& info) const;
-
-  std::pair<ExecutionState, size_t> preFetchNumberOfRowsForDependency(size_t dependency,
-                                                                      size_t atMost);
-
+  
   bool isAtShadowRow(DependencyInfo const& info) const;
 
   bool fetchBlockIfNecessary(const size_t dependency, const size_t atMost);

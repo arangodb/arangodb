@@ -97,7 +97,7 @@ MMFilesHashIndexLookupBuilder::MMFilesHashIndexLookupBuilder(
               _inStorage->openArray();
             }
             valNode->toVelocyPackValue(*(_inStorage.get()));
-            _inPosition.emplace(j, std::make_pair(0, std::vector<arangodb::velocypack::Slice>()));
+            _inPosition.try_emplace(j, 0, std::vector<arangodb::velocypack::Slice>());
             _usesIn = true;
             storageOrder.emplace_back(j);
             _mappingFieldCondition.push_back(nullptr);

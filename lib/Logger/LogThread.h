@@ -41,7 +41,7 @@ struct LogMessage;
 
 class LogThread final : public Thread {
  public:
-  static void log(std::unique_ptr<LogMessage>&);
+  static bool log(std::unique_ptr<LogMessage>&);
   // flush all pending log messages
   static void flush();
 

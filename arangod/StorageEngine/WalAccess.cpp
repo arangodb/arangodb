@@ -72,11 +72,9 @@ TRI_vocbase_t* WalAccessContext::loadVocbase(TRI_voc_tick_t dbid) {
 
   if (it == _vocbases.end()) {
     TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->useDatabase(dbid);
-
     if (vocbase != nullptr) {
       TRI_DEFER(vocbase->release());
-      _vocbases.emplace(std::piecewise_construct, std::forward_as_tuple(dbid),
-                        std::forward_as_tuple(*vocbase));
+      _vocbases.try_emplace(dbid, *vocbase);
     }
 
     return vocbase;
@@ -90,15 +88,9 @@ LogicalCollection* WalAccessContext::loadCollection(TRI_voc_tick_t dbid, TRI_voc
   TRI_ASSERT(cid != 0);
   TRI_vocbase_t* vocbase = loadVocbase(dbid);
   if (vocbase != nullptr) {
-    auto const& it = _collectionCache.find(cid);
-    if (it != _collectionCache.end()) {
-      return it->second.collection();
-    }
     try {
-      auto created = _collectionCache.emplace(cid, CollectionGuard(vocbase, cid));
-      if (created.second) {
-        return created.first->second.collection();
-      }
+      auto it = _collectionCache.try_emplace(cid, CollectionGuard(vocbase, cid)).first;
+      return it->second.collection();
     } catch (...) {
       // weglaecheln
     }
