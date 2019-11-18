@@ -502,7 +502,10 @@ void handleViewsRule(Optimizer* opt,
 
     modified = true;
   }
-  keepReplacementViewVariables(calcNodes, viewNodes);
+  // we can use view variables to replace only if late materialization arangosearch rule is enabled
+  if (!plan->isDisabledRule(OptimizerRule::lateDocumentMaterializationArangoSearchRule)) {
+    keepReplacementViewVariables(calcNodes, viewNodes);
+  }
 
   // ensure all replaced scorers are covered by corresponding view nodes
   scorerReplacer.visit([](Scorer const& scorer) -> bool {
