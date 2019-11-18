@@ -137,6 +137,8 @@ class LogicalDataSource {
     Properties,
     // object will be saved in storage engine
     Persistence,
+    // object will be saved in storage engine
+    PersistenceWithInProgress,
     // object will be replicated or dumped/restored
     Inventory
   };

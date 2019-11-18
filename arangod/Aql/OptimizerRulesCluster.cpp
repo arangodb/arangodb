@@ -65,7 +65,7 @@ Index* hasSingleIndexHandle(ExecutionNode const* node) {
   IndexNode const* indexNode = ExecutionNode::castTo<IndexNode const*>(node);
   auto indexHandleVec = indexNode->getIndexes();
   if (indexHandleVec.size() == 1) {
-    return indexHandleVec.front().getIndex().get();
+    return indexHandleVec.front().get();
   }
   return nullptr;
 }

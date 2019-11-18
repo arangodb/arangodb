@@ -85,7 +85,10 @@ class IResearchMMFilesLink final : public arangodb::MMFilesIndex, public IResear
     return IResearchLink::matchesDefinition(slice);
   }
 
-  size_t memory() const override { return IResearchLink::memory(); }
+  size_t memory() const override {
+    // FIXME return in memory size
+    return stats().indexSize;
+  }
 
   arangodb::Result remove(transaction::Methods& trx,
                           arangodb::LocalDocumentId const& documentId,
@@ -100,6 +103,10 @@ class IResearchMMFilesLink final : public arangodb::MMFilesIndex, public IResear
   using Index::toVelocyPack; // for std::shared_ptr<Builder> Index::toVelocyPack(bool, Index::Serialize)
   void toVelocyPack(arangodb::velocypack::Builder& builder,
                     std::underlying_type<arangodb::Index::Serialize>::type) const override;
+
+  void toVelocyPackFigures(velocypack::Builder& builder) const override {
+    IResearchLink::toVelocyPackStats(builder);
+  }
 
   IndexType type() const override { return IResearchLink::type(); }
 

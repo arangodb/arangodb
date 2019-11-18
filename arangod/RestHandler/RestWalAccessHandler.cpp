@@ -173,7 +173,7 @@ RestStatus RestWalAccessHandler::execute() {
   std::vector<std::string> suffixes = _request->decodedSuffixes();
   if (suffixes.empty()) {
     generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "expected GET _api/wal/[tail|range|lastTick]>");
+                  "expected GET /_api/wal/[tail|range|lastTick|open-transactions]>");
     return RestStatus::DONE;
   }
 
@@ -195,7 +195,7 @@ RestStatus RestWalAccessHandler::execute() {
   } else {
     generateError(
         ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-        "expected GET _api/wal/[tail|range|lastTick|open-transactions]>");
+        "expected GET /_api/wal/[tail|range|lastTick|open-transactions]>");
   }
 
   return RestStatus::DONE;
@@ -277,12 +277,12 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
   std::map<TRI_voc_tick_t, std::unique_ptr<MyTypeHandler>> handlers;
   VPackOptions opts = VPackOptions::Defaults;
   auto prepOpts = [&handlers, &opts](TRI_vocbase_t& vocbase) -> void {
-    auto [it, emplaced] = handlers.try_emplace(
+    auto it = handlers.try_emplace(
       vocbase.id(),
       arangodb::lazyConstruct([&]{
        return std::make_unique<MyTypeHandler>(vocbase);
       })
-    );
+    ).first;
     opts.customTypeHandler = it->second.get();
   };
 

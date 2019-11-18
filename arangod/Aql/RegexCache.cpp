@@ -97,12 +97,11 @@ icu::RegexMatcher* RegexCache::fromCache(
     std::unordered_map<std::string, std::unique_ptr<icu::RegexMatcher>>& cache) {
 
   // insert into cache, no matter if pattern is valid or not
-  auto [matcherIter, res] = cache.try_emplace(
+  auto matcherIter = cache.try_emplace(
       pattern,
       arangodb::lazyConstruct([&]{
         return std::unique_ptr<icu::RegexMatcher>(arangodb::basics::Utf8Helper::DefaultUtf8Helper.buildMatcher(pattern));
-      })
-  );
+      })).first;
 
   return matcherIter->second.get();
 }

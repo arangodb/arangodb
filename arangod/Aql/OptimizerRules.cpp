@@ -995,7 +995,8 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt, std::unique_ptr<ExecutionPl
     oldParent->addDependency(calculationNode);
     setter->setParent(calculationNode);
 
-    AstNode* clone = ast->clone(inNode);
+    AstNode* clone = ast->shallowCopyForModify(inNode);
+    TRI_DEFER(FINALIZE_SUBTREE(clone));
     // set sortedness bit for the IN operator
     clone->setBoolValue(true);
     // finally adjust the variable inside the IN calculation
@@ -3085,11 +3086,10 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
     TRI_ASSERT(outVariable != nullptr);
 
     auto index = indexes[0];
-    transaction::Methods* trx = _plan->getAst()->query()->trx();
-    bool isSorted = false;
-    bool isSparse = false;
-    std::vector<std::vector<arangodb::basics::AttributeName>> fields =
-        trx->getIndexFeatures(index, isSorted, isSparse);
+    bool isSorted = index->isSorted();
+    bool isSparse = index->sparse();
+    std::vector<std::vector<arangodb::basics::AttributeName>> fields = index->fields();
+    
     if (indexes.size() != 1) {
       // can only use this index node if it uses exactly one index or multiple
       // indexes on exactly the same attributes
@@ -3170,7 +3170,7 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
           // now check if the index fields are the same as the sort condition
           // fields e.g. FILTER c.value1 == 1 && c.value2 == 42 SORT c.value1,
           // c.value2
-          auto i = index.getIndex();
+          auto const& i = index;
           // some special handling for the MMFiles edge index here, which to the
           // outside world is an index on attributes _from and _to at the same
           // time, but only one can be queried at a time this special handling
@@ -3413,7 +3413,7 @@ void arangodb::aql::removeFiltersCoveredByIndexRule(Optimizer* opt,
             auto newNode =
                 condition.removeIndexCondition(plan.get(), indexNode->outVariable(),
                                                indexCondition->root(),
-                                               indexesUsed[0].getIndex().get());
+                                               indexesUsed[0].get());
 
             if (newNode == nullptr) {
               // no condition left...
@@ -3692,7 +3692,7 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt, std::unique_ptr<Executi
       TRI_ASSERT(!allIndexes.empty());
 
       // Using Index for sort only works if all indexes are equal.
-      auto first = allIndexes[0].getIndex();
+      auto const& first = allIndexes[0];
       // also check if we actually need to bother about the sortedness of the
       // result, or if we use the index for filtering only
       if (first->isSorted() && idxNode->needsGatherNodeSort()) {
@@ -3700,7 +3700,7 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt, std::unique_ptr<Executi
           elements.emplace_back(sortVariable, isSortAscending, path);
         }
         for (auto const& it : allIndexes) {
-          if (first != it.getIndex()) {
+          if (first != it) {
             elements.clear();
             break;
           }

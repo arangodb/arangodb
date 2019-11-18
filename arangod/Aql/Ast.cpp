@@ -2383,23 +2383,11 @@ bool Ast::getReferencedAttributes(AstNode const* node, Variable const* variable,
   return state.isSafeForOptimization;
 }
 
-/// @brief recursively clone a node
-AstNode* Ast::clone(AstNode const* node) {
+/// @brief copies node payload from node into copy. this is *not* copying
+/// the subnodes
+void Ast::copyPayload(AstNode const* node, AstNode* copy) const {
   AstNodeType const type = node->type;
-  if (type == NODE_TYPE_NOP) {
-    // nop node is a singleton
-    return const_cast<AstNode*>(node);
-  }
 
-  AstNode* copy = createNode(type);
-  TRI_ASSERT(copy != nullptr);
-
-  // copy flags
-  copy->flags = node->flags;
-  TEMPORARILY_UNLOCK_NODE(copy);  // if locked, unlock to copy properly
-
-  // special handling for certain node types
-  // copy payload...
   if (type == NODE_TYPE_COLLECTION || type == NODE_TYPE_VIEW || type == NODE_TYPE_PARAMETER ||
       type == NODE_TYPE_PARAMETER_DATASOURCE || type == NODE_TYPE_ATTRIBUTE_ACCESS ||
       type == NODE_TYPE_OBJECT_ELEMENT || type == NODE_TYPE_FCALL_USER) {
@@ -2448,7 +2436,27 @@ AstNode* Ast::clone(AstNode const* node) {
         break;
     }
   }
+}
 
+/// @brief recursively clone a node
+AstNode* Ast::clone(AstNode const* node) {
+  AstNodeType const type = node->type;
+  if (type == NODE_TYPE_NOP) {
+    // nop node is a singleton
+    return const_cast<AstNode*>(node);
+  }
+
+  AstNode* copy = createNode(type);
+  TRI_ASSERT(copy != nullptr);
+
+  // copy flags
+  copy->flags = node->flags;
+  TEMPORARILY_UNLOCK_NODE(copy);  // if locked, unlock to copy properly
+
+  // special handling for certain node types
+  // copy payload...
+  copyPayload(node, copy);
+  
   // recursively clone subnodes
   size_t const n = node->numMembers();
   copy->members.reserve(n);
@@ -2474,59 +2482,13 @@ AstNode* Ast::shallowCopyForModify(AstNode const* node) {
 
   // special handling for certain node types
   // copy payload...
-  if (type == NODE_TYPE_COLLECTION || type == NODE_TYPE_VIEW || type == NODE_TYPE_PARAMETER ||
-      type == NODE_TYPE_PARAMETER_DATASOURCE || type == NODE_TYPE_ATTRIBUTE_ACCESS ||
-      type == NODE_TYPE_OBJECT_ELEMENT || type == NODE_TYPE_FCALL_USER) {
-    copy->setStringValue(node->getStringValue(), node->getStringLength());
-  } else if (type == NODE_TYPE_VARIABLE || type == NODE_TYPE_REFERENCE || type == NODE_TYPE_FCALL) {
-    copy->setData(node->getData());
-  } else if (type == NODE_TYPE_UPSERT || type == NODE_TYPE_EXPANSION) {
-    copy->setIntValue(node->getIntValue(true));
-  } else if (type == NODE_TYPE_QUANTIFIER) {
-    copy->setIntValue(node->getIntValue(true));
-  } else if (type == NODE_TYPE_OPERATOR_BINARY_IN || type == NODE_TYPE_OPERATOR_BINARY_NIN ||
-             type == NODE_TYPE_OPERATOR_BINARY_ARRAY_IN ||
-             type == NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN) {
-    // copy sortedness information
-    copy->setBoolValue(node->getBoolValue());
-  } else if (type == NODE_TYPE_ARRAY) {
-    if (node->isSorted()) {
-      copy->setFlag(DETERMINED_SORTED, VALUE_SORTED);
-    } else {
-      copy->setFlag(DETERMINED_SORTED);
-    }
-  } else if (type == NODE_TYPE_VALUE) {
-    switch (node->value.type) {
-      case VALUE_TYPE_NULL:
-        copy->value.type = VALUE_TYPE_NULL;
-        break;
-      case VALUE_TYPE_BOOL:
-        copy->value.type = VALUE_TYPE_BOOL;
-        copy->setBoolValue(node->getBoolValue());
-        break;
-      case VALUE_TYPE_INT:
-        copy->value.type = VALUE_TYPE_INT;
-        copy->setIntValue(node->getIntValue());
-        break;
-      case VALUE_TYPE_DOUBLE:
-        copy->value.type = VALUE_TYPE_DOUBLE;
-        copy->setDoubleValue(node->getDoubleValue());
-        break;
-      case VALUE_TYPE_STRING:
-        copy->value.type = VALUE_TYPE_STRING;
-        copy->setStringValue(node->getStringValue(), node->getStringLength());
-        break;
-    }
-  }
-
-  // recursively clone subnodes
+  copyPayload(node, copy);
+  
+  // recursively add subnodes
   size_t const n = node->numMembers();
-  if (n > 0) {
-    copy->members.reserve(n);
-
-    for (size_t i = 0; i < n; ++i) {
-      copy->addMember(node->getMemberUnchecked(i));
-    }
+  copy->members.reserve(n);
+  for (size_t i = 0; i < n; ++i) {
+    copy->addMember(node->getMemberUnchecked(i));
   }
 
   return copy;
@@ -2664,7 +2626,6 @@ AstNode* Ast::makeConditionFromExample(AstNode const* node) {
     TRI_ASSERT(object->type == NODE_TYPE_OBJECT);
 
     auto const n = object->numMembers();
-
     for (size_t i = 0; i < n; ++i) {
       auto member = object->getMember(i);
 
@@ -2678,8 +2639,8 @@ AstNode* Ast::makeConditionFromExample(AstNode const* node) {
 
       auto value = member->getMember(0);
 
-      if (value->type == NODE_TYPE_OBJECT) {
-        createCondition(value);
+      if (value->type == NODE_TYPE_OBJECT && value->numMembers() != 0) {
+          createCondition(value);
       } else {
         auto access = variable;
         for (auto const& it : attributeParts) {
