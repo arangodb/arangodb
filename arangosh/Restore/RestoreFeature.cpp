@@ -910,6 +910,7 @@ arangodb::Result processInputDirectory(
     std::sort(collections.begin(), collections.end(), ::sortCollectionsForCreation);
 
     std::unique_ptr<arangodb::RestoreFeature::JobData> usersData;
+    std::unique_ptr<arangodb::RestoreFeature::JobData> analyzersData;
     std::vector<std::unique_ptr<arangodb::RestoreFeature::JobData>> jobs;
     jobs.reserve(collections.size());
 
@@ -950,13 +951,42 @@ arangodb::Result processInputDirectory(
         // reason is that loading into the users collection may change the
         // credentials for the current arangorestore connection!
         usersData = std::move(jobData);
+      } else if (name.isString() && name.stringRef() == "_analyzers") {
+        // special treatment for _analyzers collection - this must be the very first
+        analyzersData = std::move(jobData);
       } else {
         stats.totalCollections++;
         jobs.push_back(std::move(jobData));
       }
     }
-    
-    // Step 4: fire up data transfer
+
+    // Step 4: restore data from _analyzers collection
+    if (analyzersData) {
+      // restore analyzers
+      if (!jobQueue.queueJob(std::move(analyzersData))) {
+        return Result(TRI_ERROR_OUT_OF_MEMORY, "unable to queue restore job");
+      }
+
+      jobQueue.waitForIdle();
+    }
+
+    // Step 5: create arangosearch views
+    if (options.importStructure && !views.empty()) {
+      LOG_TOPIC("f723c", INFO, Logger::RESTORE) << "# Creating views...";
+
+      for (auto const& viewDefinition : views) {
+        LOG_TOPIC("c608d", DEBUG, Logger::RESTORE)
+          << "# Creating view: " << viewDefinition.toJson();
+
+        auto res = ::restoreView(httpClient, options, viewDefinition.slice());
+
+        if (!res.ok()) {
+          return res;
+        }
+      }
+    }
+
+    // Step 6: fire up data transfer
     for (auto& job : jobs) {
       if (!jobQueue.queueJob(std::move(job))) {
         return Result(TRI_ERROR_OUT_OF_MEMORY, "unable to queue restore job");
@@ -1016,24 +1046,6 @@ arangodb::Result processInputDirectory(
             << "- in the cluster Foxx services will be available eventually, On single servers send "
             << "a POST to '/_api/foxx/_local/heal' on the current database, "
             << "with an empty body.";
-      }
-    }
-
-    // Step 4: create views
-    // @note: done after collection population since views might depend on data
-    //        in restored collections
-    if (options.importStructure && !views.empty()) {
-      LOG_TOPIC("f723c", INFO, Logger::RESTORE) << "# Creating views...";
-
-      for (auto const& viewDefinition : views) {
-        LOG_TOPIC("c608d", DEBUG, Logger::RESTORE)
-          << "# Creating view: " << viewDefinition.toJson();
-
-        auto res = ::restoreView(httpClient, options, viewDefinition.slice());
-
-        if (!res.ok()) {
-          return res;
-        }
       }
     }
 
