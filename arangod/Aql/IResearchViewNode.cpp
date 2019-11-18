@@ -1404,21 +1404,21 @@ void IResearchViewNode::replaceViewVariables(std::vector<aql::CalculationNode*> 
     TRI_ASSERT(_nodesToChange.find(calcNode) != _nodesToChange.cend());
     auto const& calcNodeData = _nodesToChange[calcNode];
     std::transform(calcNodeData.cbegin(), calcNodeData.cend(), std::inserter(uniqueVariables, uniqueVariables.end()),
-      [ast](auto const& astAndFieldData) {
-        return std::make_pair(astAndFieldData.second.field, IResearchViewNode::ViewVariable{astAndFieldData.second.number,
+      [ast](auto const& afData) {
+        return std::make_pair(afData.field, IResearchViewNode::ViewVariable{afData.number,
           ast->variables()->createTemporaryVariable()});
       });
   }
   for (auto calcNode : calcNodes) {
     TRI_ASSERT(_nodesToChange.find(calcNode) != _nodesToChange.cend());
     auto const& calcNodeData = _nodesToChange[calcNode];
-    for (auto const& item : calcNodeData) {
-      auto it = uniqueVariables.find(item.second.field);
+    for (auto const& afData : calcNodeData) {
+      auto it = uniqueVariables.find(afData.field);
       TRI_ASSERT(it != uniqueVariables.cend());
       auto newNode = ast->createNodeReference(it->second.var);
-      if (item.first.parentNode != nullptr) {
-        TEMPORARILY_UNLOCK_NODE(item.first.parentNode);
-        item.first.parentNode->changeMember(item.first.childNumber, newNode);
+      if (afData.parentNode != nullptr) {
+        TEMPORARILY_UNLOCK_NODE(afData.parentNode);
+        afData.parentNode->changeMember(afData.childNumber, newNode);
       } else {
         TRI_ASSERT(calcNodeData.size() == 1);
         calcNode->expression()->replaceNode(newNode);
@@ -1440,7 +1440,7 @@ void IResearchViewNode::saveCalcNodesForViewVariables(std::vector<aql::latemater
     auto& calcNodeData = _nodesToChange[node.node];
     std::transform(node.attrs.cbegin(), node.attrs.cend(), std::inserter(calcNodeData, calcNodeData.end()),
       [](auto const& attrAndField) {
-        return std::make_pair(attrAndField.astData, attrAndField.fieldData);
+        return attrAndField.afData;
       });
   }
 }

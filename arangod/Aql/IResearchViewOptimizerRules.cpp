@@ -382,8 +382,6 @@ void lateDocumentMaterializationArangoSearchRule(Optimizer* opt,
         materializeDependency->addParent(materializeNode);
         modified = true;
       }
-      // clear possibly saved data
-      viewNode.clearViewVariables();
     }
   }
 }
@@ -395,8 +393,8 @@ namespace {
       size_t sortFieldNum = 0;
       for (auto const& field : primarySort.fields()) {
         if (arangodb::basics::AttributeName::isIdentical(nodeAttr.attr, field, false)) {
-          nodeAttr.fieldData.number = sortFieldNum;
-          nodeAttr.fieldData.field = &field;
+          nodeAttr.afData.number = sortFieldNum;
+          nodeAttr.afData.field = &field;
           std::vector<arangodb::basics::AttributeName> empty;
           nodeAttr.attr.swap(empty); // we do not need later
           break;
@@ -404,7 +402,7 @@ namespace {
         ++sortFieldNum;
       }
       // not found
-      if (nodeAttr.fieldData.field == nullptr) {
+      if (nodeAttr.afData.field == nullptr) {
         return false;
       }
     }
@@ -412,9 +410,8 @@ namespace {
   }
 }
 
-bool replaceViewVariables(arangodb::containers::SmallVector<ExecutionNode*> const& calcNodes,
-                          arangodb::containers::SmallVector<ExecutionNode*> const& viewNodes) {
-  auto modified = false;
+void keepReplacementViewVariables(arangodb::containers::SmallVector<ExecutionNode*> const& calcNodes,
+                                  arangodb::containers::SmallVector<ExecutionNode*> const& viewNodes) {
   std::vector<latematerialized::NodeWithAttrs> nodesToChange;
   for (auto* vNode : viewNodes) {
     TRI_ASSERT(vNode && ExecutionNode::ENUMERATE_IRESEARCH_VIEW == vNode->getType());
@@ -425,7 +422,6 @@ bool replaceViewVariables(arangodb::containers::SmallVector<ExecutionNode*> cons
       continue;
     }
     auto const& var = viewNode.outVariable();
-    auto replaceNow = true;
     for (auto* cNode : calcNodes) {
       TRI_ASSERT(cNode && ExecutionNode::CALCULATION == cNode->getType());
       auto& calcNode = *ExecutionNode::castTo<CalculationNode*>(cNode);
@@ -433,53 +429,16 @@ bool replaceViewVariables(arangodb::containers::SmallVector<ExecutionNode*> cons
       latematerialized::NodeWithAttrs node;
       node.node = &calcNode;
       // find attributes referenced to view node out variable
-      if (!latematerialized::getReferencedAttributes(astNode, &var, node)) {
-        // is not safe for optimization
-        replaceNow = false;
-      } else if (!node.attrs.empty()) {
-        if (!attributesMatch(primarySort, node)) {
-          // the node uses attributes which is not in view primary sort
-          replaceNow = false;
-        } else {
-          nodesToChange.emplace_back(std::move(node));
-        }
+      if (latematerialized::getReferencedAttributes(astNode, &var, node) &&
+          !node.attrs.empty() && attributesMatch(primarySort, node)) {
+        nodesToChange.emplace_back(std::move(node));
       }
     }
     if (!nodesToChange.empty()) {
-      if (replaceNow) {
-        TRI_ASSERT(!nodesToChange.empty());
-        IResearchViewNode::ViewVarsInfo uniqueVariables;
-        auto ast = nodesToChange.back().node->expression()->ast();
-        for (auto& node : nodesToChange) {
-          std::transform(node.attrs.cbegin(), node.attrs.cend(), std::inserter(uniqueVariables, uniqueVariables.end()),
-            [ast](auto const& attrAndField) {
-              return std::make_pair(attrAndField.fieldData.field, IResearchViewNode::ViewVariable{attrAndField.fieldData.number,
-                ast->variables()->createTemporaryVariable()});
-            });
-        }
-        for (auto& node : nodesToChange) {
-          for (auto& attr : node.attrs) {
-            auto it = uniqueVariables.find(attr.fieldData.field);
-            TRI_ASSERT(it != uniqueVariables.cend());
-            auto newNode = ast->createNodeReference(it->second.var);
-            if (attr.astData.parentNode != nullptr) {
-              TEMPORARILY_UNLOCK_NODE(attr.astData.parentNode);
-              attr.astData.parentNode->changeMember(attr.astData.childNumber, newNode);
-            } else {
-              TRI_ASSERT(node.attrs.size() == 1);
-              node.node->expression()->replaceNode(newNode);
-            }
-          }
-        }
-        viewNode.setViewVariables(uniqueVariables);
-        modified = true;
-      } else {
-        viewNode.saveCalcNodesForViewVariables(nodesToChange);
-      }
+      viewNode.saveCalcNodesForViewVariables(nodesToChange);
+      nodesToChange.clear();
     }
-    nodesToChange.clear();
   }
-  return modified;
 }
 
 /// @brief move filters and sort conditions into views
@@ -543,7 +502,7 @@ void handleViewsRule(Optimizer* opt,
 
     modified = true;
   }
-  modified |= replaceViewVariables(calcNodes, viewNodes);
+  keepReplacementViewVariables(calcNodes, viewNodes);
 
   // ensure all replaced scorers are covered by corresponding view nodes
   scorerReplacer.visit([](Scorer const& scorer) -> bool {

@@ -199,7 +199,7 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
     }
   }
 
-  using ViewVarsToBeReplaced = std::vector<std::pair<aql::latematerialized::AstData, aql::latematerialized::FieldData>>;
+  using ViewVarsToBeReplaced = std::vector<aql::latematerialized::AstAndFieldData>;
 
   void replaceViewVariables(std::vector<aql::CalculationNode*>const& calcNodes);
 

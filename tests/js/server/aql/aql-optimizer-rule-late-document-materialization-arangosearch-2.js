@@ -44,23 +44,23 @@ function lateDocumentMaterializationArangoSearch2RuleTestSuite () {
       db._dropView(svn);
       db._drop(cn);
       db._drop(cn1);
-      
+
       let c = db._create(cn, { numberOfShards: 3 });
       let c2 = db._create(cn1, { numberOfShards: 3 });
-      
-      db._createView(vn, "arangosearch", { 
-        links: { 
+
+      db._createView(vn, "arangosearch", {
+        links: {
           [cn] : { includeAllFields: true, analyzers : [ "identity" ],
-                   fields : { str : { "analyzers" : [ "text_en" ] }}, }, 
+                   fields : { str : { "analyzers" : [ "text_en" ] }}, },
           [cn1] : { includeAllFields: true, analyzers : [ "identity" ],
-                    fields : { str : { "analyzers" : [ "text_en" ] }}} 
+                    fields : { str : { "analyzers" : [ "text_en" ] }}}
         }});
       db._createView(svn, "arangosearch", {
-        consolidationIntervalMsec: 5000, 
+        consolidationIntervalMsec: 5000,
         primarySort: [{"field": "value", "direction": "asc"}, {"field": "foo", "direction": "desc"}],
-        links: { 
-          [cn] : { includeAllFields: true }, 
-          [cn1] : { includeAllFields: true } 
+        links: {
+          [cn] : { includeAllFields: true },
+          [cn1] : { includeAllFields: true }
         }});
 
       c.save({ _key: 'c0',  str: 'cat', foo: 'foo0', value: 0 });
@@ -71,7 +71,7 @@ function lateDocumentMaterializationArangoSearch2RuleTestSuite () {
       c2.save({_key: 'c_2', str: 'cat', foo: 'foo5', value: 12 });
       c.save({ _key: 'c3',  str: 'cat', foo: 'foo6', value: 3 });
       c2.save({_key: 'c_3', str: 'cat', foo: 'foo7', value: 13 });
-      
+
       // trigger view sync
       db._query("FOR d IN " + vn + " OPTIONS { waitForSync: true } RETURN d");
       db._query("FOR d IN " + svn + " OPTIONS { waitForSync: true } RETURN d");
