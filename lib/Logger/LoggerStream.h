@@ -24,7 +24,7 @@
 #ifndef ARANGODB_LOGGER_LOGGER_STREAM_H
 #define ARANGODB_LOGGER_LOGGER_STREAM_H 1
 
-#include <stddef.h>
+#include <cstddef>
 #include <sstream>
 #include <string>
 
@@ -34,10 +34,10 @@
 
 namespace arangodb {
 class LoggerStream {
+ public:
   LoggerStream(LoggerStream const&) = delete;
   LoggerStream& operator=(LoggerStream const&) = delete;
 
- public:
   LoggerStream()
       : _topicId(LogTopic::MAX_LOG_TOPICS),
         _level(LogLevel::DEFAULT),
@@ -48,12 +48,12 @@ class LoggerStream {
   ~LoggerStream();
 
  public:
-  LoggerStream& operator<<(LogLevel level) {
+  LoggerStream& operator<<(LogLevel const& level) {
     _level = level;
     return *this;
   }
 
-  LoggerStream& operator<<(LogTopic topic) {
+  LoggerStream& operator<<(LogTopic const& topic) {
     _topicId = topic.id();
     _out << topic.displayName();
     return *this;

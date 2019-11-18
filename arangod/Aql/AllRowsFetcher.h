@@ -155,11 +155,6 @@ class AllRowsFetcher {
   // NOLINTNEXTLINE google-default-arguments
   std::pair<ExecutionState, InputAqlItemRow> fetchRow(size_t atMost = ExecutionBlock::DefaultBatchSize());
 
-  // AllRowsFetcher cannot pass through. Could be implemented, but currently
-  // there are no executors that could use this and not better use
-  // SingleRowFetcher instead.
-  std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlockForPassthrough(size_t);
-
   /**
    * @brief Prefetch the number of rows that will be returned from upstream.
    * calling this function will render the fetchAllRows() a noop function

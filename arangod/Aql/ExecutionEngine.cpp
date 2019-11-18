@@ -180,7 +180,7 @@ Result ExecutionEngine::createBlocks(std::vector<ExecutionNode*> const& nodes,
     root(eb);
 
     // put it into our cache:
-    cache.emplace(en, eb);
+    cache.try_emplace(en, eb);
   }
   return {TRI_ERROR_NO_ERROR};
 }
@@ -273,7 +273,7 @@ struct SingleServerQueryInstanciator final : public WalkerWorker<ExecutionNode> 
         block->addDependency(it2->second);
       }
 
-      cache.emplace(en, block);
+      cache.try_emplace(en, block);
     }
   }
 
@@ -381,7 +381,7 @@ struct DistributedQueryInstanciator final : public WalkerWorker<ExecutionNode> {
   GatherNode const* _lastGatherNode;
 
  public:
-  explicit DistributedQueryInstanciator(Query& query, bool pushToSingleServer)
+  DistributedQueryInstanciator(Query& query, bool pushToSingleServer)
       : _dbserverParts(query),
         _isCoordinator(true),
         _pushToSingleServer(pushToSingleServer),
@@ -392,7 +392,7 @@ struct DistributedQueryInstanciator final : public WalkerWorker<ExecutionNode> {
   /// @brief before method for collection of pieces phase
   ///        Collects all nodes on the path and divides them
   ///        into coordinator and dbserver parts
-  bool before(ExecutionNode* en) override final {
+  bool before(ExecutionNode* en) final {
     auto const nodeType = en->getType();
     if (_isCoordinator) {
       _coordinatorParts.addNode(en);
@@ -437,7 +437,7 @@ struct DistributedQueryInstanciator final : public WalkerWorker<ExecutionNode> {
     return false;
   }
 
-  void after(ExecutionNode* en) override final {
+  void after(ExecutionNode* en) final {
     if (en->getType() == ExecutionNode::REMOTE) {
       if (_isCoordinator) {
         _lastClosed = _coordinatorParts.closeSnippet();
@@ -529,10 +529,9 @@ void ExecutionEngine::kill() {
   for (auto const& it : _dbServerMapping) {
     for (auto const& it2 : it.second) {
       for (auto const& snippetId : it2.second) {
-        network::Headers headers;
         TRI_ASSERT(it2.first.substr(0, 7) == "server:");
         auto future = network::sendRequest(pool, it2.first, fuerte::RestVerb::Delete,
-                                         "/_api/aql/kill/" + snippetId, body, std::move(headers));
+                                           "/_api/aql/kill/" + snippetId, body);
         futures.emplace_back(std::move(future));
       }
     }
@@ -588,25 +587,51 @@ std::pair<ExecutionState, size_t> ExecutionEngine::skipSome(size_t atMost) {
   return _root->skipSome(atMost);
 }
 
-Result ExecutionEngine::shutdownSync(int errorCode) noexcept {
-  Result res{TRI_ERROR_INTERNAL};
+Result ExecutionEngine::shutdownSync(int errorCode) noexcept try {
+  Result res{TRI_ERROR_INTERNAL, "unable to shutdown query"};
   ExecutionState state = ExecutionState::WAITING;
   try {
+    TRI_IF_FAILURE("ExecutionEngine::shutdownSync") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+
     std::shared_ptr<SharedQueryState> sharedState = _query.sharedState();
     if (sharedState != nullptr) {
-      sharedState->setContinueCallback();
-
+      sharedState->resetWakeupHandler();
       while (state == ExecutionState::WAITING) {
         std::tie(state, res) = shutdown(errorCode);
         if (state == ExecutionState::WAITING) {
-          sharedState->waitForAsyncResponse();
+          sharedState->waitForAsyncWakeup();
         }
       }
     }
+  } catch (basics::Exception const& ex) {
+    res.reset(ex.code(), std::string("unable to shutdown query: ") + ex.what());
+  } catch (std::exception const& ex) {
+    res.reset(TRI_ERROR_INTERNAL, std::string("unable to shutdown query: ") + ex.what());
   } catch (...) {
     res.reset(TRI_ERROR_INTERNAL);
   }
+
+  if (res.fail() && ServerState::instance()->isCoordinator()) {
+    // shutdown attempt has failed...
+    // in a cluster, try to at least abort all other coordinator parts
+    auto queryRegistry = QueryRegistryFeature::registry();
+    if (queryRegistry != nullptr) {
+      for (auto const& id : _coordinatorQueryIds) {
+        try {
+          queryRegistry->destroy(_query.vocbase().name(), id, errorCode, false);
+        } catch (...) {
+          // we want to abort all parts, even if aborting other parts fails
+        }
+      }
+    }
+  }
+
   return res;
+} catch (...) {
+  // nothing we can do here...
+  return Result(TRI_ERROR_INTERNAL, "unable to shutdown query");
 }
 
 /// @brief shutdown, will be called exactly once for the whole query

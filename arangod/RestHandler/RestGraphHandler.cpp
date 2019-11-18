@@ -23,7 +23,6 @@
 #include "RestGraphHandler.h"
 
 #include <velocypack/Collection.h>
-#include <boost/optional.hpp>
 #include <utility>
 
 #include "Aql/Query.h"
@@ -1000,7 +999,7 @@ Result RestGraphHandler::graphActionReadConfig(graph::Graph const& graph, TRI_co
 
 RequestLane RestGraphHandler::lane() const { return RequestLane::CLIENT_SLOW; }
 
-boost::optional<TRI_voc_rid_t> RestGraphHandler::handleRevision() const {
+std::optional<TRI_voc_rid_t> RestGraphHandler::handleRevision() const {
   bool isValidRevision;
   TRI_voc_rid_t revision = extractRevision("if-match", isValidRevision);
   if (!isValidRevision) {
@@ -1013,5 +1012,5 @@ boost::optional<TRI_voc_rid_t> RestGraphHandler::handleRevision() const {
       revision = TRI_StringToRid(revString.data(), revString.size(), false);
     }
   }
-  return boost::make_optional(revision != 0, revision);
+  return revision != 0 ? std::optional{revision} : std::nullopt;
 }

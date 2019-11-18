@@ -242,7 +242,7 @@ std::string to_string(Error error) {
     case Error::ReadError:
       return "Error while reading";
     case Error::WriteError:
-      return "Error while writing ";
+      return "Error while writing";
     case Error::Canceled:
       return "Connection was locally canceled";
       

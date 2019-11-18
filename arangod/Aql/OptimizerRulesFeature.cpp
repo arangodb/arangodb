@@ -22,6 +22,7 @@
 
 #include "OptimizerRulesFeature.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/IndexNodeOptimizerRules.h"
 #include "Aql/IResearchViewOptimizerRules.h"
 #include "Aql/OptimizerRules.h"
 #include "Basics/Exceptions.h"
@@ -116,7 +117,7 @@ void OptimizerRulesFeature::registerRule(char const* name, RuleFunction func,
     return;
   }
 
-  _ruleLookup.emplace(ruleName, level);
+  _ruleLookup.try_emplace(ruleName, level);
   _rules.push_back(std::move(rule));
 }
 
@@ -330,13 +331,13 @@ void OptimizerRulesFeature::addRules() {
                                         OptimizerRule::Flags::ClusterOnly));
 #endif
 
-  // distribute operations in cluster
-  registerRule("scatter-in-cluster", scatterInClusterRule, OptimizerRule::scatterInClusterRule,
-               OptimizerRule::makeFlags(OptimizerRule::Flags::ClusterOnly));
-
   // distribute view queries in cluster
   registerRule("scatter-arangosearch-view-in-cluster", arangodb::iresearch::scatterViewInClusterRule,
                OptimizerRule::scatterIResearchViewInClusterRule,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::ClusterOnly));
+
+  // distribute operations in cluster
+  registerRule("scatter-in-cluster", scatterInClusterRule, OptimizerRule::scatterInClusterRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::ClusterOnly));
 
   // distribute operations in cluster
@@ -377,9 +378,27 @@ void OptimizerRulesFeature::addRules() {
                                         OptimizerRule::Flags::ClusterOnly));
 
   registerRule("move-filters-into-enumerate", moveFiltersIntoEnumerateRule, 
-               OptimizerRule::moveFiltersIntoEnumerateCollection,
+               OptimizerRule::moveFiltersIntoEnumerateRule,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
+  
+  registerRule("parallelize-gather", parallelizeGatherRule, 
+               OptimizerRule::parallelizeGatherRule,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
+                                        OptimizerRule::Flags::ClusterOnly));
+
+  // apply late materialization for index queries
+  registerRule("late-document-materialization", lateDocumentMaterializationRule,
+               OptimizerRule::lateDocumentMaterializationRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
 
+  // apply late materialization for view queries
+  registerRule("late-document-materialization-arangosearch", arangodb::iresearch::lateDocumentMaterializationArangoSearchRule,
+               OptimizerRule::lateDocumentMaterializationArangoSearchRule,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
+
+  // add the storage-engine specific rules
+  addStorageEngineRules();
+  
   // Splice subqueries
   //
   // ***CAUTION***
@@ -391,20 +410,11 @@ void OptimizerRulesFeature::addRules() {
   // optimizer runs after this rule, it has to be aware of SubqueryStartNode and
   // SubqueryEndNode and would likely be more complicated to write.
   registerRule("splice-subqueries", spliceSubqueriesRule, OptimizerRule::spliceSubqueriesRule,
-               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
-                                        OptimizerRule::Flags::DisabledByDefault));
-
-  // apply late materialization for view queries
-  registerRule("late-document-materialization",  arangodb::iresearch::lateDocumentMaterializationRule,
-               OptimizerRule::lateDocumentMaterializationRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
-
-  // finally add the storage-engine specific rules
-  addStorageEngineRules();
 
   // finally sort all rules by their level
   std::sort(_rules.begin(), _rules.end(),
-            [](OptimizerRule const& lhs, OptimizerRule const& rhs) {
+            [](OptimizerRule const& lhs, OptimizerRule const& rhs) noexcept {
               return (lhs.level < rhs.level);
             });
 

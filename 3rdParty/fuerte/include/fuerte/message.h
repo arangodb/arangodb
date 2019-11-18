@@ -36,9 +36,10 @@
 #include <velocypack/Slice.h>
 
 namespace arangodb { namespace fuerte { inline namespace v1 {
+const std::string fu_accept_key("accept");
+const std::string fu_authorization_key("authorization");
 const std::string fu_content_length_key("content-length");
 const std::string fu_content_type_key("content-type");
-const std::string fu_accept_key("accept");
 const std::string fu_keep_alive_key("keep-alive");
 
 struct MessageHeader {
@@ -47,9 +48,23 @@ struct MessageHeader {
   void setVersion(short v) { _version = v; }
 
  public:
-  // Header metadata helpers
-  void addMeta(std::string key, std::string value);
-  void addMeta(StringMap const&);
+  // Header metadata helpers#
+  template<typename K, typename V>
+  void addMeta(K&& key, V&& value) {
+    if (fu_accept_key == key) {
+      _acceptType = to_ContentType(value);
+      if (_acceptType != ContentType::Custom) {
+        return;
+      }
+    } else if (fu_content_type_key == key) {
+      _contentType = to_ContentType(value);
+      if (_contentType != ContentType::Custom) {
+        return;
+      }
+    }
+    this->_meta.emplace(std::forward<K>(key), std::forward<V>(value));
+  }
+
   void setMeta(StringMap);
   StringMap const& meta() const { return _meta; }
 
@@ -61,10 +76,12 @@ struct MessageHeader {
   std::string const& metaByKey(std::string const& key, bool& found) const;
 
   // content type accessors
-  inline ContentType contentType() const { return _contentType; }
-  void contentType(std::string const& type);
+  ContentType contentType() const { return _contentType; }
   void contentType(ContentType type) {
     _contentType = type;
+  }
+  void contentType(std::string const& type) {
+    addMeta(fu_content_type_key, type);
   }
 
  protected:
@@ -91,8 +108,8 @@ struct RequestHeader final : public MessageHeader {
   // accept header accessors
   ContentType acceptType() const { return _acceptType; }
   void acceptType(ContentType type) { _acceptType = type; }
-  void acceptType(std::string const& type) { _acceptType = to_ContentType(type); }
-
+  void acceptType(std::string const& type);
+  
   // query parameter helpers
   void addParameter(std::string const& key, std::string const& value);
 
@@ -259,8 +276,10 @@ class Response : public Message {
   std::shared_ptr<velocypack::Buffer<uint8_t>> stealPayload();
 
   /// @brief move in the payload
-  void setPayload(velocypack::Buffer<uint8_t> buffer,
-                  std::size_t payloadOffset);
+  void setPayload(velocypack::Buffer<uint8_t>&& buffer, std::size_t offset) {
+    _payloadOffset = offset;
+    _payload = std::move(buffer);
+  }
 
  private:
   velocypack::Buffer<uint8_t> _payload;

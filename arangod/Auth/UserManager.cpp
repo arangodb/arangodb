@@ -119,7 +119,7 @@ static auth::UserMap ParseUsers(VPackSlice const& slice) {
     // otherwise all following update/replace/remove operations on the
     // user will fail
     auth::User user = auth::User::fromDocument(s);
-    result.emplace(user.username(), std::move(user));
+    result.try_emplace(user.username(), std::move(user));
   }
   return result;
 }
@@ -309,10 +309,10 @@ Result auth::UserManager::storeUserInternal(auth::User const& entry, bool replac
       TRI_ASSERT(created.passwordHash() == entry.passwordHash());
       TRI_ASSERT(!replace || created.key() == entry.key());
 
-      if (!_userCache.emplace(entry.username(), std::move(created)).second) {
+      if (!_userCache.try_emplace(entry.username(), std::move(created)).second) {
         // insertion should always succeed, but...
         _userCache.erase(entry.username());
-        _userCache.emplace(entry.username(), auth::User::fromDocument(userDoc));
+        _userCache.try_emplace(entry.username(), auth::User::fromDocument(userDoc));
       }
 #ifdef USE_ENTERPRISE
       if (IsRole(entry.username())) {

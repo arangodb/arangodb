@@ -600,7 +600,7 @@ arangodb::Result executeInitiateTransfere(arangodb::httpclient::SimpleHttpClient
   // Load configuration file
   std::shared_ptr<VPackBuilder> configFile;
 
-  result = arangodb::basics::catchVoidToResult([&options, &configFile](){
+  result = arangodb::basics::catchVoidToResult([&options, &configFile]() {
     std::string configFileSource = arangodb::basics::FileUtils::slurp(options.rcloneConfigFile);
     auto configFileParsed = arangodb::velocypack::Parser::fromJson(configFileSource);
     configFile.swap(configFileParsed);

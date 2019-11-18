@@ -229,7 +229,7 @@ class ApplicationServer {
    As& addFeature(Args&&... args) {
      TRI_ASSERT(!hasFeature<As>());
      std::pair<FeatureMap::iterator, bool> result =
-         _features.emplace(std::type_index(typeid(As)),
+         _features.try_emplace(std::type_index(typeid(As)),
                            std::make_unique<Type>(*this, std::forward<Args>(args)...));
      TRI_ASSERT(result.second);
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -243,14 +243,14 @@ class ApplicationServer {
 
    // checks for the existence of a feature by type. will not throw when used
    // for a non-existing feature
-   bool hasFeature(std::type_index type) const {
+   bool hasFeature(std::type_index type) const noexcept {
      return (_features.find(type) != _features.end());
    }
 
    // checks for the existence of a feature. will not throw when used for
    // a non-existing feature
    template <typename Type, typename std::enable_if<std::is_base_of<ApplicationFeature, Type>::value, int>::type = 0>
-   bool hasFeature() const {
+   bool hasFeature() const noexcept {
      return hasFeature(std::type_index(typeid(Type)));
    }
 

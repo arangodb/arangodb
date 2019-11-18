@@ -124,7 +124,7 @@ BaseEngine::BaseEngine(TRI_vocbase_t& vocbase,
       _collections.add(name, AccessMode::Type::READ);
       shards.emplace_back(std::move(name));
     }
-    _vertexShards.emplace(collection.key.copyString(), std::move(shards));
+    _vertexShards.try_emplace(collection.key.copyString(), std::move(shards));
   }
 
   // FIXME: in the future this needs to be replaced with

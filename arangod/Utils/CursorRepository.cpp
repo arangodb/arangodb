@@ -130,8 +130,8 @@ Cursor* CursorRepository::createFromQueryResult(aql::QueryResult&& result, size_
                                                 double ttl, bool hasCount) {
   TRI_ASSERT(result.data != nullptr);
 
-  std::unique_ptr<Cursor> cursor(
-      new aql::QueryResultCursor(_vocbase, std::move(result), batchSize, ttl, hasCount));
+  auto cursor = std::make_unique<aql::QueryResultCursor>(
+            _vocbase, std::move(result), batchSize, ttl, hasCount);
   cursor->use();
 
   return addCursor(std::move(cursor));

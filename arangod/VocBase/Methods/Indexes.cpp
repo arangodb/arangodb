@@ -112,17 +112,18 @@ arangodb::Result Indexes::getAll(LogicalCollection const* collection,
     auto& databaseName = collection->vocbase().name();
     std::string const& cid = collection->name();
 
-    // add code for estimates here
     std::unordered_map<std::string, double> estimates;
 
-    auto& feature = collection->vocbase().server().getFeature<ClusterFeature>();
-    Result rv = selectivityEstimatesOnCoordinator(feature, databaseName, cid, estimates);
-    if (rv.fail()) {
-      return Result(rv.errorNumber(), "could not retrieve estimates" + rv.errorMessage());
-    }
+    if (Index::hasFlag(flags, Index::Serialize::Estimates)) {
+      auto& feature = collection->vocbase().server().getFeature<ClusterFeature>();
+      Result rv = selectivityEstimatesOnCoordinator(feature, databaseName, cid, estimates);
+      if (rv.fail()) {
+        return Result(rv.errorNumber(), "could not retrieve estimates: '" + rv.errorMessage() + "'");
+      }
 
-    // we will merge in the index estimates later
-    flags &= ~Index::makeFlags(Index::Serialize::Estimates);
+      // we will merge in the index estimates later
+      flags &= ~Index::makeFlags(Index::Serialize::Estimates);
+    }
 
     VPackBuilder tmpInner;
     auto& ci = collection->vocbase().server().getFeature<ClusterFeature>().clusterInfo();

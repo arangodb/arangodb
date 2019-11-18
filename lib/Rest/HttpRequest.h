@@ -87,7 +87,7 @@ class HttpRequest final : public GeneralRequest {
   arangodb::velocypack::Buffer<uint8_t>& body() {
     return _body;
   }
-      
+
   /// @brief sets a key/value header
   //  this function is called by setHeaders and get offsets to
   //  the found key / value with respective lengths.

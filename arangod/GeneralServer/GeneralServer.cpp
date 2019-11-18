@@ -71,7 +71,7 @@ void GeneralServer::registerTask(std::shared_ptr<CommTask> task) {
   {
     auto* t = task.get();
     std::lock_guard<std::recursive_mutex> guard(_tasksLock);
-    _commTasks.emplace(t, std::move(task));
+    _commTasks.try_emplace(t, std::move(task));
   }
   t->start();
 }
