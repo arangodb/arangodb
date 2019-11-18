@@ -601,6 +601,9 @@ std::vector<arangodb::aql::ExecutionNode::NodeType> const patchUpdateRemoveState
 std::vector<arangodb::aql::ExecutionNode::NodeType> const moveFilterIntoEnumerateTypes{
     arangodb::aql::ExecutionNode::ENUMERATE_COLLECTION,
     arangodb::aql::ExecutionNode::INDEX};
+std::vector<arangodb::aql::ExecutionNode::NodeType> const undistributeNodeTypes{
+    arangodb::aql::ExecutionNode::UPDATE, arangodb::aql::ExecutionNode::REPLACE, 
+    arangodb::aql::ExecutionNode::REMOVE};
 
 /// @brief find the single shard id for the node to restrict an operation to
 /// this will check the conditions of an IndexNode or a data-modification node
@@ -4827,44 +4830,57 @@ void arangodb::aql::restrictToSingleShardRule(Optimizer* opt,
 class RemoveToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
   ExecutionPlan* _plan;
   ::arangodb::containers::HashSet<ExecutionNode*>& _toUnlink;
-  bool _remove;
-  bool _scatter;
-  bool _gather;
+  bool _foundModification;
+  bool _foundScatter;
+  bool _foundGather;
   ExecutionNode* _enumColl;
   ExecutionNode* _setter;
-  const Variable* _variable;
-  ExecutionNode* _lastNode;
+  Variable const* _variable;
 
  public:
   RemoveToEnumCollFinder(ExecutionPlan* plan,
                          ::arangodb::containers::HashSet<ExecutionNode*>& toUnlink)
       : _plan(plan),
         _toUnlink(toUnlink),
-        _remove(false),
-        _scatter(false),
-        _gather(false),
+        _foundModification(false),
+        _foundScatter(false),
+        _foundGather(false),
         _enumColl(nullptr),
         _setter(nullptr),
-        _variable(nullptr),
-        _lastNode(nullptr) {}
-
-  ~RemoveToEnumCollFinder() = default;
+        _variable(nullptr) {}
 
   bool before(ExecutionNode* en) override final {
     switch (en->getType()) {
+      case EN::UPDATE: 
+      case EN::REPLACE: 
       case EN::REMOVE: {
-        if (_remove) {
+        if (_foundModification) {
           break;
         }
 
         // find the variable we are removing . . .
-        auto rn = ExecutionNode::castTo<RemoveNode*>(en);
-        Variable const* toRemove = rn->inVariable();
+        auto rn = ExecutionNode::castTo<ModificationNode*>(en);
+        Variable const* toRemove = nullptr;
+        
+        if (en->getType() == EN::REPLACE) {
+          toRemove = ExecutionNode::castTo<ReplaceNode const*>(en)->inKeyVariable();
+        } else if (en->getType() == EN::UPDATE) {
+          toRemove = ExecutionNode::castTo<UpdateNode const*>(en)->inKeyVariable();
+        } else if (en->getType() == EN::REMOVE) {
+          toRemove = ExecutionNode::castTo<RemoveNode const*>(en)->inVariable();
+        } else {
+          TRI_ASSERT(false);
+        }
 
-        _setter = _plan->getVarSetBy(rn->inVariable()->id);
+        if (toRemove == nullptr) {
+          // abort
+          break;
+        }
+
+        _setter = _plan->getVarSetBy(toRemove->id);
         TRI_ASSERT(_setter != nullptr);
         auto enumColl = _setter;
-
+        
         if (_setter->getType() == EN::CALCULATION) {
           // this should be an attribute access for _key
           auto cn = ExecutionNode::castTo<CalculationNode*>(_setter);
@@ -4872,15 +4888,15 @@ class RemoveToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
           auto expr = cn->expression();
           if (expr->isAttributeAccess()) {
             // check the variable is the same as the remove variable
-            if (cn->outVariable() != rn->inVariable()) {
+            if (cn->outVariable() != toRemove) {
               break;  // abort . . .
             }
-            // check the remove node's collection is sharded over _key
+            // check that the modification node's collection is sharded over _key
             std::vector<std::string> shardKeys = rn->collection()->shardKeys(false);
             if (shardKeys.size() != 1 || shardKeys[0] != StaticStrings::KeyString) {
               break;  // abort . . .
             }
-
+            
             // set the varsToRemove to the variable in the expression of this
             // node and also define enumColl
             ::arangodb::containers::HashSet<Variable const*> varsToRemove;
@@ -4964,9 +4980,10 @@ class RemoveToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
           break;  // abort . . .
         }
 
-        if (enumColl->getType() == EN::ENUMERATE_COLLECTION &&
-            !dynamic_cast<DocumentProducingNode const*>(enumColl)->projections().empty()) {
-          // cannot handle projections yet
+        auto const& projections = dynamic_cast<DocumentProducingNode const*>(enumColl)->projections();
+        if (projections.size() > 1 || 
+            (!projections.empty() && projections[0] != StaticStrings::KeyString)) {
+          // cannot handle projections 
           break;
         }
 
@@ -4977,66 +4994,34 @@ class RemoveToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
         }
 
         _variable = toRemove;  // the variable we'll remove
-        _remove = true;
-        _lastNode = en;
+        _foundModification = true;
         return false;  // continue . . .
       }
       case EN::REMOTE: {
         _toUnlink.emplace(en);
-        _lastNode = en;
         return false;  // continue . . .
       }
       case EN::DISTRIBUTE:
       case EN::SCATTER: {
-        if (_scatter) {  // met more than one scatter node
+        if (_foundScatter) {  // met more than one scatter node
           break;         // abort . . .
         }
-        _scatter = true;
+        _foundScatter = true;
         _toUnlink.emplace(en);
-        _lastNode = en;
         return false;  // continue . . .
       }
       case EN::GATHER: {
-        if (_gather) {  // met more than one gather node
+        if (_foundGather) {  // met more than one gather node
           break;        // abort . . .
         }
-        _gather = true;
+        _foundGather = true;
         _toUnlink.emplace(en);
-        _lastNode = en;
         return false;  // continue . . .
       }
       case EN::FILTER: {
-        _lastNode = en;
         return false;  // continue . . .
       }
       case EN::CALCULATION: {
-        TRI_ASSERT(_setter != nullptr);
-        if (_setter->getType() == EN::CALCULATION && _setter->id() == en->id()) {
-          _lastNode = en;
-          return false;  // continue . . .
-        }
-        if (_lastNode == nullptr || _lastNode->getType() != EN::FILTER) {
-          // doesn't match the last filter node
-          break;  // abort . . .
-        }
-        auto cn = ExecutionNode::castTo<CalculationNode const*>(en);
-        auto fn = ExecutionNode::castTo<FilterNode const*>(_lastNode);
-
-        // check these are a Calc-Filter pair
-        if (cn->outVariable() != fn->inVariable()) {
-          break;  // abort . . .
-        }
-
-        // check that we are filtering/calculating something with the variable
-        // we are to remove
-        ::arangodb::containers::HashSet<Variable const*> varsUsedHere;
-        cn->getVariablesUsedHere(varsUsedHere);
-
-        if (varsUsedHere.size() != 1 ||
-            varsUsedHere.find(_variable) == varsUsedHere.end()) {
-          break;  // abort . . .
-        }
-        _lastNode = en;
         return false;  // continue . . .
       }
       case EN::ENUMERATE_COLLECTION:
@@ -5055,8 +5040,6 @@ class RemoveToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
       case EN::SUBQUERY:
       case EN::COLLECT:
       case EN::INSERT:
-      case EN::REPLACE:
-      case EN::UPDATE:
       case EN::UPSERT:
       case EN::RETURN:
       case EN::NORESULTS:
@@ -5074,6 +5057,7 @@ class RemoveToEnumCollFinder final : public WalkerWorker<ExecutionNode> {
         TRI_ASSERT(false);
       }
     }
+    
     _toUnlink.clear();
     return true;
   }
@@ -5085,7 +5069,7 @@ void arangodb::aql::undistributeRemoveAfterEnumCollRule(Optimizer* opt,
                                                         OptimizerRule const& rule) {
   ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
-  plan->findNodesOfType(nodes, EN::REMOVE, true);
+  plan->findNodesOfType(nodes, ::undistributeNodeTypes, true);
 
   ::arangodb::containers::HashSet<ExecutionNode*> toUnlink;
 
