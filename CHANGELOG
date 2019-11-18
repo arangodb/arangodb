@@ -3,26 +3,20 @@ devel
 
 * Added a new subquery optimization called `splice-subqueries`.
 
-	This optimisation splices the execution of subqueries inside the
+	This optimization splices the execution of subqueries inside the
 	execution of their surrounding query. For subqueries with a fairly
 	small number of returned rows this saves a significant amount of
 	overhead initializing cursors.
 
-	This optimisation is performed by the optimizer rule
+	This optimization is performed by the optimizer rule
 	`splice-subqueries`, and currently only works on suitable
 	subqueries; A subquery becomes unsuitable if it contains a LIMIT,
-	REMOTE, GATHER or a COLLECT node where the operation is not COUNT.
+	REMOTE, GATHER or a COLLECT node where the operation is COUNT.
 	A subquery also becomes unsuitable if it is contained in an
 	unsuitable subquery.
 
 	The implementation of this feature required reworking the dataflow
   of query execution.
-
-* Rewrote all modification executors
-
-	as a consequence of the splicing subquery optimisation we rewrote
-	all modification executors. No functional change should have
-	happened in the process.
 
 * Added limit for AQL range materialization to prevent out-of-memory errors.
 
