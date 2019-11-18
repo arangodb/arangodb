@@ -1073,15 +1073,6 @@ function optimizerRuleTestSuite() {
       const query = `FOR i IN [123] RETURN (FOR v IN ${colName} FILTER v.a == i SORT v.b ASC RETURN v)`;
       const plan = AQL_EXPLAIN(query, {}, {optimizer: {rules: ['+splice-subqueries']}}).plan;
       const rules = plan.rules;
-      { // TODO Remove this block as soon as subquery splicing is enabled in the cluster again.
-        //  It's here so the test will fail as soon as that happens, so the actual test will not be forgotten
-        //  to be re-enabled.
-        const isCluster = require("@arangodb/cluster").isCluster();
-        if (isCluster) {
-          assertEqual(-1, rules.indexOf("splice-subqueries"));
-          return;
-        }
-      }
       assertNotEqual(-1, rules.indexOf(ruleName));
       assertNotEqual(-1, rules.indexOf(secondRuleName));
       assertNotEqual(-1, rules.indexOf("remove-filter-covered-by-index"));
@@ -1123,15 +1114,6 @@ function optimizerRuleTestSuite() {
       const query = `FOR i IN [123] RETURN (FOR v IN ${colName} FILTER v.a == i SORT v.b DESC RETURN v)`;
       const plan = AQL_EXPLAIN(query, {}, {optimizer: {rules: ['+splice-subqueries']}}).plan;
       const rules = plan.rules;
-      { // TODO Remove this block as soon as subquery splicing is enabled in the cluster again.
-        //  It's here so the test will fail as soon as that happens, so the actual test will not be forgotten
-        //  to be re-enabled.
-        const isCluster = require("@arangodb/cluster").isCluster();
-        if (isCluster) {
-          assertEqual(-1, rules.indexOf("splice-subqueries"));
-          return;
-        }
-      }
       assertNotEqual(-1, rules.indexOf(ruleName));
       assertNotEqual(-1, rules.indexOf(secondRuleName));
       assertNotEqual(-1, rules.indexOf("remove-filter-covered-by-index"));
