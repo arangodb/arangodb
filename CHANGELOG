@@ -12,6 +12,12 @@ devel
   The purpose of this option is to be able to enable potential future experimental
   optimizer rules, which may be shipped in a disabled-by-default state.
 
+* Allow the AQL query optimizer to remove the DistributeNodes for several data-modification
+  queries. So far, only REMOVE queries benefitted. Now the optimization can also be
+  applied for REPLACE and UPDATE queries in case the query does not use LIMIT and
+  there is no further cluster-internal communication after the REMOVE, REPLACE or UPDATE 
+  node. 
+
 * Include ArangoSearch data in hotbackups.
 
 * Allow to restore 3.5 hotbackups in 3.6.
