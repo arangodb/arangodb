@@ -97,7 +97,7 @@ enum class PrimitiveType { kBoolean, kNumber, kString, kSymbol };
   HEAP_MUTABLE_IMMOVABLE_OBJECT_LIST(V) \
   HEAP_IMMUTABLE_IMMOVABLE_OBJECT_LIST(V)
 
-#ifdef DEBUG
+#if !defined(WIN32) && defined(DEBUG)
 #define CSA_CHECK(csa, x)                                        \
   (csa)->Check(                                                  \
       [&]() -> compiler::Node* {                                 \
@@ -108,7 +108,7 @@ enum class PrimitiveType { kBoolean, kNumber, kString, kSymbol };
 #define CSA_CHECK(csa, x) (csa)->FastCheck(x)
 #endif
 
-#ifdef DEBUG
+#if !defined(WIN32) && defined(DEBUG)
 // CSA_ASSERT_ARGS generates an
 // std::initializer_list<CodeStubAssembler::ExtraNode> from __VA_ARGS__. It
 // currently supports between 0 and 2 arguments.
