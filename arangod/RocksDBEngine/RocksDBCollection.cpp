@@ -67,7 +67,7 @@
 using namespace arangodb;
 
 namespace {
-LocalDocumentId generateDocumentId(LogicalCollection& collection, TRI_voc_rid_t revisionId) {
+LocalDocumentId generateDocumentId(LogicalCollection const& collection, TRI_voc_rid_t revisionId) {
   bool useRev = collection.usesRevisionsAsDocumentIds();
   return useRev ? LocalDocumentId::create(revisionId) : LocalDocumentId::create();
 }
