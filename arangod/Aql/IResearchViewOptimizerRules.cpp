@@ -263,6 +263,59 @@ bool optimizeSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
   }
 }
 
+bool attributesMatch(IResearchViewSort const& primarySort, latematerialized::NodeWithAttrs& node) {
+  // check all node attributes to be in sort
+  for (auto& nodeAttr : node.attrs) {
+    size_t sortFieldNum = 0;
+    for (auto const& field : primarySort.fields()) {
+      if (arangodb::basics::AttributeName::isIdentical(nodeAttr.attr, field, false)) {
+        nodeAttr.afData.number = sortFieldNum;
+        nodeAttr.afData.field = &field;
+        std::vector<arangodb::basics::AttributeName> empty;
+        nodeAttr.attr.swap(empty); // we do not need later
+        break;
+      }
+      ++sortFieldNum;
+    }
+    // not found
+    if (nodeAttr.afData.field == nullptr) {
+      return false;
+    }
+  }
+  return true;
+}
+
+void keepReplacementViewVariables(arangodb::containers::SmallVector<ExecutionNode*> const& calcNodes,
+                                  arangodb::containers::SmallVector<ExecutionNode*> const& viewNodes) {
+  std::vector<latematerialized::NodeWithAttrs> nodesToChange;
+  for (auto* vNode : viewNodes) {
+    TRI_ASSERT(vNode && ExecutionNode::ENUMERATE_IRESEARCH_VIEW == vNode->getType());
+    auto& viewNode = *ExecutionNode::castTo<IResearchViewNode*>(vNode);
+    auto const& primarySort = ::primarySort(*viewNode.view());
+    if (primarySort.empty()) {
+      // no primary sort
+      continue;
+    }
+    auto const& var = viewNode.outVariable();
+    for (auto* cNode : calcNodes) {
+      TRI_ASSERT(cNode && ExecutionNode::CALCULATION == cNode->getType());
+      auto& calcNode = *ExecutionNode::castTo<CalculationNode*>(cNode);
+      auto astNode = calcNode.expression()->nodeForModification();
+      latematerialized::NodeWithAttrs node;
+      node.node = &calcNode;
+      // find attributes referenced to view node out variable
+      if (latematerialized::getReferencedAttributes(astNode, &var, node) &&
+          !node.attrs.empty() && attributesMatch(primarySort, node)) {
+        nodesToChange.emplace_back(std::move(node));
+      }
+    }
+    if (!nodesToChange.empty()) {
+      viewNode.saveCalcNodesForViewVariables(nodesToChange);
+      nodesToChange.clear();
+    }
+  }
+}
+
 }  // namespace
 
 namespace arangodb {
@@ -382,61 +435,6 @@ void lateDocumentMaterializationArangoSearchRule(Optimizer* opt,
         materializeDependency->addParent(materializeNode);
         modified = true;
       }
-    }
-  }
-}
-
-namespace {
-  bool attributesMatch(IResearchViewSort const& primarySort, latematerialized::NodeWithAttrs& node) {
-    // check all node attributes to be in sort
-    for (auto& nodeAttr : node.attrs) {
-      size_t sortFieldNum = 0;
-      for (auto const& field : primarySort.fields()) {
-        if (arangodb::basics::AttributeName::isIdentical(nodeAttr.attr, field, false)) {
-          nodeAttr.afData.number = sortFieldNum;
-          nodeAttr.afData.field = &field;
-          std::vector<arangodb::basics::AttributeName> empty;
-          nodeAttr.attr.swap(empty); // we do not need later
-          break;
-        }
-        ++sortFieldNum;
-      }
-      // not found
-      if (nodeAttr.afData.field == nullptr) {
-        return false;
-      }
-    }
-    return true;
-  }
-}
-
-void keepReplacementViewVariables(arangodb::containers::SmallVector<ExecutionNode*> const& calcNodes,
-                                  arangodb::containers::SmallVector<ExecutionNode*> const& viewNodes) {
-  std::vector<latematerialized::NodeWithAttrs> nodesToChange;
-  for (auto* vNode : viewNodes) {
-    TRI_ASSERT(vNode && ExecutionNode::ENUMERATE_IRESEARCH_VIEW == vNode->getType());
-    auto& viewNode = *ExecutionNode::castTo<IResearchViewNode*>(vNode);
-    auto const& primarySort = ::primarySort(*viewNode.view());
-    if (primarySort.empty()) {
-      // no primary sort
-      continue;
-    }
-    auto const& var = viewNode.outVariable();
-    for (auto* cNode : calcNodes) {
-      TRI_ASSERT(cNode && ExecutionNode::CALCULATION == cNode->getType());
-      auto& calcNode = *ExecutionNode::castTo<CalculationNode*>(cNode);
-      auto astNode = calcNode.expression()->nodeForModification();
-      latematerialized::NodeWithAttrs node;
-      node.node = &calcNode;
-      // find attributes referenced to view node out variable
-      if (latematerialized::getReferencedAttributes(astNode, &var, node) &&
-          !node.attrs.empty() && attributesMatch(primarySort, node)) {
-        nodesToChange.emplace_back(std::move(node));
-      }
-    }
-    if (!nodesToChange.empty()) {
-      viewNode.saveCalcNodesForViewVariables(nodesToChange);
-      nodesToChange.clear();
     }
   }
 }
