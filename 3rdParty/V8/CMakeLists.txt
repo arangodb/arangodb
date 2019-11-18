@@ -190,6 +190,15 @@ if (WIN32)
     -Dnode_use_pch=false
     )
 
+  list(APPEND V8_TARGETS
+    torque
+    run_torque
+    generate_bytecode_builtins_list
+    v8
+    v8_libsampler
+    v8_initializers
+    v8_libplatform)
+
   add_custom_target(v8_build)
   set(V8_LIBS
     "v8_compiler;v8_base_without_compiler;v8_compiler;v8_base_without_compiler;torque_base;v8_libplatform;v8_libsampler;v8_libbase;v8_init;v8_initializers;v8_nosnapshot"
@@ -207,35 +216,26 @@ if (WIN32)
       SOURCE_DIR
         "${V8_DIR}"
       CONFIGURE_COMMAND
-         ${CMAKE_COMMAND} -E env GYP_MSVS_VERSION=${GYP_MSVS_VERSION} GYP_GENERATORS=${GYP_GENERATORS} GYP_MSVS_OVERRIDE_PATH=${GYP_MSVS_OVERRIDE_PATH} DEPOT_TOOLS_WIN_TOOLCHAIN=${DEPOT_TOOLS_WIN_TOOLCHAIN} "${PYTHON_EXECUTABLE}" ${GYP_MAIN} ${V8_GYP_ARGS} -Dmode=${MS_TARGET_CONF_LOWER}
+        ${CMAKE_COMMAND} -E env GYP_MSVS_VERSION=${GYP_MSVS_VERSION} GYP_GENERATORS=${GYP_GENERATORS} GYP_MSVS_OVERRIDE_PATH=${GYP_MSVS_OVERRIDE_PATH} DEPOT_TOOLS_WIN_TOOLCHAIN=${DEPOT_TOOLS_WIN_TOOLCHAIN} "${PYTHON_EXECUTABLE}" ${GYP_MAIN} ${V8_GYP_ARGS} -Dmode=${MS_TARGET_CONF_LOWER}
       BUILD_COMMAND
         ""
       INSTALL_COMMAND
         ""
-    )
+      )
 
     add_dependencies(v8_build v8_build_${MS_TARGET_CONF_LOWER})
-
-    list(APPEND V8_TARGETS
-      torque
-      run_torque
-      generate_bytecode_builtins_list
-      v8
-      v8_libsampler
-      v8_initializers
-      v8_libplatform)
 
     foreach(V8_ONE_TARGET ${V8_TARGETS})
       # cmake eats semicolons or quotes them or, or, or so we can't use /t:a;b;c
       ExternalProject_Add_Step(v8_build_${MS_TARGET_CONF_LOWER} v8_build_${V8_ONE_TARGET}_${MS_TARGET_CONF_LOWER}
         WORKING_DIRECTORY
-        ${V8_TARGET_DIR}/../gypfiles
+          ${V8_TARGET_DIR}/../gypfiles
         COMMAND
-        msbuild ${V8_ONE_TARGET}.vcxproj /p:Configuration=${MS_TARGET_CONF} /p:Platform=${MS_TARGET_PLATFORM}
+          msbuild ${V8_ONE_TARGET}.vcxproj /p:Configuration=${MS_TARGET_CONF} /p:Platform=${MS_TARGET_PLATFORM}
         DEPENDEES
-        configure
+          configure
         DEPENDERS
-        build
+          build
         )
     endforeach()
   endforeach ()
