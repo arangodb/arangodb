@@ -29,6 +29,8 @@
 
 namespace arangodb::aql {
 
+class ShadowAqlItemRow;
+
 class AqlItemBlockInputRange {
  public:
   explicit AqlItemBlockInputRange(ExecutorState state);
@@ -45,6 +47,12 @@ class AqlItemBlockInputRange {
   std::pair<ExecutorState, arangodb::aql::InputAqlItemRow> peek();
 
   std::pair<ExecutorState, arangodb::aql::InputAqlItemRow> next();
+
+  bool hasShadowRow() const noexcept;
+
+  std::pair<ExecutorState, arangodb::aql::ShadowAqlItemRow> peekShadowRow();
+
+  std::pair<ExecutorState, arangodb::aql::ShadowAqlItemRow> nextShadowRow();
 
  private:
   bool indexIsValid() const noexcept;
