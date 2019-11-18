@@ -5,7 +5,7 @@ devel
 
 	This optimization splices the execution of subqueries inside the
 	execution of their surrounding query. For subqueries with a fairly
-	small number of returned rows this saves a significant amount of
+	small number of returned documents this saves a significant amount of
 	overhead initializing cursors.
 
 	This optimization is performed by the optimizer rule
