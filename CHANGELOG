@@ -152,9 +152,8 @@ devel
 * Add replicationFactor, minReplicationFactor and sharding strategy to database creation
   dialog in web UI. Preselect database default values for collection creation in web UI.
 
-* Add new JavaScipt function `db._properties()` and REST route GET
-  `/_api/database/properties` that provides information about the current database's
-  properties.
+* Add new JavaScipt function `db._properties()` that provides information about
+  the current database's properties.
 
 * Add new options `sharding` and `replicationFactor` for database creation methods. The
   specified values will provide the defaults for all collections created in a database.
