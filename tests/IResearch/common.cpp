@@ -703,6 +703,7 @@ void assertFilter(TRI_vocbase_t& vocbase, bool parseOk, bool execOk,
                   std::shared_ptr<arangodb::velocypack::Builder> bindVars /*= nullptr*/,
                   std::string const& refName /*= "d"*/
 ) {
+  SCOPED_TRACE(testing::Message("assertFilter failed for query:<") << queryString << "> parseOk:" << parseOk << " execOk:" << execOk);
   auto options = std::make_shared<arangodb::velocypack::Builder>();
 
   arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString),
