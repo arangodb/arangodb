@@ -913,24 +913,6 @@ arangodb::Result processInputDirectory(
     std::vector<std::unique_ptr<arangodb::RestoreFeature::JobData>> jobs;
     jobs.reserve(collections.size());
 
-    // Step 2: create views
-    // @note: done after collection population since views might depend on data
-    //        in restored collections
-    if (options.importStructure && !views.empty()) {
-      LOG_TOPIC("f723c", INFO, Logger::RESTORE) << "# Creating views...";
-
-      for (auto const& viewDefinition : views) {
-        LOG_TOPIC("c608d", DEBUG, Logger::RESTORE)
-          << "# Creating view: " << viewDefinition.toJson();
-
-        auto res = ::restoreView(httpClient, options, viewDefinition.slice());
-
-        if (!res.ok()) {
-          return res;
-        }
-      }
-    }
-
     bool didModifyFoxxCollection = false;
     // Step 3: create collections
     for (VPackBuilder const& b : collections) {
@@ -1037,6 +1019,24 @@ arangodb::Result processInputDirectory(
       }
     }
 
+    // Step 4: create views
+    // @note: done after collection population since views might depend on data
+    //        in restored collections
+    if (options.importStructure && !views.empty()) {
+      LOG_TOPIC("f723c", INFO, Logger::RESTORE) << "# Creating views...";
+
+      for (auto const& viewDefinition : views) {
+        LOG_TOPIC("c608d", DEBUG, Logger::RESTORE)
+          << "# Creating view: " << viewDefinition.toJson();
+
+        auto res = ::restoreView(httpClient, options, viewDefinition.slice());
+
+        if (!res.ok()) {
+          return res;
+        }
+      }
+    }
+
     // Last step: reload data into _users. Note: this can change the credentials
     // of the arangorestore user itself
     if (usersData) {
@@ -1052,6 +1052,7 @@ arangodb::Result processInputDirectory(
         return firstError;
       }
     }
+
   } catch (std::exception const& ex) {
     return {TRI_ERROR_INTERNAL,
             std::string(

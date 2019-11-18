@@ -1413,7 +1413,24 @@ Result DatabaseInitialSyncer::handleCollectionsAndViews(VPackSlice const& collSl
     collections.emplace_back(parameters, indexes);
   }
 
-  // STEP 1: now that the collections exist create the views
+  // STEP 1: validate collection declarations from master
+  // ----------------------------------------------------------------------------------
+
+  // STEP 2: drop and re-create collections locally if they are also present on
+  // the master
+  //  ------------------------------------------------------------------------------------
+
+  // iterate over all collections from the master...
+  std::array<SyncPhase, 2> phases{{PHASE_VALIDATE, PHASE_DROP_CREATE}};
+  for (auto const& phase : phases) {
+    Result r = iterateCollections(collections, incremental, phase);
+
+    if (r.fail()) {
+      return r;
+    }
+  }
+
+  // STEP 3: now that the collections exist create the views
   // this should be faster than re-indexing afterwards
   // ----------------------------------------------------------------------------------
 
@@ -1429,23 +1446,6 @@ Result DatabaseInitialSyncer::handleCollectionsAndViews(VPackSlice const& collSl
     }
   } else {
     _config.progress.set("view creation skipped because of configuration");
-  }
-
-  // STEP 2: validate collection declarations from master
-  // ----------------------------------------------------------------------------------
-
-  // STEP 3: drop and re-create collections locally if they are also present on
-  // the master
-  //  ------------------------------------------------------------------------------------
-
-  // iterate over all collections from the master...
-  std::array<SyncPhase, 2> phases{{PHASE_VALIDATE, PHASE_DROP_CREATE}};
-  for (auto const& phase : phases) {
-    Result r = iterateCollections(collections, incremental, phase);
-
-    if (r.fail()) {
-      return r;
-    }
   }
 
   // STEP 4: sync collection data from master and create initial indexes
