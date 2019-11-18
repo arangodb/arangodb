@@ -436,12 +436,10 @@ bool replaceViewVariables(arangodb::containers::SmallVector<ExecutionNode*> cons
       if (!latematerialized::getReferencedAttributes(astNode, &var, node)) {
         // is not safe for optimization
         replaceNow = false;
-        nodesToChange.clear();
       } else if (!node.attrs.empty()) {
         if (!attributesMatch(primarySort, node)) {
           // the node uses attributes which is not in view primary sort
           replaceNow = false;
-          nodesToChange.clear();
         } else {
           nodesToChange.emplace_back(std::move(node));
         }
