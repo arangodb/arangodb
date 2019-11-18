@@ -52,9 +52,9 @@ SimpleModifier<ModifierCompletion, Enable>::OutputIterator::next() {
   // Only move results on if there has been a document
   // submitted to the transaction
   if (_operationsIterator->first == ModifierOperationType::ReturnIfAvailable) {
-    _resultsIterator++;
+    ++_resultsIterator;
   }
-  _operationsIterator++;
+  ++_operationsIterator;
   return *this;
 }
 

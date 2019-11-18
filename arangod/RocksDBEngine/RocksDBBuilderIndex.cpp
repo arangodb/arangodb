@@ -178,6 +178,7 @@ static arangodb::Result fillIndex(RocksDBIndex& ridx, WriteBatchType& batch,
   if (mode == AccessMode::Type::EXCLUSIVE) {
     trx.addHint(transaction::Hints::Hint::LOCK_NEVER);
   }
+  trx.addHint(transaction::Hints::Hint::INDEX_CREATION);
   Result res = trx.begin();
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);

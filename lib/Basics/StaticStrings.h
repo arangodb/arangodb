@@ -251,6 +251,9 @@ class StaticStrings {
   static std::string const RebootId;
   static std::string const New;
   static std::string const Old;
+  static std::string const UpgradeEnvName;
+  static std::string const BackupToDeleteName;
+  static std::string const BackupSearchToDeleteName;
 };
 }  // namespace arangodb
 

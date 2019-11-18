@@ -53,11 +53,11 @@ UpsertModifier::OutputIterator::OutputIterator(UpsertModifier const& modifier)
 
 UpsertModifier::OutputIterator& UpsertModifier::OutputIterator::next() {
   if (_operationsIterator->first == UpsertModifier::OperationType::UpdateReturnIfAvailable) {
-    _updateResultsIterator++;
+    ++_updateResultsIterator;
   } else if (_operationsIterator->first == UpsertModifier::OperationType::InsertReturnIfAvailable) {
-    _insertResultsIterator++;
+    ++_insertResultsIterator;
   }
-  _operationsIterator++;
+  ++_operationsIterator;
   return *this;
 }
 
@@ -139,7 +139,7 @@ void UpsertModifier::reset() {
 
 UpsertModifier::OperationType UpsertModifier::updateReplaceCase(
     ModificationExecutorAccumulator& accu, AqlValue const& inDoc, AqlValue const& updateDoc) {
-  std::string key, rev;
+  std::string key;
   Result result;
 
   if (writeRequired(_infos, inDoc.slice(), StaticStrings::Empty)) {
