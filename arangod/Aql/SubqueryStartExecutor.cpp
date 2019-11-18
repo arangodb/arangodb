@@ -72,7 +72,7 @@ std::pair<ExecutionState, NoStats> SubqueryStartExecutor::produceRows(OutputAqlI
     output.advanceRow();
   }
   if (_input.isInitialized()) {
-    // We atleast need to insert the Shadow row!
+    // We at least need to insert the Shadow row!
     return {ExecutionState::HASMORE, NoStats{}};
   }
   // Take state from dependency.

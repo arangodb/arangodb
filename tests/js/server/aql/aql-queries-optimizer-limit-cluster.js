@@ -400,7 +400,7 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
         var actual = getQueryResults(query);
         assertEqual(test.expectedLength, actual.length);
      
-        assertEqual([ "SingletonNode", "EnumerateCollectionNode", "CalculationNode", "FilterNode", "RemoteNode", "GatherNode", "LimitNode", "ReturnNode" ], explain(query));
+        assertEqual([ "SingletonNode", "EnumerateCollectionNode", "RemoteNode", "GatherNode", "LimitNode", "ReturnNode" ], explain(query));
       }
     },
 
@@ -446,7 +446,7 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
         var actual = getQueryResults(query);
         assertEqual(test.expectedLength, actual.length);
       
-        assertEqual([ "SingletonNode", "EnumerateCollectionNode", "CalculationNode", "FilterNode", "RemoteNode", "GatherNode", "LimitNode", "ReturnNode" ], explain(query));
+        assertEqual([ "SingletonNode", "EnumerateCollectionNode", "RemoteNode", "GatherNode", "LimitNode", "ReturnNode" ], explain(query));
       }
     },
 
@@ -483,7 +483,7 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
       assertEqual(29, actual[9].value);
 
       if (db._engine().name !== "rocksdb") {
-        assertEqual([ "SingletonNode", "EnumerateCollectionNode", "CalculationNode", "FilterNode", "CalculationNode", "RemoteNode", "GatherNode", "LimitNode", "SortNode", "ReturnNode" ], explain(query));
+        assertEqual([ "SingletonNode", "EnumerateCollectionNode", "CalculationNode", "RemoteNode", "GatherNode", "LimitNode", "SortNode", "ReturnNode" ], explain(query));
       } else {
         // RocksDB HashIndex can be used for range queries.
         assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "RemoteNode", "GatherNode", "LimitNode", "SortNode", "ReturnNode" ], explain(query));
@@ -506,7 +506,7 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
       assertEqual(29, actual[9].value);
 
       if (db._engine().name !== "rocksdb") {
-        assertEqual([ "SingletonNode", "EnumerateCollectionNode", "CalculationNode", "FilterNode", "CalculationNode", "RemoteNode", "GatherNode", "LimitNode", "SortNode", "ReturnNode" ], explain(query));
+        assertEqual([ "SingletonNode", "EnumerateCollectionNode", "CalculationNode", "RemoteNode", "GatherNode", "LimitNode", "SortNode", "ReturnNode" ], explain(query));
       } else {
         // RocksDB HashIndex can be used for range queries.
         assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "RemoteNode", "GatherNode", "LimitNode", "SortNode", "ReturnNode" ], explain(query));
@@ -578,7 +578,7 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
       assertEqual(21, actual[1].value);
       assertEqual(29, actual[9].value);
 
-      assertEqual([ "SingletonNode", "EnumerateCollectionNode", "CalculationNode", "FilterNode", "CalculationNode", "RemoteNode", "GatherNode", "LimitNode", "SortNode", "ReturnNode" ], explain(query));
+      assertEqual([ "SingletonNode", "EnumerateCollectionNode", "CalculationNode", "RemoteNode", "GatherNode", "LimitNode", "SortNode", "ReturnNode" ], explain(query));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -596,7 +596,7 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
       assertEqual(22, actual[2].value);
       assertEqual(29, actual[9].value);
 
-      assertEqual([ "SingletonNode", "EnumerateCollectionNode", "CalculationNode", "FilterNode", "CalculationNode", "RemoteNode", "GatherNode", "LimitNode", "SortNode", "ReturnNode" ], explain(query));
+      assertEqual([ "SingletonNode", "EnumerateCollectionNode", "CalculationNode", "RemoteNode", "GatherNode", "LimitNode", "SortNode", "ReturnNode" ], explain(query));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -627,7 +627,7 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
       assertEqual(22, actual[2].value);
       assertEqual(29, actual[9].value);
         
-      assertEqual([ "SingletonNode", "EnumerateCollectionNode", "CalculationNode", "FilterNode", "CalculationNode", "SortNode", "RemoteNode", "GatherNode", "LimitNode", "ReturnNode" ], explain(query));
+      assertEqual([ "SingletonNode", "EnumerateCollectionNode", "CalculationNode", "SortNode", "RemoteNode", "GatherNode", "LimitNode", "ReturnNode" ], explain(query));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -702,7 +702,7 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
       var actual = getQueryResults(query);
       assertEqual(10, actual.length);
 
-      assertEqual([ "SingletonNode", "EnumerateCollectionNode", "CalculationNode", "FilterNode", "CalculationNode", "RemoteNode", "GatherNode", "LimitNode", "ReturnNode" ], explain(query));
+      assertEqual([ "SingletonNode", "EnumerateCollectionNode", "CalculationNode", "RemoteNode", "GatherNode", "LimitNode", "ReturnNode" ], explain(query));
     },
 
     testLimitProcessingWithoutFilter : function () {

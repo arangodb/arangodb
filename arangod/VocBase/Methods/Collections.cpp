@@ -902,9 +902,10 @@ futures::Future<OperationResult> Collections::revisionId(Context& ctxt) {
     // We directly read the entire cursor. so batchsize == limit
     OperationCursor opCursor(trx.indexScan(cname, transaction::Methods::CursorType::ALL));
 
-    opCursor.allDocuments([&](LocalDocumentId const& token,
-                              VPackSlice doc) { cb(doc.resolveExternal()); },
-                          1000);
+    opCursor.allDocuments([&](LocalDocumentId const&, VPackSlice doc) { 
+      cb(doc.resolveExternal()); 
+      return true;
+    }, 1000);
 
     return trx.finish(res);
   }
@@ -963,7 +964,7 @@ arangodb::Result Collections::checksum(LogicalCollection& collection,
     }
 
     checksum ^= localHash;
-
+    return true;
   }, 1000);
 
   return trx.finish(res);

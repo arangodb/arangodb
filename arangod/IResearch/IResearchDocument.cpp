@@ -21,11 +21,11 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "IResearchDocument.h"
 #include "Basics/Endian.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "IResearchCommon.h"
-#include "IResearchDocument.h"
 #include "IResearchKludge.h"
 #include "IResearchPrimaryKeyFilter.h"
 #include "IResearchViewMeta.h"
@@ -88,7 +88,6 @@ static_assert(arangodb::iresearch::adjacencyChecker<AttributeType>::checkAdjacen
                   AT_TO, AT_FROM, AT_ID, AT_REV, AT_KEY, AT_REG>(),
               "Values are not adjacent");
 
-irs::string_ref const CID_FIELD("@_CID");
 irs::string_ref const PK_COLUMN("@_PK");
 
 // wrapper for use objects with the IResearch unbounded_object_pool
@@ -414,17 +413,16 @@ void FieldIterator::setNullValue(VPackSlice const value) {
 
   // set field properties
   _value._name = name;
-  _value._analyzer = stream.release(); // FIXME don't use shared_ptr
+  _value._analyzer = stream.release();  // FIXME don't use shared_ptr
   _value._features = &irs::flags::empty_instance();
 }
 
-bool FieldIterator::setStringValue(
-    arangodb::velocypack::Slice const value, // value
-    IResearchLinkMeta::Analyzer const& valueAnalyzer // analyzer to use
+bool FieldIterator::setStringValue(arangodb::velocypack::Slice const value,  // value
+                                   IResearchLinkMeta::Analyzer const& valueAnalyzer  // analyzer to use
 ) {
-  TRI_ASSERT( // assert
-    (value.isCustom() && nameBuffer() == arangodb::StaticStrings::IdString) // custom string
-    || value.isString() // verbatim string
+  TRI_ASSERT(  // assert
+      (value.isCustom() && nameBuffer() == arangodb::StaticStrings::IdString)  // custom string
+      || value.isString()  // verbatim string
   );
 
   irs::string_ref valueRef;
@@ -438,10 +436,10 @@ bool FieldIterator::setStringValue(
     auto const baseSlice = _stack.front().it.slice();
     auto& buffer = valueBuffer();
 
-    buffer = transaction::helpers::extractIdString( // extract id
-      _trx->resolver(), // resolver
-      value, // value
-      baseSlice // base slice
+    buffer = transaction::helpers::extractIdString(  // extract id
+        _trx->resolver(),                            // resolver
+        value,                                       // value
+        baseSlice                                    // base slice
     );
 
     valueRef = buffer;
@@ -452,7 +450,8 @@ bool FieldIterator::setStringValue(
   auto& pool = valueAnalyzer._pool;
 
   if (!pool) {
-    LOG_TOPIC("189da", WARN, iresearch::TOPIC) << "got nullptr analyzer factory";
+    LOG_TOPIC("189da", WARN, iresearch::TOPIC)
+        << "got nullptr analyzer factory";
 
     return false;
   }
