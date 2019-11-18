@@ -219,18 +219,18 @@ class KShortestPathsFinder : public ShortestPathFinder {
   }
 
   // initialise k Shortest Paths
-  bool startKShortestPathsTraversal(arangodb::velocypack::Slice const& start,
-                                    arangodb::velocypack::Slice const& end);
+  virtual bool startKShortestPathsTraversal(arangodb::velocypack::Slice const& start,
+                                            arangodb::velocypack::Slice const& end);
 
   // get the next available path as AQL value.
-  bool getNextPathAql(arangodb::velocypack::Builder& builder);
+  virtual bool getNextPathAql(arangodb::velocypack::Builder& builder);
   // get the next available path as a ShortestPathResult
   // TODO: this is only here to not break catch-tests and needs a cleaner solution.
   //       probably by making ShortestPathResult versatile enough and using that
   bool getNextPathShortestPathResult(ShortestPathResult& path);
   // get the next available path as a Path
   bool getNextPath(Path& path);
-  bool isPathAvailable() const { return _pathAvailable; }
+  virtual bool isPathAvailable() const { return _pathAvailable; }
 
  private:
   // Compute the first shortest path

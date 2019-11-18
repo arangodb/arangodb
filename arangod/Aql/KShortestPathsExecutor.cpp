@@ -289,6 +289,8 @@ std::tuple<ExecutorState, NoStats, AqlCall> KShortestPathsExecutor::produceRows(
     if (_finder.getNextPathAql(*tmp.builder())) {
       AqlValue path = AqlValue(*tmp.builder());
       output.cloneValueInto(_infos.getOutputRegister(), _inputRow, path);
+      output.advanceRow();
+      nrOutput++;
     }
   }
 
