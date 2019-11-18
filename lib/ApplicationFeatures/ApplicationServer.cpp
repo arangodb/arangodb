@@ -78,7 +78,7 @@ ApplicationServer& ApplicationServer::server() {
 }
 
 ApplicationServer::ApplicationServer(std::shared_ptr<ProgramOptions> options,
-                                     const char* binaryPath)
+                                     char const* binaryPath)
     : _state(State::UNINITIALIZED),
       _options(options),
       _binaryPath(binaryPath) {

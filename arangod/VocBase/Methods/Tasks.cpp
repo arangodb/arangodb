@@ -193,7 +193,13 @@ void Task::shutdownTasks() {
 
     if (++iterations % 10 == 0) {
       LOG_TOPIC("3966b", INFO, Logger::FIXME) << "waiting for " << size << " task(s) to complete";
+    } else if (iterations >= 25) {
+      LOG_TOPIC("54653", INFO, Logger::FIXME) << "giving up waiting for unfinished tasks";
+      MUTEX_LOCKER(guard, _tasksLock);
+      _tasks.clear();
+      break;
     }
+
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
   }
 }

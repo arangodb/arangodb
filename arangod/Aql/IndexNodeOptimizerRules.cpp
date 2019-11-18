@@ -201,7 +201,7 @@ void arangodb::aql::lateDocumentMaterializationRule(arangodb::aql::Optimizer* op
     if (arangodb::aql::ExecutionNode::INDEX == loop->getType()) {
       auto indexNode = EN::castTo<IndexNode*>(loop);
       if (indexNode->isLateMaterialized()) {
-        continue; // loop is aleady optimized
+        continue; // loop is already optimized
       }
       auto current = limitNode->getFirstDependency();
       ExecutionNode* sortNode = nullptr;
@@ -209,10 +209,12 @@ void arangodb::aql::lateDocumentMaterializationRule(arangodb::aql::Optimizer* op
       // without document body usage before that node.
       // this node could be appended with materializer
       bool stopSearch = false;
+      bool stickToSortNode = false;
       std::vector<NodeWithAttrs> nodesToChange;
       TRI_idx_iid_t commonIndexId = 0; // use one index only
       while (current != loop) {
-        switch (current->getType()) {
+        auto type = current->getType();
+        switch (type) {
           case arangodb::aql::ExecutionNode::SORT:
             if (sortNode == nullptr) { // we need nearest to limit sort node, so keep selected if any
               sortNode = current;
@@ -230,9 +232,17 @@ void arangodb::aql::lateDocumentMaterializationRule(arangodb::aql::Optimizer* op
             } else if (!node.attrs.empty()) {
               if (!attributesMatch(commonIndexId, indexNode, node)) {
                 // the node uses attributes which is not in index
-                stopSearch = true;
+                if (nullptr == sortNode) {
+                  // we are between limit and sort nodes.
+                  // late materialization could still be applied but we must insert MATERIALIZE node after sort not after limit
+                  stickToSortNode = true;
+                } else {
+                  // this limit node affects only closest sort, if this sort is invalid
+                  // we need to check other limit node
+                  stopSearch = true;
+                }
               } else {
-                nodesToChange.emplace_back(node);
+                nodesToChange.emplace_back(std::move(node));
               }
             }
             break;
@@ -246,12 +256,16 @@ void arangodb::aql::lateDocumentMaterializationRule(arangodb::aql::Optimizer* op
           default: // make clang happy
             break;
         }
-        if (sortNode != nullptr && current->getType() != arangodb::aql::ExecutionNode::CALCULATION) {
+        // Currently only calculation and subquery nodes expected to use loop variable.
+        // We successfully replaced all references to loop variable in calculation nodes only.
+        // However if some other node types will begin to use loop variable
+        // assertion below will be triggered and this rule should be updated.
+        // Subquery node is planned to be supported later.
+        if (!stopSearch && type != arangodb::aql::ExecutionNode::CALCULATION) {
           ::arangodb::containers::HashSet<Variable const*> currentUsedVars;
           current->getVariablesUsedHere(currentUsedVars);
           if (currentUsedVars.find(indexNode->outVariable()) != currentUsedVars.end()) {
-            // this limit node affects only closest sort, if this sort is invalid
-            // we need to check other limit node
+            TRI_ASSERT(arangodb::aql::ExecutionNode::SUBQUERY == type);
             stopSearch = true;
           }
         }
@@ -301,7 +315,7 @@ void arangodb::aql::lateDocumentMaterializationRule(arangodb::aql::Optimizer* op
 
         // on cluster we need to materialize node stay close to sort node on db server (to avoid network hop for materialization calls)
         // however on single server we move it to limit node to make materialization as lazy as possible
-        auto materializeDependency = ServerState::instance()->isCoordinator() ? sortNode : limitNode;
+        auto materializeDependency = ServerState::instance()->isCoordinator() || stickToSortNode ? sortNode : limitNode;
         auto dependencyParent = materializeDependency->getFirstParent();
         TRI_ASSERT(dependencyParent != nullptr);
         dependencyParent->replaceDependency(materializeDependency, materializeNode);
