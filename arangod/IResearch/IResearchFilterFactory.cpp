@@ -1924,8 +1924,9 @@ arangodb::Result processPhraseArgs(
       return { TRI_ERROR_BAD_PARAMETER, message };
     }
     if (currentArg->isArray() && (!expectingOffset || allowDefaultOffset)) {
-      // array in array is processed with possible default 0 offsets!
-      // No array recursion allwed - anyone interested coud use FLATTEN to avoid recurring arrays
+      // array arg is processed with possible default 0 offsets - to be easily compatible with TOKENS function
+      // No array recursion allowed. This could be allowed, but just looks tangled.
+      // Anyone interested coud use FLATTEN  to explicitly require processing all recurring arrays as one array
       if (allowRecursion) {
         auto subRes = processPhraseArgs(phrase, ctx, filterCtx, *currentArg, 0, currentArg->numMembers(), analyzer, offset, true, false);
         if (subRes.fail()) {
@@ -1957,7 +1958,7 @@ arangodb::Result processPhraseArgs(
         if (expectingOffset && allowDefaultOffset) {
           expectedValue = " as a value or offset";
         } else if (expectingOffset) {
-          expectedValue = " as offset";
+          expectedValue = " as an offset";
         } else {
           expectedValue = " as a value";
         }
@@ -1965,12 +1966,11 @@ arangodb::Result processPhraseArgs(
         LOG_TOPIC("ac06b", WARN, arangodb::iresearch::TOPIC) << message;
         return { TRI_ERROR_BAD_PARAMETER, message };
       }
-    } else if (!phrase && !currentValue.isConstant()) {
-      // in case of non const node encountered we can not decide if it and following args are correct before execution
+    } else {
+      // in case of non const node encountered while parsing we can not decide if current and following args are correct before execution
       // so at this stage we say all is ok
       return {};
     }
-
     if (phrase) {
       TRI_ASSERT(analyzer);
       appendTerms(*phrase, value, *analyzer, offset);
@@ -1986,8 +1986,8 @@ arangodb::Result processPhraseArgs(
   return {};
 }
 
-// note: <value> could be either string ether array of strings or arrays with offsets inbetween . In latter
-// case 0 offset could be omitted e.g. <term1, term2, 2, term3> is equal to: <term1, 0, term2, 2, term3>
+// note: <value> could be either string ether array of strings with offsets inbetween . Inside array
+// 0 offset could be omitted e.g. [term1, term2, 2, term3] is equal to: [term1, 0, term2, 2, term3]
 // PHRASE(<attribute>, <value> [, <offset>, <value>, ...] [, <analyzer>])
 // PHRASE(<attribute>, '[' <value> [, <offset>, <value>, ...] ']' [,<analyzer>])
 arangodb::Result fromFuncPhrase(irs::boolean_filter* filter, QueryContext const& ctx,
@@ -2045,7 +2045,6 @@ arangodb::Result fromFuncPhrase(irs::boolean_filter* filter, QueryContext const&
 
   irs::by_phrase* phrase = nullptr;
   irs::analysis::analyzer::ptr analyzer;
-  size_t offset = 0;
   // prepare filter if execution phase
   if (filter) {
     std::string name;
@@ -2071,6 +2070,8 @@ arangodb::Result fromFuncPhrase(irs::boolean_filter* filter, QueryContext const&
     phrase->field(std::move(name));
     phrase->boost(filterCtx.boost);
   }
+  // on top level we require explicit offsets - to be backward compatible and be able to distinguish last argument as analyzer or value
+  // Also we allow recursion inside array to support older syntax (one array arg) and add ability to pass several arrays as args
   return processPhraseArgs(phrase, ctx, filterCtx, *valueArgs, valueArgsBegin, valueArgsEnd, analyzer, 0, false, true);
 }
 
