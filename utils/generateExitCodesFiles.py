@@ -1,4 +1,5 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
+from __future__ import print_function
 import csv, sys, os.path, re
 
 # wrap text after x characters
@@ -39,7 +40,7 @@ def genJsFile(errors):
     out = out\
         + "    " + name.ljust(30) + " : { \"code\" : " + e[1] + ", \"message\" : \"" + msg + "\" }"
 
-    i = i + 1 
+    i = i + 1
 
     if i < len(errors):
       out = out + ",\n"
@@ -143,7 +144,7 @@ def genCHeaderFile(errors):
            + "\n"\
            + wiki\
            + "\n"
- 
+
   # print individual errors
   for e in errors:
     header = header\
@@ -164,34 +165,36 @@ def genCHeaderFile(errors):
   return header
 
 
-# define some globals 
+# define some globals
 prologue = "/// auto-generated file generated from exitcodes.dat\n"\
          + "\n"
 
 if len(sys.argv) < 3:
-  print >> sys.stderr, "usage: %s <sourcefile> <outfile>" % sys.argv[0]
-  sys.exit()
+  print("usage: {} <sourcefile> <outfile>".format(sys.argv[0]), file=sys.stderr)
+  sys.exit(1)
 
 source = sys.argv[1]
 
 # read input file
-errors = csv.reader(open(source, "rb"))
+errors=None
 errorsList = []
+with open(source, "r") as source_fh:
+    errors = csv.reader(source_fh)
 
-r1 = re.compile(r'^#.*')
+    r1 = re.compile(r'^#.*')
 
-for e in errors:
-  if len(e) == 0:
-    continue
+    for e in errors:
+      if len(e) == 0:
+        continue
 
-  if r1.match(e[0]):
-    continue
+      if r1.match(e[0]):
+        continue
 
-  if e[0] == "" or e[1] == "" or e[2] == "" or e[3] == "":
-    print >> sys.stderr, "invalid exit code declaration file: %s" % (source)
-    sys.exit()
+      if e[0] == "" or e[1] == "" or e[2] == "" or e[3] == "":
+        print("invalid exit code declaration file: {}".format(source), file=sys.stderr)
+        sys.exit(1)
 
-  errorsList.append(e)
+      errorsList.append(e)
 
 outfile = sys.argv[2]
 extension = os.path.splitext(outfile)[1]
@@ -210,10 +213,8 @@ elif extension == ".cpp":
 elif extension == ".nsh":
   out = genNSISFile(errorsList, filename)
 else:
-  print >> sys.stderr, "usage: %s <sourcefile> <outfile>" % sys.argv[0]
-  sys.exit()
+  print("usage: {} <sourcefile> <outfile>".format(sys.argv[0]), file=sys.stderr)
+  sys.exit(1)
 
-outFile = open(outfile, "wb")
-outFile.write(out);
-outFile.close()
-
+with open(outfile, "w") as out_fh:
+    out_fh.write(out);
