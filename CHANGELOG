@@ -1,5 +1,11 @@
-v3.4.9 (XXX-XX-XX)
+v3.4.9 (XXXX-XX-XX)
 -------------------
+
+* Make the timeouts for replication requests (for active failover and master-slave 
+  replication configurable via startup options:
+
+      --replication.connect-timeout
+      --replication.request-timeout
 
 * Fixed ArangoSearch index removes being discarded on commiting consolidation
   results with pending removes after some segments under consolidation were
