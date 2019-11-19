@@ -49,6 +49,7 @@
 #include "Aql/SortRegister.h"
 #include "Aql/SortingGatherExecutor.h"
 #include "Aql/UnsortedGatherExecutor.h"
+#include "Aql/UnsortingGatherExecutor.h"
 #include "Aql/types.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
@@ -492,27 +493,16 @@ std::unique_ptr<ExecutionBlock> GatherNode::createBlock(
   if (_elements.empty()) {
     TRI_ASSERT(getRegisterPlan()->nrRegs[previousNode->getDepth()] ==
                getRegisterPlan()->nrRegs[getDepth()]);
-
-    if (ServerState::instance()->isCoordinator()) {
-      // In the coordinator case the GatherBlock will fetch from RemoteBlocks.
-      if (_parallelism == Parallelism::Parallel) {
-        UnsortedGatherExecutorInfos infos(getRegisterPlan()->nrRegs[getDepth()],
-                                          calcRegsToKeep(), getRegsToClear());
-        return std::make_unique<ExecutionBlockImpl<UnsortedGatherExecutor>>(&engine, this, std::move(infos));
-      }
-      IdExecutorInfos infos(getRegisterPlan()->nrRegs[getDepth()],
-                            calcRegsToKeep(), getRegsToClear());
-      // We want to immediately move the block on and not wait for additional requests here (hence passthrough)
-      return std::make_unique<ExecutionBlockImpl<IdExecutor<BlockPassthrough::Enable, SingleRowFetcher<BlockPassthrough::Enable>>>>(
-          &engine, this, std::move(infos));
+    if (ServerState::instance()->isCoordinator() && _parallelism == Parallelism::Parallel) {
+      UnsortedGatherExecutorInfos infos(getRegisterPlan()->nrRegs[getDepth()],
+                                        calcRegsToKeep(), getRegsToClear());
+      return std::make_unique<ExecutionBlockImpl<UnsortedGatherExecutor>>(&engine, this, std::move(infos));
     } else {
       IdExecutorInfos infos(getRegisterPlan()->nrRegs[getDepth()],
                             calcRegsToKeep(), getRegsToClear());
-      // In the DBServer case the GatherBlock will merge local results and then expose them (directly or indirectly)
-      // to the RemoteBlock on coordinator. We want to trigger as few requests as possible, so we invest the little
-      // memory inefficiency that we have here in favor of a better grouping of requests.
-      return std::make_unique<ExecutionBlockImpl<IdExecutor<BlockPassthrough::Disable, SingleRowFetcher<BlockPassthrough::Disable>>>>(
-          &engine, this, std::move(infos));
+
+      return std::make_unique<ExecutionBlockImpl<UnsortingGatherExecutor>>(&engine, this,
+                                                                           std::move(infos));
     }
   }
   
