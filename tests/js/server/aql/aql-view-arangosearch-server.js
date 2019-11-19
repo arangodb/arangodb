@@ -371,7 +371,7 @@ function iResearchFeatureAqlServerSideTestSuite () {
           });
         }
         return linksCount;
-      }
+      };
 
       try {
         let beforeLinkCount = getLinksCount();
