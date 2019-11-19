@@ -100,7 +100,7 @@ class SimpleModifier {
   };
 
  public:
-  SimpleModifier(ModificationExecutorInfos& infos)
+  explicit SimpleModifier(ModificationExecutorInfos& infos)
       : _infos(infos),
         _completion(infos),
         _accumulator(nullptr),

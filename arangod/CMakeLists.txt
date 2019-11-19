@@ -52,7 +52,6 @@ add_library(arango_iresearch
   IResearch/ApplicationServerHelper.h IResearch/ApplicationServerHelper.cpp
   IResearch/Containers.cpp IResearch/Containers.h
   IResearch/IResearchAnalyzerFeature.cpp IResearch/IResearchAnalyzerFeature.h
-  IResearch/IResearchAnalyzerCollectionFeature.cpp
   IResearch/IResearchCommon.cpp IResearch/IResearchCommon.h
   IResearch/IResearchKludge.cpp IResearch/IResearchKludge.h
   IResearch/IResearchLink.cpp IResearch/IResearchLink.h
@@ -224,6 +223,7 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/AqlTransaction.cpp
   Aql/AqlValue.cpp
   Aql/AqlValueGroup.cpp
+  Aql/AqlValueMaterializer.cpp
   Aql/Arithmetic.cpp
   Aql/Ast.cpp
   Aql/AstHelper.cpp
@@ -350,6 +350,7 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/TraversalExecutor.cpp
   Aql/TraversalNode.cpp
   Aql/UnsortedGatherExecutor.cpp
+  Aql/UnsortingGatherExecutor.cpp
   Aql/UpdateReplaceModifier.cpp
   Aql/UpsertModifier.cpp
   Aql/V8Executor.cpp
@@ -544,6 +545,7 @@ set(LIB_ARANGOSERVER_SOURCES
   Cluster/ClusterInfo.cpp
   Cluster/ClusterRepairDistributeShardsLike.cpp
   Cluster/ClusterRepairOperations.cpp
+  Cluster/ClusterUpgradeFeature.cpp
   Cluster/ClusterTrxMethods.cpp
   Cluster/ClusterTypes.cpp
   Cluster/CreateCollection.cpp
@@ -876,6 +878,13 @@ target_link_libraries(arango_rocksdb arango_geo)
 target_link_libraries(arango_rocksdb arango_indexes)
 target_link_libraries(arango_rocksdb arango_storage_engine_common)
 target_link_libraries(arango_rocksdb boost_boost)
+
+if (USE_ENTERPRISE)
+  # this is required for hotbackup. Views need to be flushed.
+  target_include_directories(arango_rocksdb
+    PUBLIC ${IRESEARCH_INCLUDE}
+  )
+endif()
 
 target_link_libraries(arango_storage_engine arango_cluster_engine)
 target_link_libraries(arango_storage_engine arango_cluster_methods)

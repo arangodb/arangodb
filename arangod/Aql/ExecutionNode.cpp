@@ -567,6 +567,7 @@ bool ExecutionNode::isEqualTo(ExecutionNode const& other) const {
 
   return ((this->getType() == other.getType()) && (_id == other._id) &&
           (_depth == other._depth) &&
+          (isInSplicedSubquery() == other.isInSplicedSubquery()) &&
           (std::equal(_dependencies.begin(), _dependencies.end(),
                       other._dependencies.begin(), comparator)));
 }
