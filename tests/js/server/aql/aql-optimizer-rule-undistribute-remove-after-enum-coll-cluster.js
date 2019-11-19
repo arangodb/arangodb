@@ -587,7 +587,7 @@ function optimizerRuleUpdateTestSuite () {
       let c = db._create(cn, { numberOfShards: 3, shardKeys: ["value"] });
       let docs = [];
       for (let i = 0; i < 5000; ++i) {
-        docs.push({ _key: "test" + i, value: i });
+        docs.push({ value: i });
       }
 
       let queries = [
