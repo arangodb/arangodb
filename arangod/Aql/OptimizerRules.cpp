@@ -7319,6 +7319,8 @@ bool nodeMakesThisQueryLevelUnsuitableForSubquerySplicing(ExecutionNode const* c
     case ExecutionNode::RETURN:
     case ExecutionNode::DISTRIBUTE:
     case ExecutionNode::SCATTER:
+    case ExecutionNode::GATHER:
+    case ExecutionNode::REMOTE:
     case ExecutionNode::REMOTESINGLE:
     case ExecutionNode::MATERIALIZE:
     case ExecutionNode::DISTRIBUTE_CONSUMER:
@@ -7326,10 +7328,6 @@ bool nodeMakesThisQueryLevelUnsuitableForSubquerySplicing(ExecutionNode const* c
     case ExecutionNode::SUBQUERY_END:
       // These nodes do not initiate a skip themselves, and thus are fine.
       return false;
-    // UnsortingGather currently does not work. Also, as we would possibly add
-    // them with remote nodes in the query, we exclude these here, too.
-    case ExecutionNode::REMOTE:
-    case ExecutionNode::GATHER:
     case ExecutionNode::NORESULTS:
       // no results currently cannot work, as they do not fetch from above.
     case ExecutionNode::LIMIT:
@@ -7558,6 +7556,8 @@ void arangodb::aql::spliceSubqueriesRule(Optimizer* opt, std::unique_ptr<Executi
               plan->createNode<RemoteNode>(plan.get(), plan->nextId(),
                                            &plan->getAst()->query()->vocbase(),
                                            "", "", "");
+          scatterNode->setIsInSplicedSubquery(true);
+          remoteNode->setIsInSplicedSubquery(true);
           plan->insertAfter(start, scatterNode);
           plan->insertAfter(scatterNode, remoteNode);
 

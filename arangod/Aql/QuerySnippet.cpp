@@ -425,6 +425,7 @@ DistributeConsumerNode* QuerySnippet::createConsumerNode(ExecutionPlan* plan,
   TRI_ASSERT(consumer != nullptr);
   // Hand over responsibility to plan, s.t. it can clean up if one of the below fails
   plan->registerNode(uniq_consumer.release());
+  consumer->setIsInSplicedSubquery(internalScatter->isInSplicedSubquery());
   consumer->addDependency(internalScatter);
   consumer->cloneRegisterPlan(internalScatter);
   internalScatter->addClient(consumer);

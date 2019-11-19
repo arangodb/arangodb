@@ -32,6 +32,7 @@
 #include "Aql/Query.h"
 #include "Aql/Range.h"
 #include "Aql/V8Executor.h"
+#include "Aql/AqlValueMaterializer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/HybridLogicalClock.h"
 #include "Basics/Mutex.h"

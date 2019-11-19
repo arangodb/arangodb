@@ -117,7 +117,7 @@ class ExecutionBlock {
   // TODO: Can we get rid of this? Problem: Subquery Executor is using it.
   ExecutionNode const* getPlanNode() const;
 
-  transaction::Methods* transaction() const;
+  [[nodiscard]] velocypack::Options const* trxVpackOptions() const noexcept;
 
   /// @brief add a dependency
   void addDependency(ExecutionBlock* ep);
@@ -128,8 +128,7 @@ class ExecutionBlock {
   /// @brief the execution engine
   ExecutionEngine* _engine;
 
-  /// @brief the transaction for this query
-  transaction::Methods* _trx;
+  velocypack::Options const* _trxVpackOptions;
 
   /// @brief the Result returned during the shutdown phase. Is kept for multiple
   ///        waiting phases.
