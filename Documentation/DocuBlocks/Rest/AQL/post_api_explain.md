@@ -26,11 +26,14 @@ an optional maximum number of plans that the optimizer is
 allowed to generate. Setting this attribute to a low value allows to put a
 cap on the amount of work the optimizer does.
 
-@RESTSTRUCT{optimizer.rules,explain_options,array,optional,string}
-an array of to-be-included or to-be-excluded optimizer rules
-can be put into this attribute, telling the optimizer to include or exclude
-specific rules. To disable a rule, prefix its name with a `-`, to enable a rule, prefix it
-with a `+`. There is also a pseudo-rule `all`, which will match all optimizer rules.
+@RESTSTRUCT{optimizer,object,optional,post_api_cursor_opts_optimizer}
+Options related to the query optimizer.
+
+@RESTSTRUCT{rules,post_api_cursor_opts_optimizer,array,optional,string}
+A list of to-be-included or to-be-excluded optimizer rules can be put into this
+attribute, telling the optimizer to include or exclude specific rules. To disable
+a rule, prefix its name with a `-`, to enable a rule, prefix it with a `+`. There is
+also a pseudo-rule `all`, which matches all optimizer rules. `-all` disables all rules.
 
 @RESTDESCRIPTION
 
