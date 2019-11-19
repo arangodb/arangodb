@@ -1953,7 +1953,7 @@ arangodb::Result processPhraseArgs(
         expectingOffset = false;
         continue; // got offset let`s go search for value
       } else if ( (arangodb::iresearch::SCOPED_VALUE_TYPE_STRING != currentValue.type() || !currentValue.getString(value)) || // value is not a string at all
-                   expectingOffset && !allowDefaultOffset) { // offset is expected mandatory but got value
+                  (expectingOffset && !allowDefaultOffset)) { // offset is expected mandatory but got value
         std::string expectedValue;
         if (expectingOffset && allowDefaultOffset) {
           expectedValue = " as a value or offset";

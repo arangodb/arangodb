@@ -31,6 +31,8 @@
 #include <tuple>
 #include <utility>
 
+// TODO Clean up unused variants of the IdExecutor - some of them aren't in use anymore.
+
 namespace arangodb {
 namespace transaction {
 class Methods;
@@ -57,6 +59,7 @@ class IdExecutorInfos : public ExecutorInfos {
 
   std::string const& distributeId();
 
+  // TODO This is probably needed only for UnsortingGather now, so can be removed here.
   [[nodiscard]] bool isResponsibleForInitializeCursor() const;
 
  private:
