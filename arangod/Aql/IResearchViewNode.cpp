@@ -1398,21 +1398,6 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
   return ::executors[getExecutorIndex(_sort.first != nullptr, ordered, materializeType)](&engine, this, std::move(executorInfos));
 }
 
-void IResearchViewNode::saveCalcNodesForViewVariables(std::vector<aql::latematerialized::NodeWithAttrs> const& nodesToChange) {
-  TRI_ASSERT(!nodesToChange.empty());
-  _optState.saveCalcNodesForViewVariables(nodesToChange);
-}
-
-bool IResearchViewNode::canVariablesBeReplaced(aql::CalculationNode* calclulationNode) const {
-  return _optState.canVariablesBeReplaced(calclulationNode);
-}
-
-void IResearchViewNode::replaceViewVariables(std::vector<aql::CalculationNode*> const& calcNodes) {
-  TRI_ASSERT(!calcNodes.empty());
-  auto uniqueVariables = _optState.replaceViewVariables(calcNodes);
-  setViewVariables(uniqueVariables);
-}
-
 bool IResearchViewNode::OptimizationState::canVariablesBeReplaced(aql::CalculationNode* calclulationNode) const {
   return _nodesToChange.find(calclulationNode) != _nodesToChange.cend(); // contains()
 }

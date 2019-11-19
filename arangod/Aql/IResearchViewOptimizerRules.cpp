@@ -297,6 +297,7 @@ void keepReplacementViewVariables(arangodb::containers::SmallVector<ExecutionNod
       continue;
     }
     auto const& var = viewNode.outVariable();
+    auto& viewNodeState = viewNode.state();
     for (auto* cNode : calcNodes) {
       TRI_ASSERT(cNode && ExecutionNode::CALCULATION == cNode->getType());
       auto& calcNode = *ExecutionNode::castTo<CalculationNode*>(cNode);
@@ -310,7 +311,7 @@ void keepReplacementViewVariables(arangodb::containers::SmallVector<ExecutionNod
       }
     }
     if (!nodesToChange.empty()) {
-      viewNode.saveCalcNodesForViewVariables(nodesToChange);
+      viewNodeState.saveCalcNodesForViewVariables(nodesToChange);
       nodesToChange.clear();
     }
   }
@@ -389,7 +390,7 @@ void lateDocumentMaterializationArangoSearchRule(Optimizer* opt,
             auto invalid = true;
             if (ExecutionNode::CALCULATION == type) {
               auto calcNode = ExecutionNode::castTo<CalculationNode*>(current);
-              if (viewNode.canVariablesBeReplaced(calcNode)) {
+              if (viewNode.state().canVariablesBeReplaced(calcNode)) {
                 calcNodes.emplace_back(calcNode);
                 invalid = false;
               }
@@ -420,7 +421,8 @@ void lateDocumentMaterializationArangoSearchRule(Optimizer* opt,
         // we could apply late materialization
         // 1. Replace view variables in calculation node if need
         if (!calcNodes.empty()) {
-          viewNode.replaceViewVariables(calcNodes);
+          auto viewVariables = viewNode.state().replaceViewVariables(calcNodes);
+          viewNode.setViewVariables(viewVariables);
         }
         // 2. We need to notify view - it should not materialize documents, but produce only localDocIds
         // 3. We need to add materializer after limit node to do materialization
