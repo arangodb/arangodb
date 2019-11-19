@@ -939,9 +939,6 @@ void TRI_vocbase_t::inventory(VPackBuilder& result, TRI_voc_tick_t maxTick,
           case Index::TRI_IDX_TYPE_PRIMARY_INDEX:
           case Index::TRI_IDX_TYPE_EDGE_INDEX:
             return false;
-          case Index::TRI_IDX_TYPE_IRESEARCH_LINK:
-            flags = Index::makeFlags(Index::Serialize::Internals);
-            return true;
           default:
             flags = Index::makeFlags(Index::Serialize::Basics);
             return !idx->isHidden();
