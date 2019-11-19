@@ -715,7 +715,7 @@ std::array<std::unique_ptr<aql::ExecutionBlock> (*)(
 
 inline decltype(executors)::size_type getExecutorIndex(bool sorted, bool ordered, MaterializeType materializeType) {
   auto index = static_cast<int>(materializeType) + 3 * static_cast<int>(ordered) + 6 * static_cast<int>(sorted);
-  TRI_ASSERT(static_cast<decltype(executors)::size_type>(index) < executors.size());
+  TRI_ASSERT(static_cast<decltype(executors)::size_type>(index) <= executors.size());
   return static_cast<decltype(executors)::size_type>(index < 9 ? index : index - 1);
 }
 
