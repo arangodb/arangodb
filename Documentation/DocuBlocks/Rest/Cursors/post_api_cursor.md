@@ -107,6 +107,10 @@ to bring the satellite collections involved in the query into sync.
 The default value is *60.0* (seconds). When the max time has been reached the query
 will be stopped.
 
+@RESTSTRUCT{timeout,post_api_cursor_opts,integer,optional,int64}
+The query has to be executed within the given timeout or it will be killed.
+The value is specified in seconds. The default value is *0.0* (no timeout).
+
 @RESTSTRUCT{maxTransactionSize,post_api_cursor_opts,integer,optional,int64}
 Transaction size limit in bytes. Honored by the RocksDB storage engine only.
 
