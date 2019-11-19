@@ -1,9 +1,9 @@
+from __future__ import unicode_literals
 import os
 import sys
 import re
 import inspect
 import io
-from __future__ import unicode_literals
 try:
   from urllib.parse import quote_plus
 except ImportError:
