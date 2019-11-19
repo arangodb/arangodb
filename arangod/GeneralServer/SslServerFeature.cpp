@@ -67,11 +67,7 @@ SslServerFeature::SslServerFeature(application_features::ApplicationServer& serv
       _keyfile(),
       _sessionCache(false),
       _cipherList("HIGH:!EXPORT:!aNULL@STRENGTH"),
-#if OPENSSL_VERSION_NUMBER >= 0x10101000L
-      _sslProtocol(TLS_V13),
-#else
-      _sslProtocol(TLS_V12),
-#endif
+      _sslProtocol(TLS_GENERIC),
       _sslOptions(asio_ns::ssl::context::default_workarounds |
                   asio_ns::ssl::context::single_dh_use),
       _ecdhCurve("prime256v1") {

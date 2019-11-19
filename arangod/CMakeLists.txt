@@ -223,6 +223,7 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/AqlTransaction.cpp
   Aql/AqlValue.cpp
   Aql/AqlValueGroup.cpp
+  Aql/AqlValueMaterializer.cpp
   Aql/Arithmetic.cpp
   Aql/Ast.cpp
   Aql/AstHelper.cpp
@@ -281,13 +282,16 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/IndexExecutor.cpp
   Aql/IndexHint.cpp
   Aql/IndexNode.cpp
+  Aql/IndexNodeOptimizerRules.cpp
   Aql/InputAqlItemRow.cpp
+  Aql/InsertModifier.cpp
   Aql/KShortestPathsExecutor.cpp
   Aql/KShortestPathsNode.cpp
   Aql/LimitExecutor.cpp
   Aql/MaterializeExecutor.cpp
   Aql/ModificationExecutor.cpp
-  Aql/ModificationExecutorTraits.cpp
+  Aql/ModificationExecutorHelpers.cpp
+  Aql/ModificationExecutorInfos.cpp
   Aql/ModificationNodes.cpp
   Aql/ModificationOptions.cpp
   Aql/MultiDependencySingleRowFetcher.cpp
@@ -313,6 +317,7 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/QuerySnippet.cpp
   Aql/QueryString.cpp
   Aql/Range.cpp
+  Aql/RemoveModifier.cpp
   Aql/RegexCache.cpp
   Aql/RegisterPlan.cpp
   Aql/RemoteExecutor.cpp
@@ -327,6 +332,7 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/ShortStringStorage.cpp
   Aql/ShortestPathExecutor.cpp
   Aql/ShortestPathNode.cpp
+  Aql/SimpleModifier.cpp
   Aql/SingleRemoteModificationExecutor.cpp
   Aql/SingleRowFetcher.cpp
   Aql/SortCondition.cpp
@@ -343,6 +349,10 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/TraversalConditionFinder.cpp
   Aql/TraversalExecutor.cpp
   Aql/TraversalNode.cpp
+  Aql/UnsortedGatherExecutor.cpp
+  Aql/UnsortingGatherExecutor.cpp
+  Aql/UpdateReplaceModifier.cpp
+  Aql/UpsertModifier.cpp
   Aql/V8Executor.cpp
   Aql/Variable.cpp
   Aql/VariableGenerator.cpp
@@ -534,6 +544,7 @@ set(LIB_ARANGOSERVER_SOURCES
   Cluster/ClusterInfo.cpp
   Cluster/ClusterRepairDistributeShardsLike.cpp
   Cluster/ClusterRepairOperations.cpp
+  Cluster/ClusterUpgradeFeature.cpp
   Cluster/ClusterTrxMethods.cpp
   Cluster/ClusterTypes.cpp
   Cluster/CreateCollection.cpp
@@ -863,6 +874,13 @@ target_link_libraries(arango_rocksdb arango_geo)
 target_link_libraries(arango_rocksdb arango_indexes)
 target_link_libraries(arango_rocksdb arango_storage_engine_common)
 target_link_libraries(arango_rocksdb boost_boost)
+
+if (USE_ENTERPRISE)
+  # this is required for hotbackup. Views need to be flushed.
+  target_include_directories(arango_rocksdb
+    PUBLIC ${IRESEARCH_INCLUDE}
+  )
+endif()
 
 target_link_libraries(arango_storage_engine arango_cluster_engine)
 target_link_libraries(arango_storage_engine arango_cluster_methods)

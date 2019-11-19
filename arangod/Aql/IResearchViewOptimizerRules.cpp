@@ -173,7 +173,7 @@ bool optimizeSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
 
     if (current->getType() == EN::CALCULATION) {
       // pick up the meanings of variables as we walk the plan
-      variableDefinitions.emplace(
+      variableDefinitions.try_emplace(
           ExecutionNode::castTo<CalculationNode const*>(current)->outVariable()->id,
           ExecutionNode::castTo<CalculationNode const*>(current)->expression()->node());
     }
@@ -269,14 +269,14 @@ namespace arangodb {
 
 namespace iresearch {
 
-void lateDocumentMaterializationRule(arangodb::aql::Optimizer* opt,
+void lateDocumentMaterializationArangoSearchRule(arangodb::aql::Optimizer* opt,
                      std::unique_ptr<arangodb::aql::ExecutionPlan> plan,
                      arangodb::aql::OptimizerRule const& rule) {
   bool modified = false;
   auto addPlan = arangodb::scopeGuard([opt, &plan, &rule, &modified]() {
     opt->addPlan(std::move(plan), rule, modified);
   });
-      // currently only arangosearch view node supports late materialization
+      // arangosearch view node supports late materialization
   if (!plan->contains(EN::ENUMERATE_IRESEARCH_VIEW) ||
       // we need sort node  to be present  (without sort it will be just skip, nothing to optimize)
       !plan->contains(EN::SORT) ||
@@ -293,14 +293,15 @@ void lateDocumentMaterializationRule(arangodb::aql::Optimizer* opt,
     if (arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW == loop->getType()) {
       auto & viewNode = *EN::castTo<IResearchViewNode*>(loop);
       if (viewNode.isLateMaterialized()) {
-        continue; //loop is aleady optimized
+        continue; // loop is already optimized
       }
       ExecutionNode* current = limitNode->getFirstDependency();
       ExecutionNode* sortNode = nullptr;
-      // examinig plan. We are looking for SortNode closest to lowerest LimitNode
+      // examining plan. We are looking for SortNode closest to lowest LimitNode
       // without document body usage before that node.
       // this node could be appended with materializer
       bool stopSearch = false;
+      bool stickToSortNode = false;
       while (current != loop) {
         switch (current->getType()) {
           case arangodb::aql::ExecutionNode::SORT:
@@ -321,15 +322,21 @@ void lateDocumentMaterializationRule(arangodb::aql::Optimizer* opt,
           default: // make clang happy
             break;
         }
-        if (sortNode != nullptr) {
+        if (!stopSearch) {
           ::arangodb::containers::HashSet<Variable const*> currentUsedVars;
           current->getVariablesUsedHere(currentUsedVars);
           if (currentUsedVars.find(&viewNode.outVariable()) != currentUsedVars.end()) {
-            // we have a doc body used before selected SortNode. Forget it, let`s look for better sort to use
-            sortNode = nullptr;
-            // this limit node affects only closest sort, if this sort is invalid
-            // we need to check other limit node
-            stopSearch = true;
+            if (sortNode != nullptr) {
+              // we have a doc body used before selected SortNode. Forget it, let`s look for better sort to use
+              sortNode = nullptr;
+              // this limit node affects only closest sort, if this sort is invalid
+              // we need to check other limit node
+              stopSearch = true;
+            } else {
+              // we are between limit and sort nodes.
+              // late materialization could still be applied but we must insert MATERIALIZE node after sort not after limit
+              stickToSortNode = true;
+            }
           }
         }
         if (stopSearch) {
@@ -347,12 +354,12 @@ void lateDocumentMaterializationRule(arangodb::aql::Optimizer* opt,
         viewNode.setLateMaterialized(localColPtrTmp, localDocIdTmp);
         // insert a materialize node
         auto materializeNode =
-            plan->registerNode(std::make_unique<MaterializeNode>(
+            plan->registerNode(std::make_unique<materialize::MaterializeMultiNode>(
               plan.get(), plan->nextId(), *localColPtrTmp, *localDocIdTmp, viewNode.outVariable()));
 
         // on cluster we need to materialize node stay close to sort node on db server (to avoid network hop for materialization calls)
         // however on single server we move it to limit node to make materialization as lazy as possible
-        auto materializeDependency = ServerState::instance()->isCoordinator() ? sortNode : limitNode;
+        auto materializeDependency = ServerState::instance()->isCoordinator() || stickToSortNode ? sortNode : limitNode;
         auto* dependencyParent = materializeDependency->getFirstParent();
         TRI_ASSERT(dependencyParent);
         dependencyParent->replaceDependency(materializeDependency, materializeNode);
@@ -449,7 +456,7 @@ void scatterViewInClusterRule(arangodb::aql::Optimizer* opt,
   plan->findNodesOfType(nodes, ExecutionNode::SUBQUERY, true);
 
   for (auto& it : nodes) {
-    subqueries.emplace(EN::castTo<SubqueryNode const*>(it)->getSubquery(), it);
+    subqueries.try_emplace(EN::castTo<SubqueryNode const*>(it)->getSubquery(), it);
   }
 
   // we are a coordinator. now look in the plan for nodes of type

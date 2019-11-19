@@ -79,7 +79,10 @@ class IResearchLinkCoordinator final : public arangodb::ClusterIndex, public IRe
     return IResearchLink::matchesDefinition(slice);
   }
 
-  virtual size_t memory() const override { return IResearchLink::memory(); }
+  virtual size_t memory() const override {
+    // FIXME return in memory size
+    return stats().indexSize;
+  }
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief fill and return a JSON description of a IResearchLink object
@@ -88,6 +91,10 @@ class IResearchLinkCoordinator final : public arangodb::ClusterIndex, public IRe
   using Index::toVelocyPack; // for std::shared_ptr<Builder> Index::toVelocyPack(bool, Index::Serialize)
   virtual void toVelocyPack(arangodb::velocypack::Builder& builder,
                             std::underlying_type<arangodb::Index::Serialize>::type flags) const override;
+
+  void toVelocyPackFigures(velocypack::Builder& builder) const override {
+    IResearchLink::toVelocyPackStats(builder);
+  }
 
   virtual IndexType type() const override { return IResearchLink::type(); }
 

@@ -122,8 +122,8 @@ static void sendLeaderChangeRequests(network::ConnectionPool* pool,
 
   std::string const& sid = ServerState::instance()->getId();
 
-
-  VPackBuilder bodyBuilder;
+  VPackBufferUInt8 buffer;
+  VPackBuilder bodyBuilder(buffer);
   {
     VPackObjectBuilder ob(&bodyBuilder);
     bodyBuilder.add("leaderId", VPackValue(sid));
@@ -131,13 +131,16 @@ static void sendLeaderChangeRequests(network::ConnectionPool* pool,
     bodyBuilder.add("shard", VPackValue(shardID));
   }
 
-  std::string const url = "/_db/" + databaseName + "/_api/replication/set-the-leader";
+  network::RequestOptions options;
+  options.database = databaseName;
+  options.timeout = network::Timeout(3.0);
+  options.skipScheduler = true; // hack to speed up future.get()
+  
+  std::string const url = "/_api/replication/set-the-leader";
 
   std::vector<network::FutureRes> futures;
-  auto body = bodyBuilder.steal();
-  network::Headers headers;
-  network::RequestOptions options;
-  options.timeout = network::Timeout(3.0);
+  futures.reserve(currentServers.size());
+  
   for (auto const& srv : currentServers) {
     if (srv == sid) {
       continue; // ignore ourself
@@ -145,7 +148,7 @@ static void sendLeaderChangeRequests(network::ConnectionPool* pool,
     LOG_TOPIC("42516", DEBUG, Logger::MAINTENANCE)
       << "Sending " << bodyBuilder.toJson() << " to " << srv;
     auto f = network::sendRequest(pool, "server:" + srv, fuerte::RestVerb::Put,
-                                  url, *body, headers, options);
+                                  url, buffer, options);
     futures.emplace_back(std::move(f));
   }
 

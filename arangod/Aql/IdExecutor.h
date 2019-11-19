@@ -31,6 +31,8 @@
 #include <tuple>
 #include <utility>
 
+// TODO Clean up unused variants of the IdExecutor - some of them aren't in use anymore.
+
 namespace arangodb {
 namespace transaction {
 class Methods;
@@ -39,18 +41,15 @@ class Methods;
 namespace aql {
 class ExecutionEngine;
 class ExecutionNode;
-class ConstFetcher;
-class AqlItemMatrix;
 class ExecutorInfos;
 class NoStats;
 class OutputAqlItemRow;
-struct SortRegister;
 
 class IdExecutorInfos : public ExecutorInfos {
  public:
   IdExecutorInfos(RegisterId nrInOutRegisters, std::unordered_set<RegisterId> registersToKeep,
                   std::unordered_set<RegisterId> registersToClear,
-                  std::string const& distributeId = "",
+                  std::string distributeId = {""},
                   bool isResponsibleForInitializeCursor = true);
 
   IdExecutorInfos() = delete;
@@ -58,11 +57,10 @@ class IdExecutorInfos : public ExecutorInfos {
   IdExecutorInfos(IdExecutorInfos const&) = delete;
   ~IdExecutorInfos() = default;
 
-  std::string const& distributeId() { return _distributeId; }
+  std::string const& distributeId();
 
-  bool isResponsibleForInitializeCursor() const {
-    return _isResponsibleForInitializeCursor;
-  }
+  // TODO This is probably needed only for UnsortingGather now, so can be removed here.
+  [[nodiscard]] bool isResponsibleForInitializeCursor() const;
 
  private:
   std::string const _distributeId;
@@ -91,16 +89,16 @@ class ExecutionBlockImpl<IdExecutor<BlockPassthrough::Enable, void>> : public Ex
 
   std::pair<ExecutionState, size_t> skipSome(size_t atMost) override;
 
-  RegisterId getOutputRegisterId() const noexcept;
+  [[nodiscard]] RegisterId getOutputRegisterId() const noexcept;
 
  private:
-  bool isDone() const noexcept;
+  [[nodiscard]] bool isDone() const noexcept;
 
-  ExecutionBlock& currentDependency() const;
+  [[nodiscard]] ExecutionBlock& currentDependency() const;
 
   void nextDependency() noexcept;
 
-  bool doCount() const noexcept;
+  [[nodiscard]] bool doCount() const noexcept;
 
   void countStats(SharedAqlItemBlockPtr& block);
 
@@ -143,7 +141,7 @@ class IdExecutor {
 
  private:
   Fetcher& _fetcher;
-};  // namespace aql
+};
 }  // namespace aql
 }  // namespace arangodb
 

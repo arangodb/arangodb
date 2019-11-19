@@ -90,6 +90,12 @@ enum TRI_edge_direction_e {
   TRI_EDGE_OUT = 2
 };
 
+enum class ShardingPrototype : uint32_t {
+  Undefined = 0,
+  Users = 1,
+  Graphs = 2
+};
+
 /// @brief Hash and Equal comparison for a vector of VPackSlice
 namespace std {
 

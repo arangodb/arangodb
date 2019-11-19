@@ -29,6 +29,7 @@
 #include "Aql/DocumentProducingHelper.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutorInfos.h"
+#include "Aql/IndexNode.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/Stats.h"
 #include "Indexes/IndexIterator.h"
@@ -56,8 +57,8 @@ struct NonConstExpression;
 class IndexExecutorInfos : public ExecutorInfos {
  public:
   IndexExecutorInfos(
-      RegisterId outputRegister, RegisterId nrInputRegisters,
-      RegisterId nrOutputRegisters, std::unordered_set<RegisterId> registersToClear,
+      std::shared_ptr<std::unordered_set<aql::RegisterId>>&& writableOutputRegisters, RegisterId nrInputRegisters,
+      RegisterId firstOutputRegister, RegisterId nrOutputRegisters, std::unordered_set<RegisterId> registersToClear,
       std::unordered_set<RegisterId> registersToKeep, ExecutionEngine* engine,
       Collection const* collection, Variable const* outVariable, bool produceResult,
       Expression* filter,
@@ -67,7 +68,8 @@ class IndexExecutorInfos : public ExecutorInfos {
       std::vector<Variable const*>&& expInVars, std::vector<RegisterId>&& expInRegs,
       bool hasV8Expression, AstNode const* condition,
       std::vector<transaction::Methods::IndexHandle> indexes, Ast* ast,
-      IndexIteratorOptions options);
+      IndexIteratorOptions options,
+      IndexNode::IndexValuesRegisters&& outNonMaterializedIndRegs);
 
   IndexExecutorInfos() = delete;
   IndexExecutorInfos(IndexExecutorInfos&&) = default;
@@ -105,6 +107,14 @@ class IndexExecutorInfos : public ExecutorInfos {
 
   bool hasNonConstParts() const;
 
+  bool isLateMaterialized() const noexcept {
+    return !_outNonMaterializedIndRegs.second.empty();
+  }
+
+  IndexNode::IndexValuesRegisters const& getOutNonMaterializedIndRegs() const noexcept {
+    return _outNonMaterializedIndRegs;
+  }
+
  private:
   /// @brief _indexes holds all Indexes used in this block
   std::vector<transaction::Methods::IndexHandle> _indexes;
@@ -138,6 +148,9 @@ class IndexExecutorInfos : public ExecutorInfos {
   std::vector<std::unique_ptr<NonConstExpression>> _nonConstExpression;
 
   RegisterId _outputRegisterId;
+
+  IndexNode::IndexValuesRegisters _outNonMaterializedIndRegs;
+
   /// @brief true if one of the indexes uses more than one expanded attribute,
   /// e.g. the index is on values[*].name and values[*].type
   bool _hasMultipleExpansions;
@@ -173,19 +186,21 @@ class IndexExecutor {
     CursorReader(CursorReader&& other) noexcept;
 
    private:
-    enum Type { NoResult, Covering, Document };
+    enum Type { NoResult, Covering, Document, LateMaterialized };
 
     IndexExecutorInfos const& _infos;
     AstNode const* _condition;
     transaction::Methods::IndexHandle const& _index;
     std::unique_ptr<OperationCursor> _cursor;
+    DocumentProducingFunctionContext& _context;
     Type const _type;
 
-    // Only one of _produce and _noProduce is set at a time, depending on _type.
+    // Only one of _documentProducer and _documentNonProducer is set at a time, depending on _type.
     // As std::function is not trivially destructible, it's safer not to use a
     // union.
-    IndexIterator::LocalDocumentIdCallback _noProduce;
-    DocumentProducingFunction _produce;
+    IndexIterator::LocalDocumentIdCallback _documentNonProducer;
+    IndexIterator::DocumentCallback _documentProducer;
+    IndexIterator::DocumentCallback _documentSkipper;
   };
 
  public:

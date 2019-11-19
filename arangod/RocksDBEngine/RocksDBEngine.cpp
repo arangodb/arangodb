@@ -181,7 +181,7 @@ RocksDBFilePurgeEnabler::RocksDBFilePurgeEnabler(RocksDBFilePurgeEnabler&& other
 // create the storage engine
 RocksDBEngine::RocksDBEngine(application_features::ApplicationServer& server)
     : StorageEngine(server, EngineName, FeatureName,
-                    std::unique_ptr<IndexFactory>(new RocksDBIndexFactory())),
+                    std::make_unique<RocksDBIndexFactory>()),
 #ifdef USE_ENTERPRISE
       _createShaFiles(true),
 #else
@@ -1006,7 +1006,7 @@ int RocksDBEngine::getCollectionsAndIndexes(TRI_vocbase_t& vocbase,
 
     auto slice = VPackSlice(reinterpret_cast<uint8_t const*>(iter->value().data()));
 
-    if (arangodb::basics::VelocyPackHelper::readBooleanValue(slice, StaticStrings::DataSourceDeleted,
+    if (arangodb::basics::VelocyPackHelper::getBooleanValue(slice, StaticStrings::DataSourceDeleted,
                                                              false)) {
       continue;
     }
@@ -1035,7 +1035,7 @@ int RocksDBEngine::getViews(TRI_vocbase_t& vocbase, arangodb::velocypack::Builde
 
     LOG_TOPIC("e3bcd", TRACE, Logger::VIEWS) << "got view slice: " << slice.toJson();
 
-    if (arangodb::basics::VelocyPackHelper::readBooleanValue(slice, StaticStrings::DataSourceDeleted,
+    if (arangodb::basics::VelocyPackHelper::getBooleanValue(slice, StaticStrings::DataSourceDeleted,
                                                              false)) {
       continue;
     }
@@ -1248,9 +1248,7 @@ std::string RocksDBEngine::createCollection(TRI_vocbase_t& vocbase,
 
   auto builder = collection.toVelocyPackIgnore(
       {"path", "statusString"},
-      LogicalDataSource::makeFlags(LogicalDataSource::Serialize::Detailed,
-                                   LogicalDataSource::Serialize::ForPersistence,
-                                   LogicalDataSource::Serialize::IncludeInProgress));
+      LogicalDataSource::Serialization::PersistenceWithInProgress);
   TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(cid));
 
   int res =
@@ -1403,9 +1401,7 @@ void RocksDBEngine::changeCollection(TRI_vocbase_t& vocbase,
                                      LogicalCollection const& collection, bool doSync) {
   auto builder = collection.toVelocyPackIgnore(
       {"path", "statusString"},
-      LogicalDataSource::makeFlags(LogicalDataSource::Serialize::Detailed,
-                                   LogicalDataSource::Serialize::ForPersistence,
-                                   LogicalDataSource::Serialize::IncludeInProgress));
+      LogicalDataSource::Serialization::PersistenceWithInProgress);
   int res =
       writeCreateCollectionMarker(vocbase.id(), collection.id(), builder.slice(),
                                   RocksDBLogValue::CollectionChange(vocbase.id(),
@@ -1421,9 +1417,7 @@ arangodb::Result RocksDBEngine::renameCollection(TRI_vocbase_t& vocbase,
                                                  std::string const& oldName) {
   auto builder = collection.toVelocyPackIgnore(
       {"path", "statusString"},
-      LogicalDataSource::makeFlags(LogicalDataSource::Serialize::Detailed,
-                                   LogicalDataSource::Serialize::ForPersistence,
-                                   LogicalDataSource::Serialize::IncludeInProgress));
+      LogicalDataSource::Serialization::PersistenceWithInProgress);
   int res = writeCreateCollectionMarker(
       vocbase.id(), collection.id(), builder.slice(),
       RocksDBLogValue::CollectionRename(vocbase.id(), collection.id(),
@@ -1451,10 +1445,7 @@ Result RocksDBEngine::createView(TRI_vocbase_t& vocbase, TRI_voc_cid_t id,
   VPackBuilder props;
 
   props.openObject();
-  view.properties(props,
-                  LogicalDataSource::makeFlags(LogicalDataSource::Serialize::Detailed,
-                                               LogicalDataSource::Serialize::ForPersistence,
-                                               LogicalDataSource::Serialize::IncludeInProgress));
+  view.properties(props, LogicalDataSource::Serialization::PersistenceWithInProgress);
   props.close();
 
   RocksDBValue const value = RocksDBValue::View(props.slice());
@@ -1479,10 +1470,7 @@ arangodb::Result RocksDBEngine::dropView(TRI_vocbase_t const& vocbase,
   VPackBuilder builder;
 
   builder.openObject();
-  view.properties(builder,
-                  LogicalDataSource::makeFlags(LogicalDataSource::Serialize::Detailed,
-                                               LogicalDataSource::Serialize::ForPersistence,
-                                               LogicalDataSource::Serialize::IncludeInProgress));
+  view.properties(builder, LogicalDataSource::Serialization::PersistenceWithInProgress);
   builder.close();
 
   auto logValue =
@@ -1528,10 +1516,7 @@ Result RocksDBEngine::changeView(TRI_vocbase_t& vocbase,
   VPackBuilder infoBuilder;
 
   infoBuilder.openObject();
-  view.properties(infoBuilder,
-                  LogicalDataSource::makeFlags(LogicalDataSource::Serialize::Detailed,
-                                               LogicalDataSource::Serialize::ForPersistence,
-                                               LogicalDataSource::Serialize::IncludeInProgress));
+  view.properties(infoBuilder, LogicalDataSource::Serialization::PersistenceWithInProgress);
   infoBuilder.close();
 
   RocksDBLogValue log = RocksDBLogValue::ViewChange(vocbase.id(), view.id());
@@ -1763,12 +1748,13 @@ void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickExternal) {
       if (n->StartSequence() < minTickToKeep) {
         // this file will be removed because it does not contain any data we
         // still need
-        if (_prunableWalFiles.find(f->PathName()) == _prunableWalFiles.end()) {
+        auto const [it, emplaced] = _prunableWalFiles.try_emplace(f->PathName(), TRI_microtime() + _pruneWaitTime);
+        if (emplaced) {
           LOG_TOPIC("9f7a4", DEBUG, Logger::ENGINES)
               << "RocksDB WAL file '" << f->PathName()
               << "' with start sequence " << f->StartSequence()
               << " added to prunable list because it is not needed anymore";
-          _prunableWalFiles.emplace(f->PathName(), TRI_microtime() + _pruneWaitTime);
+          TRI_ASSERT(it != _prunableWalFiles.end());
         }
       }
     }
@@ -1798,13 +1784,11 @@ void RocksDBEngine::determinePrunableWalFiles(TRI_voc_tick_t minTickExternal) {
 
     // force pruning
     bool doPrint = false;
-    auto it = _prunableWalFiles.find(f->PathName());
-
-    if (it == _prunableWalFiles.end()) {
+    auto [it, emplaced] = _prunableWalFiles.try_emplace(f->PathName(), -1.0);
+    if (emplaced) {
       doPrint = true;
       // using an expiration time of -1.0 indicates the file is subject to
       // deletion because the archive outgrew the maximum allowed size
-      _prunableWalFiles.emplace(f->PathName(), -1.0);
     } else {
       // file already in list. now set its expiration time to the past
       // so we are sure it will get deleted
@@ -2256,6 +2240,14 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
     for (auto const& stat : rocksdb::TickersNameMap) {
       builder.add(stat.second, VPackValue(_options.statistics->getTickerCount(stat.first)));
     }
+
+    uint64_t walWrite, flushWrite, compactionWrite, userWrite;
+    walWrite = _options.statistics->getTickerCount(rocksdb::WAL_FILE_BYTES);
+    flushWrite = _options.statistics->getTickerCount(rocksdb::FLUSH_WRITE_BYTES);
+    compactionWrite = _options.statistics->getTickerCount(rocksdb::COMPACT_WRITE_BYTES);
+    userWrite = _options.statistics->getTickerCount(rocksdb::BYTES_WRITTEN);
+    builder.add("rocksdbengine.write.amplification.x100",
+                VPackValue( (0 != userWrite) ? ((walWrite+flushWrite+compactionWrite)*100)/userWrite : 100));
   }
 
   cache::Manager* manager = CacheManagerFeature::MANAGER;

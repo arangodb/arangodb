@@ -51,7 +51,7 @@ bool AgencyCallbackRegistry::registerCallback(std::shared_ptr<AgencyCallback> cb
     WRITE_LOCKER(locker, _lock);
     while (true) {
       rand = RandomGenerator::interval(UINT32_MAX);
-      if (_endpoints.emplace(rand, cb).second) {
+      if (_endpoints.try_emplace(rand, cb).second) {
         break;
       }
     }

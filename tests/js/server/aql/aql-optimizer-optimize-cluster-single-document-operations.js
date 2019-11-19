@@ -42,8 +42,8 @@ var assertQueryError = helper.assertQueryError;
 function optimizerClusterSingleDocumentTestSuite () {
   var ruleName = "optimize-cluster-single-document-operations";
   // various choices to control the optimizer:
-  var thisRuleEnabled  = { optimizer: { rules: [ "+all" ] } }; // we can only work after other rules
-  var thisRuleDisabled = { optimizer: { rules: [ "+all", "-" + ruleName ] } };
+  var thisRuleEnabled  = { optimizer: { rules: [ "+all", "-move-filters-into-enumerate", "-parallelize-gather" ] } }; // we can only work after other rules
+  var thisRuleDisabled = { optimizer: { rules: [ "+all", "-move-filters-into-enumerate", "-parallelize-gather", "-" + ruleName ] } };
   var notHereDoc = "notHereDoc";
   var yeOldeDoc = "yeOldeDoc";
 
@@ -115,7 +115,7 @@ function optimizerClusterSingleDocumentTestSuite () {
       let errorCode = set[5]; // expected error code
       const queryInfo = "count: " + count + " query info: " + JSON.stringify(set);
 
-      var result = AQL_EXPLAIN(queryString, { }, thisRuleEnabled); // explain - only
+      var result = AQL_EXPLAIN(queryString, {}, thisRuleEnabled); // explain - only
       assertEqual(expectRule, result.plan.rules, "rules mismatch: " + queryInfo);
       assertEqual(expectNode, explain(result), "nodes mismatch: " + queryInfo);
       if (doFullTest) {
@@ -126,8 +126,7 @@ function optimizerClusterSingleDocumentTestSuite () {
         try {
           r1 = AQL_EXECUTE(queryString, {}, thisRuleDisabled);
           assertEqual(0, errorCode, "we have no error in the original, but the tests expects an exception: " + queryInfo);
-        }
-        catch (y) {
+        } catch (y) {
           assertTrue(errorCode.hasOwnProperty('code'), "original plan throws, but we don't expect an exception" + JSON.stringify(y) + queryInfo);
           assertEqual(y.errorNum, errorCode.code, "match other error code - got: " + JSON.stringify(y) + queryInfo);
         }
@@ -137,14 +136,13 @@ function optimizerClusterSingleDocumentTestSuite () {
         try {
           r2 = AQL_EXECUTE(queryString, {}, thisRuleEnabled);
           assertEqual(0, errorCode, "we have no error in our plan, but the tests expects an exception" + queryInfo);
-        }
-        catch (x) {
+        } catch (x) {
           assertTrue(errorCode.hasOwnProperty('code'), "our plan throws, but we don't expect an exception" + JSON.stringify(x) + queryInfo);
           assertEqual(x.errorNum, errorCode.code, "match our error code" + JSON.stringify(x) + queryInfo);
         }
         pruneRevisions(r1);
         pruneRevisions(r2);
-        assertEqual(r1.json, r2.json, "results of with and without rule differ: " + queryInfo);
+        assertEqual(r1.json, r2.json, "results of with and without rule differ, queryInfo: " + queryInfo + ", set: " + set);
       }
       count += 1;
     });

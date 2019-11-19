@@ -52,6 +52,7 @@
 #include "Basics/FileUtils.h"
 #include "Cache/CacheManagerFeature.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterUpgradeFeature.h"
 #include "Cluster/MaintenanceFeature.h"
 #include "Cluster/ReplicationTimeoutFeature.h"
 #include "FeaturePhases/AgencyFeaturePhase.h"
@@ -154,6 +155,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
         std::type_index(typeid(GreetingsFeature)),
         std::type_index(typeid(HttpEndpointProvider)),
         std::type_index(typeid(LoggerBufferFeature)),
+        std::type_index(typeid(pregel::PregelFeature)),
         std::type_index(typeid(ServerFeature)),
         std::type_index(typeid(SslServerFeature)),
         std::type_index(typeid(StatisticsFeature)),
@@ -183,6 +185,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
     server.addFeature<CacheManagerFeature>();
     server.addFeature<CheckVersionFeature>(&ret, nonServerFeatures);
     server.addFeature<ClusterFeature>();
+    server.addFeature<ClusterUpgradeFeature>();
     server.addFeature<ConfigFeature>(name);
     server.addFeature<ConsoleFeature>();
     server.addFeature<DatabaseFeature>();
