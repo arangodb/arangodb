@@ -361,7 +361,6 @@ arangodb::Result executeRestore(arangodb::httpclient::SimpleHttpClient& client,
   {
     VPackObjectBuilder guard(&bodyBuilder);
     bodyBuilder.add("id", VPackValue(options.identifier));
-    bodyBuilder.add("saveCurrent", VPackValue(options.saveCurrent));
     if (options.force) {
       bodyBuilder.add("ignoreVersion", VPackValue(true));
     }
@@ -381,33 +380,6 @@ arangodb::Result executeRestore(arangodb::httpclient::SimpleHttpClient& client,
   } catch (...) {
     result.reset(::ErrorMalformedJsonResponse);
     return result;
-  }
-
-  if (options.saveCurrent) {
-    VPackSlice const resBody = parsedBody->slice();
-    if (!resBody.isObject()) {
-      result.reset(TRI_ERROR_INTERNAL, "expected response to be an object");
-      return result;
-    }
-    TRI_ASSERT(resBody.isObject());
-
-    VPackSlice const resultObject = resBody.get("result");
-    if (!resultObject.isObject()) {
-      result.reset(TRI_ERROR_INTERNAL, "expected 'result' to be an object");
-      return result;
-    }
-    TRI_ASSERT(resultObject.isObject());
-
-    VPackSlice const previous = resultObject.get("previous");
-    if (!previous.isString()) {
-      result.reset(TRI_ERROR_INTERNAL, "expected previous to be a string");
-      return result;
-    }
-    TRI_ASSERT(previous.isString());
-
-    LOG_TOPIC("08c95", INFO, arangodb::Logger::BACKUP)
-        << "current state was saved as backup with identifier '"
-        << previous.copyString() << "'";
   }
 
   LOG_TOPIC("b6d4c", INFO, arangodb::Logger::BACKUP)
@@ -734,10 +706,6 @@ void BackupFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opti
       "result of the restore request (restore operation)",
       new DoubleParameter(&_options.maxWaitForRestart));
 
-  options->addOption("--save-current",
-                     "whether to save the current state as a backup before "
-                     "restoring to another state (restore operation)",
-                     new BooleanParameter(&_options.saveCurrent));
 #ifdef USE_ENTERPRISE
   options->addOption("--status-id",
                      "returns the status of a transfer process "
