@@ -1,11 +1,8 @@
 v3.4.9 (XXXX-XX-XX)
 -------------------
 
-* Increased default timeout for replication requests from 10 minutes to 20
-  minutes.
-
-  Additionally, the timeouts for replication requests (for active failover
-  and master-slave replication) are now configurable via startup options
+* Make the timeouts for replication requests (for active failover and master-slave 
+  replication configurable via startup options:
 
       --replication.connect-timeout
       --replication.request-timeout
