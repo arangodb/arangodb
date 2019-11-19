@@ -57,16 +57,11 @@ MS = re.M | re.S
 ### @brief swagger
 ################################################################################
 
-# read ArangoDB version
-f = io.open(scriptDir + "VERSION", encoding="utf-8")
-version = f.read().strip()
-f.close()
-
 swagger = {
     "swagger": "2.0",
     "info": {
         "description": "ArangoDB REST API Interface",
-        "version": version,
+        "version": "1.0", # placeholder
         "title": "ArangoDB",
         "license": {
             "name": "Apache License, Version 2.0"
@@ -1438,6 +1433,12 @@ fileFilter = ""
 if len(sys.argv) > 5:
     fileFilter = sys.argv[5]
     print("Filtering for: [" + fileFilter + "]", file=sys.stderr)
+
+# read ArangoDB version and use it as API version
+f = io.open(scriptDir + "VERSION", encoding="utf-8")
+version = f.read().strip()
+f.close()
+swagger['info']['version'] = version
 
 paths = {}
 
