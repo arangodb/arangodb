@@ -271,8 +271,8 @@ bool attributesMatch(IResearchViewSort const& primarySort, latematerialized::Nod
       if (arangodb::basics::AttributeName::isIdentical(nodeAttr.attr, field, false)) {
         nodeAttr.afData.number = sortFieldNum;
         nodeAttr.afData.field = &field;
-        std::vector<arangodb::basics::AttributeName> empty;
-        nodeAttr.attr.swap(empty); // we do not need later
+        nodeAttr.attr.clear(); // we do not need later
+        nodeAttr.attr.shrink_to_fit();
         break;
       }
       ++sortFieldNum;

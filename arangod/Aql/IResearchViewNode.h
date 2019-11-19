@@ -199,20 +199,11 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
     }
   }
 
-  using ViewVarsToBeReplaced = std::vector<aql::latematerialized::AstAndFieldData>;
-
-  void replaceViewVariables(std::vector<aql::CalculationNode*>const& calcNodes);
-
   void saveCalcNodesForViewVariables(std::vector<aql::latematerialized::NodeWithAttrs> const& nodesToChange);
 
   bool canVariablesBeReplaced(aql::CalculationNode* calclulationNode) const;
 
-  void clearViewVariables() {
-    if (!_nodesToChange.empty()) {
-      std::unordered_map<aql::CalculationNode*, ViewVarsToBeReplaced> nodesToChange;
-      _nodesToChange.swap(nodesToChange);
-    }
-  };
+  void replaceViewVariables(std::vector<aql::CalculationNode*> const& calcNodes);
 
  private:
   /// @brief the database
@@ -240,8 +231,26 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   /// @brief output variables to non-materialized document view sort references
   ViewValuesVars _outNonMaterializedViewVars;
 
-  /// @brief calculation node with ast nodes that can be replaced by view values (e.g. primary sort)
-  std::unordered_map<aql::CalculationNode*, ViewVarsToBeReplaced> _nodesToChange;
+  struct OptimizationState {
+    using ViewVarsToBeReplaced = std::vector<aql::latematerialized::AstAndFieldData>;
+
+    /// @brief calculation node with ast nodes that can be replaced by view values (e.g. primary sort)
+    std::unordered_map<aql::CalculationNode*, ViewVarsToBeReplaced> _nodesToChange;
+
+    void saveCalcNodesForViewVariables(std::vector<aql::latematerialized::NodeWithAttrs> const& nodesToChange);
+
+    bool canVariablesBeReplaced(aql::CalculationNode* calclulationNode) const;
+
+    IResearchViewNode::ViewVarsInfo replaceViewVariables(std::vector<aql::CalculationNode*> const& calcNodes);
+
+    void clearViewVariables() {
+      _nodesToChange.clear();
+    }
+  };
+
+  OptimizationState _optState;
+
+  OptimizationState& state() noexcept { return _optState; }
 
   /// @brief filter node to pass to the view
   aql::AstNode const* _filterCondition;

@@ -108,6 +108,43 @@ function lateDocumentMaterializationArangoSearch2RuleTestSuite () {
       let plan = AQL_EXPLAIN(query).plan;
       assertEqual(-1, plan.rules.indexOf(ruleName));
     },
+    testNotAppliedDueToSubqueryWithDocumentAccess() {
+      let query = "FOR d IN " + svn + " SEARCH d.value IN [1, 2, 11, 12] " +
+                  "LET a = NOOPT(d.foo) " +
+                  "LET e = SUM(FOR c IN " + vn + " LET p = CONCAT(d, c.foo) RETURN p) " +
+                  "SORT CONCAT(a, e) LIMIT 10 RETURN d";
+      let plan = AQL_EXPLAIN(query).plan;
+      assertEqual(-1, plan.rules.indexOf(ruleName));
+    },
+    testNotAppliedDueToSubqueryWithDocumentAccessByAttribute() { // should be supported later
+      let query = "FOR d IN " + svn + " SEARCH d.value IN [1, 2, 11, 12] " +
+                  "LET a = NOOPT(d.foo) " +
+                  "LET e = SUM(FOR c IN " + vn + " LET p = CONCAT(d.foo, c.foo) RETURN p) " +
+                  "SORT CONCAT(a, e) LIMIT 10 RETURN d";
+      let plan = AQL_EXPLAIN(query).plan;
+      assertEqual(-1, plan.rules.indexOf(ruleName));
+    },
+    testQueryResultsWithSubqueryWithoutDocumentAccess() {
+      let query = "FOR d IN " + svn + " SEARCH d.value IN [1, 2, 11, 12] " +
+                  "LET a = NOOPT(d.foo) " +
+                  "LET e = SUM(FOR c IN " + vn + " LET p = CONCAT(c.foo, c.foo) RETURN p) " +
+                  "SORT CONCAT(a, e) LIMIT 10 RETURN d";
+      let plan = AQL_EXPLAIN(query).plan;
+      if (!isCluster) {
+        assertNotEqual(-1, plan.rules.indexOf(ruleName));
+        let result = AQL_EXECUTE(query);
+        assertEqual(4, result.json.length);
+        let expectedKeys = new Set(['c1', 'c2', 'c_1', 'c_2']);
+        result.json.forEach(function(doc) {
+          assertTrue(expectedKeys.has(doc._key));
+          expectedKeys.delete(doc._key);
+        });
+        assertEqual(0, expectedKeys.size);
+      } else {
+        // on cluster this will not be applied as remote node placed before sort node
+        assertEqual(-1, plan.rules.indexOf(ruleName));
+      }
+    },
     testQueryResultsWithFilter() {
       let query = "FOR d IN " + svn + " FILTER d.value IN [1, 2] SORT d.foo DESC LIMIT 10 RETURN d";
       let plan = AQL_EXPLAIN(query).plan;
