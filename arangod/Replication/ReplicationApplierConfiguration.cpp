@@ -42,7 +42,7 @@ ReplicationApplierConfiguration::ReplicationApplierConfiguration()
       _username(),
       _password(),
       _jwt(),
-      _requestTimeout(1200.0),
+      _requestTimeout(600.0),
       _connectTimeout(10.0),
       _ignoreErrors(0),
       _maxConnectRetries(100),
@@ -77,7 +77,7 @@ void ReplicationApplierConfiguration::reset() {
   _username.clear();
   _password.clear();
   _jwt.clear();
-  _requestTimeout = 1200.0;
+  _requestTimeout = 600.0;
   _connectTimeout = 10.0;
   _ignoreErrors = 0;
   _maxConnectRetries = 100;
