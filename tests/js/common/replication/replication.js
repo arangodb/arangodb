@@ -2237,7 +2237,7 @@ function ReplicationApplierSuite () {
     testApplierProperties : function () {
       var properties = replication.applier.properties();
 
-      assertEqual(600, properties.requestTimeout);
+      assertEqual(1200, properties.requestTimeout);
       assertEqual(10, properties.connectTimeout);
       assertEqual(100, properties.maxConnectRetries);
       assertEqual(0, properties.chunkSize);
@@ -2267,7 +2267,7 @@ function ReplicationApplierSuite () {
 
       properties = replication.applier.properties();
       assertEqual(properties.endpoint, "tcp://9.9.9.9:9999");
-      assertEqual(600, properties.requestTimeout);
+      assertEqual(1200, properties.requestTimeout);
       assertEqual(10, properties.connectTimeout);
       assertEqual(100, properties.maxConnectRetries);
       assertEqual(0, properties.chunkSize);
@@ -2488,8 +2488,7 @@ function ReplicationSyncSuite () {
           connectionRetryWaitTime: 1
         });
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         assertTrue(err.errorNum === errors.ERROR_REPLICATION_INVALID_RESPONSE.code ||
                    err.errorNum === errors.ERROR_REPLICATION_MASTER_ERROR.code ||
                    err.errorNum === errors.ERROR_REPLICATION_NO_RESPONSE.code);
