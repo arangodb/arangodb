@@ -28,6 +28,9 @@
 #include <cstddef>
 
 namespace arangodb {
+namespace velocypack {
+struct Options;
+}
 namespace aql {
 
 struct CreateInvalidShadowRowHint {
@@ -113,7 +116,8 @@ class ShadowAqlItemRow {
   // blocks are equal, because comparing rows of blocks with different layouts
   // does not make sense.
   // Invalid rows are considered equivalent.
-  bool equates(ShadowAqlItemRow const& other) const noexcept;
+  [[nodiscard]] bool equates(ShadowAqlItemRow const& other,
+                             velocypack::Options const* option) const noexcept;
 
  private:
   AqlItemBlock& block() noexcept;
