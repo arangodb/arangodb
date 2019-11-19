@@ -961,7 +961,8 @@ TEST_F(IResearchViewCoordinatorTest, test_update_properties) {
 
 
 TEST_F(IResearchViewCoordinatorTest, test_properties) {
-  auto& ci = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
+  ASSERT_NE(nullptr, arangodb::ClusterInfo::instance());
+  auto& ci = *arangodb::ClusterInfo::instance();
 
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
 
