@@ -951,8 +951,9 @@ arangodb::Result processInputDirectory(
         // reason is that loading into the users collection may change the
         // credentials for the current arangorestore connection!
         usersData = std::move(jobData);
-      } else if (name.isString() && name.stringRef() == "_analyzers") {
+      } else if (name.isString() && name.stringRef() == StaticStrings::AnalyzersCollection) {
         // special treatment for _analyzers collection - this must be the very first
+        stats.totalCollections++;
         analyzersData = std::move(jobData);
       } else {
         stats.totalCollections++;
