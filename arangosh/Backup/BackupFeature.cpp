@@ -277,9 +277,12 @@ arangodb::Result executeCreate(arangodb::httpclient::SimpleHttpClient& client,
   {
     VPackObjectBuilder guard(&bodyBuilder);
     bodyBuilder.add("timeout", VPackValue(options.maxWaitForLock));
-    bodyBuilder.add("allowInconsistent", VPackValue(options.force));
+    bodyBuilder.add("allowInconsistent", VPackValue(options.allowInconsistent));
     if (!options.label.empty()) {
       bodyBuilder.add("label", VPackValue(options.label));
+    }
+    if (options.abortTransactionsIfNeeded) {
+      bodyBuilder.add("force", VPackValue(true));
     }
   }
   std::string const body = bodyBuilder.slice().toJson();
@@ -361,7 +364,7 @@ arangodb::Result executeRestore(arangodb::httpclient::SimpleHttpClient& client,
   {
     VPackObjectBuilder guard(&bodyBuilder);
     bodyBuilder.add("id", VPackValue(options.identifier));
-    if (options.force) {
+    if (options.ignoreVersion) {
       bodyBuilder.add("ignoreVersion", VPackValue(true));
     }
   }
@@ -678,7 +681,12 @@ void BackupFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opti
   options->addOption("--allow-inconsistent",
                      "whether to attempt to continue in face of errors; "
                      "may result in inconsistent backup state (create operation)",
-                     new BooleanParameter(&_options.force));
+                     new BooleanParameter(&_options.allowInconsistent));
+
+  options->addOption("--ignore-version",
+                     "ignore stored version of a backup"
+                     "restore may not work if version mismatch (restore operation)",
+                     new BooleanParameter(&_options.ignoreVersion));
 
   options->addOption("--identifier",
                      "a unique identifier for a backup "
@@ -726,6 +734,11 @@ void BackupFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opti
                      "abort transfer with given status-id "
                      "(upload/download operation)",
                      new BooleanParameter(&_options.abort));
+
+  options->addOption("--force",
+                     "abort transactions if needed to ensure a consistent snapshot"
+                     "(create operation)",
+                     new BooleanParameter(&_options.abortTransactionsIfNeeded));
 #endif
   /*
     options->addSection(

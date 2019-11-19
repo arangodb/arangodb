@@ -56,7 +56,7 @@ class BackupFeature : public application_features::ApplicationFeature {
 
  public:
   struct Options {
-    bool force = false;
+    bool allowInconsistent = false;
     std::string identifier = "";
     std::string label = "";
     std::string statusId = "";
@@ -66,6 +66,8 @@ class BackupFeature : public application_features::ApplicationFeature {
     double maxWaitForRestart = 0.0;
     std::string operation = "list";
     bool abort = false;
+    bool abortTransactionsIfNeeded = false;
+    bool ignoreVersion = false;
   };
 
  private:
