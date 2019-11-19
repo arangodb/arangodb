@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertTrue, assertEqual, AQL_EXPLAIN */
+/*global assertTrue, assertEqual, assertNotEqual, AQL_EXPLAIN, AQL_EXECUTE */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for optimizer rules
@@ -583,17 +583,25 @@ function optimizerRuleUpdateTestSuite () {
       });
     },
     
-    testUpdateCustomShardingEffective : function () {
+    testUpdateCustomShardingEffectiveResults : function () {
       let c = db._create(cn, { numberOfShards: 3, shardKeys: ["value"] });
+      let docs = [];
+      for (let i = 0; i < 5000; ++i) {
+        docs.push({ _key: "test" + i, value: i });
+      }
 
       let queries = [
-        "FOR doc IN " + cn + " UPDATE doc WITH {} IN " + cn,
-        "FOR doc IN " + cn + " FILTER doc.value > 0 UPDATE doc WITH {} IN " + cn,
-        "FOR doc IN " + cn + " FILTER doc.value > 0 FILTER doc.value < 99 UPDATE doc WITH {} IN " + cn,
+        [ "FOR doc IN " + cn + " UPDATE doc WITH {replaced: 1} IN " + cn + " RETURN NEW", 5000 ],
+        [ "FOR doc IN " + cn + " FILTER doc.value > 0 UPDATE doc WITH {replaced: 1} IN " + cn +  " RETURN NEW", 4999 ],
+        [ "FOR doc IN " + cn + " FILTER doc.value > 0 FILTER doc.value < 99 UPDATE doc WITH {replaced: 1} IN " + cn + " RETURN NEW", 98 ],
       ];
+
       queries.forEach(function(query) {
-        let result = AQL_EXPLAIN(query);
-        assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
+        c.truncate();
+        c.insert(docs);
+
+        let results = AQL_EXECUTE(query[0]);
+        assertEqual(query[1], results.json.length, query);
       });
     },
     
