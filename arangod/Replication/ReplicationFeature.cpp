@@ -51,7 +51,7 @@ ReplicationFeature* ReplicationFeature::INSTANCE = nullptr;
 ReplicationFeature::ReplicationFeature(ApplicationServer& server)
     : ApplicationFeature(server, "Replication"),
       _connectTimeout(10.0),
-      _requestTimeout(1200.0),
+      _requestTimeout(600.0),
       _forceConnectTimeout(false),
       _forceRequestTimeout(false),
       _replicationApplierAutoStart(true),

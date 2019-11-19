@@ -45,7 +45,7 @@ ReplicationApplierConfiguration::ReplicationApplierConfiguration(application_fea
       _username(),
       _password(),
       _jwt(),
-      _requestTimeout(1200.0),
+      _requestTimeout(600.0),
       _connectTimeout(10.0),
       _ignoreErrors(0),
       _maxConnectRetries(100),
@@ -68,7 +68,7 @@ ReplicationApplierConfiguration::ReplicationApplierConfiguration(application_fea
       _incremental(false),
       _verbose(false),
       _restrictType(RestrictType::None) {
-  auto& feature = application_features::ApplicationServer::getFeature<ReplicationFeature>();
+  auto& feature = _server.getFeature<ReplicationFeature>();
   _requestTimeout = feature.requestTimeout();
   _connectTimeout = feature.connectTimeout();
 }
@@ -118,7 +118,7 @@ void ReplicationApplierConfiguration::reset() {
   _username.clear();
   _password.clear();
   _jwt.clear();
-  _requestTimeout = 1200.0;
+  _requestTimeout = 600.0;
   _connectTimeout = 10.0;
   _ignoreErrors = 0;
   _maxConnectRetries = 100;
@@ -146,7 +146,7 @@ void ReplicationApplierConfiguration::reset() {
   _force32mode = false;
 #endif
       
-  auto& feature = application_features::ApplicationServer::getFeature<ReplicationFeature>();
+  auto& feature = _server.getFeature<ReplicationFeature>();
   _requestTimeout = feature.requestTimeout();
   _connectTimeout = feature.connectTimeout();
 }
@@ -268,13 +268,13 @@ ReplicationApplierConfiguration ReplicationApplierConfiguration::fromVelocyPack(
 
   value = slice.get("requestTimeout");
   if (value.isNumber()) {
-    auto& feature = application_features::ApplicationServer::getFeature<ReplicationFeature>("Replication");
+    auto& feature = existing._server.getFeature<ReplicationFeature>();
     configuration._requestTimeout = feature.checkRequestTimeout(value.getNumber<double>());
   }
 
   value = slice.get("connectTimeout");
   if (value.isNumber()) {
-    auto& feature = application_features::ApplicationServer::getFeature<ReplicationFeature>("Replication");
+    auto& feature = existing._server.getFeature<ReplicationFeature>();
     configuration._connectTimeout = feature.checkConnectTimeout(value.getNumber<double>());
   }
 
