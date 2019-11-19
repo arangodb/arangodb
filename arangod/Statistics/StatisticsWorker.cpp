@@ -849,7 +849,7 @@ std::map<std::string, std::vector<std::string>> statStrings{
    {"arangodb_process_statistics_system_time ", "gauge",
     "Amount of time that this process has been scheduled in kernel mode, measured in seconds.\n"}},
   {"numberOfThreads",
-   {"arangodb_process_statistics_number_of_threads", "gauge",
+   {"arangodb_process_statistics_number_of_threads ", "gauge",
     "Number of threads in the arangod process.\n"}},
   {"residentSize",
    {"arangodb_process_statistics_resident_set_size ", "gauge", "The total size of the number of pages the process has in real memory. This is just the pages which count toward text, data, or stack space. This does not include pages which have not been demand-loaded in, or which are swapped out. The resident set size is reported in bytes.\n"}},
@@ -916,10 +916,6 @@ void StatisticsWorker::generateRawStatistics(std::string& result, double const& 
       TYPE_ + statStrings.at("numberOfThreads")[0] + statStrings.at("numberOfThreads")[1] +
       HELP_ + statStrings.at("numberOfThreads")[0] + statStrings.at("numberOfThreads")[2] +
       statStrings.at("numberOfThreads")[0] + std::to_string(info._numberThreads);
-    result +=
-      TYPE_ + statStrings.at("residentSize")[0] + statStrings.at("residentSize")[1] +
-      HELP_ + statStrings.at("residentSize")[0] + statStrings.at("residentSize")[2] +
-      statStrings.at("residentSize")[0] + std::to_string(info._numberThreads);std::to_string(rss);
     result +=
       TYPE_ + statStrings.at("residentSize")[0] + statStrings.at("residentSize")[1] +
       HELP_ + statStrings.at("residentSize")[0] + statStrings.at("residentSize")[2] +
