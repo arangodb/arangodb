@@ -2231,7 +2231,7 @@ function ReplicationApplierSuite () {
     testApplierProperties : function () {
       var properties = replication.applier.properties();
 
-      assertEqual(1200, properties.requestTimeout);
+      assertEqual(600, properties.requestTimeout);
       assertEqual(10, properties.connectTimeout);
       assertEqual(100, properties.maxConnectRetries);
       assertEqual(0, properties.chunkSize);
@@ -2261,7 +2261,7 @@ function ReplicationApplierSuite () {
 
       properties = replication.applier.properties();
       assertEqual(properties.endpoint, "tcp://9.9.9.9:9999");
-      assertEqual(1200, properties.requestTimeout);
+      assertEqual(600, properties.requestTimeout);
       assertEqual(10, properties.connectTimeout);
       assertEqual(100, properties.maxConnectRetries);
       assertEqual(0, properties.chunkSize);

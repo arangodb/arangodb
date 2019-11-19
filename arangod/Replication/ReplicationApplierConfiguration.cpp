@@ -68,9 +68,11 @@ ReplicationApplierConfiguration::ReplicationApplierConfiguration(application_fea
       _incremental(false),
       _verbose(false),
       _restrictType(RestrictType::None) {
-  auto& feature = _server.getFeature<ReplicationFeature>();
-  _requestTimeout = feature.requestTimeout();
-  _connectTimeout = feature.connectTimeout();
+  if (_server.hasFeature<ReplicationFeature>()) {
+    auto& feature = _server.getFeature<ReplicationFeature>();
+    _requestTimeout = feature.requestTimeout();
+    _connectTimeout = feature.connectTimeout();
+  }
 }
 
 /// @brief construct the configuration with default values
@@ -145,10 +147,12 @@ void ReplicationApplierConfiguration::reset() {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   _force32mode = false;
 #endif
-      
-  auto& feature = _server.getFeature<ReplicationFeature>();
-  _requestTimeout = feature.requestTimeout();
-  _connectTimeout = feature.connectTimeout();
+    
+  if (_server.hasFeature<ReplicationFeature>()) {
+    auto& feature = _server.getFeature<ReplicationFeature>();
+    _requestTimeout = feature.requestTimeout();
+    _connectTimeout = feature.connectTimeout();
+  }
 }
 
 /// @brief get a VelocyPack representation
@@ -268,14 +272,18 @@ ReplicationApplierConfiguration ReplicationApplierConfiguration::fromVelocyPack(
 
   value = slice.get("requestTimeout");
   if (value.isNumber()) {
-    auto& feature = existing._server.getFeature<ReplicationFeature>();
-    configuration._requestTimeout = feature.checkRequestTimeout(value.getNumber<double>());
+    if (existing._server.hasFeature<ReplicationFeature>()) {
+      auto& feature = existing._server.getFeature<ReplicationFeature>();
+      configuration._requestTimeout = feature.checkRequestTimeout(value.getNumber<double>());
+    }
   }
 
   value = slice.get("connectTimeout");
   if (value.isNumber()) {
-    auto& feature = existing._server.getFeature<ReplicationFeature>();
-    configuration._connectTimeout = feature.checkConnectTimeout(value.getNumber<double>());
+    if (existing._server.hasFeature<ReplicationFeature>()) {
+      auto& feature = existing._server.getFeature<ReplicationFeature>();
+      configuration._connectTimeout = feature.checkConnectTimeout(value.getNumber<double>());
+    }
   }
 
   value = slice.get("maxConnectRetries");
