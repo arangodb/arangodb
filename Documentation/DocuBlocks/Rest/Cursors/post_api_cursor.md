@@ -88,11 +88,14 @@ Please note that the query options `cache`, `count` and `fullCount` will not wor
 Additionally query statistics, warnings and profiling data will only be available after the query is finished.
 The default value is *false*
 
-@RESTSTRUCT{optimizer.rules,post_api_cursor_opts,array,optional,string}
-A list of to-be-included or to-be-excluded optimizer rules
-can be put into this attribute, telling the optimizer to include or exclude
-specific rules. To disable a rule, prefix its name with a `-`, to enable a rule, prefix it
-with a `+`. There is also a pseudo-rule `all`, which will match all optimizer rules.
+@RESTSTRUCT{optimizer,object,optional,post_api_cursor_opts_optimizer}
+Options related to the query optimizer.
+
+@RESTSTRUCT{rules,post_api_cursor_opts_optimizer,array,optional,string}
+A list of to-be-included or to-be-excluded optimizer rules can be put into this
+attribute, telling the optimizer to include or exclude specific rules. To disable
+a rule, prefix its name with a `-`, to enable a rule, prefix it with a `+`. There is
+also a pseudo-rule `all`, which matches all optimizer rules. `-all` disables all rules.
 
 @RESTSTRUCT{profile,post_api_cursor_opts,integer,optional,}
 If set to *true* or *1*, then the additional query profiling information will be returned
