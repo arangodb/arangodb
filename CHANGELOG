@@ -1,4 +1,4 @@
-v3.5.4 (XXXX-XX-XX)
+v3.5.3 (XXXX-XX-XX)
 -------------------
 
 * Make the timeouts for replication requests (for active failover and master-slave 
@@ -6,10 +6,6 @@ v3.5.4 (XXXX-XX-XX)
 
       --replication.connect-timeout
       --replication.request-timeout
-
-
-v3.5.3 (XXXX-XX-XX)
--------------------
 
 * Fixed internal issue #4647: dead Coordinators are not removed for agency.
 
