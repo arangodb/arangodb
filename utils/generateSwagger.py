@@ -35,12 +35,14 @@
 ################################################################################
 
 from __future__ import print_function # py2 compat
+from __future__ import unicode_literals
 import sys
 import re
 import json
 import operator
 import os
 import os.path
+import io
 #string,
 #from pygments import highlight
 #from pygments.lexers import YamlLexer
@@ -55,11 +57,16 @@ MS = re.M | re.S
 ### @brief swagger
 ################################################################################
 
+# read ArangoDB version
+f = io.open(scriptDir + "VERSION", encoding="utf-8")
+version = f.read().strip()
+f.close()
+
 swagger = {
     "swagger": "2.0",
     "info": {
         "description": "ArangoDB REST API Interface",
-        "version": "1.0",
+        "version": version,
         "title": "ArangoDB",
         "license": {
             "name": "Apache License, Version 2.0"
@@ -1194,7 +1201,7 @@ def example_arangosh_run(cargo, r=Regexen()):
     # new examples code TODO should include for each example own object in json file
     fn = os.path.join(os.path.dirname(__file__), '../Documentation/Examples/' + parameters(last) + '.generated')
     try:
-        examplefile = open(fn)
+        examplefile = io.open(fn, encoding='utf-8')
     except:
         print("Failed to open example file:\n  '%s'" % fn, file=sys.stderr)
         raise Exception("failed to open example file:" + fn)
@@ -1202,6 +1209,7 @@ def example_arangosh_run(cargo, r=Regexen()):
 
     for line in examplefile.readlines():
         operation['x-examples'][currentExample] += '<code>' + line + '</code>'
+    examplefile.close()
 
     operation['x-examples'][currentExample] += '</pre>\n\n\n'
 
@@ -1430,12 +1438,6 @@ fileFilter = ""
 if len(sys.argv) > 5:
     fileFilter = sys.argv[5]
     print("Filtering for: [" + fileFilter + "]", file=sys.stderr)
-# read ArangoDB version
-f = open(scriptDir + "VERSION", "r")
-for version in f:
-    version = version.strip('\n')
-f.close()
-
 
 paths = {}
 
@@ -1459,7 +1461,7 @@ for name, filenames in sorted(files.items(), key=operator.itemgetter(0)):
     currentTag = name
     for fn in filenames:
         thisfn = fn
-        infile = open(fn)
+        infile = io.open(fn, encoding='utf-8')
         try:
             getOneApi(infile, name + " - " + ', '.join(filenames), fn)
         except Exception as x:
