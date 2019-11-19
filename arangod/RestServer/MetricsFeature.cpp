@@ -84,91 +84,51 @@ double time() {
     .count();
 }
 
-template<typename T> struct printer;
-template<> struct printer<double> {
-  static std::string const print(
-    std::string const name, Metrics::hist_type const& hist,
-    std::pair<std::any,std::any> const& lims) {
-    double low = std::any_cast<const double>(std::get<0>(lims));
-    double high = std::any_cast<const double>(std::get<1>(lims));
-    size_t buckets = hist.size();
-    uint64_t sum = 0;
-    double div = (high - low) / (double)hist.size();
-    std::string ret;
-    double le = low;
-    for (size_t i = 0; i < buckets; ++i) {
-      uint64_t n = hist.load(i);
-      sum += n;
-      ret += name + "_bucket{le=\"" + std::to_string(le) + "\"} " +
-        std::to_string(hist.load(i)) + "\n";
-      le += div;
-    }
-    ret += name + "_count " + std::to_string(sum) + "\n";
-    return ret;
-  }
-};
-
-char const* _HELP ="#HELP ";
-char const* _TYPE ="#TYPE ";
-
 void MetricsFeature::toPrometheus(std::string& result) const {
-  { std::lock_guard<std::mutex> guard(_lock);
-  for (auto const& i : _help) {
-    if (!i.second.empty()) {
-      result += _HELP + i.first + " " + i.second + "\n";
+  {
+    std::lock_guard<std::mutex> guard(_lock);
+    for (auto const& i : _registry) {
+      i.second->toPrometheus(result);
     }
-    auto const it = _limits.find(i.first);
-    if (it != _limits.end()) {
-      result += _TYPE + i.first + " histogram\n";
-      std::string const tname = std::get<0>(it->second).type().name();
-      if (tname == typeid(double(0.)).name()) {
-        result += printer<double>::print(
-          i.first, _metrics.histogram(i.first), it->second);
-      }
-    } else {
-      result += _TYPE + i.first + " counter\n";
-      result +=
-        i.first + " " + std::to_string(_metrics.counter(i.first).load()) + "\n";
-    }
-    result += "\n";
-  }}
-
+  }
 
   auto& sf = server().getFeature<StatisticsFeature>();
   sf.toPrometheus(result, std::chrono::duration<double,std::milli>(std::chrono::system_clock::now().time_since_epoch()).count());
 
 }
-  
 
-void MetricsFeature::toBuilder(VPackBuilder& builder) const {
+Counter& MetricsFeature::counter (
+  std::string const& name, uint64_t const& val, std::string const& help) {
   std::lock_guard<std::mutex> guard(_lock);
-  for (auto const& i : _help) {
-    builder.add(VPackValue(i.first));
-    VPackObjectBuilder o(&builder);
-    builder.add("help", VPackValue(i.second));
-    auto const it = _limits.find(i.first);
-    if (it != _limits.end()) {
-      builder.add(
-        "type", VPackValue(std::get<0>(it->second).type().name()));
-      builder.add(VPackValue("value"));
-      VPackArrayBuilder a(&builder);
-      auto const& hist = _metrics.histogram(i.first);
-      for (size_t i = 0; i < hist.size(); ++i) {
-        builder.add(VPackValue(hist.load(i)));
-      }
-    } else {
-      builder.add("value", VPackValue(_metrics.counter(i.first).load()));
-    }
+  auto const it = _registry.find(name);
+  if (it != _registry.end()) {
+    LOG_TOPIC("8532d", ERR, Logger::STATISTICS) << "Failed to retrieve histogram " << name;
+    TRI_ASSERT(false);
   }
-}
+  auto c = std::make_shared<Counter>(val, name, help);
+  _registry.emplace(name, std::dynamic_pointer_cast<HistBase>(c));
+  return *c;
+};
 
-Counter MetricsFeature::counter (std::string const& name, std::string const& help) {
+Counter& MetricsFeature::counter (std::string const& name) {
   std::lock_guard<std::mutex> guard(_lock);
-  auto const it = _help.find(name);
-  if (it == _help.end()) {
-    _help[name] = help;
+  auto it = _registry.find(name);
+  if (it == _registry.end()) {
+    LOG_TOPIC("32d85", ERR, Logger::STATISTICS)
+      << "Failed to retrieve counter " << name;
+    TRI_ASSERT(false);
+    throw std::exception();
+  } 
+  std::shared_ptr<Counter> h;
+  try {
+    h = std::dynamic_pointer_cast<Counter>(it->second);
+  } catch (std::exception const& e) {
+    LOG_TOPIC("8532d", ERR, Logger::STATISTICS)
+      << "Failed to retrieve counter " << name;
+    TRI_ASSERT(false);
+    throw(e);
   }
-  return _metrics.registerCounter(name);
+  return *h;
 };
 
 

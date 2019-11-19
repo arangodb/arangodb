@@ -41,68 +41,29 @@
 class Counter;
 template<typename T> class Histogram;
 
-class Metrics {
-
+class HistBase {
 public:
-  
+  HistBase(std::string const& name, std::string const& help)
+    : _name(name), _help(help) {};
+  virtual ~HistBase() {}
+  std::string const& help() const {return _help;}
+  std::string const& name() const {return _name;}
+  void toPrometheus(std::string& result) const {
+    result += "#TYPE " + _name + " counter\n";
+    result += "#HELP " + _name + " " + _help + "\n";
+  }
+private:
+  std::string const _name;
+  std::string const _help;
+};
+
+struct Metrics {
+
   enum Type {COUNTER, HISTOGRAM};
 
   using counter_type = gcl::counter::simplex<uint64_t, gcl::counter::atomicity::full>;
   using hist_type = gcl::counter::simplex_array<uint64_t, gcl::counter::atomicity::full>;
   using buffer_type = gcl::counter::buffer<uint64_t>;
-  using var_type = std::variant<counter_type,hist_type>;
-  
-
-  /**
-   * @brief Metric class with variant of counter or histogram
-   */
-  struct Metric {
-    Metric() = delete;
-    Metric(Metrics const&) = delete;
-    explicit Metric(Type);
-    explicit Metric(uint64_t);
-    Metric(uint64_t, uint64_t, uint64_t);
-    ~Metric();
-    std::ostream& print(std::ostream&) const;
-    void toBuilder(VPackBuilder&);
-    var_type _var;
-  };
-
-  using registry_type = std::unordered_map<std::string, std::shared_ptr<Metric>>;
-  
-  Metrics() {}
-  virtual ~Metrics();
-  void clear();
-  
-public:
-  Counter getCounter(std::string const& name);
-  Counter registerCounter(std::string const& name, uint64_t init = 0);
-    
-  template<typename T>
-  Histogram<T> getHistogram (
-    std::string const& name, size_t const& buckets, T const& low, T const& high) {
-    std::lock_guard<std::mutex> guard(_lock);
-    return Histogram<T>(histogram(name, buckets), low, high);
-  };
-  template<typename T>
-  Histogram<T> registerHistogram (std::string const& name, size_t const& buckets, T const& low, T const& high) {
-    std::lock_guard<std::mutex> guard(_lock);
-    return Histogram<T>(histogram(name, buckets), low, high);
-  };
-
-  counter_type& counter(std::string const& name);
-  hist_type& histogram(std::string const& name);
-
-  counter_type const& counter(std::string const& name) const;
-  hist_type const& histogram(std::string const& name) const;
-
-private:
-  counter_type& counter(std::string const& name, uint64_t val);
-  hist_type& histogram(std::string const& name, uint64_t buckets);
-
-  registry_type _registry;
-
-  mutable std::mutex _lock;
   
 };
 
@@ -110,10 +71,10 @@ private:
 /**
  * @brief Counter functionality
  */
-class Counter {
+class Counter : public HistBase {
 public:
+  Counter(uint64_t const& val, std::string const& name, std::string const& help);
   Counter(Counter const&) = delete;
-  Counter(Metrics::counter_type& c);
   ~Counter();
   std::ostream& print (std::ostream&) const;
   Counter& operator++();
@@ -122,9 +83,10 @@ public:
   void count(uint64_t);
   uint64_t load() const;
   void push();
+  void toPrometheus(std::string&) const;
 private:
-  Metrics::counter_type& _c;
-  mutable Metrics::buffer_type _b; 
+  Metrics::counter_type _c;
+  mutable Metrics::buffer_type _b;
 };
 
 std::ostream& operator<< (std::ostream&, Metrics::hist_type const&);
@@ -132,18 +94,18 @@ std::ostream& operator<< (std::ostream&, Metrics::hist_type const&);
 /**
  * @brief Histogram functionality
  */ 
-template<typename T> class Histogram {
+template<typename T> class Histogram : public HistBase {
 
 public:
 
   Histogram() = delete;
     
-  Histogram (Metrics::hist_type& hist, T const& low, T const& high)
-    : _c(hist), _low(low), _high(high),
+  Histogram (size_t const& buckets, T const& low, T const& high, std::string const& name, std::string const& help = "")
+    : HistBase(name, help), _c(Metrics::hist_type(buckets)), _low(low), _high(high),
       _lowr(std::numeric_limits<T>::max()), _highr(std::numeric_limits<T>::min()) {
     assert(hist.size() > 0);
     _n = _c.size() - 1;
-    _div = std::floor((double)(high - low) / (double)hist.size());
+    _div = std::floor((double)(high - low) / (double)_c.size());
   }
 
   ~Histogram() {
@@ -180,6 +142,9 @@ public:
     records(t);
   }
 
+  inline T const& low() const { return _low; }
+  inline T const& high() const { return _high; }
+
   Metrics::hist_type::value_type& operator[](size_t n) {
     return _c[n];
   }
@@ -196,20 +161,32 @@ public:
       
   size_t size() const { return _c.size(); }
 
+  void toPrometheus(std::string& result) const {
+    HistBase::toPrometheus(result);
+    T le = _low;
+    T sum = T(0);
+    for (size_t i = 0; i < _c.size(); ++i) {
+      uint64_t n = load(i);
+      sum += n;
+      result += name() + "_bucket{le=\"" + std::to_string(le) + "\"} " +
+        std::to_string(n) + "\n";
+      le += _div;
+    }
+    result += name() + "_count " + std::to_string(sum) + "\n";
+  }
+
   std::ostream& print(std::ostream& o) const {
-    o << "_div: " << _div << ", _c: " << _c << ", _r: [" << _lowr << ", " << _highr << "]";;    
+    o << "_div: " << _div << ", _c: " << _c << ", _r: [" << _lowr << ", " << _highr << "] " << name();    
     return o;
   }
 
-
-  Metrics::hist_type& _c;
+  Metrics::hist_type _c;
   T _low, _high, _div, _lowr, _highr;
   size_t _n;
       
 };
 
 
-std::ostream& operator<< (std::ostream&, Metrics::var_type const&);
 std::ostream& operator<< (std::ostream&, Metrics::counter_type const&);
 template<typename T>
 std::ostream& operator<<(std::ostream& o, Histogram<T> const& h) {

@@ -37,10 +37,10 @@ struct TransactionStatistics {
 
   arangodb::MetricsFeature* _metrics;
   
-  Counter _transactionsStarted;
-  Counter _transactionsAborted;
-  Counter _transactionsCommitted;
-  Counter _intermediateCommits;
+  Counter& _transactionsStarted;
+  Counter& _transactionsAborted;
+  Counter& _transactionsCommitted;
+  Counter& _intermediateCommits;
 };
 
 struct ServerStatistics {

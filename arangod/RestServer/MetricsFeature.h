@@ -25,6 +25,7 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Logger/LoggerFeature.h"
+#include "Logger/LogMacros.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/Metrics.h"
 #include "Statistics/ServerStatistics.h"
@@ -49,21 +50,42 @@ class MetricsFeature final : public application_features::ApplicationFeature {
   void start() override final;
   void stop() override final;
 
-  template<typename T> Histogram<T>
-  histogram (std::string const& name, size_t const& buckets, T const& low, T const& high,
-             std::string const& help = std::string()) {
+  template<typename T> Histogram<T>&
+  histogram (std::string const& name, size_t const& buckets, T const& low,
+             T const& high, std::string const& help = std::string()) {
+    
     std::lock_guard<std::mutex> guard(_lock);
-    auto const it = _help.find(name);
-    if (it == _help.end()) {
-      _help[name] = help;
-      _limits[name] = std::pair<T,T>{low,high};
+    auto const it = _registry.find(name);
+    if (it != _registry.end()) {
+      LOG_TOPIC("32e85", ERR, Logger::STATISTICS) << "histogram "  << name << " alredy exists";
+      TRI_ASSERT(false);
     }
-    return _metrics.registerHistogram(name, buckets, low, high);
+    auto h = std::make_shared<Histogram<T>>(buckets, low, high, help);
+    _registry.emplace(name, std::dynamic_pointer_cast<HistBase>(h));
+    return *h;
   };
 
-  Counter counter(std::string const& name, std::string const& help);
+  template<typename T> Histogram<T>& histogram (std::string const& name) {
+    std::lock_guard<std::mutex> guard(_lock);
+    auto const it = _registry.find(name);
+    if (it == _registry.end()) {
+      LOG_TOPIC("32d85", ERR, Logger::STATISTICS) << "No histogram booked as " << name;
+      TRI_ASSERT(false);
+      throw std::exception();
+    } 
+    std::shared_ptr<Histogram<T>> h;
+    try {
+      h = std::dynamic_pointer_cast<Histogram<T>>(*it->second);
+    } catch (std::exception const& e) {
+      LOG_TOPIC("8532d", ERR, Logger::STATISTICS) << "Failed to retrieve histogram " << name;
+      TRI_ASSERT(false);
+    }
+    return *h;
+  };
 
-  void toBuilder(VPackBuilder& builder) const;
+  Counter& counter(std::string const& name, uint64_t const& val, std::string const& help);
+  Counter& counter(std::string const& name);
+
   void toPrometheus(std::string& result) const;
 
   static MetricsFeature* metrics() {
@@ -75,11 +97,9 @@ class MetricsFeature final : public application_features::ApplicationFeature {
  private:
   static MetricsFeature* METRICS;
 
-  Metrics _metrics;
   bool _enabled;
   
-  std::unordered_map<std::string, std::string> _help;
-  std::unordered_map<std::string, std::pair<std::any,std::any>> _limits;
+  std::unordered_map<std::string, std::shared_ptr<HistBase>> _registry;
 
   mutable std::mutex _lock;
 

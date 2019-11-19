@@ -477,9 +477,9 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   // lock for _ongoingTrxs
   arangodb::Mutex _trxsLock;
 
-  Counter _write_ok;
-  Counter _write_no_leader;
-  Histogram<double> _write_hist_msec;
+  Counter& _write_ok;
+  Counter& _write_no_leader;
+  Histogram<double>& _write_hist_msec;
   
 };
 }  // namespace consensus

@@ -64,20 +64,12 @@ RestStatus RestMetricsHandler::execute() {
 
   MetricsFeature& metrics = server.getFeature<MetricsFeature>();
 
-  bool found;
-  std::string const& detailsStr = _request->value("vpack", found);
-  if (found && StringUtils::boolean(detailsStr)) {
-    VPackBuilder result; {
-      VPackObjectBuilder o(&result);
-      metrics.toBuilder(result); }
-    generateResult(rest::ResponseCode::OK, result.slice());
-  } else {
     std::string result;
     metrics.toPrometheus(result);
     _response->setResponseCode(rest::ResponseCode::OK);
     _response->setContentType(rest::ContentType::TEXT);
     _response->addRawPayload(VPackStringRef(result));
-  }
+
   
   return RestStatus::DONE;
 }

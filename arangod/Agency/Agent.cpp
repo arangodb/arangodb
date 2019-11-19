@@ -74,9 +74,9 @@ Agent::Agent(ApplicationServer& server, config_t const& config)
       _ready(false),
       _preparing(0),
       _write_ok(_server.getFeature<arangodb::MetricsFeature>().counter(
-                  "agency_agent_write_ok", "Agency write ok")),
+                  "agency_agent_write_ok", 0, "Agency write ok")),
       _write_no_leader(_server.getFeature<arangodb::MetricsFeature>().counter(
-                         "agency_agent_write_no_leader", "Agency write no leader")),
+                         "agency_agent_write_no_leader", 0, "Agency write no leader")),
       _write_hist_msec(_server.getFeature<arangodb::MetricsFeature>().histogram(
                          "agency_agent_write_hist", 10, 0., 20., "Agency write histogram [ms]")) {
   _state.configure(this);

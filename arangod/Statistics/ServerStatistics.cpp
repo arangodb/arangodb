@@ -30,13 +30,13 @@ using namespace arangodb;
 TransactionStatistics::TransactionStatistics() :
   _metrics(arangodb::MetricsFeature::metrics()),
   _transactionsStarted(
-    _metrics->counter("arangodb_transactions_started", "Transactions started")),
+    _metrics->counter("arangodb_transactions_started", 0, "Transactions started")),
   _transactionsAborted(
-    _metrics->counter("arangodb_transactions_aborted", "Transactions aborted")),
+    _metrics->counter("arangodb_transactions_aborted", 0, "Transactions aborted")),
   _transactionsCommitted(
-    _metrics->counter("arangodb_transactions_committed", "Transactions committed")),
+    _metrics->counter("arangodb_transactions_committed", 0, "Transactions committed")),
   _intermediateCommits(
-    _metrics->counter("arangodb_intermediate_commits", "Intermediate commits")) {}
+    _metrics->counter("arangodb_intermediate_commits", 0, "Intermediate commits")) {}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                             static public methods
