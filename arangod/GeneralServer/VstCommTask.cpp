@@ -379,7 +379,9 @@ void VstCommTask<T>::doWrite() {
       } else {
         thisPtr->doWrite(); // write next one
       }
-      rsp->stat->release();
+      if (rsp->stat != nullptr) {
+        rsp->stat->release();
+      }
     });
     break; // done
   }
