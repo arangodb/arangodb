@@ -840,7 +840,7 @@ std::map<std::string, std::vector<std::string>> statStrings{
    {"arangodb_process_statistics_major_page_faults ", "gauge",
     "On Windows, this figure contains the total number of page faults. On other system, this figure contains the number of major faults the process has made which have required loading a memory page from disk.\n"}},
   {"bytesReceived",
-   {"arangodb_client_connection_statistics_bytes_received_bucket", "gauge",
+   {"arangodb_client_connection_statistics_bytes_received_bucket ", "gauge",
     "Bytes received for a request"}},
   {"userTime",
    {"arangodb_process_statistics_user_time ", "gauge",
@@ -854,12 +854,24 @@ std::map<std::string, std::vector<std::string>> statStrings{
   {"residentSize",
    {"arangodb_process_statistics_resident_set_size ", "gauge", "The total size of the number of pages the process has in real memory. This is just the pages which count toward text, data, or stack space. This does not include pages which have not been demand-loaded in, or which are swapped out. The resident set size is reported in bytes.\n"}},
   {"residentSizePercent", 
-   {"arangodb_process_statistics_resident_set_size_percent ", "gauge", "The relative size of the number of pages the process has in real memory compared to system memory. This is just the pages which count toward text, data, or stack space. This does not include pages which have not been demand-loaded in, or which are swapped out. The value is a ratio between 0.00 and 1.00\n"}},
+   {"arangodb_process_statistics_resident_set_size_percent ", "gauge", "The relative size of the number of pages the process has in real memory compared to system memory. This is just the pages which count toward text, data, or stack space. This does not include pages which have not been demand-loaded in, or which are swapped out. The value is a ratio between 0.00 and 1.00.\n"}},
   {"virtualSize",
    {"arangodb_process_statistics_virtual_memory_size ", "gauge", "On Windows, this figure contains the total amount of memory that the memory manager has committed for the arangod process. On other systems, this figure contains The size of the virtual memory the process is using.\n"}},
   {"clientHttpConnections",
    {"arangodb_client_connection_statistics_client_connections ", "guage",
-    "The number of client connections that are currently open."}}
+    "The number of client connections that are currently open.\n"}},
+  {"connectionTimeCounts",
+   {"arangodb_client_connection_statistics_connection_time_bucket", "gauge",
+    "Total connection time of a client."}},
+  {"connectionTimeCount",
+   {"arangodb_client_connection_statistics_connection_time_count", "gauge",
+    "Total connection time of a client."}},
+  {"connectionTimeSum",
+   {"arangodb_client_connection_statistics_connection_time_sum", "gauge",
+    "Total connection time of a client."}}
+  /*{"",
+    {"", "",
+    ""}}*/
 };
 
 void StatisticsWorker::generateRawStatistics(std::string& result, double const& now) {
@@ -935,7 +947,30 @@ void StatisticsWorker::generateRawStatistics(std::string& result, double const& 
       TYPE_ + statStrings.at("clientHttpConnections")[0] + statStrings.at("clientHttpConnections")[1] +
       HELP_ + statStrings.at("clientHttpConnections")[0] + statStrings.at("clientHttpConnections")[2] +
       statStrings.at("clientHttpConnections")[0] + std::to_string(httpConnections._count);
+
+    VPackBuilder tmp = fillDistribution(connectionTime);
+    VPackSlice slc = tmp.slice();
     
+    result +=
+      TYPE_ + statStrings.at("connectionTimeCounts")[0] + statStrings.at("connectionTimeCounts")[1] +
+      HELP_ + statStrings.at("connectionTimeCounts")[0] + statStrings.at("connectionTimeCounts")[2] +
+      statStrings.at("clientHttpConnections")[0] + "{le=\"0.1\"}"  + std::to_string(slc.get("counts")[0].template getNumber<uint64_t>()) + "\n" +
+      statStrings.at("clientHttpConnections")[0] + "{le=\"1\"}"    + std::to_string(slc.get("counts")[1].template getNumber<uint64_t>()) + "\n" +
+      statStrings.at("clientHttpConnections")[0] + "{le=\"60\"}"   + std::to_string(slc.get("counts")[2].template getNumber<uint64_t>()) + "\n" +
+      statStrings.at("clientHttpConnections")[0] + "{le=\"+Inf\"}" + std::to_string(slc.get("counts")[3].template getNumber<uint64_t>());
+
+    result +=
+      TYPE_ + statStrings.at("connectionTimeCount")[0] + statStrings.at("connectionTimeCount")[1] +
+      HELP_ + statStrings.at("connectionTimeCount")[0] + statStrings.at("connectionTimeCount")[2] +
+      statStrings.at("connectionTimeCount")[0] + std::to_string(slc.get("count").template getNumber<uint64_t>());
+    
+    result +=
+      TYPE_ + statStrings.at("connectionTimeSum")[0] + statStrings.at("connectionTimeSum")[1] +
+      HELP_ + statStrings.at("connectionTimeSum")[0] + statStrings.at("connectionTimeSum")[2] +
+      statStrings.at("connectionTimeSum")[0] + std::to_string(slc.get("sum").template getNumber<uint64_t>());
+    
+    LOG_DEVEL << tmp.toJson();
+
       /*
 
         // _clientStatistics()

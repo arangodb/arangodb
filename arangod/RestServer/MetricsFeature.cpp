@@ -117,8 +117,8 @@ void MetricsFeature::toPrometheus(std::string& result) const {
     if (!i.second.empty()) {
       result += _HELP + i.first + " " + i.second + "\n";
     }
-    auto const it = _params.find(i.first);
-    if (it != _params.end()) {
+    auto const it = _limits.find(i.first);
+    if (it != _limits.end()) {
       result += _TYPE + i.first + " histogram\n";
       std::string const tname = std::get<0>(it->second).type().name();
       if (tname == typeid(double(0.)).name()) {
@@ -146,8 +146,8 @@ void MetricsFeature::toBuilder(VPackBuilder& builder) const {
     builder.add(VPackValue(i.first));
     VPackObjectBuilder o(&builder);
     builder.add("help", VPackValue(i.second));
-    auto const it = _params.find(i.first);
-    if (it != _params.end()) {
+    auto const it = _limits.find(i.first);
+    if (it != _limits.end()) {
       builder.add(
         "type", VPackValue(std::get<0>(it->second).type().name()));
       builder.add(VPackValue("value"));
