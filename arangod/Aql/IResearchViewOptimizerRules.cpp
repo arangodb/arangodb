@@ -357,6 +357,7 @@ void lateDocumentMaterializationArangoSearchRule(Optimizer* opt,
       bool stopSearch = false;
       std::vector<aql::CalculationNode*> calcNodes; // nodes variables can be replaced
       bool stickToSortNode = false;
+      auto& viewNodeState = viewNode.state();
       while (current != loop) {
         auto type = current->getType();
         switch (current->getType()) {
@@ -390,7 +391,7 @@ void lateDocumentMaterializationArangoSearchRule(Optimizer* opt,
             auto invalid = true;
             if (ExecutionNode::CALCULATION == type) {
               auto calcNode = ExecutionNode::castTo<CalculationNode*>(current);
-              if (viewNode.state().canVariablesBeReplaced(calcNode)) {
+              if (viewNodeState.canVariablesBeReplaced(calcNode)) {
                 calcNodes.emplace_back(calcNode);
                 invalid = false;
               }
@@ -421,7 +422,7 @@ void lateDocumentMaterializationArangoSearchRule(Optimizer* opt,
         // we could apply late materialization
         // 1. Replace view variables in calculation node if need
         if (!calcNodes.empty()) {
-          auto viewVariables = viewNode.state().replaceViewVariables(calcNodes);
+          auto viewVariables = viewNodeState.replaceViewVariables(calcNodes);
           viewNode.setViewVariables(viewVariables);
         }
         // 2. We need to notify view - it should not materialize documents, but produce only localDocIds
