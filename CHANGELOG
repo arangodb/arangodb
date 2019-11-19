@@ -1,6 +1,12 @@
 v3.5.3 (XXXX-XX-XX)
 -------------------
 
+* Make the timeouts for replication requests (for active failover and master-slave 
+  replication configurable via startup options:
+
+      --replication.connect-timeout
+      --replication.request-timeout
+
 * Fixed internal issue #4647: dead Coordinators are not removed for agency.
 
 * Fixed UPSERT matching.
