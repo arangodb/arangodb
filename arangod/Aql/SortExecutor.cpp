@@ -43,9 +43,9 @@ namespace {
 /// @brief OurLessThan
 class OurLessThan {
  public:
-  OurLessThan(arangodb::transaction::Methods* trx, AqlItemMatrix const& input,
+  OurLessThan(velocypack::Options const* options, AqlItemMatrix const& input,
               std::vector<SortRegister> const& sortRegisters) noexcept
-      : _trx(trx), _input(input), _sortRegisters(sortRegisters) {}
+      : _vpackOptions(options), _input(input), _sortRegisters(sortRegisters) {}
 
   bool operator()(AqlItemMatrix::RowIndex const& a, AqlItemMatrix::RowIndex const& b) const {
     InputAqlItemRow left = _input.getRow(a);
@@ -54,7 +54,7 @@ class OurLessThan {
       AqlValue const& lhs = left.getValue(reg.reg);
       AqlValue const& rhs = right.getValue(reg.reg);
 
-      int const cmp = AqlValue::Compare(_trx, lhs, rhs, true);
+      int const cmp = AqlValue::Compare(_vpackOptions, lhs, rhs, true);
 
       if (cmp < 0) {
         return reg.asc;
@@ -67,7 +67,7 @@ class OurLessThan {
   }
 
  private:
-  arangodb::transaction::Methods* _trx;
+  velocypack::Options const* _vpackOptions;
   AqlItemMatrix const& _input;
   std::vector<SortRegister> const& _sortRegisters;
 };  // OurLessThan
@@ -90,26 +90,28 @@ SortExecutorInfos::SortExecutorInfos(
     // cppcheck-suppress passedByValue
     std::unordered_set<RegisterId> registersToClear,
     // cppcheck-suppress passedByValue
-    std::unordered_set<RegisterId> registersToKeep, transaction::Methods* trx, bool stable)
+    std::unordered_set<RegisterId> registersToKeep,
+    velocypack::Options const* options, bool stable)
     : ExecutorInfos(mapSortRegistersToRegisterIds(sortRegisters), nullptr,
                     nrInputRegisters, nrOutputRegisters,
                     std::move(registersToClear), std::move(registersToKeep)),
       _limit(limit),
       _manager(manager),
-      _trx(trx),
+      _vpackOptions(options),
       _sortRegisters(std::move(sortRegisters)),
       _stable(stable) {
-  TRI_ASSERT(trx != nullptr);
   TRI_ASSERT(!_sortRegisters.empty());
 }
-
-transaction::Methods* SortExecutorInfos::trx() const { return _trx; }
 
 std::vector<SortRegister>& SortExecutorInfos::sortRegisters() {
   return _sortRegisters;
 }
 
 bool SortExecutorInfos::stable() const { return _stable; }
+
+velocypack::Options const* SortExecutorInfos::vpackOptions() const noexcept {
+  return _vpackOptions;
+}
 
 SortExecutor::SortExecutor(Fetcher& fetcher, SortExecutorInfos& infos)
     : _infos(infos), _fetcher(fetcher), _input(nullptr), _returnNext(0) {}
@@ -160,7 +162,7 @@ void SortExecutor::doSorting() {
   TRI_ASSERT(_input != nullptr);
   _sortedIndexes = _input->produceRowIndexes();
   // comparison function
-  OurLessThan ourLessThan(_infos.trx(), *_input, _infos.sortRegisters());
+  OurLessThan ourLessThan(_infos.vpackOptions(), *_input, _infos.sortRegisters());
   if (_infos.stable()) {
     std::stable_sort(_sortedIndexes.begin(), _sortedIndexes.end(), ourLessThan);
   } else {
