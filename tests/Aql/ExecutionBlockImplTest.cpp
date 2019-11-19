@@ -36,6 +36,7 @@
 #include "Aql/ExecutionEngine.h"
 #include "Aql/Query.h"
 #include "Aql/SingleRowFetcher.h"
+#include "Transaction/Context.h"
 #include "Transaction/Methods.h"
 
 using namespace arangodb;
@@ -65,6 +66,10 @@ class ExecutionBlockImplTest : public ::testing::Test {
   fakeit::Mock<transaction::Methods> mockTrx;
   transaction::Methods& trx;
 
+  // Mock of the transaction context
+  fakeit::Mock<transaction::Context> mockContext;
+  transaction::Context& context;
+
   // Mock of the Query
   fakeit::Mock<Query> mockQuery;
   Query& query;
@@ -90,6 +95,7 @@ class ExecutionBlockImplTest : public ::testing::Test {
       : engine(mockEngine.get()),
         itemBlockManager(mockBlockManager.get()),
         trx(mockTrx.get()),
+        context(mockContext.get()),
         query(mockQuery.get()),
         lqueryOptions(mockQueryOptions.get()),
         profile(ProfileLevel(PROFILE_LEVEL_NONE)),
@@ -116,6 +122,9 @@ class ExecutionBlockImplTest : public ::testing::Test {
     fakeit::When(Method(mockQuery, trx)).AlwaysReturn(&trx);
 
     fakeit::When(Method(mockQueryOptions, getProfileLevel)).AlwaysReturn(profile);
+
+    fakeit::When(Method(mockTrx, transactionContextPtr)).AlwaysReturn(&context);
+    fakeit::When(Method(mockContext, getVPackOptions)).AlwaysReturn(&velocypack::Options::Defaults);
   }
 };
 

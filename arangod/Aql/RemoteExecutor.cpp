@@ -37,6 +37,8 @@
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
 #include "Rest/CommonDefines.h"
+#include "Transaction/Context.h"
+#include "Transaction/Methods.h"
 #include "VocBase/vocbase.h"
 
 #include <fuerte/connection.h>
@@ -304,7 +306,7 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::initialize
   builder.add("pos", VPackValue(0));
   builder.add(VPackValue("items"));
   builder.openObject(/*unindexed*/ true);
-  input.toVelocyPack(_engine->getQuery()->trx(), builder);
+  input.toVelocyPack(_engine->getQuery()->trx()->transactionContextPtr()->getVPackOptions(), builder);
   builder.close();
 
   builder.close();

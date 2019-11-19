@@ -54,9 +54,9 @@ void eraseRow(SharedAqlItemBlockPtr& block, size_t row) {
 /// @brief OurLessThan
 class arangodb::aql::ConstrainedLessThan {
  public:
-  ConstrainedLessThan(arangodb::transaction::Methods* trx,
+  ConstrainedLessThan(velocypack::Options const* options,
                       std::vector<arangodb::aql::SortRegister>& sortRegisters) noexcept
-      : _trx(trx), _heapBuffer(nullptr), _sortRegisters(sortRegisters) {}
+      : _vpackOptions(options), _heapBuffer(nullptr), _sortRegisters(sortRegisters) {}
 
   void setBuffer(arangodb::aql::AqlItemBlock* heap) { _heapBuffer = heap; }
 
@@ -67,7 +67,7 @@ class arangodb::aql::ConstrainedLessThan {
       auto const& lhs = _heapBuffer->getValueReference(a, sortReg.reg);
       auto const& rhs = _heapBuffer->getValueReference(b, sortReg.reg);
 
-      int const cmp = arangodb::aql::AqlValue::Compare(_trx, lhs, rhs, true);
+      int const cmp = arangodb::aql::AqlValue::Compare(_vpackOptions, lhs, rhs, true);
 
       if (cmp < 0) {
         return sortReg.asc;
@@ -80,7 +80,7 @@ class arangodb::aql::ConstrainedLessThan {
   }
 
  private:
-  arangodb::transaction::Methods* _trx;
+  velocypack::Options const* const _vpackOptions;
   arangodb::aql::AqlItemBlock* _heapBuffer;
   std::vector<arangodb::aql::SortRegister>& _sortRegisters;
 };  // ConstrainedLessThan
@@ -123,7 +123,7 @@ bool ConstrainedSortExecutor::compareInput(size_t const& rowPos, InputAqlItemRow
     auto const& lhs = _heapBuffer->getValueReference(rowPos, reg.reg);
     auto const& rhs = row.getValue(reg.reg);
 
-    int const cmp = arangodb::aql::AqlValue::Compare(_infos.trx(), lhs, rhs, true);
+    int const cmp = arangodb::aql::AqlValue::Compare(_infos.vpackOptions(), lhs, rhs, true);
 
     if (cmp < 0) {
       return reg.asc;
@@ -144,7 +144,8 @@ ConstrainedSortExecutor::ConstrainedSortExecutor(Fetcher& fetcher, SortExecutorI
       _skippedAfter(0),
       _heapBuffer(_infos._manager.requestBlock(_infos._limit,
                                                _infos.numberOfOutputRegisters())),
-      _cmpHeap(std::make_unique<ConstrainedLessThan>(_infos.trx(), _infos.sortRegisters())),
+      _cmpHeap(std::make_unique<ConstrainedLessThan>(_infos.vpackOptions(),
+                                                     _infos.sortRegisters())),
       _heapOutputRow{_heapBuffer, make_shared_unordered_set(),
                      make_shared_unordered_set(_infos.numberOfOutputRegisters()),
                      _infos.registersToClear()} {
