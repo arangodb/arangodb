@@ -746,14 +746,12 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_with_link) {
     EXPECT_TRUE((false == logicalView->visitCollections(
                               [](TRI_voc_cid_t) -> bool { return false; })));
 
-    // simulate heartbeat thread (create index in current)
+    // simulate heartbeat thread (remove index in current)
     {
       auto const path = "/Current/Collections/" + vocbase->name() + "/" +
-                        std::to_string(logicalCollection->id());
-      auto const value = arangodb::velocypack::Parser::fromJson(
-          "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"1\" "
-          "} ] } }");
-      EXPECT_TRUE(arangodb::AgencyComm().setValue(path, value->slice(), 0.0).successful());
+                        std::to_string(logicalCollection->id()) +
+                        "/shard-id-does-not-matter/indexes";
+      EXPECT_TRUE(arangodb::AgencyComm().removeValues(path, false).successful());
     }
   }
 
