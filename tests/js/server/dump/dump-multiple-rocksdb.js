@@ -99,7 +99,7 @@ function dumpTestSuite () {
       }
 
       for (let i = 0; i < 100000; ++i) {
-        let doc = result[i];
+        let doc = results[i];
         assertEqual(i, doc.value1);
         assertEqual("this is a test", doc.value2);
         assertEqual("test" + i, doc.value3);
