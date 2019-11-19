@@ -50,13 +50,13 @@ class MetricsFeature final : public application_features::ApplicationFeature {
   void stop() override final;
 
   template<typename T> Histogram<T>
-  histogram (std::string const& name, size_t buckets, T low, T high,
+  histogram (std::string const& name, size_t const& buckets, T const& low, T const& high,
              std::string const& help = std::string()) {
     std::lock_guard<std::mutex> guard(_lock);
     auto const it = _help.find(name);
     if (it == _help.end()) {
       _help[name] = help;
-      _params[name] = std::pair<T,T>{low,high};
+      _limits[name] = std::pair<T,T>{low,high};
     }
     return _metrics.registerHistogram(name, buckets, low, high);
   };
@@ -79,7 +79,7 @@ class MetricsFeature final : public application_features::ApplicationFeature {
   bool _enabled;
   
   std::unordered_map<std::string, std::string> _help;
-  std::unordered_map<std::string, std::pair<std::any,std::any>> _params;
+  std::unordered_map<std::string, std::pair<std::any,std::any>> _limits;
 
   mutable std::mutex _lock;
 

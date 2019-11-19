@@ -80,12 +80,12 @@ public:
     
   template<typename T>
   Histogram<T> getHistogram (
-    std::string const& name, size_t buckets, T low, T high) {
+    std::string const& name, size_t const& buckets, T const& low, T const& high) {
     std::lock_guard<std::mutex> guard(_lock);
     return Histogram<T>(histogram(name, buckets), low, high);
   };
   template<typename T>
-  Histogram<T> registerHistogram (std::string const& name, size_t buckets, T low, T high) {
+  Histogram<T> registerHistogram (std::string const& name, size_t const& buckets, T const& low, T const& high) {
     std::lock_guard<std::mutex> guard(_lock);
     return Histogram<T>(histogram(name, buckets), low, high);
   };
