@@ -48,7 +48,7 @@ class SubqueryEndExecutorInfos : public ExecutorInfos {
                            RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
                            std::unordered_set<RegisterId> const& registersToClear,
                            std::unordered_set<RegisterId> registersToKeep,
-                           transaction::Methods* trxPtr, RegisterId inReg,
+                           velocypack::Options const* options, RegisterId inReg,
                            RegisterId outReg);
 
   SubqueryEndExecutorInfos() = delete;
@@ -56,13 +56,13 @@ class SubqueryEndExecutorInfos : public ExecutorInfos {
   SubqueryEndExecutorInfos(SubqueryEndExecutorInfos const&) = delete;
   ~SubqueryEndExecutorInfos();
 
-  transaction::Methods* getTrxPtr() const noexcept { return _trxPtr; }
+  [[nodiscard]] velocypack::Options const* vpackOptions() const noexcept;
   inline RegisterId getOutputRegister() const { return _outReg; }
   bool usesInputRegister() const;
   inline RegisterId getInputRegister() const { return _inReg; }
 
  private:
-  transaction::Methods* _trxPtr;
+  velocypack::Options const* _vpackOptions;
   RegisterId const _outReg;
   RegisterId const _inReg;
 };
