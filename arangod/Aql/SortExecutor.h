@@ -54,14 +54,14 @@ class SortExecutorInfos : public ExecutorInfos {
                     AqlItemBlockManager& manager, RegisterId nrInputRegisters,
                     RegisterId nrOutputRegisters, std::unordered_set<RegisterId> registersToClear,
                     std::unordered_set<RegisterId> registersToKeep,
-                    transaction::Methods* trx, bool stable);
+                    velocypack::Options const*, bool stable);
 
   SortExecutorInfos() = delete;
   SortExecutorInfos(SortExecutorInfos&&) = default;
   SortExecutorInfos(SortExecutorInfos const&) = delete;
   ~SortExecutorInfos() = default;
 
-  arangodb::transaction::Methods* trx() const;
+  [[nodiscard]] velocypack::Options const* vpackOptions() const noexcept;
 
   std::vector<SortRegister>& sortRegisters();
 
@@ -69,9 +69,7 @@ class SortExecutorInfos : public ExecutorInfos {
 
   std::size_t _limit;
   AqlItemBlockManager& _manager;
-
- private:
-  arangodb::transaction::Methods* _trx;
+  velocypack::Options const* _vpackOptions;
   std::vector<SortRegister> _sortRegisters;
   bool _stable;
 };

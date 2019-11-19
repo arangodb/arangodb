@@ -37,6 +37,7 @@
 #include "Aql/Range.h"
 #include "Aql/V8Executor.h"
 #include "Aql/Variable.h"
+#include "Aql/AqlValueMaterializer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/StringBuffer.h"

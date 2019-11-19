@@ -37,6 +37,7 @@
 #include "Aql/Graphs.h"
 #include "Aql/ModificationOptions.h"
 #include "Aql/Query.h"
+#include "Aql/AqlValueMaterializer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"

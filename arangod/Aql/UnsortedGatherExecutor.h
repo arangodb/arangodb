@@ -85,9 +85,9 @@ class UnsortedGatherExecutor {
   
  private:
   Fetcher& _fetcher;
-  
-  ::arangodb::containers::SmallVector<ExecutionState>::allocator_type::arena_type _arena;
-  ::arangodb::containers::SmallVector<ExecutionState> _upstream{_arena};
+  // 64: default size of buffer; 8: Alignment size; computed to 4 but breaks in windows debug build.
+  ::arangodb::containers::SmallVector<ExecutionState, 64, 8>::allocator_type::arena_type _arena;
+  ::arangodb::containers::SmallVector<ExecutionState, 64, 8> _upstream{_arena};
 
   // Total Number of dependencies
   size_t _numberDependencies;

@@ -684,7 +684,7 @@ int TRI_RemoveDirectoryDeterministic(char const* filename) {
 
 std::string TRI_Dirname(std::string const& path) {
   size_t n = path.size();
-  
+
   if (n == 0) {
     // "" => "."
     return std::string(".");
@@ -764,6 +764,10 @@ std::string TRI_Basename(char const* path) {
       return std::string(p + 1, n - 1);
     }
   }
+}
+
+std::string TRI_Basename(std::string const& path) {
+  return TRI_Basename(path.c_str());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1124,7 +1128,7 @@ bool TRI_ProcessFile(char const* filename,
 char* TRI_SlurpGzipFile(char const* filename, size_t* length) {
   TRI_set_errno(TRI_ERROR_NO_ERROR);
   gzFile gzFd = gzopen(filename,"rb");
-  auto fdGuard = arangodb::scopeGuard([&gzFd]() { 
+  auto fdGuard = arangodb::scopeGuard([&gzFd]() {
     if (nullptr != gzFd) {
       gzclose(gzFd);
     }
@@ -1181,7 +1185,7 @@ char* TRI_SlurpDecryptFile(EncryptionFeature& encryptionFeature, char const* fil
   TRI_set_errno(TRI_ERROR_NO_ERROR);
 
   encryptionFeature.setKeyFile(keyfile);
-  auto keyGuard = arangodb::scopeGuard([&encryptionFeature]() { 
+  auto keyGuard = arangodb::scopeGuard([&encryptionFeature]() {
     encryptionFeature.clearKey();
   });
 
@@ -2320,7 +2324,7 @@ std::string TRI_GetTempPath() {
         // no --temp.path was specified
         // fill template and create directory
         tries = 9;
-  
+
         // create base directories of the new directory (but ignore any failures
         // if they already exist. if this fails, the following mkDTemp will either
         // succeed or fail and return an error
