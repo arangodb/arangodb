@@ -65,9 +65,11 @@ ReplicationApplierConfiguration::ReplicationApplierConfiguration()
       _incremental(false),
       _verbose(false),
       _restrictType(RestrictType::None) {
-  auto feature = application_features::ApplicationServer::getFeature<ReplicationFeature>("Replication");
-  _requestTimeout = feature->requestTimeout();
-  _connectTimeout = feature->connectTimeout();
+  auto* feature = application_features::ApplicationServer::lookupFeature<ReplicationFeature>("Replication");
+  if (feature != nullptr) {
+    _requestTimeout = feature->requestTimeout();
+    _connectTimeout = feature->connectTimeout();
+  }
 }
 
 /// @brief reset the configuration to defaults
@@ -105,9 +107,11 @@ void ReplicationApplierConfiguration::reset() {
   _force32mode = false;
 #endif
       
-  auto feature = application_features::ApplicationServer::getFeature<ReplicationFeature>("Replication");
-  _requestTimeout = feature->requestTimeout();
-  _connectTimeout = feature->connectTimeout();
+  auto* feature = application_features::ApplicationServer::lookupFeature<ReplicationFeature>("Replication");
+  if (feature != nullptr) {
+    _requestTimeout = feature->requestTimeout();
+    _connectTimeout = feature->connectTimeout();
+  }
 }
 
 /// @brief get a VelocyPack representation
@@ -228,14 +232,18 @@ ReplicationApplierConfiguration ReplicationApplierConfiguration::fromVelocyPack(
 
   value = slice.get("requestTimeout");
   if (value.isNumber()) {
-    auto feature = application_features::ApplicationServer::getFeature<ReplicationFeature>("Replication");
-    configuration._requestTimeout = feature->checkRequestTimeout(value.getNumber<double>());
+    auto* feature = application_features::ApplicationServer::lookupFeature<ReplicationFeature>("Replication");
+    if (feature != nullptr) {
+      configuration._requestTimeout = feature->checkRequestTimeout(value.getNumber<double>());
+    }
   }
 
   value = slice.get("connectTimeout");
   if (value.isNumber()) {
-    auto feature = application_features::ApplicationServer::getFeature<ReplicationFeature>("Replication");
-    configuration._connectTimeout = feature->checkConnectTimeout(value.getNumber<double>());
+    auto* feature = application_features::ApplicationServer::lookupFeature<ReplicationFeature>("Replication");
+    if (feature != nullptr) {
+      configuration._connectTimeout = feature->checkConnectTimeout(value.getNumber<double>());
+    }
   }
 
   value = slice.get("maxConnectRetries");

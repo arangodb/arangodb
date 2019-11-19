@@ -774,9 +774,11 @@ void HeartbeatThread::runSingleServer() {
         TRI_ASSERT(!config._skipCreateDrop);
         config._includeFoxxQueues = true; // sync _queues and _jobs
     
-        auto feature = application_features::ApplicationServer::getFeature<ReplicationFeature>("Replication");
-        config._connectTimeout = feature->checkConnectTimeout(config._connectTimeout);
-        config._requestTimeout = feature->checkRequestTimeout(config._requestTimeout);
+        auto* feature = application_features::ApplicationServer::lookupFeature<ReplicationFeature>("Replication");
+        if (feature != nullptr) {
+          config._connectTimeout = feature->checkConnectTimeout(config._connectTimeout);
+          config._requestTimeout = feature->checkRequestTimeout(config._requestTimeout);
+        }
 
         applier->forget();  // forget about any existing configuration
         applier->reconfigure(config);
