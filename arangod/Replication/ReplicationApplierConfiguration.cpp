@@ -26,6 +26,7 @@
 #include "Basics/Exceptions.h"
 #include "Cluster/ClusterFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
+#include "Replication/ReplicationFeature.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -41,7 +42,7 @@ ReplicationApplierConfiguration::ReplicationApplierConfiguration()
       _username(),
       _password(),
       _jwt(),
-      _requestTimeout(600.0),
+      _requestTimeout(1200.0),
       _connectTimeout(10.0),
       _ignoreErrors(0),
       _maxConnectRetries(100),
@@ -63,7 +64,11 @@ ReplicationApplierConfiguration::ReplicationApplierConfiguration()
       _requireFromPresent(true),
       _incremental(false),
       _verbose(false),
-      _restrictType(RestrictType::None) {}
+      _restrictType(RestrictType::None) {
+  auto feature = application_features::ApplicationServer::getFeature<ReplicationFeature>("Replication");
+  _requestTimeout = feature->requestTimeout();
+  _connectTimeout = feature->connectTimeout();
+}
 
 /// @brief reset the configuration to defaults
 void ReplicationApplierConfiguration::reset() {
@@ -72,7 +77,7 @@ void ReplicationApplierConfiguration::reset() {
   _username.clear();
   _password.clear();
   _jwt.clear();
-  _requestTimeout = 600.0;
+  _requestTimeout = 1200.0;
   _connectTimeout = 10.0;
   _ignoreErrors = 0;
   _maxConnectRetries = 100;
@@ -99,6 +104,10 @@ void ReplicationApplierConfiguration::reset() {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   _force32mode = false;
 #endif
+      
+  auto feature = application_features::ApplicationServer::getFeature<ReplicationFeature>("Replication");
+  _requestTimeout = feature->requestTimeout();
+  _connectTimeout = feature->connectTimeout();
 }
 
 /// @brief get a VelocyPack representation
@@ -219,12 +228,14 @@ ReplicationApplierConfiguration ReplicationApplierConfiguration::fromVelocyPack(
 
   value = slice.get("requestTimeout");
   if (value.isNumber()) {
-    configuration._requestTimeout = value.getNumber<double>();
+    auto feature = application_features::ApplicationServer::getFeature<ReplicationFeature>("Replication");
+    configuration._requestTimeout = feature->checkRequestTimeout(value.getNumber<double>());
   }
 
   value = slice.get("connectTimeout");
   if (value.isNumber()) {
-    configuration._connectTimeout = value.getNumber<double>();
+    auto feature = application_features::ApplicationServer::getFeature<ReplicationFeature>("Replication");
+    configuration._connectTimeout = feature->checkConnectTimeout(value.getNumber<double>());
   }
 
   value = slice.get("maxConnectRetries");
