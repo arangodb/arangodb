@@ -45,10 +45,10 @@ SubqueryEndExecutorInfos::SubqueryEndExecutorInfos(
     RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
     std::unordered_set<RegisterId> const& registersToClear,
     std::unordered_set<RegisterId> registersToKeep,
-    transaction::Methods* trxPtr, RegisterId inReg, RegisterId outReg)
+    velocypack::Options const* const options, RegisterId inReg, RegisterId outReg)
     : ExecutorInfos(std::move(readableInputRegisters), std::move(writeableOutputRegisters), nrInputRegisters,
                     nrOutputRegisters, registersToClear, std::move(registersToKeep)),
-      _trxPtr(trxPtr),
+      _vpackOptions(options),
       _outReg(outReg),
       _inReg(inReg) {}
 
@@ -58,6 +58,10 @@ SubqueryEndExecutorInfos::~SubqueryEndExecutorInfos() = default;
 
 bool SubqueryEndExecutorInfos::usesInputRegister() const {
   return _inReg != RegisterPlan::MaxRegisterId;
+}
+
+velocypack::Options const* SubqueryEndExecutorInfos::vpackOptions() const noexcept {
+  return _vpackOptions;
 }
 
 SubqueryEndExecutor::SubqueryEndExecutor(Fetcher& fetcher, SubqueryEndExecutorInfos& infos)
@@ -87,7 +91,7 @@ std::pair<ExecutionState, NoStats> SubqueryEndExecutor::produceRows(OutputAqlIte
         if (inputRow.isInitialized() && _infos.usesInputRegister()) {
           TRI_ASSERT(_accumulator->isOpenArray());
           AqlValue value = inputRow.getValue(_infos.getInputRegister());
-          value.toVelocyPack(_infos.getTrxPtr(), *_accumulator, false);
+          value.toVelocyPack(_infos.vpackOptions(), *_accumulator, false);
         }
 
         // We have received DONE on data rows, so now

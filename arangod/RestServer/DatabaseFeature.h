@@ -143,6 +143,7 @@ class DatabaseFeature : public application_features::ApplicationFeature {
 
   void enableCheckVersion() { _checkVersion = true; }
   void enableUpgrade() { _upgrade = true; }
+  void disableUpgrade() { _upgrade = false; }
   bool throwCollectionNotLoadedError() const {
     return _throwCollectionNotLoadedError.load(std::memory_order_relaxed);
   }

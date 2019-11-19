@@ -196,18 +196,6 @@ function ahuacatlSubqueryTestSuite () {
     testSpliceSubqueryOutVariableName : function () {
       const explainResult = AQL_EXPLAIN("FOR u IN _users LET theLetVariable = (FOR j IN _users RETURN j) RETURN theLetVariable");
 
-      { // TODO Remove this block as soon as subquery splicing is enabled in the cluster again.
-        //  It's here so the test will fail as soon as that happens, so the actual test will not be forgotten
-        //  to be re-enabled.
-        const isCluster = require("@arangodb/cluster").isCluster();
-        if (isCluster) {
-          const numSubqueryEndNode = findExecutionNodes(explainResult, "SubqueryEndNode").length;
-
-          assertEqual(0, numSubqueryEndNode);
-          return;
-        }
-      }
-
       const subqueryEndNode = findExecutionNodes(explainResult, "SubqueryEndNode")[0];
 
       assertEqual(subqueryEndNode.outVariable.name, "theLetVariable");
@@ -389,6 +377,12 @@ function ahuacatlSubqueryTestSuite () {
       const colName = "UnitTestSubqueryCollection";
       try {
         const col = db._create(colName, {numberOfShards: 9});
+        let dbServers = 0;
+        if (isCoordinator) {
+          dbServers = Object.values(col.shards(true)).filter((value, index, self) => {
+            return self.indexOf(value) === index;
+          }).length;
+        }
         const docs = [];
         const expected = new Map();
         for (let i = 0; i < 2000; ++i) {
@@ -399,7 +393,7 @@ function ahuacatlSubqueryTestSuite () {
         }
         col.save(docs);
 
-        // Now we do a left out join on the same collection
+        // Now we do a left outer join on the same collection
         const query = `
           FOR left IN ${colName}
             LET rightJoin = (
@@ -418,7 +412,7 @@ function ahuacatlSubqueryTestSuite () {
           assertEqual(scannedIndex, 0);
           assertEqual(filtered, 3960000);
           if (isCoordinator) {
-            assertEqual(httpRequests, 8007);
+            assertTrue(httpRequests <= 4003 * dbServers + 1, httpRequests);
           } else {
             assertEqual(httpRequests, 0);
           }
@@ -445,7 +439,7 @@ function ahuacatlSubqueryTestSuite () {
           assertEqual(scannedIndex, 40000);
           assertEqual(filtered, 0);
           if (isCoordinator) {
-            assertEqual(httpRequests, 8007);
+            assertTrue(httpRequests <= 4003 * dbServers + 1, httpRequests);
           } else {
             assertEqual(httpRequests, 0);
           }

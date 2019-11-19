@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -17,26 +17,35 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
+/// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_IRESEARCH__IRESEARCH_ANALYZER_COLLECTION_FEATURE_H
-#define ARANGOD_IRESEARCH__IRESEARCH_ANALYZER_COLLECTION_FEATURE_H 1
+#ifndef ARANGOD_AQL_INSERT_MODIFIER_H
+#define ARANGOD_AQL_INSERT_MODIFIER_H
 
-#include "ApplicationFeatures/ApplicationFeature.h"
+#include "Aql/ModificationExecutor.h"
+#include "Aql/ModificationExecutorAccumulator.h"
+#include "Aql/ModificationExecutorInfos.h"
 
 namespace arangodb {
+namespace aql {
 
-/// @brief the sole purpose of this feature is to create potentially
-/// missing `_analyzers` collection after startup. It can be removed
-/// eventually once the entire upgrading logic has been revised
-class IResearchAnalyzerCollectionFeature final : public arangodb::application_features::ApplicationFeature {
+struct ModificationExecutorInfos;
+
+class InsertModifierCompletion {
  public:
-  explicit IResearchAnalyzerCollectionFeature(arangodb::application_features::ApplicationServer& server);
+  explicit InsertModifierCompletion(ModificationExecutorInfos& infos) : _infos(infos) {}
 
-  void start() override;
+  ~InsertModifierCompletion() = default;
+
+  ModifierOperationType accumulate(ModificationExecutorAccumulator& accu,
+                                   InputAqlItemRow& row);
+  OperationResult transact(VPackSlice const& data);
+
+ private:
+  ModificationExecutorInfos& _infos;
 };
 
+}  // namespace aql
 }  // namespace arangodb
-
 #endif

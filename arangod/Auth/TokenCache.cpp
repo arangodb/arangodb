@@ -163,13 +163,7 @@ auth::TokenCache::Entry auth::TokenCache::checkAuthenticationBasic(std::string c
   {
     WRITE_LOCKER(guard, _basicLock);
     if (authorized) {
-      if (!_basicCache.emplace(secret, entry).second) {
-        // insertion did not work - probably another thread did insert the
-        // same data right now
-        // erase it and re-insert our version
-        _basicCache.erase(secret);
-        _basicCache.emplace(secret, entry);
-      }
+      _basicCache.insert_or_assign(std::move(secret), entry);
     } else {
       _basicCache.erase(secret);
     }

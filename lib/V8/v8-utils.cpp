@@ -5115,6 +5115,15 @@ void TRI_LogV8Exception(v8::Isolate* isolate, v8::TryCatch* tryCatch) {
 
       LOG_TOPIC("cb0bd", ERR, arangodb::Logger::FIXME) << "!" << l;
     }
+    auto stacktraceV8 =
+      tryCatch->StackTrace(TRI_IGETC).FromMaybe(v8::Local<v8::Value>());
+    TRI_Utf8ValueNFC stacktrace(isolate, stacktraceV8);
+
+    if (*stacktrace && stacktrace.length() > 0) {
+      LOG_TOPIC("cb0bf", DEBUG, arangodb::Logger::V8) << "!" <<
+        "stacktrace: " + std::string(*stacktrace) + "\n";
+    }
+
   }
 }
 

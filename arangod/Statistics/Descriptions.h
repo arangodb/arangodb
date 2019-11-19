@@ -32,7 +32,13 @@ namespace arangodb {
 class V8DealerFeature;
 namespace stats {
 
-enum class GroupType { System, Client, Http, Vst, Server };
+enum RequestStatisticsSource {
+  USER,
+  SUPERUSER,
+  ALL
+};
+
+enum class GroupType { System, Client, ClientUser, Http, Vst, Server };
 
 std::string fromGroupType(stats::GroupType);
 
@@ -76,7 +82,7 @@ class Descriptions final {
   std::vector<stats::Figure> const& figures() const { return _figures; }
 
   void serverStatistics(velocypack::Builder&) const;
-  void clientStatistics(velocypack::Builder&) const;
+  void clientStatistics(velocypack::Builder&, RequestStatisticsSource source) const;
   void httpStatistics(velocypack::Builder&) const;
   void processStatistics(velocypack::Builder&) const;
 

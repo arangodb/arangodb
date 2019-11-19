@@ -162,7 +162,7 @@ class Graph {
 
   bool renameCollections(std::string const& oldName, std::string const& newName);
 
-  boost::optional<EdgeDefinition const&> getEdgeDefinition(std::string const& collectionName) const;
+  std::optional<std::reference_wrapper<EdgeDefinition const>> getEdgeDefinition(std::string const& collectionName) const;
 
   virtual bool isSmart() const;
 

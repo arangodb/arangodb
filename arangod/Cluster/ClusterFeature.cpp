@@ -547,22 +547,7 @@ void ClusterFeature::start() {
 void ClusterFeature::beginShutdown() { ClusterComm::instance()->disable(); }
 
 void ClusterFeature::stop() {
-  if (_heartbeatThread != nullptr) {
-    _heartbeatThread->beginShutdown();
-  }
-
-  if (_heartbeatThread != nullptr) {
-    int counter = 0;
-    while (_heartbeatThread->isRunning()) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(100));
-      // emit warning after 5 seconds
-      if (++counter == 10 * 5) {
-        LOG_TOPIC("acaa9", WARN, arangodb::Logger::CLUSTER)
-            << "waiting for heartbeat thread to finish";
-      }
-    }
-  }
-
+  shutdownHeartbeatThread();
   ClusterComm::instance()->stopBackgroundThreads();
 }
 
@@ -572,9 +557,7 @@ void ClusterFeature::unprepare() {
     return;
   }
 
-  if (_heartbeatThread != nullptr) {
-    _heartbeatThread->beginShutdown();
-  }
+  shutdownHeartbeatThread();
 
   // change into shutdown state
   ServerState::instance()->setState(ServerState::STATE_SHUTDOWN);
@@ -667,7 +650,7 @@ void ClusterFeature::setUnregisterOnShutdown(bool unregisterOnShutdown) {
 /// @brief common routine to start heartbeat with or without cluster active
 void ClusterFeature::startHeartbeatThread(AgencyCallbackRegistry* agencyCallbackRegistry,
                                           uint64_t interval_ms, uint64_t maxFailsBeforeWarning,
-                                          const std::string& endpoints) {
+                                          std::string const& endpoints) {
   _heartbeatThread =
       std::make_shared<HeartbeatThread>(server(), agencyCallbackRegistry,
                                         std::chrono::microseconds(interval_ms * 1000),
@@ -683,6 +666,24 @@ void ClusterFeature::startHeartbeatThread(AgencyCallbackRegistry* agencyCallback
   while (!_heartbeatThread->isReady()) {
     // wait until heartbeat is ready
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
+  }
+}
+
+void ClusterFeature::shutdownHeartbeatThread() {
+  if (_heartbeatThread == nullptr) {
+    return;
+  }
+  
+  _heartbeatThread->beginShutdown();
+
+  int counter = 0;
+  while (_heartbeatThread->isRunning()) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    // emit warning after 5 seconds
+    if (++counter == 10 * 5) {
+      LOG_TOPIC("acaa9", WARN, arangodb::Logger::CLUSTER)
+          << "waiting for heartbeat thread to finish";
+    }
   }
 }
 

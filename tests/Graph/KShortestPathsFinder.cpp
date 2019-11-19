@@ -212,6 +212,52 @@ TEST_F(KShortestPathsFinderTest, many_edges_between_two_nodes) {
   ASSERT_FALSE(finder->getNextPathShortestPathResult(result));
 }
 
+class KShortestPathsFinderTestWeights : public ::testing::Test {
+ protected:
+  GraphTestSetup s;
+  MockGraphDatabase gdb;
+
+  arangodb::aql::Query* query;
+  arangodb::graph::ShortestPathOptions* spo;
+
+  KShortestPathsFinder* finder;
+
+  KShortestPathsFinderTestWeights() : gdb(s.server, "testVocbase") {
+    gdb.addVertexCollection("v", 10);
+    gdb.addEdgeCollection("e", "v",
+                          {{1, 2, 10},
+                           {1, 3, 10},
+                           {1, 10, 100},
+                           {2, 4, 10},
+                           {3, 4, 20},
+                           {7, 3, 10},
+                           {8, 3, 10},
+                           {9, 3, 10}});
+
+    query = gdb.getQuery("RETURN 1");
+    spo = gdb.getShortestPathOptions(query);
+    spo->weightAttribute = "cost";
+
+    finder = new KShortestPathsFinder(*spo);
+  }
+
+  ~KShortestPathsFinderTestWeights() { delete finder; }
+};
+
+TEST_F(KShortestPathsFinderTestWeights, diamond_path) {
+  auto start = velocypack::Parser::fromJson("\"v/1\"");
+  auto end = velocypack::Parser::fromJson("\"v/4\"");
+  ShortestPathResult result;
+  std::string msgs;
+
+  finder->startKShortestPathsTraversal(start->slice(), end->slice());
+
+  ASSERT_TRUE(finder->getNextPathShortestPathResult(result));
+  auto cpr = checkPath(spo, result, {"1", "2", "4"},
+                       {{}, {"v/1", "v/2"}, {"v/2", "v/4"}}, msgs);
+  ASSERT_TRUE(cpr) << msgs;
+}
+
 }  // namespace graph
 }  // namespace tests
 }  // namespace arangodb

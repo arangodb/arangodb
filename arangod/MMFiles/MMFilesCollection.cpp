@@ -148,7 +148,7 @@ static MMFilesDatafileStatisticsContainer* FindDatafileStats(OpenIteratorState* 
   }
 
   auto stats = std::make_unique<MMFilesDatafileStatisticsContainer>();
-  state->_stats.emplace(fid, stats.get());
+  state->_stats.try_emplace(fid, stats.get());
   return stats.release();
 }
 
@@ -295,7 +295,7 @@ arangodb::Result MMFilesCollection::persistProperties() {
   try {
     auto infoBuilder = _logicalCollection.toVelocyPackIgnore(
         {"path", "statusString"},
-        LogicalDataSource::Serialization::Persistence);
+        LogicalDataSource::Serialization::PersistenceWithInProgress);
     MMFilesCollectionMarker marker(TRI_DF_MARKER_VPACK_CHANGE_COLLECTION,
                                    _logicalCollection.vocbase().id(),
                                    _logicalCollection.id(), infoBuilder.slice());
@@ -583,18 +583,18 @@ MMFilesCollection::MMFilesCollection(LogicalCollection& collection, VPackSlice c
       _nextCompactionStartIndex(0),
       _lastCompactionStatus(nullptr),
       _lastCompactionStamp(0.0),
-      _journalSize(Helper::readNumericValue<uint32_t>(
+      _journalSize(Helper::getNumericValue<uint32_t>(
           info, "maximalSize",  // Backwards compatibility. Agency uses
                                 // journalSize. paramters.json uses maximalSize
-          Helper::readNumericValue<uint32_t>(info, "journalSize", TRI_JOURNAL_DEFAULT_SIZE))),
+          Helper::getNumericValue<uint32_t>(info, "journalSize", TRI_JOURNAL_DEFAULT_SIZE))),
       _isVolatile(
-          arangodb::basics::VelocyPackHelper::readBooleanValue(info,
+          arangodb::basics::VelocyPackHelper::getBooleanValue(info,
                                                                "isVolatile", false)),
       _persistentIndexes(0),
       _primaryIndex(nullptr),
-      _indexBuckets(Helper::readNumericValue<uint32_t>(info, "indexBuckets", defaultIndexBuckets)),
+      _indexBuckets(Helper::getNumericValue<uint32_t>(info, "indexBuckets", defaultIndexBuckets)),
       _useSecondaryIndexes(true),
-      _doCompact(Helper::readBooleanValue(info, "doCompact", true)),
+      _doCompact(Helper::getBooleanValue(info, "doCompact", true)),
       _maxTick(0) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
 
@@ -1684,11 +1684,15 @@ int MMFilesCollection::fillIndexes(transaction::Methods& trx,
         continue;
       }
       MMFilesIndex* midx = static_cast<MMFilesIndex*>(idx.get());
-      if (midx->isPersistent()) {
-        continue;
+      if (midx->needsReversal()) {
+        midx->drop(); // index requires separate reversal and we promised (with INDEX_CREATION hint) we will drop on any failure
+      } else {
+        if (midx->isPersistent()) {
+          continue;
+        }
+        idx->unload();  // TODO: check is this safe? truncate not necessarily
+                        // feasible
       }
-      idx->unload();  // TODO: check is this safe? truncate not necessarily
-                      // feasible
     }
   };
 
@@ -2181,6 +2185,8 @@ std::shared_ptr<Index> MMFilesCollection::createIndex(arangodb::velocypack::Slic
                                             &ctx),  // aliasing ctor
       _logicalCollection, AccessMode::Type::EXCLUSIVE);
 
+  trx.addHint(transaction::Hints::Hint::INDEX_CREATION);
+
   Result res = trx.begin();
 
   if (!res.ok()) {
@@ -2282,7 +2288,7 @@ std::shared_ptr<Index> MMFilesCollection::createIndex(transaction::Methods& trx,
   if (!engine->inRecovery()) {
     auto builder = _logicalCollection.toVelocyPackIgnore(
         {"path", "statusString"},
-        LogicalDataSource::Serialization::Persistence);
+        LogicalDataSource::Serialization::PersistenceWithInProgress);
     _logicalCollection.properties(builder.slice(),
                                   false);  // always a full-update
   }
@@ -2420,7 +2426,7 @@ bool MMFilesCollection::dropIndex(TRI_idx_iid_t iid) {
   {
     auto builder = _logicalCollection.toVelocyPackIgnore(
         {"path", "statusString"},
-        LogicalDataSource::Serialization::Persistence);
+        LogicalDataSource::Serialization::PersistenceWithInProgress);
 
     _logicalCollection.properties(builder.slice(),
                                   false);  // always a full-update

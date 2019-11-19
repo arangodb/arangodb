@@ -112,6 +112,7 @@ actions.defineHttp({
         operations['/arango/Plan/DBServers/' + serverId] = {'op': 'delete'};
         operations['/arango/Current/ServersRegistered/' + serverId] = {'op': 'delete'};
         operations['/arango/Current/DBServers/' + serverId] = {'op': 'delete'};
+        operations['/arango/Current/Coordinators/' + serverId] = {'op': 'delete'};
         operations['/arango/Supervision/Health/' + serverId] = {'op': 'delete'};
         operations['/arango/Target/MapUniqueToShortID/' + serverId] = {'op': 'delete'};
         operations['/arango/Current/ServersKnown/' + serverId] = {'op': 'delete'};

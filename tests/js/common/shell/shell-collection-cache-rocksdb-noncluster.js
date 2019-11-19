@@ -209,6 +209,7 @@ function CollectionCacheSuite () {
         }
       });
 
+/* Unloading doesn't have a deterministic effect in rocksdb.
       c.unload(); // should destroy cache
       f = c.figures(); // will load collection
       assertTrue(f.cacheSize > 0);
@@ -223,6 +224,7 @@ function CollectionCacheSuite () {
           assertEqual(idx.figures.cacheLifeTimeHitRate, 0);
         }
       });
+*/
     }
   };
 }

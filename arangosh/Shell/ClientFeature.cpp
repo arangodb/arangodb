@@ -299,7 +299,7 @@ void ClientFeature::prepare() {
   if (_askJwtSecret) {
     // ask for a jwt secret
     readJwtSecret();
-  } else if(!_jwtSecretFile.empty()) {
+  } else if (!_jwtSecretFile.empty()) {
     loadJwtSecretFile();
   } else if (_authentication && _haveServerPassword) {
     // ask for a password

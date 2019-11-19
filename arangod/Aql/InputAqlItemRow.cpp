@@ -29,6 +29,7 @@
 #include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/AqlValue.h"
 #include "Aql/Range.h"
+#include "Basics/StaticStrings.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
@@ -118,7 +119,7 @@ SharedAqlItemBlockPtr InputAqlItemRow::cloneToBlock(AqlItemBlockManager& manager
 ///                  corresponding position
 ///  "raw":     List of actual values, positions 0 and 1 are always null
 ///                  such that actual indices start at 2
-void InputAqlItemRow::toVelocyPack(transaction::Methods* trx, VPackBuilder& result) const {
+void InputAqlItemRow::toVelocyPack(velocypack::Options const* const trxOptions, VPackBuilder& result) const {
   TRI_ASSERT(isInitialized());
   TRI_ASSERT(result.isOpenObject());
   VPackOptions options(VPackOptions::Defaults);
@@ -133,9 +134,7 @@ void InputAqlItemRow::toVelocyPack(transaction::Methods* trx, VPackBuilder& resu
 
   result.add("nrItems", VPackValue(1));
   result.add("nrRegs", VPackValue(getNrRegisters()));
-  result.add("error", VPackValue(false));
-  // Backwards compatbility 3.3
-  result.add("exhausted", VPackValue(false));
+  result.add(StaticStrings::Error, VPackValue(false));
 
   enum State {
     Empty,       // saw an empty value
@@ -204,8 +203,8 @@ void InputAqlItemRow::toVelocyPack(transaction::Methods* trx, VPackBuilder& resu
 
       if (it == table.end()) {
         currentState = Next;
-        a.toVelocyPack(trx, raw, false);
-        table.emplace(a, pos++);
+        a.toVelocyPack(trxOptions, raw, false);
+        table.try_emplace(a, pos++);
       } else {
         currentState = Positional;
         tablePos = it->second;
@@ -291,7 +290,8 @@ bool InputAqlItemRow::operator!=(InputAqlItemRow const& other) const noexcept {
   return !(*this == other);
 }
 
-bool InputAqlItemRow::equates(InputAqlItemRow const& other) const noexcept {
+bool InputAqlItemRow::equates(InputAqlItemRow const& other,
+                              velocypack::Options const* const options) const noexcept {
   if (!isInitialized() || !other.isInitialized()) {
     return isInitialized() == other.isInitialized();
   }
@@ -299,8 +299,9 @@ bool InputAqlItemRow::equates(InputAqlItemRow const& other) const noexcept {
   if (getNrRegisters() != other.getNrRegisters()) {
     return false;
   }
-  // NOLINTNEXTLINE(modernize-use-transparent-functors)
-  auto const eq = std::equal_to<AqlValue>{};
+  auto const eq = [options](auto left, auto right) {
+    return 0 == AqlValue::Compare(options, left, right, false);
+  };
   for (RegisterId i = 0; i < getNrRegisters(); ++i) {
     if (!eq(getValue(i), other.getValue(i))) {
       return false;

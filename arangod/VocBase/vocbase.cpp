@@ -172,7 +172,7 @@ void TRI_vocbase_t::registerCollection(bool doLock,
     TRI_DEFER(checkCollectionInvariants());
 
     // check name
-    auto it = _dataSourceByName.emplace(name, collection);
+    auto it = _dataSourceByName.try_emplace(name, collection);
 
     if (!it.second) {
       std::string msg;
@@ -187,7 +187,7 @@ void TRI_vocbase_t::registerCollection(bool doLock,
 
     // check collection identifier
     try {
-      auto it2 = _dataSourceById.emplace(cid, collection);
+      auto it2 = _dataSourceById.try_emplace(cid, collection);
 
       if (!it2.second) {
         std::string msg;
@@ -204,7 +204,7 @@ void TRI_vocbase_t::registerCollection(bool doLock,
     }
 
     try {
-      auto it2 = _dataSourceByUuid.emplace(collection->guid(), collection);
+      auto it2 = _dataSourceByUuid.try_emplace(collection->guid(), collection);
 
       if (!it2.second) {
         std::string msg;
@@ -949,9 +949,6 @@ void TRI_vocbase_t::inventory(VPackBuilder& result, TRI_voc_tick_t maxTick,
           case Index::TRI_IDX_TYPE_PRIMARY_INDEX:
           case Index::TRI_IDX_TYPE_EDGE_INDEX:
             return false;
-          case Index::TRI_IDX_TYPE_IRESEARCH_LINK:
-            flags = Index::makeFlags(Index::Serialize::Internals);
-            return true;
           default:
             flags = Index::makeFlags(Index::Serialize::Basics);
             return !idx->isHidden();
@@ -1029,8 +1026,8 @@ std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::lookupCollectionByUu
 }
 
 /// @brief looks up a data-source by identifier
-std::shared_ptr<arangodb::LogicalDataSource> TRI_vocbase_t::lookupDataSource(TRI_voc_cid_t id) const
-    noexcept {
+std::shared_ptr<arangodb::LogicalDataSource> TRI_vocbase_t::lookupDataSource(
+    TRI_voc_cid_t id) const noexcept {
   RECURSIVE_READ_LOCKER(_dataSourceLock, _dataSourceLockWriteOwner);
   auto itr = _dataSourceById.find(id);
 
@@ -1775,10 +1772,10 @@ std::uint32_t TRI_vocbase_t::writeConcern() const {
 bool TRI_vocbase_t::IsAllowedName(arangodb::velocypack::Slice slice) noexcept {
   return !slice.isObject()
              ? false
-             : IsAllowedName(arangodb::basics::VelocyPackHelper::readBooleanValue(
+             : IsAllowedName(arangodb::basics::VelocyPackHelper::getBooleanValue(
                                  slice, StaticStrings::DataSourceSystem, false),
                              arangodb::basics::VelocyPackHelper::getStringRef(
-                                 slice, StaticStrings::DataSourceName, ""));
+                                 slice, StaticStrings::DataSourceName, VPackStringRef()));
 }
 
 /// @brief checks if a database name is allowed
