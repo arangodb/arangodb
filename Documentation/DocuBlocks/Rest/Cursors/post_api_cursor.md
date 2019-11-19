@@ -88,7 +88,7 @@ Please note that the query options `cache`, `count` and `fullCount` will not wor
 Additionally query statistics, warnings and profiling data will only be available after the query is finished.
 The default value is *false*
 
-@RESTSTRUCT{optimizer,object,optional,post_api_cursor_opts_optimizer}
+@RESTSTRUCT{optimizer,post_api_cursor_opts,object,optional,post_api_cursor_opts_optimizer}
 Options related to the query optimizer.
 
 @RESTSTRUCT{rules,post_api_cursor_opts_optimizer,array,optional,string}
