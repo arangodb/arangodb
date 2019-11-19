@@ -77,7 +77,7 @@ function dumpTestSuite () {
       for (let i = 1; i < 200000; i += 2) {
         docs.push("test" + i);
         if (docs.length === 10000) {
-          results = results.append(c.document(docs));
+          results = results.concat(c.document(docs));
           docs = [];
         }
       }
