@@ -224,8 +224,16 @@ namespace ngram_vpack {
 const irs::string_ref MIN_PARAM_NAME = "min";
 const irs::string_ref MAX_PARAM_NAME = "max";
 const irs::string_ref PRESERVE_ORIGINAL_PARAM_NAME = "preserveOriginal";
+const irs::string_ref STREAM_TYPE_PARAM_NAME       = "streamType";
+const irs::string_ref START_MARKER_PARAM_NAME      = "startMarker";
+const irs::string_ref END_MARKER_PARAM_NAME        = "endMarker";
 
-bool parse_ngram_vpack_config(const irs::string_ref& args, irs::analysis::ngram_token_stream::options_t& options) {
+const std::map<irs::string_ref, irs::analysis::ngram_token_stream_base::InputType> STREAM_TYPE_CONVERT_MAP = {
+  { "binary", irs::analysis::ngram_token_stream_base::InputType::Binary },
+  { "utf8", irs::analysis::ngram_token_stream_base::InputType::UTF8 }
+};
+
+bool parse_ngram_vpack_config(const irs::string_ref& args, irs::analysis::ngram_token_stream_base::Options& options) {
   auto slice = arangodb::iresearch::slice<char>(args);
 
   if (!slice.isObject()) {
@@ -264,6 +272,57 @@ bool parse_ngram_vpack_config(const irs::string_ref& args, irs::analysis::ngram_
       << slice.toString();
     return false;
   }
+
+  if (slice.hasKey(START_MARKER_PARAM_NAME.c_str())) {
+    auto start_marker_json = slice.get(START_MARKER_PARAM_NAME.c_str());
+    if (start_marker_json.isString()) {
+
+      options.start_marker = irs::ref_cast<irs::byte_type>(
+        arangodb::iresearch::getStringRef(start_marker_json));
+    } else {
+      IR_FRMT_ERROR(
+          "Failed to read '%s' attribute as string while constructing "
+          "ngram_token_stream from jSON arguments: %s",
+          START_MARKER_PARAM_NAME.c_str(), args.c_str());
+      return false;
+    }
+  }
+
+  if (slice.hasKey(END_MARKER_PARAM_NAME.c_str())) {
+    auto end_marker_json = slice.get(END_MARKER_PARAM_NAME.c_str());
+    if (end_marker_json.isString()) {
+      options.end_marker = irs::ref_cast<irs::byte_type>(
+        arangodb::iresearch::getStringRef(end_marker_json));
+    } else {
+      IR_FRMT_ERROR(
+          "Failed to read '%s' attribute as string while constructing "
+          "ngram_token_stream from jSON arguments: %s",
+          END_MARKER_PARAM_NAME.c_str(), args.c_str());
+      return false;
+    }
+  }
+
+  if (slice.hasKey(STREAM_TYPE_PARAM_NAME.c_str())) {
+      auto stream_type_json = slice.get(STREAM_TYPE_PARAM_NAME.c_str());
+
+      if (!stream_type_json.isString()) {
+        IR_FRMT_WARN(
+            "Non-string value in '%s' while constructing ngram_token_stream "
+            "from jSON arguments: %s",
+            STREAM_TYPE_PARAM_NAME.c_str(), args.c_str());
+        return false;
+      }
+      auto itr = STREAM_TYPE_CONVERT_MAP.find(arangodb::iresearch::getStringRef(stream_type_json));
+      if (itr == STREAM_TYPE_CONVERT_MAP.end()) {
+        IR_FRMT_WARN(
+            "Invalid value in '%s' while constructing ngram_token_stream from "
+            "jSON arguments: %s",
+            STREAM_TYPE_PARAM_NAME.c_str(), args.c_str());
+        return false;
+      }
+      options.stream_bytes_type = itr->second;
+  }
+
   options.min_gram = min;
   options.max_gram = max;
   options.preserve_original = slice.get(PRESERVE_ORIGINAL_PARAM_NAME).getBool();
@@ -272,16 +331,22 @@ bool parse_ngram_vpack_config(const irs::string_ref& args, irs::analysis::ngram_
 
 
 irs::analysis::analyzer::ptr ngram_vpack_builder(irs::string_ref const& args) noexcept {
-  irs::analysis::ngram_token_stream::options_t tmp;
+  irs::analysis::ngram_token_stream_base::Options tmp;
   if (parse_ngram_vpack_config(args, tmp)) {
-    return irs::analysis::ngram_token_stream::make(tmp);
+    switch (tmp.stream_bytes_type) {
+      case irs::analysis::ngram_token_stream_base::InputType::Binary:
+        return irs::analysis::ngram_token_stream<irs::analysis::ngram_token_stream_base::InputType::Binary>::make(tmp);
+      case irs::analysis::ngram_token_stream_base::InputType::UTF8:
+        return irs::analysis::ngram_token_stream<irs::analysis::ngram_token_stream_base::InputType::UTF8>::make(tmp);
+    }
   }
+
   return nullptr;
 }
 
 
 bool ngram_vpack_normalizer(const irs::string_ref& args, std::string& out) noexcept {
-  irs::analysis::ngram_token_stream::options_t tmp;
+  irs::analysis::ngram_token_stream_base::Options tmp;
   if (parse_ngram_vpack_config(args, tmp)) {
     VPackBuilder vpack;
     {
@@ -296,7 +361,7 @@ bool ngram_vpack_normalizer(const irs::string_ref& args, std::string& out) noexc
   return false;
 }
 
-REGISTER_ANALYZER_VPACK(irs::analysis::ngram_token_stream,
+REGISTER_ANALYZER_VPACK(irs::analysis::ngram_token_stream_base,
     ngram_vpack_builder, ngram_vpack_normalizer);
 }  // namespace ngram_vpack
 
