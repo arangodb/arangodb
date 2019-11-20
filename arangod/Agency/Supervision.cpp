@@ -159,8 +159,8 @@ struct HealthRecord {
 // This is initialized in AgencyFeature:
 std::string Supervision::_agencyPrefix = "/arango";
 
-Supervision::Supervision(application_features::ApplicationServer& server)
-    : arangodb::CriticalThread(server, "Supervision"),
+Supervision::Supervision()
+    : arangodb::CriticalThread("Supervision"),
       _agent(nullptr),
       _snapshot("Supervision"),
       _transient("Transient"),
@@ -458,7 +458,8 @@ std::vector<check_t> Supervision::check(std::string const& type) {
 
   // Do actual monitoring
   for (auto const& machine : machinesPlanned) {
-    std::string serverID(machine.first), shortName;
+    std::string lastHeartbeatStatus, lastHeartbeatAcked, lastHeartbeatTime,
+            lastStatus, serverID(machine.first), shortName;
 
     // short name arrives asynchronous to machine registering, make sure
     //  it has arrived before trying to use it
@@ -892,7 +893,7 @@ void Supervision::run() {
   }
 
   if (shutdown) {
-    _server.beginShutdown();
+    ApplicationServer::server->beginShutdown();
   }
 }
 
@@ -1548,7 +1549,7 @@ void Supervision::enforceReplication() {
         replicationFactor = replFact.first;
       } else {
         auto replFact2 = col.hasAsString(StaticStrings::ReplicationFactor);
-        if (replFact2.second && replFact2.first == StaticStrings::Satellite) {
+        if (replFact2.second && replFact2.first == "satellite") {
           // satellites => distribute to every server
           auto available = Job::availableServers(_snapshot);
           replicationFactor = Job::countGoodOrBadServersInList(_snapshot, available);
