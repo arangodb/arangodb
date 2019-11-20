@@ -1288,7 +1288,7 @@ static void ClientConnection_timeout(v8::FunctionCallbackInfo<v8::Value> const& 
     ClientFeature* client = static_cast<ClientFeature*>(wrap->Value());
 
     if (client == nullptr) {
-      TRI_V8_THROW_EXCEPTION_INTERNAL("timout() unable to get client instance");
+      TRI_V8_THROW_EXCEPTION_INTERNAL("timeout() unable to get client instance");
     }
 
     client->requestTimeout(value);
