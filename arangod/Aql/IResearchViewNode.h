@@ -199,6 +199,8 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
     }
   }
 
+  // The structure is used for temporary saving of optimization rule data.
+  // It contains document references that could be replaced in late materialization rule.
   struct OptimizationState {
     using ViewVarsToBeReplaced = std::vector<aql::latematerialized::AstAndFieldData>;
 
