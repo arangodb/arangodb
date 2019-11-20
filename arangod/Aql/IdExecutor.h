@@ -59,8 +59,8 @@ class IdExecutorInfos : public ExecutorInfos {
 
   [[nodiscard]] std::string const& distributeId();
 
-  // TODO This is probably needed only for UnsortingGather now, so can be removed here.
-  [[nodiscard]] bool isResponsibleForInitializeCursor() const;
+  // TODO This is probably needed only for UnsortedGather now, so can be removed here.
+  //[[nodiscard]] bool isResponsibleForInitializeCursor() const;
 
  private:
   std::string const _distributeId;

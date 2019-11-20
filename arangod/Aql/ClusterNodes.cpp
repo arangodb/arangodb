@@ -49,7 +49,7 @@
 #include "Aql/SingleRemoteModificationExecutor.h"
 #include "Aql/SortRegister.h"
 #include "Aql/SortingGatherExecutor.h"
-#include "Aql/UnsortingGatherExecutor.h"
+#include "Aql/UnsortedGatherExecutor.h"
 #include "Aql/types.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
@@ -502,7 +502,7 @@ std::unique_ptr<ExecutionBlock> GatherNode::createBlock(
       IdExecutorInfos infos(getRegisterPlan()->nrRegs[getDepth()],
                             calcRegsToKeep(), getRegsToClear());
 
-      return std::make_unique<ExecutionBlockImpl<UnsortingGatherExecutor>>(&engine, this,
+      return std::make_unique<ExecutionBlockImpl<UnsortedGatherExecutor>>(&engine, this,
                                                                            std::move(infos));
     }
   }

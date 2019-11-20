@@ -64,7 +64,7 @@
 #include "Aql/SubqueryExecutor.h"
 #include "Aql/SubqueryStartExecutor.h"
 #include "Aql/TraversalExecutor.h"
-#include "Aql/UnsortingGatherExecutor.h"
+#include "Aql/UnsortedGatherExecutor.h"
 
 #include "Aql/SimpleModifier.h"
 #include "Aql/UpsertModifier.h"
@@ -373,7 +373,7 @@ static SkipVariants constexpr skipType() {
            std::is_same<Executor, LimitExecutor>::value ||
            std::is_same<Executor, ConstrainedSortExecutor>::value ||
            std::is_same<Executor, SortingGatherExecutor>::value ||
-           std::is_same<Executor, UnsortingGatherExecutor>::value ||
+           std::is_same<Executor, UnsortedGatherExecutor>::value ||
            std::is_same<Executor, ParallelUnsortedGatherExecutor>::value ||
            std::is_same<Executor, MaterializeExecutor<RegisterId>>::value ||
            std::is_same<Executor, MaterializeExecutor<std::string const&>>::value),
@@ -897,7 +897,7 @@ template class ::arangodb::aql::ExecutionBlockImpl<SubqueryStartExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<TraversalExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<SortingGatherExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<ParallelUnsortedGatherExecutor>;
-template class ::arangodb::aql::ExecutionBlockImpl<UnsortingGatherExecutor>;
+template class ::arangodb::aql::ExecutionBlockImpl<UnsortedGatherExecutor>;
 
 template class ::arangodb::aql::ExecutionBlockImpl<MaterializeExecutor<RegisterId>>;
 template class ::arangodb::aql::ExecutionBlockImpl<MaterializeExecutor<std::string const&>>;

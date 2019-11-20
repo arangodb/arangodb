@@ -20,8 +20,8 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_UNSORTINGGATHEREXECUTOR_H
-#define ARANGOD_AQL_UNSORTINGGATHEREXECUTOR_H
+#ifndef ARANGOD_AQL_UNSORTEDGATHEREXECUTOR_H
+#define ARANGOD_AQL_UNSORTEDGATHEREXECUTOR_H
 
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutorInfos.h"
@@ -47,13 +47,18 @@ class SharedAqlItemBlockPtr;
 * The actual implementation fetches all available rows from the first
 * dependency, then from the second, and so forth. But that is not guaranteed.
 */
-class UnsortingGatherExecutor {
+class UnsortedGatherExecutor {
  public:
   struct Properties {
     static constexpr bool preservesOrder = false;
     static constexpr BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Disable;
-    // TODO I think we can set this to true (but needs to implement
-    //  hasExpectedNumberOfRows for that)
+    // This (inputSizeRestrictsOutputSize) could be set to true, but its
+    // usefulness would be limited.
+    // We either can only use it for the last dependency, in which case it's
+    // already too late to avoid a large allocation for a small result set; or
+    // we'd have to prefetch all dependencies (at least until we got >=1000
+    // rows) before answering hasExpectedNumberOfRows(). This might be okay,
+    // but would increase the latency.
     static constexpr bool inputSizeRestrictsOutputSize = false;
   };
   using Fetcher = MultiDependencySingleRowFetcher;
@@ -61,8 +66,8 @@ class UnsortingGatherExecutor {
   using Infos = IdExecutorInfos;
   using Stats = NoStats;
 
-  UnsortingGatherExecutor(Fetcher& fetcher, Infos&);
-  ~UnsortingGatherExecutor();
+  UnsortedGatherExecutor(Fetcher& fetcher, Infos&);
+  ~UnsortedGatherExecutor();
 
   /**
    * @brief produce the next Row of Aql Values.
@@ -95,4 +100,4 @@ class UnsortingGatherExecutor {
 
 }  // namespace arangodb::aql
 
-#endif  // ARANGOD_AQL_UNSORTINGGATHEREXECUTOR_H
+#endif  // ARANGOD_AQL_UNSORTEDGATHEREXECUTOR_H

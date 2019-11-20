@@ -350,7 +350,7 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/TraversalExecutor.cpp
   Aql/TraversalNode.cpp
   Aql/ParallelUnsortedGatherExecutor.cpp
-  Aql/UnsortingGatherExecutor.cpp
+  Aql/UnsortedGatherExecutor.cpp
   Aql/UpdateReplaceModifier.cpp
   Aql/UpsertModifier.cpp
   Aql/V8Executor.cpp

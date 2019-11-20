@@ -20,26 +20,23 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "UnsortingGatherExecutor.h"
-#include <Logger/LogMacros.h>
+#include "UnsortedGatherExecutor.h"
 
 #include "Aql/IdExecutor.h"  // for IdExecutorInfos
 #include "Aql/MultiDependencySingleRowFetcher.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Stats.h"
-#include "Basics/Exceptions.h"
 #include "Basics/debugging.h"
-#include "Basics/voc-errors.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
 
-UnsortingGatherExecutor::UnsortingGatherExecutor(Fetcher& fetcher, Infos& infos)
+UnsortedGatherExecutor::UnsortedGatherExecutor(Fetcher& fetcher, Infos& infos)
     : _fetcher(fetcher) {}
 
-UnsortingGatherExecutor::~UnsortingGatherExecutor() = default;
+UnsortedGatherExecutor::~UnsortedGatherExecutor() = default;
 
-auto UnsortingGatherExecutor::produceRows(OutputAqlItemRow& output)
+auto UnsortedGatherExecutor::produceRows(OutputAqlItemRow& output)
     -> std::pair<ExecutionState, Stats> {
   while (!output.isFull() && !done()) {
     // Note that fetchNextRow may return DONE (because the current dependency is
@@ -62,20 +59,18 @@ auto UnsortingGatherExecutor::produceRows(OutputAqlItemRow& output)
   return {state, {}};
 }
 
-auto UnsortingGatherExecutor::fetcher() const noexcept -> const Fetcher& {
+auto UnsortedGatherExecutor::fetcher() const noexcept -> const Fetcher& {
   return _fetcher;
 }
 
-auto UnsortingGatherExecutor::fetcher() noexcept -> Fetcher& {
-  return _fetcher;
-}
+auto UnsortedGatherExecutor::fetcher() noexcept -> Fetcher& { return _fetcher; }
 
-auto UnsortingGatherExecutor::numDependencies() const
+auto UnsortedGatherExecutor::numDependencies() const
     noexcept(noexcept(_fetcher.numberDependencies())) -> size_t {
   return _fetcher.numberDependencies();
 }
 
-auto UnsortingGatherExecutor::fetchNextRow(size_t atMost)
+auto UnsortedGatherExecutor::fetchNextRow(size_t atMost)
     -> std::pair<ExecutionState, InputAqlItemRow> {
   auto res = fetcher().fetchRowForDependency(currentDependency(), atMost);
   if (res.first == ExecutionState::DONE) {
@@ -84,7 +79,7 @@ auto UnsortingGatherExecutor::fetchNextRow(size_t atMost)
   return res;
 }
 
-auto UnsortingGatherExecutor::skipNextRows(size_t atMost)
+auto UnsortedGatherExecutor::skipNextRows(size_t atMost)
     -> std::pair<ExecutionState, size_t> {
   auto res = fetcher().skipRowsForDependency(currentDependency(), atMost);
   if (res.first == ExecutionState::DONE) {
@@ -93,21 +88,21 @@ auto UnsortingGatherExecutor::skipNextRows(size_t atMost)
   return res;
 }
 
-auto UnsortingGatherExecutor::done() const noexcept -> bool {
+auto UnsortedGatherExecutor::done() const noexcept -> bool {
   return _currentDependency >= numDependencies();
 }
 
-auto UnsortingGatherExecutor::currentDependency() const noexcept -> size_t {
+auto UnsortedGatherExecutor::currentDependency() const noexcept -> size_t {
   return _currentDependency;
 }
 
-auto UnsortingGatherExecutor::advanceDependency() noexcept -> void {
+auto UnsortedGatherExecutor::advanceDependency() noexcept -> void {
   TRI_ASSERT(_currentDependency < numDependencies());
   ++_currentDependency;
 }
 
-auto UnsortingGatherExecutor::skipRows(size_t const atMost)
-    -> std::tuple<ExecutionState, UnsortingGatherExecutor::Stats, size_t> {
+auto UnsortedGatherExecutor::skipRows(size_t const atMost)
+    -> std::tuple<ExecutionState, UnsortedGatherExecutor::Stats, size_t> {
   auto const rowsLeftToSkip = [&atMost, &skipped = this->_skipped]() {
     TRI_ASSERT(atMost >= skipped);
     return atMost - skipped;
