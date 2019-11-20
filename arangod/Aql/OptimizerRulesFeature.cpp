@@ -30,6 +30,8 @@
 #include "FeaturePhases/V8FeaturePhase.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "ProgramOptions/Parameters.h"
+#include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/AqlFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -47,22 +49,33 @@ std::vector<OptimizerRule> OptimizerRulesFeature::_rules;
 // @brief lookup from rule name to rule level
 std::unordered_map<velocypack::StringRef, int> OptimizerRulesFeature::_ruleLookup;
 
-OptimizerRulesFeature::OptimizerRulesFeature(application_features::ApplicationServer& server)
+OptimizerRulesFeature::OptimizerRulesFeature(arangodb::application_features::ApplicationServer& server)
     : application_features::ApplicationFeature(server, "OptimizerRules") {
   setOptional(false);
   startsAfter<V8FeaturePhase>();
 
   startsAfter<AqlFeature>();
 }
+  
+void OptimizerRulesFeature::collectOptions(std::shared_ptr<arangodb::options::ProgramOptions> options) {
+  options->addOption("--query.optimizer-rules",
+                     "enable or disable specific optimizer rules (use rule name prefixed with '-' for disabling, '+' for enabling)",
+                     new arangodb::options::VectorParameter<arangodb::options::StringParameter>(&_optimizerRules),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden))
+                     .setIntroducedIn(30600);
+}
 
-void OptimizerRulesFeature::prepare() { addRules(); }
+void OptimizerRulesFeature::prepare() { 
+  addRules(); 
+  enableOrDisableRules();
+}
 
 void OptimizerRulesFeature::unprepare() {
   _ruleLookup.clear();
   _rules.clear();
 }
 
-OptimizerRule const& OptimizerRulesFeature::ruleByLevel(int level) {
+OptimizerRule& OptimizerRulesFeature::ruleByLevel(int level) {
   // do a binary search in the sorted rules database
   auto it = std::lower_bound(_rules.begin(), _rules.end(), level);
   if (it != _rules.end() && (*it).level == level) {
@@ -83,7 +96,7 @@ int OptimizerRulesFeature::ruleIndex(int level) {
                                  "unable to find required OptimizerRule");
 }
 
-OptimizerRule const& OptimizerRulesFeature::ruleByIndex(int index) {
+OptimizerRule& OptimizerRulesFeature::ruleByIndex(int index) {
   TRI_ASSERT(static_cast<size_t>(index) < _rules.size());
   if (static_cast<size_t>(index) < _rules.size()) {
     return _rules[index];
@@ -465,6 +478,57 @@ int OptimizerRulesFeature::translateRule(velocypack::StringRef name) {
   }
 
   return -1;
+}
+
+void OptimizerRulesFeature::enableOrDisableRules() {
+  // turn off or on specific optimizer rules, based on startup parameters
+  for (auto const& name : _optimizerRules) {
+    arangodb::velocypack::StringRef n(name);
+    if (!n.empty() && n[0] == '+') {
+      // strip initial + sign
+      n = n.substr(1);
+    }
+    
+    if (n.empty()) {
+      continue;
+    }
+
+    if (n[0] == '-') {
+      n = n.substr(1);
+      // disable
+      if (n == "all") {
+        for (auto& rule : _rules) {
+          if (rule.hasFlag(OptimizerRule::Flags::CanBeDisabled)) {
+            rule.flags |= OptimizerRule::makeFlags(OptimizerRule::Flags::DisabledByDefault);
+          }
+        }
+      } else {
+        int id = translateRule(n);
+        if (id == -1) {
+          auto& rule = ruleByLevel(id);
+          if (rule.hasFlag(OptimizerRule::Flags::CanBeDisabled)) {
+            rule.flags |= OptimizerRule::makeFlags(OptimizerRule::Flags::DisabledByDefault);
+          }
+        } else {
+          LOG_TOPIC("6103b", WARN, Logger::QUERIES) << "cannot disable unknown optimizer rule '" << n << "'";
+        }
+      }
+    } else {
+      if (n == "all") {
+        for (auto& rule : _rules) {
+          rule.flags &= ~OptimizerRule::makeFlags(OptimizerRule::Flags::DisabledByDefault);
+        }
+      } else {
+        int id = translateRule(n);
+        if (id != -1) {
+          auto& rule = ruleByLevel(id);
+          rule.flags &= ~OptimizerRule::makeFlags(OptimizerRule::Flags::DisabledByDefault);
+        } else {
+          LOG_TOPIC("aa52f", WARN, Logger::QUERIES) << "cannot enable unknown optimizer rule '" << n << "'";
+        }
+      }
+    }
+  }
 }
 
 }  // namespace aql
