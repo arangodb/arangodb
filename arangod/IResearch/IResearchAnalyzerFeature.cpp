@@ -351,10 +351,32 @@ bool ngram_vpack_normalizer(const irs::string_ref& args, std::string& out) noexc
     VPackBuilder vpack;
     {
       VPackObjectBuilder scope(&vpack);
-      vpack.add(MIN_PARAM_NAME, VPackValue(tmp.min_gram));
-      vpack.add(MAX_PARAM_NAME, VPackValue(tmp.max_gram));
-      vpack.add(PRESERVE_ORIGINAL_PARAM_NAME, VPackValue(tmp.preserve_original));
+      vpack.add(MIN_PARAM_NAME.c_str(), MIN_PARAM_NAME.size(), VPackValue(tmp.min_gram));
+      vpack.add(MAX_PARAM_NAME.c_str(), MAX_PARAM_NAME.size(), VPackValue(tmp.max_gram));
+      vpack.add(PRESERVE_ORIGINAL_PARAM_NAME.c_str(), PRESERVE_ORIGINAL_PARAM_NAME.size(),
+                VPackValue(tmp.preserve_original));
+      vpack.add(START_MARKER_PARAM_NAME.c_str(), START_MARKER_PARAM_NAME.size(),
+                arangodb::iresearch::toValuePair(irs::ref_cast<char>(tmp.start_marker)));
+      vpack.add(END_MARKER_PARAM_NAME.c_str(), END_MARKER_PARAM_NAME.size(),
+                arangodb::iresearch::toValuePair(irs::ref_cast<char>(tmp.end_marker)));
+
+      auto stream_type_value = std::find_if(STREAM_TYPE_CONVERT_MAP.begin(), STREAM_TYPE_CONVERT_MAP.end(),
+        [&tmp](const decltype(STREAM_TYPE_CONVERT_MAP)::value_type& v) {
+          return v.second == tmp.stream_bytes_type;
+        });
+
+      if (stream_type_value != STREAM_TYPE_CONVERT_MAP.end()) {
+        vpack.add(STREAM_TYPE_PARAM_NAME.c_str(), STREAM_TYPE_PARAM_NAME.size(),
+                  VPackValue(stream_type_value->first.c_str()));
+      } else {
+        IR_FRMT_ERROR(
+          "Invalid %s value in ngram analyzer options: %d",
+          STREAM_TYPE_PARAM_NAME.c_str(),
+          static_cast<int>(tmp.stream_bytes_type));
+        return false;
+      }
     }
+
     out.assign(vpack.slice().startAs<char>(), vpack.slice().byteSize());
     return true;
   }
