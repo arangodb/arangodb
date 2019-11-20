@@ -60,7 +60,7 @@ class MetricsFeature final : public application_features::ApplicationFeature {
       LOG_TOPIC("32e85", ERR, Logger::STATISTICS) << "histogram "  << name << " alredy exists";
       TRI_ASSERT(false);
     }
-    auto h = std::make_shared<Histogram<T>>(buckets, low, high, help);
+    auto h = std::make_shared<Histogram<T>>(buckets, low, high, name, help);
     _registry.emplace(name, std::dynamic_pointer_cast<Metric>(h));
     return *h;
   };
