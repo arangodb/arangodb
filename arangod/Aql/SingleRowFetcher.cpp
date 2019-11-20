@@ -24,6 +24,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "SingleRowFetcher.h"
+#include <Logger/LogMacros.h>
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/DependencyProxy.h"
@@ -76,21 +77,22 @@ SingleRowFetcher<passBlocksThrough>::fetchBlockForPassthrough(size_t atMost) {
 template <BlockPassthrough passBlocksThrough>
 std::tuple<ExecutionState, size_t, AqlItemBlockInputRange>
 SingleRowFetcher<passBlocksThrough>::execute(AqlCallStack& stack) {
-  auto const [state, skipped, block] = _dependencyProxy->execute(stack);
+  auto [state, skipped, block] = _dependencyProxy->execute(stack);
   if (state == ExecutionState::WAITING) {
     // On waiting we have nothing to return
     return {state, 0, AqlItemBlockInputRange{ExecutorState::HASMORE}};
   }
-  if (state == ExecutionState::HASMORE) {
-    TRI_ASSERT(block != nullptr);
-    return {state, skipped,
-            AqlItemBlockInputRange{ExecutorState::HASMORE, block, 0, block->size()}};
-  }
   if (block == nullptr) {
     return {state, skipped, AqlItemBlockInputRange{ExecutorState::DONE}};
   }
-  return {state, skipped,
-          AqlItemBlockInputRange{ExecutorState::DONE, block, 0, block->size()}};
+
+  auto [start, end] = block->getRelevantRange();
+  if (state == ExecutionState::HASMORE) {
+    TRI_ASSERT(block != nullptr);
+    return {state, skipped,
+            AqlItemBlockInputRange{ExecutorState::HASMORE, block, start, end}};
+  }
+  return {state, skipped, AqlItemBlockInputRange{ExecutorState::DONE, block, start, end}};
 }
 
 template <BlockPassthrough passBlocksThrough>

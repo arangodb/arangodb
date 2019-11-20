@@ -166,6 +166,9 @@ class AqlItemBlock {
   /// @brief getter for _nrItems
   size_t size() const noexcept;
 
+  /// @brief get the relevant consumable range of the block
+  std::tuple<size_t, size_t> getRelevantRange();
+
   /// @brief Number of entries in the matrix. If this changes, the memory usage
   /// must be / in- or decreased appropriately as well.
   /// All entries _data[i] for numEntries() <= i < _data.size() always have to
@@ -287,6 +290,11 @@ class AqlItemBlock {
   /// @brief A list of indexes with all shadowRows within
   /// this ItemBlock. Used to easier split data based on them.
   std::set<size_t> _shadowRowIndexes;
+
+  /// @brief current row index we want to read from. This will be increased after
+  /// getRelevantRange function will be called, which will return a tuple of the
+  /// old _rowIndex and the newly calculated _rowIndex - 1
+  size_t _rowIndex;
 };
 
 }  // namespace aql

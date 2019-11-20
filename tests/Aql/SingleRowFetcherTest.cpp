@@ -28,6 +28,7 @@
 #include "RowFetcherHelper.h"
 #include "gtest/gtest.h"
 
+#include "Aql/AqlCallStack.h"
 #include "Aql/AqlItemBlock.h"
 #include "Aql/DependencyProxy.h"
 #include "Aql/ExecutionBlock.h"
@@ -1145,6 +1146,84 @@ TEST_F(SingleRowFetcherTestPassBlocks, handling_consecutive_shadowrows) {
   // in the destructor
   ASSERT_TRUE(dependencyProxyMock.allBlocksFetched());
   ASSERT_EQ(dependencyProxyMock.numFetchBlockCalls(), 1);
+}
+
+TEST_F(SingleRowFetcherTestPassBlocks, handling_shadowrows_in_execute_oneAndDone) {
+  DependencyProxyMock<passBlocksThrough> dependencyProxyMock{monitor, 1};
+  InputAqlItemRow row{CreateInvalidInputRowHint{}};
+  ShadowAqlItemRow shadow{CreateInvalidShadowRowHint{}};
+
+  {
+    SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 7, 1)};
+    block->emplaceValue(0, 0, "a");
+    block->emplaceValue(1, 0, "b");
+    block->emplaceValue(2, 0, "c");
+    block->emplaceValue(3, 0, "d");
+    block->emplaceValue(4, 0, "e");  // first shadowrow
+    block->setShadowRowDepth(4, AqlValue(AqlValueHintUInt(1ull)));
+    block->emplaceValue(5, 0, "f");
+    block->setShadowRowDepth(5, AqlValue(AqlValueHintUInt(0ull)));
+    block->emplaceValue(6, 0, "g");
+    block->setShadowRowDepth(6, AqlValue(AqlValueHintUInt(0ull)));
+    dependencyProxyMock.shouldReturn(ExecutionState::DONE, std::move(block));
+  }
+
+  {
+    SingleRowFetcher<passBlocksThrough> testee(dependencyProxyMock);
+    AqlCall call;
+    AqlCallStack stack = {call};
+
+    // First no data row
+    auto [state, skipped, input] = testee.execute(stack);
+    EXPECT_EQ(input.getRowIndex(), 0);
+    EXPECT_EQ(input.getEndIndex(), 3);
+    EXPECT_EQ(skipped, 0);
+    EXPECT_EQ(state, ExecutionState::DONE);
+  }  // testee is destroyed here
+}
+
+TEST_F(SingleRowFetcherTestPassBlocks, handling_shadowrows_in_execute_twoAndHasMore) {
+  DependencyProxyMock<passBlocksThrough> dependencyProxyMock{monitor, 1};
+  InputAqlItemRow row{CreateInvalidInputRowHint{}};
+  ShadowAqlItemRow shadow{CreateInvalidShadowRowHint{}};
+
+  {
+    SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 9, 1)};
+    block->emplaceValue(0, 0, "a");
+    block->emplaceValue(1, 0, "b");
+    block->emplaceValue(2, 0, "c");
+    block->emplaceValue(3, 0, "d");
+    block->emplaceValue(4, 0, "e");  // first shadowrow
+    block->setShadowRowDepth(4, AqlValue(AqlValueHintUInt(1ull)));
+    block->emplaceValue(5, 0, "f");
+    block->setShadowRowDepth(5, AqlValue(AqlValueHintUInt(0ull)));
+    block->emplaceValue(6, 0, "g");
+    block->setShadowRowDepth(6, AqlValue(AqlValueHintUInt(0ull)));
+    block->emplaceValue(7, 0, "h");
+    block->emplaceValue(8, 0, "i");
+    dependencyProxyMock.shouldReturn(ExecutionState::DONE, std::move(block));
+  }
+
+  {
+    SingleRowFetcher<passBlocksThrough> testee(dependencyProxyMock);
+    AqlCall call;
+    AqlCallStack stack = {call};
+
+    {
+      auto [state, skipped, input] = testee.execute(stack);
+      EXPECT_EQ(input.getRowIndex(), 0);
+      EXPECT_EQ(input.getEndIndex(), 3);
+      EXPECT_EQ(state, ExecutionState::HASMORE);
+      // EXPECT_EQ(skipped, 0);
+    }
+
+    {
+      auto [state, skipped, input] = testee.execute(stack);
+      EXPECT_EQ(input.getRowIndex(), 7);
+      EXPECT_EQ(input.getEndIndex(), 8);
+      EXPECT_EQ(state, ExecutionState::DONE);
+    }
+  }  // testee is destroyed here
 }
 
 class SingleRowFetcherWrapper

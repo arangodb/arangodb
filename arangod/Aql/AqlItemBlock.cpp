@@ -69,7 +69,7 @@ inline void CopyValueOver(std::unordered_set<AqlValue>& cache, AqlValue const& a
 
 /// @brief create the block
 AqlItemBlock::AqlItemBlock(AqlItemBlockManager& manager, size_t nrItems, RegisterId nrRegs)
-    : _nrItems(nrItems), _nrRegs(nrRegs), _manager(manager), _refCount(0) {
+    : _nrItems(nrItems), _nrRegs(nrRegs), _manager(manager), _refCount(0), _rowIndex(0) {
   TRI_ASSERT(nrItems > 0);  // empty AqlItemBlocks are not allowed!
   // check that the nrRegs value is somewhat sensible
   // this compare value is arbitrary, but having so many registers in a single
@@ -854,6 +854,23 @@ void AqlItemBlock::steal(AqlValue const& value) {
 RegisterId AqlItemBlock::getNrRegs() const noexcept { return _nrRegs; }
 
 size_t AqlItemBlock::size() const noexcept { return _nrItems; }
+
+std::tuple<size_t, size_t> AqlItemBlock::getRelevantRange() {
+  size_t startIndex = _rowIndex;
+  size_t endIndex = 0;
+
+  for (; _rowIndex < this->size(); _rowIndex++) {
+    if (isShadowRow(_rowIndex)) {
+      endIndex = _rowIndex - 1;
+      break;
+    }
+    if (_rowIndex - 1 != this->size()) {
+      endIndex = _rowIndex;
+    }
+  }
+
+  return std::make_pair(startIndex, endIndex);
+}
 
 size_t AqlItemBlock::numEntries() const { return internalNrRegs() * _nrItems; }
 
