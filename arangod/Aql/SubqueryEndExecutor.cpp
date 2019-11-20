@@ -112,6 +112,9 @@ std::pair<ExecutionState, NoStats> SubqueryEndExecutor::produceRows(OutputAqlIte
         }
         TRI_ASSERT(state == ExecutionState::DONE || state == ExecutionState::HASMORE);
 
+        // This case happens when there are no inputs from the enclosing query,
+        // hence our companion SubqueryStartExecutor has not produced any rows
+        // (in particular not a ShadowRow), so we are done.
         if (state == ExecutionState::DONE && !shadowRow.isInitialized()) {
           /* We had better not accumulated any results if we get here */
           TRI_ASSERT(_accumulator->slice().length() == 0);
