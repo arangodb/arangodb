@@ -130,7 +130,7 @@ Counter& MetricsFeature::counter (std::string const& name) {
   std::lock_guard<std::mutex> guard(_lock);
   auto it = _registry.find(name);
   if (it == _registry.end()) {
-    LOG_TOPIC("32d85", ERR, Logger::STATISTICS)
+    LOG_TOPIC("32d58", ERR, Logger::STATISTICS)
       << "Failed to retrieve counter " << name;
     TRI_ASSERT(false);
     throw std::exception();
@@ -139,7 +139,7 @@ Counter& MetricsFeature::counter (std::string const& name) {
   try {
     h = std::dynamic_pointer_cast<Counter>(it->second);
   } catch (std::exception const& e) {
-    LOG_TOPIC("8532d", ERR, Logger::STATISTICS)
+    LOG_TOPIC("853d2", ERR, Logger::STATISTICS)
       << "Failed to retrieve counter " << name;
     TRI_ASSERT(false);
     throw(e);
