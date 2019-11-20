@@ -44,16 +44,49 @@ function clusterInventorySuite () {
     assertEqual("number", typeof view.commitIntervalMsec);
     assertEqual("object", typeof view.consolidationPolicy);
     assertEqual("string", typeof view.consolidationPolicy.type);
-    assertEqual("number", typeof view.consolidationPolicy.segmentsBytesFloor);
-    assertEqual("number", typeof view.consolidationPolicy.segmentsBytesMax);
-    assertEqual("number", typeof view.consolidationPolicy.segmentsMax);
-    assertEqual("number", typeof view.consolidationPolicy.segmentsMin);
-    assertEqual("number", typeof view.consolidationPolicy.minScore);
+    if (view.consolidationPolicy.hasOwnProperty("segmentsBytesFloor")) {
+      assertEqual("number", typeof view.consolidationPolicy.segmentsBytesFloor);
+    }
+    if (view.consolidationPolicy.hasOwnProperty("segmentsBytesMax")) {
+      assertEqual("number", typeof view.consolidationPolicy.segmentsBytesMax);
+    }
+    if (view.consolidationPolicy.hasOwnProperty("segmentsMax")) {
+      assertEqual("number", typeof view.consolidationPolicy.segmentsMax);
+    }
+    if (view.consolidationPolicy.hasOwnProperty("segmentsMin")) {
+      assertEqual("number", typeof view.consolidationPolicy.segmentsMin);
+    }
+    if (view.consolidationPolicy.hasOwnProperty("minScore")) {
+      assertEqual("number", typeof view.consolidationPolicy.minScore);
+    }
+    if (view.consolidationPolicy.hasOwnProperty("threshold")) {
+      assertEqual("number", typeof view.consolidationPolicy.threshold);
+    }
     assertTrue(Array.isArray(view.primarySort));
-    assertEqual("number", typeof view.version);
+    //assertEqual("number", typeof view.version);
     assertEqual("number", typeof view.writebufferActive);
     assertEqual("number", typeof view.writebufferIdle);
     assertEqual("number", typeof view.writebufferSizeMax);
+
+    assertEqual("object", typeof view.links);
+    Object.keys(view.links).forEach(function(collection) {
+      let link = view.links[collection];
+      assertTrue(Array.isArray(link.analyzerDefinitions));
+      link.analyzerDefinitions.forEach(function(analyzer) {
+        assertEqual("object", typeof analyzer);
+        assertEqual("string", typeof analyzer.name);
+        assertEqual("string", typeof analyzer.type);
+        assertEqual("object", typeof analyzer.properties);
+        assertTrue(Array.isArray(analyzer.features));
+      });
+      assertTrue(Array.isArray(link.analyzers));
+      assertEqual("object", typeof link.fields);
+      
+      assertEqual("boolean", typeof link.includeAllFields);
+      assertTrue(Array.isArray(link.primarySort));
+      assertTrue(link.hasOwnProperty("storeValues"));
+      assertEqual("boolean", typeof link.trackListPositions);
+    });
   };
   
   let validateCollectionAttributes = function (collection) {
@@ -127,28 +160,27 @@ function clusterInventorySuite () {
       
       let analyzer = analyzers.save("custom", "delimiter", { delimiter : " " }, [ "frequency" ]);
 
-      // setup a view
-      try {
-        db._create("UnitTestsDumpViewCollection");
+      // setup an empty view
+      db._createView("UnitTestsDumpViewEmpty", "arangosearch", {});
 
-        let view = db._createView("UnitTestsDumpView", "arangosearch", {});
-        view.properties({
-          cleanupIntervalStep: 456,
-          consolidationPolicy: {
-            threshold: 0.3,
-            type: "bytes_accum"
-          },
-          consolidationIntervalMsec: 0,
-          links: {
-            "UnitTestsDumpShards" : {
-              includeAllFields: true,
-              fields: {
-                text: { analyzers: [ "text_en", analyzer.name ] }
-              }
+      let view = db._createView("UnitTestsDumpView", "arangosearch", {});
+      view.properties({
+        cleanupIntervalStep: 456,
+        consolidationPolicy: {
+          threshold: 0.3,
+          type: "bytes_accum"
+        },
+        commitIntervalMsec: 12345,
+        consolidationIntervalMsec: 0,
+        links: {
+          "UnitTestsDumpEmpty" : {
+            includeAllFields: true,
+            fields: {
+              text: { analyzers: [ "text_en", analyzer.name ] }
             }
           }
-        });
-      } catch (err) { }
+        }
+      });
      
       db._create("UnitTestsDumpShards", { numberOfShards : 9 });
       if (isEnterprise) {
@@ -218,21 +250,77 @@ function clusterInventorySuite () {
       assertEqual(["a_la", "a_lo"], collection.indexes[7].fields);
       assertEqual("geo", collection.indexes[7].type);
       
-      collection = byName["UnitTestsDumpViewCollection"];
-      assertEqual(2, collection.parameters.type);
-      
-      
       assertTrue(results.hasOwnProperty("views"));
       assertTrue(Array.isArray(results.views));
-      assertEqual(1, results.views.length);
+      assertEqual(2, results.views.length);
       
       results.views.forEach(function (view) {
         validateViewAttributes(view);
       });
 
+      // make view result order deterministic
+      results.views.sort(function(l, r) {
+        if (l.name !== r.name) {
+          return l.name < r.name ? -1 : 1;
+        }
+        return 0;
+      });
+
       let view = results.views[0];
       assertEqual("arangosearch", view.type);
       assertEqual("UnitTestsDumpView", view.name);
+      assertEqual(456, view.cleanupIntervalStep);
+      assertEqual(12345, view.commitIntervalMsec);
+      assertEqual(0, view.consolidationIntervalMsec);
+      assertEqual("bytes_accum", view.consolidationPolicy.type);
+      assertEqual(0.3.toFixed(2), view.consolidationPolicy.threshold.toFixed(2));
+      assertEqual([], view.primarySort);
+
+      let links = view.links;
+      assertEqual(1, Object.keys(links).length);
+      assertEqual("UnitTestsDumpEmpty", Object.keys(links)[0]);
+      let link = links["UnitTestsDumpEmpty"];
+      assertTrue(link.includeAllFields);
+      assertEqual([], link.primarySort);
+      assertEqual("none", link.storeValues);
+      assertFalse(link.trackListPositions);
+      
+      assertTrue(Array.isArray(link.analyzers));
+      assertEqual(1, link.analyzers.length);
+      assertEqual("identity", link.analyzers[0]);
+
+      assertEqual(1, Object.keys(link.fields).length);
+      assertEqual("text", Object.keys(link.fields)[0]);
+      let field = link.fields["text"];
+      assertEqual(1, Object.keys(field).length);
+      assertEqual("analyzers", Object.keys(field)[0]);
+      assertTrue(Array.isArray(field.analyzers));
+      assertEqual(["text_en", "custom"], field.analyzers);
+      
+      assertTrue(Array.isArray(link.analyzerDefinitions));
+      assertEqual(3, link.analyzerDefinitions.length);
+
+      let a = link.analyzerDefinitions[0];
+      assertEqual("custom", a.name);
+      assertEqual("delimiter", a.type);
+      assertEqual({"delimiter": " "}, a.properties);
+      assertEqual(["frequency"], a.features);
+      
+      a = link.analyzerDefinitions[1];
+      assertEqual("identity", a.name);
+      assertEqual("identity", a.type);
+      assertEqual({}, a.properties);
+      assertEqual(["norm", "frequency"], a.features);
+      
+      a = link.analyzerDefinitions[2];
+      assertEqual("text_en", a.name);
+      assertEqual("text", a.type);
+      assertEqual({locale: "en.utf-8", case: "lower", stopwords: [], accent: false, stemming: true}, a.properties);
+      assertEqual(["position", "norm", "frequency"], a.features);
+
+      view = results.views[1];
+      assertEqual("arangosearch", view.type);
+      assertEqual("UnitTestsDumpViewEmpty", view.name);
       assertEqual(2, view.cleanupIntervalStep);
       assertEqual(1000, view.commitIntervalMsec);
       assertEqual(10000, view.consolidationIntervalMsec);
