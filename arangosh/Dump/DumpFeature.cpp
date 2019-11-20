@@ -750,11 +750,6 @@ Result DumpFeature::runDump(httpclient::SimpleHttpClient& client, std::string co
     _options.tickEnd = tick;
   }
 
-  VPackSlice const properties = body.get(StaticStrings::Properties);
-  if (!properties.isObject()) {
-    return ::ErrorMalformedJsonResponse;
-  }
-
   // get the collections list
   VPackSlice const collections = body.get("collections");
   if (!collections.isArray()) {
@@ -870,11 +865,6 @@ Result DumpFeature::runClusterDump(httpclient::SimpleHttpClient& client,
   }
   VPackSlice const body = parsedBody->slice();
   if (!body.isObject()) {
-    return ::ErrorMalformedJsonResponse;
-  }
-
-  VPackSlice const properties = body.get(StaticStrings::Properties);
-  if (!properties.isObject()) {
     return ::ErrorMalformedJsonResponse;
   }
 
@@ -1003,7 +993,10 @@ Result DumpFeature::storeDumpJson(VPackSlice const& body, std::string const& dbN
     meta.openObject();
     meta.add("database", VPackValue(dbName));
     meta.add("lastTickAtDumpStart", VPackValue(tickString));
-    meta.add("properties", body.get("properties"));
+    auto props = body.get("properties");
+    if(props.isObject()) {
+      meta.add("properties", props);
+    }
     meta.close();
 
     // save last tick in file
