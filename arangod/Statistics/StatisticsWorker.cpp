@@ -954,13 +954,13 @@ void StatisticsWorker::generateRawStatistics(std::string& result, double const& 
     result +=
       TYPE_ + statStrings.at("connectionTimeCounts")[0] + statStrings.at("connectionTimeCounts")[1] +
       HELP_ + statStrings.at("connectionTimeCounts")[0] + statStrings.at("connectionTimeCounts")[2] +
-      statStrings.at("clientHttpConnections")[0] + "{le=\"0.1\"}"  + " " +
+      statStrings.at("connectionTimeCounts")[0] + "{le=\"0.1\"}"  + " " +
       std::to_string(slc.get("counts").at(0).getNumber<uint64_t>()) + "\n" +
-      statStrings.at("clientHttpConnections")[0] + "{le=\"1\"}"    + " " +
+      statStrings.at("connectionTimeCounts")[0] + "{le=\"1\"}"    + " " +
       std::to_string(slc.get("counts").at(1).getNumber<uint64_t>()) + "\n" +
-      statStrings.at("clientHttpConnections")[0] + "{le=\"60\"}"   + " " +
+      statStrings.at("connectionTimeCounts")[0] + "{le=\"60\"}"   + " " +
       std::to_string(slc.get("counts").at(1).getNumber<uint64_t>()) + "\n" +
-      statStrings.at("clientHttpConnections")[0] + "{le=\"+Inf\"}" + " " +
+      statStrings.at("connectionTimeCounts")[0] + "{le=\"+Inf\"}" + " " +
       std::to_string(slc.get("counts").at(3).getNumber<uint64_t>());
 
     result +=
