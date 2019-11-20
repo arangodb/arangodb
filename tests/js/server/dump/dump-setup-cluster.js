@@ -136,7 +136,7 @@ function setupSatelliteCollections() {
   var analyzers = require("@arangodb/analyzers");
   var i, c;
 
-  let createOptions = { };
+  let createOptions = {};
 
   if (!isEnterprise) {
     // This is used to test the Hotbackup. Otherwise it is
@@ -148,18 +148,19 @@ function setupSatelliteCollections() {
     };
   }
 
-  try {
-    db._dropDatabase("UnitTestsDumpSrc");
-  } catch (err1) {
-  }
+  ["UnitTestsDumpSrc", "UnitTestsDumpDst", "UnitTestsDumpProperties1", "UnitTestsDumpProperties2"].forEach(function(name) {
+    try {
+      db._dropDatabase(name);
+    } catch (err) {}
+  });
+  
+  db._createDatabase("UnitTestsDumpProperties1", { replicationFactor: 1, minReplicationFactor: 1 });
+  db._createDatabase("UnitTestsDumpProperties2", { replicationFactor: 2, minReplicationFactor: 2, sharding: "single" });
+
+
   db._createDatabase("UnitTestsDumpSrc", createOptions);
 
-  try {
-    db._dropDatabase("UnitTestsDumpDst");
-  } catch (err2) {
-  }
   db._createDatabase("UnitTestsDumpDst", createOptions);
-
 
   db._useDatabase("UnitTestsDumpSrc");
 
