@@ -1447,7 +1447,7 @@ static void ClientConnection_setDatabaseName(v8::FunctionCallbackInfo<v8::Value>
   ClientFeature* client = static_cast<ClientFeature*>(wrap->Value());
 
   if (v8connection == nullptr || client == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL("setDatabaseName must be invoked on an arango connection object instance.");
+    TRI_V8_THROW_EXCEPTION_INTERNAL("setDatabaseName() must be invoked on an arango connection object instance.");
   }
 
   if (args.Length() != 1 || !args[0]->IsString()) {
