@@ -46,7 +46,8 @@ SubqueryEndExecutorInfos::SubqueryEndExecutorInfos(
     std::unordered_set<RegisterId> const& registersToClear,
     std::unordered_set<RegisterId> registersToKeep,
     velocypack::Options const* const options, RegisterId inReg, RegisterId outReg)
-    : ExecutorInfos(std::move(readableInputRegisters), std::move(writeableOutputRegisters), nrInputRegisters,
+    : ExecutorInfos(std::move(readableInputRegisters),
+                    std::move(writeableOutputRegisters), nrInputRegisters,
                     nrOutputRegisters, registersToClear, std::move(registersToKeep)),
       _vpackOptions(options),
       _outReg(outReg),
@@ -110,11 +111,20 @@ std::pair<ExecutionState, NoStats> SubqueryEndExecutor::produceRows(OutputAqlIte
           return {ExecutionState::WAITING, NoStats{}};
         }
         TRI_ASSERT(state == ExecutionState::DONE || state == ExecutionState::HASMORE);
-        TRI_ASSERT(shadowRow.isInitialized());
-        TRI_ASSERT(shadowRow.isRelevant());
+
+        if (state == ExecutionState::DONE && !shadowRow.isInitialized()) {
+          /* We had better not accumulated any results if we get here */
+          TRI_ASSERT(_accumulator->slice().length() == 0);
+          resetAccumulator();
+          _state = RELEVANT_SHADOW_ROW_PENDING;
+          return {ExecutionState::DONE, NoStats{}};
+        }
 
         // Here we have all data *and* the relevant shadow row,
         // so we can now submit
+        TRI_ASSERT(shadowRow.isInitialized());
+        TRI_ASSERT(shadowRow.isRelevant());
+
         bool shouldDelete = true;
         AqlValue resultDocVec{_buffer.get(), shouldDelete};
         if (shouldDelete) {
