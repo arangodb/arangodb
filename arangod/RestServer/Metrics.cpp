@@ -48,6 +48,14 @@ std::ostream& operator<< (std::ostream& o, Metrics::hist_type const& v) {
   return o;
 }
 
+Metric::Metric(std::string const& name, std::string const& help)
+: _name(name), _help(help) {};
+
+Metric::~Metric() {}
+
+std::string const& Metric::help() const { return _help; }
+std::string const& Metric::name() const { return _name; }
+
 Counter& Counter::operator++() {
   count();
   return *this;

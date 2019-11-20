@@ -63,13 +63,11 @@ RestStatus RestMetricsHandler::execute() {
   }
 
   MetricsFeature& metrics = server.getFeature<MetricsFeature>();
-
-    std::string result;
-    metrics.toPrometheus(result);
-    _response->setResponseCode(rest::ResponseCode::OK);
-    _response->setContentType(rest::ContentType::TEXT);
-    _response->addRawPayload(VPackStringRef(result));
-
+  std::string result;
+  metrics.toPrometheus(result);
+  _response->setResponseCode(rest::ResponseCode::OK);
+  _response->setContentType(rest::ContentType::TEXT);
+  _response->addRawPayload(VPackStringRef(result));
   
   return RestStatus::DONE;
 }

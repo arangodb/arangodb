@@ -36,6 +36,7 @@
 #include <limits>
 
 #include "Basics/VelocyPackHelper.h"
+#include "Logger/LogMacros.h"
 #include "counter.h"
 
 class Counter;
@@ -43,13 +44,13 @@ template<typename T> class Histogram;
 
 class Metric {
 public:
-  Metric(std::string const& name, std::string const& help)
-    : _name(name), _help(help) {};
-  virtual ~Metric() {}
-  std::string const& help() const {return _help;}
-  std::string const& name() const {return _name;}
-  virtual void toPrometheus(std::string& result) const = 0; 
-private:
+  Metric(std::string const& name, std::string const& help);
+  virtual ~Metric(); 
+  std::string const& help() const;
+  std::string const& name() const;
+  virtual void toPrometheus(std::string& result) const = 0;
+  void header(std::string& result) const;
+protected:
   std::string const _name;
   std::string const _help;
 };
@@ -100,14 +101,12 @@ public:
   Histogram (size_t const& buckets, T const& low, T const& high, std::string const& name, std::string const& help = "")
     : Metric(name, help), _c(Metrics::hist_type(buckets)), _low(low), _high(high),
       _lowr(std::numeric_limits<T>::max()), _highr(std::numeric_limits<T>::min()) {
-    assert(hist.size() > 0);
+    TRI_ASSERT(_c.size() > 0);
     _n = _c.size() - 1;
     _div = std::floor((double)(high - low) / (double)_c.size());
   }
 
-  ~Histogram() {
-    std::cout << *this << std::endl;
-  }
+  ~Histogram() {}
     
   inline void records(T const& t) {
     if(t < _lowr) {
@@ -159,13 +158,11 @@ public:
   size_t size() const { return _c.size(); }
 
   virtual void toPrometheus(std::string& result) const override {
-
     result += "#TYPE " + name() + " counter\n";
     result += "#HELP " + name() + " " + help() + "\n";
-
     T le = _low;
     T sum = T(0);
-    for (size_t i = 0; i < _c.size(); ++i) {
+    for (size_t i = 0; i < size(); ++i) {
       uint64_t n = load(i);
       sum += n;
       result += name() + "_bucket{le=\"" + std::to_string(le) + "\"} " +
@@ -174,7 +171,7 @@ public:
     }
     result += name() + "_count " + std::to_string(sum) + "\n";
   }
-
+  
   std::ostream& print(std::ostream& o) const {
     o << "_div: " << _div << ", _c: " << _c << ", _r: [" << _lowr << ", " << _highr << "] " << name();    
     return o;
