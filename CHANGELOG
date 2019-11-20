@@ -1,6 +1,9 @@
 v3.5.3 (XXXX-XX-XX)
 -------------------
 
+* Fixed issue #10440: Incorrect sorting with sort criteria partially covered 
+  by index.
+
 * Make the timeouts for replication requests (for active failover and master-slave 
   replication configurable via startup options:
 
