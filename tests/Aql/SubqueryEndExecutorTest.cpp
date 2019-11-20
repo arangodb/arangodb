@@ -99,13 +99,18 @@ TEST_F(SubqueryEndExecutorTest, check_properties) {
          "shadow rows which is bounded by the structure of the query";
 };
 
-TEST_F(SubqueryEndExecutorTest, empty_input_expects_shadow_rows) {
+// If the input to a spliced subquery is empty, there should be no output
+TEST_F(SubqueryEndExecutorTest, empty_input_expects_no_shadow_rows) {
   SharedAqlItemBlockPtr outputBlock;
-  SharedAqlItemBlockPtr inputBlock = buildBlock<1>(itemBlockManager, {{1}}, {{0, 0}});
+  SharedAqlItemBlockPtr inputBlock = buildBlock<1>(itemBlockManager, {{{}}});
 
   SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
-      itemBlockManager, inputBlock->size(), false, inputBlock);
+      itemBlockManager, 1, false, inputBlock);
   SubqueryEndExecutor testee(fetcher, _infos);
+
+  // I don't seem to be able to make an empty inputBlock above,
+  // so we just fetch the one row that's in the block.
+  fetcher.fetchRow();
 
   ExecutionState state{ExecutionState::HASMORE};
 
@@ -115,9 +120,7 @@ TEST_F(SubqueryEndExecutorTest, empty_input_expects_shadow_rows) {
 
   std::tie(state, std::ignore) = testee.produceRows(output);
   EXPECT_EQ(state, ExecutionState::DONE);
-  EXPECT_EQ(output.numRowsWritten(), 1);
-
-  ExpectedValues(output, {{"[]"}}, {});
+  EXPECT_EQ(output.numRowsWritten(), 0);
 }
 
 TEST_F(SubqueryEndExecutorTest, single_input_expects_shadow_rows) {

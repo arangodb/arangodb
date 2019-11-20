@@ -575,13 +575,25 @@ RestStatus RestAqlHandler::continueExecute() {
 }
 
 void RestAqlHandler::shutdownExecute(bool isFinalized) noexcept {
-  if (isFinalized) {
-    if (_query) {
-      _query->sharedState()->resetWakeupHandler();
+  try {
+    if (isFinalized) {
+      if (_query) {
+        _query->sharedState()->resetWakeupHandler();
+      }
+      if (_qId != 0) {
+        _queryRegistry->close(&_vocbase, _qId);
+      }
     }
-    if (_qId != 0) {
-      _queryRegistry->close(&_vocbase, _qId);
-    }
+  } catch (arangodb::basics::Exception const& ex) {
+    LOG_TOPIC("f73b8", INFO, Logger::FIXME)
+        << "Ignoring exception during rest handler shutdown: "
+        << "[" << ex.code() << "] " << ex.message();
+  } catch (std::exception const& ex) {
+    LOG_TOPIC("b7335", INFO, Logger::FIXME)
+        << "Ignoring exception during rest handler shutdown: " << ex.what();
+  } catch (...) {
+    LOG_TOPIC("c4db4", INFO, Logger::FIXME)
+        << "Ignoring unknown exception during rest handler shutdown.";
   }
 }
 
