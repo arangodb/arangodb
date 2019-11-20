@@ -39,20 +39,6 @@ function dumpTestSuite () {
   return {
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
-
-    setUp : function () {
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
-
-    tearDown : function () {
-    },
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief test the empty collection
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -83,30 +69,45 @@ function dumpTestSuite () {
 
       assertEqual(100000, c.count());
 
-      // remove half of the documents
-      let l = [];
-      for (let i = 0; i < 100000; i+=2) {
-        var doc = c.document("test" + i);
+      let l = [], results = [];
+      for (let i = 0; i < 100000; i += 2) {
+        l.push("test" + i);
+        if (l.length === 10000) {
+          results = results.concat(c.document(l));
+          l = [];
+        }
+      }
+
+      let j = 0;
+      for (let i = 0; i < 100000; i += 2) {
+        let doc = results[j++];
         assertEqual(i, doc.value1);
         assertEqual("this is a test", doc.value2);
         assertEqual("test" + i, doc.value3);
+      }
+
+      // remove half of the documents
+      j = 0;
+      for (let i = 0; i < 100000; i += 2) {
+        let doc = results[j++];
         l.push(doc._key);
         if (l.length === 10000) {
           c.remove(l);
           l = [];
         }
       }
+
       // add another bunch of documents
       l = [];
-      for (let i = 100001; i < 200000; i+=2) {
-        l.push({_key: 'test'+i ,
+      for (let i = 100001; i < 200000; i += 2) {
+        l.push({_key: 'test' + i ,
                 abc: i,
                 value1: i,
                 value2: "this is a test", 
                 value3: "test" + i
                });
         if (l.length === 10000) {
-          c.save(l);
+          c.insert(l);
           l = [];
         }
       }
@@ -183,9 +184,11 @@ function dumpTestSuite () {
       assertEqual(9000, c.count());
 
       c.ensureIndex({type: "hash", fields: ["abc"]});
-      for (var i = 5; i < 10000; i+=10) {
-        c.remove("test" + i);
+      let docs = [];
+      for (let i = 5; i < 10000; i += 10) {
+        docs.push("test" + i);
       }
+      c.remove(docs);
       c.save({ _key: "test" + 999999, value: 999999 });
     },
 

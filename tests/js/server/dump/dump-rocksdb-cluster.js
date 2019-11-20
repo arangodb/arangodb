@@ -45,20 +45,6 @@ function dumpTestSuite () {
   return {
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
-
-    setUp : function () {
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
-
-    tearDown : function () {
-    },
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief test the empty collection
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -160,13 +146,11 @@ function dumpTestSuite () {
       assertEqual("primary", c.getIndexes()[0].type);
       assertEqual(9000, c.count());
 
-      var i;
-      for (i = 0; i < 10000; ++i) {
+      for (let i = 0; i < 10000; ++i) {
         if (i % 10 === 0) {
           assertFalse(c.exists("test" + i));
-        }
-        else {
-          var doc = c.document("test" + i);
+        } else {
+          let doc = c.document("test" + i);
           assertEqual(i, doc.value1);
 
           if (i < 1000) {
