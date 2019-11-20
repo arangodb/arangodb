@@ -175,12 +175,10 @@ function dumpTestSuite () {
       assertEqual("primary", c.getIndexes()[0].type);
       assertEqual(9000, c.count());
 
-      let i;
-      for (i = 0; i < 10000; ++i) {
+      for (let i = 0; i < 10000; ++i) {
         if (i % 10 === 0) {
           assertFalse(c.exists("test" + i));
-        }
-        else {
+        } else {
           let doc = c.document("test" + i);
           assertEqual(i, doc.value1);
 
