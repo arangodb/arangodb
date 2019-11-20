@@ -31,7 +31,20 @@
 #include <tuple>
 #include <utility>
 
-// TODO Clean up unused variants of the IdExecutor - some of them aren't in use anymore.
+// There are currently three variants of IdExecutor in use:
+//
+// - IdExecutor<void>
+//     This is a variant of the ReturnBlock. It can optionally count and holds
+//     an output register id.
+// - IdExecutor<ConstFetcher>
+//     This is the SingletonBlock.
+// - IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>
+//     This is the DistributeConsumerBlock. It holds a distributeId and honors
+//     isResponsibleForInitializeCursor.
+//
+// The last variant using the SingleRowFetcher could be replaced by the (faster)
+// void variant. It only has to learn distributeId and
+// isResponsibleForInitializeCursor for that.
 
 namespace arangodb {
 namespace transaction {
@@ -59,8 +72,7 @@ class IdExecutorInfos : public ExecutorInfos {
 
   [[nodiscard]] std::string const& distributeId();
 
-  // TODO This is probably needed only for UnsortedGather now, so can be removed here.
-  //[[nodiscard]] bool isResponsibleForInitializeCursor() const;
+  [[nodiscard]] bool isResponsibleForInitializeCursor() const;
 
  private:
   std::string const _distributeId;
@@ -69,16 +81,16 @@ class IdExecutorInfos : public ExecutorInfos {
 };
 
 // forward declaration
-template <BlockPassthrough usePassThrough, class T>
+template <class Fetcher>
 class IdExecutor;
 
 // (empty) implementation of IdExecutor<void>
 template <>
-class IdExecutor<BlockPassthrough::Enable, void> {};
+class IdExecutor<void> {};
 
 // implementation of ExecutionBlockImpl<IdExecutor<void>>
 template <>
-class ExecutionBlockImpl<IdExecutor<BlockPassthrough::Enable, void>> : public ExecutionBlock {
+class ExecutionBlockImpl<IdExecutor<void>> : public ExecutionBlock {
  public:
   ExecutionBlockImpl(ExecutionEngine* engine, ExecutionNode const* node,
                      RegisterId outputRegister, bool doCount);
@@ -108,13 +120,13 @@ class ExecutionBlockImpl<IdExecutor<BlockPassthrough::Enable, void>> : public Ex
   bool const _doCount;
 };
 
-template <BlockPassthrough usePassThrough, class UsedFetcher>
+template <class UsedFetcher>
 // cppcheck-suppress noConstructor
 class IdExecutor {
  public:
   struct Properties {
     static constexpr bool preservesOrder = true;
-    static constexpr BlockPassthrough allowsBlockPassthrough = usePassThrough;
+    static constexpr BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Enable;
     static constexpr bool inputSizeRestrictsOutputSize = false;
   };
   // Only Supports SingleRowFetcher and ConstFetcher
@@ -133,11 +145,7 @@ class IdExecutor {
    */
   std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
 
-  template <BlockPassthrough allowPass = usePassThrough, typename = std::enable_if_t<allowPass == BlockPassthrough::Enable>>
   std::tuple<ExecutionState, Stats, SharedAqlItemBlockPtr> fetchBlockForPassthrough(size_t atMost);
-
-  template <BlockPassthrough allowPass = usePassThrough, typename = std::enable_if_t<allowPass == BlockPassthrough::Disable>>
-  std::tuple<ExecutionState, NoStats, size_t> skipRows(size_t atMost);
 
  private:
   Fetcher& _fetcher;

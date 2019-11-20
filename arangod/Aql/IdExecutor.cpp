@@ -37,7 +37,7 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-ExecutionBlockImpl<IdExecutor<BlockPassthrough::Enable, void>>::ExecutionBlockImpl(ExecutionEngine* engine,
+ExecutionBlockImpl<IdExecutor<void>>::ExecutionBlockImpl(ExecutionEngine* engine,
                                                          ExecutionNode const* node,
                                                          RegisterId outputRegister, bool doCount)
     : ExecutionBlock(engine, node),
@@ -50,7 +50,7 @@ ExecutionBlockImpl<IdExecutor<BlockPassthrough::Enable, void>>::ExecutionBlockIm
   }
 }
 
-std::pair<ExecutionState, size_t> ExecutionBlockImpl<IdExecutor<BlockPassthrough::Enable, void>>::skipSome(size_t atMost) {
+std::pair<ExecutionState, size_t> ExecutionBlockImpl<IdExecutor<void>>::skipSome(size_t atMost) {
   traceSkipSomeBegin(atMost);
   if (isDone()) {
     return traceSkipSomeEnd(ExecutionState::DONE, 0);
@@ -67,7 +67,7 @@ std::pair<ExecutionState, size_t> ExecutionBlockImpl<IdExecutor<BlockPassthrough
   return traceSkipSomeEnd(state, skipped);
 }
 
-std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<IdExecutor<BlockPassthrough::Enable, void>>::getSome(size_t atMost) {
+std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<IdExecutor<void>>::getSome(size_t atMost) {
   traceGetSomeBegin(atMost);
   if (isDone()) {
     return traceGetSomeEnd(ExecutionState::DONE, nullptr);
@@ -86,32 +86,32 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<IdExecutor<B
   return traceGetSomeEnd(state, block);
 }
 
-bool aql::ExecutionBlockImpl<IdExecutor<BlockPassthrough::Enable, void>>::isDone() const noexcept {
+bool aql::ExecutionBlockImpl<IdExecutor<void>>::isDone() const noexcept {
   // I'd like to assert this in the constructor, but the dependencies are
   // added after construction.
   TRI_ASSERT(!_dependencies.empty());
   return _currentDependency >= _dependencies.size();
 }
 
-RegisterId ExecutionBlockImpl<IdExecutor<BlockPassthrough::Enable, void>>::getOutputRegisterId() const noexcept {
+RegisterId ExecutionBlockImpl<IdExecutor<void>>::getOutputRegisterId() const noexcept {
   return _outputRegister;
 }
 
-ExecutionBlock& ExecutionBlockImpl<IdExecutor<BlockPassthrough::Enable, void>>::currentDependency() const {
+ExecutionBlock& ExecutionBlockImpl<IdExecutor<void>>::currentDependency() const {
   TRI_ASSERT(_currentDependency < _dependencies.size());
   TRI_ASSERT(_dependencies[_currentDependency] != nullptr);
   return *_dependencies[_currentDependency];
 }
 
-void ExecutionBlockImpl<IdExecutor<BlockPassthrough::Enable, void>>::nextDependency() noexcept {
+void ExecutionBlockImpl<IdExecutor<void>>::nextDependency() noexcept {
   ++_currentDependency;
 }
 
-bool ExecutionBlockImpl<IdExecutor<BlockPassthrough::Enable, void>>::doCount() const noexcept {
+bool ExecutionBlockImpl<IdExecutor<void>>::doCount() const noexcept {
   return _doCount;
 }
 
-void ExecutionBlockImpl<IdExecutor<BlockPassthrough::Enable, void>>::countStats(SharedAqlItemBlockPtr& block) {
+void ExecutionBlockImpl<IdExecutor<void>>::countStats(SharedAqlItemBlockPtr& block) {
   if (doCount() && block != nullptr) {
     CountStats stats;
     stats.setCounted(block->size());
@@ -137,19 +137,19 @@ bool IdExecutorInfos::isResponsibleForInitializeCursor() const {
   return _isResponsibleForInitializeCursor;
 }
 
-template <BlockPassthrough usePassThrough, class UsedFetcher>
-IdExecutor<usePassThrough, UsedFetcher>::IdExecutor(Fetcher& fetcher, IdExecutorInfos& infos)
+template <class UsedFetcher>
+IdExecutor<UsedFetcher>::IdExecutor(Fetcher& fetcher, IdExecutorInfos& infos)
     : _fetcher(fetcher) {
   if (!infos.distributeId().empty()) {
     _fetcher.setDistributeId(infos.distributeId());
   }
 }
 
-template <BlockPassthrough usePassThrough, class UsedFetcher>
-IdExecutor<usePassThrough, UsedFetcher>::~IdExecutor() = default;
+template <class UsedFetcher>
+IdExecutor<UsedFetcher>::~IdExecutor() = default;
 
-template <BlockPassthrough usePassThrough, class UsedFetcher>
-std::pair<ExecutionState, NoStats> IdExecutor<usePassThrough, UsedFetcher>::produceRows(OutputAqlItemRow& output) {
+template <class UsedFetcher>
+std::pair<ExecutionState, NoStats> IdExecutor<UsedFetcher>::produceRows(OutputAqlItemRow& output) {
   ExecutionState state = ExecutionState::HASMORE;
   NoStats stats;
   InputAqlItemRow inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
@@ -184,34 +184,13 @@ std::pair<ExecutionState, NoStats> IdExecutor<usePassThrough, UsedFetcher>::prod
   return {state, stats};
 }
 
-template <BlockPassthrough usePassThrough, class UsedFetcher>
-template <BlockPassthrough allowPass, typename>
-std::tuple<ExecutionState, NoStats, size_t> IdExecutor<usePassThrough, UsedFetcher>::skipRows(size_t atMost) {
-  ExecutionState state;
-  size_t skipped;
-  std::tie(state, skipped) = _fetcher.skipRows(atMost);
-  return {state, NoStats{}, skipped};
-}
-
-template <BlockPassthrough usePassThrough, class UsedFetcher>
-template <BlockPassthrough allowPass, typename>
-std::tuple<ExecutionState, typename IdExecutor<usePassThrough, UsedFetcher>::Stats, SharedAqlItemBlockPtr>
-IdExecutor<usePassThrough, UsedFetcher>::fetchBlockForPassthrough(size_t atMost) {
+template <class UsedFetcher>
+std::tuple<ExecutionState, typename IdExecutor<UsedFetcher>::Stats, SharedAqlItemBlockPtr>
+IdExecutor<UsedFetcher>::fetchBlockForPassthrough(size_t atMost) {
   auto rv = _fetcher.fetchBlockForPassthrough(atMost);
   return {rv.first, {}, std::move(rv.second)};
 }
 
-template class ::arangodb::aql::IdExecutor<BlockPassthrough::Enable, ConstFetcher>;
+template class ::arangodb::aql::IdExecutor<ConstFetcher>;
 // ID can always pass through
-template class ::arangodb::aql::IdExecutor<BlockPassthrough::Enable, SingleRowFetcher<BlockPassthrough::Enable>>;
-// Local gather does NOT want to passThrough
-template class ::arangodb::aql::IdExecutor<BlockPassthrough::Disable, SingleRowFetcher<BlockPassthrough::Disable>>;
-
-template std::tuple<ExecutionState, typename IdExecutor<BlockPassthrough::Enable, ConstFetcher>::Stats, SharedAqlItemBlockPtr>
-IdExecutor<BlockPassthrough::Enable, ConstFetcher>::fetchBlockForPassthrough<BlockPassthrough::Enable, void>(size_t atMost);
-
-template std::tuple<ExecutionState, typename IdExecutor<BlockPassthrough::Enable, SingleRowFetcher<BlockPassthrough::Enable>>::Stats, SharedAqlItemBlockPtr>
-IdExecutor<BlockPassthrough::Enable, SingleRowFetcher<BlockPassthrough::Enable>>::fetchBlockForPassthrough<BlockPassthrough::Enable, void>(size_t atMost);
-
-template std::tuple<ExecutionState, NoStats, size_t>
-IdExecutor<BlockPassthrough::Disable, SingleRowFetcher<BlockPassthrough::Disable>>::skipRows<BlockPassthrough::Disable, void>(size_t atMost);
+template class ::arangodb::aql::IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>;
