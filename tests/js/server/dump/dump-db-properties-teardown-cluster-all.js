@@ -29,15 +29,9 @@
 
 const db = require("@arangodb").db;
 
-function tearDown(name, minReplicationFactor, replicationFactor, sharding){
-  db._dropDatabase(name);
-}
-
-const doIt = tearDown;
-
-doIt("UnitTestsDumpProperties1", 2, 2, "");
-doIt("UnitTestsDumpProperties2", 2, 2, "single");
-doIt("UnitTestsDumpProperties3", 2, 3, "");
+db._dropDatabase("UnitTestsDumpProperties1");
+db._dropDatabase("UnitTestsDumpProperties2");
+db._dropDatabase("UnitTestsDumpProperties3");
 
 return {
   status: true

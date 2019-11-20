@@ -41,11 +41,9 @@ function create(name, minReplicationFactor, replicationFactor, sharding){
   });
 }
 
-const doIt = create;
-
-doIt("UnitTestsDumpProperties1", 2, 2, "");
-doIt("UnitTestsDumpProperties2", 2, 2, "single");
-doIt("UnitTestsDumpProperties3", 2, 3, "");
+create("UnitTestsDumpProperties1", 2, 2, "");
+create("UnitTestsDumpProperties2", 2, 2, "single");
+create("UnitTestsDumpProperties3", 2, 3, "");
 
 return {
   status: true

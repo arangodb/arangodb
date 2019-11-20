@@ -28,16 +28,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 const db = require("@arangodb").db;
-
-function tearDown(name, minReplicationFactor, replicationFactor, sharding){
-  db._dropDatabase(name + "Src");
-  db._dropDatabase(name + "Dst");
-}
-
-const doIt = tearDown;
-
-doIt("UnitTestsDump", 2, 3, "");
-
+db._dropDatabase("UnitTestsDumpSrc");
+db._dropDatabase("UnitTestsDumpDst");
 return {
   status: true
 };

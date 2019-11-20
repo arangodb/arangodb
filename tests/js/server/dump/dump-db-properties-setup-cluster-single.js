@@ -29,25 +29,19 @@
 
 const db = require("@arangodb").db;
 
-function create(name, minReplicationFactor, replicationFactor, sharding){
-  try {
-    db._dropDatabase(name + "Src");
-  } catch (err1) {
-  }
-  try {
-    db._dropDatabase(name + "Dst");
-  } catch (err1) {
-  }
-  db._createDatabase(name + "Src", {
-    "minReplicationFactor": minReplicationFactor,
-    "replicationFactor": replicationFactor,
-    "sharding": sharding,
-  });
+try {
+  db._dropDatabase("UnitTestsDumpSrc");
+} catch (err1) {
 }
-
-const doIt = create;
-
-doIt("UnitTestsDump", 2, 3, "");
+try {
+  db._dropDatabase("UnitTestsDumpDst");
+} catch (err1) {
+}
+db._createDatabase("UnitTestsDumpSrc", {
+  "minReplicationFactor": 2,
+  "replicationFactor": 3,
+  "sharding": "",
+});
 
 return {
   status: true

@@ -40,8 +40,6 @@ function testProperties(name, minReplicationFactor, replicationFactor, sharding)
   assertEqual(sharding, props.sharding);
 }
 
-const doIt = testProperties;
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
@@ -63,10 +61,11 @@ function dumpTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
+      db._useDatabase("_system");
     },
 
     testDatabaseProperties1 : function () {
-      doIt("UnitTestsDump", 2, 3, "");
+      testProperties("UnitTestsDump", 2, 3, "");
     },
 
   };

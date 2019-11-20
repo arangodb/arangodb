@@ -31,7 +31,7 @@
 const fs = require('fs');
 const internal = require("internal");
 const jsunity = require("jsunity");
-var analyzers = require("@arangodb/analyzers");
+let analyzers = require("@arangodb/analyzers");
 const isEnterprise = internal.isEnterprise();
 const db = internal.db;
 
@@ -68,7 +68,7 @@ function dumpTestSuite () {
         return;
       }
 
-      var props = db._properties();
+      let props = db._properties();
       assertEqual(props["minReplicationFactor"], 2);
       assertEqual(props["replicationFactor"], 3);
     },
@@ -78,8 +78,8 @@ function dumpTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testEmpty : function () {
-      var c = db._collection("UnitTestsDumpEmpty");
-      var p = c.properties();
+      let c = db._collection("UnitTestsDumpEmpty");
+      let p = c.properties();
 
       assertEqual(2, c.type()); // document
       assertTrue(p.waitForSync);
@@ -94,8 +94,8 @@ function dumpTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testMany : function () {
-      var c = db._collection("UnitTestsDumpMany");
-      var p = c.properties();
+      let c = db._collection("UnitTestsDumpMany");
+      let p = c.properties();
 
       assertEqual(2, c.type()); // document
       assertFalse(p.waitForSync);
@@ -105,13 +105,13 @@ function dumpTestSuite () {
       assertEqual(100000, c.count());
 
       // test all documents
-      var r = db._query(`FOR d IN ${c.name()} RETURN d`).toArray();
-      var rr = new Map();
+      let r = db._query(`FOR d IN ${c.name()} RETURN d`).toArray();
+      let rr = new Map();
       for (let i = 0; i < r.length; ++i) {
         rr.set(r[i]._key, r[i]);
       }
       for (let i = 0; i < 100000; ++i) {
-        var doc = rr.get("test" + i);
+        let doc = rr.get("test" + i);
         assertEqual(i, doc.value1);
         assertEqual("this is a test", doc.value2);
         assertEqual("test" + i, doc.value3);
@@ -123,8 +123,8 @@ function dumpTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testEdges : function () {
-      var c = db._collection("UnitTestsDumpEdges");
-      var p = c.properties();
+      let c = db._collection("UnitTestsDumpEdges");
+      let p = c.properties();
 
       assertEqual(3, c.type()); // edges
       assertFalse(p.waitForSync);
@@ -135,8 +135,8 @@ function dumpTestSuite () {
       assertEqual(10, c.count());
 
       // test all documents
-      for (var i = 0; i < 10; ++i) {
-        var doc = c.document("test" + i);
+      for (let i = 0; i < 10; ++i) {
+        let doc = c.document("test" + i);
         assertEqual("test" + i, doc._key);
         assertEqual("UnitTestsDumpMany/test" + i, doc._from);
         assertEqual("UnitTestsDumpMany/test" + (i + 1), doc._to);
@@ -149,8 +149,8 @@ function dumpTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testOrder : function () {
-      var c = db._collection("UnitTestsDumpOrder");
-      var p = c.properties();
+      let c = db._collection("UnitTestsDumpOrder");
+      let p = c.properties();
 
       assertEqual(2, c.type()); // document
       assertFalse(p.waitForSync);
@@ -165,8 +165,8 @@ function dumpTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRemoved : function () {
-      var c = db._collection("UnitTestsDumpRemoved");
-      var p = c.properties();
+      let c = db._collection("UnitTestsDumpRemoved");
+      let p = c.properties();
 
       assertEqual(2, c.type()); // document
       assertFalse(p.waitForSync);
@@ -175,13 +175,13 @@ function dumpTestSuite () {
       assertEqual("primary", c.getIndexes()[0].type);
       assertEqual(9000, c.count());
 
-      var i;
+      let i;
       for (i = 0; i < 10000; ++i) {
         if (i % 10 === 0) {
           assertFalse(c.exists("test" + i));
         }
         else {
-          var doc = c.document("test" + i);
+          let doc = c.document("test" + i);
           assertEqual(i, doc.value1);
 
           if (i < 1000) {
@@ -196,8 +196,8 @@ function dumpTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIndexes : function () {
-      var c = db._collection("UnitTestsDumpIndexes");
-      var p = c.properties();
+      let c = db._collection("UnitTestsDumpIndexes");
+      let p = c.properties();
 
       assertEqual(2, c.type()); // document
       assertFalse(p.waitForSync);
@@ -251,8 +251,8 @@ function dumpTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testTruncated : function () {
-      var c = db._collection("UnitTestsDumpTruncated");
-      var p = c.properties();
+      let c = db._collection("UnitTestsDumpTruncated");
+      let p = c.properties();
 
       assertEqual(2, c.type()); // document
       assertFalse(p.waitForSync);
@@ -267,8 +267,8 @@ function dumpTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testShards : function () {
-      var c = db._collection("UnitTestsDumpShards");
-      var p = c.properties();
+      let c = db._collection("UnitTestsDumpShards");
+      let p = c.properties();
 
       assertEqual(2, c.type()); // document
       assertFalse(p.waitForSync);
@@ -278,8 +278,8 @@ function dumpTestSuite () {
       assertEqual("primary", c.getIndexes()[0].type);
       assertEqual(1000, c.count());
 
-      for (var i = 0; i < 1000; ++i) {
-        var doc = c.document(String(7 + (i * 42)));
+      for (let i = 0; i < 1000; ++i) {
+        let doc = c.document(String(7 + (i * 42)));
 
         assertEqual(String(7 + (i * 42)), doc._key);
         assertEqual(i, doc.value);
@@ -292,8 +292,8 @@ function dumpTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testStrings : function () {
-      var c = db._collection("UnitTestsDumpStrings");
-      var p = c.properties();
+      let c = db._collection("UnitTestsDumpStrings");
+      let p = c.properties();
 
       assertEqual(2, c.type()); // document
       assertFalse(p.waitForSync);
@@ -302,7 +302,7 @@ function dumpTestSuite () {
       assertEqual("primary", c.getIndexes()[0].type);
       assertEqual(8, c.count());
 
-      var texts = [
+      let texts = [
         "big. Really big. He moment. Magrathea! - insisted Arthur, - I do you can sense no further because it doesn't fit properly. In my the denies faith, and the atmosphere beneath You are not cheap He was was his satchel. He throughout Magrathea. - He pushed a tore the ecstatic crowd. Trillian sat down the time, the existence is it? And he said, - What they don't want this airtight hatchway. - it's we you shooting people would represent their Poet Master Grunthos is in his mind.",
         "Ultimo cadere chi sedete uso chiuso voluto ora. Scotendosi portartela meraviglia ore eguagliare incessante allegrezza per. Pensava maestro pungeva un le tornano ah perduta. Fianco bearmi storia soffio prende udi poteva una. Cammino fascino elisire orecchi pollici mio cui sai sul. Chi egli sino sei dita ben. Audace agonie groppa afa vai ultima dentro scossa sii. Alcuni mia blocco cerchi eterno andare pagine poi. Ed migliore di sommesso oh ai angoscia vorresti.",
         "Νέο βάθος όλα δομές της χάσει. Μέτωπο εγώ συνάμα τρόπος και ότι όσο εφόδιο κόσμου. Προτίμηση όλη διάφορους του όλο εύθραυστη συγγραφής. Στα άρα ένα μία οποία άλλων νόημα. Ένα αποβαίνει ρεαλισμού μελετητές θεόσταλτο την. Ποντιακών και rites κοριτσάκι παπούτσια παραμύθια πει κυρ.",
@@ -314,7 +314,7 @@ function dumpTestSuite () {
       ];
 
       texts.forEach(function (t, i) {
-        var doc = c.document("text" + i);
+        let doc = c.document("text" + i);
 
         assertEqual(t, doc.value);
       });
@@ -356,8 +356,8 @@ function dumpTestSuite () {
       assertTrue(Math.abs(props.consolidationPolicy.threshold - 0.3) < 0.001);
       assertEqual(props.consolidationPolicy.type, "bytes_accum");
 
-      var startTime = new Date();
-      var res;
+      let startTime = new Date();
+      let res;
       while (new Date() - startTime < 60000) {
         res = db._query("FOR doc IN " + view.name() + " SEARCH doc.value >= 0 OPTIONS { waitForSync: true } RETURN doc").toArray();
         if (res.length === 5000) {
@@ -745,7 +745,7 @@ function dumpTestEnterpriseSuite () {
 /// @brief test link on analyzers collection
 ////////////////////////////////////////////////////////////////////////////////
     testIndexAnalyzerCollection : function() {
-      var res = db._query("FOR d IN analyzersView OPTIONS {waitForSync:true} FOR a IN _analyzers FILTER d._key == a._key RETURN [d,a]").toArray();
+      let res = db._query("FOR d IN analyzersView OPTIONS {waitForSync:true} FOR a IN _analyzers FILTER d._key == a._key RETURN [d,a]").toArray();
       assertEqual(res.length, db._analyzers.count());
       res.forEach(function(e) {
         assertEqual(e[0],e[1]);
