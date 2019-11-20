@@ -861,7 +861,7 @@ std::map<std::string, std::vector<std::string>> statStrings{
    {"arangodb_client_connection_statistics_client_connections ", "guage",
     "The number of client connections that are currently open.\n"}},
   {"connectionTimeCounts",
-   {"arangodb_client_connection_statistics_connection_time_bucket ", "gauge",
+   {"arangodb_client_connection_statistics_connection_time_bucket", "gauge",
     "Total connection time of a client.\n"}},
   {"connectionTimeCount",
    {"arangodb_client_connection_statistics_connection_time_count ", "gauge",
@@ -954,13 +954,13 @@ void StatisticsWorker::generateRawStatistics(std::string& result, double const& 
     result +=
       TYPE_ + statStrings.at("connectionTimeCounts")[0] + statStrings.at("connectionTimeCounts")[1] +
       HELP_ + statStrings.at("connectionTimeCounts")[0] + statStrings.at("connectionTimeCounts")[2] +
-      statStrings.at("clientHttpConnections")[0] + "{le=\"0.1\"}"  +
+      statStrings.at("clientHttpConnections")[0] + "{le=\"0.1\"}"  + " " +
       std::to_string(slc.get("counts").at(0).getNumber<uint64_t>()) + "\n" +
-      statStrings.at("clientHttpConnections")[0] + "{le=\"1\"}"    +
+      statStrings.at("clientHttpConnections")[0] + "{le=\"1\"}"    + " " +
       std::to_string(slc.get("counts").at(1).getNumber<uint64_t>()) + "\n" +
-      statStrings.at("clientHttpConnections")[0] + "{le=\"60\"}"   +
+      statStrings.at("clientHttpConnections")[0] + "{le=\"60\"}"   + " " +
       std::to_string(slc.get("counts").at(1).getNumber<uint64_t>()) + "\n" +
-      statStrings.at("clientHttpConnections")[0] + "{le=\"+Inf\"}" +
+      statStrings.at("clientHttpConnections")[0] + "{le=\"+Inf\"}" + " " +
       std::to_string(slc.get("counts").at(3).getNumber<uint64_t>());
 
     result +=
