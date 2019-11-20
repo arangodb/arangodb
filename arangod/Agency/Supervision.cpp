@@ -459,7 +459,7 @@ std::vector<check_t> Supervision::check(std::string const& type) {
   // Do actual monitoring
   for (auto const& machine : machinesPlanned) {
     std::string lastHeartbeatStatus, lastHeartbeatAcked, lastHeartbeatTime,
-        lastStatus, serverID(machine.first), shortName;
+            lastStatus, serverID(machine.first), shortName;
 
     // short name arrives asynchronous to machine registering, make sure
     //  it has arrived before trying to use it
@@ -1153,7 +1153,7 @@ void Supervision::cleanupFinishedAndFailedJobs() {
   constexpr size_t maximalFinishedJobs = 500;
   constexpr size_t maximalFailedJobs = 1000;
 
-  auto cleanup = [&](std::string prefix, size_t limit) {
+  auto cleanup = [&](std::string const& prefix, size_t limit) {
     auto const& jobs = _snapshot.hasAsChildren(prefix).first;
     if (jobs.size() <= 2 * limit) {
       return;
@@ -1170,8 +1170,8 @@ void Supervision::cleanupFinishedAndFailedJobs() {
       }
     }
     std::sort(v.begin(), v.end(), [](keyDate const& a, keyDate const& b) -> bool {
-        return a.second < b.second;
-      });
+      return a.second < b.second;
+    });
     size_t toBeDeleted = v.size() - limit;  // known to be positive
     LOG_TOPIC("98451", INFO, Logger::AGENCY) << "Deleting " << toBeDeleted << " old jobs"
       " in " << prefix;
@@ -1281,14 +1281,16 @@ void Supervision::workJobs() {
   }
 }
 
-
-bool Supervision::verifyCoordinatorRebootID(std::string coordinatorID, uint64_t wantedRebootID) {
+bool Supervision::verifyCoordinatorRebootID(std::string const& coordinatorID,
+                                            uint64_t wantedRebootID, bool& coordinatorFound) {
   // check if the coordinator exists in health
   std::string const& health = serverHealth(coordinatorID);
   LOG_TOPIC("44432", DEBUG, Logger::SUPERVISION)
     << "verifyCoordinatorRebootID: coordinatorID="
     << coordinatorID << " health=" << health;
+
   // if the server is not found, health is an empty string
+  coordinatorFound = health.empty();
   if (health != "GOOD" && health != "BAD") {
     return false;
   }
@@ -1301,7 +1303,9 @@ bool Supervision::verifyCoordinatorRebootID(std::string coordinatorID, uint64_t 
   return rebootID.second && rebootID.first == wantedRebootID;
 }
 
-void Supervision::deleteBrokenDatabase(std::string const& database, std::string const& coordinatorID, uint64_t rebootID) {
+void Supervision::deleteBrokenDatabase(std::string const& database,
+                                       std::string const& coordinatorID,
+                                       uint64_t rebootID, bool coordinatorFound) {
   auto envelope = std::make_shared<Builder>();
   {
     VPackArrayBuilder trxs(envelope.get());
@@ -1330,10 +1334,15 @@ void Supervision::deleteBrokenDatabase(std::string const& database, std::string 
       }
       {
         // precondition that this database is still in Plan and is building
-        VPackObjectBuilder precondition(envelope.get());
+        VPackObjectBuilder preconditions(envelope.get());
         envelope->add(_agencyPrefix + planDBPrefix + database + "/" + StaticStrings::DatabaseIsBuilding, VPackValue(true));
         envelope->add(_agencyPrefix + planDBPrefix + database + "/" + StaticStrings::DatabaseCoordinatorRebootId, VPackValue(rebootID));
         envelope->add(_agencyPrefix + planDBPrefix + database + "/" + StaticStrings::DatabaseCoordinator, VPackValue(coordinatorID));
+
+        {
+          VPackObjectBuilder precondition(envelope.get(), _agencyPrefix + healthPrefix + "/" + coordinatorID);
+          envelope->add("oldEmpty", VPackValue(!coordinatorFound));
+        }
       }
     }
   }
@@ -1372,9 +1381,11 @@ void Supervision::checkBrokenCreatedDatabases() {
       std::pair<std::string, bool> coordinatorID = db->hasAsString(StaticStrings::DatabaseCoordinator);
 
       bool keepDatabase = true;
+      bool coordinatorFound = false;
 
       if (rebootID.second && coordinatorID.second) {
-        keepDatabase = verifyCoordinatorRebootID(coordinatorID.first, rebootID.first);
+        keepDatabase = verifyCoordinatorRebootID(coordinatorID.first,
+                                                 rebootID.first, coordinatorFound);
         // incomplete data, should not happen
       } else {
         //          v---- Please note this awesome log-id
@@ -1387,7 +1398,7 @@ void Supervision::checkBrokenCreatedDatabases() {
         LOG_TOPIC("fe522", INFO, Logger::SUPERVISION)
           << "checkBrokenCreatedDatabases: removing skeleton database with name " << dbpair.first;
         // delete this database and all of its collections
-        deleteBrokenDatabase(dbpair.first, coordinatorID.first, rebootID.first);
+        deleteBrokenDatabase(dbpair.first, coordinatorID.first, rebootID.first, coordinatorFound);
       }
     }
   }
@@ -1533,11 +1544,11 @@ void Supervision::enforceReplication() {
       auto const& col = *(col_.second);
 
       size_t replicationFactor;
-      auto replFact = col.hasAsUInt("replicationFactor");
+      auto replFact = col.hasAsUInt(StaticStrings::ReplicationFactor);
       if (replFact.second) {
         replicationFactor = replFact.first;
       } else {
-        auto replFact2 = col.hasAsString("replicationFactor");
+        auto replFact2 = col.hasAsString(StaticStrings::ReplicationFactor);
         if (replFact2.second && replFact2.first == "satellite") {
           // satellites => distribute to every server
           auto available = Job::availableServers(_snapshot);
@@ -1549,7 +1560,7 @@ void Supervision::enforceReplication() {
         }
       }
 
-      bool clone = col.has("distributeShardsLike");
+      bool clone = col.has(StaticStrings::DistributeShardsLike);
 
       if (!clone) {
         for (auto const& shard_ : col.hasAsChildren("shards").first) {  // Pl shards
