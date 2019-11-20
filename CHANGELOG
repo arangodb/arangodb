@@ -1,6 +1,23 @@
 devel
 -----
 
+* Added startup option `--query.optimizer-rules` to selectively enable or disable
+  optimizer rules by default. The option can be specified multiple times, and takes
+  the same input as the query option of the same name. 
+  
+  For example, to turn off the rule _use-indexes-for-sort_, use
+
+      --query.optimizer-rules "-use-indexes-for-sort"
+
+  The purpose of this option is to be able to enable potential future experimental
+  optimizer rules, which may be shipped in a disabled-by-default state.
+
+* Allow the AQL query optimizer to remove the DistributeNodes for several data-modification
+  queries. So far, only REMOVE queries benefitted. Now the optimization can also be
+  applied for REPLACE and UPDATE queries in case the query does not use LIMIT and
+  there is no further cluster-internal communication after the REMOVE, REPLACE or UPDATE 
+  node. 
+
 * Include ArangoSearch data in hotbackups.
 
 * Allow to restore 3.5 hotbackups in 3.6.
@@ -152,9 +169,8 @@ devel
 * Add replicationFactor, minReplicationFactor and sharding strategy to database creation
   dialog in web UI. Preselect database default values for collection creation in web UI.
 
-* Add new JavaScipt function `db._properties()` and REST route GET
-  `/_api/database/properties` that provides information about the current database's
-  properties.
+* Add new JavaScipt function `db._properties()` that provides information about
+  the current database's properties.
 
 * Add new options `sharding` and `replicationFactor` for database creation methods. The
   specified values will provide the defaults for all collections created in a database.

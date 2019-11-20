@@ -146,6 +146,11 @@ class V8ClientConnection {
   /// to a nullptr
   void shutdownConnection();
 
+  void setCustomError(int httpCode, std::string const& msg) {
+    _setCustomError = true;
+    _lastHttpReturnCode = httpCode;
+    _lastErrorMessage = msg;
+  }
  private:
   application_features::ApplicationServer& _server;
 
@@ -164,6 +169,7 @@ class V8ClientConnection {
   std::shared_ptr<fuerte::Connection> _connection;
   velocypack::Options _vpackOptions;
   bool _forceJson;
+  bool _setCustomError;
 };
 }  // namespace arangodb
 
