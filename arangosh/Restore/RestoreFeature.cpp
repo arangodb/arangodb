@@ -1039,7 +1039,8 @@ arangodb::Result processInputDirectory(
             << "Reloading of Foxx services failed: " << res.errorMessage()
             << "- in the cluster Foxx services will be available eventually, On single servers send "
             << "a POST to '/_api/foxx/_local/heal' on the current database, "
-            << "with an empty body.";
+            << "with an empty body. Please note that any of this is not necessary if the Foxx APIs " 
+            << "have been turned off on the server using the option `--foxx.api false`.";
       }
     }
 
