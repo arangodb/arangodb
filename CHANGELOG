@@ -1,12 +1,8 @@
-v3.5.4 (XXXX-XX-XX)
+v3.5.3 (XXXX-XX-XX)
 -------------------
 
 * Fixed issue #10440: Incorrect sorting with sort criteria partially covered 
   by index.
-
-
-v3.5.3 (XXXX-XX-XX)
--------------------
 
 * Fixed internal issue #4647: dead Coordinators are not removed for agency.
 
