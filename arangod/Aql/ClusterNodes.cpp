@@ -555,13 +555,30 @@ struct ParallelizableFinder final : public WalkerWorker<ExecutionNode> {
   }
 
   bool before(ExecutionNode* node) override final {
-    if (node->isModificationNode() ||
-        node->getType() == ExecutionNode::SCATTER ||
+    if (node->getType() == ExecutionNode::SCATTER ||
         node->getType() == ExecutionNode::GATHER ||
         node->getType() == ExecutionNode::DISTRIBUTE) {
       _isParallelizable = false;
       return true;  // true to abort the whole walking process
     }
+    if (node->isModificationNode()) {
+        /*
+         * TODO: enable parallelization for REMOVE, REPLACE, UPDATE
+         * as well. This seems safe as long as there is no DistributeNode
+         * and there is no further communication using Scatter/Gather.
+         * But this needs more testing first
+        && 
+        (node->getType() != ExecutionNode::REMOVE &&
+         node->getType() != ExecutionNode::REPLACE && 
+         node->getType() != ExecutionNode::UPDATE)) {
+         */
+      // REMOVEs and REPLACEs are actually parallelizable, as they are completely independent
+      // from each other on different shards
+      _isParallelizable = false;
+      return true;  // true to abort the whole walking process
+    }
+
+    // continue inspecting
     return false;
   }
 };
