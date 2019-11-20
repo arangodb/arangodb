@@ -104,6 +104,7 @@ public:
     TRI_ASSERT(_c.size() > 0);
     _n = _c.size() - 1;
     _div = std::floor((double)(high - low) / (double)_c.size());
+    TRI_ASSERT(_div != 0);
   }
 
   ~Histogram() {}
