@@ -82,7 +82,8 @@ uint64_t Counter::load() const {
 }
 
 void Counter::toPrometheus(std::string& result) const {
-  Metric::toPrometheus(result);
+  result += "#TYPE " + name() + " counter\n";
+  result += "#HELP " + name() + " " + help() + "\n";
   result += name() + " " + std::to_string(load()) + "\n";
 }
 

@@ -48,10 +48,7 @@ public:
   virtual ~Metric() {}
   std::string const& help() const {return _help;}
   std::string const& name() const {return _name;}
-  void toPrometheus(std::string& result) const {
-    result += "#TYPE " + _name + " counter\n";
-    result += "#HELP " + _name + " " + _help + "\n";
-  }
+  virtual void toPrometheus(std::string& result) const = 0; 
 private:
   std::string const _name;
   std::string const _help;
@@ -83,7 +80,7 @@ public:
   void count(uint64_t);
   uint64_t load() const;
   void push();
-  void toPrometheus(std::string&) const;
+  virtual void toPrometheus(std::string&) const override;
 private:
   Metrics::counter_type _c;
   mutable Metrics::buffer_type _b;
@@ -161,8 +158,11 @@ public:
       
   size_t size() const { return _c.size(); }
 
-  void toPrometheus(std::string& result) const {
-    Metric::toPrometheus(result);
+  virtual void toPrometheus(std::string& result) const override {
+
+    result += "#TYPE " + name() + " counter\n";
+    result += "#HELP " + name() + " " + help() + "\n";
+
     T le = _low;
     T sum = T(0);
     for (size_t i = 0; i < _c.size(); ++i) {
