@@ -136,7 +136,7 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode, public Col
 
   using IndexValuesRegisters = std::pair<TRI_idx_iid_t, std::unordered_map<size_t, RegisterId>>;
 
-  using IndexVarsInfo = std::unordered_map<std::vector<arangodb::basics::AttributeName> const*, IndexNode::IndexVariable>;
+  using IndexVarsInfo = std::unordered_map<std::vector<arangodb::basics::AttributeName> const*, IndexVariable>;
 
   void setLateMaterialized(aql::Variable const* docIdVariable, TRI_idx_iid_t commonIndexId, IndexVarsInfo const& indexVariables);
 
