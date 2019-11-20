@@ -914,7 +914,6 @@ void TRI_vocbase_t::inventory(VPackBuilder& result, TRI_voc_tick_t maxTick,
 
   result.add(VPackValue(arangodb::StaticStrings::Properties));
   result.openObject();
-  result.add("from", VPackValue("vocbase.cpp"));
   _info.toVelocyPack(result);
   result.close();
 

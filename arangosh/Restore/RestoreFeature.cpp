@@ -281,10 +281,6 @@ arangodb::Result tryCreateDatabase(arangodb::application_features::ApplicationSe
   using arangodb::velocypack::ArrayBuilder;
   using arangodb::velocypack::ObjectBuilder;
 
-  LOG_DEVEL << "@@@@@@@@@@@@@@@@@@@@@@@@@@@@";
-  LOG_DEVEL << properties.toJson();
-  LOG_DEVEL << "@@@@@@@@@@@@@@@@@@@@@@@@@@@@";
-
   // get client feature for configuration info
   arangodb::ClientFeature& client =
       server.getFeature<arangodb::HttpEndpointProvider, arangodb::ClientFeature>();
@@ -318,7 +314,6 @@ arangodb::Result tryCreateDatabase(arangodb::application_features::ApplicationSe
       }) {
         VPackSlice slice = properties.get(key);
         if (!slice.isNone()){
-          LOG_DEVEL << "adding: " << key << " with value: " << slice.toJson();
           object->add(key, slice);
         }
       }
@@ -384,12 +379,8 @@ void checkEncryption(arangodb::ManagedDirectory& directory) {
 void getDBProperties(arangodb::ManagedDirectory& directory, VPackBuilder& builder) {
   try {
     VPackBuilder fileContentBuilder = directory.vpackFromJsonFile("dump.json");
-    builder.add(fileContentBuilder.slice().get("properties"));
-    LOG_DEVEL << builder.slice().toJson();
-  } catch (std::exception const& ext) {
-    LOG_DEVEL << ext.what();
+    builder.add(fileContentBuilder.slice().get(arangodb::StaticStrings::Properties));
   } catch (...) {
-    LOG_DEVEL << "FAIL";
     // the above may go wrong for several reasons
   }
 
@@ -1569,18 +1560,14 @@ void RestoreFeature::start() {
       result = _clientManager.getConnectedClient(httpClient, _options.force,
                                                  false, !_options.createDatabase, false);
 
-      LOG_DEVEL << "@@@@ 1";
       if (result.is(TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT)) {
         LOG_TOPIC("3e715", FATAL, Logger::RESTORE)
             << "cannot create server connection, giving up!";
         FATAL_ERROR_EXIT();
       }
 
-      LOG_DEVEL << "@@@@ 2";
       if (result.is(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND)) {
-        LOG_DEVEL << "@@@@ 3";
         if (_options.createDatabase) {
-          LOG_DEVEL << "@@@@ 4";
           // database not found, but database creation requested
           LOG_TOPIC("080f3", INFO, Logger::RESTORE) << "Creating database '" << db.first << "'";
 

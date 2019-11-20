@@ -31,11 +31,6 @@
 const internal = require("internal");
 const jsunity = require("jsunity");
 const db = internal.db;
-const isEnterprise = internal.isEnterprise();
-
-//if (!isEnterprise) {
-//  return;
-//}
 
 function testProperties(name, minReplicationFactor, replicationFactor, sharding){
   db._useDatabase(name);

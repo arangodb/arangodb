@@ -230,11 +230,9 @@ Result RocksDBReplicationContext::getInventory(TRI_vocbase_t& vocbase, bool incl
   // simon: I think no, but this has been the behavior since 3.2
   TRI_voc_tick_t tick = TRI_NewTickServer();  // = _lastArangoTick
   if (global) {
-    LOG_DEVEL << "DATABASE->inventory";
     // global inventory
     DatabaseFeature::DATABASE->inventory(result, tick, nameFilter);
   } else {
-    LOG_DEVEL << "vocbase.inventory";
     // database-specific inventory
     vocbase.inventory(result, tick, nameFilter);
   }
@@ -810,7 +808,7 @@ RocksDBReplicationContext::CollectionIterator::CollectionIterator(
   _readOptions.verify_checksums = false;
   _readOptions.fill_cache = false;
   _readOptions.prefix_same_as_start = true;
-
+  
   _cTypeHandler.reset(transaction::Context::createCustomTypeHandler(vocbase, _resolver));
   vpackOptions.customTypeHandler = _cTypeHandler.get();
   setSorted(sorted);

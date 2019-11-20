@@ -27,13 +27,7 @@
 /// @author Copyright 2019, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-'use strict';
 const db = require("@arangodb").db;
-const isEnterprise = require("internal").isEnterprise();
-
-//if (!isEnterprise) {
-//  return {};
-//}
 
 function create(name, minReplicationFactor, replicationFactor, sharding){
   try {

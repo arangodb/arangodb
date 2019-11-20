@@ -707,7 +707,6 @@ void RestReplicationHandler::handleCommandClusterInventory() {
   TRI_vocbase_t* vocbase = databaseFeature.lookupDatabase(dbName);
   resultBuilder.add(VPackValue(StaticStrings::Properties));
   vocbase->toVelocyPack(resultBuilder);
-  resultBuilder.add("from", VPackValue("rest handler"));
 
   resultBuilder.add("collections", VPackValue(VPackValueType::Array));
   for (std::shared_ptr<LogicalCollection> const& c : cols) {
@@ -752,7 +751,6 @@ void RestReplicationHandler::handleCommandClusterInventory() {
   resultBuilder.add("tick", VPackValue(std::to_string(tick)));
   resultBuilder.add("state", VPackValue("unused"));
   resultBuilder.close();  // base
-  LOG_DEVEL << "clusterinventory" << resultBuilder.slice().toJson();
   generateResult(rest::ResponseCode::OK, resultBuilder.slice());
 }
 

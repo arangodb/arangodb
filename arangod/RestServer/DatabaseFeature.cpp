@@ -594,7 +594,7 @@ Result DatabaseFeature::registerPostRecoveryCallback(std::function<Result()>&& c
 
   return Result();
 }
-
+  
 void DatabaseFeature::enumerate(std::function<void(TRI_vocbase_t*)> const& callback) {
   auto unuser(_databasesProtector.use());
   auto theLists = _databasesLists.load();
