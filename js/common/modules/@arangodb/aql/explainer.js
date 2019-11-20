@@ -1500,7 +1500,7 @@ function processQuery(query, explain, planIndex) {
           indexRef = `${variableName(node.inKeyVariable)}`;
           inputExplain = `${variableName(node.inKeyVariable)} ${keyword('WITH')} ${variableName(node.inDocVariable)}`;
         } else {
-          indexRef = inputExplain = `variableName(node.inDocVariable)`;
+          indexRef = inputExplain = `${variableName(node.inDocVariable)}`;
         }
         let restrictString = '';
         if (node.restrictedTo) {
@@ -1517,7 +1517,7 @@ function processQuery(query, explain, planIndex) {
           indexRef = `${variableName(node.inKeyVariable)}`;
           inputExplain = `${variableName(node.inKeyVariable)} ${keyword('WITH')} ${variableName(node.inDocVariable)}`;
         } else {
-          indexRef = inputExplain = `variableName(node.inDocVariable)`;
+          indexRef = inputExplain = `${variableName(node.inDocVariable)}`;
         }
         let restrictString = '';
         if (node.restrictedTo) {
