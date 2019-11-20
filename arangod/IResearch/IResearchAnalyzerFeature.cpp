@@ -323,9 +323,13 @@ bool parse_ngram_vpack_config(const irs::string_ref& args, irs::analysis::ngram_
       options.stream_bytes_type = itr->second;
   }
 
+  min = std::max(min, size_t(1));
+  max = std::max(max, min);
+
   options.min_gram = min;
   options.max_gram = max;
   options.preserve_original = slice.get(PRESERVE_ORIGINAL_PARAM_NAME).getBool();
+
   return true;
 }
 
