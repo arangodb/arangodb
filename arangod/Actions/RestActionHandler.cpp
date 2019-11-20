@@ -48,7 +48,7 @@ RestStatus RestActionHandler::execute() {
 
   // need an action
   if (_action == nullptr) {
-    generateNotImplemented(_request->requestPath());
+    generateNotImplemented(_request->fullUrl());
     return RestStatus::DONE;
   }
 
@@ -76,9 +76,9 @@ RestStatus RestActionHandler::execute() {
   return RestStatus::DONE;
 }
 
-bool RestActionHandler::cancel() {
+void RestActionHandler::cancel() {
   RestVocbaseBaseHandler::cancel();
-  return _action->cancel(&_dataLock, &_data);
+  _action->cancel(&_dataLock, &_data);
 }
 
 /// @brief executes an action

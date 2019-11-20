@@ -14,7 +14,6 @@ or PRs.
 
 ======================================================================
 
-- `test/js/common/shell/shell-collection-cache-rocksdb-noncluster-nondeterministic.js`
 - `test/js/server/shell/shell-any-nondeterministic-noncluster.js`
 - `test/rb/HttpInterface/api-query-analysis-spec-timecritical.rb`
 - `test/rb/HttpInterface/api-async-spec-timecritical.rb`
@@ -147,10 +146,6 @@ Mount: /unittest/paths
       [FAILED]  tests/js/server/recovery/corrupted-crc-mmfiles.js
 
       "test" failed: failed to read /work/tmp/arangosh_MNeeKL/crashtmp/6/tmp/testresult.json - ArangoError 2: No such file or directory: while reading /work/tmp/arangosh_MNeeKL/crashtmp/6/tmp/testresult.json
-
-======================================================================
-
-- `./tests/js/server/aql/aql-graph-traverser.js` sporadically fails with crash on Windows and exceeds test execution timeout (performance regression) on Linux due to changes from PR 10137 with
 
 ======================================================================
 

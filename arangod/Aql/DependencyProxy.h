@@ -33,8 +33,7 @@
 #include <unordered_set>
 #include <utility>
 
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
 class ExecutionBlock;
 class AqlItemBlockManager;
 
@@ -78,7 +77,7 @@ class DependencyProxy {
 
   // This is only TEST_VIRTUAL, so we ignore this lint warning:
   // NOLINTNEXTLINE google-default-arguments
-  TEST_VIRTUAL std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlock(
+  [[nodiscard]] TEST_VIRTUAL std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlock(
       size_t atMost = ExecutionBlock::DefaultBatchSize());
 
   // This fetches a block from the given dependency.
@@ -86,43 +85,43 @@ class DependencyProxy {
   // of blocks and will work around the blockQueue
   // This is only TEST_VIRTUAL, so we ignore this lint warning:
   // NOLINTNEXTLINE google-default-arguments
-  TEST_VIRTUAL std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlockForDependency(
+  [[nodiscard]] TEST_VIRTUAL std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlockForDependency(
       size_t dependency, size_t atMost = ExecutionBlock::DefaultBatchSize());
 
   // See comment on fetchBlockForDependency().
-  TEST_VIRTUAL std::pair<ExecutionState, size_t> skipSomeForDependency(size_t dependency,
-                                                                       size_t atMost);
+  [[nodiscard]] TEST_VIRTUAL std::pair<ExecutionState, size_t> skipSomeForDependency(
+      size_t dependency, size_t atMost);
 
   // TODO enable_if<allowBlockPassthrough>
-  std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlockForPassthrough(size_t atMost);
+  [[nodiscard]] std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlockForPassthrough(size_t atMost);
 
-  TEST_VIRTUAL std::pair<ExecutionState, size_t> skipSome(size_t atMost);
+  [[nodiscard]] TEST_VIRTUAL std::pair<ExecutionState, size_t> skipSome(size_t atMost);
 
-  TEST_VIRTUAL RegisterId getNrInputRegisters() const;
+  [[nodiscard]] TEST_VIRTUAL RegisterId getNrInputRegisters() const;
 
   // Tries to fetch a block from upstream and push it, wrapped, onto
   // _blockQueue. If it succeeds, it returns HASMORE (the returned state
   // regards the _blockQueue). If it doesn't it's either because
   //  - upstream returned WAITING - then so does prefetchBlock().
   //  - or upstream returned a nullptr with DONE - then so does prefetchBlock().
-  ExecutionState prefetchBlock(size_t atMost = ExecutionBlock::DefaultBatchSize());
+  [[nodiscard]] ExecutionState prefetchBlock(size_t atMost = ExecutionBlock::DefaultBatchSize());
 
-  TEST_VIRTUAL size_t numberDependencies() const;
+  [[nodiscard]] TEST_VIRTUAL size_t numberDependencies() const;
 
   void reset();
 
   void setDistributeId(std::string const& distId) { _distributeId = distId; }
 
  protected:
-  AqlItemBlockManager& itemBlockManager();
-  AqlItemBlockManager const& itemBlockManager() const;
+  [[nodiscard]] AqlItemBlockManager& itemBlockManager();
+  [[nodiscard]] AqlItemBlockManager const& itemBlockManager() const;
 
-  ExecutionBlock& upstreamBlock();
+  [[nodiscard]] ExecutionBlock& upstreamBlock();
 
-  ExecutionBlock& upstreamBlockForDependency(size_t index);
+  [[nodiscard]] ExecutionBlock& upstreamBlockForDependency(size_t index);
 
  private:
-  bool advanceDependency();
+  [[nodiscard]] bool advanceDependency();
 
  private:
   std::vector<ExecutionBlock*> const& _dependencies;
@@ -140,7 +139,6 @@ class DependencyProxy {
   size_t _skipped;
 };
 
-}  // namespace aql
-}  // namespace arangodb
+}  // namespace arangodb::aql
 
 #endif  // ARANGOD_AQL_BLOCK_FETCHER_H

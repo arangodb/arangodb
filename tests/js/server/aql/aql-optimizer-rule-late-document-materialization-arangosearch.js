@@ -2,7 +2,7 @@
 /*global assertTrue, assertFalse, assertEqual, assertNotEqual, AQL_EXECUTE, AQL_EXPLAIN */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for late document materialization rule
+/// @brief tests for late document materialization arangosearch rule
 ///
 /// @file
 ///
@@ -32,8 +32,8 @@ let jsunity = require("jsunity");
 let db = require("@arangodb").db;
 let isCluster = require("internal").isCluster();
 
-function lateDocumentMaterializationRuleTestSuite () {
-  const ruleName = "late-document-materialization";
+function lateDocumentMaterializationArangoSearchRuleTestSuite () {
+  const ruleName = "late-document-materialization-arangosearch";
   const cn = "UnitTestsCollection";
   const cn1 = "UnitTestsCollection1";
   const vn = "UnitTestsView";
@@ -211,6 +211,24 @@ function lateDocumentMaterializationRuleTestSuite () {
       });
       assertEqual(0, expected.size);
     },
+    testQueryResultsWithBetweenCalc() {
+      let query = "FOR d IN " + svn  + " SEARCH d.value IN [1,2, 11, 12] SORT BM25(d) LET c = NOOPT(CONCAT(d._key, '-C')) LIMIT 10  RETURN c ";
+      let plan = AQL_EXPLAIN(query).plan;
+      if (!isCluster) {
+        assertNotEqual(-1, plan.rules.indexOf(ruleName));
+        let result = AQL_EXECUTE(query);
+        assertEqual(4, result.json.length);
+        let expected = new Set(['c1-C', 'c2-C', 'c_1-C', 'c_2-C']);
+        result.json.forEach(function(doc) {
+          assertTrue(expected.has(doc));
+          expected.delete(doc);
+        });
+        assertEqual(0, expected.size);
+      } else {
+        // on cluster this will not be applied as calculation node will be moved up
+        assertEqual(-1, plan.rules.indexOf(ruleName));
+      }
+    },
     testQueryResultsSkipSome() {
       let query = "FOR d IN " + vn  + " SEARCH PHRASE(d.str, 'cat', 'text_en')  SORT TFIDF(d) DESC LIMIT 4, 1 RETURN d ";
       let plan = AQL_EXPLAIN(query).plan;
@@ -305,6 +323,6 @@ function lateDocumentMaterializationRuleTestSuite () {
   };
 }
 
-jsunity.run(lateDocumentMaterializationRuleTestSuite);
+jsunity.run(lateDocumentMaterializationArangoSearchRuleTestSuite);
 
 return jsunity.done();

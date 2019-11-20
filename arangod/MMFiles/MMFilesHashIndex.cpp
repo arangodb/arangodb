@@ -97,7 +97,7 @@ MMFilesHashIndexLookupBuilder::MMFilesHashIndexLookupBuilder(
               _inStorage->openArray();
             }
             valNode->toVelocyPackValue(*(_inStorage.get()));
-            _inPosition.emplace(j, std::make_pair(0, std::vector<arangodb::velocypack::Slice>()));
+            _inPosition.try_emplace(j, 0, std::vector<arangodb::velocypack::Slice>());
             _usesIn = true;
             storageOrder.emplace_back(j);
             _mappingFieldCondition.push_back(nullptr);
@@ -608,6 +608,7 @@ Result MMFilesHashIndex::insertUnique(transaction::Methods* trx,
         _collection.getPhysical()->readDocumentWithCallback(
             trx, rev, [&existingId](LocalDocumentId const&, VPackSlice doc) {
               existingId = doc.get(StaticStrings::KeyString).copyString();
+              return true; // return value does not matter here
             });
 
         if (mode == OperationMode::internal) {

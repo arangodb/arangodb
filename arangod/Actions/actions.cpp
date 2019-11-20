@@ -75,7 +75,7 @@ std::shared_ptr<TRI_action_t> TRI_DefineActionVocBase(std::string const& name,
   WRITE_LOCKER(writeLocker, ActionsLock);
 
   // create a new action and store the callback function
-  auto it = which->emplace(url, action);
+  auto it = which->try_emplace(url, action);
 
   if (!it.second) {
     return (*(it.first)).second;

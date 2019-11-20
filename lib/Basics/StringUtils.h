@@ -30,6 +30,7 @@
 #include <cstring>
 #include <functional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "Basics/Common.h"
@@ -317,10 +318,16 @@ inline uint64_t uint64(char const* value, size_t size) noexcept {
 inline uint64_t uint64(std::string const& value) noexcept {
   return StringUtils::uint64(value.data(), value.size());
 }
+inline uint64_t uint64(std::string_view const& value) noexcept {
+  return StringUtils::uint64(value.data(), value.size());
+}
 #else
 uint64_t uint64(std::string const& value);
 inline uint64_t uint64(char const* value, size_t size) {
   return StringUtils::uint64(std::string(value, size));
+}
+inline uint64_t uint64(std::string_view const& value) noexcept {
+  return StringUtils::uint64(value.data(), value.size());
 }
 #endif
 

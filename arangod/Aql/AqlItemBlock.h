@@ -127,7 +127,7 @@ class AqlItemBlock {
     } catch (...) {
       // invoke dtor
       value->~AqlValue();
-      // TODO - instead of disabling it completly we could you use
+      // TODO - instead of disabling it completely we could you use
       // a constexpr if() with c++17
       _data[address].destroy();
       throw;
@@ -212,6 +212,18 @@ class AqlItemBlock {
   /// @brief toJson, transfer a whole AqlItemBlock to Json, the result can
   /// be used to recreate the AqlItemBlock via the Json constructor
   void toVelocyPack(transaction::Methods* trx, arangodb::velocypack::Builder&) const;
+
+  /// @brief Creates a human-readable velocypack of the block. Adds an object
+  /// `{nrItems, nrRegs, matrix}` to the builder.
+  ///
+  // `matrix` is an array of rows (of length nrItems). Each entry is an array
+  // (of length nrRegs+1 (sic)). The first entry contains the shadow row depth,
+  // or `null` for data rows. The entries with indexes 1..nrRegs contain the
+  // registers 0..nrRegs-1, respectively.
+  void toSimpleVPack(transaction::Methods* trx, arangodb::velocypack::Builder&) const;
+
+  void rowToSimpleVPack(size_t row, transaction::Methods* trx,
+                        velocypack::Builder& builder) const;
 
   /// @brief test if the given row is a shadow row and conveys subquery
   /// information only. It should not be handed to any non-subquery executor.

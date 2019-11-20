@@ -67,7 +67,7 @@ SingleServerEdgeCursor::~SingleServerEdgeCursor() {
 }
 
 #ifdef USE_ENTERPRISE
-static bool CheckInaccesible(transaction::Methods* trx, VPackSlice const& edge) {
+static bool CheckInaccessible(transaction::Methods* trx, VPackSlice const& edge) {
   // for skipInaccessibleCollections we need to check the edge
   // document, in that case nextWithExtra has no benefit
   TRI_ASSERT(edge.isString());
@@ -91,8 +91,8 @@ void SingleServerEdgeCursor::getDocAndRunCallback(OperationCursor* cursor, EdgeC
           // TODO: we only need to check one of these
           VPackSlice from = transaction::helpers::extractFromFromDocument(edgeDoc);
           VPackSlice to = transaction::helpers::extractToFromDocument(edgeDoc);
-          if (CheckInaccesible(_trx, from) || CheckInaccesible(_trx, to)) {
-            return;
+          if (CheckInaccessible(_trx, from) || CheckInaccessible(_trx, to)) {
+            return false;
           }
         }
 #endif
@@ -103,6 +103,7 @@ void SingleServerEdgeCursor::getDocAndRunCallback(OperationCursor* cursor, EdgeC
         } else {
           callback(std::move(etkn), edgeDoc, _currentCursor);
         }
+        return true;
       });
 }
 
@@ -163,12 +164,12 @@ bool SingleServerEdgeCursor::next(EdgeCursor::Callback const& callback) {
           if (token.isSet()) {
 #ifdef USE_ENTERPRISE
             if (_trx->state()->options().skipInaccessibleCollections &&
-                CheckInaccesible(_trx, edge)) {
-              return;
+                CheckInaccessible(_trx, edge)) {
+              return false;
             }
 #endif
             if (cursor->collection() == nullptr) {
-              return;
+              return false;
             }
             operationSuccessful = true;
             auto etkn = EdgeDocumentToken(cursor->collection()->id(), token);
@@ -178,7 +179,9 @@ bool SingleServerEdgeCursor::next(EdgeCursor::Callback const& callback) {
             } else {
               callback(std::move(etkn), edge, _currentCursor);
             }
+            return true;
           }
+          return false;
         };
         cursor->nextWithExtra(extraCB, 1);
         if (operationSuccessful) {
@@ -190,7 +193,9 @@ bool SingleServerEdgeCursor::next(EdgeCursor::Callback const& callback) {
           if (token.isSet()) {
             // Document found
             _cache.emplace_back(token);
+            return true;
           }
+          return false;
         };
         bool tmp = cursor->next(cb, 1000);
         TRI_ASSERT(tmp == cursor->hasMore());
@@ -223,28 +228,30 @@ void SingleServerEdgeCursor::readAll(EdgeCursor::Callback const& callback) {
         auto cb = [&](LocalDocumentId const& token, VPackSlice edge) {
 #ifdef USE_ENTERPRISE
           if (_trx->state()->options().skipInaccessibleCollections &&
-              CheckInaccesible(_trx, edge)) {
-            return;
+              CheckInaccessible(_trx, edge)) {
+            return false;
           }
 #endif
           callback(EdgeDocumentToken(cid, token), edge, cursorId);
+          return true;
         };
         cursor->allWithExtra(cb);
       } else {
         auto cb = [&](LocalDocumentId const& token) {
-          collection->readDocumentWithCallback(_trx, token, [&](LocalDocumentId const&, VPackSlice edgeDoc) {
+          return collection->readDocumentWithCallback(_trx, token, [&](LocalDocumentId const&, VPackSlice edgeDoc) {
 #ifdef USE_ENTERPRISE
             if (_trx->state()->options().skipInaccessibleCollections) {
               // TODO: we only need to check one of these
               VPackSlice from = transaction::helpers::extractFromFromDocument(edgeDoc);
               VPackSlice to = transaction::helpers::extractToFromDocument(edgeDoc);
-              if (CheckInaccesible(_trx, from) || CheckInaccesible(_trx, to)) {
-                return;
+              if (CheckInaccessible(_trx, from) || CheckInaccessible(_trx, to)) {
+                return false;
               }
             }
 #endif
             _opts->cache()->increaseCounter();
             callback(EdgeDocumentToken(cid, token), edgeDoc, cursorId);
+            return true;
           });
         };
         cursor->all(cb);

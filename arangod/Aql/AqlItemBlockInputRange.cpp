@@ -21,6 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AqlItemBlockInputRange.h"
+#include "Aql/ShadowAqlItemRow.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -55,10 +56,9 @@ std::pair<ExecutorState, InputAqlItemRow> AqlItemBlockInputRange::peek() {
 
 std::pair<ExecutorState, InputAqlItemRow> AqlItemBlockInputRange::next() {
   auto res = peek();
-  ++_rowIndex;
-  if (!indexIsValid()) {
-    _block = nullptr;
-    _rowIndex = 0;
+  if (indexIsValid()) {
+    TRI_ASSERT(res.second);
+    ++_rowIndex;
   }
   return res;
 }
@@ -75,4 +75,52 @@ bool AqlItemBlockInputRange::hasMoreAfterThis() const noexcept {
 
 ExecutorState AqlItemBlockInputRange::state() const noexcept {
   return hasMoreAfterThis() ? ExecutorState::HASMORE : _finalState;
+}
+
+bool AqlItemBlockInputRange::hasShadowRow() const noexcept {
+  if (_block == nullptr) {
+    // No block => no ShadowRow
+    return false;
+  }
+
+  if (hasMore()) {
+    // As long as hasMore() is true, we still have DataRows and are not on a ShadowRow now.
+    return false;
+  }
+
+  if (_rowIndex < _block->size()) {
+    // We still have more rows here, get next ShadowRow
+    TRI_ASSERT(_block->isShadowRow(_rowIndex));
+    return true;
+  }
+  return false;
+}
+
+std::pair<ExecutorState, ShadowAqlItemRow> AqlItemBlockInputRange::peekShadowRow() {
+  if (hasShadowRow()) {
+    return std::make_pair(state(), ShadowAqlItemRow{_block, _rowIndex});
+  }
+  return std::make_pair(state(), ShadowAqlItemRow{CreateInvalidShadowRowHint{}});
+}
+
+std::pair<ExecutorState, ShadowAqlItemRow> AqlItemBlockInputRange::nextShadowRow() {
+  auto res = peekShadowRow();
+  if (hasShadowRow()) {
+    auto const& shadowRowIndexes = _block->getShadowRowIndexes();
+    auto it = std::find(shadowRowIndexes.begin(), shadowRowIndexes.end(), _rowIndex);
+    // We have a shadow row in this index, so we cannot be at the end now.
+    TRI_ASSERT(it != shadowRowIndexes.end());
+    // Go to next ShadowRow.
+    it++;
+    if (it == shadowRowIndexes.end()) {
+      // No more shadow row here.
+      _endIndex = _block->size();
+    } else {
+      // Set endIndex to the next ShadowRowIndex.
+      _endIndex = *it;
+    }
+    // Advance the current row.
+    _rowIndex++;
+  }
+  return res;
 }

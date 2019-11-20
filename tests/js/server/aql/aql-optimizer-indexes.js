@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertTrue, assertFalse, assertEqual, assertNotEqual, AQL_EXPLAIN, AQL_EXECUTE */
+/*global AQL_EXPLAIN, AQL_EXECUTE */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for index usage
@@ -28,8 +28,11 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require("jsunity");
-var db = require("@arangodb").db;
+const jsunity = require('jsunity');
+const assert = require('jsunity').jsUnity.assertions;
+const {assertTrue, assertFalse, assertEqual, assertNotEqual} = assert;
+const db = require('@arangodb').db;
+const _ = require('lodash');
 
 const opt = { optimizer: { rules: ["-reduce-extraction-to-projection"] } };
 
@@ -845,25 +848,85 @@ function optimizerIndexesTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUseIndexSubSubquery : function () {
-      var query = "FOR i IN " + c.name() + " LIMIT 1 RETURN (FOR j IN " + c.name() + " FILTER j._key == i._key RETURN j.value)";
+      const query = `
+        FOR i IN ${c.name()}
+          LIMIT 1
+          RETURN (
+            FOR j IN ${c.name()}
+              FILTER j._key == i._key
+              RETURN j.value
+          )
+      `;
 
-      var plan = AQL_EXPLAIN(query, {}, opt).plan;
-      var nodeTypes = plan.nodes.map(function(node) {
+      // copy options and turn splice-subqueries off
+      const localOpt = _.cloneDeep(opt);
+      localOpt.optimizer.rules.push('-splice-subqueries');
+
+      const plan = AQL_EXPLAIN(query, {}, localOpt).plan;
+      const nodeTypes = plan.nodes.map(function(node) {
         return node.type;
       });
 
-      assertEqual("SingletonNode", nodeTypes[0], query);
-      var idx = nodeTypes.indexOf("SubqueryNode");
-      assertNotEqual(-1, idx, query);
+      assertEqual('SingletonNode', nodeTypes[0], query);
+      const subqueryIdx = nodeTypes.indexOf('SubqueryNode');
+      const hasSubquery = subqueryIdx !== -1;
+      assertTrue(hasSubquery, query);
 
-      var subNodeTypes = plan.nodes[idx].subquery.nodes.map(function(node) {
+      const subNodeTypes = plan.nodes[subqueryIdx].subquery.nodes.map(function(node) {
         return node.type;
       });
-      assertNotEqual(-1, subNodeTypes.indexOf("IndexNode"), query);
-      assertEqual(-1, subNodeTypes.indexOf("SortNode"), query);
-      assertEqual("ReturnNode", nodeTypes[nodeTypes.length - 1], query);
+      assertNotEqual(-1, subNodeTypes.indexOf('IndexNode'), query);
+      assertEqual(-1, subNodeTypes.indexOf('SortNode'), query);
+      assertEqual('ReturnNode', nodeTypes[nodeTypes.length - 1], query);
 
-      var results = AQL_EXECUTE(query, {}, opt);
+      const results = AQL_EXECUTE(query, {}, opt);
+      assertTrue(results.stats.scannedFull > 0); // for the outer query
+      assertTrue(results.stats.scannedIndex > 0); // for the inner query
+    },
+
+    testUseIndexSplicedSubSubquery : function () {
+      const query = `
+        FOR i IN ${c.name()}
+          LIMIT 1
+          RETURN (
+            FOR j IN ${c.name()}
+              FILTER j._key == i._key
+              RETURN j.value
+          )
+      `;
+
+      const plan = AQL_EXPLAIN(query, {}, opt).plan;
+      const nodeTypes = plan.nodes.map(function(node) {
+        return node.type;
+      });
+
+      assertEqual('SingletonNode', nodeTypes[0], query);
+      const subqueryStartIdx = nodeTypes.indexOf('SubqueryStartNode');
+      const subqueryEndIdx = nodeTypes.indexOf('SubqueryEndNode');
+      const hasSplicedSubquery = subqueryStartIdx !== -1 && subqueryEndIdx !== -1;
+      { // TODO Remove this block as soon as subquery splicing is enabled in the cluster again.
+        //  It's here so the test will fail as soon as that happens, so the actual test will not be forgotten
+        //  to be re-enabled.
+        const isCluster = require("@arangodb/cluster").isCluster();
+        if (isCluster) {
+          assertFalse(hasSplicedSubquery);
+          return;
+        }
+      }
+      assertTrue(hasSplicedSubquery, JSON.stringify({
+        subqueryStartIdx,
+        subqueryEndIdx,
+        query,
+      }));
+
+      const subNodeTypes = plan.nodes.slice(subqueryStartIdx+1, subqueryEndIdx).map(function(node) {
+        return node.type;
+      });
+      assertNotEqual(-1, subNodeTypes.indexOf('IndexNode'), query);
+      assertEqual(-1, subNodeTypes.indexOf('SortNode'), query);
+      assertEqual('ReturnNode', nodeTypes[nodeTypes.length - 1], query);
+
+      const results = AQL_EXECUTE(query, {}, opt);
       assertTrue(results.stats.scannedFull > 0); // for the outer query
       assertTrue(results.stats.scannedIndex > 0); // for the inner query
     },

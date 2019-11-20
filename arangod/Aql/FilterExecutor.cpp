@@ -148,5 +148,5 @@ std::tuple<ExecutorState, FilterStats, AqlCall> FilterExecutor::produceRows(
 
   AqlCall upstreamCall{};
   upstreamCall.softLimit = limit;
-  return {inputRange.peek().first, stats, upstreamCall};
+  return {inputRange.state(), stats, upstreamCall};
 }

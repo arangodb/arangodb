@@ -703,6 +703,7 @@ Result RocksDBVPackIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd
         auto success = _collection.getPhysical()->readDocumentWithCallback(&trx, docId,
            [&](LocalDocumentId const&, VPackSlice doc) {
              existingKey = transaction::helpers::extractKeyFromDocument(doc).copyString();
+             return true; // return value does not matter here
            });
         TRI_ASSERT(success);
         
