@@ -82,8 +82,9 @@ function dumpTestSuite () {
         }
       }
 
-      for (let i = 0; i < 200000; i += 2) {
-        let doc = results[i % 2];
+      let j = 0;
+      for (let i = 1; i < 200000; i += 2) {
+        let doc = results[j++];
         assertEqual(i, doc.value1);
         assertEqual("this is a test", doc.value2);
         assertEqual("test" + i, doc.value3);
@@ -360,8 +361,7 @@ function dumpTestSuite () {
         assertEqual("this is a test", doc.value2);
         if (i % 2 === 0) {
           assertEqual(i, doc.value3);
-        }
-        else {
+        } else {
           assertEqual("test" + i, doc.value3);
         }
       }
