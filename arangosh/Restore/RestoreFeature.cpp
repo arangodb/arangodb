@@ -379,20 +379,22 @@ void checkEncryption(arangodb::ManagedDirectory& directory) {
 void getDBProperties(arangodb::ManagedDirectory& directory, VPackBuilder& builder) {
   VPackBuilder fileContentBuilder;
 
+  VPackSlice slice = VPackSlice::emptyObjectSlice();
   try {
     fileContentBuilder = directory.vpackFromJsonFile("dump.json");
   } catch (...) {
     LOG_TOPIC("3a5a4", WARN, arangodb::Logger::RESTORE) << "could not read dump.json";
-    builder.add(VPackSlice::emptyObjectSlice());
-    return;
   }
 
-  auto props = fileContentBuilder.slice().get(arangodb::StaticStrings::Properties);
-  if(props.isObject()) {
-    builder.add(props);
-  } else {
-    builder.add(VPackSlice::emptyObjectSlice());
+  try {
+    auto props = fileContentBuilder.slice().get(arangodb::StaticStrings::Properties);
+    if(props.isObject()) {
+      slice = props;
+    }
+  } catch (...) {
+    LOG_TOPIC("3b6a4", INFO, arangodb::Logger::RESTORE) << "no properties object";
   }
+  builder.add(slice);
 }
 
 /// @brief Check the database name specified by the dump file
