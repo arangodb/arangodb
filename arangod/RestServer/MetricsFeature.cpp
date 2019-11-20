@@ -91,7 +91,6 @@ void MetricsFeature::toPrometheus(std::string& result) const {
       i.second->toPrometheus(result);
     }
   }
-
   auto& sf = server().getFeature<StatisticsFeature>();
   sf.toPrometheus(result, std::chrono::duration<double,std::milli>(std::chrono::system_clock::now().time_since_epoch()).count());
 

@@ -972,8 +972,8 @@ void StatisticsWorker::generateRawStatistics(std::string& result, double const& 
       TYPE_ + statStrings.at("connectionTimeSum")[0] + statStrings.at("connectionTimeSum")[1] +
       HELP_ + statStrings.at("connectionTimeSum")[0] + statStrings.at("connectionTimeSum")[2] +
       statStrings.at("connectionTimeSum")[0] + std::to_string(slc.get("sum").template getNumber<uint64_t>());
-    
-    LOG_DEVEL << tmp.toJson();
+
+    result += "\n";
 
       /*
 
