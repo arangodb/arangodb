@@ -41,11 +41,11 @@
 class Counter;
 template<typename T> class Histogram;
 
-class HistBase {
+class Metric {
 public:
-  HistBase(std::string const& name, std::string const& help)
+  Metric(std::string const& name, std::string const& help)
     : _name(name), _help(help) {};
-  virtual ~HistBase() {}
+  virtual ~Metric() {}
   std::string const& help() const {return _help;}
   std::string const& name() const {return _name;}
   void toPrometheus(std::string& result) const {
@@ -71,7 +71,7 @@ struct Metrics {
 /**
  * @brief Counter functionality
  */
-class Counter : public HistBase {
+class Counter : public Metric {
 public:
   Counter(uint64_t const& val, std::string const& name, std::string const& help);
   Counter(Counter const&) = delete;
@@ -94,14 +94,14 @@ std::ostream& operator<< (std::ostream&, Metrics::hist_type const&);
 /**
  * @brief Histogram functionality
  */ 
-template<typename T> class Histogram : public HistBase {
+template<typename T> class Histogram : public Metric {
 
 public:
 
   Histogram() = delete;
     
   Histogram (size_t const& buckets, T const& low, T const& high, std::string const& name, std::string const& help = "")
-    : HistBase(name, help), _c(Metrics::hist_type(buckets)), _low(low), _high(high),
+    : Metric(name, help), _c(Metrics::hist_type(buckets)), _low(low), _high(high),
       _lowr(std::numeric_limits<T>::max()), _highr(std::numeric_limits<T>::min()) {
     assert(hist.size() > 0);
     _n = _c.size() - 1;
@@ -162,7 +162,7 @@ public:
   size_t size() const { return _c.size(); }
 
   void toPrometheus(std::string& result) const {
-    HistBase::toPrometheus(result);
+    Metric::toPrometheus(result);
     T le = _low;
     T sum = T(0);
     for (size_t i = 0; i < _c.size(); ++i) {

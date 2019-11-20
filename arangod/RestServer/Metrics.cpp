@@ -82,12 +82,12 @@ uint64_t Counter::load() const {
 }
 
 void Counter::toPrometheus(std::string& result) const {
-  HistBase::toPrometheus(result);
+  Metric::toPrometheus(result);
   result += name() + " " + std::to_string(load()) + "\n";
 }
 
 Counter::Counter(uint64_t const& val, std::string const& name, std::string const& help) :
-  HistBase(name, help), _c(val), _b(_c) {}
+  Metric(name, help), _c(val), _b(_c) {}
 
 Counter::~Counter() { _b.push(); }
 
