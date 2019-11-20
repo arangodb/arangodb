@@ -158,7 +158,7 @@ public:
   size_t size() const { return _c.size(); }
 
   virtual void toPrometheus(std::string& result) const override {
-    result += "#TYPE " + name() + " counter\n";
+    result += "#TYPE " + name() + " histogram\n";
     result += "#HELP " + name() + " " + help() + "\n";
     T le = _low;
     T sum = T(0);
