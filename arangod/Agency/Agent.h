@@ -479,6 +479,8 @@ class Agent final : public arangodb::Thread, public AgentInterface {
 
   Counter& _write_ok;
   Counter& _write_no_leader;
+  Counter& _read_ok;
+  Counter& _read_no_leader;
   Histogram<double>& _write_hist_msec;
   
 };

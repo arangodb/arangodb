@@ -79,6 +79,12 @@ Agent::Agent(ApplicationServer& server, config_t const& config)
       _write_no_leader(
         _server.getFeature<arangodb::MetricsFeature>().counter(
           "agency_agent_write_no_leader", 0, "Agency write no leader")),
+      _read_ok(
+        _server.getFeature<arangodb::MetricsFeature>().counter(
+          "agency_agent_read_ok", 0, "Agency write ok")),
+      _read_no_leader(
+        _server.getFeature<arangodb::MetricsFeature>().counter(
+          "agency_agent_read_no_leader", 0, "Agency write no leader")),
       _write_hist_msec(
         _server.getFeature<arangodb::MetricsFeature>().histogram(
           "agency_agent_write_hist", 10, 0., 20., "Agency write histogram [ms]")) {
@@ -1242,6 +1248,7 @@ read_ret_t Agent::read(query_t const& query) {
   // look at the leaderID.
   auto leader = _constituent.leaderID();
   if (leader != id()) {
+    ++_read_no_leader;
     return read_ret_t(false, leader);
   }
 
@@ -1255,10 +1262,12 @@ read_ret_t Agent::read(query_t const& query) {
   // Only leader else redirect
   if (challengeLeadership()) {
     resign();
+    ++_read_no_leader;
     return read_ret_t(false, NO_LEADER);
   }
 
   leader = _constituent.leaderID();
+  
   auto result = std::make_shared<arangodb::velocypack::Builder>();
 
   READ_LOCKER(oLocker, _outputLock);
@@ -1266,6 +1275,7 @@ read_ret_t Agent::read(query_t const& query) {
   // Retrieve data from readDB
   std::vector<bool> success = _readDB.read(query, result);
 
+  ++_read_no_leader;
   return read_ret_t(true, leader, std::move(success), std::move(result));
 }
 
