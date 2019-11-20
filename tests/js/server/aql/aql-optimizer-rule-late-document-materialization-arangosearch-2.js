@@ -84,7 +84,7 @@ function lateDocumentMaterializationArangoSearch2RuleTestSuite () {
       try { db._drop(cn1); } catch(e) {}
     },
     testNotAppliedDueToNoPrimarySort() {
-      let query = "FOR d IN " + vn  + " SEARCH d.value IN [1, 2] SORT d.foo DESC LIMIT 10 RETURN d";
+      let query = "FOR d IN " + vn + " SEARCH d.value IN [1, 2] SORT d.foo DESC LIMIT 10 RETURN d";
       let plan = AQL_EXPLAIN(query).plan;
       assertEqual(-1, plan.rules.indexOf(ruleName));
     },
@@ -273,7 +273,7 @@ function lateDocumentMaterializationArangoSearch2RuleTestSuite () {
       assertEqual(0, expected.size);
     },
     testQueryResultsSkipSome() {
-      let query = "FOR d IN " + svn  + " SEARCH d.value IN [1, 2, 11, 12] SORT d.value DESC LIMIT 3, 1 RETURN d";
+      let query = "FOR d IN " + svn + " SEARCH d.value IN [1, 2, 11, 12] SORT d.value DESC LIMIT 3, 1 RETURN d";
       let plan = AQL_EXPLAIN(query).plan;
       assertNotEqual(-1, plan.rules.indexOf(ruleName));
       let result = AQL_EXECUTE(query);
@@ -303,7 +303,7 @@ function lateDocumentMaterializationArangoSearch2RuleTestSuite () {
     },
     testQueryResultsInOuterSubquery() {
       let query = "FOR c IN " + svn + " SEARCH c.value == 1 SORT c.value DESC LIMIT 10 " +
-                  "FOR d IN " + vn  + " SEARCH d.value IN [c.value, c.value + 1] RETURN d";
+                  "FOR d IN " + vn + " SEARCH d.value IN [c.value, c.value + 1] RETURN d";
       let plan = AQL_EXPLAIN(query).plan;
       assertNotEqual(-1, plan.rules.indexOf(ruleName));
       let result = AQL_EXECUTE(query);
@@ -316,7 +316,7 @@ function lateDocumentMaterializationArangoSearch2RuleTestSuite () {
       assertEqual(0, expected.size);
     },
     testQueryResultsMultipleLimits() {
-      let query = "FOR d IN " + svn  + " SEARCH d.value > 5 SORT d.value DESC " +
+      let query = "FOR d IN " + svn + " SEARCH d.value > 5 SORT d.value DESC " +
                   "LIMIT 1, 5 SORT d.foo LIMIT 1, 3 SORT NOOPT(d.str) DESC " +
                   "LIMIT 1, 1 RETURN d";
       let plan = AQL_EXPLAIN(query).plan;
