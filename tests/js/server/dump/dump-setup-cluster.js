@@ -136,17 +136,29 @@ function setupSatelliteCollections() {
   var analyzers = require("@arangodb/analyzers");
   var i, c;
 
+  let createOptions = { };
+
+  if (!isEnterprise) {
+    // This is used to test the Hotbackup. Otherwise it is
+    // not very useful as the dst database is created during
+    // the setup and not the restore process.
+    createOptions = {
+      "minReplicationFactor" : 2,
+      "replicationFactor"    : 3
+    };
+  }
+
   try {
     db._dropDatabase("UnitTestsDumpSrc");
   } catch (err1) {
   }
-  db._createDatabase("UnitTestsDumpSrc");
+  db._createDatabase("UnitTestsDumpSrc", createOptions);
 
   try {
     db._dropDatabase("UnitTestsDumpDst");
   } catch (err2) {
   }
-  db._createDatabase("UnitTestsDumpDst");
+  db._createDatabase("UnitTestsDumpDst", createOptions);
 
 
   db._useDatabase("UnitTestsDumpSrc");

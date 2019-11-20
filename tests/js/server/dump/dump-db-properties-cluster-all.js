@@ -74,7 +74,7 @@ function dumpTestSuite () {
     testDatabaseProperties2 : function () {
       doIt("UnitTestsDumpProperties2", 2, 2, "single");
     },
-    testDatabaseProperties2 : function () {
+    testDatabaseProperties3 : function () {
       doIt("UnitTestsDumpProperties3", 2, 3, "");
     },
 
