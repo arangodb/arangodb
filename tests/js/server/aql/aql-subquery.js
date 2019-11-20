@@ -196,18 +196,6 @@ function ahuacatlSubqueryTestSuite () {
     testSpliceSubqueryOutVariableName : function () {
       const explainResult = AQL_EXPLAIN("FOR u IN _users LET theLetVariable = (FOR j IN _users RETURN j) RETURN theLetVariable");
 
-      { // TODO Remove this block as soon as subquery splicing is enabled in the cluster again.
-        //  It's here so the test will fail as soon as that happens, so the actual test will not be forgotten
-        //  to be re-enabled.
-        const isCluster = require("@arangodb/cluster").isCluster();
-        if (isCluster) {
-          const numSubqueryEndNode = findExecutionNodes(explainResult, "SubqueryEndNode").length;
-
-          assertEqual(0, numSubqueryEndNode);
-          return;
-        }
-      }
-
       const subqueryEndNode = findExecutionNodes(explainResult, "SubqueryEndNode")[0];
 
       assertEqual(subqueryEndNode.outVariable.name, "theLetVariable");

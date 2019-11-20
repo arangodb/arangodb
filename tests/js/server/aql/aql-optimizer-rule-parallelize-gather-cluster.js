@@ -28,8 +28,8 @@
 /// @author Copyright 2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var db = require("@arangodb").db;
-var jsunity = require("jsunity");
+let db = require("@arangodb").db;
+let jsunity = require("jsunity");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -64,22 +64,24 @@ function optimizerRuleTestSuite () {
         "FOR doc IN " + cn + " RETURN doc",
         "FOR doc IN " + cn + " LIMIT 100 RETURN doc",
         "FOR doc IN " + cn + " SORT doc.value1 RETURN doc",
+        "FOR doc IN " + cn + " REMOVE doc IN " + cn + " RETURN doc",
+        "FOR doc IN " + cn + " REPLACE doc WITH {} IN " + cn + " RETURN doc",
+        "FOR doc IN " + cn + " UPDATE doc WITH {} IN " + cn + " RETURN doc",
       ];
 
       queries.forEach(function(query) {
-        let result = AQL_EXPLAIN(query, null, { optimizer: { rules: ["-" + ruleName] } });
+        let result = AQL_EXPLAIN(query, null, { optimizer: { rules: ["-" + ruleName ] } });
         assertEqual(-1, result.plan.rules.indexOf(ruleName), query);
       });
     },
 
     testRuleNoEffect : function () {
       let queries = [  
-        "FOR doc IN " + cn + " REMOVE doc IN " + cn,
         "FOR i IN 1..1000 IN " + cn + " INSERT {} IN " + cn,
       ];
 
       queries.forEach(function(query) {
-        let result = AQL_EXPLAIN(query, null, { optimizer: { rules: ["+" + ruleName] } });
+        let result = AQL_EXPLAIN(query);
         assertEqual(-1, result.plan.rules.indexOf(ruleName), query);
       });
     },
@@ -92,10 +94,22 @@ function optimizerRuleTestSuite () {
         "FOR doc IN " + cn + " SORT doc.value1 RETURN doc",
         "FOR doc IN " + cn + " SORT doc.value1 LIMIT 1000 RETURN doc",
         "FOR doc IN " + cn + " SORT doc.value1 LIMIT 1000, 1000 RETURN doc",
+        /* TODO
+        "FOR doc IN " + cn + " REMOVE doc IN " + cn,
+        "FOR doc IN " + cn + " REMOVE doc._key IN " + cn,
+        "FOR doc IN " + cn + " REPLACE doc WITH {} IN " + cn,
+        "FOR doc IN " + cn + " REPLACE doc WITH {a: 1} IN " + cn,
+        "FOR doc IN " + cn + " REPLACE doc._key WITH {} IN " + cn,
+        "FOR doc IN " + cn + " REPLACE doc._key WITH {a:1} IN " + cn,
+        "FOR doc IN " + cn + " UPDATE doc WITH {} IN " + cn,
+        "FOR doc IN " + cn + " UPDATE doc WITH {a: 1} IN " + cn,
+        "FOR doc IN " + cn + " UPDATE doc._key WITH {} IN " + cn,
+        "FOR doc IN " + cn + " UPDATE doc._key WITH {a:1} IN " + cn,
+        */
       ];
 
       queries.forEach(function(query) {
-        let result = AQL_EXPLAIN(query, null, { optimizer: { rules: ["+" + ruleName] } });
+        let result = AQL_EXPLAIN(query,);
         assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
       });
     },
@@ -113,10 +127,10 @@ function optimizerRuleTestSuite () {
       ];
 
       queries.forEach(function(query) {
-        let result = AQL_EXPLAIN(query[0], null, { optimizer: { rules: ["+" + ruleName] } });
+        let result = AQL_EXPLAIN(query[0]);
         assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
         
-        result = AQL_EXECUTE(query[0], null, { optimizer: { rules: ["+" + ruleName] } }).json;
+        result = AQL_EXECUTE(query[0]).json;
         assertEqual(query[1], result.length);
 
         // compare if keys are unique and matching our expectations
@@ -137,10 +151,10 @@ function optimizerRuleTestSuite () {
       ];
 
       queries.forEach(function(query) {
-        let result = AQL_EXPLAIN(query[0], null, { optimizer: { rules: ["+" + ruleName] } });
+        let result = AQL_EXPLAIN(query[0]);
         assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
         
-        result = AQL_EXECUTE(query[0], null, { optimizer: { rules: ["+" + ruleName] } }).json;
+        result = AQL_EXECUTE(query[0]).json;
 
         // compare if keys are unique and matching our expectations
         let expected = query[1];
@@ -151,6 +165,7 @@ function optimizerRuleTestSuite () {
         assertEqual(query[2], expected);
       });
     },
+    
   };
 }
 
