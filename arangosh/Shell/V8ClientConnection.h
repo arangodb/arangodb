@@ -146,7 +146,7 @@ class V8ClientConnection {
   /// to a nullptr
   void shutdownConnection();
 
-  void setCustomError(int httpCode, std::string& msg) {
+  void setCustomError(int httpCode, std::string const& msg) {
     _setCustomError = true;
     _lastHttpReturnCode = httpCode;
     _lastErrorMessage = msg;
