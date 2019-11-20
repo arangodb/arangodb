@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2019 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,7 +18,7 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
+/// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestMetricsHandler.h"
@@ -31,10 +31,6 @@
 #include "GeneralServer/ServerSecurityFeature.h"
 #include "Rest/Version.h"
 #include "RestServer/ServerFeature.h"
-
-#if defined(TRI_HAVE_POSIX_THREADS)
-#include <unistd.h>
-#endif
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>

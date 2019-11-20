@@ -33,7 +33,7 @@ class RestMetricsHandler : public arangodb::RestBaseHandler {
                      GeneralResponse*);
 
   char const* name() const override final { return "RestMetricsHandler"; }
-  RequestLane lane() const override final { return RequestLane::CLIENT_FAST; }
+  RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
   RestStatus execute() override;
 
 };
