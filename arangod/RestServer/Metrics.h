@@ -123,7 +123,7 @@ public:
     } else if (t >= _high) {
       ++_c[_n];
     } else {
-      ++_c[std::floor(t / _div)];
+      ++_c[static_cast<int>(std::floor(t / _div))];
     }
     records(t);
   }
@@ -134,7 +134,7 @@ public:
     } else if (t >= _high) {
       _c[_n] += n;
     } else {
-      _c[std::floor(t / _div)] += n;
+      _c[static_cast<int>(std::floor(t / _div))] += n;
     }
     records(t);
   }
@@ -180,7 +180,7 @@ public:
 
   Metrics::hist_type _c;
   T _low, _high, _div, _lowr, _highr;
-  size_t _n;
+  int _n;
       
 };
 
