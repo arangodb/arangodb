@@ -30,7 +30,11 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "RestServer/Metrics.h"
+#include "RocksDBEngine/RocksDBEngine.h"
 #include "Statistics/StatisticsFeature.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/StorageEngine.h"
+#include "StorageEngine/StorageEngineFeature.h"
 
 #include <chrono>
 #include <thread>
@@ -91,11 +95,20 @@ void MetricsFeature::toPrometheus(std::string& result) const {
       i.second->toPrometheus(result);
     }
   }
+  
   auto& sf = server().getFeature<StatisticsFeature>();
   if (sf.enabled()) {
     sf.toPrometheus(result, std::chrono::duration<double,std::milli>(std::chrono::system_clock::now().time_since_epoch()).count());
   }
 
+  auto es = EngineSelectorFeature::ENGINE;
+  if (es != nullptr) {
+    std::string const& engineName = es->typeName();
+    if (engineName == RocksDBEngine::EngineName) {
+      VPackBuilder stats;
+      es->getStatistics(stats);
+    }
+  } 
 }
 
 Counter& MetricsFeature::counter (

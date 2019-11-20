@@ -73,13 +73,17 @@ class MetricsFeature final : public application_features::ApplicationFeature {
       TRI_ASSERT(false);
       throw std::exception();
     } 
-    std::shared_ptr<Histogram<T>> h;
+    std::shared_ptr<Histogram<T>> h = nullptr;
     try {
       h = std::dynamic_pointer_cast<Histogram<T>>(*it->second);
+      LOG_TOPIC("8532d", ERR, Logger::STATISTICS) << "Failed to convert histogram " << name;
     } catch (std::exception const& e) {
-      LOG_TOPIC("8532d", ERR, Logger::STATISTICS) << "Failed to retrieve histogram " << name;
+      LOG_TOPIC("d2358", ERR, Logger::STATISTICS) << "Failed to retrieve histogram " << name;
+    }
+    if (h == nullptr) {
       TRI_ASSERT(false);
     }
+
     return *h;
   };
 
