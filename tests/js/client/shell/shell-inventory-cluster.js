@@ -295,7 +295,7 @@ function clusterInventorySuite () {
       assertEqual(1, Object.keys(field).length);
       assertEqual("analyzers", Object.keys(field)[0]);
       assertTrue(Array.isArray(field.analyzers));
-      assertEqual(["text_en", "custom"], field.analyzers);
+      assertEqual(["custom", "text_en"], field.analyzers.sort());
       
       assertTrue(Array.isArray(link.analyzerDefinitions));
       assertEqual(3, link.analyzerDefinitions.length);
@@ -310,13 +310,13 @@ function clusterInventorySuite () {
       assertEqual("identity", a.name);
       assertEqual("identity", a.type);
       assertEqual({}, a.properties);
-      assertEqual(["norm", "frequency"], a.features);
+      assertEqual(["frequency", "norm"], a.features.sort());
       
       a = link.analyzerDefinitions[2];
       assertEqual("text_en", a.name);
       assertEqual("text", a.type);
       assertEqual({locale: "en.utf-8", case: "lower", stopwords: [], accent: false, stemming: true}, a.properties);
-      assertEqual(["position", "norm", "frequency"], a.features);
+      assertEqual(["frequency", "norm", "position"], a.features.sort());
 
       view = results.views[1];
       assertEqual("arangosearch", view.type);
