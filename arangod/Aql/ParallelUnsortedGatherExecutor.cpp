@@ -20,11 +20,10 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "UnsortedGatherExecutor.h"
+#include "ParallelUnsortedGatherExecutor.h"
 
 #include "Aql/MultiDependencySingleRowFetcher.h"
 #include "Aql/OutputAqlItemRow.h"
-#include "Aql/SortRegister.h"
 #include "Aql/Stats.h"
 #include "Transaction/Methods.h"
 
@@ -33,24 +32,17 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-constexpr bool UnsortedGatherExecutor::Properties::preservesOrder;
-constexpr BlockPassthrough UnsortedGatherExecutor::Properties::allowsBlockPassthrough;
-constexpr bool UnsortedGatherExecutor::Properties::inputSizeRestrictsOutputSize;
-
-UnsortedGatherExecutorInfos::UnsortedGatherExecutorInfos(
+ParallelUnsortedGatherExecutorInfos::ParallelUnsortedGatherExecutorInfos(
     RegisterId nrInOutRegisters, std::unordered_set<RegisterId> registersToKeep,
     std::unordered_set<RegisterId> registersToClear)
     : ExecutorInfos(make_shared_unordered_set(), make_shared_unordered_set(),
                     nrInOutRegisters, nrInOutRegisters,
                     std::move(registersToClear), std::move(registersToKeep)) {}
 
-UnsortedGatherExecutor::UnsortedGatherExecutor(Fetcher& fetcher, Infos& infos)
-    : _fetcher(fetcher),
-      _numberDependencies(0),
-      _currentDependency(0),
-      _skipped(0) {}
+ParallelUnsortedGatherExecutor::ParallelUnsortedGatherExecutor(Fetcher& fetcher, Infos& infos)
+    : _fetcher(fetcher), _numberDependencies(0), _currentDependency(0), _skipped(0) {}
 
-UnsortedGatherExecutor::~UnsortedGatherExecutor() = default;
+ParallelUnsortedGatherExecutor::~ParallelUnsortedGatherExecutor() = default;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Guarantees requiredby this this block:
@@ -66,8 +58,7 @@ UnsortedGatherExecutor::~UnsortedGatherExecutor() = default;
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-std::pair<ExecutionState, NoStats> UnsortedGatherExecutor::produceRows(OutputAqlItemRow& output) {
-
+std::pair<ExecutionState, NoStats> ParallelUnsortedGatherExecutor::produceRows(OutputAqlItemRow& output) {
   initDependencies();
   
   ExecutionState state;
@@ -124,8 +115,8 @@ std::pair<ExecutionState, NoStats> UnsortedGatherExecutor::produceRows(OutputAql
   return {ExecutionState::DONE, stats};
 }
 
-std::tuple<ExecutionState, UnsortedGatherExecutor::Stats, size_t> UnsortedGatherExecutor::skipRows(size_t const toSkip) {
-  
+std::tuple<ExecutionState, ParallelUnsortedGatherExecutor::Stats, size_t>
+ParallelUnsortedGatherExecutor::skipRows(size_t const toSkip) {
   initDependencies();
   TRI_ASSERT(_skipped <= toSkip);
   
@@ -171,7 +162,7 @@ std::tuple<ExecutionState, UnsortedGatherExecutor::Stats, size_t> UnsortedGather
   return {state, NoStats{}, skipped};
 }
 
-void UnsortedGatherExecutor::initDependencies() {
+void ParallelUnsortedGatherExecutor::initDependencies() {
   if (_numberDependencies == 0) {
     // We need to initialize the dependencies once, they are injected
     // after the fetcher is created.

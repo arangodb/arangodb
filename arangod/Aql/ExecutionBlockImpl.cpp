@@ -49,6 +49,7 @@
 #include "Aql/ModificationExecutor.h"
 #include "Aql/MultiDependencySingleRowFetcher.h"
 #include "Aql/NoResultsExecutor.h"
+#include "Aql/ParallelUnsortedGatherExecutor.h"
 #include "Aql/Query.h"
 #include "Aql/QueryOptions.h"
 #include "Aql/ReturnExecutor.h"
@@ -63,7 +64,6 @@
 #include "Aql/SubqueryExecutor.h"
 #include "Aql/SubqueryStartExecutor.h"
 #include "Aql/TraversalExecutor.h"
-#include "Aql/UnsortedGatherExecutor.h"
 #include "Aql/UnsortingGatherExecutor.h"
 
 #include "Aql/SimpleModifier.h"
@@ -374,7 +374,7 @@ static SkipVariants constexpr skipType() {
            std::is_same<Executor, ConstrainedSortExecutor>::value ||
            std::is_same<Executor, SortingGatherExecutor>::value ||
            std::is_same<Executor, UnsortingGatherExecutor>::value ||
-           std::is_same<Executor, UnsortedGatherExecutor>::value ||
+           std::is_same<Executor, ParallelUnsortedGatherExecutor>::value ||
            std::is_same<Executor, MaterializeExecutor<RegisterId>>::value ||
            std::is_same<Executor, MaterializeExecutor<std::string const&>>::value),
       "Unexpected executor for SkipVariants::EXECUTOR");
@@ -896,7 +896,7 @@ template class ::arangodb::aql::ExecutionBlockImpl<SubqueryExecutor<false>>;
 template class ::arangodb::aql::ExecutionBlockImpl<SubqueryStartExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<TraversalExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<SortingGatherExecutor>;
-template class ::arangodb::aql::ExecutionBlockImpl<UnsortedGatherExecutor>;
+template class ::arangodb::aql::ExecutionBlockImpl<ParallelUnsortedGatherExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<UnsortingGatherExecutor>;
 
 template class ::arangodb::aql::ExecutionBlockImpl<MaterializeExecutor<RegisterId>>;

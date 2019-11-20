@@ -20,8 +20,8 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_UNSORTED_GATHER_EXECUTOR_H
-#define ARANGOD_AQL_UNSORTED_GATHER_EXECUTOR_H
+#ifndef ARANGOD_AQL_PARALLEL_UNSORTED_GATHER_EXECUTOR_H
+#define ARANGOD_AQL_PARALLEL_UNSORTED_GATHER_EXECUTOR_H
 
 #include "Aql/ClusterNodes.h"
 #include "Aql/ExecutionState.h"
@@ -42,17 +42,18 @@ class NoStats;
 class OutputAqlItemRow;
 struct SortRegister;
 
-class UnsortedGatherExecutorInfos : public ExecutorInfos {
+class ParallelUnsortedGatherExecutorInfos : public ExecutorInfos {
  public:
-  UnsortedGatherExecutorInfos(RegisterId nrInOutRegisters, std::unordered_set<RegisterId> registersToKeep,
-                              std::unordered_set<RegisterId> registersToClear);
-  UnsortedGatherExecutorInfos() = delete;
-  UnsortedGatherExecutorInfos(UnsortedGatherExecutorInfos&&) = default;
-  UnsortedGatherExecutorInfos(UnsortedGatherExecutorInfos const&) = delete;
-  ~UnsortedGatherExecutorInfos() = default;
+  ParallelUnsortedGatherExecutorInfos(RegisterId nrInOutRegisters,
+                                      std::unordered_set<RegisterId> registersToKeep,
+                                      std::unordered_set<RegisterId> registersToClear);
+  ParallelUnsortedGatherExecutorInfos() = delete;
+  ParallelUnsortedGatherExecutorInfos(ParallelUnsortedGatherExecutorInfos&&) = default;
+  ParallelUnsortedGatherExecutorInfos(ParallelUnsortedGatherExecutorInfos const&) = delete;
+  ~ParallelUnsortedGatherExecutorInfos() = default;
 };
 
-class UnsortedGatherExecutor {
+class ParallelUnsortedGatherExecutor {
  public:
 
  public:
@@ -63,11 +64,11 @@ class UnsortedGatherExecutor {
   };
 
   using Fetcher = MultiDependencySingleRowFetcher;
-  using Infos = UnsortedGatherExecutorInfos;
+  using Infos = ParallelUnsortedGatherExecutorInfos;
   using Stats = NoStats;
 
-  UnsortedGatherExecutor(Fetcher& fetcher, Infos& info);
-  ~UnsortedGatherExecutor();
+  ParallelUnsortedGatherExecutor(Fetcher& fetcher, Infos& info);
+  ~ParallelUnsortedGatherExecutor();
 
   /**
    * @brief produce the next Row of Aql Values.
@@ -100,4 +101,4 @@ class UnsortedGatherExecutor {
 }  // namespace aql
 }  // namespace arangodb
 
-#endif
+#endif  // ARANGOD_AQL_PARALLEL_UNSORTED_GATHER_EXECUTOR_H

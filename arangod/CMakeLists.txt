@@ -349,7 +349,7 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/TraversalConditionFinder.cpp
   Aql/TraversalExecutor.cpp
   Aql/TraversalNode.cpp
-  Aql/UnsortedGatherExecutor.cpp
+  Aql/ParallelUnsortedGatherExecutor.cpp
   Aql/UnsortingGatherExecutor.cpp
   Aql/UpdateReplaceModifier.cpp
   Aql/UpsertModifier.cpp
