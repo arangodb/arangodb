@@ -643,6 +643,10 @@ bool parse_json_options(const irs::string_ref& args,
       options.preserve_original_set = true;
     }
 
+    if (options.min_gram_set && options.max_gram_set) {
+      return options.min_gram <= options.max_gram;
+    }
+
     return true;
   } catch (...) {
     IR_FRMT_ERROR(

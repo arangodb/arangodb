@@ -39,8 +39,8 @@ const irs::string_ref START_MARKER_PARAM_NAME      = "startMarker";
 const irs::string_ref END_MARKER_PARAM_NAME        = "endMarker";
 
 const std::unordered_map<std::string, irs::analysis::ngram_token_stream_base::InputType> STREAM_TYPE_CONVERT_MAP = {
-      { "binary", irs::analysis::ngram_token_stream_base::InputType::Binary },
-      { "utf8", irs::analysis::ngram_token_stream_base::InputType::UTF8 }};
+  { "binary", irs::analysis::ngram_token_stream_base::InputType::Binary },
+  { "utf8", irs::analysis::ngram_token_stream_base::InputType::UTF8 }};
 
 bool parse_json_config(const irs::string_ref& args,
                         irs::analysis::ngram_token_stream_base::Options& options) {
@@ -140,12 +140,16 @@ bool parse_json_config(const irs::string_ref& args,
       stream_bytes_type = itr->second;
   }
 
+  min = std::max(min, size_t(1));
+  max = std::max(max, min);
+
   options.min_gram = min;
   options.max_gram = max;
   options.preserve_original = preserve_original;
   options.start_marker = irs::ref_cast<irs::byte_type>(start_marker);
   options.end_marker = irs::ref_cast<irs::byte_type>(end_marker);
   options.stream_bytes_type = stream_bytes_type;
+
   return true;
 }
 
@@ -163,12 +167,10 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
         return irs::analysis::ngram_token_stream<irs::analysis::ngram_token_stream_base::InputType::Binary>::make(options);
       case irs::analysis::ngram_token_stream_base::InputType::UTF8:
         return irs::analysis::ngram_token_stream<irs::analysis::ngram_token_stream_base::InputType::UTF8>::make(options);
-      default:
-        return nullptr;
     }
-  } else {
-    return nullptr;
   }
+
+  return nullptr;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -469,7 +471,6 @@ bool ngram_token_stream<StreamType>::next() noexcept {
 
 NS_END // analysis
 NS_END // ROOT
-
 
 // Making library export see template instantinations
 template class irs::analysis::ngram_token_stream<irs::analysis::ngram_token_stream_base::InputType::Binary>;
