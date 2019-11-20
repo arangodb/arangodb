@@ -2137,7 +2137,7 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
 void RocksDBEngine::getStatistics(std::string& result) const {
   VPackBuilder stats;
   getStatistics(stats);
-  VPackSlice sslice;
+  VPackSlice sslice = stats.slice();
   TRI_ASSERT(sslice.isObject());
   for (auto const& a : VPackObjectIterator(sslice)) {
     if (a.value.isNumber()) {
