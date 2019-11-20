@@ -106,7 +106,7 @@ Counter& MetricsFeature::counter (
     TRI_ASSERT(false);
   }
   auto c = std::make_shared<Counter>(val, name, help);
-  _registry.emplace(name, std::dynamic_pointer_cast<HistBase>(c));
+  _registry.emplace(name, std::dynamic_pointer_cast<Metric>(c));
   return *c;
 };
 

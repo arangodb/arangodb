@@ -61,7 +61,7 @@ class MetricsFeature final : public application_features::ApplicationFeature {
       TRI_ASSERT(false);
     }
     auto h = std::make_shared<Histogram<T>>(buckets, low, high, help);
-    _registry.emplace(name, std::dynamic_pointer_cast<HistBase>(h));
+    _registry.emplace(name, std::dynamic_pointer_cast<Metric>(h));
     return *h;
   };
 
@@ -99,7 +99,7 @@ class MetricsFeature final : public application_features::ApplicationFeature {
 
   bool _enabled;
   
-  std::unordered_map<std::string, std::shared_ptr<HistBase>> _registry;
+  std::unordered_map<std::string, std::shared_ptr<Metric>> _registry;
 
   mutable std::mutex _lock;
 
