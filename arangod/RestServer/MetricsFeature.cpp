@@ -118,7 +118,7 @@ Counter& MetricsFeature::counter (
   std::lock_guard<std::mutex> guard(_lock);
   auto const it = _registry.find(name);
   if (it != _registry.end()) {
-    LOG_TOPIC("8532d", ERR, Logger::STATISTICS) << "Failed to retrieve histogram " << name;
+    LOG_TOPIC("8523d", ERR, Logger::STATISTICS) << "Failed to retrieve histogram " << name;
     TRI_ASSERT(false);
   }
   auto c = std::make_shared<Counter>(val, name, help);
