@@ -30,8 +30,6 @@
 #include "RestServer/Metrics.h"
 #include "Statistics/ServerStatistics.h"
 
-#include <any>
-
 namespace arangodb {
 
 class MetricsFeature final : public application_features::ApplicationFeature {

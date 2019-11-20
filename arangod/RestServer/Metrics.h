@@ -109,7 +109,7 @@ public:
 
   ~Histogram() {}
     
-  inline void records(T const& t) {
+  void records(T const& t) {
     if(t < _lowr) {
       _lowr = t;
     } else if (t > _highr) {
@@ -117,7 +117,7 @@ public:
     }    
   }
       
-  inline void count(T const& t) {
+  void count(T const& t) {
     if (t < _low) {
       ++_c[0];
     } else if (t >= _high) {
@@ -128,7 +128,7 @@ public:
     records(t);
   }
 
-  inline void count(T const& t, uint64_t n) {
+  void count(T const& t, uint64_t n) {
     if (t < _low) {
       _c[0] += n;
     } else if (t >= _high) {
@@ -139,8 +139,8 @@ public:
     records(t);
   }
 
-  inline T const& low() const { return _low; }
-  inline T const& high() const { return _high; }
+  T const& low() const { return _low; }
+  T const& high() const { return _high; }
 
   Metrics::hist_type::value_type& operator[](size_t n) {
     return _c[n];

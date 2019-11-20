@@ -95,20 +95,22 @@ void MetricsFeature::toPrometheus(std::string& result) const {
       i.second->toPrometheus(result);
     }
   }
-  
+
+  // StatisticsFeature
   auto& sf = server().getFeature<StatisticsFeature>();
   if (sf.enabled()) {
-    sf.toPrometheus(result, std::chrono::duration<double,std::milli>(std::chrono::system_clock::now().time_since_epoch()).count());
+    sf.toPrometheus(result, std::chrono::duration<double,std::milli>(
+                      std::chrono::system_clock::now().time_since_epoch()).count());
   }
 
+  // RocksDBEngine
   auto es = EngineSelectorFeature::ENGINE;
   if (es != nullptr) {
     std::string const& engineName = es->typeName();
     if (engineName == RocksDBEngine::EngineName) {
-      VPackBuilder stats;
-      es->getStatistics(stats);
+      es->getStatistics(result);
     }
-  } 
+  }
 }
 
 Counter& MetricsFeature::counter (
