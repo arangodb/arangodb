@@ -350,8 +350,8 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/TraversalConditionFinder.cpp
   Aql/TraversalExecutor.cpp
   Aql/TraversalNode.cpp
+  Aql/ParallelUnsortedGatherExecutor.cpp
   Aql/UnsortedGatherExecutor.cpp
-  Aql/UnsortingGatherExecutor.cpp
   Aql/UpdateReplaceModifier.cpp
   Aql/UpsertModifier.cpp
   Aql/V8Executor.cpp
@@ -1008,7 +1008,7 @@ foreach(TARGET
     if (MSVC)
       target_compile_options(${TARGET} PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
     else ()
-      target_compile_options(${TARGET} PRIVATE -Werror)
+      target_compile_options(${TARGET} PRIVATE -Werror -Wno-error=deprecated-declarations)
     endif ()
   endif ()
 endforeach()
