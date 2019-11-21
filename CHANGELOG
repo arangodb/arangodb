@@ -1,6 +1,26 @@
 devel
 -----
 
+* Added a new subquery optimization called `splice-subqueries`.
+
+  This optimization splices the execution of subqueries inside the
+  execution of their surrounding query. For subqueries with a fairly
+  small number of returned documents this saves a significant amount of
+  overhead initializing cursors.
+
+  This optimization is performed by the optimizer rule
+  `splice-subqueries`, and currently only works on suitable
+  subqueries; A subquery becomes unsuitable if it contains a LIMIT,
+  REMOTE, GATHER or a COLLECT node where the operation is WITH COUNT INTO.
+  A subquery also becomes unsuitable if it is contained in an
+  (sub)query which contains unsuitable operations after the subquery.
+
+  The implementation of this feature required reworking the dataflow
+  query execution.
+
+* Fixed issue #10470: The WebUI now shows potential errors and details which occured using _api/import (e.g.
+  unique constraint violated).
+
 * Added startup option `--query.optimizer-rules` to selectively enable or disable
   optimizer rules by default. The option can be specified multiple times, and takes
   the same input as the query option of the same name. 

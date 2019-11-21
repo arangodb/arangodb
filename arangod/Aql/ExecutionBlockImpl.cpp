@@ -49,6 +49,7 @@
 #include "Aql/ModificationExecutor.h"
 #include "Aql/MultiDependencySingleRowFetcher.h"
 #include "Aql/NoResultsExecutor.h"
+#include "Aql/ParallelUnsortedGatherExecutor.h"
 #include "Aql/Query.h"
 #include "Aql/QueryOptions.h"
 #include "Aql/ReturnExecutor.h"
@@ -64,7 +65,6 @@
 #include "Aql/SubqueryStartExecutor.h"
 #include "Aql/TraversalExecutor.h"
 #include "Aql/UnsortedGatherExecutor.h"
-#include "Aql/UnsortingGatherExecutor.h"
 
 #include "Aql/SimpleModifier.h"
 #include "Aql/UpsertModifier.h"
@@ -375,8 +375,8 @@ static SkipVariants constexpr skipType() {
            std::is_same<Executor, LimitExecutor>::value ||
            std::is_same<Executor, ConstrainedSortExecutor>::value ||
            std::is_same<Executor, SortingGatherExecutor>::value ||
-           std::is_same<Executor, UnsortingGatherExecutor>::value ||
            std::is_same<Executor, UnsortedGatherExecutor>::value ||
+           std::is_same<Executor, ParallelUnsortedGatherExecutor>::value ||
            std::is_same<Executor, MaterializeExecutor<RegisterId>>::value ||
            std::is_same<Executor, MaterializeExecutor<std::string const&>>::value),
       "Unexpected executor for SkipVariants::EXECUTOR");
@@ -521,7 +521,7 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<Executor>::shutdown(int err
 namespace arangodb::aql {
 // TODO -- remove this specialization when cpp 17 becomes available
 template <>
-std::pair<ExecutionState, Result> ExecutionBlockImpl<IdExecutor<BlockPassthrough::Enable, ConstFetcher>>::initializeCursor(
+std::pair<ExecutionState, Result> ExecutionBlockImpl<IdExecutor<ConstFetcher>>::initializeCursor(
     InputAqlItemRow const& input) {
   // reinitialize the DependencyProxy
   _dependencyProxy.reset();
@@ -632,12 +632,13 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<SubqueryExecutor<false>>::s
 
 template <>
 std::pair<ExecutionState, Result> ExecutionBlockImpl<
-    IdExecutor<BlockPassthrough::Enable, SingleRowFetcher<BlockPassthrough::Enable>>>::shutdown(int errorCode) {
+    IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>::shutdown(int errorCode) {
   if (this->infos().isResponsibleForInitializeCursor()) {
     return ExecutionBlock::shutdown(errorCode);
   }
   return {ExecutionState::DONE, {errorCode}};
 }
+
 }  // namespace arangodb::aql
 
 namespace arangodb::aql {
@@ -863,7 +864,6 @@ template class ::arangodb::aql::ExecutionBlockImpl<EnumerateCollectionExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<EnumerateListExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<FilterExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<HashedCollectExecutor>;
-
 template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<false, arangodb::iresearch::MaterializeType::Materialized>>;
 template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<false, arangodb::iresearch::MaterializeType::LateMaterialized>>;
 template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<false, arangodb::iresearch::MaterializeType::LateMaterializedWithVars>>;
@@ -875,9 +875,8 @@ template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<fa
 template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<true, arangodb::iresearch::MaterializeType::Materialized>>;
 template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<true, arangodb::iresearch::MaterializeType::LateMaterialized>>;
 
-template class ::arangodb::aql::ExecutionBlockImpl<IdExecutor<BlockPassthrough::Enable, ConstFetcher>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IdExecutor<BlockPassthrough::Enable, SingleRowFetcher<BlockPassthrough::Enable>>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IdExecutor<ConstFetcher>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>;
 template class ::arangodb::aql::ExecutionBlockImpl<IndexExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<LimitExecutor>;
 
@@ -901,8 +900,8 @@ template class ::arangodb::aql::ExecutionBlockImpl<SubqueryExecutor<false>>;
 template class ::arangodb::aql::ExecutionBlockImpl<SubqueryStartExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<TraversalExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<SortingGatherExecutor>;
+template class ::arangodb::aql::ExecutionBlockImpl<ParallelUnsortedGatherExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<UnsortedGatherExecutor>;
-template class ::arangodb::aql::ExecutionBlockImpl<UnsortingGatherExecutor>;
 
 template class ::arangodb::aql::ExecutionBlockImpl<MaterializeExecutor<RegisterId>>;
 template class ::arangodb::aql::ExecutionBlockImpl<MaterializeExecutor<std::string const&>>;
