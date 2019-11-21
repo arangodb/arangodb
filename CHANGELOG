@@ -1,7 +1,7 @@
 devel
 -----
 
-* The WebUI now shows potential errors and details which occured using _api/import (e.g.
+* Fixed issue #10470: The WebUI now shows potential errors and details which occured using _api/import (e.g.
   unique constraint violated).
 
 * Added startup option `--query.optimizer-rules` to selectively enable or disable
