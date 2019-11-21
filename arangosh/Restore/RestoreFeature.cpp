@@ -384,6 +384,8 @@ void getDBProperties(arangodb::ManagedDirectory& directory, VPackBuilder& builde
     fileContentBuilder = directory.vpackFromJsonFile("dump.json");
   } catch (...) {
     LOG_TOPIC("3a5a4", WARN, arangodb::Logger::RESTORE) << "could not read dump.json";
+    builder.add(slice);
+    return;
   }
 
   try {
