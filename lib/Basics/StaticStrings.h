@@ -254,6 +254,7 @@ class StaticStrings {
   static std::string const UpgradeEnvName;
   static std::string const BackupToDeleteName;
   static std::string const BackupSearchToDeleteName;
+  static std::string const SerializationFormat;
 };
 }  // namespace arangodb
 

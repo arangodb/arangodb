@@ -1280,14 +1280,16 @@ void Supervision::workJobs() {
   }
 }
 
-
-bool Supervision::verifyCoordinatorRebootID(std::string const& coordinatorID, uint64_t wantedRebootID) {
+bool Supervision::verifyCoordinatorRebootID(std::string const& coordinatorID,
+                                            uint64_t wantedRebootID, bool& coordinatorFound) {
   // check if the coordinator exists in health
   std::string const& health = serverHealth(coordinatorID);
   LOG_TOPIC("44432", DEBUG, Logger::SUPERVISION)
     << "verifyCoordinatorRebootID: coordinatorID="
     << coordinatorID << " health=" << health;
+
   // if the server is not found, health is an empty string
+  coordinatorFound = health.empty();
   if (health != "GOOD" && health != "BAD") {
     return false;
   }
@@ -1300,7 +1302,9 @@ bool Supervision::verifyCoordinatorRebootID(std::string const& coordinatorID, ui
   return rebootID.second && rebootID.first == wantedRebootID;
 }
 
-void Supervision::deleteBrokenDatabase(std::string const& database, std::string const& coordinatorID, uint64_t rebootID) {
+void Supervision::deleteBrokenDatabase(std::string const& database,
+                                       std::string const& coordinatorID,
+                                       uint64_t rebootID, bool coordinatorFound) {
   auto envelope = std::make_shared<Builder>();
   {
     VPackArrayBuilder trxs(envelope.get());
@@ -1329,10 +1333,15 @@ void Supervision::deleteBrokenDatabase(std::string const& database, std::string 
       }
       {
         // precondition that this database is still in Plan and is building
-        VPackObjectBuilder precondition(envelope.get());
+        VPackObjectBuilder preconditions(envelope.get());
         envelope->add(_agencyPrefix + planDBPrefix + database + "/" + StaticStrings::DatabaseIsBuilding, VPackValue(true));
         envelope->add(_agencyPrefix + planDBPrefix + database + "/" + StaticStrings::DatabaseCoordinatorRebootId, VPackValue(rebootID));
         envelope->add(_agencyPrefix + planDBPrefix + database + "/" + StaticStrings::DatabaseCoordinator, VPackValue(coordinatorID));
+
+        {
+          VPackObjectBuilder precondition(envelope.get(), _agencyPrefix + healthPrefix + "/" + coordinatorID);
+          envelope->add("oldEmpty", VPackValue(!coordinatorFound));
+        }
       }
     }
   }
@@ -1371,9 +1380,11 @@ void Supervision::checkBrokenCreatedDatabases() {
       std::pair<std::string, bool> coordinatorID = db->hasAsString(StaticStrings::DatabaseCoordinator);
 
       bool keepDatabase = true;
+      bool coordinatorFound = false;
 
       if (rebootID.second && coordinatorID.second) {
-        keepDatabase = verifyCoordinatorRebootID(coordinatorID.first, rebootID.first);
+        keepDatabase = verifyCoordinatorRebootID(coordinatorID.first,
+                                                 rebootID.first, coordinatorFound);
         // incomplete data, should not happen
       } else {
         //          v---- Please note this awesome log-id
@@ -1386,7 +1397,7 @@ void Supervision::checkBrokenCreatedDatabases() {
         LOG_TOPIC("fe522", INFO, Logger::SUPERVISION)
           << "checkBrokenCreatedDatabases: removing skeleton database with name " << dbpair.first;
         // delete this database and all of its collections
-        deleteBrokenDatabase(dbpair.first, coordinatorID.first, rebootID.first);
+        deleteBrokenDatabase(dbpair.first, coordinatorID.first, rebootID.first, coordinatorFound);
       }
     }
   }
