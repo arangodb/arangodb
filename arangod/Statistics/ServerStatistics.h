@@ -33,7 +33,12 @@ class MetricsFeature;
 }
 
 struct TransactionStatistics {
+
   TransactionStatistics();
+  TransactionStatistics(TransactionStatistics const&) = delete;
+  TransactionStatistics(TransactionStatistics &&) = delete;
+  TransactionStatistics& operator=(TransactionStatistics const&) = delete;
+  TransactionStatistics& operator=(TransactionStatistics &&) = delete;
 
   arangodb::MetricsFeature* _metrics;
   

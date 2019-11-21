@@ -1284,9 +1284,6 @@ void Agent::run() {
   // Only run in case we are in multi-host mode
   while (!this->isStopping() && size() > 1) {
 
-    _write_ok.push();
-    _write_no_leader.push();
-    
     {
       // We set the variable to false here, if any change happens during
       // or after the calls in this loop, this will be set to true to

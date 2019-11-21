@@ -62,22 +62,16 @@ Counter& Counter::operator++() {
 }
 
 Counter& Counter::operator++(int n) {
-  count(n);
+  count(1);
   return *this;
 }
 
 void Counter::count() {
   ++_b;
-  push();
 }
 
 void Counter::count(uint64_t n) {
   _b += n;
-  push();
-}
-
-void Counter::push() {
-  _b.push();
 }
 
 std::ostream& Counter::print(std::ostream& o) const {
@@ -86,10 +80,12 @@ std::ostream& Counter::print(std::ostream& o) const {
 }
 
 uint64_t Counter::load() const {
+  _b.push();
   return _c.load();
 }
 
 void Counter::toPrometheus(std::string& result) const {
+  _b.push();
   result += "#TYPE " + name() + " counter\n";
   result += "#HELP " + name() + " " + help() + "\n";
   result += name() + " " + std::to_string(load()) + "\n";

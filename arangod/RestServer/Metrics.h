@@ -83,7 +83,7 @@ public:
   void push();
   virtual void toPrometheus(std::string&) const override;
 private:
-  Metrics::counter_type _c;
+  mutable Metrics::counter_type _c;
   mutable Metrics::buffer_type _b;
 };
 

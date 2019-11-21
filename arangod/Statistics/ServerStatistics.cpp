@@ -42,12 +42,6 @@ TransactionStatistics::TransactionStatistics() :
 // --SECTION--                                             static public methods
 // -----------------------------------------------------------------------------
 
-ServerStatistics& ServerStatistics::statistics() {
-  //update the uptime for everyone reading the statistics.
-  _uptime = StatisticsFeature::time() - _startTime;
-  return *this;
-}
-
 void ServerStatistics::initialize(double startTime) {
     _startTime = startTime;
 }
