@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertUndefined, assertEqual, assertTrue, assertFalse, assertNotNull, fail, db._query */
+/*global assertUndefined, assertNotEqual, assertEqual, assertTrue, assertFalse, assertNotNull, fail, db._query */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
