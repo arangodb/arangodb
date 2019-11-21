@@ -2805,7 +2805,7 @@ bool RestReplicationHandler::prepareRevisionOperation(RevisionOperationContext& 
     return false;
   }
 
-  LOG_TOPIC("213e2", TRACE, arangodb::Logger::REPLICATION)
+  LOG_TOPIC("253e2", TRACE, arangodb::Logger::REPLICATION)
       << "enter prepareRevisionOperation";
 
   bool found = false;
@@ -2835,7 +2835,7 @@ bool RestReplicationHandler::prepareRevisionOperation(RevisionOperationContext& 
   }
 
   // print request
-  LOG_TOPIC("2b20f", TRACE, arangodb::Logger::REPLICATION)
+  LOG_TOPIC("2b70f", TRACE, arangodb::Logger::REPLICATION)
       << "requested revision tree for collection '" << ctx.cname
       << "' using contextId '" << ctx.batchId << "'";
 

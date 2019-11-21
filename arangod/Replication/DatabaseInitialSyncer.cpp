@@ -1583,7 +1583,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
                   std::to_string(numberDocumentsDueToCounter));
 
       if (numberDocumentsAfterSync != numberDocumentsDueToCounter) {
-        LOG_TOPIC("118bd", WARN, Logger::REPLICATION)
+        LOG_TOPIC("118bf", WARN, Logger::REPLICATION)
             << "number of remaining documents in collection '" + coll->name() +
                    "' is " + std::to_string(numberDocumentsAfterSync) +
                    " and differs from number of documents returned by "
