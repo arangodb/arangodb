@@ -96,7 +96,7 @@ class MetricsFeature final : public application_features::ApplicationFeature {
     std::lock_guard<std::mutex> guard(_lock);
     auto it = _registry.find(name);
     if (it != _registry.end()) {
-      LOG_TOPIC("7c3b2e", ERR, Logger::STATISTICS) << "gauge "  << name << " alredy exists";
+      LOG_TOPIC("c7b37", ERR, Logger::STATISTICS) << "gauge "  << name << " alredy exists";
       TRI_ASSERT(false);
       throw(std::exception());
     }
@@ -117,7 +117,7 @@ class MetricsFeature final : public application_features::ApplicationFeature {
     try {
       g = std::dynamic_pointer_cast<Gauge<T>>(it->second);
       if (g == nullptr) {
-        LOG_TOPIC("d2358", ERR, Logger::STATISTICS) << "Failed to retrieve gauge metric " << name;
+        LOG_TOPIC("d4368", ERR, Logger::STATISTICS) << "Failed to retrieve gauge metric " << name;
         TRI_ASSERT(false);
         throw std::exception();
       }
