@@ -60,7 +60,8 @@ std::pair<ExecutionState, NoStats> SubqueryStartExecutor::produceRows(OutputAqlI
         output.createShadowRow(_input);
         _input = InputAqlItemRow(CreateInvalidInputRowHint{});
       } else {
-        std::tie(_state, _input) = _fetcher.fetchRow(output.numRowsLeft() / 2);
+        // We need to round the number of rows, otherwise this might be called with atMost == 0
+        std::tie(_state, _input) = _fetcher.fetchRow((output.numRowsLeft() + 1) / 2);
         if (!_input.isInitialized()) {
           TRI_ASSERT(_state == ExecutionState::WAITING || _state == ExecutionState::DONE);
           return {_state, NoStats{}};
