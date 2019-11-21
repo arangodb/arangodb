@@ -2143,7 +2143,7 @@ void RocksDBEngine::getStatistics(std::string& result) const {
     if (a.value.isNumber()) {
       std::string name = a.key.copyString();
       std::replace(name.begin(), name.end(), '.', '_');
-      if (name.front() != '.') {
+      if (name.front() != 'r') {
         name = EngineName + "_" + name ; 
       }
       result += "#TYPE " + name +
