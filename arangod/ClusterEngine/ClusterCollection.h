@@ -111,8 +111,6 @@ class ClusterCollection final : public PhysicalCollection {
 
   std::unique_ptr<IndexIterator> getSortedAllIterator(transaction::Methods* trx) const;
 
-  std::unique_ptr<ReplicationIterator> getReplicationIterator(ReplicationIterator::Ordering,
-                                                              uint64_t batchId) override;
 
   ////////////////////////////////////
   // -- SECTION DML Operations --

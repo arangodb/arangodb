@@ -37,6 +37,7 @@
 #include "Replication/DatabaseReplicationApplier.h"
 #include "Replication/utilities.h"
 #include "Rest/CommonDefines.h"
+#include "RestHandler/RestReplicationHandler.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -89,32 +90,16 @@ std::chrono::milliseconds sleepTimeFromWaitTime(double waitTime) {
 std::string const kTypeString = "type";
 std::string const kDataString = "data";
 
-arangodb::Result removeRevisions(arangodb::LogicalCollection& collection,
+arangodb::Result removeRevisions(arangodb::transaction::Methods& trx,
+                                 arangodb::LogicalCollection& collection,
                                  std::vector<std::string>& toRemove,
                                  arangodb::InitialSyncerIncrementalSyncStats& stats) {
   using arangodb::PhysicalCollection;
   using arangodb::Result;
-  using arangodb::transaction::Hints;
 
   if (toRemove.size() == 0) {
     // no need to do anything
     return Result();
-  }
-
-  arangodb::SingleCollectionTransaction trx(
-      arangodb::transaction::StandaloneContext::Create(collection.vocbase()),
-      collection, arangodb::AccessMode::Type::EXCLUSIVE);
-
-  trx.addHint(Hints::Hint::RECOVERY);  // turn off waitForSync!
-  trx.addHint(Hints::Hint::NO_INDEXING);
-  // turn on intermediate commits as the number of keys to delete can be huge
-  // here
-  trx.addHint(Hints::Hint::INTERMEDIATE_COMMITS);
-
-  Result res = trx.begin();
-  if (!res.ok()) {
-    return Result(res.errorNumber(),
-                  std::string("unable to start transaction: ") + res.errorMessage());
   }
 
   PhysicalCollection* physical = collection.getPhysical();
@@ -142,36 +127,25 @@ arangodb::Result removeRevisions(arangodb::LogicalCollection& collection,
     }
   }
 
-  return trx.commit();
+  return Result();
 }
 
-arangodb::Result fetchRevisions(arangodb::DatabaseInitialSyncer::Configuration& config,
+arangodb::Result fetchRevisions(arangodb::transaction::Methods& trx,
+                                arangodb::DatabaseInitialSyncer::Configuration& config,
                                 arangodb::Syncer::SyncerState& state,
                                 arangodb::LogicalCollection& collection,
                                 std::string const& leader, std::vector<std::size_t>& toFetch,
                                 arangodb::InitialSyncerIncrementalSyncStats& stats) {
   using arangodb::PhysicalCollection;
+  using arangodb::RestReplicationHandler;
   using arangodb::Result;
-  using arangodb::transaction::Hints;
 
-  arangodb::SingleCollectionTransaction trx(
-      arangodb::transaction::StandaloneContext::Create(collection.vocbase()),
-      collection, arangodb::AccessMode::Type::EXCLUSIVE);
-
-  trx.addHint(Hints::Hint::RECOVERY);  // turn off waitForSync!
-  trx.addHint(Hints::Hint::NO_INDEXING);
-  // turn on intermediate commits as the number of keys to delete can be huge
-  // here
-  trx.addHint(Hints::Hint::INTERMEDIATE_COMMITS);
-
-  Result res = trx.begin();
-  if (!res.ok()) {
-    return Result(res.errorNumber(),
-                  std::string("unable to start transaction: ") + res.errorMessage());
+  if (toFetch.empty()) {
+    return Result();  // nothing to do
   }
 
   arangodb::transaction::BuilderLeaser keyBuilder(&trx);
-  arangodb::ManagedDocumentResult mdr;
+  arangodb::ManagedDocumentResult mdr, previous;
   arangodb::OperationOptions options;
   options.silent = true;
   options.ignoreRevs = true;
@@ -184,7 +158,8 @@ arangodb::Result fetchRevisions(arangodb::DatabaseInitialSyncer::Configuration& 
   PhysicalCollection* physical = collection.getPhysical();
 
   std::string url =
-      arangodb::replutils::ReplicationUrl + "/revisions/documents" +
+      arangodb::replutils::ReplicationUrl + "/" +
+      RestReplicationHandler::Revisions + "/" + RestReplicationHandler::Documents +
       "?collection=" + arangodb::basics::StringUtils::urlEncode(leader) +
       "&serverId=" + state.localServerIdString +
       "&batchId=" + std::to_string(config.batch.id);
@@ -206,6 +181,16 @@ arangodb::Result fetchRevisions(arangodb::DatabaseInitialSyncer::Configuration& 
     }
 
     return res;
+  };
+
+  std::function<Result(VPackSlice)> insertDoc = [&](VPackSlice doc) -> Result {
+    return physical->insert(&trx, doc, mdr, options,
+                            /*lock*/ false, nullptr, nullptr);
+  };
+
+  std::function<Result(VPackSlice)> replaceDoc = [&](VPackSlice doc) -> Result {
+    return physical->replace(&trx, doc, mdr, options,
+                             /*lock*/ false, previous);
   };
 
   std::size_t current = 0;
@@ -276,29 +261,23 @@ arangodb::Result fetchRevisions(arangodb::DatabaseInitialSyncer::Configuration& 
                           ": document revision is invalid");
       }
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       arangodb::LocalDocumentId const documentId = physical->lookupKey(&trx, keySlice);
-      TRI_ASSERT(!documentId.isSet());  // we should have already removed any
-                                        // old revision of this document in an
-                                        // earlier step
-#endif
+      std::function<Result(VPackSlice)>& putDoc = documentId.isSet() ? replaceDoc : insertDoc;
 
-      Result res = physical->insert(&trx, masterDoc, mdr, options,
-                                    /*lock*/ false, nullptr, nullptr);
+      TRI_ASSERT(options.indexOperationMode == arangodb::Index::OperationMode::internal);
+
+      Result res = putDoc(masterDoc);
       if (res.fail()) {
         if (res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) &&
             res.errorMessage() > keySlice.copyString()) {
-          // TODO verify if this case can actually happen still?
           // remove conflict and retry
           // errorMessage() is this case contains the conflicting key
           auto inner = removeConflict(res.errorMessage());
           if (inner.fail()) {
             return res;
           }
-
           options.indexOperationMode = arangodb::Index::OperationMode::normal;
-          res = physical->insert(&trx, masterDoc, mdr, options,
-                                 /*lock*/ false, nullptr, nullptr);
+          res = putDoc(masterDoc);
           options.indexOperationMode = arangodb::Index::OperationMode::internal;
           if (res.fail()) {
             return res;
@@ -312,7 +291,9 @@ arangodb::Result fetchRevisions(arangodb::DatabaseInitialSyncer::Configuration& 
         }
       }
 
-      ++stats.numDocsInserted;
+      if (!documentId.isSet()) {
+        ++stats.numDocsInserted;
+      }
     }
     current += docs.length();
   }
@@ -1058,7 +1039,7 @@ Result DatabaseInitialSyncer::fetchCollectionSync(arangodb::LogicalCollection* c
                                                   TRI_voc_tick_t maxTick) {
   if (coll->version() >= LogicalCollection::Version::v37 &&
       (_config.master.majorVersion > 3 ||
-       (_config.master.majorVersion = 3 && _config.master.minorVersion >= 7))) {
+       (_config.master.majorVersion = 3 && _config.master.minorVersion >= 6))) {
     // local collection should support revisions, and master is at least aware
     // of the revision-based protocol, so we can query it to find out if we
     // can use the new protocol; will fall back to old one if master collection
@@ -1269,6 +1250,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
                                                              std::string const& leaderColl,
                                                              TRI_voc_tick_t maxTick) {
   using ::arangodb::basics::StringUtils::urlEncode;
+  using ::arangodb::transaction::Hints;
 
   InitialSyncerIncrementalSyncStats stats;
   double const startTime = TRI_microtime();
@@ -1279,11 +1261,13 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
   }
 
   std::unique_ptr<containers::RevisionTree> treeMaster;
-  std::string const baseUrl = replutils::ReplicationUrl + "/revisions";
+  std::string const baseUrl =
+      replutils::ReplicationUrl + "/" + RestReplicationHandler::Revisions;
 
   // get master tree
   {
-    std::string url = baseUrl + "/tree" + "?collection=" + urlEncode(leaderColl) +
+    std::string url = baseUrl + "/" + RestReplicationHandler::Tree +
+                      "?collection=" + urlEncode(leaderColl) +
                       "&to=" + std::to_string(maxTick) +
                       "&serverId=" + _state.localServerIdString +
                       "&batchId=" + std::to_string(_config.batch.id);
@@ -1301,15 +1285,15 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
     stats.waitedForInitial += TRI_microtime() - t;
 
     if (replutils::hasFailed(response.get())) {
-      if (response->getHttpReturnCode() ==
-          static_cast<int>(rest::ResponseCode::NOT_IMPLEMENTED)) {
+      if (response && response->getHttpReturnCode() ==
+                          static_cast<int>(rest::ResponseCode::NOT_IMPLEMENTED)) {
         // collection on master doesn't support revisions-based protocol, fallback
         return fetchCollectionSyncByKeys(coll, leaderColl, maxTick);
       }
       return replutils::buildHttpError(response.get(), url, _config.connection);
     }
 
-    std::unique_ptr<containers::RevisionTree> treeMaster = containers::RevisionTree::fromBuffer(
+    treeMaster = containers::RevisionTree::fromBuffer(
         std::string_view(response->getBody().begin(), response->getBody().length()));
     if (!treeMaster) {
       return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
@@ -1317,12 +1301,59 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
                         _config.master.endpoint + url +
                         ": response does not contain a valid revision tree");
     }
+
+    if (treeMaster->count() == 0) {
+      // remote collection has no documents. now truncate our local collection
+      SingleCollectionTransaction trx(transaction::StandaloneContext::Create(vocbase()),
+                                      *coll, AccessMode::Type::EXCLUSIVE);
+      trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
+      trx.addHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE);
+      Result res = trx.begin();
+
+      if (!res.ok()) {
+        return Result(res.errorNumber(),
+                      std::string("unable to start transaction (") + std::string(__FILE__) +
+                          std::string(":") + std::to_string(__LINE__) +
+                          std::string("): ") + res.errorMessage());
+      }
+
+      OperationOptions options;
+
+      if (!_state.leaderId.empty()) {
+        options.isSynchronousReplicationFrom = _state.leaderId;
+      }
+
+      OperationResult opRes = trx.truncate(coll->name(), options);
+
+      if (opRes.fail()) {
+        return Result(opRes.errorNumber(),
+                      std::string("unable to truncate collection '") + coll->name() +
+                          "': " + TRI_errno_string(opRes.errorNumber()));
+      }
+
+      return trx.finish(opRes.result);
+    }
+  }
+
+  PhysicalCollection* physical = coll->getPhysical();
+  TRI_ASSERT(physical);
+  arangodb::SingleCollectionTransaction trx(
+      arangodb::transaction::StandaloneContext::Create(coll->vocbase()), *coll,
+      arangodb::AccessMode::Type::EXCLUSIVE);
+  trx.addHint(Hints::Hint::RECOVERY);  // turn off waitForSync!
+  // turn on intermediate commits as the number of keys to delete can be huge
+  // here
+  trx.addHint(Hints::Hint::INTERMEDIATE_COMMITS);
+  Result res = trx.begin();
+  if (!res.ok()) {
+    return Result(res.errorNumber(),
+                  std::string("unable to start transaction: ") + res.errorMessage());
   }
 
   // diff with local tree
-  std::pair<std::size_t, std::size_t> range = treeMaster->range();
+  std::pair<std::size_t, std::size_t> fullRange = treeMaster->range();
   std::unique_ptr<containers::RevisionTree> treeLocal =
-      coll->revisionTree(range.first, range.second);
+      physical->revisionTree(trx, fullRange.first, fullRange.second);
   std::vector<std::pair<std::size_t, std::size_t>> ranges = treeMaster->diff(*treeLocal);
   if (ranges.empty()) {
     // no differences, done!
@@ -1343,18 +1374,18 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
     }
     std::string request = requestBuilder.slice().toJson();
 
-    std::string url = baseUrl + "/range" + "?collection=" + urlEncode(leaderColl) +
+    std::string url = baseUrl + "/" + RestReplicationHandler::Ranges +
+                      "?collection=" + urlEncode(leaderColl) +
                       "&serverId=" + _state.localServerIdString +
                       "&batchId=" + std::to_string(_config.batch.id);
     auto headers = replutils::createHeaders();
     std::unique_ptr<httpclient::SimpleHttpResult> response;
-    std::size_t resumeRev = ranges[0].first;  // start with beginning
-    TRI_ASSERT(resumeRev);
+    std::size_t requestResume = ranges[0].first;  // start with beginning
+    TRI_ASSERT(requestResume);
+    std::size_t iterResume = requestResume;
     std::size_t chunk = 0;
-    PhysicalCollection* physical = coll->getPhysical();
-    TRI_ASSERT(physical);
     std::unique_ptr<ReplicationIterator> iter =
-        physical->getReplicationIterator(ReplicationIterator::Ordering::Revision, 0);
+        physical->getReplicationIterator(ReplicationIterator::Ordering::Revision, trx);
     if (!iter) {
       return Result(TRI_ERROR_INTERNAL, "could not get replication iterator");
     }
@@ -1365,47 +1396,54 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
     RevisionReplicationIterator& local =
         *static_cast<RevisionReplicationIterator*>(iter.get());
 
-    while (local.hasMore() && local.revision() < range.first) {
+    uint64_t documentsFound = 0;
+
+    while (local.hasMore() && local.revision() < fullRange.first) {
       toRemove.emplace_back(transaction::helpers::extractKeyString(local.document()));
+      ++documentsFound;
       local.next();
     }
-    Result res = ::removeRevisions(*coll, toRemove, stats);
+    res = ::removeRevisions(trx, *coll, toRemove, stats);
     if (res.fail()) {
       return res;
     }
     toRemove.clear();
 
-    local.seek(range.second);
+    while (local.hasMore() && local.revision() < fullRange.second) {
+      ++documentsFound;
+      local.next();
+    }
     while (local.hasMore()) {
       toRemove.emplace_back(transaction::helpers::extractKeyString(local.document()));
+      ++documentsFound;
       local.next();
     }
-    res = ::removeRevisions(*coll, toRemove, stats);
+    res = ::removeRevisions(trx, *coll, toRemove, stats);
     if (res.fail()) {
       return res;
     }
     toRemove.clear();
 
-    while (resumeRev) {
+    while (requestResume < std::numeric_limits<std::size_t>::max()) {
       if (!_config.isChild()) {
         batchExtend();
         _config.barrier.extend(_config.connection);
       }
 
-      std::string batchUrl = url + "&resume=" + std::to_string(resumeRev);
+      std::string batchUrl = url + "&resume=" + std::to_string(requestResume);
       std::string msg = "fetching collection revision ranges for collection '" +
                         coll->name() + "' from " + batchUrl;
       _config.progress.set(msg);
       double t = TRI_microtime();
       _config.connection.lease([&](httpclient::SimpleHttpClient* client) {
-        response.reset(client->retryRequest(rest::RequestType::PUT, url,
+        response.reset(client->retryRequest(rest::RequestType::PUT, batchUrl,
                                             request.data(), request.size(), headers));
       });
       stats.waitedForKeys += TRI_microtime() - t;
       ++stats.numKeysRequests;
 
       if (replutils::hasFailed(response.get())) {
-        return replutils::buildHttpError(response.get(), url, _config.connection);
+        return replutils::buildHttpError(response.get(), batchUrl, _config.connection);
       }
 
       VPackBuilder responseBuilder;
@@ -1431,7 +1469,8 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
                           _config.master.endpoint + batchUrl +
                           ": response field 'resume' is not a number");
       }
-      resumeRev = resumeSlice.isNone() ? 0 : resumeSlice.getNumber<std::size_t>();
+      requestResume = resumeSlice.isNone() ? std::numeric_limits<std::size_t>::max()
+                                           : resumeSlice.getNumber<std::size_t>();
 
       VPackSlice const rangesSlice = slice.get("ranges");
       if (!rangesSlice.isArray()) {
@@ -1451,47 +1490,70 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
                   ": response field 'ranges' entry is not a revision range");
         }
         auto& currentRange = ranges[chunk];
-        local.seek(currentRange.first);
+        local.seek(std::max(iterResume, currentRange.first));
 
-        std::size_t masterFirst = masterSlice.isEmptyArray()
-                                      ? currentRange.second + 1
-                                      : masterSlice.at(0).getNumber<std::size_t>();
-        std::size_t masterLast =
+        std::size_t removalBound = masterSlice.isEmptyArray()
+                                       ? currentRange.second + 1
+                                       : masterSlice.at(0).getNumber<std::size_t>();
+        TRI_ASSERT(currentRange.first <= removalBound);
+        TRI_ASSERT(removalBound <= currentRange.second + 1);
+        std::size_t mixedBound =
             masterSlice.isEmptyArray()
-                ? currentRange.second + 1
+                ? currentRange.second
                 : masterSlice.at(masterSlice.length() - 1).getNumber<std::size_t>();
+        TRI_ASSERT(currentRange.first <= mixedBound);
+        TRI_ASSERT(mixedBound <= currentRange.second);
 
-        while (local.hasMore() && local.revision() < masterFirst) {
-          toRemove.emplace_back(transaction::helpers::extractKeyString(local.document()));
+        while (local.hasMore() && local.revision() < removalBound) {
+          std::string key = transaction::helpers::extractKeyString(local.document());
+          toRemove.emplace_back(key);
+          iterResume = std::max(iterResume, local.revision() + 1);
           local.next();
         }
 
         std::size_t index = 0;
-        while (local.hasMore() && local.revision() <= masterLast) {
+        while (local.hasMore() && local.revision() <= mixedBound) {
           std::size_t masterRev = masterSlice.at(index).getNumber<std::size_t>();
+
           if (local.revision() < masterRev) {
-            toRemove.emplace_back(transaction::helpers::extractKeyString(local.document()));
+            std::string key = transaction::helpers::extractKeyString(local.document());
+            toRemove.emplace_back(key);
+            iterResume = std::max(iterResume, local.revision() + 1);
+            local.next();
           } else if (masterRev < local.revision()) {
+            TRI_ASSERT(allFetched.find(masterRev) == allFetched.end());
             toFetch.emplace_back(masterRev);
+            ++index;
+            iterResume = std::max(iterResume, masterRev + 1);
           } else {
+            TRI_ASSERT(local.revision() == masterRev);
             // match, no need to remove local or fetch from master
             ++index;
+            iterResume = std::max(iterResume, masterRev + 1);
+            local.next();
           }
-          local.next();
+        }
+        for (; index < masterSlice.length(); ++index) {
+          std::size_t masterRev = masterSlice.at(index).getNumber<std::size_t>();
+          // fetch any leftovers
+          toFetch.emplace_back(masterRev);
+          iterResume = std::max(iterResume, masterRev + 1);
         }
 
         while (local.hasMore() &&
-               local.revision() <= std::min(resumeRev, currentRange.second)) {
-          toRemove.emplace_back(transaction::helpers::extractKeyString(local.document()));
+               local.revision() <= std::min(requestResume, currentRange.second)) {
+          std::string key = transaction::helpers::extractKeyString(local.document());
+          toRemove.emplace_back(key);
+          iterResume = std::max(iterResume, local.revision() + 1);
           local.next();
         }
 
-        if (resumeRev > currentRange.second) {
+        if (requestResume > currentRange.second) {
           ++chunk;
         }
       }
 
-      Result res = ::removeRevisions(*coll, toRemove, stats);
+      Result res = ::removeRevisions(trx, *coll, toRemove, stats);
       if (res.fail()) {
         return res;
       }
@@ -1501,12 +1563,46 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
         _state.barrier.extend(_state.connection);
       }
 
-      res = ::fetchRevisions(_config, _state, *coll, leaderColl, toFetch, stats);
+      res = ::fetchRevisions(trx, _config, _state, *coll, leaderColl, toFetch,
+                             /*removed,*/ stats);
       if (res.fail()) {
         return res;
       }
+      toFetch.clear();
     }
-    TRI_ASSERT(resumeRev <= ranges[chunk].first);
+
+    // adjust counts
+    {
+      uint64_t numberDocumentsAfterSync =
+          documentsFound + stats.numDocsInserted - stats.numDocsRemoved;
+      uint64_t numberDocumentsDueToCounter =
+          coll->numberDocuments(&trx, transaction::CountType::Normal);
+
+      setProgress(std::string("number of remaining documents in collection '") +
+                  coll->name() + "': " + std::to_string(numberDocumentsAfterSync) +
+                  ", number of documents due to collection count: " +
+                  std::to_string(numberDocumentsDueToCounter));
+
+      if (numberDocumentsAfterSync != numberDocumentsDueToCounter) {
+        LOG_TOPIC("118bd", WARN, Logger::REPLICATION)
+            << "number of remaining documents in collection '" + coll->name() +
+                   "' is " + std::to_string(numberDocumentsAfterSync) +
+                   " and differs from number of documents returned by "
+                   "collection count " +
+                   std::to_string(numberDocumentsDueToCounter);
+
+        // patch the document counter of the collection and the transaction
+        int64_t diff = static_cast<int64_t>(numberDocumentsAfterSync) -
+                       static_cast<int64_t>(numberDocumentsDueToCounter);
+
+        trx.documentCollection()->getPhysical()->adjustNumberDocuments(trx, diff);
+      }
+    }
+    res = trx.commit();
+    if (res.fail()) {
+      return res;
+    }
+    TRI_ASSERT(requestResume == std::numeric_limits<std::size_t>::max());
   }
 
   setProgress(

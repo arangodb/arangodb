@@ -520,10 +520,20 @@ std::unique_ptr<ReplicationIterator> RocksDBCollection::getReplicationIterator(
       _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>();
   RocksDBEngine& engine = selector.engine<RocksDBEngine>();
   RocksDBReplicationManager* manager = engine.replicationManager();
-  RocksDBReplicationContext* ctx = manager->find(batchId);
+  RocksDBReplicationContext* ctx = batchId == 0 ? nullptr : manager->find(batchId);
   rocksdb::Snapshot const* snapshot = ctx ? ctx->snapshot() : nullptr;
 
   return std::make_unique<RocksDBRevisionReplicationIterator>(_logicalCollection, snapshot);
+}
+
+std::unique_ptr<ReplicationIterator> RocksDBCollection::getReplicationIterator(
+    ReplicationIterator::Ordering order, transaction::Methods& trx) {
+  if (order != ReplicationIterator::Ordering::Revision) {
+    // not supported
+    return nullptr;
+  }
+
+  return std::make_unique<RocksDBRevisionReplicationIterator>(_logicalCollection, trx);
 }
 
 ////////////////////////////////////
@@ -1171,35 +1181,31 @@ Result RocksDBCollection::remove(transaction::Methods& trx, velocypack::Slice sl
   return res;
 }
 
-std::unique_ptr<containers::RevisionTree> RocksDBCollection::revisionTree(std::size_t rangeMin,
-                                                                          std::size_t rangeMax) {
+std::unique_ptr<containers::RevisionTree> RocksDBCollection::revisionTree(
+    transaction::Methods& trx, std::size_t rangeMin, std::size_t rangeMax) {
+  std::unique_ptr<ReplicationIterator> iter =
+      getReplicationIterator(ReplicationIterator::Ordering::Revision, trx);
+  RevisionReplicationIterator& it =
+      *static_cast<RevisionReplicationIterator*>(iter.get());
+
   std::size_t constexpr maxDepth = 6;
   std::unique_ptr<containers::RevisionTree> tree =
-      std::make_unique<containers::RevisionTree>(maxDepth, rangeMin);
+      std::make_unique<containers::RevisionTree>(maxDepth, rangeMin, rangeMax);
 
-  rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
-  RocksDBKeyBounds bounds =
-      RocksDBKeyBounds::CollectionDocumentRange(_objectId, rangeMin, rangeMax);
-  rocksdb::ColumnFamilyHandle* cf = bounds.columnFamily();
-  rocksdb::Comparator const* cmp = cf->GetComparator();
-  rocksdb::ReadOptions options;
-  options.verify_checksums = false;
-  options.fill_cache = false;
-  options.prefix_same_as_start = true;
-
-  std::unique_ptr<rocksdb::Iterator> iter(db->NewIterator(options, cf));
-  while (iter->Valid() && cmp->Compare(iter->key(), bounds.end()) <= 0) {
-    std::size_t rid = RocksDBKey::documentId(iter->key()).id();
-    VPackSlice data = RocksDBValue::data(iter->value());
-    std::size_t hash = data.hashString();
-
-    tree->insert(rid, hash);
-
-    iter->Next();
+  it.seek(static_cast<TRI_voc_rid_t>(rangeMin));
+  while (it.hasMore() && it.revision() <= static_cast<TRI_voc_rid_t>(rangeMax)) {
+    tree->insert(it.revision(), it.document().hashString());
+    it.next();
   }
 
   return tree;
 }
+
+void RocksDBCollection::adjustNumberDocuments(transaction::Methods& trx, int64_t diff) {
+  auto seq = rocksutils::latestSequenceNumber();
+  meta().adjustNumberDocuments(seq, /*revId*/ 0, diff);
+}
+
 /// @brief return engine-specific figures
 void RocksDBCollection::figuresSpecific(arangodb::velocypack::Builder& builder) {
   rocksdb::TransactionDB* db = rocksutils::globalRocksDB();

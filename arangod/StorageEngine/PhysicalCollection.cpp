@@ -528,8 +528,8 @@ Result PhysicalCollection::newObjectForReplace(transaction::Methods*,
   return Result();
 }
 
-std::unique_ptr<containers::RevisionTree> PhysicalCollection::revisionTree(std::size_t rangeMin,
-                                                                           std::size_t rangeMax) {
+std::unique_ptr<containers::RevisionTree> PhysicalCollection::revisionTree(
+    transaction::Methods& trx, std::size_t rangeMin, std::size_t rangeMax) {
   return nullptr;
 }
 
@@ -601,6 +601,17 @@ futures::Future<OperationResult> PhysicalCollection::figures() {
   return OperationResult(Result(), std::move(buffer));
 }
 
+std::unique_ptr<ReplicationIterator> PhysicalCollection::getReplicationIterator(
+    ReplicationIterator::Ordering, uint64_t batchId) {
+  return nullptr;
+}
+
+std::unique_ptr<ReplicationIterator> PhysicalCollection::getReplicationIterator(
+    ReplicationIterator::Ordering, transaction::Methods&) {
+  return nullptr;
+}
+
+void PhysicalCollection::adjustNumberDocuments(transaction::Methods&, int64_t) {}
 
 bool PhysicalCollection::IndexOrder::operator()(const std::shared_ptr<Index>& left,
                                                 const std::shared_ptr<Index>& right) const {

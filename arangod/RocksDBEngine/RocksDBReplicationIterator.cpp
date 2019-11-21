@@ -28,6 +28,8 @@
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBKey.h"
+#include "RocksDBEngine/RocksDBMethods.h"
+#include "RocksDBEngine/RocksDBTransactionState.h"
 #include "RocksDBEngine/RocksDBValue.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 
@@ -39,20 +41,42 @@ RocksDBRevisionReplicationIterator::RocksDBRevisionReplicationIterator(
       _readOptions(),
       _bounds(RocksDBKeyBounds::CollectionDocuments(
           static_cast<RocksDBCollection*>(collection.getPhysical())->objectId())) {
+  auto& selector = collection.vocbase().server().getFeature<EngineSelectorFeature>();
+  RocksDBEngine& engine = *static_cast<RocksDBEngine*>(&selector.engine());
+  rocksdb::TransactionDB* db = engine.db();
+
   if (snapshot) {
     _readOptions.snapshot = snapshot;
   }
+
   _readOptions.verify_checksums = false;
   _readOptions.fill_cache = false;
   _readOptions.prefix_same_as_start = true;
 
-  auto& selector = collection.vocbase().server().getFeature<EngineSelectorFeature>();
-  RocksDBEngine& engine = *static_cast<RocksDBEngine*>(&selector.engine());
-  rocksdb::TransactionDB* db = engine.db();
   rocksdb::ColumnFamilyHandle* cf = _bounds.columnFamily();
   _cmp = cf->GetComparator();
 
   _iter.reset(db->NewIterator(_readOptions, cf));
+  _iter->Seek(_bounds.start());
+}
+
+RocksDBRevisionReplicationIterator::RocksDBRevisionReplicationIterator(
+    LogicalCollection& collection, transaction::Methods& trx)
+    : RevisionReplicationIterator(collection),
+      _readOptions(),
+      _bounds(RocksDBKeyBounds::CollectionDocuments(
+          static_cast<RocksDBCollection*>(collection.getPhysical())->objectId())) {
+  RocksDBMethods* methods = RocksDBTransactionState::toMethods(&trx);
+  _readOptions = methods->iteratorReadOptions();
+
+  _readOptions.verify_checksums = false;
+  _readOptions.fill_cache = false;
+  _readOptions.prefix_same_as_start = true;
+
+  rocksdb::ColumnFamilyHandle* cf = _bounds.columnFamily();
+  _cmp = cf->GetComparator();
+
+  _iter = methods->NewIterator(_readOptions, cf);
   _iter->Seek(_bounds.start());
 }
 

@@ -336,9 +336,6 @@ class LogicalCollection : public LogicalDataSource {
 
   std::unique_ptr<FollowerInfo> const& followers() const;
 
-  std::unique_ptr<containers::RevisionTree> revisionTree(std::size_t rangeMin,
-                                                         std::size_t rangeMax);
-
  protected:
   virtual arangodb::Result appendVelocyPack(arangodb::velocypack::Builder& builder,
                                            Serialization context) const override;

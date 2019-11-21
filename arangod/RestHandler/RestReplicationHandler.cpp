@@ -29,6 +29,7 @@
 #include "Basics/ReadLocker.h"
 #include "Basics/Result.h"
 #include "Basics/RocksDBUtils.h"
+#include "Basics/VPackStringBufferAdapter.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Cluster/ClusterFeature.h"
@@ -65,6 +66,7 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
+#include <velocypack/Dumper.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
@@ -2804,7 +2806,7 @@ bool RestReplicationHandler::prepareRevisionOperation(RevisionOperationContext& 
   }
 
   LOG_TOPIC("213e2", TRACE, arangodb::Logger::REPLICATION)
-      << "enter handleCommandRevisionTree";
+      << "enter prepareRevisionOperation";
 
   bool found = false;
 
@@ -2893,7 +2895,7 @@ void RestReplicationHandler::handleCommandRevisionTree() {
   std::size_t const rangeMin = it.hasMore() ? it.revision() : 0;
   containers::RevisionTree tree(maxDepth, rangeMin);
 
-  while (it.hasMore() && it.revision() <= ctx.tickEnd) {
+  while (it.hasMore()) {
     tree.insert(it.revision(), it.document().hashString());
     it.next();
   }
@@ -2921,6 +2923,7 @@ void RestReplicationHandler::handleCommandRevisionRanges() {
   }
 
   bool success = false;
+  std::size_t current = 0;
   VPackSlice const body = this->parseVPackBody(success);
   if (!success) {
     // error already created
@@ -2929,9 +2932,14 @@ void RestReplicationHandler::handleCommandRevisionRanges() {
   bool badFormat = !body.isArray();
   if (!badFormat) {
     for (std::size_t i = 0; i < body.length(); ++i) {
-      if (!body.at(i).isNumber()) {
+      if (!body.at(i).isArray() || body.at(i).length() != 2 ||
+          !body.at(i).at(0).isNumber() || !body.at(i).at(1).isNumber()) {
         badFormat = true;
         break;
+      }
+      if (body.at(i).at(0).getNumber<std::size_t>() <= ctx.resume ||
+          (i > 0 && body.at(i - 1).at(1).getNumber<std::size_t>() < ctx.resume)) {
+        current = std::max(current, i);
       }
     }
   }
@@ -2941,24 +2949,69 @@ void RestReplicationHandler::handleCommandRevisionRanges() {
     return;
   }
 
-  std::size_t constexpr sizeLimit = 64 * 1024 * 1024;
   RevisionReplicationIterator& it =
       *static_cast<RevisionReplicationIterator*>(ctx.iter.get());
+  it.seek(ctx.resume);
 
+  std::size_t constexpr limit = 64 * 1024;  // ~2MB data
+  std::size_t total = 0;
   VPackBuilder response;
   {
-    VPackArrayBuilder docs(&response);
+    VPackObjectBuilder obj(&response);
+    TRI_voc_rid_t resumeNext = ctx.resume;
+    VPackSlice range = body.at(current);
 
-    for (std::size_t i = 0; i < body.length(); ++i) {
-      TRI_voc_rid_t rev = body.at(i).getNumber<TRI_voc_rid_t>();
-      it.seek(rev);
-      VPackSlice res =
-          it.hasMore() ? it.document() : velocypack::Slice::emptyObjectSlice();
-      if (response.slice().byteSize() + res.byteSize() > sizeLimit &&
-          !response.slice().isEmptyArray()) {
-        break;
+    TRI_ASSERT(response.isOpenObject());
+    response.add(VPackValue("ranges"));
+    response.openArray();
+    TRI_ASSERT(response.isOpenArray());
+    bool subOpen = false;
+    while (total < limit && current < body.length()) {
+      if (!it.hasMore() || it.revision() <= range.at(0).getNumber<std::size_t>() ||
+          it.revision() > range.at(1).getNumber<std::size_t>() ||
+          (!subOpen && it.revision() <= range.at(1).getNumber<std::size_t>())) {
+        it.seek(std::max(ctx.resume, range.at(0).getNumber<std::size_t>()));
+        TRI_ASSERT(!subOpen);
+        response.openArray();
+        subOpen = true;
+        resumeNext = std::max(ctx.resume + 1, range.at(0).getNumber<std::size_t>());
       }
-      response.add(res);
+
+      if (it.hasMore() && it.revision() >= range.at(0).getNumber<std::size_t>() &&
+          it.revision() <= range.at(1).getNumber<std::size_t>()) {
+        response.add(VPackValue(it.revision()));
+        ++total;
+        resumeNext = it.revision() + 1;
+        it.next();
+      }
+
+      if (!it.hasMore() || it.revision() >= range.at(1).getNumber<std::size_t>()) {
+        TRI_ASSERT(response.isOpenArray());
+        TRI_ASSERT(subOpen);
+        subOpen = false;
+        response.close();
+        TRI_ASSERT(response.isOpenArray());
+        resumeNext = range.at(1).getNumber<std::size_t>() + 1;
+        ++current;
+        if (current < body.length()) {
+          range = body.at(current);
+        }
+      }
+    }
+    if (subOpen) {
+      TRI_ASSERT(response.isOpenArray());
+      response.close();
+      subOpen = false;
+      TRI_ASSERT(response.isOpenArray());
+    }
+    TRI_ASSERT(!subOpen);
+    TRI_ASSERT(response.isOpenArray());
+    response.close();  // "ranges"
+    TRI_ASSERT(response.isOpenObject());
+
+    if (body.length() > 0 &&
+        resumeNext <= body.at(body.length() - 1).at(1).getNumber<std::size_t>()) {
+      response.add("resume", VPackValue(resumeNext));
     }
   }
 
@@ -2978,7 +3031,6 @@ void RestReplicationHandler::handleCommandRevisionDocuments() {
   }
 
   bool success = false;
-  std::size_t current = 0;
   VPackSlice const body = this->parseVPackBody(success);
   if (!success) {
     // error already created
@@ -2987,71 +3039,52 @@ void RestReplicationHandler::handleCommandRevisionDocuments() {
   bool badFormat = !body.isArray();
   if (!badFormat) {
     for (std::size_t i = 0; i < body.length(); ++i) {
-      if (!body.at(i).isArray() || body.at(i).length() != 2 ||
-          !body.at(i).at(0).isNumber() || !body.at(i).at(1).isNumber()) {
+      if (!body.at(i).isNumber()) {
         badFormat = true;
         break;
-      }
-      if (body.at(i).at(1).getNumber<std::size_t>() >= ctx.resume) {
-        current = std::max(current, i);
       }
     }
   }
   if (badFormat) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "body needs to be an array of pairs of revisions");
+                  "body needs to be an array of revisions");
     return;
   }
 
+  std::size_t constexpr sizeLimit = 16 * 1024 * 1024;
+  std::size_t size = 0;  // running total, approximation
   RevisionReplicationIterator& it =
       *static_cast<RevisionReplicationIterator*>(ctx.iter.get());
-  it.seek(ctx.resume);
 
-  std::size_t constexpr limit = static_cast<std::size_t>(1) << 16;  // ~2MB data
-  std::size_t total = 0;
   VPackBuilder response;
   {
-    VPackObjectBuilder obj(&response);
-    TRI_voc_rid_t resumeNext = ctx.resume;
-    VPackSlice range = body.at(current);
+    VPackArrayBuilder docs(&response);
 
-    response.add(VPackValue("ranges"));
-    response.openArray();
-    while (total < limit && current < body.length()) {
-      bool advance = false;
-      if (!it.hasMore() || it.revision() <= range.at(0).getNumber<std::size_t>()) {
-        it.seek(range.at(0).getNumber<std::size_t>());
-        response.openArray();
-        resumeNext = range.at(0).getNumber<std::size_t>();
+    for (std::size_t i = 0; i < body.length(); ++i) {
+      TRI_voc_rid_t rev = body.at(i).getNumber<TRI_voc_rid_t>();
+      it.seek(rev);
+      VPackSlice res =
+          it.hasMore() ? it.document() : velocypack::Slice::emptyObjectSlice();
+      if (size + res.byteSize() > sizeLimit && !response.slice().isEmptyArray()) {
+        break;
       }
-
-      if (it.hasMore() && it.revision() >= range.at(0).getNumber<std::size_t>() &&
-          it.revision() <= range.at(1).getNumber<std::size_t>()) {
-        response.add(VPackValue(it.revision()));
-        ++total;
-        advance = true;
-        resumeNext = it.revision() + 1;
-      }
-
-      if (!it.hasMore() || it.revision() >= range.at(1).getNumber<std::size_t>()) {
-        response.close();
-        resumeNext = range.at(1).getNumber<std::size_t>();
-        ++current;
-        if (current < body.length()) {
-          range = body.at(current);
-        }
-      }
-
-      if (advance) {
-        it.next();
-      }
+      response.add(res);
+      size += res.byteSize();
     }
-    response.close();  // "ranges"
-
-    response.add("resume", VPackValue(resumeNext));
   }
 
-  generateResult(rest::ResponseCode::OK, response.slice());
+  HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(_response.get());
+  if (httpResponse == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid response type");
+  }
+
+  auto trxContext = transaction::StandaloneContext::Create(_vocbase);
+  basics::StringBuffer& buffer = httpResponse->body();
+  arangodb::basics::VPackStringBufferAdapter adapter(buffer.stringBuffer());
+  VPackDumper dumper(&adapter, trxContext->getVPackOptions());
+
+  resetResponse(rest::ResponseCode::OK);
+  dumper.dump(response.slice());
 }
 
 ////////////////////////////////////////////////////////////////////////////////

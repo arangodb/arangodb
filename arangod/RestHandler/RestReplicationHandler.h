@@ -74,7 +74,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
                          GeneralRequest*, GeneralResponse*);
   ~RestReplicationHandler();
 
- protected:
+ public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief list of available commands
   //////////////////////////////////////////////////////////////////////////////

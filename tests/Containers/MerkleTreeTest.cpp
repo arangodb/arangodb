@@ -28,6 +28,7 @@
 
 #include "Basics/hashes.h"
 #include "Containers/MerkleTree.h"
+#include "Logger/LogMacros.h"
 
 namespace {
 std::vector<std::size_t> permutation(std::size_t n) {

@@ -142,8 +142,14 @@ class PhysicalCollection {
   virtual std::unique_ptr<IndexIterator> getAnyIterator(transaction::Methods* trx) const = 0;
 
   /// @brief Get an iterator associated with the specified replication batch
+  virtual std::unique_ptr<ReplicationIterator> getReplicationIterator(ReplicationIterator::Ordering,
+                                                                      uint64_t batchId);
+
+  /// @brief Get an iterator associated with the specified transaction
   virtual std::unique_ptr<ReplicationIterator> getReplicationIterator(
-      ReplicationIterator::Ordering, uint64_t batchId) = 0;
+      ReplicationIterator::Ordering, transaction::Methods&);
+
+  virtual void adjustNumberDocuments(transaction::Methods&, int64_t);
 
   ////////////////////////////////////
   // -- SECTION DML Operations --
@@ -216,8 +222,8 @@ class PhysicalCollection {
                             bool isEdgeCollection, velocypack::Builder& builder,
                             bool isRestore, TRI_voc_rid_t& revisionId) const;
 
-  virtual std::unique_ptr<containers::RevisionTree> revisionTree(std::size_t rangeMin,
-                                                                 std::size_t rangeMax);
+  virtual std::unique_ptr<containers::RevisionTree> revisionTree(
+      transaction::Methods& trx, std::size_t rangeMin, std::size_t rangeMax);
 
  protected:
   PhysicalCollection(LogicalCollection& collection, arangodb::velocypack::Slice const& info);

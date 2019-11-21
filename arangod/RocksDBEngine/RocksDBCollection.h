@@ -85,6 +85,8 @@ class RocksDBCollection final : public RocksDBMetaCollection {
 
   std::unique_ptr<ReplicationIterator> getReplicationIterator(ReplicationIterator::Ordering,
                                                               uint64_t batchId) override;
+  std::unique_ptr<ReplicationIterator> getReplicationIterator(ReplicationIterator::Ordering,
+                                                              transaction::Methods&) override;
 
   ////////////////////////////////////
   // -- SECTION DML Operations --
@@ -135,8 +137,11 @@ class RocksDBCollection final : public RocksDBMetaCollection {
 
   inline bool cacheEnabled() const { return _cacheEnabled; }
 
-  std::unique_ptr<containers::MerkleTree<3, 64>> revisionTree(std::size_t rangeMin,
-                                                              std::size_t rangeMax) override;
+  std::unique_ptr<containers::RevisionTree> revisionTree(transaction::Methods& trx,
+                                                         std::size_t rangeMin,
+                                                         std::size_t rangeMax) override;
+
+  void adjustNumberDocuments(transaction::Methods&, int64_t) override;
 
  private:
   /// @brief return engine-specific figures

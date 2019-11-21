@@ -162,6 +162,7 @@ add_library(arango STATIC
   Basics/voc-errors.cpp
   Basics/exitcodes.cpp
   Basics/xxhash.cpp
+  Containers/MerkleTree.cpp
   Endpoint/Endpoint.cpp
   Endpoint/EndpointIp.cpp
   Endpoint/EndpointIpV4.cpp
