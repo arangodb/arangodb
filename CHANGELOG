@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fixed issue #10470: The WebUI now shows potential errors and details which occured using _api/import (e.g.
+  unique constraint violated).
+
 * Added startup option `--query.optimizer-rules` to selectively enable or disable
   optimizer rules by default. The option can be specified multiple times, and takes
   the same input as the query option of the same name. 
