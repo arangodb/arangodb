@@ -7283,7 +7283,7 @@ namespace {
 
 bool nodeMakesThisQueryLevelUnsuitableForSubquerySplicing(ExecutionNode const* const node) {
   // TODO Enable modification nodes again, as soon as the corresponding branch
-  //  is merged.
+  //  is merged. Fix them in the switch statement below, too!
   if (node->isModificationNode()) {
     return true;
   }

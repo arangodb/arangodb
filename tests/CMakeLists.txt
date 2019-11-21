@@ -281,7 +281,7 @@ endif()
 
 if (DARWIN AND FAIL_ON_WARNINGS)
   # Missing Braces is broken in older CLangs - disable them here.
-  target_compile_options(arangodbtests PRIVATE -Werror -Wno-missing-braces)
+  target_compile_options(arangodbtests PRIVATE -Werror -Wno-error=deprecated-declarations -Wno-missing-braces)
 endif()
 
 # add these includes as system includes because otherwise

@@ -42,6 +42,7 @@
 #include "Aql/IndexNode.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/MultiDependencySingleRowFetcher.h"
+#include "Aql/ParallelUnsortedGatherExecutor.h"
 #include "Aql/Query.h"
 #include "Aql/RemoteExecutor.h"
 #include "Aql/ScatterExecutor.h"
@@ -49,7 +50,6 @@
 #include "Aql/SortRegister.h"
 #include "Aql/SortingGatherExecutor.h"
 #include "Aql/UnsortedGatherExecutor.h"
-#include "Aql/UnsortingGatherExecutor.h"
 #include "Aql/types.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
@@ -494,14 +494,15 @@ std::unique_ptr<ExecutionBlock> GatherNode::createBlock(
     TRI_ASSERT(getRegisterPlan()->nrRegs[previousNode->getDepth()] ==
                getRegisterPlan()->nrRegs[getDepth()]);
     if (ServerState::instance()->isCoordinator() && _parallelism == Parallelism::Parallel) {
-      UnsortedGatherExecutorInfos infos(getRegisterPlan()->nrRegs[getDepth()],
-                                        calcRegsToKeep(), getRegsToClear());
-      return std::make_unique<ExecutionBlockImpl<UnsortedGatherExecutor>>(&engine, this, std::move(infos));
+      ParallelUnsortedGatherExecutorInfos infos(getRegisterPlan()->nrRegs[getDepth()],
+                                                calcRegsToKeep(), getRegsToClear());
+      return std::make_unique<ExecutionBlockImpl<ParallelUnsortedGatherExecutor>>(
+          &engine, this, std::move(infos));
     } else {
       IdExecutorInfos infos(getRegisterPlan()->nrRegs[getDepth()],
                             calcRegsToKeep(), getRegsToClear());
 
-      return std::make_unique<ExecutionBlockImpl<UnsortingGatherExecutor>>(&engine, this,
+      return std::make_unique<ExecutionBlockImpl<UnsortedGatherExecutor>>(&engine, this,
                                                                            std::move(infos));
     }
   }

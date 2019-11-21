@@ -32,7 +32,7 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 #include "VocBase/vocbase.h"
-  
+
 namespace {
 std::string const UNKNOWN("_unknown");
 }
@@ -70,7 +70,11 @@ std::shared_ptr<LogicalCollection> CollectionNameResolver::getCollection(std::st
 //////////////////////////////////////////////////////////////////////////////
 
 TRI_voc_cid_t CollectionNameResolver::getCollectionIdLocal(std::string const& name) const {
-  if (name[0] >= '0' && name[0] <= '9') {
+  if (name.empty()) {
+    return 0;
+  }
+
+  if (isdigit(name[0])) {
     // name is a numeric id
     return NumberUtils::atoi_zero<TRI_voc_cid_t>(name.data(), name.data() + name.size());
   }
@@ -82,7 +86,6 @@ TRI_voc_cid_t CollectionNameResolver::getCollectionIdLocal(std::string const& na
   }
 
   auto view = _vocbase.lookupView(name);
-
   if (view) {
     return view->id();
   }
@@ -101,7 +104,10 @@ TRI_voc_cid_t CollectionNameResolver::getCollectionIdCluster(std::string const& 
   if (!ServerState::isRunningInCluster(_serverRole)) {
     return getCollectionIdLocal(name);
   }
-  if (name[0] >= '0' && name[0] <= '9') {
+  if (name.empty()) {
+    return 0;
+  }
+  if (isdigit(name[0])) {
     // name is a numeric id
     TRI_voc_cid_t cid =
         NumberUtils::atoi_zero<TRI_voc_cid_t>(name.data(), name.data() + name.size());
@@ -399,7 +405,7 @@ std::string CollectionNameResolver::lookupName(TRI_voc_cid_t cid) const {
   if (collection != nullptr && !collection->name().empty()) {
     return collection->name();
   }
-  
+
   return ::UNKNOWN;
 }
 
