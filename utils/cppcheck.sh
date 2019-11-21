@@ -1,7 +1,8 @@
 #!/usr/bin/env sh
-rm -f cppcheck.xml cppcheck.xml.tmp
 
-cppcheck $* \
+ferr() { echo "$*"; exit 1; }
+
+cppcheck "$@" \
   --xml --xml-version=2 \
   -I arangod \
   -I arangosh \
@@ -48,16 +49,19 @@ cppcheck $* \
   --suppress="unreadVariable" \
   --suppress="useStlAlgorithm" \
   --suppress="variableScope" \
-  arangod/ arangosh/ lib/ enterprise/ 2> cppcheck.xml
-status=$?
+  arangod/ arangosh/ lib/ enterprise/ 2> cppcheck.out.xml \
+  || ferr "failed to run cppcheck"
 
-cat cppcheck.xml \
-  | egrep "<error |<location|</error>" cppcheck.xml \
-  | sed -e 's:^.*msg="\([^"]*\)".*:\1:' -e 's:^.*file="\([^"]*\)".*line="\([^"]*\)".*:    \1\:\2:' -e 's:&apos;:":g' -e 's:&gt;:>:g' -e 's:&lt;:<:g' -e 's:</error>::'
+grep -E "<error |<location|</error>" cppcheck.out.xml \
+  | sed -e 's#^.*id="\([^"]*\)".*msg="\([^"]*\)".*#\1: \2#' \
+        -e 's#^.*file="\([^"]*\)".*line="\([^"]*\)".*#    \1:\2#' \
+        -e 's:&apos;:":g' \
+        -e 's:&gt;:>:g' \
+        -e 's:&lt;:<:g' \
+        -e 's:</error>::' \
+  > cppcheck.log
 
-cat cppcheck.xml \
-  | sed -e "s:file=\":file=\"`pwd`/:g" \
-  > cppcheck.xml.tmp
-mv cppcheck.xml.tmp cppcheck.xml
+sed -e "s:file=\":file=\"$(pwd)/:g" < cppcheck.out.xml > cppcheck.xml
 
-exit $status
+cat cppcheck.log
+rm cppcheck.out.xml
