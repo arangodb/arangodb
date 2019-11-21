@@ -113,10 +113,10 @@ class short_alloc {
     using other = short_alloc<_Up, N, alignment>;
   };
 
-  T* allocate(std::size_t n) {
+  T* allocate(std::size_t n) const {
     return reinterpret_cast<T*>(a_.template allocate<alignof(T)>(n * sizeof(T)));
   }
-  void deallocate(T* p, std::size_t n) noexcept {
+  void deallocate(T* p, std::size_t n) const noexcept {
     a_.deallocate(reinterpret_cast<char*>(p), n * sizeof(T));
   }
 
