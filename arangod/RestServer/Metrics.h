@@ -90,7 +90,11 @@ private:
 
 template<typename T> class Gauge : public Metric {
 public:
-  Gauge(uint64_t const& val, std::string const& name, std::string const& help);
+  Gauge() = delete;
+  Gauge(uint64_t const& val, std::string const& name, std::string const& help) 
+    : Metric(name, help) {
+    _g.store(val);
+  }
   Gauge(Gauge const&) = delete;
   virtual ~Gauge();
   std::ostream& print (std::ostream&) const;

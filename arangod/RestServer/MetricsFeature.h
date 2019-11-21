@@ -74,9 +74,12 @@ class MetricsFeature final : public application_features::ApplicationFeature {
     std::shared_ptr<Histogram<T>> h = nullptr;
     try {
       h = std::dynamic_pointer_cast<Histogram<T>>(*it->second);
-      LOG_TOPIC("8532d", ERR, Logger::STATISTICS) << "Failed to convert histogram " << name;
+      if (h == nullptr) {
+        LOG_TOPIC("d2358", ERR, Logger::STATISTICS) << "Failed to retrieve histogram " << name;
+      }
     } catch (std::exception const& e) {
-      LOG_TOPIC("d2358", ERR, Logger::STATISTICS) << "Failed to retrieve histogram " << name;
+      LOG_TOPIC("32d75", ERR, Logger::STATISTICS)
+        << "Failed to retrieve histogram " << name << ": " << e.what();
     }
     if (h == nullptr) {
       TRI_ASSERT(false);
@@ -87,6 +90,44 @@ class MetricsFeature final : public application_features::ApplicationFeature {
 
   Counter& counter(std::string const& name, uint64_t const& val, std::string const& help);
   Counter& counter(std::string const& name);
+
+  template<typename T>
+  Gauge<T>& gauge(std::string const& name, T const& t, std::string const& help) {
+    std::lock_guard<std::mutex> guard(_lock);
+    auto it = _registry.find(name);
+    if (it != _registry.end()) {
+      LOG_TOPIC("7c3b2e", ERR, Logger::STATISTICS) << "gauge "  << name << " alredy exists";
+      TRI_ASSERT(false);
+      throw(std::exception());
+    }
+    auto g = std::make_shared<Gauge>(t, name, help);
+    _registry.emplace(name, std::dynamic_pointer_cast<Metric>(g));
+    return *g;
+  }
+
+  template<typename T> Gauge<T>& gauge(std::string const& name) {
+    std::lock_guard<std::mutex> guard(_lock);
+    auto it = _registry.find(name);
+    if (it == _registry.end()) {
+      LOG_TOPIC("5832d", ERR, Logger::STATISTICS) << "No metric booked as " << name;
+      TRI_ASSERT(false);
+      throw std::exception();
+    }
+    std::shared_ptr<Gauge<T>> g = nullptr;
+    try {
+      g = std::dynamic_pointer_cast<Gauge<T>>(it->second);
+      if (g == nullptr) {
+        LOG_TOPIC("d2358", ERR, Logger::STATISTICS) << "Failed to retrieve gauge metric " << name;
+        TRI_ASSERT(false);
+        throw std::exception();
+      }
+    } catch (std::exception const& e) {
+      LOG_TOPIC("c2348", ERR, Logger::STATISTICS)
+        << "Failed to retrieve gauge metric " << name << ": " << e.what();
+      TRI_ASSERT(false);
+      throw(e);
+    }
+  }
 
   void toPrometheus(std::string& result) const;
 
