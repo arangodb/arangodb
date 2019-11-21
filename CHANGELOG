@@ -16,7 +16,7 @@ devel
 	(sub)query which contains unsuitable operations after the subquery.
 
 	The implementation of this feature required reworking the dataflow
-  query execution.
+	query execution.
 
 * Fixed issue #10470: The WebUI now shows potential errors and details which occured using _api/import (e.g.
 	unique constraint violated).
