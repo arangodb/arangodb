@@ -361,14 +361,16 @@ static SkipVariants constexpr skipType() {
   static_assert(
       useExecutor ==
           (std::is_same<Executor, IndexExecutor>::value ||
-           std::is_same<Executor, IResearchViewExecutor<false, true>>::value ||
-           std::is_same<Executor, IResearchViewExecutor<true, true>>::value ||
-           std::is_same<Executor, IResearchViewMergeExecutor<false, true>>::value ||
-           std::is_same<Executor, IResearchViewMergeExecutor<true, true>>::value ||
-           std::is_same<Executor, IResearchViewExecutor<false, false>>::value ||
-           std::is_same<Executor, IResearchViewExecutor<true, false>>::value ||
-           std::is_same<Executor, IResearchViewMergeExecutor<false, false>>::value ||
-           std::is_same<Executor, IResearchViewMergeExecutor<true, false>>::value ||
+           std::is_same<Executor, IResearchViewExecutor<false, iresearch::MaterializeType::Materialized>>::value ||
+           std::is_same<Executor, IResearchViewExecutor<false, iresearch::MaterializeType::LateMaterialized>>::value ||
+           std::is_same<Executor, IResearchViewExecutor<false, iresearch::MaterializeType::LateMaterializedWithVars>>::value ||
+           std::is_same<Executor, IResearchViewExecutor<true, iresearch::MaterializeType::Materialized>>::value ||
+           std::is_same<Executor, IResearchViewExecutor<true, iresearch::MaterializeType::LateMaterialized>>::value ||
+           std::is_same<Executor, IResearchViewExecutor<true, iresearch::MaterializeType::LateMaterializedWithVars>>::value ||
+           std::is_same<Executor, IResearchViewMergeExecutor<false, iresearch::MaterializeType::Materialized>>::value ||
+           std::is_same<Executor, IResearchViewMergeExecutor<false, iresearch::MaterializeType::LateMaterialized>>::value ||
+           std::is_same<Executor, IResearchViewMergeExecutor<true, iresearch::MaterializeType::Materialized>>::value ||
+           std::is_same<Executor, IResearchViewMergeExecutor<true, iresearch::MaterializeType::LateMaterialized>>::value ||
            std::is_same<Executor, EnumerateCollectionExecutor>::value ||
            std::is_same<Executor, LimitExecutor>::value ||
            std::is_same<Executor, ConstrainedSortExecutor>::value ||
@@ -862,14 +864,17 @@ template class ::arangodb::aql::ExecutionBlockImpl<EnumerateCollectionExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<EnumerateListExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<FilterExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<HashedCollectExecutor>;
-template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<false, true>>;
-template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<true, true>>;
-template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<false, true>>;
-template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<true, true>>;
-template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<false, false>>;
-template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<true, false>>;
-template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<false, false>>;
-template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<true, false>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<false, arangodb::iresearch::MaterializeType::Materialized>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<false, arangodb::iresearch::MaterializeType::LateMaterialized>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<false, arangodb::iresearch::MaterializeType::LateMaterializedWithVars>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<true, arangodb::iresearch::MaterializeType::Materialized>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<true, arangodb::iresearch::MaterializeType::LateMaterialized>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<true, arangodb::iresearch::MaterializeType::LateMaterializedWithVars>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<false, arangodb::iresearch::MaterializeType::Materialized>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<false, arangodb::iresearch::MaterializeType::LateMaterialized>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<true, arangodb::iresearch::MaterializeType::Materialized>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<true, arangodb::iresearch::MaterializeType::LateMaterialized>>;
+
 template class ::arangodb::aql::ExecutionBlockImpl<IdExecutor<ConstFetcher>>;
 template class ::arangodb::aql::ExecutionBlockImpl<IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>;
 template class ::arangodb::aql::ExecutionBlockImpl<IndexExecutor>;
