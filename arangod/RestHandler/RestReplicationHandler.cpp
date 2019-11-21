@@ -1455,7 +1455,7 @@ Result RestReplicationHandler::processRestoreUsersBatch(std::string const& colle
   VPackSlice allMarkersSlice = allMarkers.slice();
 
   std::string aql(
-      "FOR u IN @restored UPSERT {name: u.name} INSERT u REPLACE u "
+      "FOR u IN @restored UPSERT {user: u.user} INSERT u REPLACE u "
       "INTO @@collection OPTIONS {ignoreErrors: true, silent: true, "
       "waitForSync: false, isRestore: true}");
 
