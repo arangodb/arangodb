@@ -2142,8 +2142,9 @@ void RocksDBEngine::getStatistics(std::string& result) const {
   for (auto const& a : VPackObjectIterator(sslice)) {
     if (a.value.isNumber()) {
       std::string name = a.key.copyString();
-      if (!name.starts_with(EnginName)) {
-        name = EnginName + name; 
+      std::replace(name.begin(), name.end(), '.', '_');
+      if (name.front() != '.') {
+        name = EngineName + "_" + name ; 
       }
       result += "#TYPE " + name +
         " counter\n" + "#HELP " + name + " " + name + "\n" +
