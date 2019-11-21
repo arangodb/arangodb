@@ -45,20 +45,6 @@ function dumpTestSuite () {
   return {
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
-
-    setUp : function () {
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
-
-    tearDown : function () {
-    },
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief test the empty collection
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -160,13 +146,11 @@ function dumpTestSuite () {
       assertEqual("primary", c.getIndexes()[0].type);
       assertEqual(9000, c.count());
 
-      var i;
-      for (i = 0; i < 10000; ++i) {
+      for (let i = 0; i < 10000; ++i) {
         if (i % 10 === 0) {
           assertFalse(c.exists("test" + i));
-        }
-        else {
-          var doc = c.document("test" + i);
+        } else {
+          let doc = c.document("test" + i);
           assertEqual(i, doc.value1);
 
           if (i < 1000) {
@@ -752,10 +736,7 @@ function dumpTestEnterpriseSuite () {
       let props = view.properties();
       assertEqual("UnitTestsDumpSmartView", view.name());
       assertTrue(props.hasOwnProperty("links"));
-      // FIXME: currently view restoration is broken
-      // we must restore 4 collections (virtual + 3 system)
-      //assertEqual(Object.keys(props.links).length, 4); // virtual collecion + 3 system collections
-      assertEqual(Object.keys(props.links).length, 1);
+      assertEqual(Object.keys(props.links).length, 4); // virtual collecion + 3 system collections
 
       // UnitTestDumpSmartEdges
       assertTrue(props.links.hasOwnProperty("UnitTestDumpSmartEdges"));
@@ -767,40 +748,39 @@ function dumpTestEnterpriseSuite () {
       assertTrue("text_en", props.links.UnitTestDumpSmartEdges.fields.text.analyzers[0]);
       assertTrue("UnitTestsDumpView::smartCustom", props.links.UnitTestDumpSmartEdges.fields.text.analyzers[1]);
 
-      // FIXME: currently view restoration is broken for system collections
-      //// _to_UnitTestDumpSmartEdges
-      //assertTrue(props.links.hasOwnProperty("_to_UnitTestDumpSmartEdges"));
-      //assertTrue(props.links._to_UnitTestDumpSmartEdges.hasOwnProperty("includeAllFields"));
-      //assertTrue(props.links._to_UnitTestDumpSmartEdges.includeAllFields);
-      //assertTrue(props.links._to_UnitTestDumpSmartEdges.hasOwnProperty("fields"));
-      //assertEqual(Object.keys(props.links._to_UnitTestDumpSmartEdges.fields).length, 1);
-      //assertTrue(props.links._to_UnitTestDumpSmartEdges.fields.text.analyzers.length, 2);
-      //assertTrue("text_en", props.links._to_UnitTestDumpSmartEdges.fields.text.analyzers[0]);
-      //assertTrue("UnitTestsDumpView::smartCustom", props.links._to_UnitTestDumpSmartEdges.fields.text.analyzers[1]);
+      // _to_UnitTestDumpSmartEdges
+      assertTrue(props.links.hasOwnProperty("_to_UnitTestDumpSmartEdges"));
+      assertTrue(props.links._to_UnitTestDumpSmartEdges.hasOwnProperty("includeAllFields"));
+      assertTrue(props.links._to_UnitTestDumpSmartEdges.includeAllFields);
+      assertTrue(props.links._to_UnitTestDumpSmartEdges.hasOwnProperty("fields"));
+      assertEqual(Object.keys(props.links._to_UnitTestDumpSmartEdges.fields).length, 1);
+      assertTrue(props.links._to_UnitTestDumpSmartEdges.fields.text.analyzers.length, 2);
+      assertTrue("text_en", props.links._to_UnitTestDumpSmartEdges.fields.text.analyzers[0]);
+      assertTrue("UnitTestsDumpView::smartCustom", props.links._to_UnitTestDumpSmartEdges.fields.text.analyzers[1]);
 
-      //// _from_UnitTestDumpSmartEdges
-      //assertTrue(props.links.hasOwnProperty("_from_UnitTestDumpSmartEdges"));
-      //assertTrue(props.links._from_UnitTestDumpSmartEdges.hasOwnProperty("includeAllFields"));
-      //assertTrue(props.links._from_UnitTestDumpSmartEdges.includeAllFields);
-      //assertTrue(props.links._from_UnitTestDumpSmartEdges.hasOwnProperty("fields"));
-      //assertEqual(Object.keys(props.links._from_UnitTestDumpSmartEdges.fields).length, 1);
-      //assertTrue(props.links._from_UnitTestDumpSmartEdges.fields.text.analyzers.length, 2);
-      //assertTrue("text_en", props.links._from_UnitTestDumpSmartEdges.fields.text.analyzers[0]);
-      //assertTrue("UnitTestsDumpView::smartCustom", props.links._from_UnitTestDumpSmartEdges.fields.text.analyzers[1]);
+      // _from_UnitTestDumpSmartEdges
+      assertTrue(props.links.hasOwnProperty("_from_UnitTestDumpSmartEdges"));
+      assertTrue(props.links._from_UnitTestDumpSmartEdges.hasOwnProperty("includeAllFields"));
+      assertTrue(props.links._from_UnitTestDumpSmartEdges.includeAllFields);
+      assertTrue(props.links._from_UnitTestDumpSmartEdges.hasOwnProperty("fields"));
+      assertEqual(Object.keys(props.links._from_UnitTestDumpSmartEdges.fields).length, 1);
+      assertTrue(props.links._from_UnitTestDumpSmartEdges.fields.text.analyzers.length, 2);
+      assertTrue("text_en", props.links._from_UnitTestDumpSmartEdges.fields.text.analyzers[0]);
+      assertTrue("UnitTestsDumpView::smartCustom", props.links._from_UnitTestDumpSmartEdges.fields.text.analyzers[1]);
 
-      //// _local_UnitTestDumpSmartEdges
-      //assertTrue(props.links.hasOwnProperty("_local_UnitTestDumpSmartEdges"));
-      //assertTrue(props.links._local_UnitTestDumpSmartEdges.hasOwnProperty("includeAllFields"));
-      //assertTrue(props.links._local_UnitTestDumpSmartEdges.includeAllFields);
-      //assertTrue(props.links._local_UnitTestDumpSmartEdges.hasOwnProperty("fields"));
-      //assertEqual(Object.keys(props.links._local_UnitTestDumpSmartEdges.fields).length, 1);
-      //assertTrue(props.links._local_UnitTestDumpSmartEdges.fields.text.analyzers.length, 2);
-      //assertTrue("text_en", props.links._local_UnitTestDumpSmartEdges.fields.text.analyzers[0]);
-      //assertTrue("UnitTestsDumpView::smartCustom", props.links._local_UnitTestDumpSmartEdges.fields.text.analyzers[1]);
-      //assertEqual(props.consolidationIntervalMsec, 0);
-      //assertEqual(props.cleanupIntervalStep, 456);
-      //assertTrue(Math.abs(props.consolidationPolicy.threshold - 0.3) < 0.001);
-      //assertEqual(props.consolidationPolicy.type, "bytes_accum");
+      // _local_UnitTestDumpSmartEdges
+      assertTrue(props.links.hasOwnProperty("_local_UnitTestDumpSmartEdges"));
+      assertTrue(props.links._local_UnitTestDumpSmartEdges.hasOwnProperty("includeAllFields"));
+      assertTrue(props.links._local_UnitTestDumpSmartEdges.includeAllFields);
+      assertTrue(props.links._local_UnitTestDumpSmartEdges.hasOwnProperty("fields"));
+      assertEqual(Object.keys(props.links._local_UnitTestDumpSmartEdges.fields).length, 1);
+      assertTrue(props.links._local_UnitTestDumpSmartEdges.fields.text.analyzers.length, 2);
+      assertTrue("text_en", props.links._local_UnitTestDumpSmartEdges.fields.text.analyzers[0]);
+      assertTrue("UnitTestsDumpView::smartCustom", props.links._local_UnitTestDumpSmartEdges.fields.text.analyzers[1]);
+      assertEqual(props.consolidationIntervalMsec, 0);
+      assertEqual(props.cleanupIntervalStep, 456);
+      assertTrue(Math.abs(props.consolidationPolicy.threshold - 0.3) < 0.001);
+      assertEqual(props.consolidationPolicy.type, "bytes_accum");
     }
   };
 }

@@ -38,6 +38,7 @@
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Query.h"
 #include "Aql/SingleRowFetcher.h"
+#include "Aql/AqlValueMaterializer.h"
 #include "Basics/ScopeGuard.h"
 #include "Cluster/ServerState.h"
 #include "ExecutorExpressionContext.h"
@@ -349,8 +350,8 @@ IndexExecutor::CursorReader::CursorReader(IndexExecutorInfos const& infos,
       _type(infos.isLateMaterialized()
                 ? Type::LateMaterialized
                 : !infos.getProduceResult()
-                ? Type::NoResult
-                : _cursor->hasCovering() &&
+                    ? Type::NoResult
+                    : _cursor->hasCovering() &&
                           !infos.getCoveringIndexAttributePositions().empty()
                       ? Type::Covering
                       : Type::Document) {
@@ -361,7 +362,7 @@ IndexExecutor::CursorReader::CursorReader(IndexExecutorInfos const& infos,
   }
   case Type::LateMaterialized:
     _documentProducer = checkUniqueness ? ::getCallback<true>(context, _index, _infos.getOutNonMaterializedIndRegs()) :
-                                 ::getCallback<false>(context, _index, _infos.getOutNonMaterializedIndRegs());
+                                          ::getCallback<false>(context, _index, _infos.getOutNonMaterializedIndRegs());
     break;
   default:
     _documentProducer = checkUniqueness ? buildDocumentCallback<true, false>(context) : buildDocumentCallback<false, false>(context);

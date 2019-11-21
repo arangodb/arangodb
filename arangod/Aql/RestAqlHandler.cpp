@@ -189,9 +189,8 @@ void RestAqlHandler::setupClusterQuery() {
   // If we have a new format then it has to be included here.
   // If not default to classic (old coordinator will not send it)
   SerializationFormat format = static_cast<SerializationFormat>(
-      VelocyPackHelper::getNumericValue<int>(querySlice, "serializationFormat",
+      VelocyPackHelper::getNumericValue<int>(querySlice, StaticStrings::SerializationFormat,
                                              static_cast<int>(SerializationFormat::CLASSIC)));
-
   // Now we need to create shared_ptr<VPackBuilder>
   // That contains the old-style cluster snippet in order
   // to prepare create a Query object.
@@ -315,7 +314,6 @@ bool RestAqlHandler::registerSnippets(
     }
 
     try {
-
       if (needToLock) {
         // Directly try to lock only the first snippet is required to be locked.
         // For all others locking is pointless
@@ -340,7 +338,7 @@ bool RestAqlHandler::registerSnippets(
         // No need to cleanup...
       }
 
-      QueryId qId = query->id(); // not true in general
+      QueryId qId = query->id();  // not true in general
       TRI_ASSERT(qId > 0);
       _queryRegistry->insert(qId, query.get(), ttl, true, false);
       query.release();
@@ -443,17 +441,16 @@ RestStatus RestAqlHandler::useQuery(std::string const& operation, std::string co
     return RestStatus::DONE;
   }
 
-  if (!_query) { // the PUT verb
+  if (!_query) {  // the PUT verb
     TRI_ASSERT(this->state() == RestHandler::HandlerState::EXECUTE);
-    
+
     _query = findQuery(idString);
     if (!_query) {
       return RestStatus::DONE;
     }
     std::shared_ptr<SharedQueryState> ss = _query->sharedState();
-    ss->setWakeupHandler([self = shared_from_this()] {
-      return self->wakeupHandler();
-    });
+    ss->setWakeupHandler(
+        [self = shared_from_this()] { return self->wakeupHandler(); });
   }
 
   TRI_ASSERT(_qId > 0);
@@ -545,7 +542,7 @@ RestStatus RestAqlHandler::execute() {
       }
       break;
     }
-    
+
     default: {
       generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                     TRI_ERROR_NOT_IMPLEMENTED, "illegal method for /_api/aql");
@@ -575,13 +572,25 @@ RestStatus RestAqlHandler::continueExecute() {
 }
 
 void RestAqlHandler::shutdownExecute(bool isFinalized) noexcept {
-  if (isFinalized) {
-    if (_query) {
-      _query->sharedState()->resetWakeupHandler();
+  try {
+    if (isFinalized) {
+      if (_query) {
+        _query->sharedState()->resetWakeupHandler();
+      }
+      if (_qId != 0) {
+        _queryRegistry->close(&_vocbase, _qId);
+      }
     }
-    if (_qId != 0) {
-      _queryRegistry->close(&_vocbase, _qId);
-    }
+  } catch (arangodb::basics::Exception const& ex) {
+    LOG_TOPIC("f73b8", INFO, Logger::FIXME)
+        << "Ignoring exception during rest handler shutdown: "
+        << "[" << ex.code() << "] " << ex.message();
+  } catch (std::exception const& ex) {
+    LOG_TOPIC("b7335", INFO, Logger::FIXME)
+        << "Ignoring exception during rest handler shutdown: " << ex.what();
+  } catch (...) {
+    LOG_TOPIC("c4db4", INFO, Logger::FIXME)
+        << "Ignoring unknown exception during rest handler shutdown.";
   }
 }
 
@@ -628,7 +637,6 @@ Query* RestAqlHandler::findQuery(std::string const& idString) {
 // handle for useQuery
 RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
                                           VPackSlice const querySlice) {
-
   std::string const& shardId = _request->header("shard-id");
 
   // upon first usage, the "initializeCursor" method must be called
@@ -656,7 +664,7 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
 
   VPackBuffer<uint8_t> answerBuffer;
   VPackBuilder answerBuilder(answerBuffer);
-  answerBuilder.openObject(/*unindexed*/true);
+  answerBuilder.openObject(/*unindexed*/ true);
 
   if (operation == "getSome") {
     TRI_IF_FAILURE("RestAqlHandler::getSome") {
@@ -692,7 +700,8 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
       // Backwards Compatibility
       answerBuilder.add(StaticStrings::Error, VPackValue(false));
     } else {
-      items->toVelocyPack(_query->trx(), answerBuilder);
+      items->toVelocyPack(_query->trx()->transactionContextPtr()->getVPackOptions(),
+                          answerBuilder);
     }
   } else if (operation == "skipSome") {
     auto atMost =
@@ -743,9 +752,9 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
     answerBuilder.add(StaticStrings::Error, VPackValue(res.fail()));
     answerBuilder.add(StaticStrings::Code, VPackValue(res.errorNumber()));
   } else if (operation == "shutdown") {
-    int errorCode =
-        VelocyPackHelper::getNumericValue<int>(querySlice, StaticStrings::Code, TRI_ERROR_INTERNAL);
-    
+    int errorCode = VelocyPackHelper::getNumericValue<int>(querySlice, StaticStrings::Code,
+                                                           TRI_ERROR_INTERNAL);
+
     ExecutionState state;
     Result res;
     std::tie(state, res) = _query->engine()->shutdown(errorCode);
@@ -774,10 +783,9 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
     return RestStatus::DONE;
   }
-  
+
   answerBuilder.close();
-  generateResult(rest::ResponseCode::OK, std::move(answerBuffer),
-                 transactionContext);
-  
+  generateResult(rest::ResponseCode::OK, std::move(answerBuffer), transactionContext);
+
   return RestStatus::DONE;
 }

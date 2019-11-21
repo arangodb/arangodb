@@ -45,10 +45,11 @@ SubqueryEndExecutorInfos::SubqueryEndExecutorInfos(
     RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
     std::unordered_set<RegisterId> const& registersToClear,
     std::unordered_set<RegisterId> registersToKeep,
-    transaction::Methods* trxPtr, RegisterId inReg, RegisterId outReg)
-    : ExecutorInfos(std::move(readableInputRegisters), std::move(writeableOutputRegisters), nrInputRegisters,
+    velocypack::Options const* const options, RegisterId inReg, RegisterId outReg)
+    : ExecutorInfos(std::move(readableInputRegisters),
+                    std::move(writeableOutputRegisters), nrInputRegisters,
                     nrOutputRegisters, registersToClear, std::move(registersToKeep)),
-      _trxPtr(trxPtr),
+      _vpackOptions(options),
       _outReg(outReg),
       _inReg(inReg) {}
 
@@ -58,6 +59,10 @@ SubqueryEndExecutorInfos::~SubqueryEndExecutorInfos() = default;
 
 bool SubqueryEndExecutorInfos::usesInputRegister() const {
   return _inReg != RegisterPlan::MaxRegisterId;
+}
+
+velocypack::Options const* SubqueryEndExecutorInfos::vpackOptions() const noexcept {
+  return _vpackOptions;
 }
 
 SubqueryEndExecutor::SubqueryEndExecutor(Fetcher& fetcher, SubqueryEndExecutorInfos& infos)
@@ -87,7 +92,7 @@ std::pair<ExecutionState, NoStats> SubqueryEndExecutor::produceRows(OutputAqlIte
         if (inputRow.isInitialized() && _infos.usesInputRegister()) {
           TRI_ASSERT(_accumulator->isOpenArray());
           AqlValue value = inputRow.getValue(_infos.getInputRegister());
-          value.toVelocyPack(_infos.getTrxPtr(), *_accumulator, false);
+          value.toVelocyPack(_infos.vpackOptions(), *_accumulator, false);
         }
 
         // We have received DONE on data rows, so now
@@ -106,11 +111,23 @@ std::pair<ExecutionState, NoStats> SubqueryEndExecutor::produceRows(OutputAqlIte
           return {ExecutionState::WAITING, NoStats{}};
         }
         TRI_ASSERT(state == ExecutionState::DONE || state == ExecutionState::HASMORE);
-        TRI_ASSERT(shadowRow.isInitialized());
-        TRI_ASSERT(shadowRow.isRelevant());
+
+        // This case happens when there are no inputs from the enclosing query,
+        // hence our companion SubqueryStartExecutor has not produced any rows
+        // (in particular not a ShadowRow), so we are done.
+        if (state == ExecutionState::DONE && !shadowRow.isInitialized()) {
+          /* We had better not accumulated any results if we get here */
+          TRI_ASSERT(_accumulator->slice().length() == 0);
+          resetAccumulator();
+          _state = RELEVANT_SHADOW_ROW_PENDING;
+          return {ExecutionState::DONE, NoStats{}};
+        }
 
         // Here we have all data *and* the relevant shadow row,
         // so we can now submit
+        TRI_ASSERT(shadowRow.isInitialized());
+        TRI_ASSERT(shadowRow.isRelevant());
+
         bool shouldDelete = true;
         AqlValue resultDocVec{_buffer.get(), shouldDelete};
         if (shouldDelete) {
