@@ -47,6 +47,7 @@ option(VERBOSE "be verbose about flags used" OFF)
 
 # treat warnings as errors on some platforms
 option(USE_FAIL_ON_WARNINGS "treat warnings as errors (MSVC and MacOS only)" ON)
+message(STATUS "USE_FAIL_ON_WARNINGS IS SET TO: ${USE_FAIL_ON_WARNINGS}")
 
 # use strictly required OpenSSL version (from ./VERSIONS file)
 option(USE_STRICT_OPENSSL_VERSION "use strictly required OpenSSL version (from ./VERSIONS file)" ON)

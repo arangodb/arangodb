@@ -371,6 +371,8 @@ static void f() {
 #endif
 
 int main(int argc, char* argv[]) {
+  // variable intentionally not used. we only want to see if this makes the build fail
+  bool unused = true;
 #ifdef __linux__
   // Do not delete this! See above for an explanation.
   if (argc >= 1 && strcmp(argv[0], "not a/valid name") == 0) { f(); }
