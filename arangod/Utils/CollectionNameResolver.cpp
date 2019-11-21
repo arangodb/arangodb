@@ -74,7 +74,7 @@ TRI_voc_cid_t CollectionNameResolver::getCollectionIdLocal(std::string const& na
     return 0;
   }
 
-  if (isdigit(name[0])) {
+  if (name[0] >= '0' && name[0] <= '9') {
     // name is a numeric id
     return NumberUtils::atoi_zero<TRI_voc_cid_t>(name.data(), name.data() + name.size());
   }
@@ -107,7 +107,7 @@ TRI_voc_cid_t CollectionNameResolver::getCollectionIdCluster(std::string const& 
   if (name.empty()) {
     return 0;
   }
-  if (isdigit(name[0])) {
+  if (name[0] >= '0' && name[0] <= '9') {
     // name is a numeric id
     TRI_voc_cid_t cid =
         NumberUtils::atoi_zero<TRI_voc_cid_t>(name.data(), name.data() + name.size());
