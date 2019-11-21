@@ -43,24 +43,6 @@ function dumpTestSuite () {
   'use strict';
 
   return {
-    testDatabaseProperties : function () {
-      let old = db._name();
-      db._useDatabase("_system");
-      try {
-        db._useDatabase("UnitTestsDumpProperties1");
-        let props = db._properties();
-        assertEqual(1, props.replicationFactor);
-        assertEqual(1, props.minReplicationFactor);
-
-        db._useDatabase("UnitTestsDumpProperties2");
-        props = db._properties();
-        assertEqual(2, props.replicationFactor);
-        assertEqual(2, props.minReplicationFactor);
-      } finally {
-        db._useDatabase(old);
-      };
-    },
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set up
 ////////////////////////////////////////////////////////////////////////////////
@@ -79,15 +61,22 @@ function dumpTestSuite () {
 /// @brief test db properties
 ////////////////////////////////////////////////////////////////////////////////
 
-    // this tests hotbackup
-    testDBProperties : function () {
-      print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
-      print(db._name())
-      print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
+    testDatabaseProperties : function () {
+      let old = db._name();
+      db._useDatabase("_system");
+      try {
+        db._useDatabase("UnitTestsDumpProperties1");
+        let props = db._properties();
+        assertEqual(1, props.replicationFactor);
+        assertEqual(1, props.minReplicationFactor);
 
-      let props = db._properties();
-      assertEqual(props["minReplicationFactor"], 2);
-      assertEqual(props["replicationFactor"], 2);
+        db._useDatabase("UnitTestsDumpProperties2");
+        props = db._properties();
+        assertEqual(2, props.replicationFactor);
+        assertEqual(2, props.minReplicationFactor);
+      } finally {
+        db._useDatabase(old);
+      };
     },
 
 ////////////////////////////////////////////////////////////////////////////////
