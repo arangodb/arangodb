@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fixed known issue #509: ArangoSearch index consolidation does not work during creation of a link
+  on existing collection which may lead to massive file descriptors consumption.
+
 * Added support of array comparison operators to ArangoSearch.
 
 * Added support of arrays to TOKENS function.
@@ -8,7 +11,7 @@ devel
 * Added support of arrays to PHRASE function.
 
 * Added a new optimization called `late-document-materialization`, `late-document-materialization`
-  for indexes and views correspondingly..
+  for indexes and views correspondingly.
 
   This optimization reduces amount of documents to read from storage engine to the limit expicitly
   stated in LIMIT node.
