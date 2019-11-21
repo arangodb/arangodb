@@ -758,7 +758,7 @@ public:
     Integral load( size_type idx ) const{ return base_type::load( idx ); }
     Integral exchange( size_type idx, Integral value )
         { return base_type::exchange( idx, value ); }
-    value_type& operator[]( int idx ) { return base_type::operator[]( idx ); }
+    value_type& operator[]( size_type idx ) { return base_type::operator[]( idx ); }
     size_type size() const { return base_type::size(); }
 };
 
@@ -815,7 +815,7 @@ public:
       : base_type( size ) {}
     strong_duplex_array( const strong_duplex_array& ) = delete;
     strong_duplex_array& operator=( const strong_duplex_array& ) = delete;
-    value_type& operator[]( int idx ) { return base_type::operator[]( idx ); }
+    value_type& operator[]( size_type idx ) { return base_type::operator[]( idx ); }
     size_type size() const { return base_type::size(); }
     ~strong_duplex_array();
 private:
@@ -888,7 +888,7 @@ public:
       : base_type( size ) {}
     weak_duplex_array( const weak_duplex_array& ) = delete;
     weak_duplex_array& operator=( const weak_duplex_array& ) = delete;
-    value_type& operator[]( int idx ) { return base_type::operator[]( idx ); }
+    value_type& operator[]( size_type idx ) { return base_type::operator[]( idx ); }
     size_type size() const { return base_type::size(); }
     ~weak_duplex_array();
 private:
