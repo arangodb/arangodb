@@ -931,15 +931,15 @@ void StatisticsWorker::generateRawStatistics(std::string& result, double const& 
     result +=
       TYPE_ + statStrings.at("residentSize")[0] + statStrings.at("residentSize")[1] +
       HELP_ + statStrings.at("residentSize")[0] + statStrings.at("residentSize")[2] +
-      statStrings.at("residentSize")[0] + std::to_string(info._numberThreads);std::to_string(rss);
+      statStrings.at("residentSize")[0] + std::to_string(rss);
     result +=
       TYPE_ + statStrings.at("residentSizePercent")[0] + statStrings.at("residentSizePercent")[1] +
       HELP_ + statStrings.at("residentSizePercent")[0] + statStrings.at("residentSizePercent")[2] +
-      statStrings.at("residentSizePercent")[0] + std::to_string(rss);
+      statStrings.at("residentSizePercent")[0] + std::to_string(rssp);
     result +=
       TYPE_ + statStrings.at("virtualSize")[0] + statStrings.at("virtualSize")[1] +
       HELP_ + statStrings.at("virtualSize")[0] + statStrings.at("virtualSize")[2] +
-      statStrings.at("virtualSize")[0] + std::to_string(rssp);
+      statStrings.at("virtualSize")[0] + std::to_string(info._virtualSize);
     
 
     // _clientStatistics()    

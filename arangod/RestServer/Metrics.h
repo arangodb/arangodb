@@ -87,6 +87,41 @@ private:
   mutable Metrics::buffer_type _b;
 };
 
+
+template<typename T> class Gauge : public Metric {
+public:
+  Gauge(uint64_t const& val, std::string const& name, std::string const& help);
+  Gauge(Gauge const&) = delete;
+  virtual ~Gauge();
+  std::ostream& print (std::ostream&) const;
+  Gauge<T>& operator+=(T const& t) {
+    _g.store(_g + t);
+    return *this;
+  }
+  Gauge<T>& operator-=(T const& t) {
+    _g.store(_g - t);
+    return *this;
+  }
+  Gauge<T>& operator*=(T const& t) {
+    _g.store(_g * t);
+    return *this;
+  }
+  Gauge<T>& operator/=(T const& t) {
+    _g.store(_g / t);
+    return *this;
+  }
+  Gauge<T>& operator=(T const& t) {
+    _g.store(t);
+    return *this;
+  }
+  T load() const {
+    return _g.load();
+  };
+  virtual void toPrometheus(std::string&) const override {};
+private:
+  std::atomic<T> _g;
+};
+
 std::ostream& operator<< (std::ostream&, Metrics::hist_type const&);
 
 /**
