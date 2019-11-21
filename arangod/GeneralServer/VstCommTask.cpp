@@ -28,6 +28,7 @@
 #include "Basics/Result.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/cpu-relax.h"
 #include "Basics/tryEmplaceHelper.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"

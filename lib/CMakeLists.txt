@@ -220,7 +220,7 @@ add_library(arango STATIC
   Zip/unzip.cpp
   Zip/zip.cpp
   ${ADDITIONAL_LIB_ARANGO_SOURCES}
-)
+  Basics/ReadWriteSpinLock.cpp)
 
 target_link_libraries(arango
   s2
