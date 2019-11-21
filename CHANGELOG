@@ -1,6 +1,16 @@
 devel
 -----
 
+* Added highly experimental startup option `--query.parallelize-gather-writes`
+    
+  Turning this option on will enable the `parallelize-gather` AQL optimizer rule for 
+  certain write queries. This option is `false`by default.
+    
+  The feature is highly experimental and **should not be used on any production system**. 
+  The option is therefore also hidden. We will use this option for testing certain
+  workloads on dedicated test environments. If it turns out to be beneficial, the
+  feature may be enabled by default later.
+
 * Fixed known issue #509: ArangoSearch index consolidation does not work during creation of a link
   on existing collection which may lead to massive file descriptors consumption.
 
