@@ -107,6 +107,7 @@ std::string const StaticStrings::DatabaseCoordinator("coordinator");
 std::string const StaticStrings::DatabaseCoordinatorRebootId(
     "coordinatorRebootId");
 std::string const StaticStrings::DatabaseIsBuilding("isBuilding");
+std::string const StaticStrings::Properties("properties");
 
 // LogicalDataSource definition fields
 std::string const StaticStrings::DataSourceDeleted("deleted");
