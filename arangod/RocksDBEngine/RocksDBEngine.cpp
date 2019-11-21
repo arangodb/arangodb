@@ -2141,8 +2141,12 @@ void RocksDBEngine::getStatistics(std::string& result) const {
   TRI_ASSERT(sslice.isObject());
   for (auto const& a : VPackObjectIterator(sslice)) {
     if (a.value.isNumber()) {
-      std::string const& name = a.key.copyString();
-      result += "#TYPE " + name + " counter\n" + "#HELP " + name + " " + name + "\n" +
+      std::string name = a.key.copyString();
+      if (!name.starts_with(EnginName)) {
+        name = EnginName + name; 
+      }
+      result += "#TYPE " + name +
+        " counter\n" + "#HELP " + name + " " + name + "\n" +
         name + " " + std::to_string(a.value.getNumber<uint64_t>()) + "\n";
     }
   }
