@@ -287,6 +287,7 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/InsertModifier.cpp
   Aql/KShortestPathsExecutor.cpp
   Aql/KShortestPathsNode.cpp
+  Aql/LateMaterializedOptimizerRulesCommon.cpp
   Aql/LimitExecutor.cpp
   Aql/MaterializeExecutor.cpp
   Aql/ModificationExecutor.cpp
