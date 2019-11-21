@@ -31,6 +31,8 @@
   'use strict';
   var db = require("@arangodb").db;
 
+  db._dropDatabase("UnitTestsDumpProperties1");
+  db._dropDatabase("UnitTestsDumpProperties2");
   db._dropDatabase("UnitTestsDumpSrc");
   db._dropDatabase("UnitTestsDumpDst");
 })();
