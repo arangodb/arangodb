@@ -43,6 +43,7 @@ cppcheck "$@" \
   --suppress="redundantAssignment" \
   --suppress="shadowFunction" \
   --suppress="shadowVar" \
+  --suppress="shadowVariable" \
   --suppress="stlFindInsert" \
   --suppress="syntaxError" \
   --suppress="uninitMemberVar" \
@@ -59,9 +60,11 @@ grep -E "<error |<location|</error>" cppcheck.out.xml \
         -e 's:&gt;:>:g' \
         -e 's:&lt;:<:g' \
         -e 's:</error>::' \
+        -e 's#^\s*$##' \
   > cppcheck.log
 
-sed -e "s:file=\":file=\"$(pwd)/:g" < cppcheck.out.xml > cppcheck.xml
+sed -e "s:file=\":file=\"$(pwd)/:g" \
+  < cppcheck.out.xml > cppcheck.xml
 
 cat cppcheck.log
 rm cppcheck.out.xml
