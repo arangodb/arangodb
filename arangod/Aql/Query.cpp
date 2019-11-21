@@ -276,8 +276,8 @@ Query* Query::clone(QueryPart part, bool withPlan) {
 }
 
 bool Query::killed() const {
-  if(_queryOptions.timeout > std::numeric_limits<double>::epsilon()) {
-    if(TRI_microtime() > (_startTime + _queryOptions.timeout)) {
+  if (_queryOptions.timeout > std::numeric_limits<double>::epsilon()) {
+    if (TRI_microtime() > (_startTime + _queryOptions.timeout)) {
       return true;
     }
   }
@@ -451,7 +451,7 @@ void Query::prepare(QueryRegistry* registry, SerializationFormat format) {
   // this is confusing and should be fixed!
   std::unique_ptr<ExecutionEngine> engine(
       ExecutionEngine::instantiateFromPlan(*registry, *this, *plan,
-                                           !_queryString.empty()));
+                                           !_queryString.empty(), format));
 
   if (_engine == nullptr) {
     _engine = std::move(engine);
@@ -655,7 +655,7 @@ ExecutionState Query::execute(QueryRegistry* registry, QueryResult& queryResult)
         _resultBuilder->openArray();
         _executionPhase = ExecutionPhase::EXECUTE;
       }
-      [[fallthrough]];
+        [[fallthrough]];
       case ExecutionPhase::EXECUTE: {
         TRI_ASSERT(_resultBuilder != nullptr);
         TRI_ASSERT(_resultBuilder->isOpenArray());
@@ -734,7 +734,7 @@ ExecutionState Query::execute(QueryRegistry* registry, QueryResult& queryResult)
         _executionPhase = ExecutionPhase::FINALIZE;
       }
 
-      [[fallthrough]];
+        [[fallthrough]];
       case ExecutionPhase::FINALIZE: {
         // will set warnings, stats, profile and cleanup plan and engine
         return finalize(queryResult);
@@ -784,7 +784,7 @@ ExecutionState Query::execute(QueryRegistry* registry, QueryResult& queryResult)
 QueryResult Query::executeSync(QueryRegistry* registry) {
   std::shared_ptr<SharedQueryState> ss = sharedState();
   ss->resetWakeupHandler();
-  
+
   QueryResult queryResult;
   while (true) {
     auto state = execute(registry, queryResult);
@@ -872,7 +872,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
     options.buildUnindexedArrays = true;
     options.buildUnindexedObjects = true;
     auto builder = std::make_shared<VPackBuilder>(&options);
-    
+
     try {
       ss->resetWakeupHandler();
 
