@@ -51,7 +51,7 @@ function dumpTestSuite () {
         let props = db._properties();
         assertEqual(1, props.replicationFactor);
         assertEqual(1, props.minReplicationFactor);
-        
+
         db._useDatabase("UnitTestsDumpProperties2");
         props = db._properties();
         assertEqual(2, props.replicationFactor);
@@ -81,13 +81,13 @@ function dumpTestSuite () {
 
     // this tests hotbackup
     testDBProperties : function () {
-      if (!isEnterprise) {
-        return;
-      }
+      print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
+      print(db._name())
+      print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
 
       let props = db._properties();
       assertEqual(props["minReplicationFactor"], 2);
-      assertEqual(props["replicationFactor"], 3);
+      assertEqual(props["replicationFactor"], 2);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -746,7 +746,7 @@ function dumpTestEnterpriseSuite () {
       let c = db._collection("UnitTestsDumpReplicationFactor1");
       let p = c.properties();
 
-      assertEqual(1, p.replicationFactor);
+      assertEqual(2, p.replicationFactor);
       assertEqual(7, p.numberOfShards);
 
       c = db._collection("UnitTestsDumpReplicationFactor2");

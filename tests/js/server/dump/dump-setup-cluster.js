@@ -138,29 +138,16 @@ function setupSatelliteCollections() {
 
   let createOptions = {};
 
-  if (!isEnterprise) {
-    // This is used to test the Hotbackup. Otherwise it is
-    // not very useful as the dst database is created during
-    // the setup and not the restore process.
-    createOptions = {
-      "minReplicationFactor" : 2,
-      "replicationFactor"    : 3
-    };
-  }
-
   ["UnitTestsDumpSrc", "UnitTestsDumpDst", "UnitTestsDumpProperties1", "UnitTestsDumpProperties2"].forEach(function(name) {
     try {
       db._dropDatabase(name);
     } catch (err) {}
   });
-  
+
   db._createDatabase("UnitTestsDumpProperties1", { replicationFactor: 1, minReplicationFactor: 1 });
   db._createDatabase("UnitTestsDumpProperties2", { replicationFactor: 2, minReplicationFactor: 2, sharding: "single" });
-
-
-  db._createDatabase("UnitTestsDumpSrc", createOptions);
-
-  db._createDatabase("UnitTestsDumpDst", createOptions);
+  db._createDatabase("UnitTestsDumpSrc", { replicationFactor: 2, minReplicationFactor: 2 });
+  db._createDatabase("UnitTestsDumpDst", { replicationFactor: 2, minReplicationFactor: 2 });
 
   db._useDatabase("UnitTestsDumpSrc");
 
@@ -316,7 +303,7 @@ function setupSatelliteCollections() {
   setupSmartArangoSearch();
   setupSatelliteCollections();
 
-  db._create("UnitTestsDumpReplicationFactor1", { replicationFactor: 1, numberOfShards: 7 });
+  db._create("UnitTestsDumpReplicationFactor1", { replicationFactor: 2, numberOfShards: 7 });
   db._create("UnitTestsDumpReplicationFactor2", { replicationFactor: 2, numberOfShards: 6 });
 
   // Install Foxx
