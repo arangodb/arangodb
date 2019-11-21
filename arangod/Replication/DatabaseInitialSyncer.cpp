@@ -1521,7 +1521,6 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
             iterResume = std::max(iterResume, local.revision() + 1);
             local.next();
           } else if (masterRev < local.revision()) {
-            TRI_ASSERT(allFetched.find(masterRev) == allFetched.end());
             toFetch.emplace_back(masterRev);
             ++index;
             iterResume = std::max(iterResume, masterRev + 1);
