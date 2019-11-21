@@ -101,7 +101,7 @@ class short_alloc {
   short_alloc(const short_alloc&) = default;
   short_alloc& operator=(const short_alloc&) = delete;
 
-  short_alloc(arena_type& a) noexcept : a_(a) {
+  short_alloc(arena_type& a) noexcept : a_(a) { // cppcheck-suppress noExplicitConstructor constParameter
     static_assert(size % alignment == 0,
                   "size N needs to be a multiple of alignment Align");
   }
