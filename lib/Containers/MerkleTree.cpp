@@ -345,7 +345,7 @@ std::size_t MerkleTree<BranchingBits, LockStripes>::index(std::size_t key,
 
   std::size_t offset = key - meta().rangeMin;
   std::size_t chunkSizeAtDepth =
-      (meta().rangeMax - meta().rangeMin) / (1 << (BranchingBits * depth));
+      (meta().rangeMax - meta().rangeMin) / (static_cast<std::size_t>(1) << (BranchingBits * depth));
   std::size_t chunk = offset / chunkSizeAtDepth;
 
   return chunk + nodeCountUpToDepth(depth - 1);
@@ -423,7 +423,7 @@ std::pair<std::size_t, std::size_t> MerkleTree<BranchingBits, LockStripes>::chun
   // not thread-safe, lock buffer from outside
   std::size_t rangeMin = meta().rangeMin;
   std::size_t rangeMax = meta().rangeMax;
-  std::size_t chunkSizeAtDepth = (rangeMax - rangeMin) / (1 << (BranchingBits * depth));
+  std::size_t chunkSizeAtDepth = (rangeMax - rangeMin) / (static_cast<std::size_t>(1) << (BranchingBits * depth));
   return std::make_pair(rangeMin + (chunkSizeAtDepth * chunk),
                         rangeMin + (chunkSizeAtDepth * (chunk + 1)) - 1);
 }

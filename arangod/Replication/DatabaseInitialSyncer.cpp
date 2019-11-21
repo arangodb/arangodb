@@ -1382,7 +1382,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
     std::unique_ptr<httpclient::SimpleHttpResult> response;
     std::size_t requestResume = ranges[0].first;  // start with beginning
     TRI_ASSERT(requestResume);
-    std::size_t iterResume = requestResume;
+    TRI_voc_rid_t iterResume = static_cast<TRI_voc_rid_t>(requestResume);
     std::size_t chunk = 0;
     std::unique_ptr<ReplicationIterator> iter =
         physical->getReplicationIterator(ReplicationIterator::Ordering::Revision, trx);
@@ -1490,7 +1490,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
                   ": response field 'ranges' entry is not a revision range");
         }
         auto& currentRange = ranges[chunk];
-        local.seek(std::max(iterResume, currentRange.first));
+        local.seek(std::max(iterResume, static_cast<TRI_voc_rid_t>(currentRange.first)));
 
         std::size_t removalBound = masterSlice.isEmptyArray()
                                        ? currentRange.second + 1
@@ -1513,7 +1513,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
 
         std::size_t index = 0;
         while (local.hasMore() && local.revision() <= mixedBound) {
-          std::size_t masterRev = masterSlice.at(index).getNumber<std::size_t>();
+          TRI_voc_rid_t masterRev = masterSlice.at(index).getNumber<TRI_voc_rid_t>();
 
           if (local.revision() < masterRev) {
             std::string key = transaction::helpers::extractKeyString(local.document());
@@ -1533,7 +1533,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
           }
         }
         for (; index < masterSlice.length(); ++index) {
-          std::size_t masterRev = masterSlice.at(index).getNumber<std::size_t>();
+          TRI_voc_rid_t masterRev = masterSlice.at(index).getNumber<TRI_voc_rid_t>();
           // fetch any leftovers
           toFetch.emplace_back(masterRev);
           iterResume = std::max(iterResume, masterRev + 1);
