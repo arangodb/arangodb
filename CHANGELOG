@@ -1,8 +1,14 @@
-v3.4.9 (XXX-XX-XX)
+v3.4.9 (XXXX-XX-XX)
 -------------------
 
 * Fixed issue #10470: The WebUI now shows potential errors and details which occured
   using _api/import (e.g. unique constraint violated).
+
+* Make the timeouts for replication requests (for active failover and master-slave 
+  replication configurable via startup options:
+
+      --replication.connect-timeout
+      --replication.request-timeout
 
 * Fixed ArangoSearch index removes being discarded on commiting consolidation
   results with pending removes after some segments under consolidation were

@@ -43,6 +43,10 @@ ReplicationFeature* ReplicationFeature::INSTANCE = nullptr;
 
 ReplicationFeature::ReplicationFeature(ApplicationServer& server)
     : ApplicationFeature(server, "Replication"),
+      _connectTimeout(10.0),
+      _requestTimeout(600.0),
+      _forceConnectTimeout(false),
+      _forceRequestTimeout(false),
       _replicationApplierAutoStart(true),
       _enableActiveFailover(false) {
   setOptional(true);
@@ -72,6 +76,15 @@ void ReplicationFeature::collectOptions(std::shared_ptr<ProgramOptions> options)
   options->addOption("--replication.active-failover",
                      "Enable active-failover during asynchronous replication",
                      new BooleanParameter(&_enableActiveFailover));
+  
+  options->addOption("--replication.connect-timeout",
+                     "Default timeout value for replication connection attempts (in seconds)",
+                     new DoubleParameter(&_connectTimeout))
+                     .setIntroducedIn(30409);
+  options->addOption("--replication.request-timeout",
+                     "Default timeout value for replication requests (in seconds)",
+                     new DoubleParameter(&_requestTimeout))
+                     .setIntroducedIn(30409);
 }
 
 void ReplicationFeature::validateOptions(std::shared_ptr<options::ProgramOptions> options) {
@@ -81,6 +94,20 @@ void ReplicationFeature::validateOptions(std::shared_ptr<options::ProgramOptions
         << "automatic failover needs to be started with agency endpoint "
            "configured";
     FATAL_ERROR_EXIT();
+  }
+
+  if (_connectTimeout < 1.0) {
+    _connectTimeout = 1.0;
+  }
+  if (options->processingResult().touched("--replication.connect-timeout")) {
+    _forceConnectTimeout = true;
+  }
+
+  if (_requestTimeout < 3.0) {
+    _requestTimeout = 3.0;
+  }
+  if (options->processingResult().touched("--replication.request-timeout")) {
+    _forceRequestTimeout = true;
   }
 }
 
@@ -139,6 +166,20 @@ void ReplicationFeature::unprepare() {
     _globalReplicationApplier->stop();
   }
   _globalReplicationApplier.reset();
+}
+  
+double ReplicationFeature::checkConnectTimeout(double value) const {
+  if (_forceConnectTimeout) {
+    return _connectTimeout;
+  }
+  return value;
+}
+
+double ReplicationFeature::checkRequestTimeout(double value) const {
+  if (_forceRequestTimeout) {
+    return _requestTimeout;
+  }
+  return value;
 }
 
 // start the replication applier for a single database
