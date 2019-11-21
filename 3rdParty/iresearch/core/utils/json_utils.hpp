@@ -24,16 +24,14 @@
 #ifndef IRESEARCH_JSON_UTILS_H
 #define IRESEARCH_JSON_UTILS_H
 
-#include <rapidjson/rapidjson/document.h>
 #include "string.hpp"
 
 NS_ROOT
 
-inline bool get_uint64(
-    rapidjson::Document const& json,
-    const irs::string_ref& name,
-    uint64_t& value
-) {
+template<typename GenericObject>
+inline bool get_uint64(GenericObject const& json,
+                       const irs::string_ref& name,
+                       uint64_t& value) {
   if (!json.HasMember(name.c_str())) {
     return false;
   }
@@ -48,11 +46,10 @@ inline bool get_uint64(
   return true;
 }
 
-inline bool get_bool(
-    rapidjson::Document const& json,
-    const irs::string_ref& name,
-    bool& value
-) {
+template<typename GenericObject>
+inline bool get_bool(GenericObject const& json,
+                     const irs::string_ref& name,
+                     bool& value) {
   if (!json.HasMember(name.c_str())) {
     return false;
   }

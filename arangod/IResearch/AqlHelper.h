@@ -326,8 +326,10 @@ class ScopedAqlValue : private irs::util::noncopyable {
   }
 
   void toVelocyPack(velocypack::Builder& builder) const {
-    _node->isConstant() ? _node->toVelocyPackValue(builder)
-                        : _value.toVelocyPack(nullptr, builder, false);
+    _node->isConstant()
+        ? _node->toVelocyPackValue(builder)
+        : _value.toVelocyPack(static_cast<velocypack::Options const*>(nullptr),
+                              builder, false);
   }
 
  private:

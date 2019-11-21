@@ -28,8 +28,13 @@
 #include "ApplicationFeatures/SupervisorFeature.h"
 #include "Basics/application-exit.h"
 #include "Basics/ScopeGuard.h"
+#include "Basics/StaticStrings.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
+#ifdef USE_ENTERPRISE
+#include "Enterprise/StorageEngine/HotBackupFeature.h"
+#endif
 #include "FeaturePhases/AqlFeaturePhase.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/LogMacros.h"
@@ -85,10 +90,8 @@ void UpgradeFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 extern std::function<int()> * restartAction;
 
 #ifndef _WIN32
-static std::string const UPGRADE_ENV = "ARANGODB_UPGRADE_DURING_RESTORE";
-
 static int upgradeRestart() {
-  unsetenv(UPGRADE_ENV.c_str());
+  unsetenv(StaticStrings::UpgradeEnvName.c_str());
   return 0;
 }
 #endif
@@ -103,11 +106,15 @@ void UpgradeFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   // variable at runtime and then does a restore. After the restart (with
   // the old data) the database upgrade is run and another restart is
   // happening afterwards with the environment variable being cleared.
-  char* upgrade = getenv(UPGRADE_ENV.c_str());
+  char* upgrade = getenv(StaticStrings::UpgradeEnvName.c_str());
   if (upgrade != nullptr) {
     _upgrade = true;
     restartAction = new std::function<int()>();
     *restartAction = upgradeRestart;
+    LOG_TOPIC("fdeae", INFO, Logger::STARTUP)
+        << "Detected environment variable " << StaticStrings::UpgradeEnvName
+        << " with value " << upgrade
+        << " will perform database auto-upgrade and immediately restart.";
   }
 #endif
   if (_upgrade && !_upgradeCheck) {
@@ -150,6 +157,11 @@ void UpgradeFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 
   DatabaseFeature& database = server().getFeature<DatabaseFeature>();
   database.enableUpgrade();
+
+#ifdef USE_ENTERPRISE
+  HotBackupFeature& hotBackupFeature = server().getFeature<HotBackupFeature>();
+  hotBackupFeature.forceDisable();
+#endif
 }
 
 void UpgradeFeature::prepare() {

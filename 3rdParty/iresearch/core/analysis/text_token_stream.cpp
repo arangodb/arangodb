@@ -28,7 +28,7 @@
 #include <rapidjson/rapidjson/document.h> // for rapidjson::Document, rapidjson::Value
 #include <rapidjson/rapidjson/writer.h> // for rapidjson::Writer
 #include <rapidjson/rapidjson/stringbuffer.h> // for rapidjson::StringBuffer
-#include <utfcpp/utf8.h>
+#include <utils/utf8_utils.hpp>
 #include <unicode/brkiter.h> // for icu::BreakIterator
 
 #if defined(_MSC_VER)
@@ -469,6 +469,7 @@ const irs::string_ref STOPWORDS_PARAM_NAME         = "stopwords";
 const irs::string_ref STOPWORDS_PATH_PARAM_NAME    = "stopwordsPath";
 const irs::string_ref ACCENT_PARAM_NAME            = "accent";
 const irs::string_ref STEMMING_PARAM_NAME          = "stemming";
+const irs::string_ref EDGE_NGRAM_PARAM_NAME        = "edgeNgram";
 const irs::string_ref MIN_PARAM_NAME               = "min";
 const irs::string_ref MAX_PARAM_NAME               = "max";
 const irs::string_ref PRESERVE_ORIGINAL_PARAM_NAME = "preserveOriginal";
@@ -625,22 +626,39 @@ bool parse_json_options(const irs::string_ref& args,
       options.stemming = stemming.GetBool();
     }
 
-    uint64_t min;
-    if (irs::get_uint64(json, MIN_PARAM_NAME, min)) {
-      options.min_gram = min;
-      options.min_gram_set = true;
-    }
+    if (json.HasMember(EDGE_NGRAM_PARAM_NAME.c_str())) {
+      auto& ngram = json[EDGE_NGRAM_PARAM_NAME.c_str()];
 
-    uint64_t max;
-    if (irs::get_uint64(json, MAX_PARAM_NAME, max)) {
-      options.max_gram = max;
-      options.max_gram_set = true;
-    }
+      if (!ngram.IsObject()) {
+        IR_FRMT_WARN(
+            "Non-object value in '%s' while constructing text_token_stream "
+            "from jSON arguments: %s",
+            EDGE_NGRAM_PARAM_NAME.c_str(), args.c_str());
 
-    bool preserve_original;
-    if (irs::get_bool(json, PRESERVE_ORIGINAL_PARAM_NAME, preserve_original)) {
-      options.preserve_original = preserve_original;
-      options.preserve_original_set = true;
+        return false;
+      }
+
+      uint64_t min;
+      if (irs::get_uint64(ngram, MIN_PARAM_NAME, min)) {
+        options.min_gram = min;
+        options.min_gram_set = true;
+      }
+
+      uint64_t max;
+      if (irs::get_uint64(ngram, MAX_PARAM_NAME, max)) {
+        options.max_gram = max;
+        options.max_gram_set = true;
+      }
+
+      bool preserve_original;
+      if (irs::get_bool(ngram, PRESERVE_ORIGINAL_PARAM_NAME, preserve_original)) {
+        options.preserve_original = preserve_original;
+        options.preserve_original_set = true;
+      }
+
+      if (options.min_gram_set && options.max_gram_set) {
+        return options.min_gram <= options.max_gram;
+      }
     }
 
     return true;
@@ -749,27 +767,37 @@ bool make_json_config(
   // ensure disambiguating casts below are safe. Casts required for clang compiler on Mac
   static_assert(sizeof(uint64_t) >= sizeof(size_t), "sizeof(uint64_t) >= sizeof(size_t)");
 
-  // min_gram
-  if (options.min_gram_set) {
-    json.AddMember(
-      rapidjson::StringRef(MIN_PARAM_NAME.c_str(), MIN_PARAM_NAME.size()),
-      rapidjson::Value(static_cast<uint64_t>(options.min_gram)),
-      allocator);
-  }
+  if (options.min_gram_set || options.max_gram_set || options.preserve_original_set) {
+    rapidjson::Document ngram(&allocator);
+    ngram.SetObject();
 
-  // max_gram
-  if (options.max_gram_set) {
-    json.AddMember(
-      rapidjson::StringRef(MAX_PARAM_NAME.c_str(), MAX_PARAM_NAME.size()),
-      rapidjson::Value(static_cast<uint64_t>(options.max_gram)),
-      allocator);
-  }
+    // min_gram
+    if (options.min_gram_set) {
+      ngram.AddMember(
+        rapidjson::StringRef(MIN_PARAM_NAME.c_str(), MIN_PARAM_NAME.size()),
+        rapidjson::Value(static_cast<uint64_t>(options.min_gram)),
+        allocator);
+    }
 
-  // preserve_original
-  if (options.preserve_original_set) {
+    // max_gram
+    if (options.max_gram_set) {
+      ngram.AddMember(
+        rapidjson::StringRef(MAX_PARAM_NAME.c_str(), MAX_PARAM_NAME.size()),
+        rapidjson::Value(static_cast<uint64_t>(options.max_gram)),
+        allocator);
+    }
+
+    // preserve_original
+    if (options.preserve_original_set) {
+      ngram.AddMember(
+        rapidjson::StringRef(PRESERVE_ORIGINAL_PARAM_NAME.c_str(), PRESERVE_ORIGINAL_PARAM_NAME.size()),
+        rapidjson::Value(options.preserve_original),
+        allocator);
+    }
+
     json.AddMember(
-      rapidjson::StringRef(PRESERVE_ORIGINAL_PARAM_NAME.c_str(), PRESERVE_ORIGINAL_PARAM_NAME.size()),
-      rapidjson::Value(options.preserve_original),
+      rapidjson::StringRef(EDGE_NGRAM_PARAM_NAME.c_str(), EDGE_NGRAM_PARAM_NAME.size()),
+      ngram,
       allocator);
   }
 
@@ -778,6 +806,7 @@ bool make_json_config(
   rapidjson::Writer< rapidjson::StringBuffer> writer(buffer);
   json.Accept(writer);
   definition = buffer.GetString();
+
   return true;
 }
 
@@ -1088,13 +1117,13 @@ bool text_token_stream::next_ngram() {
     inc_.clear();
     // find the first ngram > min
     do {
-      utf8::unchecked::next(state_->ngram.it);
+      state_->ngram.it = irs::utf8_utils::next(state_->ngram.it, end);
     } while (++state_->ngram.length < state_->options.min_gram &&
              state_->ngram.it != end);
   } else {
     // not first ngram in a word
     inc_.value = 0; // staying on the current pos
-    utf8::unchecked::next(state_->ngram.it);
+    state_->ngram.it = irs::utf8_utils::next(state_->ngram.it, end);
     ++state_->ngram.length;
   }
 

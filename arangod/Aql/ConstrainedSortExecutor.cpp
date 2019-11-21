@@ -36,10 +36,6 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-constexpr bool ConstrainedSortExecutor::Properties::preservesOrder;
-constexpr BlockPassthrough ConstrainedSortExecutor::Properties::allowsBlockPassthrough;
-constexpr bool ConstrainedSortExecutor::Properties::inputSizeRestrictsOutputSize;
-
 namespace {
 
 void eraseRow(SharedAqlItemBlockPtr& block, size_t row) {
@@ -54,9 +50,9 @@ void eraseRow(SharedAqlItemBlockPtr& block, size_t row) {
 /// @brief OurLessThan
 class arangodb::aql::ConstrainedLessThan {
  public:
-  ConstrainedLessThan(arangodb::transaction::Methods* trx,
-                      std::vector<arangodb::aql::SortRegister>& sortRegisters) noexcept
-      : _trx(trx), _heapBuffer(nullptr), _sortRegisters(sortRegisters) {}
+  ConstrainedLessThan(velocypack::Options const* options,
+                      std::vector<arangodb::aql::SortRegister> const& sortRegisters) noexcept
+      : _vpackOptions(options), _heapBuffer(nullptr), _sortRegisters(sortRegisters) {}
 
   void setBuffer(arangodb::aql::AqlItemBlock* heap) { _heapBuffer = heap; }
 
@@ -67,7 +63,7 @@ class arangodb::aql::ConstrainedLessThan {
       auto const& lhs = _heapBuffer->getValueReference(a, sortReg.reg);
       auto const& rhs = _heapBuffer->getValueReference(b, sortReg.reg);
 
-      int const cmp = arangodb::aql::AqlValue::Compare(_trx, lhs, rhs, true);
+      int const cmp = arangodb::aql::AqlValue::Compare(_vpackOptions, lhs, rhs, true);
 
       if (cmp < 0) {
         return sortReg.asc;
@@ -80,9 +76,9 @@ class arangodb::aql::ConstrainedLessThan {
   }
 
  private:
-  arangodb::transaction::Methods* _trx;
+  velocypack::Options const* const _vpackOptions;
   arangodb::aql::AqlItemBlock* _heapBuffer;
-  std::vector<arangodb::aql::SortRegister>& _sortRegisters;
+  std::vector<arangodb::aql::SortRegister> const& _sortRegisters;
 };  // ConstrainedLessThan
 
 arangodb::Result ConstrainedSortExecutor::pushRow(InputAqlItemRow& input) {
@@ -92,16 +88,16 @@ arangodb::Result ConstrainedSortExecutor::pushRow(InputAqlItemRow& input) {
 
   size_t dRow = _rowsPushed;
 
-  if (dRow >= _infos._limit) {
+  if (dRow >= _infos.limit()) {
     // pop an entry first
-    std::pop_heap(_rows.begin(), _rows.end(), *_cmpHeap.get());
+    std::pop_heap(_rows.begin(), _rows.end(), *_cmpHeap);
     dRow = _rows.back();
     eraseRow(_heapBuffer, dRow);
   } else {
     _rows.emplace_back(dRow);  // add to heap vector
   }
 
-  TRI_ASSERT(dRow < _infos._limit);
+  TRI_ASSERT(dRow < _infos.limit());
   TRI_IF_FAILURE("SortBlock::doSortingInner") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
@@ -113,7 +109,7 @@ arangodb::Result ConstrainedSortExecutor::pushRow(InputAqlItemRow& input) {
   ++_rowsPushed;
 
   // now restore heap condition
-  std::push_heap(_rows.begin(), _rows.end(), *_cmpHeap.get());
+  std::push_heap(_rows.begin(), _rows.end(), *_cmpHeap);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -123,7 +119,7 @@ bool ConstrainedSortExecutor::compareInput(size_t const& rowPos, InputAqlItemRow
     auto const& lhs = _heapBuffer->getValueReference(rowPos, reg.reg);
     auto const& rhs = row.getValue(reg.reg);
 
-    int const cmp = arangodb::aql::AqlValue::Compare(_infos.trx(), lhs, rhs, true);
+    int const cmp = arangodb::aql::AqlValue::Compare(_infos.vpackOptions(), lhs, rhs, true);
 
     if (cmp < 0) {
       return reg.asc;
@@ -142,14 +138,15 @@ ConstrainedSortExecutor::ConstrainedSortExecutor(Fetcher& fetcher, SortExecutorI
       _rowsPushed(0),
       _rowsRead(0),
       _skippedAfter(0),
-      _heapBuffer(_infos._manager.requestBlock(_infos._limit,
-                                               _infos.numberOfOutputRegisters())),
-      _cmpHeap(std::make_unique<ConstrainedLessThan>(_infos.trx(), _infos.sortRegisters())),
+      _heapBuffer(_infos.itemBlockManager().requestBlock(_infos.limit(),
+                                                         _infos.numberOfOutputRegisters())),
+      _cmpHeap(std::make_unique<ConstrainedLessThan>(_infos.vpackOptions(),
+                                                     _infos.sortRegisters())),
       _heapOutputRow{_heapBuffer, make_shared_unordered_set(),
                      make_shared_unordered_set(_infos.numberOfOutputRegisters()),
                      _infos.registersToClear()} {
-  TRI_ASSERT(_infos._limit > 0);
-  _rows.reserve(infos._limit);
+  TRI_ASSERT(_infos.limit() > 0);
+  _rows.reserve(infos.limit());
   _cmpHeap->setBuffer(_heapBuffer.get());
 }
 
@@ -183,7 +180,7 @@ ExecutionState ConstrainedSortExecutor::consumeInput() {
       TRI_ASSERT(_state == ExecutionState::DONE);
     } else {
       ++_rowsRead;
-      if (_rowsPushed < _infos._limit || !compareInput(_rows.front(), input)) {
+      if (_rowsPushed < _infos.limit() || !compareInput(_rows.front(), input)) {
         // Push this row into the heap
         pushRow(input);
       }
@@ -254,7 +251,7 @@ std::pair<ExecutionState, size_t> ConstrainedSortExecutor::expectedNumberOfRows(
       return {state, 0};
     }
     // Return the minimum of upstream + limit
-    rowsLeft = (std::min)(expectedRows, _infos._limit);
+    rowsLeft = (std::min)(expectedRows, _infos.limit());
   } else {
     // We have exactly the following rows available:
     rowsLeft = _rows.size() - _returnNext;

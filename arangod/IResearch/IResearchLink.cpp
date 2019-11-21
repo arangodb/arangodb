@@ -110,31 +110,6 @@ struct LinkTrxState final : public arangodb::TransactionState::Cookie {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief compute the data path to user for iresearch data store
-///        get base path from DatabaseServerFeature (similar to MMFilesEngine)
-///        the path is hardcoded to reside under:
-///        <DatabasePath>/<IResearchLink::type()>-<link id>
-///        similar to the data path calculation for collections
-////////////////////////////////////////////////////////////////////////////////
-irs::utf8_path getPersistedPath(arangodb::DatabasePathFeature const& dbPathFeature,
-                                arangodb::iresearch::IResearchLink const& link) {
-  irs::utf8_path dataPath(dbPathFeature.directory());
-  static const std::string subPath("databases");
-  static const std::string dbPath("database-");
-
-  dataPath /= subPath;
-  dataPath /= dbPath;
-  dataPath += std::to_string(link.collection().vocbase().id());
-  dataPath /= arangodb::iresearch::DATA_SOURCE_TYPE.name();
-  dataPath += "-";
-  dataPath += std::to_string(link.collection().id());  // has to be 'id' since this can be a per-shard collection
-  dataPath += "_";
-  dataPath += std::to_string(link.id());
-
-  return dataPath;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief inserts ArangoDB document into an IResearch data store
 ////////////////////////////////////////////////////////////////////////////////
 inline arangodb::Result insertDocument(irs::index_writer::documents_context& ctx,
@@ -240,6 +215,31 @@ bool readTick(irs::bytes_ref const& payload, TRI_voc_tick_t& tick) noexcept {
 
 namespace arangodb {
 namespace iresearch {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief compute the data path to user for iresearch data store
+///        get base path from DatabaseServerFeature (similar to MMFilesEngine)
+///        the path is hardcoded to reside under:
+///        <DatabasePath>/<IResearchLink::type()>-<link id>
+///        similar to the data path calculation for collections
+////////////////////////////////////////////////////////////////////////////////
+irs::utf8_path getPersistedPath(arangodb::DatabasePathFeature const& dbPathFeature,
+                                arangodb::iresearch::IResearchLink const& link) {
+  irs::utf8_path dataPath(dbPathFeature.directory());
+  static const std::string subPath("databases");
+  static const std::string dbPath("database-");
+
+  dataPath /= subPath;
+  dataPath /= dbPath;
+  dataPath += std::to_string(link.collection().vocbase().id());
+  dataPath /= arangodb::iresearch::DATA_SOURCE_TYPE.name();
+  dataPath += "-";
+  dataPath += std::to_string(link.collection().id());  // has to be 'id' since this can be a per-shard collection
+  dataPath += "_";
+  dataPath += std::to_string(link.id());
+
+  return dataPath;
+}
 
 IResearchLink::IResearchLink(
     TRI_idx_iid_t iid,

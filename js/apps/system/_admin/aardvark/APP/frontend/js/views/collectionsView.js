@@ -491,7 +491,7 @@
         $.ajax({
           type: 'GET',
           cache: false,
-          url: arangoHelper.databaseUrl('/_api/database/properties'), //get default properties of current db
+          url: arangoHelper.databaseUrl('/_api/database/current'), //get default properties of current db
           contentType: 'application/json',
           processData: false,
           success: function (data) {

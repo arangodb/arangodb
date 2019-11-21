@@ -22,13 +22,16 @@
 
 #include "UrlHelper.h"
 
-#include <cctype>
-#include <iomanip>
 #include <sstream>
 #include <utility>
 
 using namespace arangodb;
 using namespace arangodb::url;
+
+namespace {
+// used for URI-encoding
+static char const* hexValuesLower = "0123456789abcdef";
+};
 
 std::ostream& Query::toStream(std::ostream& ostream) const {
   struct output {
@@ -181,7 +184,10 @@ std::optional<Fragment> const& Location::fragment() const noexcept {
 
 // unreserved are A-Z, a-z, 0-9 and - _ . ~
 bool arangodb::url::isUnreserved(char c) {
-  return std::isalnum(c) || c == '-' || c == '_' || c == '.' || c == '~';
+  return (c >= '0' && c <= '9') || 
+         (c >= 'a' && c <= 'z') || 
+         (c >= 'A' && c <= 'Z') || 
+         c == '-' || c == '_' || c == '.' || c == '~';
 }
 
 // reserved are:
@@ -194,19 +200,22 @@ bool arangodb::url::isReserved(char c) {
 }
 
 std::string arangodb::url::uriEncode(std::string const& raw) {
-  std::stringstream encoded;
-
-  encoded << std::hex << std::setfill('0');
+  std::string encoded;
 
   for (auto const c : raw) {
     if (isUnreserved(c)) {
-      encoded << c;
+      // append character as is
+      encoded.push_back(c);
     } else {
-      encoded << '%' << std::setw(2) << static_cast<unsigned>(c);
+      // must hex-encode the character
+      encoded.push_back('%');
+      auto u = static_cast<unsigned char>(c);
+      encoded.push_back(::hexValuesLower[u >> 4]);
+      encoded.push_back(::hexValuesLower[u % 16]);
     }
   }
 
-  return encoded.str();
+  return encoded;
 }
 
 std::ostream& arangodb::url::operator<<(std::ostream& ostream, Location const& location) {

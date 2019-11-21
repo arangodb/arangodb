@@ -23,7 +23,6 @@
 
 #include "GeoJson.h"
 
-#include <cctype>
 #include <string>
 #include <vector>
 

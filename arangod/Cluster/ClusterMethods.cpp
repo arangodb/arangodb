@@ -3011,7 +3011,8 @@ arangodb::Result hotRestoreCoordinator(ClusterFeature& feature, VPackSlice const
     using arangodb::methods::VersionResult;
 #ifdef USE_ENTERPRISE
     // Will never be called in community
-    if (!RocksDBHotBackup::versionTestRestore(meta._version)) {
+    bool autoUpgradeNeeded;   // not actually used
+    if (!RocksDBHotBackup::versionTestRestore(meta._version, autoUpgradeNeeded)) {
       return arangodb::Result(TRI_ERROR_HOT_RESTORE_INTERNAL,
                               "Version mismatch");
     }
@@ -3666,8 +3667,9 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature, VPackSlice const 
       return arangodb::Result(TRI_ERROR_BAD_PARAMETER, BAD_PARAMS_CREATE);
     }
 
-    bool allowInconsistent = payload.get("allowInconsistent").isTrue();
-    bool force = payload.get("force").isTrue();
+    bool allowInconsistent =
+        payload.isNone() ? false : payload.get("allowInconsistent").isTrue();
+    bool force = payload.isNone() ? false : payload.get("force").isTrue();
 
     std::string const backupId = (payload.isObject() && payload.hasKey("label"))
                                      ? payload.get("label").copyString()

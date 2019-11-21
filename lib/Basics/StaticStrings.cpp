@@ -107,6 +107,7 @@ std::string const StaticStrings::DatabaseCoordinator("coordinator");
 std::string const StaticStrings::DatabaseCoordinatorRebootId(
     "coordinatorRebootId");
 std::string const StaticStrings::DatabaseIsBuilding("isBuilding");
+std::string const StaticStrings::Properties("properties");
 
 // LogicalDataSource definition fields
 std::string const StaticStrings::DataSourceDeleted("deleted");
@@ -217,8 +218,7 @@ std::string const StaticStrings::MimeTypeDump(
 std::string const StaticStrings::MimeTypeHtml("text/html; charset=utf-8");
 std::string const StaticStrings::MimeTypeJson(
     "application/json; charset=utf-8");
-std::string const StaticStrings::MimeTypeJsonNoEncoding(
-    "application/json");
+std::string const StaticStrings::MimeTypeJsonNoEncoding("application/json");
 std::string const StaticStrings::MimeTypeText("text/plain; charset=utf-8");
 std::string const StaticStrings::MimeTypeVPack("application/x-velocypack");
 std::string const StaticStrings::MultiPartContentType("multipart/form-data");
@@ -275,3 +275,9 @@ std::string const StaticStrings::RebootId("rebootId");
 
 std::string const StaticStrings::New("new");
 std::string const StaticStrings::Old("old");
+std::string const StaticStrings::UpgradeEnvName(
+    "ARANGODB_UPGRADE_DURING_RESTORE");
+std::string const StaticStrings::BackupToDeleteName("DIRECTORY_TO_DELETE");
+std::string const StaticStrings::BackupSearchToDeleteName(
+    "DIRECTORY_TO_DELETE_SEARCH");
+std::string const StaticStrings::SerializationFormat("serializationFormat");
