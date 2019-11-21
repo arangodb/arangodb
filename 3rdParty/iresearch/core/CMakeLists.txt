@@ -261,8 +261,11 @@ if (NOT MSVC)
   set(DL_LIBRARY dl)
 endif()
 
-include_directories(
+include_directories( 
   ${IResearch_INCLUDE_DIR}
+)
+
+include_directories( $<$<BOOL:${SUPPRESS_EXTERNAL_WARNINGS}>:SYSTEM>
   ${EXTERNAL_INCLUDE_DIRS}
   ${Boost_INCLUDE_DIRS} # ensure Boost paths take precedence over other system libraries as Boost may be defined elsewhere
   ${BFD_INCLUDE_DIR}

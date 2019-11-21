@@ -36,6 +36,15 @@ filter::prepared::ptr prepare_automaton_filter(const string_ref& field,
                                                const order::prepared& order,
                                                boost_t boost) {
   automaton_table_matcher matcher(acceptor, fst::fsa::kRho);
+
+  if (fst::kError == matcher.Properties(0)) {
+    IR_FRMT_ERROR("Expected deterministic, epsilon-free acceptor, "
+                  "got the following properties " IR_UINT64_T_SPECIFIER "",
+                  acceptor.Properties(automaton_table_matcher::FST_PROPERTIES, false));
+
+    return filter::prepared::empty();
+  }
+
   limited_sample_scorer scorer(order.empty() ? 0 : scored_terms_limit); // object for collecting order stats
   multiterm_query::states_t states(index.size());
 

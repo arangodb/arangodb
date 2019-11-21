@@ -32,17 +32,14 @@
 
 NS_BEGIN(fst)
 
-template<typename F, fst::MatchType TYPE = MATCH_INPUT>
+template<typename F, bool MatchInput = true>
 std::vector<typename F::Arc::Label> getStartLabels(const F& fst) {
-  static_assert(TYPE == MATCH_INPUT || TYPE == MATCH_OUTPUT,
-                "unsupported match type");
-
   std::set<typename F::Arc::Label> labels;
   for (StateIterator<F> siter(fst); !siter.Done(); siter.Next()) {
     const auto state = siter.Value();
     for (ArcIterator<F> aiter(fst, state); !aiter.Done(); aiter.Next()) {
       const auto& arc = aiter.Value();
-      labels.emplace(TYPE == MATCH_INPUT ? arc.ilabel : arc.olabel);
+      labels.emplace(MatchInput ? arc.ilabel : arc.olabel);
     }
   }
 
@@ -50,7 +47,7 @@ std::vector<typename F::Arc::Label> getStartLabels(const F& fst) {
 }
 
 template<typename F, size_t CacheSize = 256, bool MatchInput = true>
-class TableMatcher : public MatcherBase<typename F::Arc> {
+class TableMatcher final : public MatcherBase<typename F::Arc> {
  public:
   using FST = F;
   using Arc = typename FST::Arc;
@@ -61,22 +58,22 @@ class TableMatcher : public MatcherBase<typename F::Arc> {
   using MatcherBase<Arc>::Flags;
   using MatcherBase<Arc>::Properties;
 
-  static constexpr fst::MatchType TYPE = MatchInput
+  static constexpr fst::MatchType MATCH_TYPE = MatchInput
     ? fst::MATCH_INPUT
     : fst::MATCH_OUTPUT;
 
-  explicit TableMatcher(const FST& fst, Label rho)
-    : start_labels_(fst::getStartLabels<F, TYPE>(fst)),
-      arc_(kNoLabel, kNoLabel, Weight::NoWeight(), kNoStateId),
-      rho_(rho), fst_(&fst) {
-#ifdef IRESEARCH_DEBUG
-    static constexpr auto props = (TYPE == MATCH_INPUT ? kNoIEpsilons : kNoOEpsilons)
-        | (TYPE == MATCH_INPUT ? kILabelSorted : kOLabelSorted)
-        | (TYPE == MATCH_INPUT ? kIDeterministic : kODeterministic)
-        | kAcceptor;
-    assert(fst.Properties(props, true) == props);
-#endif
+  // expected FST properties
+  static constexpr auto FST_PROPERTIES =
+      (MATCH_TYPE == MATCH_INPUT ? kNoIEpsilons : kNoOEpsilons)
+      | (MATCH_TYPE == MATCH_INPUT ? kILabelSorted : kOLabelSorted)
+      | (MATCH_TYPE == MATCH_INPUT ? kIDeterministic : kODeterministic)
+      | kAcceptor;
 
+  explicit TableMatcher(const FST& fst, Label rho)
+    : start_labels_(fst::getStartLabels<F, MatchInput>(fst)),
+      arc_(kNoLabel, kNoLabel, Weight::NoWeight(), kNoStateId),
+      rho_(rho), fst_(&fst),
+      error_(fst.Properties(FST_PROPERTIES, true) != FST_PROPERTIES) {
     const size_t numLabels = start_labels_.size();
 
     // initialize transition table
@@ -150,22 +147,22 @@ class TableMatcher : public MatcherBase<typename F::Arc> {
   }
 
   virtual MatchType Type(bool test) const override {
-    if /*constexpr*/ (TYPE == MATCH_NONE) {
-      return TYPE;
+    if /*constexpr*/ (MATCH_TYPE == MATCH_NONE) {
+      return MATCH_TYPE;
     }
 
-    constexpr const auto true_prop = (TYPE == MATCH_INPUT)
+    constexpr const auto true_prop = (MATCH_TYPE == MATCH_INPUT)
       ? kILabelSorted
       : kOLabelSorted;
 
-    constexpr const auto false_prop = (TYPE == MATCH_INPUT)
+    constexpr const auto false_prop = (MATCH_TYPE == MATCH_INPUT)
       ? kNotILabelSorted
       : kNotOLabelSorted;
 
     const auto props = fst_->Properties(true_prop | false_prop, test);
 
     if (props & true_prop) {
-      return TYPE;
+      return MATCH_TYPE;
     } else if (props & false_prop) {
       return MATCH_NONE;
     } else {
@@ -174,6 +171,7 @@ class TableMatcher : public MatcherBase<typename F::Arc> {
   }
 
   virtual void SetState(StateId s) noexcept final {
+    assert(!error_);
     assert(s*start_labels_.size() < transitions_.size());
     state_begin_ = transitions_.data() + s*start_labels_.size();
     state_ = state_begin_;
@@ -181,12 +179,14 @@ class TableMatcher : public MatcherBase<typename F::Arc> {
   }
 
   virtual bool Find(Label label) noexcept final {
+    assert(!error_);
     auto label_offset = (label < IRESEARCH_COUNTOF(cached_label_offsets_)
                            ? cached_label_offsets_[size_t(label)]
                            : find_label_offset(label));
 
     if (label_offset == start_labels_.size()) {
       if (start_labels_.back() != rho_) {
+        state_ = state_end_;
         return false;
       }
 
@@ -200,15 +200,17 @@ class TableMatcher : public MatcherBase<typename F::Arc> {
   }
 
   virtual bool Done() const noexcept final {
-    return state_ != state_end_;
+    assert(!error_);
+    return state_ == state_end_;
   }
 
   virtual const Arc& Value() const noexcept final {
+    assert(!error_);
     return arc_;
   }
 
   virtual void Next() noexcept final {
-    assert(state_ < state_end_);
+    assert(!error_);
     while (!Done()) {
       if (*++state_ != kNoLabel) {
         auto& label = get_label(arc_);
@@ -227,18 +229,18 @@ class TableMatcher : public MatcherBase<typename F::Arc> {
     return MatcherBase<Arc>::Priority(s);
   }
 
-  virtual const FST &GetFst() const noexcept override {
+  virtual const FST& GetFst() const noexcept override {
     return *fst_;
   }
 
   virtual uint64 Properties(uint64 inprops) const noexcept override {
-    return inprops;// | (error_ ? kError : 0);
+    return inprops | (error_ ? kError : 0);
   }
 
  private:
   template<typename Arc>
   static typename irs::irstd::adjust_const<Arc, typename Arc::Label>::reference& get_label(Arc& arc) {
-    return (TYPE == MATCH_INPUT ? arc.ilabel : arc.olabel);
+    return (MATCH_TYPE == MATCH_INPUT ? arc.ilabel : arc.olabel);
   }
 
   size_t find_label_offset(Label label) const noexcept {
@@ -262,6 +264,7 @@ class TableMatcher : public MatcherBase<typename F::Arc> {
   const Label* state_begin_{};       // Matcher state begin
   const Label* state_end_{};         // Matcher state end
   const Label* state_{};             // Matcher current state
+  bool error_;                       // Matcher validity
 }; // TableMatcher
 
 NS_END // fst

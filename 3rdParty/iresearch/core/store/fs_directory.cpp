@@ -39,7 +39,7 @@
 
 NS_LOCAL
 
-inline size_t buffer_size(FILE* file) noexcept {
+inline size_t buffer_size(void* file) noexcept {
   UNUSED(file);
   return 1024;
 //  auto block_size = irs::file_utils::block_size(file_no(file));
@@ -51,8 +51,6 @@ inline size_t buffer_size(FILE* file) noexcept {
 //
 //  return block_size;
 }
-
-#if !defined(__APPLE__)
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief converts the specified IOAdvice to corresponding posix fadvice
@@ -75,13 +73,11 @@ inline int get_posix_fadvice(irs::IOAdvice advice) {
 
   IR_FRMT_ERROR(
     "fadvice '%d' is not valid (RANDOM|SEQUENTIAL), fallback to NORMAL",
-    uint32_t(advice)
-  );
+    uint32_t(advice));
 
   return IR_FADVICE_NORMAL;
 }
 
-#endif
 
 NS_END
 
@@ -180,7 +176,9 @@ class fs_index_output : public buffered_index_output {
   static index_output::ptr open(const file_path_t name) noexcept {
     assert(name);
 
-    file_utils::handle_t handle(file_open(name, "wb"));
+    file_utils::handle_t handle(irs::file_utils::open(name, 
+                                                      irs::file_utils::OpenMode::Write,
+                                                      IR_FADVICE_NORMAL));
 
     if (nullptr == handle) {
       typedef std::remove_pointer<file_path_t>::type char_t;
@@ -189,8 +187,11 @@ class fs_index_output : public buffered_index_output {
 
       irs::locale_utils::append_external<char_t>(path, name, locale);
 
-      // even win32 uses 'errno' fo error codes in calls to file_open(...)
+#ifdef _WIN32
+      IR_FRMT_ERROR("Failed to open output file, error: %d, path: %s", GetLastError(), path.c_str());
+#else
       IR_FRMT_ERROR("Failed to open output file, error: %d, path: %s", errno, path.c_str());
+#endif
 
       return nullptr;
     }
@@ -200,8 +201,7 @@ class fs_index_output : public buffered_index_output {
     try {
       return fs_index_output::make<fs_index_output>(
         std::move(handle),
-        buf_size
-      );
+        buf_size);
     } catch(...) {
       IR_LOG_EXCEPTION();
     }
@@ -223,14 +223,13 @@ class fs_index_output : public buffered_index_output {
   virtual void flush_buffer(const byte_type* b, size_t len) override {
     assert(handle);
 
-    const auto len_written = fwrite_unlocked(b, sizeof(byte_type), len, handle.get());
+    const auto len_written = irs::file_utils::fwrite(handle.get(), b, sizeof(byte_type) * len);
     crc.process_bytes(b, len_written);
 
     if (len && len_written != len) {
       throw io_error(string_utils::to_string(
         "failed to write buffer, written '" IR_SIZE_T_SPECIFIER "' out of '" IR_SIZE_T_SPECIFIER "' bytes",
-        len_written, len
-      ));
+        len_written, len));
     }
   }
 
@@ -275,16 +274,13 @@ class fs_index_input : public buffered_index_input {
   }
 
   static index_input::ptr open(
-    const file_path_t name, size_t pool_size, IOAdvice /*advice*/
+    const file_path_t name, size_t pool_size, IOAdvice advice
   ) noexcept {
-    // FIXME honor IOAdvice
-    // FIXME On Windows use FILE_FLAG_SEQUENTIAL_SCAN in CreateFile
-
     assert(name);
 
     auto handle = file_handle::make();
-
-    handle->handle = file_open(name, "rb");
+    handle->posix_open_advice = get_posix_fadvice(advice);
+    handle->handle = irs::file_utils::open(name, irs::file_utils::OpenMode::Read, handle->posix_open_advice);
 
     if (nullptr == handle->handle) {
       typedef std::remove_pointer<file_path_t>::type char_t;
@@ -293,16 +289,18 @@ class fs_index_input : public buffered_index_input {
 
       irs::locale_utils::append_external<char_t>(path, name, locale);
 
-      // even win32 uses 'errno' for error codes in calls to file_open(...)
+#ifdef _WIN32
+      IR_FRMT_ERROR("Failed to open input file, error: %d, path: %s", GetLastError(), path.c_str());
+#else
       IR_FRMT_ERROR("Failed to open input file, error: %d, path: %s", errno, path.c_str());
+#endif
+
 
       return nullptr;
     }
 
-    // convert file descriptor to POSIX
     uint64_t size;
-
-    if (!file_utils::byte_size(size, file_no(*handle))) {
+    if (!file_utils::byte_size(size, *handle)) {
       typedef std::remove_pointer<file_path_t>::type char_t;
       auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true); // utf8 internal and external
       std::string path;
@@ -328,8 +326,7 @@ class fs_index_input : public buffered_index_input {
       return fs_index_input::make<fs_index_input>(
         std::move(handle),
         buf_size,
-        pool_size
-      );
+        pool_size);
     } catch(...) {
       IR_LOG_EXCEPTION();
     }
@@ -348,8 +345,7 @@ class fs_index_input : public buffered_index_input {
     if (pos >= handle_->size) {
       throw io_error(string_utils::to_string(
         "seek out of range for input file, length '" IR_SIZE_T_SPECIFIER "', position '" IR_SIZE_T_SPECIFIER "'",
-        handle_->size, pos
-      ));
+        handle_->size, pos));
     }
 
     pos_ = pos;
@@ -359,24 +355,22 @@ class fs_index_input : public buffered_index_input {
     assert(b);
     assert(handle_->handle);
 
-    FILE* stream = *handle_;
+    void* fd = *handle_;
 
     if (handle_->pos != pos_) {
-      if (fseek(stream, static_cast<long>(pos_), SEEK_SET) != 0) {
+      if (irs::file_utils::fseek(fd, static_cast<long>(pos_), SEEK_SET) != 0) {
         throw io_error(string_utils::to_string(
           "failed to seek to '" IR_SIZE_T_SPECIFIER "' for input file, error '%d'",
-          pos_, ferror(stream)
-        ));
+          pos_, irs::file_utils::ferror(fd)));
       }
-
       handle_->pos = pos_;
     }
 
-    size_t read = fread_unlocked(b, sizeof(byte_type), len, stream);
+    size_t read = irs::file_utils::fread(fd, b, sizeof(byte_type) * len);
     pos_ = handle_->pos += read;
 
     if (read != len) {
-      if (feof_unlocked(stream)) {
+      if (0 == read) {
         //eof(true);
         // read past eof
         throw eof_error();
@@ -385,8 +379,7 @@ class fs_index_input : public buffered_index_input {
       // read error
       throw io_error(string_utils::to_string(
         "failed to read from input file, read '" IR_SIZE_T_SPECIFIER "' out of '" IR_SIZE_T_SPECIFIER "' bytes, error '%d'",
-        read, len, ferror(stream)
-      ));
+        read, len, irs::file_utils::ferror(fd)));
     }
 
     assert(handle_->pos == pos_);
@@ -403,11 +396,12 @@ class fs_index_input : public buffered_index_input {
     DECLARE_SHARED_PTR(file_handle);
     DECLARE_FACTORY();
 
-    operator FILE*() const { return handle.get(); }
+    operator void*() const { return handle.get(); }
 
     file_utils::handle_t handle; /* native file handle */
     size_t size{}; /* file size */
     size_t pos{}; /* current file position*/
+    int posix_open_advice{ IR_FADVICE_NORMAL };
   }; // file_handle
 
   DEFINE_FACTORY_INLINE(index_input)
@@ -484,21 +478,32 @@ fs_index_input::file_handle::ptr pooled_fs_index_input::reopen(
   auto handle = const_cast<pooled_fs_index_input*>(this)->fd_pool_->emplace().release();
 
   if (!handle->handle) {
-    handle->handle = file_open(src, "rb"); // same permission as in fs_index_input::open(...)
+    handle->handle = irs::file_utils::open(src, irs::file_utils::OpenMode::Read, src.posix_open_advice); // same permission as in fs_index_input::open(...)
 
     if (!handle->handle) {
       // even win32 uses 'errno' for error codes in calls to file_open(...)
       throw io_error(string_utils::to_string(
-        "Failed to reopen input file, error: %d", errno
+        "Failed to reopen input file, error: %d",
+#ifdef _WIN32
+        GetLastError()
+#else
+        errno
+#endif
       ));
     }
+    handle->posix_open_advice = src.posix_open_advice;
   }
 
-  const auto pos = ::ftell(handle->handle.get()); // match position of file descriptor
+  const auto pos = irs::file_utils::ftell(handle->handle.get()); // match position of file descriptor
 
   if (pos < 0) {
     throw io_error(string_utils::to_string(
-      "Failed to obtain currnt position of input file, error: %d", errno
+      "Failed to obtain currnt position of input file, error: %d",
+#ifdef _WIN32
+      GetLastError()
+#else
+      errno
+#endif
     ));
   }
 
