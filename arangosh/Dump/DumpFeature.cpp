@@ -994,7 +994,7 @@ Result DumpFeature::storeDumpJson(VPackSlice const& body, std::string const& dbN
     meta.add("database", VPackValue(dbName));
     meta.add("lastTickAtDumpStart", VPackValue(tickString));
     auto props = body.get("properties");
-    if(props.isObject()) {
+    if (props.isObject()) {
       meta.add("properties", props);
     }
     meta.close();

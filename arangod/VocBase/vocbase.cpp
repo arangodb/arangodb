@@ -1821,13 +1821,13 @@ void TRI_vocbase_t::addReplicationApplier() {
 }
 
 void TRI_vocbase_t::toVelocyPack(VPackBuilder& result) const {
-    VPackObjectBuilder b(&result);
-    _info.toVelocyPack(result);
-    if (ServerState::instance()->isCoordinator()) {
-      result.add("path", VPackValue(path()));
-    } else {
-      result.add("path", VPackValue("none"));
-    }
+  VPackObjectBuilder b(&result);
+  _info.toVelocyPack(result);
+  if (ServerState::instance()->isCoordinator()) {
+    result.add("path", VPackValue(path()));
+  } else {
+    result.add("path", VPackValue("none"));
+  }
 }
 
 /// @brief sets prototype collection for sharding (_users or _graphs)

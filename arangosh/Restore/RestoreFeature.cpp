@@ -305,7 +305,7 @@ arangodb::Result tryCreateDatabase(arangodb::application_features::ApplicationSe
     object->add(arangodb::StaticStrings::DatabaseName, VPackValue(name));
 
     // add replication factor write concern etc
-    if(properties.isObject()) {
+    if (properties.isObject()) {
       ObjectBuilder guard(&builder, "options");
       for(auto const& key : std::vector<std::string>{
         arangodb::StaticStrings::MinReplicationFactor,
@@ -313,7 +313,7 @@ arangodb::Result tryCreateDatabase(arangodb::application_features::ApplicationSe
         arangodb::StaticStrings::Sharding,
       }) {
         VPackSlice slice = properties.get(key);
-        if (!slice.isNone()){
+        if (!slice.isNone()) {
           object->add(key, slice);
         }
       }
@@ -390,7 +390,7 @@ void getDBProperties(arangodb::ManagedDirectory& directory, VPackBuilder& builde
 
   try {
     auto props = fileContentBuilder.slice().get(arangodb::StaticStrings::Properties);
-    if(props.isObject()) {
+    if (props.isObject()) {
       slice = props;
     }
   } catch (...) {

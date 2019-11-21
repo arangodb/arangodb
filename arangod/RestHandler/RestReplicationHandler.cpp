@@ -705,7 +705,7 @@ void RestReplicationHandler::handleCommandClusterInventory() {
 
   DatabaseFeature& databaseFeature = _vocbase.server().getFeature<DatabaseFeature>();
   TRI_vocbase_t* vocbase = databaseFeature.lookupDatabase(dbName);
-  if(vocbase) {
+  if (vocbase) {
     resultBuilder.add(VPackValue(StaticStrings::Properties));
     vocbase->toVelocyPack(resultBuilder);
   }

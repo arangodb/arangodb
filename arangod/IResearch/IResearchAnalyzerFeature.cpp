@@ -1793,7 +1793,7 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
         return {}; // db-server should not access cluster during inRecovery
       }
     } else if (ServerState::instance()->isSingleServer()) { // single server
-      if(itr != _lastLoad.end()) {
+      if (itr != _lastLoad.end()) {
         return {}; // do not reload on single-server
       }
     } else if (itr != _lastLoad.end() // had a previous load
