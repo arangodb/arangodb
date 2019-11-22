@@ -47,7 +47,7 @@ RestDocumentHandler::RestDocumentHandler(application_features::ApplicationServer
                                          GeneralRequest* request, GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {
   if(request->requestType() == rest::RequestType::POST
-      && request->contentLength() > 120) {
+      && request->contentLength() <= 1024) {
     _allowDirectExecution = true;
   }
 }
