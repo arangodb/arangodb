@@ -99,6 +99,13 @@ class DumpRestoreHelper {
     print(CYAN + Date() + ': ' + this.which + ' and Restore - ' + s + RESET);
   }
 
+  adjustRestoreToDump()
+  {
+    this.restoreOptions = this.dumpOptions;
+    this.restoreConfig = pu.createBaseConfig('restore', this.dumpOptions, this.instanceInfo);
+    this.arangorestore = pu.run.arangoDumpRestoreWithConfig.bind(this, this.restoreConfig, this.restoreOptions, this.instanceInfo.rootDir, this.options.coreCheck);
+  }
+
   isAlive() {
     return pu.arangod.check.instanceAlive(this.instanceInfo, this.options);
   }
@@ -126,16 +133,40 @@ class DumpRestoreHelper {
     return this.validate(this.results.setup);
   }
 
-  dumpFrom(database) {
+  runCleanupSuite(path) {
+    this.print('Cleaning up');
+    this.results.cleanup = this.arangosh(path, this.clientAuth);
+    return this.validate(this.results.setup);
+  }
+
+  dumpFrom(database, separateDir = false) {
     this.print('dump');
+    if (separateDir) {
+      if (!fs.exists(fs.join(this.instanceInfo.rootDir, 'dump'))) {
+        fs.makeDirectory(fs.join(this.instanceInfo.rootDir, 'dump'));
+      }
+      this.dumpConfig.setOutputDirectory('dump' + fs.pathSeparator + database);
+    }
+
     this.dumpConfig.setDatabase(database);
     this.results.dump = this.arangodump();
     return this.validate(this.results.dump);
   }
 
-  restoreTo(database) {
+  restoreTo(database, options = { separate: false, fromDir: '' }) {
     this.print('restore');
-    this.restoreConfig.setDatabase(database);
+
+    if (options.hasOwnProperty('separate') && options.separate === true) {
+      if (!options.hasOwnProperty('fromDir') || typeof options.fromDir !== 'string') {
+        options.fromDir = database;
+      }
+      if (!fs.exists(fs.join(this.instanceInfo.rootDir, 'dump'))) {
+        fs.makeDirectory(fs.join(this.instanceInfo.rootDir, 'dump'));
+      }
+      this.restoreConfig.setInputDirectory('dump' + fs.pathSeparator + options.fromDir, true);
+    }
+
+      this.restoreConfig.setDatabase(database);
     this.results.restore = this.arangorestore();
     return this.validate(this.results.restore);
   }
@@ -252,15 +283,31 @@ function dump_backend (options, serverAuthInfo, clientAuth, dumpOptions, restore
   const helper = new DumpRestoreHelper(instanceInfo, options, clientAuth, dumpOptions, restoreOptions, which, afterServerStart);
  
   const setupFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpSetup));
+  const cleanupFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpCleanup));
   const testFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpAgain));
   const tearDownFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpTearDown));
-  if (
-    !helper.runSetupSuite(setupFile) ||
-    !helper.dumpFrom('UnitTestsDumpSrc') ||
-    !helper.restoreTo('UnitTestsDumpDst') ||
-    !helper.runTests(testFile,'UnitTestsDumpDst') ||
-    !helper.tearDown(tearDownFile)) {
-    return helper.extractResults();
+
+  if (options.hasOwnProperty("multipleDumps") && options.multipleDumps) {
+    if (!helper.runSetupSuite(setupFile) ||
+        !helper.dumpFrom('_system', true) ||
+        !helper.dumpFrom('UnitTestsDumpSrc', true) ||
+        !helper.runCleanupSuite(cleanupFile) ||
+        !helper.restoreTo('UnitTestsDumpDst', { separate: true, fromDir: 'UnitTestsDumpSrc'}) ||
+        !helper.restoreTo('_system', { separate: true }) ||
+        !helper.runTests(testFile,'UnitTestsDumpDst') ||
+        !helper.tearDown(tearDownFile)) {
+      return helper.extractResults();
+    }
+  }
+  else {
+    if (!helper.runSetupSuite(setupFile) ||
+        !helper.dumpFrom('UnitTestsDumpSrc') ||
+        !helper.runCleanupSuite(cleanupFile) ||
+        !helper.restoreTo('UnitTestsDumpDst') ||
+        !helper.runTests(testFile,'UnitTestsDumpDst') ||
+        !helper.tearDown(tearDownFile)) {
+      return helper.extractResults();
+    }
   }
 
   if (tstFiles.hasOwnProperty("dumpCheckGraph")) {
@@ -275,6 +322,10 @@ function dump_backend (options, serverAuthInfo, clientAuth, dumpOptions, restore
 
   if (tstFiles.hasOwnProperty("foxxTest")) {
     const foxxTestFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.foxxTest));
+    if (options.hasOwnProperty("multipleDumps") && options.multipleDumps) {
+      helper.adjustRestoreToDump();
+      helper.restoreConfig.setInputDirectory(fs.join('dump','UnitTestsDumpSrc'), true);
+    }
     if (!helper.restoreFoxxComplete('UnitTestsDumpFoxxComplete') ||
         !helper.testFoxxComplete(foxxTestFile, 'UnitTestsDumpFoxxComplete') ||
         !helper.restoreFoxxAppsBundle('UnitTestsDumpFoxxAppsBundle') ||
@@ -292,6 +343,7 @@ function dump (options) {
   let c = getClusterStrings(options);
   let tstFiles = {
     dumpSetup: 'dump-setup' + c.cluster + '.js',
+    dumpCleanup: 'cleanup-nothing.js',
     dumpAgain: 'dump-' + options.storageEngine + c.cluster + '.js',
     dumpTearDown: 'dump-teardown' + c.cluster + '.js',
     dumpCheckGraph: 'check-graph.js',
@@ -302,20 +354,6 @@ function dump (options) {
 }
 
 function dumpAuthentication (options) {
-  if (options.cluster) {
-    if (options.extremeVerbosity) {
-      print(CYAN + 'Skipped because of cluster.' + RESET);
-    }
-
-    return {
-      'dump_authentication': {
-        'status': true,
-        'message': 'skipped because of cluster',
-        'skipped': true
-      }
-    };
-  }
-
   const clientAuth = {
     'server.authentication': 'true'
   };
@@ -330,15 +368,26 @@ function dumpAuthentication (options) {
     password: 'foobarpasswd'
   };
 
+  let restoreAuthOpts = {
+    username: 'foobaruser',
+    password: 'pinus'
+  };
+
   _.defaults(dumpAuthOpts, options);
+  _.defaults(restoreAuthOpts, options);
+
   let tstFiles = {
     dumpSetup: 'dump-authentication-setup.js',
+    dumpCleanup: 'cleanup-alter-user.js',
     dumpAgain: 'dump-authentication.js',
     dumpTearDown: 'dump-teardown.js',
     foxxTest: 'check-foxx.js'
   };
 
-  return dump_backend(options, serverAuthInfo, clientAuth, dumpAuthOpts, dumpAuthOpts, 'dump_authentication', tstFiles, function(){});
+  options.multipleDumps = true;
+  options['server.jwt-secret'] = 'haxxmann';
+
+  return dump_backend(options, serverAuthInfo, clientAuth, dumpAuthOpts, restoreAuthOpts, 'dump_authentication', tstFiles, function(){});
 }
 
 function dumpEncrypted (options) {
@@ -374,6 +423,7 @@ function dumpEncrypted (options) {
   
   let tstFiles = {
     dumpSetup: 'dump-setup' + c.cluster + '.js',
+    dumpCleanup: 'cleanup-nothing.js',
     dumpAgain: 'dump-' + options.storageEngine + c.cluster + '.js',
     dumpTearDown: 'dump-teardown' + c.cluster + '.js',
     foxxTest: 'check-foxx.js'
@@ -404,6 +454,7 @@ function dumpMaskings (options) {
 
   let tstFiles = {
     dumpSetup: 'dump-maskings-setup.js',
+    dumpCleanup: 'cleanup-nothing.js',
     dumpAgain: 'dump-maskings.js',
     dumpTearDown: 'dump-teardown.js'
   };
