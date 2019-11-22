@@ -453,7 +453,7 @@ SharedAqlItemBlockPtr AqlItemBlock::slice(size_t from, size_t to) const {
       AqlValue const& a(_data[getAddress(row, col)]);
       ::CopyValueOver(cache, a, row - from, col, res);
     }
-    copySubQueryDepthToOtherBlock(res, row, row - from);
+    res->copySubQueryDepthFromOtherBlock(row - from, *this, row);
   }
 
   return res;
@@ -476,7 +476,7 @@ SharedAqlItemBlockPtr AqlItemBlock::slice(size_t row,
     AqlValue const& a(_data[getAddress(row, col)]);
     ::CopyValueOver(cache, a, 0, col, res);
   }
-  copySubQueryDepthToOtherBlock(res, row, 0);
+  res->copySubQueryDepthFromOtherBlock(0, *this, row);
 
   return res;
 }
@@ -492,12 +492,14 @@ SharedAqlItemBlockPtr AqlItemBlock::slice(std::vector<size_t> const& chosen,
 
   SharedAqlItemBlockPtr res{_manager.requestBlock(to - from, _nrRegs)};
 
-  for (size_t row = from; row < to; row++) {
+  size_t resultRowIdx = 0;
+  for (size_t chosenIdx = from; chosenIdx < to; ++chosenIdx, ++resultRowIdx) {
+    size_t const rowIdx = chosen[chosenIdx];
     for (RegisterId col = 0; col < _nrRegs; col++) {
-      AqlValue const& a(_data[getAddress(chosen[row], col)]);
-      ::CopyValueOver(cache, a, row - from, col, res);
+      AqlValue const& a = _data[getAddress(rowIdx, col)];
+      ::CopyValueOver(cache, a, resultRowIdx, col, res);
     }
-    copySubQueryDepthToOtherBlock(res, row, row - from);
+    res->copySubQueryDepthFromOtherBlock(resultRowIdx, *this, rowIdx);
   }
 
   return res;
@@ -732,13 +734,14 @@ ResourceMonitor& AqlItemBlock::resourceMonitor() noexcept {
   return *_manager.resourceMonitor();
 }
 
-void AqlItemBlock::copySubQueryDepthToOtherBlock(SharedAqlItemBlockPtr& target,
-                                                 size_t sourceRow, size_t targetRow) const {
-  if (isShadowRow(sourceRow)) {
-    AqlValue const& d = getShadowRowDepth(sourceRow);
+void AqlItemBlock::copySubQueryDepthFromOtherBlock(size_t const targetRow,
+                                                   AqlItemBlock const& source,
+                                                   size_t const sourceRow) {
+  if (source.isShadowRow(sourceRow)) {
+    AqlValue const& d = source.getShadowRowDepth(sourceRow);
     // Value set, copy it over
     TRI_ASSERT(!d.requiresDestruction());
-    target->setShadowRowDepth(targetRow, d);
+    setShadowRowDepth(targetRow, d);
   }
 }
 
@@ -964,4 +967,28 @@ void AqlItemBlock::copySubqueryDepth(size_t currentRow, size_t fromRow) {
   if (!_data[fromAddress].isEmpty() && _data[currentAddress].isEmpty()) {
     _data[currentAddress] = _data[fromAddress];
   }
+}
+
+size_t AqlItemBlock::moveOtherBlockHere(size_t const targetRow, AqlItemBlock& source) {
+  TRI_ASSERT(targetRow + source.size() <= this->size());
+  TRI_ASSERT(getNrRegs() == source.getNrRegs());
+  auto const n = source.size();
+  auto const nrRegs = getNrRegs();
+
+  size_t thisRow = targetRow;
+  for (size_t sourceRow = 0; sourceRow < n; ++sourceRow, ++thisRow) {
+    for (RegisterId col = 0; col < nrRegs; ++col) {
+      // copy over value
+      AqlValue const& a = source.getValueReference(sourceRow, col);
+      if (!a.isEmpty()) {
+        setValue(thisRow, col, a);
+      }
+    }
+    copySubQueryDepthFromOtherBlock(thisRow, source, sourceRow);
+  }
+  source.eraseAll();
+
+  TRI_ASSERT(thisRow == targetRow + n);
+
+  return targetRow + n;
 }
