@@ -85,7 +85,6 @@ class DumpRestoreHelper {
     }
 
     this.restoreConfig = pu.createBaseConfig('restore', this.restoreOptions, this.instanceInfo);
-    this.restoreConfig = pu.createBaseConfig('restore', this.restoreOptions, this.instanceInfo);
     this.restoreConfig.setInputDirectory('dump', true);
     this.restoreConfig.setIncludeSystem(true);
 
@@ -674,7 +673,7 @@ exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTest
   defaultFns.push('dump_multiple');
 
   testFns['hot_backup'] = hotBackup;
-  defaultFns.push('hotBackup');
+  defaultFns.push('hot_backup');
 
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
   for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
