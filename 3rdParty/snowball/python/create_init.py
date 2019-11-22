@@ -9,7 +9,7 @@ python_out_folder = sys.argv[1]
 filematch = re.compile(r"(\w+)_stemmer\.py$")
 
 imports = []
-languages = ['_languages = {']
+languages = []
 
 for pyscript in os.listdir(python_out_folder):
     match = filematch.match(pyscript)
@@ -18,12 +18,16 @@ for pyscript in os.listdir(python_out_folder):
         titlecase = langname.title()
         languages.append("    '%(lang)s': %(title)sStemmer," % {'lang': langname, 'title': titlecase})
         imports.append('from .%(lang)s_stemmer import %(title)sStemmer' % {'lang': langname, 'title': titlecase})
-languages.append('}');
+imports.sort()
+languages.sort()
+
 src = '''__all__ = ('language', 'stemmer')
 
 %(imports)s
 
+_languages = {
 %(languages)s
+}
 
 try:
     import Stemmer
@@ -46,6 +50,5 @@ def stemmer(lang):
         raise KeyError("Stemming algorithm '%%s' not found" %% lang)
 ''' % {'imports': '\n'.join(imports), 'languages': '\n'.join(languages)}
 
-out = open(os.path.join(python_out_folder, '__init__.py'), 'w')
-out.write(src)
-out.close()
+with open(os.path.join(python_out_folder, '__init__.py'), 'w') as out:
+    out.write(src)

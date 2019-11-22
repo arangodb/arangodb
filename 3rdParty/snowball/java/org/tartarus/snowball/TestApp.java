@@ -12,6 +12,7 @@ import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.Reader;
 import java.io.Writer;
+import java.nio.charset.StandardCharsets;
 
 public class TestApp {
     private static void usage()
@@ -49,10 +50,10 @@ public class TestApp {
 	    outstream = System.out;
 	}
 
-	Reader reader = new InputStreamReader(instream);
+	Reader reader = new InputStreamReader(instream, StandardCharsets.UTF_8);
 	reader = new BufferedReader(reader);
 
-	Writer output = new OutputStreamWriter(outstream);
+	Writer output = new OutputStreamWriter(outstream, StandardCharsets.UTF_8);
 	output = new BufferedWriter(output);
 
 	StringBuffer input = new StringBuffer();

@@ -1,5 +1,4 @@
 This contains the source code for the snowball compiler and the stemming
-algorithms on the website.
+algorithms.
 
-See http://snowballstem.org/ for more details.
-
+See https://snowballstem.org/ for more details.

@@ -1,0 +1,93 @@
+routines (
+           mark_regions
+           main_suffix
+           consonant_pair
+           other_suffix
+           undouble
+)
+
+externals ( stem )
+
+strings ( ch )
+
+integers ( p1 x )
+
+groupings ( c v s_ending )
+
+stringescapes {}
+
+/* special characters */
+
+stringdef ae   '{U+00E6}'
+stringdef ao   '{U+00E5}'
+stringdef o/   '{U+00F8}'
+
+define c 'bcdfghjklmnpqrstvwxz'
+
+define v 'aeiouy{ae}{ao}{o/}'
+
+define s_ending  'abcdfghjklmnoprtvyz{ao}'
+
+define mark_regions as (
+
+    $p1 = limit
+
+    test ( hop 3 setmark x )
+    goto v gopast non-v  setmark p1
+    try ( $p1 < x  $p1 = x )
+)
+
+backwardmode (
+
+    define main_suffix as (
+        setlimit tomark p1 for ([substring])
+        among(
+
+            'hed' 'ethed' 'ered' 'e' 'erede' 'ende' 'erende' 'ene' 'erne' 'ere'
+            'en' 'heden' 'eren' 'er' 'heder' 'erer' 'heds' 'es' 'endes'
+            'erendes' 'enes' 'ernes' 'eres' 'ens' 'hedens' 'erens' 'ers' 'ets'
+            'erets' 'et' 'eret'
+                (delete)
+            's'
+                (s_ending delete)
+        )
+    )
+
+    define consonant_pair as (
+        test (
+            setlimit tomark p1 for ([substring])
+            among(
+                'gd' // significant in the call from other_suffix
+                'dt' 'gt' 'kt'
+            )
+        )
+        next] delete
+    )
+
+    define other_suffix as (
+        do ( ['st'] 'ig' delete )
+        setlimit tomark p1 for ([substring])
+        among(
+            'ig' 'lig' 'elig' 'els'
+                (delete do consonant_pair)
+            'l{o/}st'
+                (<-'l{o/}s')
+        )
+    )
+    define undouble as (
+        setlimit tomark p1 for ([c] ->ch)
+        ch
+        delete
+    )
+)
+
+define stem as (
+
+    do mark_regions
+    backwards (
+        do main_suffix
+        do consonant_pair
+        do other_suffix
+        do undouble
+    )
+)

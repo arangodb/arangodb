@@ -32,9 +32,9 @@ const char ** sb_stemmer_list(void);
  *
  *  @param charenc The character encoding.  NULL may be passed as
  *  this value, in which case UTF-8 encoding will be assumed. Otherwise,
- *  the argument may be one of "UTF_8", "ISO_8859_1" (ie, Latin 1),
- *  "CP850" (ie, MS-DOS Latin 1) or "KOI8_R" (Russian).  Note that
- *  case is significant in this parameter.
+ *  the argument may be one of "UTF_8", "ISO_8859_1" (i.e. Latin 1),
+ *  "ISO_8859_2" (i.e. Latin 2) or "KOI8_R" (Russian).  Note that case is
+ *  significant in this parameter.
  *
  *  @return NULL if the specified algorithm is not recognised, or the
  *  algorithm is not available for the requested encoding.  Otherwise,
@@ -66,7 +66,7 @@ void                sb_stemmer_delete(struct sb_stemmer * stemmer);
  *  If an out-of-memory error occurs, this will return NULL.
  */
 const sb_symbol *   sb_stemmer_stem(struct sb_stemmer * stemmer,
-				    const sb_symbol * word, int size);
+                                    const sb_symbol * word, int size);
 
 /** Get the length of the result of the last stemmed word.
  *  This should not be called before sb_stemmer_stem() has been called.
@@ -76,4 +76,3 @@ int                 sb_stemmer_length(struct sb_stemmer * stemmer);
 #ifdef __cplusplus
 }
 #endif
-

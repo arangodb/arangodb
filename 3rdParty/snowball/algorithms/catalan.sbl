@@ -1,0 +1,202 @@
+routines (
+           cleaning mark_regions
+           R1  R2
+           attached_pronoun
+           standard_suffix
+           verb_suffix
+           residual_suffix
+)
+
+externals ( stem )
+
+integers ( p1 p2 )
+
+groupings ( v )
+
+stringescapes {}
+
+/* special characters */
+
+stringdef a'   '{U+00E1}'  // a-acute
+stringdef a`   '{U+00E0}'  // a-grave
+stringdef c,   '{U+00E7}'  // c-cedilla
+stringdef e'   '{U+00E9}'  // e-acute
+stringdef e`   '{U+00E8}'  // e-grave
+stringdef i'   '{U+00ED}'  // i-acute
+stringdef i`   '{U+00EC}'  // i-grave
+stringdef i"   '{U+00EF}'  // i-diaeresis
+stringdef o'   '{U+00F3}'  // o-acute
+stringdef o`   '{U+00F2}'  // o-grave
+stringdef u'   '{U+00FA}'  // u-acute
+stringdef u"   '{U+00FC}'  // u-diaeresis
+stringdef .    '{U+00B7}'   // - per l aggeminades
+
+define v 'aeiou{a'}{a`}{e'}{e`}{i'}{i"}{o'}{o`}{u'}{u"}'
+
+define mark_regions as (
+
+    $p1 = limit
+    $p2 = limit  // defaults
+
+    do (
+        gopast v gopast non-v setmark p1
+        gopast v gopast non-v setmark p2
+    )
+)
+
+define cleaning as repeat (
+    [substring] among(
+        '{a'}' (<- 'a')
+        '{a`}' (<- 'a')
+        '{e'}' (<- 'e')
+        '{e`}' (<- 'e')
+        '{i'}' (<- 'i')
+        '{i`}' (<- 'i')
+        '{o'}' (<- 'o')
+        '{o`}' (<- 'o')
+        '{u'}' (<- 'u')
+        '{u"}' (<- 'u')
+        '{i"}' (<- 'i')
+        '{.}' (<- '.')
+        ''     (next)
+    )
+)
+
+backwardmode (
+
+    define R1 as $p1 <= cursor
+    define R2 as $p2 <= cursor
+
+    define attached_pronoun as (
+    [substring] among (
+        '{'}s'  '{'}hi' '{'}ho' '{'}l' '{'}ls'
+        '-ls' '-la' '-les' '-li'
+        'vos' 'se'  'nos' '-nos' '-us' 'us'
+        '{'}n' '{'}ns' '-n' '-ns'
+        '{'}m' '-me' '-m'
+        '-te' '{'}t'
+        'li' 'lo' 'los'
+        'me'  'sela' 'selo' 'selas' 'selos' 'le'
+        'la' 'las' 'les' 'ens' 'ho' 'hi'
+        (R1 delete)
+    )
+    )
+
+    define standard_suffix as (
+        [substring] among(
+            'ar' 'atge' 'formes' 'icte' 'ictes'
+            'ell' 'ells' 'ella'  '{e'}s' '{e`}s' 'esc' 'essa' 'et' 'ets' 'eta'
+            'eres' 'eries' 'ers' 'ina' 'ines' 'able' 'ls'
+            'i{o'}' 'itat' 'itats' 'itzar' 'iva' 'ives' 'ivisme' 'ius'
+            'fer' 'ment' 'amen' 'ament' 'aments' 'ments' 'ot' 'sfera' 'al' 'als' 'era' 'ana' 'iste'
+            'aire' 'eria' 'esa' 'eses' 'esos' 'or' '{i'}cia' '{i'}cies' 'icis' 'ici' '{i'}ci' '{i'}cis'
+            '{a`}ria' '{a`}ries' 'alla' 'ci{o'}' 'cions' 'n{c,}a' 'nces' '{o'}' 'dor' 'all'
+            'il' '{i'}stic' 'enc' 'enca' '{i'}s' 'issa' 'issos' '{i'}ssem' '{i'}ssiu' 'issem' 'isseu' '{i'}sseu'
+            '{o'}s' 'osa'  'dora' 'dores' 'dors' 'adura' 'ble' 'bles' '{i'}vol' '{i'}vola' 'd{i'}s' 'egar' 'ejar' 'ificar'
+            'itar' 'ables' 'adors' 'idores' 'idors'
+            'adora' 'aci{o'}' 'doras' 'dur' 'dures' 'alleng{u"}es'
+            'ant' 'ants' 'ancia' 'ancies' 'at{o`}ria' 'at{o`}ries' 'tori' 'toris'
+            'ats' 'ions'  'ota' 'isam' 'ors' 'ora' 'ores' 'isament'
+            'bilitat' 'bilitats' 'ivitat' 'ivitats' 'ari' 'aris' 'ionisme' 'ionista' 'ionistes'
+            'ialista' 'ialistes' 'ialisme' 'ialismes' 'ud' 'uts' 'uds' 'encia' 'encies' '{e`}ncia' '{e`}ncies'
+            '{i"}tat' '{i"}tats' 'atiu' 'atius' 'atives' 'ativa' 'ativitat' 'ativitats' 'ible' 'ibles'
+            'assa' 'asses' 'assos'
+             'ent' 'ents'
+             '{i'}ssim' '{i'}ssima' '{i'}ssims' '{i'}ssimes' '{i`}ssem' '{i`}sseu' '{i`}ssin'
+             'ims' 'ima' 'imes'
+             'isme' 'ista' 'ismes' 'istes'
+             'inia' 'inies' '{i'}inia' '{i'}nies' 'ita' 'ites' 'triu' 'trius'
+             'oses' 'osos' 'ient' 'otes' 'ots'
+            (R1 delete)
+            'acions' 'ada' 'ades'
+            (R2 delete)
+            'log{i'}a' 'log{i'}es''logia' 'logies' 'logi' 'logis' 'l{o'}gica' 'l{o'}gics' 'l{o'}giques'
+            (R2 <- 'log')
+            'ic' 'ica' 'ics' 'iques'
+            (R2 <- 'ic')
+            'qu{i'}ssim' 'qu{i'}ssims' 'qu{i'}ssimes' 'qu{i'}ssima'
+            (R1 <- 'c')
+        )
+    )
+
+    define verb_suffix as (
+        [substring] among(
+            'ador' 'adora'  'adors' 'adores' 're' 'ie'
+             'ent' 'ents' 'udes' 'ar{a`}' 'eren'
+            'ar{a'}' 'ar{i'}an' 'ar{i'}as' 'ar{a'}n' 'ar{a'}s' 'ar{i'}ais'
+            'aria' 'arian' 'arien' 'aries' 'ar{a`}s'
+            'ar{i'}a' 'ar{e'}is' 'ar{i'}amos' 'aremos' 'ara'
+            'ar{e'}' 'ar{e'}s'
+            'er{i'}an' 'er{i'}as' 'er{a'}n' 'er{a'}s' 'er{i'}ais'
+            'er{i'}a' 'er{e'}is' 'er{i'}amos' 'eremos' 'er{a'}'
+            'er{e'}' 'er' 'erau' 'erass'
+            'ir{i'}an' 'ir{i'}as' 'ir{a'}n' 'ir{a'}s' 'ir{i'}ais'
+            'ir{i'}a' 'ir{e'}is' 'ir{i'}amos' 'iremos' 'ir{a'}'
+            'ir{e'}' '{i'}rem' '{i'}reu' '{i'}eu'
+            'ia' 'ies' '{i'}em' '{i`}eu' 'ien'
+            'at' 'ut' 'uda' 'ava' 'aves' 'avem' '{a'}vem' '{a`}vem' '{a`}veu' '{a'}veu' 'aven' 'au' 'ats'
+            'asseu' 'esseu' 'eresseu' '{a`}sseu' '{a`}ssem' '{a`}ssim' '{a`}ssiu'
+            'essen' 'esses' 'assen' 'asses' 'assim' 'assiu'
+            '{e'}ssen' '{e'}sseu'  '{e'}ssim' '{e'}ssiu' '{e'}ssem'
+            '{i'}' 'ares' '{a`}rem' '{a`}reu' '{a`}ren'
+            'ar{i'}em' 'ar{i'}eu'
+            'areu' 'aren' 'ant' '{i"}m' '{i"}u'
+            '{e'}s' '{i"}en' 'en' 'es' 'em' 'am' 'ams' '{i"}a' '{i"}es'
+            'dre' 'eix' 'eixer' 'tzar' 'eixes' 'ides' '{i"}des' 'it' '{i"}t' '{i"}da'
+            'aba' 'ada' 'ades' 'ida' '{i'}a' 'iera' 'ad' 'ed' 'its'
+            'id' 'ids'  'ase' 'iese' 'aste' 'iste' 'an' 'aban' '{i'}an'
+            'aran' 'ieran' 'asen' 'iesen' 'aron' 'ieron' 'ado'
+            'ido' 'iendo' 'i{o'}' 'ar' 'ir' 'as'
+            'ieu' 'ii' 'io' 'i{a`}'
+            'ess' 'essin' 'essis'  'ass' 'assin' 'assis' 'essim' '{e`}ssim' '{e`}ssiu'
+            'abas' 'adas' 'idas' '{i'}as' 'aras' 'ieras' 'ases'
+            'ieses' '{i'}s' '{a'}is' 'abais' '{i'}ais' 'arais'
+            'ierais'  'aseis' 'ieseis' 'asteis' 'isteis' 'ados'
+            'idos' 'amos' '{a'}bamos' '{i'}amos' 'imos' 'ques'
+            '{a'}ramos' 'i{e'}ramos' 'i{e'}semos' '{a'}semos'
+            'ira' 'iran' 'irem' 'iren' 'ires' 'ireu' 'iria' 'irien'
+            'iries' 'ir{a`}' 'ir{a`}s' 'ir{e`}' 'ir{i`}em' 'ir{i`}eu'
+            'isquen' 'iguem' 'igueu' 'esqui' 'esquin' 'esquis' 'eixi' 'eixin' 'eixis'
+            'eixen' 'eixo' 'isin' 'isis'  'esques' 'sis' 'sin'
+            'int' 'ir{i'}em' 'ir{i'}eu' 'isc' 'atges' 'esca' 'esquen'
+            'issen' 'isses' 'issin' 'issis' 'isca' 'issiu' 'issim'
+            '{i"}sc' '{i"}sca' '{i"}ssin' '{i'}ssiu' '{i'}ssim' '{i"}ssis' '{i"}guem' '{i"}gueu'
+            '{i"}ra' '{i"}ren' '{i"}res'
+            '{i"}squen' '{i"}sques' '{i"}ssen' '{i"}sses' '{i"}xo' '{i"}xen' '{i"}xes' '{i"}x'
+            'ixo' 'ixen' 'ixes' 'ix' 'ixa' 'inin' 'inis' 'ini' 'ineu' 'itza' 'itzi' 'itzeu' 'itzis'
+            'itzo' 'itz' 'itz{a`}' 'arem' 'in' '{a`}s' 'i{i"}' 'i{i"}n' 'i{i"}s'
+                (R1 delete)
+            'ando'
+                (R2 delete)
+        )
+    )
+
+    define residual_suffix as (
+        [substring] among(
+            'os' 'a' 'o' '{a'}' '{a`}' '{i'}' '{o'}' 'e' '{e'}' 'eu' 'iu'
+            'is' 'i' 'ir'  's' '{i`}' 'itz' '{i"}' '{i"}n' '{i"}s' 'it'
+            (R1 delete)
+            'iqu'
+            (R1 <- 'ic')
+        )
+    )
+)
+
+define stem as (
+    do mark_regions
+    backwards (
+    do attached_pronoun
+    do ( standard_suffix or
+             verb_suffix
+           )
+        do residual_suffix
+    )
+    do cleaning
+)
+
+/*
+     First works 2010/07/19
+     First Grammatical Reviews: https://ca.wikipedia.org/wiki/Gram%C3%A0tica_del_catal%C3%A0
+     Suffix list: https://ca.wikipedia.org/wiki/Llista_de_sufixos
+     Irregular Verbs: https://ca.wikipedia.org/wiki/Flexi%C3%B3_verbal_del_catal%C3%A0
+*/

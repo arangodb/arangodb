@@ -1,0 +1,192 @@
+// An implementation of the "Porter Stemmer for Bahasa Indonesia" from:
+// http://www.illc.uva.nl/Research/Publications/Reports/MoL-2003-02.text.pdf
+
+integers (
+    // The paper defines measure as the number of vowels in the word.  We
+    // count this initially, then adjust the count each time we remove a
+    // prefix or suffix.
+    measure
+
+    // Numeric code for the type of prefix removed:
+    //
+    // 0 other/none
+    // 1 'di' or 'meng' or 'ter'
+    // 2 'per'
+    // 3 'ke' or 'peng'
+    // 4 'ber'
+    //
+    // Some of these have variant forms, so e.g. "meng" includes "men", "me",
+    // "meny", "mem".
+    //
+    // Note that the value of prefix is only used in remove_suffix (and
+    // routines it calls) so we don't need to worry about
+    // remove_second_order_prefix overwriting a value of prefix set by
+    // remove_first_order_prefix since remove_suffix gets called between
+    // the two.
+    prefix
+)
+
+groupings ( vowel )
+
+routines (
+    remove_particle
+    remove_possessive_pronoun
+    remove_first_order_prefix
+    remove_second_order_prefix
+    remove_suffix
+    KER
+    SUFFIX_KAN_OK
+    SUFFIX_AN_OK
+    SUFFIX_I_OK
+    VOWEL
+)
+
+externals ( stem )
+
+stringescapes {}
+
+backwardmode (
+
+    define remove_particle as (
+        [substring] among (
+            'kah' 'lah' 'pun' (delete $measure-=1)
+        )
+    )
+
+    define remove_possessive_pronoun as (
+        [substring] among (
+            'ku' 'mu' 'nya' (delete $measure-=1)
+        )
+    )
+
+    // prefix not in {ke, peng, per}
+    define SUFFIX_KAN_OK as (
+        // On page 29, the example "kompas Q.31" says "Both Nazief and Porter
+        // stemmer converted the word peledakan (blast, explotion) to ledak (to
+        // blast, to explode)".  However, the algorithm as described doesn't
+        // behave in this way - grammatically the prefix pe- occurs as a
+        // variation of both the first-order derivational prefix peng- and the
+        // second-order derivational prefix per-, but table 2.5 doesn't include
+        // "pe", only table 2.6 does, so "peledakan" is handled (incorrectly)
+        // as having prefix "per" not "peng", and so we remove derivational
+        // suffix "kan" rather than "an" to give stem leda.  (Porter-style
+        // stemmers remove the longest suffix they can amongst those available,
+        // which this paper notes in the last paragraph on page 15).
+        //
+        // We resolve this by amending the condition on suffix "kan" to
+        // "prefix ∉ {ke, peng, per}", which seems to make the stemmer's
+        // behaviour match all the examples in the paper except for one:
+        // "perbaikan" is shown in table 3.4 as stemming to "bai", but with
+        // this change it now stems to "baik".  The table notes that "baik" is
+        // the actual root so this deviation is an improvement.  In a sample
+        // vocabulary derived from the most common words in id.wikipedia.org,
+        // this change only affects 0.12% of words (76 out of 64,587, including
+        // "peledakan" and "perbaikan").
+        $prefix != 3 and $prefix != 2
+    )
+
+    // prefix not in {di, meng, ter}
+    define SUFFIX_AN_OK as ( $prefix != 1 )
+
+    define SUFFIX_I_OK as (
+        // prefix not in {ke, peng, ber}
+        $prefix <= 2
+
+        // The rest of the condition from the paper is:
+        //   V|K...c₁c₁, c₁ ≠ s, c₂ ≠ i
+        //
+        // The meaning of this is unclear in several ways, and none of the
+        // examples given of the stemmer's behaviour in the paper help to
+        // resolve these issues.
+        //
+        // Notice that c₂ isn't actually used - the most obvious explanation
+        // seems to be that "c₁c₁" should read "c₁c₂", or maybe "c₂c₁".
+        //
+        // Elsewhere the paper defines V... as meaning "the stem starts with
+        // a vowel" and K... as meaning "the stem starts with a consonant".
+        //
+        // In other places where it says X|Y... it seems the | binds more
+        // tightly, so it's (V|K)...cᵢcⱼ not V|(K...cᵢcⱼ).  That seems a bit
+        // odd as the first letter must be either a vowel or a consonant, so
+        // that really just means "ends cᵢcⱼ".  However, nowhere in the paper
+        // uses or defines a notation such as ...X, which may explain this
+        // seemingly redundant way of specifying this.
+        //
+        // The conditions elsewhere on prefix removal (e.g. V...) are clearly
+        // on the stem left after the prefix is removed.  None of the other
+        // rules for suffix removal have conditions on the stem, but for
+        // consistency with the prefix rules we might expect that the cᵢcⱼ
+        // test is on what's left *after* removing the "i" suffix.
+        //
+        // However, studying Indonesian wordlists and discussion with a native
+        // speaker leads us to conclude that the purpose of this check is to
+        // protect words of foreign origin (e.g. "televisi", "organisasi",
+        // "komunikasi") from stemming, and the common feature of these is
+        // that the word ends "-si", so we conclude that the condition here
+        // should be read as "word does not end -si", and this is what we
+        // have implemented.
+        not 's'
+    )
+
+    define remove_suffix as (
+        [substring] among (
+            'kan' SUFFIX_KAN_OK 'an' SUFFIX_AN_OK 'i' SUFFIX_I_OK
+                (delete $measure-=1)
+        )
+    )
+)
+
+define vowel 'aeiou'
+
+define VOWEL as ( vowel )
+
+define KER as ( non-vowel 'er' )
+
+define remove_first_order_prefix as (
+    [substring] among (
+        'di' 'meng' 'men' 'me' 'ter' (delete $prefix=1 $measure-=1)
+        'ke' 'peng' 'pen' (delete $prefix=3 $measure-=1)
+        'meny' VOWEL ($prefix=1 <-'s' $measure-=1)
+        'peny' VOWEL ($prefix=3 <-'s' $measure-=1)
+        'mem' ($prefix=1 $measure-=1 vowel and <-'p' or delete)
+        'pem' ($prefix=3 $measure-=1 vowel and <-'p' or delete)
+    )
+)
+
+define remove_second_order_prefix as (
+    // The paper has the condition on removal of prefix "bel" and "pel" as
+    // just "ajar" not "ajar..." but it seems that the latter must be what
+    // is intended so that e.g. "pelajaran" stems to "ajar" not "lajar".
+    // This change only affects a very small number of words (11 out of
+    // 64,587) and only for the better.
+    [substring] among (
+        'per' 'pe' (delete $prefix=2 $measure-=1)
+        'pelajar' (<-'ajar' $measure-=1)
+        'ber' (delete $prefix=4 $measure-=1)
+        'belajar' (<-'ajar' $prefix=4 $measure-=1)
+        'be' KER (delete $prefix=4 $measure-=1)
+    )
+)
+
+define stem as (
+    $measure = 0
+    do ( repeat ( gopast vowel $measure+=1 ) )
+    $measure > 2
+    $prefix = 0
+    backwards (
+        do remove_particle
+        $measure > 2
+        do remove_possessive_pronoun
+    )
+    $measure > 2
+    test (
+        remove_first_order_prefix
+        do (
+            test ($measure > 2 backwards remove_suffix)
+            $measure > 2 remove_second_order_prefix
+        )
+    ) or (
+        do remove_second_order_prefix
+        do ($measure > 2 backwards remove_suffix)
+    )
+)

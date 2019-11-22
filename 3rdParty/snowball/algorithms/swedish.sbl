@@ -1,0 +1,72 @@
+routines (
+           mark_regions
+           main_suffix
+           consonant_pair
+           other_suffix
+)
+
+externals ( stem )
+
+integers ( p1 x )
+
+groupings ( v s_ending )
+
+stringescapes {}
+
+/* special characters */
+
+stringdef a"   '{U+00E4}'
+stringdef ao   '{U+00E5}'
+stringdef o"   '{U+00F6}'
+
+define v 'aeiouy{a"}{ao}{o"}'
+
+define s_ending  'bcdfghjklmnoprtvy'
+
+define mark_regions as (
+
+    $p1 = limit
+    test ( hop 3 setmark x )
+    goto v gopast non-v  setmark p1
+    try ( $p1 < x  $p1 = x )
+)
+
+backwardmode (
+
+    define main_suffix as (
+        setlimit tomark p1 for ([substring])
+        among(
+
+            'a' 'arna' 'erna' 'heterna' 'orna' 'ad' 'e' 'ade' 'ande' 'arne'
+            'are' 'aste' 'en' 'anden' 'aren' 'heten' 'ern' 'ar' 'er' 'heter'
+            'or' 'as' 'arnas' 'ernas' 'ornas' 'es' 'ades' 'andes' 'ens' 'arens'
+            'hetens' 'erns' 'at' 'andet' 'het' 'ast'
+                (delete)
+            's'
+                (s_ending delete)
+        )
+    )
+
+    define consonant_pair as setlimit tomark p1 for (
+        among('dd' 'gd' 'nn' 'dt' 'gt' 'kt' 'tt')
+        and ([next] delete)
+    )
+
+    define other_suffix as setlimit tomark p1 for (
+        [substring] among(
+            'lig' 'ig' 'els' (delete)
+            'l{o"}st'        (<-'l{o"}s')
+            'fullt'          (<-'full')
+        )
+    )
+)
+
+define stem as (
+
+    do mark_regions
+    backwards (
+        do main_suffix
+        do consonant_pair
+        do other_suffix
+    )
+)

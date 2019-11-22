@@ -123,12 +123,12 @@ extern char * b_to_s(const symbol * p) {
     {
         int i;
         for (i = 0; i < n; i++) {
-	    if (p[i] > 255) {
-		printf("In b_to_s, can't convert p[%d] to char because it's 0x%02x\n", i, (int)p[i]);
-		exit(1);
-	    }
-	    s[i] = (char)p[i];
-	}
+            if (p[i] > 255) {
+                printf("In b_to_s, can't convert p[%d] to char because it's 0x%02x\n", i, (int)p[i]);
+                exit(1);
+            }
+            s[i] = (char)p[i];
+        }
     }
     s[n] = 0;
     return s;
@@ -198,7 +198,7 @@ extern void str_append_b(struct str * str, symbol * q) {
     str->data = add_to_b(str->data, SIZE(q), q);
 }
 
-/* Append a (char *, null teminated) string to a str. */
+/* Append a (char *, null terminated) string to a str. */
 extern void str_append_string(struct str * str, const char * s) {
 
     str->data = add_s_to_b(str->data, s);
@@ -278,4 +278,3 @@ extern int put_utf8(int ch, symbol * p) {
     p[1] = ((ch >> 6) & 0x3F) | 0x80;
     p[2] = (ch & 0x3F) | 0x80; return 3;
 }
-

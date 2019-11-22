@@ -35,7 +35,7 @@ fn main() {
             let split = filestem.len() - 8;
             let langname = &filestem[..split];
             writeln!(&mut lang_match_file,
-                     "\"{}\" => Stemmer {{ stemmer: Box::new(snowball::algorithms::{}_stemmer::stem)}},",
+                     "\"{}\" => Stemmer {{ stemmer: snowball::algorithms::{}_stemmer::stem}},",
                      langname,
                      langname)
                 .unwrap();
