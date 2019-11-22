@@ -537,6 +537,13 @@ SharedAqlItemBlockPtr AqlItemBlock::steal(std::vector<size_t> const& chosen,
   return res;
 }
 
+/// @brief toJson, transfer all rows of this AqlItemBlock to Json, the result
+/// can be used to recreate the AqlItemBlock via the Json constructor
+void AqlItemBlock::toVelocyPack(velocypack::Options const* const trxOptions,
+                                VPackBuilder& result) const {
+  return toVelocyPack(0, size(), trxOptions, result);
+}
+
 /// @brief toJson, transfer a whole AqlItemBlock to Json, the result can
 /// be used to recreate the AqlItemBlock via the Json constructor
 /// Here is a description of the data format: The resulting Json has
@@ -570,7 +577,15 @@ SharedAqlItemBlockPtr AqlItemBlock::steal(std::vector<size_t> const& chosen,
 ///                  corresponding position
 ///  "raw":     List of actual values, positions 0 and 1 are always null
 ///                  such that actual indices start at 2
-void AqlItemBlock::toVelocyPack(velocypack::Options const* const trxOptions, VPackBuilder& result) const {
+void AqlItemBlock::toVelocyPack(size_t from, size_t to,
+                                velocypack::Options const* const trxOptions,
+                                VPackBuilder& result) const {
+  // Can only have positive slice size
+  TRI_ASSERT(from < to);
+  // We cannot slice over the upper bound.
+  // The lower bound (0) is protected by unsigned number type
+  TRI_ASSERT(to <= _nrItems);
+
   TRI_ASSERT(result.isOpenObject());
   VPackOptions options(VPackOptions::Defaults);
   options.buildUnindexedArrays = true;
@@ -582,7 +597,7 @@ void AqlItemBlock::toVelocyPack(velocypack::Options const* const trxOptions, VPa
   raw.add(VPackValue(VPackValueType::Null));
   raw.add(VPackValue(VPackValueType::Null));
 
-  result.add("nrItems", VPackValue(_nrItems));
+  result.add("nrItems", VPackValue(to - from));
   result.add("nrRegs", VPackValue(_nrRegs));
   result.add(StaticStrings::Error, VPackValue(false));
 
@@ -641,7 +656,7 @@ void AqlItemBlock::toVelocyPack(velocypack::Options const* const trxOptions, VPa
     startRegister = 1;
   }
   for (RegisterId column = startRegister; column < internalNrRegs(); column++) {
-    for (size_t i = 0; i < _nrItems; i++) {
+    for (size_t i = from; i < to; i++) {
       AqlValue const& a(_data[i * internalNrRegs() + column]);
 
       // determine current state
@@ -703,7 +718,8 @@ void AqlItemBlock::toVelocyPack(velocypack::Options const* const trxOptions, VPa
   result.add("raw", raw.slice());
 }
 
-void AqlItemBlock::rowToSimpleVPack(size_t const row, velocypack::Options const* options, arangodb::velocypack::Builder& builder) const {
+void AqlItemBlock::rowToSimpleVPack(size_t const row, velocypack::Options const* options,
+                                    arangodb::velocypack::Builder& builder) const {
   VPackArrayBuilder rowBuilder{&builder};
 
   if (isShadowRow(row)) {

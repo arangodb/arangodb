@@ -206,9 +206,17 @@ class AqlItemBlock {
   /// to which our AqlValues point will vanish.
   SharedAqlItemBlockPtr steal(std::vector<size_t> const& chosen, size_t from, size_t to);
 
-  /// @brief toJson, transfer a whole AqlItemBlock to Json, the result can
-  /// be used to recreate the AqlItemBlock via the Json constructor
+  /// @brief toJson, transfer all rows of this AqlItemBlock to Json, the result
+  /// can be used to recreate the AqlItemBlock via the Json constructor
   void toVelocyPack(velocypack::Options const*, arangodb::velocypack::Builder&) const;
+
+  /// @brief toJson, transfer a slice of this AqlItemBlock to Json, the result can
+  /// be used to recreate the AqlItemBlock via the Json constructor
+  /// The slice will be starting at line `from` (including) and end at line `to` (excluding).
+  /// Only calls with 0 <= from < to <= this.size() are allowed.
+  /// If you want to transfer the full block, use from == 0, to == this.size()
+  void toVelocyPack(size_t from, size_t to, velocypack::Options const*,
+                    arangodb::velocypack::Builder&) const;
 
   /// @brief Creates a human-readable velocypack of the block. Adds an object
   /// `{nrItems, nrRegs, matrix}` to the builder.

@@ -31,6 +31,7 @@
 #include "Basics/RocksDBUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/StaticStrings.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterHelpers.h"
 #include "Cluster/ClusterMethods.h"
@@ -701,6 +702,14 @@ void RestReplicationHandler::handleCommandClusterInventory() {
   std::vector<std::shared_ptr<LogicalCollection>> cols = ci.getCollections(dbName);
   VPackBuilder resultBuilder;
   resultBuilder.openObject();
+
+  DatabaseFeature& databaseFeature = _vocbase.server().getFeature<DatabaseFeature>();
+  TRI_vocbase_t* vocbase = databaseFeature.lookupDatabase(dbName);
+  if (vocbase) {
+    resultBuilder.add(VPackValue(StaticStrings::Properties));
+    vocbase->toVelocyPack(resultBuilder);
+  }
+
   resultBuilder.add("collections", VPackValue(VPackValueType::Array));
   for (std::shared_ptr<LogicalCollection> const& c : cols) {
     // We want to check if the collection is usable and all followers
@@ -1118,8 +1127,8 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
     } else {
       numberOfShards = numberOfShardsSlice.getUInt();
     }
-    
-    if (_vocbase.sharding() == "single" && 
+
+    if (_vocbase.sharding() == "single" &&
         parameters.get(StaticStrings::DistributeShardsLike).isNone() &&
         !_vocbase.IsSystemName(name) &&
         numberOfShards <= 1) {

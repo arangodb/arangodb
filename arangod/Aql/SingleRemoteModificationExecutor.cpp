@@ -38,13 +38,6 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-template <typename Modifier>
-constexpr bool SingleRemoteModificationExecutor<Modifier>::Properties::preservesOrder;
-template <typename Modifier>
-constexpr BlockPassthrough SingleRemoteModificationExecutor<Modifier>::Properties::allowsBlockPassthrough;
-template <typename Modifier>
-constexpr bool SingleRemoteModificationExecutor<Modifier>::Properties::inputSizeRestrictsOutputSize;
-
 namespace {
 std::unique_ptr<VPackBuilder> merge(VPackSlice document, std::string const& key,
                                     TRI_voc_rid_t revision) {

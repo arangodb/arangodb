@@ -1,6 +1,52 @@
 devel
 -----
 
+* New internal counter and histogram support.
+
+* Add a Prometheus endpoint for metrics, expose new metrics, old statistics
+  and RocksDB metrics.
+
+* Fixed known issue #509: ArangoSearch index consolidation does not work during creation of a link
+  on existing collection which may lead to massive file descriptors consumption.
+
+* Added support of array comparison operators to ArangoSearch.
+
+* Added support of arrays to TOKENS function.
+
+* Added support of arrays to PHRASE function.
+
+* Added a new optimization called `late-document-materialization`, `late-document-materialization`
+  for indexes and views correspondingly.
+
+  This optimization reduces amount of documents to read from storage engine to the limit expicitly
+  stated in LIMIT node.
+
+* Added support of "Edge Ngrams" to `text` analyzer.
+
+* Added support of UTF8 to `ngram` analyzer.
+
+* Added ability to mark beginning/end of the sequence to `ngram` analyzer.
+
+* Added a new subquery optimization called `splice-subqueries`.
+
+  This optimization splices the execution of subqueries inside the
+  execution of their surrounding query. For subqueries with a fairly
+  small number of returned documents this saves a significant amount of
+  overhead initializing cursors.
+
+  This optimization is performed by the optimizer rule
+  `splice-subqueries`, and currently only works on suitable
+  subqueries; A subquery becomes unsuitable if it contains a LIMIT,
+  REMOTE, GATHER or a COLLECT node where the operation is WITH COUNT INTO.
+  A subquery also becomes unsuitable if it is contained in an
+  (sub)query which contains unsuitable operations after the subquery.
+
+  The implementation of this feature required reworking the dataflow
+  query execution.
+
+* Fixed issue #10470: The WebUI now shows potential errors and details which occured using _api/import (e.g.
+  unique constraint violated).
+
 * Added startup option `--query.optimizer-rules` to selectively enable or disable
   optimizer rules by default. The option can be specified multiple times, and takes
   the same input as the query option of the same name. 
