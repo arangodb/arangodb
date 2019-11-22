@@ -1,6 +1,11 @@
 devel
 -----
 
+* New internal counter and histogram support.
+
+* Add a Prometheus endpoint for metrics, expose new metrics, old statistics
+  and RocksDB metrics.
+
 * Fixed known issue #509: ArangoSearch index consolidation does not work during creation of a link
   on existing collection which may lead to massive file descriptors consumption.
 
