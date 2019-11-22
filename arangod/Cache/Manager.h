@@ -36,6 +36,7 @@
 #include "Cache/Transaction.h"
 #include "Cache/TransactionManager.h"
 
+#include <array>
 #include <atomic>
 #include <chrono>
 #include <cstdint>
