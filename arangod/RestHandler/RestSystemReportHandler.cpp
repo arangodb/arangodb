@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2018-2019 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -32,12 +31,10 @@
 #include "RestServer/ServerFeature.h"
 #include "Utils/ExecContext.h"
 
-#if defined(TRI_HAVE_POSIX_THREADS)
-#include <unistd.h>
-#endif
-
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
+
+#include <fstream>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -47,9 +44,9 @@ using namespace arangodb::rest;
 /// @brief ArangoDB server
 ////////////////////////////////////////////////////////////////////////////////
 
-RestSystemReportHandler::RestSystemReportHandler(GeneralRequest* request,
-                                     GeneralResponse* response)
-    : RestBaseHandler(request, response) {}
+RestSystemReportHandler::RestSystemReportHandler(
+  application_features::ApplicationServer& server, GeneralRequest* request,
+  GeneralResponse* response) : RestBaseHandler(server, request, response) {}
 
 std::string executeOSCmd(std::string const& cmd) {
   static std::string const tmpFile("/tmp/arango-inspect.tmp");
@@ -64,8 +61,8 @@ std::string executeOSCmd(std::string const& cmd) {
 bool RestSystemReportHandler::isAdminUser() const {
   if (!ExecContext::isAuthEnabled()) {
     return true;
-  } else if (ExecContext::CURRENT != nullptr) {
-    return ExecContext::CURRENT->isAdminUser();
+  } else {
+    return ExecContext::current().isAdminUser();
   }
   return false;
 }
