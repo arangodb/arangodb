@@ -1627,8 +1627,11 @@ AnalyzerPool::ptr IResearchAnalyzerFeature::get(
       {
         // Note: ArangoDB strings coming from JavaScript user input are UTF-8 encoded
         irs::string_ref const locales[] = {
-          "de", "en", "es", "fi", "fr", "it",
-          "nl", "no", "pt", "ru", "sv", "zh"
+          "ar", "ca", "da", "de", "el", "en",
+          "es", "eu", "fi", "fr", "ga", "hi",
+          "hu", "id", "it", "lt", "ne", "nl",
+          "no", "pt", "ro", "ru", "sr", "sv",
+          "ta", "tr", "zh"
         };
 
         irs::flags const extraFeatures = {
