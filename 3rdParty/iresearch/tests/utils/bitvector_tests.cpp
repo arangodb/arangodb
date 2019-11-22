@@ -2284,15 +2284,19 @@ TEST(bitvector_tests, clear_count) {
 
   // clear all bits
   bv.clear();
+  ASSERT_EQ(0, bv.size());
+  ASSERT_TRUE(bv.empty());
   ASSERT_TRUE(bv.none());
   ASSERT_FALSE(bv.any());
-  ASSERT_FALSE(bv.all());
+  ASSERT_TRUE(bv.all());
 }
 
 TEST(bitvector_tests, memset) {
   // empty bitvector
   {
     irs::bitvector bv;
+    ASSERT_EQ(0, bv.size());
+    ASSERT_TRUE(bv.empty());
     ASSERT_EQ(nullptr, bv.data());
     ASSERT_EQ(0, bv.size());
     ASSERT_EQ(0, bv.capacity());
@@ -2365,6 +2369,7 @@ TEST(bitvector_tests, memset) {
     const irs::bitset::index_t size = 78;
 
     irs::bitvector bv(size);
+    ASSERT_FALSE(bv.empty());
     ASSERT_NE(nullptr, bv.data());
     ASSERT_EQ(size, bv.size());
     ASSERT_EQ(words * irs::bits_required<irs::bitset::word_t>(), bv.capacity());
@@ -2390,6 +2395,7 @@ TEST(bitvector_tests, memset) {
     const irs::bitset::index_t size = 2 * irs::bits_required<irs::bitset::word_t>();
 
     irs::bitvector bv(size);
+    ASSERT_FALSE(bv.empty());
     ASSERT_NE(nullptr, bv.data());
     ASSERT_EQ(size, bv.size());
     ASSERT_EQ(words * irs::bits_required<irs::bitset::word_t>(), bv.capacity());
@@ -2418,6 +2424,7 @@ TEST(bitvector_tests, memset) {
 
 TEST(bitvector_tests, reserve) {
   irs::bitvector bv(1);
+  ASSERT_FALSE(bv.empty());
   ASSERT_NE(nullptr, bv.data());
   ASSERT_EQ(1, bv.size());
   ASSERT_EQ(irs::bits_required<irs::bitset::word_t>(), bv.capacity());

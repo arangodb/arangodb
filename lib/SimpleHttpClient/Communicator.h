@@ -24,34 +24,66 @@
 #ifndef ARANGODB_SIMPLE_HTTP_CLIENT_COMMUNICATOR_H
 #define ARANGODB_SIMPLE_HTTP_CLIENT_COMMUNICATOR_H 1
 
+#include <stddef.h>
 #include <chrono>
+#include <cstdint>
+#include <memory>
+#include <string>
+#include <unordered_map>
+#include <utility>
+#include <vector>
 
-#include "Basics/Common.h"
+#include <curl/curl.h>
+#include <curl/system.h>
+
+#include "Basics/Exceptions.h"
 #include "Basics/Mutex.h"
 #include "Basics/StringBuffer.h"
+#include "Basics/voc-errors.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "Rest/GeneralRequest.h"
-#include "Rest/HttpResponse.h"
 #include "SimpleHttpClient/Callbacks.h"
-#include "SimpleHttpClient/Destination.h"
 #include "SimpleHttpClient/Options.h"
-#include "curl/curl.h"
 
 namespace arangodb {
+class GeneralResponse;
+
 namespace communicator {
 typedef std::unordered_map<std::string, std::string> HeadersInProgress;
 typedef uint64_t Ticket;
 
-struct RequestInProgress {
-  RequestInProgress(Destination destination, Callbacks callbacks, Ticket ticketId,
-                    Options const& options, std::unique_ptr<GeneralRequest> request)
-      : _destination(destination),
-        _callbacks(callbacks),
+struct NewRequest {
+  std::string _destination;
+  std::unique_ptr<GeneralRequest> _request;
+  Callbacks _callbacks;
+  Options _options;
+  Ticket _ticketId;
+
+  NewRequest(NewRequest const&) = delete;
+  NewRequest& operator=(NewRequest const&) = delete;
+
+  NewRequest(std::string&& destination,
+              std::unique_ptr<GeneralRequest> request,
+              Callbacks const& callbacks,
+              Options const& options) 
+      : _destination(std::move(destination)),
         _request(std::move(request)),
-        _ticketId(ticketId),
+        _callbacks(callbacks),
+        _options(options),
+        _ticketId(0) {}
+};
+
+struct RequestInProgress {
+  RequestInProgress(RequestInProgress const&) = delete;
+  RequestInProgress& operator=(RequestInProgress const&) = delete;
+
+  explicit RequestInProgress(std::unique_ptr<NewRequest> newRequest)
+      : _newRequest(std::move(newRequest)),
         _requestHeaders(nullptr),
         _startTime(0.0),
         _responseBody(new basics::StringBuffer(1024, false)),
-        _options(options),
         _aborted(false) {
     _errorBuffer[0] = '\0';
   }
@@ -62,33 +94,32 @@ struct RequestInProgress {
     }
   }
 
-  RequestInProgress(RequestInProgress const& other) = delete;
-  RequestInProgress& operator=(RequestInProgress const& other) = delete;
-
-  Destination _destination;
-  Callbacks _callbacks;
-  std::unique_ptr<GeneralRequest> _request;
-  Ticket _ticketId;
+  std::unique_ptr<NewRequest> _newRequest;
   struct curl_slist* _requestHeaders;
 
   HeadersInProgress _responseHeaders;
   double _startTime;
   std::unique_ptr<basics::StringBuffer> _responseBody;
-  Options _options;
 
   char _errorBuffer[CURL_ERROR_SIZE];
   bool _aborted;
 };
 
 struct CurlHandle : public std::enable_shared_from_this<CurlHandle> {
-  explicit CurlHandle(RequestInProgress* rip) : _handle(nullptr), _rip(rip) {
+  CurlHandle(CurlHandle& other) = delete;
+  CurlHandle& operator=(CurlHandle& other) = delete;
+
+  explicit CurlHandle(std::unique_ptr<NewRequest> newRequest)
+      : _handle(nullptr), 
+        _rip(std::move(newRequest)) {
     _handle = curl_easy_init();
     if (_handle == nullptr) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
-    curl_easy_setopt(_handle, CURLOPT_PRIVATE, _rip.get());
+    curl_easy_setopt(_handle, CURLOPT_PRIVATE, &_rip);
     curl_easy_setopt(_handle, CURLOPT_PATH_AS_IS, 1L);
   }
+
   ~CurlHandle() {
     if (_handle != nullptr) {
       curl_easy_cleanup(_handle);
@@ -97,11 +128,8 @@ struct CurlHandle : public std::enable_shared_from_this<CurlHandle> {
 
   std::shared_ptr<CurlHandle> getSharedPtr() { return shared_from_this(); }
 
-  CurlHandle(CurlHandle& other) = delete;
-  CurlHandle& operator=(CurlHandle& other) = delete;
-
   CURL* _handle;
-  std::unique_ptr<RequestInProgress> _rip;
+  RequestInProgress _rip;
 };
 
 /// @brief ConnectionCount
@@ -129,9 +157,9 @@ class ConnectionCount {
     }  // for
   };
 
-  virtual ~ConnectionCount(){};
+  virtual ~ConnectionCount() = default;
 
-  int newMaxConnections(int newRequestCount) {
+  long newMaxConnections(long newRequestCount) {
     int ret_val(eMinOpenConnects);
 
     for (int loop = 0; loop < eMinutesTracked; ++loop) {
@@ -162,7 +190,7 @@ class ConnectionCount {
   void advanceCursor() {
     nextMinute += std::chrono::seconds(60);
     cursorMinute = (cursorMinute + 1) % eMinutesTracked;
-    LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
+    LOG_TOPIC("954d3", DEBUG, Logger::COMMUNICATION)
         << "ConnectionCount::advanceCursor cursorMinute " << cursorMinute
         << ", retired period " << maxInMinute[cursorMinute]
         << ", newMaxConnections " << newMaxConnections(0);
@@ -185,11 +213,7 @@ class ConnectionCount {
 namespace arangodb {
 namespace communicator {
 
-#ifdef MAINTAINER_MODE
-const static double CALLBACK_WARN_TIME = 0.01;
-#else
 const static double CALLBACK_WARN_TIME = 0.1;
-#endif
 
 class Communicator {
  public:
@@ -197,7 +221,7 @@ class Communicator {
   ~Communicator();
 
  public:
-  Ticket addRequest(Destination&&, std::unique_ptr<GeneralRequest>, Callbacks, Options);
+  Ticket addRequest(std::unique_ptr<NewRequest> newRequest);
 
   int work_once();
   void wait();
@@ -207,19 +231,8 @@ class Communicator {
   void enable() { _enabled = true; };
 
  private:
-  struct NewRequest {
-    Destination _destination;
-    std::unique_ptr<GeneralRequest> _request;
-    Callbacks _callbacks;
-    Options _options;
-    Ticket _ticketId;
-  };
-
-  struct CurlData {};
-
- private:
   Mutex _newRequestsLock;
-  std::vector<NewRequest> _newRequests;
+  std::vector<std::unique_ptr<NewRequest>> _newRequests;
 
   Mutex _handlesLock;
   std::unordered_map<uint64_t, std::shared_ptr<CurlHandle>> _handlesInProgress;
@@ -236,9 +249,7 @@ class Communicator {
   ConnectionCount connectionCount;
 
  private:
-  void abortRequestInternal(Ticket ticketId);
-  std::vector<RequestInProgress const*> requestsInProgress();
-  void createRequestInProgress(NewRequest&& newRequest);
+  void createRequestInProgress(std::unique_ptr<NewRequest> newRequest);
   void handleResult(CURL*, CURLcode);
   /// @brief curl will strip standalone ".". ArangoDB allows using . as a key
   /// so this thing will analyse the url and urlencode any unsafe .'s
@@ -246,12 +257,10 @@ class Communicator {
 
   // these function are static because they are called by a lambda function
   //  that could execute after Communicator object destroyed.
-  static void transformResult(CURL*, HeadersInProgress&&,
-                              std::unique_ptr<basics::StringBuffer>, HttpResponse*);
   static void callErrorFn(RequestInProgress*, int const&, std::unique_ptr<GeneralResponse>);
-  static void callErrorFn(Ticket const&, Destination const&, Callbacks const&,
+  static void callErrorFn(Ticket const&, std::string const&, Callbacks const&,
                           int const&, std::unique_ptr<GeneralResponse>);
-  static void callSuccessFn(Ticket const&, Destination const&, Callbacks const&,
+  static void callSuccessFn(Ticket const&, std::string const&, Callbacks const&,
                             std::unique_ptr<GeneralResponse>);
 
  private:

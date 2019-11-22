@@ -1,7 +1,7 @@
 /* jshint browser: true */
 /* jshint unused: false */
 /* global Backbone, $, window, arangoHelper, moment, nv, d3, prettyBytes */
-/* global document, console, frontendConfig, Dygraph, _,templateEngine */
+/* global document, frontendConfig, Dygraph, _,templateEngine */
 
 (function () {
   'use strict';
@@ -672,7 +672,7 @@
             self.renderStatisticBox('Uptime', moment.duration(data.server.uptime, 'seconds').humanize());
           },
           error: function () {
-            self.renderStatisticBox('Uptime', 'Error');
+            self.renderStatisticBox('Uptime', 'N/A');
           }
         });
       }

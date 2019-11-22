@@ -26,24 +26,21 @@
 #ifndef ARANGOD_AQL_COUNT_COLLECT_EXECUTOR_H
 #define ARANGOD_AQL_COUNT_COLLECT_EXECUTOR_H
 
-#include "Aql/AqlValueGroup.h"
-#include "Aql/ExecutionBlock.h"
-#include "Aql/ExecutionBlockImpl.h"
-#include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutorInfos.h"
-#include "Aql/LimitStats.h"
-#include "Aql/OutputAqlItemRow.h"
 #include "Aql/types.h"
 
 #include <memory>
+#include <unordered_set>
 
 namespace arangodb {
 namespace aql {
 
 class InputAqlItemRow;
+class NoStats;
 class ExecutorInfos;
-template <bool>
+class OutputAqlItemRow;
+template <BlockPassthrough>
 class SingleRowFetcher;
 
 class CountCollectExecutorInfos : public ExecutorInfos {
@@ -59,7 +56,7 @@ class CountCollectExecutorInfos : public ExecutorInfos {
   ~CountCollectExecutorInfos() = default;
 
  public:
-  RegisterId getOutputRegisterId() const { return _collectRegister; }
+  RegisterId getOutputRegisterId() const;
 
  private:
   RegisterId _collectRegister;
@@ -72,8 +69,9 @@ class CountCollectExecutorInfos : public ExecutorInfos {
 class CountCollectExecutor {
  public:
   struct Properties {
-    static const bool preservesOrder = false;
-    static const bool allowsBlockPassthrough = false;
+    static constexpr bool preservesOrder = false;
+    static constexpr BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Disable;
+    static constexpr bool inputSizeRestrictsOutputSize = true;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = CountCollectExecutorInfos;
@@ -91,48 +89,16 @@ class CountCollectExecutor {
    * @return ExecutionState, and if successful exactly one new Row of AqlItems.
    */
 
-  inline std::pair<ExecutionState, NoStats> produceRow(OutputAqlItemRow& output) {
-    TRI_IF_FAILURE("CountCollectExecutor::produceRow") {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-    }
-    NoStats stats{};
-    InputAqlItemRow input{CreateInvalidInputRowHint{}};
+  std::pair<ExecutionState, NoStats> produceRows(OutputAqlItemRow& output);
 
-    if (_state == ExecutionState::DONE) {
-      return {_state, stats};
-    }
+  void incrCountBy(size_t incr) noexcept;
 
-    while (true) {
-      std::tie(_state, input) = _fetcher.fetchRow();
+  uint64_t getCount() noexcept;
 
-      if (_state == ExecutionState::WAITING) {
-        return {_state, stats};
-      }
-
-      if (!input) {
-        TRI_ASSERT(_state == ExecutionState::DONE);
-        output.cloneValueInto(_infos.getOutputRegisterId(), input,
-                              AqlValue(AqlValueHintUInt(getCount())));
-        return {_state, stats};
-      }
-
-      TRI_ASSERT(input.isInitialized());
-      incrCount();
-
-      // Abort if upstream is done
-      if (_state == ExecutionState::DONE) {
-        output.cloneValueInto(_infos.getOutputRegisterId(), input,
-                              AqlValue(AqlValueHintUInt(getCount())));
-        return {_state, stats};
-      }
-    }
-  }
-
-  void incrCount() noexcept { _count++; };
-  uint64_t getCount() noexcept { return _count; };
+  std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t atMost) const;
 
  private:
-  Infos const& infos() const noexcept { return _infos; };
+  Infos const& infos() const noexcept;
 
  private:
   Infos const& _infos;

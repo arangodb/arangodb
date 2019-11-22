@@ -22,22 +22,17 @@
 
 #include "NoResultsExecutor.h"
 
-#include "Basics/Common.h"
-
 #include "Aql/AqlItemMatrix.h"
 #include "Aql/ExecutionBlockImpl.h"
-#include "Aql/InputAqlItemRow.h"
 #include "Aql/OutputAqlItemRow.h"
-#include "Aql/SortRegister.h"
-
-#include <algorithm>
+#include "Aql/Stats.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
 
-NoResultsExecutor::NoResultsExecutor(Fetcher& fetcher, ExecutorInfos& infos){};
+NoResultsExecutor::NoResultsExecutor(Fetcher& fetcher, ExecutorInfos& infos) {}
 NoResultsExecutor::~NoResultsExecutor() = default;
 
-std::pair<ExecutionState, NoStats> NoResultsExecutor::produceRow(OutputAqlItemRow& output) {
+std::pair<ExecutionState, NoStats> NoResultsExecutor::produceRows(OutputAqlItemRow& output) {
   return {ExecutionState::DONE, NoStats{}};
 }

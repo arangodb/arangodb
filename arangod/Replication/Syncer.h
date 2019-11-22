@@ -27,6 +27,7 @@
 #include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
 #include "Replication/ReplicationApplierConfiguration.h"
+#include "Replication/SyncerId.h"
 #include "Replication/common-defines.h"
 #include "Replication/utilities.h"
 #include "Utils/DatabaseGuard.h"
@@ -35,6 +36,9 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
 namespace httpclient {
 class GeneralClientConnection;
 class SimpleHttpClient;
@@ -65,12 +69,15 @@ class Syncer : public std::enable_shared_from_this<Syncer> {
     explicit JobSynchronizer(std::shared_ptr<Syncer const> const& syncer);
     ~JobSynchronizer();
 
+    /// @brief whether or not a response has arrived
+    bool gotResponse() const noexcept;
+
     /// @brief will be called whenever a response for the job comes in
-    void gotResponse(std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response) noexcept;
+    void gotResponse(std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response, double time) noexcept;
 
     /// @brief will be called whenever an error occurred
     /// expects "res" to be an error!
-    void gotResponse(arangodb::Result&& res) noexcept;
+    void gotResponse(arangodb::Result&& res, double time = 0.0) noexcept;
 
     /// @brief the calling Syncer will call and block inside this function until
     /// there is a response or the syncer/server is shut down
@@ -92,6 +99,9 @@ class Syncer : public std::enable_shared_from_this<Syncer> {
     /// @brief checks if there are jobs in flight (can be 0 or 1 job only)
     bool hasJobInFlight() const noexcept;
 
+    /// @brief return the stored elapsed time for the job
+    double time() const noexcept { return _time; }
+
    private:
     /// @brief the shared syncer we use to check if sychronization was
     /// externally aborted
@@ -102,6 +112,9 @@ class Syncer : public std::enable_shared_from_this<Syncer> {
 
     /// @brief true if a response was received
     bool _gotResponse;
+
+    /// @brief elapsed time for performing the job
+    double _time;
 
     /// @brief the processing response of the job (indicates failure if no
     /// response was received or if something went wrong)
@@ -116,6 +129,8 @@ class Syncer : public std::enable_shared_from_this<Syncer> {
   };
 
   struct SyncerState {
+    SyncerId syncerId;
+
     /// @brief configuration
     ReplicationApplierConfiguration applier;
 
@@ -174,7 +189,8 @@ class Syncer : public std::enable_shared_from_this<Syncer> {
   // TODO worker-safety
   virtual bool isAborted() const;
 
- public:
+  SyncerId syncerId() const noexcept;
+
  protected:
   /// @brief reload all users
   // TODO worker safety
@@ -197,6 +213,9 @@ class Syncer : public std::enable_shared_from_this<Syncer> {
 
   /// @brief creates an index, based on the VelocyPack provided
   Result createIndex(arangodb::velocypack::Slice const&);
+
+  /// @brief creates an index, or returns the existing matching index if there is one
+  void createIndexInternal(arangodb::velocypack::Slice const&, LogicalCollection&);
 
   /// @brief drops an index, based on the VelocyPack provided
   Result dropIndex(arangodb::velocypack::Slice const&);

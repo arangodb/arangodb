@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 # This script runs the go-driver tests against an ArangoDB enterprise 
 # docker image that has encryption turned on.

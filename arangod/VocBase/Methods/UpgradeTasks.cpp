@@ -22,33 +22,31 @@
 
 #include "UpgradeTasks.h"
 #include "Agency/AgencyComm.h"
-#include "Basics/Common.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
-#include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/application-exit.h"
 #include "Basics/files.h"
-#include "Cluster/ClusterFeature.h"
-#include "Cluster/ClusterInfo.h"
-#include "Cluster/ServerState.h"
+#include "ClusterEngine/ClusterEngine.h"
 #include "GeneralServer/AuthenticationFeature.h"
+#include "GeneralServer/ServerSecurityFeature.h"
 #include "Logger/Logger.h"
 #include "MMFiles/MMFilesEngine.h"
+#include "RestServer/SystemDatabaseFeature.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBIndex.h"
+#include "Statistics/StatisticsFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
-#include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/Methods/CollectionCreationInfo.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Indexes.h"
 #include "VocBase/vocbase.h"
 
-#include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
-#include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
@@ -59,66 +57,6 @@ using basics::VelocyPackHelper;
 // Note: this entire file should run with superuser rights
 
 namespace {
-
-/// create a collection if it does not exists.
-bool createSystemCollection(TRI_vocbase_t* vocbase, std::string const& name) {
-  auto res =
-      methods::Collections::lookup(vocbase, name,
-                                   [](std::shared_ptr<LogicalCollection> const&) -> void {});
-
-  if (res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
-    uint32_t defaultReplFactor = 1;
-    ClusterFeature* cl =
-        ApplicationServer::getFeature<ClusterFeature>("Cluster");
-
-    if (cl != nullptr) {
-      defaultReplFactor = cl->systemReplicationFactor();
-    }
-
-    VPackBuilder bb;
-
-    bb.openObject();
-    bb.add("isSystem", VPackSlice::trueSlice());
-    bb.add("waitForSync", VPackSlice::falseSlice());
-    bb.add("journalSize", VPackValue(1024 * 1024));
-    bb.add("replicationFactor", VPackValue(defaultReplFactor));
-
-    if (name != "_graphs") {
-      bb.add("distributeShardsLike", VPackValue("_graphs"));
-    }
-
-    bb.close();
-    res = Collections::create(vocbase, name, TRI_COL_TYPE_DOCUMENT, bb.slice(),
-                              /*waitsForSyncReplication*/ true,
-                              /*enforceReplicationFactor*/ true,
-                              [](std::shared_ptr<LogicalCollection> const&) -> void {});
-  }
-
-  if (res.fail()) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
-
-  return true;
-}
-
-/// create an index if it does not exist
-bool createIndex(TRI_vocbase_t* vocbase, std::string const& name, Index::IndexType type,
-                 std::vector<std::string> const& fields, bool unique, bool sparse) {
-  VPackBuilder output;
-  Result res1, res2;
-
-  res1 = methods::Collections::lookup(
-      vocbase, name, [&](std::shared_ptr<LogicalCollection> const& coll) -> void {
-        TRI_ASSERT(coll);
-        res2 = methods::Indexes::createIndex(coll.get(), type, fields, unique, sparse);
-      });
-
-  if (res1.fail() || res2.fail()) {
-    THROW_ARANGO_EXCEPTION(res1.fail() ? res1 : res2);
-  }
-
-  return true;
-}
 
 arangodb::Result recreateGeoIndex(TRI_vocbase_t& vocbase,
                                   arangodb::LogicalCollection& collection,
@@ -158,13 +96,12 @@ arangodb::Result recreateGeoIndex(TRI_vocbase_t& vocbase,
 
   return res;
 }
-}  // namespace
 
-bool UpgradeTasks::upgradeGeoIndexes(TRI_vocbase_t& vocbase,
-                                     arangodb::velocypack::Slice const& slice) {
-  if (EngineSelectorFeature::engineName() != "rocksdb") {
-    LOG_TOPIC(DEBUG, Logger::STARTUP) << "No need to upgrade geo indexes!";
-    return true;
+Result upgradeGeoIndexes(TRI_vocbase_t& vocbase) {
+  if (EngineSelectorFeature::engineName() != RocksDBEngine::EngineName) {
+    LOG_TOPIC("2cb46", DEBUG, Logger::STARTUP)
+        << "No need to upgrade geo indexes!";
+    return {};
   }
 
   auto collections = vocbase.collections(false);
@@ -175,40 +112,404 @@ bool UpgradeTasks::upgradeGeoIndexes(TRI_vocbase_t& vocbase,
       RocksDBIndex* rIndex = static_cast<RocksDBIndex*>(index.get());
       if (index->type() == Index::TRI_IDX_TYPE_GEO1_INDEX ||
           index->type() == Index::TRI_IDX_TYPE_GEO2_INDEX) {
-        LOG_TOPIC(INFO, Logger::STARTUP)
+        LOG_TOPIC("5e53d", INFO, Logger::STARTUP)
             << "Upgrading legacy geo index '" << rIndex->id() << "'";
 
         auto res = ::recreateGeoIndex(vocbase, *collection, rIndex);
 
         if (res.fail()) {
-          LOG_TOPIC(ERR, Logger::STARTUP)
+          LOG_TOPIC("5550a", ERR, Logger::STARTUP)
               << "Error upgrading geo indexes " << res.errorMessage();
-          return false;
+          return res;
         }
       }
     }
+  }
+  return {};
+}
+
+Result createSystemCollections(TRI_vocbase_t& vocbase,
+                               std::vector<std::shared_ptr<LogicalCollection>>& createdCollections) {
+  typedef std::function<void(std::shared_ptr<LogicalCollection> const&)> FuncCallback;
+  FuncCallback const noop = [](std::shared_ptr<LogicalCollection> const&) -> void {};
+
+  std::vector<CollectionCreationInfo> systemCollectionsToCreate;
+  // the order of systemCollections is important. If we're in _system db, the
+  // UsersCollection needs to be first, otherwise, the GraphsCollection must be first.
+  std::vector<std::string> systemCollections;
+  std::shared_ptr<LogicalCollection> colToDistributeShardsLike;
+  Result res;
+
+  if (vocbase.isSystem()) {
+    // check for legacy sharding, could still be graphs.
+    res = methods::Collections::lookup(
+        vocbase, StaticStrings::GraphsCollection,
+        [&colToDistributeShardsLike](std::shared_ptr<LogicalCollection> const& col) -> void {
+          if (col && col.get()->distributeShardsLike().empty()) {
+            // We have a graphs collection, and this is not sharded by something else.
+            colToDistributeShardsLike = col;
+          }
+        });
+
+    if (colToDistributeShardsLike == nullptr) {
+      // otherwise, we will use UsersCollection for distributeShardsLike
+      std::tie(res, colToDistributeShardsLike) =
+          methods::Collections::createSystem(vocbase, StaticStrings::UsersCollection, true);
+      if (!res.ok()) {
+        return res;
+      }
+    } else {
+      systemCollections.push_back(StaticStrings::UsersCollection);
+    }
+
+    createdCollections.push_back(colToDistributeShardsLike);
+    systemCollections.push_back(StaticStrings::GraphsCollection);
+    if (StatisticsFeature::enabled()) {
+      systemCollections.push_back(StaticStrings::StatisticsCollection);
+      systemCollections.push_back(StaticStrings::Statistics15Collection);
+      systemCollections.push_back(StaticStrings::StatisticsRawCollection);
+    }
+  } else {
+    // we will use GraphsCollection for distributeShardsLike
+    // this is equal to older versions
+    std::tie(res, colToDistributeShardsLike) =
+        methods::Collections::createSystem(vocbase, StaticStrings::GraphsCollection, true);
+    createdCollections.push_back(colToDistributeShardsLike);
+    if (!res.ok()) {
+      return res;
+    }
+  }
+
+  TRI_ASSERT(colToDistributeShardsLike != nullptr);
+
+  systemCollections.push_back(StaticStrings::AnalyzersCollection);
+  systemCollections.push_back(StaticStrings::AqlFunctionsCollection);
+  systemCollections.push_back(StaticStrings::QueuesCollection);
+  systemCollections.push_back(StaticStrings::JobsCollection);
+  systemCollections.push_back(StaticStrings::AppsCollection);
+  systemCollections.push_back(StaticStrings::AppBundlesCollection);
+  systemCollections.push_back(StaticStrings::FrontendCollection);
+  systemCollections.push_back(StaticStrings::ModulesCollection);
+
+  TRI_IF_FAILURE("UpgradeTasks::CreateCollectionsExistsGraphAqlFunctions") {
+    VPackBuilder testOptions;
+    std::vector<std::shared_ptr<VPackBuffer<uint8_t>>> testBuffers;
+    std::vector<CollectionCreationInfo> testSystemCollectionsToCreate;
+    std::vector<std::string> testSystemCollections = {StaticStrings::GraphsCollection,
+                                                      StaticStrings::AqlFunctionsCollection};
+
+    for (auto const& collection : testSystemCollections) {
+      VPackBuilder options;
+      methods::Collections::createSystemCollectionProperties(collection, options,
+                                                             vocbase);
+
+      testSystemCollectionsToCreate.emplace_back(
+          CollectionCreationInfo{collection, TRI_COL_TYPE_DOCUMENT, options.slice()});
+      testBuffers.emplace_back(options.steal());
+    }
+
+    methods::Collections::create(
+        vocbase, testSystemCollectionsToCreate, true, true, true, colToDistributeShardsLike,
+        [&createdCollections](std::vector<std::shared_ptr<LogicalCollection>> const& cols) -> void {
+          // capture created collection vector
+          createdCollections.insert(std::end(createdCollections),
+                                    std::begin(cols), std::end(cols));
+        });
+  }
+
+  // check wether we need fishbowl collection, or not.
+  ServerSecurityFeature& security = vocbase.server().getFeature<ServerSecurityFeature>();
+  if (!security.isFoxxStoreDisabled()) {
+    systemCollections.push_back(StaticStrings::FishbowlCollection);
+  }
+
+  std::vector<std::shared_ptr<VPackBuffer<uint8_t>>> buffers;
+
+  for (auto const& collection : systemCollections) {
+    res = methods::Collections::lookup(
+        vocbase, collection,
+        [&createdCollections](std::shared_ptr<LogicalCollection> const& col) -> void {
+          if (col) {
+            createdCollections.emplace_back(col);
+          }
+        });
+    if (res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
+      // if not found, create it
+      VPackBuilder options;
+      methods::Collections::createSystemCollectionProperties(collection, options,
+                                                             vocbase);
+
+      systemCollectionsToCreate.emplace_back(
+          CollectionCreationInfo{collection, TRI_COL_TYPE_DOCUMENT, options.slice()});
+      buffers.emplace_back(options.steal());
+    }
+  }
+
+  // We capture the vector of created LogicalCollections here
+  // to use it to create indices later.
+  if (systemCollectionsToCreate.size() > 0) {
+    res = methods::Collections::create(
+        vocbase, systemCollectionsToCreate, true, true, true, colToDistributeShardsLike,
+        [&createdCollections](std::vector<std::shared_ptr<LogicalCollection>> const& cols) -> void {
+          // capture created collection vector
+          createdCollections.insert(std::end(createdCollections),
+                                    std::begin(cols), std::end(cols));
+        });
+    if (res.fail()) {
+      return res;
+    }
+  }
+
+  return {TRI_ERROR_NO_ERROR};
+}
+
+Result createSystemStatisticsCollections(TRI_vocbase_t& vocbase,
+                                         std::vector<std::shared_ptr<LogicalCollection>>& createdCollections) {
+  if (vocbase.isSystem() && StatisticsFeature::enabled()) {
+    typedef std::function<void(std::shared_ptr<LogicalCollection> const&)> FuncCallback;
+    FuncCallback const noop = [](std::shared_ptr<LogicalCollection> const&) -> void {};
+
+    std::vector<CollectionCreationInfo> systemCollectionsToCreate;
+    // the order of systemCollections is important. If we're in _system db, the
+    // UsersCollection needs to be first, otherwise, the GraphsCollection must be first.
+    std::vector<std::string> systemCollections;
+
+    Result res;
+    systemCollections.push_back(StaticStrings::StatisticsCollection);
+    systemCollections.push_back(StaticStrings::Statistics15Collection);
+    systemCollections.push_back(StaticStrings::StatisticsRawCollection);
+
+    std::vector<std::shared_ptr<VPackBuffer<uint8_t>>> buffers;
+
+    for (auto const& collection : systemCollections) {
+      res = methods::Collections::lookup(
+          vocbase, collection,
+          [&createdCollections](std::shared_ptr<LogicalCollection> const& col) -> void {
+            if (col) {
+              createdCollections.emplace_back(col);
+            }
+          });
+      if (res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
+        // if not found, create it
+        VPackBuilder options;
+        options.openObject();
+        options.add("isSystem", VPackSlice::trueSlice());
+        options.add("waitForSync", VPackSlice::falseSlice());
+        options.add("journalSize", VPackValue(1024 * 1024));
+        options.close();
+
+        systemCollectionsToCreate.emplace_back(
+            CollectionCreationInfo{collection, TRI_COL_TYPE_DOCUMENT, options.slice()});
+        buffers.emplace_back(options.steal());
+      }
+    }
+
+    // We capture the vector of created LogicalCollections here
+    // to use it to create indices later.
+    if (systemCollectionsToCreate.size() > 0) {
+      res = methods::Collections::create(
+          vocbase, systemCollectionsToCreate, true, false, false, nullptr,
+          [&createdCollections](std::vector<std::shared_ptr<LogicalCollection>> const& cols) -> void {
+            // capture created collection vector
+            createdCollections.insert(std::end(createdCollections),
+                                      std::begin(cols), std::end(cols));
+          });
+      if (res.fail()) {
+        return res;
+      }
+    }
+  }
+  return {TRI_ERROR_NO_ERROR};
+}
+
+static Result createIndex(std::string const& name, Index::IndexType type,
+                          std::vector<std::string> const& fields, bool unique, bool sparse,
+                          std::vector<std::shared_ptr<LogicalCollection>>& collections) {
+  // Static helper function that wraps creating an index. If we fail to
+  // create an index with some indices created, we clean up by removing all
+  // collections later on. Find the collection by name
+  auto colIt = std::find_if(collections.begin(), collections.end(),
+                            [&name](std::shared_ptr<LogicalCollection> const& col) {
+                              TRI_ASSERT(col != nullptr);
+                              return col->name() == name;
+                            });
+  if (colIt == collections.end()) {
+    return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+                  "Collection " + name + " not found");
+  }
+  return methods::Indexes::createIndex(colIt->get(), type, fields, unique, sparse);
+}
+
+Result createSystemStatisticsIndices(TRI_vocbase_t& vocbase,
+                                     std::vector<std::shared_ptr<LogicalCollection>>& collections) {
+  Result res;
+  if (vocbase.isSystem() && StatisticsFeature::enabled()) {
+    res = ::createIndex(StaticStrings::StatisticsCollection,
+                        arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX, {"time"},
+                        false, false, collections);
+    if (!res.ok()) {
+      return res;
+    }
+    res = ::createIndex(StaticStrings::Statistics15Collection,
+                        arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX, {"time"},
+                        false, false, collections);
+    if (!res.ok()) {
+      return res;
+    }
+    res = ::createIndex(StaticStrings::StatisticsRawCollection,
+                        arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX, {"time"},
+                        false, false, collections);
+    if (!res.ok()) {
+      return res;
+    }
+  }
+  return res;
+}
+
+Result createSystemCollectionsIndices(TRI_vocbase_t& vocbase,
+                                      std::vector<std::shared_ptr<LogicalCollection>>& collections) {
+  Result res;
+  if (vocbase.isSystem()) {
+    res = ::createIndex(StaticStrings::UsersCollection, arangodb::Index::TRI_IDX_TYPE_HASH_INDEX,
+                        {"user"}, true, true, collections);
+    if (!res.ok()) {
+      return res;
+    }
+
+    res = ::createSystemStatisticsIndices(vocbase, collections);
+    if (!res.ok()) {
+      return res;
+    }
+  }
+
+  res = upgradeGeoIndexes(vocbase);
+  if (!res.ok()) {
+    return res;
+  }
+
+  res = ::createIndex(StaticStrings::AppsCollection, arangodb::Index::TRI_IDX_TYPE_HASH_INDEX,
+                      {"mount"}, true, true, collections);
+  if (!res.ok()) {
+    return res;
+  }
+  res = ::createIndex(StaticStrings::JobsCollection, arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX,
+                      {"queue", "status", "delayUntil"}, false, false, collections);
+  if (!res.ok()) {
+    return res;
+  }
+  res = ::createIndex(StaticStrings::JobsCollection, arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX,
+                      {"status", "queue", "delayUntil"}, false, false, collections);
+  if (!res.ok()) {
+    return res;
+  }
+
+  return res;
+}
+
+}  // namespace
+
+bool UpgradeTasks::createSystemCollectionsAndIndices(TRI_vocbase_t& vocbase,
+                                                     arangodb::velocypack::Slice const& slice) {
+  // after the call to ::createSystemCollections this vector should contain
+  // a LogicalCollection for *every* (required) system collection.
+  std::vector<std::shared_ptr<LogicalCollection>> presentSystemCollections;
+  Result res = ::createSystemCollections(vocbase, presentSystemCollections);
+
+  // TODO: Maybe check or assert that all collections are present (i.e. were
+  //       present or created), raise an error if not?
+
+  if (res.fail()) {
+    LOG_TOPIC("94824", ERR, Logger::STARTUP)
+        << "could not create system collections"
+        << ": error: " << res.errorMessage();
+    return false;
+  }
+
+  TRI_IF_FAILURE("UpgradeTasks::HideDatabaseUntilCreationIsFinished") {
+    // just trigger a sleep here. The client test will create the db async
+    // and directly fetch the state of creation. The DB is not allowed to be
+    // visible to the outside world.
+    std::this_thread::sleep_for(std::chrono::milliseconds(5000));
+  }
+
+  TRI_IF_FAILURE("UpgradeTasks::FatalExitDuringDatabaseCreation") {
+    FATAL_ERROR_EXIT();
+  }
+
+  res = ::createSystemCollectionsIndices(vocbase, presentSystemCollections);
+  if (res.fail()) {
+    LOG_TOPIC("fedc0", ERR, Logger::STARTUP)
+        << "could not create indices for system collections"
+        << ": error: " << res.errorMessage();
+    return false;
   }
 
   return true;
 }
 
-bool UpgradeTasks::setupGraphs(TRI_vocbase_t& vocbase,
-                               arangodb::velocypack::Slice const& slice) {
-  return ::createSystemCollection(&vocbase, "_graphs");
+bool UpgradeTasks::createStatisticsCollectionsAndIndices(TRI_vocbase_t& vocbase,
+                                                         arangodb::velocypack::Slice const& slice) {
+  // This vector should after the call to ::createSystemCollections contain
+  // a LogicalCollection for *every* (required) system collection.
+  std::vector<std::shared_ptr<LogicalCollection>> presentSystemCollections;
+  Result res;
+
+  res = ::createSystemStatisticsCollections(vocbase, presentSystemCollections);
+
+  if (res.fail()) {
+    LOG_TOPIC("2824e", ERR, Logger::STARTUP)
+        << "could not create system collections"
+        << ": error: " << res.errorMessage();
+    return false;
+  }
+
+  res = ::createSystemStatisticsIndices(vocbase, presentSystemCollections);
+  if (res.fail()) {
+    LOG_TOPIC("dffbd", ERR, Logger::STARTUP)
+        << "could not create indices for system collections"
+        << ": error: " << res.errorMessage();
+    return false;
+  }
+
+  return true;
 }
 
-bool UpgradeTasks::setupUsers(TRI_vocbase_t& vocbase,
-                              arangodb::velocypack::Slice const& slice) {
-  return ::createSystemCollection(&vocbase, "_users");
-}
+////////////////////////////////////////////////////////////////////////////////
+/// @brief drops '_iresearch_analyzers' collection
+////////////////////////////////////////////////////////////////////////////////
+bool UpgradeTasks::dropLegacyAnalyzersCollection(TRI_vocbase_t& vocbase,
+                                                 arangodb::velocypack::Slice const& /*upgradeParams*/) {
+  // drop legacy collection if upgrading the system vocbase and collection found
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  if (!vocbase.server().hasFeature<arangodb::SystemDatabaseFeature>()) {
+    LOG_TOPIC("8783e", WARN, Logger::STARTUP)
+        << "failure to find '" << arangodb::SystemDatabaseFeature::name()
+        << "' feature while registering legacy static analyzers with vocbase '"
+        << vocbase.name() << "'";
+    TRI_set_errno(TRI_ERROR_INTERNAL);
 
-bool UpgradeTasks::createUsersIndex(TRI_vocbase_t& vocbase,
-                                    arangodb::velocypack::Slice const& slice) {
-  TRI_ASSERT(vocbase.isSystem());
+    return false;  // internal error
+  }
+  auto& sysDatabase = vocbase.server().getFeature<arangodb::SystemDatabaseFeature>();
+  auto sysVocbase = sysDatabase.use();
+  TRI_ASSERT(sysVocbase.get() == &vocbase || sysVocbase->name() == vocbase.name());
+#endif
 
-  return ::createIndex(&vocbase, "_users", Index::TRI_IDX_TYPE_HASH_INDEX, {"user"},
-                       /*unique*/ true,
-                       /*sparse*/ true);
+  // find legacy analyzer collection
+  arangodb::Result dropRes;
+  auto const lookupRes = arangodb::methods::Collections::lookup(
+      vocbase, StaticStrings::LegacyAnalyzersCollection,
+      [&dropRes](std::shared_ptr<arangodb::LogicalCollection> const& col) -> void {  // callback if found
+        if (col) {
+          dropRes = arangodb::methods::Collections::drop(*col, true, -1.0);  // -1.0 same as in RestCollectionHandler
+        }
+      });
+
+  if (lookupRes.ok()) {
+    return dropRes.ok();
+  }
+
+  return lookupRes.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
 }
 
 bool UpgradeTasks::addDefaultUserOther(TRI_vocbase_t& vocbase,
@@ -221,7 +522,8 @@ bool UpgradeTasks::addDefaultUserOther(TRI_vocbase_t& vocbase,
   if (users.isNone()) {
     return true;  // exit, no users were specified
   } else if (!users.isArray()) {
-    LOG_TOPIC(ERR, Logger::STARTUP) << "addDefaultUserOther: users is invalid";
+    LOG_TOPIC("44623", ERR, Logger::STARTUP)
+        << "addDefaultUserOther: users is invalid";
     return false;
   }
   auth::UserManager* um = AuthenticationFeature::instance()->userManager();
@@ -240,79 +542,27 @@ bool UpgradeTasks::addDefaultUserOther(TRI_vocbase_t& vocbase,
     VPackSlice extra = slice.get("extra");
     Result res = um->storeUser(false, user, passwd, active, VPackSlice::noneSlice());
     if (res.fail() && !res.is(TRI_ERROR_USER_DUPLICATE)) {
-      LOG_TOPIC(WARN, Logger::STARTUP) << "could not add database user " << user << ": " << res.errorMessage();
+      LOG_TOPIC("b5b8a", WARN, Logger::STARTUP)
+          << "could not add database user " << user << ": " << res.errorMessage();
     } else if (extra.isObject() && !extra.isEmptyObject()) {
       um->updateUser(user, [&](auth::User& user) {
         user.setUserData(VPackBuilder(extra));
         return TRI_ERROR_NO_ERROR;
       });
     }
-  
+
     res = um->updateUser(user, [&](auth::User& entry) {
       entry.grantDatabase(vocbase.name(), auth::Level::RW);
       entry.grantCollection(vocbase.name(), "*", auth::Level::RW);
       return TRI_ERROR_NO_ERROR;
     });
     if (res.fail()) {
-      LOG_TOPIC(WARN, Logger::STARTUP) << "could not set permissions for new user " << user << ": " << res.errorMessage();
+      LOG_TOPIC("60019", WARN, Logger::STARTUP)
+          << "could not set permissions for new user " << user << ": "
+          << res.errorMessage();
     }
   }
   return true;
-}
-
-bool UpgradeTasks::setupAnalyzers(TRI_vocbase_t& vocbase,
-                                  arangodb::velocypack::Slice const& slice) {
-  return ::createSystemCollection(&vocbase, "_iresearch_analyzers");
-}
-
-bool UpgradeTasks::setupAqlFunctions(TRI_vocbase_t& vocbase,
-                                     arangodb::velocypack::Slice const& slice) {
-  return ::createSystemCollection(&vocbase, "_aqlfunctions");
-}
-
-bool UpgradeTasks::createFrontend(TRI_vocbase_t& vocbase,
-                                  arangodb::velocypack::Slice const& slice) {
-  return ::createSystemCollection(&vocbase, "_frontend");
-}
-
-bool UpgradeTasks::setupQueues(TRI_vocbase_t& vocbase,
-                               arangodb::velocypack::Slice const& slice) {
-  return ::createSystemCollection(&vocbase, "_queues");
-}
-
-bool UpgradeTasks::setupJobs(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& slice) {
-  return ::createSystemCollection(&vocbase, "_jobs");
-}
-
-bool UpgradeTasks::createJobsIndex(TRI_vocbase_t& vocbase,
-                                   arangodb::velocypack::Slice const& slice) {
-  ::createSystemCollection(&vocbase, "_jobs");
-  ::createIndex(&vocbase, "_jobs", Index::TRI_IDX_TYPE_SKIPLIST_INDEX,
-                {"queue", "status", "delayUntil"},
-                /*unique*/ true,
-                /*sparse*/ true);
-  ::createIndex(&vocbase, "_jobs", Index::TRI_IDX_TYPE_SKIPLIST_INDEX,
-                {"status", "queue", "delayUntil"},
-                /*unique*/ true,
-                /*sparse*/ true);
-
-  return true;
-}
-
-bool UpgradeTasks::setupApps(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& slice) {
-  return ::createSystemCollection(&vocbase, "_apps");
-}
-
-bool UpgradeTasks::createAppsIndex(TRI_vocbase_t& vocbase,
-                                   arangodb::velocypack::Slice const& slice) {
-  return ::createIndex(&vocbase, "_apps", Index::TRI_IDX_TYPE_HASH_INDEX, {"mount"},
-                       /*unique*/ true,
-                       /*sparse*/ true);
-}
-
-bool UpgradeTasks::setupAppBundles(TRI_vocbase_t& vocbase,
-                                   arangodb::velocypack::Slice const& slice) {
-  return ::createSystemCollection(&vocbase, "_appbundles");
 }
 
 bool UpgradeTasks::persistLocalDocumentIds(TRI_vocbase_t& vocbase,
@@ -332,30 +582,34 @@ bool UpgradeTasks::renameReplicationApplierStateFiles(TRI_vocbase_t& vocbase,
   if (EngineSelectorFeature::engineName() == MMFilesEngine::EngineName) {
     return true;
   }
-  
+
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   std::string const path = engine->databasePath(&vocbase);
-  
-  std::string const source = arangodb::basics::FileUtils::buildFilename(
-      path, "REPLICATION-APPLIER-STATE");
-    
+
+  std::string const source =
+      arangodb::basics::FileUtils::buildFilename(path,
+                                                 "REPLICATION-APPLIER-STATE");
+
   if (!basics::FileUtils::isRegularFile(source)) {
     // source file does not exist
     return true;
   }
 
   bool result = true;
- 
-  // copy file REPLICATION-APPLIER-STATE to REPLICATION-APPLIER-STATE-<id> 
+
+  // copy file REPLICATION-APPLIER-STATE to REPLICATION-APPLIER-STATE-<id>
   Result res = basics::catchToResult([&vocbase, &path, &source, &result]() -> Result {
     std::string const dest = arangodb::basics::FileUtils::buildFilename(
         path, "REPLICATION-APPLIER-STATE-" + std::to_string(vocbase.id()));
 
-    LOG_TOPIC(TRACE, Logger::STARTUP) << "copying replication applier file '" << source << "' to '" << dest << "'";
+    LOG_TOPIC("75337", TRACE, Logger::STARTUP)
+        << "copying replication applier file '" << source << "' to '" << dest << "'";
 
     std::string error;
     if (!TRI_CopyFile(source.c_str(), dest.c_str(), error)) {
-      LOG_TOPIC(WARN, Logger::STARTUP) << "could not copy replication applier file '" << source << "' to '" << dest << "'";
+      LOG_TOPIC("6c90c", WARN, Logger::STARTUP)
+          << "could not copy replication applier file '" << source << "' to '"
+          << dest << "'";
       result = false;
     }
     return Result();

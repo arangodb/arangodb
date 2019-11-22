@@ -34,10 +34,14 @@
 #include "Aql/AstNode.h"
 #include "Aql/Function.h"
 #include "Aql/Variable.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Geo/GeoJson.h"
 #include "Geo/GeoParams.h"
-#include "Geo/GeoUtils.h"
+#include "Geo/Utils.h"
 #include "Geo/ShapeContainer.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 
 namespace arangodb {
 namespace geo_index {
@@ -55,21 +59,19 @@ Index::Index(VPackSlice const& info,
 
     auto& loc = fields[0];
     _location.reserve(loc.size());
-    for (auto const& it : loc) {
-      _location.emplace_back(it.name);
-    }
+    std::transform(loc.begin(), loc.end(), std::back_inserter(_location),
+                   [](auto const& a) { return a.name; } );
   } else if (fields.size() == 2) {
     _variant = Variant::INDIVIDUAL_LAT_LON;
     auto& lat = fields[0];
     _latitude.reserve(lat.size());
-    for (auto const& it : lat) {
-      _latitude.emplace_back(it.name);
-    }
+    std::transform(lat.begin(), lat.end(), std::back_inserter(_latitude),
+                   [](auto const& a) { return a.name; } );
+
     auto& lon = fields[1];
     _longitude.reserve(lon.size());
-    for (auto const& it : lon) {
-      _longitude.emplace_back(it.name);
-    }
+    std::transform(lon.begin(), lon.end(), std::back_inserter(_longitude),
+                   [](auto const& a) { return a.name; } );
   } else {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
@@ -80,12 +82,11 @@ Index::Index(VPackSlice const& info,
 /// @brief Parse document and return cells for indexing
 Result Index::indexCells(VPackSlice const& doc, std::vector<S2CellId>& cells,
                          S2Point& centroid) const {
-  using geo::GeoUtils;
 
   if (_variant == Variant::GEOJSON) {
     VPackSlice loc = doc.get(_location);
     if (loc.isArray()) {
-      return GeoUtils::indexCellsLatLng(loc, /*geojson*/ true, cells, centroid);
+      return geo::utils::indexCellsLatLng(loc, /*geojson*/ true, cells, centroid);
     }
     geo::ShapeContainer shape;
     Result r = geo::geojson::parseRegion(loc, shape);
@@ -103,7 +104,7 @@ Result Index::indexCells(VPackSlice const& doc, std::vector<S2CellId>& cells,
     return r;
   } else if (_variant == Variant::COMBINED_LAT_LON) {
     VPackSlice loc = doc.get(_location);
-    return GeoUtils::indexCellsLatLng(loc, /*geojson*/ false, cells, centroid);
+    return geo::utils::indexCellsLatLng(loc, /*geojson*/ false, cells, centroid);
   } else if (_variant == Variant::INDIVIDUAL_LAT_LON) {
     VPackSlice lat = doc.get(_latitude);
     VPackSlice lon = doc.get(_longitude);
@@ -113,7 +114,7 @@ Result Index::indexCells(VPackSlice const& doc, std::vector<S2CellId>& cells,
     S2LatLng ll = S2LatLng::FromDegrees(lat.getNumericValue<double>(),
                                         lon.getNumericValue<double>());
     if (!ll.is_valid()) {
-      LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
+      LOG_TOPIC("8173c", DEBUG, arangodb::Logger::FIXME)
           << "illegal geo-coordinates, ignoring entry";
       return TRI_ERROR_NO_ERROR;
     }
@@ -166,17 +167,16 @@ S2LatLng Index::parseGeoDistance(aql::AstNode const* args, aql::Variable const* 
     THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   }
 
-  Result res;
   if (cc->type == aql::NODE_TYPE_ARRAY) {  // [lng, lat] is valid input
     TRI_ASSERT(cc->numMembers() == 2);
     return S2LatLng::FromDegrees(/*lat*/ cc->getMember(1)->getDoubleValue(),
                                  /*lon*/ cc->getMember(0)->getDoubleValue());
   } else {
-    Result res;
     VPackBuilder jsonB;
     cc->toVelocyPackValue(jsonB);
     VPackSlice json = jsonB.slice();
     geo::ShapeContainer shape;
+    Result res;
     if (json.isArray() && json.length() >= 2) {
       res = shape.parseCoordinates(json, /*GeoJson*/ true);
     } else {
@@ -273,7 +273,7 @@ void Index::handleNode(aql::AstNode const* node, aql::Variable const* ref,
       if (!qp.origin.is_valid()) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_INVALID_GEO_VALUE);
       }
-      // LOG_TOPIC(ERR, Logger::FIXME) << "Found center: " << c.toString();
+      // LOG_TOPIC("a9633", ERR, Logger::FIXME) << "Found center: " << c.toString();
 
       aql::AstNode const* min = node->getMemberUnchecked(1);
       TRI_ASSERT(min->type == aql::NODE_TYPE_VALUE);

@@ -26,7 +26,8 @@
 #ifndef LIB_BASICS_FASTHASH_H
 #define LIB_BASICS_FASTHASH_H 1
 
-#include "Basics/Common.h"
+#include <cstdint>
+#include <cstdlib>
 
 static constexpr uint64_t fasthash_m = 0x880355f21e6d1965ULL;
 

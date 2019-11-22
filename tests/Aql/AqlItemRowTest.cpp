@@ -21,13 +21,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AqlItemBlockHelper.h"
-#include "catch.hpp"
+#include "gtest/gtest.h"
 
 #include "Aql/AqlItemBlockManager.h"
-#include "Aql/AqlItemBlockShell.h"
+#include "Aql/AqlItemRowPrinter.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/OutputAqlItemRow.h"
+#include "Aql/ShadowAqlItemRow.h"
 
 #include "Basics/VelocyPackHelper.h"
 
@@ -42,293 +43,441 @@ namespace arangodb {
 namespace tests {
 namespace aql {
 
-static void AssertResultMatrix(AqlItemBlock* in, VPackSlice result,
-                               std::unordered_set<RegisterId> const& regsToKeep,
-                               bool assertNotInline = false) {
-  INFO("Expecting: " << result.toJson() << " Got: " << *in);
-  REQUIRE(result.isArray());
-  REQUIRE(in->size() == result.length());
-  for (size_t rowIdx = 0; rowIdx < in->size(); ++rowIdx) {
-    VPackSlice row = result.at(rowIdx);
-    REQUIRE(row.isArray());
-    REQUIRE(in->getNrRegs() == row.length());
-    for (RegisterId regId = 0; regId < in->getNrRegs(); ++regId) {
-      AqlValue v = in->getValueReference(rowIdx, regId);
-      if (regsToKeep.find(regId) == regsToKeep.end()) {
-        // If this should not be kept it has to be set to NONE!
-        REQUIRE(v.slice().isNone());
-      } else {
-        REQUIRE(basics::VelocyPackHelper::compare(row.at(regId), v.slice(), true) == 0);
-        // Work around test as we are unable to check the type via API.
-        if (assertNotInline) {
-          // If this object is not inlined it requires some memory
-          REQUIRE(v.memoryUsage() != 0);
+class AqlItemRowsTest : public ::testing::Test {
+ protected:
+  ResourceMonitor monitor;
+  AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
+  velocypack::Options const* const options{&velocypack::Options::Defaults};
+
+  void AssertResultMatrix(AqlItemBlock* in, VPackSlice result,
+                          std::unordered_set<RegisterId> const& regsToKeep,
+                          bool assertNotInline = false) {
+    ASSERT_TRUE(result.isArray());
+    ASSERT_EQ(in->size(), result.length());
+    for (size_t rowIdx = 0; rowIdx < in->size(); ++rowIdx) {
+      VPackSlice row = result.at(rowIdx);
+      ASSERT_TRUE(row.isArray());
+      ASSERT_EQ(in->getNrRegs(), row.length());
+      for (RegisterId regId = 0; regId < in->getNrRegs(); ++regId) {
+        AqlValue v = in->getValueReference(rowIdx, regId);
+        if (regsToKeep.find(regId) == regsToKeep.end()) {
+          // If this should not be kept it has to be set to NONE!
+          ASSERT_TRUE(v.slice().isNone());
         } else {
-          // If it is inlined it does not require memory.
-          REQUIRE(v.memoryUsage() == 0);
+          ASSERT_TRUE(basics::VelocyPackHelper::equal(row.at(regId), v.slice(), true));
+          // Work around test as we are unable to check the type via API.
+          if (assertNotInline) {
+            // If this object is not inlined it requires some memory
+            ASSERT_NE(v.memoryUsage(), 0);
+          } else {
+            // If it is inlined it does not require memory.
+            ASSERT_EQ(v.memoryUsage(), 0);
+          }
         }
       }
     }
   }
+};
+
+TEST_F(AqlItemRowsTest, only_copying_from_source_to_target_narrow) {
+  SharedAqlItemBlockPtr outputBlock{new AqlItemBlock(itemBlockManager, 3, 3)};
+  ExecutorInfos executorInfos{{}, {}, 3, 3, {}, {0, 1, 2}};
+  auto outputRegisters = executorInfos.getOutputRegisters();
+  auto registersToKeep = executorInfos.registersToKeep();
+
+  OutputAqlItemRow testee(std::move(outputBlock), outputRegisters,
+                          registersToKeep, executorInfos.registersToClear());
+
+  {
+    // Make sure this data is cleared before the assertions
+    auto inputBlock =
+        buildBlock<3>(itemBlockManager, {{{{1}, {2}, {3}}},
+                                         {{{4}, {5}, {6}}},
+                                         {{{"\"a\""}, {"\"b\""}, {"\"c\""}}}});
+
+    InputAqlItemRow source{inputBlock, 0};
+
+    testee.copyRow(source);
+    ASSERT_TRUE(testee.produced());
+
+    source = {inputBlock, 1};
+    testee.advanceRow();
+    testee.copyRow(source);
+    ASSERT_TRUE(testee.produced());
+
+    source = {inputBlock, 2};
+    testee.advanceRow();
+    testee.copyRow(source);
+    ASSERT_TRUE(testee.produced());
+  }
+  auto expected =
+      VPackParser::fromJson("[[1,2,3],[4,5,6],[\"a\",\"b\",\"c\"]]");
+  outputBlock = testee.stealBlock();
+  AssertResultMatrix(outputBlock.get(), expected->slice(), *registersToKeep);
 }
 
-SCENARIO("AqlItemRows", "[AQL][EXECUTOR][ITEMROW]") {
-  ResourceMonitor monitor;
-  AqlItemBlockManager itemBlockManager{&monitor};
+TEST_F(AqlItemRowsTest, only_copying_from_source_to_target_wide) {
+  SharedAqlItemBlockPtr outputBlock{new AqlItemBlock(itemBlockManager, 3, 3)};
+  ExecutorInfos executorInfos{{}, {}, 3, 3, {}, {0, 1, 2}};
+  auto outputRegisters = executorInfos.getOutputRegisters();
+  auto registersToKeep = executorInfos.registersToKeep();
 
-  WHEN("only copying from source to target") {
-    auto outputBlock = std::make_unique<AqlItemBlock>(&monitor, 3, 3);
-    ExecutorInfos executorInfos{{}, {}, 3, 3, {}, {0, 1, 2}};
-    auto blockShell =
-        std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(outputBlock));
-    auto outputRegisters = executorInfos.getOutputRegisters();
-    auto registersToKeep = executorInfos.registersToKeep();
+  OutputAqlItemRow testee(std::move(outputBlock), outputRegisters,
+                          registersToKeep, executorInfos.registersToClear());
 
-    OutputAqlItemRow testee(std::move(blockShell), outputRegisters,
-                            registersToKeep, executorInfos.registersToClear());
+  {
+    // Make sure this data is cleared before the assertions
+    // Every of these entries has a size > 16 uint_8
+    auto inputBlock = buildBlock<3>(
+        itemBlockManager,
+        {{{{"\"aaaaaaaaaaaaaaaaaaaa\""}, {"\"bbbbbbbbbbbbbbbbbbbb\""}, {"\"cccccccccccccccccccc\""}}},
+         {{{"\"dddddddddddddddddddd\""}, {"\"eeeeeeeeeeeeeeeeeeee\""}, {"\"ffffffffffffffffffff\""}}},
+         {{{"\"gggggggggggggggggggg\""}, {"\"hhhhhhhhhhhhhhhhhhhh\""}, {"\"iiiiiiiiiiiiiiiiiiii\""}}}});
 
-    THEN("the output rows need to be valid even if the source rows are gone") {
-      {
-        // Make sure this data is cleared before the assertions
-        auto inputBlock =
-            buildBlock<3>(&monitor, {{{{1}, {2}, {3}}},
-                                     {{{4}, {5}, {6}}},
-                                     {{{"\"a\""}, {"\"b\""}, {"\"c\""}}}});
+    InputAqlItemRow source{inputBlock, 0};
 
-        auto blockShell =
-            std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(inputBlock));
+    testee.copyRow(source);
+    ASSERT_TRUE(testee.produced());
 
-        InputAqlItemRow source{blockShell, 0};
+    source = {inputBlock, 1};
+    testee.advanceRow();
+    testee.copyRow(source);
+    ASSERT_TRUE(testee.produced());
 
-        testee.copyRow(source);
-        REQUIRE(testee.produced());
-
-        source = {blockShell, 1};
-        testee.advanceRow();
-        testee.copyRow(source);
-        REQUIRE(testee.produced());
-
-        source = {blockShell, 2};
-        testee.advanceRow();
-        testee.copyRow(source);
-        REQUIRE(testee.produced());
-      }
-      auto expected =
-          VPackParser::fromJson("[[1,2,3],[4,5,6],[\"a\",\"b\",\"c\"]]");
-      outputBlock = testee.stealBlock();
-      AssertResultMatrix(outputBlock.get(), expected->slice(), *registersToKeep);
-    }
-
-    THEN("the data should stay valid for large input values") {
-      {
-        // Make sure this data is cleared before the assertions
-        // Every of these entries has a size > 16 uint_8
-        auto inputBlock = buildBlock<3>(
-            &monitor,
-            {{{{"\"aaaaaaaaaaaaaaaaaaaa\""}, {"\"bbbbbbbbbbbbbbbbbbbb\""}, {"\"cccccccccccccccccccc\""}}},
-             {{{"\"dddddddddddddddddddd\""}, {"\"eeeeeeeeeeeeeeeeeeee\""}, {"\"ffffffffffffffffffff\""}}},
-             {{{"\"gggggggggggggggggggg\""}, {"\"hhhhhhhhhhhhhhhhhhhh\""}, {"\"iiiiiiiiiiiiiiiiiiii\""}}}});
-
-        auto blockShell =
-            std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(inputBlock));
-
-        InputAqlItemRow source{blockShell, 0};
-
-        testee.copyRow(source);
-        REQUIRE(testee.produced());
-
-        source = {blockShell, 1};
-        testee.advanceRow();
-        testee.copyRow(source);
-        REQUIRE(testee.produced());
-
-        source = {blockShell, 2};
-        testee.advanceRow();
-        testee.copyRow(source);
-        REQUIRE(testee.produced());
-      }
-      auto expected = VPackParser::fromJson(
-          "["
-          "[\"aaaaaaaaaaaaaaaaaaaa\", \"bbbbbbbbbbbbbbbbbbbb\", "
-          "\"cccccccccccccccccccc\"],"
-          "[\"dddddddddddddddddddd\", \"eeeeeeeeeeeeeeeeeeee\", "
-          "\"ffffffffffffffffffff\"],"
-          "[\"gggggggggggggggggggg\", \"hhhhhhhhhhhhhhhhhhhh\", "
-          "\"iiiiiiiiiiiiiiiiiiii\"]"
-          "]");
-      outputBlock = testee.stealBlock();
-      AssertResultMatrix(outputBlock.get(), expected->slice(), *registersToKeep, true);
-    }
+    source = {inputBlock, 2};
+    testee.advanceRow();
+    testee.copyRow(source);
+    ASSERT_TRUE(testee.produced());
   }
+  auto expected = VPackParser::fromJson(
+      "["
+      "[\"aaaaaaaaaaaaaaaaaaaa\", \"bbbbbbbbbbbbbbbbbbbb\", "
+      "\"cccccccccccccccccccc\"],"
+      "[\"dddddddddddddddddddd\", \"eeeeeeeeeeeeeeeeeeee\", "
+      "\"ffffffffffffffffffff\"],"
+      "[\"gggggggggggggggggggg\", \"hhhhhhhhhhhhhhhhhhhh\", "
+      "\"iiiiiiiiiiiiiiiiiiii\"]"
+      "]");
+  outputBlock = testee.stealBlock();
+  AssertResultMatrix(outputBlock.get(), expected->slice(), *registersToKeep, true);
+}
 
-  WHEN("only copying from source to target but multiplying rows") {
-    auto outputBlock = std::make_unique<AqlItemBlock>(&monitor, 9, 3);
-    ExecutorInfos executorInfos{{}, {}, 3, 3, {}, {0, 1, 2}};
-    auto blockShell =
-        std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(outputBlock));
-    auto outputRegisters = executorInfos.getOutputRegisters();
-    auto registersToKeep = executorInfos.registersToKeep();
+TEST_F(AqlItemRowsTest, only_copying_from_source_to_target_but_multiplying_rows) {
+  SharedAqlItemBlockPtr outputBlock{new AqlItemBlock(itemBlockManager, 9, 3)};
+  ExecutorInfos executorInfos{{}, {}, 3, 3, {}, {0, 1, 2}};
+  auto outputRegisters = executorInfos.getOutputRegisters();
+  auto registersToKeep = executorInfos.registersToKeep();
 
-    OutputAqlItemRow testee(std::move(blockShell), outputRegisters,
-                            registersToKeep, executorInfos.registersToClear());
+  OutputAqlItemRow testee(std::move(outputBlock), outputRegisters,
+                          registersToKeep, executorInfos.registersToClear());
 
-    THEN("the output rows need to be valid even if the source rows are gone") {
-      {
-        // Make sure this data is cleared before the assertions
-        auto inputBlock =
-            buildBlock<3>(&monitor, {{{{1}, {2}, {3}}},
-                                     {{{4}, {5}, {6}}},
-                                     {{{"\"a\""}, {"\"b\""}, {"\"c\""}}}});
+  {
+    // Make sure this data is cleared before the assertions
+    auto inputBlock =
+        buildBlock<3>(itemBlockManager, {{{{1}, {2}, {3}}},
+                                         {{{4}, {5}, {6}}},
+                                         {{{"\"a\""}, {"\"b\""}, {"\"c\""}}}});
 
-        auto blockShell =
-            std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(inputBlock));
-
-        for (size_t i = 0; i < 3; ++i) {
-          // Iterate over source rows
-          InputAqlItemRow source{blockShell, i};
-          for (size_t j = 0; j < 3; ++j) {
-            testee.copyRow(source);
-            REQUIRE(testee.produced());
-            if (i < 2 || j < 2) {
-              // Not at the last one, we are at the end
-              testee.advanceRow();
-            }
-          }
-        }
-      }
-      auto expected = VPackParser::fromJson(
-          "["
-          "[1,2,3],"
-          "[1,2,3],"
-          "[1,2,3],"
-          "[4,5,6],"
-          "[4,5,6],"
-          "[4,5,6],"
-          "[\"a\",\"b\",\"c\"],"
-          "[\"a\",\"b\",\"c\"],"
-          "[\"a\",\"b\",\"c\"]"
-          "]");
-      outputBlock = testee.stealBlock();
-      AssertResultMatrix(outputBlock.get(), expected->slice(), *registersToKeep);
-    }
-  }
-
-  WHEN("dropping a register from source while writing to target") {
-    auto outputBlock = std::make_unique<AqlItemBlock>(&monitor, 3, 3);
-    ExecutorInfos executorInfos{{}, {}, 3, 3, {1}, {0, 2}};
-    auto blockShell =
-        std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(outputBlock));
-    auto outputRegisters = executorInfos.getOutputRegisters();
-    auto registersToKeep = executorInfos.registersToKeep();
-
-    OutputAqlItemRow testee(std::move(blockShell), outputRegisters,
-                            registersToKeep, executorInfos.registersToClear());
-
-    THEN("the output rows need to be valid even if the source rows are gone") {
-      {
-        // Make sure this data is cleared before the assertions
-        auto inputBlock =
-            buildBlock<3>(&monitor, {{{{1}, {2}, {3}}},
-                                     {{{4}, {5}, {6}}},
-                                     {{{"\"a\""}, {"\"b\""}, {"\"c\""}}}});
-
-        auto blockShell =
-            std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(inputBlock));
-
-        for (size_t i = 0; i < 3; ++i) {
-          // Iterate over source rows
-          InputAqlItemRow source{blockShell, i};
-          testee.copyRow(source);
-          REQUIRE(testee.produced());
-          if (i < 2) {
-            // Not at the last one, we are at the end
-            testee.advanceRow();
-          }
-        }
-      }
-      auto expected = VPackParser::fromJson(
-          "["
-          "[1,2,3],"
-          "[4,5,6],"
-          "[\"a\",\"b\",\"c\"]"
-          "]");
-      outputBlock = testee.stealBlock();
-      AssertResultMatrix(outputBlock.get(), expected->slice(), *registersToKeep);
-    }
-  }
-
-  WHEN("writing rows to target") {
-    auto inputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
-    auto outputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
-    std::shared_ptr<std::unordered_set<RegisterId>> registersToClear = make_shared_unordered_set();
-    std::shared_ptr<std::unordered_set<RegisterId>> registersToKeep = make_shared_unordered_set();
-    RegisterId nrInputRegisters = 0;
-    RegisterId nrOutputRegisters = 0;
-
-    THEN("should keep all registers and add new values") {
-      *inputRegisters = {};
-      *outputRegisters = {3, 4};
-      *registersToClear = {};
-      *registersToKeep = {0, 1, 2};
-      nrInputRegisters = 3;
-      nrOutputRegisters = 5;
-    }
-    THEN("should be able to drop registers and write new values") {
-      *inputRegisters = {};
-      *outputRegisters = {3, 4};
-      *registersToClear = {1, 2};
-      *registersToKeep = {0};
-      nrInputRegisters = 3;
-      nrOutputRegisters = 5;
-    }
-    auto outputBlock = std::make_unique<AqlItemBlock>(&monitor, 3, 5);
-    ExecutorInfos executorInfos{inputRegisters, outputRegisters, nrInputRegisters,
-                                nrOutputRegisters, *registersToClear, *registersToKeep};
-    auto blockShell =
-        std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(outputBlock));
-    std::unordered_set<RegisterId> &regsToKeep = *registersToKeep;
-
-    OutputAqlItemRow testee(std::move(blockShell), outputRegisters,
-                            registersToKeep, executorInfos.registersToClear());
-    {
-      // Make sure this data is cleared before the assertions
-      auto inputBlock = buildBlock<3>(&monitor, {{{{1}, {2}, {3}}},
-                                                 {{{4}, {5}, {6}}},
-                                                 {{{"\"a\""}, {"\"b\""}, {"\"c\""}}}});
-
-      auto blockShell =
-          std::make_shared<AqlItemBlockShell>(itemBlockManager, std::move(inputBlock));
-
-      for (size_t i = 0; i < 3; ++i) {
-        // Iterate over source rows
-        InputAqlItemRow source{blockShell, i};
-        for (RegisterId j = 3; j < 5; ++j) {
-          AqlValue v{AqlValueHintInt{(int64_t)(j + 5)}};
-          testee.cloneValueInto(j, source, v);
-          if (j == 3) {
-            // We are not allowed to declare an incomplete row as produced
-            REQUIRE(!testee.produced());
-          }
-        }
-        REQUIRE(testee.produced());
-        if (i < 2) {
+    for (size_t i = 0; i < 3; ++i) {
+      // Iterate over source rows
+      InputAqlItemRow source{inputBlock, i};
+      for (size_t j = 0; j < 3; ++j) {
+        testee.copyRow(source);
+        ASSERT_TRUE(testee.produced());
+        if (i < 2 || j < 2) {
           // Not at the last one, we are at the end
           testee.advanceRow();
         }
       }
     }
-    auto expected = VPackParser::fromJson(
-        "["
-        "[1,2,3,8,9],"
-        "[4,5,6,8,9],"
-        "[\"a\",\"b\",\"c\",8,9]"
-        "]");
-    // add these two here as they are needed for output validation but not for copy in ItemRows
-    regsToKeep.emplace(3);
-    regsToKeep.emplace(4);
-    outputBlock = testee.stealBlock();
-    AssertResultMatrix(outputBlock.get(), expected->slice(), regsToKeep);
   }
+  auto expected = VPackParser::fromJson(
+      "["
+      "[1,2,3],"
+      "[1,2,3],"
+      "[1,2,3],"
+      "[4,5,6],"
+      "[4,5,6],"
+      "[4,5,6],"
+      "[\"a\",\"b\",\"c\"],"
+      "[\"a\",\"b\",\"c\"],"
+      "[\"a\",\"b\",\"c\"]"
+      "]");
+  outputBlock = testee.stealBlock();
+  AssertResultMatrix(outputBlock.get(), expected->slice(), *registersToKeep);
+}
+
+TEST_F(AqlItemRowsTest, dropping_a_register_from_source_while_writing_to_target) {
+  SharedAqlItemBlockPtr outputBlock{new AqlItemBlock(itemBlockManager, 3, 3)};
+  ExecutorInfos executorInfos{{}, {}, 3, 3, {1}, {0, 2}};
+  auto outputRegisters = executorInfos.getOutputRegisters();
+  auto registersToKeep = executorInfos.registersToKeep();
+
+  OutputAqlItemRow testee(std::move(outputBlock), outputRegisters,
+                          registersToKeep, executorInfos.registersToClear());
+
+  {
+    // Make sure this data is cleared before the assertions
+    auto inputBlock =
+        buildBlock<3>(itemBlockManager, {{{{1}, {2}, {3}}},
+                                         {{{4}, {5}, {6}}},
+                                         {{{"\"a\""}, {"\"b\""}, {"\"c\""}}}});
+
+    for (size_t i = 0; i < 3; ++i) {
+      // Iterate over source rows
+      InputAqlItemRow source{inputBlock, i};
+      testee.copyRow(source);
+      ASSERT_TRUE(testee.produced());
+      if (i < 2) {
+        // Not at the last one, we are at the end
+        testee.advanceRow();
+      }
+    }
+  }
+  auto expected = VPackParser::fromJson(
+      "["
+      "[1,2,3],"
+      "[4,5,6],"
+      "[\"a\",\"b\",\"c\"]"
+      "]");
+  outputBlock = testee.stealBlock();
+  AssertResultMatrix(outputBlock.get(), expected->slice(), *registersToKeep);
+}
+
+TEST_F(AqlItemRowsTest, writing_rows_to_target) {
+  auto inputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
+  auto outputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
+  std::shared_ptr<std::unordered_set<RegisterId>> registersToClear =
+      make_shared_unordered_set();
+  std::shared_ptr<std::unordered_set<RegisterId>> registersToKeep =
+      make_shared_unordered_set();
+  RegisterId nrInputRegisters = 0;
+  RegisterId nrOutputRegisters = 0;
+
+  *inputRegisters = {};
+  *outputRegisters = {3, 4};
+  *registersToClear = {};
+  *registersToKeep = {0, 1, 2};
+  nrInputRegisters = 3;
+  nrOutputRegisters = 5;
+
+  *inputRegisters = {};
+  *outputRegisters = {3, 4};
+  *registersToClear = {1, 2};
+  *registersToKeep = {0};
+  nrInputRegisters = 3;
+  nrOutputRegisters = 5;
+
+  SharedAqlItemBlockPtr outputBlock{new AqlItemBlock(itemBlockManager, 3, 5)};
+  ExecutorInfos executorInfos{inputRegisters,    outputRegisters,
+                              nrInputRegisters,  nrOutputRegisters,
+                              *registersToClear, *registersToKeep};
+  std::unordered_set<RegisterId>& regsToKeep = *registersToKeep;
+
+  OutputAqlItemRow testee(std::move(outputBlock), outputRegisters,
+                          registersToKeep, executorInfos.registersToClear());
+  {
+    // Make sure this data is cleared before the assertions
+    auto inputBlock =
+        buildBlock<3>(itemBlockManager, {{{{1}, {2}, {3}}},
+                                         {{{4}, {5}, {6}}},
+                                         {{{"\"a\""}, {"\"b\""}, {"\"c\""}}}});
+
+    for (size_t i = 0; i < 3; ++i) {
+      // Iterate over source rows
+      InputAqlItemRow source{inputBlock, i};
+      for (RegisterId j = 3; j < 5; ++j) {
+        AqlValue v{AqlValueHintInt{(int64_t)(j + 5)}};
+        testee.cloneValueInto(j, source, v);
+        if (j == 3) {
+          // We are not allowed to declare an incomplete row as produced
+          ASSERT_FALSE(testee.produced());
+        }
+      }
+      ASSERT_TRUE(testee.produced());
+      if (i < 2) {
+        // Not at the last one, we are at the end
+        testee.advanceRow();
+      }
+    }
+  }
+  auto expected = VPackParser::fromJson(
+      "["
+      "[1,2,3,8,9],"
+      "[4,5,6,8,9],"
+      "[\"a\",\"b\",\"c\",8,9]"
+      "]");
+  // add these two here as they are needed for output validation but not for copy in ItemRows
+  regsToKeep.emplace(3);
+  regsToKeep.emplace(4);
+  outputBlock = testee.stealBlock();
+  AssertResultMatrix(outputBlock.get(), expected->slice(), regsToKeep);
+}
+
+static_assert(GTEST_HAS_TYPED_TEST, "We need typed tests for the following:");
+
+template <class RowType>
+class AqlItemRowsCommonEqTest : public ::testing::Test {
+ protected:
+  ResourceMonitor monitor;
+  AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
+  velocypack::Options const* const options{&velocypack::Options::Defaults};
+};
+
+using RowTypes = ::testing::Types<InputAqlItemRow, ShadowAqlItemRow>;
+
+TYPED_TEST_CASE(AqlItemRowsCommonEqTest, RowTypes);
+
+template <class T> T createInvalidRow();
+template <> InputAqlItemRow createInvalidRow<InputAqlItemRow>() { return InputAqlItemRow{CreateInvalidInputRowHint{}}; }
+template <> ShadowAqlItemRow createInvalidRow<ShadowAqlItemRow>() { return ShadowAqlItemRow{CreateInvalidShadowRowHint{}}; }
+
+TYPED_TEST(AqlItemRowsCommonEqTest, row_eq_operators) {
+  using RowType = TypeParam;
+  // We use the same value (and shadow row depth) for all rows, so we surely
+  // test identicality.
+  SharedAqlItemBlockPtr block =
+      buildBlock<1>(this->itemBlockManager, {{{0}}, {{0}}});
+  SharedAqlItemBlockPtr otherBlock =
+      buildBlock<1>(this->itemBlockManager, {{{0}}});
+  if (std::is_same<RowType, ShadowAqlItemRow>::value) {
+    block->setShadowRowDepth(0, AqlValue{AqlValueHintUInt{0}});
+    block->setShadowRowDepth(1, AqlValue{AqlValueHintUInt{0}});
+    otherBlock->setShadowRowDepth(0, AqlValue{AqlValueHintUInt{0}});
+  }
+
+  RowType const invalidRow = createInvalidRow<RowType>();
+  RowType const otherInvalidRow = createInvalidRow<RowType>();
+
+  // same rows must be equal
+  EXPECT_TRUE((RowType{block, 0}.operator==(RowType{block, 0})));
+  EXPECT_TRUE((RowType{block, 0} == RowType{block, 0}));
+  EXPECT_TRUE((RowType{block, 1}.operator==(RowType{block, 1})));
+  EXPECT_TRUE((RowType{block, 1} == RowType{block, 1}));
+  EXPECT_FALSE((RowType{block, 0}.operator!=(RowType{block, 0})));
+  EXPECT_FALSE((RowType{block, 0} != RowType{block, 0}));
+  EXPECT_FALSE((RowType{block, 1}.operator!=(RowType{block, 1})));
+  EXPECT_FALSE((RowType{block, 1} != RowType{block, 1}));
+
+  // different rows in the same block must be non-equal
+  EXPECT_FALSE((RowType{block, 0}.operator==(RowType{block, 1})));
+  EXPECT_FALSE((RowType{block, 0} == RowType{block, 1}));
+  EXPECT_FALSE((RowType{block, 1}.operator==(RowType{block, 0})));
+  EXPECT_FALSE((RowType{block, 1} == RowType{block, 0}));
+  EXPECT_TRUE((RowType{block, 0}.operator!=(RowType{block, 1})));
+  EXPECT_TRUE((RowType{block, 0} != RowType{block, 1}));
+  EXPECT_TRUE((RowType{block, 1}.operator!=(RowType{block, 0})));
+  EXPECT_TRUE((RowType{block, 1} != RowType{block, 0}));
+
+  // rows in different blocks must be non-equal
+  EXPECT_FALSE((RowType{block, 0}.operator==(RowType{otherBlock, 0})));
+  EXPECT_FALSE((RowType{block, 0} == RowType{otherBlock, 0}));
+  EXPECT_FALSE((RowType{block, 1}.operator==(RowType{otherBlock, 0})));
+  EXPECT_FALSE((RowType{block, 1} == RowType{otherBlock, 0}));
+  EXPECT_FALSE((RowType{otherBlock, 0}.operator==(RowType{block, 0})));
+  EXPECT_FALSE((RowType{otherBlock, 0} == RowType{block, 0}));
+  EXPECT_FALSE((RowType{otherBlock, 0}.operator==(RowType{block, 1})));
+  EXPECT_FALSE((RowType{otherBlock, 0} == RowType{block, 1}));
+  EXPECT_TRUE((RowType{block, 0}.operator!=(RowType{otherBlock, 0})));
+  EXPECT_TRUE((RowType{block, 0} != RowType{otherBlock, 0}));
+  EXPECT_TRUE((RowType{block, 1}.operator!=(RowType{otherBlock, 0})));
+  EXPECT_TRUE((RowType{block, 1} != RowType{otherBlock, 0}));
+  EXPECT_TRUE((RowType{otherBlock, 0}.operator!=(RowType{block, 0})));
+  EXPECT_TRUE((RowType{otherBlock, 0} != RowType{block, 0}));
+  EXPECT_TRUE((RowType{otherBlock, 0}.operator!=(RowType{block, 1})));
+  EXPECT_TRUE((RowType{otherBlock, 0} != RowType{block, 1}));
+
+  // comparisons with an invalid row must be false
+  EXPECT_FALSE((RowType{block, 0}.operator==(invalidRow)));
+  EXPECT_FALSE((RowType{block, 0} == invalidRow));
+  EXPECT_FALSE((invalidRow.operator==(RowType{block, 0})));
+  EXPECT_FALSE((invalidRow == RowType{block, 0}));
+  EXPECT_TRUE((RowType{block, 0}.operator!=(invalidRow)));
+  EXPECT_TRUE((RowType{block, 0} != invalidRow));
+  EXPECT_TRUE((invalidRow.operator!=(RowType{block, 0})));
+  EXPECT_TRUE((invalidRow != RowType{block, 0}));
+
+  // two invalid rows must be equal
+  EXPECT_TRUE((invalidRow.operator==(otherInvalidRow)));
+  EXPECT_TRUE((invalidRow == otherInvalidRow));
+  EXPECT_FALSE((invalidRow.operator!=(otherInvalidRow)));
+  EXPECT_FALSE((invalidRow != otherInvalidRow));
+}
+
+TYPED_TEST(AqlItemRowsCommonEqTest, row_equivalence) {
+  using RowType = TypeParam;
+  auto const options = this->options;
+  SharedAqlItemBlockPtr block =
+      buildBlock<1>(this->itemBlockManager, {{{0}}, {{1}}});
+  SharedAqlItemBlockPtr otherBlock =
+      buildBlock<1>(this->itemBlockManager, {{{1}}});
+  if (std::is_same<RowType, ShadowAqlItemRow>::value) {
+    block->setShadowRowDepth(0, AqlValue{AqlValueHintUInt{0}});
+    block->setShadowRowDepth(1, AqlValue{AqlValueHintUInt{0}});
+    otherBlock->setShadowRowDepth(0, AqlValue{AqlValueHintUInt{0}});
+  }
+
+  RowType const invalidRow = createInvalidRow<RowType>();
+  RowType const otherInvalidRow = createInvalidRow<RowType>();
+
+  // same rows must be considered equivalent
+  EXPECT_TRUE((RowType{block, 0}.equates(RowType{block, 0}, options)));
+  EXPECT_TRUE((RowType{block, 1}.equates(RowType{block, 1}, options)));
+
+  // different rows must be non-equivalent
+  EXPECT_FALSE((RowType{block, 0}.equates(RowType{block, 1}, options)));
+  EXPECT_FALSE((RowType{block, 1}.equates(RowType{block, 0}, options)));
+
+  // different row in different block must be non-equivalent, even with the same index
+  EXPECT_FALSE((RowType{block, 0}.equates(RowType{otherBlock, 0}, options)));
+  EXPECT_FALSE((RowType{otherBlock, 0}.equates(RowType{block, 0}, options)));
+
+  // an equivalent row in a different block must be considered equivalent, even with a different index
+  EXPECT_TRUE((RowType{block, 1}.equates(RowType{otherBlock, 0}, options)));
+  EXPECT_TRUE((RowType{otherBlock, 0}.equates(RowType{block, 1}, options)));
+
+  // comparisons with an invalid row must be false
+  EXPECT_FALSE((RowType{block, 0}.equates(invalidRow, options)));
+  EXPECT_FALSE((invalidRow.equates(RowType{block, 0}, options)));
+
+  // two invalid rows must be equal
+  EXPECT_TRUE((invalidRow.equates(otherInvalidRow, options)));
+}
+
+class AqlShadowRowsEqTest : public ::testing::Test {
+ protected:
+  ResourceMonitor monitor;
+  AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
+  velocypack::Options const* const options{&velocypack::Options::Defaults};
+};
+
+TEST_F(AqlShadowRowsEqTest, shadow_row_depth_equivalence) {
+  // In this test, we check for (non-)equivalence of shadow row depth.
+  // This is essentially the same test as (AqlItemRowsCommonEqTest, row_equivalence),
+  // but instead of the values differing, the shadow row depth does.
+  SharedAqlItemBlockPtr block =
+      buildBlock<1>(this->itemBlockManager, {{{0}}, {{0}}});
+  SharedAqlItemBlockPtr otherBlock =
+      buildBlock<1>(this->itemBlockManager, {{{0}}});
+  block->setShadowRowDepth(0, AqlValue{AqlValueHintUInt{0}});
+  block->setShadowRowDepth(1, AqlValue{AqlValueHintUInt{1}});
+  otherBlock->setShadowRowDepth(0, AqlValue{AqlValueHintUInt{1}});
+
+  // same rows must be considered equivalent
+  EXPECT_TRUE((ShadowAqlItemRow{block, 0}.equates(ShadowAqlItemRow{block, 0}, options)));
+  EXPECT_TRUE((ShadowAqlItemRow{block, 1}.equates(ShadowAqlItemRow{block, 1}, options)));
+
+  // different rows must be non-equivalent
+  EXPECT_FALSE((ShadowAqlItemRow{block, 0}.equates(ShadowAqlItemRow{block, 1}, options)));
+  EXPECT_FALSE((ShadowAqlItemRow{block, 1}.equates(ShadowAqlItemRow{block, 0}, options)));
+
+  // different row in different block must be non-equivalent, even with the same index
+  EXPECT_FALSE((ShadowAqlItemRow{block, 0}.equates(ShadowAqlItemRow{otherBlock, 0}, options)));
+  EXPECT_FALSE((ShadowAqlItemRow{otherBlock, 0}.equates(ShadowAqlItemRow{block, 0}, options)));
+
+  // an equivalent row in a different block must be considered equivalent, even with a different index
+  EXPECT_TRUE((ShadowAqlItemRow{block, 1}.equates(ShadowAqlItemRow{otherBlock, 0}, options)));
+  EXPECT_TRUE((ShadowAqlItemRow{otherBlock, 0}.equates(ShadowAqlItemRow{block, 1}, options)));
 }
 
 }  // namespace aql

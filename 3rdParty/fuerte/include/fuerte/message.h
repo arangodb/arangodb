@@ -36,85 +36,97 @@
 #include <velocypack/Slice.h>
 
 namespace arangodb { namespace fuerte { inline namespace v1 {
-const std::string fu_content_type_key("content-type");
 const std::string fu_accept_key("accept");
-  
+const std::string fu_authorization_key("authorization");
+const std::string fu_content_length_key("content-length");
+const std::string fu_content_type_key("content-type");
+const std::string fu_keep_alive_key("keep-alive");
+
 struct MessageHeader {
   /// arangodb message format version
   short version() const { return _version; }
   void setVersion(short v) { _version = v; }
-  
-  /// Header meta data (equivalent to HTTP headers)
-  StringMap meta;
-  
-#ifndef NDEBUG
-  std::size_t byteSize;    // for debugging
-#endif
-  
-public:
-  
-  // Header metadata helpers
-  void addMeta(std::string const& key, std::string const& value);
-  void addMeta(StringMap const&);
-  
+
+ public:
+  // Header metadata helpers#
+  template<typename K, typename V>
+  void addMeta(K&& key, V&& value) {
+    if (fu_accept_key == key) {
+      _acceptType = to_ContentType(value);
+      if (_acceptType != ContentType::Custom) {
+        return;
+      }
+    } else if (fu_content_type_key == key) {
+      _contentType = to_ContentType(value);
+      if (_contentType != ContentType::Custom) {
+        return;
+      }
+    }
+    this->_meta.emplace(std::forward<K>(key), std::forward<V>(value));
+  }
+
+  void setMeta(StringMap);
+  StringMap const& meta() const { return _meta; }
+
   // Get value for header metadata key, returns empty string if not found.
-  std::string const& metaByKey(std::string const& key) const;
-  
+  std::string const& metaByKey(std::string const& key) const {
+    bool unused;
+    return this->metaByKey(key, unused);
+  }
+  std::string const& metaByKey(std::string const& key, bool& found) const;
+
   // content type accessors
-  inline std::string const& contentTypeString() const {
-    return metaByKey(fu_content_type_key);
+  ContentType contentType() const { return _contentType; }
+  void contentType(ContentType type) {
+    _contentType = type;
   }
-  
-  inline ContentType contentType() const {
-    return to_ContentType(contentTypeString());
+  void contentType(std::string const& type) {
+    addMeta(fu_content_type_key, type);
   }
-  
-  void contentType(std::string const& type);
-  void contentType(ContentType type);
-  
-protected:
+
+ protected:
+  StringMap _meta;  /// Header meta data (equivalent to HTTP headers)
   short _version;
+  ContentType _contentType = ContentType::Unset;
+  ContentType _acceptType = ContentType::Unset;
 };
-  
+
 struct RequestHeader final : public MessageHeader {
-  
-  /// HTTP method
-  RestVerb restVerb = RestVerb::Illegal;
-  
   /// Database that is the target of the request
   std::string database;
-  
+
   /// Local path of the request (without "/_db/" prefix)
   std::string path;
-  
+
   /// Query parameters
   StringMap parameters;
-  
-public:
-  
+
+  /// HTTP method
+  RestVerb restVerb = RestVerb::Illegal;
+
+ public:
   // accept header accessors
-  std::string acceptTypeString() const;
-  ContentType acceptType() const;
+  ContentType acceptType() const { return _acceptType; }
+  void acceptType(ContentType type) { _acceptType = type; }
   void acceptType(std::string const& type);
-  void acceptType(ContentType type);
   
   // query parameter helpers
   void addParameter(std::string const& key, std::string const& value);
-  
+
   /// @brief analyze path and split into components
   /// strips /_db/<name> prefix, sets db name and fills parameters
   void parseArangoPath(std::string const&);
 };
-  
+
 struct ResponseHeader final : public MessageHeader {
   friend class Response;
 
   /// Response code
   StatusCode responseCode = StatusUndefined;
-  
+
   MessageType responseType() const { return _responseType; }
-  
-private:
+
+ private:
   MessageType _responseType = MessageType::Response;
 };
 
@@ -133,17 +145,19 @@ class Message {
   ///////////////////////////////////////////////
   // get payload
   ///////////////////////////////////////////////
+
+  /// get slices if the content-type is velocypack
   virtual std::vector<velocypack::Slice> slices() const = 0;
   virtual asio_ns::const_buffer payload() const = 0;
-  virtual size_t payloadSize() const = 0;
+  virtual std::size_t payloadSize() const = 0;
   std::string payloadAsString() const {
     auto p = payload();
     return std::string(asio_ns::buffer_cast<char const*>(p),
                        asio_ns::buffer_size(p));
   }
-  
+
   /// get the content as a slice
-  velocypack::Slice slice() {
+  velocypack::Slice slice() const {
     auto slices = this->slices();
     if (!slices.empty()) {
       return slices[0];
@@ -151,44 +165,41 @@ class Message {
     return velocypack::Slice::noneSlice();
   }
 
-  // content-type header accessors
-  std::string contentTypeString() const;
+  /// content-type header accessors
   ContentType contentType() const;
+
+  bool isContentTypeJSON() const;
+  bool isContentTypeVPack() const;
+  bool isContentTypeHtml() const;
+  bool isContentTypeText() const;
 };
 
 // Request contains the message send to a server in a request.
 class Request final : public Message {
  public:
-  static constexpr std::chrono::milliseconds defaultTimeout = std::chrono::milliseconds(30 * 1000);
+  static constexpr std::chrono::milliseconds defaultTimeout =
+      std::chrono::milliseconds(300 * 1000);
 
-  Request(RequestHeader&& messageHeader = RequestHeader())
-      : header(std::move(messageHeader)),
-        _isVPack(false),
-        _timeout(defaultTimeout) {}
-  
-  Request(RequestHeader const& messageHeader)
-      : header(messageHeader),
-        _isVPack(false),
-        _timeout(defaultTimeout) {}
-  
+  Request(RequestHeader messageHeader = RequestHeader())
+      : header(std::move(messageHeader)), _timeout(defaultTimeout) {}
+
   /// @brief request header
   RequestHeader header;
-  
+
   MessageType type() const override { return MessageType::Request; }
   MessageHeader const& messageHeader() const override { return header; }
-  
+
   ///////////////////////////////////////////////
   // header accessors
   ///////////////////////////////////////////////
-  
+
   // accept header accessors
-  std::string acceptTypeString() const;
   ContentType acceptType() const;
 
   ///////////////////////////////////////////////
   // add payload
   ///////////////////////////////////////////////
-  void addVPack(velocypack::Slice const& slice);
+  void addVPack(velocypack::Slice const slice);
   void addVPack(velocypack::Buffer<uint8_t> const& buffer);
   void addVPack(velocypack::Buffer<uint8_t>&& buffer);
   void addBinary(uint8_t const* data, std::size_t length);
@@ -196,12 +207,12 @@ class Request final : public Message {
   ///////////////////////////////////////////////
   // get payload
   ///////////////////////////////////////////////
-  
+
   /// @brief get velocypack slices contained in request
   /// only valid iff the data was added via addVPack
   std::vector<velocypack::Slice> slices() const override;
   asio_ns::const_buffer payload() const override;
-  size_t payloadSize() const override;
+  std::size_t payloadSize() const override;
 
   // get timeout, 0 means no timeout
   inline std::chrono::milliseconds timeout() const { return _timeout; }
@@ -210,19 +221,21 @@ class Request final : public Message {
 
  private:
   velocypack::Buffer<uint8_t> _payload;
-  bool _isVPack;
   std::chrono::milliseconds _timeout;
 };
 
 // Response contains the message resulting from a request to a server.
-class Response final : public Message {
+class Response : public Message {
  public:
-  Response(ResponseHeader&& reqHeader = ResponseHeader())
+  Response(ResponseHeader reqHeader = ResponseHeader())
       : header(std::move(reqHeader)), _payloadOffset(0) {}
-  
+
+  Response(Response const&) = delete;
+  Response& operator=(Response const&) = delete;
+
   /// @brief request header
   ResponseHeader header;
-  
+
   MessageType type() const override { return header._responseType; }
   MessageHeader const& messageHeader() const override { return header; }
   ///////////////////////////////////////////////
@@ -230,13 +243,15 @@ class Response final : public Message {
   ///////////////////////////////////////////////
 
   // statusCode returns the (HTTP) status code for the request (200==OK).
-  StatusCode statusCode() { return header.responseCode; }
+  StatusCode statusCode() const noexcept { return header.responseCode; }
   // checkStatus returns true if the statusCode equals one of the given valid
   // code, false otherwise.
-  bool checkStatus(std::initializer_list<StatusCode> validStatusCodes) {
+  bool checkStatus(std::initializer_list<StatusCode> validStatusCodes) const {
     auto actual = statusCode();
     for (auto code : validStatusCodes) {
-      if (code == actual) return true;
+      if (code == actual) {
+        return true;
+      }
     }
     return false;
   }
@@ -252,22 +267,23 @@ class Response final : public Message {
   ///////////////////////////////////////////////
   // get/set payload
   ///////////////////////////////////////////////
-  bool isContentTypeJSON() const;
-  bool isContentTypeVPack() const;
-  bool isContentTypeHtml() const;
-  bool isContentTypeText() const;
+
   /// @brief validates and returns VPack response. Only valid for velocypack
   std::vector<velocypack::Slice> slices() const override;
   asio_ns::const_buffer payload() const override;
-  size_t payloadSize() const override;
+  std::size_t payloadSize() const override;
   std::shared_ptr<velocypack::Buffer<uint8_t>> copyPayload() const;
-  
+  std::shared_ptr<velocypack::Buffer<uint8_t>> stealPayload();
+
   /// @brief move in the payload
-  void setPayload(velocypack::Buffer<uint8_t> buffer, size_t payloadOffset);
-  
+  void setPayload(velocypack::Buffer<uint8_t>&& buffer, std::size_t offset) {
+    _payloadOffset = offset;
+    _payload = std::move(buffer);
+  }
+
  private:
   velocypack::Buffer<uint8_t> _payload;
-  size_t _payloadOffset;
+  std::size_t _payloadOffset;
 };
 }}}  // namespace arangodb::fuerte::v1
 #endif

@@ -33,7 +33,7 @@ namespace arangodb {
 class ClusterTransactionManager final : public TransactionManager {
  public:
   ClusterTransactionManager() : TransactionManager(), _nrRunning(0) {}
-  ~ClusterTransactionManager() {}
+  ~ClusterTransactionManager() = default;
 
   // register a list of failed transactions
   void registerFailedTransactions(std::unordered_set<TRI_voc_tid_t> const& failedTransactions) override {
@@ -50,13 +50,13 @@ class ClusterTransactionManager final : public TransactionManager {
 
   // register a transaction
   void registerTransaction(TRI_voc_tid_t transactionId,
-                           std::unique_ptr<TransactionData> data) override {
-    TRI_ASSERT(data == nullptr);
+                           std::unique_ptr<TransactionData> data,
+                           bool isReadOnlyTransaction) override {
     ++_nrRunning;
   }
 
   // unregister a transaction
-  void unregisterTransaction(TRI_voc_tid_t transactionId, bool markAsFailed) override {
+  void unregisterTransaction(TRI_voc_tid_t transactionId, bool markAsFailed, bool isReadOnlyTransaction) override {
     --_nrRunning;
   }
 

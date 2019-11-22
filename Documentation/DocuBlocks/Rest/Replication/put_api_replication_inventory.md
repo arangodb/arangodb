@@ -2,7 +2,7 @@
 @startDocuBlock put_api_replication_inventory
 @brief Returns an overview of collections and their indexes
 
-@RESTHEADER{GET /_api/replication/inventory, Return inventory of collections and indexes}
+@RESTHEADER{GET /_api/replication/inventory, Return inventory of collections and indexes, handleCommandInventory}
 
 @RESTQUERYPARAMETERS
 
@@ -96,7 +96,7 @@ is returned if an error occurred while assembling the response.
 
 @EXAMPLES
 
-@EXAMPLE_ARANGOSH_RUN{RestReplicationInventory}
+@EXAMPLE_ARANGOSH_RUN{RestReplicationInventory_mmfiles}
     var url = "/_api/replication/inventory";
     var response = logCurlRequest('GET', url);
 
@@ -107,7 +107,7 @@ is returned if an error occurred while assembling the response.
 
 With some additional indexes:
 
-@EXAMPLE_ARANGOSH_RUN{RestReplicationInventoryIndexes}
+@EXAMPLE_ARANGOSH_RUN{RestReplicationInventoryIndexes_mmfiles}
     db._drop("IndexedCollection1");
     var c1 = db._create("IndexedCollection1");
     c1.ensureHashIndex("name");

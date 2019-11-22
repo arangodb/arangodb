@@ -24,6 +24,12 @@
 #ifndef ARANGO_CXX_DRIVER_LIB_ASIO_NS
 #define ARANGO_CXX_DRIVER_LIB_ASIO_NS 1
 
+// make sure that IOCP is used on windows
+#if defined(_WIN32) && !defined(_WIN32_WINNT)
+// #define _WIN32_WINNT_VISTA  0x0600
+#define _WIN32_WINNT 0x0600
+#endif
+
 #if FUERTE_STANDALONE_ASIO
 
 #define ASIO_HAS_MOVE 1
@@ -35,11 +41,11 @@
 #include <asio/io_context_strand.hpp>
 #include <asio/ip/tcp.hpp>
 #include <asio/local/stream_protocol.hpp>
+#include <asio/read.hpp>
 #include <asio/signal_set.hpp>
 #include <asio/ssl.hpp>
 #include <asio/steady_timer.hpp>
 #include <asio/streambuf.hpp>
-#include <asio/read.hpp>
 #include <asio/write.hpp>
 
 namespace asio_ns = asio;
@@ -52,12 +58,10 @@ namespace asio_ns = asio;
 #include <boost/asio/steady_timer.hpp>
 #include <boost/asio/streambuf.hpp>
 
-namespace boost {
-namespace asio {
+namespace boost { namespace asio {
 using error_code = boost::system::error_code;
 using system_error = boost::system::system_error;
-}
-}
+}}  // namespace boost::asio
 
 namespace asio_ns = boost::asio;
 

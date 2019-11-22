@@ -67,31 +67,10 @@ NS_ROOT
 
 DEFINE_ATTRIBUTE_TYPE(iresearch::term_meta)
 
-postings_writer::~postings_writer() {}
-field_writer::~field_writer() {}
-
-postings_reader::~postings_reader() {}
-basic_term_reader::~basic_term_reader() {}
-term_reader::~term_reader() {}
-field_reader::~field_reader() {}
-
-document_mask_writer::~document_mask_writer() {}
-document_mask_reader::~document_mask_reader() {}
-
-segment_meta_writer::~segment_meta_writer() {}
-segment_meta_reader::~segment_meta_reader() {}
-
-column_meta_writer::~column_meta_writer() {}
-column_meta_reader::~column_meta_reader() {}
-
-columnstore_writer::~columnstore_writer() {}
-columnstore_reader::~columnstore_reader() {}
-
 /* static */ const columnstore_reader::values_reader_f& columnstore_reader::empty_reader() {
   return INVALID_COLUMN;
 }
 
-index_meta_writer::~index_meta_writer() {}
 /* static */void index_meta_writer::complete(index_meta& meta) NOEXCEPT {
   meta.last_gen_ = meta.gen_;
 }
@@ -99,29 +78,37 @@ index_meta_writer::~index_meta_writer() {}
   meta.gen_ = meta.next_generation();
 }
 
-index_meta_reader::~index_meta_reader() {}
-
 /* static */ void index_meta_reader::complete(
     index_meta& meta,
     uint64_t generation,
     uint64_t counter,
-    index_meta::index_segments_t&& segments
+    index_meta::index_segments_t&& segments,
+    bstring* payload
 ) {
   meta.gen_ = generation;
   meta.last_gen_ = generation;
   meta.seg_counter_ = counter;
   meta.segments_ = std::move(segments);
+  if (payload) {
+    meta.payload(std::move(*payload));
+  } else {
+    meta.payload(bytes_ref::NIL);
+  }
 }
 
-format::~format() {}
-
-/*static*/ bool formats::exists(const string_ref& name) {
-  return nullptr != format_register::instance().get(name);
+/*static*/ bool formats::exists(
+    const string_ref& name,
+    bool load_library /*= true*/
+) {
+  return nullptr != format_register::instance().get(name, load_library);
 }
 
-/*static*/ format::ptr formats::get(const string_ref& name) NOEXCEPT {
+/*static*/ format::ptr formats::get(
+    const string_ref& name,
+    bool load_library /*= true*/
+) NOEXCEPT {
   try {
-    auto* factory = format_register::instance().get(name);
+    auto* factory = format_register::instance().get(name, load_library);
 
     return factory ? factory() : nullptr;
   } catch (...) {

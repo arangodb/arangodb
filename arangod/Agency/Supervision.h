@@ -90,7 +90,7 @@ class Supervision : public arangodb::CriticalThread {
   };
 
   /// @brief Construct sanity checking
-  Supervision();
+  explicit Supervision(application_features::ApplicationServer& server);
 
   /// @brief Default dtor
   ~Supervision();
@@ -133,9 +133,11 @@ class Supervision : public arangodb::CriticalThread {
   /// @brief Upgrade agency to supervision overhaul jobs
   void upgradeHealthRecords(VPackBuilder&);
 
-  /// @brief Check for orphaned index creations, which have been successfully
-  /// built
+  /// @brief Check for orphaned index creations, which have been successfully built
   void readyOrphanedIndexCreations();
+
+  /// @brief Check for orphaned index creations, which have been successfully built
+  void checkBrokenCreatedDatabases();
 
   /// @brief Check for inconsistencies in replication factor vs dbs entries
   void enforceReplication();
@@ -155,6 +157,9 @@ class Supervision : public arangodb::CriticalThread {
   // @brief Check shards in agency
   std::vector<check_t> checkShards();
 
+  // @brief
+  void cleanupFinishedAndFailedJobs();
+
   void workJobs();
 
   /// @brief Get unique ids from agency
@@ -170,7 +175,7 @@ class Supervision : public arangodb::CriticalThread {
 
  public:
   static void cleanupLostCollections(Node const& snapshot, AgentInterface* agent,
-                                     std::string const& jobId);
+                                     uint64_t& jobId);
 
  private:
   /**
@@ -183,6 +188,10 @@ class Supervision : public arangodb::CriticalThread {
 
   bool handleJobs();
   void handleShutdown();
+  bool verifyCoordinatorRebootID(std::string const& coordinatorID,
+                                 uint64_t wantedRebootID, bool& coordinatorFound);
+  void deleteBrokenDatabase(std::string const& database, std::string const& coordinatorID,
+                            uint64_t rebootID, bool coordinatorFound);
 
   /// @brief Migrate chains of distributeShardsLike to depth 1
   void fixPrototypeChain(VPackBuilder&);
@@ -200,6 +209,7 @@ class Supervision : public arangodb::CriticalThread {
   double _okThreshold;
   uint64_t _jobId;
   uint64_t _jobIdMax;
+  bool _haveAborts;        /**< @brief We have accumulated pending aborts in a round */
 
   // mop: this feels very hacky...we have a hen and egg problem here
   // we are using /Shutdown in the agency to determine that the cluster should

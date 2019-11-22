@@ -2,7 +2,7 @@
 @startDocuBlock delete_batch_replication
 @brief handle a dump batch command
 
-@RESTHEADER{DELETE /_api/replication/batch/{id}, Deletes an existing dump batch}
+@RESTHEADER{DELETE /_api/replication/batch/{id}, Deletes an existing dump batch,handleCommandBatch:DELETE}
 
 **Note**: These calls are uninteresting to users.
 

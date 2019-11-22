@@ -22,16 +22,18 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestEdgesHandler.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AstNode.h"
 #include "Aql/Graphs.h"
+#include "Aql/Query.h"
+#include "Aql/QueryString.h"
 #include "Aql/Variable.h"
-#include "Cluster/ClusterMethods.h"
-#include "Cluster/ServerState.h"
-#include "Transaction/StandaloneContext.h"
+#include "RestServer/QueryRegistryFeature.h"
+#include "Transaction/Helpers.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/OperationCursor.h"
-#include "Utils/SingleCollectionTransaction.h"
-#include "VocBase/ManagedDocumentResult.h"
+#include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -39,12 +41,18 @@
 using namespace arangodb;
 using namespace arangodb::rest;
 
-RestEdgesHandler::RestEdgesHandler(GeneralRequest* request, GeneralResponse* response)
-    : RestVocbaseBaseHandler(request, response) {}
+RestEdgesHandler::RestEdgesHandler(application_features::ApplicationServer& server,
+                                   GeneralRequest* request, GeneralResponse* response)
+    : RestVocbaseBaseHandler(server, request, response) {}
 
 RestStatus RestEdgesHandler::execute() {
   // extract the sub-request type
   auto const type = _request->requestType();
+  
+  if (!ServerState::instance()->isSingleServerOrCoordinator()) {
+    generateNotImplemented("ILLEGAL " + EDGES_PATH);
+    return RestStatus::DONE;
+  }
 
   // execute one of the CRUD methods
   switch (type) {
@@ -63,98 +71,65 @@ RestStatus RestEdgesHandler::execute() {
   return RestStatus::DONE;
 }
 
-void RestEdgesHandler::readCursor(aql::AstNode* condition, aql::Variable const* var,
-                                  std::string const& collectionName,
-                                  SingleCollectionTransaction& trx,
-                                  std::function<void(LocalDocumentId const&)> const& cb) {
-  transaction::Methods::IndexHandle indexId;
-  bool foundIdx = trx.getBestIndexHandleForFilterCondition(collectionName, condition,
-                                                           var, 1000, indexId);
-  if (!foundIdx) {
-    // Right now we enforce an edge index that can exactly! work on this
-    // condition. So it is impossible to not find an index.
-    TRI_ASSERT(false);
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_ARANGO_NO_INDEX,
-        "Unable to find an edge-index to identify matching edges.");
-  }
-
-  ManagedDocumentResult mmdr;
-  IndexIteratorOptions opts;
-  std::unique_ptr<OperationCursor> cursor(
-      trx.indexScanForCondition(indexId, condition, var, &mmdr, opts));
-
-  if (cursor->fail()) {
-    THROW_ARANGO_EXCEPTION(cursor->code);
-  }
-
-  cursor->all(cb);
-}
-
-bool RestEdgesHandler::getEdgesForVertex(
-    std::string const& id, std::string const& collectionName,
-    TRI_edge_direction_e direction, SingleCollectionTransaction& trx,
-    std::function<void(LocalDocumentId const&)> const& cb) {
-  trx.pinData(trx.cid());  // will throw when it fails
-
-  // Create a conditionBuilder that manages the AstNodes for querying
-  aql::EdgeConditionBuilderContainer condBuilder;
-  condBuilder.setVertexId(id);
-
-  aql::Variable const* var = condBuilder.getVariable();
-
-  switch (direction) {
-    case TRI_EDGE_IN:
-      readCursor(condBuilder.getInboundCondition(), var, collectionName, trx, cb);
-      break;
-    case TRI_EDGE_OUT:
-      readCursor(condBuilder.getOutboundCondition(), var, collectionName, trx, cb);
-      break;
-    case TRI_EDGE_ANY:
-      // We have to call both directions
-      readCursor(condBuilder.getInboundCondition(), var, collectionName, trx, cb);
-      readCursor(condBuilder.getOutboundCondition(), var, collectionName, trx, cb);
-      break;
-  }
-  return true;
-}
-
 bool RestEdgesHandler::parseDirection(TRI_edge_direction_e& direction) {
-  bool found;
-  std::string dir = _request->value("direction", found);
+  std::string const& dir = _request->value("direction");
 
-  if (!found || dir.empty()) {
-    dir = "any";
-  }
-
-  std::string dirString(dir);
-
-  if (dirString == "any") {
+  if (dir.empty()) {
     direction = TRI_EDGE_ANY;
-  } else if (dirString == "out" || dirString == "outbound") {
+  } else if (dir == "any") {
+    direction = TRI_EDGE_ANY;
+  } else if (dir == "out" || dir == "outbound") {
     direction = TRI_EDGE_OUT;
-  } else if (dirString == "in" || dirString == "inbound") {
+  } else if (dir == "in" || dir == "inbound") {
     direction = TRI_EDGE_IN;
   } else {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "<direction> must by any, in, or out, not: " + dirString);
+                  "<direction> must by any, in, or out, not: " + dir);
     return false;
   }
 
   return true;
 }
 
+namespace {
+std::string queryString(TRI_edge_direction_e dir) {
+  switch (dir) {
+    case TRI_EDGE_IN:
+      return "FOR e IN @@collection FILTER e._to == @vertex RETURN e";
+    case TRI_EDGE_OUT:
+      return "FOR e IN @@collection FILTER e._from == @vertex RETURN e";
+    case TRI_EDGE_ANY:
+      return "FOR e IN @@collection FILTER (e._from == @vertex || e._to == "
+             "@vertex) RETURN e";
+  }
+  return "RETURN {}";
+}
+
+aql::QueryResult queryEdges(TRI_vocbase_t& vocbase, std::string const& cname,
+                            TRI_edge_direction_e dir, std::string const& vertexId) {
+  auto bindParameters = std::make_shared<VPackBuilder>();
+  bindParameters->openObject();
+  bindParameters->add("@collection", VPackValue(cname));
+  bindParameters->add("vertex", VPackValue(vertexId));
+  bindParameters->close();
+  auto options = std::make_shared<VPackBuilder>();
+
+  arangodb::aql::Query query(false, vocbase, aql::QueryString(queryString(dir)),
+                             bindParameters, options, arangodb::aql::PART_MAIN);
+  return query.executeSync(QueryRegistryFeature::registry());
+}
+}  // namespace
+
 bool RestEdgesHandler::validateCollection(std::string const& name) {
   CollectionNameResolver resolver(_vocbase);
-  auto collection = resolver.getCollection(name);
-  auto colType = collection ? collection->type() : TRI_COL_TYPE_UNKNOWN;
+  std::shared_ptr<LogicalCollection> collection = resolver.getCollection(name);
 
-  if (colType == TRI_COL_TYPE_UNKNOWN) {
+  if (!collection) {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     return false;
   }
 
-  if (colType != TRI_COL_TYPE_EDGE) {
+  if (collection->type() != TRI_COL_TYPE_EDGE) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
     return false;
   }
@@ -174,7 +149,7 @@ bool RestEdgesHandler::readEdges() {
     return false;
   }
 
-  std::string collectionName = suffixes[0];
+  std::string const& collectionName = suffixes[0];
   if (!validateCollection(collectionName)) {
     return false;
   }
@@ -193,99 +168,40 @@ bool RestEdgesHandler::readEdges() {
     return false;
   }
 
-  // find and load collection given by name or identifier
-  auto trx = createTransaction(collectionName, AccessMode::Type::READ);
+  auto queryResult = ::queryEdges(_vocbase, collectionName, direction, startVertex);
 
-  if (ServerState::instance()->isCoordinator()) {
-    std::string vertexString(startVertex);
-    rest::ResponseCode responseCode;
-    VPackBuffer<uint8_t> buffer;
-    VPackBuilder resultDocument(buffer);
-    resultDocument.openObject();
-    int res = getFilteredEdgesOnCoordinator(_vocbase.name(), collectionName,
-                                            *(trx.get()), vertexString, direction,
-                                            responseCode, resultDocument);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      generateError(responseCode, res);
+  if (queryResult.result.fail()) {
+    if (queryResult.result.is(TRI_ERROR_REQUEST_CANCELED) ||
+        (queryResult.result.is(TRI_ERROR_QUERY_KILLED))) {
+      generateError(rest::ResponseCode::GONE, TRI_ERROR_REQUEST_CANCELED);
       return false;
     }
-
-    resultDocument.add(StaticStrings::Error, VPackValue(false));
-    resultDocument.add("code", VPackValue(200));
-    resultDocument.close();
-
-    generateResult(rest::ResponseCode::OK, std::move(buffer));
-
-    return true;
+    THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.result.errorNumber(),
+                                   "Error executing edges query " +
+                                       queryResult.result.errorMessage());
   }
 
-  // .............................................................................
-  // inside read transaction
-  // .............................................................................
-
-  Result res = trx->begin();
-
-  if (!res.ok()) {
-    generateTransactionError(collectionName, res, "");
-
-    return false;
-  }
-
-  size_t filtered = 0;
-  size_t scannedIndex = 0;
+  VPackSlice edges = queryResult.data->slice();
+  VPackSlice extras = queryResult.extra->slice();
 
   VPackBuffer<uint8_t> buffer;
   VPackBuilder resultBuilder(buffer);
   resultBuilder.openObject();
   // build edges
   resultBuilder.add(VPackValue("edges"));  // only key
-  resultBuilder.openArray();
-
-  auto collection = trx->documentCollection();
-  std::unordered_set<LocalDocumentId> foundTokens;
-  auto cb = [&](LocalDocumentId const& token) {
-    if (foundTokens.find(token) == foundTokens.end()) {
-      collection->readDocumentWithCallback(trx.get(), token,
-                                           [&resultBuilder](LocalDocumentId const&, VPackSlice doc) {
-                                             resultBuilder.add(doc);
-                                           });
-      scannedIndex++;
-      // Mark edges we find
-      foundTokens.emplace(token);
-    }
-  };
-
-  // NOTE: collectionName is the shard-name in DBServer case
-  bool ok = getEdgesForVertex(startVertex, collectionName, direction, *(trx.get()), cb);
-  resultBuilder.close();
-
-  res = trx->finish(res);
-  if (!ok) {
-    // Error has been built internally
-    return false;
-  }
-
-  if (!res.ok()) {
-    if (ServerState::instance()->isDBServer()) {
-      // If we are a DBserver, we want to use the cluster-wide collection
-      // name for error reporting:
-      collectionName = trx->resolver()->getCollectionNameCluster(trx->cid());
-    }
-    generateTransactionError(collectionName, res, "");
-    return false;
-  }
+  resultBuilder.add(edges);
 
   resultBuilder.add(StaticStrings::Error, VPackValue(false));
-  resultBuilder.add("code", VPackValue(200));
-  resultBuilder.add("stats", VPackValue(VPackValueType::Object));
-  resultBuilder.add("scannedIndex", VPackValue(scannedIndex));
-  resultBuilder.add("filtered", VPackValue(filtered));
-  resultBuilder.close();  // inner object
+  resultBuilder.add(StaticStrings::Code, VPackValue(200));
+  VPackSlice stats = extras.get("stats");
+  if (stats.isObject()) {
+    resultBuilder.add(VPackValue("stats"));
+    resultBuilder.add(stats);
+  }
   resultBuilder.close();
 
   // and generate a response
-  generateResult(rest::ResponseCode::OK, std::move(buffer), trx->transactionContext());
+  generateResult(rest::ResponseCode::OK, std::move(buffer), queryResult.context);
 
   return true;
 }
@@ -320,7 +236,7 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
     return false;
   }
 
-  std::string collectionName = suffixes[0];
+  std::string const& collectionName = suffixes[0];
   if (!validateCollection(collectionName)) {
     return false;
   }
@@ -330,103 +246,50 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
     return false;
   }
 
-  // find and load collection given by name or identifier
-  auto trx = createTransaction(collectionName, AccessMode::Type::READ);
-
-  if (ServerState::instance()->isCoordinator()) {
-    rest::ResponseCode responseCode;
-    VPackBuffer<uint8_t> buffer;
-    VPackBuilder resultDocument(buffer);
-
-    resultDocument.openObject();
-
-    for (auto const& it : VPackArrayIterator(body)) {
-      if (it.isString()) {
-        std::string vertexString(it.copyString());
-        int res = getFilteredEdgesOnCoordinator(_vocbase.name(), collectionName,
-                                                *(trx.get()), vertexString, direction,
-                                                responseCode, resultDocument);
-
-        if (res != TRI_ERROR_NO_ERROR) {
-          generateError(responseCode, res);
-          return false;
-        }
-      }
-    }
-
-    resultDocument.add(StaticStrings::Error, VPackValue(false));
-    resultDocument.add("code", VPackValue(200));
-    resultDocument.close();
-
-    generateResult(rest::ResponseCode::OK, std::move(buffer));
-    return true;
-  }
-
-  // .............................................................................
-  // inside read transaction
-  // .............................................................................
-
-  Result res = trx->begin();
-  if (!res.ok()) {
-    generateTransactionError(collectionName, res, "");
-    return false;
-  }
-
-  size_t filtered = 0;
-  size_t scannedIndex = 0;
-
   VPackBuffer<uint8_t> buffer;
   VPackBuilder resultBuilder(buffer);
   resultBuilder.openObject();
   // build edges
-  resultBuilder.add(VPackValue("edges"));  // only key
-  resultBuilder.openArray();
+  resultBuilder.add("edges", VPackValue(VPackValueType::Array));
+  
+  std::unordered_set<std::string> foundEdges;
 
-  auto collection = trx->documentCollection();
-  std::unordered_set<LocalDocumentId> foundTokens;
-  auto cb = [&](LocalDocumentId const& token) {
-    if (foundTokens.find(token) == foundTokens.end()) {
-      collection->readDocumentWithCallback(trx.get(), token,
-                                           [&resultBuilder](LocalDocumentId const&, VPackSlice doc) {
-                                             resultBuilder.add(doc);
-                                           });
-      scannedIndex++;
-      // Mark edges we find
-      foundTokens.emplace(token);
+  std::shared_ptr<transaction::Context> ctx;
+  for (VPackSlice it : VPackArrayIterator(body)) {
+    std::string startVertex = it.copyString();
+    auto queryResult = ::queryEdges(_vocbase, collectionName, direction, startVertex);
+
+    if (queryResult.result.fail()) {
+      if (queryResult.result.is(TRI_ERROR_REQUEST_CANCELED) ||
+          (queryResult.result.is(TRI_ERROR_QUERY_KILLED))) {
+        generateError(rest::ResponseCode::GONE, TRI_ERROR_REQUEST_CANCELED);
+        return false;
+      }
+      THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.result.errorNumber(),
+                                     "Error executing edges query " +
+                                         queryResult.result.errorMessage());
     }
-  };
 
-  for (auto const& it : VPackArrayIterator(body)) {
-    if (it.isString()) {
-      std::string startVertex = it.copyString();
-
-      // We ignore if this fails
-      getEdgesForVertex(startVertex, collectionName, direction, *(trx.get()), cb);
+    VPackSlice edges = queryResult.data->slice();
+    for (VPackSlice edge : VPackArrayIterator(edges)) {
+      if (foundEdges.emplace(transaction::helpers::extractKeyFromDocument(edge).copyString()).second) {
+        resultBuilder.add(edge);
+      }
     }
+    ctx = queryResult.context;
   }
-  resultBuilder.close();
-
-  res = trx->finish(res);
-  if (!res.ok()) {
-    if (ServerState::instance()->isDBServer()) {
-      // If we are a DBserver, we want to use the cluster-wide collection
-      // name for error reporting:
-      collectionName = trx->resolver()->getCollectionNameCluster(trx->cid());
-    }
-    generateTransactionError(collectionName, res, "");
-    return false;
-  }
+  resultBuilder.close();  // </edges>
 
   resultBuilder.add(StaticStrings::Error, VPackValue(false));
-  resultBuilder.add("code", VPackValue(200));
-  resultBuilder.add("stats", VPackValue(VPackValueType::Object));
-  resultBuilder.add("scannedIndex", VPackValue(scannedIndex));
-  resultBuilder.add("filtered", VPackValue(filtered));
-  resultBuilder.close();  // inner object
+  resultBuilder.add(StaticStrings::Code, VPackValue(200));
   resultBuilder.close();
 
   // and generate a response
-  generateResult(rest::ResponseCode::OK, std::move(buffer), trx->transactionContext());
+  if (ctx) {
+    generateResult(rest::ResponseCode::OK, std::move(buffer), ctx);
+  } else {
+    generateResult(rest::ResponseCode::OK, std::move(buffer));
+  }
 
   return true;
 }

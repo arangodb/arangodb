@@ -101,7 +101,7 @@ function legacyOptimizerRuleTestSuite() {
     /// @brief set up
     ////////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
+    setUpAll : function () {
       var loopto = 10;
 
         internal.db._drop(colName);
@@ -110,77 +110,73 @@ function legacyOptimizerRuleTestSuite() {
         geocol.ensureIndex({type:"geo1", fields:["geo"]});
         geocol.ensureIndex({type:"geo2", fields:["loca.tion.lat","loca.tion.lon"]});
         var lat, lon;
+        let docs = [];
         for (lat=-40; lat <=40 ; ++lat) {
             for (lon=-40; lon <= 40; ++lon) {
                 //geocol.insert({lat,lon});
-                geocol.insert({lat, lon, "geo":[lat,lon], "loca":{"tion":{ lat, lon }} });
+                docs.push({lat, lon, "geo":[lat,lon], "loca":{"tion":{ lat, lon }} });
             }
         }
+        geocol.insert(docs);
     },
 
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief tear down
     ////////////////////////////////////////////////////////////////////////////////
 
-    tearDown : function () {
+    tearDownAll : function () {
       internal.db._drop(colName);
       geocol = null;
     },
 
     testLegacyRuleBasics : function () {
-      if(enabled.basics){
+      if (enabled.basics) {
         geocol.ensureIndex({ type: "hash", fields: [ "y", "z" ], unique: false });
 
         var queries = [
-          { string  : "FOR d IN " + colName + " SORT distance(d.lat, d.lon, 0 ,0 ) ASC LIMIT 1 RETURN d",
+          { string  : "FOR d IN " + colName + " SORT distance(d.lat, d.lon, 0 ,0) ASC LIMIT 1 RETURN d",
             cluster : false,
             sort    : false,
             filter  : false,
             index   : true
           },
-          { string  : "FOR d IN " + colName + " SORT distance(d.loca.tion.lat, d.loca.tion.lon, 0 ,0 ) ASC LIMIT 1 RETURN d",
+          { string  : "FOR d IN " + colName + " SORT distance(d.loca.tion.lat, d.loca.tion.lon, 0 ,0) ASC LIMIT 1 RETURN d",
             cluster : false,
             sort    : false,
             filter  : false,
             index   : true
           },
-          { string  : "FOR d IN " + colName + " SORT distance(0, 0, d.lat,d.lon ) ASC LIMIT 1 RETURN d",
+          { string  : "FOR d IN " + colName + " SORT distance(0, 0, d.lat,d.lon) ASC LIMIT 1 RETURN d",
             cluster : false,
             sort    : false,
             filter  : false,
             index   : true
           },
-          { string  : "FOR d IN " + colName + " FILTER distance(0, 0, d.lat,d.lon ) < 1 LIMIT 1 RETURN d",
+          { string  : "FOR d IN " + colName + " FILTER distance(0, 0, d.lat,d.lon) < 1 LIMIT 1 RETURN d",
             cluster : false,
             sort    : false,
             filter  : false,
             index   : true
           },
-          { string  : "FOR d IN " + colName + " FILTER distance(0, 0, d.geo[0],d.geo[1] ) < 1 LIMIT 1 RETURN d",
+          { string  : "FOR d IN " + colName + " FILTER distance(0, 0, d.geo[0],d.geo[1]) < 1 LIMIT 1 RETURN d",
             cluster : false,
             sort    : false,
             filter  : false,
             index   : true
           },
-          { string  : "FOR d IN " + colName + " FILTER distance(0, 0, d.lat, d.geo[1] ) < 1 LIMIT 1 RETURN d",
+          { string  : "FOR d IN " + colName + " FILTER distance(0, 0, d.lat, d.geo[1]) < 1 LIMIT 1 RETURN d",
             cluster : false,
             sort    : false,
-            filter  : true,
+            filter  : false,
             index   : false
           },
-          { string  : "FOR d IN " + colName + " SORT distance(0, 0, d.lat, d.lon) FILTER distance(0, 0, d.lat,d.lon ) < 1 LIMIT 1 RETURN d",
+          { string  : "FOR d IN " + colName + " SORT distance(0, 0, d.lat, d.lon) FILTER distance(0, 0, d.lat, d.lon) < 1 LIMIT 1 RETURN d",
             cluster : false,
             sort    : false,
             filter  : false,
             index   : true
           },
-          { string  : "FOR d IN " + colName + " SORT distance(0, 0, d.lat, d.lon) FILTER distance(0, 0, d.lat,d.lon ) < 1 LIMIT 1 RETURN d",
-            cluster : false,
-            sort    : false,
-            filter  : false,
-            index   : true
-          },
-          { string  : "FOR i in 1..2 FOR d IN " + colName + " FILTER distance(0, 0, d.lat,d.lon ) < 1 && i > 1 LIMIT 1 RETURN d",
+          { string  : "FOR i in 1..2 FOR d IN " + colName + " FILTER distance(0, 0, d.lat, d.lon) < 1 && i > 1 LIMIT 1 RETURN d",
             cluster : false,
             sort    : false,
             filter  : true,
@@ -219,7 +215,7 @@ function legacyOptimizerRuleTestSuite() {
     }, // testRuleBasics
 
     testLegacyRuleRemoveNodes : function () {
-      if(enabled.removeNodes){
+      if (enabled.removeNodes) {
         var queries = [
           [ "FOR d IN " + colName  + " SORT distance(d.lat,d.lon, 0 ,0 ) ASC LIMIT 5 RETURN d", false, false, false ],
           [ "FOR d IN " + colName  + " SORT distance(0, 0, d.lat,d.lon ) ASC LIMIT 5 RETURN d", false, false, false ],
@@ -250,8 +246,8 @@ function legacyOptimizerRuleTestSuite() {
       }
     }, // testRuleSort
 
-    testLegacyRuleSorted : function(){
-      if(enabled.sorted){
+    testLegacyRuleSorted : function() {
+      if (enabled.sorted) {
         var old=0;
         var query = "FOR d IN " + colName + " SORT distance(d.lat, d.lon, 0, 0) RETURN distance(d.lat, d.lon, 0, 0)";
         var result = AQL_EXECUTE(query);
@@ -278,7 +274,7 @@ function legacyGeoVariationsTestSuite() {
 
   return {
 
-    setUp : function () {
+    setUpAll : function () {
       internal.db._drop(colName);
       geocol = internal.db._create(colName);
       geocol.ensureIndex({ type:"geo1", fields: ["location"] });
@@ -292,7 +288,7 @@ function legacyGeoVariationsTestSuite() {
       geocol.insert(documents);
     },
 
-    tearDown : function () {
+    tearDownAll : function () {
       internal.db._drop(colName);
     },
 
@@ -338,6 +334,7 @@ function optimizerRuleTestSuite() {
   var ruleName = "geoindex";
   var colName = "UnitTestsAqlOptimizer" + ruleName.replace(/-/g, "_");
   var colName2 = colName2;
+  var colName3 = "UnitTestsGeoJsonTestSuite";
 
   var sortArray = function (l, r) {
     if (l[0] !== r[0]) {
@@ -413,7 +410,7 @@ function optimizerRuleTestSuite() {
     ////////////////////////////////////////////////////////////////////////////
     /// @brief set up
     ////////////////////////////////////////////////////////////////////////////
-    setUp: function () {
+    setUpAll: function () {
       var loopto = 10;
 
       internal.db._drop(colName);
@@ -429,8 +426,8 @@ function optimizerRuleTestSuite() {
         }
       }
 
-      db._drop("UnitTestsGeoJsonTestSuite");
-      locations = db._create("UnitTestsGeoJsonTestSuite");
+      db._drop(colName3);
+      locations = db._create(colName3);
       locations.ensureIndex({ type: "geo", fields: ["geometry"], geoJson: true, legacy: false });
 
       indonesiaKeys = indonesia.map(doc => locations.save({ geometry: doc })._key);
@@ -440,13 +437,69 @@ function optimizerRuleTestSuite() {
     ////////////////////////////////////////////////////////////////////////////
     /// @brief tear down
     ////////////////////////////////////////////////////////////////////////////
-    tearDown: function () {
+    tearDownAll: function () {
       internal.db._drop(colName);
       geocol = null;
-      db._drop("UnitTestsGeoJsonTestSuite");
+      db._drop(colName3);
     },
     
-    testRuleMultiIndexes: function () {
+    testRuleMultiIndexesInLoops: function () {
+      let query = "FOR d1 IN " + colName + " FILTER DISTANCE(d1.lat, d1.lon, 0, 0) <= 15000 FOR d2 IN " + colName + " FILTER DISTANCE(d2.lat, d2.lon, 1, 1) <= 25000 FOR d3 IN " + colName + " FILTER DISTANCE(d3.lat, d3.lon, 2, 2) <= 35000 RETURN 1";
+      let plan = AQL_EXPLAIN(query).plan;
+      assertNotEqual(-1, plan.rules.indexOf("geo-index-optimizer"));
+
+      let nodes = helper.findExecutionNodes(plan, "IndexNode");
+      assertEqual(3, nodes.length);
+      nodes.sort(function(l, r) {
+        if (l.outVariable.name !== r.outVariable.name) {
+          return (l.outVariable.name < r.outVariable.name ? -1 : 1);
+        }
+        return 0;
+      });
+      nodes.forEach(function(n, i) {
+        assertEqual("IndexNode", n.type);
+        assertEqual(colName, n.collection);
+        assertEqual(1, n.indexes.length);
+        let index = n.indexes[0];
+
+        assertEqual("geo", index.type);
+        assertEqual(["lat", "lon"], index.fields);
+        
+        assertFalse(n.sorted);
+        assertEqual("d" + (i + 1), n.outVariable.name);
+        let cond = n.condition.subNodes[0];
+        assertEqual("n-ary and", cond.type);
+        assertEqual(1, cond.subNodes.length);
+        cond = cond.subNodes[0];
+        assertEqual("compare <=", cond.type);
+        assertEqual(2, cond.subNodes.length);
+        assertEqual("value", cond.subNodes[1].type);
+        assertEqual(15000 + i * 10000, cond.subNodes[1].value);
+        cond = cond.subNodes[0];
+        assertEqual("function call", cond.type);
+        assertEqual("GEO_DISTANCE", cond.name);
+        assertEqual(1, cond.subNodes.length);
+        cond = cond.subNodes[0];
+        assertEqual(cond.type, "array");
+        assertEqual(2, cond.subNodes.length);
+        assertEqual("value", cond.subNodes[0].subNodes[0].type);
+        assertEqual("value", cond.subNodes[0].subNodes[1].type);
+        assertEqual(i, cond.subNodes[0].subNodes[0].value);
+        assertEqual(i, cond.subNodes[0].subNodes[1].value);
+        cond = cond.subNodes[1];
+        assertEqual("array", cond.type);
+        assertEqual(2, cond.subNodes.length);
+        assertEqual("attribute access", cond.subNodes[0].type);
+        assertEqual("lon", cond.subNodes[0].name);
+        assertEqual("d" + (i + 1), cond.subNodes[0].subNodes[0].name);
+        assertEqual("attribute access", cond.subNodes[1].type);
+        assertEqual("lat", cond.subNodes[1].name);
+        assertEqual("d" + (i + 1), cond.subNodes[1].subNodes[0].name);
+
+      });
+    },
+    
+    testRuleMultiIndexesInSubqueries: function () {
       let query = "LET x1 = (FOR d IN " + colName + " SORT distance(d.lat, d.lon, 0, 0) LIMIT 1 RETURN d) LET x2 = (FOR d IN " + colName + " SORT distance(d.lat, d.lon, 0, 0) LIMIT 1 RETURN d) RETURN { x1, x2 }";
       let plan = AQL_EXPLAIN(query).plan;
       assertNotEqual(-1, plan.rules.indexOf("geo-index-optimizer"));
@@ -484,49 +537,42 @@ function optimizerRuleTestSuite() {
             index: true
           },
           {
-            string: "FOR d IN " + colName + " SORT distance(0, 0, d.lat,d.lon ) ASC LIMIT 1 RETURN d",
+            string: "FOR d IN " + colName + " SORT distance(0, 0, d.lat, d.lon) ASC LIMIT 1 RETURN d",
             cluster: false,
             sort: false,
             filter: false,
             index: true
           },
           {
-            string: "FOR d IN " + colName + " FILTER distance(0, 0, d.lat,d.lon ) < 1 LIMIT 1 RETURN d",
+            string: "FOR d IN " + colName + " FILTER distance(0, 0, d.lat, d.lon) < 1 LIMIT 1 RETURN d",
             cluster: false,
             sort: false,
             filter: false,
             index: true
           },
           {
-            string: "FOR d IN " + colName + " FILTER distance(0, 0, d.geo[0],d.geo[1] ) < 1 LIMIT 1 RETURN d",
+            string: "FOR d IN " + colName + " FILTER distance(0, 0, d.geo[0], d.geo[1]) < 1 LIMIT 1 RETURN d",
             cluster: false,
             sort: false,
             filter: false,
             index: true
           },
           {
-            string: "FOR d IN " + colName + " FILTER distance(0, 0, d.lat, d.geo[1] ) < 1 LIMIT 1 RETURN d",
+            string: "FOR d IN " + colName + " FILTER distance(0, 0, d.lat, d.geo[1]) < 1 LIMIT 1 RETURN d",
             cluster: false,
             sort: false,
-            filter: true,
+            filter: false,
             index: false
           },
           {
-            string: "FOR d IN " + colName + " SORT distance(0, 0, d.lat, d.lon) FILTER distance(0, 0, d.lat,d.lon ) < 1 LIMIT 1 RETURN d",
+            string: "FOR d IN " + colName + " SORT distance(0, 0, d.lat, d.lon) FILTER distance(0, 0, d.lat, d.lon) < 1 LIMIT 1 RETURN d",
             cluster: false,
             sort: false,
             filter: false,
             index: true
           },
           {
-            string: "FOR d IN " + colName + " SORT distance(0, 0, d.lat, d.lon) FILTER distance(0, 0, d.lat,d.lon ) < 1 LIMIT 1 RETURN d",
-            cluster: false,
-            sort: false,
-            filter: false,
-            index: true
-          },
-          {
-            string: "FOR i in 1..2 FOR d IN " + colName + " FILTER distance(0, 0, d.lat,d.lon ) < 1 && i > 1 LIMIT 1 RETURN d",
+            string: "FOR i in 1..2 FOR d IN " + colName + " FILTER distance(0, 0, d.lat, d.lon) < 1 && i > 1 LIMIT 1 RETURN d",
             cluster: false,
             sort: false,
             filter: true,

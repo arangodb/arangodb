@@ -22,8 +22,11 @@
 
 #include "ClusterTransactionCollection.h"
 #include "Basics/Exceptions.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Hints.h"
 #include "Transaction/Methods.h"
@@ -35,12 +38,9 @@ ClusterTransactionCollection::ClusterTransactionCollection(TransactionState* trx
                                                            TRI_voc_cid_t cid,
                                                            AccessMode::Type accessType,
                                                            int nestingLevel)
-    : TransactionCollection(trx, cid, accessType),
-      _lockType(AccessMode::Type::NONE),
-      _nestingLevel(nestingLevel),
-      _usageLocked(false) {}
+    : TransactionCollection(trx, cid, accessType, nestingLevel) {}
 
-ClusterTransactionCollection::~ClusterTransactionCollection() {}
+ClusterTransactionCollection::~ClusterTransactionCollection() = default;
 
 /// @brief whether or not any write operations for the collection happened
 bool ClusterTransactionCollection::hasOperations() const {
@@ -61,29 +61,6 @@ bool ClusterTransactionCollection::canAccess(AccessMode::Type accessType) const 
   return true;
 }
 
-int ClusterTransactionCollection::updateUsage(AccessMode::Type accessType, int nestingLevel) {
-  if (AccessMode::isWriteOrExclusive(accessType) &&
-      !AccessMode::isWriteOrExclusive(_accessType)) {
-    if (nestingLevel > 0) {
-      // trying to write access a collection that is only marked with
-      // read-access
-      return TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION;
-    }
-
-    TRI_ASSERT(nestingLevel == 0);
-
-    // upgrade collection type to write-access
-    _accessType = accessType;
-  }
-
-  if (nestingLevel < _nestingLevel) {
-    _nestingLevel = nestingLevel;
-  }
-
-  // all correct
-  return TRI_ERROR_NO_ERROR;
-}
-
 int ClusterTransactionCollection::use(int nestingLevel) {
   if (_nestingLevel != nestingLevel) {
     // only process our own collections
@@ -92,13 +69,14 @@ int ClusterTransactionCollection::use(int nestingLevel) {
 
   if (_collection == nullptr) {
     // open the collection
-    ClusterInfo* ci = ClusterInfo::instance();
-    if (ci == nullptr) {
+    if (_transaction->vocbase().server().isStopping()) {
       return TRI_ERROR_SHUTTING_DOWN;
     }
+    ClusterInfo& ci =
+        _transaction->vocbase().server().getFeature<ClusterFeature>().clusterInfo();
 
     _collection =
-        ci->getCollectionNT(_transaction->vocbase().name(), std::to_string(_cid));
+        ci.getCollectionNT(_transaction->vocbase().name(), std::to_string(_cid));
     if (_collection == nullptr) {
       return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
     }
@@ -106,8 +84,7 @@ int ClusterTransactionCollection::use(int nestingLevel) {
     if (!_transaction->hasHint(transaction::Hints::Hint::LOCK_NEVER) &&
         !_transaction->hasHint(transaction::Hints::Hint::NO_USAGE_LOCK)) {
       // use and usage-lock
-      LOG_TRX(_transaction, nestingLevel) << "using collection " << _cid;
-      _usageLocked = true;
+      LOG_TRX("8154f", TRACE, _transaction, nestingLevel) << "using collection " << _cid;
     }
   }
 
@@ -115,12 +92,10 @@ int ClusterTransactionCollection::use(int nestingLevel) {
     // r/w lock the collection
     int res = doLock(_accessType, nestingLevel);
 
-    if (res == TRI_ERROR_LOCKED) {
-      // TRI_ERROR_LOCKED is not an error, but it indicates that the lock
-      // operation has actually acquired the lock (and that the lock has not
-      // been held before)
-      res = TRI_ERROR_NO_ERROR;
-    } else if (res != TRI_ERROR_NO_ERROR) {
+    // TRI_ERROR_LOCKED is not an error, but it indicates that the lock
+    // operation has actually acquired the lock (and that the lock has not
+    // been held before)
+    if (res != TRI_ERROR_NO_ERROR && res != TRI_ERROR_LOCKED) {
       return res;
     }
   }
@@ -142,12 +117,7 @@ void ClusterTransactionCollection::release() {
   // the top level transaction releases all collections
   if (_collection != nullptr) {
     // unuse collection, remove usage-lock
-    LOG_TRX(_transaction, 0) << "unusing collection " << _cid;
-
-    if (_usageLocked) {
-      _transaction->vocbase().releaseCollection(_collection.get());
-      _usageLocked = false;
-    }
+    LOG_TRX("1cb8d", TRACE, _transaction, 0) << "unusing collection " << _cid;
     _collection = nullptr;
   }
 }
@@ -169,16 +139,10 @@ int ClusterTransactionCollection::doLock(AccessMode::Type type, int nestingLevel
 
   TRI_ASSERT(_collection != nullptr);
 
-  std::string collName(_collection->name());
-  if (_transaction->isLockedShard(collName)) {
-    // do not lock by command
-    return TRI_ERROR_NO_ERROR;
-  }
-
   TRI_ASSERT(!isLocked());
 
   TRI_ASSERT(_collection);
-  LOG_TRX(_transaction, nestingLevel) << "write-locking collection " << _cid;
+  LOG_TRX("b4a05", TRACE, _transaction, nestingLevel) << "write-locking collection " << _cid;
 
   _lockType = type;
   // not an error, but we use TRI_ERROR_LOCKED to indicate that we actually
@@ -200,14 +164,7 @@ int ClusterTransactionCollection::doUnlock(AccessMode::Type type, int nestingLev
 
   TRI_ASSERT(_collection != nullptr);
 
-  std::string collName(_collection->name());
-  if (_transaction->isLockedShard(collName)) {
-    // do not lock by command
-    return TRI_ERROR_NO_ERROR;
-  }
-
   TRI_ASSERT(isLocked());
-
   if (_nestingLevel < nestingLevel) {
     // only process our own collections
     return TRI_ERROR_NO_ERROR;
@@ -220,7 +177,7 @@ int ClusterTransactionCollection::doUnlock(AccessMode::Type type, int nestingLev
   if (AccessMode::isWriteOrExclusive(type) && !AccessMode::isWriteOrExclusive(_lockType)) {
     // we should never try to write-unlock a collection that we have only
     // read-locked
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "logic error in doUnlock";
+    LOG_TOPIC("e8aab", ERR, arangodb::Logger::FIXME) << "logic error in doUnlock";
     TRI_ASSERT(false);
     return TRI_ERROR_INTERNAL;
   }

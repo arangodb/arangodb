@@ -23,6 +23,8 @@
 
 #include "hashes.h"
 
+#include <cstring>
+
 /// @brief the FNV hash work horse
 static inline uint64_t FnvWork(uint8_t value, uint64_t hash) {
   static uint64_t const MagicPrime = 0x00000100000001b3ULL;
@@ -523,9 +525,5 @@ uint32_t TRI_Crc32HashPointer(void const* data, size_t length) {
 
 /// @brief computes a CRC32 for strings
 uint32_t TRI_Crc32HashString(char const* data) {
-  size_t len = strlen(data);
-
-  uint32_t crc = TRI_InitialCrc32();
-  crc = (*TRI_BlockCrc32)(crc, data, len);
-  return TRI_FinalCrc32(crc);
+  return TRI_Crc32HashPointer(data, strlen(data));
 }

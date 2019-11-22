@@ -24,19 +24,35 @@
 #include <locale.h>
 #include <string.h>
 #include <tchar.h>
+#include <fcntl.h>
+#include <io.h>
 #include <unicode/locid.h>
 #endif
 
 #include "ConsoleFeature.h"
 
 #include "ApplicationFeatures/ShellColorsFeature.h"
+#include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
 #include "Basics/messages.h"
+#include "Basics/operating-system.h"
+#include "Basics/system-functions.h"
 #include "Basics/terminal-utils.h"
+#include "FeaturePhases/BasicFeaturePhaseClient.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Shell/ClientFeature.h"
+
+#if _WIN32
+#include "Basics/win-utils.h"
+#endif
+
+#ifdef TRI_HAVE_UNISTD_H
+#include <unistd.h>
+#endif
 
 #include <iomanip>
 #include <iostream>
@@ -59,6 +75,7 @@ ConsoleFeature::ConsoleFeature(application_features::ApplicationServer& server)
 #endif
       _quiet(false),
       _colors(true),
+      _useHistory(true),
       _autoComplete(true),
       _prettyPrint(true),
       _auditFile(),
@@ -73,7 +90,7 @@ ConsoleFeature::ConsoleFeature(application_features::ApplicationServer& server)
       _startTime(TRI_microtime()) {
   setOptional(false);
   requiresElevatedPrivileges(false);
-  startsAfter("BasicsPhase");
+  startsAfter<application_features::BasicFeaturePhaseClient>();
   if (!_supportsColors) {
     _colors = false;
   }
@@ -108,6 +125,12 @@ void ConsoleFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--console.audit-file",
                      "audit log file to save commands and results",
                      new StringParameter(&_auditFile));
+  
+  options->addOption("--console.history",
+                     "whether or not to load and persist command-line history",
+                     new BooleanParameter(&_useHistory))
+                     .setIntroducedIn(30405)
+                     .setIntroducedIn(30500);
 
   options->addOption("--console.pager", "enable paging", new BooleanParameter(&_pager));
 
@@ -172,7 +195,7 @@ void ConsoleFeature::_print(std::string const& s) {
   if (pos == std::string::npos) {
     _print2(s);
   } else {
-    std::vector<std::string> lines = StringUtils::split(s, '\x1b', '\0');
+    std::vector<std::string> lines = StringUtils::split(s, '\x1b');
 
     int i = 0;
 
@@ -309,13 +332,23 @@ std::string ConsoleFeature::readPassword() {
 }
 
 void ConsoleFeature::printWelcomeInfo() {
-  if (!_quiet && _pager) {
-    std::ostringstream s;
-
-    s << "Using pager '" << _pagerCommand << "' for output buffering.";
-
-    printLine(s.str());
+  if (_quiet) {
+    return;
   }
+    
+  std::ostringstream s;
+  
+  if (_pager) {
+    s << "Using pager '" << _pagerCommand << "' for output buffering. ";
+  }
+
+  if (_useHistory) {
+    s << "Command-line history will be persisted when the shell is exited. You can use `--console.history false` to turn this off";
+  } else {
+    s << "Command-line history is enabled for this session only and will *not* be persisted.";
+  }
+
+  printLine(s.str());
 }
 
 void ConsoleFeature::printByeBye() {
@@ -494,7 +527,7 @@ void ConsoleFeature::startPager() {
     _toPager = popen(_pagerCommand.c_str(), "w");
 
     if (_toPager == nullptr) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC("25033", ERR, arangodb::Logger::FIXME)
           << "popen() for pager failed! Using stdout instead!";
       _toPager = stdout;
       _pager = false;

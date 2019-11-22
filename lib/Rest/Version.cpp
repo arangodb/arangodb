@@ -45,10 +45,9 @@
 #include "Basics/build-date.h"
 #include "Basics/build-repository.h"
 #include "Basics/conversions.h"
+#include "Basics/debugging.h"
 
-#ifdef USE_IRESEARCH
 #include "3rdParty/iresearch/core/utils/version_defines.hpp"
-#endif
 
 using namespace arangodb::rest;
 
@@ -108,12 +107,17 @@ void Version::initialize() {
 #else
   Values["debug"] = "false";
 #endif
+#ifdef ARANGODB_USE_IPO 
+  Values["ipo"] = "true";
+#else
+  Values["ipo"] = "false";
+#endif
 #ifdef NDEBUG
   Values["ndebug"] = "true";
 #else
   Values["ndebug"] = "false";
 #endif
-#if defined(ARCHITECTURE_OPTIMIZATIONS)
+#ifdef ARCHITECTURE_OPTIMIZATIONS
   Values["optimization-flags"] = std::string(ARCHITECTURE_OPTIMIZATIONS);
 #endif
   Values["endianness"] = getEndianness();
@@ -122,6 +126,16 @@ void Version::initialize() {
   Values["icu-version"] = getICUVersion();
   Values["openssl-version-compile-time"] = getOpenSSLVersion(true);
   Values["openssl-version-run-time"] = getOpenSSLVersion(false);
+#ifdef __pic__
+  Values["pic"] = std::to_string(__pic__);
+#else
+  Values["pic"] = "none";
+#endif
+#ifdef __pie__
+  Values["pie"] = std::to_string(__pie__);
+#else
+  Values["pie"] = "none";
+#endif
   Values["platform"] = TRI_PLATFORM;
   Values["reactor-type"] = getBoostReactorType();
   Values["server-version"] = getServerVersion();
@@ -175,6 +189,13 @@ void Version::initialize() {
 #endif
 #endif
 #endif
+  
+#if defined(__SANITIZE_THREAD__) || \
+(defined(__has_feature) && __has_feature(thread_sanitizer))
+  Values["tsan"] = "true";
+#else
+  Values["tsan"] = "false";
+#endif
 
 #if defined(__SSE4_2__) && !defined(NO_SSE42)
   Values["sse42"] = "true";
@@ -212,9 +233,7 @@ void Version::initialize() {
   Values["fd-client-event-handler"] = "select";
 #endif
 
-#ifdef USE_IRESEARCH
   Values["iresearch-version"] = getIResearchVersion();
-#endif
 
   for (auto& it : Values) {
     arangodb::basics::StringUtils::trimInPlace(it.second);
@@ -350,12 +369,8 @@ std::string Version::getICUVersion() {
   return icuVersionString;
 }
 
-#ifdef USE_IRESEARCH
-
 /// @brief get IResearch version
 std::string Version::getIResearchVersion() { return IResearch_version; }
-
-#endif
 
 /// @brief get compiler
 std::string Version::getCompiler() {

@@ -20,11 +20,16 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <thread>
+
 #include "RestServer/AqlFeature.h"
 
 #include "Aql/QueryRegistry.h"
 #include "Cluster/TraverserEngineRegistry.h"
+#include "FeaturePhases/V8FeaturePhase.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
 
@@ -45,10 +50,10 @@ namespace arangodb {
 AqlFeature::AqlFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Aql") {
   setOptional(false);
-  startsAfter("V8Phase");
+  startsAfter<V8FeaturePhase>();
 
-  startsAfter("QueryRegistry");
-  startsAfter("TraverserEngineRegistry");
+  startsAfter<QueryRegistryFeature>();
+  startsAfter<TraverserEngineRegistryFeature>();
 }
 
 AqlFeature::~AqlFeature() {
@@ -72,13 +77,13 @@ void AqlFeature::unlease() noexcept { ::leases.fetch_sub(1); }
 void AqlFeature::start() {
   ::leases.fetch_or(::readyBit);
 
-  LOG_TOPIC(DEBUG, Logger::QUERIES) << "AQL feature started";
+  LOG_TOPIC("cf921", DEBUG, Logger::QUERIES) << "AQL feature started";
 }
 
 void AqlFeature::stop() {
   ::leases.fetch_and(~::readyBit);
 
-  LOG_TOPIC(DEBUG, Logger::QUERIES) << "AQL feature stopped";
+  LOG_TOPIC("8ed81", DEBUG, Logger::QUERIES) << "AQL feature stopped";
 
   // Wait until all AQL queries are done
   auto queryRegistry = QueryRegistryFeature::registry();
@@ -102,7 +107,7 @@ void AqlFeature::stop() {
     if (n == 0 && m == 0 && o == 0) {
       break;
     }
-    LOG_TOPIC(DEBUG, Logger::QUERIES)
+    LOG_TOPIC("63d54", DEBUG, Logger::QUERIES)
         << "AQLFeature shutdown, waiting for " << o
         << " registered traverser engines to terminate and for " << n
         << " registered queries to terminate and for " << m

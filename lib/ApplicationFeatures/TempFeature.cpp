@@ -21,7 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ApplicationFeatures/TempFeature.h"
-
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/FileUtils.h"
 #include "Basics/files.h"
@@ -37,7 +37,7 @@ TempFeature::TempFeature(application_features::ApplicationServer& server,
                          std::string const& appname)
     : ApplicationFeature(server, "Temp"), _path(), _appname(appname) {
   setOptional(false);
-  startsAfter("GreetingsPhase");
+  startsAfter<application_features::GreetingsFeaturePhase>();
 }
 
 void TempFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {

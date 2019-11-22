@@ -2,7 +2,7 @@
 @startDocuBlock delete_api_aqlfunction
 @brief remove an existing AQL user function
 
-@RESTHEADER{DELETE /_api/aqlfunction/{name}, Remove existing AQL user function}
+@RESTHEADER{DELETE /_api/aqlfunction/{name}, Remove existing AQL user function, RestAqlUserFunctionsHandler:Remove}
 
 @RESTURLPARAMETERS
 

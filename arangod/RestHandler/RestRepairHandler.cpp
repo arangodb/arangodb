@@ -28,11 +28,18 @@
 #include <thread>
 #include <valarray>
 
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AsyncJobManager.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "VocBase/LogicalCollection.h"
+
+#include <velocypack/Collection.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -40,11 +47,13 @@ using namespace arangodb::rest;
 using namespace arangodb::rest_repair;
 using namespace arangodb::cluster_repairs;
 
-RestRepairHandler::RestRepairHandler(GeneralRequest* request, GeneralResponse* response)
-    : RestBaseHandler(request, response) {}
+RestRepairHandler::RestRepairHandler(application_features::ApplicationServer& server,
+                                     GeneralRequest* request, GeneralResponse* response)
+    : RestBaseHandler(server, request, response) {}
 
 RestStatus RestRepairHandler::execute() {
-  if (application_features::ApplicationServer::isStopping()) {
+  auto& server = application_features::ApplicationServer::server();
+  if (server.isStopping()) {
     generateError(rest::ResponseCode::SERVICE_UNAVAILABLE, TRI_ERROR_SHUTTING_DOWN);
     return RestStatus::DONE;
   }
@@ -85,7 +94,7 @@ RestStatus RestRepairHandler::execute() {
 
 RestStatus RestRepairHandler::repairDistributeShardsLike() {
   if (ServerState::instance()->isSingleServer()) {
-    LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
+    LOG_TOPIC("aa557", ERR, arangodb::Logger::CLUSTER)
         << "RestRepairHandler::repairDistributeShardsLike: "
         << "Called on single server; this only makes sense in cluster mode";
 
@@ -98,18 +107,18 @@ RestStatus RestRepairHandler::repairDistributeShardsLike() {
   try {
     rest::ResponseCode responseCode = rest::ResponseCode::OK;
 
-    ClusterInfo* clusterInfo = ClusterInfo::instance();
-    if (clusterInfo == nullptr) {
-      LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
+    if (!server().hasFeature<ClusterFeature>()) {
+      LOG_TOPIC("b57dc", ERR, arangodb::Logger::CLUSTER)
           << "RestRepairHandler::repairDistributeShardsLike: "
           << "No ClusterInfo instance";
       generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR);
 
       return RestStatus::DONE;
     }
+    ClusterInfo& clusterInfo = server().getFeature<ClusterFeature>().clusterInfo();
 
-    clusterInfo->loadPlan();
-    std::shared_ptr<VPackBuilder> planBuilder = clusterInfo->getPlan();
+    clusterInfo.loadPlan();
+    std::shared_ptr<VPackBuilder> planBuilder = clusterInfo.getPlan();
 
     VPackSlice plan = planBuilder->slice();
 
@@ -118,7 +127,7 @@ RestStatus RestRepairHandler::repairDistributeShardsLike() {
     ResultT<VPackBufferPtr> healthResult = getFromAgency("Supervision/Health");
 
     if (healthResult.fail()) {
-      LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
+      LOG_TOPIC("afb6f", ERR, arangodb::Logger::CLUSTER)
           << "RestRepairHandler::repairDistributeShardsLike: "
           << "Failed to fetch server health result";
       generateError(rest::ResponseCode::SERVER_ERROR,
@@ -133,7 +142,7 @@ RestStatus RestRepairHandler::repairDistributeShardsLike() {
         DistributeShardsLikeRepairer::repairDistributeShardsLike(planCollections, supervisionHealth);
 
     if (repairOperationsByCollectionResult.fail()) {
-      LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
+      LOG_TOPIC("38b6a", ERR, arangodb::Logger::CLUSTER)
           << "RestRepairHandler::repairDistributeShardsLike: "
           << "Error during preprocessing: "
           << "[" << repairOperationsByCollectionResult.errorNumber() << "] "
@@ -177,15 +186,15 @@ RestStatus RestRepairHandler::repairDistributeShardsLike() {
 
     generateResult(responseCode, response, errorOccurred);
 
-    clusterInfo->loadPlan();
+    clusterInfo.loadPlan();
   } catch (basics::Exception const& e) {
-    LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
+    LOG_TOPIC("78521", ERR, arangodb::Logger::CLUSTER)
         << "RestRepairHandler::repairDistributeShardsLike: "
         << "Caught exception: " << e.message();
     generateError(rest::ResponseCode::SERVER_ERROR, e.code());
 
-    if (ClusterInfo* clusterInfo = ClusterInfo::instance()) {
-      clusterInfo->loadPlan();
+    if (server().hasFeature<ClusterFeature>()) {
+      server().getFeature<ClusterFeature>().clusterInfo().loadPlan();
     }
   }
   return RestStatus::DONE;
@@ -255,7 +264,7 @@ bool RestRepairHandler::repairCollection(DatabaseID const& databaseId,
   for (auto const& op : repairOperations) {
     RepairOperationToVPackVisitor addToVPack(response);
 
-    boost::apply_visitor(addToVPack, op);
+    std::visit(addToVPack, op);
   }
 
   response.close();
@@ -274,13 +283,13 @@ bool RestRepairHandler::repairCollection(DatabaseID const& databaseId,
 }
 
 ResultT<bool> RestRepairHandler::jobFinished(std::string const& jobId) {
-  LOG_TOPIC(TRACE, arangodb::Logger::CLUSTER)
+  LOG_TOPIC("28146", TRACE, arangodb::Logger::CLUSTER)
       << "RestRepairHandler::jobFinished: "
       << "Fetching job info of " << jobId;
   ResultT<JobStatus> jobStatus = getJobStatusFromAgency(jobId);
 
   if (jobStatus.ok()) {
-    LOG_TOPIC(DEBUG, arangodb::Logger::CLUSTER)
+    LOG_TOPIC("3ec47", DEBUG, arangodb::Logger::CLUSTER)
         << "RestRepairHandler::jobFinished: "
         << "Job status is: " << toString(jobStatus.get());
 
@@ -294,14 +303,14 @@ ResultT<bool> RestRepairHandler::jobFinished(std::string const& jobId) {
         break;
 
       case JobStatus::failed:
-        LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
+        LOG_TOPIC("9abf7", ERR, arangodb::Logger::CLUSTER)
             << "RestRepairHandler::jobFinished: "
             << "Job " << jobId << " failed, aborting";
 
         return ResultT<bool>::error(TRI_ERROR_CLUSTER_REPAIRS_JOB_FAILED);
 
       case JobStatus::missing:
-        LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
+        LOG_TOPIC("24862", ERR, arangodb::Logger::CLUSTER)
             << "RestRepairHandler::jobFinished: "
             << "Job " << jobId << " went missing, aborting";
 
@@ -309,7 +318,7 @@ ResultT<bool> RestRepairHandler::jobFinished(std::string const& jobId) {
     }
 
   } else {
-    LOG_TOPIC(INFO, arangodb::Logger::CLUSTER)
+    LOG_TOPIC("36d07", INFO, arangodb::Logger::CLUSTER)
         << "RestRepairHandler::jobFinished: "
         << "Failed to get job status: "
         << "[" << jobStatus.errorNumber() << "] " << jobStatus.errorMessage();
@@ -329,19 +338,20 @@ Result RestRepairHandler::executeRepairOperations(DatabaseID const& databaseId,
   size_t opNum = 0;
   for (auto& op : repairOperations) {
     opNum += 1;
-    auto visitor = RepairOperationToTransactionVisitor();
-    auto trxJobPair = boost::apply_visitor(visitor, op);
+    auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+    auto visitor = RepairOperationToTransactionVisitor(ci);
+    auto trxJobPair = std::visit(visitor, op);
 
     AgencyWriteTransaction& wtrx = trxJobPair.first;
-    boost::optional<uint64_t> waitForJobId = trxJobPair.second;
+    std::optional<uint64_t> waitForJobId = trxJobPair.second;
 
-    LOG_TOPIC(DEBUG, arangodb::Logger::CLUSTER)
+    LOG_TOPIC("6f32d", DEBUG, arangodb::Logger::CLUSTER)
         << "RestRepairHandler::executeRepairOperations: "
         << "Sending a transaction to the agency";
 
     AgencyCommResult result = comm.sendTransactionWithFailover(wtrx);
-    if (ClusterInfo* clusterInfo = ClusterInfo::instance()) {
-      clusterInfo->loadPlan();
+    if (server().hasFeature<ClusterFeature>()) {
+      server().getFeature<ClusterFeature>().clusterInfo().loadPlan();
     }
     if (!result.successful()) {
       std::stringstream errMsg;
@@ -350,7 +360,7 @@ Result RestRepairHandler::executeRepairOperations(DatabaseID const& databaseId,
              << "[" << result.errorCode() << "] `" << result.errorMessage()
              << "' during operation#" << opNum << ": " << op;
 
-      LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
+      LOG_TOPIC("948df", ERR, arangodb::Logger::CLUSTER)
           << "RestRepairHandler::executeRepairOperations: " << errMsg.str();
 
       return Result(TRI_ERROR_CLUSTER_REPAIRS_OPERATION_FAILED, errMsg.str());
@@ -366,11 +376,11 @@ Result RestRepairHandler::executeRepairOperations(DatabaseID const& databaseId,
 
     // If the transaction posted a job, we wait for it to finish.
     if (waitForJobId) {
-      LOG_TOPIC(DEBUG, arangodb::Logger::CLUSTER)
+      LOG_TOPIC("e6252", DEBUG, arangodb::Logger::CLUSTER)
           << "RestRepairHandler::executeRepairOperations: "
-          << "Waiting for job " << waitForJobId.get();
+          << "Waiting for job " << waitForJobId.value();
       bool previousJobFinished = false;
-      std::string jobId = std::to_string(waitForJobId.get());
+      std::string jobId = std::to_string(waitForJobId.value());
 
       while (!previousJobFinished) {
         ResultT<bool> jobFinishedResult = jobFinished(jobId);
@@ -379,13 +389,13 @@ Result RestRepairHandler::executeRepairOperations(DatabaseID const& databaseId,
         }
         previousJobFinished = jobFinishedResult.get();
 
-        LOG_TOPIC(TRACE, arangodb::Logger::CLUSTER)
+        LOG_TOPIC("daa02", TRACE, arangodb::Logger::CLUSTER)
             << "RestRepairHandler::executeRepairOperations: "
             << "Sleeping for 1s (still waiting for job)";
         std::this_thread::sleep_for(std::chrono::seconds(1));
       }
 
-      LOG_TOPIC(DEBUG, arangodb::Logger::CLUSTER)
+      LOG_TOPIC("7a12d", DEBUG, arangodb::Logger::CLUSTER)
           << "RestRepairHandler::executeRepairOperations: "
           << "Waiting for replicationFactor to match";
 
@@ -400,7 +410,7 @@ Result RestRepairHandler::executeRepairOperations(DatabaseID const& databaseId,
         }
         replicationFactorMatches = checkReplicationFactorResult.get();
 
-        LOG_TOPIC(TRACE, arangodb::Logger::CLUSTER)
+        LOG_TOPIC("8a25f", TRACE, arangodb::Logger::CLUSTER)
             << "RestRepairHandler::executeRepairOperations: "
             << "Sleeping for 1s (still waiting for replicationFactor to match)";
         std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -433,7 +443,7 @@ ResultT<std::array<VPackBufferPtr, N>> RestRepairHandler::getFromAgency(
     std::string const& agencyKey = agencyKeyArray[i];
 
     if (!result.successful()) {
-      LOG_TOPIC(WARN, arangodb::Logger::CLUSTER)
+      LOG_TOPIC("07263", WARN, arangodb::Logger::CLUSTER)
           << "RestRepairHandler::getFromAgency: "
           << "Getting value from agency failed with: " << result.errorMessage();
       generateError(rest::ResponseCode::SERVER_ERROR, result.errorCode(),
@@ -521,7 +531,7 @@ ResultT<std::string> RestRepairHandler::getDbAndCollectionName(VPackSlice const 
 
   // This should never happen:
 
-  LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
+  LOG_TOPIC("e4397", ERR, arangodb::Logger::CLUSTER)
       << "RestRepairHandler::getDbAndCollectionName: "
       << "Collection " << collectionID << " not found!";
 
@@ -531,7 +541,7 @@ ResultT<std::string> RestRepairHandler::getDbAndCollectionName(VPackSlice const 
 }
 
 void RestRepairHandler::addErrorDetails(VPackBuilder& builder, int const errorNumber) {
-  boost::optional<const char*> errorDetails;
+  std::optional<const char*> errorDetails;
 
   switch (errorNumber) {
     case TRI_ERROR_CLUSTER_REPAIRS_FAILED:
@@ -620,8 +630,8 @@ void RestRepairHandler::addErrorDetails(VPackBuilder& builder, int const errorNu
         ;
   }
 
-  if (errorDetails.is_initialized()) {
-    builder.add("errorDetails", VPackValue(errorDetails.get()));
+  if (errorDetails.has_value()) {
+    builder.add("errorDetails", VPackValue(errorDetails.value()));
   }
 }
 
@@ -629,19 +639,19 @@ bool RestRepairHandler::pretendOnly() { return _pretendOnly; }
 
 ResultT<bool> RestRepairHandler::checkReplicationFactor(DatabaseID const& databaseId,
                                                         CollectionID const& collectionId) {
-  ClusterInfo* clusterInfo = ClusterInfo::instance();
-  if (clusterInfo == nullptr) {
-    LOG_TOPIC(ERR, arangodb::Logger::CLUSTER)
+  if (!server().hasFeature<ClusterFeature>()) {
+    LOG_TOPIC("1cd7a", ERR, arangodb::Logger::CLUSTER)
         << "RestRepairHandler::checkReplicationFactor: "
         << "No ClusterInfo instance";
     generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR);
 
     return ResultT<bool>::error(TRI_ERROR_INTERNAL);
   }
+  ClusterInfo& clusterInfo = server().getFeature<ClusterFeature>().clusterInfo();
 
-  clusterInfo->loadPlan();
+  clusterInfo.loadPlan();
   std::shared_ptr<LogicalCollection> const collection =
-      clusterInfo->getCollection(databaseId, collectionId);
+      clusterInfo.getCollection(databaseId, collectionId);
   std::shared_ptr<ShardMap> const shardMap = collection->shardIds();
 
   for (auto const& it : *shardMap) {
@@ -649,7 +659,7 @@ ResultT<bool> RestRepairHandler::checkReplicationFactor(DatabaseID const& databa
     auto const& dbServers = it.second;
 
     if (dbServers.size() != static_cast<size_t>(collection->replicationFactor())) {
-      LOG_TOPIC(DEBUG, arangodb::Logger::CLUSTER)
+      LOG_TOPIC("97102", DEBUG, arangodb::Logger::CLUSTER)
           << "RestRepairHandler::checkReplicationFactor: "
           << "replicationFactor doesn't match in shard " << shardId
           << " of collection " << databaseId << "/" << collectionId << ": "

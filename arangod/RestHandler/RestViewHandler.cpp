@@ -30,6 +30,7 @@
 #include "Rest/GeneralResponse.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Utils/CollectionNameResolver.h"
+#include "Utils/Events.h"
 #include "VocBase/LogicalView.h"
 
 #include <velocypack/velocypack-aliases.h>
@@ -37,16 +38,10 @@
 namespace {
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @return the specified object is granted 'level' access
+/// @return the specified vocbase is granted 'level' access
 ////////////////////////////////////////////////////////////////////////////////
-bool canUse(arangodb::auth::Level level, TRI_vocbase_t const& vocbase,
-            std::string const* dataSource = nullptr  // nullptr == validate only vocbase
-) {
-  auto* execCtx = arangodb::ExecContext::CURRENT;
-
-  return !execCtx ||
-         (execCtx->canUseDatabase(vocbase.name(), level) &&
-          (!dataSource || execCtx->canUseCollection(vocbase.name(), *dataSource, level)));
+bool canUse(arangodb::auth::Level level, TRI_vocbase_t const& vocbase) {
+  return arangodb::ExecContext::current().canUseDatabase(vocbase.name(), level);
 }
 
 }  // namespace
@@ -55,8 +50,9 @@ using namespace arangodb::basics;
 
 namespace arangodb {
 
-RestViewHandler::RestViewHandler(GeneralRequest* request, GeneralResponse* response)
-    : RestVocbaseBaseHandler(request, response) {}
+RestViewHandler::RestViewHandler(application_features::ApplicationServer& server,
+                                 GeneralRequest* request, GeneralResponse* response)
+    : RestVocbaseBaseHandler(server, request, response) {}
 
 void RestViewHandler::getView(std::string const& nameOrId, bool detailed) {
   auto view = CollectionNameResolver(_vocbase).getView(nameOrId);
@@ -71,10 +67,7 @@ void RestViewHandler::getView(std::string const& nameOrId, bool detailed) {
   // end of parameter parsing
   // ...........................................................................
 
-  if (!canUse(auth::Level::RO,
-              view->vocbase())) {  // as per
-                                   // https://github.com/arangodb/backlog/issues/459
-    // if (!canUse(auth::Level::RO, view->vocbase(), &view->name())) { // check
+  if (!view->canUse(auth::Level::RO)) { // check auth after ensuring that the view exists
     // auth after ensuring that the view exists
     generateError(
         Result(TRI_ERROR_FORBIDDEN, "insufficient rights to get view"));
@@ -89,7 +82,7 @@ void RestViewHandler::getView(std::string const& nameOrId, bool detailed) {
 
     viewBuilder.openObject();
 
-    auto res = view->properties(viewBuilder, true, false);
+    auto res = view->properties(viewBuilder, LogicalDataSource::Serialization::Properties);
 
     if (!res.ok()) {
       generateError(res);
@@ -106,7 +99,9 @@ void RestViewHandler::getView(std::string const& nameOrId, bool detailed) {
 
   builder.openObject();
 
-  auto res = view->properties(builder, detailed, false);
+  auto const context = detailed ? LogicalDataSource::Serialization::Properties
+                                : LogicalDataSource::Serialization::List;
+  auto res = view->properties(builder, context);
 
   builder.close();
 
@@ -145,18 +140,12 @@ RestStatus RestViewHandler::execute() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestViewHandler::createView() {
-  if (_request->payload().isEmptyObject()) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_CORRUPTED_JSON);
-
-    return;
-  }
-
   std::vector<std::string> const& suffixes = _request->suffixes();
 
   if (!suffixes.empty()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
                   "expecting POST /_api/view");
-
+    events::CreateView(_vocbase.name(), "", TRI_ERROR_BAD_PARAMETER);
     return;
   }
 
@@ -164,27 +153,42 @@ void RestViewHandler::createView() {
   VPackSlice const body = this->parseVPackBody(parseSuccess);
 
   if (!parseSuccess) {
+    events::CreateView(_vocbase.name(), "", TRI_ERROR_BAD_PARAMETER);
     return;
   }
-
-  auto badParamError = [&]() -> void {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
-                  "expecting body to be of the form {name: <string>, type: "
-                  "<string>, properties: <object>}");
-  };
 
   if (!body.isObject()) {
-    badParamError();
-
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+                  "request body is not an object");
+    events::CreateView(_vocbase.name(), "", TRI_ERROR_BAD_PARAMETER);
     return;
   }
+
+  if (body.isEmptyObject()) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_CORRUPTED_JSON);
+    events::CreateView(_vocbase.name(), "", TRI_ERROR_HTTP_CORRUPTED_JSON);
+    return;
+  }
+
 
   auto nameSlice = body.get(StaticStrings::DataSourceName);
   auto typeSlice = body.get(StaticStrings::DataSourceType);
 
-  if (!nameSlice.isString() || !typeSlice.isString()) {
-    badParamError();
+  if (!nameSlice.isString()) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+                  "expecting name parameter to be of the form of \"name: "
+                  "<string>\"");
+    events::CreateView(_vocbase.name(), "", TRI_ERROR_BAD_PARAMETER);
+    return;
+  }
 
+  if (!typeSlice.isString()) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+                  "expecting type parameter to be of the form of \"type: "
+                  "<string>\"");
+    events::CreateView(_vocbase.name(),
+                       nameSlice.copyString(),
+                       TRI_ERROR_BAD_PARAMETER);
     return;
   }
 
@@ -195,7 +199,7 @@ void RestViewHandler::createView() {
   if (!canUse(auth::Level::RW, _vocbase)) {
     generateError(
         Result(TRI_ERROR_FORBIDDEN, "insufficient rights to create view"));
-
+    events::CreateView(_vocbase.name(), nameSlice.copyString(), TRI_ERROR_FORBIDDEN);
     return;
   }
 
@@ -205,33 +209,34 @@ void RestViewHandler::createView() {
 
     if (!res.ok()) {
       generateError(res);
-
+      events::CreateView(_vocbase.name(), nameSlice.copyString(), res.errorNumber());
       return;
     }
 
     if (!view) {
       generateError(
           arangodb::Result(TRI_ERROR_INTERNAL, "problem creating view"));
-
+      events::CreateView(_vocbase.name(), nameSlice.copyString(), TRI_ERROR_INTERNAL);
       return;
     }
 
     velocypack::Builder builder;
 
     builder.openObject();
-    res = view->properties(builder, true, false);
+    res = view->properties(builder, LogicalDataSource::Serialization::Properties);
 
     if (!res.ok()) {
       generateError(res);
-
       return;
     }
 
     builder.close();
     generateResult(rest::ResponseCode::CREATED, builder.slice());
   } catch (basics::Exception const& ex) {
+    events::CreateView(_vocbase.name(), nameSlice.copyString(), ex.code());
     generateError(arangodb::Result(ex.code(), ex.message()));
   } catch (...) {
+    events::CreateView(_vocbase.name(), nameSlice.copyString(), TRI_errno());
     generateError(arangodb::Result(TRI_errno(), "problem creating view"));
   }
 }
@@ -251,7 +256,7 @@ void RestViewHandler::modifyView(bool partialUpdate) {
     return;
   }
 
-  std::string const& name = suffixes[0];
+  auto name = arangodb::basics::StringUtils::urlDecode(suffixes[0]);
   CollectionNameResolver resolver(_vocbase);
   auto view = resolver.getView(name);
 
@@ -284,11 +289,7 @@ void RestViewHandler::modifyView(bool partialUpdate) {
       // end of parameter parsing
       // .......................................................................
 
-      if (!canUse(auth::Level::RW,
-                  view->vocbase())) {  // as per
-                                       // https://github.com/arangodb/backlog/issues/459
-        // if (!canUse(auth::Level::RW, view->vocbase(), &view->name())) { //
-        // check auth after ensuring that the view exists
+      if (!view->canUse(auth::Level::RW)) { // check auth after ensuring that the view exists
         generateError(
             Result(TRI_ERROR_FORBIDDEN, "insufficient rights to rename view"));
 
@@ -302,7 +303,7 @@ void RestViewHandler::modifyView(bool partialUpdate) {
 
         viewBuilder.openObject();
 
-        auto res = view->properties(viewBuilder, true, false);
+        auto res = view->properties(viewBuilder, LogicalDataSource::Serialization::Properties);
 
         if (!res.ok()) {
           generateError(res);
@@ -330,11 +331,7 @@ void RestViewHandler::modifyView(bool partialUpdate) {
     // end of parameter parsing
     // .........................................................................
 
-    if (!canUse(auth::Level::RW,
-                view->vocbase())) {  // as per
-                                     // https://github.com/arangodb/backlog/issues/459
-      // if (!canUse(auth::Level::RW, view->vocbase(), &view->name())) { //
-      // check auth after ensuring that the view exists
+    if (!view->canUse(auth::Level::RW)) { // check auth after ensuring that the view exists
       generateError(
           Result(TRI_ERROR_FORBIDDEN, "insufficient rights to modify view"));
 
@@ -347,7 +344,8 @@ void RestViewHandler::modifyView(bool partialUpdate) {
 
       builderCurrent.openObject();
 
-      auto resCurrent = view->properties(builderCurrent, true, false);
+      auto resCurrent = view->properties(builderCurrent,
+                                         LogicalDataSource::Serialization::Properties);
 
       if (!resCurrent.ok()) {
         generateError(resCurrent);
@@ -376,7 +374,7 @@ void RestViewHandler::modifyView(bool partialUpdate) {
 
     updated.openObject();
 
-    auto res = view->properties(updated, true, false);
+    auto res = view->properties(updated, LogicalDataSource::Serialization::Properties);
 
     updated.close();
 
@@ -404,16 +402,18 @@ void RestViewHandler::deleteView() {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
                   "expecting DELETE /_api/view/<view-name>");
 
+    events::DropView(_vocbase.name(), "", TRI_ERROR_BAD_PARAMETER);
     return;
   }
 
-  std::string const& name = suffixes[0];
+  auto name = arangodb::basics::StringUtils::urlDecode(suffixes[0]);
   auto allowDropSystem = _request->parsedValue("isSystem", false);
   auto view = CollectionNameResolver(_vocbase).getView(name);
 
   if (!view) {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
 
+    events::DropView(_vocbase.name(), name, TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
     return;
   }
 
@@ -421,14 +421,11 @@ void RestViewHandler::deleteView() {
   // end of parameter parsing
   // ...........................................................................
 
-  if (!canUse(auth::Level::RW,
-              view->vocbase())) {  // as per
-                                   // https://github.com/arangodb/backlog/issues/459
-    // if (!canUse(auth::Level::RW, view->vocbase(), &view->name())) { // check
-    // auth after ensuring that the view exists
+  if (!view->canUse(auth::Level::RW)) { // check auth after ensuring that the view exists
     generateError(
         Result(TRI_ERROR_FORBIDDEN, "insufficient rights to drop view"));
 
+    events::DropView(_vocbase.name(), name, TRI_ERROR_FORBIDDEN);
     return;
   }
 
@@ -437,6 +434,7 @@ void RestViewHandler::deleteView() {
     generateError(
         Result(TRI_ERROR_FORBIDDEN, "insufficient rights to drop system view"));
 
+    events::DropView(_vocbase.name(), name, TRI_ERROR_FORBIDDEN);
     return;
   }
 
@@ -468,7 +466,9 @@ void RestViewHandler::getViews() {
 
   // /_api/view/<name>[/properties]
   if (!suffixes.empty()) {
-    getView(suffixes[0], suffixes.size() > 1);
+    auto name = arangodb::basics::StringUtils::urlDecode(suffixes[0]);
+
+    getView(name, suffixes.size() > 1);
 
     return;
   }
@@ -506,10 +506,7 @@ void RestViewHandler::getViews() {
 
   for (auto view : views) {
     if (view && (!excludeSystem || !view->system())) {
-      if (!canUse(auth::Level::RO,
-                  view->vocbase())) {  // as per
-                                       // https://github.com/arangodb/backlog/issues/459
-        // if (!canUse(auth::Level::RO, view->vocbase(), &view->name())) {
+      if (!view->canUse(auth::Level::RO)) { // check auth after ensuring that the view exists
         continue;  // skip views that are not authorized to be read
       }
 
@@ -520,7 +517,7 @@ void RestViewHandler::getViews() {
 
         viewBuilder.openObject();
 
-        if (!view->properties(viewBuilder, true, false).ok()) {
+        if (!view->properties(viewBuilder, LogicalDataSource::Serialization::Properties).ok()) {
           continue;  // skip view
         }
       } catch (...) {
@@ -532,7 +529,7 @@ void RestViewHandler::getViews() {
       viewBuilder.openObject();
 
       try {
-        auto res = view->properties(viewBuilder, false, false);
+        auto res = view->properties(viewBuilder, LogicalDataSource::Serialization::List);
 
         if (!res.ok()) {
           generateError(res);

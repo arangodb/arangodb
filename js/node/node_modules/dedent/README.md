@@ -28,7 +28,7 @@ function usageExample() {
     Wait! I lied. Dedent can also be used as a function.
   `);
 
-  return first + "\n\n" + second + "\n\n" third;
+  return first + "\n\n" + second + "\n\n" + third;
 }
 ```
 

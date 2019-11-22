@@ -28,10 +28,7 @@
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "VocBase/voc-types.h"
 
-#include <s2/s2cell_id.h>
 #include <velocypack/Builder.h>
-
-class S2Region;
 
 namespace arangodb {
 class RocksDBGeoIndex final : public RocksDBIndex, public geo_index::Index {
@@ -58,10 +55,10 @@ class RocksDBGeoIndex final : public RocksDBIndex, public geo_index::Index {
 
   char const* typeName() const override { return _typeName.c_str(); }
 
-  IndexIterator* iteratorForCondition(transaction::Methods*, ManagedDocumentResult*,
-                                      arangodb::aql::AstNode const*,
-                                      arangodb::aql::Variable const*,
-                                      IndexIteratorOptions const&) override;
+  std::unique_ptr<IndexIterator> iteratorForCondition(transaction::Methods* trx, 
+                                                      arangodb::aql::AstNode const* node,
+                                                      arangodb::aql::Variable const* reference,
+                                                      IndexIteratorOptions const& opts) override;
 
   bool canBeDropped() const override { return true; }
 

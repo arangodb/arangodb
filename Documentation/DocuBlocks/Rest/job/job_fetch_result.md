@@ -2,7 +2,7 @@
 @startDocuBlock job_fetch_result
 @brief fetches a job result and removes it from the queue
 
-@RESTHEADER{PUT /_api/job/{job-id}, Return result of an async job}
+@RESTHEADER{PUT /_api/job/{job-id}, Return result of an async job, getJobResult}
 
 @RESTURLPARAMETERS
 

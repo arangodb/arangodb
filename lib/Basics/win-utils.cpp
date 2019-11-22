@@ -21,8 +21,13 @@
 /// @author Dr. Oreste Costa-Panaia
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <errno.h>
+#include <WinSock2.h>  // must be before windows.h
+#include <shellapi.h>
+#include <windows.h>
 
+
+#include <errno.h>
+#include <fcntl.h>
 #include <io.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -41,14 +46,20 @@
 #include <crtdbg.h>
 #include <malloc.h>
 #include <string.h>
-#include <windows.h>
 
 #include "Basics/Common.h"
+
+#include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
+#include "Basics/Utf8Helper.h"
+#include "Basics/application-exit.h"
+#include "Basics/debugging.h"
 #include "Basics/directories.h"
 #include "Basics/files.h"
 #include "Basics/tri-strings.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 #if ARANGODB_ENABLE_BACKTRACE
@@ -99,13 +110,14 @@ static void InvalidParameterHandler(const wchar_t* expression,  // expression se
   buf[sizeof(buf) - 1] = '\0';
 #endif
 
-  LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Invalid handle parameter passed"
+  LOG_TOPIC("e4644", ERR, arangodb::Logger::FIXME)
+      << "Invalid handle parameter passed"
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-                                          << buf;
+      << buf;
 
   std::string bt;
   TRI_GetBacktrace(bt);
-  LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+  LOG_TOPIC("967e6", ERR, arangodb::Logger::FIXME)
       << "Invalid handle parameter Invoked from: " << bt
 #endif
       ;
@@ -140,7 +152,7 @@ int initializeWindows(const TRI_win_initialize_e initializeWhat, char const* dat
       if (!SymInitialize(hProcess, NULL, true)) {
         // SymInitialize failed
         error = GetLastError();
-        LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        LOG_TOPIC("62b0a", ERR, arangodb::Logger::FIXME)
             << "SymInitialize returned error :" << error;
       }
 #endif
@@ -166,14 +178,14 @@ int initializeWindows(const TRI_win_initialize_e initializeWhat, char const* dat
       errorCode = WSAStartup(wVersionRequested, &wsaData);
 
       if (errorCode != 0) {
-        LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        LOG_TOPIC("10456", ERR, arangodb::Logger::FIXME)
             << "Could not find a usable Winsock DLL. WSAStartup returned "
                "an error.";
         return -1;
       }
 
       if (LOBYTE(wsaData.wVersion) != 2 || HIBYTE(wsaData.wVersion) != 2) {
-        LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        LOG_TOPIC("dbaa4", ERR, arangodb::Logger::FIXME)
             << "Could not find a usable Winsock DLL. WSAStartup did not "
                "return version 2.2.";
         WSACleanup();
@@ -183,7 +195,7 @@ int initializeWindows(const TRI_win_initialize_e initializeWhat, char const* dat
     }
 
     default: {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC("90c63", ERR, arangodb::Logger::FIXME)
           << "Invalid windows initialization called";
       return -1;
     }
@@ -198,7 +210,8 @@ int TRI_createFile(char const* filename, int openFlags, int modeFlags) {
   icu::UnicodeString fn(filename);
 
   fileHandle =
-    CreateFileW(reinterpret_cast<const wchar_t*>(fn.getTerminatedBuffer()), GENERIC_READ | GENERIC_WRITE,
+      CreateFileW(reinterpret_cast<const wchar_t*>(fn.getTerminatedBuffer()),
+                  GENERIC_READ | GENERIC_WRITE,
                   FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE, NULL,
                   (openFlags & O_APPEND) ? OPEN_ALWAYS : CREATE_NEW, 0, NULL);
 
@@ -244,8 +257,8 @@ int TRI_OPEN_WIN32(char const* filename, int openFlags) {
   }
 
   icu::UnicodeString fn(filename);
-  fileHandle = CreateFileW(reinterpret_cast<const wchar_t*>(fn.getTerminatedBuffer()), mode,
-                           FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
+  fileHandle = CreateFileW(reinterpret_cast<const wchar_t*>(fn.getTerminatedBuffer()),
+                           mode, FILE_SHARE_DELETE | FILE_SHARE_READ | FILE_SHARE_WRITE,
                            NULL, OPEN_EXISTING, 0, NULL);
 
   if (fileHandle == INVALID_HANDLE_VALUE) {
@@ -277,26 +290,23 @@ int TRI_STAT(char const* path, TRI_stat_t* buffer) {
 
 char* TRI_GETCWD(char* buffer, int maxlen) {
   char* rc = nullptr;
-  wchar_t* rcw;
-  int wBufLen = maxlen;
-  wchar_t* wbuf = (wchar_t*)malloc(wBufLen * sizeof(wchar_t));
+  try {
+    auto wbuf = std::make_unique<wchar_t[]>(maxlen);
+    auto* rcw = ::_wgetcwd(wbuf.get(), maxlen);
+    if (rcw != nullptr) {
+      std::string rcs = fromWString(rcw);
+      if (rcs.length() + 1 < maxlen) {
+        memcpy(buffer, rcs.c_str(), rcs.length() + 1);
 
-  if (wbuf == nullptr) {
-    return nullptr;
-  }
-  rcw = ::_wgetcwd(wbuf, wBufLen);
-
-  if (rcw != nullptr) {
-    std::string rcs;
-
-    icu::UnicodeString d(wbuf, static_cast<int32_t>(wcslen(wbuf)));
-    d.toUTF8String<std::string>(rcs);
-    if (rcs.length() + 1 < maxlen) {
-      memcpy(buffer, rcs.c_str(), rcs.length() + 1);
-      rc = buffer;
+        // tolower on hard-drive letter
+        if ((rcs.length() >= 2) && (buffer[1] == ':') &&
+            (::isupper(static_cast<unsigned char>(buffer[0])))) {
+          buffer[0] = ::tolower(static_cast<unsigned char>(buffer[0]));
+        }
+        rc = buffer;
+      }
     }
-  }
-  free(wbuf);
+  } catch (...) { }
   return rc;
 }
 
@@ -317,6 +327,25 @@ int TRI_UNLINK(char const* filename) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a Windows error to a *nix system error
 ////////////////////////////////////////////////////////////////////////////////
+
+arangodb::Result translateWindowsError(DWORD error) {
+  return {TRI_MapSystemError(error), windowsErrorToUTF8(error)};
+}
+
+std::string windowsErrorToUTF8(DWORD errorNum) {
+  LPWSTR buffer = nullptr;
+  TRI_DEFER(::LocalFree(buffer);)
+  size_t size =
+      FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM |
+                         FORMAT_MESSAGE_IGNORE_INSERTS,
+                     nullptr, errorNum, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+                     (LPWSTR)&buffer, 0, nullptr);
+  if (size) {
+    std::wstring out(buffer, size);
+    return fromWString(out);
+  }
+  return "error translation failed";
+}
 
 int TRI_MapSystemError(DWORD error) {
   switch (error) {
@@ -513,11 +542,12 @@ void TRI_LogWindowsEventlog(char const* func, char const* file, int line,
   buf[sizeof(buf) - 1] = '\0';
 
   icu::UnicodeString ubufs[]{icu::UnicodeString(buf, len), icu::UnicodeString(file),
-                        icu::UnicodeString(func), icu::UnicodeString(linebuf)};
-  LPCWSTR buffers[] = {reinterpret_cast<const wchar_t*>(ubufs[0].getTerminatedBuffer()),
-                       reinterpret_cast<const wchar_t*>(ubufs[1].getTerminatedBuffer()),
-                       reinterpret_cast<const wchar_t*>(ubufs[2].getTerminatedBuffer()),
-                       reinterpret_cast<const wchar_t*>(ubufs[3].getTerminatedBuffer()), nullptr};
+                             icu::UnicodeString(func), icu::UnicodeString(linebuf)};
+  LPCWSTR buffers[] = {
+      reinterpret_cast<const wchar_t*>(ubufs[0].getTerminatedBuffer()),
+      reinterpret_cast<const wchar_t*>(ubufs[1].getTerminatedBuffer()),
+      reinterpret_cast<const wchar_t*>(ubufs[2].getTerminatedBuffer()),
+      reinterpret_cast<const wchar_t*>(ubufs[3].getTerminatedBuffer()), nullptr};
   // Try to get messages through to windows syslog...
   if (!ReportEventW(hEventLog, EVENTLOG_ERROR_TYPE, UI_CATEGORY,
                     MSG_INVALID_COMMAND, NULL, 4, 0, buffers, NULL)) {
@@ -538,11 +568,12 @@ void TRI_LogWindowsEventlog(char const* func, char const* file, int line,
   buf[sizeof(buf) - 1] = '\0';
 
   icu::UnicodeString ubufs[]{icu::UnicodeString(buf, len), icu::UnicodeString(file),
-                        icu::UnicodeString(func), icu::UnicodeString(linebuf)};
-  LPCWSTR buffers[] = {reinterpret_cast<const wchar_t*>(ubufs[0].getTerminatedBuffer()),
-                       reinterpret_cast<const wchar_t*>(ubufs[1].getTerminatedBuffer()),
-                       reinterpret_cast<const wchar_t*>(ubufs[2].getTerminatedBuffer()),
-                       reinterpret_cast<const wchar_t*>(ubufs[3].getTerminatedBuffer()), nullptr};
+                             icu::UnicodeString(func), icu::UnicodeString(linebuf)};
+  LPCWSTR buffers[] = {
+      reinterpret_cast<const wchar_t*>(ubufs[0].getTerminatedBuffer()),
+      reinterpret_cast<const wchar_t*>(ubufs[1].getTerminatedBuffer()),
+      reinterpret_cast<const wchar_t*>(ubufs[2].getTerminatedBuffer()),
+      reinterpret_cast<const wchar_t*>(ubufs[3].getTerminatedBuffer()), nullptr};
   // Try to get messages through to windows syslog...
   if (!ReportEventW(hEventLog, EVENTLOG_ERROR_TYPE, UI_CATEGORY,
                     MSG_INVALID_COMMAND, NULL, 4, 0, buffers, NULL)) {

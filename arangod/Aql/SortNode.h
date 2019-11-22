@@ -66,6 +66,8 @@ class SortNode : public ExecutionNode {
   /// @brief if non-zero, limits the number of elements that the node will return
   void setLimit(size_t limit) { _limit = limit; }
 
+  size_t limit() const noexcept { return _limit; }
+
   /// @brief return the type of the node
   NodeType getType() const override final { return SORT; }
 
@@ -73,7 +75,8 @@ class SortNode : public ExecutionNode {
   inline bool isStable() const { return _stable; }
 
   /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags) const override final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
+                          std::unordered_set<ExecutionNode const*>& seen) const override final;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
@@ -91,7 +94,7 @@ class SortNode : public ExecutionNode {
   CostEstimate estimateCost() const override final;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(arangodb::HashSet<Variable const*>& vars) const override final {
+  void getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& vars) const override final {
     for (auto& p : _elements) {
       vars.emplace(p.var);
     }

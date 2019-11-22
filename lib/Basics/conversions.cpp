@@ -21,8 +21,18 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <errno.h>
+#include <time.h>
+#include <cmath>
+#include <cstring>
+
 #include "conversions.h"
+
+#include "Basics/error.h"
+#include "Basics/operating-system.h"
+#include "Basics/system-functions.h"
 #include "Basics/tri-strings.h"
+#include "Basics/voc-errors.h"
 
 static char const* const HEX = "0123456789ABCDEF";
 
@@ -52,7 +62,7 @@ double TRI_DoubleString(char const* str) {
   TRI_set_errno(TRI_ERROR_NO_ERROR);
   double result = strtod(str, &endptr);
 
-  while (isspace(*endptr)) {
+  while (*endptr == ' ' || *endptr == '\t' || *endptr == '\r' || *endptr == '\n' || *endptr == '\f' || *endptr == '\v') {
     ++endptr;
   }
 
@@ -90,7 +100,7 @@ int32_t TRI_Int32String(char const* str) {
   result = strtol(str, &endptr, 10);
 #endif
 
-  while (isspace(*endptr)) {
+  while (*endptr == ' ' || *endptr == '\t' || *endptr == '\r' || *endptr == '\n' || *endptr == '\f' || *endptr == '\v') {
     ++endptr;
   }
 
@@ -148,7 +158,7 @@ uint32_t TRI_UInt32String(char const* str) {
   result = (uint32_t)strtoul(str, &endptr, 10);
 #endif
 
-  while (isspace(*endptr)) {
+  while (*endptr == ' ' || *endptr == '\t' || *endptr == '\r' || *endptr == '\n' || *endptr == '\f' || *endptr == '\v') {
     ++endptr;
   }
 

@@ -27,6 +27,9 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "Utils/DatabaseGuard.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Databases.h"
@@ -57,13 +60,13 @@ DropIndex::DropIndex(MaintenanceFeature& feature, ActionDescription const& d)
   TRI_ASSERT(d.has(INDEX));
 
   if (!error.str().empty()) {
-    LOG_TOPIC(ERR, Logger::MAINTENANCE) << "DropIndex: " << error.str();
+    LOG_TOPIC("02662", ERR, Logger::MAINTENANCE) << "DropIndex: " << error.str();
     _result.reset(TRI_ERROR_INTERNAL, error.str());
     setState(FAILED);
   }
 }
 
-DropIndex::~DropIndex(){};
+DropIndex::~DropIndex() = default;
 
 bool DropIndex::first() {
   auto const& database = _description.get(DATABASE);
@@ -82,12 +85,12 @@ bool DropIndex::first() {
       std::stringstream error;
       error << "failed to lookup local collection " << collection
             << " in database " << database;
-      LOG_TOPIC(ERR, Logger::MAINTENANCE) << "DropIndex: " << error.str();
+      LOG_TOPIC("c593d", ERR, Logger::MAINTENANCE) << "DropIndex: " << error.str();
       _result.reset(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, error.str());
       return false;
     }
 
-    LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+    LOG_TOPIC("837c5", DEBUG, Logger::MAINTENANCE)
         << "Dropping local index " + collection + "/" + id;
     _result = Indexes::drop(col.get(), index.slice());
 
@@ -95,7 +98,7 @@ bool DropIndex::first() {
     std::stringstream error;
 
     error << "action " << _description << " failed with exception " << e.what();
-    LOG_TOPIC(ERR, Logger::MAINTENANCE) << "DropIndex " << error.str();
+    LOG_TOPIC("4ec0c", ERR, Logger::MAINTENANCE) << "DropIndex " << error.str();
     _result.reset(TRI_ERROR_INTERNAL, error.str());
 
     return false;

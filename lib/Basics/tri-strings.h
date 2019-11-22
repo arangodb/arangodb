@@ -24,6 +24,9 @@
 #ifndef ARANGODB_BASICS_TRI__STRINGS_H
 #define ARANGODB_BASICS_TRI__STRINGS_H 1
 
+#include <cstdint>
+#include <cstdlib>
+
 #include "Basics/Common.h"
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -127,13 +130,6 @@ char* TRI_SHA256String(char const* source, size_t sourceLen, size_t* dstLen);
 constexpr size_t TRI_MaxLengthEscapeControlsCString(size_t inLength) {
   return (4 * inLength) + 2;  // for newline and 0 byte
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief escapes special characters using C escapes
-////////////////////////////////////////////////////////////////////////////////
-
-char* TRI_EscapeControlsCString(char const* in, size_t inLength,
-                                size_t* outLength, bool appendNewline);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief escapes special characters using C escapes

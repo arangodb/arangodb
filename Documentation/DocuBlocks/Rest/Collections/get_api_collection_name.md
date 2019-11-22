@@ -2,7 +2,7 @@
 @startDocuBlock get_api_collection_name
 @brief returns a collection
 
-@RESTHEADER{GET /_api/collection/{collection-name}, Return information about a collection}
+@RESTHEADER{GET /_api/collection/{collection-name}, Return information about a collection, handleCommandGet:collectionGetProperties}
 
 @HINTS
 {% hint 'warning' %}

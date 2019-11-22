@@ -2,8 +2,10 @@
 /*global start_pretty_print */
 'use strict';
 
+const _ = require("lodash");
 const fs = require("fs");
 const internal = require("internal");
+const pu = require('@arangodb/process-utils');
 const executeExternal = internal.executeExternal;
 const executeExternalAndWait = internal.executeExternalAndWait;
 const download = internal.download;
@@ -15,6 +17,62 @@ const statusExternal = internal.statusExternal;
 const testPort = internal.testPort;
 
 const yaml = require("js-yaml");
+
+const optionsDefaults = {
+  'dumpAgencyOnError': false,
+  'agencySize': 3,
+  'agencyWaitForSync': false,
+  'agencySupervision': true,
+  'build': '',
+  'buildType': '',
+  'cleanup': true,
+  'cluster': false,
+  'concurrency': 3,
+  'configDir': 'etc/testing',
+  'coordinators': 1,
+  'coreCheck': false,
+  'coreDirectory': '/var/tmp',
+  'dbServers': 2,
+  'duration': 10,
+  'extraArgs': {},
+  'extremeVerbosity': true, /// TODO false,
+  'force': true,
+  'getSockStat': false,
+  'arangosearch':true,
+  'jsonReply': false,
+  'minPort': 1024,
+  'maxPort': 32768,
+  'password': '',
+  'protocol': 'tcp',
+  'replication': false,
+  'rr': false,
+  'exceptionFilter': null,
+  'exceptionCount': 1,
+  'sanitizer': false,
+  'activefailover': false,
+  'singles': 2,
+  'sniff': false,
+  'sniffDevice': undefined,
+  'sniffProgram': undefined,
+  'skipLogAnalysis': true,
+  'oneTestTimeout': 2700,
+  'isAsan': false,
+  'storageEngine': 'rocksdb',
+  'test': undefined,
+  'testBuckets': undefined,
+  'useReconnect': true,
+  'username': 'root',
+  'valgrind': false,
+  'valgrindFileBase': '',
+  'valgrindArgs': {},
+  'valgrindHosts': false,
+  'verbose': false,
+  'walFlushTimeout': 30000,
+  'testCase': undefined,
+  'disableMonitor': false,
+  'sleepBeforeStart' : 0,
+};
+
 
 const documentationSourceDirs = [
   fs.join(fs.makeAbsolute(''), "Documentation/Scripts/setup-arangosh.js"),
@@ -105,6 +163,9 @@ function main(argv) {
   if (options.hasOwnProperty('onlyThisOne')) {
     scriptArguments.onlyThisOne = options.onlyThisOne;
   }
+  if (options.hasOwnProperty('test')) {
+    scriptArguments.onlyThisOne = options.test;
+  }
 
   if (options.hasOwnProperty('server.endpoint')) {
     if (scriptArguments.hasOwnProperty('onlyThisOne')) {
@@ -114,142 +175,68 @@ function main(argv) {
     serverEndpoint = options['server.endpoint'];
     
   }
+  _.defaults(options, optionsDefaults);
+
+  try {
+    pu.setupBinaries(options.build, options.buildType, options.configDir);
+  }
+  catch (err) {
+    print(err);
+    throw err;
+  }
 
   let args = [theScript].concat(internal.toArgv(scriptArguments));
   args = args.concat(['--arangoshSetup']);
   args = args.concat(documentationSourceDirs);
 
-  let res = executeExternalAndWait(thePython, args);
+  let storageEngines = [['mmfiles', false, false], ['rocksdb', true, false], ['rocksdb', true, true]];
+  let res;
 
-  if (res.exit !== 0) {
-    print("parsing the examples failed - aborting!");
-    print(res);
-    return -1;
-  }
+  storageEngines.forEach(function (engine) {
+    let pyArgs = _.clone(args);
+    pyArgs.push('--storageEngine');
+    pyArgs.push(engine[0]);
+    pyArgs.push('--storageEngineAgnostic');
+    pyArgs.push(engine[1]);
+    pyArgs.push('--cluster');
+    pyArgs.push(engine[2]);
+    print(pyArgs)
+    res = executeExternalAndWait(thePython, pyArgs);
 
-  if (startServer) {
-    let port = findFreePort();
-    instanceInfo.port = port;
-    serverEndpoint = protocol + "://127.0.0.1:" + port;
-
-    instanceInfo.url = endpointToURL(serverEndpoint);
-
-    fs.makeDirectoryRecursive(fs.join(tmpDataDir, "data"));
-
-    let serverArgs = {};
-    fs.makeDirectoryRecursive(fs.join(tmpDataDir, "apps"));
-
-    serverArgs["configuration"] = "none";
-    serverArgs["database.directory"] = fs.join(tmpDataDir, "data");
-    serverArgs["javascript.app-path"] = fs.join(tmpDataDir, "apps");
-    serverArgs["javascript.startup-directory"] = "js";
-    serverArgs["javascript.module-directory"] = "enterprise/js";
-    serverArgs["log.file"] = fs.join(tmpDataDir, "log");
-    serverArgs["server.authentication"] = "false";
-    serverArgs["server.endpoint"] = serverEndpoint;
-    serverArgs["server.storage-engine"] = "mmfiles"; // examples depend on it
-
-    print("================================================================================");
-    ARANGOD = locateProgram("arangod", "Cannot find arangod to execute tests against");
-    print(ARANGOD);
-    print(toArgv(serverArgs));
-    instanceInfo.pid = executeExternal(ARANGOD, toArgv(serverArgs)).pid;
-
-    // Wait until the server is up:
-    count = 0;
-    instanceInfo.endpoint = serverEndpoint;
-
-    while (true) {
-      wait(0.5, false);
-      let r = download(instanceInfo.url + "/_api/version", "");
-
-      if (!r.error && r.code === 200) {
-        break;
-      }
-
-      count++;
-
-      if (count % 60 === 0) {
-        res = statusExternal(instanceInfo.pid, false);
-
-        if (res.status !== "RUNNING") {
-          print("start failed - process is gone: " + yaml.safeDump(res));
-          return 1;
-        }
-      }
+    if (res.exit !== 0) {
+      print("parsing the examples failed - aborting!");
+      print(res);
+      return -1;
     }
-  }
-
-  let arangoshArgs = {
-    'configuration': fs.join(fs.makeAbsolute(''), 'etc', 'relative', 'arangosh.conf'),
-    'server.password': "",
-    'server.endpoint': serverEndpoint,
-    'javascript.execute': scriptArguments.outputFile
-  };
-
-  print("--------------------------------------------------------------------------------");
-  ARANGOSH = locateProgram("arangosh", "Cannot find arangosh to run tests with");
-  print(ARANGOSH);
-  print(internal.toArgv(arangoshArgs));
-  res = executeExternalAndWait(ARANGOSH, internal.toArgv(arangoshArgs));
-
-  if (startServer) {
-    if (typeof(instanceInfo.exitStatus) === 'undefined') {
-      download(instanceInfo.url + "/_admin/shutdown", "", {method: "DELETE"});
-
-      print("Waiting for server shut down");
-      count = 0;
-      let bar = "[";
-
-      while (1) {
-        instanceInfo.exitStatus = statusExternal(instanceInfo.pid, false);
-
-        if (instanceInfo.exitStatus.status === "RUNNING") {
-          count++;
-          if (typeof(options.valgrind) === 'string') {
-            wait(1);
-            continue;
-          }
-          if (count % 10 === 0) {
-            bar = bar + "#";
-          }
-          if (count > 600) {
-            print("forcefully terminating " + yaml.safeDump(instanceInfo.pid) +
-              " after 600 s grace period; marking crashy.");
-            serverCrashed = true;
-            killExternal(instanceInfo.pid);
-            break;
-          } else {
-            wait(1);
-          }
-        } else if (instanceInfo.exitStatus.status !== "TERMINATED") {
-          if (instanceInfo.exitStatus.hasOwnProperty('signal')) {
-            print("Server shut down with : " +
-              yaml.safeDump(instanceInfo.exitStatus) +
-              " marking build as crashy.");
-            serverCrashed = true;
-            break;
-          }
-          if (internal.platform.substr(0, 3) === 'win') {
-            // Windows: wait for procdump to do its job...
-            statusExternal(instanceInfo.monitor, true);
-          }
-        } else {
-          print("Server shutdown: Success.");
-          break; // Success.
-        }
-      }
-
-      if (count > 10) {
-        print("long Server shutdown: " + bar + ']');
-      }
-
+    let instanceInfo;
+    if (startServer) {
+      // let port = findFreePort();
+      options.storageEngine = engine[0];
+      options.cluster = engine[2];
+      let testname = engine[0] + "-" + "clusterOrNot";
+      print(options)
+      instanceInfo = pu.startInstance(options.protocol, options, {}, testname);
+      print(instanceInfo)
     }
-  }
+    
+    let arangoshArgs = {
+      'configuration': fs.join(fs.makeAbsolute(''), 'etc', 'relative', 'arangosh.conf'),
+      'server.password': "",
+      'server.endpoint': instanceInfo.endpoint,
+      'javascript.execute': scriptArguments.outputFile
+    };
 
-  if (res.exit != 0) {
-    throw("generating examples failed!");
-  }
+    print("--------------------------------------------------------------------------------");
+    print(pu.ARANGOSH_BIN);
+    print(internal.toArgv(arangoshArgs));
+    res = executeExternalAndWait(pu.ARANGOSH_BIN, internal.toArgv(arangoshArgs));
+    if (startServer) {
+      pu.shutdownInstance(instanceInfo, options);
+    }
+    if (res.exit != 0) {
+      throw("generating examples failed - aborting!");
+    }
+  });
 
   return 0;
 }

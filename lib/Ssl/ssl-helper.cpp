@@ -21,13 +21,24 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ssl-helper.h"
+#include <string.h>
+#include <algorithm>
+#include <cstdint>
+
+#include <boost/asio/ssl/context_base.hpp>
+#include <boost/asio/ssl/impl/context.ipp>
+#include <boost/system/error_code.hpp>
 
 #include <openssl/err.h>
+#include <openssl/opensslconf.h>
+
+#include "ssl-helper.h"
 
 #include "Basics/Exceptions.h"
-#include "Basics/asio_ns.h"
+#include "Basics/voc-errors.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 
 using namespace arangodb;
 
@@ -42,8 +53,7 @@ extern "C" const SSL_METHOD* SSLv3_method(void);
 asio_ns::ssl::context arangodb::sslContext(SslProtocol protocol, std::string const& keyfile) {
   // create our context
 
-  using asio_ns::ssl::context;
-  context::method meth;
+  asio_ns::ssl::context::method meth;
 
   switch (protocol) {
     case SSL_V2:
@@ -52,33 +62,33 @@ asio_ns::ssl::context arangodb::sslContext(SslProtocol protocol, std::string con
 
 #ifndef OPENSSL_NO_SSL3_METHOD
     case SSL_V3:
-      meth = context::method::sslv3;
+      meth = asio_ns::ssl::context::method::sslv3;
       break;
 #endif
     case SSL_V23:
-      meth = context::method::sslv23;
+      meth = asio_ns::ssl::context::method::sslv23;
       break;
 
     case TLS_V1:
-      meth = context::method::tlsv1_server;
+      meth = asio_ns::ssl::context::method::tlsv1_server;
       break;
 
     case TLS_V12:
-      meth = context::method::tlsv12_server;
+      meth = asio_ns::ssl::context::method::tlsv12_server;
       break;
     
+#if OPENSSL_VERSION_NUMBER >= 0x10101000L
     case TLS_V13: 
       // TLS 1.3, only supported from OpenSSL 1.1.1 onwards
-#if OPENSSL_VERSION_NUMBER >= 0x10101000L
       // openssl version number format is
       // MNNFFPPS: major minor fix patch status
-      meth = context::method::tlsv13_server;
+      meth = asio_ns::ssl::context::method::tlsv13_server;
       break;
-#else
-      // no TLS 1.3 support
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
-                                     "TLS 1.3 is not supported in this build");
 #endif
+
+    case TLS_GENERIC:
+      meth = asio_ns::ssl::context::method::tls_server;
+      break;
 
     default:
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
@@ -95,22 +105,24 @@ asio_ns::ssl::context arangodb::sslContext(SslProtocol protocol, std::string con
   }
 
   // load our keys and certificates
-  if (!SSL_CTX_use_certificate_chain_file(sslctx.native_handle(), keyfile.c_str())) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << "cannot read certificate from '" << keyfile << "': " << lastSSLError();
+  boost::system::error_code ec;
+  sslctx.use_certificate_chain_file(keyfile, ec);
+  if (ec) {
+    LOG_TOPIC("c6a00", ERR, arangodb::Logger::SSL)
+    << "cannot read certificate from '" << keyfile << "': " << ec;
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "unable to read certificate from file");
   }
-
-  if (!SSL_CTX_use_PrivateKey_file(sslctx.native_handle(), keyfile.c_str(), SSL_FILETYPE_PEM)) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << "cannot read key from '" << keyfile << "': " << lastSSLError();
+  
+  sslctx.use_private_key_file(keyfile, asio_ns::ssl::context::file_format::pem, ec);
+  if (ec) {
+    LOG_TOPIC("98712", ERR, arangodb::Logger::FIXME)
+    << "cannot read key from '" << keyfile << "': " << ec;
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "unable to read key from keyfile");
   }
-
 #if (OPENSSL_VERSION_NUMBER < 0x00905100L)
-  SSL_CTX_set_verify_depth(sslctx.native_handle(), 1);
+  sslctx.set_verify_depth(1);
 #endif
 
   return sslctx;
@@ -137,8 +149,13 @@ std::string arangodb::protocolName(SslProtocol protocol) {
     case TLS_V12:
       return "TLSv12";
     
+#if OPENSSL_VERSION_NUMBER >= 0x10101000L
     case TLS_V13:
       return "TLSv13";
+#endif
+    
+    case TLS_GENERIC:
+      return "TLS";
 
     default:
       return "unknown";
@@ -153,19 +170,26 @@ std::unordered_set<uint64_t> arangodb::availableSslProtocols() {
   return std::unordered_set<uint64_t>{SslProtocol::SSL_V2,  // unsupported!
                                       SslProtocol::SSL_V23, SslProtocol::SSL_V3,
                                       SslProtocol::TLS_V1, SslProtocol::TLS_V12,
-                                      SslProtocol::TLS_V13};
+                                      SslProtocol::TLS_V13, SslProtocol::TLS_GENERIC};
 #else
   // no support for TLS 1.3                                      
   return std::unordered_set<uint64_t>{SslProtocol::SSL_V2,  // unsupported!
                                       SslProtocol::SSL_V23, SslProtocol::SSL_V3,
-                                      SslProtocol::TLS_V1, SslProtocol::TLS_V12};
+                                      SslProtocol::TLS_V1, SslProtocol::TLS_V12,
+                                      SslProtocol::TLS_GENERIC};
 #endif
 }
 
 std::string arangodb::availableSslProtocolsDescription() {
+#if OPENSSL_VERSION_NUMBER >= 0x10101000L
   return "ssl protocol (1 = SSLv2 (unsupported), 2 = SSLv2 or SSLv3 "
          "(negotiated), 3 = SSLv3, 4 = "
-         "TLSv1, 5 = TLSv1.2)";
+         "TLSv1, 5 = TLSv1.2, 6 = TLSv1.3, 9 = generic TLS)";
+#else
+  return "ssl protocol (1 = SSLv2 (unsupported), 2 = SSLv2 or SSLv3 "
+         "(negotiated), 3 = SSLv3, 4 = "
+         "TLSv1, 5 = TLSv1.2, 9 = generic TLS)";
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////

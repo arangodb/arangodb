@@ -27,7 +27,8 @@
 
 using namespace arangodb;
 
-/// @brief create a slot
+// create a slot
+// cppcheck-suppress uninitMemberVarPrivate
 MMFilesWalSlot::MMFilesWalSlot()
     : _tick(0), _logfile(nullptr), _mem(nullptr), _size(0), _status(StatusType::UNUSED) {}
 
@@ -80,7 +81,7 @@ void MMFilesWalSlot::finalize(MMFilesWalMarker const* marker) {
 
   TRI_IF_FAILURE("WalSlotCrc") {
     // intentionally corrupt the marker
-    LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
+    LOG_TOPIC("8753a", WARN, arangodb::Logger::ENGINES)
         << "intentionally writing corrupt marker into datafile";
     dfm->setCrc(0xdeadbeef);
   }
@@ -110,7 +111,7 @@ void MMFilesWalSlot::fill(void* src, size_t size) {
 
   TRI_IF_FAILURE("WalSlotCrc") {
     // intentionally corrupt the marker
-    LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
+    LOG_TOPIC("1fc9c", WARN, arangodb::Logger::ENGINES)
         << "intentionally writing corrupt marker into datafile";
     marker->setCrc(0xdeadbeef);
   }

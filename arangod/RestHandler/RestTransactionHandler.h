@@ -27,8 +27,10 @@
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
+#include "Transaction/Status.h"
 
 namespace arangodb {
+
 class V8Context;
 
 class RestTransactionHandler : public arangodb::RestVocbaseBaseHandler {
@@ -36,15 +38,29 @@ class RestTransactionHandler : public arangodb::RestVocbaseBaseHandler {
   basics::ReadWriteLock _lock;
 
  public:
-  RestTransactionHandler(GeneralRequest*, GeneralResponse*);
+  RestTransactionHandler(application_features::ApplicationServer&,
+                         GeneralRequest*, GeneralResponse*);
 
  public:
   char const* name() const override final { return "RestTransactionHandler"; }
   RequestLane lane() const override final { return RequestLane::CLIENT_V8; }
   RestStatus execute() override;
-  bool cancel() override final;
+  void cancel() override final;
+
+ protected:
+  virtual std::string forwardingTarget() override;
 
  private:
+  void executeGetState();
+  void executeBegin();
+  void executeCommit();
+  void executeAbort();
+  void generateTransactionResult(rest::ResponseCode code, TRI_voc_tid_t tid,
+                                 transaction::Status status);
+
+  /// start a legacy JS transaction
+  void executeJSTransaction();
+  /// return the currently used V8Context
   void returnContext();
 };
 }  // namespace arangodb

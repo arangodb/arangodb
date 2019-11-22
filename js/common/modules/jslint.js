@@ -34,15 +34,23 @@ fs.ReadStream = {};
 fs.ReadStream.prototype = {};
 fs.WriteStream = {};
 fs.WriteStream.prototype = {};
+fs.realpathSync = fs.makeAbsolute;
+fs.existsSync = fs.exists;
+fs.closeSync = function () {};
+fs.__patched = true;
 var os = require("os");
-os.type = function() { return 'Linux'; };
+os.homedir = () => process.cwd();
+os.type = () => 'Linux';
 var process = require("process");
 process.version = 'v0.1';
 var console = require("console");
 
-var linter = require("eslint").linter;
-var ConfigFile = require("eslint/lib/config/config-file.js");
-var config = ConfigFile.load('./js/.eslintrc');
+var Linter = require("eslint/lib/linter");
+var Config = require("eslint/lib/config");
+var ConfigFile = require("eslint/lib/config/config-file");
+var linter = new Linter();
+var config = new Config({}, linter);
+config = ConfigFile.load('./js/.eslintrc', config);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief runs a JSLint test on a file

@@ -26,7 +26,8 @@
 
 #include <functional>
 #include <memory>
-#include "curl/curl.h"
+
+#include <curl/curl.h>
 
 namespace arangodb {
 namespace communicator {
@@ -34,7 +35,9 @@ class Options {
  public:
   double requestTimeout = 120.0;
   double connectionTimeout = 2.0;
-  std::shared_ptr<std::function<void(CURLcode)>> _curlRcFn = nullptr;
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  std::shared_ptr<std::function<void(CURLcode)>> _curlRcFn;
+#endif
 };
 }  // namespace communicator
 }  // namespace arangodb

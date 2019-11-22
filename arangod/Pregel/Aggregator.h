@@ -25,7 +25,7 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
+#include <velocypack/StringRef.h>
 
 #ifndef ARANGODB_PREGEL_AGGREGATOR_H
 #define ARANGODB_PREGEL_AGGREGATOR_H 1
@@ -35,24 +35,26 @@ namespace pregel {
 
 typedef std::string AggregatorID;
 
+///
 class IAggregator {
   IAggregator(const IAggregator&) = delete;
   IAggregator& operator=(const IAggregator&) = delete;
 
  public:
   IAggregator() {}
-  virtual ~IAggregator() {}
+  virtual ~IAggregator() = default;
 
   /// @brief Used when updating aggregator value locally
   virtual void aggregate(void const* valuePtr) = 0;
   /// @brief Used when updating aggregator value from remote
-  virtual void parseAggregate(VPackSlice const& slice) = 0;
+  virtual void parseAggregate(arangodb::velocypack::Slice const& slice) = 0;
 
   virtual void const* getAggregatedValue() const = 0;
   /// @brief Value from superstep S-1 supplied by the conductor
-  virtual void setAggregatedValue(VPackSlice const& slice) = 0;
+  virtual void setAggregatedValue(arangodb::velocypack::Slice const& slice) = 0;
 
-  virtual void serialize(std::string const& key, VPackBuilder& builder) const = 0;
+  virtual void serialize(std::string const& key,
+                         arangodb::velocypack::Builder& builder) const = 0;
 
   virtual void reset() = 0;
   virtual bool isConverging() const = 0;
@@ -65,19 +67,20 @@ struct NumberAggregator : public IAggregator {
   NumberAggregator(T neutral, bool perm = false, bool conv = false)
       : _value(neutral), _neutral(neutral), _permanent(perm), _converging(conv) {}
 
-  void parseAggregate(VPackSlice const& slice) override {
+  void parseAggregate(arangodb::velocypack::Slice const& slice) override {
     T f = slice.getNumber<T>();
     aggregate((void const*)(&f));
   };
 
   void const* getAggregatedValue() const override { return &_value; };
 
-  void setAggregatedValue(VPackSlice const& slice) override {
+  void setAggregatedValue(arangodb::velocypack::Slice const& slice) override {
     _value = slice.getNumber<T>();
   }
 
-  void serialize(std::string const& key, VPackBuilder& builder) const override {
-    builder.add(key, VPackValue(_value));
+  void serialize(std::string const& key,
+                 arangodb::velocypack::Builder& builder) const override {
+    builder.add(key, arangodb::velocypack::Value(_value));
   };
 
   void reset() override {
@@ -95,7 +98,7 @@ struct NumberAggregator : public IAggregator {
 
 template <typename T>
 struct MaxAggregator : public NumberAggregator<T> {
-  MaxAggregator(T init, bool perm = false)
+  explicit MaxAggregator(T init, bool perm = false)
       : NumberAggregator<T>(init, perm, true) {}
   void aggregate(void const* valuePtr) override {
     T other = *((T*)valuePtr);
@@ -105,7 +108,7 @@ struct MaxAggregator : public NumberAggregator<T> {
 
 template <typename T>
 struct MinAggregator : public NumberAggregator<T> {
-  MinAggregator(T init, bool perm = false)
+  explicit MinAggregator(T init, bool perm = false)
       : NumberAggregator<T>(init, perm, true) {}
   void aggregate(void const* valuePtr) override {
     T other = *((T*)valuePtr);
@@ -115,13 +118,13 @@ struct MinAggregator : public NumberAggregator<T> {
 
 template <typename T>
 struct SumAggregator : public NumberAggregator<T> {
-  SumAggregator(T init, bool perm = false)
+  explicit SumAggregator(T init, bool perm = false)
       : NumberAggregator<T>(init, perm, true) {}
 
   void aggregate(void const* valuePtr) override {
     this->_value += *((T*)valuePtr);
   };
-  void parseAggregate(VPackSlice const& slice) override {
+  void parseAggregate(arangodb::velocypack::Slice const& slice) override {
     this->_value += slice.getNumber<T>();
   }
 };
@@ -134,13 +137,13 @@ struct SumAggregator : public NumberAggregator<T> {
 /// non-deterministic.
 template <typename T>
 struct OverwriteAggregator : public NumberAggregator<T> {
-  OverwriteAggregator(T val, bool perm = false)
+  explicit OverwriteAggregator(T val, bool perm = false)
       : NumberAggregator<T>(val, perm, true) {}
 
   void aggregate(void const* valuePtr) override {
     this->_value = *((T*)valuePtr);
   };
-  void parseAggregate(VPackSlice const& slice) override {
+  void parseAggregate(arangodb::velocypack::Slice const& slice) override {
     this->_value = slice.getNumber<T>();
   }
 };
@@ -153,17 +156,17 @@ struct BoolOrAggregator : public IAggregator {
     _value = _value || *((bool*)valuePtr);
   };
 
-  void parseAggregate(VPackSlice const& slice) override {
+  void parseAggregate(arangodb::velocypack::Slice const& slice) override {
     _value = _value || slice.getBool();
   }
 
   void const* getAggregatedValue() const override { return &_value; };
-  void setAggregatedValue(VPackSlice const& slice) override {
+  void setAggregatedValue(arangodb::velocypack::Slice const& slice) override {
     _value = slice.getBool();
   }
 
-  void serialize(std::string const& key, VPackBuilder& builder) const override {
-    builder.add(key, VPackValue(_value));
+  void serialize( std::string const& key, arangodb::velocypack::Builder& builder) const override {
+    builder.add(key, arangodb::velocypack::Value(_value));
   };
 
   void reset() override {

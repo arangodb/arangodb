@@ -47,62 +47,84 @@ struct offset;
 struct payload;
 class format;
 struct directory;
+class comparer;
+struct flush_state;
 
 typedef block_pool<size_t, 8192> int_block_pool;
 
-NS_BEGIN( detail ) 
+NS_BEGIN(detail)
 class term_iterator;
 class doc_iterator;
+class sorting_doc_iterator;
 NS_END
+
+IRESEARCH_API bool memcmp_less(
+  const byte_type* lhs,
+  size_t lhs_size,
+  const byte_type* rhs,
+  size_t rhs_size
+) NOEXCEPT;
+
+inline bool memcmp_less(
+    const bytes_ref& lhs,
+    const bytes_ref& rhs
+) NOEXCEPT {
+  return memcmp_less(lhs.c_str(), lhs.size(), rhs.c_str(), rhs.size());
+}
 
 class IRESEARCH_API field_data : util::noncopyable {
  public:
   field_data(
     const string_ref& name,
-    byte_block_pool::inserter* byte_writer,
-    int_block_pool::inserter* int_writer
+    byte_block_pool::inserter& byte_writer,
+    int_block_pool::inserter& int_writer,
+    bool random_access
   );
 
-  ~field_data();
-
-  doc_id_t doc() const { return last_doc_; }
+  doc_id_t doc() const NOEXCEPT { return last_doc_; }
 
   // returns number of terms in a field within a document
-  size_t size() const { return len_; }
+  size_t size() const NOEXCEPT { return len_; }
 
-  const field_meta& meta() const { return meta_; }
+  const field_meta& meta() const NOEXCEPT { return meta_; }
 
   data_output& norms(columnstore_writer& writer);
 
   // returns false if field contains indexed data
-  bool empty() const {
-    return !type_limits<type_t::doc_id_t>::valid(last_doc_);
+  bool empty() const NOEXCEPT {
+    return !doc_limits::valid(last_doc_);
   }
 
   bool invert(token_stream& tokens, const flags& features, doc_id_t id);
 
+  bool prox_random_access() const NOEXCEPT {
+    return TERM_PROCESSING_TABLES[1] == proc_table_;
+  }
+
  private:
   friend class detail::term_iterator;
   friend class detail::doc_iterator;
+  friend class detail::sorting_doc_iterator;
   friend class fields_data;
 
-  void init(doc_id_t doc_id);
+  typedef void(field_data::*process_term_f)(posting&, doc_id_t, const payload*, const offset*);
+
+  static const process_term_f TERM_PROCESSING_TABLES[2][2];
+
+  void reset(doc_id_t doc_id);
 
   void new_term(posting& p, doc_id_t did, const payload* pay, const offset* offs);
-
   void add_term(posting& p, doc_id_t did, const payload* pay, const offset* offs);
 
-  void write_prox(posting& p, int_block_pool::iterator& where,
-                  uint32_t prox, const payload* pay);
-
-  void write_offset(posting& p, int_block_pool::iterator& where,
-                    const offset* offs);
+  void new_term_random_access(posting& p, doc_id_t did, const payload* pay, const offset* offs);
+  void add_term_random_access(posting& p, doc_id_t did, const payload* pay, const offset* offs);
 
   columnstore_writer::values_writer_f norms_;
   field_meta meta_;
   postings terms_;
   byte_block_pool::inserter* byte_writer_;
   int_block_pool::inserter* int_writer_;
+  const process_term_f* proc_table_;
   doc_id_t last_doc_{ type_limits<type_t::doc_id_t>::invalid() };
   uint32_t pos_;
   uint32_t last_pos_;
@@ -114,15 +136,17 @@ class IRESEARCH_API field_data : util::noncopyable {
   uint32_t unq_term_cnt_;
 };
 
-struct flush_state;
-
 class IRESEARCH_API fields_data: util::noncopyable {
  public:
   typedef std::unordered_map<hashed_string_ref, field_data> fields_map;
 
-  fields_data();
+  explicit fields_data(const comparer* comparator);
 
-  field_data& get(const hashed_string_ref& name);
+  const comparer* comparator() const NOEXCEPT {
+    return comparator_;
+  }
+
+  field_data& emplace(const hashed_string_ref& name);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @return approximate amount of memory actively in-use by this instance
@@ -151,10 +175,11 @@ class IRESEARCH_API fields_data: util::noncopyable {
 
  private:
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
+  const comparer* comparator_;
   fields_map fields_;
   byte_block_pool byte_pool_;
   byte_block_pool::inserter byte_writer_;
-  int_block_pool int_pool_;
+  int_block_pool int_pool_; // FIXME why don't to use std::vector<size_t>?
   int_block_pool::inserter int_writer_;
   flags features_;
   IRESEARCH_API_PRIVATE_VARIABLES_END

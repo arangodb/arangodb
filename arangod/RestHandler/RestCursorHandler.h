@@ -54,7 +54,8 @@ class Cursor;
 
 class RestCursorHandler : public RestVocbaseBaseHandler {
  public:
-  RestCursorHandler(GeneralRequest*, GeneralResponse*, arangodb::aql::QueryRegistry*);
+  RestCursorHandler(application_features::ApplicationServer&, GeneralRequest*,
+                    GeneralResponse*, arangodb::aql::QueryRegistry*);
 
   ~RestCursorHandler();
 
@@ -64,12 +65,10 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   RequestLane lane() const override final { return RequestLane::CLIENT_AQL; }
 
   virtual RestStatus continueExecute() override;
-
-#ifdef USE_ENTERPRISE
   void shutdownExecute(bool isFinalized) noexcept override;
-#endif
 
-  bool cancel() override final;
+  void cancel() override final;
+  void handleError(basics::Exception const&) override;
 
  protected:
   //////////////////////////////////////////////////////////////////////////////
@@ -89,7 +88,7 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   RestStatus processQuery();
 
   /// @brief returns the short id of the server which should handle this request
-  virtual uint32_t forwardingTarget() override;
+  virtual std::string forwardingTarget() override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief unregister the currently running query
@@ -122,7 +121,7 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   /// @brief cancel the currently running query
   //////////////////////////////////////////////////////////////////////////////
 
-  bool cancelQuery();
+  void cancelQuery();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief build options for the query as JSON
@@ -137,7 +136,7 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   /// registry if required
   //////////////////////////////////////////////////////////////////////////////
 
-  RestStatus generateCursorResult(rest::ResponseCode code, arangodb::Cursor*);
+  RestStatus generateCursorResult(rest::ResponseCode code);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create a cursor and return the first results
@@ -180,7 +179,7 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief leased query cursor, may be set by query continuation
   //////////////////////////////////////////////////////////////////////////////
-  Cursor* _leasedCursor;
+  Cursor* _cursor;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief lock for currently running query
@@ -207,6 +206,9 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   bool _isValidForFinalize;
+
+  /// @brief whether or not an audit message has already been logged
+  bool _auditLogged;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief A shared pointer to the query options velocypack, s.t. we avoid

@@ -56,6 +56,8 @@ class VectorState {
 
   Weight Final() const { return final_; }
 
+  const Weight& FinalRef() const { return final_; }
+
   size_t NumInputEpsilons() const { return niepsilons_; }
 
   size_t NumOutputEpsilons() const { return noepsilons_; }
@@ -147,6 +149,8 @@ class VectorFstBaseImpl : public FstImpl<typename S::Arc> {
   StateId Start() const { return start_; }
 
   Weight Final(StateId state) const { return states_[state]->Final(); }
+
+  const Weight& FinalRef(StateId state) const { return states_[state]->FinalRef(); }
 
   StateId NumStates() const { return states_.size(); }
 
@@ -508,9 +512,10 @@ class VectorFst : public ImplToMutableFst<internal::VectorFstImpl<S>> {
 
   using ImplToMutableFst<Impl, MutableFst<Arc>>::ReserveArcs;
   using ImplToMutableFst<Impl, MutableFst<Arc>>::ReserveStates;
+  using ImplToMutableFst<Impl, MutableFst<Arc>>::GetImpl;
 
  private:
-  using ImplToMutableFst<Impl, MutableFst<Arc>>::GetImpl;
+  //using ImplToMutableFst<Impl, MutableFst<Arc>>::GetImpl;
   using ImplToMutableFst<Impl, MutableFst<Arc>>::MutateCheck;
   using ImplToMutableFst<Impl, MutableFst<Arc>>::SetImpl;
 

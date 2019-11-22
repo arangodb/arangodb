@@ -38,8 +38,7 @@ namespace arangodb {
 namespace aql {
 
 class InputAqlItemRow;
-class ExecutorInfos;
-template <bool>
+template <BlockPassthrough>
 class SingleRowFetcher;
 
 class TestEmptyExecutorHelperInfos : public ExecutorInfos {
@@ -53,32 +52,23 @@ class TestEmptyExecutorHelperInfos : public ExecutorInfos {
   TestEmptyExecutorHelperInfos(TestEmptyExecutorHelperInfos&&) = default;
   TestEmptyExecutorHelperInfos(TestEmptyExecutorHelperInfos const&) = delete;
   ~TestEmptyExecutorHelperInfos() = default;
-
-  RegisterId getInputRegister() const noexcept { return _inputRegister; };
-
- private:
-  // This is exactly the value in the parent member ExecutorInfo::_inRegs,
-  // respectively getInputRegisters().
-  RegisterId _inputRegister;
 };
 
-/**
- * @brief Implementation of Filter Node
- */
 class TestEmptyExecutorHelper {
  public:
   struct Properties {
     static const bool preservesOrder = true;
-    static const bool allowsBlockPassthrough = false;
+    static const BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Disable;
+    static const bool inputSizeRestrictsOutputSize = false;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
-  using Infos = TestEmptyExecutorHelperInfos;
+  using Infos = ExecutorInfos;
   using Stats = FilterStats;
 
   TestEmptyExecutorHelper() = delete;
   TestEmptyExecutorHelper(TestEmptyExecutorHelper&&) = default;
   TestEmptyExecutorHelper(TestEmptyExecutorHelper const&) = delete;
-  TestEmptyExecutorHelper(Fetcher& fetcher, Infos&);
+  TestEmptyExecutorHelper(Fetcher&, Infos&);
   ~TestEmptyExecutorHelper();
 
   /**
@@ -86,13 +76,7 @@ class TestEmptyExecutorHelper {
    *
    * @return ExecutionState, and if successful exactly one new Row of AqlItems.
    */
-  std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
-
- public:
-  Infos& _infos;
-
- private:
-  Fetcher& _fetcher;
+  std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
 };
 
 }  // namespace aql

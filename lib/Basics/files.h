@@ -28,7 +28,20 @@
 #include "Basics/win-utils.h"
 #endif
 
+#include <stddef.h>
+#include <functional>
+#include <string>
+#include <vector>
+
+#include <openssl/sha.h>
+
 #include "Basics/Common.h"
+#include "Basics/StringUtils.h"
+#include "Basics/debugging.h"
+
+#ifdef USE_ENTERPRISE
+#include "Enterprise/Encryption/EncryptionFeature.h"
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the size of a file
@@ -61,6 +74,13 @@ bool TRI_IsRegularFile(char const* path);
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_IsSymbolicLink(char const* path);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief resolves a symbolic link
+////////////////////////////////////////////////////////////////////////////////
+
+std::string TRI_ResolveSymbolicLink(std::string path, bool& hadError, bool recursive = true);
+std::string TRI_ResolveSymbolicLink(std::string path, bool recursive = true);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if file or directory exists
@@ -125,6 +145,12 @@ std::string TRI_Dirname(std::string const& path);
 std::string TRI_Basename(char const* path);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief extracts the basename
+////////////////////////////////////////////////////////////////////////////////
+
+std::string TRI_Basename(std::string const& path);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a list of files in path
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -180,6 +206,26 @@ bool TRI_fsync(int fd);
 char* TRI_SlurpFile(char const* filename, size_t* length);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief read file and pass blocks to user function
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_ProcessFile(char const* filename, std::function<bool(char const* block, size_t size)> const& reader);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief slurps in a file that is compressed and return uncompressed contents
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_SlurpGzipFile(char const* filename, size_t* length);
+
+#ifdef USE_ENTERPRISE
+////////////////////////////////////////////////////////////////////////////////
+/// @brief slurps in a file that is encrypted and return unencrypted contents
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_SlurpDecryptFile(arangodb::EncryptionFeature& encryptionFeature, char const* filename, char const * keyfile, size_t* length);
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a lock file based on the PID
 ///
 /// Creates a file containing a the current process identifier and locks
@@ -226,7 +272,7 @@ int TRI_DestroyLockFile(char const* filename);
 /// @brief return the filename component of a file (without path)
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_GetFilename(char const*);
+std::string TRI_GetFilename(std::string const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the absolute path of a file
@@ -234,7 +280,8 @@ char* TRI_GetFilename(char const*);
 /// function
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_GetAbsolutePath(char const*, char const*);
+std::string TRI_GetAbsolutePath(std::string const& fileName,
+                                std::string const& currentWorkingDirectory);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the binary name without any path or suffix
@@ -316,6 +363,20 @@ bool TRI_CopySymlink(std::string const& srcItem, std::string const& dstItem,
                      std::string& error);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a symbolic link
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_CreateSymbolicLink(std::string const& target, std::string const& linkpath,
+                            std::string& error);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief copies the symlink from source to dest; will do nothing in Windows?
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_CreateHardlink(std::string const& existingFile, std::string const& newFile,
+                        std::string& error);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief locate the installation directory
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -366,4 +427,34 @@ void TRI_ShutdownFiles();
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_GETENV(char const* which, std::string& value);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief functor for generating a SHA256.  Use with TRI_ProcessFiles.
+///        you need to wrap your TRI_SHA256Functor object within std::ref().
+////////////////////////////////////////////////////////////////////////////////
+struct TRI_SHA256Functor {
+  SHA256_CTX _context;
+  unsigned char _digest[SHA256_DIGEST_LENGTH];
+
+  TRI_SHA256Functor() {
+    int ret_val = SHA256_Init(&_context);
+    if (1 != ret_val) {
+      TRI_ASSERT(false);
+    } // if
+  }
+
+  bool operator()(char const* data, size_t size) {
+    int ret_val = SHA256_Update(&_context, static_cast<void const*>(data), size);
+    return 1 == ret_val;
+  }
+
+  std::string final() {
+    int ret_val = SHA256_Final(_digest, &_context);
+    if (1 != ret_val) {
+      TRI_ASSERT(false);
+    } // if
+    return arangodb::basics::StringUtils::encodeHex((char const *)_digest, SHA256_DIGEST_LENGTH);
+  }
+};// struct TRI_SHA256Functor
+
 #endif

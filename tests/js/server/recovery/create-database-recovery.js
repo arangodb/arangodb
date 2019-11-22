@@ -38,7 +38,7 @@ function runSetup () {
   db._createDatabase('UnitTestsRecovery');
   db._useDatabase('UnitTestsRecovery');
   require("fs").remove(db._versionFilename());
-  internal.debugSegfault('crashing server');
+  internal.debugTerminate('crashing server');
 }
 
 // //////////////////////////////////////////////////////////////////////////////

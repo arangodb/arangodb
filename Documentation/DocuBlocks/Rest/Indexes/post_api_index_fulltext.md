@@ -2,11 +2,11 @@
 @startDocuBlock post_api_index_fulltext
 @brief creates a fulltext index
 
-@RESTHEADER{POST /_api/index#fulltext, Create fulltext index}
+@RESTHEADER{POST /_api/index#fulltext, Create fulltext index, createIndex#fulltext}
 
 @RESTQUERYPARAMETERS
 
-@RESTQUERYPARAM{collection-name,string,required}
+@RESTQUERYPARAM{collection,string,required}
 The collection name.
 
 @RESTBODYPARAM{type,string,required,string}

@@ -22,6 +22,8 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <string>
+
 #include "LogLevel.h"
 
 #include "Logger/Logger.h"

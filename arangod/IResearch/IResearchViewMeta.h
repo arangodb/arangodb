@@ -27,9 +27,12 @@
 #include <locale>
 #include <unordered_set>
 
+#include "IResearchViewSort.h"
+
+#include <velocypack/Builder.h>
+
 #include "VocBase/voc-types.h"
 #include "index/index_writer.hpp"
-#include "velocypack/Builder.h"
 
 namespace arangodb {
 namespace velocypack {
@@ -82,6 +85,7 @@ struct IResearchViewMeta {
     bool _writebufferActive;
     bool _writebufferIdle;
     bool _writebufferSizeMax;
+    bool _primarySort;
     explicit Mask(bool mask = false) noexcept;
   };
 
@@ -94,6 +98,7 @@ struct IResearchViewMeta {
   size_t _writebufferActive; // maximum number of concurrent segments before segment aquisition blocks, e.g. max number of concurrent transacitons) (0 == unlimited)
   size_t _writebufferIdle; // maximum number of segments cached in the pool
   size_t _writebufferSizeMax; // maximum memory byte size per segment before a segment flush is triggered (0 == unlimited)
+  IResearchViewSort _primarySort;
   // NOTE: if adding fields don't forget to modify the default constructor !!!
   // NOTE: if adding fields don't forget to modify the copy constructor !!!
   // NOTE: if adding fields don't forget to modify the move constructor !!!
@@ -137,16 +142,6 @@ struct IResearchViewMeta {
   ///        return success or set TRI_set_errno(...) and return false
   ////////////////////////////////////////////////////////////////////////////////
   bool json(arangodb::velocypack::Builder& builder,
-            IResearchViewMeta const* ignoreEqual = nullptr, Mask const* mask = nullptr) const;
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief fill and return a JSON description of a IResearchViewMeta object
-  ///        do not fill values identical to ones available in 'ignoreEqual'
-  ///        or (if 'mask' != nullptr) values in 'mask' that are set to false
-  ///        elements are appended to an existing object
-  ///        return success or set TRI_set_errno(...) and return false
-  ////////////////////////////////////////////////////////////////////////////////
-  bool json(arangodb::velocypack::ObjectBuilder const& builder,
             IResearchViewMeta const* ignoreEqual = nullptr, Mask const* mask = nullptr) const;
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -210,17 +205,6 @@ struct IResearchViewMetaState {
   ///        return success or set TRI_set_errno(...) and return false
   ////////////////////////////////////////////////////////////////////////////////
   bool json(arangodb::velocypack::Builder& builder,
-            IResearchViewMetaState const* ignoreEqual = nullptr,
-            Mask const* mask = nullptr) const;
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief fill and return a JSON description of a IResearchViewMeta object
-  ///        do not fill values identical to ones available in 'ignoreEqual'
-  ///        or (if 'mask' != nullptr) values in 'mask' that are set to false
-  ///        elements are appended to an existing object
-  ///        return success or set TRI_set_errno(...) and return false
-  ////////////////////////////////////////////////////////////////////////////////
-  bool json(arangodb::velocypack::ObjectBuilder const& builder,
             IResearchViewMetaState const* ignoreEqual = nullptr,
             Mask const* mask = nullptr) const;
 

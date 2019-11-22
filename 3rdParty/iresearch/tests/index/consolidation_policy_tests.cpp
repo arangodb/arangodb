@@ -33,7 +33,7 @@ void print_consolidation(
     const irs::index_writer::consolidation_policy_t& policy
 ) {
   struct less_t {
-    bool operator()(const irs::segment_meta* lhs, const irs::segment_meta* rhs) {
+    bool operator()(const irs::segment_meta* lhs, const irs::segment_meta* rhs) const {
       return lhs->size == rhs->size ? lhs->name < rhs->name : lhs->size < rhs->size;
     }
   };
@@ -145,6 +145,55 @@ TEST(consolidation_test_tier, test_max_consolidation_size) {
       ASSERT_TRUE(candidates.empty());
     }
   }
+}
+
+TEST(consolidation_test_tier, empty_meta) {
+  irs::index_meta meta;
+  irs::index_utils::consolidate_tier options;
+  options.floor_segment_bytes = 1;
+  options.max_segments = 10;
+  options.min_segments = 1;
+  options.max_segments_bytes = irs::integer_traits<size_t>::const_max;
+
+  irs::index_writer::consolidating_segments_t consolidating_segments;
+  auto policy = irs::index_utils::consolidation_policy(options);
+  std::set<const irs::segment_meta*> candidates;
+  policy(candidates, meta, consolidating_segments);
+  ASSERT_TRUE(candidates.empty());
+}
+
+TEST(consolidation_test_tier, empty_consolidating_segment) {
+  irs::index_meta meta;
+  meta.add(irs::segment_meta("empty", nullptr, 1, 0, false, irs::segment_meta::file_set(), 1));
+
+  irs::index_utils::consolidate_tier options;
+  options.floor_segment_bytes = 1;
+  options.max_segments = 10;
+  options.min_segments = 1;
+  options.max_segments_bytes = irs::integer_traits<size_t>::const_max;
+
+  irs::index_writer::consolidating_segments_t consolidating_segments { &meta[0].meta };
+  auto policy = irs::index_utils::consolidation_policy(options);
+  std::set<const irs::segment_meta*> candidates;
+  policy(candidates, meta, consolidating_segments);
+  ASSERT_TRUE(candidates.empty()); // skip empty consolidating segments
+}
+
+TEST(consolidation_test_tier, empty_segment) {
+  irs::index_meta meta;
+  meta.add(irs::segment_meta("empty", nullptr, 0, 0, false, irs::segment_meta::file_set(), 1));
+
+  irs::index_utils::consolidate_tier options;
+  options.floor_segment_bytes = 1;
+  options.max_segments = 10;
+  options.min_segments = 1;
+  options.max_segments_bytes = irs::integer_traits<size_t>::const_max;
+
+  irs::index_writer::consolidating_segments_t consolidating_segments { &meta[0].meta };
+  auto policy = irs::index_utils::consolidation_policy(options);
+  std::set<const irs::segment_meta*> candidates;
+  policy(candidates, meta, consolidating_segments);
+  ASSERT_TRUE(candidates.empty()); // skip empty segments
 }
 
 TEST(consolidation_test_tier, test_max_consolidation_count) {

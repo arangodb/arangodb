@@ -25,7 +25,9 @@
 
 #include "Aql/QueryCursor.h"
 #include "Basics/MutexLocker.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "Utils/ExecContext.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
@@ -35,16 +37,11 @@
 
 namespace {
 bool authorized(std::pair<arangodb::Cursor*, std::string> const& cursor) {
-  auto context = arangodb::ExecContext::CURRENT;
-  if (context == nullptr || !arangodb::ExecContext::isAuthEnabled()) {
+  auto const& exec = arangodb::ExecContext::current();
+  if (exec.isSuperuser()) {
     return true;
   }
-
-  if (context->isSuperuser()) {
-    return true;
-  }
-
-  return (cursor.second == context->user());
+  return (cursor.second == exec.user());
 }
 }  // namespace
 
@@ -80,14 +77,14 @@ CursorRepository::~CursorRepository() {
     }
 
     if (tries == 0) {
-      LOG_TOPIC(INFO, arangodb::Logger::FIXME)
+      LOG_TOPIC("4596e", INFO, arangodb::Logger::FIXME)
           << "waiting for used cursors to become unused";
     } else if (tries == 120) {
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+      LOG_TOPIC("033f6", WARN, arangodb::Logger::FIXME)
           << "giving up waiting for unused cursors";
     }
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
     ++tries;
   }
 
@@ -112,11 +109,11 @@ Cursor* CursorRepository::addCursor(std::unique_ptr<Cursor> cursor) {
   TRI_ASSERT(cursor->isUsed());
 
   CursorId const id = cursor->id();
-  std::string user = ExecContext::CURRENT ? ExecContext::CURRENT->user() : "";
+  std::string user = ExecContext::current().user();
 
   {
     MUTEX_LOCKER(mutexLocker, _lock);
-    _cursors.emplace(id, std::make_pair(cursor.get(), user));
+    _cursors.emplace(id, std::make_pair(cursor.get(), std::move(user)));
   }
 
   return cursor.release();
@@ -131,12 +128,10 @@ Cursor* CursorRepository::addCursor(std::unique_ptr<Cursor> cursor) {
 
 Cursor* CursorRepository::createFromQueryResult(aql::QueryResult&& result, size_t batchSize,
                                                 double ttl, bool hasCount) {
-  TRI_ASSERT(result.result != nullptr);
+  TRI_ASSERT(result.data != nullptr);
 
-  CursorId const id = TRI_NewServerSpecificTick();  // embedded server id
-  TRI_ASSERT(id != 0);
-  std::unique_ptr<Cursor> cursor(
-      new aql::QueryResultCursor(_vocbase, id, std::move(result), batchSize, ttl, hasCount));
+  auto cursor = std::make_unique<aql::QueryResultCursor>(
+            _vocbase, std::move(result), batchSize, ttl, hasCount);
   cursor->use();
 
   return addCursor(std::move(cursor));
@@ -153,14 +148,14 @@ Cursor* CursorRepository::createQueryStream(std::string const& query,
                                             std::shared_ptr<VPackBuilder> const& binds,
                                             std::shared_ptr<VPackBuilder> const& opts,
                                             size_t batchSize, double ttl,
-                                            bool contextOwnedByExterior) {
+                                            bool contextOwnedByExterior,
+                                            std::shared_ptr<transaction::Context> ctx) {
   TRI_ASSERT(!query.empty());
 
-  CursorId const id = TRI_NewServerSpecificTick();  // embedded server id
-  TRI_ASSERT(id != 0);
-  auto cursor = std::make_unique<aql::QueryStreamCursor>(_vocbase, id, query, binds,
+  auto cursor = std::make_unique<aql::QueryStreamCursor>(_vocbase, query, binds,
                                                          opts, batchSize, ttl,
-                                                         contextOwnedByExterior);
+                                                         contextOwnedByExterior,
+                                                         std::move(ctx));
   cursor->use();
 
   return addCursor(std::move(cursor));
@@ -273,6 +268,11 @@ void CursorRepository::release(Cursor* cursor) {
 
   // and free the cursor
   delete cursor;
+}
+
+size_t CursorRepository::count() {
+  MUTEX_LOCKER(mutexLocker, _lock);
+  return _cursors.size();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

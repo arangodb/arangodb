@@ -27,18 +27,36 @@
 #include "Basics/Common.h"
 
 #include "GeneralServer/RequestLane.h"
+#include "Network/Methods.h"
 #include "Rest/GeneralResponse.h"
-#include "Scheduler/Scheduler.h"
+
+#include <atomic>
+#include <thread>
 
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
+namespace basics {
+class Exception;
+}
+  
+namespace futures {
+template<typename T>
+class Future;
+template<typename T>
+class Try;
+}
+
 class GeneralRequest;
 class RequestStatistics;
+class Result;
 
 enum class RestStatus { DONE, WAITING, FAIL };
 
 namespace rest {
 class RestHandler : public std::enable_shared_from_this<RestHandler> {
-  friend class GeneralCommTask;
+  friend class CommTask;
 
   RestHandler(RestHandler const&) = delete;
   RestHandler& operator=(RestHandler const&) = delete;
@@ -47,7 +65,7 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   static thread_local RestHandler const* CURRENT_HANDLER;
 
  public:
-  RestHandler(GeneralRequest*, GeneralResponse*);
+  RestHandler(application_features::ApplicationServer&, GeneralRequest*, GeneralResponse*);
   virtual ~RestHandler();
 
  public:
@@ -56,16 +74,15 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   uint64_t messageId() const;
 
   GeneralRequest const* request() const { return _request.get(); }
-  std::unique_ptr<GeneralRequest> stealRequest() { return std::move(_request); }
-
   GeneralResponse* response() const { return _response.get(); }
   std::unique_ptr<GeneralResponse> stealResponse() {
     return std::move(_response);
   }
 
-  RequestStatistics* statistics() const { return _statistics.load(); }
-  RequestStatistics* stealStatistics() { return _statistics.exchange(nullptr); }
+  application_features::ApplicationServer& server() { return _server; };
 
+  RequestStatistics* statistics() const { return _statistics; }
+  RequestStatistics* stealStatistics();
   void setStatistics(RequestStatistics* stat);
 
   /// Execute the rest handler state machine
@@ -75,11 +92,14 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
     runHandlerStateMachine();
   }
 
-  /// Execute the rest handler state machine
-  void continueHandlerExecution();
+  /// Execute the rest handler state machine. Retry the wakeup,
+  /// returns true if _state == PAUSED, false otherwise
+  bool wakeupHandler();
 
   /// @brief forwards the request to the appropriate server
-  bool forwardRequest();
+  futures::Future<Result> forwardRequest(bool& forwarded);
+
+  void handleExceptionPtr(std::exception_ptr) noexcept;
 
  public:
   // rest handler name for debugging and logging
@@ -106,9 +126,8 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
 
   // you might need to implment this in you handler
   // if it will be executed in an async job
-  virtual bool cancel() {
+  virtual void cancel() {
     _canceled.store(true);
-    return false;
   }
 
   virtual void handleError(basics::Exception const&) = 0;
@@ -118,10 +137,10 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   ///
   /// This method will be called to determine if the request should be
   /// forwarded to another server, and if so, which server. If it should be
-  /// handled by this server, the method should return 0. Otherwise, this
-  /// method should return a valid (non-zero) short ID (TransactionID) for the
+  /// handled by this server, the method should return an empty string.
+  /// Otherwise, this method should return a valid short name for the
   /// target server.
-  virtual uint32_t forwardingTarget() { return 0; }
+  virtual std::string forwardingTarget() { return ""; }
 
   void resetResponse(rest::ResponseCode);
 
@@ -132,10 +151,27 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
 
   // generates an error
   void generateError(arangodb::Result const&);
-
- private:
-  enum class HandlerState {
-    PREPARE,
+  
+  template<typename T>
+  RestStatus waitForFuture(futures::Future<T>&& f) {
+    if (f.isReady()) {  // fast-path out
+      f.result().throwIfFailed(); // just throw the error upwards
+      return RestStatus::DONE;
+    }
+    bool done = false;
+    std::move(f).thenFinal([self = shared_from_this(), &done](futures::Try<T>) -> void {
+      auto thisPtr = self.get();
+      if (std::this_thread::get_id() == thisPtr->_executionMutexOwner.load()) {
+        done = true;
+      } else {
+        thisPtr->wakeupHandler();
+      }
+    });
+    return done ? RestStatus::DONE : RestStatus::WAITING;
+  }
+  
+  enum class HandlerState : uint8_t {
+    PREPARE = 0,
     EXECUTE,
     PAUSED,
     CONTINUED,
@@ -143,7 +179,13 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
     DONE,
     FAILED
   };
+  
+  /// handler state machine
+  HandlerState state() const {
+    return _state;
+  }
 
+ private:
   void runHandlerStateMachine();
 
   void prepareEngine();
@@ -152,23 +194,30 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   ///        If isContinue == true it will call continueExecute()
   ///        otherwise execute() will be called
   void executeEngine(bool isContinue);
-  void shutdownEngine();
-
+  void compressResponse();
+  
  protected:
-  std::atomic<bool> _canceled;
 
   std::unique_ptr<GeneralRequest> _request;
   std::unique_ptr<GeneralResponse> _response;
-
-  std::atomic<RequestStatistics*> _statistics;
+  application_features::ApplicationServer& _server;
+  RequestStatistics* _statistics;
 
  private:
+  
+  mutable Mutex _executionMutex;
+
+  std::function<void(rest::RestHandler*)> _callback;
+  
   uint64_t _handlerId;
 
+  std::atomic<std::thread::id> _executionMutexOwner;
+  
   HandlerState _state;
-  std::function<void(rest::RestHandler*)> _callback;
-
-  mutable Mutex _executionMutex;
+  
+ protected:
+  
+  std::atomic<bool> _canceled;
 };
 
 }  // namespace rest

@@ -21,17 +21,6 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#if defined(__GNUC__)
-  #pragma GCC diagnostic push
-  #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-#endif
-
-#include <boost/thread.hpp>
-
-#if defined(__GNUC__)
-  #pragma GCC diagnostic pop
-#endif
-
 #if defined(_MSC_VER)
   #pragma warning(disable: 4101)
   #pragma warning(disable: 4267)
@@ -44,6 +33,9 @@
   #pragma warning(default: 4101)
 #endif
 
+#include <fstream>
+#include <memory>
+
 #if defined(_MSC_VER)
   #pragma warning(disable: 4229)
 #endif
@@ -54,22 +46,17 @@
   #pragma warning(default: 4229)
 #endif
 
-#include "index-put.hpp"
 #include "common.hpp"
-#include "index/index_writer.hpp"
+#include "analysis/analyzers.hpp"
 #include "analysis/token_attributes.hpp"
 #include "analysis/token_streams.hpp"
-#include "analysis/text_token_stream.hpp"
+#include "index/index_writer.hpp"
 #include "store/store_utils.hpp"
 #include "utils/index_utils.hpp"
+#include "utils/string_utils.hpp"
+#include "utils/text_format.hpp"
 
-#include <boost/chrono.hpp>
-#include <fstream>
-#include <iostream>
-
-#if defined(_MSC_VER) && (_MSC_VER < 1900)
-  #define snprintf _snprintf
-#endif
+#include "index-put.hpp"
 
 NS_LOCAL
 
@@ -141,8 +128,6 @@ struct Doc {
     return result;
   }
 
-  /**
-  */
   struct Field {
     const std::string& _name;
     const irs::flags feats;
@@ -293,7 +278,7 @@ struct Doc {
 
 std::atomic<uint64_t> Doc::next_id(0);
 const std::string& Doc::TextField::aname = std::string("text");
-const std::string& Doc::TextField::aignore = std::string("{\"locale\":\"en\", \"ignored_words\":[\"abc\", \"def\", \"ghi\"]}");
+const std::string& Doc::TextField::aignore = std::string("{\"locale\":\"en\", \"stopwords\":[\"abc\", \"def\", \"ghi\"]}");
 const irs::text_format::type_id& Doc::TextField::aignore_format = irs::text_format::json;
 
 struct WikiDoc : Doc {
@@ -485,11 +470,11 @@ int put(
           doc.fill(&(buf[i]));
 
           for (auto& field: doc.elements) {
-            builder.insert(irs::action::index, *field);
+            builder.insert<irs::Action::INDEX>(*field);
           }
 
           for (auto& field : doc.store) {
-            builder.insert(irs::action::store, *field);
+            builder.insert<irs::Action::STORE>(*field);
           }
 
         } while (++i < buf.size());

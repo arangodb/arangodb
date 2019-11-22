@@ -34,19 +34,6 @@
 #include <velocypack/Slice.h>
 
 namespace arangodb {
-class PhysicalCollection;
-class PhysicalView;
-class TransactionCollection;
-class TransactionState;
-
-namespace rest {
-class RestHandlerFactory;
-}
-
-namespace transaction {
-class ContextData;
-struct Options;
-}  // namespace transaction
 
 class ClusterEngine final : public StorageEngine {
  public:
@@ -76,15 +63,12 @@ class ClusterEngine final : public StorageEngine {
   void prepare() override;
   void start() override;
 
-  // minimum timeout for the synchronous replication
-  double minimumSyncReplicationTimeout() const override { return 1.0; }
-
   bool supportsDfdb() const override { return false; }
   bool useRawDocumentPointers() override { return false; }
 
-  std::unique_ptr<TransactionManager> createTransactionManager() override;
+  std::unique_ptr<transaction::Manager> createTransactionManager(transaction::ManagerFeature&) override;
   std::unique_ptr<transaction::ContextData> createTransactionContextData() override;
-  std::unique_ptr<TransactionState> createTransactionState(TRI_vocbase_t& vocbase,
+  std::unique_ptr<TransactionState> createTransactionState(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
                                                            transaction::Options const& options) override;
   std::unique_ptr<TransactionCollection> createTransactionCollection(
       TransactionState& state, TRI_voc_cid_t cid, AccessMode::Type accessType,
@@ -114,6 +98,10 @@ class ClusterEngine final : public StorageEngine {
     // the cluster engine does not have any versioning information
     return std::string();
   }
+  std::string dataPath() const override {
+    // the cluster engine does not have any data path
+    return std::string();
+  }
   std::string databasePath(TRI_vocbase_t const* vocbase) const override {
     // the cluster engine does not have any database path
     return std::string();
@@ -121,6 +109,8 @@ class ClusterEngine final : public StorageEngine {
   std::string collectionPath(TRI_vocbase_t const& vocbase, TRI_voc_cid_t id) const override {
     return std::string();  // no path to be returned here
   }
+
+  void cleanupReplicationContexts() override {}
 
   velocypack::Builder getReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
                                                          int& status) override;
@@ -140,22 +130,22 @@ class ClusterEngine final : public StorageEngine {
   }
   Result handleSyncKeys(DatabaseInitialSyncer& syncer, LogicalCollection& col,
                         std::string const& keysId) override {
-    return TRI_ERROR_NOT_IMPLEMENTED;
+    return {TRI_ERROR_NOT_IMPLEMENTED};
   }
   Result createLoggerState(TRI_vocbase_t* vocbase, velocypack::Builder& builder) override {
-    return TRI_ERROR_NOT_IMPLEMENTED;
+    return {TRI_ERROR_NOT_IMPLEMENTED};
   }
   Result createTickRanges(velocypack::Builder& builder) override {
-    return TRI_ERROR_NOT_IMPLEMENTED;
+    return {TRI_ERROR_NOT_IMPLEMENTED};
   }
   Result firstTick(uint64_t& tick) override {
-    return TRI_ERROR_NOT_IMPLEMENTED;
+    return {TRI_ERROR_NOT_IMPLEMENTED};
   }
   Result lastLogger(TRI_vocbase_t& vocbase,
                     std::shared_ptr<transaction::Context> transactionContext,
                     uint64_t tickStart, uint64_t tickEnd,
                     std::shared_ptr<velocypack::Builder>& builderSPtr) override {
-    return TRI_ERROR_NOT_IMPLEMENTED;
+    return {TRI_ERROR_NOT_IMPLEMENTED};
   }
   WalAccess const* walAccess() const override {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
@@ -174,22 +164,23 @@ class ClusterEngine final : public StorageEngine {
   }
 
   Result flushWal(bool waitForSync, bool waitForCollector, bool writeShutdownFile) override {
-    return TRI_ERROR_NO_ERROR;
+    return {TRI_ERROR_NO_ERROR};
   }
   void waitForEstimatorSync(std::chrono::milliseconds maxWaitTime) override;
 
-  virtual std::unique_ptr<TRI_vocbase_t> openDatabase(velocypack::Slice const& parameters,
-                                                      bool isUpgrade, int& status) override;
-  std::unique_ptr<TRI_vocbase_t> createDatabase(TRI_voc_tick_t id,
-                                                velocypack::Slice const& args,
+  virtual std::unique_ptr<TRI_vocbase_t> openDatabase(arangodb::CreateDatabaseInfo&& info,
+                                                      bool isUpgrade) override;
+  std::unique_ptr<TRI_vocbase_t> createDatabase(arangodb::CreateDatabaseInfo&& info,
                                                 int& status) override;
   int writeCreateDatabaseMarker(TRI_voc_tick_t id, velocypack::Slice const& slice) override;
   void prepareDropDatabase(TRI_vocbase_t& vocbase, bool useWriteMarker, int& status) override;
   Result dropDatabase(TRI_vocbase_t& database) override;
   void waitUntilDeletion(TRI_voc_tick_t id, bool force, int& status) override;
 
-  // wal in recovery
-  bool inRecovery() override;
+  // current recovery state
+  RecoveryState recoveryState() override;
+  // current recovery tick
+  TRI_voc_tick_t recoveryTick() override;
   // start compactor thread and delete files form collections marked as deleted
   void recoveryDone(TRI_vocbase_t& vocbase) override;
 
@@ -233,7 +224,7 @@ class ClusterEngine final : public StorageEngine {
   int shutdownDatabase(TRI_vocbase_t& vocbase) override;
 
   /// @brief Add engine-specific optimizer rules
-  void addOptimizerRules() override;
+  void addOptimizerRules(aql::OptimizerRulesFeature& feature) override;
 
   /// @brief Add engine-specific V8 functions
   void addV8Functions() override;
@@ -250,12 +241,6 @@ class ClusterEngine final : public StorageEngine {
   void releaseTick(TRI_voc_tick_t) override {
     // noop
   }
-
- private:
-  /// @brief open an existing database. internal function
-  std::unique_ptr<TRI_vocbase_t> openExistingDatabase(TRI_voc_tick_t id,
-                                                      std::string const& name,
-                                                      bool wasCleanShutdown, bool isUpgrade);
 
  public:
   static std::string const EngineName;

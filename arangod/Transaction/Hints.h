@@ -46,12 +46,13 @@ class Hints {
     NO_COMPACTION_LOCK = 128,  // not supported in RocksDB
     NO_USAGE_LOCK = 256,       // not supported in RocksDB
     RECOVERY = 512,
-    NO_DLD = 1024,                // disable deadlock detection
-    NO_INDEXING = 2048,           // use DisableIndexing for RocksDB
-    INTERMEDIATE_COMMITS = 4096,  // enable intermediate commits in rdb
-    ALLOW_RANGE_DELETE = 8192,    // enable range-delete in rdb
-    FROM_TOPLEVEL_AQL = 16384  // transaction is started by an AQL query that is
-                               // not in a sub-transaction
+    NO_DLD = 1024,       // disable deadlock detection, unsupported in RocksDB
+    NO_INDEXING = 2048,  // use DisableIndexing for RocksDB
+    INTERMEDIATE_COMMITS = 4096,  // enable intermediate commits in rocksdb
+    ALLOW_RANGE_DELETE = 8192,    // enable range-delete in rocksdb
+    FROM_TOPLEVEL_AQL = 16384,    // transaction is only runnning one AQL query
+    GLOBAL_MANAGED = 32768,  // transaction with externally managed lifetime
+    INDEX_CREATION = 65536, // transaction is for creating index on existing collection (many inserts, no removes, index will be deleted on any failure anyway)
   };
 
   Hints() : _value(0) {}

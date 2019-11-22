@@ -1,8 +1,0 @@
-arangosh&gt; <span class="hljs-keyword">var</span> graph_module = <span class="hljs-built_in">require</span>(<span class="hljs-string">"@arangodb/general-graph"</span>);
-arangosh&gt; graph_module._drop(<span class="hljs-string">"social"</span>, <span class="hljs-literal">true</span>);
-arangosh&gt; db._collection(<span class="hljs-string">"female"</span>);
-<span class="hljs-literal">null</span>
-arangosh&gt; db._collection(<span class="hljs-string">"male"</span>);
-<span class="hljs-literal">null</span>
-arangosh&gt; db._collection(<span class="hljs-string">"relation"</span>);
-<span class="hljs-literal">null</span>

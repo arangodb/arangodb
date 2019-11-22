@@ -27,8 +27,10 @@
 #include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/TraversalStats.h"
+#include "Aql/Variable.h"
 
 namespace arangodb {
+class Result;
 
 namespace traverser {
 class Traverser;
@@ -39,13 +41,15 @@ namespace aql {
 class Query;
 class OutputAqlItemRow;
 class ExecutorInfos;
-template <bool>
+template <BlockPassthrough>
 class SingleRowFetcher;
 
 class TraversalExecutorInfos : public ExecutorInfos {
  public:
   enum OutputName { VERTEX, EDGE, PATH };
-  struct OutputNameHash { size_t operator()(OutputName v) const noexcept { return size_t(v); } };
+  struct OutputNameHash {
+    size_t operator()(OutputName v) const noexcept { return size_t(v); }
+  };
 
   TraversalExecutorInfos(std::shared_ptr<std::unordered_set<RegisterId>> inputRegisters,
                          std::shared_ptr<std::unordered_set<RegisterId>> outputRegisters,
@@ -53,7 +57,7 @@ class TraversalExecutorInfos : public ExecutorInfos {
                          std::unordered_set<RegisterId> registersToClear,
                          std::unordered_set<RegisterId> registersToKeep,
                          std::unique_ptr<traverser::Traverser>&& traverser,
-    std::unordered_map<OutputName, RegisterId, OutputNameHash> registerMapping,
+                         std::unordered_map<OutputName, RegisterId, OutputNameHash> registerMapping,
                          std::string fixedSource, RegisterId inputRegister,
                          std::vector<std::pair<Variable const*, RegisterId>> filterConditionVariables);
 
@@ -64,6 +68,10 @@ class TraversalExecutorInfos : public ExecutorInfos {
   ~TraversalExecutorInfos();
 
   traverser::Traverser& traverser();
+
+  bool usesOutputRegister(OutputName type) const;
+
+  RegisterId getOutputRegister(OutputName type) const;
 
   bool useVertexOutput() const;
 
@@ -86,6 +94,9 @@ class TraversalExecutorInfos : public ExecutorInfos {
   std::vector<std::pair<Variable const*, RegisterId>> const& filterConditionVariables() const;
 
  private:
+  RegisterId findRegisterChecked(OutputName type) const;
+
+ private:
   std::unique_ptr<traverser::Traverser> _traverser;
   std::unordered_map<OutputName, RegisterId, OutputNameHash> _registerMapping;
   std::string const _fixedSource;
@@ -99,8 +110,9 @@ class TraversalExecutorInfos : public ExecutorInfos {
 class TraversalExecutor {
  public:
   struct Properties {
-    static const bool preservesOrder = true;
-    static const bool allowsBlockPassthrough = false;
+    static constexpr bool preservesOrder = true;
+    static constexpr BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Disable;
+    static constexpr bool inputSizeRestrictsOutputSize = false;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = TraversalExecutorInfos;
@@ -124,7 +136,7 @@ class TraversalExecutor {
    *
    * @return ExecutionState, and if successful exactly one new Row of AqlItems.
    */
-  std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
+  std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
 
  private:
   /**

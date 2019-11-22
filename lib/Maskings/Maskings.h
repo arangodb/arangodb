@@ -23,17 +23,25 @@
 #ifndef ARANGODB_MASKINGS_MASKINGS_H
 #define ARANGODB_MASKINGS_MASKINGS_H 1
 
-#include "Basics/Common.h"
+#include <cstdint>
+#include <map>
+#include <memory>
+#include <string>
+#include <utility>
+#include <vector>
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include "Basics/StringBuffer.h"
+#include "Basics/Common.h"
 #include "Maskings/Collection.h"
 #include "Maskings/ParseResult.h"
 
 namespace arangodb {
+namespace basics {
+class StringBuffer;
+}
 namespace maskings {
 class Maskings;
 
@@ -76,7 +84,7 @@ class Maskings {
   void addMaskedObject(Collection& collection, VPackBuilder& builder,
                        std::vector<std::string>& path, VPackSlice const& data);
   void addMasked(Collection& collection, VPackBuilder& builder, VPackSlice const& data);
-  void addMasked(Collection& collection, basics::StringBuffer&, VPackSlice const& data);
+  void addMasked(Collection& collection, basics::StringBuffer& data, VPackSlice const& slice);
 
  private:
   std::map<std::string, Collection> _collections;

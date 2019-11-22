@@ -36,6 +36,19 @@ class LogicalCollection;
 
 namespace maintenance {
 
+// A few constants for priorities used in Maintenance for ActionDescriptions:
+
+// For fast track:
+constexpr int NORMAL_PRIORITY = 1;
+constexpr int FOLLOWER_PRIORITY = 1;
+constexpr int LEADER_PRIORITY = 2;
+constexpr int HIGHER_PRIORITY = 2;
+constexpr int RESIGN_PRIORITY = 3;
+
+// For non fast track:
+constexpr int INDEX_PRIORITY = 2;
+constexpr int SYNCHRONIZE_PRIORITY = 1;
+
 using Transactions = std::vector<std::pair<VPackBuilder, VPackBuilder>>;
 
 arangodb::Result diffPlanLocalForDatabases(VPackSlice const&,

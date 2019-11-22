@@ -24,8 +24,8 @@
 #ifndef ARANGOD_AQL_TYPES_H
 #define ARANGOD_AQL_TYPES_H 1
 
-#include "Basics/Common.h"
-#include "Basics/HashSet.h"
+#include <unordered_map>
+#include <vector>
 
 namespace arangodb {
 namespace aql {
@@ -35,12 +35,17 @@ typedef uint32_t VariableId;
 
 /// @brief type for register numbers/ids
 typedef unsigned int RegisterId;
+typedef RegisterId RegisterCount;
 
 /// @brief type of a query id
 typedef uint64_t QueryId;
 
 // Map RemoteID->ServerID->[SnippetId]
 typedef std::unordered_map<size_t, std::unordered_map<std::string, std::vector<std::string>>> MapRemoteToSnippet;
+
+// Enable/Disable block passthrough in fetchers
+enum class BlockPassthrough { Disable, Enable };
+
 }  // namespace aql
 }  // namespace arangodb
 

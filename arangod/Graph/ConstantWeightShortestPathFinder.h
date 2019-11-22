@@ -29,10 +29,9 @@
 #include "Graph/ShortestPathFinder.h"
 
 #include <velocypack/StringRef.h>
+#include <deque>
 
 namespace arangodb {
-
-class ManagedDocumentResult;
 
 namespace velocypack {
 class Slice;
@@ -61,8 +60,7 @@ class ConstantWeightShortestPathFinder : public ShortestPathFinder {
 
   bool shortestPath(arangodb::velocypack::Slice const& start,
                     arangodb::velocypack::Slice const& end,
-                    arangodb::graph::ShortestPathResult& result,
-                    std::function<void()> const& callback) override;
+                    arangodb::graph::ShortestPathResult& result) override;
 
  private:
   void expandVertex(bool backward, arangodb::velocypack::StringRef vertex);
@@ -85,12 +83,6 @@ class ConstantWeightShortestPathFinder : public ShortestPathFinder {
 
   std::vector<arangodb::velocypack::StringRef> _neighbors;
   std::vector<graph::EdgeDocumentToken> _edges;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Reusable ManagedDocumentResult that temporarily takes
-  ///        responsibility for one document.
-  //////////////////////////////////////////////////////////////////////////////
-  std::unique_ptr<ManagedDocumentResult> _mmdr;
 };
 
 }  // namespace graph

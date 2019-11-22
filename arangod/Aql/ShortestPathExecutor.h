@@ -45,7 +45,7 @@ class TraverserCache;
 
 namespace aql {
 
-template <bool>
+template <BlockPassthrough>
 class SingleRowFetcher;
 class OutputAqlItemRow;
 class NoStats;
@@ -58,13 +58,17 @@ class ShortestPathExecutorInfos : public ExecutorInfos {
     RegisterId reg;
     std::string value;
 
-    InputVertex(std::string const value)
-        : type(CONSTANT), reg(0), value(value) {}
-    InputVertex(RegisterId reg) : type(REGISTER), reg(reg), value("") {}
+    // cppcheck-suppress passedByValue
+    explicit InputVertex(std::string value)
+        : type(CONSTANT), reg(0), value(std::move(value)) {}
+    explicit InputVertex(RegisterId reg)
+        : type(REGISTER), reg(reg), value("") {}
   };
 
   enum OutputName { VERTEX, EDGE };
-  struct OutputNameHash { size_t operator()(OutputName v) const noexcept { return size_t(v); } };
+  struct OutputNameHash {
+    size_t operator()(OutputName v) const noexcept { return size_t(v); }
+  };
 
   ShortestPathExecutorInfos(std::shared_ptr<std::unordered_set<RegisterId>> inputRegisters,
                             std::shared_ptr<std::unordered_set<RegisterId>> outputRegisters,
@@ -72,7 +76,7 @@ class ShortestPathExecutorInfos : public ExecutorInfos {
                             std::unordered_set<RegisterId> registersToClear,
                             std::unordered_set<RegisterId> registersToKeep,
                             std::unique_ptr<graph::ShortestPathFinder>&& finder,
-    std::unordered_map<OutputName, RegisterId, OutputNameHash>&& registerMapping,
+                            std::unordered_map<OutputName, RegisterId, OutputNameHash>&& registerMapping,
                             InputVertex&& source, InputVertex&& target);
 
   ShortestPathExecutorInfos() = delete;
@@ -119,6 +123,9 @@ class ShortestPathExecutorInfos : public ExecutorInfos {
   graph::TraverserCache* cache() const;
 
  private:
+  RegisterId findRegisterChecked(OutputName type) const;
+
+ private:
   /// @brief the shortest path finder.
   std::unique_ptr<arangodb::graph::ShortestPathFinder> _finder;
 
@@ -138,8 +145,9 @@ class ShortestPathExecutorInfos : public ExecutorInfos {
 class ShortestPathExecutor {
  public:
   struct Properties {
-    static const bool preservesOrder = true;
-    static const bool allowsBlockPassthrough = false;
+    static constexpr bool preservesOrder = true;
+    static constexpr BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Disable;
+    static constexpr bool inputSizeRestrictsOutputSize = false;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = ShortestPathExecutorInfos;
@@ -147,7 +155,7 @@ class ShortestPathExecutor {
 
   ShortestPathExecutor() = delete;
   ShortestPathExecutor(ShortestPathExecutor&&) = default;
-  ShortestPathExecutor(ShortestPathExecutor const&) = default;
+
   ShortestPathExecutor(Fetcher& fetcher, Infos&);
   ~ShortestPathExecutor();
 
@@ -162,7 +170,7 @@ class ShortestPathExecutor {
    *
    * @return ExecutionState, and if successful exactly one new Row of AqlItems.
    */
-  std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
+  std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
 
  private:
   /**

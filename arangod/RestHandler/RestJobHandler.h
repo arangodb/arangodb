@@ -40,7 +40,8 @@ class Dispatcher;
 
 class RestJobHandler : public RestBaseHandler {
  public:
-  RestJobHandler(GeneralRequest*, GeneralResponse*, rest::AsyncJobManager*);
+  RestJobHandler(application_features::ApplicationServer&, GeneralRequest*,
+                 GeneralResponse*, rest::AsyncJobManager*);
 
  public:
   char const* name() const override final { return "RestJobHandler"; }
@@ -84,7 +85,7 @@ class RestJobHandler : public RestBaseHandler {
   void deleteJob();
 
  protected:
-  virtual uint32_t forwardingTarget() override;
+  virtual std::string forwardingTarget() override;
 
  private:
   //////////////////////////////////////////////////////////////////////////////

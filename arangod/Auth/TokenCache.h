@@ -29,6 +29,8 @@
 #include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
+#include "Basics/debugging.h"
+#include "Basics/system-functions.h"
 #include "Rest/CommonDefines.h"
 
 #include <velocypack/Builder.h>
@@ -53,7 +55,7 @@ class TokenCache {
 
    public:
     explicit Entry(std::string const& username, bool a, double t)
-        : _username(username), _authenticated(a), _expiry(t) {}
+        : _username(username), _authenticated(a), _expiry(t), _allowedPaths() {}
 
     static Entry Unauthenticated() { return Entry("", false, 0); }
 
@@ -70,6 +72,8 @@ class TokenCache {
     bool _authenticated;
     /// expiration time (in seconds since epoch) of this entry
     double _expiry;
+    // paths that are valid for this token
+    std::vector<std::string> _allowedPaths;
   };
 
  public:
@@ -101,7 +105,7 @@ class TokenCache {
   TokenCache::Entry validateJwtBody(std::string const&);
   bool validateJwtHMAC256Signature(std::string const&, std::string const&);
 
-  std::shared_ptr<velocypack::Builder> parseJson(std::string const&, std::string const&);
+  std::shared_ptr<velocypack::Builder> parseJson(std::string const& str, char const* hint);
 
   /// generate new _jwtToken
   void generateJwtToken();

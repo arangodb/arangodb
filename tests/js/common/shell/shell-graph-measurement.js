@@ -60,8 +60,6 @@ function measurementSuite() {
       try {
         // Drop the graph if it exsits
         if (Graph._exists(graph_name)) {
-          require("internal").print("FOUND: ");
-          require("internal").printObject(graph);
           Graph._drop(graph_name, true);
         }
         graph = Graph._create(graph_name,
@@ -233,8 +231,6 @@ function geodesicSuite() {
       try {
         // Drop the graph if it exsits
         if (Graph._exists(graph_name)) {
-          require("internal").print("FOUND: ");
-          require("internal").printObject(graph);
           Graph._drop(graph_name, true);
         }
         graph = Graph._create(graph_name,
@@ -401,8 +397,6 @@ function normalizedSuite() {
       try {
         // Drop the graph if it exsits
         if (Graph._exists(graph_name)) {
-          require("internal").print("FOUND: ");
-          require("internal").printObject(graph);
           Graph._drop(graph_name, true);
         }
         graph = Graph._create(graph_name,

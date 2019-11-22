@@ -21,9 +21,11 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "catch.hpp"
+#include "gtest/gtest.h"
+
 #include "../IResearch/common.h"
-#include "../Mocks/StorageEngineMock.h"
+#include "Mocks/Servers.h"
+
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ViewTypesFeature.h"
@@ -35,102 +37,63 @@
 #include "velocypack/Parser.h"
 
 namespace {
-
-struct TestView: public arangodb::LogicalView {
+struct TestView : public arangodb::LogicalView {
   TestView(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& definition, uint64_t planVersion)
-    : arangodb::LogicalView(vocbase, definition, planVersion) {
+      : arangodb::LogicalView(vocbase, definition, planVersion) {}
+  virtual arangodb::Result appendVelocyPackImpl(
+      arangodb::velocypack::Builder&,
+      Serialization) const override {
+    return arangodb::Result();
   }
-  virtual arangodb::Result appendVelocyPackImpl(arangodb::velocypack::Builder&, bool , bool) const override { return arangodb::Result(); }
-  virtual arangodb::Result dropImpl() override { return arangodb::LogicalViewHelperStorageEngine::drop(*this); }
+  virtual arangodb::Result dropImpl() override {
+    return arangodb::LogicalViewHelperStorageEngine::drop(*this);
+  }
   virtual void open() override {}
-  virtual arangodb::Result renameImpl(std::string const& oldName) override { return arangodb::LogicalViewHelperStorageEngine::rename(* this, oldName); }
-  virtual arangodb::Result properties(arangodb::velocypack::Slice const&, bool) override { return arangodb::Result(); }
-  virtual bool visitCollections(CollectionVisitor const& visitor) const override { return true; }
+  virtual arangodb::Result renameImpl(std::string const& oldName) override {
+    return arangodb::LogicalViewHelperStorageEngine::rename(*this, oldName);
+  }
+  virtual arangodb::Result properties(arangodb::velocypack::Slice const&, bool) override {
+    return arangodb::Result();
+  }
+  virtual bool visitCollections(CollectionVisitor const& visitor) const override {
+    return true;
+  }
 };
 
-struct ViewFactory: public arangodb::ViewFactory {
-  virtual arangodb::Result create(
-      arangodb::LogicalView::ptr& view,
-      TRI_vocbase_t& vocbase,
-      arangodb::velocypack::Slice const& definition
-  ) const override {
+struct ViewFactory : public arangodb::ViewFactory {
+  virtual arangodb::Result create(arangodb::LogicalView::ptr& view, TRI_vocbase_t& vocbase,
+                                  arangodb::velocypack::Slice const& definition) const override {
     view = vocbase.createView(definition);
 
     return arangodb::Result();
   }
 
-  virtual arangodb::Result instantiate(
-      arangodb::LogicalView::ptr& view,
-      TRI_vocbase_t& vocbase,
-      arangodb::velocypack::Slice const& definition,
-      uint64_t planVersion
-  ) const override {
+  virtual arangodb::Result instantiate(arangodb::LogicalView::ptr& view,
+                                       TRI_vocbase_t& vocbase,
+                                       arangodb::velocypack::Slice const& definition,
+                                       uint64_t planVersion) const override {
     view = std::make_shared<TestView>(vocbase, definition, planVersion);
 
     return arangodb::Result();
   }
 };
 
-}
+}  // namespace
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
 
-struct CollectionNameResolverSetup {
-  StorageEngineMock engine;
-  arangodb::application_features::ApplicationServer server;
-  std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
+class CollectionNameResolverTest : public ::testing::Test {
+ protected:
+  arangodb::tests::mocks::MockAqlServer server;
   ViewFactory viewFactory;
 
-  CollectionNameResolverSetup(): engine(server), server(nullptr, nullptr) {
-    arangodb::EngineSelectorFeature::ENGINE = &engine;
-
-    // setup required application features
-    features.emplace_back(new arangodb::DatabaseFeature(server), false); // required for TRI_vocbase_t::dropCollection(...)
-    features.emplace_back(new arangodb::QueryRegistryFeature(server), false); // required for TRI_vocbase_t instantiation
-    features.emplace_back(new arangodb::ShardingFeature(server), false);
-    features.emplace_back(new arangodb::ViewTypesFeature(server), false); // required for TRI_vocbase_t::createView(...)
-
-    for (auto& f: features) {
-      arangodb::application_features::ApplicationServer::server->addFeature(f.first);
-    }
-
-    for (auto& f: features) {
-      f.first->prepare();
-    }
-
-    for (auto& f: features) {
-      if (f.second) {
-        f.first->start();
-      }
-    }
-
+  CollectionNameResolverTest() {
     // register view factory
-    arangodb::application_features::ApplicationServer::lookupFeature<
-      arangodb::ViewTypesFeature
-    >()->emplace(
-      arangodb::LogicalDataSource::Type::emplace(
-        arangodb::velocypack::StringRef("testViewType")
-      ),
-      viewFactory
-    );
-  }
-
-  ~CollectionNameResolverSetup() {
-    arangodb::application_features::ApplicationServer::server = nullptr;
-    arangodb::EngineSelectorFeature::ENGINE = nullptr;
-
-    // destroy application features
-    for (auto& f: features) {
-      if (f.second) {
-        f.first->stop();
-      }
-    }
-
-    for (auto& f: features) {
-      f.first->unprepare();
-    }
+    server.getFeature<arangodb::ViewTypesFeature>().emplace(
+        arangodb::LogicalDataSource::Type::emplace(arangodb::velocypack::StringRef("testViewType")),
+        viewFactory);
   }
 };
 
@@ -138,136 +101,121 @@ struct CollectionNameResolverSetup {
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief setup
-////////////////////////////////////////////////////////////////////////////////
-
-TEST_CASE("CollectionNameResolverTest", "[vocbase]") {
-  CollectionNameResolverSetup s;
-  (void)(s);
-
-SECTION("test_getDataSource") {
-  auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"globallyUniqueId\": \"testCollectionGUID\", \"id\": 100, \"name\": \"testCollection\" }");
-  auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"id\": 200, \"name\": \"testView\", \"type\": \"testViewType\" }"); // any arbitrary view type
-  Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+TEST_F(CollectionNameResolverTest, test_getDataSource) {
+  auto collectionJson = arangodb::velocypack::Parser::fromJson(
+      "{ \"globallyUniqueId\": \"testCollectionGUID\", \"id\": 100, \"name\": "
+      "\"testCollection\" }");
+  auto viewJson = arangodb::velocypack::Parser::fromJson(
+      "{ \"id\": 200, \"name\": \"testView\", \"type\": \"testViewType\" }");  // any arbitrary view type
+  Vocbase vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
   arangodb::CollectionNameResolver resolver(vocbase);
 
   // not present collection (no datasource)
   {
-    CHECK((true == !resolver.getDataSource(100)));
-    CHECK((true == !resolver.getDataSource("100")));
-    CHECK((true == !resolver.getDataSource("testCollection")));
-    CHECK((true == !resolver.getDataSource("testCollectionGUID")));
-    CHECK((true == !resolver.getCollection(100)));
-    CHECK((true == !resolver.getCollection("100")));
-    CHECK((true == !resolver.getCollection("testCollection")));
-    CHECK((true == !resolver.getCollection("testCollectionGUID")));
+    EXPECT_FALSE(resolver.getDataSource(100));
+    EXPECT_FALSE(resolver.getDataSource("100"));
+    EXPECT_FALSE(resolver.getDataSource("testCollection"));
+    EXPECT_FALSE(resolver.getDataSource("testCollectionGUID"));
+    EXPECT_FALSE(resolver.getCollection(100));
+    EXPECT_FALSE(resolver.getCollection("100"));
+    EXPECT_FALSE(resolver.getCollection("testCollection"));
+    EXPECT_FALSE(resolver.getCollection("testCollectionGUID"));
   }
 
   // not present view (no datasource)
   {
-    CHECK((true == !resolver.getDataSource(200)));
-    CHECK((true == !resolver.getDataSource("200")));
-    CHECK((true == !resolver.getDataSource("testView")));
-    CHECK((true == !resolver.getDataSource("testViewGUID")));
-    CHECK((true == !resolver.getView(200)));
-    CHECK((true == !resolver.getView("200")));
-    CHECK((true == !resolver.getView("testView")));
-    CHECK((true == !resolver.getView("testViewGUID")));
+    EXPECT_FALSE(resolver.getDataSource(200));
+    EXPECT_FALSE(resolver.getDataSource("200"));
+    EXPECT_FALSE(resolver.getDataSource("testView"));
+    EXPECT_FALSE(resolver.getDataSource("testViewGUID"));
+    EXPECT_FALSE(resolver.getView(200));
+    EXPECT_FALSE(resolver.getView("200"));
+    EXPECT_FALSE(resolver.getView("testView"));
+    EXPECT_FALSE(resolver.getView("testViewGUID"));
   }
 
   auto collection = vocbase.createCollection(collectionJson->slice());
   auto view = vocbase.createView(viewJson->slice());
 
-  CHECK((false == collection->deleted()));
-  CHECK((false == view->deleted()));
+  EXPECT_FALSE(collection->deleted());
+  EXPECT_FALSE(view->deleted());
 
   // not present collection (is view)
   {
-    CHECK((false == !resolver.getDataSource(200)));
-    CHECK((false == !resolver.getDataSource("200")));
-    CHECK((false == !resolver.getDataSource("testView")));
-    CHECK((true == !resolver.getDataSource("testViewGUID")));
-    CHECK((true == !resolver.getCollection(200)));
-    CHECK((true == !resolver.getCollection("200")));
-    CHECK((true == !resolver.getCollection("testView")));
-    CHECK((true == !resolver.getCollection("testViewGUID")));
+    EXPECT_FALSE(!resolver.getDataSource(200));
+    EXPECT_FALSE(!resolver.getDataSource("200"));
+    EXPECT_FALSE(!resolver.getDataSource("testView"));
+    EXPECT_FALSE(resolver.getDataSource("testViewGUID"));
+    EXPECT_FALSE(resolver.getCollection(200));
+    EXPECT_FALSE(resolver.getCollection("200"));
+    EXPECT_FALSE(resolver.getCollection("testView"));
+    EXPECT_FALSE(resolver.getCollection("testViewGUID"));
   }
 
   // not preset view (is collection)
   {
-    CHECK((false == !resolver.getDataSource(100)));
-    CHECK((false == !resolver.getDataSource("100")));
-    CHECK((false == !resolver.getDataSource("testCollection")));
-    CHECK((false == !resolver.getDataSource("testCollectionGUID")));
-    CHECK((true == !resolver.getView(100)));
-    CHECK((true == !resolver.getView("100")));
-    CHECK((true == !resolver.getView("testCollection")));
-    CHECK((true == !resolver.getView("testCollectionGUID")));
+    EXPECT_FALSE(!resolver.getDataSource(100));
+    EXPECT_FALSE(!resolver.getDataSource("100"));
+    EXPECT_FALSE(!resolver.getDataSource("testCollection"));
+    EXPECT_FALSE(!resolver.getDataSource("testCollectionGUID"));
+    EXPECT_FALSE(resolver.getView(100));
+    EXPECT_FALSE(resolver.getView("100"));
+    EXPECT_FALSE(resolver.getView("testCollection"));
+    EXPECT_FALSE(resolver.getView("testCollectionGUID"));
   }
 
   // present collection
   {
-    CHECK((false == !resolver.getDataSource(100)));
-    CHECK((false == !resolver.getDataSource("100")));
-    CHECK((false == !resolver.getDataSource("testCollection")));
-    CHECK((false == !resolver.getDataSource("testCollectionGUID")));
-    CHECK((false == !resolver.getCollection(100)));
-    CHECK((false == !resolver.getCollection("100")));
-    CHECK((false == !resolver.getCollection("testCollection")));
-    CHECK((false == !resolver.getCollection("testCollectionGUID")));
+    EXPECT_FALSE(!resolver.getDataSource(100));
+    EXPECT_FALSE(!resolver.getDataSource("100"));
+    EXPECT_FALSE(!resolver.getDataSource("testCollection"));
+    EXPECT_FALSE(!resolver.getDataSource("testCollectionGUID"));
+    EXPECT_FALSE(!resolver.getCollection(100));
+    EXPECT_FALSE(!resolver.getCollection("100"));
+    EXPECT_FALSE(!resolver.getCollection("testCollection"));
+    EXPECT_FALSE(!resolver.getCollection("testCollectionGUID"));
   }
 
   // present view
   {
-    CHECK((false == !resolver.getDataSource(200)));
-    CHECK((false == !resolver.getDataSource("200")));
-    CHECK((false == !resolver.getDataSource("testView")));
-    CHECK((true == !resolver.getDataSource("testViewGUID")));
-    CHECK((false == !resolver.getView(200)));
-    CHECK((false == !resolver.getView("200")));
-    CHECK((false == !resolver.getView("testView")));
-    CHECK((true == !resolver.getView("testViewGUID")));
+    EXPECT_FALSE(!resolver.getDataSource(200));
+    EXPECT_FALSE(!resolver.getDataSource("200"));
+    EXPECT_FALSE(!resolver.getDataSource("testView"));
+    EXPECT_FALSE(resolver.getDataSource("testViewGUID"));
+    EXPECT_FALSE(!resolver.getView(200));
+    EXPECT_FALSE(!resolver.getView("200"));
+    EXPECT_FALSE(!resolver.getView("testView"));
+    EXPECT_FALSE(resolver.getView("testViewGUID"));
   }
 
-  CHECK((true == vocbase.dropCollection(collection->id(), true, 0).ok()));
-  CHECK((true == view->drop().ok()));
-  CHECK((true == collection->deleted()));
-  CHECK((true == view->deleted()));
+  EXPECT_TRUE(vocbase.dropCollection(collection->id(), true, 0).ok());
+  EXPECT_TRUE(view->drop().ok());
+  EXPECT_TRUE(collection->deleted());
+  EXPECT_TRUE(view->deleted());
 
   // present collection (deleted, cached)
   {
-    CHECK((false == !resolver.getDataSource(100)));
-    CHECK((false == !resolver.getDataSource("100")));
-    CHECK((false == !resolver.getDataSource("testCollection")));
-    CHECK((false == !resolver.getDataSource("testCollectionGUID")));
-    CHECK((false == !resolver.getCollection(100)));
-    CHECK((false == !resolver.getCollection("100")));
-    CHECK((false == !resolver.getCollection("testCollection")));
-    CHECK((false == !resolver.getCollection("testCollectionGUID")));
-    CHECK((true == resolver.getCollection(100)->deleted()));
+    EXPECT_FALSE(!resolver.getDataSource(100));
+    EXPECT_FALSE(!resolver.getDataSource("100"));
+    EXPECT_FALSE(!resolver.getDataSource("testCollection"));
+    EXPECT_FALSE(!resolver.getDataSource("testCollectionGUID"));
+    EXPECT_FALSE(!resolver.getCollection(100));
+    EXPECT_FALSE(!resolver.getCollection("100"));
+    EXPECT_FALSE(!resolver.getCollection("testCollection"));
+    EXPECT_FALSE(!resolver.getCollection("testCollectionGUID"));
+    EXPECT_TRUE(resolver.getCollection(100)->deleted());
   }
 
   // present view (deleted, cached)
   {
-    CHECK((false == !resolver.getDataSource(200)));
-    CHECK((false == !resolver.getDataSource("200")));
-    CHECK((false == !resolver.getDataSource("testView")));
-    CHECK((true == !resolver.getDataSource("testViewGUID")));
-    CHECK((false == !resolver.getView(200)));
-    CHECK((false == !resolver.getView("200")));
-    CHECK((false == !resolver.getView("testView")));
-    CHECK((true == !resolver.getView("testViewGUID")));
-    CHECK((true == resolver.getView(200)->deleted()));
+    EXPECT_FALSE(!resolver.getDataSource(200));
+    EXPECT_FALSE(!resolver.getDataSource("200"));
+    EXPECT_FALSE(!resolver.getDataSource("testView"));
+    EXPECT_FALSE(resolver.getDataSource("testViewGUID"));
+    EXPECT_FALSE(!resolver.getView(200));
+    EXPECT_FALSE(!resolver.getView("200"));
+    EXPECT_FALSE(!resolver.getView("testView"));
+    EXPECT_FALSE(resolver.getView("testViewGUID"));
+    EXPECT_TRUE(resolver.getView(200)->deleted());
   }
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief generate tests
-////////////////////////////////////////////////////////////////////////////////
-
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

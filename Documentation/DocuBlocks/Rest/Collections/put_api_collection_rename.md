@@ -2,7 +2,7 @@
 @startDocuBlock put_api_collection_rename
 @brief renames a collection
 
-@RESTHEADER{PUT /_api/collection/{collection-name}/rename, Rename collection}
+@RESTHEADER{PUT /_api/collection/{collection-name}/rename, Rename collection, handleCommandPut:renameCollection}
 
 @HINTS
 {% hint 'warning' %}

@@ -54,7 +54,7 @@ function runSetup () {
     fs.makeDirectory(path);
   }
 
-  internal.debugSegfault('crashing server');
+  internal.debugTerminate('crashing server');
 }
 
 // //////////////////////////////////////////////////////////////////////////////

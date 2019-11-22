@@ -21,20 +21,16 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#pragma once
 #ifndef ARANGODB_REST_COMMON_DEFINES_H
 #define ARANGODB_REST_COMMON_DEFINES_H 1
+
+#include <ostream>
+#include <string>
 
 namespace arangodb {
 namespace rest {
 
-// VSTREAM_CRED: This method is used for sending Authentication
-// request,i.e; username and password.
-//
-// VSTREAM_REGISTER: This Method is used for registering event of
-// some kind
-//
-// VSTREAM_STATUS: Returns STATUS code and message for a given
-// request
 enum class RequestType {
   DELETE_REQ = 0,  // windows redefines DELETE
   GET,
@@ -43,9 +39,6 @@ enum class RequestType {
   HEAD,
   PATCH,
   OPTIONS,
-  VSTREAM_CRED,
-  VSTREAM_REGISTER,
-  VSTREAM_STATUS,
   ILLEGAL  // must be last
 };
 
@@ -65,12 +58,6 @@ inline const char* requestToString(RequestType requestType) {
       return "PATCH";
     case RequestType::OPTIONS:
       return "OPTIONS";
-    case RequestType::VSTREAM_CRED:
-      return "VSTREAM_CRED";
-    case RequestType::VSTREAM_REGISTER:
-      return "VSTREAM_REGISTER";
-    case RequestType::VSTREAM_STATUS:
-      return "VSTREAM_STATUS";
     case RequestType::ILLEGAL:
     default:
       return "ILLEGAL";
@@ -78,7 +65,7 @@ inline const char* requestToString(RequestType requestType) {
 }
 
 inline std::ostream& operator<<(std::ostream& ostream, RequestType requestType) {
-  return ostream << requestToString(requestType);
+  return ostream << std::string(requestToString(requestType));
 }
 
 enum class ContentType {
@@ -91,9 +78,12 @@ enum class ContentType {
   UNSET
 };
 
-enum class ProtocolVersion { HTTP_1_0, HTTP_1_1, VST_1_0, VST_1_1, UNKNOWN };
+std::string contentTypeToString(ContentType type);
 
-enum class ConnectionType { C_NONE, C_KEEP_ALIVE, C_CLOSE };
+enum class EncodingType {
+  DEFLATE,
+  UNSET
+};
 
 enum class AuthenticationMethod { BASIC, JWT, NONE };
 
@@ -253,7 +243,7 @@ inline const char* responseToString(ResponseCode responseCode) {
 }
 
 inline std::ostream& operator<<(std::ostream& ostream, ResponseCode responseCode) {
-  return ostream << responseToString(responseCode);
+  return ostream << std::string(responseToString(responseCode));
 }
 }  // namespace rest
 }  // namespace arangodb

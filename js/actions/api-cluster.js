@@ -39,6 +39,7 @@ actions.defineHttp({
   url: '_admin/cluster/removeServer',
   allowUseDatabase: true,
   prefix: false,
+  isSystem: true,
 
   callback: function (req, res) {
     if (req.requestType !== actions.POST || !cluster.isCoordinator()) {
@@ -80,12 +81,13 @@ actions.defineHttp({
       return;
     }
 
-    let preconditions = {};
-    preconditions['/arango/Supervision/Health/' + serverId + '/Status'] = {'old': 'FAILED'};
-    // need to make sure it is not responsible for anything
-    if (node.Role === 'DBServer') {
-      let used = [];
-      preconditions = reducePlanServers(function (data, agencyKey, servers) {
+    let count = 0;    // Try for 60s if server still in use or not failed
+    let msg = "";
+    let used = [];
+    while (++count <= 60) {
+      // need to make sure it is not responsible for anything
+      used = [];
+      let preconditions = reducePlanServers(function (data, agencyKey, servers) {
         data[agencyKey] = {'old': servers};
         if (servers.indexOf(serverId) !== -1) {
           used.push(agencyKey);
@@ -100,36 +102,47 @@ actions.defineHttp({
         return data;
       }, preconditions);
 
-      if (used.length > 0) {
-        actions.resultError(req, res, actions.HTTP_PRECONDITION_FAILED,
-          'the server is still in use at the following locations: ' + JSON.stringify(used));
-        return;
+      preconditions['/arango/Supervision/Health/' + serverId + '/Status'] = {'old': 'FAILED'};
+      preconditions["/arango/Supervision/DBServers/" + serverId]
+        = { "oldEmpty": true };
+
+      if (!checkServerLocked(serverId) && used.length === 0) {
+        let operations = {};
+        operations['/arango/Plan/Coordinators/' + serverId] = {'op': 'delete'};
+        operations['/arango/Plan/DBServers/' + serverId] = {'op': 'delete'};
+        operations['/arango/Current/ServersRegistered/' + serverId] = {'op': 'delete'};
+        operations['/arango/Current/DBServers/' + serverId] = {'op': 'delete'};
+        operations['/arango/Current/Coordinators/' + serverId] = {'op': 'delete'};
+        operations['/arango/Supervision/Health/' + serverId] = {'op': 'delete'};
+        operations['/arango/Target/MapUniqueToShortID/' + serverId] = {'op': 'delete'};
+        operations['/arango/Current/ServersKnown/' + serverId] = {'op': 'delete'};
+        operations['/arango/Target/RemovedServers/' + serverId] = {'op': 'set', 'new': (new Date()).toISOString()};
+
+        try {
+          global.ArangoAgency.write([[operations, preconditions]]);
+          actions.resultOk(req, res, actions.HTTP_OK, true);
+          console.info("Removed server " + serverId + " from cluster");
+          return;
+        } catch (e) {
+          if (e.code === 412) {
+            console.log("removeServer: got precondition failed, retrying...");
+          } else {
+            console.warn("removeServer: could not talk to agency, retrying...");
+          }
+        }
+      } else {
+        if (used.length > 0) {
+          console.log("removeServer: server", serverId, "still in use in",
+                      used.length, "locations.");
+        } else {
+          console.log("removeServer: server", serverId, "locked in agency.");
+        }
       }
-    }
-
-    let operations = {};
-    operations['/arango/Plan/Coordinators/' + serverId] = {'op': 'delete'};
-    operations['/arango/Plan/DBServers/' + serverId] = {'op': 'delete'};
-    operations['/arango/Current/ServersRegistered/' + serverId] = {'op': 'delete'};
-    operations['/arango/Supervision/Health/' + serverId] = {'op': 'delete'};
-    operations['/arango/Target/MapUniqueToShortID/' + serverId] = {'op': 'delete'};
-
-    try {
-      global.ArangoAgency.write([[operations, preconditions]]);
-    } catch (e) {
-      if (e.code === 412) {
-        actions.resultError(req, res, actions.HTTP_PRECONDITION_FAILED,
-          'you can only remove failed servers');
-        return;
-      }
-      throw e;
-    }
-
-    actions.resultOk(req, res, actions.HTTP_OK, true);
-    /* DBOnly:
-
-    Current/Databases/YYY/XXX
-    */
+      wait(1.0);
+    }  // while count
+    actions.resultError(req, res, actions.HTTP_PRECONDITION_FAILED,
+      'the server not failed, locked or is still in use at the following '
+      + 'locations: ' + JSON.stringify(used));
   }
 });
 
@@ -141,10 +154,11 @@ actions.defineHttp({
   url: '_admin/cluster/maintenance',
   allowUseDatabase: true,
   prefix: false,
+  isSystem: true,
 
   callback: function (req, res) {
     let role = global.ArangoServerState.role();
-    if (req.requestType !== actions.PUT || 
+    if (req.requestType !== actions.PUT ||
         (role !== 'COORDINATOR' && role !== 'SINGLE')) {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
         'only GET and PUT requests are allowed and only to coordinators or singles');
@@ -193,7 +207,7 @@ actions.defineHttp({
     while (true) {
       var mode = global.ArangoAgency.read([["/arango/Supervision/State/Mode"]])[0].
           arango.Supervision.State.Mode;
-      
+
       if (body === "on" && mode === "Maintenance") {
         res.body = JSON.stringify({
           error: false,
@@ -207,7 +221,7 @@ actions.defineHttp({
       }
 
       wait(0.1);
-      
+
       if (new Date().getTime() > waitUntil) {
         res.responseCode = actions.HTTP_GATEWAY_TIMEOUT;
         res.body = JSON.stringify({
@@ -217,10 +231,10 @@ actions.defineHttp({
         });
         return;
       }
-      
+
     }
 
-    return ; 
+    return ;
 
   }});
   // //////////////////////////////////////////////////////////////////////////////
@@ -230,6 +244,7 @@ actions.defineHttp({
 actions.defineHttp({
   url: '_admin/clusterNodeVersion',
   prefix: false,
+  isSystem: true,
 
   callback: function (req, res) {
     if (req.requestType !== actions.GET ||
@@ -289,6 +304,7 @@ actions.defineHttp({
 actions.defineHttp({
   url: '_admin/clusterNodeStats',
   prefix: false,
+  isSystem: true,
 
   callback: function (req, res) {
     if (req.requestType !== actions.GET ||
@@ -348,6 +364,7 @@ actions.defineHttp({
 actions.defineHttp({
   url: '_admin/clusterNodeEngine',
   prefix: false,
+  isSystem: true,
 
   callback: function (req, res) {
     if (req.requestType !== actions.GET ||
@@ -407,6 +424,7 @@ actions.defineHttp({
 actions.defineHttp({
   url: '_admin/clusterStatistics',
   prefix: false,
+  isSystem: true,
 
   callback: function (req, res) {
     if (req.requestType !== actions.GET) {
@@ -462,6 +480,7 @@ actions.defineHttp({
   url: '_admin/cluster/health',
   allowUseDatabase: true,
   prefix: false,
+  isSystem: true,
 
   callback: function (req, res) {
     let role = global.ArangoServerState.role();
@@ -557,7 +576,7 @@ actions.defineHttp({
 
       var options = { timeout: 5 };
       var op = ArangoClusterComm.asyncRequest(
-        'GET', value, req.database, '/_api/agency/config', '', {}, options);
+        'GET', value, '_system', '/_api/agency/config', '', {}, options);
       var r = ArangoClusterComm.wait(op);
 
       if (r.status === 'RECEIVED') {
@@ -635,6 +654,17 @@ function reduceCurrentServers (reducer, data) {
   }, data);
 }
 
+function checkServerLocked (server) {
+  var locks = ArangoAgency.get('Supervision/DBServers');
+  try {
+    if (locks.arango.Supervision.DBServers.hasOwnProperty(server)) {
+      return true;
+    }
+  } catch (e) {
+  }
+  return false;
+}
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @start Docu Block JSF_getNumberOfServers
 // / (intentionally not in manual)
@@ -699,6 +729,7 @@ actions.defineHttp({
   url: '_admin/cluster/numberOfServers',
   allowUseDatabase: false,
   prefix: false,
+  isSystem: true,
 
   callback: function (req, res) {
     if (!cluster.isCoordinator()) {
@@ -739,7 +770,7 @@ actions.defineHttp({
 
       if (!req.isAdminUser) {
         actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
-          'only allowed for admins users');
+          'only allowed for admin users');
         return;
       }
 
@@ -793,6 +824,7 @@ actions.defineHttp({
   }
 });
 
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @start Docu Block JSF_postCleanOutServer
 // / (intentionally not in manual)
@@ -824,6 +856,7 @@ actions.defineHttp({
   url: '_admin/cluster/cleanOutServer',
   allowUseDatabase: false,
   prefix: false,
+  isSystem: true,
 
   callback: function (req, res) {
     if (!cluster.isCoordinator()) {
@@ -839,7 +872,7 @@ actions.defineHttp({
 
     if (!req.isAdminUser) {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
-        'only allowed for admins on the _system database');
+        'only allowed for admin users');
       return;
     }
 
@@ -892,6 +925,106 @@ actions.defineHttp({
   }
 });
 
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @start Docu Block JSF_postResignLeadership
+// / (intentionally not in manual)
+// / @brief triggers a resignation of the dbserver for all shards
+// /
+// / @ RESTHEADER{POST /_admin/cluster/resignLeadership, Triggers a resignation of the dbserver for all shards.}
+// /
+// / @ RESTQUERYPARAMETERS
+// /
+// / @ RESTDESCRIPTION Triggers a resignation of the dbserver for all shards.
+// / The body must be a JSON object with attribute "server" that is a string
+// / with the ID of the server to be cleaned out.
+// /
+// / @ RESTRETURNCODES
+// /
+// / @ RESTRETURNCODE{202} is returned when everything went well and the
+// / job is scheduled.
+// /
+// / @ RESTRETURNCODE{400} body is not valid JSON.
+// /
+// / @ RESTRETURNCODE{403} server is not a coordinator or method was not POST.
+// /
+// / @ RESTRETURNCODE{503} the agency operation did not work.
+// /
+// / @end Docu Block
+// //////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url: '_admin/cluster/resignLeadership',
+  allowUseDatabase: false,
+  prefix: false,
+
+  callback: function (req, res) {
+    if (!require('@arangodb/cluster').isCoordinator()) {
+      actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
+        'only coordinators can serve this request');
+      return;
+    }
+    if (req.requestType !== actions.POST) {
+      actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
+        'only the POST method is allowed');
+      return;
+    }
+
+    if (!req.isAdminUser) {
+      actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
+        'only allowed for admin users');
+      return;
+    }
+
+    // Now get to work:
+    var body = actions.getJsonBody(req, res);
+    if (body === undefined) {
+      return;
+    }
+    if (typeof body !== 'object' ||
+      !body.hasOwnProperty('server') ||
+      typeof body.server !== 'string') {
+      actions.resultError(req, res, actions.HTTP_BAD,
+        "body must be an object with a string attribute 'server'");
+      return;
+    }
+
+    // First translate the server name from short name to long name:
+    var server = body.server;
+    var servers = global.ArangoClusterInfo.getDBServers();
+    for (let i = 0; i < servers.length; i++) {
+      if (servers[i].serverId !== server) {
+        if (servers[i].serverName === server) {
+          server = servers[i].serverId;
+          break;
+        }
+      }
+    }
+
+    var ok = true;
+    var id;
+    try {
+      id = ArangoClusterInfo.uniqid();
+      var todo = {
+        'type': 'resignLeadership',
+        'server': server,
+        'jobId': id,
+        'timeCreated': (new Date()).toISOString(),
+        'creator': ArangoServerState.id()
+      };
+      ArangoAgency.set('Target/ToDo/' + id, todo);
+    } catch (e1) {
+      ok = false;
+    }
+    if (!ok) {
+      actions.resultError(req, res, actions.HTTP_SERVICE_UNAVAILABLE,
+        {error: true, errorMsg: 'Cannot write to agency.'});
+      return;
+    }
+    actions.resultOk(req, res, actions.HTTP_ACCEPTED, {error: false, id: id});
+  }
+});
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @start Docu Block JSF_getqueryAgencyJob
 // / (intentionally not in manual)
@@ -903,7 +1036,7 @@ actions.defineHttp({
 // / job being queried.
 // /
 // / @ RESTDESCRIPTION Returns information (if known) about the job with ID
-// / `id`. This can either be a cleanOurServer or a moveShard job at this
+// / `id`. This can either be a cleanOutServer or a moveShard job at this
 // / stage.
 // /
 // / @ RESTRETURNCODES
@@ -925,6 +1058,7 @@ actions.defineHttp({
   url: '_admin/cluster/queryAgencyJob',
   allowUseDatabase: false,
   prefix: false,
+  isSystem: true,
 
   callback: function (req, res) {
     if (!cluster.isCoordinator()) {
@@ -1013,6 +1147,7 @@ actions.defineHttp({
   url: '_admin/cluster/moveShard',
   allowUseDatabase: false,
   prefix: false,
+  isSystem: true,
 
   callback: function (req, res) {
     if (!cluster.isCoordinator()) {
@@ -1048,7 +1183,7 @@ actions.defineHttp({
     }
 
     // at least RW rights on db to move a shard
-    if (!req.isAdminUser && 
+    if (!req.isAdminUser &&
         users.permission(req.user, body.database) !== 'rw') {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
         'insufficent permissions on database to move shard');
@@ -1103,6 +1238,7 @@ actions.defineHttp({
   url: '_admin/cluster/collectionShardDistribution',
   allowUseDatabase: false,
   prefix: false,
+  isSystem: true,
 
   callback: function (req, res) {
     if (!cluster.isCoordinator()) {
@@ -1171,6 +1307,7 @@ actions.defineHttp({
   url: '_admin/cluster/shardDistribution',
   allowUseDatabase: false,
   prefix: false,
+  isSystem: true,
 
   callback: function (req, res) {
     if (!cluster.isCoordinator()) {
@@ -1216,6 +1353,7 @@ actions.defineHttp({
   url: '_admin/cluster/rebalanceShards',
   allowUseDatabase: true,
   prefix: false,
+  isSystem: true,
 
   callback: function (req, res) {
     if (!cluster.isCoordinator()) {
@@ -1282,6 +1420,7 @@ actions.defineHttp({
   url: '_admin/cluster/supervisionState',
   allowUseDatabase: false,
   prefix: false,
+  isSystem: true,
 
   callback: function (req, res) {
     if (!cluster.isCoordinator()) {

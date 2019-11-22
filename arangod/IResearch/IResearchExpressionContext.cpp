@@ -21,10 +21,11 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "IResearch/IResearchExpressionContext.h"
+#include "IResearchExpressionContext.h"
+
 #include "Aql/AqlItemBlock.h"
+#include "Aql/IResearchViewNode.h"
 #include "Basics/StaticStrings.h"
-#include "IResearch/IResearchViewNode.h"
 
 namespace arangodb {
 namespace iresearch {
@@ -36,14 +37,14 @@ using namespace arangodb::aql;
 // -----------------------------------------------------------------------------
 
 size_t ViewExpressionContext::numRegisters() const {
-  return _data->getNrRegs();
+  return _numRegs;
 }
 
 AqlValue ViewExpressionContext::getVariableValue(Variable const* var, bool doCopy,
                                                  bool& mustDestroy) const {
   TRI_ASSERT(var);
 
-  if (var == &_node->outVariable()) {
+  if (var == &outVariable()) {
     // self-reference
     if (_expr) {
       std::string expr;
@@ -71,22 +72,24 @@ AqlValue ViewExpressionContext::getVariableValue(Variable const* var, bool doCop
 
   mustDestroy = false;
 
-  auto const& vars = _node->getRegisterPlan()->varInfo;
+  auto const& vars = varInfoMap();
   auto const it = vars.find(var->id);
 
   if (vars.end() == it) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot find variable");
   }
 
   auto const& varInfo = it->second;
 
-  if (varInfo.depth > decltype(varInfo.depth)(_node->getDepth())) {
+  if (varInfo.depth > decltype(varInfo.depth)(nodeDepth())) {
     THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_BAD_PARAMETER,
                                   "Variable '%s' is used before being assigned",
                                   var->name.c_str());
   }
 
-  auto& value = _data->getValueReference(_pos, varInfo.registerId);
+
+  TRI_ASSERT(_inputRow.isInitialized());
+  AqlValue const& value = _inputRow.getValue(varInfo.registerId);
 
   if (doCopy) {
     mustDestroy = true;

@@ -66,7 +66,7 @@ class TraversalNode : public GraphNode {
 
     TraversalEdgeConditionBuilder(TraversalNode const*, TraversalEdgeConditionBuilder const*);
 
-    ~TraversalEdgeConditionBuilder() {}
+    ~TraversalEdgeConditionBuilder() = default;
 
     void toVelocyPack(arangodb::velocypack::Builder&, bool);
   };
@@ -78,7 +78,8 @@ class TraversalNode : public GraphNode {
  public:
   TraversalNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
                 AstNode const* direction, AstNode const* start,
-                AstNode const* graph, std::unique_ptr<graph::BaseOptions> options);
+                AstNode const* graph, std::unique_ptr<Expression> pruneExpression,
+                std::unique_ptr<graph::BaseOptions> options);
 
   TraversalNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
 
@@ -97,7 +98,8 @@ class TraversalNode : public GraphNode {
   NodeType getType() const override final { return TRAVERSAL; }
 
   /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags) const override final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
+                          std::unordered_set<ExecutionNode const*>& seen) const override final;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
@@ -112,11 +114,14 @@ class TraversalNode : public GraphNode {
   bool usesInVariable() const { return _inVariable != nullptr; }
 
   /// @brief getVariablesUsedHere
-  void getVariablesUsedHere(arangodb::HashSet<Variable const*>& result) const override final {
+  void getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& result) const override final {
     for (auto const& condVar : _conditionVariables) {
       if (condVar != getTemporaryVariable()) {
         result.emplace(condVar);
       }
+    }
+    for (auto const& pruneVar : _pruneVariables) {
+      result.emplace(pruneVar);
     }
     if (usesInVariable()) {
       result.emplace(_inVariable);
@@ -153,10 +158,10 @@ class TraversalNode : public GraphNode {
   std::string const getStartVertex() const { return _vertexId; }
 
   /// @brief remember the condition to execute for early traversal abortion.
-  void setCondition(Condition* condition);
+  void setCondition(std::unique_ptr<Condition> condition);
 
   /// @brief return the condition for the node
-  Condition* condition() const { return _condition; }
+  Condition* condition() const { return _condition.get(); }
 
   /// @brief which variable? -1 none, 0 Edge, 1 Vertex, 2 path
   int checkIsOutVariable(size_t variableId) const;
@@ -178,13 +183,19 @@ class TraversalNode : public GraphNode {
 
   void getConditionVariables(std::vector<Variable const*>&) const override;
 
+  void getPruneVariables(std::vector<Variable const*>&) const;
+
   /// @brief Compute the traversal options containing the expressions
   ///        MUST! be called after optimization and before creation
   ///        of blocks.
   void prepareOptions() override;
 
+  // @brief Get reference to the Prune expression.
+  //        You are not responsible for it!
+  Expression* pruneExpression() const { return _pruneExpression.get(); }
+
  private:
-#ifdef TRI_ENABLE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   void checkConditionsDefined() const;
 #endif
 
@@ -199,16 +210,19 @@ class TraversalNode : public GraphNode {
   std::string _vertexId;
 
   /// @brief early abort traversal conditions:
-  Condition* _condition;
+  std::unique_ptr<Condition> _condition;
 
   /// @brief variables that are inside of the condition
-  arangodb::HashSet<Variable const*> _conditionVariables;
+  ::arangodb::containers::HashSet<Variable const*> _conditionVariables;
 
   /// @brief The hard coded condition on _from
   AstNode* _fromCondition;
 
   /// @brief The hard coded condition on _to
   AstNode* _toCondition;
+
+  /// @brief The condition given in PRUNE (might be empty)
+  std::unique_ptr<Expression> _pruneExpression;
 
   /// @brief The global edge condition. Does not contain
   ///        _from and _to checks
@@ -222,6 +236,9 @@ class TraversalNode : public GraphNode {
 
   /// @brief List of all depth specific conditions for vertices
   std::unordered_map<uint64_t, AstNode*> _vertexConditions;
+
+  /// @brief the hashSet for variables used in pruning
+  ::arangodb::containers::HashSet<Variable const*> _pruneVariables;
 };
 
 }  // namespace aql

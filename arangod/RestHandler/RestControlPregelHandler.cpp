@@ -25,12 +25,13 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Graph/Graph.h"
 #include "Graph/GraphManager.h"
 #include "Pregel/Conductor.h"
 #include "Pregel/PregelFeature.h"
-#include "Rest/HttpRequest.h"
 #include "Transaction/StandaloneContext.h"
 #include "V8/v8-vpack.h"
 #include "V8Server/V8DealerFeature.h"
@@ -45,9 +46,10 @@ using namespace arangodb::rest;
 
 namespace arangodb {
 
-RestControlPregelHandler::RestControlPregelHandler(GeneralRequest* request,
+RestControlPregelHandler::RestControlPregelHandler(application_features::ApplicationServer& server,
+                                                   GeneralRequest* request,
                                                    GeneralResponse* response)
-    : RestVocbaseBaseHandler(request, response) {}
+    : RestVocbaseBaseHandler(server, request, response) {}
 
 RestStatus RestControlPregelHandler::execute() {
   auto const type = _request->requestType();
@@ -73,22 +75,26 @@ RestStatus RestControlPregelHandler::execute() {
 }
 
 /// @brief returns the short id of the server which should handle this request
-uint32_t RestControlPregelHandler::forwardingTarget() {
+std::string RestControlPregelHandler::forwardingTarget() {
   rest::RequestType const type = _request->requestType();
   if (type != rest::RequestType::POST && type != rest::RequestType::GET &&
       type != rest::RequestType::DELETE_REQ) {
-    return 0;
+    return "";
   }
 
   std::vector<std::string> const& suffixes = _request->suffixes();
   if (suffixes.size() < 1) {
-    return 0;
+    return "";
   }
 
   uint64_t tick = arangodb::basics::StringUtils::uint64(suffixes[0]);
   uint32_t sourceServer = TRI_ExtractServerIdFromTick(tick);
 
-  return (sourceServer == ServerState::instance()->getShortId()) ? 0 : sourceServer;
+  if (sourceServer == ServerState::instance()->getShortId()) {
+    return "";
+  }
+  auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+  return ci.getCoordinatorByShortID(sourceServer);
 }
 
 void RestControlPregelHandler::startExecution() {
@@ -175,10 +181,16 @@ void RestControlPregelHandler::getExecutionStatus() {
   }
 
   uint64_t executionNumber = arangodb::basics::StringUtils::uint64(suffixes[0]);
-  auto c = pregel::PregelFeature::instance()->conductor(executionNumber);
+  std::shared_ptr<pregel::PregelFeature> pf = pregel::PregelFeature::instance();
+  if (!pf) {
+    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
+                  "pregel feature not available");
+    return;
+  }
+  auto c = pf->conductor(executionNumber);
 
   if (nullptr == c) {
-    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_INTERNAL,
+    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_CURSOR_NOT_FOUND,
                   "Execution number is invalid");
     return;
   }
@@ -195,7 +207,7 @@ void RestControlPregelHandler::cancelExecution() {
     return;
   }
 
-  auto pf = pregel::PregelFeature::instance();
+  std::shared_ptr<pregel::PregelFeature> pf = pregel::PregelFeature::instance();
   if (nullptr == pf) {
     generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
                   "pregel feature not available");
@@ -206,13 +218,12 @@ void RestControlPregelHandler::cancelExecution() {
   auto c = pf->conductor(executionNumber);
 
   if (nullptr == c) {
-    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_INTERNAL,
+    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_CURSOR_NOT_FOUND,
                   "Execution number is invalid");
     return;
   }
 
   c->cancel();
-  pf->cleanupConductor(executionNumber);
 
   VPackBuilder builder;
   builder.add(VPackValue(""));

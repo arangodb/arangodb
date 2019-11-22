@@ -29,7 +29,8 @@
 namespace arangodb {
 class RestTasksHandler : public arangodb::RestVocbaseBaseHandler {
  public:
-  RestTasksHandler(GeneralRequest*, GeneralResponse*);
+  RestTasksHandler(application_features::ApplicationServer&, GeneralRequest*,
+                   GeneralResponse*);
 
  public:
   char const* name() const override final { return "RestTasksHandler"; }
@@ -37,7 +38,7 @@ class RestTasksHandler : public arangodb::RestVocbaseBaseHandler {
   RestStatus execute() override;
 
  protected:
-  virtual uint32_t forwardingTarget() override;
+  virtual std::string forwardingTarget() override;
 
  private:
   void getTasks();

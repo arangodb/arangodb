@@ -23,9 +23,19 @@
 #ifndef ARANGODB_LOGGER_LOGGER_FEATURE_H
 #define ARANGODB_LOGGER_LOGGER_FEATURE_H 1
 
+#include <memory>
+#include <string>
+#include <vector>
+
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
+namespace options {
+class ProgramOptions;
+}
 
 class LoggerFeature final : public application_features::ApplicationFeature {
  public:
@@ -48,6 +58,9 @@ class LoggerFeature final : public application_features::ApplicationFeature {
   std::vector<std::string> _levels;
   std::string _prefix;
   std::string _file;
+  std::string _fileMode;
+  std::string _fileGroup;
+  std::string _timeFormatString;
   bool _useLocalTime = false;
   bool _useColor = true;
   bool _useEscaped = true;
@@ -60,6 +73,7 @@ class LoggerFeature final : public application_features::ApplicationFeature {
   bool _foregroundTty = false;
   bool _forceDirect = false;
   bool _useMicrotime = false;
+  bool _showIds = true;
   bool _showRole = false;
   bool _logRequestParameters = true;
   bool _supervisor = false;

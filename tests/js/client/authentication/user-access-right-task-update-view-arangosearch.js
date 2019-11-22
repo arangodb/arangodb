@@ -30,6 +30,7 @@
 
 'use strict';
 var jsunity = require('jsunity');
+var analyzers = require("@arangodb/analyzers");
 const testHelper = require('@arangodb/test-helper');
 const isEqual = testHelper.isEqual;
 const deriveTestSuite = testHelper.deriveTestSuite;
@@ -233,7 +234,7 @@ const checkError = (e) => {
 function UserRightsManagement(name) {
 
     return {
-	setUp: function() {
+	setUpAll: function() {
 	    helper.switchUser(name, dbName);
 	    db._useDatabase(dbName);
 	    assertEqual(createKeySpace(keySpaceId), true, 'keySpace creation failed for user: ' + name);
@@ -241,20 +242,24 @@ function UserRightsManagement(name) {
             rootCreateCollection(testCol2Name);
             rootPrepareCollection(testCol1Name);
             rootPrepareCollection(testCol2Name);
+        },
 
-            rootCreateView(testViewName, { links: { [testCol1Name] : {includeAllFields: true } } });
+	setUp: function() {
+          rootCreateView(testViewName, { links: { [testCol1Name] : {includeAllFields: true } } });
+          helper.switchUser('root', dbName);
 	},
 
-	tearDown: function() {
-            rootDropView(testViewRename);
-            rootDropView(testViewName);
-
+	tearDownAll: function() {
             rootDropCollection(testCol1Name);
             rootDropCollection(testCol2Name);
 
 	    dropKeySpace(keySpaceId);
 	},
-	
+	tearDown: function() {
+            rootDropView(testViewRename);
+            rootDropView(testViewName);
+        },
+
 	testCheckAllUsersAreCreated: function() {
 	    helper.switchUser('root', '_system');
 	    assertTrue(userSet.size > 0); 
@@ -492,7 +497,7 @@ if (hasIResearch(db)) {
 			    tasks.register(task);
 			    wait(keySpaceId, name);
 			    assertTrue(getKey(keySpaceId, `${name}_status`), `${name} could not update the view with sufficient rights`);
-			    assertEqual(rootGetViewProps(testViewName)["links"][testCol1Name]["analyzers"], ["text_de","text_en"], 'View link update reported success, but property was not updated');
+			    assertEqual(rootGetViewProps(testViewName)["links"][testCol1Name]["analyzers"], ["text_de", "text_en"], 'View link update reported success, but property was not updated');
 			} else {
 			    tasks.register(task);
 			    wait(keySpaceId, name);

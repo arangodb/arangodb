@@ -96,7 +96,7 @@ struct IRESEARCH_API index_reader {
   DECLARE_SHARED_PTR(const index_reader);
   DEFINE_FACTORY_INLINE(index_reader)
 
-  virtual ~index_reader();
+  virtual ~index_reader() = default;
 
   // number of live documents
   virtual uint64_t live_docs_count() const = 0;
@@ -148,6 +148,8 @@ struct IRESEARCH_API sub_reader : index_reader {
   virtual column_iterator::ptr columns() const = 0;
 
   virtual const column_meta* column(const string_ref& name) const = 0;
+
+  virtual const columnstore_reader::column_reader* sort() const = 0;
 
   virtual const columnstore_reader::column_reader* column_reader(field_id field) const = 0;
 

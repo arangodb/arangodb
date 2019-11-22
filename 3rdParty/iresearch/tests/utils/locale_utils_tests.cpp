@@ -25,17 +25,6 @@
 #include "utils/locale_utils.hpp"
 #include "utils/misc.hpp"
 
-#if defined (__GNUC__)
-  #pragma GCC diagnostic push
-  #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-#endif
-
-  #include <boost/locale.hpp>
-
-#if defined (__GNUC__)
-  #pragma GCC diagnostic pop
-#endif
-
 namespace tests {
   class LocaleUtilsTestSuite: public ::testing::Test {
     virtual void SetUp() {
@@ -63,7 +52,6 @@ TEST_F(LocaleUtilsTestSuite, test_get_locale) {
     ASSERT_EQ(std::string("C"), irs::locale_utils::language(locale));
     ASSERT_EQ(std::string(""), irs::locale_utils::country(locale));
     ASSERT_EQ(std::string("us-ascii"), irs::locale_utils::encoding(locale));
-    ASSERT_FALSE(irs::locale_utils::utf8(locale));
   }
 
   {
@@ -73,7 +61,6 @@ TEST_F(LocaleUtilsTestSuite, test_get_locale) {
     ASSERT_EQ(std::string("C"), irs::locale_utils::language(locale));
     ASSERT_EQ(std::string(""), irs::locale_utils::country(locale));
     ASSERT_EQ(std::string("us-ascii"), irs::locale_utils::encoding(locale));
-    ASSERT_FALSE(irs::locale_utils::utf8(locale));
   }
 
   {
@@ -83,7 +70,6 @@ TEST_F(LocaleUtilsTestSuite, test_get_locale) {
     ASSERT_EQ(std::string("C"), irs::locale_utils::language(locale));
     ASSERT_EQ(std::string(""), irs::locale_utils::country(locale));
     ASSERT_EQ(std::string("us-ascii"), irs::locale_utils::encoding(locale));
-    ASSERT_FALSE(irs::locale_utils::utf8(locale));
   }
 
   {
@@ -93,7 +79,6 @@ TEST_F(LocaleUtilsTestSuite, test_get_locale) {
     ASSERT_EQ(std::string("C"), irs::locale_utils::language(locale));
     ASSERT_EQ(std::string(""), irs::locale_utils::country(locale));
     ASSERT_EQ(std::string("us-ascii"), irs::locale_utils::encoding(locale));
-    ASSERT_FALSE(irs::locale_utils::utf8(locale));
   }
 
   {
@@ -103,7 +88,6 @@ TEST_F(LocaleUtilsTestSuite, test_get_locale) {
     ASSERT_EQ(std::string("c"), irs::locale_utils::language(locale));
     ASSERT_EQ(std::string(""), irs::locale_utils::country(locale));
     ASSERT_EQ(std::string("koi8-r"), irs::locale_utils::encoding(locale));
-    ASSERT_FALSE(irs::locale_utils::utf8(locale));
   }
 
   {
@@ -113,7 +97,6 @@ TEST_F(LocaleUtilsTestSuite, test_get_locale) {
     ASSERT_EQ(std::string("c"), irs::locale_utils::language(locale));
     ASSERT_EQ(std::string(""), irs::locale_utils::country(locale));
     ASSERT_EQ(std::string("koi8-r"), irs::locale_utils::encoding(locale));
-    ASSERT_FALSE(irs::locale_utils::utf8(locale));
   }
 
   {
@@ -123,7 +106,6 @@ TEST_F(LocaleUtilsTestSuite, test_get_locale) {
     ASSERT_EQ(std::string("c"), irs::locale_utils::language(locale));
     ASSERT_EQ(std::string(""), irs::locale_utils::country(locale));
     ASSERT_EQ(std::string("invalidstring"), irs::locale_utils::encoding(locale));
-    ASSERT_FALSE(irs::locale_utils::utf8(locale));
   }
 
   {
@@ -133,7 +115,6 @@ TEST_F(LocaleUtilsTestSuite, test_get_locale) {
     ASSERT_EQ(std::string("c"), irs::locale_utils::language(locale));
     ASSERT_EQ(std::string(""), irs::locale_utils::country(locale));
     ASSERT_EQ(std::string("invalidstring"), irs::locale_utils::encoding(locale));
-    ASSERT_FALSE(irs::locale_utils::utf8(locale));
   }
 
   {
@@ -143,7 +124,6 @@ TEST_F(LocaleUtilsTestSuite, test_get_locale) {
     ASSERT_EQ(std::string("en"), irs::locale_utils::language(locale));
     ASSERT_EQ(std::string("US"), irs::locale_utils::country(locale));
     ASSERT_EQ(std::string("us-ascii"), irs::locale_utils::encoding(locale));
-    ASSERT_FALSE(irs::locale_utils::utf8(locale));
   }
 
   {
@@ -153,7 +133,6 @@ TEST_F(LocaleUtilsTestSuite, test_get_locale) {
     ASSERT_EQ(std::string("en"), irs::locale_utils::language(locale));
     ASSERT_EQ(std::string("US"), irs::locale_utils::country(locale));
     ASSERT_EQ(std::string("us-ascii"), irs::locale_utils::encoding(locale));
-    ASSERT_FALSE(irs::locale_utils::utf8(locale));
   }
 
   {
@@ -163,7 +142,6 @@ TEST_F(LocaleUtilsTestSuite, test_get_locale) {
     ASSERT_EQ(std::string("en"), irs::locale_utils::language(locale));
     ASSERT_EQ(std::string("US"), irs::locale_utils::country(locale));
     ASSERT_EQ(std::string("us-ascii"), irs::locale_utils::encoding(locale));
-    ASSERT_FALSE(irs::locale_utils::utf8(locale));
   }
 
   {
@@ -173,7 +151,6 @@ TEST_F(LocaleUtilsTestSuite, test_get_locale) {
     ASSERT_EQ(std::string("en"), irs::locale_utils::language(locale));
     ASSERT_EQ(std::string("US"), irs::locale_utils::country(locale));
     ASSERT_EQ(std::string("us-ascii"), irs::locale_utils::encoding(locale));
-    ASSERT_FALSE(irs::locale_utils::utf8(locale));
   }
 
   {
@@ -183,7 +160,6 @@ TEST_F(LocaleUtilsTestSuite, test_get_locale) {
     ASSERT_EQ(std::string("en"), irs::locale_utils::language(locale));
     ASSERT_EQ(std::string("US"), irs::locale_utils::country(locale));
     ASSERT_EQ(std::string("koi8-r"), irs::locale_utils::encoding(locale));
-    ASSERT_FALSE(irs::locale_utils::utf8(locale));
   }
 
   {
@@ -193,7 +169,6 @@ TEST_F(LocaleUtilsTestSuite, test_get_locale) {
     ASSERT_EQ(std::string("en"), irs::locale_utils::language(locale));
     ASSERT_EQ(std::string("US"), irs::locale_utils::country(locale));
     ASSERT_EQ(std::string("koi8-r"), irs::locale_utils::encoding(locale));
-    ASSERT_FALSE(irs::locale_utils::utf8(locale));
   }
 
   {
@@ -203,7 +178,6 @@ TEST_F(LocaleUtilsTestSuite, test_get_locale) {
     ASSERT_EQ(std::string("invalidname"), irs::locale_utils::language(locale));
     ASSERT_EQ(std::string(""), irs::locale_utils::country(locale));
     ASSERT_EQ(std::string("utf-8"), irs::locale_utils::encoding(locale));
-    ASSERT_TRUE(irs::locale_utils::utf8(locale));
   }
 
   {
@@ -213,7 +187,148 @@ TEST_F(LocaleUtilsTestSuite, test_get_locale) {
     ASSERT_EQ(std::string("invalidname"), irs::locale_utils::language(locale));
     ASSERT_EQ(std::string(""), irs::locale_utils::country(locale));
     ASSERT_EQ(std::string("utf-8"), irs::locale_utils::encoding(locale));
-    ASSERT_TRUE(irs::locale_utils::utf8(locale));
+  }
+}
+
+TEST_F(LocaleUtilsTestSuite, test_locale_append) {
+  // to unicode internal char
+  {
+    char koi8r[] = { char(0xd7), char(0xc8), char(0xcf), char(0xc4), char(0xd1), char(0xdd), char(0xc9), char(0xc5), ' ', char(0xc4), char(0xc1), char(0xce), char(0xce), char(0xd9), char(0xc5) };
+    irs::string_ref koi8r_ref(koi8r, 15);
+    char utf8[] = { char(0xd0), char(0xb2), char(0xd1), char(0x85), char(0xd0), char(0xbe), char(0xd0), char(0xb4), char(0xd1), char(0x8f), char(0xd1), char(0x89), char(0xd0), char(0xb8), char(0xd0), char(0xb5), ' ', char(0xd0), char(0xb4), char(0xd0), char(0xb0), char(0xd0), char(0xbd), char(0xd0), char(0xbd), char(0xd1), char(0x8b), char(0xd0), char(0xb5) };
+    irs::string_ref utf8_ref(utf8, 29);
+    auto locale = irs::locale_utils::locale("ru_RU.KOI8-R", irs::string_ref::NIL, true);
+    std::string out;
+    ASSERT_TRUE(irs::locale_utils::append_internal(out, koi8r_ref, locale));
+    ASSERT_EQ(utf8_ref, irs::string_ref(out));
+  }
+
+  // to unicode internal wchar_t
+  {
+    char koi8r[] = { char(0xd7), char(0xc8), char(0xcf), char(0xc4), char(0xd1), char(0xdd), char(0xc9), char(0xc5), ' ', char(0xc4), char(0xc1), char(0xce), char(0xce), char(0xd9), char(0xc5) };
+    irs::string_ref koi8r_ref(koi8r, 15);
+    wchar_t ucs2[] = { wchar_t(0x0432), wchar_t(0x0445), wchar_t(0x043e), wchar_t(0x0434), wchar_t(0x044f), wchar_t(0x0449), wchar_t(0x0438), wchar_t(0x0435), wchar_t(' '), wchar_t(0x0434), wchar_t(0x0430), wchar_t(0x043d), wchar_t(0x043d), wchar_t(0x044b), wchar_t(0x0435) };
+    irs::basic_string_ref<wchar_t> ucs2_ref(ucs2, 15);
+    auto locale = irs::locale_utils::locale("ru_RU.KOI8-R", irs::string_ref::NIL, true);
+    std::basic_string<wchar_t> out;
+    ASSERT_TRUE(irs::locale_utils::append_internal(out, koi8r_ref, locale));
+    ASSERT_EQ(ucs2_ref, irs::basic_string_ref<wchar_t>(out));
+  }
+
+  // to unicode internal char16_t
+  {
+    char koi8r[] = { char(0xd7), char(0xc8), char(0xcf), char(0xc4), char(0xd1), char(0xdd), char(0xc9), char(0xc5), ' ', char(0xc4), char(0xc1), char(0xce), char(0xce), char(0xd9), char(0xc5) };
+    irs::string_ref koi8r_ref(koi8r, 15);
+    char16_t utf16[] = { char16_t(0x0432), char16_t(0x0445), char16_t(0x043e), char16_t(0x0434), char16_t(0x044f), char16_t(0x0449), char16_t(0x0438), char16_t(0x0435), char16_t(' '), char16_t(0x0434), char16_t(0x0430), char16_t(0x043d), char16_t(0x043d), char16_t(0x044b), char16_t(0x0435) };
+    irs::basic_string_ref<char16_t> utf16_ref(utf16, 15);
+    auto locale = irs::locale_utils::locale("ru_RU.KOI8-R", irs::string_ref::NIL, true);
+    std::basic_string<char16_t> out;
+    ASSERT_TRUE(irs::locale_utils::append_internal(out, koi8r_ref, locale));
+    ASSERT_EQ(utf16_ref, irs::basic_string_ref<char16_t>(out));
+  }
+
+  // to unicode internal char32_t
+  {
+    char koi8r[] = { char(0xd7), char(0xc8), char(0xcf), char(0xc4), char(0xd1), char(0xdd), char(0xc9), char(0xc5), ' ', char(0xc4), char(0xc1), char(0xce), char(0xce), char(0xd9), char(0xc5) };
+    irs::string_ref koi8r_ref(koi8r, 15);
+    char32_t utf32[] = { char32_t(0x0432), char32_t(0x0445), char32_t(0x043e), char32_t(0x0434), char32_t(0x044f), char32_t(0x0449), char32_t(0x0438), char32_t(0x0435), char32_t(' '), char32_t(0x0434), char32_t(0x0430), char32_t(0x043d), char32_t(0x043d), char32_t(0x044b), char32_t(0x0435) };
+    irs::basic_string_ref<char32_t> utf32_ref(utf32, 15);
+    auto locale = irs::locale_utils::locale("ru_RU.KOI8-R", irs::string_ref::NIL, true);
+    std::basic_string<char32_t> out;
+    ASSERT_TRUE(irs::locale_utils::append_internal(out, koi8r_ref, locale));
+    ASSERT_EQ(utf32_ref, irs::basic_string_ref<char32_t>(out));
+  }
+
+  // to system internal char ASCII
+  {
+    char ascii[] = "input data";
+    irs::string_ref ascii_ref(ascii, 10);
+    auto locale = irs::locale_utils::locale("ru_RU.KOI8-R", irs::string_ref::NIL, false);
+    std::string out;
+    ASSERT_TRUE(irs::locale_utils::append_internal(out, ascii_ref, locale));
+    ASSERT_EQ(ascii_ref, irs::string_ref(out));
+  }
+
+  // to system internal wchar_t ASCII
+  {
+    char ascii[] = "input data";
+    irs::string_ref ascii_ref(ascii, 10);
+    wchar_t wide[] = L"input data";
+    irs::basic_string_ref<wchar_t> wide_ref(wide, 10);
+    auto locale = irs::locale_utils::locale("ru_RU.KOI8-R", irs::string_ref::NIL, false);
+    std::basic_string<wchar_t> out;
+    ASSERT_TRUE(irs::locale_utils::append_internal(out, ascii_ref, locale));
+    ASSERT_EQ(wide_ref, irs::basic_string_ref<wchar_t>(out));
+  }
+
+  // from unicode internal char
+  {
+    char koi8r[] = { char(0xd7), char(0xc8), char(0xcf), char(0xc4), char(0xd1), char(0xdd), char(0xc9), char(0xc5), ' ', char(0xc4), char(0xc1), char(0xce), char(0xce), char(0xd9), char(0xc5) };
+    irs::string_ref koi8r_ref(koi8r, 15);
+    char utf8[] = { char(0xd0), char(0xb2), char(0xd1), char(0x85), char(0xd0), char(0xbe), char(0xd0), char(0xb4), char(0xd1), char(0x8f), char(0xd1), char(0x89), char(0xd0), char(0xb8), char(0xd0), char(0xb5), ' ', char(0xd0), char(0xb4), char(0xd0), char(0xb0), char(0xd0), char(0xbd), char(0xd0), char(0xbd), char(0xd1), char(0x8b), char(0xd0), char(0xb5) };
+    irs::string_ref utf8_ref(utf8, 29);
+    auto locale = irs::locale_utils::locale("ru_RU.KOI8-R", irs::string_ref::NIL, true);
+    std::string out;
+    ASSERT_TRUE(irs::locale_utils::append_external(out, utf8_ref, locale));
+    ASSERT_EQ(koi8r_ref, irs::string_ref(out));
+  }
+
+  // from unicode internal wchar_t
+  {
+    char koi8r[] = { char(0xd7), char(0xc8), char(0xcf), char(0xc4), char(0xd1), char(0xdd), char(0xc9), char(0xc5), ' ', char(0xc4), char(0xc1), char(0xce), char(0xce), char(0xd9), char(0xc5) };
+    irs::string_ref koi8r_ref(koi8r, 15);
+    wchar_t ucs2[] = { wchar_t(0x0432), wchar_t(0x0445), wchar_t(0x043e), wchar_t(0x0434), wchar_t(0x044f), wchar_t(0x0449), wchar_t(0x0438), wchar_t(0x0435), wchar_t(' '), wchar_t(0x0434), wchar_t(0x0430), wchar_t(0x043d), wchar_t(0x043d), wchar_t(0x044b), wchar_t(0x0435) };
+    irs::basic_string_ref<wchar_t> ucs2_ref(ucs2, 15);
+    auto locale = irs::locale_utils::locale("ru_RU.KOI8-R", irs::string_ref::NIL, true);
+    std::string out;
+    ASSERT_TRUE(irs::locale_utils::append_external(out, ucs2_ref, locale));
+    ASSERT_EQ(koi8r_ref, irs::string_ref(out));
+  }
+
+  // from unicode internal char16_t
+  {
+    char koi8r[] = { char(0xd7), char(0xc8), char(0xcf), char(0xc4), char(0xd1), char(0xdd), char(0xc9), char(0xc5), ' ', char(0xc4), char(0xc1), char(0xce), char(0xce), char(0xd9), char(0xc5) };
+    irs::string_ref koi8r_ref(koi8r, 15);
+    char16_t utf16[] = { char16_t(0x0432), char16_t(0x0445), char16_t(0x043e), char16_t(0x0434), char16_t(0x044f), char16_t(0x0449), char16_t(0x0438), char16_t(0x0435), char16_t(' '), char16_t(0x0434), char16_t(0x0430), char16_t(0x043d), char16_t(0x043d), char16_t(0x044b), char16_t(0x0435) };
+    irs::basic_string_ref<char16_t> utf16_ref(utf16, 15);
+    auto locale = irs::locale_utils::locale("ru_RU.KOI8-R", irs::string_ref::NIL, true);
+    std::string out;
+    ASSERT_TRUE(irs::locale_utils::append_external(out, utf16_ref, locale));
+    ASSERT_EQ(koi8r_ref, irs::string_ref(out));
+  }
+
+  // from unicode internal char32_t
+  {
+    char koi8r[] = { char(0xd7), char(0xc8), char(0xcf), char(0xc4), char(0xd1), char(0xdd), char(0xc9), char(0xc5), ' ', char(0xc4), char(0xc1), char(0xce), char(0xce), char(0xd9), char(0xc5) };
+    irs::string_ref koi8r_ref(koi8r, 15);
+    char32_t utf32[] = { char32_t(0x0432), char32_t(0x0445), char32_t(0x043e), char32_t(0x0434), char32_t(0x044f), char32_t(0x0449), char32_t(0x0438), char32_t(0x0435), char32_t(' '), char32_t(0x0434), char32_t(0x0430), char32_t(0x043d), char32_t(0x043d), char32_t(0x044b), char32_t(0x0435) };
+    irs::basic_string_ref<char32_t> utf32_ref(utf32, 15);
+    auto locale = irs::locale_utils::locale("ru_RU.KOI8-R", irs::string_ref::NIL, true);
+    std::string out;
+    ASSERT_TRUE(irs::locale_utils::append_external(out, utf32_ref, locale));
+    ASSERT_EQ(koi8r_ref, irs::string_ref(out));
+  }
+
+  // from system internal char ASCII
+  {
+    char ascii[] = "input data";
+    irs::string_ref ascii_ref(ascii, 10);
+    auto locale = irs::locale_utils::locale("ru_RU.KOI8-R", irs::string_ref::NIL, false);
+    std::string out;
+    ASSERT_TRUE(irs::locale_utils::append_external(out, ascii_ref, locale));
+    ASSERT_EQ(ascii_ref, irs::string_ref(out));
+  }
+
+  // from system internal wchar_t ASCII
+  {
+    char ascii[] = "input data";
+    irs::string_ref ascii_ref(ascii, 10);
+    wchar_t wide[] = L"input data";
+    irs::basic_string_ref<wchar_t> wide_ref(wide, 10);
+    auto locale = irs::locale_utils::locale("ru_RU.KOI8-R", irs::string_ref::NIL, false);
+    std::string out;
+    ASSERT_TRUE(irs::locale_utils::append_external(out, wide_ref, locale));
+    ASSERT_EQ(ascii_ref, irs::string_ref(out));
   }
 }
 
@@ -221,139 +336,181 @@ TEST_F(LocaleUtilsTestSuite, test_locale_create) {
   {
     auto locale = irs::locale_utils::locale(irs::string_ref::NIL, irs::string_ref::NIL, false);
 
-    ASSERT_EQ(std::string("C"), std::use_facet<boost::locale::info>(locale).name());
-    ASSERT_FALSE(std::use_facet<boost::locale::info>(locale).utf8());
+    ASSERT_EQ(std::string("C"), irs::locale_utils::name(locale));
+    ASSERT_EQ(std::string("C"), irs::locale_utils::language(locale));
+    ASSERT_EQ(std::string(""), irs::locale_utils::country(locale));
+    ASSERT_EQ(std::string("us-ascii"), irs::locale_utils::encoding(locale));
   }
 
   {
     auto locale = irs::locale_utils::locale(irs::string_ref::NIL, irs::string_ref::NIL, true);
 
-    ASSERT_EQ(std::string("C"), std::use_facet<boost::locale::info>(locale).name());
-    ASSERT_FALSE(std::use_facet<boost::locale::info>(locale).utf8());
+    ASSERT_EQ(std::string("C"), irs::locale_utils::name(locale));
+    ASSERT_EQ(std::string("C"), irs::locale_utils::language(locale));
+    ASSERT_EQ(std::string(""), irs::locale_utils::country(locale));
+    ASSERT_EQ(std::string("us-ascii"), irs::locale_utils::encoding(locale));
   }
 
   {
     auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "UTF-8", true);
 
-    ASSERT_EQ(std::string("c.utf-8"), std::use_facet<boost::locale::info>(locale).name());
-    ASSERT_TRUE(std::use_facet<boost::locale::info>(locale).utf8());
+    ASSERT_EQ(std::string("c.utf-8"), irs::locale_utils::name(locale));
+    ASSERT_EQ(std::string("c"), irs::locale_utils::language(locale));
+    ASSERT_EQ(std::string(""), irs::locale_utils::country(locale));
+    ASSERT_EQ(std::string("utf-8"), irs::locale_utils::encoding(locale));
   }
 
   {
     auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "UTF-8", false);
 
-    ASSERT_EQ(std::string("c.utf-8"), std::use_facet<boost::locale::info>(locale).name());
-    ASSERT_TRUE(std::use_facet<boost::locale::info>(locale).utf8());
+    ASSERT_EQ(std::string("c.utf-8"), irs::locale_utils::name(locale));
+    ASSERT_EQ(std::string("c"), irs::locale_utils::language(locale));
+    ASSERT_EQ(std::string(""), irs::locale_utils::country(locale));
+    ASSERT_EQ(std::string("utf-8"), irs::locale_utils::encoding(locale));
   }
 
   {
     auto locale = irs::locale_utils::locale("*", irs::string_ref::NIL, true);
 
-    ASSERT_EQ(std::string("*"), std::use_facet<boost::locale::info>(locale).name());
-    ASSERT_FALSE(std::use_facet<boost::locale::info>(locale).utf8());
+    ASSERT_EQ(std::string("*"), irs::locale_utils::name(locale));
+    ASSERT_EQ(std::string("*"), irs::locale_utils::language(locale));
+    ASSERT_EQ(std::string(""), irs::locale_utils::country(locale));
+    ASSERT_EQ(std::string("us-ascii"), irs::locale_utils::encoding(locale));
   }
 
   {
     auto locale = irs::locale_utils::locale("*", irs::string_ref::NIL, false);
 
-    ASSERT_EQ(std::string("*"), std::use_facet<boost::locale::info>(locale).name());
-    ASSERT_FALSE(std::use_facet<boost::locale::info>(locale).utf8());
+    ASSERT_EQ(std::string("*"), irs::locale_utils::name(locale));
+    ASSERT_EQ(std::string("*"), irs::locale_utils::language(locale));
+    ASSERT_EQ(std::string(""), irs::locale_utils::country(locale));
+    ASSERT_EQ(std::string("us-ascii"), irs::locale_utils::encoding(locale));
   }
 
   {
     auto locale = irs::locale_utils::locale("C", irs::string_ref::NIL, true);
 
-    ASSERT_EQ(std::string("C"), std::use_facet<boost::locale::info>(locale).name());
-    ASSERT_FALSE(std::use_facet<boost::locale::info>(locale).utf8());
+    ASSERT_EQ(std::string("C"), irs::locale_utils::name(locale));
+    ASSERT_EQ(std::string("C"), irs::locale_utils::language(locale));
+    ASSERT_EQ(std::string(""), irs::locale_utils::country(locale));
+    ASSERT_EQ(std::string("us-ascii"), irs::locale_utils::encoding(locale));
   }
 
   {
     auto locale = irs::locale_utils::locale("C", irs::string_ref::NIL, false);
 
-    ASSERT_EQ(std::string("C"), std::use_facet<boost::locale::info>(locale).name());
-    ASSERT_FALSE(std::use_facet<boost::locale::info>(locale).utf8());
+    ASSERT_EQ(std::string("C"), irs::locale_utils::name(locale));
+    ASSERT_EQ(std::string("C"), irs::locale_utils::language(locale));
+    ASSERT_EQ(std::string(""), irs::locale_utils::country(locale));
+    ASSERT_EQ(std::string("us-ascii"), irs::locale_utils::encoding(locale));
   }
 
   {
     auto locale = irs::locale_utils::locale("en", irs::string_ref::NIL, true);
 
-    ASSERT_EQ(std::string("en"), std::use_facet<boost::locale::info>(locale).name());
-    ASSERT_FALSE(std::use_facet<boost::locale::info>(locale).utf8());
+    ASSERT_EQ(std::string("en"), irs::locale_utils::name(locale));
+    ASSERT_EQ(std::string("en"), irs::locale_utils::language(locale));
+    ASSERT_EQ(std::string(""), irs::locale_utils::country(locale));
+    ASSERT_EQ(std::string("us-ascii"), irs::locale_utils::encoding(locale));
   }
 
   {
     auto locale = irs::locale_utils::locale("en", irs::string_ref::NIL, false);
 
-    ASSERT_EQ(std::string("en"), std::use_facet<boost::locale::info>(locale).name());
-    ASSERT_FALSE(std::use_facet<boost::locale::info>(locale).utf8());
+    ASSERT_EQ(std::string("en"), irs::locale_utils::name(locale));
+    ASSERT_EQ(std::string("en"), irs::locale_utils::language(locale));
+    ASSERT_EQ(std::string(""), irs::locale_utils::country(locale));
+    ASSERT_EQ(std::string("us-ascii"), irs::locale_utils::encoding(locale));
   }
 
   {
     auto locale = irs::locale_utils::locale("en_US", irs::string_ref::NIL, true);
 
-    ASSERT_EQ(std::string("en_US"), std::use_facet<boost::locale::info>(locale).name());
-    ASSERT_FALSE(std::use_facet<boost::locale::info>(locale).utf8());
+    ASSERT_EQ(std::string("en_US"), irs::locale_utils::name(locale));
+    ASSERT_EQ(std::string("en"), irs::locale_utils::language(locale));
+    ASSERT_EQ(std::string("US"), irs::locale_utils::country(locale));
+    ASSERT_EQ(std::string("us-ascii"), irs::locale_utils::encoding(locale));
   }
 
   {
     auto locale = irs::locale_utils::locale("en_US", irs::string_ref::NIL, false);
 
-    ASSERT_EQ(std::string("en_US"), std::use_facet<boost::locale::info>(locale).name());
-    ASSERT_FALSE(std::use_facet<boost::locale::info>(locale).utf8());
+    ASSERT_EQ(std::string("en_US"), irs::locale_utils::name(locale));
+    ASSERT_EQ(std::string("en"), irs::locale_utils::language(locale));
+    ASSERT_EQ(std::string("US"), irs::locale_utils::country(locale));
+    ASSERT_EQ(std::string("us-ascii"), irs::locale_utils::encoding(locale));
   }
 
   {
     auto locale = irs::locale_utils::locale("en_US.UTF-8", irs::string_ref::NIL, true);
 
-    ASSERT_EQ(std::string("en_US.utf-8"), std::use_facet<boost::locale::info>(locale).name());
-    ASSERT_TRUE(std::use_facet<boost::locale::info>(locale).utf8());
+    ASSERT_EQ(std::string("en_US.utf-8"), irs::locale_utils::name(locale));
+    ASSERT_EQ(std::string("en"), irs::locale_utils::language(locale));
+    ASSERT_EQ(std::string("US"), irs::locale_utils::country(locale));
+    ASSERT_EQ(std::string("utf-8"), irs::locale_utils::encoding(locale));
   }
 
   {
     auto locale = irs::locale_utils::locale("en_US.UTF-8", irs::string_ref::NIL, false);
 
-    ASSERT_EQ(std::string("en_US.utf-8"), std::use_facet<boost::locale::info>(locale).name());
-    ASSERT_TRUE(std::use_facet<boost::locale::info>(locale).utf8());
+    ASSERT_EQ(std::string("en_US.utf-8"), irs::locale_utils::name(locale));
+    ASSERT_EQ(std::string("en"), irs::locale_utils::language(locale));
+    ASSERT_EQ(std::string("US"), irs::locale_utils::country(locale));
+    ASSERT_EQ(std::string("utf-8"), irs::locale_utils::encoding(locale));
   }
 
   {
     auto locale = irs::locale_utils::locale("ru_RU.KOI8-R", irs::string_ref::NIL, true);
 
-    ASSERT_EQ(std::string("ru_RU.koi8-r"), std::use_facet<boost::locale::info>(locale).name());
-    ASSERT_FALSE(std::use_facet<boost::locale::info>(locale).utf8());
+    ASSERT_EQ(std::string("ru_RU.koi8-r"), irs::locale_utils::name(locale));
+    ASSERT_EQ(std::string("ru"), irs::locale_utils::language(locale));
+    ASSERT_EQ(std::string("RU"), irs::locale_utils::country(locale));
+    ASSERT_EQ(std::string("koi8-r"), irs::locale_utils::encoding(locale));
   }
 
   {
     auto locale = irs::locale_utils::locale("ru_RU.KOI8-R", irs::string_ref::NIL, false);
 
-    ASSERT_EQ(std::string("ru_RU.koi8-r"), std::use_facet<boost::locale::info>(locale).name());
-    ASSERT_FALSE(std::use_facet<boost::locale::info>(locale).utf8());
+    ASSERT_EQ(std::string("ru_RU.koi8-r"), irs::locale_utils::name(locale));
+    ASSERT_EQ(std::string("ru"), irs::locale_utils::language(locale));
+    ASSERT_EQ(std::string("RU"), irs::locale_utils::country(locale));
+    ASSERT_EQ(std::string("koi8-r"), irs::locale_utils::encoding(locale));
   }
 
   {
     auto locale = irs::locale_utils::locale("ru_RU.KOI8-R", "UTF-8", true);
 
-    ASSERT_EQ(std::string("ru_RU.utf-8"), std::use_facet<boost::locale::info>(locale).name());
-    ASSERT_TRUE(std::use_facet<boost::locale::info>(locale).utf8());
+    ASSERT_EQ(std::string("ru_RU.utf-8"), irs::locale_utils::name(locale));
+    ASSERT_EQ(std::string("ru"), irs::locale_utils::language(locale));
+    ASSERT_EQ(std::string("RU"), irs::locale_utils::country(locale));
+    ASSERT_EQ(std::string("utf-8"), irs::locale_utils::encoding(locale));
   }
 
   {
     auto locale = irs::locale_utils::locale("ru_RU.KOI8-R", "UTF-8", false);
 
-    ASSERT_EQ(std::string("ru_RU.utf-8"), std::use_facet<boost::locale::info>(locale).name());
-    ASSERT_TRUE(std::use_facet<boost::locale::info>(locale).utf8());
+    ASSERT_EQ(std::string("ru_RU.utf-8"), irs::locale_utils::name(locale));
+    ASSERT_EQ(std::string("ru"), irs::locale_utils::language(locale));
+    ASSERT_EQ(std::string("RU"), irs::locale_utils::country(locale));
+    ASSERT_EQ(std::string("utf-8"), irs::locale_utils::encoding(locale));
   }
 
   {
     auto locale = irs::locale_utils::locale("InvalidString", irs::string_ref::NIL, true);
 
-    ASSERT_EQ(std::string("invalidstring"), std::use_facet<boost::locale::info>(locale).name());
+    ASSERT_EQ(std::string("invalidstring"), irs::locale_utils::name(locale));
+    ASSERT_EQ(std::string("invalidstring"), irs::locale_utils::language(locale));
+    ASSERT_EQ(std::string(""), irs::locale_utils::country(locale));
+    ASSERT_EQ(std::string("us-ascii"), irs::locale_utils::encoding(locale));
   }
 
   {
     auto locale = irs::locale_utils::locale("InvalidString", irs::string_ref::NIL, false);
 
-    ASSERT_EQ(std::string("invalidstring"), std::use_facet<boost::locale::info>(locale).name());
+    ASSERT_EQ(std::string("invalidstring"), irs::locale_utils::name(locale));
+    ASSERT_EQ(std::string("invalidstring"), irs::locale_utils::language(locale));
+    ASSERT_EQ(std::string(""), irs::locale_utils::country(locale));
+    ASSERT_EQ(std::string("us-ascii"), irs::locale_utils::encoding(locale));
   }
 }
 

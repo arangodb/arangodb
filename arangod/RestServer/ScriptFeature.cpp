@@ -22,11 +22,16 @@
 
 #include "ScriptFeature.h"
 
+#include "Basics/application-exit.h"
+#include "FeaturePhases/AgencyFeaturePhase.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "RestServer/ServerFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
+#include "V8/JavaScriptSecurityContext.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
@@ -41,7 +46,7 @@ namespace arangodb {
 ScriptFeature::ScriptFeature(application_features::ApplicationServer& server, int* result)
     : ApplicationFeature(server, "Script"), _result(result) {
   setOptional(true);
-  startsAfter("AgencyPhase");
+  startsAfter<AgencyFeaturePhase>();
 }
 
 void ScriptFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -52,53 +57,45 @@ void ScriptFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 void ScriptFeature::start() {
-  auto server = ApplicationServer::getFeature<ServerFeature>("Server");
-  auto operationMode = server->operationMode();
+  auto& serverFeature = server().getFeature<ServerFeature>();
+  auto operationMode = serverFeature.operationMode();
 
   if (operationMode != OperationMode::MODE_SCRIPT) {
     return;
   }
 
-  LOG_TOPIC(TRACE, Logger::STARTUP) << "server about to run scripts";
-  *_result = runScript(server->scripts());
+  LOG_TOPIC("7b0e6", TRACE, Logger::STARTUP) << "server about to run scripts";
+  *_result = runScript(serverFeature.scripts());
 }
 
 int ScriptFeature::runScript(std::vector<std::string> const& scripts) {
   bool ok = false;
-  auto* sysDbFeature =
-      arangodb::application_features::ApplicationServer::lookupFeature<arangodb::SystemDatabaseFeature>();
-  auto database = sysDbFeature->use();
-  V8Context* context = V8DealerFeature::DEALER->enterContext(database.get(), true);
+  auto& sysDbFeature = server().getFeature<arangodb::SystemDatabaseFeature>();
+  auto database = sysDbFeature.use();
 
-  if (context == nullptr) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "cannot acquire V8 context";
-    FATAL_ERROR_EXIT();
-  }
+  JavaScriptSecurityContext securityContext = JavaScriptSecurityContext::createAdminScriptContext();
+  V8ContextGuard guard(database.get(), securityContext);
 
-  TRI_DEFER(V8DealerFeature::DEALER->exitContext(context));
-
-  auto isolate = context->_isolate;
-
+  auto isolate = guard.isolate();
   {
     v8::HandleScope globalScope(isolate);
 
-    auto localContext = v8::Local<v8::Context>::New(isolate, context->_context);
+    auto localContext = v8::Local<v8::Context>::New(isolate, guard.context()->_context);
     localContext->Enter();
     {
       v8::Context::Scope contextScope(localContext);
       for (auto const& script : scripts) {
-        LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "executing script '" << script << "'";
+        LOG_TOPIC("e703c", TRACE, arangodb::Logger::FIXME) << "executing script '" << script << "'";
         bool r = TRI_ExecuteGlobalJavaScriptFile(isolate, script.c_str(), true);
 
         if (!r) {
-          LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+          LOG_TOPIC("9d38a", FATAL, arangodb::Logger::FIXME)
               << "cannot load script '" << script << "', giving up";
           FATAL_ERROR_EXIT();
         }
       }
 
       v8::TryCatch tryCatch(isolate);
-      ;
       // run the garbage collection for at most 30 seconds
       TRI_RunGarbageCollectionV8(isolate, 30.0);
 
@@ -118,7 +115,7 @@ int ScriptFeature::runScript(std::vector<std::string> const& scripts) {
           v8::Handle<v8::Function>::Cast(localContext->Global()->Get(mainFuncName));
 
       if (main.IsEmpty() || main->IsUndefined()) {
-        LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+        LOG_TOPIC("e3365", FATAL, arangodb::Logger::FIXME)
             << "no main function defined, giving up";
         FATAL_ERROR_EXIT();
       } else {
@@ -138,16 +135,16 @@ int ScriptFeature::runScript(std::vector<std::string> const& scripts) {
             ok = TRI_ObjectToDouble(isolate, result) == 0;
           }
         } catch (arangodb::basics::Exception const& ex) {
-          LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+          LOG_TOPIC("ad237", ERR, arangodb::Logger::FIXME)
               << "caught exception " << TRI_errno_string(ex.code()) << ": "
               << ex.what();
           ok = false;
         } catch (std::bad_alloc const&) {
-          LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+          LOG_TOPIC("f13ec", ERR, arangodb::Logger::FIXME)
               << "caught exception " << TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY);
           ok = false;
         } catch (...) {
-          LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught unknown exception";
+          LOG_TOPIC("66ac9", ERR, arangodb::Logger::FIXME) << "caught unknown exception";
           ok = false;
         }
       }

@@ -25,31 +25,31 @@
 #define ARANGOD_AQL_CONSTRAINED_SORT_EXECUTOR_H
 
 #include "Aql/ExecutionState.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/OutputAqlItemRow.h"
-#include "Aql/SortExecutor.h"
-#include "Aql/SortNode.h"
-#include "AqlValue.h"
+#include "Aql/SharedAqlItemBlockPtr.h"
 
+#include <cstdint>
 #include <memory>
+#include <vector>
 
 namespace arangodb {
+class Result;
 namespace transaction {
 class Methods;
 }
 
 namespace aql {
 
-template <bool>
+template <BlockPassthrough>
 class SingleRowFetcher;
 
-class AqlItemBlockShell;
 class AqlItemMatrix;
 class ConstrainedLessThan;
 class ExecutorInfos;
 class InputAqlItemRow;
 class NoStats;
 class OutputAqlItemRow;
+class SortExecutorInfos;
 struct SortRegister;
 
 /**
@@ -57,11 +57,10 @@ struct SortRegister;
  */
 class ConstrainedSortExecutor {
  public:
-  friend class Sorter;
-
   struct Properties {
-    static const bool preservesOrder = false;
-    static const bool allowsBlockPassthrough = false;
+    static constexpr bool preservesOrder = false;
+    static constexpr BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Disable;
+    static constexpr bool inputSizeRestrictsOutputSize = true;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = SortExecutorInfos;
@@ -76,21 +75,40 @@ class ConstrainedSortExecutor {
    * @return ExecutionState,
    *         if something was written output.hasValue() == true
    */
-  std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
+  std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
+
+  std::tuple<ExecutionState, Stats, size_t> skipRows(size_t toSkipRequested);
+
+  /**
+   * @brief This Executor knows how many rows it will produce and most by itself
+   *        It also knows that it could produce less if the upstream only has fewer rows.
+   */
+  std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t atMost) const;
 
  private:
-  bool compareInput(uint32_t const& rosPos, InputAqlItemRow& row) const;
+  bool compareInput(size_t const& rosPos, InputAqlItemRow& row) const;
   arangodb::Result pushRow(InputAqlItemRow& row);
+
+  // We're done producing when we've emitted all rows from our heap.
+  bool doneProducing() const noexcept;
+
+  // We're done skipping when we've emitted all rows from our heap,
+  // AND emitted (in this case, skipped) all rows that were dropped during the
+  // sort as well. This is for fullCount queries only.
+  bool doneSkipping() const noexcept;
+
+  ExecutionState consumeInput();
 
  private:
   Infos& _infos;
   Fetcher& _fetcher;
   ExecutionState _state;
-  std::vector<size_t> _sortedIndexes;
   size_t _returnNext;
-  std::vector<uint32_t> _rows;
+  std::vector<size_t> _rows;
   size_t _rowsPushed;
-  std::shared_ptr<arangodb::aql::AqlItemBlockShell> _heapBuffer;
+  size_t _rowsRead;
+  size_t _skippedAfter;
+  SharedAqlItemBlockPtr _heapBuffer;
   std::unique_ptr<ConstrainedLessThan> _cmpHeap;  // in pointer to avoid
   OutputAqlItemRow _heapOutputRow;
 };

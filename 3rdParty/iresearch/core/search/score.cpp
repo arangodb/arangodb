@@ -43,7 +43,7 @@ DEFINE_ATTRIBUTE_TYPE(iresearch::score)
 }
 
 score::score() NOEXCEPT
-  : func_([](byte_type*){}) {
+  : func_([](const void*, byte_type*){}) {
 }
 
 NS_END // ROOT

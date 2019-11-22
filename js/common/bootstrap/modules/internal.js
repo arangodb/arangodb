@@ -46,10 +46,10 @@ global.DEFINE_MODULE('internal', (function () {
   } else {
     exports.ArangoError = function (error) {
       if (error !== undefined) {
-        this.error = error.error;
-        this.code = error.code;
-        this.errorNum = error.errorNum;
-        this.errorMessage = error.errorMessage;
+        this.error = error.error;                // bool -- is error or not
+        this.code = error.code;                  // int - http status code
+        this.errorNum = error.errorNum;          // int - internal arangodb error code
+        this.errorMessage = error.errorMessage;  // string - error message
       }
     };
 
@@ -197,6 +197,15 @@ global.DEFINE_MODULE('internal', (function () {
   }
 
   // //////////////////////////////////////////////////////////////////////////////
+  // / @brief convert error number to http code
+  // //////////////////////////////////////////////////////////////////////////////
+
+  if (global.SYS_ERROR_NUMBER_TO_HTTP_CODE) {
+    exports.errorNumberToHttpCode = global.SYS_ERROR_NUMBER_TO_HTTP_CODE;
+    delete global.SYS_ERROR_NUMBER_TO_HTTP_CODE;
+  }
+
+  // //////////////////////////////////////////////////////////////////////////////
   // / @brief configureEndpoint
   // //////////////////////////////////////////////////////////////////////////////
 
@@ -256,39 +265,12 @@ global.DEFINE_MODULE('internal', (function () {
   }
 
   // //////////////////////////////////////////////////////////////////////////////
-  // / @brief whether or not Statistics are enabled
-  // //////////////////////////////////////////////////////////////////////////////
-
-  if (global.SYS_ENABLED_STATISTICS) {
-    exports.enabledStatistics = global.SYS_ENABLED_STATISTICS;
-    delete global.SYS_ENABLED_STATISTICS;
-  }
-
-  // //////////////////////////////////////////////////////////////////////////////
   // / @brief executeScript
   // //////////////////////////////////////////////////////////////////////////////
 
   if (global.SYS_EXECUTE) {
     exports.executeScript = global.SYS_EXECUTE;
     delete global.SYS_EXECUTE;
-  }
-
-  // //////////////////////////////////////////////////////////////////////////////
-  // / @brief getCurrentRequest
-  // //////////////////////////////////////////////////////////////////////////////
-
-  if (global.SYS_GET_CURRENT_REQUEST) {
-    exports.getCurrentRequest = global.SYS_GET_CURRENT_REQUEST;
-    delete global.SYS_GET_CURRENT_REQUEST;
-  }
-
-  // //////////////////////////////////////////////////////////////////////////////
-  // / @brief getCurrentResponse
-  // //////////////////////////////////////////////////////////////////////////////
-
-  if (global.SYS_GET_CURRENT_RESPONSE) {
-    exports.getCurrentResponse = global.SYS_GET_CURRENT_RESPONSE;
-    delete global.SYS_GET_CURRENT_RESPONSE;
   }
 
   // //////////////////////////////////////////////////////////////////////////////
@@ -445,15 +427,6 @@ global.DEFINE_MODULE('internal', (function () {
   }
 
   // //////////////////////////////////////////////////////////////////////////////
-  // / @brief processStatistics
-  // //////////////////////////////////////////////////////////////////////////////
-
-  if (global.SYS_PROCESS_STATISTICS) {
-    exports.processStatistics = global.SYS_PROCESS_STATISTICS;
-    delete global.SYS_PROCESS_STATISTICS;
-  }
-
-  // //////////////////////////////////////////////////////////////////////////////
   // / @brief getPid
   // //////////////////////////////////////////////////////////////////////////////
 
@@ -517,15 +490,6 @@ global.DEFINE_MODULE('internal', (function () {
   }
 
   // //////////////////////////////////////////////////////////////////////////////
-  // / @brief serverStatistics
-  // //////////////////////////////////////////////////////////////////////////////
-
-  if (global.SYS_SERVER_STATISTICS) {
-    exports.serverStatistics = global.SYS_SERVER_STATISTICS;
-    delete global.SYS_SERVER_STATISTICS;
-  }
-
-  // //////////////////////////////////////////////////////////////////////////////
   // / @brief sleep
   // //////////////////////////////////////////////////////////////////////////////
 
@@ -550,14 +514,6 @@ global.DEFINE_MODULE('internal', (function () {
   if (global.SYS_WAIT) {
     exports.wait = global.SYS_WAIT;
     delete global.SYS_WAIT;
-  }
-
-  // //////////////////////////////////////////////////////////////////////////////
-  // / @brief wait for index selectivity estimate sync
-  // //////////////////////////////////////////////////////////////////////////////
-  if (global.WAIT_FOR_ESTIMATOR_SYNC) {
-    exports.waitForEstimatorSync = global.WAIT_FOR_ESTIMATOR_SYNC;
-    delete global.WAIT_FOR_ESTIMATOR_SYNC;
   }
 
   // //////////////////////////////////////////////////////////////////////////////
@@ -597,23 +553,13 @@ global.DEFINE_MODULE('internal', (function () {
   }
 
   // //////////////////////////////////////////////////////////////////////////////
-  // / @brief clientStatistics
+  // / @brief statisticsExternal
   // //////////////////////////////////////////////////////////////////////////////
 
-  if (global.SYS_CLIENT_STATISTICS) {
-    exports.clientStatistics = global.SYS_CLIENT_STATISTICS;
-    delete global.SYS_CLIENT_STATISTICS;
+  if (global.SYS_PROCESS_STATISTICS_EXTERNAL) {
+    exports.statisticsExternal = global.SYS_PROCESS_STATISTICS_EXTERNAL;
+    delete global.SYS_PROCESS_STATISTICS_EXTERNAL;
   }
-
-  // //////////////////////////////////////////////////////////////////////////////
-  // / @brief httpStatistics
-  // //////////////////////////////////////////////////////////////////////////////
-
-  if (global.SYS_HTTP_STATISTICS) {
-    exports.httpStatistics = global.SYS_HTTP_STATISTICS;
-    delete global.SYS_HTTP_STATISTICS;
-  }
-
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief executeExternal
   // //////////////////////////////////////////////////////////////////////////////
@@ -759,20 +705,27 @@ global.DEFINE_MODULE('internal', (function () {
           if (longOptsEqual) {
             vec.push('--' + key + '=' + structure[key]);
           } else {
-            vec.push('--' + key);
-            if (structure[key] !== false) {
-              if (structure[key] !== true) {
-                if (structure[key] !== null) {
-                  // The null case is for the case one wants to add an option
-                  // with an equals sign all in the key, which is necessary if
-                  // one wants to specify an option multiple times.
-                  vec.push(structure[key]);
+            if (Array.isArray(structure[key])) {
+              structure[key].forEach(function (i, j) {
+                vec.push('--' + key);
+                vec.push(i);
+              });
+            } else {
+              vec.push('--' + key);
+              if (structure[key] !== false) {
+                if (structure[key] !== true) {
+                  if (structure[key] !== null) {
+                    // The null case is for the case one wants to add an option
+                    // with an equals sign all in the key, which is necessary if
+                    // one wants to specify an option multiple times.
+                    vec.push(structure[key]);
+                  }
+                } else {
+                  vec.push('true');
                 }
               } else {
-                vec.push('true');
+                vec.push('false');
               }
-            } else {
-              vec.push('false');
             }
           }
         }
@@ -803,7 +756,18 @@ global.DEFINE_MODULE('internal', (function () {
       } else if (!isNaN(argv[i + 1])) {
         ret[option] = parseInt(argv[i + 1]);
       } else {
-        ret[option] = argv[i + 1];
+        if (ret.hasOwnProperty(option)) {
+          if (Array.isArray(ret[option])) {
+            ret[option].push(argv[i + 1]);
+          } else {
+            ret[option] = [
+              ret[option],
+              argv[i + 1]
+            ];
+          }
+        } else {
+          ret[option] = argv[i + 1];
+        }
       }
     }
 
@@ -1697,6 +1661,29 @@ global.DEFINE_MODULE('internal', (function () {
     }
 
     useColor = false;
+  };
+
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief isArangod - find out if we are in arangod or arangosh
+  // //////////////////////////////////////////////////////////////////////////////
+  exports.isArangod = function() {
+    return (typeof ArangoClusterComm === "object");
+  };
+
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief isArangod - find out if we are in a cluster setup or not
+  // //////////////////////////////////////////////////////////////////////////////
+  exports.isCluster = function() {
+    if(exports.isArangod()) {
+      return require("@arangodb/cluster").isCluster();
+    } else {
+      // ask remote it is a coordinator
+      const response = exports.arango.GET('/_admin/server/role');
+      if(response.error === true) {
+        throw new exports.ArangoError(response);
+      }
+      return (response.role === "COORDINATOR");
+    }
   };
 
   // //////////////////////////////////////////////////////////////////////////////

@@ -24,13 +24,24 @@
 
 #include "GeneralServer.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/application-exit.h"
 #include "Basics/exitcodes.h"
+#include "Endpoint/Endpoint.h"
 #include "Endpoint/EndpointList.h"
+#include "GeneralServer/Acceptor.h"
+#include "GeneralServer/CommTask.h"
 #include "GeneralServer/GeneralDefinitions.h"
-#include "GeneralServer/GeneralListenTask.h"
+#include "GeneralServer/GeneralServerFeature.h"
+#include "GeneralServer/SslServerFeature.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
+
+#include <chrono>
+#include <thread>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -39,8 +50,46 @@ using namespace arangodb::rest;
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
-GeneralServer::GeneralServer(uint64_t numIoThreads)
-    : _numIoThreads(numIoThreads), _contexts(numIoThreads) {}
+GeneralServer::GeneralServer(GeneralServerFeature& feature, uint64_t numIoThreads)
+    : _feature(feature), _endpointList(nullptr), _contexts() {
+  auto& server = feature.server();
+  for (size_t i = 0; i < numIoThreads; ++i) {
+    _contexts.emplace_back(server);
+  }
+}
+
+GeneralServer::~GeneralServer() = default;
+
+void GeneralServer::registerTask(std::shared_ptr<CommTask> task) {
+  auto& server = application_features::ApplicationServer::server();
+  if (server.isStopping()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+  }
+  auto* t = task.get();
+  LOG_TOPIC("29da9", TRACE, Logger::REQUESTS)
+      << "registering CommTask with ptr " << t;
+  {
+    auto* t = task.get();
+    std::lock_guard<std::recursive_mutex> guard(_tasksLock);
+    _commTasks.try_emplace(t, std::move(task));
+  }
+  t->start();
+}
+
+void GeneralServer::unregisterTask(CommTask* task) {
+  LOG_TOPIC("090d8", TRACE, Logger::REQUESTS)
+      << "unregistering CommTask with ptr " << task;
+  std::shared_ptr<CommTask> old;
+  {
+    std::lock_guard<std::recursive_mutex> guard(_tasksLock);
+    auto it = _commTasks.find(task);
+    if (it != _commTasks.end()) {
+      old = std::move(it->second);
+      _commTasks.erase(it);
+    }
+  }
+  old.reset();
+}
 
 void GeneralServer::setEndpointList(EndpointList const* list) {
   _endpointList = list;
@@ -50,17 +99,18 @@ void GeneralServer::startListening() {
   unsigned int i = 0;
 
   for (auto& it : _endpointList->allEndpoints()) {
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+    LOG_TOPIC("e62e0", TRACE, arangodb::Logger::FIXME)
         << "trying to bind to endpoint '" << it.first << "' for requests";
 
     // distribute endpoints across all io contexts
-    IoContext& ioContext = _contexts[i++ % _numIoThreads];
+    IoContext& ioContext = _contexts[i++ % _contexts.size()];
     bool ok = openEndpoint(ioContext, it.second);
 
     if (ok) {
-      LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "bound to endpoint '" << it.first << "'";
+      LOG_TOPIC("dc45a", DEBUG, arangodb::Logger::FIXME)
+          << "bound to endpoint '" << it.first << "'";
     } else {
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+      LOG_TOPIC("c81f6", FATAL, arangodb::Logger::FIXME)
           << "failed to bind to endpoint '" << it.first
           << "'. Please check whether another instance is already "
              "running using this endpoint and review your endpoints "
@@ -71,9 +121,19 @@ void GeneralServer::startListening() {
 }
 
 void GeneralServer::stopListening() {
-  for (auto& context : _contexts) {
-    context.stop();
+  for (std::unique_ptr<Acceptor>& acceptor : _acceptors) {
+    acceptor->close();
   }
+
+  // close connections of all socket tasks so the tasks will
+  // eventually shut themselves down
+  std::lock_guard<std::recursive_mutex> guard(_tasksLock);
+  _commTasks.clear();
+}
+
+void GeneralServer::stopWorking() {
+  _acceptors.clear();
+  _contexts.clear();  // stops threads
 }
 
 // -----------------------------------------------------------------------------
@@ -81,51 +141,22 @@ void GeneralServer::stopListening() {
 // -----------------------------------------------------------------------------
 
 bool GeneralServer::openEndpoint(IoContext& ioContext, Endpoint* endpoint) {
-  ProtocolType protocolType;
-
-  if (endpoint->encryption() == Endpoint::EncryptionType::SSL) {
-    protocolType = ProtocolType::HTTPS;
-  } else {
-    protocolType = ProtocolType::HTTP;
-  }
-
-  auto task = std::make_shared<GeneralListenTask>(*this, ioContext, endpoint, protocolType);
-  if (!task->start()) {
+  auto acceptor = rest::Acceptor::factory(*this, ioContext, endpoint);
+  try {
+    acceptor->open();
+  } catch (...) {
     return false;
   }
-
+  _acceptors.emplace_back(std::move(acceptor));
   return true;
 }
 
-GeneralServer::IoThread::~IoThread() { shutdown(); }
-
-GeneralServer::IoThread::IoThread(IoContext& iocontext)
-    : Thread("Io"), _iocontext(iocontext) {}
-
-void GeneralServer::IoThread::run() {
-  // run the asio io context
-  _iocontext._asioIoContext.run();
-}
-
-GeneralServer::IoContext::IoContext()
-    : _clients(0),
-      _thread(*this),
-      _asioIoContext(1),  // only a single thread per context
-      _asioWork(_asioIoContext),
-      _stopped(false) {
-  _thread.start();
-}
-
-GeneralServer::IoContext::~IoContext() { stop(); }
-
-void GeneralServer::IoContext::stop() { _asioIoContext.stop(); }
-
-GeneralServer::IoContext& GeneralServer::selectIoContext() {
-  uint32_t low = _contexts[0]._clients.load();
+IoContext& GeneralServer::selectIoContext() {
+  uint64_t low = _contexts[0].clients();
   size_t lowpos = 0;
 
   for (size_t i = 1; i < _contexts.size(); ++i) {
-    uint32_t x = _contexts[i]._clients.load();
+    uint64_t x = _contexts[i].clients();
     if (x < low) {
       low = x;
       lowpos = i;
@@ -133,4 +164,16 @@ GeneralServer::IoContext& GeneralServer::selectIoContext() {
   }
 
   return _contexts[lowpos];
+}
+
+asio_ns::ssl::context& GeneralServer::sslContext() {
+  std::lock_guard<std::mutex> guard(_sslContextMutex);
+  if (!_sslContext) {
+    _sslContext.reset(new asio_ns::ssl::context(SslServerFeature::SSL->createSslContext()));
+  }
+  return *_sslContext;
+}
+
+application_features::ApplicationServer& GeneralServer::server() const {
+  return _feature.server();
 }

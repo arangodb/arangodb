@@ -1,6 +1,6 @@
-#!/bin/bash
+#!/bin/sh
 
-if [ "x$@" == "x" ] ; then
+if [ "x$@" = "x" ] ; then
   JAVASCRIPT_JSLINT="\
     `find ./js/actions -name "*.js"` \
     `find ./js/common/bootstrap -name "*.js"` \
@@ -25,7 +25,10 @@ if [ "x$@" == "x" ] ; then
     \
     ./js/common/modules/jsunity.js \
     ./js/client/client.js \
+    ./js/client/inspector.js \
     ./js/server/server.js \
+    ./js/server/initialize.js \
+    ./js/server/arango-dfdb.js \
     \
   "
   if [ -d ./enterprise ] ; then

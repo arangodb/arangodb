@@ -21,9 +21,21 @@
 /// @author Daniel H. Larkin
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <stdint.h>
+#include <algorithm>
+#include <atomic>
+#include <chrono>
+#include <cmath>
+#include <memory>
+#include <set>
+#include <stack>
+#include <utility>
+
 #include "Cache/Manager.h"
+
 #include "Basics/Common.h"
 #include "Basics/SharedPRNG.h"
+#include "Basics/voc-errors.h"
 #include "Cache/Cache.h"
 #include "Cache/CachedValue.h"
 #include "Cache/Common.h"
@@ -34,16 +46,9 @@
 #include "Cache/Table.h"
 #include "Cache/Transaction.h"
 #include "Cache/TransactionalCache.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
-
-#include <stdint.h>
-#include <algorithm>
-#include <atomic>
-#include <chrono>
-#include <memory>
-#include <set>
-#include <stack>
-#include <utility>
+#include "Logger/LoggerStream.h"
 
 using namespace arangodb::cache;
 
@@ -145,7 +150,7 @@ std::shared_ptr<Cache> Manager::createCache(CacheType type, bool enableWindowedS
   }
 
   if (result.get() != nullptr) {
-    _caches.emplace(id, result);
+    _caches.try_emplace(id, result);
   }
   _lock.writeUnlock();
 
@@ -286,7 +291,7 @@ std::tuple<bool, Metadata, std::shared_ptr<Table>> Manager::registerCache(uint64
                                                                           uint64_t maxSize) {
   TRI_ASSERT(_lock.isWriteLocked());
   Metadata metadata;
-  std::shared_ptr<Table> table(nullptr);
+  std::shared_ptr<Table> table;
   bool ok = true;
 
   if ((_globalHighwaterMark / (_caches.size() + 1)) < Manager::minCacheAllocation) {
@@ -295,7 +300,7 @@ std::tuple<bool, Metadata, std::shared_ptr<Table>> Manager::registerCache(uint64
 
   if (ok) {
     table = leaseTable(Table::minLogSize);
-    ok = (table.get() != nullptr);
+    ok = (table != nullptr);
   }
 
   if (ok) {
@@ -303,10 +308,11 @@ std::tuple<bool, Metadata, std::shared_ptr<Table>> Manager::registerCache(uint64
     ok = increaseAllowed(metadata.allocatedSize - table->memoryUsage(), true);
     if (ok) {
       _globalAllocation += (metadata.allocatedSize - table->memoryUsage());
+      TRI_ASSERT(_globalAllocation >= _fixedAllocation);
     }
   }
 
-  if (!ok && (table.get() != nullptr)) {
+  if (!ok && (table != nullptr)) {
     reclaimTable(table, true);
     table.reset();
   }
@@ -326,6 +332,7 @@ void Manager::unregisterCache(uint64_t id) {
   Metadata* metadata = cache->metadata();
   metadata->readLock();
   _globalAllocation -= metadata->allocatedSize;
+  TRI_ASSERT(_globalAllocation >= _fixedAllocation);
   metadata->readUnlock();
   _caches.erase(id);
   _lock.writeUnlock();
@@ -533,7 +540,7 @@ int Manager::rebalance(bool onlyCalculate) {
         std::ceil(weight * static_cast<double>(_globalHighwaterMark)));
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     if (newDeserved < Manager::minCacheAllocation) {
-      LOG_TOPIC(DEBUG, Logger::CACHE)
+      LOG_TOPIC("eabec", DEBUG, Logger::CACHE)
           << "Deserved limit of " << newDeserved << " from weight " << weight
           << " and highwater " << _globalHighwaterMark
           << ". Should be at least " << Manager::minCacheAllocation;
@@ -545,7 +552,7 @@ int Manager::rebalance(bool onlyCalculate) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     uint64_t fixed = metadata->fixedSize + metadata->tableSize + Manager::cacheRecordOverhead;
     if (newDeserved < fixed) {
-      LOG_TOPIC(DEBUG, Logger::CACHE)
+      LOG_TOPIC("e63e4", DEBUG, Logger::CACHE)
           << "Setting deserved cache size " << newDeserved
           << " below usage: " << fixed << " ; Using weight  " << weight;
     }
@@ -597,6 +604,7 @@ void Manager::freeUnusedTables() {
     while (!_tables[i].empty()) {
       auto table = _tables[i].top();
       _globalAllocation -= table->memoryUsage();
+      TRI_ASSERT(_globalAllocation >= _fixedAllocation);
       _tables[i].pop();
     }
   }
@@ -628,6 +636,7 @@ void Manager::resizeCache(Manager::TaskEnvironment environment, Cache* cache, ui
     metadata->writeUnlock();
     _globalAllocation -= oldLimit;
     _globalAllocation += newLimit;
+    TRI_ASSERT(_globalAllocation >= _fixedAllocation);
     return;
   }
 
@@ -673,12 +682,13 @@ void Manager::migrateCache(Manager::TaskEnvironment environment, Cache* cache,
 std::shared_ptr<Table> Manager::leaseTable(uint32_t logSize) {
   TRI_ASSERT(_lock.isWriteLocked());
 
-  std::shared_ptr<Table> table(nullptr);
+  std::shared_ptr<Table> table;
   if (_tables[logSize].empty()) {
     if (increaseAllowed(Table::allocationSize(logSize), true)) {
       try {
         table = std::make_shared<Table>(logSize);
         _globalAllocation += table->memoryUsage();
+        TRI_ASSERT(_globalAllocation >= _fixedAllocation);
       } catch (std::bad_alloc const&) {
         table.reset();
       }
@@ -707,6 +717,7 @@ void Manager::reclaimTable(std::shared_ptr<Table> table, bool internal) {
     _spareTableAllocation += table->memoryUsage();
   } else {
     _globalAllocation -= table->memoryUsage();
+    TRI_ASSERT(_globalAllocation >= _fixedAllocation);
     table.reset();
   }
 
@@ -741,10 +752,10 @@ std::shared_ptr<Manager::PriorityList> Manager::priorityList() {
   double baseWeight = std::max(minimumWeight, uniformMarginalWeight);
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  LOG_TOPIC(DEBUG, Logger::CACHE) << "uniformMarginalWeight " << uniformMarginalWeight;
-  LOG_TOPIC(DEBUG, Logger::CACHE) << "baseWeight " << baseWeight;
+  LOG_TOPIC("7eac8", DEBUG, Logger::CACHE) << "uniformMarginalWeight " << uniformMarginalWeight;
+  LOG_TOPIC("108e6", DEBUG, Logger::CACHE) << "baseWeight " << baseWeight;
   if (1.0 < (baseWeight * static_cast<double>(_caches.size()))) {
-    LOG_TOPIC(FATAL, Logger::CACHE)
+    LOG_TOPIC("b2f55", FATAL, Logger::CACHE)
         << "weight: " << baseWeight << ", count: " << _caches.size();
     TRI_ASSERT(1.0 >= (baseWeight * static_cast<double>(_caches.size())));
   }

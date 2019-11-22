@@ -22,30 +22,35 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AgencyMock.h"
+
+#include "Agency/Store.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/NumberUtils.h"
+#include "Basics/StringBuffer.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
-#include "Agency/Store.h"
-#include "lib/Rest/HttpResponse.h"
+#include "Rest/HttpResponse.h"
 
 #include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
 namespace consensus {
 
+// FIXME TODO this implementation causes deadlock when unregistering a callback,
+//            if there is still another callback registered; it's not obvious
+//            how to fix this, as it seems the problem is that both "agents"
+//            live on the same server and share an AgencyCallbackRegistry
+//            instance; we could solve this if we could have two
+//            ApplicationServers in the same instance, but too many things in
+//            the feature stack are static still to make the changes right now
 // FIXME TODO for some reason the implementation of this function is missing in the arangodb code
 void Store::notifyObservers() const {
-  auto* clusterFeature =
-    arangodb::application_features::ApplicationServer::getFeature<
-      arangodb::ClusterFeature
-    >("Cluster");
-
-  if (!clusterFeature) {
+  if (!_server.hasFeature<arangodb::ClusterFeature>()) {
     return;
   }
+  auto& clusterFeature = _server.getFeature<arangodb::ClusterFeature>();
 
-  auto* callbackRegistry = clusterFeature->agencyCallbackRegistry();
+  auto* callbackRegistry = clusterFeature.agencyCallbackRegistry();
 
   if (!callbackRegistry) {
     return;
@@ -78,11 +83,7 @@ void Store::notifyObservers() const {
 
   for (auto& id: callbackIds) {
     try {
-      auto& condition = callbackRegistry->getCallback(id)->_cv;
-      CONDITION_LOCKER(locker, condition);
-
-      callbackRegistry->getCallback(id)->refetchAndUpdate(false, true); // force a check
-      condition.signal();
+      callbackRegistry->getCallback(id)->refetchAndUpdate(true, true);  // force a check
     } catch(...) {
       // ignore
     }
@@ -107,7 +108,7 @@ void GeneralClientConnectionAgencyMock::handleRead(
     ? arangodb::rest::ResponseCode::OK
     : arangodb::rest::ResponseCode::BAD;
 
-  arangodb::HttpResponse resp(code);
+  arangodb::HttpResponse resp(code, nullptr);
 
   std::string body;
   if (arangodb::rest::ResponseCode::OK == code && !result->isEmpty()) {
@@ -140,7 +141,7 @@ void GeneralClientConnectionAgencyMock::handleWrite(
   bodyObj.close();
   auto body = bodyObj.slice().toString();
 
-  arangodb::HttpResponse resp(code);
+  arangodb::HttpResponse resp(code, nullptr);
   resp.setContentType(arangodb::ContentType::VPACK);
   resp.headResponse(body.size());
 

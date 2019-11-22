@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global frontendConfig, window, document, Backbone, $, arangoHelper, templateEngine, Joi */
+/* global frontendConfig, window, Backbone, $, arangoHelper, templateEngine, Joi */
 (function () {
   'use strict';
 
@@ -21,10 +21,6 @@
     events: {
       'click #createUser': 'createUser',
       'click #submitCreateUser': 'submitCreateUser',
-      //      "click #deleteUser"                   : "removeUser",
-      //      "click #submitDeleteUser"             : "submitDeleteUser",
-      //      "click .editUser"                     : "editUser",
-      //      "click .icon"                         : "editUser",
       'click #userManagementThumbnailsIn .tile': 'editUser',
       'click #submitEditUser': 'submitEditUser',
       'click #userManagementToggle': 'toggleView',
@@ -129,7 +125,7 @@
         reducedCollection;
 
       searchInput = $('#userManagementSearchInput');
-      searchString = $('#userManagementSearchInput').val();
+      searchString = arangoHelper.escapeHtml($('#userManagementSearchInput').val());
       reducedCollection = this.collection.filter(
         function (u) {
           return u.get('user').indexOf(searchString) !== -1;
@@ -212,7 +208,12 @@
       }
 
       if ($(e.currentTarget).hasClass('tile')) {
-        e.currentTarget = $(e.currentTarget).find('.fa');
+        if ($(e.currentTarget).find('.fa').attr('id')) {
+          e.currentTarget = $(e.currentTarget).find('.fa');
+        } else {
+          // check if gravatar icon is enabled
+          e.currentTarget = $(e.currentTarget).find('.icon');
+        }
       }
 
       this.collection.fetch({

@@ -113,8 +113,6 @@ struct IRESEARCH_API tracking_directory final : public directory {
     bool track_open = false
   ) NOEXCEPT;
 
-  virtual ~tracking_directory();
-
   directory& operator*() NOEXCEPT {
     return impl_;
   }
@@ -191,7 +189,6 @@ struct IRESEARCH_API ref_tracking_directory: public directory {
   // @param track_open - track file refs for calls to open(...)
   explicit ref_tracking_directory(directory& impl, bool track_open = false);
   ref_tracking_directory(ref_tracking_directory&& other) NOEXCEPT;
-  virtual ~ref_tracking_directory();
 
   directory& operator*() NOEXCEPT {
     return impl_;

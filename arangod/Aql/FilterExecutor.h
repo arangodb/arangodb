@@ -28,18 +28,17 @@
 
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutorInfos.h"
-#include "Aql/OutputAqlItemRow.h"
-#include "Aql/Stats.h"
 #include "Aql/types.h"
 
 #include <memory>
 
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
 
 class InputAqlItemRow;
+class OutputAqlItemRow;
 class ExecutorInfos;
-template <bool>
+class FilterStats;
+template <BlockPassthrough>
 class SingleRowFetcher;
 
 class FilterExecutorInfos : public ExecutorInfos {
@@ -54,7 +53,7 @@ class FilterExecutorInfos : public ExecutorInfos {
   FilterExecutorInfos(FilterExecutorInfos const&) = delete;
   ~FilterExecutorInfos() = default;
 
-  RegisterId getInputRegister() const noexcept { return _inputRegister; };
+  [[nodiscard]] RegisterId getInputRegister() const noexcept;
 
  private:
   // This is exactly the value in the parent member ExecutorInfo::_inRegs,
@@ -68,8 +67,9 @@ class FilterExecutorInfos : public ExecutorInfos {
 class FilterExecutor {
  public:
   struct Properties {
-    static const bool preservesOrder = true;
-    static const bool allowsBlockPassthrough = false;
+    static constexpr bool preservesOrder = true;
+    static constexpr BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Disable;
+    static constexpr bool inputSizeRestrictsOutputSize = true;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = FilterExecutorInfos;
@@ -86,14 +86,15 @@ class FilterExecutor {
    *
    * @return ExecutionState, and if successful exactly one new Row of AqlItems.
    */
-  std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
+  [[nodiscard]] std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
+
+  [[nodiscard]] std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t atMost) const;
 
  private:
   Infos& _infos;
   Fetcher& _fetcher;
 };
 
-}  // namespace aql
-}  // namespace arangodb
+}  // namespace arangodb::aql
 
 #endif

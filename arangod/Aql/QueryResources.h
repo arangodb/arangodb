@@ -24,6 +24,9 @@
 #ifndef ARANGOD_AQL_QUERY_RESOURCES_H
 #define ARANGOD_AQL_QUERY_RESOURCES_H 1
 
+#include <string>
+#include <vector>
+
 #include "Aql/ShortStringStorage.h"
 #include "Basics/Common.h"
 

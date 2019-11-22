@@ -21,28 +21,47 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "VelocyPackHelper.h"
-#include "Basics/Exceptions.h"
-#include "Basics/NumberUtils.h"
-#include "Basics/StaticStrings.h"
-#include "Basics/StringBuffer.h"
-#include "Basics/StringUtils.h"
-#include "Basics/Utf8Helper.h"
-#include "Basics/VPackStringBufferAdapter.h"
-#include "Basics/conversions.h"
-#include "Basics/files.h"
-#include "Basics/hashes.h"
-#include "Basics/tri-strings.h"
-#include "Logger/Logger.h"
+#include <fcntl.h>
+#include <string.h>
+#include <sys/types.h>
+#include <algorithm>
+#include <cstdint>
+#include <memory>
+#include <set>
 
 #include <velocypack/AttributeTranslator.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Dumper.h>
+#include <velocypack/Iterator.h>
 #include <velocypack/Options.h>
 #include <velocypack/Slice.h>
 #include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 #include <velocypack/velocypack-common.h>
+
+#include "Basics/operating-system.h"
+
+#ifdef TRI_HAVE_UNISTD_H
+#include <unistd.h>
+#endif
+
+#include "VelocyPackHelper.h"
+
+#include "Basics/Exceptions.h"
+#include "Basics/NumberUtils.h"
+#include "Basics/ScopeGuard.h"
+#include "Basics/StaticStrings.h"
+#include "Basics/StringBuffer.h"
+#include "Basics/StringUtils.h"
+#include "Basics/Utf8Helper.h"
+#include "Basics/VPackStringBufferAdapter.h"
+#include "Basics/error.h"
+#include "Basics/files.h"
+#include "Basics/memory.h"
+#include "Basics/system-compiler.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 
 extern "C" {
 unsigned long long XXH64(const void* input, size_t length, unsigned long long seed);
@@ -53,10 +72,13 @@ using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 
 namespace {
 
+static arangodb::velocypack::StringRef const idRef("id");
+static arangodb::velocypack::StringRef const cidRef("cid");
+
 static std::unique_ptr<VPackAttributeTranslator> translator;
-static std::unique_ptr<VPackAttributeExcludeHandler> excludeHandler;
 static std::unique_ptr<VPackCustomTypeHandler>customTypeHandler;
-      
+static VPackOptions optionsWithUniquenessCheck;
+
 template<bool useUtf8, typename Comparator>
 int compareObjects(VPackSlice const& lhs, 
                    VPackSlice const& rhs,
@@ -154,44 +176,20 @@ static int8_t const typeWeights[256] = {
 // custom types are encountered during Slice.toJson() and family
 struct DefaultCustomTypeHandler final : public VPackCustomTypeHandler {
   void dump(VPackSlice const&, VPackDumper* dumper, VPackSlice const&) override {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+    LOG_TOPIC("723df", WARN, arangodb::Logger::FIXME)
         << "DefaultCustomTypeHandler called";
     dumper->appendString("hello from CustomTypeHandler");
   }
   std::string toString(VPackSlice const&, VPackOptions const*, VPackSlice const&) override {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+    LOG_TOPIC("a01a7", WARN, arangodb::Logger::FIXME)
         << "DefaultCustomTypeHandler called";
     return "hello from CustomTypeHandler";
   }
 };
 
-// attribute exclude handler for skipping over system attributes
-struct SystemAttributeExcludeHandler final : public VPackAttributeExcludeHandler {
-  bool shouldExclude(VPackSlice const& key, int nesting) override final {
-    VPackValueLength keyLength;
-    char const* p = key.getString(keyLength);
-
-    if (p == nullptr || *p != '_' || keyLength < 3 || keyLength > 5 || nesting > 0) {
-      // keep attribute
-      return true;
-    }
-
-    // exclude these attributes (but not _key!)
-    if ((keyLength == 3 && memcmp(p, "_id", static_cast<size_t>(keyLength)) == 0) ||
-        (keyLength == 4 && memcmp(p, "_rev", static_cast<size_t>(keyLength)) == 0) ||
-        (keyLength == 3 && memcmp(p, "_to", static_cast<size_t>(keyLength)) == 0) ||
-        (keyLength == 5 && memcmp(p, "_from", static_cast<size_t>(keyLength)) == 0)) {
-      return true;
-    }
-
-    // keep attribute
-    return false;
-  }
-};
-
 /// @brief static initializer for all VPack values
 void VelocyPackHelper::initialize() {
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "initializing vpack";
+  LOG_TOPIC("bbce8", TRACE, arangodb::Logger::FIXME) << "initializing vpack";
 
   // initialize attribute translator
   ::translator.reset(new VPackAttributeTranslator);
@@ -219,6 +217,9 @@ void VelocyPackHelper::initialize() {
   // allow dumping of Object attributes in "arbitrary" order (i.e. non-sorted
   // order)
   VPackOptions::Defaults.dumpAttributesInIndexOrder = false;
+  
+  ::optionsWithUniquenessCheck = VPackOptions::Defaults;
+  ::optionsWithUniquenessCheck.checkAttributeUniqueness = true;
 
   // run quick selfs test with the attribute translator
   TRI_ASSERT(VPackSlice(::translator->translate(StaticStrings::KeyString)).getUInt() ==
@@ -242,9 +243,6 @@ void VelocyPackHelper::initialize() {
              StaticStrings::FromString);
   TRI_ASSERT(VPackSlice(::translator->translate(ToAttribute - AttributeBase)).copyString() ==
              StaticStrings::ToString);
-
-  // initialize exclude handler for system attributes
-  ::excludeHandler.reset(new SystemAttributeExcludeHandler);
 }
 
 /// @brief turn off assembler optimizations in vpack
@@ -252,14 +250,14 @@ void VelocyPackHelper::disableAssemblerFunctions() {
   arangodb::velocypack::disableAssemblerFunctions();
 }
 
-/// @brief return the (global) attribute exclude handler instance
-arangodb::velocypack::AttributeExcludeHandler* VelocyPackHelper::getExcludeHandler() {
-  return ::excludeHandler.get();
-}
-
 /// @brief return the (global) attribute translator instance
 arangodb::velocypack::AttributeTranslator* VelocyPackHelper::getTranslator() {
   return ::translator.get();
+}
+
+/// @brief return the (global) attribute translator instance
+arangodb::velocypack::Options* VelocyPackHelper::optionsWithUniquenessCheck() {
+  return &::optionsWithUniquenessCheck;
 }
 
 bool VelocyPackHelper::AttributeSorterUTF8::operator()(std::string const& l,
@@ -313,7 +311,7 @@ size_t VelocyPackHelper::VPackStringHash::operator()(VPackSlice const& slice) co
 
 bool VelocyPackHelper::VPackEqual::operator()(VPackSlice const& lhs,
                                               VPackSlice const& rhs) const {
-  return VelocyPackHelper::compare(lhs, rhs, false, _options) == 0;
+  return VelocyPackHelper::equal(lhs, rhs, false, _options);
 }
 
 static inline int8_t TypeWeight(VPackSlice& slice) {
@@ -409,37 +407,6 @@ int VelocyPackHelper::compareStringValues(char const* left, VPackValueLength nl,
   return (nl < nr ? -1 : 1);
 }
 
-/// @brief returns a boolean sub-element, or a default if it is does not exist
-bool VelocyPackHelper::getBooleanValue(VPackSlice const& slice,
-                                       char const* name, bool defaultValue) {
-  TRI_ASSERT(slice.isObject());
-  if (!slice.hasKey(name)) {
-    return defaultValue;
-  }
-  VPackSlice const& sub = slice.get(name);
-
-  if (sub.isBoolean()) {
-    return sub.getBool();
-  }
-
-  return defaultValue;
-}
-
-bool VelocyPackHelper::getBooleanValue(VPackSlice const& slice,
-                                       std::string const& name, bool defaultValue) {
-  TRI_ASSERT(slice.isObject());
-  if (!slice.hasKey(name)) {
-    return defaultValue;
-  }
-  VPackSlice const& sub = slice.get(name);
-
-  if (sub.isBoolean()) {
-    return sub.getBool();
-  }
-
-  return defaultValue;
-}
-
 /// @brief returns a string sub-element, or throws if <name> does not exist
 /// or it is not a string
 std::string VelocyPackHelper::checkAndGetStringValue(VPackSlice const& slice,
@@ -488,30 +455,8 @@ void VelocyPackHelper::ensureStringValue(VPackSlice const& slice, std::string co
   }
 }
 
-/*static*/ arangodb::velocypack::StringRef VelocyPackHelper::getStringRef(
-    arangodb::velocypack::Slice slice,
-    arangodb::velocypack::StringRef const& defaultValue) noexcept {
-  return slice.isString() ? arangodb::velocypack::StringRef(slice) : defaultValue;
-}
-
-/*static*/ arangodb::velocypack::StringRef VelocyPackHelper::getStringRef(
-    arangodb::velocypack::Slice slice, std::string const& key,
-    arangodb::velocypack::StringRef const& defaultValue) noexcept {
-  if (slice.isExternal()) {
-    slice = arangodb::velocypack::Slice(slice.getExternal());
-  }
-
-  if (!slice.isObject() || !slice.hasKey(key)) {
-    return defaultValue;
-  }
-
-  auto value = slice.get(key);
-
-  return value.isString() ? arangodb::velocypack::StringRef(value) : defaultValue;
-}
-
 /// @brief returns a string value, or the default value if it is not a string
-std::string VelocyPackHelper::getStringValue(VPackSlice const& slice,
+std::string VelocyPackHelper::getStringValue(VPackSlice slice,
                                              std::string const& defaultValue) {
   if (!slice.isString()) {
     return defaultValue;
@@ -519,47 +464,11 @@ std::string VelocyPackHelper::getStringValue(VPackSlice const& slice,
   return slice.copyString();
 }
 
-/// @brief returns a string sub-element, or the default value if it does not
-/// exist
-/// or it is not a string
-std::string VelocyPackHelper::getStringValue(VPackSlice slice, char const* name,
-                                             std::string const& defaultValue) {
-  if (slice.isExternal()) {
-    slice = VPackSlice(slice.getExternal());
-  }
-  TRI_ASSERT(slice.isObject());
-  if (!slice.hasKey(name)) {
-    return defaultValue;
-  }
-  VPackSlice const sub = slice.get(name);
-  if (!sub.isString()) {
-    return defaultValue;
-  }
-  return sub.copyString();
-}
-
-/// @brief returns a string sub-element, or the default value if it does not
-/// exist
-/// or it is not a string
-std::string VelocyPackHelper::getStringValue(VPackSlice slice, std::string const& name,
-                                             std::string const& defaultValue) {
-  if (slice.isExternal()) {
-    slice = VPackSlice(slice.getExternal());
-  }
-  TRI_ASSERT(slice.isObject());
-  if (!slice.hasKey(name)) {
-    return defaultValue;
-  }
-  VPackSlice const sub = slice.get(name);
-  if (!sub.isString()) {
-    return defaultValue;
-  }
-  return sub.copyString();
-}
-
-uint64_t VelocyPackHelper::stringUInt64(VPackSlice const& slice) {
+uint64_t VelocyPackHelper::stringUInt64(VPackSlice slice) {
   if (slice.isString()) {
-    return arangodb::basics::StringUtils::uint64(slice.copyString());
+    VPackValueLength length;
+    char const* p = slice.getString(length);
+    return arangodb::NumberUtils::atoi_zero<uint64_t>(p, p + length);
   }
   if (slice.isNumber()) {
     return slice.getNumericValue<uint64_t>();
@@ -628,7 +537,7 @@ static bool PrintVelocyPack(int fd, VPackSlice const& slice, bool appendNewline)
 
 /// @brief writes a VelocyPack to a file
 bool VelocyPackHelper::velocyPackToFile(std::string const& filename,
-                                        VPackSlice const& slice, bool syncFile) {
+                                        VPackSlice slice, bool syncFile) {
   std::string const tmp = filename + ".tmp";
 
   // remove a potentially existing temporary file
@@ -641,7 +550,7 @@ bool VelocyPackHelper::velocyPackToFile(std::string const& filename,
 
   if (fd < 0) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("35198", WARN, arangodb::Logger::FIXME)
         << "cannot create json file '" << tmp << "': " << TRI_LAST_ERROR_STR;
     return false;
   }
@@ -649,19 +558,19 @@ bool VelocyPackHelper::velocyPackToFile(std::string const& filename,
   if (!PrintVelocyPack(fd, slice, true)) {
     TRI_CLOSE(fd);
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("549f4", WARN, arangodb::Logger::FIXME)
         << "cannot write to json file '" << tmp << "': " << TRI_LAST_ERROR_STR;
     TRI_UnlinkFile(tmp.c_str());
     return false;
   }
 
   if (syncFile) {
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "syncing tmp file '" << tmp << "'";
+    LOG_TOPIC("0acab", TRACE, arangodb::Logger::FIXME) << "syncing tmp file '" << tmp << "'";
 
     if (!TRI_fsync(fd)) {
       TRI_CLOSE(fd);
       TRI_set_errno(TRI_ERROR_SYS_ERROR);
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC("fd628", WARN, arangodb::Logger::FIXME)
           << "cannot sync saved json '" << tmp << "': " << TRI_LAST_ERROR_STR;
       TRI_UnlinkFile(tmp.c_str());
       return false;
@@ -672,7 +581,7 @@ bool VelocyPackHelper::velocyPackToFile(std::string const& filename,
 
   if (res < 0) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("3f835", WARN, arangodb::Logger::FIXME)
         << "cannot close saved file '" << tmp << "': " << TRI_LAST_ERROR_STR;
     TRI_UnlinkFile(tmp.c_str());
     return false;
@@ -682,13 +591,38 @@ bool VelocyPackHelper::velocyPackToFile(std::string const& filename,
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_set_errno(res);
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("7f5c9", WARN, arangodb::Logger::FIXME)
         << "cannot rename saved file '" << tmp << "' to '" << filename
         << "': " << TRI_LAST_ERROR_STR;
     TRI_UnlinkFile(tmp.c_str());
 
     return false;
   }
+
+#ifndef _WIN32
+  if (syncFile) {
+    // also sync target directory
+    std::string const dir = TRI_Dirname(filename);
+    fd = TRI_OPEN(dir.c_str(), O_RDONLY | TRI_O_CLOEXEC);
+    if (fd < 0) {
+      TRI_set_errno(TRI_ERROR_SYS_ERROR);
+      LOG_TOPIC("fd84e", WARN, arangodb::Logger::FIXME)
+          << "cannot sync directory '" << filename << "': " << TRI_LAST_ERROR_STR;
+    } else {
+      if (fsync(fd) < 0) {
+        TRI_set_errno(TRI_ERROR_SYS_ERROR);
+        LOG_TOPIC("6b8f6", WARN, arangodb::Logger::FIXME)
+            << "cannot sync directory '" << filename << "': " << TRI_LAST_ERROR_STR;
+      }
+      res = TRI_CLOSE(fd);
+      if (res < 0) {
+        TRI_set_errno(TRI_ERROR_SYS_ERROR);
+        LOG_TOPIC("7ceee", WARN, arangodb::Logger::FIXME)
+            << "cannot close directory '" << filename << "': " << TRI_LAST_ERROR_STR;
+      }
+    }
+  }
+#endif
 
   return true;
 }
@@ -908,6 +842,7 @@ void VelocyPackHelper::patchDouble(VPackSlice slice, double value) {
   }
 #else
   // other platforms support unaligned writes
+  // cppcheck-suppress *
   *reinterpret_cast<double*>(p + 1) = value;
 #endif
 }
@@ -918,13 +853,13 @@ bool VelocyPackHelper::hasNonClientTypes(VPackSlice input, bool checkExternals, 
   } else if (input.isCustom()) {
     return checkCustom;
   } else if (input.isObject()) {
-    for (auto const& it : VPackObjectIterator(input, true)) {
+    for (auto it : VPackObjectIterator(input, true)) {
       if (hasNonClientTypes(it.value, checkExternals, checkCustom)) {
         return true;
       }
     }
   } else if (input.isArray()) {
-    for (auto const& it : VPackArrayIterator(input)) {
+    for (VPackSlice it : VPackArrayIterator(input)) {
       if (hasNonClientTypes(it, checkExternals, checkCustom)) {
         return true;
       }
@@ -951,7 +886,7 @@ void VelocyPackHelper::sanitizeNonClientTypes(VPackSlice input, VPackSlice base,
     output.add(VPackValue(custom));
   } else if (input.isObject()) {
     output.openObject(allowUnindexed);
-    for (auto const& it : VPackObjectIterator(input, true)) {
+    for (auto it : VPackObjectIterator(input, true)) {
       VPackValueLength l;
       char const* p = it.key.getString(l);
       output.add(VPackValuePair(p, l, VPackValueType::String));
@@ -961,7 +896,7 @@ void VelocyPackHelper::sanitizeNonClientTypes(VPackSlice input, VPackSlice base,
     output.close();
   } else if (input.isArray()) {
     output.openArray(allowUnindexed);
-    for (auto const& it : VPackArrayIterator(input)) {
+    for (VPackSlice it : VPackArrayIterator(input)) {
       sanitizeNonClientTypes(it, input, output, options, sanitizeExternals,
                              sanitizeCustom, allowUnindexed);
     }
@@ -976,10 +911,10 @@ uint64_t VelocyPackHelper::extractIdValue(VPackSlice const& slice) {
   if (!slice.isObject()) {
     return 0;
   }
-  VPackSlice id = slice.get("id");
+  VPackSlice id = slice.get(::idRef);
   if (id.isNone()) {
     // pre-3.1 compatibility
-    id = slice.get("cid");
+    id = slice.get(::cidRef);
   }
 
   if (id.isString()) {

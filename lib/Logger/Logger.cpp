@@ -22,19 +22,36 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <chrono>
+#include <cstring>
+#include <iosfwd>
+#include <thread>
+#include <type_traits>
+
 #include "Logger.h"
 
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/Common.h"
-#include "Basics/ConditionLocker.h"
 #include "Basics/Exceptions.h"
+#include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
-#include "Basics/files.h"
+#include "Basics/debugging.h"
+#include "Basics/operating-system.h"
+#include "Basics/voc-errors.h"
 #include "Logger/LogAppender.h"
 #include "Logger/LogAppenderFile.h"
+#include "Logger/LogMacros.h"
 #include "Logger/LogThread.h"
+
+#ifdef _WIN32
+#include "Basics/win-utils.h"
+#endif
+
+#ifdef TRI_HAVE_UNISTD_H
+#include <unistd.h>
+#endif
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -55,6 +72,8 @@ Mutex Logger::_initializeMutex;
 std::atomic<bool> Logger::_active(false);
 std::atomic<LogLevel> Logger::_level(LogLevel::INFO);
 
+LogTimeFormats::TimeFormat Logger::_timeFormat(LogTimeFormats::TimeFormat::UTCDateString);
+bool Logger::_showIds(false);
 bool Logger::_showLineNumber(false);
 bool Logger::_shortenFilenames(true);
 bool Logger::_showThreadIdentifier(false);
@@ -62,9 +81,7 @@ bool Logger::_showThreadName(false);
 bool Logger::_threaded(false);
 bool Logger::_useColor(true);
 bool Logger::_useEscaped(true);
-bool Logger::_useLocalTime(false);
 bool Logger::_keepLogRotate(false);
-bool Logger::_useMicrotime(false);
 bool Logger::_logRequestParameters(true);
 bool Logger::_showRole(false);
 char Logger::_role('\0');
@@ -79,6 +96,10 @@ std::vector<std::pair<std::string, LogLevel>> Logger::logLevelTopics() {
   return LogTopic::logLevelTopics();
 }
 
+void Logger::setShowIds(bool show) {
+  _showIds = show;
+}
+
 void Logger::setLogLevel(LogLevel level) {
   _level.store(level, std::memory_order_relaxed);
 }
@@ -89,7 +110,7 @@ void Logger::setLogLevel(std::string const& levelName) {
 
   if (v.empty() || v.size() > 2) {
     Logger::setLogLevel(LogLevel::INFO);
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("b83c6", ERR, arangodb::Logger::FIXME)
         << "strange log level '" << levelName << "', using log level 'info'";
     return;
   }
@@ -122,10 +143,10 @@ void Logger::setLogLevel(std::string const& levelName) {
   } else {
     if (isGeneral) {
       Logger::setLogLevel(LogLevel::INFO);
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC("d880b", ERR, arangodb::Logger::FIXME)
           << "strange log level '" << levelName << "', using log level 'info'";
     } else {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "strange log level '" << levelName << "'";
+      LOG_TOPIC("05367", ERR, arangodb::Logger::FIXME) << "strange log level '" << levelName << "'";
     }
 
     return;
@@ -153,7 +174,7 @@ void Logger::setRole(char role) { _role = role; }
 void Logger::setOutputPrefix(std::string const& prefix) {
   if (_active) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL, "cannot change output prefix if logging is active");
+        TRI_ERROR_INTERNAL, "cannot change settings once logging is active");
   }
 
   _outputPrefix = prefix;
@@ -163,8 +184,7 @@ void Logger::setOutputPrefix(std::string const& prefix) {
 void Logger::setShowLineNumber(bool show) {
   if (_active) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL,
-        "cannot change show line number if logging is active");
+        TRI_ERROR_INTERNAL, "cannot change settings once logging is active");
   }
 
   _showLineNumber = show;
@@ -174,8 +194,7 @@ void Logger::setShowLineNumber(bool show) {
 void Logger::setShortenFilenames(bool shorten) {
   if (_active) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL,
-        "cannot change shorten filenames if logging is active");
+        TRI_ERROR_INTERNAL, "cannot change settings once logging is active");
   }
 
   _shortenFilenames = shorten;
@@ -185,8 +204,7 @@ void Logger::setShortenFilenames(bool shorten) {
 void Logger::setShowThreadIdentifier(bool show) {
   if (_active) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL,
-        "cannot change show thread identifier if logging is active");
+        TRI_ERROR_INTERNAL, "cannot change settings once logging is active");
   }
 
   _showThreadIdentifier = show;
@@ -196,8 +214,7 @@ void Logger::setShowThreadIdentifier(bool show) {
 void Logger::setShowThreadName(bool show) {
   if (_active) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL,
-        "cannot change show thread name if logging is active");
+        TRI_ERROR_INTERNAL, "cannot change settings once logging is active");
   }
 
   _showThreadName = show;
@@ -206,8 +223,8 @@ void Logger::setShowThreadName(bool show) {
 // NOTE: this function should not be called if the logging is active.
 void Logger::setUseColor(bool value) {
   if (_active) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "cannot change color if logging is active");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL, "cannot change settings once logging is active");
   }
 
   _useColor = value;
@@ -217,49 +234,37 @@ void Logger::setUseColor(bool value) {
 void Logger::setUseEscaped(bool value) {
   if (_active) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL, "cannot change escaping if logging is active");
+        TRI_ERROR_INTERNAL, "cannot change settings once logging is active");
   }
 
   _useEscaped = value;
 }
 
 // NOTE: this function should not be called if the logging is active.
-void Logger::setUseLocalTime(bool show) {
-  if (_active) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL,
-        "cannot change use local time if logging is active");
-  }
-
-  _useLocalTime = show;
-}
-
-// NOTE: this function should not be called if the logging is active.
 void Logger::setShowRole(bool show) {
   if (_active) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL, "cannot change show role if logging is active");
+        TRI_ERROR_INTERNAL, "cannot change settings once logging is active");
   }
 
   _showRole = show;
 }
 
 // NOTE: this function should not be called if the logging is active.
-void Logger::setUseMicrotime(bool show) {
+void Logger::setTimeFormat(LogTimeFormats::TimeFormat format) {
   if (_active) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL, "cannot change use microtime if logging is active");
+        TRI_ERROR_INTERNAL, "cannot change settings once logging is active");
   }
 
-  _useMicrotime = show;
+  _timeFormat = format;
 }
 
 // NOTE: this function should not be called if the logging is active.
 void Logger::setKeepLogrotate(bool keep) {
   if (_active) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL,
-        "cannot change keep log rotate if logging is active");
+        TRI_ERROR_INTERNAL, "cannot change settings once logging is active");
   }
 
   _keepLogRotate = keep;
@@ -269,8 +274,7 @@ void Logger::setKeepLogrotate(bool keep) {
 void Logger::setLogRequestParameters(bool log) {
   if (_active) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL,
-        "cannot change logging of request parameters if logging is active");
+        TRI_ERROR_INTERNAL, "cannot change settings once logging is active");
   }
 
   _logRequestParameters = log;
@@ -313,33 +317,9 @@ void Logger::log(char const* function, char const* file, int line,
   }
 #endif
 
-  if (!_active.load(std::memory_order_relaxed)) {
-    LogAppenderStdStream::writeLogMessage(STDERR_FILENO, (isatty(STDERR_FILENO) == 1),
-                                          level, message.data(), message.size(), true);
-    return;
-  }
-
   std::stringstream out;
-  char buf[64];
-
-  // time prefix
-  if (_useMicrotime) {
-    snprintf(buf, sizeof(buf), "%.6f ", TRI_microtime());
-  } else {
-    time_t tt = time(nullptr);
-    struct tm tb;
-
-    if (!_useLocalTime) {
-      // use GMtime
-      TRI_gmtime(tt, &tb);
-      strftime(buf, sizeof(buf), "%Y-%m-%dT%H:%M:%SZ ", &tb);
-    } else {
-      // use localtime
-      TRI_localtime(tt, &tb);
-      strftime(buf, sizeof(buf), "%Y-%m-%dT%H:%M:%S ", &tb);
-    }
-  }
-  out << buf;
+  LogTimeFormats::writeTime(out, _timeFormat);
+  out << ' ';
 
   // output prefix
   if (!_outputPrefix.empty()) {
@@ -399,32 +379,43 @@ void Logger::log(char const* function, char const* file, int line,
   // generate the complete message
   out << message;
   std::string ostreamContent = out.str();
+ 
+  if (!_active.load(std::memory_order_relaxed)) {
+    LogAppenderStdStream::writeLogMessage(STDERR_FILENO, (isatty(STDERR_FILENO) == 1),
+                                          level, ostreamContent.data(), ostreamContent.size(), true);
+    return;
+  }
+
   size_t offset = ostreamContent.size() - message.size();
   auto msg = std::make_unique<LogMessage>(level, topicId, std::move(ostreamContent), offset);
 
   // now either queue or output the message
+  bool handled = false;
   if (_threaded) {
     try {
-      _loggingThread->log(msg);
-      bool const isDirectLogLevel =
-          (level == LogLevel::FATAL || level == LogLevel::ERR || level == LogLevel::WARN);
-      if (isDirectLogLevel) {
-        _loggingThread->flush();
+      handled = _loggingThread->log(msg);
+      if (handled) {
+        bool const isDirectLogLevel =
+            (level == LogLevel::FATAL || level == LogLevel::ERR || level == LogLevel::WARN);
+        if (isDirectLogLevel) {
+          _loggingThread->flush();
+        }
       }
-      return;
     } catch (...) {
       // fall-through to non-threaded logging
     }
   }
 
-  LogAppender::log(msg.get());
+  if (!handled) {
+    LogAppender::log(msg.get());
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initializes the logging component
 ////////////////////////////////////////////////////////////////////////////////
 
-void Logger::initialize(bool threaded) {
+void Logger::initialize(application_features::ApplicationServer& server, bool threaded) {
   MUTEX_LOCKER(locker, _initializeMutex);
 
   if (_active) {
@@ -439,7 +430,7 @@ void Logger::initialize(bool threaded) {
   _threaded = threaded;
 
   if (threaded) {
-    _loggingThread = std::make_unique<LogThread>("Logging");
+    _loggingThread = std::make_unique<LogThread>(server, "Logging");
     _loggingThread->start();
   }
 }
@@ -465,7 +456,7 @@ void Logger::shutdown() {
     int tries = 0;
     while (_loggingThread->hasMessages() && ++tries < 1000) {
       _loggingThread->wakeup();
-      std::this_thread::sleep_for(std::chrono::microseconds(10000));
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
     _loggingThread->beginShutdown();
     _loggingThread.reset();

@@ -22,10 +22,13 @@
 
 #include "RestServer/FortuneFeature.h"
 
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Random/RandomGenerator.h"
+#include "RestServer/BootstrapFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::options;
@@ -64,7 +67,7 @@ static char const* cookies[] = {
 
 FortuneFeature::FortuneFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Fortune"), _fortune(false) {
-  startsAfter("Bootstrap");
+  startsAfter<BootstrapFeature>();
 }
 
 void FortuneFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -81,6 +84,6 @@ void FortuneFeature::start() {
   uint32_t r = RandomGenerator::interval(
       static_cast<uint32_t>(sizeof(::cookies) / sizeof(::cookies)[0]));
   if (strlen(::cookies[r]) > 0) {
-    LOG_TOPIC(INFO, Logger::FIXME) << ::cookies[r];
+    LOG_TOPIC("f3422", INFO, Logger::FIXME) << ::cookies[r];
   }
 }

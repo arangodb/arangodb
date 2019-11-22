@@ -27,6 +27,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
+#include "Basics/ReadWriteLock.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "StorageEngine/StorageEngine.h"
 #include "VocBase/AccessMode.h"
@@ -42,6 +43,7 @@
 namespace rocksdb {
 
 class TransactionDB;
+class EncryptionProvider;
 }
 
 namespace arangodb {
@@ -49,6 +51,7 @@ namespace arangodb {
 class PhysicalCollection;
 class PhysicalView;
 class RocksDBBackgroundThread;
+class RocksDBEventListener;
 class RocksDBKey;
 class RocksDBLogValue;
 class RocksDBRecoveryHelper;
@@ -62,18 +65,64 @@ class TransactionCollection;
 class TransactionState;
 
 namespace rest {
-
 class RestHandlerFactory;
 }
 
 namespace transaction {
-
 class ContextData;
 struct Options;
-
 }  // namespace transaction
 
+class RocksDBEngine; // forward
+
+/// @brief helper class to make file-purging thread-safe
+/// while there is an object of this type around, it will prevent
+/// purging of maybe-needed WAL files via holding a lock in the
+/// RocksDB engine. if there is no object of this type around,
+/// purging is allowed to happen
+class RocksDBFilePurgePreventer {
+ public:
+  RocksDBFilePurgePreventer(RocksDBFilePurgePreventer const&) = delete;
+  RocksDBFilePurgePreventer& operator=(RocksDBFilePurgePreventer const&) = delete;
+  RocksDBFilePurgePreventer& operator=(RocksDBFilePurgePreventer&&) = delete;
+
+  explicit RocksDBFilePurgePreventer(RocksDBEngine*);
+  RocksDBFilePurgePreventer(RocksDBFilePurgePreventer&&);
+  ~RocksDBFilePurgePreventer();
+
+ private:
+  RocksDBEngine* _engine;
+};
+
+/// @brief helper class to make file-purging thread-safe
+/// creating an object of this type will try to acquire a lock that rules
+/// out all WAL iteration/WAL tailing while the lock is held. While this
+/// is the case, we are allowed to purge any WAL file, because no other
+/// thread is able to access it. Note that it is still safe to delete
+/// unneeded WAL files, as they will not be accessed by any other thread.
+/// however, without this object it would be unsafe to delete WAL files
+/// that may still be accessed by WAL tailing etc.
+class RocksDBFilePurgeEnabler {
+ public:
+  RocksDBFilePurgeEnabler(RocksDBFilePurgePreventer const&) = delete;
+  RocksDBFilePurgeEnabler& operator=(RocksDBFilePurgeEnabler const&) = delete;
+  RocksDBFilePurgeEnabler& operator=(RocksDBFilePurgeEnabler&&) = delete;
+
+  explicit RocksDBFilePurgeEnabler(RocksDBEngine*);
+  RocksDBFilePurgeEnabler(RocksDBFilePurgeEnabler&&);
+  ~RocksDBFilePurgeEnabler();
+
+  /// @brief returns true if purging any type of WAL file is currently allowed
+  bool canPurge() const { return _engine != nullptr; }
+
+ private:
+  RocksDBEngine* _engine;
+};
+
 class RocksDBEngine final : public StorageEngine {
+  friend class RocksDBFilePurgePreventer;
+  friend class RocksDBFilePurgeEnabler;
+
  public:
   // create the storage engine
   explicit RocksDBEngine(application_features::ApplicationServer& server);
@@ -95,16 +144,13 @@ class RocksDBEngine final : public StorageEngine {
   void stop() override;
   void unprepare() override;
 
-  // minimum timeout for the synchronous replication
-  double minimumSyncReplicationTimeout() const override { return 1.0; }
-
   bool supportsDfdb() const override { return false; }
   bool useRawDocumentPointers() override { return false; }
 
-  std::unique_ptr<TransactionManager> createTransactionManager() override;
+  std::unique_ptr<transaction::Manager> createTransactionManager(transaction::ManagerFeature&) override;
   std::unique_ptr<transaction::ContextData> createTransactionContextData() override;
-  std::unique_ptr<TransactionState> createTransactionState(TRI_vocbase_t& vocbase,
-                                                           transaction::Options const& options) override;
+  std::unique_ptr<TransactionState> createTransactionState(
+      TRI_vocbase_t& vocbase, TRI_voc_tid_t, transaction::Options const& options) override;
   std::unique_ptr<TransactionCollection> createTransactionCollection(
       TransactionState& state, TRI_voc_cid_t cid, AccessMode::Type accessType,
       int nestingLevel) override;
@@ -114,6 +160,7 @@ class RocksDBEngine final : public StorageEngine {
       LogicalCollection& collection, velocypack::Slice const& info) override;
 
   void getStatistics(velocypack::Builder& builder) const override;
+  void getStatistics(std::string& result) const override;
 
   // inventory functionality
   // -----------------------
@@ -130,6 +177,9 @@ class RocksDBEngine final : public StorageEngine {
   int getViews(TRI_vocbase_t& vocbase, arangodb::velocypack::Builder& result) override;
 
   std::string versionFilename(TRI_voc_tick_t id) const override;
+  std::string dataPath() const override {
+    return _basePath + TRI_DIR_SEPARATOR_STR + "engine-rocksdb";
+  }
   std::string databasePath(TRI_vocbase_t const* /*vocbase*/) const override {
     return _basePath;
   }
@@ -137,6 +187,8 @@ class RocksDBEngine final : public StorageEngine {
                              ) const override {
     return std::string();  // no path to be returned here
   }
+
+  void cleanupReplicationContexts() override;
 
   velocypack::Builder getReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
                                                          int& status) override;
@@ -170,10 +222,9 @@ class RocksDBEngine final : public StorageEngine {
   Result flushWal(bool waitForSync, bool waitForCollector, bool writeShutdownFile) override;
   void waitForEstimatorSync(std::chrono::milliseconds maxWaitTime) override;
 
-  virtual std::unique_ptr<TRI_vocbase_t> openDatabase(velocypack::Slice const& args,
-                                                      bool isUpgrade, int& status) override;
-  std::unique_ptr<TRI_vocbase_t> createDatabase(TRI_voc_tick_t id,
-                                                velocypack::Slice const& args,
+  virtual std::unique_ptr<TRI_vocbase_t> openDatabase(arangodb::CreateDatabaseInfo&& info,
+                                                      bool isUpgrade) override;
+  std::unique_ptr<TRI_vocbase_t> createDatabase(arangodb::CreateDatabaseInfo&&,
                                                 int& status) override;
   int writeCreateDatabaseMarker(TRI_voc_tick_t id, velocypack::Slice const& slice) override;
   void prepareDropDatabase(TRI_vocbase_t& vocbase, bool useWriteMarker, int& status) override;
@@ -181,12 +232,23 @@ class RocksDBEngine final : public StorageEngine {
   void waitUntilDeletion(TRI_voc_tick_t id, bool force, int& status) override;
 
   // wal in recovery
-  bool inRecovery() override;
+  RecoveryState recoveryState() noexcept override;
+
+  /// @brief current recovery tick
+  TRI_voc_tick_t recoveryTick() noexcept override;
 
   // start compactor thread and delete files form collections marked as deleted
   void recoveryDone(TRI_vocbase_t& vocbase) override;
 
  public:
+  /// @brief disallow purging of WAL files even if the archive gets too big
+  /// removing WAL files does not seem to be thread-safe, so we have to track
+  /// usage of WAL files ourselves
+  RocksDBFilePurgePreventer disallowPurging() noexcept;
+
+  /// @brief whether or not purging of WAL files is currently allowed
+  RocksDBFilePurgeEnabler startPurging() noexcept;
+
   std::string createCollection(TRI_vocbase_t& vocbase,
                                LogicalCollection const& collection) override;
 
@@ -226,7 +288,7 @@ class RocksDBEngine final : public StorageEngine {
   int shutdownDatabase(TRI_vocbase_t& vocbase) override;
 
   /// @brief Add engine-specific optimizer rules
-  void addOptimizerRules() override;
+  void addOptimizerRules(aql::OptimizerRulesFeature& feature) override;
 
   /// @brief Add engine-specific V8 functions
   void addV8Functions() override;
@@ -276,8 +338,7 @@ class RocksDBEngine final : public StorageEngine {
   bool systemDatabaseExists();
   void addSystemDatabase();
   /// @brief open an existing database. internal function
-  std::unique_ptr<TRI_vocbase_t> openExistingDatabase(TRI_voc_tick_t id,
-                                                      std::string const& name,
+  std::unique_ptr<TRI_vocbase_t> openExistingDatabase(arangodb::CreateDatabaseInfo&& info,
                                                       bool wasCleanShutdown, bool isUpgrade);
 
   std::string getCompressionSupport() const;
@@ -288,17 +349,34 @@ class RocksDBEngine final : public StorageEngine {
   void prepareEnterprise();
   void startEnterprise();
   void configureEnterpriseRocksDBOptions(rocksdb::Options& options);
+  void validateJournalFiles() const;
 
   enterprise::RocksDBEngineEEData _eeData;
+
+public:
+  std::string const& getEncryptionKey();
 #endif
+private:
+  // activate generation of SHA256 files to parallel .sst files
+  bool _createShaFiles;
+
+public:
+  // returns whether sha files are created or not
+  bool getCreateShaFiles() { return _createShaFiles; }
+  // enabled or disable sha file creation. Requires feature not be started.
+  void setCreateShaFiles(bool create) { _createShaFiles = create; }
 
  public:
   static std::string const EngineName;
   static std::string const FeatureName;
-  
-  /// @brief allow / disbable removal of WAL files
-  void disableWalFilePruning(bool disable);
-  bool disableWalFilePruning() const;
+
+  rocksdb::EncryptionProvider* encryptionProvider() const noexcept {
+#ifdef USE_ENTERPRISE
+    return _eeData._encryptionProvider;
+#else
+    return nullptr;
+#endif
+  }
 
   rocksdb::Options const& rocksDBOptions() const { return _options; }
 
@@ -356,8 +434,13 @@ class RocksDBEngine final : public StorageEngine {
   std::unordered_map<uint64_t, CollectionPair> _collectionMap;
   std::unordered_map<uint64_t, IndexTriple> _indexMap;
 
+  /// @brief protects _prunableWalFiles
   mutable basics::ReadWriteLock _walFileLock;
-  // which WAL files can be pruned when
+
+  /// @brief which WAL files can be pruned when
+  /// an expiration time of <= 0.0 means the file does not have expired, but
+  /// still should be purged because the WAL files archive outgrew its max
+  /// configured size
   std::unordered_map<std::string, double> _prunableWalFiles;
 
   // number of seconds to wait before an obsolete WAL file is actually pruned
@@ -366,6 +449,9 @@ class RocksDBEngine final : public StorageEngine {
   // number of seconds to wait initially after server start before WAL file
   // deletion kicks in
   double _pruneWaitTimeInitial;
+
+  /// @brief maximum total size (in bytes) of archived WAL files
+  uint64_t _maxWalArchiveSizeLimit;
 
   // do not release walfiles containing writes later than this
   TRI_voc_tick_t _releasedTick;
@@ -381,6 +467,9 @@ class RocksDBEngine final : public StorageEngine {
   // use write-throttling
   bool _useThrottle;
 
+  /// @brief whether or not to use _releasedTick when determining the WAL files to prune
+  bool _useReleasedTick;
+
   // activate rocksdb's debug logging
   bool _debugLogging;
 
@@ -388,6 +477,12 @@ class RocksDBEngine final : public StorageEngine {
   // too far behind and blocking incoming writes
   // (will only be set if _useThrottle is true)
   std::shared_ptr<RocksDBThrottle> _listener;
+
+  // optional code to notice when rocksdb creates or deletes .ssh files.  Currently
+  //  uses that input to create or delete parallel sha256 files
+  std::shared_ptr<RocksDBEventListener> _shaListener;
+
+  arangodb::basics::ReadWriteLock _purgeLock;
 };
 
 }  // namespace arangodb

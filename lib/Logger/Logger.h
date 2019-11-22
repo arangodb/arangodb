@@ -59,15 +59,24 @@
 #ifndef ARANGODB_LOGGER_LOGGER_H
 #define ARANGODB_LOGGER_LOGGER_H 1
 
-#include "Basics/CleanupFunctions.h"
+#include <stddef.h>
+#include <atomic>
+#include <memory>
+#include <string>
+#include <utility>
+#include <vector>
+
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
 #include "Basics/threads.h"
 #include "Logger/LogLevel.h"
-#include "Logger/LogMacros.h"
+#include "Logger/LogTimeFormat.h"
 #include "Logger/LogTopic.h"
 
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
 class LogThread;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -128,10 +137,12 @@ class Logger {
   static LogTopic AQL;
   static LogTopic AUTHENTICATION;
   static LogTopic AUTHORIZATION;
+  static LogTopic BACKUP;
   static LogTopic CACHE;
   static LogTopic CLUSTER;
   static LogTopic COLLECTOR;
   static LogTopic COMMUNICATION;
+  static LogTopic CLUSTERCOMM;
   static LogTopic COMPACTOR;
   static LogTopic CONFIG;
   static LogTopic DATAFILES;
@@ -153,6 +164,7 @@ class Logger {
   static LogTopic REQUESTS;
   static LogTopic RESTORE;
   static LogTopic ROCKSDB;
+  static LogTopic SECURITY;
   static LogTopic SSL;
   static LogTopic STARTUP;
   static LogTopic STATISTICS;
@@ -218,6 +230,8 @@ class Logger {
 
   static void setRole(char role);
   static void setOutputPrefix(std::string const&);
+  static void setShowIds(bool);
+  static bool getShowIds() { return _showIds; };
   static void setShowLineNumber(bool);
   static void setShowRole(bool);
   static bool getShowRole() { return _showRole; };
@@ -228,10 +242,8 @@ class Logger {
   static bool getUseColor() { return _useColor; };
   static void setUseEscaped(bool);
   static bool getUseEscaped() { return _useEscaped; };
-  static void setUseLocalTime(bool);
-  static bool getUseLocalTime() { return _useLocalTime; };
-  static void setUseMicrotime(bool);
-  static bool getUseMicrotime() { return _useMicrotime; };
+  static bool getUseLocalTime() { return LogTimeFormats::isLocalFormat(_timeFormat); }
+  static void setTimeFormat(LogTimeFormats::TimeFormat);
   static void setKeepLogrotate(bool);
   static void setLogRequestParameters(bool);
   static bool logRequestParameters() { return _logRequestParameters; }
@@ -255,18 +267,19 @@ class Logger {
   }
 
  public:
-  static void initialize(bool);
+  static void initialize(application_features::ApplicationServer&, bool);
   static void shutdown();
   static void flush();
 
  private:
   static Mutex _initializeMutex;
 
-  // these varaibles might be changed asynchronously
+  // these variables might be changed asynchronously
   static std::atomic<bool> _active;
   static std::atomic<LogLevel> _level;
 
   // these variables must be set before calling initialized
+  static LogTimeFormats::TimeFormat _timeFormat;
   static bool _showLineNumber;
   static bool _shortenFilenames;
   static bool _showThreadIdentifier;
@@ -275,10 +288,9 @@ class Logger {
   static bool _threaded;
   static bool _useColor;
   static bool _useEscaped;
-  static bool _useLocalTime;
   static bool _keepLogRotate;
-  static bool _useMicrotime;
   static bool _logRequestParameters;
+  static bool _showIds;
   static char _role;  // current server role to log
   static TRI_pid_t _cachedPid;
   static std::string _outputPrefix;
@@ -286,7 +298,5 @@ class Logger {
   static std::unique_ptr<LogThread> _loggingThread;
 };
 }  // namespace arangodb
-
-#include "Logger/LoggerStream.h"
 
 #endif

@@ -25,10 +25,10 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
-#include "Rest/HttpRequest.h"
-#include "Scheduler/Scheduler.h"
-#include "Scheduler/SchedulerFeature.h"
+#include "V8/JavaScriptSecurityContext.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-vpack.h"
 #include "V8Server/V8DealerFeature.h"
@@ -42,8 +42,9 @@ using namespace arangodb::rest;
 
 namespace arangodb {
 
-RestTasksHandler::RestTasksHandler(GeneralRequest* request, GeneralResponse* response)
-    : RestVocbaseBaseHandler(request, response) {}
+RestTasksHandler::RestTasksHandler(application_features::ApplicationServer& server,
+                                   GeneralRequest* request, GeneralResponse* response)
+    : RestVocbaseBaseHandler(server, request, response) {}
 
 RestStatus RestTasksHandler::execute() {
   auto const type = _request->requestType();
@@ -73,22 +74,26 @@ RestStatus RestTasksHandler::execute() {
 }
 
 /// @brief returns the short id of the server which should handle this request
-uint32_t RestTasksHandler::forwardingTarget() {
+std::string RestTasksHandler::forwardingTarget() {
   rest::RequestType const type = _request->requestType();
   if (type != rest::RequestType::POST && type != rest::RequestType::PUT &&
       type != rest::RequestType::GET && type != rest::RequestType::DELETE_REQ) {
-    return 0;
+    return "";
   }
 
   std::vector<std::string> const& suffixes = _request->suffixes();
   if (suffixes.size() < 1) {
-    return 0;
+    return "";
   }
 
   uint64_t tick = arangodb::basics::StringUtils::uint64(suffixes[0]);
   uint32_t sourceServer = TRI_ExtractServerIdFromTick(tick);
 
-  return (sourceServer == ServerState::instance()->getShortId()) ? 0 : sourceServer;
+  if (sourceServer == ServerState::instance()->getShortId()) {
+    return "";
+  }
+  auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+  return ci.getCoordinatorByShortID(sourceServer);
 }
 
 void RestTasksHandler::getTasks() {
@@ -140,19 +145,11 @@ void RestTasksHandler::registerTask(bool byId) {
     }
   }
 
-  if (SchedulerFeature::SCHEDULER == nullptr) {
-    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
-                  "no scheduler found");
+  ExecContext const& exec = ExecContext::current();
+  if (exec.databaseAuthLevel() != auth::Level::RW) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
+                  "registering a task needs db RW permissions");
     return;
-  }
-
-  ExecContext const* exec = ExecContext::CURRENT;
-  if (exec != nullptr) {
-    if (exec->databaseAuthLevel() != auth::Level::RW) {
-      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
-                    "registering a task needs db RW permissions");
-      return;
-    }
   }
 
   // job id
@@ -186,15 +183,12 @@ void RestTasksHandler::registerTask(bool byId) {
       VelocyPackHelper::getStringValue(body, "runAsUser", "");
 
   // only the superroot is allowed to run tasks as an arbitrary user
-  TRI_ASSERT(exec == ExecContext::CURRENT);
-  if (exec != nullptr) {
-    if (runAsUser.empty()) {  // execute task as the same user
-      runAsUser = exec->user();
-    } else if (exec->user() != runAsUser) {
-      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
-                    "cannot run task as a different user");
-      return;
-    }
+  if (runAsUser.empty()) {  // execute task as the same user
+    runAsUser = exec.user();
+  } else if (exec.user() != runAsUser) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
+                  "cannot run task as a different user");
+    return;
   }
 
   // extract the command
@@ -206,40 +200,35 @@ void RestTasksHandler::registerTask(bool byId) {
     return;
   }
 
-  {
-    Result res;
-    v8::Isolate* isolate = nullptr;
-    try {
-      V8ContextDealerGuard dealerGuard(res, isolate, &_vocbase, true);
-      if (res.fail()) {
-        generateError(res);
-        return;
-      }
-      v8::HandleScope scope(isolate);
-      v8::Handle<v8::Object> bv8 = TRI_VPackToV8(isolate, body).As<v8::Object>();
+  try {
+    JavaScriptSecurityContext securityContext = JavaScriptSecurityContext::createRestrictedContext();
+    V8ContextGuard guard(&_vocbase, securityContext);
+   
+    v8::Isolate* isolate = guard.isolate(); 
+    v8::HandleScope scope(isolate);
+    v8::Handle<v8::Object> bv8 = TRI_VPackToV8(isolate, body).As<v8::Object>();
 
-      if (bv8->Get(TRI_V8_ASCII_STRING(isolate, "command"))->IsFunction()) {
-        // need to add ( and ) around function because call will otherwise break
-        command = "(" + cmdSlice.copyString() + ")(params)";
-      } else {
-        command = cmdSlice.copyString();
-      }
+    if (bv8->Get(TRI_V8_ASCII_STRING(isolate, "command"))->IsFunction()) {
+      // need to add ( and ) around function because call will otherwise break
+      command = "(" + cmdSlice.copyString() + ")(params)";
+    } else {
+      command = cmdSlice.copyString();
+    }
 
-      if (!Task::tryCompile(isolate, command)) {
-        generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
-                      "cannot compile command");
-        return;
-      }
-    } catch (arangodb::basics::Exception const& ex) {
-      generateError(Result{ex.code(), ex.what()});
-      return;
-    } catch (std::exception const& ex) {
-      generateError(Result{TRI_ERROR_INTERNAL, ex.what()});
-      return;
-    } catch (...) {
-      generateError(TRI_ERROR_INTERNAL);
+    if (!Task::tryCompile(isolate, command)) {
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+                    "cannot compile command");
       return;
     }
+  } catch (arangodb::basics::Exception const& ex) {
+    generateError(Result{ex.code(), ex.what()});
+    return;
+  } catch (std::exception const& ex) {
+    generateError(Result{TRI_ERROR_INTERNAL, ex.what()});
+    return;
+  } catch (...) {
+    generateError(TRI_ERROR_INTERNAL);
+    return;
   }
 
   // extract the parameters
@@ -292,13 +281,11 @@ void RestTasksHandler::deleteTask() {
     return;
   }
 
-  ExecContext const* exec = ExecContext::CURRENT;
-  if (exec != nullptr) {
-    if (exec->databaseAuthLevel() != auth::Level::RW) {
-      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
-                    "unregister task needs db RW permissions");
-      return;
-    }
+  ExecContext const& exec = ExecContext::current();
+  if (exec.databaseAuthLevel() != auth::Level::RW) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
+                  "unregister task needs db RW permissions");
+    return;
   }
 
   int res = Task::unregisterTask(suffixes[0], true);

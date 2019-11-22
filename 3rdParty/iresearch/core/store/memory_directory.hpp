@@ -240,6 +240,8 @@ class IRESEARCH_API memory_index_output : public index_output {
 
   virtual void write_vlong(uint64_t v) override final;
 
+  void seek(size_t pos);
+
  protected:
   virtual void switch_buffer();
 

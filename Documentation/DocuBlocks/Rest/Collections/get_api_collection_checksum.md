@@ -2,7 +2,7 @@
 @startDocuBlock get_api_collection_checksum
 @brief returns a checksum for the specified collection
 
-@RESTHEADER{GET /_api/collection/{collection-name}/checksum, Return checksum for the collection}
+@RESTHEADER{GET /_api/collection/{collection-name}/checksum, Return checksum for the collection, handleCommandGet:collectionChecksum}
 
 @HINTS
 {% hint 'warning' %}

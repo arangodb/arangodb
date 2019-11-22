@@ -25,7 +25,9 @@
 #define ARANGOD_MMFILES_WAL_LOGFILE_H 1
 
 #include "Basics/Common.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "MMFiles/MMFilesDatafile.h"
 #include "MMFiles/MMFilesDatafileHelper.h"
 #include "MMFiles/MMFilesWalMarker.h"
@@ -213,7 +215,7 @@ class MMFilesWalLogfile {
         break;
     }
 
-    LOG_TOPIC(TRACE, arangodb::Logger::ENGINES)
+    LOG_TOPIC("10910", TRACE, arangodb::Logger::ENGINES)
         << "changing logfile status from " << statusText(_status) << " to "
         << statusText(status) << " for logfile " << id();
     _status = status;

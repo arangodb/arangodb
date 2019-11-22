@@ -339,6 +339,8 @@
         if (nodeStart) {
           config[combinedName].nodeStart = nodeStart;
         }
+        // enable edge editing by default (as this was an option in the past)
+        config[combinedName].edgeEditable = 'true';
 
         var callback = function () {
           self.lastConfigChange = new Date();

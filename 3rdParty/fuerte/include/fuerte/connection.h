@@ -40,22 +40,28 @@ class Connection : public std::enable_shared_from_this<Connection> {
 
  public:
   virtual ~Connection();
-  
-  /// Connectin state
+
+  ///  Connection state
+  ///  Disconnected <---------+
+  ///  +                      |
+  ///  |  +-------------------+--> Failed
+  ///  |  |                   |
+  ///  v  +                   +
+  ///  Connecting +-----> Connected
   enum class State {
     Disconnected = 0,
     Connecting = 1,
     Connected = 2,
-    Failed = 3 /// broken permanently (i.e. bad authentication)
+    Failed = 3  /// canceled or broken permanently (i.e. bad authentication)
   };
 
   /// @brief Send a request to the server and wait into a response it received.
   std::unique_ptr<Response> sendRequest(std::unique_ptr<Request> r);
-  
+
   /// @brief Send a request to the server and wait into a response it received.
   /// @param r request that is copied
   std::unique_ptr<Response> sendRequest(Request const& r) {
-    std::unique_ptr<Request> copy(new Request(r));
+    auto copy = std::make_unique<Request>(r);
     return sendRequest(std::move(copy));
   }
 
@@ -71,33 +77,34 @@ class Connection : public std::enable_shared_from_this<Connection> {
   /// callbackis called. The callback is executed on a specific
   /// IO-Thread for this connection.
   MessageID sendRequest(Request const& r, RequestCallback cb) {
-    std::unique_ptr<Request> copy(new Request(r));
+    auto copy = std::make_unique<Request>(r);
     return sendRequest(std::move(copy), cb);
   }
 
   /// @brief Return the number of requests that have not yet finished.
   virtual std::size_t requestsLeft() const = 0;
-  
+
   /// @brief connection state
   virtual State state() const = 0;
-  
+
   /// @brief cancel the connection, unusable afterwards
   virtual void cancel() = 0;
-  
+
   /// @brief endpoint we are connected to
   std::string endpoint() const;
 
  protected:
-  Connection(detail::ConnectionConfiguration const& conf)
-      : _config(conf) {}
-  
+  Connection(detail::ConnectionConfiguration const& conf) : _config(conf) {}
+
   /// @brief Activate the connection.
   virtual void startConnection() = 0;
 
   // Invoke the configured ConnectionFailureCallback (if any)
   void onFailure(Error errorCode, const std::string& errorMessage) {
     if (_config._onFailure) {
-      _config._onFailure(errorCode, errorMessage);
+      try {
+        _config._onFailure(errorCode, errorMessage);
+      } catch(...) {}
     }
   }
 
@@ -119,17 +126,20 @@ class ConnectionBuilder {
   /// @brief takes url in the form (http|vst)[s]://(ip|hostname):port
   /// also supports the syntax "http+tcp://", "http+unix://" etc
   ConnectionBuilder& endpoint(std::string const& spec);
-  
+
   /// @brief get the normalized endpoint
   std::string normalizedEndpoint() const;
 
   // Create an connection and start opening it.
   std::shared_ptr<Connection> connect(EventLoopService& eventLoopService);
-  
-  inline std::chrono::milliseconds timeout() const { return _conf._connectionTimeout;}
-  /// @brief set the connection timeout (60s default)
-  ConnectionBuilder& timeout(std::chrono::milliseconds t) {
-    _conf._connectionTimeout = t;
+
+  /// @brief idle connection timeout (60s default)
+  inline std::chrono::milliseconds idleTimeout() const {
+    return _conf._idleTimeout;
+  }
+  /// @brief set the idle connection timeout (60s default)
+  ConnectionBuilder& idleTimeout(std::chrono::milliseconds t) {
+    _conf._idleTimeout = t;
     return *this;
   }
 
@@ -153,7 +163,7 @@ class ConnectionBuilder {
     _conf._password = p;
     return *this;
   }
-  
+
   // Set the jwt token of the connection
   inline std::string jwtToken() const { return _conf._jwtToken; }
   ConnectionBuilder& jwtToken(std::string const& t) {
@@ -166,27 +176,27 @@ class ConnectionBuilder {
     _conf._maxChunkSize = c;
     return *this;
   }*/
-  
+
   /// @brief tcp, ssl or unix
   inline SocketType socketType() const { return _conf._socketType; }
   /// @brief protocol typr
   inline ProtocolType protocolType() const { return _conf._protocolType; }
   void protocolType(ProtocolType pt) { _conf._protocolType = pt; }
-  
+
   // Set the VST version to use (VST only)
   inline vst::VSTVersion vstVersion() const { return _conf._vstVersion; }
   ConnectionBuilder& vstVersion(vst::VSTVersion c) {
     _conf._vstVersion = c;
     return *this;
   }
-  
+
   /// @brief should we verify the SSL host
   inline bool verifyHost() const { return _conf._verifyHost; }
   ConnectionBuilder& verifyHost(bool b) {
     _conf._verifyHost = b;
     return *this;
   }
-  
+
   // Set a callback for connection failures that are not request specific.
   ConnectionBuilder& onFailure(ConnectionFailureCallback c) {
     _conf._onFailure = c;

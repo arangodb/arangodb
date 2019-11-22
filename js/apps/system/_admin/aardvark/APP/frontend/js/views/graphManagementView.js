@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global Backbone, $, _, window, templateEngine, arangoHelper, GraphViewerUI, require, Joi, frontendConfig */
+/* global Backbone, $, _, window, templateEngine, arangoHelper, GraphViewerUI, Joi, frontendConfig */
 
 (function () {
   'use strict';
@@ -42,11 +42,12 @@
       } else {
         $('#modal-dialog .modal-footer .button-success').css('display', 'initial');
       }
+
       if (id === 'smartGraph') {
         this.toggleSmartGraph();
         $('#createGraph').addClass('active');
         this.showSmartGraphOptions();
-      } else {
+      } else if (id === 'createGraph') {
         this.toggleSmartGraph();
         this.hideSmartGraphOptions();
       }
@@ -55,18 +56,22 @@
     hideSmartGraphOptions: function () {
       $('#row_general-numberOfShards').show();
       $('#row_general-replicationFactor').show();
+      $('#row_general-writeConcern').show();
       $('#smartGraphInfo').hide();
       $('#row_new-numberOfShards').hide();
       $('#row_new-replicationFactor').hide();
+      $('#row_new-writeConcern').hide();
       $('#row_new-smartGraphAttribute').hide();
     },
 
     showSmartGraphOptions: function () {
       $('#row_general-numberOfShards').hide();
       $('#row_general-replicationFactor').hide();
+      $('#row_general-writeConcern').hide();
       $('#smartGraphInfo').show();
       $('#row_new-numberOfShards').show();
       $('#row_new-replicationFactor').show();
+      $('#row_new-writeConcern').show();
       $('#row_new-smartGraphAttribute').show();
     },
 
@@ -246,6 +251,10 @@
     },
 
     toggleSmartGraph: function () {
+      if (!frontendConfig.isCluster || !frontendConfig.isEnterprise) {
+        return;
+      }
+
       var i;
       var self = this;
 
@@ -558,7 +567,7 @@
         reducedCollection;
 
       searchInput = $('#graphManagementSearchInput');
-      searchString = $('#graphManagementSearchInput').val();
+      searchString = arangoHelper.escapeHtml($('#graphManagementSearchInput').val());
       reducedCollection = this.collection.filter(
         function (u) {
           return u.get('_key').indexOf(searchString) !== -1;
@@ -666,7 +675,8 @@
           newCollectionObject.options = {
             numberOfShards: parseInt($('#new-numberOfShards').val()),
             smartGraphAttribute: $('#new-smartGraphAttribute').val(),
-            replicationFactor: parseInt($('#new-replicationFactor').val())
+            replicationFactor: parseInt($('#new-replicationFactor').val()),
+            minReplicationFactor: parseInt($('#new-writeConcern').val()),
           };
         }
       } else {
@@ -682,6 +692,15 @@
             } else {
               newCollectionObject.options = {
                 replicationFactor: parseInt($('#general-replicationFactor').val())
+              };
+            }
+          }
+          if ($('#general-writeConcern').val().length > 0) {
+            if (newCollectionObject.options) {
+              newCollectionObject.options.minReplicationFactor = parseInt($('#general-writeConcern').val());
+            } else {
+              newCollectionObject.options = {
+                minReplicationFactor: parseInt($('#general-writeConcern').val())
               };
             }
           }
@@ -794,7 +813,18 @@
               'replicationFactor',
               'Replication factor',
               graph.get('replicationFactor'),
-              'Total number of copies of the data in the cluster.'
+              'Total number of desired copies of the data in the cluster.'
+            )
+          );
+        }
+
+        if (graph.get('minReplicationFactor')) {
+          tableContent.push(
+            window.modalView.createReadOnlyEntry(
+              'writeConcern',
+              'Minimum replication factor',
+              graph.get('minReplicationFactor'),
+              'Total number of copies of the data in the cluster. If we get below this value the collection will be read-only until enough copies are created.'
             )
           );
         }
@@ -827,98 +857,131 @@
         );
       }
 
+      if (frontendConfig.isEnterprise === true && frontendConfig.isCluster && !graph) {
+        tableContent.push(
+          window.modalView.createTextEntry(
+            'new-numberOfShards',
+            'Shards*',
+            '',
+            'Number of shards the smart graph is using.',
+            '',
+            false,
+            [
+              {
+                rule: Joi.string().allow('').optional().regex(/^[0-9]*$/),
+                msg: 'Must be a number.'
+              }
+            ]
+          )
+        );
+
+        tableContent.push(
+          window.modalView.createTextEntry(
+            'new-replicationFactor',
+            'Replication factor',
+            '',
+            'Numeric value. Must be at least 1. Total number of copies of the data in the cluster.',
+            '',
+            false,
+            [
+              {
+                rule: Joi.string().allow('').optional().regex(/^[1-9]*$/),
+                msg: 'Must be a number.'
+              }
+            ]
+          )
+        );
+
+        tableContent.push(
+          window.modalView.createTextEntry(
+            'new-writeConcern',
+            'Minimum replication factor',
+            '',
+                'Numeric value. Must be at least 1 and must be smaller or equal compared to the replication factor. Minimal number of copies of the data in the cluster to be in sync in order to allow writes.',
+            '',
+            false,
+            [
+              {
+                rule: Joi.string().allow('').optional().regex(/^[1-9]*$/),
+                msg: 'Numeric value. Must be at least 1. Must be smaller or equal compared to the replicationFactor. Total number of copies of the data in the cluster. If we get below this value the collection will be read-only until enough copies are created.'
+              }
+            ]
+          )
+        );
+
+        tableContent.push(
+          window.modalView.createTextEntry(
+            'new-smartGraphAttribute',
+            'Smart Graph Attribute*',
+            '',
+            'The attribute name that is used to smartly shard the vertices of a graph. \n' +
+            'Every vertex in this Graph has to have this attribute. \n' +
+            'Cannot be modified later.',
+            '',
+            false,
+            [
+              {
+                rule: Joi.string().allow('').optional(),
+                msg: 'Must be a string.'
+              }
+            ]
+          )
+        );
+      }
+
+      if (frontendConfig.isCluster && !graph) {
+        tableContent.push(
+          window.modalView.createTextEntry(
+            'general-numberOfShards',
+            'Shards',
+            '',
+            'Number of shards the graph is using.',
+            '',
+            false,
+            [
+              {
+                rule: Joi.string().allow('').optional().regex(/^[0-9]*$/),
+                msg: 'Must be a number.'
+              }
+            ]
+          )
+        );
+        tableContent.push(
+          window.modalView.createTextEntry(
+            'general-replicationFactor',
+            'Replication factor',
+            '',
+            'Numeric value. Must be at least 1. Total number of desired copies of the data in the cluster.',
+            '',
+            false,
+            [
+              {
+                rule: Joi.string().allow('').optional().regex(/^[1-9]*$/),
+                msg: 'Must be a number.'
+              }
+            ]
+          )
+        );
+        tableContent.push(
+          window.modalView.createTextEntry(
+            'general-writeConcern',
+            'Minimum replication factor',
+            '',
+            'Numeric value. Must be at least 1. Must be smaller or equal compared to the replication factor. Total number of copies of the data in the cluster to be in sync. If we get below this value the collection will be read-only until enough copies are created.',
+            '',
+            false,
+            [
+              {
+                rule: Joi.string().allow('').optional().regex(/^[1-9]*$/),
+                msg: 'Must be a number. Must be at least 1 and has to be smaller or equal compared to the replicationFactor.'
+              }
+            ]
+          )
+        );
+      }
+
       edgeDefinitions.forEach(
         function (edgeDefinition) {
-          if (frontendConfig.isEnterprise === true && frontendConfig.isCluster) {
-            tableContent.push(
-              window.modalView.createTextEntry(
-                'new-numberOfShards',
-                'Shards*',
-                '',
-                'Number of shards the smart graph is using.',
-                '',
-                false,
-                [
-                  {
-                    rule: Joi.string().allow('').optional().regex(/^[0-9]*$/),
-                    msg: 'Must be a number.'
-                  }
-                ]
-              )
-            );
-
-            tableContent.push(
-              window.modalView.createTextEntry(
-                'new-replicationFactor',
-                'Replication factor',
-                '',
-                'Numeric value. Must be at least 1. Total number of copies of the data in the cluster.',
-                '',
-                false,
-                [
-                  {
-                    rule: Joi.string().allow('').optional().regex(/^[0-9]*$/),
-                    msg: 'Must be a number.'
-                  }
-                ]
-              )
-            );
-
-            tableContent.push(
-              window.modalView.createTextEntry(
-                'new-smartGraphAttribute',
-                'Smart Graph Attribute*',
-                '',
-                'The attribute name that is used to smartly shard the vertices of a graph. \n' +
-                'Every vertex in this Graph has to have this attribute. \n' +
-                'Cannot be modified later.',
-                '',
-                false,
-                [
-                  {
-                    rule: Joi.string().allow('').optional(),
-                    msg: 'Must be a string.'
-                  }
-                ]
-              )
-            );
-          }
-
-          if (frontendConfig.isCluster && !graph) {
-            tableContent.push(
-              window.modalView.createTextEntry(
-                'general-numberOfShards',
-                'Shards',
-                '',
-                'Number of shards the graph is using.',
-                '',
-                false,
-                [
-                  {
-                    rule: Joi.string().allow('').optional().regex(/^[0-9]*$/),
-                    msg: 'Must be a number.'
-                  }
-                ]
-              )
-            );
-            tableContent.push(
-              window.modalView.createTextEntry(
-                'general-replicationFactor',
-                'Replication factor',
-                '',
-                'Numeric value. Must be at least 1. Total number of copies of the data in the cluster.',
-                '',
-                false,
-                [
-                  {
-                    rule: Joi.string().allow('').optional().regex(/^[0-9]*$/),
-                    msg: 'Must be a number.'
-                  }
-                ]
-              )
-            );
-          }
-
           if (self.counter === 0) {
             if (edgeDefinition.collection) {
               self.removedECollList.push(edgeDefinition.collection);

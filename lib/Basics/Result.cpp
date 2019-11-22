@@ -20,19 +20,30 @@
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/VelocyPackHelper.h"
+#include <ostream>
+
 #include "Result.h"
+
+#include "Basics/StaticStrings.h"
+#include "Basics/error.h"
+#include "Basics/voc-errors.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 
-Result::Result() : _errorNumber(TRI_ERROR_NO_ERROR) {}
+Result::Result() noexcept(noexcept(std::allocator<char>()))
+    : _errorNumber(TRI_ERROR_NO_ERROR) {}
 
-Result::Result(int errorNumber) : _errorNumber(errorNumber) {}
+Result::Result(int errorNumber) noexcept(noexcept(std::allocator<char>()))
+    : _errorNumber(errorNumber) {}
 
 Result::Result(int errorNumber, std::string const& errorMessage)
     : _errorNumber(errorNumber), _errorMessage(errorMessage) {}
 
-Result::Result(int errorNumber, std::string&& errorMessage)
+Result::Result(int errorNumber, std::string&& errorMessage) noexcept
     : _errorNumber(errorNumber), _errorMessage(std::move(errorMessage)) {}
 
 Result::Result(Result const& other)
@@ -65,6 +76,8 @@ bool Result::is(int errorNumber) const noexcept {
 }
 
 bool Result::isNot(int errorNumber) const { return !is(errorNumber); }
+
+Result& Result::reset() { return reset(TRI_ERROR_NO_ERROR); }
 
 Result& Result::reset(int errorNumber) {
   _errorNumber = errorNumber;
@@ -118,8 +131,8 @@ std::ostream& operator<<(std::ostream& out, arangodb::Result const& result) {
   VPackBuilder dump;
   {
     VPackObjectBuilder b(&dump);
-    dump.add("errorNumber", VPackValue(result.errorNumber()));
-    dump.add("errorMessage", VPackValue(result.errorMessage()));
+    dump.add(StaticStrings::ErrorNum, VPackValue(result.errorNumber()));
+    dump.add(StaticStrings::ErrorMessage, VPackValue(result.errorMessage()));
   }
   out << dump.slice().toJson();
   return out;

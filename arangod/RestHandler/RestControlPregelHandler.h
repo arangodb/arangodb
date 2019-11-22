@@ -29,7 +29,8 @@
 namespace arangodb {
 class RestControlPregelHandler : public arangodb::RestVocbaseBaseHandler {
  public:
-  RestControlPregelHandler(GeneralRequest*, GeneralResponse*);
+  RestControlPregelHandler(application_features::ApplicationServer&,
+                           GeneralRequest*, GeneralResponse*);
 
  public:
   char const* name() const override final { return "RestControlPregelHandler"; }
@@ -37,7 +38,7 @@ class RestControlPregelHandler : public arangodb::RestVocbaseBaseHandler {
   RestStatus execute() override;
 
  protected:
-  virtual uint32_t forwardingTarget() override;
+  virtual std::string forwardingTarget() override;
 
  private:
   void startExecution();

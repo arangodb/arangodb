@@ -22,7 +22,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RegexCache.h"
+
+#include "Aql/AqlValueMaterializer.h"
+#include "Basics/StringUtils.h"
 #include "Basics/Utf8Helper.h"
+#include "Basics/tryEmplaceHelper.h"
 
 #include <velocypack/Collection.h>
 #include <velocypack/Dumper.h>
@@ -30,22 +34,6 @@
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb::aql;
-
-namespace {
-
-static void escapeRegexParams(std::string& out, const char* ptr, size_t length) {
-  for (size_t i = 0; i < length; ++i) {
-    char const c = ptr[i];
-    if (c == '?' || c == '+' || c == '[' || c == '(' || c == ')' || c == '{' || c == '}' ||
-        c == '^' || c == '$' || c == '|' || c == '.' || c == '*' || c == '\\') {
-      // character with special meaning in a regex
-      out.push_back('\\');
-    }
-    out.push_back(c);
-  }
-}
-
-}  // namespace
 
 RegexCache::~RegexCache() { clear(); }
 
@@ -76,7 +64,7 @@ icu::RegexMatcher* RegexCache::buildSplitMatcher(AqlValue const& splitExpression
   AqlValueMaterializer materializer(trx);
   VPackSlice slice = materializer.slice(splitExpression, false);
   if (splitExpression.isArray()) {
-    for (auto const& it : VPackArrayIterator(slice)) {
+    for (VPackSlice it : VPackArrayIterator(slice)) {
       if (!it.isString() || it.getStringLength() == 0) {
         // one empty string rules them all
         isEmptyExpression = true;
@@ -89,12 +77,12 @@ icu::RegexMatcher* RegexCache::buildSplitMatcher(AqlValue const& splitExpression
 
       arangodb::velocypack::ValueLength length;
       char const* str = it.getString(length);
-      ::escapeRegexParams(rx, str, length);
+      basics::StringUtils::escapeRegexParams(rx, str, length);
     }
   } else if (splitExpression.isString()) {
     arangodb::velocypack::ValueLength length;
     char const* str = slice.getString(length);
-    ::escapeRegexParams(rx, str, length);
+    basics::StringUtils::escapeRegexParams(rx, str, length);
     if (rx.empty()) {
       isEmptyExpression = true;
     }
@@ -109,21 +97,15 @@ icu::RegexMatcher* RegexCache::buildSplitMatcher(AqlValue const& splitExpression
 icu::RegexMatcher* RegexCache::fromCache(
     std::string const& pattern,
     std::unordered_map<std::string, std::unique_ptr<icu::RegexMatcher>>& cache) {
-  auto it = cache.find(pattern);
-
-  if (it != cache.end()) {
-    return (*it).second.get();
-  }
-
-  auto matcher = std::unique_ptr<icu::RegexMatcher>(
-      arangodb::basics::Utf8Helper::DefaultUtf8Helper.buildMatcher(pattern));
-
-  auto p = matcher.get();
 
   // insert into cache, no matter if pattern is valid or not
-  cache.emplace(pattern, std::move(matcher));
+  auto matcherIter = cache.try_emplace(
+      pattern,
+      arangodb::lazyConstruct([&]{
+        return std::unique_ptr<icu::RegexMatcher>(arangodb::basics::Utf8Helper::DefaultUtf8Helper.buildMatcher(pattern));
+      })).first;
 
-  return p;
+  return matcherIter->second.get();
 }
 
 /// @brief compile a REGEX pattern from a string
@@ -206,7 +188,7 @@ void RegexCache::buildLikePattern(std::string& out, char const* ptr,
 /// of its escape characters. will stop at the first wildcards found.
 /// returns a pair with the following meaning:
 /// - first: true if the inspection aborted prematurely because a
-///   wildcard was found, and false if the inspection analyzed at the
+///   wildcard was found, and false if the inspection analyzed the
 ///   complete string
 /// - second: true if the found wildcard is the last byte in the pattern,
 ///   false otherwise. can only be true if first is also true

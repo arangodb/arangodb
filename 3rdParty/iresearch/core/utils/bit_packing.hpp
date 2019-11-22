@@ -72,45 +72,37 @@ inline uint32_t bits_required_32(
 }
 
 inline uint32_t bytes_required_32(uint32_t count, uint32_t bits) NOEXCEPT {
-  return static_cast<uint32_t>(
-    ceilf(static_cast<float_t>(count) * bits / 8)
-  );
+  return math::div_ceil32(count*bits, 8);
 }
 
 inline uint64_t bytes_required_64(uint64_t count, uint64_t bits) NOEXCEPT {
-  return static_cast<uint64_t>(
-    std::ceil(static_cast<double_t>(count) * bits / 8)
-  );
+  return math::div_ceil64(count*bits, 8);
 }
 
 inline uint32_t blocks_required_32(uint32_t count, uint32_t bits) NOEXCEPT {
-  return static_cast<uint32_t>(
-    ceilf(static_cast<float_t>(count) * bits / (8 * sizeof(uint32_t)))
-  );
+  return math::div_ceil32(count*bits, 8*sizeof(uint32_t));
 }
 
 inline uint64_t blocks_required_64(uint64_t count, uint64_t bits) NOEXCEPT {
-  return static_cast<uint64_t>(
-    std::ceil(static_cast<double_t>(count) * bits / (8 * sizeof(uint64_t)))
-  );
+  return math::div_ceil64(count*bits, 8*sizeof(uint64_t));
 }
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief returns number of elements required to store unpacked data
 //////////////////////////////////////////////////////////////////////////////
-inline uint64_t items_required( uint32_t count ) NOEXCEPT {
-  return BLOCK_SIZE_32 * static_cast<uint32_t>(std::ceil(double(count) / BLOCK_SIZE_32));
+inline uint64_t items_required(uint32_t count) NOEXCEPT {
+  return BLOCK_SIZE_32 * math::div_ceil32(count, BLOCK_SIZE_32);
 }
 
-inline uint64_t iterations_required( uint32_t count ) NOEXCEPT {
+inline uint64_t iterations_required(uint32_t count) NOEXCEPT {
   return items_required(count) / BLOCK_SIZE_32;
 }
 
 template< typename T >
 inline T max_value(uint32_t bits) NOEXCEPT {
-  assert( bits >= 0U && bits <= sizeof( T ) * 8U );
+  assert(bits >= 0U && bits <= sizeof( T ) * 8U);
 
-  return bits == sizeof( T ) * 8U
+  return bits == sizeof(T) * 8U
     ? (std::numeric_limits<T>::max)() 
     : ~(~T(0) << bits);
 }

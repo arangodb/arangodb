@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/StaticStrings.h"
+#include "Replication/TailingSyncer.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBColumnFamily.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -99,7 +100,8 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
 
  public:
   MyWALDumper(WalAccess::Filter const& filter,
-              WalAccess::MarkerCallback const& f, size_t maxResponseSize)
+              WalAccess::MarkerCallback const& f, 
+              size_t maxResponseSize)
       : WalAccessContext(filter, f),
         _definitionsCF(RocksDBColumnFamily::definitions()->GetID()),
         _documentsCF(RocksDBColumnFamily::documents()->GetID()),
@@ -126,11 +128,13 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
   }
 
   void LogData(rocksdb::Slice const& blob) override {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    _checkTick = true;
+#endif
     // rocksdb does not count LogData towards sequence-number
     RocksDBLogType type = RocksDBLogValue::type(blob);
-
-    // LOG_TOPIC(WARN, Logger::REPLICATION) << "[LOG] " << _currentSequence
-    // << " " << rocksDBLogTypeName(type);
+        
+    // LOG_TOPIC("65ea8", WARN, Logger::REPLICATION) << "[LOG] " << _currentSequence << " " << rocksDBLogTypeName(type);
     switch (type) {
       case RocksDBLogType::DatabaseCreate:
         resetTransientState();  // finish ongoing trx
@@ -158,7 +162,7 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
         if (shouldHandleCollection(RocksDBLogValue::databaseId(blob),
                                    RocksDBLogValue::collectionId(blob))) {
           _state = COLLECTION_RENAME;  // collection name is not needed
-          // LOG_TOPIC(DEBUG, Logger::REPLICATION) << "renaming "
+          // LOG_TOPIC("3c411", DEBUG, Logger::REPLICATION) << "renaming "
           // << RocksDBLogValue::oldCollectionName(blob).toString();
         }
         break;
@@ -199,17 +203,19 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
         TRI_voc_cid_t cid = RocksDBLogValue::collectionId(blob);
         if (shouldHandleCollection(dbid, cid)) {  // will check vocbase
           TRI_vocbase_t* vocbase = loadVocbase(dbid);
-          LogicalCollection* coll = loadCollection(dbid, cid);
-          TRI_ASSERT(vocbase != nullptr && coll != nullptr);
-          {
-            uint64_t tick = _currentSequence + (_startOfBatch ? 0 : 1);
-            VPackObjectBuilder marker(&_builder, true);
-            marker->add("tick", VPackValue(std::to_string(tick)));
-            marker->add("type", VPackValue(REPLICATION_COLLECTION_TRUNCATE));
-            marker->add("db", VPackValue(vocbase->name()));
-            marker->add("cuid", VPackValue(coll->guid()));
+          if (vocbase != nullptr) {
+            LogicalCollection* coll = loadCollection(dbid, cid);
+            TRI_ASSERT(vocbase != nullptr && coll != nullptr);
+            {
+              uint64_t tick = _currentSequence; 
+              VPackObjectBuilder marker(&_builder, true);
+              marker->add("tick", VPackValue(std::to_string(tick)));
+              marker->add("type", VPackValue(REPLICATION_COLLECTION_TRUNCATE));
+              marker->add("db", VPackValue(vocbase->name()));
+              marker->add("cuid", VPackValue(coll->guid()));
+            }
+            printMarker(vocbase);
           }
-          printMarker(vocbase);
         }
         break;
       }
@@ -221,22 +227,24 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
         // only print markers from this collection if it is set
         if (shouldHandleCollection(dbid, cid)) {  // will check vocbase
           TRI_vocbase_t* vocbase = loadVocbase(dbid);
-          LogicalCollection* coll = loadCollection(dbid, cid);
-          TRI_ASSERT(vocbase != nullptr && coll != nullptr);
-          VPackSlice indexDef = RocksDBLogValue::indexSlice(blob);
-          auto stripped = rocksutils::stripObjectIds(indexDef);
+          if (vocbase != nullptr) {
+            LogicalCollection* coll = loadCollection(dbid, cid);
+            TRI_ASSERT(vocbase != nullptr && coll != nullptr);
+            VPackSlice indexDef = RocksDBLogValue::indexSlice(blob);
+            auto stripped = rocksutils::stripObjectIds(indexDef);
 
-          {
-            uint64_t tick = _currentSequence + (_startOfBatch ? 0 : 1);
-            VPackObjectBuilder marker(&_builder, true);
-            marker->add("tick", VPackValue(std::to_string(tick)));
-            marker->add("type", VPackValue(rocksutils::convertLogType(type)));
-            marker->add("db", VPackValue(vocbase->name()));
-            marker->add("cuid", VPackValue(coll->guid()));
-            marker->add("data", stripped.first);
+            {
+              uint64_t tick = _currentSequence + (_startOfBatch ? 0 : 1);
+              VPackObjectBuilder marker(&_builder, true);
+              marker->add("tick", VPackValue(std::to_string(tick)));
+              marker->add("type", VPackValue(rocksutils::convertLogType(type)));
+              marker->add("db", VPackValue(vocbase->name()));
+              marker->add("cuid", VPackValue(coll->guid()));
+              marker->add("data", stripped.first);
+            }
+
+            printMarker(vocbase);
           }
-
-          printMarker(vocbase);
         }
 
         break;
@@ -251,23 +259,25 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
         // only print markers from this collection if it is set
         if (shouldHandleCollection(dbid, cid)) {
           TRI_vocbase_t* vocbase = loadVocbase(dbid);
-          LogicalCollection* col = loadCollection(dbid, cid);
-          TRI_ASSERT(vocbase != nullptr && col != nullptr);
+          if (vocbase != nullptr) {
+            LogicalCollection* col = loadCollection(dbid, cid);
+            TRI_ASSERT(vocbase != nullptr && col != nullptr);
 
-          {
-            uint64_t tick = _currentSequence + (_startOfBatch ? 0 : 1);
-            VPackObjectBuilder marker(&_builder, true);
-            marker->add("tick", VPackValue(std::to_string(tick)));
-            marker->add("type", VPackValue(rocksutils::convertLogType(type)));
-            marker->add("db", VPackValue(vocbase->name()));
-            marker->add("cuid", VPackValue(col->guid()));
+            {
+              uint64_t tick = _currentSequence + (_startOfBatch ? 0 : 1);
+              VPackObjectBuilder marker(&_builder, true);
+              marker->add("tick", VPackValue(std::to_string(tick)));
+              marker->add("type", VPackValue(rocksutils::convertLogType(type)));
+              marker->add("db", VPackValue(vocbase->name()));
+              marker->add("cuid", VPackValue(col->guid()));
 
-            VPackObjectBuilder data(&_builder, "data", true);
+              VPackObjectBuilder data(&_builder, "data", true);
 
-            data->add("id", VPackValue(std::to_string(iid)));
+              data->add("id", VPackValue(std::to_string(iid)));
+            }
+
+            printMarker(vocbase);
           }
-
-          printMarker(vocbase);
         }
         break;
       }
@@ -321,17 +331,17 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
         TRI_voc_tick_t dbid = RocksDBLogValue::databaseId(blob);
         if (shouldHandleDB(dbid)) {
           TRI_vocbase_t* vocbase = loadVocbase(dbid);
+          // note: vocbase may be a nullptr here, if the database was already deleted!
           if (vocbase != nullptr) {
             _state = TRANSACTION;
             _currentTrxId = tid;
             _trxDbId = dbid;
-            {
-              VPackObjectBuilder marker(&_builder, true);
-              marker->add("tick", VPackValue(std::to_string(_currentSequence)));
-              marker->add("type", VPackValue(rocksutils::convertLogType(type)));
-              marker->add("db", VPackValue(vocbase->name()));
-              marker->add("tid", VPackValue(std::to_string(_currentTrxId)));
-            }
+            _builder.openObject(true);
+            _builder.add("tick", VPackValue(std::to_string(_currentSequence)));
+            _builder.add("type", VPackValue(rocksutils::convertLogType(type)));
+            _builder.add("tid", VPackValue(std::to_string(_currentTrxId)));
+            _builder.add("db", VPackValue(vocbase->name()));
+            _builder.close();
             printMarker(vocbase);
           }
         }
@@ -392,10 +402,14 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
       case RocksDBLogType::DocumentRemoveAsPartOfUpdate:
       case RocksDBLogType::TrackedDocumentInsert:
       case RocksDBLogType::TrackedDocumentRemove:
+      case RocksDBLogType::FlushSync:
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+        _checkTick = false;
+#endif
         break;  // ignore deprecated / unused markers
 
       default:
-        LOG_TOPIC(WARN, Logger::REPLICATION)
+        LOG_TOPIC("0d0d1", WARN, Logger::REPLICATION)
             << "Unhandled wal log entry " << rocksDBLogTypeName(type);
         break;
     }
@@ -403,9 +417,11 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
 
   rocksdb::Status PutCF(uint32_t column_family_id, rocksdb::Slice const& key,
                         rocksdb::Slice const& value) override {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    _checkTick = true;
+#endif
     incTick();
-    // LOG_TOPIC(WARN, Logger::ENGINES) << "[PUT] cf: " << column_family_id
-    // << ", key:" << key.ToString() << "  value: " << value.ToString();
+    // LOG_TOPIC("31697", WARN, Logger::ENGINES) << "[PUT] cf: " << column_family_id << ", key:" << key.ToString() << "  value: " << value.ToString();
 
     if (column_family_id == _definitionsCF) {
       // LogData should have triggered a commit on ongoing transactions
@@ -448,31 +464,33 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
             (_state == COLLECTION_CREATE || _state == COLLECTION_RENAME ||
              _state == COLLECTION_CHANGE)) {
           TRI_vocbase_t* vocbase = loadVocbase(dbid);
-          LogicalCollection* col = loadCollection(dbid, cid);
-          TRI_ASSERT(vocbase != nullptr && col != nullptr);
+          if (vocbase != nullptr) {
+            LogicalCollection* col = loadCollection(dbid, cid);
+            TRI_ASSERT(vocbase != nullptr && col != nullptr);
 
-          {
-            VPackSlice collectionDef = RocksDBValue::data(value);
-            VPackObjectBuilder marker(&_builder, true);
-            marker->add("tick", VPackValue(std::to_string(_currentSequence)));
-            marker->add("db", VPackValue(vocbase->name()));
-            marker->add("cuid", VPackValue(col->guid()));
+            {
+              VPackSlice collectionDef = RocksDBValue::data(value);
+              VPackObjectBuilder marker(&_builder, true);
+              marker->add("tick", VPackValue(std::to_string(_currentSequence)));
+              marker->add("db", VPackValue(vocbase->name()));
+              marker->add("cuid", VPackValue(col->guid()));
 
-            if (_state == COLLECTION_CREATE) {
-              auto stripped = rocksutils::stripObjectIds(collectionDef);
-              marker->add("type", VPackValue(REPLICATION_COLLECTION_CREATE));
-              marker->add("data", stripped.first);
-            } else if (_state == COLLECTION_RENAME) {
-              marker->add("type", VPackValue(REPLICATION_COLLECTION_RENAME));
-              VPackObjectBuilder data(&_builder, "data", true);
-              data->add("name", VPackValue(col->name()));
-            } else if (_state == COLLECTION_CHANGE) {
-              auto stripped = rocksutils::stripObjectIds(collectionDef);
-              marker->add("type", VPackValue(REPLICATION_COLLECTION_CHANGE));
-              marker->add("data", stripped.first);
+              if (_state == COLLECTION_CREATE) {
+                auto stripped = rocksutils::stripObjectIds(collectionDef);
+                marker->add("type", VPackValue(REPLICATION_COLLECTION_CREATE));
+                marker->add("data", stripped.first);
+              } else if (_state == COLLECTION_RENAME) {
+                marker->add("type", VPackValue(REPLICATION_COLLECTION_RENAME));
+                VPackObjectBuilder data(&_builder, "data", true);
+                data->add("name", VPackValue(col->name()));
+              } else if (_state == COLLECTION_CHANGE) {
+                auto stripped = rocksutils::stripObjectIds(collectionDef);
+                marker->add("type", VPackValue(REPLICATION_COLLECTION_CHANGE));
+                marker->add("data", stripped.first);
+              }
             }
+            printMarker(vocbase);
           }
-          printMarker(vocbase);
         }
       } else if (RocksDBKey::type(key) == RocksDBEntryType::View) {
         TRI_voc_tick_t dbid = RocksDBKey::databaseId(key);
@@ -480,24 +498,25 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
 
         if (shouldHandleView(dbid, vid) && (_state == VIEW_CREATE || _state == VIEW_CHANGE)) {
           TRI_vocbase_t* vocbase = loadVocbase(dbid);
-          TRI_ASSERT(vocbase != nullptr);
-          auto view = vocbase->lookupView(vid);
+          if (vocbase != nullptr) {
+            auto view = vocbase->lookupView(vid);
 
-          if (view != nullptr) {  // ignore nonexisting views
-            VPackSlice viewDef = RocksDBValue::data(value);
-            {
-              VPackObjectBuilder marker(&_builder, true);
-              marker->add("tick", VPackValue(std::to_string(_currentSequence)));
-              marker->add("db", VPackValue(vocbase->name()));
-              marker->add("cuid", VPackValue(view->guid()));
-              marker->add("data", viewDef);
-              if (_state == VIEW_CREATE) {
-                marker->add("type", VPackValue(REPLICATION_VIEW_CREATE));
-              } else /*if (_state == VIEW_CHANGE)*/ {
-                marker->add("type", VPackValue(REPLICATION_VIEW_CHANGE));
+            if (view != nullptr) {  // ignore nonexisting views
+              VPackSlice viewDef = RocksDBValue::data(value);
+              {
+                VPackObjectBuilder marker(&_builder, true);
+                marker->add("tick", VPackValue(std::to_string(_currentSequence)));
+                marker->add("db", VPackValue(vocbase->name()));
+                marker->add("cuid", VPackValue(view->guid()));
+                marker->add("data", viewDef);
+                if (_state == VIEW_CREATE) {
+                  marker->add("type", VPackValue(REPLICATION_VIEW_CREATE));
+                } else /*if (_state == VIEW_CHANGE)*/ {
+                  marker->add("type", VPackValue(REPLICATION_VIEW_CHANGE));
+                }
               }
+              printMarker(vocbase);
             }
-            printMarker(vocbase);
           }
         }
       }
@@ -551,7 +570,11 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
 
   // for Delete / SingleDelete
   void handleDeleteCF(uint32_t cfId, rocksdb::Slice const& key) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    _checkTick = true;
+#endif
     incTick();
+    // LOG_TOPIC("5060c", WARN, Logger::ENGINES) << "[DELETE] cf: " << cfId << ", key:" << key.ToString();
 
     if (cfId != _primaryCF) {
       return;  // ignore all document operations
@@ -616,7 +639,11 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
   rocksdb::Status DeleteRangeCF(uint32_t /*column_family_id*/,
                                 const rocksdb::Slice& /*begin_key*/,
                                 const rocksdb::Slice& /*end_key*/) override {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    _checkTick = true;
+#endif
     incTick();
+    // LOG_TOPIC("d1dfa", WARN, Logger::ENGINES) << "[DELETE-RANGE] cf: " << column_family_id;
     // drop and truncate may use this, but we do not print anything
     return rocksdb::Status();  // make WAL iterator happy
   }
@@ -633,7 +660,15 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
   }
 
   void startNewBatch(rocksdb::SequenceNumber startSequence) {
+    // LOG_TOPIC("24e69", TRACE, Logger::ENGINES) << "starting new batch with sequence: " << startSequence;
     TRI_ASSERT(!_stopOnNext);
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    if (_checkTick) {
+      TRI_ASSERT(_startSequence < startSequence);
+      TRI_ASSERT(_currentSequence < startSequence);
+    }
+#endif
+
     // starting new write batch
     _startSequence = startSequence;
     _currentSequence = startSequence;
@@ -642,6 +677,9 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
     _currentTrxId = 0;
     _trxDbId = 0;
     _removedDocRid = 0;
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    _checkTick = true;
+#endif
   }
 
   uint64_t endBatch() {
@@ -654,17 +692,24 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
 
   uint64_t lastWrittenSequence() const { return _lastWrittenSequence; }
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  void disableTickCheck() { _checkTick = false; }
+#endif
+
  private:
+
   void writeCommitMarker(TRI_voc_tick_t dbid) {
     TRI_ASSERT(_state == TRANSACTION);
     TRI_vocbase_t* vocbase = loadVocbase(dbid);
-    if (vocbase != nullptr) {  // we be in shutdown
+    // note: vocbase may be a nullptr here, if the database was already deleted!
+    if (vocbase != nullptr) {
       _builder.openObject(true);
       _builder.add("tick", VPackValue(std::to_string(_currentSequence)));
       _builder.add("type", VPackValue(static_cast<uint64_t>(REPLICATION_TRANSACTION_COMMIT)));
-      _builder.add("db", VPackValue(vocbase->name()));
       _builder.add("tid", VPackValue(std::to_string(_currentTrxId)));
+      _builder.add("db", VPackValue(vocbase->name()));
       _builder.close();
+
       printMarker(vocbase);
     }
     _state = INVALID;
@@ -672,6 +717,7 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
 
   /// print maker in builder and clear it
   void printMarker(TRI_vocbase_t* vocbase) {
+    // note: vocbase may be a nullptr here!
     TRI_ASSERT(!_builder.isEmpty());
     if (_currentSequence > _filter.tickStart) {
       _callback(vocbase, _builder.slice());
@@ -720,12 +766,16 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
   TRI_voc_tick_t _trxDbId = 0;  // remove eventually
   TRI_voc_rid_t _removedDocRid = 0;
   bool _stopOnNext = false;
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  bool _checkTick = true;
+#endif
 };
 
 // iterates over WAL starting at 'from' and returns up to 'chunkSize' documents
 // from the corresponding database
 WalAccessResult RocksDBWalAccess::tail(Filter const& filter, size_t chunkSize,
-                                       TRI_voc_tick_t, MarkerCallback const& func) const {
+                                       TRI_voc_tick_t, 
+                                       MarkerCallback const& func) const {
   TRI_ASSERT(filter.transactionIds.empty());  // not supported in any way
 
   rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
@@ -747,6 +797,9 @@ WalAccessResult RocksDBWalAccess::tail(Filter const& filter, size_t chunkSize,
   uint64_t lastWrittenTick = 0;      // lastTick at the end of a write batch
   uint64_t latestTick = db->GetLatestSequenceNumber();
 
+  // prevent purging of WAL files while we are in here
+  RocksDBFilePurgePreventer purgePreventer(rocksutils::globalRocksEngine()->disallowPurging());
+
   std::unique_ptr<rocksdb::TransactionLogIterator> iterator;  // reader();
   // no need verifying the WAL contents
   rocksdb::TransactionLogIterator::ReadOptions ro(false);
@@ -759,7 +812,7 @@ WalAccessResult RocksDBWalAccess::tail(Filter const& filter, size_t chunkSize,
   // we need to check if the builder is bigger than the chunksize,
   // only after we printed a full WriteBatch. Otherwise a client might
   // never read the full writebatch
-  LOG_TOPIC(DEBUG, Logger::ENGINES)
+  LOG_TOPIC("caefa", DEBUG, Logger::ENGINES)
       << "WAL tailing call. Scan since: " << since << ", tick start: " << filter.tickStart
       << ", tick end: " << filter.tickEnd << ", chunk size: " << chunkSize;
   while (iterator->Valid() && lastScannedTick <= filter.tickEnd) {
@@ -773,21 +826,26 @@ WalAccessResult RocksDBWalAccess::tail(Filter const& filter, size_t chunkSize,
       break;  // cancel out
     }
 
-    // LOG_TOPIC(INFO, Logger::ENGINES) << "found batch-seq: " <<
-    // batch.sequence;
+    // LOG_TOPIC("1eccb", TRACE, Logger::REPLICATION) << "found batch-seq: " << batch.sequence;
     lastScannedTick = batch.sequence;  // start of the batch
 
     if (batch.sequence < since) {
-      // LOG_DEVEL << "skipping batch from " << batch.sequence << " to "
-      //<< (batch.sequence + batch.writeBatchPtr->Count());
+      // LOG_TOPIC("a5e56", TRACE, Logger::REPLICATION) << "skipping batch from " << batch.sequence << " to " << (batch.sequence + batch.writeBatchPtr->Count());
       iterator->Next();  // skip
       continue;
     }
 
     dumper.startNewBatch(batch.sequence);
     s = batch.writeBatchPtr->Iterate(&dumper);
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    if (batch.writeBatchPtr->Count() == 0) {
+      // there can be completely empty write batches. in case we encounter
+      // some, we cannot assume the tick gets increased next time
+      dumper.disableTickCheck();
+    }
+#endif
     if (!s.ok()) {
-      LOG_TOPIC(ERR, Logger::REPLICATION) << "error during WAL scan: " << s.ToString();
+      LOG_TOPIC("57d54", ERR, Logger::REPLICATION) << "error during WAL scan: " << s.ToString();
       break;  // s is considered in the end
     }
 
@@ -804,12 +862,16 @@ WalAccessResult RocksDBWalAccess::tail(Filter const& filter, size_t chunkSize,
     iterator->Next();
   }
 
+  // update our latest sequence number again, because it may have been raised
+  // while scanning the WAL
+  latestTick = db->GetLatestSequenceNumber();
+
   WalAccessResult result(TRI_ERROR_NO_ERROR, firstTick <= filter.tickStart,
                          lastWrittenTick, lastScannedTick, latestTick);
   if (!s.ok()) {
     result.reset(convertStatus(s, rocksutils::StatusHint::wal));
   }
-  // LOG_TOPIC(WARN, Logger::REPLICATION) << "2. firstTick: " << firstTick << "
+  // LOG_TOPIC("f7ab7", WARN, Logger::REPLICATION) << "2. firstTick: " << firstTick << "
   // lastWrittenTick: " << lastWrittenTick
   // << " latestTick: " << latestTick;
   return result;

@@ -24,9 +24,11 @@
 #ifndef ARANGOD_TRANSACTION_STATUS_H
 #define ARANGOD_TRANSACTION_STATUS_H 1
 
-#include "Basics/Common.h"
-
+#include <cstdint>
 #include <iosfwd>
+
+#include "Basics/Common.h"
+#include "Basics/debugging.h"
 
 namespace arangodb {
 namespace transaction {
@@ -58,6 +60,8 @@ static inline char const* statusString(Status status) {
   TRI_ASSERT(false);
   return "unknown";
 }
+
+Status statusFromString(char const* str, size_t len);
 
 }  // namespace transaction
 }  // namespace arangodb

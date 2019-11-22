@@ -24,32 +24,30 @@
 #ifndef ARANGOD_AQL_COLLECT_NODE_H
 #define ARANGOD_AQL_COLLECT_NODE_H 1
 
-#include "Aql/Aggregator.h"
 #include "Aql/CollectOptions.h"
 #include "Aql/ExecutionNode.h"
-#include "Aql/Variable.h"
-#include "Aql/types.h"
-#include "Basics/Common.h"
-#include "VocBase/voc-types.h"
-#include "VocBase/vocbase.h"
 
-#include <velocypack/Slice.h>
+#include <cstdint>
+#include <functional>
+#include <unordered_map>
+#include <utility>
+#include <vector>
 
 namespace arangodb {
+namespace velocypack {
+class Slice;
+}
 namespace aql {
 class ExecutionBlock;
 class ExecutionPlan;
 class RedundantCalculationsReplacer;
+struct Aggregator;
 
 /// @brief class CollectNode
 class CollectNode : public ExecutionNode {
   friend class ExecutionNode;
   friend class ExecutionBlock;
   friend class RedundantCalculationsReplacer;
-  friend class SortedCollectBlock;
-  friend class HashedCollectBlock;
-  friend class DistinctCollectBlock;
-  friend class CountCollectBlock;
 
  public:
   CollectNode(ExecutionPlan* plan, size_t id, CollectOptions const& options,
@@ -58,21 +56,7 @@ class CollectNode : public ExecutionNode {
               Variable const* expressionVariable, Variable const* outVariable,
               std::vector<Variable const*> const& keepVariables,
               std::unordered_map<VariableId, std::string const> const& variableMap,
-              bool count, bool isDistinctCommand)
-      : ExecutionNode(plan, id),
-        _options(options),
-        _groupVariables(groupVariables),
-        _aggregateVariables(aggregateVariables),
-        _expressionVariable(expressionVariable),
-        _outVariable(outVariable),
-        _keepVariables(keepVariables),
-        _variableMap(variableMap),
-        _count(count),
-        _isDistinctCommand(isDistinctCommand),
-        _specialized(false) {
-    // outVariable can be a nullptr, but only if _count is not set
-    TRI_ASSERT(!_count || _outVariable != nullptr);
-  }
+              bool count, bool isDistinctCommand);
 
   CollectNode(ExecutionPlan*, arangodb::velocypack::Slice const& base,
               Variable const* expressionVariable, Variable const* outVariable,
@@ -82,38 +66,53 @@ class CollectNode : public ExecutionNode {
               std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>> const& aggregateVariables,
               bool count, bool isDistinctCommand);
 
-  ~CollectNode();
+  ~CollectNode() override;
 
   /// @brief return the type of the node
-  NodeType getType() const override final { return COLLECT; }
+  NodeType getType() const final;
 
   /// @brief whether or not the node requires an additional post SORT
-  bool isDistinctCommand() const { return _isDistinctCommand; }
+  bool isDistinctCommand() const;
 
   /// @brief whether or not the node is specialized
-  bool isSpecialized() const { return _specialized; }
+  bool isSpecialized() const;
 
   /// @brief specialize the node
-  void specialized() { _specialized = true; }
+  void specialized();
 
   /// @brief return the aggregation method
-  CollectOptions::CollectMethod aggregationMethod() const {
-    return _options.method;
-  }
+  CollectOptions::CollectMethod aggregationMethod() const;
 
   /// @brief set the aggregation method
-  void aggregationMethod(CollectOptions::CollectMethod method) {
-    _options.method = method;
-  }
+  void aggregationMethod(CollectOptions::CollectMethod method);
 
   /// @brief getOptions
-  CollectOptions const& getOptions() const { return _options; }
-
-  /// @brief getOptions
-  CollectOptions& getOptions() { return _options; }
+  CollectOptions& getOptions();
 
   /// @brief export to VelocyPack
-  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags) const override final;
+  void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
+                          std::unordered_set<ExecutionNode const*>& seen) const final;
+
+  /// @brief calculate the expression register
+  void calcExpressionRegister(RegisterId& expressionRegister,
+                              std::unordered_set<RegisterId>& writeableOutputRegisters) const;
+
+  /// @brief calculate the collect register
+  void calcCollectRegister(RegisterId& collectRegister,
+                           std::unordered_set<RegisterId>& writeableOutputRegisters) const;
+
+  /// @brief calculate the group registers
+  void calcGroupRegisters(std::vector<std::pair<RegisterId, RegisterId>>& groupRegisters,
+                          std::unordered_set<RegisterId>& readableInputRegisters,
+                          std::unordered_set<RegisterId>& writeableOutputRegisters) const;
+
+  /// @brief calculate the aggregate registers
+  void calcAggregateRegisters(std::vector<std::pair<RegisterId, RegisterId>>& aggregateRegisters,
+                              std::unordered_set<RegisterId>& readableInputRegisters,
+                              std::unordered_set<RegisterId>& writeableOutputRegisters) const;
+
+  void calcAggregateTypes(std::vector<std::unique_ptr<Aggregator>>& aggregateTypes) const;
+  void calcVariableNames(std::vector<std::pair<std::string, RegisterId>>& variableNames) const;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
@@ -122,119 +121,70 @@ class CollectNode : public ExecutionNode {
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                       bool withProperties) const override final;
+                       bool withProperties) const final;
 
   /// @brief estimateCost
-  CostEstimate estimateCost() const override final;
+  CostEstimate estimateCost() const final;
 
   /// @brief whether or not the count flag is set
-  bool count() const { return _count; }
+  bool count() const;
   /// @brief set the count option
-  void count(bool value) { _count = value; }
+  void count(bool value);
 
-  inline bool hasOutVariableButNoCount() const {
-    return (_outVariable != nullptr && !_count);
-  }
+  bool hasOutVariableButNoCount() const;
 
   /// @brief whether or not the node has an outVariable (i.e. INTO ...)
-  inline bool hasOutVariable() const { return _outVariable != nullptr; }
+  bool hasOutVariable() const;
 
   /// @brief return the out variable
-  Variable const* outVariable() const { return _outVariable; }
+  Variable const* outVariable() const;
 
   /// @brief clear the out variable
-  void clearOutVariable() {
-    TRI_ASSERT(_outVariable != nullptr);
-    _outVariable = nullptr;
-    _count = false;
-  }
+  void clearOutVariable();
 
   void setAggregateVariables(
       std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>> const& aggregateVariables);
 
   /// @brief clear one of the aggregates
   void clearAggregates(
-      std::function<bool(std::pair<Variable const*, std::pair<Variable const*, std::string>> const&)> cb) {
-    for (auto it = _aggregateVariables.begin(); it != _aggregateVariables.end();
-         /* no hoisting */) {
-      if (cb(*it)) {
-        it = _aggregateVariables.erase(it);
-      } else {
-        ++it;
-      }
-    }
-  }
+      std::function<bool(std::pair<Variable const*, std::pair<Variable const*, std::string>> const&)> cb);
 
   /// @brief whether or not the node has an expression variable (i.e. INTO ...
   /// = expr)
-  inline bool hasExpressionVariable() const {
-    return _expressionVariable != nullptr;
-  }
+  bool hasExpressionVariable() const;
 
   /// @brief set the expression variable
-  void expressionVariable(Variable const* variable) {
-    TRI_ASSERT(!hasExpressionVariable());
-    _expressionVariable = variable;
-  }
+  void expressionVariable(Variable const* variable);
 
   /// @brief return whether or not the collect has keep variables
-  bool hasKeepVariables() const { return !_keepVariables.empty(); }
+  bool hasKeepVariables() const;
 
   /// @brief return the keep variables
-  std::vector<Variable const*> const& keepVariables() const {
-    return _keepVariables;
-  }
+  std::vector<Variable const*> const& keepVariables() const;
 
   /// @brief set list of variables to keep if INTO is used
-  void setKeepVariables(std::vector<Variable const*>&& variables) {
-    _keepVariables = std::move(variables);
-  }
+  void setKeepVariables(std::vector<Variable const*>&& variables);
 
   /// @brief return the variable map
-  std::unordered_map<VariableId, std::string const> const& variableMap() const {
-    return _variableMap;
-  }
+  std::unordered_map<VariableId, std::string const> const& variableMap() const;
 
   /// @brief get all group variables (out, in)
-  std::vector<std::pair<Variable const*, Variable const*>> const& groupVariables() const {
-    return _groupVariables;
-  }
+  std::vector<std::pair<Variable const*, Variable const*>> const& groupVariables() const;
 
   /// @brief set all group variables (out, in)
-  void groupVariables(std::vector<std::pair<Variable const*, Variable const*>> const& vars) {
-    _groupVariables = vars;
-  }
+  void groupVariables(std::vector<std::pair<Variable const*, Variable const*>> const& vars);
 
   /// @brief get all aggregate variables (out, in)
-  std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>> const& aggregateVariables() const {
-    return _aggregateVariables;
-  }
+  std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>> const& aggregateVariables() const;
 
   /// @brief get all aggregate variables (out, in)
-  std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>>& aggregateVariables() {
-    return _aggregateVariables;
-  }
+  std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>>& aggregateVariables();
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(arangodb::HashSet<Variable const*>& vars) const override final;
+  void getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& vars) const final;
 
   /// @brief getVariablesSetHere
-  std::vector<Variable const*> getVariablesSetHere() const override final {
-    std::vector<Variable const*> v;
-    v.reserve(_groupVariables.size() + _aggregateVariables.size() +
-              (_outVariable == nullptr ? 0 : 1));
-
-    for (auto const& p : _groupVariables) {
-      v.emplace_back(p.first);
-    }
-    for (auto const& p : _aggregateVariables) {
-      v.emplace_back(p.first);
-    }
-    if (_outVariable != nullptr) {
-      v.emplace_back(_outVariable);
-    }
-    return v;
-  }
+  std::vector<Variable const*> getVariablesSetHere() const final;
 
  private:
   /// @brief options for the aggregation

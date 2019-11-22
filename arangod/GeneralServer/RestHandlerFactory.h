@@ -24,9 +24,17 @@
 #ifndef ARANGOD_HTTP_SERVER_HTTP_HANDLER_FACTORY_H
 #define ARANGOD_HTTP_SERVER_HTTP_HANDLER_FACTORY_H 1
 
+#include <memory>
+#include <string>
+#include <unordered_map>
+#include <vector>
+
 #include "Basics/Common.h"
 
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
 class GeneralRequest;
 class GeneralResponse;
 
@@ -39,13 +47,15 @@ class RestHandlerFactory {
 
  public:
   // handler creator
-  typedef RestHandler* (*create_fptr)(GeneralRequest*, GeneralResponse*, void* data);
+  typedef RestHandler* (*create_fptr)(application_features::ApplicationServer&,
+                                      GeneralRequest*, GeneralResponse*, void* data);
 
   // cppcheck-suppress *
   RestHandlerFactory() {}
 
   // creates a new handler
-  RestHandler* createHandler(std::unique_ptr<GeneralRequest>,
+  RestHandler* createHandler(application_features::ApplicationServer&,
+                             std::unique_ptr<GeneralRequest>,
                              std::unique_ptr<GeneralResponse>) const;
 
   // adds a path and constructor to the factory

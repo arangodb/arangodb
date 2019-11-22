@@ -25,26 +25,32 @@
 #ifndef ARANGOD_SCHEDULER_SCHEDULER_H
 #define ARANGOD_SCHEDULER_SCHEDULER_H 1
 
+#include <atomic>
+#include <chrono>
 #include <condition_variable>
+#include <functional>
 #include <mutex>
 #include <queue>
 
+#include "Basics/Exceptions.h"
+#include "Basics/system-compiler.h"
 #include "GeneralServer/RequestLane.h"
-#include "Logger/Logger.h"
 
 namespace arangodb {
-
+namespace application_features {
+class ApplicationServer;
+}
 namespace velocypack {
 class Builder;
 }
 
-class Scheduler;
+class LogTopic;
 class SchedulerThread;
 class SchedulerCronThread;
 
 class Scheduler {
  public:
-  explicit Scheduler();
+  explicit Scheduler(application_features::ApplicationServer&);
   virtual ~Scheduler();
 
   // ---------------------------------------------------------------------------
@@ -56,17 +62,26 @@ class Scheduler {
   typedef std::shared_ptr<WorkItem> WorkHandle;
 
   // Enqueues a task - this is implemented on the specific scheduler
-  virtual bool queue(RequestLane lane, std::function<void()>) = 0;
+  // May throw.
+  virtual bool queue(RequestLane lane, std::function<void()>,
+                     bool allowDirectHandling = false) ADB_WARN_UNUSED_RESULT = 0;
 
   // Enqueues a task after delay - this uses the queue functions above.
   // WorkHandle is a shared_ptr to a WorkItem. If all references the WorkItem
-  // are dropped, the task is canceled.
-  virtual WorkHandle queueDelay(RequestLane lane, clock::duration delay,
-                                std::function<void(bool canceled)> handler);
+  // are dropped, the task is canceled. It will return true if queued, false
+  // otherwise
+  virtual std::pair<bool, WorkHandle> queueDelay(RequestLane lane, clock::duration delay,
+                                                 std::function<void(bool canceled)> handler);
 
-  class WorkItem {
+  class WorkItem final {
    public:
-    virtual ~WorkItem() { cancel(); };
+    ~WorkItem() {
+      try {
+        cancel();
+      } catch (...) {
+        // destructor... no exceptions allowed here
+      }
+    }
 
     // Cancels the WorkItem
     void cancel() { executeWithCancel(true); }
@@ -76,7 +91,7 @@ class Scheduler {
 
     explicit WorkItem(std::function<void(bool canceled)>&& handler,
                       RequestLane lane, Scheduler* scheduler)
-        : _handler(std::move(handler)), _lane(lane), _disable(false), _scheduler(scheduler){};
+        : _handler(std::move(handler)), _lane(lane), _disable(false), _scheduler(scheduler) {}
 
    private:
     // This is not copyable or movable
@@ -92,13 +107,15 @@ class Scheduler {
         // The following code moves the _handler into the Scheduler.
         // Thus any reference to class to self in the _handler will be released
         // as soon as the scheduler executed the _handler lambda.
-        _scheduler->queue(_lane, [handler = std::move(_handler), arg]() {
-          handler(arg);
-        });
+        bool queued = _scheduler->queue(_lane, [handler = std::move(_handler),
+                                                arg]() { handler(arg); });
+        if (!queued) {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_QUEUE_FULL);
+        }
       }
     }
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    bool isDisabled() { return _disable.load(); }
+    bool isDisabled() const { return _disable.load(); }
     friend class Scheduler;
 #endif
 
@@ -108,6 +125,9 @@ class Scheduler {
     std::atomic<bool> _disable;
     Scheduler* _scheduler;
   };
+
+ protected:
+  application_features::ApplicationServer& _server;
 
   // ---------------------------------------------------------------------------
   // CronThread and delayed tasks
@@ -131,7 +151,7 @@ class Scheduler {
   typedef std::pair<clock::time_point, std::weak_ptr<WorkItem>> CronWorkItem;
 
   struct CronWorkItemCompare {
-    bool operator()(CronWorkItem const& left, CronWorkItem const& right) {
+    bool operator()(CronWorkItem const& left, CronWorkItem const& right) const {
       // Reverse order, because std::priority_queue is a max heap.
       return right.first < left.first;
     }
@@ -148,17 +168,15 @@ class Scheduler {
   // ---------------------------------------------------------------------------
  public:
   struct QueueStatistics {
-    uint64_t _running;
-    uint64_t _working;
+    uint64_t _running; // numWorkers
+    uint64_t _blocked; // obsolete, always 0 now
     uint64_t _queued;
-    uint64_t _fifo1;
-    uint64_t _fifo2;
-    uint64_t _fifo3;
+    uint64_t _working;
+    uint64_t _directExec;
   };
 
-  virtual void addQueueStatistics(velocypack::Builder&) const = 0;
+  virtual void toVelocyPack(velocypack::Builder&) const = 0;
   virtual QueueStatistics queueStatistics() const = 0;
-  virtual std::string infoStatus() const = 0;
 
   // ---------------------------------------------------------------------------
   // Start/Stop/IsRunning stuff

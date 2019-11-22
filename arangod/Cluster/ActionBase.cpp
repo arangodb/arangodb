@@ -28,6 +28,9 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/MaintenanceFeature.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -40,12 +43,13 @@ inline static std::chrono::system_clock::duration secs_since_epoch() {
 }
 
 ActionBase::ActionBase(MaintenanceFeature& feature, ActionDescription const& desc)
-    : _feature(feature), _description(desc), _state(READY), _progress(0) {
+    : _feature(feature), _description(desc), _state(READY), _progress(0),
+      _priority(desc.priority()) {
   init();
 }
 
 ActionBase::ActionBase(MaintenanceFeature& feature, ActionDescription&& desc)
-    : _feature(feature), _description(std::move(desc)), _state(READY), _progress(0) {
+    : _feature(feature), _description(std::move(desc)), _state(READY), _progress(0), _priority(desc.priority()) {
   init();
 }
 
@@ -61,21 +65,21 @@ void ActionBase::init() {
   _actionDone = std::chrono::system_clock::duration::zero();
 }
 
-ActionBase::~ActionBase() {}
+ActionBase::~ActionBase() = default;
 
 void ActionBase::notify() {
-  LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+  LOG_TOPIC("df020", DEBUG, Logger::MAINTENANCE)
       << "Job " << _description << " calling syncDBServerStatusQuo";
-  auto cf = ApplicationServer::getFeature<ClusterFeature>("Cluster");
-  if (cf != nullptr) {
-    cf->syncDBServerStatusQuo();
+  auto& server = _feature.server();
+  if (server.hasFeature<ClusterFeature>()) {
+    server.getFeature<ClusterFeature>().syncDBServerStatusQuo();
   }
 }
 
 bool ActionBase::matches(std::unordered_set<std::string> const& labels) const {
   for (auto const& label : labels) {
     if (_labels.find(label) == _labels.end()) {
-      LOG_TOPIC(TRACE, Logger::MAINTENANCE)
+      LOG_TOPIC("e29f1", TRACE, Logger::MAINTENANCE)
           << "Must not run in worker with " << label << ": " << *this;
       return false;
     }
@@ -121,12 +125,12 @@ void ActionBase::createPreAction(std::shared_ptr<ActionDescription> const& descr
 
 /// @brief Retrieve pointer to action that should run before this one
 std::shared_ptr<Action> ActionBase::getPreAction() {
-  return (_preAction != nullptr) ? _feature.findAction(_preAction) : nullptr;
+  return (_preAction != nullptr) ? _feature.findFirstNotDoneAction(_preAction) : nullptr;
 }
 
 /// @brief Retrieve pointer to action that should run after this one
 std::shared_ptr<Action> ActionBase::getPostAction() {
-  return (_postAction != nullptr) ? _feature.findAction(_postAction) : nullptr;
+  return (_postAction != nullptr) ? _feature.findFirstNotDoneAction(_postAction) : nullptr;
 }
 
 // FIXMEMAINTENANCE: Code path could corrupt registry object because
@@ -163,12 +167,12 @@ void ActionBase::endStats() {
 }  // ActionBase::endStats
 
 Result arangodb::actionError(int errorCode, std::string const& errorMessage) {
-  LOG_TOPIC(ERR, Logger::MAINTENANCE) << errorMessage;
+  LOG_TOPIC("c889d", ERR, Logger::MAINTENANCE) << errorMessage;
   return Result(errorCode, errorMessage);
 }
 
 Result arangodb::actionWarn(int errorCode, std::string const& errorMessage) {
-  LOG_TOPIC(WARN, Logger::MAINTENANCE) << errorMessage;
+  LOG_TOPIC("abe54", WARN, Logger::MAINTENANCE) << errorMessage;
   return Result(errorCode, errorMessage);
 }
 

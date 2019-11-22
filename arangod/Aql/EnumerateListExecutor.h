@@ -26,14 +26,13 @@
 #ifndef ARANGOD_AQL_ENUMERATE_EXECUTOR_H
 #define ARANGOD_AQL_ENUMERATE_EXECUTOR_H
 
-#include "Aql/AqlValue.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
-#include "Aql/OutputAqlItemRow.h"
 #include "Aql/types.h"
 
 #include <memory>
+#include <unordered_set>
 
 namespace arangodb {
 namespace transaction {
@@ -43,28 +42,26 @@ class Methods;
 namespace aql {
 
 class ExecutorInfos;
-class InputAqlItemRow;
+class OutputAqlItemRow;
 class NoStats;
-template <bool>
+template <BlockPassthrough>
 class SingleRowFetcher;
 
 class EnumerateListExecutorInfos : public ExecutorInfos {
  public:
-  EnumerateListExecutorInfos(RegisterId inputRegister,
-                             RegisterId outputRegister,
-                             RegisterId nrInputRegisters,
-                             RegisterId nrOutputRegisters,
+  // cppcheck-suppress passedByValue
+  EnumerateListExecutorInfos(RegisterId inputRegister, RegisterId outputRegister,
+                             RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
                              std::unordered_set<RegisterId> registersToClear,
                              std::unordered_set<RegisterId> registersToKeep);
 
   EnumerateListExecutorInfos() = delete;
-  EnumerateListExecutorInfos(EnumerateListExecutorInfos &&) = default;
+  EnumerateListExecutorInfos(EnumerateListExecutorInfos&&) = default;
   EnumerateListExecutorInfos(EnumerateListExecutorInfos const&) = delete;
   ~EnumerateListExecutorInfos() = default;
 
-
-  RegisterId getInputRegister() const noexcept { return _inputRegister; };
-  RegisterId getOutputRegister() const noexcept { return _outputRegister; };
+  RegisterId getInputRegister() const noexcept;
+  RegisterId getOutputRegister() const noexcept;
 
  private:
   // These two are exactly the values in the parent members
@@ -80,8 +77,9 @@ class EnumerateListExecutorInfos : public ExecutorInfos {
 class EnumerateListExecutor {
  public:
   struct Properties {
-    static const bool preservesOrder = true;
-    static const bool allowsBlockPassthrough = false;
+    static constexpr bool preservesOrder = true;
+    static constexpr BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Disable;
+    static constexpr bool inputSizeRestrictsOutputSize = false;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = EnumerateListExecutorInfos;
@@ -95,8 +93,7 @@ class EnumerateListExecutor {
    *
    * @return ExecutionState, and if successful exactly one new Row of AqlItems.
    */
-  std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
-
+  std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
 
  private:
   AqlValue getAqlValue(AqlValue const& inVarReg, size_t const& pos, bool& mustDestroy);
@@ -109,7 +106,6 @@ class EnumerateListExecutor {
   ExecutionState _rowState;
   size_t _inputArrayPosition;
   size_t _inputArrayLength;
-
 };
 
 }  // namespace aql

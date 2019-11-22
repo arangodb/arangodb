@@ -38,8 +38,7 @@ struct SimpleHttpClientParams;
 
 }  // namespace httpclient
 
-class ClientFeature final : public application_features::ApplicationFeature,
-                            public HttpEndpointProvider {
+class ClientFeature final : public HttpEndpointProvider {
  public:
   constexpr static double const DEFAULT_REQUEST_TIMEOUT = 1200.0;
   constexpr static double const DEFAULT_CONNECTION_TIMEOUT = 5.0;
@@ -70,7 +69,9 @@ class ClientFeature final : public application_features::ApplicationFeature,
   void requestTimeout(double value) { _requestTimeout = value; }
   uint64_t maxPacketSize() const { return _maxPacketSize; }
   uint64_t sslProtocol() const { return _sslProtocol; }
-
+  bool forceJson() const { return _forceJson; }
+  void setForceJson(bool value) { _forceJson = value; }
+  
   std::unique_ptr<httpclient::GeneralClientConnection> createConnection();
   std::unique_ptr<httpclient::GeneralClientConnection> createConnection(std::string const& definition);
   std::unique_ptr<httpclient::SimpleHttpClient> createHttpClient() const;
@@ -93,30 +94,44 @@ class ClientFeature final : public application_features::ApplicationFeature,
 
   bool getWarnConnect() { return _warnConnect; }
 
+  static std::string buildConnectedMessage(
+    std::string const& endpointSpecification,
+    std::string const& version,
+    std::string const& role,
+    std::string const& mode,
+    std::string const& databaseName,
+    std::string const& user
+  );
+
   static int runMain(int argc, char* argv[],
                      std::function<int(int argc, char* argv[])> const& mainFunc);
 
  private:
   void readPassword();
   void readJwtSecret();
+  void loadJwtSecretFile();
 
   std::string _databaseName;
-  bool _authentication;
-  bool _askJwtSecret;
   std::string _endpoint;
   std::string _username;
   std::string _password;
   std::string _jwtSecret;
+  std::string _jwtSecretFile;
   double _connectionTimeout;
   double _requestTimeout;
   uint64_t _maxPacketSize;
   uint64_t _sslProtocol;
 
-  bool _allowJwtSecret;
   size_t _retries;
+  bool _authentication;
+  bool _askJwtSecret;
+
+  bool _allowJwtSecret;
   bool _warn;
   bool _warnConnect;
   bool _haveServerPassword;
+  bool _forceJson;
+
 #if _WIN32
   uint16_t _codePage;
   uint16_t _originalCodePage;

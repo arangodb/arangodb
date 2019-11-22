@@ -25,10 +25,12 @@
 
 #include <type_traits>
 
-#include <boost/optional.hpp>
+#include <optional>
 
 #include "Basics/Common.h"
 #include "Basics/Result.h"
+#include "Basics/debugging.h"
+#include "Basics/voc-errors.h"
 
 namespace arangodb {
 
@@ -70,21 +72,21 @@ class ResultT {
   }
 
   ResultT static error(int errorNumber) {
-    return ResultT(boost::none, errorNumber);
+    return ResultT(std::nullopt, errorNumber);
   }
 
   ResultT static error(int errorNumber, std::string const& errorMessage) {
-    return ResultT(boost::none, errorNumber, errorMessage);
+    return ResultT(std::nullopt, errorNumber, errorMessage);
   }
 
   ResultT static error(Result const& other) {
     TRI_ASSERT(other.fail());
-    return ResultT(boost::none, other);
+    return ResultT(std::nullopt, other);
   }
 
   ResultT static error(Result&& other) {
     TRI_ASSERT(other.fail());
-    return ResultT(boost::none, std::move(other));
+    return ResultT(std::nullopt, std::move(other));
   }
 
   // This is disabled if U is implicitly convertible to Result
@@ -93,10 +95,11 @@ class ResultT {
   template <typename U = T, typename = std::enable_if_t<!std::is_convertible<U, Result>::value>>
   // This is not explicit on purpose
   // NOLINTNEXTLINE(google-explicit-constructor)
-  ResultT(Result const& other) : _result(other) {
+  // cppcheck-suppress noExplicitConstructor
+  /* implicit */ ResultT(Result const& other) : _result(other) {
     // .ok() is not allowed here, as _val should be expected to be initialized
     // iff .ok() is true.
-    TRI_ASSERT(other.fail());
+    TRI_ASSERT(_result.fail());
   }
 
   // This is disabled if U is implicitly convertible to Result
@@ -105,10 +108,11 @@ class ResultT {
   template <typename U = T, typename = std::enable_if_t<!std::is_convertible<U, Result>::value>>
   // This is not explicit on purpose
   // NOLINTNEXTLINE(google-explicit-constructor)
-  ResultT(Result&& other) : _result(std::move(other)) {
+  // cppcheck-suppress noExplicitConstructor
+  /* implicit */ ResultT(Result&& other) : _result(std::move(other)) {
     // .ok() is not allowed here, as _val should be expected to be initialized
     // iff .ok() is true.
-    TRI_ASSERT(other.fail());
+    TRI_ASSERT(_result.fail());
   }
 
   // This is disabled if U is implicitly convertible to Result
@@ -117,7 +121,8 @@ class ResultT {
   template <typename U = T, typename = std::enable_if_t<!std::is_convertible<U, Result>::value>>
   // This is not explicit on purpose
   // NOLINTNEXTLINE(google-explicit-constructor)
-  ResultT(T&& val) : ResultT(std::move(val), TRI_ERROR_NO_ERROR) {}
+  // cppcheck-suppress noExplicitConstructor
+  /* implicit */ ResultT(T&& val) : ResultT(std::move(val), TRI_ERROR_NO_ERROR) {}
 
   // This is disabled if U is implicitly convertible to Result
   // (e.g., if U = int) to avoid ambiguous construction.
@@ -125,7 +130,8 @@ class ResultT {
   template <typename U = T, typename = std::enable_if_t<!std::is_convertible<U, Result>::value>>
   // This is not explicit on purpose
   // NOLINTNEXTLINE(google-explicit-constructor)
-  ResultT(T const& val) : ResultT(val, TRI_ERROR_NO_ERROR) {}
+  // cppcheck-suppress noExplicitConstructor
+  /* implicit */ ResultT(T const& val) : ResultT(val, TRI_ERROR_NO_ERROR) {}
 
   ResultT() = delete;
 
@@ -169,9 +175,9 @@ class ResultT {
     return ok();
   }
 
-  T const& get() const { return _val.get(); }
+  T const& get() const { return _val.value(); }
 
-  T& get() { return _val.get(); }
+  T& get() { return _val.value(); }
 
   ResultT map(ResultT<T> (*fun)(T const& val)) const {
     if (ok()) {
@@ -216,24 +222,24 @@ class ResultT {
 
  protected:
   Result _result;
-  boost::optional<T> _val;
+  std::optional<T> _val;
 
-  ResultT(boost::optional<T>&& val_, int errorNumber)
+  ResultT(std::optional<T>&& val_, int errorNumber)
       : _result(errorNumber), _val(std::move(val_)) {}
 
-  ResultT(boost::optional<T>&& val_, int errorNumber, std::string const& errorMessage)
+  ResultT(std::optional<T>&& val_, int errorNumber, std::string const& errorMessage)
       : _result(errorNumber, errorMessage), _val(val_) {}
 
-  ResultT(boost::optional<T> const& val_, int errorNumber)
+  ResultT(std::optional<T> const& val_, int errorNumber)
       : _result(errorNumber), _val(std::move(val_)) {}
 
-  ResultT(boost::optional<T> const& val_, int errorNumber, std::string const& errorMessage)
+  ResultT(std::optional<T> const& val_, int errorNumber, std::string const& errorMessage)
       : _result(errorNumber, errorMessage), _val(val_) {}
 
-  ResultT(boost::optional<T>&& val_, Result result)
+  ResultT(std::optional<T>&& val_, Result result)
       : _result(std::move(result)), _val(std::move(val_)) {}
 
-  ResultT(boost::optional<T>&& val_, Result&& result)
+  ResultT(std::optional<T>&& val_, Result&& result)
       : _result(std::move(result)), _val(std::move(val_)) {}
 };
 

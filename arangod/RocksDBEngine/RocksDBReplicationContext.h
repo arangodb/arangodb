@@ -28,6 +28,7 @@
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
 #include "Indexes/IndexIterator.h"
+#include "Replication/SyncerId.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "RocksDBEngine/RocksDBReplicationCommon.h"
 #include "Transaction/Methods.h"
@@ -48,6 +49,9 @@ class Snapshot;
 }  // namespace rocksdb
 
 namespace arangodb {
+namespace basics {
+class StringBuffer;
+}
 
 class RocksDBReplicationContext {
  private:
@@ -115,7 +119,7 @@ class RocksDBReplicationContext {
   RocksDBReplicationContext(RocksDBReplicationContext const&) = delete;
   RocksDBReplicationContext& operator=(RocksDBReplicationContext const&) = delete;
 
-  RocksDBReplicationContext(double ttl, TRI_server_id_t server_id);
+  RocksDBReplicationContext(double ttl, SyncerId syncerId, TRI_server_id_t clientId);
   ~RocksDBReplicationContext();
 
   TRI_voc_tick_t id() const;  // batchId
@@ -131,13 +135,14 @@ class RocksDBReplicationContext {
       TRI_vocbase_t& vocbase, std::string const& cname);
 
   // returns inventory
-  Result getInventory(TRI_vocbase_t& vocbase, bool includeSystem, bool global,
+  Result getInventory(TRI_vocbase_t& vocbase, bool includeSystem,
+                      bool includeFoxxQueues, bool global,
                       velocypack::Builder&);
 
   // ========================= Dump API =============================
 
   struct DumpResult {
-    DumpResult(int res) : hasMore(false), includedTick(0), _result(res) {}
+    explicit DumpResult(int res) : hasMore(false), includedTick(0), _result(res) {}
     DumpResult(int res, bool hm, uint64_t tick)
         : hasMore(hm), includedTick(tick), _result(res) {}
     bool hasMore;
@@ -148,7 +153,7 @@ class RocksDBReplicationContext {
     bool fail() const { return _result.fail(); }
     int errorNumber() const { return _result.errorNumber(); }
     std::string errorMessage() const { return _result.errorMessage(); }
-    bool is(uint64_t code) const { return _result.is(code); }
+    bool is(int code) const { return _result.is(code); }
 
     // access methods
     Result const& result() const& { return _result; }
@@ -198,9 +203,16 @@ class RocksDBReplicationContext {
   /// extend lifetime without using the context
   void extendLifetime(double ttl);
 
-  // buggy clients may not send the serverId
-  TRI_server_id_t replicationClientId() const {
-    return _serverId != 0 ? _serverId : _id;
+  SyncerId syncerId() const {
+    return _syncerId;
+  }
+
+  TRI_server_id_t replicationClientServerId() const {
+    return _clientId;
+  }
+
+  std::string const& clientInfo() const {
+    return _clientInfo;
   }
 
  private:
@@ -212,9 +224,11 @@ class RocksDBReplicationContext {
   void releaseDumpIterator(CollectionIterator*);
 
  private:
-  mutable Mutex _contextLock;
-  TRI_server_id_t const _serverId;
   TRI_voc_tick_t const _id;  // batch id
+  mutable Mutex _contextLock;
+  SyncerId const _syncerId;
+  TRI_server_id_t const _clientId;
+  std::string const _clientInfo;
 
   uint64_t _snapshotTick;  // tick in WAL from _snapshot
   rocksdb::Snapshot const* _snapshot;

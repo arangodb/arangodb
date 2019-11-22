@@ -20,17 +20,29 @@
 /// @author Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Maskings.h"
-
+#include <stdint.h>
 #include <iostream>
 
-#include "Basics/FileUtils.h"
-#include "Logger/Logger.h"
-#include "Random/RandomGenerator.h"
-
+#include <velocypack/Builder.h>
+#include <velocypack/Exception.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Parser.h>
+#include <velocypack/Slice.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
+#include <velocypack/velocypack-common.h>
+
+#include "Maskings.h"
+
+#include "Basics/FileUtils.h"
+#include "Basics/StringBuffer.h"
+#include "Basics/debugging.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
+#include "Maskings/CollectionSelection.h"
+#include "Maskings/MaskingFunction.h"
+#include "Random/RandomGenerator.h"
 
 using namespace arangodb;
 using namespace arangodb::maskings;
@@ -42,20 +54,20 @@ MaskingsResult Maskings::fromFile(std::string const& filename) {
     definition = basics::FileUtils::slurp(filename);
   } catch (std::exception const& e) {
     std::string msg = "cannot read maskings file '" + filename + "': " + e.what();
-    LOG_TOPIC(DEBUG, Logger::CONFIG) << msg;
+    LOG_TOPIC("379fe", DEBUG, Logger::CONFIG) << msg;
 
     return MaskingsResult(MaskingsResult::CANNOT_READ_FILE, msg);
   }
 
-  LOG_TOPIC(DEBUG, Logger::CONFIG) << "found maskings file '" << filename;
+  LOG_TOPIC("fe73b", DEBUG, Logger::CONFIG) << "found maskings file '" << filename;
 
   if (definition.empty()) {
     std::string msg = "maskings file '" + filename + "' is empty";
-    LOG_TOPIC(DEBUG, Logger::CONFIG) << msg;
+    LOG_TOPIC("5018d", DEBUG, Logger::CONFIG) << msg;
     return MaskingsResult(MaskingsResult::CANNOT_READ_FILE, msg);
   }
 
-  std::unique_ptr<Maskings> maskings(new Maskings{});
+  auto maskings = std::make_unique<Maskings>();
 
   maskings.get()->_randomSeed = RandomGenerator::interval(UINT64_MAX);
 
@@ -71,7 +83,7 @@ MaskingsResult Maskings::fromFile(std::string const& filename) {
     return MaskingsResult(std::move(maskings));
   } catch (velocypack::Exception const& e) {
     std::string msg = "cannot parse maskings file '" + filename + "': " + e.what();
-    LOG_TOPIC(DEBUG, Logger::CONFIG) << msg << ". file content: " << definition;
+    LOG_TOPIC("5cb4c", DEBUG, Logger::CONFIG) << msg << ". file content: " << definition;
 
     return MaskingsResult(MaskingsResult::CANNOT_PARSE_FILE, msg);
   }
@@ -87,14 +99,14 @@ ParseResult<Maskings> Maskings::parse(VPackSlice const& def) {
     std::string key = entry.key.copyString();
 
     if (key == "*") {
-      LOG_TOPIC(TRACE, Logger::CONFIG) << "default masking";
+      LOG_TOPIC("b0d99", TRACE, Logger::CONFIG) << "default masking";
 
       if (_hasDefaultCollection) {
         return ParseResult<Maskings>(ParseResult<Maskings>::DUPLICATE_COLLECTION,
                                      "duplicate default entry");
       }
     } else {
-      LOG_TOPIC(TRACE, Logger::CONFIG) << "masking collection '" << key << "'";
+      LOG_TOPIC("f5aac", TRACE, Logger::CONFIG) << "masking collection '" << key << "'";
 
       if (_collections.find(key) != _collections.end()) {
         return ParseResult<Maskings>(ParseResult<Maskings>::DUPLICATE_COLLECTION,
@@ -180,17 +192,14 @@ VPackValue Maskings::maskedItem(Collection& collection, std::vector<std::string>
                                 std::string& buffer, VPackSlice const& data) {
   static std::string xxxx("xxxx");
 
-  if (path.size() == 1) {
-    if (path[0] == "_key" || path[0] == "_id" || path[0] == "_rev" ||
-        path[0] == "_from" || path[0] == "_to") {
-      if (data.isString()) {
-        velocypack::ValueLength length;
-        char const* c = data.getString(length);
-        buffer = std::string(c, length);
-        return VPackValue(buffer);
-      } else if (data.isInteger()) {
-        return VPackValue(data.getInt());
-      }
+  if (path.size() == 1 && path[0].size() >= 1 && path[0][0] == '_') {
+    if (data.isString()) {
+      velocypack::ValueLength length;
+      char const* c = data.getString(length);
+      buffer = std::string(c, length);
+      return VPackValue(buffer);
+    } else if (data.isInteger()) {
+      return VPackValue(data.getInt());
     }
   }
 
@@ -232,7 +241,7 @@ VPackValue Maskings::maskedItem(Collection& collection, std::vector<std::string>
 
 void Maskings::addMaskedArray(Collection& collection, VPackBuilder& builder,
                               std::vector<std::string>& path, VPackSlice const& data) {
-  for (auto const& entry : VPackArrayIterator(data)) {
+  for (VPackSlice entry : VPackArrayIterator(data)) {
     if (entry.isObject()) {
       VPackObjectBuilder ob(&builder);
       addMaskedObject(collection, builder, path, entry);

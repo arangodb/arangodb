@@ -24,10 +24,10 @@
 // / @author Alan Plum
 // //////////////////////////////////////////////////////////////////////////////
 
+const internal = require('internal');
 const fs = require('fs');
 const joi = require('joi');
 const dd = require('dedent');
-const internal = require('internal');
 const crypto = require('@arangodb/crypto');
 const errors = require('@arangodb').errors;
 const FoxxManager = require('@arangodb/foxx/manager');
@@ -68,11 +68,15 @@ foxxRouter.use(installer)
 `)
 .queryParam('upgrade', joi.boolean().default(false), dd`
   Flag to upgrade the service installed at the mount point.
-  Triggers setup.
 `)
 .queryParam('replace', joi.boolean().default(false), dd`
   Flag to replace the service installed at the mount point.
-  Triggers teardown and setup.
+`)
+.queryParam('setup', joi.boolean().default(true), dd`
+  Flag to run setup after install.
+`)
+.queryParam('teardown', joi.boolean().default(false), dd`
+  Flag to run teardown before replace/upgrade.
 `);
 
 installer.use(function (req, res, next) {
@@ -83,6 +87,8 @@ installer.use(function (req, res, next) {
   const options = {};
   const appInfo = req.body;
   options.legacy = req.queryParams.legacy;
+  options.setup = req.queryParams.setup;
+  options.teardown = req.queryParams.teardown;
   let service;
   try {
     if (upgrade) {
@@ -359,12 +365,16 @@ foxxRouter.patch('/devel', function (req, res) {
 `);
 
 router.get('/fishbowl', function (req, res) {
-  try {
-    store.update();
-  } catch (e) {
-    console.warn('Failed to update Foxx store from GitHub.');
-  }
-  res.json(store.availableJson());
+  if (internal.isFoxxStoreDisabled()) {
+    res.json([]);
+  } else {
+    try {
+      store.update();
+    } catch (e) {
+      console.warn('Failed to update Foxx store from GitHub.');
+    }
+    res.json(store.availableJson());
+  } 
 })
 .summary('List of all Foxx services submitted to the Foxx store.')
 .description(dd`

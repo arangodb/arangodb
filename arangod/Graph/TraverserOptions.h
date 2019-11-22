@@ -33,7 +33,6 @@
 #include <velocypack/StringRef.h>
 
 namespace arangodb {
-class ManagedDocumentResult;
 
 namespace velocypack {
 class Builder;
@@ -43,14 +42,11 @@ class Slice;
 namespace aql {
 struct AstNode;
 class Expression;
+class PruneExpressionEvaluator;
 class Query;
 class TraversalNode;
+struct Variable;
 }  // namespace aql
-
-namespace graph {
-class EdgeUniquenessChecker;
-class TraverserCache;
-}  // namespace graph
 
 namespace traverser {
 
@@ -70,6 +66,10 @@ struct TraverserOptions : public graph::BaseOptions {
   aql::Expression* _baseVertexExpression;
 
   arangodb::traverser::ClusterTraverser* _traverser;
+
+  /// @brief The condition given in PRUNE (might be empty)
+  ///        The Node keeps responsibility
+  std::unique_ptr<aql::PruneExpressionEvaluator> _pruneExpression;
 
  public:
   uint64_t minDepth;
@@ -92,6 +92,7 @@ struct TraverserOptions : public graph::BaseOptions {
   /// @brief This copy constructor is only working during planning phase.
   ///        After planning this node should not be copied anywhere.
   TraverserOptions(TraverserOptions const&);
+  TraverserOptions& operator=(TraverserOptions const&) = delete;
 
   virtual ~TraverserOptions();
 
@@ -114,16 +115,28 @@ struct TraverserOptions : public graph::BaseOptions {
 
   bool hasEdgeFilter(int64_t, size_t) const;
 
-  bool evaluateEdgeExpression(arangodb::velocypack::Slice, arangodb::velocypack::StringRef vertexId,
+  bool evaluateEdgeExpression(arangodb::velocypack::Slice,
+                              arangodb::velocypack::StringRef vertexId,
                               uint64_t, size_t) const;
 
   bool evaluateVertexExpression(arangodb::velocypack::Slice, uint64_t) const;
 
-  graph::EdgeCursor* nextCursor(ManagedDocumentResult*, arangodb::velocypack::StringRef vid, uint64_t);
+  graph::EdgeCursor* nextCursor(arangodb::velocypack::StringRef vid, uint64_t);
 
   void linkTraverser(arangodb::traverser::ClusterTraverser*);
 
   double estimateCost(size_t& nrItems) const override;
+
+  void activatePrune(std::vector<aql::Variable const*> const&& vars,
+                     std::vector<aql::RegisterId> const&& regs, size_t vertexVarIdx,
+                     size_t edgeVarIdx, size_t pathVarIdx, aql::Expression* expr);
+
+  bool usesPrune() const { return _pruneExpression != nullptr; }
+
+  aql::PruneExpressionEvaluator* getPruneEvaluator() {
+    TRI_ASSERT(usesPrune());
+    return _pruneExpression.get();
+  }
 
  private:
   graph::EdgeCursor* nextCursorCoordinator(arangodb::velocypack::StringRef vid, uint64_t);

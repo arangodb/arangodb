@@ -59,7 +59,7 @@ postings::emplace_result postings::emplace(const bytes_ref& term) {
     writer_.seek(next_block_start);
   }
 
-  assert(size() < type_limits<type_t::doc_id_t>::eof()); // not larger then the static flag
+  assert(size() < doc_limits::eof()); // not larger then the static flag
 
   auto generator = [&term, this](const hashed_bytes_ref& key, const posting&) {
     // for new terms also write out their value

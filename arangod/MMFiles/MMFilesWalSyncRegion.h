@@ -42,7 +42,7 @@ struct MMFilesWalSyncRegion {
         checkMore(false),
         canSeal(false) {}
 
-  ~MMFilesWalSyncRegion() {}
+  ~MMFilesWalSyncRegion() = default;
 
   MMFilesWalLogfile::IdType logfileId;
   MMFilesWalLogfile* logfile;

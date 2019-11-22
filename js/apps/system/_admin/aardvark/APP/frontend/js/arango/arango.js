@@ -1,5 +1,5 @@
 /* jshint unused: false */
-/* global Blob, window, Joi, sigma, $, Tippy, document, _, arangoHelper, frontendConfig, arangoHelper, sessionStorage, localStorage, XMLHttpRequest */
+/* global Blob, window, Joi, sigma, $, tippy, document, _, arangoHelper, frontendConfig, arangoHelper, sessionStorage, localStorage, XMLHttpRequest */
 
 (function () {
   'use strict';
@@ -129,7 +129,7 @@
           }
         });
       }
-      return shortName;
+      return arangoHelper.escapeHtml(shortName);
     },
 
     getDatabaseShortName: function (id) {
@@ -230,14 +230,16 @@
 
       var settings = {
         arrow: true,
-        animation: 'fade',
-        animateFill: false,
         multiple: false,
-        hideDuration: 1
+        content: function (reference) {
+          var title = reference.getAttribute('title');
+          reference.removeAttribute('title');
+          return title;
+        }
       };
 
       if (position) {
-        settings.position = position;
+        settings.placement = position;
       }
 
       if (!selector) {
@@ -246,16 +248,16 @@
 
       if (typeof selector === 'object') {
         _.each(selector, function (elem) {
-          self.lastTooltips = new Tippy(elem, settings);
+          self.lastTooltips = new tippy(elem, settings);
         });
       } else {
         if (selector.indexOf(',') > -1) {
           var selectors = selector.split(',');
           _.each(selectors, function (elem) {
-            self.lastTooltips = new Tippy(elem, settings);
+            self.lastTooltips = new tippy(elem, settings);
           });
         }
-        this.lastTooltips = new Tippy(selector, settings);
+        this.lastTooltips = new tippy(selector, settings);
       }
     },
 
@@ -478,6 +480,10 @@
           route: '#services/install/remote'
         }
       };
+
+      if (!frontendConfig.foxxStoreEnabled) {
+        delete menus.Store;
+      }
 
       menus[activeKey].active = true;
       if (disabled) {
@@ -1153,18 +1159,25 @@
       });
     },
 
-    getFoxxFlag: function () {
-      var flag;
+    getFoxxFlags: function () {
+      var flags = {};
 
-      if ($('#new-app-replace').prop('checked')) {
-        flag = true;
-      } else {
-        if ($('#new-app-teardown').prop('checked')) {
-          flag = false;
-        }
+      var $replace = $('#new-app-flag-replace')[0];
+      if ($replace) {
+        flags.replace = Boolean($replace.checked);
       }
 
-      return flag;
+      var $teardown = $('#new-app-flag-teardown')[0];
+      if ($teardown) {
+        flags.teardown = Boolean($teardown.checked);
+      }
+
+      var $setup = $('#new-app-flag-setup')[0];
+      if ($setup) {
+        flags.setup = Boolean($setup.checked);
+      }
+
+      return flags;
     },
 
     createMountPointModal: function (callback, mode, mountpoint) {
@@ -1194,12 +1207,24 @@
         )
       );
 
+      if (window.App.replaceApp) {
+        tableContent.push(
+          window.modalView.createCheckboxEntry(
+            'new-app-flag-teardown',
+            'Run teardown?',
+            false,
+            "Should the existing service's teardown script be executed before replacing the service?",
+            false
+          )
+        );
+      }
+
       tableContent.push(
         window.modalView.createCheckboxEntry(
-          'new-app-teardown',
+          'new-app-flag-setup',
           'Run setup?',
           true,
-          "Should this app's setup script be executed after installing the app?",
+          "Should this service's setup script be executed after installing the service?",
           true
         )
       );
@@ -1207,10 +1232,10 @@
       if (window.App.replaceApp) {
         tableContent.push(
           window.modalView.createCheckboxEntry(
-            'new-app-replace',
-            'Keep configuration and dependency files?',
-            true,
-            "Should this app's configuration be saved before replacing the app?",
+            'new-app-flag-replace',
+            'Discard configuration and dependency files?',
+            false,
+            "Should this service's existing configuration and settings be removed completely before replacing the service?",
             false
           )
         );

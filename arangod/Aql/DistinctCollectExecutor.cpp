@@ -28,10 +28,10 @@
 #include "Aql/AqlValue.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Aql/OutputAqlItemRow.h"
 #include "Aql/SingleRowFetcher.h"
-#include "Basics/Common.h"
-
-#include <lib/Logger/LogMacros.h>
+#include "Aql/Stats.h"
+#include "Logger/LogMacros.h"
 
 #include <utility>
 
@@ -48,23 +48,35 @@ DistinctCollectExecutorInfos::DistinctCollectExecutorInfos(
     transaction::Methods* trxPtr)
     : ExecutorInfos(std::make_shared<std::unordered_set<RegisterId>>(readableInputRegisters),
                     std::make_shared<std::unordered_set<RegisterId>>(writeableInputRegisters),
-                    nrInputRegisters, nrOutputRegisters, std::move(registersToClear),  std::move(registersToKeep)),
+                    nrInputRegisters, nrOutputRegisters,
+                    std::move(registersToClear), std::move(registersToKeep)),
       _groupRegisters(groupRegisters),
       _trxPtr(trxPtr) {
   TRI_ASSERT(!_groupRegisters.empty());
 }
 
-DistinctCollectExecutor::DistinctCollectExecutor(Fetcher& fetcher, Infos& infos)
-    : _infos(infos), _fetcher(fetcher) {
-  _seen = std::make_unique<std::unordered_set<std::vector<AqlValue>, AqlValueGroupHash, AqlValueGroupEqual>>(
-      1024,
-      AqlValueGroupHash(_infos.getTransaction(), _infos.getGroupRegisters().size()),
-      AqlValueGroupEqual(_infos.getTransaction()));
-};
-DistinctCollectExecutor::~DistinctCollectExecutor() = default;
+std::vector<std::pair<RegisterId, RegisterId>> DistinctCollectExecutorInfos::getGroupRegisters() const {
+  return _groupRegisters;
+}
 
-std::pair<ExecutionState, NoStats> DistinctCollectExecutor::produceRow(OutputAqlItemRow& output) {
-  TRI_IF_FAILURE("DistinctCollectExecutor::produceRow") {
+transaction::Methods* DistinctCollectExecutorInfos::getTransaction() const {
+  return _trxPtr;
+}
+
+DistinctCollectExecutor::DistinctCollectExecutor(Fetcher& fetcher, Infos& infos)
+    : _infos(infos),
+      _fetcher(fetcher),
+      _seen(1024,
+            AqlValueGroupHash(_infos.getTransaction(),
+                              _infos.getGroupRegisters().size()),
+            AqlValueGroupEqual(_infos.getTransaction())) {}
+
+DistinctCollectExecutor::~DistinctCollectExecutor() { destroyValues(); }
+
+void DistinctCollectExecutor::initializeCursor() { destroyValues(); }
+
+std::pair<ExecutionState, NoStats> DistinctCollectExecutor::produceRows(OutputAqlItemRow& output) {
+  TRI_IF_FAILURE("DistinctCollectExecutor::produceRows") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   NoStats stats{};
@@ -95,9 +107,9 @@ std::pair<ExecutionState, NoStats> DistinctCollectExecutor::produceRow(OutputAql
     }
 
     // now check if we already know this group
-    auto foundIt = _seen->find(groupValues);
+    auto foundIt = _seen.find(groupValues);
 
-    bool newGroup = foundIt == _seen->end();
+    bool newGroup = foundIt == _seen.end();
     if (newGroup) {
       size_t i = 0;
 
@@ -112,7 +124,7 @@ std::pair<ExecutionState, NoStats> DistinctCollectExecutor::produceRow(OutputAql
       for (auto const& it : groupValues) {
         copy.emplace_back(it.clone());
       }
-      _seen->emplace(std::move(copy));
+      _seen.emplace(std::move(copy));
     }
 
     // Abort if upstream is done
@@ -122,4 +134,24 @@ std::pair<ExecutionState, NoStats> DistinctCollectExecutor::produceRow(OutputAql
 
     return {ExecutionState::HASMORE, stats};
   }
+}
+
+std::pair<ExecutionState, size_t> DistinctCollectExecutor::expectedNumberOfRows(size_t atMost) const {
+  // This block cannot know how many elements will be returned exactly.
+  // but it is upper bounded by the input.
+  return _fetcher.preFetchNumberOfRows(atMost);
+}
+
+void DistinctCollectExecutor::destroyValues() {
+  // destroy all AqlValues captured
+  for (auto& it : _seen) {
+    for (auto& it2 : it) {
+      const_cast<AqlValue*>(&it2)->destroy();
+    }
+  }
+  _seen.clear();
+}
+
+const DistinctCollectExecutor::Infos& DistinctCollectExecutor::infos() const noexcept {
+  return _infos;
 }

@@ -2,7 +2,7 @@
 @startDocuBlock put_api_replication_applier_stop
 @brief stop the replication
 
-@RESTHEADER{PUT /_api/replication/applier-stop, Stop replication applier}
+@RESTHEADER{PUT /_api/replication/applier-stop, Stop replication applier,handleCommandApplierStop}
 
 @RESTDESCRIPTION
 Stops the replication applier. This will return immediately if the

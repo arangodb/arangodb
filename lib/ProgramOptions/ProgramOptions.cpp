@@ -34,6 +34,9 @@
 
 #include <algorithm>
 #include <iostream>
+#ifdef TRI_HAVE_UNISTD_H
+#include <unistd.h>
+#endif
 
 #define ARANGODB_PROGRAM_OPTIONS_PROGNAME "#progname#"
 
@@ -115,17 +118,20 @@ void ProgramOptions::printSectionsHelp() const {
   std::cout << std::endl;
 }
 
-// returns a VPack representation of the option values
+// returns a VPack representation of the option values, with optional
+// filters applied to filter out specific options. 
+// the filter function is expected to return true
+// for any options that should become part of the result
 VPackBuilder ProgramOptions::toVPack(bool onlyTouched, bool detailed,
-                                     std::unordered_set<std::string> const& exclude) const {
+                                     std::function<bool(std::string const&)> const& filter) const {
   VPackBuilder builder;
   builder.openObject();
 
   walk(
-      [&builder, &exclude, &detailed](Section const& section, Option const& option) {
+      [&builder, &filter, &detailed](Section const& section, Option const& option) {
         std::string full(option.fullName());
-        if (exclude.find(full) != exclude.end()) {
-          // excluded option
+        
+        if (!filter(full)) {
           return;
         }
 
@@ -269,6 +275,11 @@ bool ProgramOptions::setValue(std::string const& name, std::string const& value)
     return true;
   }
 
+  if (option.hasFlag(options::Flags::FlushOnFirst) &&
+      _alreadyFlushed.find(parts.second) == _alreadyFlushed.end()) {
+    _alreadyFlushed.insert(parts.second);
+    option.parameter->flushValue();
+  }
   std::string result = option.parameter->set(_translator(value, _binaryPath));
 
   if (!result.empty()) {
@@ -466,22 +477,17 @@ void ProgramOptions::addPositional(std::string const& value) {
 // adds an option to the list of options
 void ProgramOptions::addOption(Option const& option) {
   checkIfSealed();
-  auto it = _sections.find(option.section);
-
-  if (it == _sections.end()) {
-    // add an anonymous section now...
-    addSection(option.section, "");
-    it = _sections.find(option.section);
-  }
+  std::map<std::string, Section>::iterator sectionIt = addSection(option.section, "");
 
   if (!option.shorthand.empty()) {
-    if (!_shorthands.emplace(option.shorthand, option.fullName()).second) {
+    if (!_shorthands.try_emplace(option.shorthand, option.fullName()).second) {
       throw std::logic_error(
           std::string("shorthand option already defined for option ") + option.displayName());
     }
   }
 
-  (*it).second.options.emplace(option.name, option);
+  Section& section = (*sectionIt).second;
+  section.options.try_emplace(option.name, option);
 }
 
 // determine maximum width of all options labels

@@ -23,7 +23,7 @@
 #ifndef ARANGOD_AQL_EXECUTION_STATE_H
 #define ARANGOD_AQL_EXECUTION_STATE_H 1
 
-#include <ostream>
+#include <iosfwd>
 
 namespace arangodb {
 namespace aql {
@@ -42,20 +42,7 @@ enum class ExecutionState {
   WAITING
 };
 
-inline std::ostream& operator<<(std::ostream& ostream, ExecutionState state) {
-  switch (state) {
-    case ExecutionState::DONE:
-      ostream << "DONE";
-      break;
-    case ExecutionState::HASMORE:
-      ostream << "HASMORE";
-      break;
-    case ExecutionState::WAITING:
-      ostream << "WAITING";
-      break;
-  }
-  return ostream;
-}
+std::ostream& operator<<(std::ostream& ostream, ExecutionState state);
 
 }  // namespace aql
 }  // namespace arangodb

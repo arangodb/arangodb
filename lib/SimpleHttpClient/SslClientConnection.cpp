@@ -21,27 +21,40 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "SslClientConnection.h"
+#include <errno.h>
+#include <string.h>
+#include <string>
 
-#include <openssl/ssl.h>
-#include <openssl/opensslv.h>
-
-#ifndef OPENSSL_VERSION_NUMBER
-#error expecting OPENSSL_VERSION_NUMBER to be defined
-#endif
+#include "Basics/Common.h"
+#include "Basics/operating-system.h"
 
 #ifdef TRI_HAVE_WINSOCK2_H
 #include <WS2tcpip.h>
 #include <WinSock2.h>
 #endif
 
-#include <sys/types.h>
+#include <openssl/opensslv.h>
+#include <openssl/ssl.h>
+#ifndef OPENSSL_VERSION_NUMBER
+#error expecting OPENSSL_VERSION_NUMBER to be defined
+#endif
 
 #include <openssl/err.h>
-#include <openssl/ssl.h>
+#include <openssl/opensslconf.h>
+#include <openssl/ssl3.h>
+#include <openssl/x509.h>
+
+#include "SslClientConnection.h"
+
 #include "Basics/Exceptions.h"
+#include "Basics/StringBuffer.h"
+#include "Basics/debugging.h"
+#include "Basics/error.h"
 #include "Basics/socket-utils.h"
+#include "Basics/voc-errors.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "Ssl/ssl-helper.h"
 
 #undef TRACE_SSL_CONNECTIONS
@@ -153,7 +166,7 @@ static void sslTlsTrace(int direction, int sslVersion, int contentType,
     else
       tlsRtName = "";
 
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+    LOG_TOPIC("5e087", TRACE, arangodb::Logger::FIXME)
         << "SSL connection trace: " << (direction ? "out" : "in") << ", " << tlsRtName
         << ", " << sslMessageType(sslVersion, *static_cast<char const*>(buf));
   }
@@ -242,19 +255,19 @@ void SslClientConnection::init(uint64_t sslProtocol) {
 #endif
       break;
 
-    case TLS_V13:
       // TLS 1.3, only supported from OpenSSL 1.1.1 onwards
 
       // openssl version number format is
       // MNNFFPPS: major minor fix patch status
 #if OPENSSL_VERSION_NUMBER >= 0x10101000L
+    case TLS_V13:
       meth = TLS_client_method();
       break;
-#else
-      // no TLS 1.3 support
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
-                                     "TLS 1.3 is not supported in this build");
 #endif
+
+    case TLS_GENERIC:
+      meth = TLS_client_method();
+      break;
 
     case SSL_UNKNOWN:
     default:
@@ -319,7 +332,10 @@ bool SslClientConnection::connectSocket() {
   switch (SslProtocol(_sslProtocol)) {
     case TLS_V1:
     case TLS_V12:
+#if OPENSSL_VERSION_NUMBER >= 0x10101000L
     case TLS_V13:
+#endif
+    case TLS_GENERIC:
     default:
       SSL_set_tlsext_host_name(_ssl, _endpoint->host().c_str());
   }
@@ -401,7 +417,7 @@ bool SslClientConnection::connectSocket() {
     return false;
   }
 
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+  LOG_TOPIC("b3d52", TRACE, arangodb::Logger::FIXME)
       << "SSL connection opened: " << SSL_get_cipher(_ssl) << ", "
       << SSL_get_cipher_version(_ssl) << " ("
       << SSL_get_cipher_bits(_ssl, nullptr) << " bits)";

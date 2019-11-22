@@ -36,9 +36,6 @@ const db = internal.db;
 const heartbeatInterval = 1; // 1 second
 
 let isCluster = instanceInfo.arangods.length > 1;
-let endpoint = instanceInfo.arangods.filter(arangod => {
-  return arangod.role === 'coordinator' || arangod.role === 'single';
-})[0];
 
 let download;
 if (isCluster) {
@@ -46,6 +43,8 @@ if (isCluster) {
 } else {
   download = require('internal').download;
 }
+
+let endpoint = instanceInfo.url; 
 
 const waitForHeartbeat = function () {
   internal.wait(3 * heartbeatInterval, false); 
@@ -55,7 +54,7 @@ const waitForHeartbeat = function () {
 describe('Readonly mode api', function() {
   afterEach(function() {
     // restore default server mode
-    let resp = download(endpoint.url + '/_admin/server/mode', JSON.stringify({'mode': 'default'}), {
+    let resp = download(endpoint + '/_admin/server/mode', JSON.stringify({'mode': 'default'}), {
       method: 'put',
     });
       waitForHeartbeat();
@@ -68,14 +67,14 @@ describe('Readonly mode api', function() {
   });
 
   it('outputs its current mode', function() {
-    let resp = download(endpoint.url + '/_admin/server/mode');
+    let resp = download(endpoint + '/_admin/server/mode');
     expect(resp.code).to.equal(200);
     let body = JSON.parse(resp.body);
     expect(body).to.have.property('mode', 'default');
   });
 
   it('can switch to readonly', function() {
-    let resp = download(endpoint.url + '/_admin/server/mode', JSON.stringify({'mode': 'readonly'}), {
+    let resp = download(endpoint + '/_admin/server/mode', JSON.stringify({'mode': 'readonly'}), {
       method: 'put',
     });
     expect(resp.code).to.equal(200);
@@ -85,31 +84,31 @@ describe('Readonly mode api', function() {
   });
 
   it('throws an error when not passing an object', function() {
-    let set = download(endpoint.url + '/_admin/server/mode', JSON.stringify('testi'), {
+    let set = download(endpoint + '/_admin/server/mode', JSON.stringify('testi'), {
       method: 'put',
     });
     expect(set.code).to.equal(400);
     waitForHeartbeat();
 
-    let resp = download(endpoint.url + '/_admin/server/mode');
+    let resp = download(endpoint + '/_admin/server/mode');
     let body = JSON.parse(resp.body);
     expect(body).to.have.property('mode', 'default');
   });
 
   it('throws an error when passing an unknown mode', function() {
-    let set = download(endpoint.url + '/_admin/server/mode', JSON.stringify({'mode': 'testi'}), {
+    let set = download(endpoint + '/_admin/server/mode', JSON.stringify({'mode': 'testi'}), {
       method: 'put',
     });
     expect(set.code).to.equal(400);
     waitForHeartbeat();
 
-    let resp = download(endpoint.url + '/_admin/server/mode');
+    let resp = download(endpoint + '/_admin/server/mode');
     let body = JSON.parse(resp.body);
     expect(body).to.have.property('mode', 'default');
   });
 
   it('the heartbeat should set readonly mode for all cluster nodes', function() {
-    let resp = download(endpoint.url + '/_admin/server/mode', JSON.stringify({'mode': 'readonly'}), {
+    let resp = download(endpoint + '/_admin/server/mode', JSON.stringify({'mode': 'readonly'}), {
       method: 'put',
     });
     expect(resp.code).to.equal(200);
@@ -117,9 +116,14 @@ describe('Readonly mode api', function() {
     
     let res = instanceInfo.arangods.filter(arangod => arangod.role === 'single' || arangod.role === 'coordinator' || arangod.role === 'primary')
     .every(arangod => {
-      let resp = download(endpoint.url + '/_admin/server/mode');
-      let body = JSON.parse(resp.body);
-      expect(body).to.have.property('mode', 'readonly');
+      let resp = download(arangod.url + '/_admin/server/mode');
+      if (resp.code === 503) {
+        // called on a follower
+        expect(resp.headers).to.have.property('x-arango-endpoint');
+      } else {
+        let body = JSON.parse(resp.body);
+        expect(body).to.have.property('mode', 'readonly');
+      }
     });
   });
 });

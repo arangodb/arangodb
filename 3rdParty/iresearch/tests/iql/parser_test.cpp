@@ -23,19 +23,9 @@
 
 #include "gtest/gtest.h"
 
-#if defined (__GNUC__)
-  #pragma GCC diagnostic push
-  #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-#endif
-
-  #include <boost/locale.hpp>
-
-#if defined (__GNUC__)
-  #pragma GCC diagnostic pop
-#endif
-
 #include "iql/parser.hh"
 #include "iql/parser_context.hpp"
+#include "utils/locale_utils.hpp"
 
 namespace tests {
   class test_context: public iresearch::iql::parser_context {
@@ -385,7 +375,9 @@ TEST_F(IqlParserTestSuite, test_sequence) {
   }
 
   {
-    std::string sData = boost::locale::conv::utf_to_utf<char>(L"\u041F\u043E==a");
+    auto locale = irs::locale_utils::locale(irs::string_ref::NIL, "utf8", true); // utf8 internal and external
+    std::string sData;
+    ASSERT_TRUE(irs::locale_utils::append_external(sData, irs::basic_string_ref<wchar_t>(L"\u041F\u043E==a"), locale));
     test_context ctx(sData);
     parser parser(ctx);
 
@@ -405,7 +397,9 @@ TEST_F(IqlParserTestSuite, test_sequence) {
     auto* pNode = &ctx.node(pQuery->children[0]); // value
 
     ASSERT_EQ(pNode->SEQUENCE, pNode->type);
-    ASSERT_EQ(L"\u041F\u043E", boost::locale::conv::utf_to_utf<wchar_t>(pNode->sValue.c_str(), pNode->sValue.c_str() + pNode->sValue.size()));
+    std::basic_string<wchar_t> actual;
+    ASSERT_TRUE(irs::locale_utils::append_internal<wchar_t>(actual, pNode->sValue, locale));
+    ASSERT_EQ(L"\u041F\u043E", actual);
   }
 
   // ...........................................................................

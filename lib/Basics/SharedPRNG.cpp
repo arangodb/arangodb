@@ -28,6 +28,8 @@ using namespace arangodb::basics;
 
 std::unique_ptr<SharedPRNG> SharedPRNG::_global = std::make_unique<SharedPRNG>();
 
+PaddedPRNG::PaddedPRNG() {}
+
 void PaddedPRNG::seed(uint64_t seed1, uint64_t seed2) {
   _prng.seed(seed1, seed2);
 }

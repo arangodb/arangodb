@@ -45,6 +45,7 @@ const request = require('@arangodb/request');
 const actions = require('@arangodb/actions');
 const isZipBuffer = require('@arangodb/util').isZipBuffer;
 const codeFrame = require('@arangodb/util').codeFrame;
+const internal  = require('internal');
 
 const SYSTEM_SERVICE_MOUNTS = [
   '/_admin/aardvark', // Admin interface.
@@ -283,48 +284,10 @@ function cleanupOrphanedServices (knownServicePaths, knownBundlePaths) {
 }
 
 function startup () {
-  if (isFoxxmaster()) {
-    const db = require('internal').db;
-    const dbName = db._name();
-    try {
-      db._useDatabase('_system');
-      const databases = db._databases();
-      for (const name of databases) {
-        try {
-          db._useDatabase(name);
-          upsertSystemServices();
-        } catch (e) {
-          console.warnStack(e);
-        }
-      }
-    } finally {
-      db._useDatabase(dbName);
-    }
-  }
   if (global.ArangoServerState.role() === 'SINGLE') {
     commitLocalState(true);
   }
   selfHealAll();
-}
-
-function upsertSystemServices () {
-  const serviceDefinitions = new Map();
-  for (const mount of SYSTEM_SERVICE_MOUNTS) {
-    try {
-      const serviceDefinition = utils.getServiceDefinition(mount) || {mount};
-      const service = FoxxService.create(serviceDefinition);
-      serviceDefinitions.set(mount, service.toJSON());
-    } catch (e) {
-      console.errorStack(e);
-    }
-  }
-  db._query(aql`
-    FOR item IN ${Array.from(serviceDefinitions)}
-    UPSERT {mount: item[0]}
-    INSERT item[1]
-    REPLACE item[1]
-    IN ${utils.getStorage()}
-  `);
 }
 
 function commitLocalState (replace) {
@@ -391,7 +354,7 @@ function commitLocalState (replace) {
 // Change propagation
 
 function reloadRouting () {
-  require('internal').executeGlobalContextFunction('reloadRouting');
+  global.SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION('reloadRouting');
   actions.reloadRouting();
 }
 
@@ -567,8 +530,7 @@ function _prepareService (serviceInfo, legacy = false) {
         _buildServiceFromFile(tempServicePath, tempBundlePath, serviceInfo);
       }
     } else {
-      // Foxx Store
-      const info = store.installationInfo(serviceInfo);
+      const info = !internal.isFoxxApiDisabled() && store.installationInfo(serviceInfo);  //disable foxx store
       if (!info) {
         throw new ArangoError({
           errorNum: errors.ERROR_SERVICE_SOURCE_NOT_FOUND.code,
@@ -971,7 +933,7 @@ function runTests (mount, options = {}) {
     service = reloadInstalledService(mount, true);
   }
   ensureServiceLoaded(mount);
-  return require('@arangodb/foxx/mocha').run(service, options.reporter);
+  return require('@arangodb/foxx/mocha').run(service, options);
 }
 
 function enableDevelopmentMode (mount) {

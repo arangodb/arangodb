@@ -1,5 +1,5 @@
 /* jshint globalstrict:true, strict:true, maxlen: 5000 */
-/* global describe, before, after, it, require, print, afterEach, beforeEach */
+/* global describe, before, after, it, require, afterEach, beforeEach */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief tests for user access rights
@@ -123,7 +123,7 @@ describe('User Rights Management', () => {
                   users.remove(testUser);
                   expect(rootTestUser()).to.equal(true, `${name} was able to drop a user with insufficient rights.`);
                 } catch (e) {
-                  print(e);
+                  //
                 }
               }
             });

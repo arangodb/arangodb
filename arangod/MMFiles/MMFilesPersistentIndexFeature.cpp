@@ -22,15 +22,21 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "MMFiles/MMFilesPersistentIndexFeature.h"
-#include "ApplicationFeatures/RocksDBOptionFeature.h"
+
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
+#include "Basics/application-exit.h"
 #include "Basics/tri-strings.h"
+#include "FeaturePhases/BasicFeaturePhaseServer.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
+#include "MMFiles/MMFilesEngine.h"
 #include "MMFiles/MMFilesPersistentIndexKeyComparator.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "RestServer/DatabasePathFeature.h"
+#include "StorageEngine/RocksDBOptionFeature.h"
 
 #include <rocksdb/convenience.h>
 #include <rocksdb/db.h>
@@ -61,11 +67,11 @@ MMFilesPersistentIndexFeature::MMFilesPersistentIndexFeature(application_feature
       _comparator(nullptr),
       _path() {
   setOptional(true);
-  onlyEnabledWith("MMFilesEngine");
+  startsAfter<BasicFeaturePhaseServer>();
 
-  startsAfter("BasicsPhase");
+  startsAfter<RocksDBOptionFeature>();
 
-  startsAfter("RocksDBOption");
+  onlyEnabledWith<MMFilesEngine>();
 }
 
 MMFilesPersistentIndexFeature::~MMFilesPersistentIndexFeature() {
@@ -90,15 +96,13 @@ void MMFilesPersistentIndexFeature::start() {
     return;
   }
 
-  auto* opts = ApplicationServer::getFeature<arangodb::RocksDBOptionFeature>(
-      "RocksDBOption");
+  auto& opts = server().getFeature<arangodb::RocksDBOptionFeature>();
 
   // set the database sub-directory for RocksDB
-  auto database =
-      ApplicationServer::getFeature<DatabasePathFeature>("DatabasePath");
-  _path = database->subdirectoryName("rocksdb");
+  auto& database = server().getFeature<DatabasePathFeature>();
+  _path = database.subdirectoryName("rocksdb");
 
-  LOG_TOPIC(TRACE, arangodb::Logger::ENGINES)
+  LOG_TOPIC("73d58", TRACE, arangodb::Logger::ENGINES)
       << "initializing rocksdb for persistent indexes, path: " << _path;
 
   _comparator = new MMFilesPersistentIndexKeyComparator();
@@ -117,19 +121,19 @@ void MMFilesPersistentIndexFeature::start() {
   _options.max_open_files = -1;
   _options.comparator = _comparator;
 
-  _options.write_buffer_size = static_cast<size_t>(opts->_writeBufferSize);
-  _options.max_write_buffer_number = static_cast<int>(opts->_maxWriteBufferNumber);
-  _options.delayed_write_rate = opts->_delayedWriteRate;
+  _options.write_buffer_size = static_cast<size_t>(opts._writeBufferSize);
+  _options.max_write_buffer_number = static_cast<int>(opts._maxWriteBufferNumber);
+  _options.delayed_write_rate = opts._delayedWriteRate;
   _options.min_write_buffer_number_to_merge =
-      static_cast<int>(opts->_minWriteBufferNumberToMerge);
-  _options.num_levels = static_cast<int>(opts->_numLevels);
-  _options.max_bytes_for_level_base = opts->_maxBytesForLevelBase;
+      static_cast<int>(opts._minWriteBufferNumberToMerge);
+  _options.num_levels = static_cast<int>(opts._numLevels);
+  _options.max_bytes_for_level_base = opts._maxBytesForLevelBase;
   _options.max_bytes_for_level_multiplier =
-      static_cast<int>(opts->_maxBytesForLevelMultiplier);
-  _options.optimize_filters_for_hits = opts->_optimizeFiltersForHits;
+      static_cast<int>(opts._maxBytesForLevelMultiplier);
+  _options.optimize_filters_for_hits = opts._optimizeFiltersForHits;
 
-  _options.max_background_jobs = static_cast<int>(opts->_maxBackgroundJobs);
-  _options.compaction_readahead_size = static_cast<size_t>(opts->_compactionReadaheadSize);
+  _options.max_background_jobs = static_cast<int>(opts._maxBackgroundJobs);
+  _options.compaction_readahead_size = static_cast<size_t>(opts._compactionReadaheadSize);
   if (_options.max_background_jobs > 1) {
     _options.env->SetBackgroundThreads(std::max(1, _options.max_background_jobs),
                                        rocksdb::Env::Priority::LOW);
@@ -148,7 +152,7 @@ void MMFilesPersistentIndexFeature::start() {
           "; Maybe your filesystem doesn't provide required features? (Cifs? "
           "NFS?)";
     }
-    LOG_TOPIC(FATAL, arangodb::Logger::ENGINES)
+    LOG_TOPIC("388bc", FATAL, arangodb::Logger::ENGINES)
         << "unable to initialize RocksDB engine for persistent indexes: "
         << status.ToString() << error;
     FATAL_ERROR_EXIT();
@@ -160,7 +164,7 @@ void MMFilesPersistentIndexFeature::unprepare() {
     return;
   }
 
-  LOG_TOPIC(TRACE, arangodb::Logger::ENGINES)
+  LOG_TOPIC("63cab", TRACE, arangodb::Logger::ENGINES)
       << "shutting down RocksDB for persistent indexes";
 
   // flush
@@ -169,7 +173,7 @@ void MMFilesPersistentIndexFeature::unprepare() {
   rocksdb::Status status = _db->GetBaseDB()->Flush(options);
 
   if (!status.ok()) {
-    LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+    LOG_TOPIC("5a6af", ERR, arangodb::Logger::ENGINES)
         << "error flushing data to RocksDB for persistent indexes: "
         << status.ToString();
   }
@@ -188,13 +192,13 @@ int MMFilesPersistentIndexFeature::syncWal() {
     return TRI_ERROR_NO_ERROR;
   }
 
-  LOG_TOPIC(TRACE, arangodb::Logger::ENGINES)
+  LOG_TOPIC("d2ca2", TRACE, arangodb::Logger::ENGINES)
       << "syncing RocksDB WAL for persistent indexes";
 
   rocksdb::Status status = Instance->db()->GetBaseDB()->SyncWAL();
 
   if (!status.ok()) {
-    LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+    LOG_TOPIC("bc5ad", ERR, arangodb::Logger::ENGINES)
         << "error syncing RocksDB WAL for persistent indexes: " << status.ToString();
     return TRI_ERROR_INTERNAL;
   }
@@ -206,7 +210,7 @@ int MMFilesPersistentIndexFeature::dropDatabase(TRI_voc_tick_t databaseId) {
   if (Instance == nullptr) {
     return TRI_ERROR_INTERNAL;
   }
-  // LOG_TOPIC(TRACE, arangodb::Logger::ENGINES) << "dropping RocksDB database:
+  // LOG_TOPIC("64ec2", TRACE, arangodb::Logger::ENGINES) << "dropping RocksDB database:
   // " << databaseId;
   return Instance->dropPrefix(MMFilesPersistentIndex::buildPrefix(databaseId));
 }
@@ -216,7 +220,7 @@ int MMFilesPersistentIndexFeature::dropCollection(TRI_voc_tick_t databaseId,
   if (Instance == nullptr) {
     return TRI_ERROR_INTERNAL;
   }
-  // LOG_TOPIC(TRACE, arangodb::Logger::ENGINES) << "dropping RocksDB database:
+  // LOG_TOPIC("b4060", TRACE, arangodb::Logger::ENGINES) << "dropping RocksDB database:
   // " << databaseId << ", collection: " << collectionId;
   return Instance->dropPrefix(MMFilesPersistentIndex::buildPrefix(databaseId, collectionId));
 }
@@ -227,7 +231,7 @@ int MMFilesPersistentIndexFeature::dropIndex(TRI_voc_tick_t databaseId,
   if (Instance == nullptr) {
     return TRI_ERROR_INTERNAL;
   }
-  // LOG_TOPIC(TRACE, arangodb::Logger::ENGINES) << "dropping RocksDB database:
+  // LOG_TOPIC("c0f11", TRACE, arangodb::Logger::ENGINES) << "dropping RocksDB database:
   // " << databaseId << ", collection: " << collectionId << ", index: " <<
   // indexId;
   return Instance->dropPrefix(
@@ -287,7 +291,7 @@ int MMFilesPersistentIndexFeature::dropPrefix(std::string const& prefix) {
       if (!status.ok()) {
         // if file deletion failed, we will still iterate over the remaining
         // keys, so we don't need to abort and raise an error here
-        LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
+        LOG_TOPIC("2b36d", WARN, arangodb::Logger::ENGINES)
             << "RocksDB file deletion failed";
       }
     }
@@ -319,22 +323,22 @@ int MMFilesPersistentIndexFeature::dropPrefix(std::string const& prefix) {
     rocksdb::Status status = db->Write(rocksdb::WriteOptions(), &batch);
 
     if (!status.ok()) {
-      LOG_TOPIC(WARN, arangodb::Logger::ENGINES)
+      LOG_TOPIC("8f9df", WARN, arangodb::Logger::ENGINES)
           << "RocksDB key deletion failed: " << status.ToString();
       return TRI_ERROR_INTERNAL;
     }
 
     return TRI_ERROR_NO_ERROR;
   } catch (arangodb::basics::Exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+    LOG_TOPIC("1b7a2", ERR, arangodb::Logger::ENGINES)
         << "caught exception during RocksDB key prefix deletion: " << ex.what();
     return ex.code();
   } catch (std::exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+    LOG_TOPIC("4b089", ERR, arangodb::Logger::ENGINES)
         << "caught exception during RocksDB key prefix deletion: " << ex.what();
     return TRI_ERROR_INTERNAL;
   } catch (...) {
-    LOG_TOPIC(ERR, arangodb::Logger::ENGINES)
+    LOG_TOPIC("1a74f", ERR, arangodb::Logger::ENGINES)
         << "caught unknown exception during RocksDB key prefix deletion";
     return TRI_ERROR_INTERNAL;
   }

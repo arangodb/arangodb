@@ -32,9 +32,9 @@
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBMethods.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/ManagedDocumentResult.h"
 
 #include <rocksdb/db.h>
+#include <s2/s2cell_id.h>
 
 #include <velocypack/Iterator.h>
 #include <velocypack/StringRef.h>
@@ -54,9 +54,7 @@ class RDBNearIterator final : public IndexIterator {
     TRI_ASSERT(options.prefix_same_as_start);
     _iter = mthds->NewIterator(options, _index->columnFamily());
     TRI_ASSERT(_index->columnFamily()->GetID() == RocksDBColumnFamily::geo()->GetID());
-    if (!params.fullRange) {
-      estimateDensity();
-    }
+    estimateDensity();
   }
 
   char const* typeName() const override { return "geo-index-iterator"; }
@@ -102,11 +100,12 @@ class RDBNearIterator final : public IndexIterator {
                       (ft == geo::FilterType::CONTAINS && !filter.contains(&test)) ||
                       (ft == geo::FilterType::INTERSECTS && !filter.intersects(&test))) {
                     result = false;
-                    return;
+                    return false;
                   }
                 }
                 cb(gdoc.token, doc);  // return document
                 result = true;
+                return true;
               })) {
             return false;  // ignore document
           }
@@ -131,7 +130,9 @@ class RDBNearIterator final : public IndexIterator {
                       (ft == geo::FilterType::CONTAINS && !filter.contains(&test)) ||
                       (ft == geo::FilterType::INTERSECTS && !filter.intersects(&test))) {
                     result = false;
+                    return false;
                   }
+                  return true;
                 })) {
               return false;
             }
@@ -148,9 +149,7 @@ class RDBNearIterator final : public IndexIterator {
 
   void reset() override {
     _near.reset();
-    if (!_near.params().fullRange) {
-      estimateDensity();
-    }
+    estimateDensity();
   }
 
  private:
@@ -161,7 +160,7 @@ class RDBNearIterator final : public IndexIterator {
     rocksdb::Comparator const* cmp = _index->comparator();
     // list of sorted intervals to scan
     std::vector<geo::Interval> const scan = _near.intervals();
-    // LOG_TOPIC(INFO, Logger::ENGINES) << "# intervals: " << scan.size();
+    // LOG_TOPIC("b1eea", INFO, Logger::ENGINES) << "# intervals: " << scan.size();
     // size_t seeks = 0;
 
     for (size_t i = 0; i < scan.size(); i++) {
@@ -170,7 +169,7 @@ class RDBNearIterator final : public IndexIterator {
       RocksDBKeyBounds bds =
           RocksDBKeyBounds::GeoIndex(_index->objectId(), it.range_min.id(),
                                      it.range_max.id());
-
+      
       // intervals are sorted and likely consecutive, try to avoid seeks
       // by checking whether we are in the range already
       bool seek = true;
@@ -195,21 +194,23 @@ class RDBNearIterator final : public IndexIterator {
       }
 
       if (seek) {  // try to avoid seeking at all cost
-        // LOG_TOPIC(INFO, Logger::ENGINES) << "[Scan] seeking:" << it.min;
+        // LOG_TOPIC("0afaa", INFO, Logger::ENGINES) << "[Scan] seeking:" << it.min;
         // seeks++;
         _iter->Seek(bds.start());
       }
 
       while (_iter->Valid() && cmp->Compare(_iter->key(), bds.end()) <= 0) {
-        LocalDocumentId documentId =
-            RocksDBKey::indexDocumentId(RocksDBEntryType::GeoIndexValue, _iter->key());
-        _near.reportFound(documentId, RocksDBValue::centroid(_iter->value()));
+        _near.reportFound(RocksDBKey::indexDocumentId(_iter->key()),
+                          RocksDBValue::centroid(_iter->value()));
         _iter->Next();
       }
+    
+      // validate that Iterator is in a good shape and hasn't failed
+      arangodb::rocksutils::checkIteratorStatus(_iter.get());
     }
 
     _near.didScanIntervals();  // calculate next bounds
-    // LOG_TOPIC(INFO, Logger::ENGINES) << "# seeks: " << seeks;
+    // LOG_TOPIC("e82ee", INFO, Logger::ENGINES) << "# seeks: " << seeks;
   }
 
   /// find the first indexed entry to estimate the # of entries
@@ -254,10 +255,6 @@ void RocksDBGeoIndex::toVelocyPack(VPackBuilder& builder,
   RocksDBIndex::toVelocyPack(builder, flags);
   _coverParams.toVelocyPack(builder);
   builder.add("geoJson", VPackValue(_variant == geo_index::Index::Variant::GEOJSON));
-  // geo indexes are always non-unique
-  builder.add(arangodb::StaticStrings::IndexUnique, arangodb::velocypack::Value(false));
-  // geo indexes are always sparse.
-  builder.add(arangodb::StaticStrings::IndexSparse, arangodb::velocypack::Value(true));
   builder.close();
 }
 
@@ -333,8 +330,8 @@ bool RocksDBGeoIndex::matchesDefinition(VPackSlice const& info) const {
 }
 
 /// @brief creates an IndexIterator for the given Condition
-IndexIterator* RocksDBGeoIndex::iteratorForCondition(
-    transaction::Methods* trx, ManagedDocumentResult*, arangodb::aql::AstNode const* node,
+std::unique_ptr<IndexIterator> RocksDBGeoIndex::iteratorForCondition(
+    transaction::Methods* trx, arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, IndexIteratorOptions const& opts) {
   TRI_ASSERT(!isSorted() || opts.sorted);
   TRI_ASSERT(node != nullptr);
@@ -343,7 +340,6 @@ IndexIterator* RocksDBGeoIndex::iteratorForCondition(
   params.sorted = opts.sorted;
   params.ascending = opts.ascending;
   params.pointsOnly = pointsOnly();
-  params.fullRange = opts.fullRange;
   params.limit = opts.limit;
   geo_index::Index::parseCondition(node, reference, params);
 
@@ -365,11 +361,9 @@ IndexIterator* RocksDBGeoIndex::iteratorForCondition(
   }
 
   if (params.ascending) {
-    return new RDBNearIterator<geo_index::DocumentsAscending>(&_collection, trx, this,
-                                                              std::move(params));
+    return std::make_unique<RDBNearIterator<geo_index::DocumentsAscending>>(&_collection, trx, this, std::move(params));
   } else {
-    return new RDBNearIterator<geo_index::DocumentsDescending>(&_collection, trx, this,
-                                                               std::move(params));
+    return std::make_unique<RDBNearIterator<geo_index::DocumentsDescending>>(&_collection, trx, this, std::move(params));
   }
 }
 

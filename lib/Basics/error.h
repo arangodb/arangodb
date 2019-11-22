@@ -24,10 +24,6 @@
 #ifndef ARANGODB_BASICS_ERROR_H
 #define ARANGODB_BASICS_ERROR_H 1
 
-#ifndef TRI_WITHIN_COMMON
-#error use <Basics/Common.h>
-#endif
-
 /// @brief returns the last error
 int TRI_errno();
 

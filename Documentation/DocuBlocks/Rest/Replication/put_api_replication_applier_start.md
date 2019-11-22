@@ -2,7 +2,7 @@
 @startDocuBlock put_api_replication_applier_start
 @brief start the replication applier
 
-@RESTHEADER{PUT /_api/replication/applier-start, Start replication applier}
+@RESTHEADER{PUT /_api/replication/applier-start, Start replication applier,handleCommandApplierStart}
 
 @RESTQUERYPARAMETERS
 

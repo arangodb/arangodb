@@ -20,22 +20,32 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ApplicationFeatures/LanguageFeature.h"
-#include "Basics/ArangoGlobalContext.h"
+#include <stdlib.h>
 
+#include "LanguageFeature.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
+#include "Basics/ArangoGlobalContext.h"
 #include "Basics/FileUtils.h"
 #include "Basics/Utf8Helper.h"
+#include "Basics/application-exit.h"
 #include "Basics/directories.h"
+#include "Basics/error.h"
 #include "Basics/files.h"
+#include "Basics/memory.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
+#include "ProgramOptions/Option.h"
+#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
 
 namespace {
 void setCollator(std::string const& language, void* icuDataPtr) {
   using arangodb::basics::Utf8Helper;
   if (!Utf8Helper::DefaultUtf8Helper.setCollatorLanguage(language, icuDataPtr)) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC("01490", FATAL, arangodb::Logger::FIXME)
         << "error setting collator language to '" << language << "'";
     FATAL_ERROR_EXIT();
   }
@@ -61,7 +71,7 @@ void setCollator(std::string const& language, void* icuDataPtr) {
     languageName = Utf8Helper::DefaultUtf8Helper.getCollatorLanguage();
   }
 
-  LOG_TOPIC(DEBUG, arangodb::Logger::CONFIG)
+  LOG_TOPIC("f6e04", DEBUG, arangodb::Logger::CONFIG)
       << "using default language '" << languageName << "'";
 }
 }  // namespace
@@ -80,7 +90,7 @@ LanguageFeature::LanguageFeature(application_features::ApplicationServer& server
       _icuDataPtr(nullptr) {
   Instance = this;
   setOptional(false);
-  startsAfter("GreetingsPhase");
+  startsAfter<application_features::GreetingsFeaturePhase>();
 }
 
 LanguageFeature::~LanguageFeature() {
@@ -106,7 +116,7 @@ void* LanguageFeature::prepareIcu(std::string const& binaryPath,
   }
   if (path.empty() || !TRI_IsRegularFile(path.c_str())) {
     if (!path.empty()) {
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+      LOG_TOPIC("581d1", WARN, arangodb::Logger::FIXME)
           << "failed to locate '" << fn << "' at '" << path << "'";
     }
 
@@ -137,7 +147,7 @@ void* LanguageFeature::prepareIcu(std::string const& binaryPath,
       }
       msg += "' should point to the directory containing '" + fn + "'";
 
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << msg;
+      LOG_TOPIC("0de77", FATAL, arangodb::Logger::FIXME) << msg;
       FATAL_ERROR_EXIT();
     } else {
       std::string icu_path = path.substr(0, path.length() - fn.length());
@@ -155,7 +165,7 @@ void* LanguageFeature::prepareIcu(std::string const& binaryPath,
   void* icuDataPtr = TRI_SlurpFile(path.c_str(), nullptr);
 
   if (icuDataPtr == nullptr) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "failed to load '" << fn << "' at '"
+    LOG_TOPIC("d8a98", FATAL, arangodb::Logger::FIXME) << "failed to load '" << fn << "' at '"
                                               << path << "' - " << TRI_last_error();
     FATAL_ERROR_EXIT();
   }

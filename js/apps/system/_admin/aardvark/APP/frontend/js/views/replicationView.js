@@ -142,23 +142,6 @@
       });
     },
 
-    getActiveFailoverHealth: function () {
-      /*
-      $.ajax({
-        type: 'GET',
-        cache: false,
-        url: arangoHelper.databaseUrl('/_admin/cluster/health'),
-        contentType: 'application/json',
-        success: function (data) {
-          console.log(data);
-        },
-        error: function (data) {
-          console.log(data);
-        }
-      });
-      */
-    },
-
     renderEndpoints: function (endpoints) {
       var self = this;
 
@@ -363,7 +346,6 @@
       if (this.mode === 3) {
         this.getActiveFailoverEndpoints();
         this.getLoggerState();
-        this.getActiveFailoverHealth();
       } else if (this.mode === 2) {
         if (this.info.role === 'leader') {
           this.getLoggerState();
@@ -584,7 +566,9 @@
         $('#repl-logger-clients tbody').html('');
         _.each(clients, function (client) {
           $('#repl-logger-clients tbody').append(
-            '<tr><td>' + client.serverId + '</td>' +
+            '<tr><td>' + client.syncerId + '</td>' +
+            '<td>' + client.serverId + '</td>' +
+            '<td>' + client.clientInfo + '</td>' +
             '<td>' + client.time + '</td>' +
             '<td>' + client.lastServedTick + '</td></tr>'
           );

@@ -28,18 +28,27 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/files.h"
+#include "Basics/system-functions.h"
 #include "Basics/tri-strings.h"
 #include "Import/SenderThread.h"
 #include "Logger/Logger.h"
 #include "Rest/GeneralResponse.h"
-#include "Rest/HttpRequest.h"
 #include "Shell/ClientFeature.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
+#include "Utils/ManagedDirectory.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
+
+#ifdef TRI_HAVE_UNISTD_H
+#include <unistd.h>
+#endif
+
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -128,6 +137,9 @@ static bool IsDecimal(char const* field, size_t fieldLength) {
 namespace arangodb {
 namespace import {
 
+ImportStatistics::ImportStatistics(application_features::ApplicationServer& server)
+    : _histogram(server) {}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// initialize step value for progress reports
 ////////////////////////////////////////////////////////////////////////////////
@@ -145,10 +157,11 @@ unsigned const ImportHelper::MaxBatchSize = 768 * 1024 * 1024;
 /// constructor and destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-ImportHelper::ImportHelper(ClientFeature const* client, std::string const& endpoint,
+ImportHelper::ImportHelper(ClientFeature const& client, std::string const& endpoint,
                            httpclient::SimpleHttpClientParams const& params,
                            uint64_t maxUploadSize, uint32_t threadCount, bool autoUploadSize)
-    : _httpClient(client->createHttpClient(endpoint, params)),
+    : _clientFeature(client),
+      _httpClient(client.createHttpClient(endpoint, params)),
       _maxUploadSize(maxUploadSize),
       _periodByteCount(0),
       _autoUploadSize(autoUploadSize),
@@ -165,6 +178,7 @@ ImportHelper::ImportHelper(ClientFeature const* client, std::string const& endpo
       _firstChunk(true),
       _ignoreMissing(false),
       _numberLines(0),
+      _stats(client.server()),
       _rowsRead(0),
       _rowOffset(0),
       _rowsToSkip(0),
@@ -177,17 +191,18 @@ ImportHelper::ImportHelper(ClientFeature const* client, std::string const& endpo
       _columnNames(),
       _hasError(false) {
   for (uint32_t i = 0; i < threadCount; i++) {
-    auto http = client->createHttpClient(endpoint, params);
-    _senderThreads.emplace_back(new SenderThread(std::move(http), &_stats, [this]() {
-      CONDITION_LOCKER(guard, _threadsCondition);
-      guard.signal();
-    }));
+    auto http = client.createHttpClient(endpoint, params);
+    _senderThreads.emplace_back(
+        new SenderThread(client.server(), std::move(http), &_stats, [this]() {
+          CONDITION_LOCKER(guard, _threadsCondition);
+          guard.signal();
+        }));
     _senderThreads.back()->start();
   }
 
   // should self tuning code activate?
   if (_autoUploadSize) {
-    _autoTuneThread.reset(new AutoTuneThread(*this));
+    _autoTuneThread.reset(new AutoTuneThread(client.server(), *this));
     _autoTuneThread->start();
   }  // if
 
@@ -216,8 +231,11 @@ ImportHelper::~ImportHelper() {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ImportHelper::importDelimited(std::string const& collectionName,
-                                   std::string const& fileName,
+                                   std::string const& pathName,
                                    DelimitedImportType typeImport) {
+  ManagedDirectory directory(_clientFeature.server(), TRI_Dirname(pathName),
+                             false, false, true);
+  std::string fileName(TRI_Basename(pathName.c_str()));
   _collectionName = collectionName;
   _firstLine = "";
   _outputBuffer.clear();
@@ -233,26 +251,26 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
   }
 
   // read and convert
-  int fd;
+  // read and convert
   int64_t totalLength;
+  std::unique_ptr<arangodb::ManagedDirectory::File> fd;
 
   if (fileName == "-") {
     // we don't have a filesize
     totalLength = 0;
-    fd = STDIN_FILENO;
+    fd = directory.readableFile(STDIN_FILENO);
   } else {
     // read filesize
-    totalLength = TRI_SizeFile(fileName.c_str());
-    fd = TRI_OPEN(fileName.c_str(), O_RDONLY | TRI_O_CLOEXEC);
+    totalLength = TRI_SizeFile(pathName.c_str());
+    fd = directory.readableFile(TRI_Basename(pathName.c_str()), 0);
 
-    if (fd < 0) {
+    if (!fd) {
       _errorMessages.push_back(TRI_LAST_ERROR_STR);
       return false;
     }
   }
 
   // progress display control variables
-  int64_t totalRead = 0;
   double nextProgress = ProgressStep;
 
   size_t separatorLength;
@@ -260,9 +278,6 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
                                            &separatorLength, true);
 
   if (separator == nullptr) {
-    if (fd != STDIN_FILENO) {
-      TRI_CLOSE(fd);
-    }
     _errorMessages.push_back("out of memory");
     return false;
   }
@@ -286,16 +301,14 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
   _rowsRead = 0;
 
   char buffer[32768];
+  // int64_t totalRead = 0;
 
   while (!_hasError) {
-    ssize_t n = TRI_READ(fd, buffer, sizeof(buffer));
+    ssize_t n = fd->read(buffer, sizeof(buffer));
 
     if (n < 0) {
       TRI_Free(separator);
       TRI_DestroyCsvParser(&parser);
-      if (fd != STDIN_FILENO) {
-        TRI_CLOSE(fd);
-      }
       _errorMessages.push_back(TRI_LAST_ERROR_STR);
       return false;
     } else if (n == 0) {
@@ -307,8 +320,8 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
       break;
     }
 
-    totalRead += static_cast<int64_t>(n);
-    reportProgress(totalLength, totalRead, nextProgress);
+    // totalRead += static_cast<int64_t>(n);
+    reportProgress(totalLength, fd->offset(), nextProgress);
 
     TRI_ParseCsvString(&parser, buffer, n);
   }
@@ -320,19 +333,18 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
   TRI_DestroyCsvParser(&parser);
   TRI_Free(separator);
 
-  if (fd != STDIN_FILENO) {
-    TRI_CLOSE(fd);
-  }
-
   waitForSenders();
-  reportProgress(totalLength, totalRead, nextProgress);
+  reportProgress(totalLength, fd->offset(), nextProgress);
 
   _outputBuffer.clear();
   return !_hasError;
 }
 
 bool ImportHelper::importJson(std::string const& collectionName,
-                              std::string const& fileName, bool assumeLinewise) {
+                              std::string const& pathName, bool assumeLinewise) {
+  ManagedDirectory directory(_clientFeature.server(), TRI_Dirname(pathName),
+                             false, false, true);
+  std::string fileName(TRI_Basename(pathName.c_str()));
   _collectionName = collectionName;
   _firstLine = "";
   _outputBuffer.clear();
@@ -347,19 +359,19 @@ bool ImportHelper::importJson(std::string const& collectionName,
   }
 
   // read and convert
-  int fd;
   int64_t totalLength;
+  std::unique_ptr<arangodb::ManagedDirectory::File> fd;
 
   if (fileName == "-") {
     // we don't have a filesize
     totalLength = 0;
-    fd = STDIN_FILENO;
+    fd = directory.readableFile(STDIN_FILENO);
   } else {
     // read filesize
-    totalLength = TRI_SizeFile(fileName.c_str());
-    fd = TRI_OPEN(fileName.c_str(), O_RDONLY | TRI_O_CLOEXEC);
+    totalLength = TRI_SizeFile(pathName.c_str());
+    fd = directory.readableFile(TRI_Basename(fileName.c_str()), 0);
 
-    if (fd < 0) {
+    if (!fd) {
       _errorMessages.push_back(TRI_LAST_ERROR_STR);
       return false;
     }
@@ -374,7 +386,7 @@ bool ImportHelper::importJson(std::string const& collectionName,
   }
 
   // progress display control variables
-  int64_t totalRead = 0;
+  // int64_t totalRead = 0;
   double nextProgress = ProgressStep;
 
   static int const BUFFER_SIZE = 32768;
@@ -384,20 +396,14 @@ bool ImportHelper::importJson(std::string const& collectionName,
     if (_outputBuffer.reserve(BUFFER_SIZE) == TRI_ERROR_OUT_OF_MEMORY) {
       _errorMessages.push_back(TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
 
-      if (fd != STDIN_FILENO) {
-        TRI_CLOSE(fd);
-      }
       return false;
     }
 
     // read directly into string buffer
-    ssize_t n = TRI_READ(fd, _outputBuffer.end(), BUFFER_SIZE - 1);
+    ssize_t n = fd->read(_outputBuffer.end(), BUFFER_SIZE - 1);
 
     if (n < 0) {
       _errorMessages.push_back(TRI_LAST_ERROR_STR);
-      if (fd != STDIN_FILENO) {
-        TRI_CLOSE(fd);
-      }
       return false;
     } else if (n == 0) {
       // we're done
@@ -422,14 +428,11 @@ bool ImportHelper::importJson(std::string const& collectionName,
       checkedFront = true;
     }
 
-    totalRead += static_cast<int64_t>(n);
-    reportProgress(totalLength, totalRead, nextProgress);
+    // totalRead += static_cast<int64_t>(n);
+    reportProgress(totalLength, fd->offset(), nextProgress);
 
     if (_outputBuffer.length() > _maxUploadSize) {
       if (isObject) {
-        if (fd != STDIN_FILENO) {
-          TRI_CLOSE(fd);
-        }
         _errorMessages.push_back(
             "import file is too big. please increase the value of --batch-size "
             "(currently " +
@@ -453,12 +456,8 @@ bool ImportHelper::importJson(std::string const& collectionName,
     sendJsonBuffer(_outputBuffer.c_str(), _outputBuffer.length(), isObject);
   }
 
-  if (fd != STDIN_FILENO) {
-    TRI_CLOSE(fd);
-  }
-
   waitForSenders();
-  reportProgress(totalLength, totalRead, nextProgress);
+  reportProgress(totalLength, fd->offset(), nextProgress);
 
   MUTEX_LOCKER(guard, _stats._mutex);
   // this is an approximation only. _numberLines is more meaningful for CSV
@@ -485,7 +484,7 @@ void ImportHelper::reportProgress(int64_t totalLength, int64_t totalRead, double
     static int64_t nextProcessed = 10 * 1000 * 1000;
 
     if (totalRead >= nextProcessed) {
-      LOG_TOPIC(INFO, arangodb::Logger::FIXME)
+      LOG_TOPIC("c0e6e", INFO, arangodb::Logger::FIXME)
           << "processed " << totalRead << " bytes of input file";
       nextProcessed += 10 * 1000 * 1000;
     }
@@ -493,7 +492,7 @@ void ImportHelper::reportProgress(int64_t totalLength, int64_t totalRead, double
     double pct = 100.0 * ((double)totalRead / (double)totalLength);
 
     if (pct >= nextProgress && totalLength >= 1024) {
-      LOG_TOPIC(INFO, arangodb::Logger::FIXME)
+      LOG_TOPIC("9ddf3", INFO, arangodb::Logger::FIXME)
           << "processed " << totalRead << " bytes (" << (int)nextProgress
           << "%) of input file";
       nextProgress = (double)((int)(pct + ProgressStep));
@@ -734,12 +733,12 @@ bool ImportHelper::collectionExists() {
   if (!error.isNone()) {
     auto errorNum = error.get(StaticStrings::ErrorNum).getUInt();
     auto errorMsg = error.get(StaticStrings::ErrorMessage).copyString();
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("f2c4a", ERR, arangodb::Logger::FIXME)
         << "unable to access collection '" << _collectionName
         << "', server returned status code: " << static_cast<int>(code)
         << "; error [" << errorNum << "] " << errorMsg;
   } else {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("57d57", ERR, arangodb::Logger::FIXME)
         << "unable to accesss collection '" << _collectionName
         << "', server returned status code: " << static_cast<int>(code)
         << "; server returned message: "
@@ -788,12 +787,12 @@ bool ImportHelper::checkCreateCollection() {
   if (!error.isNone()) {
     auto errorNum = error.get(StaticStrings::ErrorNum).getUInt();
     auto errorMsg = error.get(StaticStrings::ErrorMessage).copyString();
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("09478", ERR, arangodb::Logger::FIXME)
         << "unable to create collection '" << _collectionName
         << "', server returned status code: " << static_cast<int>(code)
         << "; error [" << errorNum << "] " << errorMsg;
   } else {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("2211f", ERR, arangodb::Logger::FIXME)
         << "unable to create collection '" << _collectionName
         << "', server returned status code: " << static_cast<int>(code)
         << "; server returned message: "
@@ -824,7 +823,7 @@ bool ImportHelper::truncateCollection() {
     return true;
   }
 
-  LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+  LOG_TOPIC("f8ae4", ERR, arangodb::Logger::FIXME)
       << "unable to truncate collection '" << _collectionName
       << "', server returned status code: " << static_cast<int>(code);
   _hasError = true;
@@ -857,7 +856,7 @@ void ImportHelper::sendCsvBuffer() {
   SenderThread* t = findIdleSender();
   if (t != nullptr) {
     uint64_t tmp_length = _outputBuffer.length();
-    t->sendData(url, &_outputBuffer);
+    t->sendData(url, &_outputBuffer, _rowOffset + 1, _rowsRead);
     addPeriodByteCount(tmp_length + url.length());
   }
 
@@ -940,7 +939,7 @@ void ImportHelper::waitForSenders() {
     if (numIdle == _senderThreads.size()) {
       return;
     }
-    std::this_thread::sleep_for(std::chrono::microseconds(10000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
 }
 }  // namespace import

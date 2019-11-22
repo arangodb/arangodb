@@ -23,6 +23,7 @@
 
 #include "Aql/Scopes.h"
 #include "Basics/Exceptions.h"
+#include "Basics/StringUtils.h"
 
 using namespace arangodb::aql;
 
@@ -30,7 +31,7 @@ using namespace arangodb::aql;
 Scope::Scope(ScopeType type) : _type(type), _variables() {}
 
 /// @brief destroy the scope
-Scope::~Scope() {}
+Scope::~Scope() = default;
 
 /// @brief return the name of a scope type
 std::string Scope::typeName() const { return typeName(_type); }
@@ -116,7 +117,7 @@ Scopes::Scopes() : _activeScopes(), _currentVariables() {
 }
 
 /// @brief destroy the scopes
-Scopes::~Scopes() {}
+Scopes::~Scopes() = default;
 
 /// @brief start a new scope
 void Scopes::start(ScopeType type) {

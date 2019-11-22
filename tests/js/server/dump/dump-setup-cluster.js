@@ -38,7 +38,7 @@ const isEnterprise = require("internal").isEnterprise();
  *        That has 100 orphans (value 0 -> 99)
  *        That has 300 edges, for each value i:
  *          Connect i -> i
- *          Connect i - 1 -> i
+ *          Connect i - 1 <- i
  *          Connect i -> i + 1
  */
 const setupSmartGraph = function () {
@@ -77,6 +77,43 @@ const setupSmartGraph = function () {
 
 /**
  * @brief Only if enterprise mode:
+ *        Creates an arangosearch over smart edge collection
+ */
+const setupSmartArangoSearch = function () {
+  if (!isEnterprise) {
+    return;
+  }
+
+  db._dropView("UnitTestsDumpSmartView");
+
+  let analyzers = require("@arangodb/analyzers");
+  try {
+    analyzers.remove("smartCustom");
+  } catch (err) { }
+  let analyzer = analyzers.save("smartCustom", "delimiter", { delimiter : "smart" }, [ "frequency" ]);
+
+  db._createView("UnitTestsDumpSmartView", "arangosearch", {
+      // choose non default values to check if they are corretly dumped and imported
+      cleanupIntervalStep: 456,
+      consolidationPolicy: {
+        threshold: 0.3,
+        type: "bytes_accum"
+      },
+      consolidationIntervalMsec: 0,
+      links : {
+        "UnitTestDumpSmartEdges": {
+          includeAllFields: true,
+          fields: {
+            text: { analyzers: [ "text_en", "smartCustom" ] }
+          }
+        }
+      }
+  });
+};
+
+
+/**
+ * @brief Only if enterprise mode:
  *        Creates a satellite collection with 100 documents
  */
 function setupSatelliteCollections() {
@@ -96,20 +133,21 @@ function setupSatelliteCollections() {
 }
 
 (function () {
+  var analyzers = require("@arangodb/analyzers");
   var i, c;
 
-  try {
-    db._dropDatabase("UnitTestsDumpSrc");
-  } catch (err1) {
-  }
-  db._createDatabase("UnitTestsDumpSrc");
+  let createOptions = {};
 
-  try {
-    db._dropDatabase("UnitTestsDumpDst");
-  } catch (err2) {
-  }
-  db._createDatabase("UnitTestsDumpDst");
+  ["UnitTestsDumpSrc", "UnitTestsDumpDst", "UnitTestsDumpProperties1", "UnitTestsDumpProperties2"].forEach(function(name) {
+    try {
+      db._dropDatabase(name);
+    } catch (err) {}
+  });
 
+  db._createDatabase("UnitTestsDumpProperties1", { replicationFactor: 1, minReplicationFactor: 1 });
+  db._createDatabase("UnitTestsDumpProperties2", { replicationFactor: 2, minReplicationFactor: 2, sharding: "single" });
+  db._createDatabase("UnitTestsDumpSrc", { replicationFactor: 2, minReplicationFactor: 2 });
+  db._createDatabase("UnitTestsDumpDst", { replicationFactor: 2, minReplicationFactor: 2 });
 
   db._useDatabase("UnitTestsDumpSrc");
 
@@ -182,11 +220,9 @@ function setupSatelliteCollections() {
   c.ensureUniqueSkiplist("a_su");
   c.ensureHashIndex("a_hs1", "a_hs2", { sparse: true });
   c.ensureSkiplist("a_ss1", "a_ss2", { sparse: true });
-
   c.ensureFulltextIndex("a_f");
-  if (db._engine().name !== "rocksdb") {
-    c.ensureGeoIndex("a_la", "a_lo");
-  }
+
+  c.ensureGeoIndex("a_la", "a_lo");
 
   // we insert data and remove it
   c = db._create("UnitTestsDumpTruncated", { isVolatile: db._engine().name === "mmfiles" });
@@ -222,6 +258,8 @@ function setupSatelliteCollections() {
     c.save({ _key: "text" + i, value: t });
   });
 
+  let analyzer = analyzers.save("custom", "delimiter", { delimiter : " " }, [ "frequency" ]);
+
   // setup a view
   try {
     c = db._create("UnitTestsDumpViewCollection");
@@ -239,22 +277,33 @@ function setupSatelliteCollections() {
         "UnitTestsDumpViewCollection": {
           includeAllFields: true,
           fields: {
-            text: { analyzers: [ "text_en" ] }
+            text: { analyzers: [ "text_en", analyzer.name ] }
           }
         }
       }
     });
 
-    for (i = 0; i < 5000; ++i) {
-      c.save({ _key: "test" + i, value: i});
-    }
+    c.save(Array(5000).fill().map((e, i, a) => Object({_key: "test" + i, value: i})));
     c.save({ value: -1, text: "the red foxx jumps over the pond" });
   } catch (err) { }
 
+  // setup a view on _analyzers collection
+  try {
+    let view = db._createView("analyzersView", "arangosearch", {
+      links: {
+        _analyzers : {
+          includeAllFields:true,
+          analyzers: [ analyzer.name ]
+        }
+      }
+    });
+  } catch (err) { }
+
   setupSmartGraph();
+  setupSmartArangoSearch();
   setupSatelliteCollections();
 
-  db._create("UnitTestsDumpReplicationFactor1", { replicationFactor: 1, numberOfShards: 7 });
+  db._create("UnitTestsDumpReplicationFactor1", { replicationFactor: 2, numberOfShards: 7 });
   db._create("UnitTestsDumpReplicationFactor2", { replicationFactor: 2, numberOfShards: 6 });
 
   // Install Foxx

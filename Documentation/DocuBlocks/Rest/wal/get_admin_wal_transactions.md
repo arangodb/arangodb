@@ -2,7 +2,7 @@
 @startDocuBlock get_admin_wal_transactions
 @brief returns information about the currently running transactions
 
-@RESTHEADER{GET /_admin/wal/transactions, Returns information about the currently running transactions}
+@RESTHEADER{GET /_admin/wal/transactions, Returns information about the currently running transactions, RestWalHandler:transactions}
 
 @RESTDESCRIPTION
 Returns information about the currently running transactions. The result
@@ -26,7 +26,7 @@ is returned when an invalid HTTP method is used.
 
 @EXAMPLES
 
-@EXAMPLE_ARANGOSH_RUN{RestWalTransactionsGet}
+@EXAMPLE_ARANGOSH_RUN{RestWalTransactionsGet_mmfiles}
     var url = "/_admin/wal/transactions";
     var response = logCurlRequest('GET', url);
 

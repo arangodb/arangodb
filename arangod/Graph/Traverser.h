@@ -40,7 +40,6 @@
 
 namespace arangodb {
 
-class ManagedDocumentResult;
 namespace transaction {
 class Methods;
 }
@@ -74,7 +73,7 @@ class TraversalPath {
 
   TraversalPath() : _readDocuments(0) {}
 
-  virtual ~TraversalPath() {}
+  virtual ~TraversalPath() = default;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Builds the complete path as VelocyPack
@@ -134,7 +133,8 @@ class Traverser {
 
     virtual ~VertexGetter() = default;
 
-    virtual bool getVertex(arangodb::velocypack::Slice, std::vector<arangodb::velocypack::StringRef>&);
+    virtual bool getVertex(arangodb::velocypack::Slice,
+                           std::vector<arangodb::velocypack::StringRef>&);
 
     virtual bool getSingleVertex(arangodb::velocypack::Slice, arangodb::velocypack::StringRef,
                                  uint64_t, arangodb::velocypack::StringRef&);
@@ -156,9 +156,11 @@ class Traverser {
 
     ~UniqueVertexGetter() = default;
 
-    bool getVertex(arangodb::velocypack::Slice, std::vector<arangodb::velocypack::StringRef>&) override;
+    bool getVertex(arangodb::velocypack::Slice,
+                   std::vector<arangodb::velocypack::StringRef>&) override;
 
-    bool getSingleVertex(arangodb::velocypack::Slice, arangodb::velocypack::StringRef, uint64_t, arangodb::velocypack::StringRef&) override;
+    bool getSingleVertex(arangodb::velocypack::Slice, arangodb::velocypack::StringRef,
+                         uint64_t, arangodb::velocypack::StringRef&) override;
 
     void reset(arangodb::velocypack::StringRef const&) override;
 
@@ -218,7 +220,8 @@ class Traverser {
   /// @brief Function to load the other sides vertex of an edge
   ///        Returns true if the vertex passes filtering conditions
   virtual bool getSingleVertex(arangodb::velocypack::Slice edge,
-                               arangodb::velocypack::StringRef const sourceVertexId, uint64_t depth,
+                               arangodb::velocypack::StringRef const sourceVertexId,
+                               uint64_t depth,
                                arangodb::velocypack::StringRef& targetVertexId) = 0;
 
  public:
@@ -263,10 +266,14 @@ class Traverser {
   //////////////////////////////////////////////////////////////////////////////
 
   size_t getAndResetReadDocuments();
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Get the number of HTTP requests made
+  //////////////////////////////////////////////////////////////////////////////
+  
+  size_t getAndResetHttpRequests();
 
   TraverserOptions* options() { return _opts; }
-
-  ManagedDocumentResult* mmdr() const { return _mmdr.get(); }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Simple check if there are potentially more paths.
@@ -276,7 +283,8 @@ class Traverser {
 
   bool hasMore() { return !_done; }
 
-  bool edgeMatchesConditions(arangodb::velocypack::Slice edge, arangodb::velocypack::StringRef vid,
+  bool edgeMatchesConditions(arangodb::velocypack::Slice edge,
+                             arangodb::velocypack::StringRef vid,
                              uint64_t depth, size_t cursorId);
 
   bool vertexMatchesConditions(arangodb::velocypack::StringRef vid, uint64_t depth);
@@ -295,8 +303,6 @@ class Traverser {
   /// @brief Outer top level transaction
   transaction::Methods* _trx;
 
-  std::unique_ptr<ManagedDocumentResult> _mmdr;
-
   /// @brief internal cursor to enumerate the paths of a graph
   std::unique_ptr<traverser::PathEnumerator> _enumerator;
 
@@ -305,9 +311,6 @@ class Traverser {
 
   /// @brief Builder for the start value slice. Leased from transaction
   velocypack::Builder _startIdBuilder;
-
-  /// @brief toggle if this path should be pruned on next step
-  bool _pruneNext;
 
   /// @brief indicator if this traversal is done
   bool _done;
@@ -321,7 +324,8 @@ class Traverser {
   virtual aql::AqlValue fetchVertexData(arangodb::velocypack::StringRef vid) = 0;
 
   /// @brief Function to add the real data of a vertex into a velocypack builder
-  virtual void addVertexToVelocyPack(arangodb::velocypack::StringRef vid, arangodb::velocypack::Builder&) = 0;
+  virtual void addVertexToVelocyPack(arangodb::velocypack::StringRef vid,
+                                     arangodb::velocypack::Builder&) = 0;
 };
 }  // namespace traverser
 }  // namespace arangodb

@@ -56,7 +56,8 @@ void MMFilesTransactionManager::unregisterFailedTransactions(
 }
 
 void MMFilesTransactionManager::registerTransaction(TRI_voc_tid_t transactionId,
-                                                    std::unique_ptr<TransactionData> data) {
+                                                    std::unique_ptr<TransactionData> data,
+                                                    bool isReadOnlyTransaction) {
   TRI_ASSERT(data != nullptr);
 
   size_t bucket = getBucket(transactionId);
@@ -65,12 +66,13 @@ void MMFilesTransactionManager::registerTransaction(TRI_voc_tid_t transactionId,
   WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
 
   // insert into currently running list of transactions
-  _transactions[bucket]._activeTransactions.emplace(transactionId, std::move(data));
+  _transactions[bucket]._activeTransactions.try_emplace(transactionId, std::move(data));
 }
 
 // unregisters a transaction
 void MMFilesTransactionManager::unregisterTransaction(TRI_voc_tid_t transactionId,
-                                                      bool markAsFailed) {
+                                                      bool markAsFailed,
+                                                      bool isReadOnlyTransaction) {
   size_t bucket = getBucket(transactionId);
   READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
 
@@ -111,7 +113,6 @@ void MMFilesTransactionManager::iterateActiveTransactions(
     READ_LOCKER(locker, _transactions[bucket]._lock);
 
     for (auto const& it : _transactions[bucket]._activeTransactions) {
-      TRI_ASSERT(it.second != nullptr);
       callback(it.first, it.second.get());
     }
   }

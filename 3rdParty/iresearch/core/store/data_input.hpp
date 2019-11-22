@@ -45,7 +45,7 @@ NS_ROOT
 struct IRESEARCH_API data_input
     : std::iterator<std::forward_iterator_tag, byte_type, void, void, void> {
 
-  virtual ~data_input();
+  virtual ~data_input() = default;
 
   virtual byte_type read_byte() = 0;
 
@@ -93,7 +93,6 @@ struct IRESEARCH_API index_input : public data_input {
   DECLARE_UNIQUE_PTR(index_input);
   DEFINE_FACTORY_INLINE(index_input)
 
-  virtual ~index_input();
   virtual ptr dup() const = 0; // non-thread-safe fd copy (offset preserved)
   virtual ptr reopen() const = 0; // thread-safe new low-level-fd (offset preserved)
   virtual void seek(size_t pos) = 0;
@@ -135,7 +134,7 @@ class IRESEARCH_API input_buf final : public std::streambuf, util::noncopyable {
 //////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API buffered_index_input : public index_input {
  public:
-  virtual ~buffered_index_input();
+  static const size_t DEFAULT_BUFFER_SIZE = 1024;
 
   virtual byte_type read_byte() override final;
 
@@ -162,14 +161,20 @@ class IRESEARCH_API buffered_index_input : public index_input {
   virtual uint64_t read_vlong() override final;
 
  protected:
-  explicit buffered_index_input(size_t buf_size = 1024);
+  explicit buffered_index_input(
+    size_t buf_size = DEFAULT_BUFFER_SIZE
+  ) NOEXCEPT;
 
-  buffered_index_input(const buffered_index_input& rhs);
+  buffered_index_input(const buffered_index_input& rhs) NOEXCEPT;
 
   virtual void seek_internal(size_t pos) = 0;
 
-  // returns number of bytes read
   virtual size_t read_internal(byte_type* b, size_t count) = 0;
+
+  // returns number of reamining bytes in the buffer
+  FORCE_INLINE size_t remain() const {
+    return std::distance(begin_, end_);
+  }
 
  private:
   // returns number of bytes between begin_ & end_
@@ -178,11 +183,6 @@ class IRESEARCH_API buffered_index_input : public index_input {
   // returns number of elements between current position and beginning of the buffer
   FORCE_INLINE size_t offset() const { 
     return std::distance(buf_.get(), begin_); 
-  }
-
-  // returns number of reamining bytes in the buffer 
-  FORCE_INLINE size_t remain() const { 
-    return std::distance(begin_, end_); 
   }
 
   // returns number of valid bytes in the buffer 

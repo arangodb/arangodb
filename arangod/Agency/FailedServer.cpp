@@ -28,6 +28,7 @@
 #include "Agency/FailedFollower.h"
 #include "Agency/FailedLeader.h"
 #include "Agency/Job.h"
+#include "Basics/StaticStrings.h"
 
 using namespace arangodb::consensus;
 
@@ -50,17 +51,17 @@ FailedServer::FailedServer(Node const& snapshot, AgentInterface* agent,
   } else {
     std::stringstream err;
     err << "Failed to find job " << _jobId << " in agency.";
-    LOG_TOPIC(ERR, Logger::SUPERVISION) << err.str();
+    LOG_TOPIC("ac06a", ERR, Logger::SUPERVISION) << err.str();
     finish(tmp_server.first, "", false, err.str());
     _status = FAILED;
   }
 }
 
-FailedServer::~FailedServer() {}
+FailedServer::~FailedServer() = default;
 
-void FailedServer::run() { runHelper(_server, ""); }
+void FailedServer::run(bool& aborts) { runHelper(_server, "", aborts); }
 
-bool FailedServer::start() {
+bool FailedServer::start(bool& aborts) {
   using namespace std::chrono;
 
   // Fail job, if Health back to not FAILED
@@ -68,8 +69,14 @@ bool FailedServer::start() {
   if (status.second && status.first != "FAILED") {
     std::stringstream reason;
     reason << "Server " << _server << " is no longer failed. Not starting FailedServer job";
-    LOG_TOPIC(INFO, Logger::SUPERVISION) << reason.str();
+    LOG_TOPIC("a04da", INFO, Logger::SUPERVISION) << reason.str();
     finish(_server, "", false, reason.str());
+    return false;
+  } else if (!status.second) {
+    std::stringstream reason;
+    reason << "Server " << _server << " no longer in health. Already removed. Abort.";
+    LOG_TOPIC("1479a", INFO, Logger::SUPERVISION) << reason.str();
+    finish(_server, "", false, reason.str()); // Finish or abort?
     return false;
   }
 
@@ -78,7 +85,24 @@ bool FailedServer::start() {
   if (jobId.second && !abortable(_snapshot, jobId.first)) {
     return false;
   } else if (jobId.second) {
-    JobContext(PENDING, jobId.first, _snapshot, _agent).abort();
+    aborts = true;
+    JobContext(PENDING, jobId.first, _snapshot, _agent).abort("failed server");
+  }
+
+  // Special case for moveshards that have this server as from server (and thus do not lock it)
+  Node::Children const& pends = _snapshot.hasAsChildren(pendingPrefix).first;
+
+  for (auto const& subJob : pends) {
+    if (subJob.second->hasAsString("type").first == "moveShard") {
+      if (subJob.second->hasAsString("fromServer").first == _server) {
+        JobContext(PENDING, subJob.first, _snapshot, _agent).abort("From server failed");
+        aborts = true;
+      }
+    }
+  }
+
+  if (aborts) {
+    return false;
   }
 
   // Todo entry
@@ -86,12 +110,12 @@ bool FailedServer::start() {
   {
     VPackArrayBuilder t(&todo);
     if (_jb == nullptr) {
-      auto toDoJob = _snapshot.hasAsNode(toDoPrefix + _jobId);
+      auto const& toDoJob = _snapshot.hasAsNode(toDoPrefix + _jobId);
       if (toDoJob.second) {
         toDoJob.first.toBuilder(todo);
       } else {
-        LOG_TOPIC(INFO, Logger::SUPERVISION)
-          << "Failed to get key " + toDoPrefix + _jobId + " from agency snapshot";
+        LOG_TOPIC("729c3", INFO, Logger::SUPERVISION) << "Failed to get key " + toDoPrefix + _jobId +
+                                                    " from agency snapshot";
         return false;
       }
     } else {
@@ -99,7 +123,6 @@ bool FailedServer::start() {
     }
   }  // Todo entry
 
-  // Pending entry
   auto transactions = std::make_shared<VPackBuilder>();
   {
     VPackArrayBuilder a(transactions.get());
@@ -108,10 +131,10 @@ bool FailedServer::start() {
     {
       VPackObjectBuilder oper(transactions.get());
       // Add pending
-  
+
       auto const& databases = _snapshot.hasAsChildren("/Plan/Collections").first;
       // auto const& current = _snapshot.hasAsChildren("/Current/Collections").first;
-  
+
       size_t sub = 0;
 
       // FIXME: looks OK, but only the non-clone shards are put into the job
@@ -122,21 +145,29 @@ bool FailedServer::start() {
           auto const& collection = *(collptr.second);
 
           auto const& replicationFactorPair =
-            collection.hasAsNode("replicationFactor");
+            collection.hasAsNode(StaticStrings::ReplicationFactor);
           if (replicationFactorPair.second) {
+
             VPackSlice const replicationFactor = replicationFactorPair.first.slice();
-            
-            if (!replicationFactor.isNumber()) {
-              continue;  // no point to try salvaging unreplicated data
-            }
-            
             uint64_t number = 1;
-            try {
-              number = replicationFactor.getNumber<uint64_t>();
-            } catch(...) {
-            }
-            if (number == 1) {
-              continue;
+            bool isSatellite = false;
+
+            if (replicationFactor.isString() && replicationFactor.compareString(StaticStrings::Satellite) == 0) {
+              isSatellite = true; // do nothing - number = Job::availableServers(_snapshot).size();
+            } else if (replicationFactor.isNumber()) {
+              try {
+                number = replicationFactor.getNumber<uint64_t>();
+              } catch(...) {
+                LOG_TOPIC("f5290", ERR, Logger::SUPERVISION) << "Failed to read replicationFactor. job: "
+                  << _jobId << " " << collection.hasAsString("id").first;
+                continue ;
+              }
+
+              if (number == 1) {
+                continue ;
+              }
+            } else {
+              continue;  // no point to try salvaging unreplicated data
             }
 
             if (collection.has("distributeShardsLike")) {
@@ -146,20 +177,25 @@ bool FailedServer::start() {
             for (auto const& shard : collection.hasAsChildren("shards").first) {
               size_t pos = 0;
 
-              for (auto const& it : VPackArrayIterator(shard.second->slice())) {
+              for (VPackSlice it : VPackArrayIterator(shard.second->slice())) {
                 auto dbs = it.copyString();
 
-                if (dbs == _server) {
+                if (dbs == _server || dbs == "_" + _server) {
                   if (pos == 0) {
                     FailedLeader(
-                      _snapshot, _agent, _jobId  + "-"  + std::to_string(sub++),
+                      _snapshot, _agent, _jobId + "-" + std::to_string(sub++),
                       _jobId, database.first, collptr.first, shard.first, _server)
                       .create(transactions);
                   } else {
-                    FailedFollower(
-                      _snapshot, _agent, _jobId  + "-" + std::to_string(sub++),
-                      _jobId, database.first, collptr.first, shard.first, _server)
-                      .create(transactions);
+                    if (!isSatellite) {
+                      FailedFollower(
+                        _snapshot, _agent, _jobId + "-" + std::to_string(sub++),
+                        _jobId, database.first, collptr.first, shard.first, _server)
+                        .create(transactions);
+                    } else {
+                      LOG_TOPIC("c6c32", DEBUG, Logger::SUPERVISION) << "Do intentionally nothing for failed follower of satellite collection. job: "
+                        << _jobId;
+                    }
                   }
                 }
                 pos++;
@@ -172,7 +208,8 @@ bool FailedServer::start() {
       transactions->add(VPackValue(pendingPrefix + _jobId));
       {
         VPackObjectBuilder ts(transactions.get());
-        transactions->add("timeStarted", VPackValue(timepointToString(system_clock::now())));
+        transactions->add("timeStarted",
+                          VPackValue(timepointToString(system_clock::now())));
         for (auto const& obj : VPackObjectIterator(todo.slice()[0])) {
           transactions->add(obj.key.copyString(), obj.value);
         }
@@ -193,24 +230,24 @@ bool FailedServer::start() {
   }
 
   // Transact to agency
-  write_ret_t res = singleWriteTransaction(_agent, *transactions);
+  write_ret_t res = singleWriteTransaction(_agent, *transactions, false);
 
   if (res.accepted && res.indices.size() == 1 && res.indices[0]) {
-    LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+    LOG_TOPIC("bbd90", DEBUG, Logger::SUPERVISION)
       << "Pending job for failed DB Server " << _server;
 
 
     return true;
   }
 
-  LOG_TOPIC(INFO, Logger::SUPERVISION)
+  LOG_TOPIC("a3459", INFO, Logger::SUPERVISION)
       << "Precondition failed for starting FailedServer " + _jobId;
 
   return false;
 }
 
 bool FailedServer::create(std::shared_ptr<VPackBuilder> envelope) {
-  LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+  LOG_TOPIC("352fa", DEBUG, Logger::SUPERVISION)
       << "Todo: Handle failover for db server " + _server;
 
   using namespace std::chrono;
@@ -264,9 +301,9 @@ bool FailedServer::create(std::shared_ptr<VPackBuilder> envelope) {
   }
 
   if (selfCreate) {
-    write_ret_t res = singleWriteTransaction(_agent, *_jb);
+    write_ret_t res = singleWriteTransaction(_agent, *_jb, false);
     if (!res.accepted || res.indices.size() != 1 || res.indices[0] == 0) {
-      LOG_TOPIC(INFO, Logger::SUPERVISION) << "Failed to insert job " + _jobId;
+      LOG_TOPIC("70ce1", INFO, Logger::SUPERVISION) << "Failed to insert job " + _jobId;
       return false;
     }
   }
@@ -286,8 +323,8 @@ JOB_STATUS FailedServer::status() {
 
   std::shared_ptr<Builder> deleteTodos;
 
-  Node::Children const todos = _snapshot.hasAsChildren(toDoPrefix).first;
-  Node::Children const pends = _snapshot.hasAsChildren(pendingPrefix).first;
+  Node::Children const& todos = _snapshot.hasAsChildren(toDoPrefix).first;
+  Node::Children const& pends = _snapshot.hasAsChildren(pendingPrefix).first;
   bool hasOpenChildTasks = false;
 
   for (auto const& subJob : todos) {
@@ -317,17 +354,17 @@ JOB_STATUS FailedServer::status() {
   // FIXME: thus the deleteTodos here is unnecessary
 
   if (deleteTodos) {
-    LOG_TOPIC(INFO, Logger::SUPERVISION)
+    LOG_TOPIC("7a010", INFO, Logger::SUPERVISION)
         << "Server " << _server
         << " is healthy again. Will try to delete"
            " any jobs which have not yet started!";
     deleteTodos->close();
     deleteTodos->close();
     // Transact to agency
-    write_ret_t res = singleWriteTransaction(_agent, *deleteTodos);
+    write_ret_t res = singleWriteTransaction(_agent, *deleteTodos, false);
 
     if (!res.accepted || res.indices.size() != 1 || !res.indices[0]) {
-      LOG_TOPIC(WARN, Logger::SUPERVISION)
+      LOG_TOPIC("e8735", WARN, Logger::SUPERVISION)
           << "Server was healthy. Tried deleting subjobs but failed :(";
       return _status;
     }
@@ -343,8 +380,9 @@ JOB_STATUS FailedServer::status() {
   return _status;
 }
 
-arangodb::Result FailedServer::abort() {
+arangodb::Result FailedServer::abort(std::string const& reason) {
   Result result;
   return result;
   // FIXME: No abort procedure, simply throw error or so
+  // ??????????????
 }

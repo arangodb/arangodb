@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertTrue, assertEqual, AQL_EXECUTE, AQL_EXPLAIN */
+/*global assertTrue, assertEqual, assertNotEqual, AQL_EXECUTE, AQL_EXPLAIN */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for single operation nodes in cluster
@@ -34,7 +34,6 @@ var errors = internal.errors;
 var db = require("@arangodb").db;
 var helper = require("@arangodb/aql-helper");
 var assertQueryError = helper.assertQueryError;
-const isCluster = require("@arangodb/cluster").isCluster();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -43,8 +42,8 @@ const isCluster = require("@arangodb/cluster").isCluster();
 function optimizerClusterSingleDocumentTestSuite () {
   var ruleName = "optimize-cluster-single-document-operations";
   // various choices to control the optimizer:
-  var thisRuleEnabled  = { optimizer: { rules: [ "+all" ] } }; // we can only work after other rules
-  var thisRuleDisabled = { optimizer: { rules: [ "+all", "-" + ruleName ] } };
+  var thisRuleEnabled  = { optimizer: { rules: [ "+all", "-move-filters-into-enumerate", "-parallelize-gather" ] } }; // we can only work after other rules
+  var thisRuleDisabled = { optimizer: { rules: [ "+all", "-move-filters-into-enumerate", "-parallelize-gather", "-" + ruleName ] } };
   var notHereDoc = "notHereDoc";
   var yeOldeDoc = "yeOldeDoc";
 
@@ -116,7 +115,7 @@ function optimizerClusterSingleDocumentTestSuite () {
       let errorCode = set[5]; // expected error code
       const queryInfo = "count: " + count + " query info: " + JSON.stringify(set);
 
-      var result = AQL_EXPLAIN(queryString, { }, thisRuleEnabled); // explain - only
+      var result = AQL_EXPLAIN(queryString, {}, thisRuleEnabled); // explain - only
       assertEqual(expectRule, result.plan.rules, "rules mismatch: " + queryInfo);
       assertEqual(expectNode, explain(result), "nodes mismatch: " + queryInfo);
       if (doFullTest) {
@@ -127,8 +126,7 @@ function optimizerClusterSingleDocumentTestSuite () {
         try {
           r1 = AQL_EXECUTE(queryString, {}, thisRuleDisabled);
           assertEqual(0, errorCode, "we have no error in the original, but the tests expects an exception: " + queryInfo);
-        }
-        catch (y) {
+        } catch (y) {
           assertTrue(errorCode.hasOwnProperty('code'), "original plan throws, but we don't expect an exception" + JSON.stringify(y) + queryInfo);
           assertEqual(y.errorNum, errorCode.code, "match other error code - got: " + JSON.stringify(y) + queryInfo);
         }
@@ -138,14 +136,13 @@ function optimizerClusterSingleDocumentTestSuite () {
         try {
           r2 = AQL_EXECUTE(queryString, {}, thisRuleEnabled);
           assertEqual(0, errorCode, "we have no error in our plan, but the tests expects an exception" + queryInfo);
-        }
-        catch (x) {
+        } catch (x) {
           assertTrue(errorCode.hasOwnProperty('code'), "our plan throws, but we don't expect an exception" + JSON.stringify(x) + queryInfo);
           assertEqual(x.errorNum, errorCode.code, "match our error code" + JSON.stringify(x) + queryInfo);
         }
         pruneRevisions(r1);
         pruneRevisions(r2);
-        assertEqual(r1.json, r2.json, "results of with and without rule differ: " + queryInfo);
+        assertEqual(r1.json, r2.json, "results of with and without rule differ, queryInfo: " + queryInfo + ", set: " + set);
       }
       count += 1;
     });
@@ -399,7 +396,54 @@ function optimizerClusterSingleDocumentTestSuite () {
       ];
 
       runTestSet(queries, expectedRules, expectedNodes);
+    },
+
+    testSelectAndInsert : function() {
+      let result = AQL_EXPLAIN("FOR one IN @@cn1 FILTER one._key == 'a' INSERT one INTO @@cn2", { "@cn1" : cn1, "@cn2" : cn2 });
+      assertEqual(-1, result.plan.rules.indexOf(ruleName));
+    },
+
+    testSimpleQueriesNotEligible : function() {
+      let queries = [
+        "FOR one IN @@cn1 FILTER one.abc == 'a' RETURN one",
+        "FOR one IN @@cn1 FILTER one._key == 'a' UPDATE 'foo' WITH { two: 1 } IN @@cn1",
+        "FOR one IN @@cn1 FILTER one._key == 'a' UPDATE 'foo' WITH { two: 1 } IN " + cn2,
+        "FOR one IN @@cn1 FILTER one._key == 'a' UPDATE one WITH { two: 1 } IN " + cn2,
+        "FOR one IN @@cn1 FILTER one._key == 'a' REPLACE 'foo' WITH { two: 1 } IN @@cn1",
+        "FOR one IN @@cn1 FILTER one._key == 'a' REPLACE 'foo' WITH { two: 1 } IN " + cn2,
+        "FOR one IN @@cn1 FILTER one._key == 'a' REPLACE one WITH { two: 1 } IN " + cn2,
+        "FOR one IN @@cn1 FILTER one._key == 'a' REMOVE 'foo' IN @@cn1",
+        "FOR one IN @@cn1 FILTER one._key == 'a' REMOVE 'foo' IN " + cn2,
+        "FOR one IN @@cn1 FILTER one._key == 'a' REMOVE one IN " + cn2,
+      ];
+
+      queries.forEach(function(query) {
+        let result = AQL_EXPLAIN(query, { "@cn1" : cn1 });
+        assertEqual(-1, result.plan.rules.indexOf(ruleName), query);
+      });
+    },
+
+    testSimpleQueriesEligible : function() {
+      let queries = [
+        "FOR one IN @@cn1 FILTER one._key == 'a' RETURN one",
+        "FOR one IN @@cn1 FILTER one._key == 'a' UPDATE one WITH { two: 1 } IN @@cn1",
+        "FOR one IN @@cn1 FILTER one._key == 'a' REPLACE one WITH { two: 1 } IN @@cn1",
+        "FOR one IN @@cn1 FILTER one._key == 'a' REMOVE one IN @@cn1",
+        "INSERT {} INTO @@cn1",
+        "INSERT { _key: 'abc' } INTO @@cn1",
+        "INSERT { two: 1 } INTO @@cn1",
+        "UPDATE 'foo' WITH { two: 1 } INTO @@cn1",
+        "UPDATE { _key: 'abc' } WITH { two: 1 } INTO @@cn1",
+        "REMOVE 'abc' INTO @@cn1",
+        "REMOVE { _key: 'abc' } INTO @@cn1",
+      ];
+
+      queries.forEach(function(query) {
+        let result = AQL_EXPLAIN(query, { "@cn1" : cn1 });
+        assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
+      });
     }
+
   };
 }
 jsunity.run(optimizerClusterSingleDocumentTestSuite);

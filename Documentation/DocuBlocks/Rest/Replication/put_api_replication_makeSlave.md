@@ -2,7 +2,7 @@
 @startDocuBlock put_api_replication_makeSlave
 @brief Changes role to slave
 
-@RESTHEADER{PUT /_api/replication/make-slave, Turn the server into a slave of another}
+@RESTHEADER{PUT /_api/replication/make-slave, Turn the server into a slave of another, handleCommandMakeSlave}
 
 @RESTBODYPARAM{endpoint,string,required,string}
 the master endpoint to connect to (e.g. "tcp://192.168.173.13:8529").

@@ -47,7 +47,7 @@ class Builder;
 namespace transaction {
 class Context;
 class Methods;
-
+  
 namespace helpers {
 /// @brief extract the _key attribute from a slice
 arangodb::velocypack::StringRef extractKeyPart(VPackSlice);
@@ -96,6 +96,8 @@ std::string makeIdFromCustom(CollectionNameResolver const* resolver,
                              VPackSlice const& idPart, VPackSlice const& keyPart);
 };  // namespace helpers
 
+/// @brief basics::StringBuffer leaser
+/// @deprecated rather use StringLeaser for a shared std::string
 class StringBufferLeaser {
  public:
   explicit StringBufferLeaser(Methods*);
@@ -108,6 +110,21 @@ class StringBufferLeaser {
  private:
   transaction::Context* _transactionContext;
   arangodb::basics::StringBuffer* _stringBuffer;
+};
+
+/// @brief std::string leaser
+class StringLeaser {
+ public:
+  explicit StringLeaser(Methods*);
+  explicit StringLeaser(transaction::Context*);
+  ~StringLeaser();
+  std::string* string() const { return _string; }
+  std::string* operator->() const { return _string; }
+  std::string* get() const { return _string; }
+
+ private:
+  transaction::Context* _transactionContext;
+  std::string* _string;
 };
 
 class BuilderLeaser {
@@ -129,6 +146,26 @@ class BuilderLeaser {
   arangodb::velocypack::Builder* _builder;
 };
 
+inline bool isCoordinatorTransactionId(TRI_voc_tid_t tid) {
+  return (tid % 4) == 0;
+}
+
+inline bool isFollowerTransactionId(TRI_voc_tid_t tid) {
+  return (tid % 4) == 2;
+}
+
+inline bool isLeaderTransactionId(TRI_voc_tid_t tid) {
+  return (tid % 4) == 1;
+}
+  
+inline bool isChildTransactionId(TRI_voc_tid_t tid) {
+  return isLeaderTransactionId(tid) || isFollowerTransactionId(tid);
+}
+
+inline bool isLegacyTransactionId(TRI_voc_tid_t tid) {
+  return (tid % 4) == 3;
+}
+  
 }  // namespace transaction
 }  // namespace arangodb
 

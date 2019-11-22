@@ -158,8 +158,9 @@ inline bool keyFromSlice(VPackSlice keySlice, irs::string_ref& key) {
   }
 }
 
-inline bool canHandleValue(std::string const& key, VPackSlice const& value,
-                           arangodb::iresearch::IResearchLinkMeta const& context) noexcept {
+inline bool canHandleValue(std::string const& key,
+                           VPackSlice const& value,
+                           arangodb::iresearch::FieldMeta const& context) noexcept {
   switch (value.type()) {
     case VPackValueType::None:
     case VPackValueType::Illegal:
@@ -181,7 +182,7 @@ inline bool canHandleValue(std::string const& key, VPackSlice const& value,
       return true;
     case VPackValueType::Custom:
       TRI_ASSERT(key == arangodb::StaticStrings::IdString);
-      // intentionally falls through
+      [[fallthrough]];
     case VPackValueType::String:
       return !context._analyzers.empty();
     default:
@@ -190,8 +191,9 @@ inline bool canHandleValue(std::string const& key, VPackSlice const& value,
 }
 
 // returns 'context' in case if can't find the specified 'field'
-inline arangodb::iresearch::IResearchLinkMeta const* findMeta(
-    irs::string_ref const& key, arangodb::iresearch::IResearchLinkMeta const* context) {
+inline arangodb::iresearch::FieldMeta const* findMeta(
+    irs::string_ref const& key,
+    arangodb::iresearch::FieldMeta const* context) {
   TRI_ASSERT(context);
 
   auto const* meta = context->_fields.findPtr(key);
@@ -199,7 +201,7 @@ inline arangodb::iresearch::IResearchLinkMeta const* findMeta(
 }
 
 inline bool inObjectFiltered(std::string& buffer,
-                             arangodb::iresearch::IResearchLinkMeta const*& context,
+                             arangodb::iresearch::FieldMeta const*& context,
                              arangodb::iresearch::IteratorValue const& value) {
   irs::string_ref key;
 
@@ -220,7 +222,7 @@ inline bool inObjectFiltered(std::string& buffer,
 }
 
 inline bool inObject(std::string& buffer,
-                     arangodb::iresearch::IResearchLinkMeta const*& context,
+                     arangodb::iresearch::FieldMeta const*& context,
                      arangodb::iresearch::IteratorValue const& value) {
   irs::string_ref key;
 
@@ -235,7 +237,7 @@ inline bool inObject(std::string& buffer,
 }
 
 inline bool inArrayOrdered(std::string& buffer,
-                           arangodb::iresearch::IResearchLinkMeta const*& context,
+                           arangodb::iresearch::FieldMeta const*& context,
                            arangodb::iresearch::IteratorValue const& value) {
   buffer += arangodb::iresearch::NESTING_LIST_OFFSET_PREFIX;
   append(buffer, value.pos);
@@ -245,36 +247,36 @@ inline bool inArrayOrdered(std::string& buffer,
 }
 
 inline bool inArray(std::string& buffer,
-                    arangodb::iresearch::IResearchLinkMeta const*& context,
+                    arangodb::iresearch::FieldMeta const*& context,
                     arangodb::iresearch::IteratorValue const& value) noexcept {
   return canHandleValue(buffer, value.value, *context);
 }
 
 typedef bool (*Filter)(std::string& buffer,
-                       arangodb::iresearch::IResearchLinkMeta const*& context,
+                       arangodb::iresearch::FieldMeta const*& context,
                        arangodb::iresearch::IteratorValue const& value);
 
 Filter const valueAcceptors[] = {
-    &inObjectFiltered,  // type == Object, nestListValues == false,
-                        // includeAllValues == false
-    &inObject,  // type == Object, nestListValues == false, includeAllValues ==
-                // true
-    &inObjectFiltered,  // type == Object, nestListValues == true ,
-                        // includeAllValues == false
-    &inObject,  // type == Object, nestListValues == true , includeAllValues ==
-                // true
-    &inArray,   // type == Array , nestListValues == flase, includeAllValues ==
-                // false
-    &inArray,   // type == Array , nestListValues == flase, includeAllValues ==
-                // true
-    &inArrayOrdered,  // type == Array , nestListValues == true,
-                      // includeAllValues == false
-    &inArrayOrdered  // type == Array , nestListValues == true, includeAllValues
-                     // == true
+  // type == Object, nestListValues == false, // includeAllValues == false
+  &inObjectFiltered,
+  // type == Object, nestListValues == false, includeAllValues == // true
+  &inObject,
+  // type == Object, nestListValues == true , // includeAllValues == false
+  &inObjectFiltered,
+  // type == Object, nestListValues == true , includeAllValues == // true
+  &inObject,
+  // type == Array , nestListValues == flase, includeAllValues == // false
+  &inArray,
+  // type == Array , nestListValues == flase, includeAllValues == // true
+  &inArray,
+  // type == Array , nestListValues == true, // includeAllValues == false
+  &inArrayOrdered,
+  // type == Array , nestListValues == true, includeAllValues // == true
+  &inArrayOrdered
 };
 
 inline Filter getFilter(VPackSlice value,
-                        arangodb::iresearch::IResearchLinkMeta const& meta) noexcept {
+                        arangodb::iresearch::FieldMeta const& meta) noexcept {
   TRI_ASSERT(arangodb::iresearch::isArrayOrObject(value));
 
   return valueAcceptors[4 * value.isArray() + 2 * meta._trackListPositions + meta._includeAllFields];
@@ -292,7 +294,7 @@ namespace iresearch {
 /*static*/ void Field::setPkValue(Field& field, LocalDocumentId::BaseType const& pk) {
   field._name = PK_COLUMN;
   field._features = &irs::flags::empty_instance();
-  field._storeValues = ValueStorage::FULL;
+  field._storeValues = ValueStorage::VALUE;
   field._value =
       irs::bytes_ref(reinterpret_cast<irs::byte_type const*>(&pk), sizeof(pk));
   field._analyzer = StringStreamPool.emplace().release();  // FIXME don't use shared_ptr
@@ -342,7 +344,7 @@ std::string& FieldIterator::valueBuffer() {
   return *_valueBuffer;
 }
 
-void FieldIterator::reset(VPackSlice const& doc, IResearchLinkMeta const& linkMeta) {
+void FieldIterator::reset(VPackSlice const& doc, FieldMeta const& linkMeta) {
   // set surrogate analyzers
   _begin = nullptr;
   _end = 1 + _begin;
@@ -414,14 +416,16 @@ void FieldIterator::setNullValue(VPackSlice const value) {
 
   // set field properties
   _value._name = name;
-  _value._analyzer = stream.release();  // FIXME don't use shared_ptr
+  _value._analyzer = stream.release(); // FIXME don't use shared_ptr
   _value._features = &irs::flags::empty_instance();
 }
 
-bool FieldIterator::setStringValue(VPackSlice const value,
-                                   IResearchAnalyzerFeature::AnalyzerPool::ptr const pool) {
-  TRI_ASSERT((value.isCustom() && nameBuffer() == arangodb::StaticStrings::IdString) ||
-             value.isString());
+bool FieldIterator::setStringValue(
+    arangodb::velocypack::Slice const value,
+    FieldMeta::Analyzer const& valueAnalyzer) {
+  TRI_ASSERT( // assert
+    (value.isCustom() && nameBuffer() == arangodb::StaticStrings::IdString) // custom string
+    || value.isString()); // verbatim string
 
   irs::string_ref valueRef;
 
@@ -434,15 +438,21 @@ bool FieldIterator::setStringValue(VPackSlice const value,
     auto const baseSlice = _stack.front().it.slice();
     auto& buffer = valueBuffer();
 
-    buffer = transaction::helpers::extractIdString(_trx->resolver(), value, baseSlice);
+    buffer = transaction::helpers::extractIdString( // extract id
+      _trx->resolver(), // resolver
+      value, // value
+      baseSlice // base slice
+    );
 
     valueRef = buffer;
   } else {
     valueRef = iresearch::getStringRef(value);
   }
 
+  auto& pool = valueAnalyzer._pool;
+
   if (!pool) {
-    LOG_TOPIC(WARN, iresearch::TOPIC) << "got nullptr analyzer factory";
+    LOG_TOPIC("189da", WARN, iresearch::TOPIC) << "got nullptr analyzer factory";
 
     return false;
   }
@@ -451,13 +461,13 @@ bool FieldIterator::setStringValue(VPackSlice const value,
 
   // it's important to unconditionally mangle name
   // since we unconditionally unmangle it in 'next'
-  iresearch::kludge::mangleStringField(name, *pool);
+  iresearch::kludge::mangleStringField(name, valueAnalyzer);
 
   // init stream
   auto analyzer = pool->get();
 
   if (!analyzer) {
-    LOG_TOPIC(WARN, arangodb::iresearch::TOPIC)
+    LOG_TOPIC("22eee", WARN, arangodb::iresearch::TOPIC)
         << "got nullptr from analyzer factory, name '" << pool->name() << "'";
     return false;
   }
@@ -473,7 +483,7 @@ bool FieldIterator::setStringValue(VPackSlice const value,
   return true;
 }
 
-bool FieldIterator::pushAndSetValue(VPackSlice slice, IResearchLinkMeta const*& context) {
+bool FieldIterator::pushAndSetValue(VPackSlice slice, FieldMeta const*& context) {
   auto& name = nameBuffer();
 
   while (isArrayOrObject(slice)) {
@@ -512,7 +522,7 @@ bool FieldIterator::pushAndSetValue(VPackSlice slice, IResearchLinkMeta const*& 
   return setAttributeValue(*context);
 }
 
-bool FieldIterator::setAttributeValue(IResearchLinkMeta const& context) {
+bool FieldIterator::setAttributeValue(FieldMeta const& context) {
   auto const value = topValue().value;
 
   _value._storeValues = context._storeValues;
@@ -546,7 +556,7 @@ bool FieldIterator::setAttributeValue(IResearchLinkMeta const& context) {
       return true;
     case VPackValueType::Custom:
       TRI_ASSERT(nameBuffer() == arangodb::StaticStrings::IdString);
-      // intentionally falls through
+      [[fallthrough]];
     case VPackValueType::String:
       resetAnalyzers(context);  // reset string analyzers
       return setStringValue(value, *_begin);
@@ -562,7 +572,7 @@ void FieldIterator::next() {
     auto& name = nameBuffer();
 
     // remove previous suffix
-    arangodb::iresearch::kludge::demangleStringField(name, **prev);
+    arangodb::iresearch::kludge::demangleStringField(name, *prev);
 
     // can have multiple analyzers for string values only
     if (setStringValue(topValue().value, *_begin)) {
@@ -570,7 +580,7 @@ void FieldIterator::next() {
     }
   }
 
-  IResearchLinkMeta const* context;
+  FieldMeta const* context;
 
   auto& name = nameBuffer();
 
@@ -640,5 +650,5 @@ void FieldIterator::next() {
 }  // namespace arangodb
 
 // -----------------------------------------------------------------------------
-// --SECTION-- END-OF-FILE
+// --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------

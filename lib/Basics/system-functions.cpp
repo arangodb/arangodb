@@ -21,15 +21,20 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/Common.h"
+#include "Basics/operating-system.h"
+
+#include "system-functions.h"
 
 #include <chrono>
 #include <thread>
+#ifdef TRI_HAVE_UNISTD_H
+#include <unistd.h>
+#endif
 
 using namespace arangodb;
 using namespace arangodb::utilities;
 
-#ifdef TRI_MISSING_MEMRCHR
+#ifdef ARANGODB_MISSING_MEMRCHR
 void* memrchr(void const* block, int c, size_t size) {
   if (size) {
     unsigned char const* p = static_cast<unsigned char const*>(block);

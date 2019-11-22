@@ -23,19 +23,29 @@
 #include "ViewTypesFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "BootstrapFeature.h"
+#include "Basics/StaticStrings.h"
+#include "Basics/VelocyPackHelper.h"
+#include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "RestServer/BootstrapFeature.h"
+#include "Utils/Events.h"
 
 namespace {
 
 struct InvalidViewFactory : public arangodb::ViewFactory {
-  virtual arangodb::Result create(arangodb::LogicalView::ptr&, TRI_vocbase_t&,
+  virtual arangodb::Result create(arangodb::LogicalView::ptr&, TRI_vocbase_t& vocbase,
                                   arangodb::velocypack::Slice const& definition) const override {
+    std::string name;
+    if (definition.isObject()) {
+      name = arangodb::basics::VelocyPackHelper::getStringValue(
+          definition, arangodb::StaticStrings::DataSourceName, "");
+    }
+    arangodb::events::CreateView(vocbase.name(), name, TRI_ERROR_INTERNAL);
     return arangodb::Result(
         TRI_ERROR_BAD_PARAMETER,
         std::string(
-            "failure to create view without a factory for definition: ") +
+            "invalid type provided to create view with definition: ") +
             definition.toString());
   }
 
@@ -45,7 +55,7 @@ struct InvalidViewFactory : public arangodb::ViewFactory {
     return arangodb::Result(
         TRI_ERROR_BAD_PARAMETER,
         std::string(
-            "failure to instantiate view without a factory for definition: ") +
+            "invalid type provided to instantiate view with definition: ") +
             definition.toString());
   }
 };
@@ -60,25 +70,29 @@ namespace arangodb {
 ViewTypesFeature::ViewTypesFeature(application_features::ApplicationServer& server)
     : application_features::ApplicationFeature(server, ViewTypesFeature::name()) {
   setOptional(false);
-  startsAfter("BasicsPhase");
+  startsAfter<application_features::BasicFeaturePhaseServer>();
 }
 
 Result ViewTypesFeature::emplace(LogicalDataSource::Type const& type,
                                  ViewFactory const& factory) {
-  auto* feature = arangodb::application_features::ApplicationServer::lookupFeature(
-      "Bootstrap");
-  auto* bootstrapFeature = dynamic_cast<BootstrapFeature*>(feature);
 
   // ensure new factories are not added at runtime since that would require
   // additional locks
-  if (bootstrapFeature && bootstrapFeature->isReady()) {
-    return arangodb::Result(
-        TRI_ERROR_INTERNAL,
-        std::string(
-            "view factory registration is only allowed during server startup"));
+  if (server().hasFeature<BootstrapFeature>()) {
+    auto& bootstrapFeature = server().getFeature<BootstrapFeature>();
+    if (bootstrapFeature.isReady()) {
+      return arangodb::Result(TRI_ERROR_INTERNAL,
+                              std::string("view factory registration is only "
+                                          "allowed during server startup"));
+    }
   }
 
-  if (!_factories.emplace(&type, &factory).second) {
+  if (!isEnabled()) { // should not be called
+    TRI_ASSERT(false);
+    return arangodb::Result();
+  }
+  
+  if (!_factories.try_emplace(&type, &factory).second) {
     return arangodb::Result(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER, std::string("view factory previously registered during view factory "
                                                                                "registration for view type '") +
                                                                        type.name() +

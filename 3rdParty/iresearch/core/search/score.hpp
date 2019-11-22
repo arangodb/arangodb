@@ -35,7 +35,7 @@ NS_ROOT
 //////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API score : public attribute {
  public:
-  typedef std::function<void(byte_type*)> score_f;
+  typedef void(*score_f)(const void*, byte_type*);
 
   DECLARE_ATTRIBUTE_TYPE();
 
@@ -48,11 +48,11 @@ class IRESEARCH_API score : public attribute {
 
   score() NOEXCEPT;
 
-  const byte_type* c_str() const {
+  const byte_type* c_str() const NOEXCEPT {
     return value_.c_str();
   }
 
-  const bstring& value() const {
+  const bstring& value() const NOEXCEPT {
     return value_;
   }
 
@@ -62,29 +62,35 @@ class IRESEARCH_API score : public attribute {
 
   void evaluate() const {
     assert(func_);
-    func_(leak());
+    (*func_)(ctx_, leak());
   }
 
-  bool prepare(const order::prepared& ord, score_f&& func) {
+  bool prepare(const order::prepared& ord,
+               const void* ctx,
+               const score_f func) {
+    assert(func);
+
     if (ord.empty()) {
       return false;
     }
 
-    value_.resize(ord.size());
+    value_.resize(ord.score_size());
     ord.prepare_score(leak());
 
-    func_ = std::move(func);
+    ctx_ = ctx;
+    func_ = func;
     return true;
   }
 
  private:
-  byte_type* leak() const {
+  byte_type* leak() const NOEXCEPT {
     return const_cast<byte_type*>(&(value_[0]));
   }
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
-  bstring value_;
-  score_f func_;
+  bstring value_;     // score buffer
+  const void* ctx_{}; // arbitrary scoring context
+  score_f func_{};    // scoring function
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // score
 

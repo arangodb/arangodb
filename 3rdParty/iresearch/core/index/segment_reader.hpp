@@ -66,6 +66,7 @@ class IRESEARCH_API segment_reader final
 
   virtual const sub_reader& operator[](size_t i) const NOEXCEPT override {
     assert(!i);
+    UNUSED(i);
     return *this;
   }
 
@@ -111,6 +112,10 @@ class IRESEARCH_API segment_reader final
 
   virtual size_t size() const override {
     return impl_->size();
+  }
+
+  virtual const columnstore_reader::column_reader* sort() const override {
+    return impl_->sort();
   }
 
   using sub_reader::column_reader;

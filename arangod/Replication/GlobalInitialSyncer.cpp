@@ -54,7 +54,7 @@ GlobalInitialSyncer::GlobalInitialSyncer(ReplicationApplierConfiguration const& 
 GlobalInitialSyncer::~GlobalInitialSyncer() {
   try {
     if (!_state.isChildSyncer) {
-      _batch.finish(_state.connection, _progress);
+      _batch.finish(_state.connection, _progress, _state.syncerId);
     }
   } catch (...) {
   }
@@ -85,13 +85,13 @@ Result GlobalInitialSyncer::run(bool incremental) {
 Result GlobalInitialSyncer::runInternal(bool incremental) {
   if (!_state.connection.valid()) {
     return Result(TRI_ERROR_INTERNAL, "invalid endpoint");
-  } else if (application_features::ApplicationServer::isStopping()) {
+  } else if (_state.applier._server.isStopping()) {
     return Result(TRI_ERROR_SHUTTING_DOWN);
   }
 
   setAborted(false);
 
-  LOG_TOPIC(DEBUG, Logger::REPLICATION) << "client: getting master state";
+  LOG_TOPIC("23d92", DEBUG, Logger::REPLICATION) << "client: getting master state";
   Result r = _state.master.getState(_state.connection, _state.isChildSyncer);
   if (r.fail()) {
     return r;
@@ -101,7 +101,7 @@ Result GlobalInitialSyncer::runInternal(bool incremental) {
       (_state.master.majorVersion == 3 && _state.master.minorVersion < 3)) {
     char const* msg =
         "global replication is not supported with a master < ArangoDB 3.3";
-    LOG_TOPIC(WARN, Logger::REPLICATION) << msg;
+    LOG_TOPIC("57394", WARN, Logger::REPLICATION) << msg;
     return Result(TRI_ERROR_INTERNAL, msg);
   }
 
@@ -113,14 +113,14 @@ Result GlobalInitialSyncer::runInternal(bool incremental) {
     }
   }
 
-  LOG_TOPIC(DEBUG, Logger::REPLICATION) << "created logfile barrier";
+  LOG_TOPIC("0bf0e", DEBUG, Logger::REPLICATION) << "created logfile barrier";
   TRI_DEFER(
       if (!_state.isChildSyncer) { _state.barrier.remove(_state.connection); });
 
   if (!_state.isChildSyncer) {
     // start batch is required for the inventory request
-    LOG_TOPIC(DEBUG, Logger::REPLICATION) << "sending start batch";
-    r = _batch.start(_state.connection, _progress);
+    LOG_TOPIC("0da14", DEBUG, Logger::REPLICATION) << "sending start batch";
+    r = _batch.start(_state.connection, _progress, _state.syncerId);
     if (r.fail()) {
       return r;
     }
@@ -129,19 +129,19 @@ Result GlobalInitialSyncer::runInternal(bool incremental) {
   }
   TRI_DEFER(if (!_state.isChildSyncer) {
     _batchPingTimer.reset();
-    _batch.finish(_state.connection, _progress);
+    _batch.finish(_state.connection, _progress, _state.syncerId);
   });
-  LOG_TOPIC(DEBUG, Logger::REPLICATION) << "sending start batch done";
+  LOG_TOPIC("62fb5", DEBUG, Logger::REPLICATION) << "sending start batch done";
 
   VPackBuilder builder;
-  LOG_TOPIC(DEBUG, Logger::REPLICATION) << "fetching inventory";
+  LOG_TOPIC("c7021", DEBUG, Logger::REPLICATION) << "fetching inventory";
   r = fetchInventory(builder);
-  LOG_TOPIC(DEBUG, Logger::REPLICATION) << "inventory done: " << r.errorNumber();
+  LOG_TOPIC("1fe0b", DEBUG, Logger::REPLICATION) << "inventory done: " << r.errorNumber();
   if (r.fail()) {
     return r;
   }
 
-  LOG_TOPIC(DEBUG, Logger::REPLICATION) << "inventory: " << builder.slice().toJson();
+  LOG_TOPIC("1bd5b", DEBUG, Logger::REPLICATION) << "inventory: " << builder.slice().toJson();
   VPackSlice const databases = builder.slice().get("databases");
   VPackSlice const state = builder.slice().get("state");
   if (!databases.isObject() || !state.isObject()) {
@@ -151,21 +151,21 @@ Result GlobalInitialSyncer::runInternal(bool incremental) {
   }
 
   if (!_state.applier._skipCreateDrop) {
-    LOG_TOPIC(DEBUG, Logger::REPLICATION) << "updating server inventory";
+    LOG_TOPIC("af241", DEBUG, Logger::REPLICATION) << "updating server inventory";
     Result r = updateServerInventory(databases);
     if (r.fail()) {
-      LOG_TOPIC(DEBUG, Logger::REPLICATION)
+      LOG_TOPIC("5fc1c", DEBUG, Logger::REPLICATION)
           << "updating server inventory failed";
       return r;
     }
   }
 
-  LOG_TOPIC(DEBUG, Logger::REPLICATION) << "databases: " << databases.toJson();
+  LOG_TOPIC("d7e85", DEBUG, Logger::REPLICATION) << "databases: " << databases.toJson();
 
   try {
     // actually sync the database
     for (auto const& dbEntry : VPackObjectIterator(databases)) {
-      if (application_features::ApplicationServer::isStopping()) {
+      if (_state.applier._server.isStopping()) {
         return Result(TRI_ERROR_SHUTTING_DOWN);
       } else if (isAborted()) {
         return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
@@ -198,11 +198,11 @@ Result GlobalInitialSyncer::runInternal(bool incremental) {
       configurationCopy._database = nameSlice.copyString();
 
       auto syncer = std::make_shared<DatabaseInitialSyncer>(*vocbase, configurationCopy);
-      syncer->useAsChildSyncer(_state.master, _state.barrier.id,
+      syncer->useAsChildSyncer(_state.master, _state.syncerId, _state.barrier.id,
                                _state.barrier.updateTime, _batch.id, _batch.updateTime);
 
       // run the syncer with the supplied inventory collections
-      Result r = syncer->runWithInventory(false, dbInventory);
+      Result r = syncer->runWithInventory(incremental, dbInventory);
       if (r.fail()) {
         return r;
       }
@@ -212,7 +212,7 @@ Result GlobalInitialSyncer::runInternal(bool incremental) {
       _batch.updateTime = syncer->batchUpdateTime();
 
       if (!_state.isChildSyncer) {
-        _batch.extend(_state.connection, _progress);
+        _batch.extend(_state.connection, _progress, _state.syncerId);
         _state.barrier.extend(_state.connection);
       }
     }
@@ -220,7 +220,7 @@ Result GlobalInitialSyncer::runInternal(bool incremental) {
     return Result(TRI_ERROR_INTERNAL, "caught an unexpected exception");
   }
 
-  return TRI_ERROR_NO_ERROR;
+  return Result();
 }
 
 /// @brief add or remove databases such that the local inventory
@@ -251,10 +251,11 @@ Result GlobalInitialSyncer::updateServerInventory(VPackSlice const& masterDataba
 
     if (vocbase == nullptr) {
       // database is missing. we need to create it now
-      Result r = methods::Databases::create(dbName, VPackSlice::emptyArraySlice(),
+      Result r = methods::Databases::create(_state.applier._server, dbName,
+                                            VPackSlice::emptyArraySlice(),
                                             VPackSlice::emptyObjectSlice());
       if (r.fail()) {
-        LOG_TOPIC(WARN, Logger::REPLICATION)
+        LOG_TOPIC("cf124", WARN, Logger::REPLICATION)
             << "Creating the db failed on replicant";
         return r;
       }
@@ -262,7 +263,7 @@ Result GlobalInitialSyncer::updateServerInventory(VPackSlice const& masterDataba
       TRI_ASSERT(vocbase != nullptr);  // must be loaded now
       if (vocbase == nullptr) {
         char const* msg = "DB was created with wrong id on replicant";
-        LOG_TOPIC(WARN, Logger::REPLICATION) << msg;
+        LOG_TOPIC("a3b6f", WARN, Logger::REPLICATION) << msg;
         return Result(TRI_ERROR_INTERNAL, msg);
       }
     } else {
@@ -303,12 +304,12 @@ Result GlobalInitialSyncer::updateServerInventory(VPackSlice const& masterDataba
           auto res = vocbase->dropCollection(collection->id(), false, -1.0).errorNumber();
 
           if (res != TRI_ERROR_NO_ERROR) {
-            LOG_TOPIC(ERR, Logger::REPLICATION)
+            LOG_TOPIC("f04bb", ERR, Logger::REPLICATION)
                 << "unable to drop collection " << collection->name() << ": "
                 << TRI_errno_string(res);
           }
         } catch (...) {
-          LOG_TOPIC(ERR, Logger::REPLICATION)
+          LOG_TOPIC("69fc4", ERR, Logger::REPLICATION)
               << "unable to drop collection " << collection->name();
         }
       }
@@ -317,7 +318,7 @@ Result GlobalInitialSyncer::updateServerInventory(VPackSlice const& masterDataba
     existingDBs.erase(dbName);  // remove dbs that exists on the master
 
     if (!_state.isChildSyncer) {
-      _batch.extend(_state.connection, _progress);
+      _batch.extend(_state.connection, _progress, _state.syncerId);
       _state.barrier.extend(_state.connection);
     }
   }
@@ -326,39 +327,42 @@ Result GlobalInitialSyncer::updateServerInventory(VPackSlice const& masterDataba
   for (std::string const& dbname : existingDBs) {
     _state.vocbases.erase(dbname);  // make sure to release the db first
 
-    auto* sysDbFeature =
-        arangodb::application_features::ApplicationServer::lookupFeature<arangodb::SystemDatabaseFeature>();
-    auto r = sysDbFeature ? methods::Databases::drop(sysDbFeature->use().get(), dbname)
-                          : arangodb::Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+    auto r = _state.applier._server.hasFeature<arangodb::SystemDatabaseFeature>()
+                 ? methods::Databases::drop(_state.applier._server
+                                                .getFeature<arangodb::SystemDatabaseFeature>()
+                                                .use()
+                                                .get(),
+                                            dbname)
+                 : arangodb::Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
 
     if (r.fail()) {
-      LOG_TOPIC(WARN, Logger::REPLICATION) << "Dropping db failed on replicant";
+      LOG_TOPIC("0a282", WARN, Logger::REPLICATION) << "Dropping db failed on replicant";
       return r;
     }
 
     if (!_state.isChildSyncer) {
-      _batch.extend(_state.connection, _progress);
+      _batch.extend(_state.connection, _progress, _state.syncerId);
       _state.barrier.extend(_state.connection);
     }
   }
 
-  return TRI_ERROR_NO_ERROR;
+  return Result();
 }
 
 /// @brief fetch the server's inventory, public method for TailingSyncer
 Result GlobalInitialSyncer::getInventory(VPackBuilder& builder) {
   if (!_state.connection.valid()) {
     return Result(TRI_ERROR_INTERNAL, "invalid endpoint");
-  } else if (application_features::ApplicationServer::isStopping()) {
+  } else if (_state.applier._server.isStopping()) {
     return Result(TRI_ERROR_SHUTTING_DOWN);
   }
 
-  auto r = _batch.start(_state.connection, _progress);
+  auto r = _batch.start(_state.connection, _progress, _state.syncerId);
   if (r.fail()) {
     return r;
   }
 
-  TRI_DEFER(_batch.finish(_state.connection, _progress));
+  TRI_DEFER(_batch.finish(_state.connection, _progress, _state.syncerId));
 
   // caller did not supply an inventory, we need to fetch it
   return fetchInventory(builder);
@@ -371,6 +375,9 @@ Result GlobalInitialSyncer::fetchInventory(VPackBuilder& builder) {
   if (_state.applier._includeSystem) {
     url += "&includeSystem=true";
   }
+  if (_state.applier._includeFoxxQueues) {
+    url += "&includeFoxxQueues=true";
+  }
 
   // send request
   std::unique_ptr<httpclient::SimpleHttpResult> response;
@@ -380,7 +387,7 @@ Result GlobalInitialSyncer::fetchInventory(VPackBuilder& builder) {
 
   if (replutils::hasFailed(response.get())) {
     if (!_state.isChildSyncer) {
-      _batch.finish(_state.connection, _progress);
+      _batch.finish(_state.connection, _progress, _state.syncerId);
     }
     return replutils::buildHttpError(response.get(), url, _state.connection);
   }
@@ -397,7 +404,7 @@ Result GlobalInitialSyncer::fetchInventory(VPackBuilder& builder) {
   VPackSlice const slice = builder.slice();
 
   if (!slice.isObject()) {
-    LOG_TOPIC(DEBUG, Logger::REPLICATION)
+    LOG_TOPIC("1db22", DEBUG, Logger::REPLICATION)
         << "client: InitialSyncer::run - inventoryResponse is not an object";
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                   std::string("got invalid response from master at ") +

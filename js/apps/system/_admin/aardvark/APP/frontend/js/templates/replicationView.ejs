@@ -1,4 +1,3 @@
-<script id="replicationView.ejs" type="text/template">
   <div id="replicationContent" class="innerContent replicationContent">
 
     <% if (mode !== 0) { %>
@@ -75,7 +74,7 @@
                 </td>
               </tr>
                 <tr>
-                  <td><div>This node is not replicating from any other node. Also there are no active slaves or followers found. </br>Please visit our <a href="https://docs.arangodb.com/devel/Manual/Architecture/Replication/">Documentation</a> to find out how to setup replication.</div></td>
+                  <td><div>This node is not replicating from any other node. Also there are no active slaves or followers found. </br>Please visit our <a href="https://www.arangodb.com/docs/stable/architecture-replication.html">Documentation</a> to find out how to setup replication.</div></td>
                 </tr>
             </tbody>
         </table>
@@ -204,7 +203,9 @@
         <table class="pure-table" id="repl-logger-clients">
             <thead>
               <tr>
+                <th>Syncer ID</th>
                 <th>Server ID</th>
+                <th>Client info</th>
                 <th>Time</th>
                 <th>Last served tick</th>
               </tr>
@@ -245,4 +246,3 @@
     <% } %>
 
   </div>
-</script>

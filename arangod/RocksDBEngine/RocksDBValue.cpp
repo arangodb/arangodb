@@ -224,13 +224,13 @@ arangodb::velocypack::StringRef RocksDBValue::vertexId(char const* data, size_t 
 VPackSlice RocksDBValue::data(char const* data, size_t size) {
   TRI_ASSERT(data != nullptr);
   TRI_ASSERT(size >= sizeof(char));
-  return VPackSlice(data);
+  return VPackSlice(reinterpret_cast<uint8_t const*>(data));
 }
 
 uint64_t RocksDBValue::keyValue(char const* data, size_t size) {
   TRI_ASSERT(data != nullptr);
   TRI_ASSERT(size >= sizeof(char));
-  VPackSlice key = transaction::helpers::extractKeyFromDocument(VPackSlice(data));
+  VPackSlice key = transaction::helpers::extractKeyFromDocument(VPackSlice(reinterpret_cast<uint8_t const*>(data)));
   if (key.isString()) {
     VPackValueLength l;
     char const* p = key.getStringUnchecked(l);

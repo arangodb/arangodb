@@ -23,7 +23,9 @@
 
 #include "RequestStatistics.h"
 #include "Basics/MutexLocker.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 
 #include <iomanip>
 
@@ -87,7 +89,7 @@ RequestStatistics* RequestStatistics::acquire() {
     statistics->_released = false;
   } else {
     statistics = nullptr;
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+    LOG_TOPIC("62d99", TRACE, arangodb::Logger::FIXME)
         << "no free element on statistics queue";
   }
 
@@ -124,26 +126,50 @@ void RequestStatistics::process(RequestStatistics* statistics) {
         totalTime = statistics->_writeEnd - statistics->_readStart;
       }
 
-      TRI_TotalTimeDistributionStatistics.addFigure(totalTime);
+      if (statistics->_superuser) {
+        TRI_TotalTimeDistributionStatistics.addFigure(totalTime);
 
-      double requestTime = statistics->_requestEnd - statistics->_requestStart;
-      TRI_RequestTimeDistributionStatistics.addFigure(requestTime);
+        double requestTime = statistics->_requestEnd - statistics->_requestStart;
+        TRI_RequestTimeDistributionStatistics.addFigure(requestTime);
 
-      double queueTime = 0.0;
+        double queueTime = 0.0;
 
-      if (statistics->_queueStart != 0.0 && statistics->_queueEnd != 0.0) {
-        queueTime = statistics->_queueEnd - statistics->_queueStart;
-        TRI_QueueTimeDistributionStatistics.addFigure(queueTime);
+        if (statistics->_queueStart != 0.0 && statistics->_queueEnd != 0.0) {
+          queueTime = statistics->_queueEnd - statistics->_queueStart;
+          TRI_QueueTimeDistributionStatistics.addFigure(queueTime);
+        }
+
+        double ioTime = totalTime - requestTime - queueTime;
+
+        if (ioTime >= 0.0) {
+          TRI_IoTimeDistributionStatistics.addFigure(ioTime);
+        }
+
+        TRI_BytesSentDistributionStatistics.addFigure(statistics->_sentBytes);
+        TRI_BytesReceivedDistributionStatistics.addFigure(statistics->_receivedBytes);
+      } else {
+        TRI_TotalTimeDistributionStatisticsUser.addFigure(totalTime);
+
+        double requestTime = statistics->_requestEnd - statistics->_requestStart;
+        TRI_RequestTimeDistributionStatisticsUser.addFigure(requestTime);
+
+        double queueTime = 0.0;
+
+        if (statistics->_queueStart != 0.0 && statistics->_queueEnd != 0.0) {
+          queueTime = statistics->_queueEnd - statistics->_queueStart;
+          TRI_QueueTimeDistributionStatisticsUser.addFigure(queueTime);
+        }
+
+        double ioTime = totalTime - requestTime - queueTime;
+
+        if (ioTime >= 0.0) {
+          TRI_IoTimeDistributionStatisticsUser.addFigure(ioTime);
+        }
+
+        TRI_BytesSentDistributionStatisticsUser.addFigure(statistics->_sentBytes);
+        TRI_BytesReceivedDistributionStatisticsUser.addFigure(statistics->_receivedBytes);
+
       }
-
-      double ioTime = totalTime - requestTime - queueTime;
-
-      if (ioTime >= 0.0) {
-        TRI_IoTimeDistributionStatistics.addFigure(ioTime);
-      }
-
-      TRI_BytesSentDistributionStatistics.addFigure(statistics->_sentBytes);
-      TRI_BytesReceivedDistributionStatistics.addFigure(statistics->_receivedBytes);
     }
   }
 
@@ -157,11 +183,11 @@ void RequestStatistics::process(RequestStatistics* statistics) {
     if (_freeList.push(statistics)) {
       break;
     }
-    std::this_thread::sleep_for(std::chrono::microseconds(10000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
 
   if (tries > 1) {
-    LOG_TOPIC(WARN, Logger::MEMORY) << "_freeList.push failed " << tries - 1 << " times.";
+    LOG_TOPIC("fb453", WARN, Logger::MEMORY) << "_freeList.push failed " << tries - 1 << " times.";
   }
 }
 
@@ -188,18 +214,36 @@ void RequestStatistics::fill(StatisticsDistribution& totalTime,
                              StatisticsDistribution& requestTime,
                              StatisticsDistribution& queueTime,
                              StatisticsDistribution& ioTime, StatisticsDistribution& bytesSent,
-                             StatisticsDistribution& bytesReceived) {
+                             StatisticsDistribution& bytesReceived,
+                             stats::RequestStatisticsSource source) {
   if (!StatisticsFeature::enabled()) {
     // all the below objects may be deleted if we don't have statistics enabled
     return;
   }
 
-  totalTime = TRI_TotalTimeDistributionStatistics;
-  requestTime = TRI_RequestTimeDistributionStatistics;
-  queueTime = TRI_QueueTimeDistributionStatistics;
-  ioTime = TRI_IoTimeDistributionStatistics;
-  bytesSent = TRI_BytesSentDistributionStatistics;
-  bytesReceived = TRI_BytesReceivedDistributionStatistics;
+  if (source == stats::RequestStatisticsSource::USER) {
+    totalTime = TRI_TotalTimeDistributionStatisticsUser;
+    requestTime = TRI_RequestTimeDistributionStatisticsUser;
+    queueTime = TRI_QueueTimeDistributionStatisticsUser;
+    ioTime = TRI_IoTimeDistributionStatisticsUser;
+    bytesSent = TRI_BytesSentDistributionStatisticsUser;
+    bytesReceived = TRI_BytesReceivedDistributionStatisticsUser;
+  } else {
+    totalTime = TRI_TotalTimeDistributionStatistics;
+    requestTime = TRI_RequestTimeDistributionStatistics;
+    queueTime = TRI_QueueTimeDistributionStatistics;
+    ioTime = TRI_IoTimeDistributionStatistics;
+    bytesSent = TRI_BytesSentDistributionStatistics;
+    bytesReceived = TRI_BytesReceivedDistributionStatistics;
+  }
+  if (source == stats::RequestStatisticsSource::ALL) {
+    totalTime.add(TRI_TotalTimeDistributionStatisticsUser);
+    requestTime.add(TRI_RequestTimeDistributionStatisticsUser);
+    queueTime.add(TRI_QueueTimeDistributionStatisticsUser);
+    ioTime.add(TRI_IoTimeDistributionStatisticsUser);
+    bytesSent.add(TRI_BytesSentDistributionStatisticsUser);
+    bytesReceived.add(TRI_BytesReceivedDistributionStatisticsUser);
+  }
 }
 
 std::string RequestStatistics::timingsCsv() {
@@ -231,51 +275,55 @@ std::string RequestStatistics::to_string() {
      << "_async          " << _async << std::endl
      << "_tooLarge       " << _tooLarge << std::endl
      << "_executeError   " << _executeError << std::endl
-     << "_ignore         " << _ignore << std::endl;
+     << "_ignore         " << _ignore << std::endl
+     << "_superuser      " << _superuser << std::endl;
 
   return ss.str();
 }
 
 void RequestStatistics::trace_log() {
-  LOG_TOPIC(TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
+  LOG_TOPIC("4a0b6", TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
                                      << "_readStart      " << _readStart;
 
-  LOG_TOPIC(TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
+  LOG_TOPIC("8620b", TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
                                      << "_readEnd        " << _readEnd;
 
-  LOG_TOPIC(TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
+  LOG_TOPIC("13bae", TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
                                      << "_queueStart     " << _queueStart;
 
-  LOG_TOPIC(TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
+  LOG_TOPIC("e6292", TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
                                      << "_queueEnd       " << _queueEnd;
 
-  LOG_TOPIC(TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
+  LOG_TOPIC("9c947", TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
                                      << "_requestStart   " << _requestStart;
 
-  LOG_TOPIC(TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
+  LOG_TOPIC("09e63", TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
                                      << "_requestEnd     " << _requestEnd;
 
-  LOG_TOPIC(TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
+  LOG_TOPIC("4eef0", TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
                                      << "_writeStart     " << _writeStart;
 
-  LOG_TOPIC(TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
+  LOG_TOPIC("3922b", TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
                                      << "_writeEnd       " << _writeEnd;
 
-  LOG_TOPIC(TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
+  LOG_TOPIC("49e75", TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
                                      << "_receivedBytes  " << _receivedBytes;
 
-  LOG_TOPIC(TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
+  LOG_TOPIC("399d0", TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
                                      << "_sentBytes      " << _sentBytes;
 
-  LOG_TOPIC(TRACE, Logger::REQUESTS)
+  LOG_TOPIC("54d62", TRACE, Logger::REQUESTS)
       << std::boolalpha << std::setprecision(20) << "_async          " << _async;
 
-  LOG_TOPIC(TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
+  LOG_TOPIC("5e68c", TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
                                      << "_tooLarge       " << _tooLarge;
 
-  LOG_TOPIC(TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
+  LOG_TOPIC("f4089", TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
                                      << "_executeError   " << _executeError;
 
-  LOG_TOPIC(TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
+  LOG_TOPIC("31657", TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
                                      << "_ignore         " << _ignore;
+
+  LOG_TOPIC("31658", TRACE, Logger::REQUESTS) << std::boolalpha << std::setprecision(20)
+                                     << "_superuser      " << _superuser;
 }

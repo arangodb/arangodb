@@ -42,7 +42,7 @@ class RocksDBEngine;
 
 class RocksDBSyncThread final : public Thread {
  public:
-  RocksDBSyncThread(RocksDBEngine* engine, std::chrono::milliseconds interval);
+  RocksDBSyncThread(RocksDBEngine& engine, std::chrono::milliseconds interval);
 
   ~RocksDBSyncThread();
 
@@ -60,7 +60,7 @@ class RocksDBSyncThread final : public Thread {
   void run() override;
 
  private:
-  RocksDBEngine* _engine;
+  RocksDBEngine& _engine;
 
   /// @brief the sync interval
   std::chrono::milliseconds const _interval;

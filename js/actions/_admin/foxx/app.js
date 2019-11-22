@@ -28,13 +28,13 @@
 // / @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
+const internal = require('internal');
 const actions = require('@arangodb/actions');
 const FoxxManager = require('@arangodb/foxx/manager');
 const store = require('@arangodb/foxx/store');
 const request = require('@arangodb/request');
-const db = require('@arangodb').db;
-const ArangoError = require('@arangodb').ArangoError;
-const joinPath = require('path').join;
+const { ArangoError, db, errors } = require('@arangodb');
+const { join: joinPath } = require('path');
 const fs = require('fs');
 const fmu = require('@arangodb/foxx/manager-utils');
 
@@ -118,6 +118,15 @@ function resolveAppInfo (appInfo, refresh) {
   return {source: appInfo};
 }
 
+function throwIfApiDisabled () {
+  if (internal.isFoxxApiDisabled()) {
+    throw new ArangoError({
+      errorNum: errors.ERROR_SERVICE_API_DISABLED.code,
+      errorMessage: errors.ERROR_SERVICE_API_DISABLED.message
+    });
+  }
+}
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief sets up a Foxx service
 // //////////////////////////////////////////////////////////////////////////////
@@ -125,12 +134,14 @@ function resolveAppInfo (appInfo, refresh) {
 actions.defineHttp({
   url: '_admin/foxx/setup',
   prefix: false,
+  isSystem: true,
 
   callback: easyPostCallback({
     body: true,
     callback: function (body, req) {
-      const mount = body.mount;
+      throwIfApiDisabled();
 
+      const mount = body.mount;
       return FoxxManager.setup(mount);
     }
   })
@@ -143,12 +154,14 @@ actions.defineHttp({
 actions.defineHttp({
   url: '_admin/foxx/teardown',
   prefix: false,
+  isSystem: true,
 
   callback: easyPostCallback({
     body: true,
     callback: function (body, req) {
-      const mount = body.mount;
+      throwIfApiDisabled();
 
+      const mount = body.mount;
       return FoxxManager.teardown(mount);
     }
   })
@@ -161,10 +174,13 @@ actions.defineHttp({
 actions.defineHttp({
   url: '_admin/foxx/install',
   prefix: false,
+  isSystem: true,
 
   callback: easyPostCallback({
     body: true,
     callback: function (body, req) {
+      throwIfApiDisabled();
+
       const mount = body.mount;
       const options = body.options || {};
       const appInfo = resolveAppInfo(body.appInfo, options.refresh);
@@ -182,10 +198,13 @@ actions.defineHttp({
 actions.defineHttp({
   url: '_admin/foxx/uninstall',
   prefix: false,
+  isSystem: true,
 
   callback: easyPostCallback({
     body: true,
     callback: function (body, req) {
+      throwIfApiDisabled();
+
       const mount = body.mount;
       const options = body.options || {};
       options.mount = mount;
@@ -202,10 +221,13 @@ actions.defineHttp({
 actions.defineHttp({
   url: '_admin/foxx/replace',
   prefix: false,
+  isSystem: true,
 
   callback: easyPostCallback({
     body: true,
     callback: function (body, req) {
+      throwIfApiDisabled();
+
       const mount = body.mount;
       const options = body.options || {};
       const appInfo = resolveAppInfo(body.appInfo, options.refresh);
@@ -223,10 +245,13 @@ actions.defineHttp({
 actions.defineHttp({
   url: '_admin/foxx/upgrade',
   prefix: false,
+  isSystem: true,
 
   callback: easyPostCallback({
     body: true,
     callback: function (body, req) {
+      throwIfApiDisabled();
+
       const mount = body.mount;
       const options = body.options || {};
       const appInfo = resolveAppInfo(body.appInfo, options.refresh);
@@ -244,10 +269,13 @@ actions.defineHttp({
 actions.defineHttp({
   url: '_admin/foxx/configure',
   prefix: false,
+  isSystem: true,
 
   callback: easyPostCallback({
     body: true,
     callback: function (body, req) {
+      throwIfApiDisabled();
+
       const mount = body.mount;
       let options = body.options;
       if (options && options.configuration) {
@@ -266,10 +294,13 @@ actions.defineHttp({
 actions.defineHttp({
   url: '_admin/foxx/configuration',
   prefix: false,
+  isSystem: true,
 
   callback: easyPostCallback({
     body: true,
     callback: function (body, req) {
+      throwIfApiDisabled();
+
       const mount = body.mount;
       return FoxxManager.configuration(mount);
     }
@@ -283,10 +314,13 @@ actions.defineHttp({
 actions.defineHttp({
   url: '_admin/foxx/set-dependencies',
   prefix: false,
+  isSystem: true,
 
   callback: easyPostCallback({
     body: true,
     callback: function (body, req) {
+      throwIfApiDisabled();
+
       const mount = body.mount;
       let options = body.options;
       if (options && options.dependencies) {
@@ -305,12 +339,14 @@ actions.defineHttp({
 actions.defineHttp({
   url: '_admin/foxx/dependencies',
   prefix: false,
+  isSystem: true,
 
   callback: easyPostCallback({
     body: true,
     callback: function (body, req) {
-      const mount = body.mount;
+      throwIfApiDisabled();
 
+      const mount = body.mount;
       const deps = FoxxManager.dependencies(mount);
       for (const key of Object.keys(deps)) {
         const dep = deps[key];
@@ -334,10 +370,13 @@ actions.defineHttp({
 actions.defineHttp({
   url: '_admin/foxx/development',
   prefix: false,
+  isSystem: true,
 
   callback: easyPostCallback({
     body: true,
     callback: function (body, req) {
+      throwIfApiDisabled();
+
       const mount = body.mount;
       const activate = body.activate;
       if (activate) {
@@ -356,10 +395,13 @@ actions.defineHttp({
 actions.defineHttp({
   url: '_admin/foxx/tests',
   prefix: false,
+  isSystem: true,
 
   callback: easyPostCallback({
     body: true,
     callback: function (body, req) {
+      throwIfApiDisabled();
+
       const mount = body.mount;
       const options = body.options;
       return FoxxManager.runTests(mount, options);
@@ -374,10 +416,13 @@ actions.defineHttp({
 actions.defineHttp({
   url: '_admin/foxx/script',
   prefix: false,
+  isSystem: true,
 
   callback: easyPostCallback({
     body: true,
     callback: function (body, req) {
+      throwIfApiDisabled();
+
       const name = body.name;
       const mount = body.mount;
       const options = body.options;

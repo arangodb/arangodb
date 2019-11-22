@@ -51,10 +51,8 @@ NS_ROOT
 // -----------------------------------------------------------------------------
 
 filter::filter(const type_id& type) NOEXCEPT
-  : boost_(boost::no_boost()), type_(&type) {
+  : boost_(irs::no_boost()), type_(&type) {
 }
-
-filter::~filter() {}
 
 filter::prepared::ptr filter::prepared::empty() {
   // aliasing ctor
@@ -62,12 +60,6 @@ filter::prepared::ptr filter::prepared::empty() {
     filter::prepared::ptr(), &empty_query::instance()
   );
 }
-
-filter::prepared::prepared(attribute_store&& attrs) NOEXCEPT
-  : attrs_(std::move(attrs)) {
-}
-
-filter::prepared::~prepared() {}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                             empty

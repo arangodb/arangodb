@@ -24,8 +24,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "BlockCollector.h"
+
 #include "Aql/AqlItemBlock.h"
 #include "Aql/AqlItemBlockManager.h"
+#include "Aql/AqlItemBlockUtils.h"
 #include "Basics/Exceptions.h"
 
 using namespace arangodb::aql;
@@ -46,18 +48,12 @@ RegisterId BlockCollector::nrRegs() const {
 void BlockCollector::clear() {
   for (auto& it : _blocks) {
     it->destroy();  // overkill?
-    _blockManager->returnBlock(it);
   }
   _blocks.clear();
   _totalSize = 0;
 }
 
-void BlockCollector::add(std::unique_ptr<AqlItemBlock> block) {
-  add(block.get());
-  block.release();
-}
-
-void BlockCollector::add(AqlItemBlock* block) {
+void BlockCollector::add(SharedAqlItemBlockPtr block) {
   TRI_ASSERT(block != nullptr);
   TRI_ASSERT(block->size() > 0);
 
@@ -68,13 +64,13 @@ void BlockCollector::add(AqlItemBlock* block) {
   _totalSize += block->size();
 }
 
-AqlItemBlock* BlockCollector::steal() {
+SharedAqlItemBlockPtr BlockCollector::steal() {
   if (_blocks.empty()) {
     return nullptr;
   }
 
   TRI_ASSERT(_totalSize > 0);
-  AqlItemBlock* result = nullptr;
+  SharedAqlItemBlockPtr result{nullptr};
 
   TRI_IF_FAILURE("BlockCollector::getOrSkipSomeConcatenate") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -84,10 +80,9 @@ AqlItemBlock* BlockCollector::steal() {
     // only got a single result. return it as it is
     result = _blocks[0];
   } else {
-    result = AqlItemBlock::concatenate(_blockManager->resourceMonitor(), this);
+    result = itemBlock::concatenate(*_blockManager, _blocks);
     for (auto& it : _blocks) {
       it->eraseAll();
-      _blockManager->returnBlock(it);
     }
   }
 

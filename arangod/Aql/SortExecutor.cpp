@@ -22,9 +22,7 @@
 
 #include "SortExecutor.h"
 
-#include "Basics/Common.h"
-
-#include "Aql/AqlItemMatrix.h"
+#include "Aql/AllRowsFetcher.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/OutputAqlItemRow.h"
@@ -41,23 +39,18 @@ namespace {
 /// @brief OurLessThan
 class OurLessThan {
  public:
-  OurLessThan(arangodb::transaction::Methods* trx, AqlItemMatrix const& input,
+  OurLessThan(velocypack::Options const* options, AqlItemMatrix const& input,
               std::vector<SortRegister> const& sortRegisters) noexcept
-      : _trx(trx), _input(input), _sortRegisters(sortRegisters) {}
+      : _vpackOptions(options), _input(input), _sortRegisters(sortRegisters) {}
 
-  bool operator()(size_t const& a, size_t const& b) const {
+  bool operator()(AqlItemMatrix::RowIndex const& a, AqlItemMatrix::RowIndex const& b) const {
     InputAqlItemRow left = _input.getRow(a);
     InputAqlItemRow right = _input.getRow(b);
     for (auto const& reg : _sortRegisters) {
       AqlValue const& lhs = left.getValue(reg.reg);
       AqlValue const& rhs = right.getValue(reg.reg);
 
-#if 0  // #ifdef USE_IRESEARCH
-      TRI_ASSERT(reg.comparator);
-      int const cmp = (*reg.comparator)(reg.scorer.get(), _trx, lhs, rhs);
-#else
-      int const cmp = AqlValue::Compare(_trx, lhs, rhs, true);
-#endif
+      int const cmp = AqlValue::Compare(_vpackOptions, lhs, rhs, true);
 
       if (cmp < 0) {
         return reg.asc;
@@ -70,7 +63,7 @@ class OurLessThan {
   }
 
  private:
-  arangodb::transaction::Methods* _trx;
+  velocypack::Options const* _vpackOptions;
   AqlItemMatrix const& _input;
   std::vector<SortRegister> const& _sortRegisters;
 };  // OurLessThan
@@ -91,32 +84,39 @@ SortExecutorInfos::SortExecutorInfos(std::vector<SortRegister> sortRegisters,
                                      RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
                                      std::unordered_set<RegisterId> registersToClear,
                                      std::unordered_set<RegisterId> registersToKeep,
-                                     transaction::Methods* trx, bool stable)
+                                     velocypack::Options const* options, bool stable)
     : ExecutorInfos(mapSortRegistersToRegisterIds(sortRegisters), nullptr,
                     nrInputRegisters, nrOutputRegisters,
                     std::move(registersToClear), std::move(registersToKeep)),
       _limit(limit),
       _manager(manager),
-      _trx(trx),
+      _vpackOptions(options),
       _sortRegisters(std::move(sortRegisters)),
       _stable(stable) {
-  TRI_ASSERT(trx != nullptr);
   TRI_ASSERT(!_sortRegisters.empty());
 }
 
-transaction::Methods* SortExecutorInfos::trx() const { return _trx; }
-
-std::vector<SortRegister>& SortExecutorInfos::sortRegisters() {
+std::vector<SortRegister> const& SortExecutorInfos::sortRegisters() const noexcept {
   return _sortRegisters;
 }
 
 bool SortExecutorInfos::stable() const { return _stable; }
 
+velocypack::Options const* SortExecutorInfos::vpackOptions() const noexcept {
+  return _vpackOptions;
+}
+
+size_t SortExecutorInfos::limit() const noexcept { return _limit; }
+
+AqlItemBlockManager& SortExecutorInfos::itemBlockManager() noexcept {
+  return _manager;
+}
+
 SortExecutor::SortExecutor(Fetcher& fetcher, SortExecutorInfos& infos)
-    : _infos(infos), _fetcher(fetcher), _input(nullptr), _returnNext(0){};
+    : _infos(infos), _fetcher(fetcher), _input(nullptr), _returnNext(0) {}
 SortExecutor::~SortExecutor() = default;
 
-std::pair<ExecutionState, NoStats> SortExecutor::produceRow(OutputAqlItemRow& output) {
+std::pair<ExecutionState, NoStats> SortExecutor::produceRows(OutputAqlItemRow& output) {
   ExecutionState state;
   if (_input == nullptr) {
     // We need to get data
@@ -159,15 +159,27 @@ void SortExecutor::doSorting() {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   TRI_ASSERT(_input != nullptr);
-  _sortedIndexes.reserve(_input->size());
-  for (size_t i = 0; i < _input->size(); ++i) {
-    _sortedIndexes.emplace_back(i);
-  }
+  _sortedIndexes = _input->produceRowIndexes();
   // comparison function
-  OurLessThan ourLessThan(_infos.trx(), *_input, _infos.sortRegisters());
+  OurLessThan ourLessThan(_infos.vpackOptions(), *_input, _infos.sortRegisters());
   if (_infos.stable()) {
     std::stable_sort(_sortedIndexes.begin(), _sortedIndexes.end(), ourLessThan);
   } else {
     std::sort(_sortedIndexes.begin(), _sortedIndexes.end(), ourLessThan);
   }
+}
+
+std::pair<ExecutionState, size_t> SortExecutor::expectedNumberOfRows(size_t atMost) const {
+  if (_input == nullptr) {
+    // This executor does not know anything yet.
+    // Just take whatever is presented from upstream.
+    // This will return WAITING a couple of times
+    return _fetcher.preFetchNumberOfRows(atMost);
+  }
+  TRI_ASSERT(_returnNext <= _sortedIndexes.size());
+  size_t rowsLeft = _sortedIndexes.size() - _returnNext;
+  if (rowsLeft > 0) {
+    return {ExecutionState::HASMORE, rowsLeft};
+  }
+  return {ExecutionState::DONE, rowsLeft};
 }

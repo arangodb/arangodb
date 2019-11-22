@@ -2,7 +2,7 @@
 
 // Load modules
 
-const Joi = require('../');
+const Joi = require('./index');
 
 
 // Declare internals
@@ -21,5 +21,5 @@ exports.options = Joi.object({
     context: Joi.object(),
     strip: Joi.boolean(),
     noDefaults: Joi.boolean(),
-    error: Joi.object()
+    escapeHtml: Joi.boolean()
 }).strict();

@@ -83,7 +83,7 @@ static std::string const& nameFromCid(MMFilesReplicationDumpContext* dump, TRI_v
   if (!name.empty()) {
     // insert into cache
     try {
-      dump->_collectionNames.emplace(cid, std::move(name));
+      dump->_collectionNames.try_emplace(cid, std::move(name));
 
       // and look it up again
       return nameFromCid(dump, cid);
@@ -172,7 +172,7 @@ static int StringifyMarker(MMFilesReplicationDumpContext* dump, TRI_voc_tick_t d
     case TRI_DF_MARKER_VPACK_DROP_VIEW: {
       Append(dump, ",\"data\":");
 
-      VPackSlice slice(reinterpret_cast<char const*>(marker) +
+      VPackSlice slice(reinterpret_cast<uint8_t const*>(marker) +
                        MMFilesDatafileHelper::VPackOffset(type));
       arangodb::basics::VPackStringBufferAdapter adapter(dump->_buffer);
       VPackDumper dumper(&adapter,
@@ -190,7 +190,7 @@ static int StringifyMarker(MMFilesReplicationDumpContext* dump, TRI_voc_tick_t d
 
     default: {
       TRI_ASSERT(false);
-      LOG_TOPIC(ERR, arangodb::Logger::REPLICATION)
+      LOG_TOPIC("99fa2", ERR, arangodb::Logger::REPLICATION)
           << "got invalid marker of type " << static_cast<int>(type);
       return TRI_ERROR_INTERNAL;
     }
@@ -206,11 +206,7 @@ static int SliceifyMarker(MMFilesReplicationDumpContext* dump, TRI_voc_tick_t da
   TRI_ASSERT(MustReplicateWalMarkerType(marker, false));
   MMFilesMarkerType const type = marker->getType();
 
-  VPackBuffer<uint8_t> buffer;
-  std::shared_ptr<VPackBuffer<uint8_t>> bufferPtr;
-  bufferPtr.reset(&buffer, arangodb::velocypack::BufferNonDeleter<uint8_t>());
-
-  VPackBuilder builder(bufferPtr, &dump->_vpackOptions);
+  VPackBuilder builder(dump->_slices, &dump->_vpackOptions);
   builder.openObject();
 
   if (!isDump) {
@@ -259,7 +255,7 @@ static int SliceifyMarker(MMFilesReplicationDumpContext* dump, TRI_voc_tick_t da
     case TRI_DF_MARKER_VPACK_DROP_COLLECTION:
     case TRI_DF_MARKER_VPACK_DROP_INDEX:
     case TRI_DF_MARKER_VPACK_DROP_VIEW: {
-      VPackSlice slice(reinterpret_cast<char const*>(marker) +
+      VPackSlice slice(reinterpret_cast<uint8_t const*>(marker) +
                        MMFilesDatafileHelper::VPackOffset(type));
       builder.add("data", slice);
       break;
@@ -274,15 +270,13 @@ static int SliceifyMarker(MMFilesReplicationDumpContext* dump, TRI_voc_tick_t da
 
     default: {
       TRI_ASSERT(false);
-      LOG_TOPIC(ERR, arangodb::Logger::REPLICATION)
+      LOG_TOPIC("b721d", ERR, arangodb::Logger::REPLICATION)
           << "got invalid marker of type " << static_cast<int>(type);
       return TRI_ERROR_INTERNAL;
     }
   }
 
   builder.close();
-
-  dump->_slices.push_back(std::move(buffer));
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -323,7 +317,7 @@ static bool MustReplicateWalMarker(MMFilesReplicationDumpContext* dump,
   if (cid != 0) {
     std::string const& name = nameFromCid(dump, cid);
 
-    if (!name.empty() && TRI_ExcludeCollectionReplication(name, dump->_includeSystem)) {
+    if (!name.empty() && TRI_ExcludeCollectionReplication(name, dump->_includeSystem, /*includeFoxxQueues*/false)) {
       return false;
     }
   }
@@ -379,7 +373,7 @@ static int DumpCollection(MMFilesReplicationDumpContext* dump,
     ++numMarkers;
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG_TOPIC(ERR, arangodb::Logger::REPLICATION)
+      LOG_TOPIC("4ec63", ERR, arangodb::Logger::REPLICATION)
           << "got error during dump dump of collection '" << collection->name()
           << "': " << TRI_errno_string(res);
       THROW_ARANGO_EXCEPTION(res);
@@ -399,6 +393,7 @@ static int DumpCollection(MMFilesReplicationDumpContext* dump,
     bool hasMore = static_cast<MMFilesCollection*>(collection->getPhysical())
                        ->applyForTickRange(dataMin, dataMax, callback);
 
+    // cppcheck-suppress knownConditionTrueFalse
     if (lastFoundTick > 0) {
       // data available for requested range
       dump->_lastFoundTick = lastFoundTick;
@@ -411,7 +406,7 @@ static int DumpCollection(MMFilesReplicationDumpContext* dump,
       dump->_bufferFull = false;
     }
 
-    LOG_TOPIC(DEBUG, arangodb::Logger::REPLICATION)
+    LOG_TOPIC("2becd", DEBUG, arangodb::Logger::REPLICATION)
         << "dumped collection '" << collection->name() << "', tick range "
         << dataMin << " - " << dataMax << ", markers: " << numMarkers
         << ", last found tick: " << dump->_lastFoundTick
@@ -419,17 +414,17 @@ static int DumpCollection(MMFilesReplicationDumpContext* dump,
 
     return TRI_ERROR_NO_ERROR;
   } catch (basics::Exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::REPLICATION)
+    LOG_TOPIC("48ce9", ERR, arangodb::Logger::REPLICATION)
         << "caught exception during dump of collection '" << collection->name()
         << "': " << ex.what();
     return ex.code();
   } catch (std::exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::REPLICATION)
+    LOG_TOPIC("cc2de", ERR, arangodb::Logger::REPLICATION)
         << "caught exception during dump of collection '" << collection->name()
         << "': " << ex.what();
     return TRI_ERROR_INTERNAL;
   } catch (...) {
-    LOG_TOPIC(ERR, arangodb::Logger::REPLICATION)
+    LOG_TOPIC("66615", ERR, arangodb::Logger::REPLICATION)
         << "caught unknown exception during dump of collection '"
         << collection->name() << "'";
     return TRI_ERROR_INTERNAL;
@@ -443,7 +438,7 @@ int MMFilesDumpCollectionReplication(MMFilesReplicationDumpContext* dump,
                                      TRI_voc_tick_t dataMax, bool withTicks) {
   TRI_ASSERT(collection != nullptr);
   
-  LOG_TOPIC(DEBUG, arangodb::Logger::REPLICATION)
+  LOG_TOPIC("3e66d", DEBUG, arangodb::Logger::REPLICATION)
       << "dumping collection '" << collection->name() << "', tick range " << dataMin << " - " << dataMax;
 
   // get a custom type handler
@@ -496,7 +491,7 @@ int MMFilesDumpLogReplication(MMFilesReplicationDumpContext* dump,
   // always return the logfiles we have used
   TRI_DEFER(MMFilesLogfileManager::instance()->returnLogfiles(logfiles));
   
-  LOG_TOPIC(DEBUG, arangodb::Logger::REPLICATION)
+  LOG_TOPIC("46d08", DEBUG, arangodb::Logger::REPLICATION)
       << "dumping log, tick range " << tickMin << " - " << tickMax << ", fromTickIncluded: " << fromTickIncluded;
 
   // setup some iteration state
@@ -525,7 +520,7 @@ int MMFilesDumpLogReplication(MMFilesReplicationDumpContext* dump,
       char const* end;
       MMFilesLogfileManager::instance()->getActiveLogfileRegion(logfile, ptr, end);
   
-      LOG_TOPIC(DEBUG, arangodb::Logger::REPLICATION)
+      LOG_TOPIC("68b7b", DEBUG, arangodb::Logger::REPLICATION)
           << "dumping logfile " << logfile->id();
 
       while (ptr < end) {
@@ -557,7 +552,7 @@ int MMFilesDumpLogReplication(MMFilesReplicationDumpContext* dump,
           TRI_ASSERT(collectionId != 0);
 
           if (dump->_vocbase->id() == databaseId) {
-            VPackSlice slice(reinterpret_cast<char const*>(marker) +
+            VPackSlice slice(reinterpret_cast<uint8_t const*>(marker) +
                              MMFilesDatafileHelper::VPackOffset(type));
             VPackSlice name = slice.get("name");
             if (name.isString()) {
@@ -648,15 +643,15 @@ int MMFilesDumpLogReplication(MMFilesReplicationDumpContext* dump,
       Append(dump, "]");
     }
   } catch (arangodb::basics::Exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::REPLICATION)
+    LOG_TOPIC("ab50d", ERR, arangodb::Logger::REPLICATION)
         << "caught exception while dumping replication log: " << ex.what();
     res = ex.code();
   } catch (std::exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::REPLICATION)
+    LOG_TOPIC("dc853", ERR, arangodb::Logger::REPLICATION)
         << "caught exception while dumping replication log: " << ex.what();
     res = TRI_ERROR_INTERNAL;
   } catch (...) {
-    LOG_TOPIC(ERR, arangodb::Logger::REPLICATION)
+    LOG_TOPIC("c295d", ERR, arangodb::Logger::REPLICATION)
         << "caught unknown exception while dumping replication log";
     res = TRI_ERROR_INTERNAL;
   }
@@ -677,7 +672,7 @@ int MMFilesDumpLogReplication(MMFilesReplicationDumpContext* dump,
       dump->_bufferFull = false;
     }
     
-    LOG_TOPIC(DEBUG, arangodb::Logger::REPLICATION)
+    LOG_TOPIC("86057", DEBUG, arangodb::Logger::REPLICATION)
         << "dumped log, tick range " << tickMin << " - " << tickMax 
         << ", markers: " << numMarkers
         << ", last found tick: " << dump->_lastFoundTick
@@ -693,7 +688,7 @@ int MMFilesDumpLogReplication(MMFilesReplicationDumpContext* dump,
 int MMFilesDetermineOpenTransactionsReplication(MMFilesReplicationDumpContext* dump,
                                                 TRI_voc_tick_t tickMin,
                                                 TRI_voc_tick_t tickMax, bool useVst) {
-  LOG_TOPIC(TRACE, arangodb::Logger::REPLICATION)
+  LOG_TOPIC("66bbc", TRACE, arangodb::Logger::REPLICATION)
       << "determining transactions, tick range " << tickMin << " - " << tickMax;
 
   std::unordered_map<TRI_voc_tid_t, TRI_voc_tick_t> transactions;
@@ -763,7 +758,7 @@ int MMFilesDetermineOpenTransactionsReplication(MMFilesReplicationDumpContext* d
         TRI_ASSERT(tid > 0);
 
         if (type == TRI_DF_MARKER_VPACK_BEGIN_TRANSACTION) {
-          transactions.emplace(tid, foundTick);
+          transactions.try_emplace(tid, foundTick);
         } else if (type == TRI_DF_MARKER_VPACK_COMMIT_TRANSACTION ||
                    type == TRI_DF_MARKER_VPACK_ABORT_TRANSACTION) {
           transactions.erase(tid);
@@ -774,9 +769,8 @@ int MMFilesDetermineOpenTransactionsReplication(MMFilesReplicationDumpContext* d
       }
     }
 
-    VPackBuffer<uint8_t> buffer;
-    VPackBuilder builder(buffer);
     if (useVst) {
+      VPackBuilder builder(dump->_slices);
       if (transactions.empty()) {
         builder.add(VPackSlice::emptyArraySlice());
       } else {
@@ -817,18 +811,17 @@ int MMFilesDetermineOpenTransactionsReplication(MMFilesReplicationDumpContext* d
 
     dump->_fromTickIncluded = fromTickIncluded;
     dump->_lastFoundTick = lastFoundTick;
-    dump->_slices.push_back(std::move(buffer));
 
   } catch (arangodb::basics::Exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::REPLICATION)
+    LOG_TOPIC("e2136", ERR, arangodb::Logger::REPLICATION)
         << "caught exception while determining open transactions: " << ex.what();
     res = ex.code();
   } catch (std::exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::REPLICATION)
+    LOG_TOPIC("4ee70", ERR, arangodb::Logger::REPLICATION)
         << "caught exception while determining open transactions: " << ex.what();
     res = TRI_ERROR_INTERNAL;
   } catch (...) {
-    LOG_TOPIC(ERR, arangodb::Logger::REPLICATION)
+    LOG_TOPIC("e0e61", ERR, arangodb::Logger::REPLICATION)
         << "caught unknown exception while determining open transactions";
     res = TRI_ERROR_INTERNAL;
   }

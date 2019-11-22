@@ -47,9 +47,13 @@ struct DMIDMessageFormat : public MessageFormat<DMIDMessage> {
   void addValue(VPackBuilder& arrayBuilder, DMIDMessage const& message) const override {
     arrayBuilder.openArray();
     arrayBuilder.add(VPackValue(message.senderId.shard));
-    arrayBuilder.add(VPackValue(message.senderId.key));
+    arrayBuilder.add(VPackValuePair(message.senderId.key.data(),
+                                    message.senderId.key.size(),
+                                    VPackValueType::String));
     arrayBuilder.add(VPackValue(message.leaderId.shard));
-    arrayBuilder.add(VPackValue(message.leaderId.key));
+    arrayBuilder.add(VPackValuePair(message.leaderId.key.data(),
+                                    message.leaderId.key.size(),
+                                    VPackValueType::String));
     arrayBuilder.add(VPackValue(message.weight));
     arrayBuilder.close();
   }

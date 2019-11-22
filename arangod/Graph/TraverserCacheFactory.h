@@ -33,10 +33,11 @@ class Query;
 }
 namespace graph {
 class TraverserCache;
+struct BaseOptions;
 
 namespace cacheFactory {
 TraverserCache* CreateCache(arangodb::aql::Query* query, bool activateDocumentCache,
-                            std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines);
+                            std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines, BaseOptions const* opts);
 
 }  // namespace cacheFactory
 }  // namespace graph

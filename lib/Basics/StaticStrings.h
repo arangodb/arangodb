@@ -23,7 +23,7 @@
 #ifndef ARANGODB_BASICS_STATIC_STRINGS_H
 #define ARANGODB_BASICS_STATIC_STRINGS_H 1
 
-#include "Basics/Common.h"
+#include <string>
 
 namespace arangodb {
 class StaticStrings {
@@ -51,6 +51,7 @@ class StaticStrings {
   static std::string const RevString;
   static std::string const FromString;
   static std::string const ToString;
+  static std::string const TimeString;
 
   // URL parameter names
   static std::string const IgnoreRevsString;
@@ -76,8 +77,34 @@ class StaticStrings {
   static std::string const ReplicationHeaderFromPresent;
   static std::string const ReplicationHeaderActive;
 
-  // database and collection names
+  // database names
   static std::string const SystemDatabase;
+
+  // collection names
+  static std::string const AnalyzersCollection;
+  static std::string const LegacyAnalyzersCollection;
+  static std::string const UsersCollection;
+  static std::string const GraphsCollection;
+  static std::string const AqlFunctionsCollection;
+  static std::string const QueuesCollection;
+  static std::string const JobsCollection;
+  static std::string const AppsCollection;
+  static std::string const AppBundlesCollection;
+  static std::string const ModulesCollection;
+  static std::string const FishbowlCollection;
+  static std::string const FrontendCollection;
+  static std::string const StatisticsCollection;
+  static std::string const Statistics15Collection;
+  static std::string const StatisticsRawCollection;
+
+  // database definition fields
+  static std::string const DatabaseId;
+  static std::string const DatabaseName;
+  static std::string const DatabaseOptions;
+  static std::string const DatabaseCoordinator;
+  static std::string const DatabaseCoordinatorRebootId;
+  static std::string const DatabaseIsBuilding;
+  static std::string const Properties;
 
   // LogicalDataSource definition fields
   static std::string const DataSourceDeleted;  // data-source deletion marker
@@ -92,11 +119,31 @@ class StaticStrings {
   static std::string const IndexExpireAfter;   // ttl index expire value
   static std::string const IndexFields;        // index fields
   static std::string const IndexId;            // index id
+  static std::string const IndexInBackground;  // index in background
+  static std::string const IndexIsBuilding;    // index build in-process
+  static std::string const IndexName;          // index name
   static std::string const IndexSparse;        // index sparsity marker
   static std::string const IndexType;          // index type
   static std::string const IndexUnique;        // index uniqueness marker
-  static std::string const IndexIsBuilding;    // index build in-process
-  static std::string const IndexInBackground;  // index in background
+
+  // static index names
+  static std::string const IndexNameEdge;
+  static std::string const IndexNameEdgeFrom;
+  static std::string const IndexNameEdgeTo;
+  static std::string const IndexNameInaccessible;
+  static std::string const IndexNamePrimary;
+  static std::string const IndexNameTime;
+
+  // index hint strings
+  static std::string const IndexHintAny;
+  static std::string const IndexHintCollection;
+  static std::string const IndexHintHint;
+  static std::string const IndexHintDepth;
+  static std::string const IndexHintInbound;
+  static std::string const IndexHintOption;
+  static std::string const IndexHintOptionForce;
+  static std::string const IndexHintOutbound;
+  static std::string const IndexHintWildcard;
 
   // HTTP headers
   static std::string const Accept;
@@ -141,24 +188,41 @@ class StaticStrings {
   static std::string const RequestForwardedTo;
   static std::string const ResponseCode;
   static std::string const Server;
+  static std::string const TransferEncoding;
+  static std::string const TransactionBody;
+  static std::string const TransactionId;
   static std::string const Unlimited;
   static std::string const WwwAuthenticate;
   static std::string const XContentTypeOptions;
-  static std::string const XArangoNoLock;
   static std::string const XArangoFrontend;
 
   // mime types
+  static std::string const MimeTypeDump;
+  static std::string const MimeTypeHtml;
   static std::string const MimeTypeJson;
+  static std::string const MimeTypeJsonNoEncoding;
   static std::string const MimeTypeText;
   static std::string const MimeTypeVPack;
   static std::string const MultiPartContentType;
+
+  // encodings
+  static std::string const EncodingDeflate;
 
   // collection attributes
   static std::string const NumberOfShards;
   static std::string const IsSmart;
   static std::string const DistributeShardsLike;
+  static std::string const CacheEnabled;
+  static std::string const IndexBuckets;
+  static std::string const JournalSize;
+  static std::string const DoCompact;
   static std::string const ReplicationFactor;
+  static std::string const MinReplicationFactor;
   static std::string const ShardKeys;
+  static std::string const ShardingStrategy;
+  static std::string const SmartJoinAttribute;
+  static std::string const Sharding;
+  static std::string const Satellite;
 
   // graph attribute names
   static std::string const GraphCollection;
@@ -179,10 +243,19 @@ class StaticStrings {
 
   // Replication
   static std::string const ReplicationSoftLockOnly;
+  static std::string const FailoverCandidates;
 
   // misc strings
   static std::string const LastValue;
   static std::string const checksumFileJs;
+  static std::string const IsBuilding;
+  static std::string const RebootId;
+  static std::string const New;
+  static std::string const Old;
+  static std::string const UpgradeEnvName;
+  static std::string const BackupToDeleteName;
+  static std::string const BackupSearchToDeleteName;
+  static std::string const SerializationFormat;
 };
 }  // namespace arangodb
 

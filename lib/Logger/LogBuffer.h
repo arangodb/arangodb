@@ -23,6 +23,8 @@
 #ifndef ARANGODB_LOGGER_LOG_BUFFER_H
 #define ARANGODB_LOGGER_LOG_BUFFER_H 1
 
+#include <vector>
+
 #include "Basics/Common.h"
 
 #include "Basics/Mutex.h"

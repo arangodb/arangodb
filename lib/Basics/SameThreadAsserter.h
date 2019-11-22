@@ -26,6 +26,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/Thread.h"
+#include "Basics/debugging.h"
 
 namespace arangodb {
 
