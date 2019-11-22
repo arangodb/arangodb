@@ -24,6 +24,7 @@
 #include "Cache/Table.h"
 
 #include "Basics/application-exit.h"
+#include "Basics/debugging.h"
 #include "Cache/Common.h"
 
 #include <algorithm>
