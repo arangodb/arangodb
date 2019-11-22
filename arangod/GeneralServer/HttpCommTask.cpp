@@ -179,7 +179,7 @@ int HttpCommTask<T>::on_header_complete(llhttp_t* p) {
       if (ec) {
         static_cast<HttpCommTask<T>*>(self.get())->close();
       }
-    }); 
+    });
     return HPE_OK;
   }
   if (self->_request->requestType() == RequestType::HEAD) {
@@ -669,7 +669,7 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
   }
 
   // TODO lease buffers
-  auto header = std::make_unique<VPackBuffer<uint8_t>>();
+  auto header = std::make_shared<VPackBuffer<uint8_t>>();
   header->reserve(220);
 
   header->append(TRI_CHAR_LENGTH_PAIR("HTTP/1.1 "));
@@ -729,7 +729,7 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
   }
 
   // turn on the keepAlive timer
-  double secs = GeneralServerFeature::keepAliveTimeout();  
+  double secs = GeneralServerFeature::keepAliveTimeout();
   if (_shouldKeepAlive && secs > 0) {
     int64_t millis = static_cast<int64_t>(secs * 1000);
     this->_protocol->timer.expires_after(std::chrono::milliseconds(millis));
@@ -786,7 +786,7 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
   header->append(std::to_string(len));
   header->append("\r\n\r\n", 4);
 
-  std::unique_ptr<basics::StringBuffer> body = response.stealBody();
+  std::shared_ptr<basics::StringBuffer> body = response.stealBody();
   // append write buffer and statistics
   double const totalTime = RequestStatistics::ELAPSED_SINCE_READ_START(stat);
 
