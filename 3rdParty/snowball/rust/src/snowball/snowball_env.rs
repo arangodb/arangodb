@@ -4,11 +4,11 @@ use snowball::Among;
 #[derive(Debug, Clone)]
 pub struct SnowballEnv<'a> {
     pub current: Cow<'a, str>,
-    pub cursor: usize,
-    pub limit: usize,
-    pub limit_backward: usize,
-    pub bra: usize,
-    pub ket: usize,
+    pub cursor: i32,
+    pub limit: i32,
+    pub limit_backward: i32,
+    pub bra: i32,
+    pub ket: i32,
 }
 
 
@@ -18,10 +18,10 @@ impl<'a> SnowballEnv<'a> {
         SnowballEnv {
             current: Cow::from(value),
             cursor: 0,
-            limit: len,
+            limit: len as i32,
             limit_backward: 0,
             bra: 0,
-            ket: len,
+            ket: len as i32,
         }
     }
 
@@ -37,22 +37,22 @@ impl<'a> SnowballEnv<'a> {
         self.current = Cow::from(current);
     }
 
-    fn replace_s(&mut self, bra: usize, ket: usize, s: &str) -> i32 {
-        let adjustment = s.len() as i32 - (ket as i32 - bra as i32);
+    fn replace_s(&mut self, bra: i32, ket: i32, s: &str) -> i32 {
+        let adjustment = s.len() as i32 - (ket - bra);
         let mut result = String::with_capacity(self.current.len());
         {
-            let (lhs, _) = self.current.split_at(bra);
-            let (_, rhs) = self.current.split_at(ket);
+            let (lhs, _) = self.current.split_at(bra as usize);
+            let (_, rhs) = self.current.split_at(ket as usize);
             result.push_str(lhs);
             result.push_str(s);
             result.push_str(rhs);
         }
         // ... not very nice...
-        let new_lim = self.limit as i32 + adjustment;
-        self.limit = new_lim as usize;
+        let new_lim = self.limit + adjustment;
+        self.limit = new_lim;
         if self.cursor >= ket {
-            let new_cur = self.cursor as i32 + adjustment;
-            self.cursor = new_cur as usize;
+            let new_cur = self.cursor + adjustment;
+            self.cursor = new_cur;
         } else if self.cursor > bra {
             self.cursor = bra
         }
@@ -66,9 +66,9 @@ impl<'a> SnowballEnv<'a> {
         if self.cursor >= self.limit {
             return false;
         }
-        if self.current[self.cursor..].starts_with(s) {
-            self.cursor += s.len();
-            while !self.current.is_char_boundary(self.cursor) {
+        if self.current[(self.cursor as usize)..].starts_with(s) {
+            self.cursor += s.len() as i32;
+            while !self.current.is_char_boundary(self.cursor as usize) {
                 self.cursor += 1;
             }
             true
@@ -80,14 +80,14 @@ impl<'a> SnowballEnv<'a> {
     /// Check if 's' is before cursor
     /// If so, move cursor to the beginning of s
     pub fn eq_s_b(&mut self, s: &str) -> bool {
-        if (self.cursor as i32 - self.limit_backward as i32) < s.len() as i32 {
+        if (self.cursor - self.limit_backward) < s.len() as i32 {
             false
             // Check if cursor -s.len is a char boundary. if not well... return false obv
-        } else if !self.current.is_char_boundary(self.cursor - s.len()) ||
-                  !self.current[self.cursor - s.len()..].starts_with(s) {
+        } else if !self.current.is_char_boundary(self.cursor as usize - s.len()) ||
+                  !self.current[self.cursor as usize - s.len()..].starts_with(s) {
             false
         } else {
-            self.cursor -= s.len();
+            self.cursor -= s.len() as i32;
             true
         }
     }
@@ -102,7 +102,7 @@ impl<'a> SnowballEnv<'a> {
     /// Move cursor to next character
     pub fn next_char(&mut self) {
         self.cursor += 1;
-        while !self.current.is_char_boundary(self.cursor) {
+        while !self.current.is_char_boundary(self.cursor as usize) {
             self.cursor += 1;
         }
     }
@@ -110,7 +110,7 @@ impl<'a> SnowballEnv<'a> {
     /// Move cursor to previous character
     pub fn previous_char(&mut self) {
         self.cursor -= 1;
-        while !self.current.is_char_boundary(self.cursor) {
+        while !self.current.is_char_boundary(self.cursor as usize) {
             self.cursor -= 1;
         }
     }
@@ -121,13 +121,13 @@ impl<'a> SnowballEnv<'a> {
             while delta > 0 {
                 res += 1;
                 delta -= 1;
-                while res <= self.current.len() && !self.current.is_char_boundary(res) {
+                while res <= self.current.len() as i32 && !self.current.is_char_boundary(res as usize) {
                     res += 1;
                 }
             }
-            return res as i32;
+            return res;
         } else if delta < 0 {
-            let mut res: i32 = self.cursor as i32;
+            let mut res: i32 = self.cursor;
             while delta < 0 {
                 res -= 1;
                 delta += 1;
@@ -160,7 +160,7 @@ impl<'a> SnowballEnv<'a> {
         if self.cursor >= self.limit {
             return false;
         }
-        if let Some(chr) = self.current[self.cursor..].chars().next() {
+        if let Some(chr) = self.current[self.cursor as usize..].chars().next() {
             let mut ch = chr as u32; //codepoint as integer
             if ch > max || ch < min {
                 return false;
@@ -180,7 +180,7 @@ impl<'a> SnowballEnv<'a> {
             return false;
         }
         self.previous_char();
-        if let Some(chr) = self.current[self.cursor..].chars().next() {
+        if let Some(chr) = self.current[self.cursor as usize..].chars().next() {
             let mut ch = chr as u32; //codepoint as integer
             self.next_char();
             if ch > max || ch < min {
@@ -200,7 +200,7 @@ impl<'a> SnowballEnv<'a> {
         if self.cursor >= self.limit {
             return false;
         }
-        if let Some(chr) = self.current[self.cursor..].chars().next() {
+        if let Some(chr) = self.current[self.cursor as usize..].chars().next() {
             let mut ch = chr as u32; //codepoint as integer
             if ch > max || ch < min {
                 self.next_char();
@@ -220,7 +220,7 @@ impl<'a> SnowballEnv<'a> {
             return false;
         }
         self.previous_char();
-        if let Some(chr) = self.current[self.cursor..].chars().next() {
+        if let Some(chr) = self.current[self.cursor as usize..].chars().next() {
             let mut ch = chr as u32; //codepoint as integer
             self.next_char();
             if ch > max || ch < min {
@@ -243,18 +243,22 @@ impl<'a> SnowballEnv<'a> {
         self.slice_from("")
     }
 
-    pub fn insert(&mut self, bra: usize, ket: usize, s: &str) {
+    pub fn insert(&mut self, bra: i32, ket: i32, s: &str) {
         let adjustment = self.replace_s(bra, ket, s);
         if bra <= self.bra {
-            self.bra = (self.bra as i32 + adjustment) as usize;
+            self.bra = self.bra + adjustment;
         }
         if bra <= self.ket {
-            self.ket = (self.ket as i32 + adjustment) as usize;
+            self.ket = self.ket + adjustment;
         }
     }
 
+    pub fn assign_to(&mut self) -> String {
+        self.current[0..self.limit as usize].to_string()
+    }
+
     pub fn slice_to(&mut self) -> String {
-        self.current[self.bra..self.ket].to_string()
+        self.current[self.bra as usize..self.ket as usize].to_string()
     }
 
     pub fn find_among<T>(&mut self, amongs: &[Among<T>], context: &mut T) -> i32 {
@@ -265,8 +269,8 @@ impl<'a> SnowballEnv<'a> {
         let c = self.cursor;
         let l = self.limit;
 
-        let mut common_i = 0;
-        let mut common_j = 0;
+        let mut common_i = 0i32;
+        let mut common_j = 0i32;
 
         let mut first_key_inspected = false;
         loop {
@@ -274,12 +278,12 @@ impl<'a> SnowballEnv<'a> {
             let mut diff: i32 = 0;
             let mut common = min(common_i, common_j);
             let w = &amongs[k as usize];
-            for lvar in common..w.0.len() {
+            for lvar in common..w.0.len() as i32 {
                 if c + common == l {
                     diff = -1;
                     break;
                 }
-                diff = self.current.as_bytes()[c + common] as i32 - w.0.as_bytes()[lvar] as i32;
+                diff = self.current.as_bytes()[(c + common) as usize] as i32 - w.0.as_bytes()[lvar as usize] as i32;
                 if diff != 0 {
                     break;
                 }
@@ -308,11 +312,11 @@ impl<'a> SnowballEnv<'a> {
 
         loop {
             let w = &amongs[i as usize];
-            if common_i >= w.0.len() {
-                self.cursor = c + w.0.len();
+            if common_i >= w.0.len() as i32{
+                self.cursor = c + w.0.len() as i32;
                 if let Some(ref method) = w.3 {
                     let res = method(self, context);
-                    self.cursor = c + w.0.len();
+                    self.cursor = c + w.0.len() as i32;
                     if res {
                         return w.2;
                     }
@@ -334,8 +338,8 @@ impl<'a> SnowballEnv<'a> {
         let c = self.cursor;
         let lb = self.limit_backward;
 
-        let mut common_i = 0;
-        let mut common_j = 0;
+        let mut common_i = 0i32;
+        let mut common_j = 0i32;
 
         let mut first_key_inspected = false;
 
@@ -348,12 +352,12 @@ impl<'a> SnowballEnv<'a> {
                 common_j
             };
             let w = &amongs[k as usize];
-            for lvar in (0..w.0.len() - common).rev() {
+            for lvar in (0..w.0.len() - common as usize).rev() {
                 if c - common == lb {
                     diff = -1;
                     break;
                 }
-                diff = self.current.as_bytes()[c - common - 1] as i32 - w.0.as_bytes()[lvar] as i32;
+                diff = self.current.as_bytes()[(c - common - 1) as usize] as i32 - w.0.as_bytes()[lvar] as i32;
                 if diff != 0 {
                     break;
                 }
@@ -382,11 +386,11 @@ impl<'a> SnowballEnv<'a> {
         }
         loop {
             let w = &amongs[i as usize];
-            if common_i >= w.0.len() {
-                self.cursor = c - w.0.len();
+            if common_i >= w.0.len() as i32 {
+                self.cursor = c - w.0.len() as i32;
                 if let Some(ref method) = w.3 {
                     let res = method(self, context);
-                    self.cursor = c - w.0.len();
+                    self.cursor = c - w.0.len() as i32;
                     if res {
                         return w.2;
                     }

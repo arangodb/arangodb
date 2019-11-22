@@ -6,18 +6,13 @@ import java.io.Serializable;
 public class SnowballProgram implements Serializable {
     protected SnowballProgram()
     {
-	current = new StringBuffer();
-	setCurrent("");
+	current = new StringBuilder();
+	init();
     }
 
     static final long serialVersionUID = 2016072500L;
 
-    /**
-     * Set the current string.
-     */
-    public void setCurrent(String value)
-    {
-	current.replace(0, current.length(), value);
+    private void init() {
 	cursor = 0;
 	limit = current.length();
 	limit_backward = 0;
@@ -26,29 +21,45 @@ public class SnowballProgram implements Serializable {
     }
 
     /**
-     * Get the current string.
+     * Set the current string.
      */
-    public String getCurrent()
+    public void setCurrent(String value)
     {
-        String result = current.toString();
-        // Make a new StringBuffer.  If we reuse the old one, and a user of
+        // Make a new StringBuilder.  If we reuse the old one, and a user of
         // the library keeps a reference to the buffer returned (for example,
         // by converting it to a String in a way which doesn't force a copy),
         // the buffer size will not decrease, and we will risk wasting a large
         // amount of memory.
         // Thanks to Wolfram Esser for spotting this problem.
-        current = new StringBuffer();
-        return result;
+        current = new StringBuilder(value);
+	init();
+    }
+
+    /**
+     * Get the current string.
+     */
+    public String getCurrent()
+    {
+        return current.toString();
     }
 
     // current string
-    protected StringBuffer current;
+    protected StringBuilder current;
 
     protected int cursor;
     protected int limit;
     protected int limit_backward;
     protected int bra;
     protected int ket;
+
+    public SnowballProgram(SnowballProgram other) {
+	current          = other.current;
+	cursor           = other.cursor;
+	limit            = other.limit;
+	limit_backward   = other.limit_backward;
+	bra              = other.bra;
+	ket              = other.ket;
+    }
 
     protected void copy_from(SnowballProgram other)
     {
@@ -149,7 +160,7 @@ public class SnowballProgram implements Serializable {
 
 	boolean first_key_inspected = false;
 
-	while(true) {
+	while (true) {
 	    int k = i + ((j - i) >> 1);
 	    int diff = 0;
 	    int common = common_i < common_j ? common_i : common_j; // smaller
@@ -183,7 +194,7 @@ public class SnowballProgram implements Serializable {
 		first_key_inspected = true;
 	    }
 	}
-	while(true) {
+	while (true) {
 	    Among w = v[i];
 	    if (common_i >= w.s.length) {
 		cursor = c + w.s.length;
@@ -221,7 +232,7 @@ public class SnowballProgram implements Serializable {
 
 	boolean first_key_inspected = false;
 
-	while(true) {
+	while (true) {
 	    int k = i + ((j - i) >> 1);
 	    int diff = 0;
 	    int common = common_i < common_j ? common_i : common_j;
@@ -250,7 +261,7 @@ public class SnowballProgram implements Serializable {
 		first_key_inspected = true;
 	    }
 	}
-	while(true) {
+	while (true) {
 	    Among w = v[i];
 	    if (common_i >= w.s.length) {
 		cursor = c - w.s.length;
@@ -333,34 +344,16 @@ public class SnowballProgram implements Serializable {
 	insert(c_bra, c_ket, s.toString());
     }
 
-    /* Copy the slice into the supplied StringBuffer */
-    protected StringBuffer slice_to(StringBuffer s)
-    {
-	slice_check();
-	int len = ket - bra;
-	s.replace(0, s.length(), current.substring(bra, ket));
-	return s;
-    }
-
     /* Copy the slice into the supplied StringBuilder */
-    protected StringBuilder slice_to(StringBuilder s)
+    protected void slice_to(StringBuilder s)
     {
 	slice_check();
-	int len = ket - bra;
 	s.replace(0, s.length(), current.substring(bra, ket));
-	return s;
     }
 
-    protected StringBuffer assign_to(StringBuffer s)
+    protected void assign_to(StringBuilder s)
     {
 	s.replace(0, s.length(), current.substring(0, limit));
-	return s;
-    }
-
-    protected StringBuilder assign_to(StringBuilder s)
-    {
-	s.replace(0, s.length(), current.substring(0, limit));
-	return s;
     }
 
 /*

@@ -1,0 +1,149 @@
+routines (
+           aditzak
+           izenak
+           adjetiboak
+           mark_regions
+           RV R2 R1
+)
+
+externals ( stem )
+
+integers ( pV p1 p2 )
+
+groupings ( v )
+
+stringescapes {}
+
+/* special characters */
+
+stringdef n~ '{U+00F1}'
+
+define v 'aeiou'
+
+define mark_regions as (
+
+    $pV = limit
+    $p1 = limit
+    $p2 = limit  // defaults
+
+    do (
+        ( v (non-v gopast v) or (v gopast non-v) )
+        or
+        ( non-v (non-v gopast v) or (v next) )
+        setmark pV
+    )
+    do (
+        gopast v gopast non-v setmark p1
+        gopast v gopast non-v setmark p2
+    )
+)
+
+backwardmode (
+
+    define RV as $pV <= cursor
+    define R2 as $p2 <= cursor
+    define R1 as $p1 <= cursor
+
+    define aditzak as (
+        [substring] among(
+            'le' 'la' 'tzaile' 'aldatu' 'atu' 'tzailea' 'taile' 'tailea' 'pera' 'gale' 'galea'
+            'gura' 'kura' 'kor' 'korra' 'or' 'orra' 'tun' 'tuna' 'gaitz' 'gaitza'
+            'kaitz' 'kaitza' 'ezin' 'ezina' 'tezin' 'tezina' 'errez' 'erreza'
+            'karri' 'karria' 'tzaga' 'tzaka' 'tzake' 'tzeke' 'ez' 'eza' 'tzez'
+            'keta' 'eta' 'etan' 'pen' 'pena' 'tze' 'atze' 'kuntza' 'kunde' 'kundea'
+            'kune' 'kunea' 'kuna' 'kera' 'era' 'kizun' 'kizuna' 'dura' 'tura' 'men' 'mena'
+            'go' 'ago' 'tio' 'taldi' 'taldia' 'aldi' 'aldia' 'gune' 'gunea' 'bide' 'bidea'
+            'pide' 'pidea' 'gai' 'gaia' 'ki' 'kin' 'rekin' 'kina' 'kari' 'karia' 'ari' 'tari' 'etari'
+            'gailu' 'gailua' 'kide' 'kidea' 'ide' 'idea' 'du' 'ka' 'kan' 'an' 'ean' 'tu' 'lari' 'tatu'
+            'rean' 'tarazi' 'arazi' 'tzat' 'bera' 'dako'
+            ( RV delete )
+            'garri' 'garria' 'tza'
+            (R2 delete)
+            'atseden'
+            (<- 'atseden')
+            'arabera'
+            (<- 'arabera')
+            'baditu'
+            (<- 'baditu')
+
+        )
+    )
+
+    define izenak as (
+        [substring] among(
+            'ari' 'aria' 'bizia' 'kari' 'karia' 'lari' 'laria' 'tari' 'taria' 'zain' 'zaina'
+            'tzain' 'tzaina' 'zale' 'zalea' 'tzale' 'tzalea' 'aizun' 'orde' 'ordea'
+            'burua' 'ohi' 'ohia' 'kintza' 'gintzo' 'gintzu' 'tzu' 'tzua'
+            'tzo' 'tzoa' 'kuntza' 'talde' 'taldea' 'eria' 'keria' 'teria' 'di'
+            'za' 'ada' 'tara' 'etara' 'tra' 'ta' 'tegi' 'tegia' 'keta' 'z' 'zko' 'zkoa'
+            'ti' 'tia' 'tsu' 'tsua' 'zu' 'zua' 'bera' 'pera' 'zto' 'ztoa' 'asi' 'asia'
+            'gile' 'gilea' 'estu' 'estua' 'larri' 'larria' 'nahi' 'nahia'
+            'koi' 'koia' 'oi' 'oia' 'goi' 'min' 'mina' 'dun' 'duna' 'duru' 'durua'
+            'duri' 'duria' 'os' 'osa' 'oso' 'osoa' 'ar' 'ara' 'tar' 'dar' 'dara'
+            'tiar' 'tiara' 'liar' 'liara' 'gabe' 'gabea' 'kabe' 'kabea' 'ga' 'ge'
+            'kada' 'tasun' 'tasuna' 'asun' 'asuna' 'go' 'mendu' 'mendua' 'mentu' 'mentua'
+            'mendi' 'mendia' 'zio' 'zioa' 'zino' 'zinoa' 'zione' 'zionea' 'ezia'
+            'degi' 'degia' 'egi' 'egia' 'toki' 'tokia' 'leku' 'lekua' 'gintza' 'alde'
+            'aldea' 'kalde' 'kaldea' 'gune' 'gunea' 'une' 'unea' 'una' 'pe' 'pea'
+            'gibel' 'gibela' 'ondo' 'ondoa' 'arte' 'artea' 'aurre' 'aurrea'
+            'etxe' 'etxea' 'ola' 'ontzi' 'ontzia' 'gela' 'denda' 'taldi' 'taldia'
+            'aldi' 'aldia' 'te' 'tea' 'zaro' 'zaroa' 'taro' 'taroa' 'oro' 'oroa'
+            'aro' 'aroa' 'ero' 'eroa' 'eroz' 'eroza' 'ka' 'kan' 'kana' 'tako' 'etako' 'takoa'
+            'kote' 'kotea' 'tzar' 'tzarra' 'handi' 'handia' 'kondo' 'kondoa' 'skila'
+            'no' 'noa' '{n~}o' '{n~}oa' 'ska' 'xka' 'zka' 'tila' 'to' 'toa' 'tto' 'ttoa'
+            'txo' 'txoa' 'txu' 'txua' 'anda' 'anga' 'urren' 'urrena' 'gai' 'gaia'
+            'gei' 'geia' 'eme' 'emea' 'kume' 'kumea' 'sa' 'ko' 'eko' 'koa' 'ena'
+            'enea' 'ne' 'nea' 'kor' 'korra' 'ez' 'eza' 'eta' 'etan'
+            'ki' 'kia' 'kin' 'kina' 'tu' 'tua' 'du' 'dua' 'ek'
+            'tarik' 'tariko' 'tan' 'ordu' 'ordua' 'oste' 'ostea' 'tzara'
+            'ra' 'antza' 'behar' 'ro' 'giro' 'ak' 'zp' 'ket'
+            'kail' 'kaila' 'ail' 'kirri' 'kirria' 'ngo' 'ngoa' '{n~}i' 'sko'
+            'sta' 'koitz' 'koitza' 'na' 'garren' 'garrena' 'kera'
+            'gerren' 'gerrena' 'garna' 'kide' 'tz' 'tuko'
+            ( RV delete )
+            'ora' 'garri' 'garria' 'or' 'buru' 'ren' 'tza'
+            ( R2 delete )
+            'joka'
+            (<- 'jok')
+            'tzen' 'ten' 'en' 'tatu'
+            (R1 delete)
+            'trako'
+            (<- 'tra')
+            'minutuko'
+            (<- 'minutu')
+            'zehar'
+            (<- 'zehar')
+            'geldi'
+            (<- 'geldi')
+            'igaro'
+            (<- 'igaro')
+            'aurka'
+            (<- 'aurka')
+        )
+    )
+
+    define adjetiboak as (
+        [substring] among(
+            'era' 'ero' 'go' 'tate' 'tade' 'date' 'dade' 'keria'
+            'ki' 'to' 'ro' 'la' 'gi' 'larik' 'lanik' 'ik' 'ztik' 'rik'
+            ( RV delete )
+            'zlea'
+            (<- 'z')
+        )
+    )
+
+)
+
+define stem as (
+    do mark_regions
+    backwards (
+        repeat aditzak
+        repeat izenak
+        do adjetiboak
+    )
+
+)
+
+/*
+    Note 1: additions of 21 Jul 2010
+*/

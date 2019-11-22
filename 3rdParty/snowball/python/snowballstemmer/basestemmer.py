@@ -1,9 +1,6 @@
 class BaseStemmer(object):
     def __init__(self):
         self.set_current("")
-        self.maxCacheSize = 10000
-        self._cache = {}
-        self._counter = 0
 
     def set_current(self, value):
         '''
@@ -42,6 +39,17 @@ class BaseStemmer(object):
         self.cursor += 1
         return True
 
+    def go_in_grouping(self, s, min, max):
+        while self.cursor < self.limit:
+            ch = ord(self.current[self.cursor])
+            if ch > max or ch < min:
+                return True
+            ch -= min
+            if (s[ch >> 3] & (0x1 << (ch & 0x7))) == 0:
+                return True
+            self.cursor += 1
+        return False
+
     def in_grouping_b(self, s, min, max):
         if self.cursor <= self.limit_backward:
             return False
@@ -53,6 +61,17 @@ class BaseStemmer(object):
             return False
         self.cursor -= 1
         return True
+
+    def go_in_grouping_b(self, s, min, max):
+        while self.cursor > self.limit_backward:
+            ch = ord(self.current[self.cursor - 1])
+            if ch > max or ch < min:
+                return True
+            ch -= min
+            if (s[ch >> 3] & (0x1 << (ch & 0x7))) == 0:
+                return True
+            self.cursor -= 1
+        return False
 
     def out_grouping(self, s, min, max):
         if self.cursor >= self.limit:
@@ -67,6 +86,16 @@ class BaseStemmer(object):
             return True
         return False
 
+    def go_out_grouping(self, s, min, max):
+        while self.cursor < self.limit:
+            ch = ord(self.current[self.cursor])
+            if ch <= max and ch >= min:
+                ch -= min
+                if (s[ch >> 3] & (0X1 << (ch & 0x7))):
+                    return True
+            self.cursor += 1
+        return False
+
     def out_grouping_b(self, s, min, max):
         if self.cursor <= self.limit_backward:
             return False
@@ -78,6 +107,16 @@ class BaseStemmer(object):
         if (s[ch >> 3] & (0X1 << (ch & 0x7))) == 0:
             self.cursor -= 1
             return True
+        return False
+
+    def go_out_grouping_b(self, s, min, max):
+        while self.cursor > self.limit_backward:
+            ch = ord(self.current[self.cursor - 1])
+            if ch <= max and ch >= min:
+                ch -= min
+                if (s[ch >> 3] & (0X1 << (ch & 0x7))):
+                    return True
+            self.cursor -= 1
         return False
 
     def eq_s(self, s):
@@ -162,7 +201,7 @@ class BaseStemmer(object):
         j = len(v)
 
         c = self.cursor
-        lb = self.limit_backward;
+        lb = self.limit_backward
 
         common_i = 0
         common_j = 0
@@ -260,50 +299,25 @@ class BaseStemmer(object):
         if c_bra <= self.ket:
             self.ket += adjustment
 
-    def slice_to(self, s):
+    def slice_to(self):
         '''
-        Copy the slice into the supplied StringBuffer
-
-        @type s: string
+        Return the slice as a string.
         '''
         result = ''
         if self.slice_check():
             result = self.current[self.bra:self.ket]
         return result
 
-    def assign_to(self, s):
+    def assign_to(self):
         '''
-        @type s: string
+        Return the current string up to the limit.
         '''
         return self.current[0:self.limit]
 
-    def _stem_word(self, word):
-        cache = self._cache.get(word)
-        if cache is None:
-            self.set_current(word)
-            self._stem()
-            result = self.get_current()
-            self._cache[word] = [result, self._counter]
-        else:
-            cache[1] = self._counter
-            result = cache[0]
-        self._counter += 1
-        return result
-
-    def _clear_cache(self):
-        removecount = int(len(self._cache) - self.maxCacheSize * 8 / 10)
-        oldcaches = sorted(self._cache.items(), key=lambda cache: cache[1][1])[0:removecount]
-        for key, value in oldcaches:
-            del self._cache[key]
-
     def stemWord(self, word):
-        result = self._stem_word(word)
-        if len(self._cache) > self.maxCacheSize:
-            self._clear_cache()
-        return result
+        self.set_current(word)
+        self._stem()
+        return self.get_current()
 
     def stemWords(self, words):
-        result = [self._stem_word(word) for word in words]
-        if len(self._cache) > self.maxCacheSize:
-            self.clear_cache()
-        return result
+        return [self.stemWord(word) for word in words]

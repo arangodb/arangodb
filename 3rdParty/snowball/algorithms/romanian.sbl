@@ -1,0 +1,236 @@
+
+routines (
+           prelude postlude mark_regions
+           RV R1 R2
+           step_0
+           standard_suffix combo_suffix
+           verb_suffix
+           vowel_suffix
+)
+
+externals ( stem )
+
+integers ( pV p1 p2 )
+
+groupings ( v )
+
+booleans  ( standard_suffix_removed )
+
+stringescapes {}
+
+/* special characters */
+
+stringdef a^   '{U+00E2}'  // a circumflex
+stringdef i^   '{U+00EE}'  // i circumflex
+stringdef a+   '{U+0103}'  // a breve
+stringdef s,   '{U+015F}'  // s cedilla
+stringdef t,   '{U+0163}'  // t cedilla
+
+define v 'aeiou{a^}{i^}{a+}'
+
+define prelude as (
+    repeat goto (
+        v [ ('u' ] v <- 'U') or
+            ('i' ] v <- 'I')
+    )
+)
+
+define mark_regions as (
+
+    $pV = limit
+    $p1 = limit
+    $p2 = limit // defaults
+
+    do (
+        ( v (non-v gopast v) or (v gopast non-v) )
+        or
+        ( non-v (non-v gopast v) or (v next) )
+        setmark pV
+    )
+    do (
+        gopast v gopast non-v setmark p1
+        gopast v gopast non-v setmark p2
+    )
+)
+
+define postlude as repeat (
+
+    [substring] among(
+        'I'  (<- 'i')
+        'U'  (<- 'u')
+        ''   (next)
+    )
+
+)
+
+backwardmode (
+
+    define RV as $pV <= cursor
+    define R1 as $p1 <= cursor
+    define R2 as $p2 <= cursor
+
+    define step_0 as (
+        [substring] R1 among(
+            'ul' 'ului'
+                ( delete )
+            'aua'
+                ( <-'a' )
+            'ea' 'ele' 'elor'
+                ( <-'e' )
+            'ii' 'iua' 'iei' 'iile' 'iilor' 'ilor'
+                ( <-'i')
+            'ile'
+                ( not 'ab' <- 'i' )
+            'atei'
+                ( <- 'at' )
+            'a{t,}ie' 'a{t,}ia'
+                ( <- 'a{t,}i' )
+        )
+    )
+
+    define combo_suffix as test (
+        [substring] R1 (
+            among(
+            /* 'IST'. alternative: include the following
+                'alism' 'alisme'
+                'alist' 'alista' 'aliste' 'alisti' 'alist{a+}' 'ali{s,}ti' (
+                    <- 'al'
+                )
+            */
+                'abilitate' 'abilitati' 'abilit{a+}i' 'abilit{a+}{t,}i' (
+                    <- 'abil'
+                )
+                'ibilitate' (
+                    <- 'ibil'
+                )
+                'ivitate' 'ivitati' 'ivit{a+}i' 'ivit{a+}{t,}i' (
+                    <- 'iv'
+                )
+                'icitate' 'icitati' 'icit{a+}i' 'icit{a+}{t,}i'
+                'icator' 'icatori'
+                'iciv' 'iciva' 'icive' 'icivi' 'iciv{a+}'
+                'ical' 'icala' 'icale' 'icali' 'ical{a+}' (
+                    <- 'ic'
+                )
+                'ativ' 'ativa' 'ative' 'ativi' 'ativ{a+}' 'a{t,}iune'
+                'atoare' 'ator' 'atori'
+                '{a+}toare' '{a+}tor' '{a+}tori' (
+                    <- 'at'
+                )
+                'itiv' 'itiva' 'itive' 'itivi' 'itiv{a+}' 'i{t,}iune'
+                'itoare' 'itor' 'itori' (
+                    <- 'it'
+                )
+            )
+            set standard_suffix_removed
+        )
+    )
+
+    define standard_suffix as (
+        unset standard_suffix_removed
+        repeat combo_suffix
+        [substring] R2 (
+            among(
+
+                // past participle is treated here, rather than
+                // as a verb ending:
+                'at' 'ata' 'at{a+}' 'ati' 'ate'
+                'ut' 'uta' 'ut{a+}' 'uti' 'ute'
+                'it' 'ita' 'it{a+}' 'iti' 'ite'
+
+                'ic' 'ica' 'ice' 'ici' 'ic{a+}'
+                'abil' 'abila' 'abile' 'abili' 'abil{a+}'
+                'ibil' 'ibila' 'ibile' 'ibili' 'ibil{a+}'
+                'oasa' 'oas{a+}' 'oase' 'os' 'osi' 'o{s,}i'
+                'ant' 'anta' 'ante' 'anti' 'ant{a+}'
+                'ator' 'atori'
+                'itate' 'itati' 'it{a+}i' 'it{a+}{t,}i'
+                'iv' 'iva' 'ive' 'ivi' 'iv{a+}' (
+                    delete
+                )
+                'iune' 'iuni' (
+                    '{t,}'] <- 't'
+                )
+                'ism' 'isme'
+                'ist' 'ista' 'iste' 'isti' 'ist{a+}' 'i{s,}ti' (
+                    <- 'ist'
+                    /* 'IST'. alternative: remove with <- '' */
+                )
+            )
+            set standard_suffix_removed
+        )
+    )
+
+    define verb_suffix as setlimit tomark pV for (
+        [substring] among(
+            // 'long' infinitive:
+            'are' 'ere' 'ire' '{a^}re'
+
+            // gerund:
+            'ind' '{a^}nd'
+            'indu' '{a^}ndu'
+
+            'eze'
+            'easc{a+}'
+            // present:
+            'ez' 'ezi' 'eaz{a+}' 'esc' 'e{s,}ti'
+            'e{s,}te'
+            '{a+}sc' '{a+}{s,}ti'
+            '{a+}{s,}te'
+
+            // imperfect:
+            'am' 'ai' 'au'
+            'eam' 'eai' 'ea' 'ea{t,}i' 'eau'
+            'iam' 'iai' 'ia' 'ia{t,}i' 'iau'
+
+            // past: // (not 'ii')
+            'ui'
+            'a{s,}i' 'ar{a+}m' 'ar{a+}{t,}i' 'ar{a+}'
+            'u{s,}i' 'ur{a+}m' 'ur{a+}{t,}i' 'ur{a+}'
+            'i{s,}i' 'ir{a+}m' 'ir{a+}{t,}i' 'ir{a+}'
+            '{a^}i' '{a^}{s,}i' '{a^}r{a+}m' '{a^}r{a+}{t,}i' '{a^}r{a+}'
+
+            // pluferfect:
+            'asem' 'ase{s,}i' 'ase' 'aser{a+}m' 'aser{a+}{t,}i' 'aser{a+}'
+            'isem' 'ise{s,}i' 'ise' 'iser{a+}m' 'iser{a+}{t,}i' 'iser{a+}'
+            '{a^}sem' '{a^}se{s,}i' '{a^}se' '{a^}ser{a+}m' '{a^}ser{a+}{t,}i'
+            '{a^}ser{a+}'
+            'usem' 'use{s,}i' 'use' 'user{a+}m' 'user{a+}{t,}i' 'user{a+}'
+
+                ( non-v or 'u'  delete )
+
+            // present:
+            '{a+}m' 'a{t,}i'
+            'em' 'e{t,}i'
+            'im' 'i{t,}i'
+            '{a^}m' '{a^}{t,}i'
+
+            // past:
+            'se{s,}i' 'ser{a+}m' 'ser{a+}{t,}i' 'ser{a+}'
+            'sei' 'se'
+
+            // pluperfect:
+            'sesem' 'sese{s,}i' 'sese' 'seser{a+}m' 'seser{a+}{t,}i' 'seser{a+}'
+                (delete)
+        )
+    )
+
+    define vowel_suffix as (
+        [substring] RV among (
+            'a' 'e' 'i' 'ie' '{a+}' ( delete )
+        )
+    )
+)
+
+define stem as (
+    do prelude
+    do mark_regions
+    backwards (
+        do step_0
+        do standard_suffix
+        do ( standard_suffix_removed or verb_suffix )
+        do vowel_suffix
+    )
+    do postlude
+)
+

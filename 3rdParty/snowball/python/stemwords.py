@@ -1,5 +1,4 @@
 import sys
-import re
 import codecs
 import snowballstemmer
 
@@ -77,26 +76,26 @@ def main():
 
 def stemming(lang, input, output, encoding, pretty):
     stemmer = snowballstemmer.stemmer(lang)
-    outfile = codecs.open(output, "w", encoding)
-    for original in codecs.open(input, "r", encoding).readlines():
-        original = original.strip()
-        # Convert only ASCII-letters to lowercase, to match C behavior
-        original = ''.join((lower_(c) if 'A' <= c <= 'Z' else c for c in original))
-        stemmed = stemmer.stemWord(original)
-        if pretty == 0:
-            if stemmed != "":
-                outfile.write(stemmed)
-        elif pretty == 1:
-            outfile.write(original, " -> ", stemmed)
-        elif pretty == 2:
-            outfile.write(original)
-            if len(original) < 30:
-                outfile.write(" " * (30 - len(original)))
-            else:
-                outfile.write("\n")
-                outfile.write(" " * 30)
-            outfile.write(stemmed)
-        outfile.write('\n')
-    outfile.close()
+    with codecs.open(output, "w", encoding) as outfile:
+        with codecs.open(input, "r", encoding) as infile:
+            for original in infile.readlines():
+                original = original.strip()
+                # Convert only ASCII-letters to lowercase, to match C behavior
+                original = ''.join((c.lower() if 'A' <= c <= 'Z' else c for c in original))
+                stemmed = stemmer.stemWord(original)
+                if pretty == 0:
+                    if stemmed != "":
+                        outfile.write(stemmed)
+                elif pretty == 1:
+                    outfile.write(original, " -> ", stemmed)
+                elif pretty == 2:
+                    outfile.write(original)
+                    if len(original) < 30:
+                        outfile.write(" " * (30 - len(original)))
+                    else:
+                        outfile.write("\n")
+                        outfile.write(" " * 30)
+                    outfile.write(stemmed)
+                outfile.write('\n')
 
 main()

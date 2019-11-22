@@ -1,0 +1,373 @@
+externals ( stem )
+
+// escape symbols for substituting lithuanian characters
+stringescapes { }
+
+/* Special characters in Unicode Latin Extended-A */
+// ' nosine
+stringdef a'   '{U+0105}'  // ą a + ogonek
+stringdef e'   '{U+0119}'  // ę e + ogonek
+stringdef i'   '{U+012F}'  // į i + ogonek
+stringdef u'   '{U+0173}'  // ų u + ogonek
+
+// . taskas
+stringdef e.   '{U+0117}'  // ė e + dot
+
+// - ilgoji
+stringdef u-   '{U+016B}'  // ū u + macron
+
+// * varnele
+stringdef c*   '{U+010D}'  // č c + caron (haček)
+stringdef s*   '{U+0161}'  // š s + caron (haček)
+stringdef z*   '{U+017E}'  // ž z + caron (haček)
+
+// [C](VC)^m[V|C]
+// definitions of variables for
+// p1 - position of m = 0
+integers ( p1 )
+
+// groupings
+// v - lithuanian vowels
+groupings ( v )
+
+// v - all lithuanian vowels
+define v 'aeiyou{a'}{e'}{i'}{u'}{e.}{u-}'
+
+// all lithuanian stemmer routines: 4 steps
+routines (
+  step2 R1 step1 fix_chdz fix_gd fix_conflicts
+)
+
+backwardmode (
+
+  define R1 as $p1 <= cursor
+  define step1 as (
+    setlimit tomark p1 for ([substring]) R1 among (
+      // Daiktavardžiai (Nouns)
+      // I linksniuotė (declension I)
+      'as' 'ias' 'is' 'ys'        // vyras, kelias, brolis, gaidys
+      'o'    'io'                 // vyro, kelio
+      'ui'   'iui'                // vyrui, keliui
+      '{a'}' 'i{a'}' '{i'}'       // vyrą, kelią, brolį
+      'u'    'iu'                 // vyru, keliu
+      'e'    'yje'                // vyre, kelyje
+      'y'    'au'    'i'          // kely, brolau, broli,
+      'an'                        // nusižengiman
+
+      'ai'   'iai'                // vyrai, keliai
+      '{u'}' 'i{u'}'              // vyrų, kelių
+      'ams'  'am'                 // vyrams, vyram
+      'iams' 'iam'                // broliams, broliam
+      'us'   'ius'                // vyrus, brolius
+      'ais'  'iais'               // vyrais, keliais
+      'uose' 'iuose' 'uos' 'iuos' // vyruose, keliuose, vyruos, keliuos
+      'uosna' 'iuosna'            // vyruosna, keliuosna
+      'ysna'                      // žutysna
+
+      'asis' 'aisi'               // sukimasis, sukimaisi
+      'osi'  '{u'}si'             // sukimosi, sukimųsi
+      'uisi'                      // sukimuisi
+      '{a'}si'                    // sukimąsi
+      'usi'                       // sukimusi
+      'esi'                       // sukimesi
+
+      'uo'                        // mėnuo
+
+
+      // II linksniuote (declension II)
+      'a'  'ia'                   // galva, vysnios
+      'os' 'ios'                  // galvos, vysnios
+      'oj' 'oje' 'ioje'           // galvoje, vysnioje
+      'osna' 'iosna'              // galvosna, vyšniosna
+      'om' 'oms' 'ioms'           // galvoms, vysnioms
+      'omis' 'iomis'              // galvomis, vysniomis
+      'ose' 'iose'                // galvose, vysniose
+      'on' 'ion'                  // galvon, vyšnion
+
+
+      // III linksniuote (declension III)
+      '{e.}'                      // gervė
+      '{e.}s'                     // gervės
+      'ei'                        // gervei
+      '{e'}'                      // gervę
+      '{e.}j' '{e.}je'            // gervėj, gervėje
+      '{e.}ms'                    // gervėms
+      'es'                        // gerves
+      '{e.}mis'                   // gervėmis
+      '{e.}se'                    // gervėse
+      '{e.}sna'                   // gervėsna
+      '{e.}n'                     // žydaitėn
+
+
+      // IV linksniuote (declension IV)
+      'aus' 'iaus'                // sūnaus, skaičiaus
+      'umi' 'iumi'                // sūnumi, skaičiumi
+      'uje' 'iuje'                // sūnuje, skaičiuje
+      'iau'                       // skaičiau
+
+      '{u-}s'                     // sūnūs
+      'ums'                       // sūnums
+      'umis'                      // sūnumis
+      'un' 'iun'                  // sūnun, administratoriun
+
+
+      // V linksniuote (declension V)
+      'ies' 'ens' 'enio' 'ers'    // avies, vandens, sesers
+      'eniui' 'eriai'             // vandeniui, eriai
+      'en{i'}' 'er{i'}'           // vandenį, seserį
+      'imi' 'eniu' 'erimi' 'eria' // avimi, vandeniu, seserimi, seseria
+      'enyje' 'eryje'             // vandenyje, seseryje
+      'ie' 'enie' 'erie'          // avie, vandenie, seserie
+
+      'enys' 'erys'               // vandenys, seserys
+      // 'en{u'}' konfliktas su 'žandenų' 'antenų'
+      'er{u'}'                    // seserų
+      'ims' 'enims' 'erims'       // avims, vandemins, seserims
+      'enis'                      // vandenis
+      'imis'                      // žebenkštimis
+      'enimis'                    // vandenimis
+      'yse' 'enyse' 'eryse'       // avyse, vandenyse, seseryse
+
+
+      // Būdvardžiai (Adjectives)
+      // (i)a linksniuotė
+      'iem' 'iems'                // geriem, geriems
+      'ame' 'iame'                // naujame, mediniame
+
+
+      // Veiksmažodžiai (Verbs)
+      // Tiesioginė nuosaka (indicative mood)
+      // esamasis laikas (present tense)
+      // (i)a asmenuotė (declension (i)a)
+      'uosi' 'iuosi'              // dirbuosi, traukiuosi
+      'iesi'                      // dirbiesi
+      'asi' 'iasi'                // dirbasi, traukiasi
+      'am{e.}s' 'iam{e.}s'        // dirbamės, traukiamės
+      'at' 'ate' 'iat' 'iate'     // dirbat, dirbate, ariat, traukiate
+      'at{e.}s' 'iat{e.}s'        // dirbatės, traukiatės
+
+      // i asmenuotė (declension i)
+      'isi'                       // tikisi
+      'im'                        // mylim
+      // 'ime' konfliktassu daiktavardžiu vietininku, pvz. 'gėrime'
+      'im{e.}s'                   // tikimės
+      'it' 'ite'                  // mylit, mylite, tikitės
+      // 'it{e.}s' konfliktas su priesaga ir dgs. vardininko galūne -ait-ės pvz. žydaitės
+
+      // o asmenuotė (declension o)
+      'ome'                       // mokome
+      'ot' 'ote'                  // mokot, mokote
+
+      // būtasis laikas
+      // o asmenuotė (declension o)
+      '{e.}jo' '{e.}josi'         // tikėjo, tikėjosi
+      'ot{e.}s'                   // tikėjotės/bijotės
+
+      // ė asmenuotė (declension ė)
+      'eisi'                      // mokeisi
+      '{e.}si'                    // mokėsi
+      '{e.}m' '{e.}me'            // mokėm, mokėme
+      '{e.}m{e.}s'                // mokėmės
+      '{e.}t' '{e.}te'            // mokėt, mokėte
+      '{e.}t{e.}s'                // mokėtės
+
+      // būtasis dažninis laikas (frequentative past tense)
+      'ausi'                      // mokydavausi
+      'om{e.}s'                   // mokydavomės/bijomės
+
+
+      // būsimasis laikas (future tense)
+      'siu' 'siuosi'              // dirbsiu, mokysiuosi
+      'si' 'siesi'                // dirbsi, dirbsiesi
+      's' 'ysis'                  // dirbs, mokysis
+      'sim' 'sime'                // dirbsim, dirbsime
+      'sit' 'site'                // gersit, gersite
+
+      // tariamoji nuosaka (subjunctive mood)
+      '{c*}iau' '{c*}iausi'       // dirbčiau
+      'tum' 'tumei'               // dirbtum, dirbtumei
+      'tumeis' 'tumeisi'          // mokytumeis, mokytumeisi
+      // 't{u'}' nes blogai batutų -> batų
+      't{u'}si'                   // mokytųsi
+      // 'tume' konfliktas su 'šventume'
+      'tum{e.}m'                  // dirbtumėm
+      'tum{e.}me'                 // dirbtumėme
+      'tum{e.}m{e.}s'             // mokytumėmės
+      'tute' 'tum{e.}t'           // dirbtute, dirbtumėt
+      'tum{e.}te'                 // dirbtumėte
+      'tum{e.}t{e.}s'             // mokytumėtės
+
+      // liepiamoji nuosaka (imperative mood)
+      'k' 'ki'                    // dirbk, dirbki, mokykis
+      // 'kis' konfliktas viln-išk-is
+      // 'kime' konfliktas, nes pirkime
+      'kim{e.}s'                  // mokykimės
+
+      // bendratis (infinitive)
+      'uoti' 'iuoti'              // meluoti, dygsniuoti
+      'auti' 'iauti'              // draugauti, girtuokliauti
+      'oti' 'ioti'                // dovanoti, meškerioti
+      '{e.}ti'                    // auklėti
+      'yti'                       // akyti
+      'inti'                      // auginti
+      'in{e.}ti'                  // blusinėti
+      'enti'                      // gyventi
+      'tel{e.}ti'                 // bumbtelėti
+      'ter{e.}ti'                 // bumbterėti
+
+      'ti'                        // skalbti
+      // 'tis' konfliktas, nes rytme-tis -> rytme
+
+      // dalyviai (participles)
+      '{a'}s' 'i{a'}s' '{i'}s'    // dirbąs, žaidžiąs, gulįs
+      't{u'}s'                    // suktųs -> suk
+      'sim{e.}s'                  // suksimės
+      'sit{e.}s'                  // suksitės
+      'kite'                      // supkite
+    )
+
+    delete
+  )
+
+  define step2 as repeat (
+    setlimit tomark p1 for ([substring]) among (
+      // daiktavardziu priesagos (Noun suffixes)
+
+      // budvardziu priesagos (Adjective suffixes)
+      // 'in' // konfliktas su 'augintinis' ir 'akiniais' // lauk-in-is
+      'ing'                       // tvark-ing-as
+      'i{s*}k'                    // lenk-išk-as
+      '{e.}t'                     // dem-ėt-as
+      'ot'                        // garban-ot-as
+      'uot' 'iuot'                // lang-uot-as, akin-iuot-as
+      // 'tin', nes augintinis    // dirb-tin-is
+      // 'ut', nes batutas, degutas etc. // maž-ut-is
+      'yt'                        // maž-yt-is
+      'iuk'                       // maž-iuk-as
+      'iul'                       // maž-ul-is
+      '{e.}l'                     // maž-ėl-is
+      'yl'                        // maž-yl-is
+      'u{c*}iuk'                  // maž-učiuk-as
+      'uliuk'                     // maž-uliuk-as
+      'ut{e.}ait'                 // maž-utėlait-is
+      'ok'                        // did-ok-as
+      'iok'                       // višč-iok-as
+      'sv' '{s*}v' 'zgan'         // sal-sv-as, pilk-šv-as, bal-zgan-as
+      'op' 'iop'                  // dvej-op-as, viener-iop-as
+      'ain'                       // apval-ain-as
+      'yk{s*}t' 'yk{s*}{c*}'      // ten-ykšt-is, vakar-ykšč-ias
+
+      // laisniai
+      'esn'                       // did-esn-is
+      'aus' 'iaus'                // nauj-aus-ias, ger-iaus-ias
+
+      // ivardziuotiniai budvardziai (Pronominal adjectives)
+      // vyriska gimine (Male gender)
+      'ias'                       // žaliasis
+      'oj' 'ioj'                  // gerojo, žaliojo
+      'aj' 'iaj'                  // gerajam, žaliajam
+      '{a'}j' 'i{a'}j'            // garąjį, žaliąjį
+      'uoj' 'iuoj'                // geruoju, žaliuoju
+      'iej'                       // gerieji
+      '{u'}j' 'i{u'}j'            // gerųjų, žaliųjų
+      'ies'                       // geriesiems
+      'uos' 'iuos'                // geruosius, žaliuosius
+      'ais' 'iais'                // geraisiais, žaliaisiais
+
+      // moteriska gimine (Female gender)
+      'os' 'ios'                  // gerosios, žaliosios
+      '{a'}s' 'i{a'}s'            // gerąsios, žaliąsias
+
+      // būtasis dažninis laikas (frequentative past tense)
+      'dav'                       // ei-dav-o
+
+      // dalyvių priesagos (particple suffix)
+      'ant' 'iant'
+      'int'                       // tur-int-is
+      '{e.}j'                     // tur-ėj-o
+      '{e'}'                      //
+      '{e.}j{e'}'
+      '{e'}s'                     // dirb-ęs-is
+
+      'siant'                     // dirb-siant
+
+      // pusdalyviai (participle)
+      'dam'                       // bėg-dam-as
+
+      'auj'                       // ūkinink-auj-a
+      'jam'
+      'iau'
+      'am'                        // baiminim-ams-i
+    )
+
+    delete
+  )
+
+  define fix_conflicts as (
+    [substring] among (
+      // 'lietuvaite' -> 'lietuvaitė', konfliktas su 'myl-ite'
+      'aite' (<-'ait{e.}')
+      // 'lietuvaitės' -> 'lietuvaitė', konfliktas su 'myl-itės'
+      'ait{e.}s' (<-'ait{e.}')
+
+      // ''ūs-uotės' -> 'ūs-uotė', konfliktas 'mokotės'
+      'uot{e.}s' (<-'uot{e.}')
+      // ''ūs-uote' -> 'ūs-uotė', konfliktas 'mokote'
+      'uote' (<-'uot{e.}')
+
+      // 'žerėjime' -> 'žėrėjimas', konfliktas su 'žais-ime'
+      '{e.}jime' (<-'{e.}jimas')
+
+      // 'žvilgesiu' -> 'žvilgesys', konfliktas su 'dirb-siu'
+      'esiu' (<-'esys')
+      // 'duobkasiu' -> 'duobkasys', konfliktas su 'pakasiu'
+      'asius' (<-'asys')
+
+      // 'žioravime' -> 'žioravimas', konfliktas su 'myl-ime'
+      'avime' (<-'avimas')
+      'ojime' (<-'ojimas')
+
+      // 'advokatės' -> 'advokatė', konfliktas su 'dirb-atės'
+      'okat{e.}s' (<-'okat{e.}')
+      // 'advokate' -> 'advokatė', konfliktas su 'dirb-ate'
+      'okate' (<-'okat{e.}')
+    )
+  )
+
+  define fix_chdz as (
+    [substring] among (
+      '{c*}' (<-'t')
+      'd{z*}' (<-'d')
+    )
+  )
+
+  define fix_gd as (
+    [substring] among (
+      'gd' (<-'g')
+      // '{e.}k' (<-'{e.}g')
+    )
+  )
+
+)
+
+define stem as (
+
+  $p1 = limit
+
+  do (
+    // priešdėlis 'a' ilgeniuose nei 6 raidės žodžiuose, pvz. 'a-liejus'.
+    try (test 'a' $(len > 6) hop 1)
+
+    gopast v  gopast non-v  setmark p1
+  )
+
+  backwards (
+    do fix_conflicts
+    do step1
+    do fix_chdz
+    do step2
+    do fix_chdz
+    do fix_gd
+  )
+
+)
