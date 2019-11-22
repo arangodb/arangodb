@@ -317,7 +317,7 @@ class LogicalCollection : public LogicalDataSource {
   ///        created and only on Sinlge/DBServer
   void persistPhysicalCollection();
 
-  basics::ReadWriteLock& lock() { return _lock; }
+  basics::ReadWriteLock& lock();
 
   /// @brief Defer a callback to be executed when the collection
   ///        can be dropped. The callback is supposed to drop

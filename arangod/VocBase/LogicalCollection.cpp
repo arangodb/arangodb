@@ -957,6 +957,10 @@ void LogicalCollection::persistPhysicalCollection() {
   getPhysical()->setPath(path);
 }
 
+basics::ReadWriteLock& LogicalCollection::lock() {
+  return _lock;
+}
+
 /// @brief Defer a callback to be executed when the collection
 ///        can be dropped. The callback is supposed to drop
 ///        the collection and it is guaranteed that no one is using

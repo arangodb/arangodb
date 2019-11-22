@@ -1335,25 +1335,54 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
     }
   }
 
+  if (isAborted()) {
+    return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
+  }
+
   PhysicalCollection* physical = coll->getPhysical();
   TRI_ASSERT(physical);
-  arangodb::SingleCollectionTransaction trx(
+  std::unique_ptr<arangodb::SingleCollectionTransaction> trx;
+  try {
+    trx = std::make_unique<arangodb::SingleCollectionTransaction>(
       arangodb::transaction::StandaloneContext::Create(coll->vocbase()), *coll,
       arangodb::AccessMode::Type::EXCLUSIVE);
-  trx.addHint(Hints::Hint::RECOVERY);  // turn off waitForSync!
+  } catch (arangodb::basics::Exception const& ex) {
+    if (ex.code() == TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
+      bool locked = false;
+      TRI_vocbase_col_status_e status = coll->tryFetchStatus(locked);
+      if (!locked) {
+        // fall back to unsafe method as last resort
+        status = coll->status();
+      }
+      if (status == TRI_vocbase_col_status_e::TRI_VOC_COL_STATUS_DELETED) {
+        // TODO handle
+        setAborted(true); // probably wrong?
+        return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
+      }
+    }
+    return Result(ex.code());
+  }
+  trx->addHint(Hints::Hint::RECOVERY);  // turn off waitForSync!
   // turn on intermediate commits as the number of keys to delete can be huge
   // here
-  trx.addHint(Hints::Hint::INTERMEDIATE_COMMITS);
-  Result res = trx.begin();
+  trx->addHint(Hints::Hint::INTERMEDIATE_COMMITS);
+  Result res = trx->begin();
   if (!res.ok()) {
     return Result(res.errorNumber(),
                   std::string("unable to start transaction: ") + res.errorMessage());
   }
+  auto guard = scopeGuard(
+      [trx = trx.get()]() -> void { 
+        if (trx->status() == transaction::Status::RUNNING) {
+          trx->abort();
+        }
+       });
+
 
   // diff with local tree
   std::pair<std::size_t, std::size_t> fullRange = treeMaster->range();
   std::unique_ptr<containers::RevisionTree> treeLocal =
-      physical->revisionTree(trx, fullRange.first, fullRange.second);
+      physical->revisionTree(*trx, fullRange.first, fullRange.second);
   std::vector<std::pair<std::size_t, std::size_t>> ranges = treeMaster->diff(*treeLocal);
   if (ranges.empty()) {
     // no differences, done!
@@ -1385,7 +1414,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
     TRI_voc_rid_t iterResume = static_cast<TRI_voc_rid_t>(requestResume);
     std::size_t chunk = 0;
     std::unique_ptr<ReplicationIterator> iter =
-        physical->getReplicationIterator(ReplicationIterator::Ordering::Revision, trx);
+        physical->getReplicationIterator(ReplicationIterator::Ordering::Revision, *trx);
     if (!iter) {
       return Result(TRI_ERROR_INTERNAL, "could not get replication iterator");
     }
@@ -1403,7 +1432,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
       ++documentsFound;
       local.next();
     }
-    res = ::removeRevisions(trx, *coll, toRemove, stats);
+    res = ::removeRevisions(*trx, *coll, toRemove, stats);
     if (res.fail()) {
       return res;
     }
@@ -1418,13 +1447,17 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
       ++documentsFound;
       local.next();
     }
-    res = ::removeRevisions(trx, *coll, toRemove, stats);
+    res = ::removeRevisions(*trx, *coll, toRemove, stats);
     if (res.fail()) {
       return res;
     }
     toRemove.clear();
 
     while (requestResume < std::numeric_limits<std::size_t>::max()) {
+      if (isAborted()) {
+        return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
+      }
+
       if (!_config.isChild()) {
         batchExtend();
         _config.barrier.extend(_config.connection);
@@ -1552,7 +1585,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
         }
       }
 
-      Result res = ::removeRevisions(trx, *coll, toRemove, stats);
+      Result res = ::removeRevisions(*trx, *coll, toRemove, stats);
       if (res.fail()) {
         return res;
       }
@@ -1562,7 +1595,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
         _state.barrier.extend(_state.connection);
       }
 
-      res = ::fetchRevisions(trx, _config, _state, *coll, leaderColl, toFetch,
+      res = ::fetchRevisions(*trx, _config, _state, *coll, leaderColl, toFetch,
                              /*removed,*/ stats);
       if (res.fail()) {
         return res;
@@ -1575,7 +1608,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
       uint64_t numberDocumentsAfterSync =
           documentsFound + stats.numDocsInserted - stats.numDocsRemoved;
       uint64_t numberDocumentsDueToCounter =
-          coll->numberDocuments(&trx, transaction::CountType::Normal);
+          coll->numberDocuments(trx.get(), transaction::CountType::Normal);
 
       setProgress(std::string("number of remaining documents in collection '") +
                   coll->name() + "': " + std::to_string(numberDocumentsAfterSync) +
@@ -1594,10 +1627,10 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
         int64_t diff = static_cast<int64_t>(numberDocumentsAfterSync) -
                        static_cast<int64_t>(numberDocumentsDueToCounter);
 
-        trx.documentCollection()->getPhysical()->adjustNumberDocuments(trx, diff);
+        trx->documentCollection()->getPhysical()->adjustNumberDocuments(*trx, diff);
       }
     }
-    res = trx.commit();
+    res = trx->commit();
     if (res.fail()) {
       return res;
     }
