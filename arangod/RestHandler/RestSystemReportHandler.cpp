@@ -55,7 +55,7 @@ std::string executeOSCmd(std::string const& cmd) {
   static std::string const tmpFile("/tmp/arango-inspect.tmp");
   static std::string const pipe(" | tee ");
   static std::string const terminate(" > /dev/null");
-  std::system ((cmd + pipe + tmpFile + terminate).c_str());  
+  std::system ((cmd + pipe + tmpFile + terminate).c_str());
   std::ifstream tmpStream(tmpFile.c_str());
   return std::string(
     std::istreambuf_iterator<char>(tmpStream), std::istreambuf_iterator<char>());
@@ -76,12 +76,12 @@ RestStatus RestSystemReportHandler::execute() {
     generateError(ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
     return RestStatus::DONE;
   }
-  
+
   if (_request->requestType() != RequestType::GET) {
     generateError(ResponseCode::BAD, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
     return RestStatus::DONE;
   }
-  
+
   static std::unordered_map<std::string, std::string> const cmds {
     {"date", "date -u \"+%Y-%m-%d %H:%M:%S %Z\""},
     {"dmesg", "dmesg"},
@@ -91,7 +91,7 @@ RestStatus RestSystemReportHandler::execute() {
     {"uname", "uname -a"},
     {"top", std::string("top -b -n 1 -H -p ") +
         std::to_string(Thread::currentProcessId())}};
-  
+
   VPackBuilder result;
   { VPackObjectBuilder o(&result);
     for (auto cmd : cmds) {
@@ -101,7 +101,7 @@ RestStatus RestSystemReportHandler::execute() {
         result.add(cmd.first, VPackValue(e.what()));
       }
     }}
-  
+
   generateResult(rest::ResponseCode::OK, result.slice());
   return RestStatus::DONE;
 }

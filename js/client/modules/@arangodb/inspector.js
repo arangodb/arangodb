@@ -3,27 +3,27 @@
 
 // /////////////////////////////////////////////////////////////////////////////
 // @brief ArangoDB Doctor
-// 
+//
 // @file
-// 
+//
 // DISCLAIMER
-// 
+//
 // Copyright 2018 ArangoDB GmbH, Cologne, Germany
-// 
+//
 // Licensed under the Apache License, Version 2.0 (the "License")
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-// 
+//
 //     http://www.apache.org/licenses/LICENSE-2.0
-// 
+//
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-// 
+//
 // Copyright holder is ArangoDB GmbH, Cologne, Germany
-// 
+//
 // @author Dr. Frank Celler
 // @author Kaveh Vahedipour
 // @author Copyright 2018, ArangoDB GmbH, Cologne, Germany
@@ -63,8 +63,8 @@ function loadAgencyConfig() {
 
 
 /**
- * @brief Sort shard keys according to their numbers omitting startign 's' 
- * 
+ * @brief Sort shard keys according to their numbers omitting startign 's'
+ *
  * @param keys      Keys
  */
 function sortShardKeys(keys) {
@@ -97,7 +97,7 @@ function agencyInspector(obj) {
   var report = {};
 
   INFO('Analysing agency dump ...');
-  
+
   // Must be array with length 1
   if (obj.length !== 1) {
     ERROR('agency dump must be an array with a single object inside');
@@ -114,16 +114,16 @@ function agencyInspector(obj) {
   // Must have Plan, Current, Supervision, Target, Sync
   if (!agency.hasOwnProperty('Plan')) {
     ERROR('agency must have attribute "arango/Plan" object');
-    process.exit(1);  
+    process.exit(1);
   }
   const plan = agency.Plan;
   if (!plan.hasOwnProperty('Version')) {
     ERROR('plan has no version');
-    process.exit(1);    
+    process.exit(1);
   }
   if (!agency.hasOwnProperty('Current')) {
     ERROR('agency must have attribute "arango/Current" object');
-    process.exit(1);  
+    process.exit(1);
   }
   const current = agency.Current;
 
@@ -153,7 +153,7 @@ function agencyInspector(obj) {
   // Planned collections
   if (!plan.hasOwnProperty('Collections')) {
     ERROR('no collections in plan');
-    process.exit(1);  
+    process.exit(1);
   }
 
   var warned = false;
@@ -175,14 +175,14 @@ function agencyInspector(obj) {
       const distributeShardsLike = col.distributeShardsLike;
       var myShardKeys = sortShardKeys(Object.keys(col.shards));
 
-      if (distributeShardsLike && distributeShardsLike !== "") {      
+      if (distributeShardsLike && distributeShardsLike !== "") {
         const prototype = plan.Collections[database][distributeShardsLike];
         if (prototype.replicationFactor !== col.replicationFactor) {
           ERROR('distributeShardsLike: replicationFactor mismatch');
         }
         if (prototype.numberOfShards !== col.numberOfShards) {
           ERROR('distributeShardsLike: numberOfShards mismatch');
-        }      
+        }
         var prototypeShardKeys = sortShardKeys(Object.keys(prototype.shards));
         var ncshards = myShardKeys.length;
         if (prototypeShardKeys.length !== ncshards) {
@@ -190,7 +190,7 @@ function agencyInspector(obj) {
         }
         for (var i = 0; i < ncshards; ++i) {
           const shname = myShardKeys[i];
-          const ccul = current.Collections[database];     
+          const ccul = current.Collections[database];
           if (JSON.stringify(col.shards[shname]) !==
               JSON.stringify(prototype.shards[prototypeShardKeys[i]])) {
             ERROR(
@@ -211,7 +211,7 @@ function agencyInspector(obj) {
             WARN('missing collection "' + collection + '" in current');
           } else {
             if (!current.Collections[database][collection].hasOwnProperty(shname)) {
-              WARN('missing shard "' + shname + '" in current');           
+              WARN('missing shard "' + shname + '" in current');
             }
             const shard = current.Collections[database][collection][shname];
             if (shard) {
@@ -253,7 +253,7 @@ function agencyInspector(obj) {
   Object.keys(servers).forEach(function(serverId) {
     if (!target.MapUniqueToShortID.hasOwnProperty(serverId)) {
       WARN('incomplete planned db server ' + serverId + ' is missing in "Target"');
-    } else { 
+    } else {
       INFO('    ' + serverId + '(' + target.MapUniqueToShortID[serverId].ShortName + ')');
       if (!supervision.Health.hasOwnProperty(serverId)) {
         ERROR('planned db server ' + serverId + ' missing in supervision\'s health records.');
@@ -274,7 +274,7 @@ function agencyInspector(obj) {
   Object.keys(servers).forEach(function(serverId) {
     if (!target.MapUniqueToShortID.hasOwnProperty(serverId)) {
       WARN('incomplete planned db server ' + serverId + ' is missing in "Target"');
-    } else { 
+    } else {
       INFO('    ' + serverId + '(' + target.MapUniqueToShortID[serverId].ShortName + ')');
       report.servers.coordinators[serverId] = {name: target.MapUniqueToShortID[serverId].ShortName, status : servers[serverId].Status};
 
@@ -310,7 +310,7 @@ function agencyInspector(obj) {
       );
 
   report.jobs = { todo: njobs[0], pending: njobs[1], finished: njobs[2], failed: njobs[3]};
-  
+
   INFO('Summary');
   if (nerrors > 0) {
     ERROR('  ' + nerrors + ' errors');
@@ -324,14 +324,14 @@ function agencyInspector(obj) {
   INFO('... agency analysis finished.');
 
   return report;
-  
+
 }
 
 
 /**
  * @brief Create an integer range as [start,end]
- * 
- * @param start     Start of range 
+ *
+ * @param start     Start of range
  * @param end       End of range
  */
 function range(start, end) {
@@ -393,7 +393,7 @@ function loadAgency(conn, seen) {
   }
 
   return agencyDump;
-  
+
 }
 
 function defineServer(type, id, source) {
@@ -506,7 +506,7 @@ function defineSingleFromStatus(status, endpoint) {
   defineServerEndpoint('SINGLE', endpoint);
   if (status.hasOwnProperty('agency')) {
     let agentEndpoints = status.agency.agencyComm.endpoints;
-    
+
     if (0 < agentEndpoints.length) {
       possibleAgent = agentEndpoints[0];
     } else {
@@ -544,7 +544,7 @@ function locateServers(plan) {
 
   _.forEach(health, function(info, id) {
     const type = id.substr(0, 4);
-    
+
     if (type === "PRMR") {
       defineServer('PRIMARY', id, { supervision: cluster });
       defineServerEndpoint(id, info.Endpoint);
@@ -557,7 +557,7 @@ function locateServers(plan) {
       defineServer('SINGLE', id, { supervision: cluster });
       defineServerEndpoint(id, info.Endpoint);
       defineServerStatus(id, info.Status);
-    } 
+    }
   });
 }
 
@@ -583,7 +583,7 @@ function getServerData(arango) {
               arango.reconnect(servers[server].endpoint, '_system');
             }
           }
-          
+
           const version = arango.GET('_api/version?details=true'); // version api
           const log = arango.GET('_admin/log'); // log api
           const statistics = arango.GET('_admin/statistics'); // statistics api
@@ -616,7 +616,7 @@ function getServerData(arango) {
               });});
             db._useDatabase('_system');
           } catch (e) {}
-          
+
           // report this server
           report[server] = {
             version:version, log:log, statistics:statistics, status:status,
@@ -625,12 +625,12 @@ function getServerData(arango) {
           Object.keys(systemReport).forEach( function(section) {
             report[server][section] = systemReport[section];
           });
-          
+
           if (agencyConfig !==  undefined) {
             report[server].config = agencyConfig;
             report[server].state = agencyState;
           }
-          
+
         } catch (e) {
           print(e);
         }
@@ -657,7 +657,7 @@ function getServerData(arango) {
     }
 
     if (possibleAgent !== null) {
-      
+
       // Agency dump and analysis
       var agencyConfig = loadAgencyConfig();
       var agencyDump = {};
@@ -693,7 +693,7 @@ function getServerData(arango) {
           }
         }
       }
-      
+
       if (agencyDump !== null) {
         locateServers(agencyDump);
       }
@@ -709,9 +709,8 @@ function getServerData(arango) {
     require('fs').writeFileSync(ofname, JSON.stringify(healthRecord));
 
     INFO("Report written to " + ofname + ".");
-    
+
   } catch (e) {
     print(e);
   }
 }());
-
