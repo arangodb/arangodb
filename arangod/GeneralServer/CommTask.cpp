@@ -492,7 +492,7 @@ bool CommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
       self->sendResponse(handler->stealResponse(), handler->stealStatistics());
     });
   };
-  bool ok = SchedulerFeature::SCHEDULER->queue(lane, std::move(cb), allowDirectHandling());
+  bool ok = SchedulerFeature::SCHEDULER->queue(lane, std::move(cb), allowDirectHandling() && handler->allowDirectExecution());
 
   if (!ok) {
     addErrorResponse(rest::ResponseCode::SERVICE_UNAVAILABLE,
