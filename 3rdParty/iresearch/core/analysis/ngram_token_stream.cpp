@@ -140,7 +140,7 @@ bool parse_json_config(const irs::string_ref& args,
       stream_bytes_type = itr->second;
   }
 
-  min = std::max(min, size_t(1));
+  min = std::max(min, decltype(min)(1));
   max = std::max(max, min);
 
   options.min_gram = min;
