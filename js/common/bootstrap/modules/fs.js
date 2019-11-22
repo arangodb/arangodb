@@ -376,6 +376,15 @@ global.DEFINE_MODULE('fs', (function () {
   // / @brief copy one file
   // //////////////////////////////////////////////////////////////////////////////
 
+  if (global.FS_LINK_FILE) {
+    exports.linkFile = global.FS_LINK_FILE;
+    delete global.FS_LINK_FILE;
+  }
+
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief copy one file
+  // //////////////////////////////////////////////////////////////////////////////
+
   if (global.FS_COPY_FILE) {
     exports.copyFile = global.FS_COPY_FILE;
     delete global.FS_COPY_FILE;
@@ -465,6 +474,24 @@ global.DEFINE_MODULE('fs', (function () {
       }
       return buf.toString(encoding);
     };
+  }
+
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief readGzip
+  // //////////////////////////////////////////////////////////////////////////////
+
+  if (global.SYS_READ_GZIP) {
+    exports.readGzip = global.SYS_READ_GZIP;
+    delete global.SYS_READ_GZIP;
+  }
+
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief readDecrypt
+  // //////////////////////////////////////////////////////////////////////////////
+
+  if (global.SYS_READ_DECRYPT) {
+    exports.readDecrypt = global.SYS_READ_DECRYPT;
+    delete global.SYS_READ_DECRYPT;
   }
 
   // //////////////////////////////////////////////////////////////////////////////
@@ -564,6 +591,8 @@ global.DEFINE_MODULE('fs', (function () {
     exports.zipFile = global.FS_ZIP_FILE;
     delete global.FS_ZIP_FILE;
   }
+
+  exports.escapePath = function (s) { return s.replace(/\\/g,'\\\\'); };
 
   return exports;
 }()));

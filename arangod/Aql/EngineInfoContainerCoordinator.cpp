@@ -21,16 +21,18 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Aql/AqlItemBlock.h"
+#include "EngineInfoContainerCoordinator.h"
+
 #include "Aql/AqlResult.h"
-#include "Aql/ClusterBlocks.h"
-#include "Aql/ClusterNodes.h"
+#include "Aql/BlocksWithClients.h"
 #include "Aql/Collection.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
-#include "EngineInfoContainerCoordinator.h"
+#include "Basics/ScopeGuard.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
 #include "VocBase/ticks.h"
 
 using namespace arangodb;
@@ -60,19 +62,18 @@ void EngineInfoContainerCoordinator::EngineInfo::addNode(ExecutionNode* en) {
 }
 
 Result EngineInfoContainerCoordinator::EngineInfo::buildEngine(
-    Query* query, QueryRegistry* queryRegistry, std::string const& dbname,
+    Query& query, QueryRegistry* queryRegistry, std::string const& dbname,
     std::unordered_set<std::string> const& restrictToShards,
-    MapRemoteToSnippet const& dbServerQueryIds, std::vector<uint64_t>& coordinatorQueryIds,
-    std::unordered_set<ShardID> const& lockedShards) const {
+    MapRemoteToSnippet const& dbServerQueryIds,
+    std::vector<uint64_t>& coordinatorQueryIds) const {
   TRI_ASSERT(!_nodes.empty());
   {
-    auto uniqEngine = std::make_unique<ExecutionEngine>(query);
-    query->setEngine(uniqEngine.release());
+    auto uniqEngine =
+        std::make_unique<ExecutionEngine>(query, SerializationFormat::SHADOWROWS);
+    query.setEngine(uniqEngine.release());
   }
 
-  auto engine = query->engine();
-
-  query->trx()->setLockedShards(lockedShards);
+  auto engine = query.engine();
 
   auto res = engine->createBlocks(_nodes, restrictToShards, dbServerQueryIds);
   if (!res.ok()) {
@@ -81,28 +82,34 @@ Result EngineInfoContainerCoordinator::EngineInfo::buildEngine(
 
   TRI_ASSERT(engine->root() != nullptr);
 
-  LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "Storing Coordinator engine: " << _id;
+  LOG_TOPIC("16287", DEBUG, arangodb::Logger::AQL)
+      << "Storing Coordinator engine: " << _id;
 
   // For _id == 0 this thread will always maintain the handle to
   // the engine and will clean up. We do not keep track of it seperately
   if (_id != 0) {
-    double ttl = query->queryOptions().ttl;
+    coordinatorQueryIds.emplace_back(_id);
+
+    double ttl = query.queryOptions().ttl;
     TRI_ASSERT(ttl > 0);
     try {
-      queryRegistry->insert(_id, query, ttl, true, false);
+      queryRegistry->insert(_id, &query, ttl, true, false);
     } catch (basics::Exception const& e) {
+      coordinatorQueryIds.pop_back();
       return {e.code(), e.message()};
     } catch (std::exception const& e) {
+      coordinatorQueryIds.pop_back();
       return {TRI_ERROR_INTERNAL, e.what()};
     } catch (...) {
-      return {TRI_ERROR_INTERNAL};
+      coordinatorQueryIds.pop_back();
+      return {TRI_ERROR_INTERNAL, "unable to store query in registry"};
     }
-
-    coordinatorQueryIds.emplace_back(_id);
   }
 
   return {TRI_ERROR_NO_ERROR};
 }
+
+QueryId EngineInfoContainerCoordinator::EngineInfo::queryId() const { return _id; }
 
 EngineInfoContainerCoordinator::EngineInfoContainerCoordinator() {
   // We always start with an empty coordinator snippet
@@ -110,7 +117,7 @@ EngineInfoContainerCoordinator::EngineInfoContainerCoordinator() {
   _engineStack.emplace(0);
 }
 
-EngineInfoContainerCoordinator::~EngineInfoContainerCoordinator() {}
+EngineInfoContainerCoordinator::~EngineInfoContainerCoordinator() = default;
 
 void EngineInfoContainerCoordinator::addNode(ExecutionNode* node) {
   TRI_ASSERT(node->getType() != ExecutionNode::INDEX &&
@@ -139,28 +146,27 @@ QueryId EngineInfoContainerCoordinator::closeSnippet() {
 }
 
 ExecutionEngineResult EngineInfoContainerCoordinator::buildEngines(
-    Query* query, QueryRegistry* registry, std::string const& dbname,
+    Query& query, QueryRegistry* registry, std::string const& dbname,
     std::unordered_set<std::string> const& restrictToShards,
     MapRemoteToSnippet const& dbServerQueryIds,
-    std::unordered_set<ShardID> const& lockedShards) const {
+    std::vector<uint64_t>& coordinatorQueryIds) const {
   TRI_ASSERT(_engineStack.size() == 1);
   TRI_ASSERT(_engineStack.top() == 0);
 
-  std::vector<uint64_t> coordinatorQueryIds{};
   // destroy all query snippets in case of error
   auto guard = scopeGuard([&dbname, &registry, &coordinatorQueryIds]() {
     for (auto const& it : coordinatorQueryIds) {
-      registry->destroy(dbname, it, TRI_ERROR_INTERNAL);
+      registry->destroy(dbname, it, TRI_ERROR_INTERNAL, false);
     }
   });
 
-  Query* localQuery = query;
+  Query* localQuery = &query;
   try {
     bool first = true;
-    for (auto const& info : _engines) {
+    for (EngineInfo const& info : _engines) {
       if (!first) {
         // need a new query instance on the coordinator
-        localQuery = query->clone(PART_DEPENDENT, false);
+        localQuery = query.clone(PART_DEPENDENT, false);
         if (localQuery == nullptr) {
           // clone() cannot return nullptr, but some mocks seem to do it
           return ExecutionEngineResult(TRI_ERROR_INTERNAL,
@@ -169,8 +175,8 @@ ExecutionEngineResult EngineInfoContainerCoordinator::buildEngines(
         TRI_ASSERT(localQuery != nullptr);
       }
       try {
-        auto res = info.buildEngine(localQuery, registry, dbname, restrictToShards,
-                                    dbServerQueryIds, coordinatorQueryIds, lockedShards);
+        auto res = info.buildEngine(*localQuery, registry, dbname, restrictToShards,
+                                    dbServerQueryIds, coordinatorQueryIds);
         if (!res.ok()) {
           if (!first) {
             // We need to clean up this query.
@@ -203,5 +209,5 @@ ExecutionEngineResult EngineInfoContainerCoordinator::buildEngines(
   // This deactivates the defered cleanup.
   // From here on we rely on the AQL shutdown mechanism.
   guard.cancel();
-  return ExecutionEngineResult(query->engine());
+  return ExecutionEngineResult(query.engine());
 }

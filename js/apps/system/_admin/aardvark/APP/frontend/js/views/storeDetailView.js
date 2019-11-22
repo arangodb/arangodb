@@ -34,21 +34,24 @@
 
     installFoxxFromStore: function (e) {
       if (window.modalView.modalTestAll()) {
-        var mount, flag;
+        var mount, info, options;
         if (this._upgrade) {
           mount = this.mount;
-          flag = $('#new-app-teardown').prop('checked');
         } else {
           mount = window.arangoHelper.escapeHtml($('#new-app-mount').val());
           if (mount.charAt(0) !== '/') {
             mount = '/' + mount;
           }
         }
-        if (flag !== undefined) {
-          this.collection.installFromStore({name: this.model.get('name'), version: this.model.get('latestVersion')}, mount, this.installCallback.bind(this), flag);
-        } else {
-          this.collection.installFromStore({name: this.model.get('name'), version: this.model.get('latestVersion')}, mount, this.installCallback.bind(this));
-        }
+
+        info = {
+          name: this.model.get('name'),
+          version: this.model.get('latestVersion')
+        };
+
+        options = arangoHelper.getFoxxFlags();
+        this.collection.install('store', info, mount, options, this.installCallback.bind(this));
+
         window.modalView.hide();
         arangoHelper.arangoNotification('Services', 'Installing ' + this.model.get('name') + '.');
       }

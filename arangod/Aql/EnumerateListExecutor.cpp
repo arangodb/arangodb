@@ -26,21 +26,33 @@
 #include "EnumerateListExecutor.h"
 
 #include "Aql/AqlValue.h"
-#include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Aql/OutputAqlItemRow.h"
 #include "Aql/SingleRowFetcher.h"
-#include "Basics/Common.h"
+#include "Aql/Stats.h"
 #include "Basics/Exceptions.h"
-
-#include <lib/Logger/LogMacros.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
 
+namespace {
+void throwArrayExpectedException(AqlValue const& value) {
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_QUERY_ARRAY_EXPECTED,
+      std::string("collection or ") + TRI_errno_string(TRI_ERROR_QUERY_ARRAY_EXPECTED) +
+          std::string(
+              " as operand to FOR loop; you provided a value of type '") +
+          value.getTypeString() + std::string("'"));
+}
+} // namespace
+
 EnumerateListExecutorInfos::EnumerateListExecutorInfos(
-    RegisterId inputRegister, RegisterId outputRegister, RegisterId nrInputRegisters,
-    RegisterId nrOutputRegisters, std::unordered_set<RegisterId> registersToClear,
+    RegisterId inputRegister, RegisterId outputRegister,
+    RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
+    // cppcheck-suppress passedByValue
+    std::unordered_set<RegisterId> registersToClear,
+    // cppcheck-suppress passedByValue
     std::unordered_set<RegisterId> registersToKeep)
     : ExecutorInfos(make_shared_unordered_set({inputRegister}),
                     make_shared_unordered_set({outputRegister}),
@@ -49,20 +61,27 @@ EnumerateListExecutorInfos::EnumerateListExecutorInfos(
       _inputRegister(inputRegister),
       _outputRegister(outputRegister) {}
 
+RegisterId EnumerateListExecutorInfos::getInputRegister() const noexcept {
+  return _inputRegister;
+}
+
+RegisterId EnumerateListExecutorInfos::getOutputRegister() const noexcept {
+  return _outputRegister;
+}
+
 EnumerateListExecutor::EnumerateListExecutor(Fetcher& fetcher, EnumerateListExecutorInfos& infos)
     : _infos(infos),
       _fetcher(fetcher),
       _currentRow{CreateInvalidInputRowHint{}},
       _rowState(ExecutionState::HASMORE),
       _inputArrayPosition(0),
-      _inputArrayLength(0){};
+      _inputArrayLength(0) {}
 
-std::pair<ExecutionState, NoStats> EnumerateListExecutor::produceRow(OutputAqlItemRow& output) {
+std::pair<ExecutionState, NoStats> EnumerateListExecutor::produceRows(OutputAqlItemRow& output) {
   while (true) {
     // HIT in first run, because pos and length are initiliazed
     // both with 0
 
-    // if (_inputArrayPosition == _inputArrayLength || _inputArrayPosition == _inputArrayLength - 1) {
     if (_inputArrayPosition == _inputArrayLength) {
       // we need to set position back to zero
       // because we finished iterating over existing array
@@ -91,6 +110,9 @@ std::pair<ExecutionState, NoStats> EnumerateListExecutor::produceRow(OutputAqlIt
       if (inputList.isDocvec()) {
         _inputArrayLength = inputList.docvecSize();
       } else {
+        if (!inputList.isArray()) {
+          throwArrayExpectedException(inputList);
+        }
         _inputArrayLength = inputList.length();
       }
     }

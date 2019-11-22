@@ -28,8 +28,8 @@
 
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutorInfos.h"
-#include "Aql/Stats.h"
 #include "Aql/OutputAqlItemRow.h"
+#include "Aql/Stats.h"
 #include "Aql/types.h"
 
 #include <memory>
@@ -39,7 +39,7 @@ namespace aql {
 
 class InputAqlItemRow;
 class ExecutorInfos;
-template <bool>
+template <BlockPassthrough>
 class SingleRowFetcher;
 
 class TestExecutorHelperInfos : public ExecutorInfos {
@@ -50,7 +50,7 @@ class TestExecutorHelperInfos : public ExecutorInfos {
                           std::unordered_set<RegisterId> registersToKeep);
 
   TestExecutorHelperInfos() = delete;
-  TestExecutorHelperInfos(TestExecutorHelperInfos &&) = default;
+  TestExecutorHelperInfos(TestExecutorHelperInfos&&) = default;
   TestExecutorHelperInfos(TestExecutorHelperInfos const&) = delete;
   ~TestExecutorHelperInfos() = default;
 
@@ -62,14 +62,12 @@ class TestExecutorHelperInfos : public ExecutorInfos {
   RegisterId _inputRegister;
 };
 
-/**
- * @brief Implementation of Filter Node
- */
 class TestExecutorHelper {
  public:
   struct Properties {
     static const bool preservesOrder = true;
-    static const bool allowsBlockPassthrough = false;
+    static const BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Disable;
+    static const bool inputSizeRestrictsOutputSize = false;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = TestExecutorHelperInfos;
@@ -86,10 +84,11 @@ class TestExecutorHelper {
    *
    * @return ExecutionState, and if successful exactly one new Row of AqlItems.
    */
-  std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
+  std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
 
  public:
   Infos& _infos;
+
  private:
   Fetcher& _fetcher;
   bool _returnedDone = false;

@@ -23,6 +23,7 @@
 #ifndef ARANGODB_IMPORT_QUICK_HIST_H
 #define ARANGODB_IMPORT_QUICK_HIST_H 1
 
+#include <algorithm>
 #include <chrono>
 #include <ctime>
 #include <future>
@@ -34,7 +35,9 @@
 #include "Basics/ConditionLocker.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Thread.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 
 namespace arangodb {
 namespace import {
@@ -47,8 +50,8 @@ class QuickHistogram : public arangodb::Thread {
   QuickHistogram& operator=(QuickHistogram const&) = delete;
 
  public:
-  QuickHistogram()
-      : Thread("QuickHistogram"),
+  explicit QuickHistogram(application_features::ApplicationServer& server)
+      : Thread(server, "QuickHistogram"),
         _writingLatencies(nullptr),
         _readingLatencies(nullptr),
         _threadRunning(false) {}
@@ -72,7 +75,7 @@ class QuickHistogram : public arangodb::Thread {
       try {
         _writingLatencies->push_back(latency);
       } catch (...) {
-        LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        LOG_TOPIC("08a26", ERR, arangodb::Logger::FIXME)
             << "QuickHistogram::postLatency() had exception doing a push_back "
                "(out of ram)";
       }
@@ -83,7 +86,7 @@ class QuickHistogram : public arangodb::Thread {
   void run() override {
     _intervalStart = std::chrono::steady_clock::now();
     _measuringStart = _intervalStart;
-    LOG_TOPIC(INFO, arangodb::Logger::FIXME)
+    LOG_TOPIC("f206c", INFO, arangodb::Logger::FIXME)
         << R"("elapsed","window","n","min","mean","median","95th","99th","99.9th","max","unused1","clock")";
 
     _writingLatencies = &_vectors[0];
@@ -190,7 +193,7 @@ class QuickHistogram : public arangodb::Thread {
                  static_cast<long>(per99_9.count()),
                  (0 != num) ? static_cast<long>(_readingLatencies->at(num - 1).count()) : 0,
                  0, str.c_str());
-        LOG_TOPIC(INFO, arangodb::Logger::FIXME) << buffer;
+        LOG_TOPIC("8a76c", INFO, arangodb::Logger::FIXME) << buffer;
 
         _readingLatencies->clear();
         _intervalStart = intervalEnd;

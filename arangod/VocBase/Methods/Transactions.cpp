@@ -1,5 +1,5 @@
-#include "Transactions.h"
 #include <v8.h>
+#include "Transactions.h"
 
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
@@ -42,7 +42,7 @@ Result executeTransaction(v8::Isolate* isolate, basics::ReadWriteLock& lock,
   v8::Handle<v8::Value> in = TRI_VPackToV8(isolate, slice);
 
   v8::Handle<v8::Value> result;
-  v8::TryCatch tryCatch(isolate);;
+  v8::TryCatch tryCatch(isolate);
 
   v8::Handle<v8::Object> request = v8::Object::New(isolate);
   v8::Handle<v8::Value> jsPortTypeKey =
@@ -150,7 +150,7 @@ Result executeTransactionJS(v8::Isolate* isolate, v8::Handle<v8::Value> const& a
     trxOptions.fromVelocyPack(builder.slice());
   }
   if (trxOptions.lockTimeout < 0.0) {
-    rv.reset(TRI_ERROR_BAD_PARAMETER, "<lockTiemout> needs to be positive");
+    rv.reset(TRI_ERROR_BAD_PARAMETER, "<lockTimeout> needs to be positive");
     return rv;
   }
 
@@ -179,8 +179,10 @@ Result executeTransactionJS(v8::Isolate* isolate, v8::Handle<v8::Value> const& a
   std::vector<std::string> exclusiveCollections;
 
   if (TRI_HasProperty(context, isolate, collections, "allowImplicit")) {
-    trxOptions.allowImplicitCollections = TRI_ObjectToBoolean(isolate, 
-        collections->Get(TRI_V8_ASCII_STRING(isolate, "allowImplicit")));
+    trxOptions.allowImplicitCollections =
+        TRI_ObjectToBoolean(isolate,
+                            collections->Get(
+                                TRI_V8_ASCII_STRING(isolate, "allowImplicit")));
   }
 
   auto getCollections =
@@ -203,8 +205,8 @@ Result executeTransactionJS(v8::Isolate* isolate, v8::Handle<v8::Value> const& a
           collections.emplace_back(TRI_ObjectToString(isolate, collection));
         }
       } else if (obj->Get(TRI_V8_ASCII_STRING(isolate, attributeName))->IsString()) {
-        collections.emplace_back(TRI_ObjectToString(isolate, 
-            obj->Get(TRI_V8_ASCII_STRING(isolate, attributeName))));
+        collections.emplace_back(
+            TRI_ObjectToString(isolate, obj->Get(TRI_V8_ASCII_STRING(isolate, attributeName))));
       } else {
         collectionError +=
             std::string(" There is no array in '") + attributeName + "'";
@@ -276,10 +278,11 @@ Result executeTransactionJS(v8::Isolate* isolate, v8::Handle<v8::Value> const& a
     v8::Local<v8::Function> ctor = v8::Local<v8::Function>::Cast(
         current->Get(TRI_V8_ASCII_STRING(isolate, "Function")));
 
-    // Invoke Function constructor to create function with the given body and no
+    // Invoke Function constructor to create function with the given body and the
     // arguments
-    std::string body = TRI_ObjectToString(isolate, 
-                                          TRI_GetProperty(context, isolate, object, "action"));
+    std::string body =
+        TRI_ObjectToString(isolate,
+                           TRI_GetProperty(context, isolate, object, "action"));
     body = "return (" + body + ")(params);";
     v8::Handle<v8::Value> args[2] = {TRI_V8_ASCII_STRING(isolate, "params"),
                                      TRI_V8_STD_STRING(isolate, body)};
@@ -319,9 +322,9 @@ Result executeTransactionJS(v8::Isolate* isolate, v8::Handle<v8::Value> const& a
   auto ctx = std::make_shared<transaction::V8Context>(vocbase, embed);
 
   // start actual transaction
-  std::unique_ptr<transaction::Methods> trx(
-      new transaction::Methods(ctx, readCollections, writeCollections,
-                               exclusiveCollections, trxOptions));
+  auto trx = std::make_unique<transaction::Methods>(ctx, readCollections, writeCollections,
+                                                    exclusiveCollections, trxOptions);
+  trx->addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
 
   rv = trx->begin();
 
@@ -358,9 +361,8 @@ Result executeTransactionJS(v8::Isolate* isolate, v8::Handle<v8::Value> const& a
     rv.reset(TRI_ERROR_INTERNAL, "caught unknown exception during transaction");
   }
 
-  if (!rv.fail()) {
-    rv = trx->commit();
-  }
+  rv = trx->finish(rv);
+
   // if we do not remove unused V8Cursors, V8Context might not reset global
   // state
   vocbase.cursorRepository()->garbageCollect(/*force*/ false);

@@ -28,10 +28,9 @@
 #include "Aql/AqlValue.h"
 #include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Aql/OutputAqlItemRow.h"
 #include "Aql/SingleRowFetcher.h"
-#include "Basics/Common.h"
-
-#include <lib/Logger/LogMacros.h>
+#include "Aql/Stats.h"
 
 #include <utility>
 
@@ -39,8 +38,10 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 CountCollectExecutorInfos::CountCollectExecutorInfos(
-    RegisterId collectRegister, RegisterId nrInputRegisters,
-    RegisterId nrOutputRegisters, std::unordered_set<RegisterId> registersToClear,
+    RegisterId collectRegister, RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
+    // cppcheck-suppress passedByValue
+    std::unordered_set<RegisterId> registersToClear,
+    // cppcheck-suppress passedByValue
     std::unordered_set<RegisterId> registersToKeep)
     : ExecutorInfos(std::make_shared<std::unordered_set<RegisterId>>(),
                     make_shared_unordered_set({collectRegister}),
@@ -48,7 +49,59 @@ CountCollectExecutorInfos::CountCollectExecutorInfos(
                     std::move(registersToClear), std::move(registersToKeep)),
       _collectRegister(collectRegister) {}
 
+RegisterId CountCollectExecutorInfos::getOutputRegisterId() const {
+  return _collectRegister;
+}
+
 CountCollectExecutor::CountCollectExecutor(Fetcher& fetcher, Infos& infos)
-    : _infos(infos), _fetcher(fetcher), _state(ExecutionState::HASMORE), _count(0){};
+    : _infos(infos), _fetcher(fetcher), _state(ExecutionState::HASMORE), _count(0) {}
+
+std::pair<ExecutionState, NoStats> CountCollectExecutor::produceRows(OutputAqlItemRow& output) {
+  TRI_IF_FAILURE("CountCollectExecutor::produceRows") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+
+  if (_state == ExecutionState::DONE) {
+    return {_state, NoStats{}};
+  }
+
+  while (_state != ExecutionState::DONE) {
+    size_t skipped;
+    std::tie(_state, skipped) = _fetcher.skipRows(ExecutionBlock::SkipAllSize());
+
+    if (_state == ExecutionState::WAITING) {
+      TRI_ASSERT(skipped == 0);
+      return {_state, NoStats{}};
+    }
+
+    TRI_ASSERT(skipped != 0 || _state == ExecutionState::DONE);
+    incrCountBy(skipped);
+  }
+
+  // In general, we do not have an input row. In fact, we never fetch one.
+  output.setAllowSourceRowUninitialized();
+
+  // We must produce exactly one output row.
+  output.cloneValueInto(_infos.getOutputRegisterId(),
+                        InputAqlItemRow{CreateInvalidInputRowHint{}},
+                        AqlValue(AqlValueHintUInt(getCount())));
+
+  return {_state, NoStats{}};
+}
+
+void CountCollectExecutor::incrCountBy(size_t incr) noexcept { _count += incr; }
+
+uint64_t CountCollectExecutor::getCount() noexcept { return _count; }
+
+std::pair<ExecutionState, size_t> CountCollectExecutor::expectedNumberOfRows(size_t) const {
+  if (_state == ExecutionState::DONE) {
+    return {ExecutionState::DONE, 0};
+  }
+  return {ExecutionState::HASMORE, 1};
+}
+
+const CountCollectExecutor::Infos& CountCollectExecutor::infos() const noexcept {
+  return _infos;
+}
 
 CountCollectExecutor::~CountCollectExecutor() = default;

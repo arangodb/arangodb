@@ -859,6 +859,8 @@ class ImplToFst : public FST {
 
   Weight Final(StateId s) const override { return impl_->Final(s); }
 
+  const Weight& FinalRef(StateId s) const { return impl_->FinalRef(s); }
+
   size_t NumArcs(StateId s) const override { return impl_->NumArcs(s); }
 
   size_t NumInputEpsilons(StateId s) const override {

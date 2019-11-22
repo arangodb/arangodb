@@ -2,7 +2,7 @@
 @startDocuBlock import_document
 @brief imports documents from JSON-encoded lists
 
-@RESTHEADER{POST /_api/import#document,imports document values}
+@RESTHEADER{POST /_api/import#document,imports document values, RestImportHandler#document}
 
 @RESTALLBODYPARAM{documents,string,required}
 The body must consist of JSON-encoded arrays of attribute values, with one

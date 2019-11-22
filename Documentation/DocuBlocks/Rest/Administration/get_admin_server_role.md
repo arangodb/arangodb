@@ -2,7 +2,7 @@
 @startDocuBlock get_admin_server_role
 @brief Return the role of a server in a cluster
 
-@RESTHEADER{GET /_admin/server/role, Return the role of a server in a cluster}
+@RESTHEADER{GET /_admin/server/role, Return the role of a server in a cluster, handleRole}
 
 @RESTDESCRIPTION
 Returns the role of a server in a cluster.

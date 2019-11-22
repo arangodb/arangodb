@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "MMFilesRestReplicationHandler.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Logger/Logger.h"
@@ -29,14 +30,15 @@
 #include "MMFiles/MMFilesEngine.h"
 #include "MMFiles/MMFilesLogfileManager.h"
 #include "MMFiles/mmfiles-replication-dump.h"
+#include "Replication/ReplicationClients.h"
 #include "Replication/utilities.h"
+#include "Rest/HttpResponse.h"
 #include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/CollectionKeysRepository.h"
-#include "Utils/CollectionNameResolver.h"
 #include "Utils/ExecContext.h"
 #include "Utils/OperationOptions.h"
 #include "VocBase/LogicalCollection.h"
@@ -51,28 +53,25 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-MMFilesRestReplicationHandler::MMFilesRestReplicationHandler(GeneralRequest* request,
-                                                             GeneralResponse* response)
-    : RestReplicationHandler(request, response) {}
+MMFilesRestReplicationHandler::MMFilesRestReplicationHandler(
+    application_features::ApplicationServer& server, GeneralRequest* request,
+    GeneralResponse* response)
+    : RestReplicationHandler(server, request, response) {}
 
-MMFilesRestReplicationHandler::~MMFilesRestReplicationHandler() {}
+MMFilesRestReplicationHandler::~MMFilesRestReplicationHandler() = default;
 
 /// @brief insert the applier action into an action list
 void MMFilesRestReplicationHandler::insertClient(TRI_voc_tick_t lastServedTick) {
-  bool found;
-  std::string const& value = _request->value("serverId", found);
+  TRI_server_id_t const clientId =
+      StringUtils::uint64(_request->value("serverId"));
+  SyncerId const syncerId = SyncerId::fromRequest(*_request);
+  std::string const clientInfo = _request->value("clientInfo");
 
-  if (found && !value.empty() && value != "none") {
-    TRI_server_id_t serverId = static_cast<TRI_server_id_t>(StringUtils::uint64(value));
-
-    if (serverId > 0) {
-      _vocbase.updateReplicationClient(serverId, lastServedTick,
-                                       replutils::BatchInfo::DefaultTimeout);
-    }
-  }
+  _vocbase.replicationClients().track(syncerId, clientId, clientInfo, lastServedTick,
+                                      replutils::BatchInfo::DefaultTimeout);
 }
 
-// prevents datafiles from beeing removed while dumping the contents
+// prevents datafiles from being removed while dumping the contents
 void MMFilesRestReplicationHandler::handleCommandBatch() {
   // extract the request type
   auto const type = _request->requestType();
@@ -282,7 +281,7 @@ void MMFilesRestReplicationHandler::handleCommandLoggerFollow() {
   }
 
   // determine start and end tick
-  MMFilesLogfileManagerState const state = MMFilesLogfileManager::instance()->state();
+  MMFilesLogfileManagerState state = MMFilesLogfileManager::instance()->state();
   TRI_voc_tick_t tickStart = 0;
   TRI_voc_tick_t tickEnd = UINT64_MAX;
   TRI_voc_tick_t firstRegularTick = 0;
@@ -306,6 +305,10 @@ void MMFilesRestReplicationHandler::handleCommandLoggerFollow() {
                   "invalid from/to values");
     return;
   }
+
+  // don't read over the last committed tick value, which we will return
+  // as part of our response as well
+  tickEnd = std::max(tickEnd, state.lastCommittedTick);
 
   // check if a barrier id was specified in request
   TRI_voc_tid_t barrierId = 0;
@@ -358,7 +361,7 @@ void MMFilesRestReplicationHandler::handleCommandLoggerFollow() {
     }
   }
 
-  grantTemporaryRights();
+  ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
 
   // extract collection
   TRI_voc_cid_t cid = 0;
@@ -413,6 +416,13 @@ void MMFilesRestReplicationHandler::handleCommandLoggerFollow() {
     resetResponse(rest::ResponseCode::OK);
   }
 
+  // pull the latest state again, so that the last tick we hand out is always >=
+  // the last included tick value in the results
+  while (state.lastCommittedTick < dump._lastFoundTick && !_vocbase.server().isStopping()) {
+    state = _vocbase.server().getFeature<MMFilesLogfileManager>().state();
+    std::this_thread::sleep_for(std::chrono::microseconds(500));
+  }
+
   // transfer ownership of the buffer contents
   _response->setContentType(rest::ContentType::DUMP);
 
@@ -432,9 +442,7 @@ void MMFilesRestReplicationHandler::handleCommandLoggerFollow() {
 
   if (length > 0) {
     if (useVst) {
-      for (auto message : dump._slices) {
-        _response->addPayload(std::move(message), &dump._vpackOptions, true);
-      }
+      _response->addPayload(std::move(dump._slices), &dump._vpackOptions, true);
     } else {
       HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(_response.get());
 
@@ -503,7 +511,7 @@ void MMFilesRestReplicationHandler::handleCommandDetermineOpenTransactions() {
 
   if (res != TRI_ERROR_NO_ERROR) {
     std::string const err = "failed to determine open transactions";
-    LOG_TOPIC(ERR, Logger::REPLICATION) << err;
+    LOG_TOPIC("5b093", ERR, Logger::REPLICATION) << err;
     generateError(rest::ResponseCode::BAD, res, err);
     return;
   }
@@ -544,6 +552,7 @@ void MMFilesRestReplicationHandler::handleCommandInventory() {
 
   // include system collections?
   bool includeSystem = _request->parsedValue("includeSystem", true);
+  bool includeFoxxQueues = _request->parsedValue("includeFoxxQueues", false);
 
   // produce inventory for all databases?
   bool global = _request->parsedValue("global", false);
@@ -555,14 +564,14 @@ void MMFilesRestReplicationHandler::handleCommandInventory() {
     return;
   }
 
-  auto nameFilter = [includeSystem](LogicalCollection const* collection) {
-    std::string const cname = collection->name();
-    if (!includeSystem && !cname.empty() && cname[0] == '_') {
+  auto nameFilter = [&](LogicalCollection const* collection) {
+    std::string const& cname = collection->name();
+    if (!includeSystem && TRI_vocbase_t::IsSystemName(cname)) {
       // exclude all system collections
       return false;
     }
 
-    if (TRI_ExcludeCollectionReplication(cname, includeSystem)) {
+    if (TRI_ExcludeCollectionReplication(cname, includeSystem, includeFoxxQueues)) {
       // collection is excluded from replication
       return false;
     }
@@ -580,7 +589,7 @@ void MMFilesRestReplicationHandler::handleCommandInventory() {
     DatabaseFeature::DATABASE->inventory(builder, tick, nameFilter);
   } else {
     // add collections and views
-    grantTemporaryRights();
+    ExecContextSuperuserScope scope(ExecContext::current().isAdminUser());
     _vocbase.inventory(builder, tick, nameFilter);
     TRI_ASSERT(builder.hasKey("collections") && builder.hasKey("views"));
   }
@@ -655,8 +664,7 @@ void MMFilesRestReplicationHandler::handleCommandCreateKeys() {
   size_t const count = keys->count();
   auto keysRepository = _vocbase.collectionKeys();
 
-  keysRepository->store(keys.get());
-  keys.release();
+  keysRepository->store(std::move(keys));
 
   VPackBuilder result;
   result.add(VPackValue(VPackValueType::Object));
@@ -699,7 +707,6 @@ void MMFilesRestReplicationHandler::handleCommandGetKeys() {
 
   auto collectionKeysId =
       static_cast<CollectionKeysId>(arangodb::basics::StringUtils::uint64(id));
-
   auto collectionKeys = keysRepository->find(collectionKeysId);
 
   if (collectionKeys == nullptr) {
@@ -708,37 +715,33 @@ void MMFilesRestReplicationHandler::handleCommandGetKeys() {
     return;
   }
 
-  try {
-    VPackBuilder b;
-    b.add(VPackValue(VPackValueType::Array));
+  TRI_DEFER(collectionKeys->release());
 
-    TRI_voc_tick_t max = static_cast<TRI_voc_tick_t>(collectionKeys->count());
+  VPackBuilder b;
+  b.add(VPackValue(VPackValueType::Array));
 
-    for (TRI_voc_tick_t from = 0; from < max; from += chunkSize) {
-      TRI_voc_tick_t to = from + chunkSize;
+  TRI_voc_tick_t max = static_cast<TRI_voc_tick_t>(collectionKeys->count());
 
-      if (to > max) {
-        to = max;
-      }
+  for (TRI_voc_tick_t from = 0; from < max; from += chunkSize) {
+    TRI_voc_tick_t to = from + chunkSize;
 
-      auto result = collectionKeys->hashChunk(static_cast<size_t>(from),
-                                              static_cast<size_t>(to));
-
-      // Add a chunk
-      b.add(VPackValue(VPackValueType::Object));
-      b.add("low", VPackValue(std::get<0>(result)));
-      b.add("high", VPackValue(std::get<1>(result)));
-      b.add("hash", VPackValue(std::to_string(std::get<2>(result))));
-      b.close();
+    if (to > max) {
+      to = max;
     }
-    b.close();
 
-    collectionKeys->release();
-    generateResult(rest::ResponseCode::OK, b.slice());
-  } catch (...) {
-    collectionKeys->release();
-    throw;
+    auto result =
+        collectionKeys->hashChunk(static_cast<size_t>(from), static_cast<size_t>(to));
+
+    // Add a chunk
+    b.add(VPackValue(VPackValueType::Object));
+    b.add("low", VPackValue(std::get<0>(result)));
+    b.add("high", VPackValue(std::get<1>(result)));
+    b.add("hash", VPackValue(std::to_string(std::get<2>(result))));
+    b.close();
   }
+  b.close();
+
+  generateResult(rest::ResponseCode::OK, b.slice());
 }
 
 /// @brief returns date for a key range
@@ -816,38 +819,31 @@ void MMFilesRestReplicationHandler::handleCommandFetchKeys() {
     return;
   }
 
-  try {
-    auto ctx = transaction::StandaloneContext::Create(_vocbase);
-    VPackBuilder resultBuilder(ctx->getVPackOptions());
+  TRI_DEFER(collectionKeys->release());
 
-    resultBuilder.openArray();
+  auto ctx = transaction::StandaloneContext::Create(_vocbase);
+  VPackBuilder resultBuilder(ctx->getVPackOptions());
 
-    if (keys) {
-      collectionKeys->dumpKeys(resultBuilder, chunk, static_cast<size_t>(chunkSize));
-    } else {
-      bool success = false;
-      VPackSlice parsedIds = this->parseVPackBody(success);
+  resultBuilder.openArray();
 
-      if (!success) {
-        // error already created
-        collectionKeys->release();
-        return;
-      }
+  if (keys) {
+    collectionKeys->dumpKeys(resultBuilder, chunk, static_cast<size_t>(chunkSize));
+  } else {
+    bool success = false;
+    VPackSlice parsedIds = this->parseVPackBody(success);
 
-      collectionKeys->dumpDocs(resultBuilder, chunk, static_cast<size_t>(chunkSize),
-                               offsetInChunk, maxChunkSize, parsedIds);
+    if (!success) {
+      // error already created
+      return;
     }
 
-    resultBuilder.close();
-
-    collectionKeys->release();
-
-    generateResult(rest::ResponseCode::OK, resultBuilder.slice(), ctx);
-    return;
-  } catch (...) {
-    collectionKeys->release();
-    throw;
+    collectionKeys->dumpDocs(resultBuilder, chunk, static_cast<size_t>(chunkSize),
+                             offsetInChunk, maxChunkSize, parsedIds);
   }
+
+  resultBuilder.close();
+
+  generateResult(rest::ResponseCode::OK, resultBuilder.slice(), ctx);
 }
 
 void MMFilesRestReplicationHandler::handleCommandRemoveKeys() {
@@ -919,7 +915,7 @@ void MMFilesRestReplicationHandler::handleCommandDump() {
   bool includeSystem = _request->parsedValue("includeSystem", true);
   bool withTicks = _request->parsedValue("ticks", true);
 
-  grantTemporaryRights();
+  ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
 
   auto c = _vocbase.lookupCollection(collection);
 
@@ -928,14 +924,13 @@ void MMFilesRestReplicationHandler::handleCommandDump() {
     return;
   }
 
-  ExecContext const* exec = ExecContext::CURRENT;
-  if (exec != nullptr &&
-      !exec->canUseCollection(_vocbase.name(), c->name(), auth::Level::RO)) {
+  ExecContext const& execContext = ExecContext::current();
+  if (!execContext.canUseCollection(_vocbase.name(), c->name(), auth::Level::RO)) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
     return;
   }
 
-  LOG_TOPIC(TRACE, arangodb::Logger::REPLICATION)
+  LOG_TOPIC("8311f", TRACE, arangodb::Logger::REPLICATION)
       << "requested collection dump for collection '" << collection
       << "', tickStart: " << tickStart << ", tickEnd: " << tickEnd;
 

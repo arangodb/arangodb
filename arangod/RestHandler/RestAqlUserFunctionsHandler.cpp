@@ -24,8 +24,7 @@
 #include "RestAqlUserFunctionsHandler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Rest/HttpRequest.h"
-
+#include "Basics/StaticStrings.h"
 #include "VocBase/Methods/AqlUserFunctions.h"
 
 #include <velocypack/Builder.h>
@@ -35,9 +34,10 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestAqlUserFunctionsHandler::RestAqlUserFunctionsHandler(GeneralRequest* request,
+RestAqlUserFunctionsHandler::RestAqlUserFunctionsHandler(application_features::ApplicationServer& server,
+                                                         GeneralRequest* request,
                                                          GeneralResponse* response)
-    : RestVocbaseBaseHandler(request, response) {}
+    : RestVocbaseBaseHandler(server, request, response) {}
 
 RestStatus RestAqlUserFunctionsHandler::execute() {
   auto const type = _request->requestType();
@@ -67,8 +67,8 @@ RestStatus RestAqlUserFunctionsHandler::execute() {
       auto code = replacedExisting ? rest::ResponseCode::OK : rest::ResponseCode::CREATED;
       VPackBuilder tmp;
       tmp.add(VPackValue(VPackValueType::Object));
-      tmp.add("error", VPackValue(false));
-      tmp.add("code", VPackValue(static_cast<int>(code)));
+      tmp.add(StaticStrings::Error, VPackValue(false));
+      tmp.add(StaticStrings::Code, VPackValue(static_cast<int>(code)));
       tmp.add("isNewlyCreated", VPackValue(!replacedExisting));
       tmp.close();
 

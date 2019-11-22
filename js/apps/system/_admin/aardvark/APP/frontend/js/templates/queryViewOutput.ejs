@@ -1,0 +1,41 @@
+<div id="outputEditorWrapper<%= counter %>" class="outputEditorWrapper">
+    <div class="arangoToolbar arangoToolbarTop">
+      <div class="pull-left">
+        <span class="toolbarType"><%=type%></span>
+          <span id="spinner"><i class="fa fa-spinner fa-spin"></i><i>Query is operating ...</i></span>
+      </div>
+      <div class="pull-right">
+        <span class="action closeResult" element="outputEditor<%= counter %>"><i class="fa fa-close" style="display: none"></i></span>
+      </div>
+      <div class="pull-right">
+        <div class="switchAce" counter="<%=counter%>">
+          <span id="json-switch" val="JSON" counter="<%=counter%>">JSON</span>
+          <span id="table-switch" val="Table" counter="<%=counter%>" style="display: none">Table</span>
+          <span id="graph-switch" val="Graph" counter="<%=counter%>" style="display: none">Graph</span>
+          <span id="geo-switch" val="Geo" counter="<%=counter%>" style="display: none">Geo</span>
+        </div>
+      </div>
+    </div>
+    <div id="outputEditor<%= counter %>" style="opacity: 0.5"></div>
+    <div id="sentWrapper<%= counter %>" class="sentWrapper" style="display: none">
+      <div class="pull-left">
+        <div id="sentQueryEditor<%= counter %>"></div>
+      </div>
+      <div class="pull-right">
+        <div id="sentBindParamEditor<%= counter %>"></div>
+      </div>
+    </div>
+    <div class="arangoToolbar arangoToolbarBottom">
+      <div class="pull-right">
+        <% if (type === 'Query') { %>
+          <button id="copy2gV" counter="<%=counter%>" style="display: none; margin-right: 0;" class="button-success">Graph Viewer</button>
+          <button id="downloadQueryResult" counter="<%=counter%>" style="display: none; margin-right: 0;" class="button-success">Download</button>
+          <button id="downloadCsvResult" counter="<%=counter%>" style="display: none; margin-right: 0;" class="button-success">CSV</button>
+          <button id="copy2aqlEditor" counter="<%=counter%>" style="display: none; margin-right: 8px;" class="button-success">Copy To Editor</button>
+          <button id="cancelCurrentQuery" class="button-danger" style="margin-right: 5px">Cancel</button>
+        <% } %>
+      </div>
+    </div>
+  </div>
+
+  </div>

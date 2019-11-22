@@ -98,7 +98,7 @@
     },
 
     search: function () {
-      this.setSearchString($('#viewsSearchInput').val());
+      this.setSearchString(arangoHelper.escapeHtml($('#viewsSearchInput').val()));
       this.render();
     },
 

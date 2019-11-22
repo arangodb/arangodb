@@ -1,7 +1,0 @@
-@Q:
-RETURN DATE_ISO8601(<span class="hljs-string">'2017-02-03T18:25:43Z'</span>)
-
-@R
-[
-  <span class="hljs-string">"2017-02-03T18:25:43.000Z"</span>
-]

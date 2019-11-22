@@ -25,6 +25,8 @@
 #define ARANGOD_REPLICATION_REPLICATION_APPLIER_STATE_H 1
 
 #include "Basics/Common.h"
+#include "Basics/StaticStrings.h"
+#include "Basics/voc-errors.h"
 #include "Replication/common-defines.h"
 #include "VocBase/voc-types.h"
 
@@ -68,6 +70,7 @@ struct ReplicationApplierState {
   std::string _progressMsg;
   char _progressTime[24];
   TRI_server_id_t _serverId;
+  char _startTime[24];
 
   /// performs initial sync or running tailing syncer
   bool isActive() const {
@@ -84,7 +87,7 @@ struct ReplicationApplierState {
 
   void setError(int code, std::string const& msg) { _lastError.set(code, msg); }
 
-  void clearError() { _lastError.reset(); }
+  void setStartTime();
 
   // last error that occurred during replication
   struct LastError {
@@ -106,12 +109,12 @@ struct ReplicationApplierState {
 
     void toVelocyPack(arangodb::velocypack::Builder& result) const {
       result.add(VPackValue(VPackValueType::Object));
-      result.add("errorNum", VPackValue(code));
+      result.add(StaticStrings::ErrorNum, VPackValue(code));
 
       if (code > 0) {
         result.add("time", VPackValue(time));
         if (!message.empty()) {
-          result.add("errorMessage", VPackValue(message));
+          result.add(StaticStrings::ErrorMessage, VPackValue(message));
         }
       }
       result.close();
@@ -127,8 +130,22 @@ struct ReplicationApplierState {
   uint64_t _totalRequests;
   uint64_t _totalFailedConnects;
   uint64_t _totalEvents;
+  uint64_t _totalDocuments;
+  uint64_t _totalRemovals;
   uint64_t _totalResyncs;
-  uint64_t _skippedOperations;
+  uint64_t _totalSkippedOperations;
+
+  /// @brief total time spend in applyLog()
+  double _totalApplyTime;
+
+  /// @brief number of times we called applyLog()
+  uint64_t _totalApplyInstances;
+
+  /// @brief total time spend for fetching data from leader
+  double _totalFetchTime;
+
+  /// @brief number of times data was fetched from leader
+  uint64_t _totalFetchInstances;
 };
 
 }  // namespace arangodb

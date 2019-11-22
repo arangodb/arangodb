@@ -32,17 +32,21 @@
 #include "Cache/Finding.h"
 #include "Cluster/ServerState.h"
 #include "Graph/EdgeDocumentToken.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 #include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
+
 using namespace arangodb;
 using namespace arangodb::graph;
 
-TraverserDocumentCache::TraverserDocumentCache(aql::Query* query)
-    : TraverserCache(query), _cache(nullptr) {
+TraverserDocumentCache::TraverserDocumentCache(aql::Query* query, BaseOptions const* options)
+    : TraverserCache(query, options), _cache(nullptr) {
   auto cacheManager = CacheManagerFeature::MANAGER;
   if (cacheManager != nullptr) {
     _cache = cacheManager->createCache(cache::CacheType::Plain);
@@ -75,7 +79,7 @@ cache::Finding TraverserDocumentCache::lookup(arangodb::velocypack::StringRef id
 VPackSlice TraverserDocumentCache::lookupAndCache(arangodb::velocypack::StringRef id) {
   VPackSlice result = lookupInCollection(id);
   if (_cache != nullptr) {
-    void const* key = id.begin();
+    void const* key = id.data();
     auto keySize = static_cast<uint32_t>(id.length());
 
     void const* resVal = result.begin();
@@ -86,7 +90,7 @@ VPackSlice TraverserDocumentCache::lookupAndCache(arangodb::velocypack::StringRe
     if (value) {
       auto result = _cache->insert(value.get());
       if (!result.ok()) {
-        LOG_TOPIC(DEBUG, Logger::GRAPHS) << "Insert failed";
+        LOG_TOPIC("9de3a", DEBUG, Logger::GRAPHS) << "Insert failed";
       } else {
         // Cache is responsible.
         // If this failed, well we do not store it and read it again next time.
@@ -155,7 +159,7 @@ void TraverserDocumentCache::insertDocument(arangodb::velocypack::StringRef idSt
       if (value) {
         auto result = _cache->insert(value.get());
         if (!result.ok()) {
-          LOG_TOPIC(DEBUG, Logger::GRAPHS)
+          LOG_TOPIC("9bed3", DEBUG, Logger::GRAPHS)
               << "Insert document into cache failed";
         } else {
           // Cache is responsible.

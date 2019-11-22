@@ -26,50 +26,33 @@
 
 #include "Aql/ExecutionPlan.h"
 #include "Basics/Common.h"
-#include "Basics/RollingVector.h"
+#include "Containers/RollingVector.h"
 
 #include <velocypack/Builder.h>
+#include <velocypack/StringRef.h>
+#include <vector>
 
 namespace arangodb {
 namespace aql {
 struct OptimizerRule;
-class OptimizerRulesFeature;
 struct QueryOptions;
 
 class Optimizer {
- public:
-  /// @brief optimizer statistics
-  struct Stats {
-    int64_t rulesExecuted = 0;
-    int64_t rulesSkipped = 0;
-    int64_t plansCreated = 1;  // 1 for the initial plan
-
-    void toVelocyPack(velocypack::Builder& b) const {
-      velocypack::ObjectBuilder guard(&b, true);
-      b.add("rulesExecuted", velocypack::Value(rulesExecuted));
-      b.add("rulesSkipped", velocypack::Value(rulesSkipped));
-      b.add("plansCreated", velocypack::Value(plansCreated));
-    }
-  };
-
- public:
-  struct Rule {
-    OptimizerRule& rule;
-    bool enabled;
-  };
-  using RuleMap = std::map<int, Rule>;
+ private:
+  /// @brief this stored the positions of rules in OptimizerRulesFeature::_rules
+  using RuleDatabase = std::vector<int>; 
 
   /// @brief the following struct keeps a list (deque) of ExecutionPlan*
   /// and has some automatic convenience functions.
   struct PlanList {
-    using Entry = std::pair<std::unique_ptr<ExecutionPlan>, RuleMap::iterator>;
+    using Entry = std::pair<std::unique_ptr<ExecutionPlan>, RuleDatabase::iterator>;
 
-    RollingVector<Entry> list;
+    ::arangodb::containers::RollingVector<Entry> list;
 
     PlanList() { list.reserve(8); }
 
     /// @brief constructor with a plan
-    PlanList(std::unique_ptr<ExecutionPlan> p, RuleMap::iterator rule) {
+    PlanList(std::unique_ptr<ExecutionPlan> p, RuleDatabase::iterator rule) {
       push_back(std::move(p), rule);
     }
 
@@ -90,7 +73,7 @@ class Optimizer {
     }
 
     /// @brief push_back
-    void push_back(std::unique_ptr<ExecutionPlan> p, RuleMap::iterator rule) {
+    void push_back(std::unique_ptr<ExecutionPlan> p, RuleDatabase::iterator rule) {
       list.push_back({std::move(p), rule});
     }
 
@@ -112,12 +95,30 @@ class Optimizer {
   };
 
  public:
+  /// @brief optimizer statistics
+  struct Stats {
+    int64_t rulesExecuted = 0;
+    int64_t rulesSkipped = 0;
+    int64_t plansCreated = 1;  // 1 for the initial plan
+
+    void toVelocyPack(velocypack::Builder& b) const {
+      velocypack::ObjectBuilder guard(&b, true);
+      b.add("rulesExecuted", velocypack::Value(rulesExecuted));
+      b.add("rulesSkipped", velocypack::Value(rulesSkipped));
+      b.add("plansCreated", velocypack::Value(plansCreated));
+    }
+  };
+
   /// @brief constructor, this will initialize the rules database
   /// the .cpp file includes Aql/OptimizerRules.h
   /// and add all methods there to the rules database
   explicit Optimizer(size_t maxNumberOfPlans);
 
-  ~Optimizer() {}
+  ~Optimizer() = default;
+
+  /// @brief disable rules in the given plan, using the predicate function
+  void disableRules(ExecutionPlan* plan,
+                    std::function<bool(OptimizerRule const&)> const& predicate);
 
   /// @brief do the optimization, this does the optimization, the resulting
   /// plans are all estimated, sorted by that estimate and can then be got
@@ -127,16 +128,19 @@ class Optimizer {
   /// newly created plans it recalls and will automatically delete them.
   /// If you need to extract the plans from the optimizer use stealBest or
   /// stealPlans.
-  int createPlans(std::unique_ptr<ExecutionPlan> p,
-                  QueryOptions const& queryOptions, bool estimateAllPlans);
+  void createPlans(std::unique_ptr<ExecutionPlan> p,
+                   QueryOptions const& queryOptions, bool estimateAllPlans);
 
   /// @brief add a plan to the optimizer
-  void addPlan(std::unique_ptr<ExecutionPlan>, OptimizerRule const*, bool, int newLevel = 0);
-
-  void disableRule(int rule);
+  void addPlan(std::unique_ptr<ExecutionPlan>, OptimizerRule const&, bool wasModified);
+  
+  /// @brief add a plan to the optimizer and makes it rerun the current rule again 
+  void addPlanAndRerun(std::unique_ptr<ExecutionPlan>, OptimizerRule const&, bool wasModified);
 
   /// @brief getPlans, ownership of the plans remains with the optimizer
-  RollingVector<PlanList::Entry>& getPlans() { return _plans.list; }
+  ::arangodb::containers::RollingVector<PlanList::Entry>& getPlans() {
+    return _plans.list;
+  }
 
   /// @brief stealBest, ownership of the plan is handed over to the caller,
   /// all other plans are deleted
@@ -155,6 +159,24 @@ class Optimizer {
   /// this should be called from rules, it will consider those that the
   /// current rules has already added
   size_t numberOfPlans() { return _plans.size() + _newPlans.size() + 1; }
+  
+ private:
+  /// @brief disable a specific rule
+  void disableRule(ExecutionPlan* plan, int level);
+  
+  /// @brief disable a specific rule, by name
+  void disableRule(ExecutionPlan* plan, velocypack::StringRef name); 
+  
+  /// @brief enable a specific rule
+  void enableRule(ExecutionPlan* plan, int level);
+  
+  /// @brief enable a specific rule, by name
+  void enableRule(ExecutionPlan* plan, velocypack::StringRef name);
+
+  /// @brief adds a plan, internal worker method
+  void addPlanInternal(std::unique_ptr<ExecutionPlan> plan,
+                       OptimizerRule const& rule, bool wasModified,
+                       RuleDatabase::iterator const& nextRule);
 
  public:
   /// @brief optimizer statistics
@@ -169,10 +191,10 @@ class Optimizer {
 
   /// @brief the rule that is currently getting applied
   /// (while applying optimizer rules in createPlans)
-  RuleMap::iterator _currentRule;
+  RuleDatabase::iterator _currentRule;
 
   /// @brief list of optimizer rules to be applied
-  RuleMap _rules;
+  RuleDatabase _rules;
 
   /// @brief maximal number of plans to produce
   size_t const _maxNumberOfPlans;

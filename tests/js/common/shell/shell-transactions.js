@@ -28,53 +28,46 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require("jsunity");
-var arangodb = require("@arangodb");
-var internal = require("internal");
-var ERRORS = arangodb.errors;
-var ArangoError = require("@arangodb").ArangoError;
-var cluster;
-var isOnServer = (typeof ArangoClusterComm === "object");
-if (isOnServer) {
-  cluster = require("@arangodb/cluster");
-} else {
-  cluster = {};
-}
-var db = arangodb.db;
+const jsunity = require("jsunity");
+const arangodb = require("@arangodb");
+const internal = require("internal");
+const ERRORS = arangodb.errors;
+const ArangoError = require("@arangodb").ArangoError;
+const db = arangodb.db;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-function TransactionsInvocationsSuite () {
+function TransactionsInvocationsSuite() {
   'use strict';
 
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief set up
+    ////////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
+    setUp: function () {
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief tear down
+    ////////////////////////////////////////////////////////////////////////////////
 
-    tearDown : function () {
+    tearDown: function () {
       internal.wait(0);
     },
 
-    testErrorHandling : function () {
+    testErrorHandling: function () {
       try {
         db._executeTransaction({
           collections: {},
-          action: function() {
+          action: function () {
             var err = new Error('test');
             err.errorNum = 1234;
             Object.defineProperty(err, 'name', {
-                get: function() { throw new Error('Error in getter'); }
+              get: function () { throw new Error('Error in getter'); }
             });
             throw err;
           }
@@ -86,8 +79,8 @@ function TransactionsInvocationsSuite () {
         assertEqual(1234, err.errorNum);
       }
     },
-    
-    testErrorHandlingArangoError : function () {
+
+    testErrorHandlingArangoError: function () {
       try {
         db._executeTransaction({
           collections: {},
@@ -108,53 +101,53 @@ function TransactionsInvocationsSuite () {
     },
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief execute a transaction with a string action
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief execute a transaction with a string action
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testInvokeActionString : function () {
-      var result = db._executeTransaction({
-        collections: { },
+    testInvokeActionString: function () {
+      let result = db._executeTransaction({
+        collections: {},
         action: "function () { return 23; }"
       });
 
       assertEqual(23, result);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief execute a transaction with a string function action
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief execute a transaction with a string function action
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testInvokeActionStringFunction : function () {
+    testInvokeActionStringFunction: function () {
       var result = db._executeTransaction({
-        collections: { },
+        collections: {},
         action: "function () { return function () { return 11; }(); }"
       });
 
       assertEqual(11, result);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief execute a transaction with a function action
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief execute a transaction with a function action
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testInvokeActionFunction : function () {
+    testInvokeActionFunction: function () {
       var result = db._executeTransaction({
-        collections: { },
+        collections: {},
         action: function () { return 42; }
       });
 
       assertEqual(42, result);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief execute a transaction with an invalid action
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief execute a transaction with an invalid action
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testInvokeActionInvalid1 : function () {
+    testInvokeActionInvalid1: function () {
       try {
         db._executeTransaction({
-          collections: { },
+          collections: {},
           action: null,
         });
         fail();
@@ -164,14 +157,14 @@ function TransactionsInvocationsSuite () {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief execute a transaction without an action
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief execute a transaction without an action
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testInvokeNoAction : function () {
+    testInvokeNoAction: function () {
       try {
         db._executeTransaction({
-          collections: { }
+          collections: {}
         });
         fail();
       }
@@ -180,14 +173,14 @@ function TransactionsInvocationsSuite () {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief execute a transaction with a non-working action declaration
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief execute a transaction with a non-working action declaration
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testInvokeActionBroken1 : function () {
+    testInvokeActionBroken1: function () {
       try {
         db._executeTransaction({
-          collections: { },
+          collections: {},
           action: "return 11;"
         });
         fail();
@@ -197,14 +190,14 @@ function TransactionsInvocationsSuite () {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief execute a transaction with a non-working action declaration
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief execute a transaction with a non-working action declaration
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testInvokeActionBroken2 : function () {
+    testInvokeActionBroken2: function () {
       try {
         db._executeTransaction({
-          collections: { },
+          collections: {},
           action: "function () { "
         });
         fail();
@@ -214,14 +207,14 @@ function TransactionsInvocationsSuite () {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief execute a transaction with an invalid action
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief execute a transaction with an invalid action
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testInvokeActionInvalid2 : function () {
+    testInvokeActionInvalid2: function () {
       try {
         db._executeTransaction({
-          collections: { },
+          collections: {},
           action: null,
         });
         fail();
@@ -231,34 +224,34 @@ function TransactionsInvocationsSuite () {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief parameters
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief parameters
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testParametersString : function () {
+    testParametersString: function () {
       var result = db._executeTransaction({
-        collections: { },
+        collections: {},
         action: "function (params) { return [ params[1], params[4] ]; }",
-        params: [ 1, 2, 3, 4, 5 ]
+        params: [1, 2, 3, 4, 5]
       });
 
-      assertEqual([ 2, 5 ], result);
+      assertEqual([2, 5], result);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief parameters
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief parameters
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testParametersFunction : function () {
+    testParametersFunction: function () {
       var result = db._executeTransaction({
-        collections: { },
+        collections: {},
         action: function (params) {
-          return [ params[1], params[4] ];
+          return [params[1], params[4]];
         },
-        params: [ 1, 2, 3, 4, 5 ]
+        params: [1, 2, 3, 4, 5]
       });
 
-      assertEqual([ 2, 5 ], result);
+      assertEqual([2, 5], result);
     }
 
   };
@@ -268,7 +261,7 @@ function TransactionsInvocationsSuite () {
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-function TransactionsImplicitCollectionsSuite () {
+function TransactionsImplicitCollectionsSuite() {
   'use strict';
 
   var cn1 = "UnitTestsTransaction1";
@@ -278,33 +271,33 @@ function TransactionsImplicitCollectionsSuite () {
 
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief set up
+    ////////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
+    setUp: function () {
       db._drop(cn1);
       db._drop(cn2);
       c1 = db._create(cn1);
       c2 = db._createEdgeCollection(cn2);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief tear down
+    ////////////////////////////////////////////////////////////////////////////////
 
-    tearDown : function () {
+    tearDown: function () {
       c1 = null;
       c2 = null;
       db._drop(cn1);
       db._drop(cn2);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test allowImplicit
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test allowImplicit
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testSingleReadOnly : function () {
+    testSingleReadOnly: function () {
       assertEqual([], db._executeTransaction({
         collections: { allowImplicit: false, read: cn1 },
         action: "function (params) { " +
@@ -313,11 +306,11 @@ function TransactionsImplicitCollectionsSuite () {
       }));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test read collection object
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test read collection object
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testSingleReadCollectionObject : function () {
+    testSingleReadCollectionObject: function () {
       assertEqual([], db._executeTransaction({
         collections: { read: db._collection(cn1) },
         action: "function (params) { " +
@@ -326,11 +319,11 @@ function TransactionsImplicitCollectionsSuite () {
       }));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test read collection object in array
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test read collection object in array
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testSingleReadCollectionArray : function () {
+    testSingleReadCollectionArray: function () {
       assertEqual([], db._executeTransaction({
         collections: { read: [db._collection(cn1)] },
         action: "function (params) { " +
@@ -339,11 +332,11 @@ function TransactionsImplicitCollectionsSuite () {
       }));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test allowImplicit
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test allowImplicit
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testSingleWriteOnly : function () {
+    testSingleWriteOnly: function () {
       assertEqual([], db._executeTransaction({
         collections: { allowImplicit: false, write: cn1 },
         action: "function (params) { " +
@@ -352,11 +345,11 @@ function TransactionsImplicitCollectionsSuite () {
       }));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test write collection object
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test write collection object
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testSingleWriteCollectionObject : function () {
+    testSingleWriteCollectionObject: function () {
       assertEqual([], db._executeTransaction({
         collections: { write: db._collection(cn1) },
         action: "function (params) { " +
@@ -365,11 +358,11 @@ function TransactionsImplicitCollectionsSuite () {
       }));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test write collection object in array
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test write collection object in array
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testSingleWriteCollectionArray : function () {
+    testSingleWriteCollectionArray: function () {
       assertEqual([], db._executeTransaction({
         collections: { write: [db._collection(cn1)] },
         action: "function (params) { " +
@@ -378,11 +371,11 @@ function TransactionsImplicitCollectionsSuite () {
       }));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test allowImplicit
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test allowImplicit
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testSingleReadWrite : function () {
+    testSingleReadWrite: function () {
       assertEqual([], db._executeTransaction({
         collections: { allowImplicit: false, write: cn1, read: cn1 },
         action: "function (params) { " +
@@ -391,11 +384,11 @@ function TransactionsImplicitCollectionsSuite () {
       }));
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test allowImplicit
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test allowImplicit
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testMultiRead : function () {
+    testMultiRead: function () {
       try {
         db._executeTransaction({
           collections: { allowImplicit: false, read: cn1 },
@@ -410,39 +403,39 @@ function TransactionsImplicitCollectionsSuite () {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief uses implicitly declared collections in AQL
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief uses implicitly declared collections in AQL
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testUseInAqlTraversal : function () {
+    testUseInAqlTraversal: function () {
       var result = db._executeTransaction({
         collections: { allowImplicit: false, read: cn2 },
         action: "function (params) { " +
           "return require('internal').db._query('FOR i IN ANY @start @@cn RETURN i', { '@cn' : params.cn, start: params.cn + '/1' }).toArray(); }",
         params: { cn: cn2 }
       });
-      assertEqual([ ], result);
+      assertEqual([], result);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief uses implicitly declared collections in AQL
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief uses implicitly declared collections in AQL
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testUseInAqlTraversalTwoCollections : function () {
+    testUseInAqlTraversalTwoCollections: function () {
       var result = db._executeTransaction({
-        collections: { allowImplicit: false, read: [ cn1, cn2 ] },
+        collections: { allowImplicit: false, read: [cn1, cn2] },
         action: "function (params) { " +
           "return require('internal').db._query('FOR i IN ANY @start @@cn RETURN i', { '@cn' : params.cn, start: params.cn + '/1' }).toArray(); }",
         params: { cn: cn2 }
       });
-      assertEqual([ ], result);
+      assertEqual([], result);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief uses implicitly declared collections in AQL
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief uses implicitly declared collections in AQL
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testUseInAqlTraversalUndeclared : function () {
+    testUseInAqlTraversalUndeclared: function () {
       try {
         db._executeTransaction({
           collections: { allowImplicit: false, read: cn1 },
@@ -456,11 +449,11 @@ function TransactionsImplicitCollectionsSuite () {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief uses implicitly declared collections in AQL
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief uses implicitly declared collections in AQL
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testUseInAqlTraversalUndeclared2 : function () {
+    testUseInAqlTraversalUndeclared2: function () {
       try {
         db._executeTransaction({
           collections: { allowImplicit: false, read: cn2 },
@@ -474,11 +467,11 @@ function TransactionsImplicitCollectionsSuite () {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief uses implicitly declared collections in AQL
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief uses implicitly declared collections in AQL
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testUseInAqlTraversalUndeclared3 : function () {
+    testUseInAqlTraversalUndeclared3: function () {
       try {
         db._executeTransaction({
           collections: { allowImplicit: false, read: cn1 },
@@ -492,11 +485,11 @@ function TransactionsImplicitCollectionsSuite () {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief uses implicitly declared collections in AQL
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief uses implicitly declared collections in AQL
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testUseInAqlDocument : function () {
+    testUseInAqlDocument: function () {
       try {
         db._executeTransaction({
           collections: { allowImplicit: false, read: cn1 },
@@ -510,25 +503,25 @@ function TransactionsImplicitCollectionsSuite () {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief uses implicitly declared collections in AQL
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief uses implicitly declared collections in AQL
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testUseInAql : function () {
+    testUseInAql: function () {
       var result = db._executeTransaction({
         collections: { allowImplicit: false, read: cn1 },
         action: "function (params) { " +
           "return require('internal').db._query('FOR i IN @@cn1 RETURN i', { '@cn1' : params.cn1 }).toArray(); }",
         params: { cn1: cn1 }
       });
-      assertEqual([ ], result);
+      assertEqual([], result);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief uses implicitly declared collections in AQL
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief uses implicitly declared collections in AQL
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testUseInAqlUndeclared : function () {
+    testUseInAqlUndeclared: function () {
       try {
         db._executeTransaction({
           collections: { allowImplicit: false },
@@ -543,25 +536,25 @@ function TransactionsImplicitCollectionsSuite () {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief uses implicitly declared collections in AQL
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief uses implicitly declared collections in AQL
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testUseImplicitAql : function () {
+    testUseImplicitAql: function () {
       var result = db._executeTransaction({
         collections: { allowImplicit: true, read: cn1 },
-        action: "function (params) { " + 
+        action: "function (params) { " +
           "return require('internal').db._query('FOR i IN @@cn1 RETURN i', { '@cn1' : params.cn1 }).toArray(); }",
         params: { cn1: cn1 }
       });
-      assertEqual([ ], result);
+      assertEqual([], result);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief uses implicitly declared collections in AQL
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief uses implicitly declared collections in AQL
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testUseNoImplicitAql : function () {
+    testUseNoImplicitAql: function () {
       try {
         db._executeTransaction({
           collections: { allowImplicit: false, read: cn2 },
@@ -577,80 +570,24 @@ function TransactionsImplicitCollectionsSuite () {
     },
 
     ////////////////////////////////////////////////////////////////////////////////
-    /// @brief perform an infinite loop
+    /// @brief uses an explicitly declared collection for reading
     ////////////////////////////////////////////////////////////////////////////////
 
-    testUseQueryStreamCursorInAql : function () {
-      let docs = [];
-      for(let i = 0; i < 50000; i++) {
-        docs.push({value: i});
-        if (i % 5000 === 0) {
-          c1.save(docs);
-          docs = [];
-        }
-      }
-      c1.save(docs);
-      
-      var result = db._executeTransaction({
-        collections: { allowImplicit: false, read: cn1 },
-        action: `function (params) {
-          const db = require('internal').db;
-          let cc = db._query('FOR i IN @@cn1 RETURN i', { '@cn1' : params.cn1 }, {stream: true});
-          let xx = 0;
-          while (cc.hasNext()) {cc.next(); xx++;}
-          let cc2 = db._query('FOR i IN 1..1000000000 RETURN i', {}, {stream: true});
-          return xx; }`,
-        params: { cn1: cn1 }
-      });
-      assertEqual(50000, result);
-    },
-
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief perform an infinite loop
-    ////////////////////////////////////////////////////////////////////////////////
-
-    testUseQueryStreamCursorInAql2 : function () {
-      let docs = [];
-      for(let i = 0; i < 5000; i++) {
-        docs.push({value: i});
-      }
-      c1.save(docs);
-      
-      var result = db._executeTransaction({
-        collections: { allowImplicit: false, read: cn1, write: cn2 },
-        action: `function (params) {
-          const db = require('internal').db;
-          let cc = cursor = db._query("FOR o IN @@cn1 RETURN o", { '@cn1' : params.cn1 }, {stream: true});
-          let xx = 0;
-          while(cc.hasNext()) {
-            db._collection(params.cn2).save({val: cc.next(), _from:"abc/x", _to:"abc/y"});
-            xx++;
-          };
-          return xx; }`,
-        params: { cn1: cn1, cn2: cn2 }
-      });
-      assertEqual(5000, result);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief uses an explicitly declared collection for reading
-////////////////////////////////////////////////////////////////////////////////
-
-    testUseForRead : function () {
+    testUseForRead: function () {
       var result = db._executeTransaction({
         collections: { read: cn1 },
         action: "function (params) { var db = require('internal').db; return db._collection(params.cn1).toArray(); }",
         params: { cn1: cn1 }
       });
 
-      assertEqual([ ], result);
+      assertEqual([], result);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief uses an explicitly declared collection for writing
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief uses an explicitly declared collection for writing
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testUseForWriteAllowImplicit : function () {
+    testUseForWriteAllowImplicit: function () {
       db._executeTransaction({
         collections: { write: cn1, allowImplicit: true },
         action: "function (params) { var db = require('internal').db; db._collection(params.cn1).truncate(); }",
@@ -658,11 +595,11 @@ function TransactionsImplicitCollectionsSuite () {
       });
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief uses an explicitly declared collection for writing
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief uses an explicitly declared collection for writing
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testUseForWriteNoAllowImplicit : function () {
+    testUseForWriteNoAllowImplicit: function () {
       db._executeTransaction({
         collections: { write: cn1, allowImplicit: false },
         action: "function (params) { var db = require('internal').db; db._collection(params.cn1).truncate(); }",
@@ -670,42 +607,42 @@ function TransactionsImplicitCollectionsSuite () {
       });
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief uses an implicitly declared collection for reading
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief uses an implicitly declared collection for reading
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testUseOtherForRead : function () {
+    testUseOtherForRead: function () {
       var result = db._executeTransaction({
         collections: { read: cn1 },
         action: "function (params) { var db = require('internal').db; return db._collection(params.cn2).toArray(); }",
         params: { cn2: cn2 }
       });
-      
-      assertEqual([ ], result);
+
+      assertEqual([], result);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief uses an implicitly declared collection for reading
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief uses an implicitly declared collection for reading
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testUseOtherForReadAllowImplicit : function () {
+    testUseOtherForReadAllowImplicit: function () {
       var result = db._executeTransaction({
-        collections: { read: cn1, allowImplicit : true },
+        collections: { read: cn1, allowImplicit: true },
         action: "function (params) { var db = require('internal').db; return db._collection(params.cn2).toArray(); }",
         params: { cn2: cn2 }
       });
-      
-      assertEqual([ ], result);
+
+      assertEqual([], result);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief uses an implicitly declared collection for reading
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief uses an implicitly declared collection for reading
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testUseOtherForReadNoAllowImplicit : function () {
+    testUseOtherForReadNoAllowImplicit: function () {
       try {
         db._executeTransaction({
-          collections: { read: cn1, allowImplicit : false },
+          collections: { read: cn1, allowImplicit: false },
           action: "function (params) { var db = require('internal').db; return db._collection(params.cn2).toArray(); }",
           params: { cn2: cn2 }
         });
@@ -716,18 +653,87 @@ function TransactionsImplicitCollectionsSuite () {
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief uses an implicitly declared collection for writing
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief uses an implicitly declared collection for writing
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testUseOtherForWriteNoAllowImplicit : function () {
-      if ((cluster && cluster.isCluster && cluster.isCluster()) || !cluster.isCluster) {
-        return;
-      }
-
+    testUseOtherForWriteNoAllowImplicit: function () {
       try {
         db._executeTransaction({
-          collections: { read: cn1, allowImplicit : false },
+          collections: { read: cn1, allowImplicit: false },
+          action: "function (params) { var db = require('internal').db; db._collection(params.cn2).truncate(); }",
+          params: { cn2: cn2 }
+        });
+        fail();
+      }
+      catch (err) {
+        assertEqual(ERRORS.ERROR_TRANSACTION_UNREGISTERED_COLLECTION.code, err.errorNum);
+      }
+    },
+
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief uses an implicitly declared collection for writing
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testUseForWriting: function () {
+      try {
+        db._executeTransaction({
+          collections: {},
+          action: "function (params) { var db = require('internal').db; db._collection(params.cn1).truncate(); }",
+          params: { cn1: cn1 }
+        });
+        fail();
+      }
+      catch (err) {
+        assertEqual(ERRORS.ERROR_TRANSACTION_UNREGISTERED_COLLECTION.code, err.errorNum);
+      }
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief uses an implicitly declared collection for writing
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testUseReadForWriting: function () {
+      try {
+        db._executeTransaction({
+          collections: { read: cn1 },
+          action: "function (params) { var db = require('internal').db; db._collection(params.cn1).truncate(); }",
+          params: { cn1: cn1 }
+        });
+        fail();
+      }
+      catch (err) {
+        assertEqual(ERRORS.ERROR_TRANSACTION_UNREGISTERED_COLLECTION.code, err.errorNum);
+      }
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief uses an implicitly declared collection for writing
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testUseOtherForWriting: function () {
+      try {
+        db._executeTransaction({
+          collections: { write: cn2 },
+          action: "function (params) { var db = require('internal').db; db._collection(params.cn1).truncate(); }",
+          params: { cn1: cn1 }
+        });
+        fail();
+      }
+      catch (err) {
+        assertEqual(ERRORS.ERROR_TRANSACTION_UNREGISTERED_COLLECTION.code, err.errorNum);
+      }
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief uses an implicitly declared collection for writing
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testUseOtherForWriteAllowImplicit: function () {
+      try {
+        db._executeTransaction({
+          collections: { read: cn1, allowImplicit: true },
           action: "function (params) { var db = require('internal').db; db._collection(params.cn2).truncate(); }",
           params: { cn2: cn2 }
         });

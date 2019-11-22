@@ -39,7 +39,7 @@ class MMFilesSynchronizerThread final : public Thread {
   MMFilesSynchronizerThread& operator=(MMFilesSynchronizerThread const&) = delete;
 
  public:
-  MMFilesSynchronizerThread(MMFilesLogfileManager*, uint64_t);
+  MMFilesSynchronizerThread(MMFilesLogfileManager&, uint64_t);
   ~MMFilesSynchronizerThread() { shutdown(); }
 
  public:
@@ -61,7 +61,7 @@ class MMFilesSynchronizerThread final : public Thread {
 
  private:
   /// @brief the logfile manager
-  MMFilesLogfileManager* _logfileManager;
+  MMFilesLogfileManager& _logfileManager;
 
   /// @brief condition variable for the thread
   basics::ConditionVariable _condition;

@@ -28,7 +28,6 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
-#include "Rest/HttpRequest.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
@@ -46,8 +45,9 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestImportHandler::RestImportHandler(GeneralRequest* request, GeneralResponse* response)
-    : RestVocbaseBaseHandler(request, response),
+RestImportHandler::RestImportHandler(application_features::ApplicationServer& server,
+                                     GeneralRequest* request, GeneralResponse* response)
+    : RestVocbaseBaseHandler(server, request, response),
       _onDuplicateAction(DUPLICATE_ERROR),
       _ignoreMissing(false) {}
 
@@ -133,7 +133,8 @@ RestStatus RestImportHandler::execute() {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string RestImportHandler::positionize(size_t i) const {
-  return std::string("at position " + StringUtils::itoa(i) + ": ");
+  return std::string("at position " +
+                     StringUtils::itoa(static_cast<uint64_t>(i)) + ": ");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -316,17 +317,9 @@ bool RestImportHandler::createFromJson(std::string const& type) {
 
     // auto detect import type by peeking at first non-whitespace character
 
-    // http required here
-    HttpRequest* req = dynamic_cast<HttpRequest*>(_request.get());
+    VPackStringRef body = _request->rawPayload();
 
-    if (req == nullptr) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "invalid request type");
-    }
-
-    std::string const& body = req->body();
-
-    char const* ptr = body.c_str();
+    char const* ptr = body.data();
     char const* end = ptr + body.size();
 
     while (ptr < end) {
@@ -377,18 +370,10 @@ bool RestImportHandler::createFromJson(std::string const& type) {
 
   VPackBuilder tmpBuilder;
 
-  if (linewise) {
-    // http required here
-    HttpRequest* req = dynamic_cast<HttpRequest*>(_request.get());
-
-    if (req == nullptr) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "invalid request type");
-    }
-
+  if (linewise) {    
     // each line is a separate JSON document
-    std::string const& body = req->body();
-    char const* ptr = body.c_str();
+    VPackStringRef body = _request->rawPayload();
+    char const* ptr = body.data();
     char const* end = ptr + body.size();
     size_t i = 0;
 
@@ -673,15 +658,11 @@ bool RestImportHandler::createFromKeyValueList() {
                                         lineNumValue.data() + lineNumValue.size());
   }
 
-  HttpRequest* httpRequest = dynamic_cast<HttpRequest*>(_request.get());
-
-  if (httpRequest == nullptr) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid request type");
-  }
-
-  std::string const& bodyStr = httpRequest->body();
-  char const* current = bodyStr.c_str();
-  char const* bodyEnd = current + bodyStr.size();
+  // json required here  
+  // each line is a separate JSON document
+  VPackStringRef body = _request->rawPayload();
+  char const* current = body.data();
+  char const* bodyEnd = current + body.size();
 
   // process header
   char const* next = static_cast<char const*>(memchr(current, '\n', bodyEnd - current));
@@ -954,7 +935,7 @@ Result RestImportHandler::performImport(SingleCollectionTransaction& trx,
           VPackSlice resultSlice = opResult.slice();
           if (resultSlice.isArray()) {
             size_t pos = 0;
-            for (auto const& it : VPackArrayIterator(resultSlice)) {
+            for (VPackSlice it : VPackArrayIterator(resultSlice)) {
               if (!it.hasKey(StaticStrings::Error) ||
                   !it.get(StaticStrings::Error).getBool()) {
                 ++result._numUpdated;
@@ -994,38 +975,29 @@ Result RestImportHandler::performImport(SingleCollectionTransaction& trx,
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestImportHandler::generateDocumentsCreated(RestImportResult const& result) {
-  resetResponse(rest::ResponseCode::CREATED);
+  VPackBuilder json;
+  json.add(VPackValue(VPackValueType::Object));
+  json.add(StaticStrings::Error, VPackValue(false));
+  json.add("created", VPackValue(result._numCreated));
+  json.add("errors", VPackValue(result._numErrors));
+  json.add("empty", VPackValue(result._numEmpty));
+  json.add("updated", VPackValue(result._numUpdated));
+  json.add("ignored", VPackValue(result._numIgnored));
 
-  try {
-    VPackBuilder json;
-    json.add(VPackValue(VPackValueType::Object));
-    json.add(StaticStrings::Error, VPackValue(false));
-    json.add("created", VPackValue(result._numCreated));
-    json.add("errors", VPackValue(result._numErrors));
-    json.add("empty", VPackValue(result._numEmpty));
-    json.add("updated", VPackValue(result._numUpdated));
-    json.add("ignored", VPackValue(result._numIgnored));
+  // include failure details?
+  if (_request->parsedValue("details", false)) {
+    json.add("details", VPackValue(VPackValueType::Array));
 
-    bool found;
-    std::string const& detailsStr = _request->value("details", found);
-
-    // include failure details?
-    if (found && StringUtils::boolean(detailsStr)) {
-      json.add("details", VPackValue(VPackValueType::Array));
-
-      for (auto const& elem : result._errors) {
-        json.add(VPackValue(elem));
-      }
-
-      json.close();
+    for (auto const& elem : result._errors) {
+      json.add(VPackValue(elem));
     }
 
     json.close();
-
-    generateResult(rest::ResponseCode::CREATED, json.slice());
-  } catch (...) {
-    // Ignore the error
   }
+
+  json.close();
+
+  generateResult(rest::ResponseCode::CREATED, json.slice());
 }
 
 ////////////////////////////////////////////////////////////////////////////////

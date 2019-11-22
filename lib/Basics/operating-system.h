@@ -24,10 +24,6 @@
 #ifndef ARANGODB_BASICS_OPERATING__SYSTEM_H
 #define ARANGODB_BASICS_OPERATING__SYSTEM_H 1
 
-#ifndef TRI_WITHIN_COMMON
-#error use <Basics/Common.h>
-#endif
-
 #ifndef __STDC_LIMIT_MACROS
 #define __STDC_LIMIT_MACROS
 #endif
@@ -151,7 +147,7 @@
 
 #define TRI_HAVE_ANONYMOUS_MMAP 1
 
-#define TRI_MISSING_MEMRCHR 1
+#define ARANGODB_MISSING_MEMRCHR 1
 
 // files
 
@@ -170,6 +166,7 @@
 #define TRI_MKDIR(a, b) ::mkdir((a), (b))
 #define TRI_OPEN(a, b) ::open((a), (b))
 #define TRI_FOPEN(a, b) ::fopen((a), (b))
+#define TRI_DUP ::dup
 #define TRI_READ ::read
 #define TRI_RMDIR ::rmdir
 #define TRI_STAT ::stat
@@ -286,7 +283,7 @@
 
 #define TRI_OVERLOAD_FUNCS_SIZE_T 1
 
-#define TRI_MISSING_MEMRCHR 1
+#define ARANGODB_MISSING_MEMRCHR 1
 
 #define TRI_SC_NPROCESSORS_ONLN 1
 
@@ -326,6 +323,7 @@
 #define TRI_OPEN(a, b) ::open((a), (b))
 #define TRI_FOPEN(a, b) ::fopen((a), (b))
 #define TRI_READ ::read
+#define TRI_DUP ::dup
 #define TRI_RMDIR ::rmdir
 #define TRI_STAT ::stat
 #define TRI_STAT_ATIME_SEC(statbuf) statbuf.st_atimespec.tv_sec
@@ -434,8 +432,6 @@
 
 #define TRI_HAVE_POSIX 1
 
-#define TRI_GCC_THREAD_LOCAL_STORAGE 1
-
 #define TRI_HAVE_LINUX_PROC 1
 #define ARANGODB_HAVE_DOMAIN_SOCKETS 1
 #define TRI_HAVE_POSIX_MMAP 1
@@ -472,6 +468,7 @@
 #define TRI_OPEN(a, b) ::open((a), (b))
 #define TRI_FOPEN(a, b) ::fopen((a), (b))
 #define TRI_READ ::read
+#define TRI_DUP ::dup
 #define TRI_RMDIR ::rmdir
 #define TRI_STAT ::stat
 #define TRI_STAT_ATIME_SEC(statbuf) statbuf.st_atimespec.tv_sec
@@ -584,8 +581,6 @@
 
 // available features
 
-#define TRI_GCC_THREAD_LOCAL_STORAGE 1
-
 #define TRI_HAVE_POSIX 1
 
 #define ARANGODB_HAVE_DOMAIN_SOCKETS 1
@@ -631,6 +626,7 @@
 #define TRI_OPEN(a, b) ::open((a), (b))
 #define TRI_FOPEN(a, b) ::fopen((a), (b))
 #define TRI_READ ::read
+#define TRI_DUP ::dup
 #define TRI_RMDIR ::rmdir
 #define TRI_STAT ::stat
 #define TRI_STAT_ATIME_SEC(statbuf) statbuf.st_atim.tv_sec
@@ -664,6 +660,7 @@
 
 // user and group types
 
+#include <sys/types.h>
 #define TRI_uid_t uid_t
 #define TRI_gid_t gid_t
 
@@ -701,7 +698,7 @@
 
 //#define _CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES     1
 
-#include <WinSock2.h>
+#include <WinSock2.h>  // must be before windows.h
 #include <io.h>
 #include <stdio.h>
 // available include files
@@ -733,7 +730,10 @@
 #define TRI_random ::rand
 #define TRI_srandom ::srand
 
+#if ( defined(_MSC_VER) && _MSC_VER < 1900 ) || ( defined(__MINGW32__) && !defined(__MINGW64_VERSION_MAJOR) )
 #define snprintf _snprintf
+#endif
+
 #define strcasecmp _stricmp
 #define strncasecmp _strnicmp
 
@@ -748,7 +748,6 @@
 #define YY_NO_UNISTD_H 1
 
 #define TRI_WIN32_CONSOLE 1
-#define TRI_WIN32_THREAD_LOCAL_STORAGE 1
 
 #define TRI_HAVE_WIN32_CLOSE_ON_EXEC 1
 #define TRI_HAVE_WIN32_FILE_LOCKING 1
@@ -762,7 +761,7 @@
 #define TRI_HAVE_WIN32_THREADS 1
 
 #define TRI_HAVE_ANONYMOUS_MMAP 1
-#define TRI_MISSING_MEMRCHR 1
+#define ARANGODB_MISSING_MEMRCHR 1
 
 typedef int ssize_t;
 
@@ -832,7 +831,8 @@ typedef unsigned char bool;
 #define TRI_LSEEK ::_lseeki64
 #define TRI_MKDIR(a, b) TRI_MKDIR_WIN32(a)
 #define TRI_OPEN(a, b) TRI_OPEN_WIN32((a), (b))
-#define TRI_READ ::_read
+#define TRI_READ(a, b, c) static_cast<ssize_t>(::_read(a, b, c))
+#define TRI_DUP ::_dup
 #define TRI_WRITE ::_write
 #define TRI_FDOPEN(a, b) ::_fdopen((a), (b))
 
@@ -858,13 +858,19 @@ int TRI_UNLINK(char const* filename);
 void TRI_GET_ARGV_WIN(int& argc, char** argv);
 
 // system error string macro requires ERRORBUF to instantiate its buffer before.
-
-#define TRI_SYSTEM_ERROR()                                                     \
-  if (FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, NULL, GetLastError(), 0,       \
-                    windowsErrorBuf, sizeof(windowsErrorBuf), NULL) == 0) {    \
-    memcpy(&windowsErrorBuf[0], "unknown error\0", strlen("unknown error\0")); \
-  }                                                                            \
-  errno = TRI_MapSystemError(GetLastError())
+#define TRI_SYSTEM_ERROR()                                                       \
+  do {                                                                           \
+    auto result = translateWindowsError(::GetLastError());                       \
+    errno = result.errorNumber();                                                \
+    auto const& mesg = result.errorMessage();                                    \
+    if (mesg.empty()) {                                                          \
+      memcpy(&windowsErrorBuf[0], "unknown error\0", strlen("unknown error\0")); \
+    } else {                                                                     \
+      memcpy(&windowsErrorBuf[0], mesg.data(),                                   \
+             (std::min)(sizeof(windowsErrorBuf) / sizeof(windowsErrorBuf[0]),    \
+                        mesg.size()));                                           \
+    }                                                                            \
+  } while (false)
 
 #define STDERR_FILENO 2
 #define STDIN_FILENO 0

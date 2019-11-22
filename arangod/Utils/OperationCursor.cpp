@@ -22,12 +22,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "OperationCursor.h"
-#include "Basics/Exceptions.h"
-#include "Logger/Logger.h"
-#include "OperationResult.h"
-#include "VocBase/LogicalCollection.h"
 
 using namespace arangodb;
+      
+OperationCursor::OperationCursor(std::unique_ptr<IndexIterator> iterator)
+    : _indexIterator(std::move(iterator)),
+      _hasMore(true) {
+  TRI_ASSERT(_indexIterator != nullptr);
+}
 
 LogicalCollection* OperationCursor::collection() const {
   TRI_ASSERT(_indexIterator != nullptr);
@@ -41,12 +43,9 @@ bool OperationCursor::hasCovering() const {
 }
 
 void OperationCursor::reset() {
-  code = TRI_ERROR_NO_ERROR;
-
-  if (_indexIterator != nullptr) {
-    _indexIterator->reset();
-    _hasMore = true;
-  }
+  TRI_ASSERT(_indexIterator != nullptr);
+  _indexIterator->reset();
+  _hasMore = true;
 }
 
 /// @brief Calls cb for the next batchSize many elements
@@ -57,9 +56,7 @@ bool OperationCursor::next(IndexIterator::LocalDocumentIdCallback const& callbac
     return false;
   }
 
-  if (batchSize == UINT64_MAX) {
-    batchSize = _batchSize;
-  }
+  TRI_ASSERT(batchSize != UINT64_MAX);
 
   size_t atMost = static_cast<size_t>(batchSize);
   _hasMore = _indexIterator->next(callback, atMost);
@@ -72,9 +69,7 @@ bool OperationCursor::nextDocument(IndexIterator::DocumentCallback const& callba
     return false;
   }
 
-  if (batchSize == UINT64_MAX) {
-    batchSize = _batchSize;
-  }
+  TRI_ASSERT(batchSize != UINT64_MAX);
 
   size_t atMost = static_cast<size_t>(batchSize);
   _hasMore = _indexIterator->nextDocument(callback, atMost);
@@ -96,9 +91,7 @@ bool OperationCursor::nextWithExtra(IndexIterator::ExtraCallback const& callback
     return false;
   }
 
-  if (batchSize == UINT64_MAX) {
-    batchSize = _batchSize;
-  }
+  TRI_ASSERT(batchSize != UINT64_MAX);
 
   size_t atMost = static_cast<size_t>(batchSize);
   _hasMore = _indexIterator->nextExtra(callback, atMost);
@@ -113,9 +106,7 @@ bool OperationCursor::nextCovering(IndexIterator::DocumentCallback const& callba
     return false;
   }
 
-  if (batchSize == UINT64_MAX) {
-    batchSize = _batchSize;
-  }
+  TRI_ASSERT(batchSize != UINT64_MAX);
 
   size_t atMost = static_cast<size_t>(batchSize);
   _hasMore = _indexIterator->nextCovering(callback, atMost);
@@ -133,14 +124,8 @@ void OperationCursor::skip(uint64_t toSkip, uint64_t& skipped) {
     return;
   }
 
-  if (toSkip > _limit) {
-    // Short-cut, we jump to the end
-    _hasMore = false;
-    return;
-  }
-
   _indexIterator->skip(toSkip, skipped);
-  if (skipped != toSkip || _limit == 0) {
+  if (skipped != toSkip) {
     _hasMore = false;
   }
 }

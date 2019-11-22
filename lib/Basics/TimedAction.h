@@ -25,6 +25,7 @@
 #define ARANGODB_BASICS_TIMED_ACTION_H 1
 
 #include "Basics/Common.h"
+#include "Basics/system-functions.h"
 
 namespace arangodb {
 

@@ -22,10 +22,15 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ConditionFinder.h"
+
+#include "Aql/Condition.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/Expression.h"
 #include "Aql/IndexNode.h"
 #include "Aql/SortCondition.h"
 #include "Aql/SortNode.h"
+#include "Basics/tryEmplaceHelper.h"
+
 
 using namespace arangodb::aql;
 using EN = arangodb::aql::ExecutionNode;
@@ -42,11 +47,9 @@ bool ConditionFinder::before(ExecutionNode* en) {
     case EN::INDEX:
     case EN::RETURN:
     case EN::TRAVERSAL:
+    case EN::K_SHORTEST_PATHS:
     case EN::SHORTEST_PATH:
-#ifdef USE_IRESEARCH
-    case EN::ENUMERATE_IRESEARCH_VIEW:
-#endif
-    {
+    case EN::ENUMERATE_IRESEARCH_VIEW: {
       // in these cases we simply ignore the intermediate nodes, note
       // that we have taken care of nodes that could throw exceptions
       // above.
@@ -73,7 +76,8 @@ bool ConditionFinder::before(ExecutionNode* en) {
 
     case EN::FILTER: {
       // register which variable is used in a FILTER
-      _filters.emplace(ExecutionNode::castTo<FilterNode const*>(en)->inVariable()->id);
+      _filters.emplace(
+          ExecutionNode::castTo<FilterNode const*>(en)->inVariable()->id);
       break;
     }
 
@@ -91,11 +95,8 @@ bool ConditionFinder::before(ExecutionNode* en) {
     }
 
     case EN::CALCULATION: {
-      auto outvars = en->getVariablesSetHere();
-      TRI_ASSERT(outvars.size() == 1);
-
-      _variableDefinitions.emplace(
-          outvars[0]->id,
+      _variableDefinitions.try_emplace(
+          ExecutionNode::castTo<CalculationNode const*>(en)->outVariable()->id,
           ExecutionNode::castTo<CalculationNode const*>(en)->expression()->node());
       TRI_IF_FAILURE("ConditionFinder::variableDefinition") {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -147,16 +148,19 @@ bool ConditionFinder::before(ExecutionNode* en) {
         // will clear out usedIndexes
         IndexIteratorOptions opts;
         opts.ascending = !descending;
-        std::unique_ptr<ExecutionNode> newNode(
-            new IndexNode(_plan, _plan->nextId(), node->collection(),
-                          node->outVariable(), usedIndexes, std::move(condition), opts));
         TRI_IF_FAILURE("ConditionFinder::insertIndexNode") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
 
         // We keep this node's change
-        _changes->emplace(node->id(), newNode.get());
-        newNode.release();
+        _changes->try_emplace(
+            node->id(),
+            arangodb::lazyConstruct([&]{
+              return new IndexNode(_plan, _plan->nextId(), node->collection(),
+                          node->outVariable(), usedIndexes, std::move(condition), opts);
+            })
+        );
+
       }
 
       break;
@@ -253,10 +257,20 @@ void ConditionFinder::handleSortCondition(ExecutionNode* en, Variable const* out
                                           std::unique_ptr<SortCondition>& sortCondition) {
   if (!en->isInInnerLoop()) {
     // we cannot optimize away a sort if we're in an inner loop ourselves
-    sortCondition.reset(new SortCondition(_plan, _sorts,
-                                          condition->getConstAttributes(outVar, false),
-                                          _variableDefinitions));
+    sortCondition.reset(
+        new SortCondition(_plan, _sorts, condition->getConstAttributes(outVar, false),
+                          condition->getNonNullAttributes(outVar), _variableDefinitions));
   } else {
     sortCondition.reset(new SortCondition());
   }
 }
+
+ConditionFinder::ConditionFinder(ExecutionPlan* plan,
+                                 std::unordered_map<size_t, ExecutionNode*>* changes,
+                                 bool* hasEmptyResult, bool viewMode)
+    : _plan(plan),
+      _variableDefinitions(),
+      _filters(),
+      _sorts(),
+      _changes(changes),
+      _hasEmptyResult(hasEmptyResult) {}

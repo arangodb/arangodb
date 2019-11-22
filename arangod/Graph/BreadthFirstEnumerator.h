@@ -45,7 +45,7 @@ class BreadthFirstEnumerator final : public arangodb::traverser::PathEnumerator 
   struct PathStep {
     size_t sourceIdx;
     graph::EdgeDocumentToken edge;
-    arangodb::velocypack::StringRef const vertex;
+    arangodb::velocypack::StringRef /* const */ vertex;
 
    public:
     explicit PathStep(arangodb::velocypack::StringRef const vertex);
@@ -55,7 +55,8 @@ class BreadthFirstEnumerator final : public arangodb::traverser::PathEnumerator 
 
     ~PathStep();
 
-    PathStep(PathStep& other);
+    PathStep(PathStep const& other) = default;
+    PathStep& operator=(PathStep const& other) = delete;
   };
 
   //////////////////////////////////////////////////////////////////////////////
@@ -172,6 +173,23 @@ class BreadthFirstEnumerator final : public arangodb::traverser::PathEnumerator 
    * @return true if the edge is already in the path
    */
   bool pathContainsEdge(size_t index, graph::EdgeDocumentToken const& edge) const;
+
+  /**
+   * @brief Reset iterators to search within next depth
+   *        Also honors pruned paths
+   * @return true if we can continue searching. False if we are done
+   */
+  bool prepareSearchOnNextDepth();
+
+  aql::AqlValue vertexToAqlValue(size_t index);
+
+  aql::AqlValue edgeToAqlValue(size_t index);
+
+  aql::AqlValue pathToIndexToAqlValue(arangodb::velocypack::Builder& result, size_t index);
+
+  velocypack::Slice pathToIndexToSlice(arangodb::velocypack::Builder& result, size_t index);
+
+  bool shouldPrune();
 };
 }  // namespace graph
 }  // namespace arangodb

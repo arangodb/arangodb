@@ -20,13 +20,28 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ApplicationFeatures/V8PlatformFeature.h"
+#include <stdlib.h>
+#include <string.h>
+#include <limits>
+#include <type_traits>
+#include <utility>
 
+#include <libplatform/libplatform.h>
+
+#include "V8PlatformFeature.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
+#include "Basics/application-exit.h"
+#include "Basics/system-functions.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
+#include "ProgramOptions/Option.h"
+#include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
+#include "V8/v8-globals.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -59,6 +74,7 @@ static void gcPrologueCallback(v8::Isolate* isolate, v8::GCType /*type*/,
 
 static void gcEpilogueCallback(v8::Isolate* isolate, v8::GCType type,
                                v8::GCCallbackFlags flags) {
+  TRI_GET_GLOBALS();
   static size_t const LIMIT_ABS = 200 * 1024 * 1024;
   size_t minFreed = LIMIT_ABS / 10;
 
@@ -69,6 +85,7 @@ static void gcEpilogueCallback(v8::Isolate* isolate, v8::GCType type,
   v8::HeapStatistics h;
   isolate->GetHeapStatistics(&h);
 
+  auto now = TRI_microtime();
   size_t freed = 0;
   size_t heapSizeAtStop = h.used_heap_size();
   size_t heapSizeAtStart = V8PlatformFeature::getIsolateData(isolate)->_heapSizeAtStart;
@@ -78,13 +95,32 @@ static void gcEpilogueCallback(v8::Isolate* isolate, v8::GCType type,
   }
 
   size_t heapSizeLimit = h.heap_size_limit();
-  size_t usedHeadSize = h.used_heap_size();
-  size_t stillFree = heapSizeLimit - usedHeadSize;
+  size_t usedHeapSize = h.used_heap_size();
+  size_t stillFree = heapSizeLimit - usedHeapSize;
+
+  if (now - v8g->_lastMaxTime > 10) {
+    v8g->_heapMax = heapSizeAtStart;
+    v8g->_heapLow = heapSizeAtStop;
+    v8g->_countOfTimes = 0;
+    v8g->_lastMaxTime = now;
+  } else {
+    v8g->_countOfTimes++;
+    if (heapSizeAtStart > v8g->_heapMax) {
+      v8g->_heapMax = heapSizeAtStart;
+    }
+    if (v8g->_heapLow > heapSizeAtStop) {
+      v8g->_heapLow = heapSizeAtStop;
+    }
+  }
 
   if (stillFree <= LIMIT_ABS && freed <= minFreed) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
-        << "reached heap-size limit, interrupting V8 execution ("
-        << "heap size limit " << heapSizeLimit << ", used " << usedHeadSize << ")";
+    const char* whereFreed = (v8g->_inForcedCollect)? "Forced collect": "V8 internal collection";
+    LOG_TOPIC("95f66", WARN, arangodb::Logger::FIXME)
+        << "reached heap-size limit of #" << v8g->_id
+        << " interrupting V8 execution ("
+        << "heap size limit " << heapSizeLimit
+        << ", used " << usedHeapSize
+        << ") during " << whereFreed;
 
     isolate->TerminateExecution();
     V8PlatformFeature::setOutOfMemory(isolate);
@@ -96,10 +132,10 @@ static void gcEpilogueCallback(v8::Isolate* isolate, v8::GCType type,
 // terminate the entire process
 static void oomCallback(char const* location, bool isHeapOOM) {
   if (isHeapOOM) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC("fd5c4", FATAL, arangodb::Logger::FIXME)
         << "out of heap hemory in V8 (" << location << ")";
   } else {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "out of memory in V8 (" << location << ")";
+    LOG_TOPIC("5d980", FATAL, arangodb::Logger::FIXME) << "out of memory in V8 (" << location << ")";
   }
   FATAL_ERROR_EXIT();
 }
@@ -111,7 +147,7 @@ static void fatalCallback(char const* location, char const* message) {
   if (message == nullptr) {
     message = "no message";
   }
-  LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+  LOG_TOPIC("531c0", FATAL, arangodb::Logger::FIXME)
       << "fatal error in V8 (" << location << "): " << message;
   FATAL_ERROR_EXIT();
 }
@@ -121,7 +157,6 @@ static void fatalCallback(char const* location, char const* message) {
 V8PlatformFeature::V8PlatformFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "V8Platform") {
   setOptional(true);
-  startsAfter("ClusterPhase");
 }
 
 void V8PlatformFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -147,8 +182,10 @@ void V8PlatformFeature::validateOptions(std::shared_ptr<ProgramOptions> options)
   }
 
   if (0 < _v8MaxHeap) {
-    if (_v8MaxHeap > (std::numeric_limits<int>::max)()) {
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+    // we have to compare against INT_MAX here, because the value is an int
+    // inside V8
+    if (_v8MaxHeap > static_cast<uint64_t>(std::numeric_limits<int>::max())) {
+      LOG_TOPIC("81a63", FATAL, arangodb::Logger::FIXME)
           << "value for '--javascript.v8-max-heap' exceeds maximum value "
           << (std::numeric_limits<int>::max)();
       FATAL_ERROR_EXIT();
@@ -161,7 +198,7 @@ void V8PlatformFeature::start() {
 
   // explicit option --javascript.v8-options used
   if (!_v8CombinedOptions.empty()) {
-    LOG_TOPIC(INFO, Logger::V8) << "using V8 options '" << _v8CombinedOptions << "'";
+    LOG_TOPIC("d064a", INFO, Logger::V8) << "using V8 options '" << _v8CombinedOptions << "'";
     v8::V8::SetFlagsFromString(_v8CombinedOptions.c_str(),
                                (int)_v8CombinedOptions.size());
   }
@@ -205,7 +242,7 @@ v8::Isolate* V8PlatformFeature::createIsolate() {
   {
     MUTEX_LOCKER(guard, _lock);
     try {
-      _isolateData.emplace(isolate, std::move(data));
+      _isolateData.try_emplace(isolate, std::move(data));
     } catch (...) {
       isolate->SetData(V8_INFO, nullptr);
       isolate->Dispose();

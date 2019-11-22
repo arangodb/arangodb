@@ -33,8 +33,9 @@
 #include "Basics/ConditionVariable.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Thread.h"
+#include "Basics/error.h"
 #include "Cluster/ClusterInfo.h"
-#include "Logger/Logger.h"
+#include "Logger/LogTopic.h"
 #include "Rest/GeneralRequest.h"
 #include "Rest/GeneralResponse.h"
 #include "Rest/HttpRequest.h"
@@ -46,7 +47,11 @@
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
 class ClusterCommThread;
+class ClusterInfo;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief type of a coordinator transaction ID
@@ -214,10 +219,22 @@ struct ClusterCommResult {
   /// @brief routine to set the destination
   //////////////////////////////////////////////////////////////////////////////
 
-  void setDestination(std::string const& dest, bool logConnectionErrors);
+  void setDestination(ClusterInfo& ci, std::string const& dest, bool logConnectionErrors);
 
   /// @brief stringify the internal error state
   std::string stringifyErrorMessage() const;
+
+  /// @brief return if request was successful, use this on the request
+  /// results after a `performRequest`:
+  bool successful() const {
+    if (status != CL_COMM_RECEIVED) {
+      return false;
+    }
+    return answer_code == rest::ResponseCode::OK ||
+           answer_code == rest::ResponseCode::CREATED ||
+           answer_code == rest::ResponseCode::ACCEPTED ||
+           answer_code == rest::ResponseCode::NO_CONTENT;
+  }
 
   /// @brief return an error code for a result
   int getErrorCode() const;
@@ -225,14 +242,14 @@ struct ClusterCommResult {
   /// @brief stringify a cluster comm status
   static char const* stringifyStatus(ClusterCommOpStatus status);
 
-  void fromError(int errorCode, std::unique_ptr<GeneralResponse> response) {
-    errorMessage = TRI_errno_string(errorCode);
-    this->errorCode = errorCode;
-    switch (errorCode) {
-      case TRI_SIMPLE_CLIENT_COULD_NOT_CONNECT:
+  void fromError(int errCode, std::unique_ptr<GeneralResponse> response) {
+    errorMessage = TRI_errno_string(errCode);
+    this->errorCode = errCode;
+    switch (errCode) {
+      case TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT:
         status = CL_COMM_BACKEND_UNAVAILABLE;
         break;
-      case TRI_COMMUNICATOR_REQUEST_ABORTED:
+      case TRI_ERROR_COMMUNICATOR_REQUEST_ABORTED:
         status = CL_COMM_BACKEND_UNAVAILABLE;
         break;
       case TRI_ERROR_HTTP_SERVICE_UNAVAILABLE:
@@ -246,7 +263,7 @@ struct ClusterCommResult {
         if (response == nullptr) {
           status = CL_COMM_ERROR;
         } else {
-          // mop: wow..this is actually the old behaviour :S
+          // mop: wow..this is actually the old behavior :S
           fromResponse(std::move(response));
         }
     }
@@ -255,14 +272,14 @@ struct ClusterCommResult {
   void fromResponse(std::unique_ptr<GeneralResponse> response) {
     sendWasComplete = true;
     errorCode = TRI_ERROR_NO_ERROR;
-    // mop: simulate the old behaviour where the original request
+    // mop: simulate the old behavior where the original request
     // was sent to the recipient and was simply accepted. Then the backend would
     // do its work and send a request to the target containing the result of
     // that
     // operation in this request. This is mind boggling but this is how it used
     // to
     // work....now it gets even funnier: as the new system only does
-    // request => response we simulate the old behaviour now and fake a request
+    // request => response we simulate the old behavior now and fake a request
     // containing the body of our response
     // :snake: OPST_CIRCUS
     auto httpResponse = dynamic_cast<HttpResponse*>(response.get());
@@ -279,10 +296,10 @@ struct ClusterCommResult {
     auto const& headers = response->headers();
     auto errorCodes = headers.find(StaticStrings::ErrorCodes);
     if (errorCodes != headers.end()) {
-      request->setHeader(StaticStrings::ErrorCodes, errorCodes->second);
+      request->setHeaderV2(StaticStrings::ErrorCodes, errorCodes->second);
     }
-    request->setHeader(StaticStrings::ResponseCode,
-                       GeneralResponse::responseString(answer_code));
+    request->setHeaderV2(StaticStrings::ResponseCode,
+                         GeneralResponse::responseString(answer_code));
     answer.reset(request);
     TRI_ASSERT(response != nullptr);
     result = std::make_shared<httpclient::SimpleHttpCommunicatorResult>(
@@ -294,18 +311,33 @@ struct ClusterCommResult {
       if (status == CL_COMM_ERROR) {
         try {
           auto body = result->getBodyVelocyPack(VPackOptions());
-          if (body->slice().isObject() &&
-              body->slice().hasKey("errorMessage")) {
-            errorMessage = body->slice().get("errorMessage").copyString();
-            errorCode = body->slice().get("errorNum").getNumber<int>();
+          if (body->slice().isObject()) {
+            if (body->slice().hasKey(arangodb::StaticStrings::ErrorMessage)) {
+              errorMessage = body->slice().get(arangodb::StaticStrings::ErrorMessage).copyString();
+            }
+            if (body->slice().hasKey(arangodb::StaticStrings::ErrorNum)) {
+              errorCode = body->slice().get(arangodb::StaticStrings::ErrorNum).getNumber<int>();
+            }
           }
         } catch (...) {
         }
       }
     } else {
-      // mop: actually it will never be an ERROR here...this is and was a dirty
-      // hack :S
       status = CL_COMM_RECEIVED;
+      // Get error message and code out of body if possible:
+      try {
+        auto options = VPackOptions();
+        VPackSlice body = request->payload(&options);
+        if (body.isObject()) {
+          if (body.hasKey(arangodb::StaticStrings::ErrorMessage)) {
+            errorMessage = body.get(arangodb::StaticStrings::ErrorMessage).copyString();
+          }
+          if (body.hasKey(arangodb::StaticStrings::ErrorNum)) {
+            errorCode = body.get(arangodb::StaticStrings::ErrorNum).getNumber<int>();
+          }
+        }
+      } catch (...) {
+      }
     }
   }
 };
@@ -321,7 +353,7 @@ struct ClusterCommResult {
 
 struct ClusterCommCallback {
   ClusterCommCallback() {}
-  virtual ~ClusterCommCallback() {}
+  virtual ~ClusterCommCallback() = default;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the actual callback function
@@ -433,8 +465,8 @@ class ClusterComm {
   /// new instances or copy them, except we ourselves.
   //////////////////////////////////////////////////////////////////////////////
 
-  ClusterComm();
-  ClusterComm(ClusterComm const&);     // not implemented
+  explicit ClusterComm(application_features::ApplicationServer&);
+  explicit ClusterComm(ClusterComm const&);     // not implemented
   void operator=(ClusterComm const&);  // not implemented
 
   //////////////////////////////////////////////////////////////////////////////
@@ -487,6 +519,7 @@ class ClusterComm {
 
   void startBackgroundThreads();
   void stopBackgroundThreads();
+  void deleteBackgroundThreads();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief submit an HTTP request to a shard asynchronously.
@@ -497,14 +530,14 @@ class ClusterComm {
       std::string const& destination, rest::RequestType reqtype,
       std::string const& path, std::shared_ptr<std::string const> body,
       std::unordered_map<std::string, std::string> const& headerFields,
-      std::shared_ptr<ClusterCommCallback> callback, ClusterCommTimeout timeout,
+      std::shared_ptr<ClusterCommCallback> const& callback, ClusterCommTimeout timeout,
       bool singleRequest = false, ClusterCommTimeout initTimeout = -1.0);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief submit a single HTTP request to a shard synchronously.
   //////////////////////////////////////////////////////////////////////////////
 
-  std::unique_ptr<ClusterCommResult> syncRequest(
+  TEST_VIRTUAL std::unique_ptr<ClusterCommResult> syncRequest(
       CoordTransactionID const coordTransactionID, std::string const& destination,
       rest::RequestType reqtype, std::string const& path, std::string const& body,
       std::unordered_map<std::string, std::string> const& headerFields,
@@ -556,26 +589,10 @@ class ClusterComm {
   //////////////////////////////////////////////////////////////////////////////
 
   size_t performRequests(std::vector<ClusterCommRequest>& requests,
-                         ClusterCommTimeout timeout, size_t& nrDone,
-                         arangodb::LogTopic const& logTopic, bool retryOnCollNotFound);
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief this method performs the given requests described by the vector
-  /// of ClusterCommRequest structs in the following way:
-  /// Each request is done with asyncRequest.
-  /// After each request is successfully send out we drop all requests.
-  /// Hence it is guaranteed that all requests are send, but
-  /// we will not wait for answers of those requests.
-  /// Also all reporting for the responses is lost, because we do not care.
-  /// NOTE: The requests can be in any communication state after this function
-  /// and you should not read them. If you care for response use performRequests
-  /// instead.
-  ////////////////////////////////////////////////////////////////////////////////
-  void fireAndForgetRequests(std::vector<ClusterCommRequest> const& requests);
-
-  typedef std::function<void(std::vector<ClusterCommRequest> const&, size_t, size_t)> AsyncCallback;
-  void performAsyncRequests(std::vector<ClusterCommRequest>&&, ClusterCommTimeout timeout,
-                            bool retryOnCollNotFound, AsyncCallback const&);
+                         ClusterCommTimeout timeout,
+                         arangodb::LogTopic const& logTopic,
+                         bool retryOnCollNotFound,
+                         bool retryOnBackendUnavailable = true);
 
   void addAuthorization(std::unordered_map<std::string, std::string>* headers);
 
@@ -586,18 +603,17 @@ class ClusterComm {
   void disable();
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief push all libcurl callback work to Scheduler threads.  It is a
-  ///  public static function that any object can use.
+  /// @brief push all libcurl callback work to Scheduler threads.
   //////////////////////////////////////////////////////////////////////////////
 
-  static void scheduleMe(std::function<void()> task);
+  static bool scheduleMe(std::function<void()> task);
 
  protected:  // protected members are for unit test purposes
   /// @brief Constructor for test cases.
-  explicit ClusterComm(bool);
+  explicit ClusterComm(application_features::ApplicationServer&, bool);
 
-  communicator::Destination createCommunicatorDestination(std::string const& destination,
-                                                          std::string const& path);
+  std::string createCommunicatorDestination(std::string const& destination,
+                                            std::string const& path) const;
   std::pair<ClusterCommResult*, HttpRequest*> prepareRequest(
       std::string const& destination, arangodb::rest::RequestType reqtype,
       std::string const* body,
@@ -669,6 +685,9 @@ class ClusterComm {
   static void logConnectionError(bool useErrorLogLevel, ClusterCommResult const* result,
                                  double timeout, int line);
 
+  /// underlying application server
+  application_features::ApplicationServer& _server;
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief our background communications thread
   //////////////////////////////////////////////////////////////////////////////
@@ -698,9 +717,8 @@ class ClusterCommThread : public Thread {
   ClusterCommThread& operator=(ClusterCommThread const&);
 
  public:
-  ClusterCommThread();
+  explicit ClusterCommThread(application_features::ApplicationServer&);
   ~ClusterCommThread();
-
  public:
   void beginShutdown() override;
   bool isSystem() override final { return true; }

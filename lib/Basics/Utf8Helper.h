@@ -25,16 +25,32 @@
 #ifndef ARANGODB_BASICS_UTF8HELPER_H
 #define ARANGODB_BASICS_UTF8HELPER_H 1
 
-#include <velocypack/StringRef.h>
+#include <stddef.h>
+#include <cstdint>
+#include <memory>
+#include <set>
+#include <string>
+
+#include <unicode/coll.h>
+#include <unicode/umachine.h>
 
 #include "Basics/Common.h"
 
-#include <unicode/coll.h>
-#include <unicode/regex.h>
-#include <unicode/ustring.h>
+namespace icu_58 {
+class RegexMatcher;
+}
 
 namespace arangodb {
+namespace velocypack {
+class StringRef;
+}
 namespace basics {
+
+#ifdef _WIN32
+std::wstring toWString(std::string const& validUTF8String);
+std::string fromWString(wchar_t const* validUTF16String, std::size_t size);
+std::string fromWString(std::wstring const& validUTF16String);
+#endif
 
 class Utf8Helper {
   Utf8Helper(Utf8Helper const&) = delete;
@@ -137,7 +153,7 @@ class Utf8Helper {
   /// @brief builds a regex matcher for the specified pattern
   //////////////////////////////////////////////////////////////////////////////
 
-  icu::RegexMatcher* buildMatcher(std::string const&);
+  std::unique_ptr<icu::RegexMatcher> buildMatcher(std::string const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not value matches a regex

@@ -24,9 +24,13 @@
 #include <thread>
 
 #include "AutoTuneThread.h"
-#include "Basics/ConditionLocker.h"
 #include "ImportFeature.h"
 #include "ImportHelper.h"
+
+#include "Basics/ConditionLocker.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 
 using namespace arangodb;
 using namespace arangodb::import;
@@ -54,11 +58,12 @@ using namespace arangodb::import;
 //
 ////////////////////////////////////////////////////////////////////////////////
 
-AutoTuneThread::AutoTuneThread(ImportHelper& importHelper)
-    : Thread("AutoTuneThread"),
+AutoTuneThread::AutoTuneThread(application_features::ApplicationServer& server,
+                               ImportHelper& importHelper)
+    : Thread(server, "AutoTuneThread"),
       _importHelper(importHelper),
       _nextSend(std::chrono::steady_clock::now()),
-      _pace(std::chrono::microseconds(1000000 / importHelper.getThreadCount())) {}
+      _pace(std::chrono::milliseconds(1000 / importHelper.getThreadCount())) {}
 
 AutoTuneThread::~AutoTuneThread() { shutdown(); }
 
@@ -81,7 +86,7 @@ void AutoTuneThread::run() {
       uint64_t current_max = _importHelper.getMaxUploadSize();
       current_max *= _importHelper.getThreadCount();
       uint64_t ten_second_actual = _importHelper.rotatePeriodByteCount();
-      uint64_t new_max = current_max;
+      uint64_t new_max;
 
       // is current_max way too big
       if (ten_second_actual < current_max && 10 < ten_second_actual) {
@@ -103,7 +108,7 @@ void AutoTuneThread::run() {
         new_max = arangodb::import::ImportHelper::MaxBatchSize;
       }
 
-      LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
+      LOG_TOPIC("e815e", DEBUG, arangodb::Logger::FIXME)
           << "Current: " << current_max << ", ten_sec: " << ten_second_actual
           << ", new_max: " << new_max;
 

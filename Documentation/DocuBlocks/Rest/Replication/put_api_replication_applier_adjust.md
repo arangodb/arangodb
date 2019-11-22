@@ -2,7 +2,7 @@
 @startDocuBlock put_api_replication_applier_adjust
 @brief set configuration values of an applier
 
-@RESTHEADER{PUT /_api/replication/applier-config, Adjust configuration of replication applier}
+@RESTHEADER{PUT /_api/replication/applier-config, Adjust configuration of replication applier,handleCommandApplierSetConfig}
 
 @RESTBODYPARAM{endpoint,string,required,string}
 the logger server to connect to (e.g. "tcp://192.168.173.13:8529"). The endpoint must be specified.

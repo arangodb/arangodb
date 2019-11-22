@@ -47,11 +47,7 @@ class CollectionNameResolver {
   //////////////////////////////////////////////////////////////////////////////
   explicit CollectionNameResolver(TRI_vocbase_t& vocbase)
       : _vocbase(vocbase),
-        _serverRole(ServerState::instance()->getRole()),
-        _resolvedNames(),
-        _resolvedIds(),
-        _nameLock(),
-        _idLock() {}
+        _serverRole(ServerState::instance()->getRole()) {}
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief destroy the resolver
@@ -97,14 +93,7 @@ class CollectionNameResolver {
   /// coordinator it will use the cluster wide lookup.
   //////////////////////////////////////////////////////////////////////////////
   TRI_voc_cid_t getCollectionId(std::string const& name) const;
-
- private:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief look up a collection struct for a collection name
-  //////////////////////////////////////////////////////////////////////////////
-  std::shared_ptr<arangodb::LogicalCollection> getCollectionStruct(std::string const& name) const;
-
- public:
+  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief look up a collection name for a collection id, this implements
   /// some magic in the cluster case: a DBserver in a cluster will automatically
@@ -171,30 +160,19 @@ class CollectionNameResolver {
   mutable std::unordered_map<TRI_voc_cid_t, std::shared_ptr<LogicalDataSource>> _dataSourceById;  // cached data-source by id
   mutable std::unordered_map<std::string, std::shared_ptr<LogicalDataSource>> _dataSourceByName;  // cached data-source by name
 
-  std::string localNameLookup(TRI_voc_cid_t cid) const;
+  std::string lookupName(TRI_voc_cid_t cid) const;
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief vocbase base pointer
-  //////////////////////////////////////////////////////////////////////////////
   TRI_vocbase_t& _vocbase;
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief role of server in cluster
-  //////////////////////////////////////////////////////////////////////////////
-  ServerState::RoleEnum _serverRole;
+  ServerState::RoleEnum const _serverRole;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief collection id => collection struct map
-  //////////////////////////////////////////////////////////////////////////////
-  mutable std::unordered_map<std::string, std::shared_ptr<arangodb::LogicalCollection>> _resolvedNames;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief collection id => collection name map
-  //////////////////////////////////////////////////////////////////////////////
-  mutable std::unordered_map<TRI_voc_cid_t, std::string> _resolvedIds;
-
-  mutable basics::ReadWriteLock _nameLock;
+  /// @brief lock protecting _resolvedIds
   mutable basics::ReadWriteLock _idLock;
+
+  /// @brief collection id => collection name map
+  mutable std::unordered_map<TRI_voc_cid_t, std::string> _resolvedIds;
 };
 
 }  // namespace arangodb

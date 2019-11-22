@@ -54,7 +54,7 @@ function runSetup () {
   c = db._create('UnitTestsRecovery2');
   c.insert({}, { waitForSync: true });
 
-  internal.debugSegfault('crashing server');
+  internal.debugTerminate('crashing server');
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -85,6 +85,7 @@ function recoverySuite () {
 
       internal.waitForEstimatorSync(); // make sure estimates are consistent
       let indexes = c.getIndexes(true);
+      assertEqual(indexes.length, 4);
       for (let i of indexes) {
         switch (i.type) {
           case 'primary':

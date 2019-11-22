@@ -73,35 +73,36 @@
 
     installFoxxFromGithub: function () {
       if (window.modalView.modalTestAll()) {
-        var url, version, mount, flag, isLegacy;
+        var mount, info, options, url, version;
         if (this._upgrade) {
           mount = window.App.replaceAppData.mount;
-          flag = arangoHelper.getFoxxFlag();
         } else {
           mount = window.arangoHelper.escapeHtml($('#new-app-mount').val());
           if (mount.charAt(0) !== '/') {
             mount = '/' + mount;
           }
         }
+
         url = window.arangoHelper.escapeHtml($('#repository').val());
         version = window.arangoHelper.escapeHtml($('#tag').val());
-
         if (version === '') {
           version = 'master';
         }
-        var info = {
-          url: window.arangoHelper.escapeHtml($('#repository').val()),
-          version: window.arangoHelper.escapeHtml($('#tag').val())
-        };
-
         try {
           Joi.assert(url, Joi.string().regex(/^[a-zA-Z0-9_-]+\/[a-zA-Z0-9_-]+$/));
         } catch (e) {
           return;
         }
         // send server req through collection
-        isLegacy = Boolean($('#github-app-islegacy').prop('checked'));
-        this.collection.installFromGithub(info, mount, this.installCallback.bind(this), isLegacy, flag);
+
+        info = {
+          url: url,
+          version: version
+        };
+
+        options = arangoHelper.getFoxxFlags();
+        options.legacy = Boolean($('#github-app-islegacy')[0].checked);
+        this.collection.install('git', info, mount, options, this.installCallback.bind(this));
       }
     },
 

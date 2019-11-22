@@ -2,11 +2,11 @@
 @startDocuBlock post_api_index_skiplist
 @brief creates a skip-list
 
-@RESTHEADER{POST /_api/index#skiplist, Create skip list}
+@RESTHEADER{POST /_api/index#skiplist, Create skip list, createIndex:skiplist}
 
 @RESTQUERYPARAMETERS
 
-@RESTQUERYPARAM{collection-name,string,required}
+@RESTQUERYPARAM{collection,string,required}
 The collection name.
 
 @RESTBODYPARAM{type,string,required,string}

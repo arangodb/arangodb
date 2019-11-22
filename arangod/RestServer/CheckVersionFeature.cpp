@@ -22,15 +22,24 @@
 
 #include "CheckVersionFeature.h"
 
+#include "ApplicationFeatures/EnvironmentFeature.h"
 #include "Basics/FileUtils.h"
+#include "Basics/application-exit.h"
 #include "Basics/exitcodes.h"
+#include "Cluster/ServerState.h"
+#include "FeaturePhases/BasicFeaturePhaseServer.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerFeature.h"
+#include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
+#include "RestServer/ServerIdFeature.h"
+#include "RestServer/SystemDatabaseFeature.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/Methods/Version.h"
 #include "VocBase/vocbase.h"
 
@@ -41,19 +50,20 @@ using namespace arangodb::options;
 namespace arangodb {
 
 CheckVersionFeature::CheckVersionFeature(application_features::ApplicationServer& server,
-                                         int* result, std::vector<std::string> const& nonServerFeatures)
+                                         int* result,
+                                         std::vector<std::type_index> const& nonServerFeatures)
     : ApplicationFeature(server, "CheckVersion"),
       _checkVersion(false),
       _result(result),
       _nonServerFeatures(nonServerFeatures) {
   setOptional(false);
-  startsAfter("BasicsPhase");
+  startsAfter<BasicFeaturePhaseServer>();
 
-  startsAfter("Database");
-  startsAfter("DatabasePath");
-  startsAfter("EngineSelector");
-  startsAfter("ServerId");
-  startsAfter("SystemDatabase");
+  startsAfter<DatabaseFeature>();
+  startsAfter<DatabasePathFeature>();
+  startsAfter<EngineSelectorFeature>();
+  startsAfter<ServerIdFeature>();
+  startsAfter<SystemDatabaseFeature>();
 }
 
 void CheckVersionFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -77,23 +87,21 @@ void CheckVersionFeature::validateOptions(std::shared_ptr<ProgramOptions> option
   // noone else will set our role
   ServerState::instance()->setRole(ServerState::ROLE_SINGLE);
 
-  ApplicationServer::forceDisableFeatures(_nonServerFeatures);
+  server().forceDisableFeatures(_nonServerFeatures);
 
-  LoggerFeature* logger =
-      ApplicationServer::getFeature<LoggerFeature>("Logger");
-  logger->disableThreaded();
+  LoggerFeature& logger = server().getFeature<LoggerFeature>();
+  logger.disableThreaded();
 
-  ReplicationFeature* replicationFeature =
-      ApplicationServer::getFeature<ReplicationFeature>("Replication");
-  replicationFeature->disableReplicationApplier();
+  ReplicationFeature& replicationFeature = server().getFeature<ReplicationFeature>();
+  replicationFeature.disableReplicationApplier();
 
-  DatabaseFeature* databaseFeature =
-      ApplicationServer::getFeature<DatabaseFeature>("Database");
-  databaseFeature->enableCheckVersion();
+  DatabaseFeature& databaseFeature = server().getFeature<DatabaseFeature>();
+  databaseFeature.enableCheckVersion();
 
   // we can turn off all warnings about environment here, because they
   // wil show up on a regular start later anyway
-  ApplicationServer::disableFeatures({"Environment"});
+  server().disableFeatures(
+      std::vector<std::type_index>{std::type_index(typeid(EnvironmentFeature))});
 }
 
 void CheckVersionFeature::start() {
@@ -103,7 +111,7 @@ void CheckVersionFeature::start() {
 
   // check the version
   if (DatabaseFeature::DATABASE->isInitiallyEmpty()) {
-    LOG_TOPIC(TRACE, arangodb::Logger::STARTUP)
+    LOG_TOPIC("e9df6", TRACE, arangodb::Logger::STARTUP)
         << "skipping version check because database directory was initially "
            "empty";
     *_result = EXIT_SUCCESS;
@@ -112,7 +120,7 @@ void CheckVersionFeature::start() {
   }
 
   // and force shutdown
-  server()->beginShutdown();
+  server().beginShutdown();
 
   std::this_thread::sleep_for(std::chrono::seconds(1));
   TRI_EXIT_FUNCTION(EXIT_SUCCESS, nullptr);
@@ -122,23 +130,21 @@ void CheckVersionFeature::checkVersion() {
   *_result = 1;
 
   // run version check
-  LOG_TOPIC(TRACE, arangodb::Logger::STARTUP) << "starting version check";
+  LOG_TOPIC("449fd", TRACE, arangodb::Logger::STARTUP) << "starting version check";
 
-  DatabasePathFeature* databasePathFeature =
-      application_features::ApplicationServer::getFeature<DatabasePathFeature>(
-          "DatabasePath");
+  DatabasePathFeature& databasePathFeature = server().getFeature<DatabasePathFeature>();
 
-  LOG_TOPIC(TRACE, arangodb::Logger::STARTUP)
-      << "database path is: '" << databasePathFeature->directory() << "'";
+  LOG_TOPIC("73006", TRACE, arangodb::Logger::STARTUP)
+      << "database path is: '" << databasePathFeature.directory() << "'";
 
   // can do this without a lock as this is the startup
-  DatabaseFeature* databaseFeature =
-      application_features::ApplicationServer::getFeature<DatabaseFeature>(
-          "Database");
+  DatabaseFeature& databaseFeature = server().getFeature<DatabaseFeature>();
 
   bool ignoreDatafileErrors = false;
   {
-    VPackBuilder options = server()->options(std::unordered_set<std::string>());
+    VPackBuilder options = server().options([](std::string const& name) {
+      return (name.find("database.ignore-datafile-errors") != std::string::npos);
+    });
     VPackSlice s = options.slice();
     if (s.get("database.ignore-datafile-errors").isBoolean()) {
       ignoreDatafileErrors = s.get("database.ignore-datafile-errors").getBool();
@@ -146,8 +152,8 @@ void CheckVersionFeature::checkVersion() {
   }
 
   // iterate over all databases
-  for (auto& name : databaseFeature->getDatabaseNames()) {
-    TRI_vocbase_t* vocbase = databaseFeature->lookupDatabase(name);
+  for (auto& name : databaseFeature.getDatabaseNames()) {
+    TRI_vocbase_t* vocbase = databaseFeature.lookupDatabase(name);
     methods::VersionResult res = methods::Version::check(vocbase);
     TRI_ASSERT(vocbase != nullptr);
 
@@ -161,16 +167,22 @@ void CheckVersionFeature::checkVersion() {
           res = methods::Version::check(vocbase);
         }
       } else {
-        LOG_TOPIC(WARN, Logger::STARTUP)
+        LOG_TOPIC("ecd13", WARN, Logger::STARTUP)
             << "in order to automatically fix the VERSION file on startup, "
             << "please start the server with option "
-               "`--database.ignore-logfile-errors true`";
+               "`--database.ignore-datafile-errors true`";
+      }
+    } else if (res.status == methods::VersionResult::NO_VERSION_FILE) {
+      // try to install a fresh new, empty VERSION file instead
+      if (methods::Version::write(vocbase, std::map<std::string, bool>(), true).ok()) {
+        // give it another try
+        res = methods::Version::check(vocbase);
       }
     }
 
-    LOG_TOPIC(DEBUG, Logger::STARTUP) << "version check return status " << res.status;
+    LOG_TOPIC("53cbb", DEBUG, Logger::STARTUP) << "version check return status " << res.status;
     if (res.status < 0) {
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+      LOG_TOPIC("52f16", FATAL, arangodb::Logger::FIXME)
           << "Database version check failed for '" << vocbase->name()
           << "'. Please inspect the logs for any errors. If there are no "
              "obvious issues in the logs, please retry with option "
@@ -180,35 +192,35 @@ void CheckVersionFeature::checkVersion() {
       // this is safe to do even if further databases will be checked
       // because we will never set the status back to success
       *_result = 3;
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+      LOG_TOPIC("ef6ca", WARN, arangodb::Logger::FIXME)
           << "Database version check failed for '" << vocbase->name()
           << "': downgrade needed";
     } else if (res.status == methods::VersionResult::UPGRADE_NEEDED && *_result == 1) {
       // this is safe to do even if further databases will be checked
       // because we will never set the status back to success
       *_result = 2;
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+      LOG_TOPIC("b7514", WARN, arangodb::Logger::FIXME)
           << "Database version check failed for '" << vocbase->name()
           << "': upgrade needed";
     }
   }
 
-  LOG_TOPIC(DEBUG, Logger::STARTUP) << "final result of version check: " << *_result;
+  LOG_TOPIC("382bb", DEBUG, Logger::STARTUP) << "final result of version check: " << *_result;
 
   if (*_result == 1) {
     *_result = EXIT_SUCCESS;
   } else if (*_result > 1) {
     if (*_result == 3) {
       // downgrade needed
-      LOG_TOPIC(FATAL, Logger::FIXME)
+      LOG_TOPIC("290c2", FATAL, Logger::FIXME)
           << "Database version check failed: downgrade needed";
       FATAL_ERROR_EXIT_CODE(TRI_EXIT_DOWNGRADE_REQUIRED);
     } else if (*_result == 2) {
-      LOG_TOPIC(FATAL, Logger::FIXME)
+      LOG_TOPIC("40e37", FATAL, Logger::FIXME)
           << "Database version check failed: upgrade needed";
       FATAL_ERROR_EXIT_CODE(TRI_EXIT_UPGRADE_REQUIRED);
     } else {
-      LOG_TOPIC(FATAL, Logger::FIXME) << "Database version check failed";
+      LOG_TOPIC("13e92", FATAL, Logger::FIXME) << "Database version check failed";
       FATAL_ERROR_EXIT_CODE(TRI_EXIT_VERSION_CHECK_FAILED);
     }
     FATAL_ERROR_EXIT_CODE(*_result);

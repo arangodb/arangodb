@@ -21,10 +21,16 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "TraversalExecutor.h"
+
+#include "Aql/ExecutionNode.h"
 #include "Aql/OutputAqlItemRow.h"
+#include "Aql/PruneExpressionEvaluator.h"
 #include "Aql/Query.h"
+#include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
+#include "Basics/system-compiler.h"
 #include "Graph/Traverser.h"
+#include "Graph/TraverserCache.h"
 #include "Graph/TraverserOptions.h"
 
 using namespace arangodb;
@@ -50,8 +56,9 @@ TraversalExecutorInfos::TraversalExecutorInfos(
   TRI_ASSERT(_traverser != nullptr);
   TRI_ASSERT(!_registerMapping.empty());
   // _fixedSource XOR _inputRegister
-  TRI_ASSERT((_fixedSource.empty() && _inputRegister != ExecutionNode::MaxRegisterId) ||
-             (!_fixedSource.empty() && _inputRegister == ExecutionNode::MaxRegisterId));
+  // note: _fixedSource can be the empty string here
+  TRI_ASSERT(_fixedSource.empty() ||
+             (!_fixedSource.empty() && _inputRegister == RegisterPlan::MaxRegisterId));
 }
 
 TraversalExecutorInfos::TraversalExecutorInfos(TraversalExecutorInfos&& other) = default;
@@ -63,35 +70,64 @@ Traverser& TraversalExecutorInfos::traverser() {
   return *_traverser.get();
 }
 
-bool TraversalExecutorInfos::useVertexOutput() const {
-  return _registerMapping.find(OutputName::VERTEX) != _registerMapping.end();
+bool TraversalExecutorInfos::usesOutputRegister(OutputName type) const {
+  return _registerMapping.find(type) != _registerMapping.end();
 }
 
-RegisterId TraversalExecutorInfos::vertexRegister() const {
-  TRI_ASSERT(useVertexOutput());
-  return _registerMapping.find(OutputName::VERTEX)->second;
+bool TraversalExecutorInfos::useVertexOutput() const {
+  return usesOutputRegister(OutputName::VERTEX);
 }
 
 bool TraversalExecutorInfos::useEdgeOutput() const {
-  return _registerMapping.find(OutputName::EDGE) != _registerMapping.end();
-}
-
-RegisterId TraversalExecutorInfos::edgeRegister() const {
-  TRI_ASSERT(useEdgeOutput());
-  return _registerMapping.find(OutputName::EDGE)->second;
+  return usesOutputRegister(OutputName::EDGE);
 }
 
 bool TraversalExecutorInfos::usePathOutput() const {
-  return _registerMapping.find(OutputName::PATH) != _registerMapping.end();
+  return usesOutputRegister(OutputName::PATH);
+}
+
+static std::string typeToString(TraversalExecutorInfos::OutputName type) {
+  switch (type) {
+    case TraversalExecutorInfos::VERTEX:
+      return std::string{"VERTEX"};
+    case TraversalExecutorInfos::EDGE:
+      return std::string{"EDGE"};
+    case TraversalExecutorInfos::PATH:
+      return std::string{"PATH"};
+    default:
+      return std::string{"<INVALID("} + std::to_string(type) + ")>";
+  }
+}
+
+RegisterId TraversalExecutorInfos::findRegisterChecked(OutputName type) const {
+  auto const& it = _registerMapping.find(type);
+  if (ADB_UNLIKELY(it == _registerMapping.end())) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        "Logic error: requested unused register type " + typeToString(type));
+  }
+  return it->second;
+}
+
+RegisterId TraversalExecutorInfos::getOutputRegister(OutputName type) const {
+  TRI_ASSERT(usesOutputRegister(type));
+  return findRegisterChecked(type);
+}
+
+RegisterId TraversalExecutorInfos::vertexRegister() const {
+  return getOutputRegister(OutputName::VERTEX);
+}
+
+RegisterId TraversalExecutorInfos::edgeRegister() const {
+  return getOutputRegister(OutputName::EDGE);
 }
 
 RegisterId TraversalExecutorInfos::pathRegister() const {
-  TRI_ASSERT(usePathOutput());
-  return _registerMapping.find(OutputName::PATH)->second;
+  return getOutputRegister(OutputName::PATH);
 }
 
 bool TraversalExecutorInfos::usesFixedSource() const {
-  return !_fixedSource.empty();
+  return _inputRegister == RegisterPlan::MaxRegisterId;
 }
 
 std::string const& TraversalExecutorInfos::getFixedSource() const {
@@ -101,7 +137,7 @@ std::string const& TraversalExecutorInfos::getFixedSource() const {
 
 RegisterId TraversalExecutorInfos::getInputRegister() const {
   TRI_ASSERT(!usesFixedSource());
-  TRI_ASSERT(_inputRegister != ExecutionNode::MaxRegisterId);
+  TRI_ASSERT(_inputRegister != RegisterPlan::MaxRegisterId);
   return _inputRegister;
 }
 
@@ -115,7 +151,22 @@ TraversalExecutor::TraversalExecutor(Fetcher& fetcher, Infos& infos)
       _input{CreateInvalidInputRowHint{}},
       _rowState(ExecutionState::HASMORE),
       _traverser(infos.traverser()) {}
-TraversalExecutor::~TraversalExecutor() = default;
+
+TraversalExecutor::~TraversalExecutor() {
+  auto opts = _traverser.options();
+  if (opts != nullptr && opts->usesPrune()) {
+    auto* evaluator = opts->getPruneEvaluator();
+    if (evaluator != nullptr) {
+      // The InAndOutRowExpressionContext in the PruneExpressionEvaluator holds
+      // an InputAqlItemRow. As the Plan holds the PruneExpressionEvaluator and
+      // is destroyed after the Engine, this must be deleted by
+      // unPrepareContext() - otherwise, the SharedAqlItemBlockPtr referenced by
+      // the row will return its AqlItemBlock to an already destroyed
+      // AqlItemBlockManager.
+      evaluator->unPrepareContext();
+    }
+  }
+};
 
 // Shutdown query
 std::pair<ExecutionState, Result> TraversalExecutor::shutdown(int errorCode) {
@@ -123,7 +174,7 @@ std::pair<ExecutionState, Result> TraversalExecutor::shutdown(int errorCode) {
   return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
 }
 
-std::pair<ExecutionState, TraversalStats> TraversalExecutor::produceRow(OutputAqlItemRow& output) {
+std::pair<ExecutionState, TraversalStats> TraversalExecutor::produceRows(OutputAqlItemRow& output) {
   TraversalStats s;
 
   while (true) {
@@ -132,6 +183,7 @@ std::pair<ExecutionState, TraversalStats> TraversalExecutor::produceRow(OutputAq
         // we are done
         s.addFiltered(_traverser.getAndResetFilteredPaths());
         s.addScannedIndex(_traverser.getAndResetReadDocuments());
+        s.addHttpRequests(_traverser.getAndResetHttpRequests());
         return {_rowState, s};
       }
       std::tie(_rowState, _input) = _fetcher.fetchRow();
@@ -139,6 +191,7 @@ std::pair<ExecutionState, TraversalStats> TraversalExecutor::produceRow(OutputAq
         TRI_ASSERT(!_input.isInitialized());
         s.addFiltered(_traverser.getAndResetFilteredPaths());
         s.addScannedIndex(_traverser.getAndResetReadDocuments());
+        s.addHttpRequests(_traverser.getAndResetHttpRequests());
         return {_rowState, s};
       }
 
@@ -147,9 +200,9 @@ std::pair<ExecutionState, TraversalStats> TraversalExecutor::produceRow(OutputAq
         TRI_ASSERT(_rowState == ExecutionState::DONE);
         s.addFiltered(_traverser.getAndResetFilteredPaths());
         s.addScannedIndex(_traverser.getAndResetReadDocuments());
+        s.addHttpRequests(_traverser.getAndResetHttpRequests());
         return {_rowState, s};
       }
-
       if (!resetTraverser()) {
         // Could not start here, (invalid)
         // Go to next
@@ -163,21 +216,24 @@ std::pair<ExecutionState, TraversalStats> TraversalExecutor::produceRow(OutputAq
     } else {
       // traverser now has next v, e, p values
       if (_infos.useVertexOutput()) {
-        output.cloneValueInto(_infos.vertexRegister(), _input,
-                              _traverser.lastVertexToAqlValue());
+        AqlValue vertex = _traverser.lastVertexToAqlValue();
+        AqlValueGuard guard{vertex, true};
+        output.moveValueInto(_infos.vertexRegister(), _input, guard);
       }
       if (_infos.useEdgeOutput()) {
-        output.cloneValueInto(_infos.edgeRegister(), _input,
-                              _traverser.lastEdgeToAqlValue());
+        AqlValue edge = _traverser.lastEdgeToAqlValue();
+        AqlValueGuard guard{edge, true};
+        output.moveValueInto(_infos.edgeRegister(), _input, guard);
       }
       if (_infos.usePathOutput()) {
         transaction::BuilderLeaser tmp(_traverser.trx());
-        tmp->clear();
-        output.cloneValueInto(_infos.pathRegister(), _input,
-                              _traverser.pathToAqlValue(*tmp.builder()));
+        AqlValue path = _traverser.pathToAqlValue(*tmp.builder());
+        AqlValueGuard guard{path, true};
+        output.moveValueInto(_infos.pathRegister(), _input, guard);
       }
       s.addFiltered(_traverser.getAndResetFilteredPaths());
       s.addScannedIndex(_traverser.getAndResetReadDocuments());
+      s.addHttpRequests(_traverser.getAndResetHttpRequests());
       return {computeState(), s};
     }
   }
@@ -195,6 +251,8 @@ ExecutionState TraversalExecutor::computeState() const {
 }
 
 bool TraversalExecutor::resetTraverser() {
+  _traverser.traverserCache()->clear();
+
   // Initialize the Expressions within the options.
   // We need to find the variable and read its value here. Everything is
   // computed right now.
@@ -203,7 +261,11 @@ bool TraversalExecutor::resetTraverser() {
   for (auto const& pair : _infos.filterConditionVariables()) {
     opts->setVariableValue(pair.first, _input.getValue(pair.second));
   }
-
+  if (opts->usesPrune()) {
+    auto* evaluator = opts->getPruneEvaluator();
+    // Replace by inputRow
+    evaluator->prepareContext(_input);
+  }
   // Now reset the traverser
   if (_infos.usesFixedSource()) {
     auto pos = _infos.getFixedSource().find('/');

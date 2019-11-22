@@ -38,6 +38,7 @@ struct AstNode;
 class ExecutionPlan;
 class Expression;
 class Query;
+
 }  // namespace aql
 
 namespace velocypack {
@@ -56,7 +57,7 @@ struct BaseOptions {
     // This struct does only take responsibility for the expression
     // NOTE: The expression can be nullptr!
     std::vector<transaction::Methods::IndexHandle> idxHandles;
-    aql::Expression* expression;
+    std::unique_ptr<aql::Expression> expression;
     aql::AstNode* indexCondition;
     // Flag if we have to update _from / _to in the index search condition
     bool conditionNeedUpdate;
@@ -67,6 +68,7 @@ struct BaseOptions {
     ~LookupInfo();
 
     LookupInfo(LookupInfo const&);
+    LookupInfo& operator=(LookupInfo const&) = delete;
 
     LookupInfo(arangodb::aql::Query*, arangodb::velocypack::Slice const&,
                arangodb::velocypack::Slice const&);
@@ -87,6 +89,7 @@ struct BaseOptions {
   /// @brief This copy constructor is only working during planning phase.
   ///        After planning this node should not be copied anywhere.
   explicit BaseOptions(BaseOptions const&);
+  BaseOptions& operator=(BaseOptions const&) = delete;
 
   BaseOptions(arangodb::aql::Query*, arangodb::velocypack::Slice, arangodb::velocypack::Slice);
 
@@ -106,6 +109,8 @@ struct BaseOptions {
   void setVariableValue(aql::Variable const*, aql::AqlValue const);
 
   void serializeVariables(arangodb::velocypack::Builder&) const;
+
+  void setCollectionToShard(std::map<std::string, std::string>const&);
 
   transaction::Methods* trx() const;
 
@@ -128,6 +133,8 @@ struct BaseOptions {
   void activateCache(bool enableDocumentCache,
                      std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines);
 
+  std::map<std::string, std::string> const& collectionToShard() const { return _collectionToShard; }
+
  protected:
   double costForLookupInfoList(std::vector<LookupInfo> const& list, size_t& createItems) const;
 
@@ -149,8 +156,8 @@ struct BaseOptions {
                               std::string const& collectionName,
                               std::string const& attributeName, aql::AstNode* condition);
 
-  EdgeCursor* nextCursorLocal(ManagedDocumentResult*, arangodb::velocypack::StringRef vid,
-                              std::vector<LookupInfo>&);
+  EdgeCursor* nextCursorLocal(arangodb::velocypack::StringRef vid,
+                              std::vector<LookupInfo> const&);
 
   void injectTestCache(std::unique_ptr<TraverserCache>&& cache);
 
@@ -169,6 +176,9 @@ struct BaseOptions {
 
   /// @brief the traverser cache
   std::unique_ptr<TraverserCache> _cache;
+
+  // @brief - translations for one-shard-databases
+  std::map<std::string, std::string> _collectionToShard;
 };
 
 }  // namespace graph

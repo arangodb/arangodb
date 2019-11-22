@@ -1,7 +1,10 @@
-<script id="modalCollectionInfo.ejs" type="text/template">
 <%
-    var figuresData = content.figures;
+    var figuresData = content.figures || {};
     var revision    = content.revision;
+
+    if (!figuresData.figures) {
+      figuresData.figures = {};
+    }
 %>
 
         <table id="collectionInfoTable" class="arango-table">
@@ -76,20 +79,9 @@
 
           <% if (figuresData.numberOfShards) { %>
             <tr>
-              <th class="collectionInfoTh2">Shards:</th>
+              <th class="collectionInfoTh2">Number of shards:</th>
               <th class="collectionInfoTh">
                 <div class="modal-text"><%=figuresData.numberOfShards%></div>
-              </th>
-              <th class="collectionInfoTh">
-              </th>
-            </tr>
-          <% } %>
-
-          <% if (figuresData.shardKeys) { %>
-            <tr>
-              <th class="collectionInfoTh2">Shard Keys:</th>
-              <th class="collectionInfoTh">
-                <div class="modal-text"><%=JSON.stringify(figuresData.shardKeys)%></div>
               </th>
               <th class="collectionInfoTh">
               </th>
@@ -106,7 +98,40 @@
               </th>
             </tr>
           <% } %>
+          
+          <% if (figuresData.shardKeys) { %>
+            <tr>
+              <th class="collectionInfoTh2">Shard keys:</th>
+              <th class="collectionInfoTh">
+                <div class="modal-text"><%=JSON.stringify(figuresData.shardKeys)%></div>
+              </th>
+              <th class="collectionInfoTh">
+              </th>
+            </tr>
+          <% } %>
 
+          <% if (figuresData.distributeShardsLike) { %>
+            <tr>
+              <th class="collectionInfoTh2">Distribute shards like:</th>
+              <th class="collectionInfoTh">
+                <div class="modal-text"><%=figuresData.distributeShardsLike%></div>
+              </th>
+              <th class="collectionInfoTh">
+              </th>
+            </tr>
+          <% } %>
+
+          <% if (figuresData.smartJoinAttribute) { %>
+            <tr>
+              <th class="collectionInfoTh2">Smart join attribute:</th>
+              <th class="collectionInfoTh">
+                <div class="modal-text"><%=figuresData.smartJoinAttribute%></div>
+              </th>
+              <th class="collectionInfoTh">
+              </th>
+            </tr>
+          <% } %>
+          
           <% if (figuresData.indexBuckets) { %>
             <tr>
               <th class="collectionInfoTh2">Index buckets:</th>
@@ -144,13 +169,11 @@
 
       </div>
 
-        <% if (figuresData.figures.alive && figuresData.figures.dead) { %>
-          <% if (window.frontendConfig.isCluster) { %>
+        <% if (figuresData.figures.alive && figuresData.figures.dead && !frontendConfig.isCluster && frontendConfig.engine === 'mmfiles') { %>
             <div class="infoBox">
               <h4>Figures</h4>
               <p>The following information does not contain data stored in the write-ahead log. It can be inaccurate, until the write-ahead log has been completely flushed.</p>
             </div>
-          <% } %>
           <table class="figures1 arango-table">
             <tr class="figuresHeader">
               <th>Type</th>
@@ -215,7 +238,7 @@
           </table>
         <% } %>
 
-        <% if (figuresData.figures.datafiles && figuresData.figures.journals && figuresData.figures.compactors) { %>
+        <% if (figuresData.figures.datafiles && figuresData.figures.journals && figuresData.figures.compactors && !frontendConfig.isCluster && frontendConfig.engine === 'mmfiles') { %>
           <table class="figures2 arango-table">
             <tr class="figuresHeader">
               <th>Type</th>
@@ -307,7 +330,7 @@
           </table>
         <% } %>
 
-        <% if (figuresData.figures.documentReferences && figuresData.figures.uncollectedLogfileEntries) { %>
+        <% if (figuresData.figures.documentReferences && figuresData.figures.uncollectedLogfileEntries && !frontendConfig.isCluster && frontendConfig.engine === 'mmfiles') { %>
           <table class="figures3 arango-table">
             <tr class="figuresHeader">
               <th>Type</th>
@@ -339,4 +362,3 @@
           </table>
         <% } %>
 
-</script>

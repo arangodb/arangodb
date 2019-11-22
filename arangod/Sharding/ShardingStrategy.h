@@ -73,7 +73,7 @@ class ShardingStrategy {
 
   virtual int getResponsibleShard(arangodb::velocypack::Slice, bool docComplete,
                                   ShardID& shardID, bool& usesDefaultShardKeys,
-                                  std::string const& key = "") = 0;
+                                  arangodb::velocypack::StringRef const& key) = 0;
 };
 
 }  // namespace arangodb

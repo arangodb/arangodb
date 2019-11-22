@@ -23,7 +23,6 @@
 #include "RestUsersHandler.h"
 #include "Basics/VelocyPackHelper.h"
 #include "GeneralServer/AuthenticationFeature.h"
-#include "Rest/HttpRequest.h"
 #include "Rest/Version.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Utils/CollectionNameResolver.h"
@@ -42,14 +41,12 @@ namespace {
 /// @return a collection exists in database or a wildcard was specified
 ////////////////////////////////////////////////////////////////////////////////
 arangodb::Result existsCollection(std::string const& database, std::string const& collection) {
-  auto* databaseFeature =
-      arangodb::application_features::ApplicationServer::lookupFeature<arangodb::DatabaseFeature>(
-          "Database");
-
-  if (!databaseFeature) {
+  auto& server = arangodb::application_features::ApplicationServer::server();
+  if (!server.hasFeature<arangodb::DatabaseFeature>()) {
     return arangodb::Result(TRI_ERROR_INTERNAL,
                             "failure to find feature 'Database'");
   }
+  auto& databaseFeature = server.getFeature<arangodb::DatabaseFeature>();
 
   static const std::string wildcard("*");
 
@@ -57,7 +54,7 @@ arangodb::Result existsCollection(std::string const& database, std::string const
     return arangodb::Result();  // wildcard always matches
   }
 
-  auto* vocbase = databaseFeature->lookupDatabase(database);
+  auto* vocbase = databaseFeature.lookupDatabase(database);
 
   if (!vocbase) {
     return arangodb::Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
@@ -78,8 +75,9 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestUsersHandler::RestUsersHandler(GeneralRequest* request, GeneralResponse* response)
-    : RestBaseHandler(request, response) {}
+RestUsersHandler::RestUsersHandler(application_features::ApplicationServer& server,
+                                   GeneralRequest* request, GeneralResponse* response)
+    : RestBaseHandler(server, request, response) {}
 
 RestStatus RestUsersHandler::execute() {
   RequestType const type = _request->requestType();
@@ -111,10 +109,8 @@ RestStatus RestUsersHandler::execute() {
 bool RestUsersHandler::isAdminUser() const {
   if (!ExecContext::isAuthEnabled()) {
     return true;
-  } else if (ExecContext::CURRENT != nullptr) {
-    return ExecContext::CURRENT->isAdminUser();
   }
-  return false;
+  return ExecContext::current().isAdminUser();
 }
 
 bool RestUsersHandler::canAccessUser(std::string const& user) const {

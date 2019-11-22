@@ -69,6 +69,7 @@ const testPaths = {
 const failPreStartMessage = (msg) => {
   return {
     state: false,
+    shutdown: true,
     message: msg
   };
 };
@@ -111,7 +112,7 @@ const generateDumpData = (options) => {
 
     _.defaults(asRoot, options);
 
-    let dump = pu.run.arangoDumpRestore(asRoot, instanceInfo, 'dump', '_system', path, syssys, true);
+    let dump = pu.run.arangoDumpRestore(asRoot, instanceInfo, 'dump', '_system', path, syssys, true, options.coreCheck);
     if (dump.status === false || !isAlive(instanceInfo, options)) {
       log('Dump failed');
       dump.failed = 1;
@@ -121,7 +122,7 @@ const generateDumpData = (options) => {
 
     log('Create dump _system excl system collections');
 
-    dump = pu.run.arangoDumpRestore(asRoot, instanceInfo, 'dump', '_system', path, sysNoSys, false);
+    dump = pu.run.arangoDumpRestore(asRoot, instanceInfo, 'dump', '_system', path, sysNoSys, false, options.coreCheck);
     if (dump.status === false || !isAlive(instanceInfo, options)) {
       log('Dump failed');
       dump.failed = 1;
@@ -135,7 +136,14 @@ const generateDumpData = (options) => {
 
     if (isAlive(instanceInfo, options)) {
       options['server.jwt-secret'] = 'haxxmann';
-      pu.shutdownInstance(instanceInfo, options);
+      if (!pu.shutdownInstance(instanceInfo, options)) {
+        path = {
+          state: false,
+          failed: 1,
+          shutdown: false,
+          message: "shutdown of dump server failed"
+        };
+      }
     }
     log('done.');
     print();
@@ -166,7 +174,8 @@ const setServerOptions = (options, serverOptions, customInstanceInfos, startStop
     serverOptions['server.authentication'] = 'false';
   }
   return {
-    state: true
+    state: true,
+    shutdown: true
   };
 };
 
@@ -179,18 +188,22 @@ const setupBackupTest = (options, serverOptions, instanceInfo, customInstanceInf
                                          'restore',
                                          '_system',
                                          startStopHandlers.path,
-                                         startStopHandlers.restoreDir);
+                                         startStopHandlers.restoreDir,
+                                         true,
+                                         options.coreCheck);
 
   if (restore.status === false || !isAlive(instanceInfo, options)) {
     log('Restore failed');
     restore.failed = 1;
     return {
       state: false,
-      message: restore.message
+      message: restore.message,
+      shutdown: true
     };
   }
 
   return {
+    shutdown: true,
     state: true
   };
 };

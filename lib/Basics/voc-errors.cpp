@@ -1,6 +1,7 @@
 /// auto-generated file generated from errors.dat
 
 #include "Basics/Common.h"
+#include "Basics/error.h"
 #include "Basics/voc-errors.h"
 
 /// helper macro to define an error string
@@ -90,7 +91,6 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_ARANGO_DOCUMENT_TOO_LARGE, "document too large");
   REG_ERROR(ERROR_ARANGO_COLLECTION_NOT_UNLOADED, "collection must be unloaded");
   REG_ERROR(ERROR_ARANGO_COLLECTION_TYPE_INVALID, "collection type invalid");
-  REG_ERROR(ERROR_ARANGO_VALIDATION_FAILED, "validator failed");
   REG_ERROR(ERROR_ARANGO_ATTRIBUTE_PARSER_FAILED, "parsing attribute name definition failed");
   REG_ERROR(ERROR_ARANGO_DOCUMENT_KEY_BAD, "illegal document key");
   REG_ERROR(ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED, "unexpected document key");
@@ -101,15 +101,14 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_ARANGO_DATABASE_NOT_FOUND, "database not found");
   REG_ERROR(ERROR_ARANGO_DATABASE_NAME_INVALID, "database name invalid");
   REG_ERROR(ERROR_ARANGO_USE_SYSTEM_DATABASE, "operation only allowed in system database");
-  REG_ERROR(ERROR_ARANGO_ENDPOINT_NOT_FOUND, "endpoint not found");
   REG_ERROR(ERROR_ARANGO_INVALID_KEY_GENERATOR, "invalid key generator");
   REG_ERROR(ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE, "edge attribute missing or invalid");
-  REG_ERROR(ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING, "index insertion warning - attribute missing in document");
   REG_ERROR(ERROR_ARANGO_INDEX_CREATION_FAILED, "index creation failed");
   REG_ERROR(ERROR_ARANGO_WRITE_THROTTLE_TIMEOUT, "write-throttling timeout");
   REG_ERROR(ERROR_ARANGO_COLLECTION_TYPE_MISMATCH, "collection type mismatch");
   REG_ERROR(ERROR_ARANGO_COLLECTION_NOT_LOADED, "collection not loaded");
   REG_ERROR(ERROR_ARANGO_DOCUMENT_REV_BAD, "illegal document revision");
+  REG_ERROR(ERROR_ARANGO_INCOMPLETE_READ, "incomplete read");
   REG_ERROR(ERROR_ARANGO_DATAFILE_FULL, "datafile full");
   REG_ERROR(ERROR_ARANGO_EMPTY_DATADIR, "server database directory is empty");
   REG_ERROR(ERROR_ARANGO_TRY_AGAIN, "operation should be tried again");
@@ -132,12 +131,10 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_REPLICATION_START_TICK_NOT_PRESENT, "start tick not present");
   REG_ERROR(ERROR_REPLICATION_WRONG_CHECKSUM, "wrong checksum");
   REG_ERROR(ERROR_REPLICATION_SHARD_NONEMPTY, "shard not empty");
-  REG_ERROR(ERROR_CLUSTER_NO_AGENCY, "could not connect to agency");
-  REG_ERROR(ERROR_CLUSTER_NO_COORDINATOR_HEADER, "missing coordinator header");
-  REG_ERROR(ERROR_CLUSTER_COULD_NOT_LOCK_PLAN, "could not lock plan in agency");
+  REG_ERROR(ERROR_CLUSTER_SERVER_UNKNOWN, "got a request from an unkown server");
+  REG_ERROR(ERROR_CLUSTER_TOO_MANY_SHARDS, "too many shards");
   REG_ERROR(ERROR_CLUSTER_COLLECTION_ID_EXISTS, "collection ID already exists");
   REG_ERROR(ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN, "could not create collection in plan");
-  REG_ERROR(ERROR_CLUSTER_COULD_NOT_READ_CURRENT_VERSION, "could not read version in current in agency");
   REG_ERROR(ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION, "could not create collection");
   REG_ERROR(ERROR_CLUSTER_TIMEOUT, "timeout in cluster operation");
   REG_ERROR(ERROR_CLUSTER_COULD_NOT_REMOVE_COLLECTION_IN_PLAN, "could not remove collection from plan");
@@ -157,12 +154,8 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_CLUSTER_READING_PLAN_AGENCY, "error reading Plan in agency");
   REG_ERROR(ERROR_CLUSTER_COULD_NOT_TRUNCATE_COLLECTION, "could not truncate collection");
   REG_ERROR(ERROR_CLUSTER_AQL_COMMUNICATION, "error in cluster internal communication for AQL");
-  REG_ERROR(ERROR_ARANGO_DOCUMENT_NOT_FOUND_OR_SHARDING_ATTRIBUTES_CHANGED, "document not found or sharding attributes changed");
-  REG_ERROR(ERROR_CLUSTER_COULD_NOT_DETERMINE_ID, "could not determine my ID from my local info");
   REG_ERROR(ERROR_CLUSTER_ONLY_ON_DBSERVER, "this operation is only valid on a DBserver in a cluster");
   REG_ERROR(ERROR_CLUSTER_BACKEND_UNAVAILABLE, "A cluster backend which was required for the operation could not be reached");
-  REG_ERROR(ERROR_CLUSTER_UNKNOWN_CALLBACK_ENDPOINT, "An endpoint couldn't be found");
-  REG_ERROR(ERROR_CLUSTER_AGENCY_STRUCTURE_INVALID, "Invalid agency structure");
   REG_ERROR(ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC, "collection is out of sync");
   REG_ERROR(ERROR_CLUSTER_COULD_NOT_CREATE_INDEX_IN_PLAN, "could not create index in plan");
   REG_ERROR(ERROR_CLUSTER_COULD_NOT_DROP_INDEX_IN_PLAN, "could not drop index in plan");
@@ -175,8 +168,6 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION, "a shard follower refuses to perform an operation that is not a replication");
   REG_ERROR(ERROR_CLUSTER_SHARD_LEADER_RESIGNED, "a (former) shard leader refuses to perform an operation, because it has resigned in the meantime");
   REG_ERROR(ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED, "some agency operation failed");
-  REG_ERROR(ERROR_CLUSTER_DISTRIBUTE_SHARDS_LIKE_REPLICATION_FACTOR, "conflicting replication factor with distributeShardsLike parameter assignment");
-  REG_ERROR(ERROR_CLUSTER_DISTRIBUTE_SHARDS_LIKE_NUMBER_OF_SHARDS, "conflicting shard number with distributeShardsLike parameter assignment");
   REG_ERROR(ERROR_CLUSTER_LEADERSHIP_CHALLENGE_ONGOING, "leadership challenge is ongoing");
   REG_ERROR(ERROR_CLUSTER_NOT_LEADER, "not a leader");
   REG_ERROR(ERROR_CLUSTER_COULD_NOT_CREATE_VIEW_IN_PLAN, "could not create view in plan");
@@ -214,6 +205,7 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_QUERY_INVALID_AGGREGATE_EXPRESSION, "invalid aggregate expression");
   REG_ERROR(ERROR_QUERY_COMPILE_TIME_OPTIONS, "query options must be readable at query compile time");
   REG_ERROR(ERROR_QUERY_EXCEPTION_OPTIONS, "query options expected");
+  REG_ERROR(ERROR_QUERY_FORCED_INDEX_HINT_UNUSABLE, "could not use forced index hint");
   REG_ERROR(ERROR_QUERY_DISALLOWED_DYNAMIC_CALL, "disallowed dynamic call to '%s'");
   REG_ERROR(ERROR_QUERY_ACCESS_AFTER_MODIFICATION, "access after data-modification by %s");
   REG_ERROR(ERROR_QUERY_FUNCTION_INVALID_NAME, "invalid user function name");
@@ -222,7 +214,6 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_QUERY_FUNCTION_RUNTIME_ERROR, "user function runtime error: %s");
   REG_ERROR(ERROR_QUERY_BAD_JSON_PLAN, "bad execution plan JSON");
   REG_ERROR(ERROR_QUERY_NOT_FOUND, "query ID not found");
-  REG_ERROR(ERROR_QUERY_IN_USE, "query with this ID is in use");
   REG_ERROR(ERROR_QUERY_USER_ASSERT, "%s");
   REG_ERROR(ERROR_QUERY_USER_WARN, "%s");
   REG_ERROR(ERROR_CURSOR_NOT_FOUND, "cursor not found");
@@ -232,14 +223,11 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_TRANSACTION_UNREGISTERED_COLLECTION, "unregistered collection used in transaction");
   REG_ERROR(ERROR_TRANSACTION_DISALLOWED_OPERATION, "disallowed operation inside transaction");
   REG_ERROR(ERROR_TRANSACTION_ABORTED, "transaction aborted");
+  REG_ERROR(ERROR_TRANSACTION_NOT_FOUND, "transaction not found");
   REG_ERROR(ERROR_USER_INVALID_NAME, "invalid user name");
-  REG_ERROR(ERROR_USER_INVALID_PASSWORD, "invalid password");
   REG_ERROR(ERROR_USER_DUPLICATE, "duplicate user");
   REG_ERROR(ERROR_USER_NOT_FOUND, "user not found");
-  REG_ERROR(ERROR_USER_CHANGE_PASSWORD, "user must change his password");
   REG_ERROR(ERROR_USER_EXTERNAL, "user is external");
-  REG_ERROR(ERROR_SERVICE_INVALID_NAME, "invalid service name");
-  REG_ERROR(ERROR_SERVICE_INVALID_MOUNT, "invalid mount");
   REG_ERROR(ERROR_SERVICE_DOWNLOAD_FAILED, "service download failed");
   REG_ERROR(ERROR_SERVICE_UPLOAD_FAILED, "service upload failed");
   REG_ERROR(ERROR_LDAP_CANNOT_INIT, "cannot init a LDAP connection");
@@ -272,8 +260,8 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_GRAPH_NOT_FOUND, "graph '%s' not found");
   REG_ERROR(ERROR_GRAPH_DUPLICATE, "graph already exists");
   REG_ERROR(ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST, "vertex collection does not exist or is not part of the graph");
-  REG_ERROR(ERROR_GRAPH_WRONG_COLLECTION_TYPE_VERTEX, "not a vertex collection");
-  REG_ERROR(ERROR_GRAPH_NOT_IN_ORPHAN_COLLECTION, "not in orphan collection");
+  REG_ERROR(ERROR_GRAPH_WRONG_COLLECTION_TYPE_VERTEX, "collection not a vertex collection");
+  REG_ERROR(ERROR_GRAPH_NOT_IN_ORPHAN_COLLECTION, "collection is not in list of orphan collections");
   REG_ERROR(ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF, "collection already used in edge def");
   REG_ERROR(ERROR_GRAPH_EDGE_COLLECTION_NOT_USED, "edge collection not used in graph");
   REG_ERROR(ERROR_GRAPH_NO_GRAPH_COLLECTION, "collection _graphs does not exist");
@@ -291,12 +279,13 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_GRAPH_EDGE_DEFINITION_IS_DOCUMENT, "edge definition collection is a document collection");
   REG_ERROR(ERROR_SESSION_UNKNOWN, "unknown session");
   REG_ERROR(ERROR_SESSION_EXPIRED, "session expired");
-  REG_ERROR(SIMPLE_CLIENT_UNKNOWN_ERROR, "unknown client error");
-  REG_ERROR(SIMPLE_CLIENT_COULD_NOT_CONNECT, "could not connect to server");
-  REG_ERROR(SIMPLE_CLIENT_COULD_NOT_WRITE, "could not write to server");
-  REG_ERROR(SIMPLE_CLIENT_COULD_NOT_READ, "could not read from server");
-  REG_ERROR(COMMUNICATOR_REQUEST_ABORTED, "Request aborted");
-  REG_ERROR(COMMUNICATOR_DISABLED, "Communication was disabled");
+  REG_ERROR(ERROR_SIMPLE_CLIENT_UNKNOWN_ERROR, "unknown client error");
+  REG_ERROR(ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT, "could not connect to server");
+  REG_ERROR(ERROR_SIMPLE_CLIENT_COULD_NOT_WRITE, "could not write to server");
+  REG_ERROR(ERROR_SIMPLE_CLIENT_COULD_NOT_READ, "could not read from server");
+  REG_ERROR(ERROR_WAS_ERLAUBE, "was erlaube?!");
+  REG_ERROR(ERROR_COMMUNICATOR_REQUEST_ABORTED, "Request aborted");
+  REG_ERROR(ERROR_COMMUNICATOR_DISABLED, "Communication was disabled");
   REG_ERROR(ERROR_INTERNAL_AQL, "General internal AQL error");
   REG_ERROR(ERROR_WROTE_TOO_FEW_OUTPUT_REGISTERS, "An AQL block wrote too few output registers");
   REG_ERROR(ERROR_WROTE_TOO_MANY_OUTPUT_REGISTERS, "An AQL block wrote too many output registers");
@@ -317,6 +306,7 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_SERVICE_SOURCE_NOT_FOUND, "source path not found");
   REG_ERROR(ERROR_SERVICE_SOURCE_ERROR, "error resolving source");
   REG_ERROR(ERROR_SERVICE_UNKNOWN_SCRIPT, "unknown script");
+  REG_ERROR(ERROR_SERVICE_API_DISABLED, "service api disabled");
   REG_ERROR(ERROR_MODULE_NOT_FOUND, "cannot locate module");
   REG_ERROR(ERROR_MODULE_SYNTAX_ERROR, "syntax error in module");
   REG_ERROR(ERROR_MODULE_FAILURE, "failed to invoke module");
@@ -326,6 +316,10 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_GRAPH_ATTRIBUTE, "in smart vertex collections _key must be prefixed with the value of the smart graph attribute");
   REG_ERROR(ERROR_ILLEGAL_SMART_GRAPH_ATTRIBUTE, "attribute cannot be used as smart graph attribute");
   REG_ERROR(ERROR_SMART_GRAPH_ATTRIBUTE_MISMATCH, "smart graph attribute mismatch");
+  REG_ERROR(ERROR_INVALID_SMART_JOIN_ATTRIBUTE, "invalid smart join attribute declaration");
+  REG_ERROR(ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_JOIN_ATTRIBUTE, "shard key value must be prefixed with the value of the smart join attribute");
+  REG_ERROR(ERROR_NO_SMART_JOIN_ATTRIBUTE, "smart join attribute not given or invalid");
+  REG_ERROR(ERROR_CLUSTER_MUST_NOT_CHANGE_SMART_JOIN_ATTRIBUTE, "must not change the value of the smartJoinAttribute");
   REG_ERROR(ERROR_CLUSTER_REPAIRS_FAILED, "error during cluster repairs");
   REG_ERROR(ERROR_CLUSTER_REPAIRS_NOT_ENOUGH_HEALTHY, "not enough (healthy) db servers");
   REG_ERROR(ERROR_CLUSTER_REPAIRS_REPLICATION_FACTOR_VIOLATED, "replication factor violated during cluster repairs");
@@ -337,7 +331,6 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_CLUSTER_REPAIRS_JOB_FAILED, "move shard job failed during cluster repairs");
   REG_ERROR(ERROR_CLUSTER_REPAIRS_JOB_DISAPPEARED, "move shard job disappeared during cluster repairs");
   REG_ERROR(ERROR_CLUSTER_REPAIRS_OPERATION_FAILED, "agency transaction failed during cluster repairs");
-  REG_ERROR(ERROR_AGENCY_INQUIRY_SYNTAX, "Illegal inquiry syntax");
   REG_ERROR(ERROR_AGENCY_INFORM_MUST_BE_OBJECT, "Inform message must be an object.");
   REG_ERROR(ERROR_AGENCY_INFORM_MUST_CONTAIN_TERM, "Inform message must contain uint parameter 'term'");
   REG_ERROR(ERROR_AGENCY_INFORM_MUST_CONTAIN_ID, "Inform message must contain string parameter 'id'");
@@ -346,14 +339,22 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_AGENCY_INFORM_MUST_CONTAIN_MIN_PING, "Inform message must contain object 'min ping'");
   REG_ERROR(ERROR_AGENCY_INFORM_MUST_CONTAIN_MAX_PING, "Inform message must contain object 'max ping'");
   REG_ERROR(ERROR_AGENCY_INFORM_MUST_CONTAIN_TIMEOUT_MULT, "Inform message must contain object 'timeoutMult'");
-  REG_ERROR(ERROR_AGENCY_INQUIRE_CLIENT_ID_MUST_BE_STRING, "Inquiry failed");
   REG_ERROR(ERROR_AGENCY_CANNOT_REBUILD_DBS, "Cannot rebuild readDB and spearHead");
   REG_ERROR(ERROR_SUPERVISION_GENERAL_FAILURE, "general supervision failure");
-  REG_ERROR(ERROR_DISPATCHER_IS_STOPPING, "dispatcher stopped");
-  REG_ERROR(ERROR_QUEUE_UNKNOWN, "named queue does not exist");
   REG_ERROR(ERROR_QUEUE_FULL, "named queue is full");
-  REG_ERROR(ERROR_ACTION_ALREADY_REGISTERED, "maintenance action already registered");
   REG_ERROR(ERROR_ACTION_OPERATION_UNABORTABLE, "this maintenance action cannot be stopped");
   REG_ERROR(ERROR_ACTION_UNFINISHED, "maintenance action still processing");
   REG_ERROR(ERROR_NO_SUCH_ACTION, "no such maintenance action");
+  REG_ERROR(ERROR_HOT_BACKUP_INTERNAL, " \"internal hot backup error\"");
+  REG_ERROR(ERROR_HOT_RESTORE_INTERNAL, " \"internal hot restore error\"");
+  REG_ERROR(ERROR_BACKUP_TOPOLOGY, " \"backup does not match this topology\"");
+  REG_ERROR(ERROR_NO_SPACE_LEFT_ON_DEVICE, " \"no space left on device\"");
+  REG_ERROR(ERROR_FAILED_TO_UPLOAD_BACKUP, " \"failed to upload hot backup set to remote target\"");
+  REG_ERROR(ERROR_FAILED_TO_DOWNLOAD_BACKUP, " \"failed to download hot backup set from remote source\"");
+  REG_ERROR(ERROR_NO_SUCH_HOT_BACKUP, " \"no such hot backup set can be found");
+  REG_ERROR(ERROR_REMOTE_REPOSITORY_CONFIG_BAD, " \"remote hotback repository configuration error\"");
+  REG_ERROR(ERROR_LOCAL_LOCK_FAILED, " \"some db servers cannot be reached for transaction locks\"");
+  REG_ERROR(ERROR_LOCAL_LOCK_RETRY, " \"some db servers cannot be reached for transaction locks\"");
+  REG_ERROR(ERROR_HOT_BACKUP_CONFLICT, " \"hot backup conflict\"");
+  REG_ERROR(ERROR_HOT_BACKUP_DBSERVERS_AWOL, " \"hot backup not all db servers reachable\"");
 }

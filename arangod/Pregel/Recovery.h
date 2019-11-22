@@ -23,10 +23,9 @@
 #ifndef ARANGODB_PREGEL_RECOVERY_H
 #define ARANGODB_PREGEL_RECOVERY_H 1
 
-#include <velocypack/velocypack-aliases.h>
-#include <velocypack/vpack.h>
-//#include "Cluster/AgencyCallbackRegistry.h"
-//#include "Agency/AgencyComm.h"
+#include <map>
+#include <set>
+
 #include "Basics/Mutex.h"
 #include "Cluster/ClusterInfo.h"
 
@@ -38,6 +37,7 @@ class GraphStore;
 class Conductor;
 
 class RecoveryManager {
+  ClusterInfo& _ci;
   Mutex _lock;
   AgencyComm _agency;
   // AgencyCallbackRegistry* _agencyCallbackRegistry;  // weak
@@ -52,7 +52,7 @@ class RecoveryManager {
   void _renewPrimaryServer(ShardID const& shard);
 
  public:
-  RecoveryManager();
+  explicit RecoveryManager(ClusterInfo&);
   ~RecoveryManager();
 
   void monitorCollections(DatabaseID const& database,

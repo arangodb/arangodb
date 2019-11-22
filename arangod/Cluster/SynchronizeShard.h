@@ -33,8 +33,12 @@
 #include <chrono>
 
 namespace arangodb {
+namespace network {
+class ConnectionPool;
+}
 
 class LogicalCollection;
+struct SyncerId;
 
 namespace maintenance {
 
@@ -44,12 +48,13 @@ class SynchronizeShard : public ActionBase {
 
   virtual ~SynchronizeShard();
 
-  virtual bool first() override final;
+  bool first() override final;
 
-  virtual void setState(ActionState state) override final;
+  void setState(ActionState state) override final;
 
  private:
-  arangodb::Result getReadLock(std::string const& endpoint, std::string const& database,
+  arangodb::Result getReadLock(network::ConnectionPool* pool,
+                               std::string const& endpoint, std::string const& database,
                                std::string const& collection, std::string const& clientId,
                                uint64_t rlid, bool soft, double timeout = 300.0);
 
@@ -65,9 +70,13 @@ class SynchronizeShard : public ActionBase {
       std::string const& leader, TRI_voc_tick_t lastLogTick, VPackBuilder& builder);
 
   arangodb::Result catchupWithExclusiveLock(
-      std::string const& ep, std::string const& database, LogicalCollection const& collection,
-      std::string const& clientId, std::string const& shard,
-      std::string const& leader, TRI_voc_tick_t lastLogTick, VPackBuilder& builder);
+      std::string const& ep, std::string const& database,
+      LogicalCollection const& collection, std::string const& clientId,
+      std::string const& shard, std::string const& leader, SyncerId syncerId,
+      TRI_voc_tick_t lastLogTick, VPackBuilder& builder);
+
+  /// @brief Short, informative description of the replication client, passed to the server
+  std::string _clientInfoString;
 };
 
 }  // namespace maintenance

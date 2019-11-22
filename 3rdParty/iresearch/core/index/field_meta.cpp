@@ -36,13 +36,13 @@ field_meta::field_meta(field_meta&& rhs) NOEXCEPT
   : features(std::move(rhs.features)),
     name(std::move(rhs.name)),
     norm(rhs.norm) {
-  rhs.norm = type_limits<type_t::field_id_t>::invalid();
+  rhs.norm = field_limits::invalid();
 }
 
 field_meta::field_meta(
     const string_ref& name,
     const flags& features,
-    field_id norm /* = type_limits<type_t::field_id_t>::invalid() */)
+    field_id norm /* = field_limits::invalid() */)
   : features(features),
     name(name.c_str(), name.size()),
     norm(norm) {
@@ -53,7 +53,7 @@ field_meta& field_meta::operator=(field_meta&& rhs) NOEXCEPT {
     features = std::move(rhs.features);
     name = std::move(rhs.name);
     norm = rhs.norm;
-    rhs.norm = type_limits<type_t::field_id_t>::invalid();
+    rhs.norm = field_limits::invalid();
   }
 
   return *this;
@@ -69,7 +69,7 @@ bool field_meta::operator==(const field_meta& rhs) const {
 
 column_meta::column_meta(column_meta&& rhs) NOEXCEPT
   : name(std::move(rhs.name)), id(rhs.id) {
-  rhs.id = type_limits<type_t::field_id_t>::invalid();
+  rhs.id = field_limits::invalid();
 }
 
 column_meta::column_meta(const string_ref& name, field_id id)
@@ -80,7 +80,7 @@ column_meta& column_meta::operator=(column_meta&& rhs) NOEXCEPT {
   if (this != &rhs) {
     name = std::move(rhs.name);
     id = rhs.id;
-    rhs.id = type_limits<type_t::field_id_t>::invalid();
+    rhs.id = field_limits::invalid();
   }
 
   return *this;

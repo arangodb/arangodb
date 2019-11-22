@@ -23,12 +23,14 @@
 #ifndef ARANGOD_GEO_GEO_PARAMS_H
 #define ARANGOD_GEO_GEO_PARAMS_H 1
 
-#include <cmath>
+#include "Basics/Common.h"
+#include "Basics/debugging.h"
+#include "Geo/ShapeContainer.h"
 
+#include <cmath>
 #include <s2/s2latlng.h>
 #include <s2/s2region_coverer.h>
 
-#include "Geo/ShapeContainer.h"
 
 namespace arangodb {
 namespace velocypack {
@@ -51,14 +53,14 @@ constexpr double kMaxDistanceBetweenPoints = kMaxRadiansBetweenPoints * kEarthRa
 enum class FilterType {
   // no filter, only useful on a near query
   NONE,
-  // Select documents with geospatial data that are located entirely within a
-  // shape.
-  // When determining inclusion, we consider the border of a shape to be part of
-  // the shape,
+  // Select documents with geospatial data that are located entirely
+  // within a shape.
+  // When determining inclusion, we consider the border of a shape to
+  // be part of the shape,
   // subject to the precision of floating point numbers.
   CONTAINS,
-  // Select documents whose geospatial data intersects with a specified GeoJSON
-  // object.
+  // Select documents whose geospatial data intersects with a
+  // specified GeoJSON object.
   INTERSECTS
 };
 
@@ -123,8 +125,6 @@ struct QueryParams {
 
   /// @brief Index only contains points; no need to consider larger polygons
   bool pointsOnly = false;
-  /// @brief The full radius bound range will eventually be scanned, be eager
-  bool fullRange = false;
   /// @brief If non-zero, we will use a LIMIT clause later with this value
   size_t limit = 0;
 

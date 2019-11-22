@@ -31,7 +31,6 @@
 #include "velocypack/Validator.h"
 #include "velocypack/Exception.h"
 #include "velocypack/Slice.h"
-#include "velocypack/Utf8Helper.h"
 #include "velocypack/ValueType.h"
 
 #include "asm-functions.h"
@@ -60,8 +59,15 @@ static ValueLength ReadVariableLengthValue(uint8_t const*& p, uint8_t const* end
   }
   return value;
 }
+  
+Validator::Validator(Options const* options)
+      : options(options), _level(0) {
+  if (options == nullptr) {
+    throw Exception(Exception::InternalError, "Options cannot be a nullptr");
+  }
+}
 
-bool Validator::validate(uint8_t const* ptr, size_t length, bool isSubPart) {
+bool Validator::validate(uint8_t const* ptr, std::size_t length, bool isSubPart) {
   if (length == 0) {
     throw Exception(Exception::ValidatorInvalidLength, "length 0 is invalid for any VelocyPack value");
   }
@@ -109,7 +115,8 @@ bool Validator::validate(uint8_t const* ptr, size_t length, bool isSubPart) {
         validateBufferLength(len + 1, length, true);
       }
 
-      if (options->validateUtf8Strings && !Utf8Helper::isValidUtf8(p, len)) {
+      if (options->validateUtf8Strings &&
+          !ValidateUtf8String(p, static_cast<std::size_t>(len))) {
         throw Exception(Exception::InvalidUtf8Sequence);
       }
       break;
@@ -191,7 +198,7 @@ bool Validator::validate(uint8_t const* ptr, size_t length, bool isSubPart) {
   return true;
 }
 
-void Validator::validateArray(uint8_t const* ptr, size_t length) {
+void Validator::validateArray(uint8_t const* ptr, std::size_t length) {
   uint8_t head = *ptr;
 
   if (head == 0x13U) {
@@ -208,7 +215,7 @@ void Validator::validateArray(uint8_t const* ptr, size_t length) {
   }
 }
 
-void Validator::validateCompactArray(uint8_t const* ptr, size_t length) {
+void Validator::validateCompactArray(uint8_t const* ptr, std::size_t length) {
   // compact Array without index table
   validateBufferLength(4, length, true);
 
@@ -237,7 +244,7 @@ void Validator::validateCompactArray(uint8_t const* ptr, size_t length) {
   }
 }
 
-void Validator::validateUnindexedArray(uint8_t const* ptr, size_t length) {
+void Validator::validateUnindexedArray(uint8_t const* ptr, std::size_t length) {
   // Array without index table, with 1-8 bytes lengths, all values with same length
   uint8_t head = *ptr;
   ValueLength const byteSizeLength = 1ULL << (static_cast<ValueLength>(head) - 0x02U);
@@ -299,7 +306,7 @@ void Validator::validateUnindexedArray(uint8_t const* ptr, size_t length) {
   } 
 }
 
-void Validator::validateIndexedArray(uint8_t const* ptr, size_t length) {
+void Validator::validateIndexedArray(uint8_t const* ptr, std::size_t length) {
   // Array with index table, with 1-8 bytes lengths
   uint8_t head = *ptr;
   ValueLength const byteSizeLength = 1ULL << (static_cast<ValueLength>(head) - 0x06U);
@@ -381,7 +388,7 @@ void Validator::validateIndexedArray(uint8_t const* ptr, size_t length) {
   }
 }
 
-void Validator::validateObject(uint8_t const* ptr, size_t length) {
+void Validator::validateObject(uint8_t const* ptr, std::size_t length) {
   uint8_t head = *ptr;
 
   if (head == 0x14U) {
@@ -395,7 +402,7 @@ void Validator::validateObject(uint8_t const* ptr, size_t length) {
   }
 }
 
-void Validator::validateCompactObject(uint8_t const* ptr, size_t length) {
+void Validator::validateCompactObject(uint8_t const* ptr, std::size_t length) {
   // compact Object without index table
   validateBufferLength(5, length, true);
 
@@ -438,7 +445,7 @@ void Validator::validateCompactObject(uint8_t const* ptr, size_t length) {
   }
 }
 
-void Validator::validateIndexedObject(uint8_t const* ptr, size_t length) {
+void Validator::validateIndexedObject(uint8_t const* ptr, std::size_t length) {
   // Object with index table, with 1-8 bytes lengths
   uint8_t head = *ptr;
   ValueLength const byteSizeLength = 1ULL << (static_cast<ValueLength>(head) - 0x0bU);
@@ -588,14 +595,14 @@ void Validator::validateIndexedObject(uint8_t const* ptr, size_t length) {
   }
 }
 
-void Validator::validateBufferLength(size_t expected, size_t actual, bool isSubPart) {
+void Validator::validateBufferLength(std::size_t expected, std::size_t actual, bool isSubPart) {
   if ((expected > actual) ||
       (expected != actual && !isSubPart)) {
     throw Exception(Exception::ValidatorInvalidLength, "given buffer length is unequal to actual length of Slice in buffer");
   }
 }
 
-void Validator::validateSliceLength(uint8_t const* ptr, size_t length, bool isSubPart) {
-  size_t actual = static_cast<size_t>(Slice(ptr).byteSize());
+void Validator::validateSliceLength(uint8_t const* ptr, std::size_t length, bool isSubPart) {
+  std::size_t actual = static_cast<std::size_t>(Slice(ptr).byteSize());
   validateBufferLength(actual, length, isSubPart);
 }

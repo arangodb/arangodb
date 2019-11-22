@@ -1,4 +1,3 @@
-<script id="indicesView.ejs" type="text/template">
   <% if (typeof supported !== 'undefined') { %>
     <div class="contentIn" id="indexHeaderContent">
         <div id="indexEditView">
@@ -12,6 +11,7 @@
                 <th class="collectionInfoTh">Deduplicate</th>
                 <th class="collectionInfoTh">Selectivity Est.</th>
                 <th class="collectionInfoTh">Fields</th>
+                <th class="collectionInfoTh">Name</th>
                 <th class="collectionInfoTh">Action</th>
               </tr>
             </thead>
@@ -19,6 +19,7 @@
             </tbody>
             <tfoot>
               <tr>
+                <td></td>
                 <td></td>
                 <td></td>
                 <td></td>
@@ -59,7 +60,13 @@
                     <% } %> 
                   </select>
                 </th>
-                <th class="" style="width: 18px"/>
+                <th class="tooltipInfoTh">
+                  <div class="tooltipDiv">
+                    <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Type of index to create. <% if (supported.indexOf('hash') <= -1) { %>Please note that for the RocksDB engine the index types hash, skiplist and persistent are identical, so that they are not offered seperately here.<% } %>">
+                      <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                    </a>
+                  </div>
+                </th>
               </tr>
             </table>
             <div id="newIndexTypeGeo" class="newIndexClass" style="display: none">
@@ -70,6 +77,17 @@
                   <th class="tooltipInfoTh">
                     <div class="tooltipDiv">
                       <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="A comma-separated list with one or two attribute paths. Example: latitude,longitude">
+                        <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                      </a>
+                    </div>
+                  </th>
+                </tr>
+                <tr>
+                  <th class="collectionTh">Name:</th>
+                  <th><input type="text" id="newGeoName" value=""/></th>
+                  <th class="tooltipInfoTh">
+                    <div class="tooltipDiv">
+                      <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Index name. If left blank, a name will be auto-generated. Example: byValue">
                         <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
                       </a>
                     </div>
@@ -111,6 +129,17 @@
                   <th class="tooltipInfoTh">
                     <div class="tooltipDiv">
                       <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="A comma-separated list of attribute paths.">
+                        <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                      </a>
+                    </div>
+                  </th>
+                </tr>
+                <tr>
+                  <th class="collectionTh">Name:</th>
+                  <th><input type="text" id="newPersistentName" value=""/></th>
+                  <th class="tooltipInfoTh">
+                    <div class="tooltipDiv">
+                      <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Index name. If left blank, a name will be auto-generated. Example: byValue">
                         <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
                       </a>
                     </div>
@@ -184,6 +213,17 @@
                   </th>
                 </tr>
                 <tr>
+                  <th class="collectionTh">Name:</th>
+                  <th><input type="text" id="newHashName" value=""/></th>
+                  <th class="tooltipInfoTh">
+                    <div class="tooltipDiv">
+                      <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Index name. If left blank, a name will be auto-generated. Example: byValue">
+                        <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                      </a>
+                    </div>
+                  </th>
+                </tr>
+                <tr>
                   <th class="collectionTh">Unique:</th>
                   <th>
                     <input id="newHashUnique" type="checkbox" name="newHashUnique" value="true">
@@ -251,6 +291,17 @@
                   </th>
                 </tr>
                 <tr>
+                  <th class="collectionTh">Name:</th>
+                  <th><input type="text" id="newFulltextName" value=""/></th>
+                  <th class="tooltipInfoTh">
+                    <div class="tooltipDiv">
+                      <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Index name. If left blank, a name will be auto-generated. Example: byValue">
+                        <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                      </a>
+                    </div>
+                  </th>
+                </tr>
+                <tr>
                   <th class="collectionTh">Min. length:</th>
                   <th><input type="text" id="newFulltextMinLength" value=""/></th>
                   <th class="tooltipInfoTh">
@@ -285,6 +336,17 @@
                   <th class="tooltipInfoTh">
                     <div class="tooltipDiv">
                       <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="A comma-separated list of attribute paths.">
+                        <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                      </a>
+                    </div>
+                  </th>
+                </tr>
+                <tr>
+                  <th class="collectionTh">Name:</th>
+                  <th><input type="text" id="newSkiplistName" value=""/></th>
+                  <th class="tooltipInfoTh">
+                    <div class="tooltipDiv">
+                      <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Index name. If left blank, a name will be auto-generated. Example: byValue">
                         <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
                       </a>
                     </div>
@@ -358,6 +420,17 @@
                   </th>
                 </tr>
                 <tr>
+                  <th class="collectionTh">Name:</th>
+                  <th><input type="text" id="newTtlName" value=""/></th>
+                  <th class="tooltipInfoTh">
+                    <div class="tooltipDiv">
+                      <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="Index name. If left blank, a name will be auto-generated. Example: byValue">
+                        <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                      </a>
+                    </div>
+                  </th>
+                </tr>
+                <tr>
                   <th class="collectionTh">Documents expire after (s):</th>
                   <th><input type="text" id="newTtlExpireAfter" value=""/></th>
                   <th class="tooltipInfoTh">
@@ -395,4 +468,3 @@
         </div>
       </div>
     <% } %>
-</script>

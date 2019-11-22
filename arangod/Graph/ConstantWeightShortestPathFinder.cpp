@@ -23,6 +23,7 @@
 
 #include "ConstantWeightShortestPathFinder.h"
 
+#include "Basics/tryEmplaceHelper.h"
 #include "Cluster/ServerState.h"
 #include "Graph/EdgeCursor.h"
 #include "Graph/EdgeDocumentToken.h"
@@ -32,7 +33,6 @@
 #include "Transaction/Helpers.h"
 #include "Utils/OperationCursor.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/ManagedDocumentResult.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
@@ -47,7 +47,7 @@ ConstantWeightShortestPathFinder::PathSnippet::PathSnippet(arangodb::velocypack:
     : _pred(pred), _path(std::move(path)) {}
 
 ConstantWeightShortestPathFinder::ConstantWeightShortestPathFinder(ShortestPathOptions& options)
-    : ShortestPathFinder(options), _mmdr(new ManagedDocumentResult{}) {}
+    : ShortestPathFinder(options) {}
 
 ConstantWeightShortestPathFinder::~ConstantWeightShortestPathFinder() {
   clearVisited();
@@ -55,7 +55,7 @@ ConstantWeightShortestPathFinder::~ConstantWeightShortestPathFinder() {
 
 bool ConstantWeightShortestPathFinder::shortestPath(
     arangodb::velocypack::Slice const& s, arangodb::velocypack::Slice const& e,
-    arangodb::graph::ShortestPathResult& result, std::function<void()> const& callback) {
+    arangodb::graph::ShortestPathResult& result) {
   result.clear();
   TRI_ASSERT(s.isString());
   TRI_ASSERT(e.isString());
@@ -71,8 +71,8 @@ bool ConstantWeightShortestPathFinder::shortestPath(
   _rightClosure.clear();
   clearVisited();
 
-  _leftFound.emplace(start, nullptr);
-  _rightFound.emplace(end, nullptr);
+  _leftFound.try_emplace(start, nullptr);
+  _rightFound.try_emplace(end, nullptr);
   _leftClosure.emplace_back(start);
   _rightClosure.emplace_back(end);
 
@@ -82,7 +82,7 @@ bool ConstantWeightShortestPathFinder::shortestPath(
 
   arangodb::velocypack::StringRef n;
   while (!_leftClosure.empty() && !_rightClosure.empty()) {
-    callback();
+    options().isQueryKilledCallback();
 
     if (_leftClosure.size() < _rightClosure.size()) {
       if (expandClosure(_leftClosure, _leftFound, _rightFound, false, n)) {
@@ -113,12 +113,20 @@ bool ConstantWeightShortestPathFinder::expandClosure(Closure& sourceClosure,
 
     for (size_t i = 0; i < neighborsSize; ++i) {
       auto const& n = _neighbors[i];
-      if (sourceSnippets.find(n) == sourceSnippets.end()) {
+
+      bool emplaced = false;
+      std::tie(std::ignore, emplaced) = sourceSnippets.try_emplace(
+        _neighbors[i],
+        arangodb::lazyConstruct([&]{
+          return new PathSnippet(v, std::move(_edges[i]));
+        })
+      );
+
+      if (emplaced) {
         // NOTE: _edges[i] stays intact after move
         // and is reset to a nullptr. So if we crash
         // here no mem-leaks. or undefined behavior
         // Just make sure _edges is not used after
-        sourceSnippets.emplace(n, new PathSnippet(v, std::move(_edges[i])));
         auto targetFoundIt = targetSnippets.find(n);
         if (targetFoundIt != targetSnippets.end()) {
           result = n;
@@ -166,9 +174,9 @@ void ConstantWeightShortestPathFinder::fillResult(arangodb::velocypack::StringRe
 void ConstantWeightShortestPathFinder::expandVertex(bool backward, arangodb::velocypack::StringRef vertex) {
   std::unique_ptr<EdgeCursor> edgeCursor;
   if (backward) {
-    edgeCursor.reset(_options.nextReverseCursor(_mmdr.get(), vertex));
+    edgeCursor.reset(_options.nextReverseCursor(vertex));
   } else {
-    edgeCursor.reset(_options.nextCursor(_mmdr.get(), vertex));
+    edgeCursor.reset(_options.nextCursor(vertex));
   }
 
   auto callback = [&](EdgeDocumentToken&& eid, VPackSlice edge, size_t cursorIdx) -> void {

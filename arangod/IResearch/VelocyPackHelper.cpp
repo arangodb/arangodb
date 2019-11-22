@@ -23,11 +23,82 @@
 
 #include "VelocyPackHelper.h"
 
-#include "velocypack/Builder.h"
-#include "velocypack/Iterator.h"
+#include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
+
+namespace {
+template<typename T>
+arangodb::velocypack::Builder& addRef( // add a value
+  arangodb::velocypack::Builder& builder, // builder
+  irs::basic_string_ref<T> const& value // value
+) {
+  // store nulls verbatim
+  if (value.null()) {
+    builder.add( // add value
+      arangodb::velocypack::Value(arangodb::velocypack::ValueType::Null) // value
+    );
+  } else {
+    builder.add(arangodb::iresearch::toValuePair(value));
+  }
+
+  return builder;
+}
+
+template<typename T>
+arangodb::velocypack::Builder& addRef( // add a value
+  arangodb::velocypack::Builder& builder, // builder
+  irs::string_ref const& key, // key
+  irs::basic_string_ref<T> const& value // value
+) {
+  TRI_ASSERT(!key.null()); // Builder uses memcpy(...) which cannot handle nullptr
+
+  // store nulls verbatim
+  if (value.null()) {
+    builder.add( // add value
+      key.c_str(), // key data
+      key.size(), // key size
+      arangodb::velocypack::Value(arangodb::velocypack::ValueType::Null) // value
+    );
+  } else {
+    builder.add(key.c_str(), key.size(), arangodb::iresearch::toValuePair(value));
+  }
+
+  return builder;
+}
+}
 
 namespace arangodb {
 namespace iresearch {
+
+arangodb::velocypack::Builder& addBytesRef( // add a value
+  arangodb::velocypack::Builder& builder, // builder
+  irs::bytes_ref const& value // value
+) {
+  return addRef(builder, value);
+}
+
+arangodb::velocypack::Builder& addBytesRef( // add a value
+  arangodb::velocypack::Builder& builder, // builder
+  irs::string_ref const& key, // key
+  irs::bytes_ref const& value // value
+) {
+  return addRef(builder, key, value);
+}
+
+arangodb::velocypack::Builder& addStringRef( // add a value
+  arangodb::velocypack::Builder& builder, // builder
+  irs::string_ref const& value // value
+) {
+  return addRef(builder, value);
+}
+
+arangodb::velocypack::Builder& addStringRef( // add a value
+  arangodb::velocypack::Builder& builder, // builder
+  irs::string_ref const& key, // key
+  irs::string_ref const& value // value
+) {
+  return addRef(builder, key, value);
+}
 
 bool mergeSlice(arangodb::velocypack::Builder& builder,
                 arangodb::velocypack::Slice const& slice) {
@@ -148,5 +219,5 @@ ObjectIterator& ObjectIterator::operator++() {
 }  // namespace arangodb
 
 // -----------------------------------------------------------------------------
-// --SECTION-- END-OF-FILE
+// --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------

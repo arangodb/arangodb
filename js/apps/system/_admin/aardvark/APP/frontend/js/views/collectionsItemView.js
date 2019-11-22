@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global window, frontendConfig, exports, Backbone, _, $, templateEngine, arangoHelper, Joi */
+/* global window, frontendConfig, Backbone, _, $, templateEngine, arangoHelper, Joi */
 
 (function () {
   'use strict';
@@ -139,7 +139,7 @@
     deleteCollection: function () {
       this.model.destroy(
         {
-          error: function (error, data) {
+          error: function (_, data) {
             arangoHelper.arangoError('Could not drop collection: ' + data.responseJSON.errorMessage);
           },
           success: function () {
@@ -497,7 +497,7 @@
           };
           window.modalView.show(
             'modalCollectionInfo.ejs',
-            'Collection: ' + this.model.get('name'),
+            'Collection: ' + (this.model.get('name').length > 64 ? this.model.get('name').substr(0, 64) + "..." : this.model.get('name')),
             buttons,
             tableContent
           );

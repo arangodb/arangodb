@@ -66,12 +66,12 @@ class term_query : public filter::prepared {
   static ptr make(
     const index_reader& rdr,
     const order::prepared& ord,
-    filter::boost_t boost,
+    boost_t boost,
     const string_ref& field,
     const bytes_ref& term
   );
 
-  explicit term_query(states_t&& states, attribute_store&& attrs);
+  explicit term_query(states_t&& states, bstring&& stats, boost_t boost);
 
   virtual doc_iterator::ptr execute(
     const sub_reader& rdr,

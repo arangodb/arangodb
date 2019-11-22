@@ -1,5 +1,0 @@
-arangosh&gt; db._views();
-[ 
-  [ArangoView <span class="hljs-number">102</span>, <span class="hljs-string">"demoView"</span> (type arangosearch)], 
-  [ArangoView <span class="hljs-number">132517</span>, <span class="hljs-string">"exampleView"</span> (type arangosearch)] 
-]

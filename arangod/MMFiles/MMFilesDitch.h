@@ -24,6 +24,8 @@
 #ifndef ARANGOD_MMFILES_MMFILES_DITCH_H
 #define ARANGOD_MMFILES_MMFILES_DITCH_H 1
 
+#include <functional>
+
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
 

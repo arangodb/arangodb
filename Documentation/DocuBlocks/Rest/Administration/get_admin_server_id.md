@@ -2,7 +2,7 @@
 @startDocuBlock get_admin_server_id
 @brief Get to know the internal id of the server
 
-@RESTHEADER{GET /_admin/server/id, Return id of a server in a cluster}
+@RESTHEADER{GET /_admin/server/id, Return id of a server in a cluster, handleId}
 
 @RESTDESCRIPTION
 Returns the id of a server in a cluster. The request will fail if the

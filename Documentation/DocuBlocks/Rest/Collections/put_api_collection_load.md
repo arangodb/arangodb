@@ -2,7 +2,7 @@
 @startDocuBlock put_api_collection_load
 @brief loads a collection
 
-@RESTHEADER{PUT /_api/collection/{collection-name}/load, Load collection}
+@RESTHEADER{PUT /_api/collection/{collection-name}/load, Load collection, handleCommandPut:loadCollection}
 
 @HINTS
 {% hint 'warning' %}

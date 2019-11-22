@@ -40,25 +40,27 @@ struct PRWorkerContext : public WorkerContext {
 
   float commonProb = 0;
   void preGlobalSuperstep(uint64_t gss) override {
-    if (gss == 0) {
-      commonProb = 1.0f / vertexCount();
-    } else {
-      commonProb = 0.15f / vertexCount();
+    if (vertexCount() > 0) {
+      if (gss == 0) {
+        commonProb = 1.0f / vertexCount();
+      } else {
+        commonProb = 0.15f / vertexCount();
+      }
     }
   }
 };
 
-PageRank::PageRank(VPackSlice const& params)
-    : SimpleAlgorithm("PageRank", params), _useSource(params.hasKey("sourceField")) {}
+PageRank::PageRank(application_features::ApplicationServer& server, VPackSlice const& params)
+    : SimpleAlgorithm(server, "PageRank", params),
+      _useSource(params.hasKey("sourceField")) {}
 
 /// will use a seed value for pagerank if available
 struct SeededPRGraphFormat final : public NumberGraphFormat<float, float> {
-  SeededPRGraphFormat(std::string const& source, std::string const& result, float vertexNull)
-      : NumberGraphFormat(source, result, vertexNull, 0.0f) {}
+  SeededPRGraphFormat(application_features::ApplicationServer& server,
+                      std::string const& source, std::string const& result, float vertexNull)
+      : NumberGraphFormat(server, source, result, vertexNull, 0.0f) {}
 
-  size_t copyEdgeData(arangodb::velocypack::Slice document, float*, size_t maxSize) override {
-    return 0;
-  }
+  void copyEdgeData(arangodb::velocypack::Slice document, float&) override {}
   bool buildEdgeDocument(arangodb::velocypack::Builder& b, float const*,
                          size_t size) const override {
     return false;
@@ -67,9 +69,9 @@ struct SeededPRGraphFormat final : public NumberGraphFormat<float, float> {
 
 GraphFormat<float, float>* PageRank::inputFormat() const {
   if (_useSource && !_sourceField.empty()) {
-    return new SeededPRGraphFormat(_sourceField, _resultField, -1.0);
+    return new SeededPRGraphFormat(_server, _sourceField, _resultField, -1.0);
   } else {
-    return new VertexGraphFormat<float, float>(_resultField, -1.0);
+    return new VertexGraphFormat<float, float>(_server, _resultField, -1.0);
   }
 }
 
@@ -95,8 +97,11 @@ struct PRComputation : public VertexComputation<float, float, float> {
     float diff = fabs(copy - *ptr);
     aggregate<float>(kConvergence, diff);
 
-    float val = *ptr / getEdgeCount();
-    sendMessageToAllNeighbours(val);
+    size_t numEdges = getEdgeCount();
+    if (numEdges > 0) {
+      float val = *ptr / numEdges;
+      sendMessageToAllNeighbours(val);
+    }
   }
 };
 
@@ -116,7 +121,7 @@ struct PRMasterContext : public MasterContext {
   }
 
   void preApplication() override {
-    LOG_TOPIC(DEBUG, Logger::PREGEL) << "Using threshold " << _threshold;
+    LOG_TOPIC("e0598", DEBUG, Logger::PREGEL) << "Using threshold " << _threshold;
   };
 
   bool postGlobalSuperstep() override {

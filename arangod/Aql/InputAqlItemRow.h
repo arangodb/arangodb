@@ -26,20 +26,26 @@
 #ifndef ARANGOD_AQL_INPUT_AQL_ITEM_ROW_H
 #define ARANGOD_AQL_INPUT_AQL_ITEM_ROW_H 1
 
-#include "Aql/AqlItemBlock.h"
-#include "Aql/AqlItemBlockShell.h"
+#include "Aql/SharedAqlItemBlockPtr.h"
 #include "Aql/types.h"
-#include "Basics/Common.h"
+
+#include <cstddef>
+#include <unordered_set>
 
 namespace arangodb {
+namespace velocypack {
+class Builder;
+struct Options;
+}  // namespace velocypack
 namespace aql {
 
 class AqlItemBlock;
+class AqlItemBlockManager;
 struct AqlValue;
 
 struct CreateInvalidInputRowHint {
   // Forbid creating this via `{}`
-  explicit CreateInvalidInputRowHint() = default;
+  constexpr explicit CreateInvalidInputRowHint() = default;
 };
 
 /**
@@ -55,13 +61,12 @@ struct CreateInvalidInputRowHint {
 class InputAqlItemRow {
  public:
   // The default constructor contains an invalid item row
-  explicit InputAqlItemRow(CreateInvalidInputRowHint)
-      : _blockShell(nullptr), _baseIndex(0) {}
+  constexpr explicit InputAqlItemRow(CreateInvalidInputRowHint)
+      : _block(nullptr), _baseIndex(0) {}
 
-  InputAqlItemRow(std::shared_ptr<AqlItemBlockShell> blockShell, size_t baseIndex)
-      : _blockShell(std::move(blockShell)), _baseIndex(baseIndex) {
-    TRI_ASSERT(_blockShell != nullptr);
-  }
+  InputAqlItemRow(SharedAqlItemBlockPtr const& block, size_t baseIndex);
+
+  InputAqlItemRow(SharedAqlItemBlockPtr&& block, size_t baseIndex) noexcept;
 
   /**
    * @brief Get a reference to the value of the given Variable Nr
@@ -70,11 +75,7 @@ class InputAqlItemRow {
    *
    * @return Reference to the AqlValue stored in that variable.
    */
-  inline const AqlValue& getValue(RegisterId registerId) const {
-    TRI_ASSERT(isInitialized());
-    TRI_ASSERT(registerId < getNrRegisters());
-    return block().getValueReference(_baseIndex, registerId);
-  }
+  AqlValue const& getValue(RegisterId registerId) const;
 
   /**
    * @brief Get a reference to the value of the given Variable Nr
@@ -83,52 +84,67 @@ class InputAqlItemRow {
    *
    * @return The AqlValue stored in that variable. It is invalidated in source.
    */
-  inline AqlValue stealValue(RegisterId registerId) {
-    TRI_ASSERT(isInitialized());
-    TRI_ASSERT(registerId < getNrRegisters());
-    AqlValue a = block().getValueReference(_baseIndex, registerId);
-    if (!a.isEmpty() && a.requiresDestruction()) {
-      // Now no one is responsible for AqlValue a
-      block().steal(a);
-    }
-    // This cannot fail, caller needs to take immediate owner shops.
-    return a;
-  }
+  AqlValue stealValue(RegisterId registerId);
 
-  std::size_t getNrRegisters() const { return block().getNrRegs(); }
+  RegisterCount getNrRegisters() const noexcept;
 
-  bool operator==(InputAqlItemRow const& other) const noexcept {
-    TRI_ASSERT(isInitialized());
-    return this->_blockShell == other._blockShell && this->_baseIndex == other._baseIndex;
-  }
+  // Note that == and != here check whether the rows are *identical*, that is,
+  // the same row in the same block.
+  // TODO Make this a named method
+  bool operator==(InputAqlItemRow const& other) const noexcept;
 
-  bool operator!=(InputAqlItemRow const& other) const noexcept {
-    TRI_ASSERT(isInitialized());
-    return !(*this == other);
-  }
+  bool operator!=(InputAqlItemRow const& other) const noexcept;
 
-  bool isInitialized() const noexcept { return _blockShell != nullptr; }
+  // This checks whether the rows are equivalent, in the sense that they hold
+  // the same number of registers and their entry-AqlValues compare equal.
+  // In maintainer mode, it also asserts that the number of registers of the
+  // blocks are equal, because comparing rows of blocks with different layouts
+  // does not make sense.
+  // Invalid rows are considered equivalent.
+  [[nodiscard]] bool equates(InputAqlItemRow const& other,
+                             velocypack::Options const* options) const noexcept;
 
-  explicit operator bool() const noexcept { return isInitialized(); }
+  bool isInitialized() const noexcept;
+
+  explicit operator bool() const noexcept;
+
+  bool isFirstDataRowInBlock() const noexcept;
+
+  bool isLastRowInBlock() const noexcept;
+
+  bool blockHasMoreDataRowsAfterThis() const noexcept;
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   /**
    * @brief Compare the underlying block. Only for assertions.
    */
-  bool internalBlockIs(AqlItemBlockShell const& other) const;
+  bool internalBlockIs(SharedAqlItemBlockPtr const& other) const;
 #endif
 
+  /**
+   * @brief Clone a new ItemBlock from this row
+   */
+  SharedAqlItemBlockPtr cloneToBlock(AqlItemBlockManager& manager,
+                                     std::unordered_set<RegisterId> const& registers,
+                                     size_t newNrRegs) const;
+
+  /// @brief toVelocyPack, transfer a single AqlItemRow to Json, the result can
+  /// be used to recreate the AqlItemBlock via the Json constructor
+  /// Uses the same API as an AqlItemBlock with only a single row
+  void toVelocyPack(velocypack::Options const*, arangodb::velocypack::Builder&) const;
+
+  void toSimpleVelocyPack(velocypack::Options const*, arangodb::velocypack::Builder&) const;
+
  private:
-  AqlItemBlockShell& blockShell() { return *_blockShell; }
-  AqlItemBlockShell const& blockShell() const { return *_blockShell; }
-  AqlItemBlock& block() { return blockShell().block(); }
-  AqlItemBlock const& block() const { return blockShell().block(); }
+  AqlItemBlock& block() noexcept;
+
+  AqlItemBlock const& block() const noexcept;
 
  private:
   /**
    * @brief Underlying AqlItemBlock storing the data.
    */
-  std::shared_ptr<AqlItemBlockShell> _blockShell;
+  SharedAqlItemBlockPtr _block;
 
   /**
    * @brief The offset into the AqlItemBlock. In other words, the row's index.
@@ -137,6 +153,6 @@ class InputAqlItemRow {
 };
 
 }  // namespace aql
-
 }  // namespace arangodb
+
 #endif

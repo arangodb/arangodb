@@ -201,21 +201,23 @@
 
     installFoxxFromStore: function (e) {
       if (window.modalView.modalTestAll()) {
-        var mount, flag;
+        var mount, info, options;
         if (this._upgrade) {
           mount = window.App.replaceAppData.mount;
-          flag = arangoHelper.getFoxxFlag();
         } else {
           mount = window.arangoHelper.escapeHtml($('#new-app-mount').val());
           if (mount.charAt(0) !== '/') {
             mount = '/' + mount;
           }
         }
-        if (flag !== undefined) {
-          this.collection.installFromStore({name: this.toInstall, version: this.version}, mount, this.installCallback.bind(this), flag);
-        } else {
-          this.collection.installFromStore({name: this.toInstall, version: this.version}, mount, this.installCallback.bind(this));
-        }
+
+        info = {
+          name: this.toInstall,
+          version: this.version
+        };
+
+        options = arangoHelper.getFoxxFlags();
+        this.collection.install('store', info, mount, options, this.installCallback.bind(this));
         window.modalView.hide();
 
         if (this._upgrade) {

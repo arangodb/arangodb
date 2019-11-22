@@ -30,10 +30,17 @@
 #include "Basics/conversions.h"
 #include "Basics/tri-strings.h"
 #include "Cluster/ServerState.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "Meta/conversion.h"
 #include "Rest/CommonDefines.h"
-#include "Rest/HttpRequest.h"
+#include "StorageEngine/TransactionState.h"
+#include "Transaction/Helpers.h"
+#include "Transaction/Manager.h"
+#include "Transaction/ManagerFeature.h"
 #include "Transaction/Methods.h"
+#include "Transaction/SmartContext.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/SingleCollectionTransaction.h"
 
@@ -48,6 +55,15 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
+namespace {
+class SimpleTransaction : public transaction::Methods {
+ public:
+  explicit SimpleTransaction(std::shared_ptr<transaction::Context>&& transactionContext,
+                    transaction::Options&& options = transaction::Options())
+    : Methods(std::move(transactionContext), std::move(options)) {}
+};
+} // namespace
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief agency public path
 ////////////////////////////////////////////////////////////////////////////////
@@ -60,6 +76,12 @@ std::string const RestVocbaseBaseHandler::AGENCY_PATH = "/_api/agency";
 
 std::string const RestVocbaseBaseHandler::AGENCY_PRIV_PATH =
     "/_api/agency_priv";
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief analyzer path
+////////////////////////////////////////////////////////////////////////////////
+/*static*/ std::string const RestVocbaseBaseHandler::ANALYZER_PATH =
+  "/_api/analyzer";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief batch path
@@ -227,14 +249,16 @@ std::string const RestVocbaseBaseHandler::VIEW_PATH = "/_api/view";
 std::string const RestVocbaseBaseHandler::INTERNAL_TRAVERSER_PATH =
     "/_internal/traverser";
 
-RestVocbaseBaseHandler::RestVocbaseBaseHandler(GeneralRequest* request, GeneralResponse* response)
-    : RestBaseHandler(request, response),
+RestVocbaseBaseHandler::RestVocbaseBaseHandler(application_features::ApplicationServer& server,
+                                               GeneralRequest* request,
+                                               GeneralResponse* response)
+    : RestBaseHandler(server, request, response),
       _context(*static_cast<VocbaseContext*>(request->requestContext())),
       _vocbase(_context.vocbase()) {
   TRI_ASSERT(request->requestContext());
 }
 
-RestVocbaseBaseHandler::~RestVocbaseBaseHandler() {}
+RestVocbaseBaseHandler::~RestVocbaseBaseHandler() = default;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief assemble a document id from a string and a string
@@ -357,6 +381,7 @@ void RestVocbaseBaseHandler::generatePreconditionFailed(VPackSlice const& slice)
                 VPackValue(static_cast<int32_t>(rest::ResponseCode::PRECONDITION_FAILED)));
     builder.add(StaticStrings::ErrorNum, VPackValue(TRI_ERROR_ARANGO_CONFLICT));
     builder.add(StaticStrings::ErrorMessage, VPackValue("precondition failed"));
+
     if (slice.isObject()) {
       builder.add(StaticStrings::IdString, slice.get(StaticStrings::IdString));
       builder.add(StaticStrings::KeyString, slice.get(StaticStrings::KeyString));
@@ -463,7 +488,7 @@ void RestVocbaseBaseHandler::generateTransactionError(std::string const& collect
       return;
 
     case TRI_ERROR_ARANGO_CONFLICT:
-      if (result.buffer != nullptr) {
+      if (result.buffer != nullptr && !result.slice().isNone()) {
         // This case happens if we come via the generateTransactionError that
         // has a proper OperationResult with a slice:
         generatePreconditionFailed(result.slice());
@@ -534,65 +559,96 @@ void RestVocbaseBaseHandler::extractStringParameter(std::string const& name,
   }
 }
 
-std::unique_ptr<SingleCollectionTransaction> RestVocbaseBaseHandler::createTransaction(
-    std::string const& name, AccessMode::Type type) const {
-  auto ctx = transaction::StandaloneContext::Create(_vocbase);
-  auto trx = std::make_unique<SingleCollectionTransaction>(ctx, name, type);
-  if (_nolockHeaderSet != nullptr) {
-    for (auto const& it : *_nolockHeaderSet) {
-      trx->setLockedShard(it);
-    }
-  }
-  return trx;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief prepareExecute, to react to X-Arango-Nolock header
-////////////////////////////////////////////////////////////////////////////////
-
-void RestVocbaseBaseHandler::prepareExecute(bool isContinue) {
-  RestBaseHandler::prepareExecute(isContinue);
-  pickupNoLockHeaders();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief shutdownExecute, to react to X-Arango-Nolock header
-////////////////////////////////////////////////////////////////////////////////
-
-void RestVocbaseBaseHandler::shutdownExecute(bool isFinalized) noexcept {
-  clearNoLockHeaders();
-  RestBaseHandler::shutdownExecute(isFinalized);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief picks up X-Arango-Nolock headers and stores them in a tls variable
-////////////////////////////////////////////////////////////////////////////////
-
-void RestVocbaseBaseHandler::pickupNoLockHeaders() {
-  if (ServerState::instance()->isDBServer()) {
-    // Only DBServer needs to react to them!
-    bool found;
-    std::string const& shardId = _request->header(StaticStrings::XArangoNoLock, found);
-
-    if (!found) {
-      return;
+std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
+    std::string const& collectionName, AccessMode::Type type) const {
+  bool found = false;
+  std::string const& value = _request->header(StaticStrings::TransactionId, found);
+  if (found) {
+    TRI_voc_tid_t tid = 0;
+    std::size_t pos = 0;
+    try {
+      tid = std::stoull(value, &pos, 10);
+    } catch (...) {}
+    if (tid == 0 || (transaction::isLegacyTransactionId(tid) &&
+                     ServerState::instance()->isRunningInCluster())) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "invalid transaction ID");
     }
 
-    TRI_ASSERT(_nolockHeaderSet == nullptr);
-    _nolockHeaderSet = std::make_unique<std::unordered_set<std::string>>();
+    transaction::Manager* mgr = transaction::ManagerFeature::manager();
+    TRI_ASSERT(mgr != nullptr);
 
-    // Split value at commas, if there are any, otherwise take full value:
-    size_t pos = shardId.find(',');
-    size_t oldpos = 0;
-    while (pos != std::string::npos) {
-      _nolockHeaderSet->emplace(shardId.substr(oldpos, pos - oldpos));
-      oldpos = pos + 1;
-      pos = shardId.find(',', oldpos);
+    if (pos > 0 && pos < value.size() &&
+        value.compare(pos, std::string::npos, " begin") == 0) {
+      if (!ServerState::instance()->isDBServer()) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION);
+      }
+      std::string const& trxDef = _request->header(StaticStrings::TransactionBody, found);
+      if (found) {
+        auto trxOpts = VPackParser::fromJson(trxDef);
+        Result res = mgr->createManagedTrx(_vocbase, tid, trxOpts->slice());
+        if (res.fail()) {
+          THROW_ARANGO_EXCEPTION(res);
+        }
+      }
     }
-    _nolockHeaderSet->emplace(shardId.substr(oldpos));
+
+    auto ctx = mgr->leaseManagedTrx(tid, type);
+    if (!ctx) {
+      LOG_TOPIC("e94ea", DEBUG, Logger::TRANSACTIONS) << "Transaction with id '" << tid << "' not found";
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_NOT_FOUND, std::string("transaction '") + std::to_string(tid) + "' not found");
+    }
+    return std::make_unique<SimpleTransaction>(std::move(ctx));
+  } else {
+    auto ctx = transaction::StandaloneContext::Create(_vocbase);
+    return std::make_unique<SingleCollectionTransaction>(ctx, collectionName, type);
   }
 }
 
-void RestVocbaseBaseHandler::clearNoLockHeaders() noexcept {
-  _nolockHeaderSet.reset();
+/// @brief create proper transaction context, inclusing the proper IDs
+std::shared_ptr<transaction::Context> RestVocbaseBaseHandler::createTransactionContext() const {
+  bool found = false;
+  std::string const& value = _request->header(StaticStrings::TransactionId, found);
+  if (!found) {
+    return std::make_shared<transaction::StandaloneSmartContext>(_vocbase);
+  }
+
+  TRI_voc_tid_t tid = 0;
+  std::size_t pos = 0;
+  try {
+    tid = std::stoull(value, &pos, 10);
+  } catch (...) {}
+  if (tid == 0 || (transaction::isLegacyTransactionId(tid) &&
+                   ServerState::instance()->isRunningInCluster())) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "invalid transaction ID");
+  }
+
+  transaction::Manager* mgr = transaction::ManagerFeature::manager();
+  TRI_ASSERT(mgr != nullptr);
+
+  if (pos > 0 && pos < value.size()) {
+    if (!transaction::isLeaderTransactionId(tid) ||
+        !ServerState::instance()->isDBServer()) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION);
+    }
+    if (value.compare(pos, std::string::npos, " aql") == 0) {
+      return std::make_shared<transaction::AQLStandaloneContext>(_vocbase, tid);
+    } else if (value.compare(pos, std::string::npos, " begin") == 0) {
+      // this means we lazily start a transaction
+      std::string const& trxDef = _request->header(StaticStrings::TransactionBody, found);
+      if (found) {
+        auto trxOpts = VPackParser::fromJson(trxDef);
+        Result res = mgr->createManagedTrx(_vocbase, tid, trxOpts->slice());
+        if (res.fail()) {
+          THROW_ARANGO_EXCEPTION(res);
+        }
+      }
+    }
+  }
+
+  auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE);
+  if (!ctx) {
+    LOG_TOPIC("2cfed", DEBUG, Logger::TRANSACTIONS) << "Transaction with id '" << tid << "' not found";
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_NOT_FOUND, std::string("transaction '") + std::to_string(tid) + "' not found");
+  }
+  return ctx;
 }

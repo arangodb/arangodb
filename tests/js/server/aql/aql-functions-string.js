@@ -44,20 +44,6 @@ function ahuacatlStringFunctionsTestSuite () {
   return {
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief set up
-// //////////////////////////////////////////////////////////////////////////////
-
-    setUp: function () {
-    },
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief tear down
-// //////////////////////////////////////////////////////////////////////////////
-
-    tearDown: function () {
-    },
-
-// //////////////////////////////////////////////////////////////////////////////
 // / @brief test tobase64
 // //////////////////////////////////////////////////////////////////////////////
 
@@ -1480,12 +1466,18 @@ function ahuacatlStringFunctionsTestSuite () {
 // //////////////////////////////////////////////////////////////////////////////
 
   testRtrim: function () {
-    var expected = [ '  foo',
-                      '\t\r\nabc',
-                      '\ta\rb\nc',
-                      '\r\nThis\nis\r\na\ttest'
-                    ];
+    var expected = [ '', 
+                     '', 
+                     '',
+                     '  foo',
+                     '\t\r\nabc',
+                     '\ta\rb\nc',
+                     '\r\nThis\nis\r\na\ttest'
+                   ];
     var actual = getQueryResults(`FOR t IN [
+'',
+' ',
+'   ',
 '  foo  ',
 '\t\r\nabc\n\r\t',
 '\ta\rb\nc ',
@@ -1499,11 +1491,21 @@ function ahuacatlStringFunctionsTestSuite () {
 // //////////////////////////////////////////////////////////////////////////////
 
   testRtrimSpecial1: function () {
-    var expected = [ '  foo',
-                      '\t\r\nabc\n\r\t',
-                      '\ta\rb\nc',
-                      '\r\nThis\nis\r\na\ttest' ];
+    var expected = [ '',
+                     '',
+                     '',
+                     '',
+                     '\t',
+                     '  foo',
+                     '\t\r\nabc\n\r\t',
+                     '\ta\rb\nc',
+                     '\r\nThis\nis\r\na\ttest' ];
     var actual = getQueryResults(`FOR t IN [
+'',
+'\r',
+'\r\n',
+' \r\n',
+'\t\r\n',
 '  foo  ',
 '\t\r\nabc\n\r\t',
 '\ta\rb\nc ',
@@ -1526,6 +1528,20 @@ function ahuacatlStringFunctionsTestSuite () {
 ',,,a,b,c,d,,e,f,,',
 'foo,bar,baz\r\n'
 ] RETURN NOOPT((RTRIM(t, ',\n') ))`);
+    assertEqual(expected, actual);
+  },
+
+  testRtrimChars: function () {
+    var expected = [ '10000', '1000', '100', '10', '1', '', '' ];
+    var actual = getQueryResults(`FOR t IN [
+'10000x',
+'1000x',
+'100x',
+'10x',
+'1x',
+'x',
+''
+] RETURN NOOPT((RTRIM(t, 'x') ))`);
     assertEqual(expected, actual);
   },
 
@@ -2513,6 +2529,34 @@ function ahuacatlStringFunctionsTestSuite () {
       assertEqual([ '888227c44807b86059eb36f9fe0fc602a9b16fab' ], getQueryResults(`RETURN NOOPT(SHA1('[1,2,4,7,11,16,22,29,37,46,56,67,79,92,106,121,137,154,172,191,211,232,254,277,301,326,352,379,407,436,466,497,529,562,596,631,667,704,742,781,821,862,904,947,991,1036,1082,1129,1177,1226,1276,1327,1379,1432,1486,1541,1597,1654,1712,1771,1831,1892,1954,2017,2081,2146,2212,2279,2347,2416,2486,2557,2629,2702,2776,2851,2927,3004,3082,3161,3241,3322,3404,3487,3571,3656,3742,3829,3917,4006,4096,4187,4279,4372,4466,4561,4657,4754,4852,4951]'))`));
     },
 
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test crc32 function
+// //////////////////////////////////////////////////////////////////////////////
+
+    testCrc32: function () {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN NOOPT(CRC32())');
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN NOOPT(CRC32("foo", 2))');
+      assertEqual([ '0' ], getQueryResults(`RETURN NOOPT(CRC32(''))`));
+      assertEqual([ '72C0DD8F' ], getQueryResults(`RETURN NOOPT(CRC32(' '))`));
+      assertEqual([ '629E1AE0' ], getQueryResults(`RETURN NOOPT(CRC32('0'))`));
+      assertEqual([ '90F599E3' ], getQueryResults(`RETURN NOOPT(CRC32('1'))`));
+      assertEqual([ '89614B3B' ], getQueryResults(`RETURN NOOPT(CRC32('This is a test string'))`));
+      assertEqual([ 'CC778246' ], getQueryResults(`RETURN NOOPT(CRC32('With\r\nLinebreaks\n'))`));
+      assertEqual([ '0' ], getQueryResults(`RETURN NOOPT(CRC32(null))`));
+    },
+    
+    testFnv64: function () {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN NOOPT(FNV64())');
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN NOOPT(FNV64("foo", 2))');
+      assertEqual([ 'CBF29CE484222325' ], getQueryResults(`RETURN NOOPT(FNV64(''))`));
+      assertEqual([ 'AF639D4C8601817F' ], getQueryResults(`RETURN NOOPT(FNV64(' '))`));
+      assertEqual([ 'AF63AD4C86019CAF' ], getQueryResults(`RETURN NOOPT(FNV64('0'))`));
+      assertEqual([ 'AF63AC4C86019AFC' ], getQueryResults(`RETURN NOOPT(FNV64('1'))`));
+      assertEqual([ 'D94D32CC2E5C3409' ], getQueryResults(`RETURN NOOPT(FNV64('This is a test string'))`));
+      assertEqual([ 'AF870D34E69ABE0A' ], getQueryResults(`RETURN NOOPT(FNV64('With\r\nLinebreaks\n'))`));
+      assertEqual([ 'CBF29CE484222325' ], getQueryResults(`RETURN NOOPT(FNV64(null))`));
+    },
+
     // //////////////////////////////////////////////////////////////////////////////
     // / @brief test random_token function
     // //////////////////////////////////////////////////////////////////////////////
@@ -2522,15 +2566,15 @@ function ahuacatlStringFunctionsTestSuite () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, 'RETURN RANDOM_TOKEN(1, 2)');
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, 'RETURN RANDOM_TOKEN(-1)');
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, 'RETURN RANDOM_TOKEN(-10)');
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, 'RETURN RANDOM_TOKEN(0)');
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, 'RETURN RANDOM_TOKEN(65537)');
 
-      var actual = getQueryResults('FOR i IN [ 1, 10, 100, 1000 ] RETURN RANDOM_TOKEN(i)');
-      assertEqual(4, actual.length);
+      var actual = getQueryResults('FOR i IN [ 1, 10, 100, 1000, 0 ] RETURN RANDOM_TOKEN(i)');
+      assertEqual(5, actual.length);
       assertEqual(1, actual[0].length);
       assertEqual(10, actual[1].length);
       assertEqual(100, actual[2].length);
       assertEqual(1000, actual[3].length);
+      assertEqual(0, actual[4].length);
     }
 
   };

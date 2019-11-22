@@ -27,8 +27,12 @@
 #include "Auth/Handler.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
+#include "Basics/application-exit.h"
 #include "Cluster/ServerState.h"
+#include "FeaturePhases/BasicFeaturePhaseServer.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Random/RandomGenerator.h"
 #include "RestServer/QueryRegistryFeature.h"
@@ -55,10 +59,10 @@ AuthenticationFeature::AuthenticationFeature(application_features::ApplicationSe
       _authenticationTimeout(0.0),
       _jwtSecretProgramOption("") {
   setOptional(false);
-  startsAfter("BasicsPhase");
+  startsAfter<application_features::BasicFeaturePhaseServer>();
 
 #ifdef USE_ENTERPRISE
-  startsAfter("Ldap");
+  startsAfter<LdapFeature>();
 #endif
 }
 
@@ -126,7 +130,7 @@ void AuthenticationFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
           basics::StringUtils::trim(basics::FileUtils::slurp(_jwtSecretKeyfileProgramOption),
                                     " \t\n\r");
     } catch (std::exception const& ex) {
-      LOG_TOPIC(FATAL, Logger::STARTUP)
+      LOG_TOPIC("d3617", FATAL, Logger::STARTUP)
           << "unable to read content of jwt-secret file '"
           << _jwtSecretKeyfileProgramOption << "': " << ex.what()
           << ". please make sure the file/directory is readable for the "
@@ -135,11 +139,8 @@ void AuthenticationFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
     }
 
   } else if (!_jwtSecretProgramOption.empty()) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
-        << "--server.jwt-secret is insecure. Use --server.jwt-secret-keyfile "
-           "instead.";
     if (_jwtSecretProgramOption.length() > _maxSecretLength) {
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+      LOG_TOPIC("9abfc", FATAL, arangodb::Logger::STARTUP)
           << "Given JWT secret too long. Max length is " << _maxSecretLength;
       FATAL_ERROR_EXIT();
     }
@@ -154,17 +155,18 @@ void AuthenticationFeature::prepare() {
   TRI_ASSERT(role != ServerState::RoleEnum::ROLE_UNDEFINED);
   if (ServerState::isSingleServer(role) || ServerState::isCoordinator(role)) {
 #if USE_ENTERPRISE
-    if (application_features::ApplicationServer::getFeature<LdapFeature>("Ldap")->isEnabled()) {
+    if (server().getFeature<LdapFeature>().isEnabled()) {
       _userManager.reset(
-          new auth::UserManager(std::make_unique<LdapAuthenticationHandler>()));
+          new auth::UserManager(server(), std::make_unique<LdapAuthenticationHandler>(
+                                              server().getFeature<LdapFeature>())));
     } else {
-      _userManager.reset(new auth::UserManager());
+      _userManager.reset(new auth::UserManager(server()));
     }
 #else
-    _userManager.reset(new auth::UserManager());
+    _userManager.reset(new auth::UserManager(server()));
 #endif
   } else {
-    LOG_TOPIC(DEBUG, Logger::AUTHENTICATION) << "Not creating user manager";
+    LOG_TOPIC("713c0", DEBUG, Logger::AUTHENTICATION) << "Not creating user manager";
   }
 
   TRI_ASSERT(_authCache == nullptr);
@@ -172,7 +174,7 @@ void AuthenticationFeature::prepare() {
 
   std::string jwtSecret = _jwtSecretProgramOption;
   if (jwtSecret.empty()) {
-    LOG_TOPIC(INFO, Logger::AUTHENTICATION)
+    LOG_TOPIC("43396", INFO, Logger::AUTHENTICATION)
         << "Jwt secret not specified, generating...";
     uint16_t m = 254;
     for (size_t i = 0; i < _maxSecretLength; i++) {
@@ -187,15 +189,21 @@ void AuthenticationFeature::prepare() {
 void AuthenticationFeature::start() {
   TRI_ASSERT(isEnabled());
 
+  // If this is empty here, --server.jwt-secret was used
+  if (!_jwtSecretProgramOption.empty() &&
+      _jwtSecretKeyfileProgramOption.empty()) {
+    LOG_TOPIC("1aaae", WARN, arangodb::Logger::AUTHENTICATION)
+        << "--server.jwt-secret is insecure. Use --server.jwt-secret-keyfile "
+           "instead.";
+  }
+
   std::ostringstream out;
 
   out << "Authentication is turned " << (_active ? "on" : "off");
 
   if (_userManager != nullptr) {
-    auto queryRegistryFeature =
-        application_features::ApplicationServer::getFeature<QueryRegistryFeature>(
-            "QueryRegistry");
-    _userManager->setQueryRegistry(queryRegistryFeature->queryRegistry());
+    auto& queryRegistryFeature = server().getFeature<QueryRegistryFeature>();
+    _userManager->setQueryRegistry(queryRegistryFeature.queryRegistry());
   }
 
   if (_active && _authenticationSystemOnly) {
@@ -207,7 +215,7 @@ void AuthenticationFeature::start() {
       << (_authenticationUnixSockets ? "on" : "off");
 #endif
 
-  LOG_TOPIC(INFO, arangodb::Logger::AUTHENTICATION) << out.str();
+  LOG_TOPIC("3844e", INFO, arangodb::Logger::AUTHENTICATION) << out.str();
 }
 
 void AuthenticationFeature::unprepare() { INSTANCE = nullptr; }

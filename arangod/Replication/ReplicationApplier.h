@@ -46,7 +46,7 @@ class ReplicationApplier {
   ReplicationApplier(ReplicationApplierConfiguration const& configuration,
                      std::string&& databaseName);
 
-  virtual ~ReplicationApplier() {}
+  virtual ~ReplicationApplier() = default;
 
   ReplicationApplier(ReplicationApplier const&) = delete;
   ReplicationApplier& operator=(ReplicationApplier const&) = delete;
@@ -104,9 +104,12 @@ class ReplicationApplier {
   virtual void reconfigure(ReplicationApplierConfiguration const& configuration);
 
   /// @brief load the applier state from persistent storage
+  bool loadState();
+
+  /// @brief load the applier state from persistent storage
   /// must currently be called while holding the write-lock
   /// returns whether a previous state was found
-  bool loadState();
+  bool loadStateNoLock();
 
   /// @brief store the configuration for the applier
   virtual void storeConfiguration(bool doSync) = 0;

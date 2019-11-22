@@ -27,7 +27,6 @@
 
 #include <chrono>
 
-#include "Basics/Common.h"
 #include "Basics/locks.h"
 
 namespace arangodb {

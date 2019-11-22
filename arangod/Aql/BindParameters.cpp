@@ -23,12 +23,15 @@
 
 #include "Aql/BindParameters.h"
 #include "Basics/Exceptions.h"
+#include "Basics/debugging.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 #include <velocypack/Value.h>
 #include <velocypack/velocypack-aliases.h>
+
+#include <utility>
 
 using namespace arangodb::aql;
 
@@ -57,8 +60,8 @@ void BindParameters::process() {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_BIND_PARAMETERS_INVALID);
   }
 
-  for (auto const& it : VPackObjectIterator(slice, false)) {
-    std::string const key(it.key.copyString());
+  for (auto it : VPackObjectIterator(slice, false)) {
+    auto const key(it.key.copyString());
     VPackSlice const value(it.value);
 
     if (value.isNone()) {
@@ -70,7 +73,7 @@ void BindParameters::process() {
       THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, key.c_str());
     }
 
-    _parameters.emplace(std::move(key), std::make_pair(value, false));
+    _parameters.try_emplace(std::move(key), value, false);
   }
 
   _processed = true;
@@ -85,7 +88,7 @@ void BindParameters::stripCollectionNames(VPackSlice const& keys,
 
   TRI_ASSERT(keys.isArray());
   result.openArray();
-  for (auto const& element : VPackArrayIterator(keys)) {
+  for (VPackSlice element : VPackArrayIterator(keys)) {
     if (element.isString()) {
       VPackValueLength l;
       char const* s = element.getString(l);
@@ -94,11 +97,26 @@ void BindParameters::stripCollectionNames(VPackSlice const& keys,
         // key begins with collection name + '/', now strip it in place for
         // further comparisons
         result.add(VPackValue(
-            std::string(p + 1, static_cast<size_t>(l - static_cast<ptrdiff_t>(p - s) - 1))));
+         std::string(p + 1, static_cast<size_t>(l - static_cast<std::ptrdiff_t>(p - s) - 1))));
         continue;
       }
     }
     result.add(element);
   }
   result.close();
+}
+
+BindParameters::BindParameters()
+    : _builder(nullptr), _parameters(), _processed(false) {}
+
+BindParameters::BindParameters(std::shared_ptr<arangodb::velocypack::Builder>  builder)
+    : _builder(std::move(builder)), _parameters(), _processed(false) {}
+
+BindParametersType& BindParameters::get() {
+  process();
+  return _parameters;
+}
+
+std::shared_ptr<arangodb::velocypack::Builder> BindParameters::builder() const {
+  return _builder;
 }

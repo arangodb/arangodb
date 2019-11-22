@@ -31,7 +31,9 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/FollowerInfo.h"
 #include "Indexes/Index.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "Utils/DatabaseGuard.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Databases.h"
@@ -60,7 +62,7 @@ static VPackValue const VP_SET("set");
 static int indexOf(VPackSlice const& slice, std::string const& val) {
   if (slice.isArray()) {
     int counter = 0;
-    for (auto const& entry : VPackArrayIterator(slice)) {
+    for (VPackSlice entry : VPackArrayIterator(slice)) {
       if (entry.isString()) {
         if (entry.copyString() == val) {
           return counter;
@@ -85,7 +87,7 @@ static std::shared_ptr<VPackBuilder> compareRelevantProps(VPackSlice const& firs
     VPackObjectBuilder b(result.get());
     for (auto const& property : cmp) {
       auto const& planned = first.get(property);
-      if (planned != second.get(property)) {  // Register any change
+      if (!basics::VelocyPackHelper::equal(planned, second.get(property), false)) {  // Register any change
         result->add(property, planned);
       }
     }
@@ -166,7 +168,7 @@ static VPackBuilder compareIndexes(std::string const& dbname, std::string const&
           if (!haveError) {
             builder.add(pindex);
           } else {
-            LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+            LOG_TOPIC("ceb3d", DEBUG, Logger::MAINTENANCE)
                 << "Previous failure exists for index " << planIdS
                 << " on shard " << dbname << "/" << shname << " for central "
                 << dbname << "/" << collname << "- skipping";
@@ -187,9 +189,9 @@ void handlePlanShard(VPackSlice const& cprops, VPackSlice const& ldb,
                      MaintenanceFeature::errors_t& errors, MaintenanceFeature& feature,
                      std::vector<ActionDescription>& actions) {
   bool shouldBeLeading = serverId == leaderId;
+  bool shouldResign = UNDERSCORE + serverId == leaderId;
 
   commonShrds.emplace(shname);
-  auto props = createProps(cprops);  // Only once might need often!
 
   if (ldb.hasKey(shname)) {  // Have local collection with that name
     auto const lcol = ldb.get(shname);
@@ -233,8 +235,8 @@ void handlePlanShard(VPackSlice const& cprops, VPackSlice const& ldb,
     }
 
     // If comparison has brought any updates
-    if (properties->slice() != VPackSlice::emptyObjectSlice() ||
-        leading != shouldBeLeading || !followersToDropString.empty()) {
+    if (!properties->slice().isObject() || properties->slice().length() > 0 ||
+        !followersToDropString.empty()) {
       if (errors.shards.find(fullShardLabel) == errors.shards.end()) {
         actions.emplace_back(ActionDescription(
             std::map<std::string, std::string>{
@@ -242,16 +244,38 @@ void handlePlanShard(VPackSlice const& cprops, VPackSlice const& ldb,
                 {DATABASE, dbname},
                 {COLLECTION, colname},
                 {SHARD, shname},
-                {THE_LEADER, shouldBeLeading ? std::string() : leaderId},
                 {SERVER_ID, serverId},
-                {LOCAL_LEADER, lcol.get(THE_LEADER).copyString()},
                 {FOLLOWERS_TO_DROP, followersToDropString}},
-            properties));
+            HIGHER_PRIORITY, properties));
       } else {
-        LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+        LOG_TOPIC("0285b", DEBUG, Logger::MAINTENANCE)
             << "Previous failure exists for local shard " << dbname << "/" << shname
             << "for central " << dbname << "/" << colname << "- skipping";
       }
+    }
+
+    // Handle leadership change, this is mostly about taking over leadership,
+    // but it also handles the case that in a failover scenario we used to
+    // be the leader and now somebody else is the leader. However, it does
+    // not handle the case of a controlled leadership resignation, see below
+    // in handleLocalShard for this.
+    if (leading != shouldBeLeading && !shouldResign) {
+      LOG_TOPIC("52412", DEBUG, Logger::MAINTENANCE)
+        << "Triggering TakeoverShardLeadership job for shard "
+        << dbname << "/" << colname << "/" << shname
+        << ", local leader: " << lcol.get(THE_LEADER).copyString()
+        << ", should be leader: "
+        << (shouldBeLeading ? std::string() : leaderId);
+      actions.emplace_back(ActionDescription(
+            std::map<std::string, std::string>{
+                {NAME, TAKEOVER_SHARD_LEADERSHIP},
+                {DATABASE, dbname},
+                {COLLECTION, colname},
+                {SHARD, shname},
+                {THE_LEADER, shouldBeLeading ? std::string() : leaderId},
+                {LOCAL_LEADER, lcol.get(THE_LEADER).copyString()},
+                {OLD_CURRENT_COUNTER, std::to_string(feature.getCurrentCounter())}},
+                LEADER_PRIORITY));
     }
 
     // Indexes
@@ -265,22 +289,22 @@ void handlePlanShard(VPackSlice const& cprops, VPackSlice const& ldb,
       // cares about those indexes that have no error.
       if (difference.slice().isArray()) {
         for (auto const& index : VPackArrayIterator(difference.slice())) {
-          actions.emplace_back(
-              ActionDescription({{NAME, "EnsureIndex"},
-                                 {DATABASE, dbname},
-                                 {COLLECTION, colname},
-                                 {SHARD, shname},
-                                 {StaticStrings::IndexType,
-                                  index.get(StaticStrings::IndexType).copyString()},
-                                 {FIELDS, index.get(FIELDS).toJson()},
-                                 {ID, index.get(ID).copyString()}},
-                                std::make_shared<VPackBuilder>(index)));
+          actions.emplace_back(ActionDescription(
+              {{NAME, "EnsureIndex"},
+               {DATABASE, dbname},
+               {COLLECTION, colname},
+               {SHARD, shname},
+               {StaticStrings::IndexType, index.get(StaticStrings::IndexType).copyString()},
+               {FIELDS, index.get(FIELDS).toJson()},
+               {ID, index.get(ID).copyString()}},
+              INDEX_PRIORITY, std::make_shared<VPackBuilder>(index)));
         }
       }
     }
   } else {  // Create the sucker, if not a previous error stops us
     if (errors.shards.find(dbname + "/" + colname + "/" + shname) ==
         errors.shards.end()) {
+      auto props = createProps(cprops);  // Only once might need often!
       actions.emplace_back(
           ActionDescription({{NAME, CREATE_COLLECTION},
                              {COLLECTION, colname},
@@ -288,9 +312,9 @@ void handlePlanShard(VPackSlice const& cprops, VPackSlice const& ldb,
                              {DATABASE, dbname},
                              {SERVER_ID, serverId},
                              {THE_LEADER, shouldBeLeading ? std::string() : leaderId}},
-                            props));
+                            shouldBeLeading ? LEADER_PRIORITY : FOLLOWER_PRIORITY, props));
     } else {
-      LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+      LOG_TOPIC("c1d8e", DEBUG, Logger::MAINTENANCE)
           << "Previous failure exists for creating local shard " << dbname << "/"
           << shname << "for central " << dbname << "/" << colname << "- skipping";
     }
@@ -310,8 +334,10 @@ void handleLocalShard(std::string const& dbname, std::string const& colname,
   }
   bool localLeader = cprops.get(THE_LEADER).copyString().empty();
   if (plannedLeader == UNDERSCORE + serverId && localLeader) {
-    actions.emplace_back(ActionDescription(
-        {{NAME, "ResignShardLeadership"}, {DATABASE, dbname}, {SHARD, colname}}));
+    actions.emplace_back(
+        ActionDescription({{NAME, RESIGN_SHARD_LEADERSHIP},
+                           {DATABASE, dbname}, {SHARD, colname}},
+                          RESIGN_PRIORITY));
   } else {
     bool drop = false;
     // check if shard is in plan, if not drop it
@@ -325,8 +351,9 @@ void handleLocalShard(std::string const& dbname, std::string const& colname,
     }
 
     if (drop) {
-      actions.emplace_back(ActionDescription(
-          {{NAME, DROP_COLLECTION}, {DATABASE, dbname}, {COLLECTION, colname}}));
+      actions.emplace_back(
+          ActionDescription({{NAME, DROP_COLLECTION}, {DATABASE, dbname}, {COLLECTION, colname}},
+                            localLeader ? LEADER_PRIORITY : FOLLOWER_PRIORITY));
     } else {
       // The shard exists in both Plan and Local
       commonShrds.erase(it);  // it not a common shard?
@@ -344,8 +371,11 @@ void handleLocalShard(std::string const& dbname, std::string const& colname,
                   indis.find(id) != indis.end()) {
                 indis.erase(id);
               } else {
-                actions.emplace_back(ActionDescription(
-                    {{NAME, "DropIndex"}, {DATABASE, dbname}, {COLLECTION, colname}, {"index", id}}));
+                actions.emplace_back(ActionDescription({{NAME, "DropIndex"},
+                                                        {DATABASE, dbname},
+                                                        {COLLECTION, colname},
+                                                        {"index", id}},
+                                                       INDEX_PRIORITY));
               }
             }
           }
@@ -394,9 +424,10 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
       if (errors.databases.find(dbname) == errors.databases.end()) {
         actions.emplace_back(
             ActionDescription({{std::string(NAME), std::string(CREATE_DATABASE)},
-                               {std::string(DATABASE), std::string(dbname)}}));
+                               {std::string(DATABASE), std::string(dbname)}},
+                              HIGHER_PRIORITY));
       } else {
-        LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+        LOG_TOPIC("3a6a8", DEBUG, Logger::MAINTENANCE)
             << "Previous failure exists for creating database " << dbname << "skipping";
       }
     }
@@ -408,7 +439,8 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
     if (!plan.hasKey(std::vector<std::string>{DATABASES, dbname})) {
       actions.emplace_back(
           ActionDescription({{std::string(NAME), std::string(DROP_DATABASE)},
-                             {std::string(DATABASE), std::string(dbname)}}));
+                             {std::string(DATABASE), std::string(dbname)}},
+                            HIGHER_PRIORITY));
     }
   }
 
@@ -442,7 +474,7 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
                 break;
               }
             }
-          }  // else if(!shard.value.isArray()) - intentionally do nothing
+          }  // else if (!shard.value.isArray()) - intentionally do nothing
         }
       }
     }
@@ -515,7 +547,7 @@ arangodb::Result arangodb::maintenance::executePlan(VPackSlice const& plan,
   MaintenanceFeature::errors_t errors;
   result = feature.copyAllErrors(errors);
   if (!result.ok()) {
-    LOG_TOPIC(ERR, Logger::MAINTENANCE)
+    LOG_TOPIC("9039d", ERR, Logger::MAINTENANCE)
         << "phaseOne: failed to acquire copy of errors from maintenance "
            "feature.";
     return result;
@@ -525,6 +557,7 @@ arangodb::Result arangodb::maintenance::executePlan(VPackSlice const& plan,
   std::vector<ActionDescription> actions;
   report.add(VPackValue(AGENCY));
   {
+    // TODO: Just putting an empty array does not make any sense here!
     VPackArrayBuilder a(&report);
     diffPlanLocal(plan, local, serverId, errors, feature, actions);
   }
@@ -557,7 +590,8 @@ arangodb::Result arangodb::maintenance::executePlan(VPackSlice const& plan,
     VPackArrayBuilder a(&report);
     // enact all
     for (auto const& action : actions) {
-      LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << "adding action " << action << " to feature ";
+      LOG_TOPIC("8513c", DEBUG, Logger::MAINTENANCE)
+          << "adding action " << action << " to feature ";
       {
         VPackObjectBuilder b(&report);
         action.toVelocyPack(report);
@@ -631,8 +665,8 @@ arangodb::Result arangodb::maintenance::phaseOne(VPackSlice const& plan,
     try {
       result = executePlan(plan, local, serverId, feature, report);
     } catch (std::exception const& e) {
-      LOG_TOPIC(ERR, Logger::MAINTENANCE) << "Error executing plan: " << e.what()
-                                          << ". " << __FILE__ << ":" << __LINE__;
+      LOG_TOPIC("55938", ERR, Logger::MAINTENANCE)
+          << "Error executing plan: " << e.what() << ". " << __FILE__ << ":" << __LINE__;
     }
   }
 
@@ -667,7 +701,7 @@ static VPackBuilder assembleLocalCollectionInfo(
           "Maintenance::assembleLocalCollectionInfo: Failed to lookup "
           "collection ");
       errorMsg += shard;
-      LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << errorMsg;
+      LOG_TOPIC("33a3b", DEBUG, Logger::MAINTENANCE) << errorMsg;
       { VPackObjectBuilder o(&ret); }
       return ret;
     }
@@ -718,29 +752,19 @@ static VPackBuilder assembleLocalCollectionInfo(
           }
         }
       }
-      ret.add(VPackValue(SERVERS));
-      {
-        VPackArrayBuilder a(&ret);
-        ret.add(VPackValue(ourselves));
-        // planServers may be `none` in the case that the shard is not contained
-        // in Plan, but in local.
-        if (planServers.isArray()) {
-          std::shared_ptr<std::vector<std::string> const> current =
-              collection->followers()->get();
-          for (auto const& server : *current) {
-            ret.add(VPackValue(server));
-          }
-        }
-      }
+      collection->followers()->injectFollowerInfo(ret);
     }
     return ret;
   } catch (std::exception const& e) {
+    ret.clear();
     std::string errorMsg(
-        "Maintenance::assembleLocalCollectionInfo: Failed to lookup database ");
+        "Maintenance::assembleLocalCollectionInfo: Failed to lookup "
+        "database ");
     errorMsg += database;
     errorMsg += ", exception: ";
     errorMsg += e.what();
-    LOG_TOPIC(WARN, Logger::MAINTENANCE) << errorMsg;
+    errorMsg += " (this is expected if the database was recently deleted).";
+    LOG_TOPIC("7fe5d", WARN, Logger::MAINTENANCE) << errorMsg;
     { VPackObjectBuilder o(&ret); }
     return ret;
   }
@@ -785,12 +809,13 @@ static VPackBuilder assembleLocalDatabaseInfo(std::string const& database,
 
     return ret;
   } catch (std::exception const& e) {
+    ret.clear();  // In case the above has mid air collision.
     std::string errorMsg(
         "Maintenance::assembleLocalDatabaseInfo: Failed to lookup database ");
     errorMsg += database;
     errorMsg += ", exception: ";
     errorMsg += e.what();
-    LOG_TOPIC(DEBUG, Logger::MAINTENANCE) << errorMsg;
+    LOG_TOPIC("989b6", DEBUG, Logger::MAINTENANCE) << errorMsg;
     { VPackObjectBuilder o(&ret); }
     return ret;
   }
@@ -815,7 +840,9 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
 
     if (!cur.hasKey(cdbpath)) {
       auto const localDatabaseInfo = assembleLocalDatabaseInfo(dbName, allErrors);
-      if (!localDatabaseInfo.slice().isEmptyObject()) {
+      TRI_ASSERT(!localDatabaseInfo.slice().isNone());
+      if (!localDatabaseInfo.slice().isEmptyObject() &&
+          !localDatabaseInfo.slice().isNone()) {
         report.add(VPackValue(CURRENT_DATABASES + dbName + "/" + serverId));
         {
           VPackObjectBuilder o(&report);
@@ -833,23 +860,62 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
       VPackBuilder error;
       if (shSlice.get(THE_LEADER).copyString().empty()) {  // Leader
 
+        // Check that we are the leader of this shard in the Plan, together
+        // with the precondition below that the Plan is unchanged, this ensures
+        // that we only ever modify Current if we are the leader in the Plan:
+        auto const planPath = std::vector<std::string>{dbName, colName, "shards", shName};
+        if (!pdbs.hasKey(planPath)) {
+          LOG_TOPIC("43242", DEBUG, Logger::MAINTENANCE)
+              << "Ooops, we have a shard for which we believe to be the "
+                 "leader,"
+                 " but the Plan does not have it any more, we do not report "
+                 "in "
+                 "Current about this, database: "
+              << dbName << ", shard: " << shName;
+          continue;
+        }
+
+        VPackSlice thePlanList = pdbs.get(planPath);
+        if (!thePlanList.isArray() || thePlanList.length() == 0 ||
+            !thePlanList[0].isString() || !thePlanList[0].isEqualStringUnchecked(serverId)) {
+          LOG_TOPIC("87776", DEBUG, Logger::MAINTENANCE)
+              << "Ooops, we have a shard for which we believe to be the "
+                 "leader,"
+                 " but the Plan says otherwise, we do not report in Current "
+                 "about this, database: "
+              << dbName << ", shard: " << shName;
+          continue;
+        }
+
         auto const localCollectionInfo =
             assembleLocalCollectionInfo(shSlice, shardMap.slice().get(shName),
                                         dbName, shName, serverId, allErrors);
         // Collection no longer exists
-        if (localCollectionInfo.slice().isEmptyObject()) {
+        TRI_ASSERT(!localCollectionInfo.slice().isNone());
+        if (localCollectionInfo.slice().isEmptyObject() ||
+            localCollectionInfo.slice().isNone()) {
           continue;
         }
 
         auto cp = std::vector<std::string>{COLLECTIONS, dbName, colName, shName};
-
         auto inCurrent = cur.hasKey(cp);
+
         if (!inCurrent || !equivalent(localCollectionInfo.slice(), cur.get(cp))) {
           report.add(VPackValue(CURRENT_COLLECTIONS + dbName + "/" + colName + "/" + shName));
+
           {
             VPackObjectBuilder o(&report);
             report.add(OP, VP_SET);
+            // Report new current entry ...
             report.add("payload", localCollectionInfo.slice());
+            // ... if and only if plan for this shard has changed in the
+            // meantime Add a precondition:
+            report.add(VPackValue("precondition"));
+            {
+              VPackObjectBuilder p(&report);
+              report.add(PLAN_COLLECTIONS + dbName + "/" + colName + "/shards/" + shName,
+                         thePlanList);
+            }
           }
         }
       } else {  // Follower
@@ -865,7 +931,33 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
             // know it yet, do nothing here.
             if (shSlice.get("theLeaderTouched").isTrue()) {
               // we were previously leader and we are done resigning.
-              // update current and let supervision handle the rest
+              // update current and let supervision handle the rest, however
+              // check that we are in the Plan a leader which is supposed to
+              // resign and add a precondition that this is still the case:
+
+              auto const planPath =
+                  std::vector<std::string>{dbName, colName, "shards", shName};
+              if (!pdbs.hasKey(planPath)) {
+                LOG_TOPIC("65432", DEBUG, Logger::MAINTENANCE)
+                    << "Ooops, we have a shard for which we believe that we "
+                       "just resigned, but the Plan does not have it any "
+                       "more,"
+                       " we do not report in Current about this, database: "
+                    << dbName << ", shard: " << shName;
+                continue;
+              }
+
+              VPackSlice thePlanList = pdbs.get(planPath);
+              if (!thePlanList.isArray() || thePlanList.length() == 0 ||
+                  !thePlanList[0].isString() ||
+                  !thePlanList[0].isEqualStringUnchecked(UNDERSCORE + serverId)) {
+                LOG_TOPIC("99987", DEBUG, Logger::MAINTENANCE)
+                    << "Ooops, we have a shard for which we believe that we "
+                       "have just resigned, but the Plan says otherwise, we "
+                       "do not report in Current about this, database: "
+                    << dbName << ", shard: " << shName;
+                continue;
+              }
               VPackBuilder ns;
               {
                 VPackArrayBuilder a(&ns);
@@ -885,6 +977,12 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
                 VPackObjectBuilder o(&report);
                 report.add(OP, VP_SET);
                 report.add("payload", ns.slice());
+                {
+                  VPackObjectBuilder p(&report, "precondition");
+                  report.add(PLAN_COLLECTIONS + dbName + "/" + colName +
+                                 "/shards/" + shName,
+                             thePlanList);
+                }
               }
             }
           }
@@ -969,7 +1067,7 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
         {
           VPackObjectBuilder o(&report);
           report.add(OP, VP_SET);
-          report.add(VPackSlice("payload"));
+          report.add(VPackValue("payload"));
           {
             VPackObjectBuilder pp(&report);
             VPackSlice errs(static_cast<uint8_t const*>(p.second->data()));
@@ -1041,7 +1139,7 @@ arangodb::Result arangodb::maintenance::syncReplicatedShardsWithLeaders(
             // bring followers in sync so just continue here
             auto cpath = std::vector<std::string>{dbname, colname, shname};
             if (!cdbs.hasKey(cpath)) {
-              LOG_TOPIC(DEBUG, Logger::MAINTENANCE)
+              LOG_TOPIC("402a4", DEBUG, Logger::MAINTENANCE)
                   << "Shard " << shname
                   << " not in current yet. Rescheduling maintenance.";
               continue;
@@ -1050,7 +1148,7 @@ arangodb::Result arangodb::maintenance::syncReplicatedShardsWithLeaders(
             // Plan's servers
             auto ppath = std::vector<std::string>{dbname, colname, SHARDS, shname};
             if (!pdbs.hasKey(ppath)) {
-              LOG_TOPIC(ERR, Logger::MAINTENANCE)
+              LOG_TOPIC("e1136", ERR, Logger::MAINTENANCE)
                   << "Shard " << shname << " does not have servers substructure in 'Plan'";
               continue;
             }
@@ -1059,7 +1157,7 @@ arangodb::Result arangodb::maintenance::syncReplicatedShardsWithLeaders(
             // Current's servers
             cpath.push_back(SERVERS);
             if (!cdbs.hasKey(cpath)) {
-              LOG_TOPIC(ERR, Logger::MAINTENANCE)
+              LOG_TOPIC("1d596", ERR, Logger::MAINTENANCE)
                   << "Shard " << shname
                   << " does not have servers substructure in 'Current'";
               continue;
@@ -1077,12 +1175,13 @@ arangodb::Result arangodb::maintenance::syncReplicatedShardsWithLeaders(
 
             auto const leader = pservers[0].copyString();
             actions.emplace_back(ActionDescription(
-                {{NAME, "SynchronizeShard"},
+                {{NAME, SYNCHRONIZE_SHARD},
                  {DATABASE, dbname},
                  {COLLECTION, colname},
                  {SHARD, shname},
                  {THE_LEADER, leader},
-                 {SHARD_VERSION, std::to_string(feature.shardVersion(shname))}}));
+                 {SHARD_VERSION, std::to_string(feature.shardVersion(shname))}},
+                SYNCHRONIZE_PRIORITY));
           }
         }
       }
@@ -1116,7 +1215,7 @@ arangodb::Result arangodb::maintenance::phaseTwo(VPackSlice const& plan,
       try {
         result = reportInCurrent(plan, cur, local, allErrors, serverId, report);
       } catch (std::exception const& e) {
-        LOG_TOPIC(ERR, Logger::MAINTENANCE)
+        LOG_TOPIC("c9a75", ERR, Logger::MAINTENANCE)
             << "Error reporting in current: " << e.what() << ". " << __FILE__
             << ":" << __LINE__;
       }
@@ -1134,8 +1233,9 @@ arangodb::Result arangodb::maintenance::phaseTwo(VPackSlice const& plan,
           feature.addAction(std::make_shared<ActionDescription>(action), false);
         }
       } catch (std::exception const& e) {
-        LOG_TOPIC(ERR, Logger::MAINTENANCE) << "Error scheduling shards: " << e.what()
-                                            << ". " << __FILE__ << ":" << __LINE__;
+        LOG_TOPIC("7e286", ERR, Logger::MAINTENANCE)
+            << "Error scheduling shards: " << e.what() << ". " << __FILE__
+            << ":" << __LINE__;
       }
     }
   }

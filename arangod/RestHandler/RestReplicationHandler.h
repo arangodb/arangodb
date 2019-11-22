@@ -25,11 +25,11 @@
 #ifndef ARANGOD_REST_HANDLER_REST_REPLICATION_HANDLER_H
 #define ARANGOD_REST_HANDLER_REST_REPLICATION_HANDLER_H 1
 
+#include "Aql/types.h"
 #include "Basics/Common.h"
 #include "Basics/Result.h"
-
-#include "Aql/types.h"
 #include "Cluster/ResultT.h"
+#include "Replication/Syncer.h"
 #include "Replication/common-defines.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
@@ -50,15 +50,64 @@ class Methods;
 
 class RestReplicationHandler : public RestVocbaseBaseHandler {
  public:
+  RequestLane lane() const override final {
+    auto const& suffixes = _request->suffixes();
+
+    size_t const len = suffixes.size();
+    if (len >= 1) {
+      std::string const& command = suffixes[0];
+      if (command == AddFollower || command == HoldReadLockCollection ||
+          command == RemoveFollower || command == LoggerFollow) {
+        return RequestLane::SERVER_REPLICATION_CATCHUP;
+      }
+    }
+    return RequestLane::SERVER_REPLICATION;
+  }
+
   RestStatus execute() override;
 
   // Never instantiate this.
   // Only specific implementations allowed
  protected:
-  RestReplicationHandler(GeneralRequest*, GeneralResponse*);
+  RestReplicationHandler(application_features::ApplicationServer&,
+                         GeneralRequest*, GeneralResponse*);
   ~RestReplicationHandler();
 
  protected:
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief list of available commands
+  //////////////////////////////////////////////////////////////////////////////
+  static std::string const LoggerState;
+  static std::string const LoggerTickRanges;
+  static std::string const LoggerFirstTick;
+  static std::string const LoggerFollow;
+  static std::string const OpenTransactions;
+  static std::string const Batch;
+  static std::string const Barrier;
+  static std::string const Inventory;
+  static std::string const Keys;
+  static std::string const Dump;
+  static std::string const RestoreCollection;
+  static std::string const RestoreIndexes;
+  static std::string const RestoreData;
+  static std::string const RestoreView;
+  static std::string const Sync;
+  static std::string const MakeSlave;
+  static std::string const ServerId;
+  static std::string const ApplierConfig;
+  static std::string const ApplierStart;
+  static std::string const ApplierStop;
+  static std::string const ApplierState;
+  static std::string const ApplierStateAll;
+  static std::string const ClusterInventory;
+  static std::string const AddFollower;
+  static std::string const RemoveFollower;
+  static std::string const SetTheLeader;
+  static std::string const HoldReadLockCollection;
+
+ protected:
+  std::string forwardingTarget() override final;
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creates an error if called on a coordinator server
   //////////////////////////////////////////////////////////////////////////////
@@ -75,7 +124,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   /// @brief forward a command in the coordinator case
   //////////////////////////////////////////////////////////////////////////////
 
-  void handleTrampolineCoordinator();
+  void handleUnforwardedTrampolineCoordinator();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns the cluster inventory, only on coordinator
@@ -174,6 +223,12 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   void handleCommandRemoveFollower();
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief update the leader of a shard
+  //////////////////////////////////////////////////////////////////////////////
+
+  void handleCommandSetTheLeader();
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief hold a read lock on a collection to stop writes temporarily
   //////////////////////////////////////////////////////////////////////////////
 
@@ -238,11 +293,6 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   uint64_t determineChunkSize() const;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Grant temporary restore rights
-  //////////////////////////////////////////////////////////////////////////////
-  void grantTemporaryRights();
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief Get correct replication applier, based on global paramerter
   //////////////////////////////////////////////////////////////////////////////
   ReplicationApplier* getApplier(bool& global);
@@ -261,6 +311,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   Result processRestoreCollectionCoordinator(VPackSlice const&, bool overwrite,
                                              bool force, uint64_t numberOfShards,
                                              uint64_t replicationFactor,
+                                             uint64_t writeConcern,
                                              bool ignoreDistributeShardsLikeErrors);
 
   //////////////////////////////////////////////////////////////////////////////

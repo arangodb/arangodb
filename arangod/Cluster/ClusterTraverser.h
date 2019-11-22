@@ -31,7 +31,6 @@
 
 namespace arangodb {
 class CollectionNameResolver;
-class ManagedDocumentResult;
 namespace transaction {
 class Methods;
 }
@@ -49,10 +48,10 @@ class ClusterTraverser final : public Traverser {
                    std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines,
                    std::string const& dbname, transaction::Methods* trx);
 
-  ~ClusterTraverser() {}
+  ~ClusterTraverser() = default;
 
   void setStartVertex(std::string const& id) override;
-
+  
  protected:
   /// @brief Function to load the other sides vertex of an edge
   ///        Returns true if the vertex passes filtering conditions
@@ -86,7 +85,7 @@ class ClusterTraverser final : public Traverser {
  private:
   void fetchVertices();
 
-  std::unordered_map<arangodb::velocypack::StringRef, std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>> _vertices;
+  std::unordered_map<arangodb::velocypack::StringRef, VPackSlice> _vertices;
 
   std::string _dbname;
 

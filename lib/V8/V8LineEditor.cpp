@@ -21,16 +21,31 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <stddef.h>
+#include <cstdint>
+#include <type_traits>
+#include <utility>
+#include <vector>
+
 #include "V8LineEditor.h"
 
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
+#include "Basics/debugging.h"
+#include "Basics/operating-system.h"
 #include "Basics/tri-strings.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "Utilities/Completer.h"
 #include "Utilities/ShellBase.h"
+#include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
+
+#ifdef TRI_HAVE_SIGNAL_H
+#include <signal.h>
+#endif
 
 using namespace arangodb;
 
@@ -278,7 +293,7 @@ class V8Completer : public Completer {
     std::string prefix;
 
     if (*text != '\0') {
-      std::vector<std::string> splitted = basics::StringUtils::split(text, '.', '\0');
+      std::vector<std::string> splitted = basics::StringUtils::split(text, '.');
 
       if (1 < splitted.size()) {
         for (size_t i = 0; i < splitted.size() - 1; ++i) {
@@ -391,7 +406,7 @@ V8LineEditor::V8LineEditor(v8::Isolate* isolate, v8::Handle<v8::Context> context
   int res = SetConsoleCtrlHandler((PHANDLER_ROUTINE)SignalHandler, true);
 
   if (res == 0) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("f87ea", ERR, arangodb::Logger::FIXME)
         << "unable to install signal handler";
   }
 
@@ -404,7 +419,7 @@ V8LineEditor::V8LineEditor(v8::Isolate* isolate, v8::Handle<v8::Context> context
   int res = sigaction(SIGINT, &sa, nullptr);
 
   if (res != 0) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("d7234", ERR, arangodb::Logger::FIXME)
         << "unable to install signal handler";
   }
 #endif

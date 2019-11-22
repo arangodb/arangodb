@@ -40,7 +40,6 @@ struct doc_id_t {};
 struct field_id_t {};
 struct index_gen_t {};
 struct pos_t {};
-struct term_id_t {};
 
 NS_END // type_t
 
@@ -51,53 +50,65 @@ NS_END // type_t
 template<typename TYPE> struct type_limits;
 
 template<> struct type_limits<type_t::address_t> {
-  CONSTEXPR static uint64_t invalid() {
+  CONSTEXPR static uint64_t invalid() NOEXCEPT {
     return integer_traits<uint64_t>::const_max;
   }
-  CONSTEXPR static bool valid(uint64_t addr) { return invalid() != addr; }
+  CONSTEXPR static bool valid(uint64_t addr) NOEXCEPT {
+    return invalid() != addr;
+  }
 };
 
 template<> struct type_limits<type_t::doc_id_t> {
-  CONSTEXPR static doc_id_t eof() {
+  CONSTEXPR static doc_id_t eof() NOEXCEPT {
     return integer_traits<doc_id_t>::const_max;
   }
-  CONSTEXPR static bool eof(doc_id_t id) { return eof() == id; }
-  CONSTEXPR static doc_id_t invalid() { return 0; }
-  CONSTEXPR static doc_id_t (min)() {
+  CONSTEXPR static bool eof(doc_id_t id) NOEXCEPT {
+    return eof() == id;
+  }
+  CONSTEXPR static doc_id_t invalid() NOEXCEPT { return 0; }
+  CONSTEXPR static doc_id_t (min)() NOEXCEPT {
     return 1; // +1 because INVALID_DOC == 0
   }
-  CONSTEXPR static bool valid(doc_id_t id) { return invalid() != id; }
+  CONSTEXPR static bool valid(doc_id_t id) NOEXCEPT {
+    return invalid() != id;
+  }
 };
+
+typedef irs::type_limits<irs::type_t::doc_id_t> doc_limits;
 
 template<> struct type_limits<type_t::field_id_t> {
-  CONSTEXPR static field_id invalid() { 
+  CONSTEXPR static field_id invalid() NOEXCEPT {
     return integer_traits<field_id>::const_max;
   }
-  CONSTEXPR static bool valid(field_id id) { return invalid() != id; }
+  CONSTEXPR static bool valid(field_id id) NOEXCEPT {
+    return invalid() != id;
+  }
 };
 
+typedef irs::type_limits<irs::type_t::field_id_t> field_limits;
+
 template<> struct type_limits<type_t::index_gen_t> {
-  CONSTEXPR static uint64_t invalid() {
+  CONSTEXPR static uint64_t invalid() NOEXCEPT {
     return integer_traits<field_id>::const_max;
   }
-  CONSTEXPR static bool valid(uint64_t id) { return invalid() != id; }
+  CONSTEXPR static bool valid(uint64_t id) NOEXCEPT {
+    return invalid() != id;
+  }
 };
 
 template<> struct type_limits<type_t::pos_t> {
-  CONSTEXPR static uint32_t invalid() { 
-    return integer_traits<uint32_t>::const_max; 
+  CONSTEXPR static uint32_t invalid() NOEXCEPT {
+    return 0;
   }
-  CONSTEXPR static bool valid(uint32_t pos) { return invalid() != pos; }
-  CONSTEXPR static uint32_t eof() { return invalid() - 1; }
-  CONSTEXPR static bool eof(uint32_t pos) { return eof() == pos; }
-  CONSTEXPR static uint32_t (min)() { return 0; }
+  CONSTEXPR static bool valid(uint32_t pos) NOEXCEPT {
+    return invalid() != pos;
+  }
+  CONSTEXPR static uint32_t eof() NOEXCEPT { return integer_traits<uint32_t>::const_max; }
+  CONSTEXPR static bool eof(uint32_t pos) NOEXCEPT { return eof() == pos; }
+  CONSTEXPR static uint32_t (min)() NOEXCEPT { return 1; }
 };
 
-template<> struct type_limits<type_t::term_id_t> {
-  CONSTEXPR static bool valid(term_id id) { 
-    return integer_traits<term_id>::const_max != id; 
-  }
-};
+typedef irs::type_limits<irs::type_t::pos_t> pos_limits;
 
 NS_END
 

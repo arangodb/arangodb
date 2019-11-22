@@ -2,7 +2,7 @@
 @startDocuBlock get_api_database_user
 @brief retrieves a list of all databases the current user can access
 
-@RESTHEADER{GET /_api/database/user, List of accessible databases }
+@RESTHEADER{GET /_api/database/user, List of accessible databases, getDatabases:user}
 
 @RESTDESCRIPTION
 Retrieves the list of all databases the current user can access without

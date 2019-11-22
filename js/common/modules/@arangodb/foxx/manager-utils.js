@@ -54,52 +54,11 @@ function getReadableName (name) {
 }
 
 function getStorage () {
-  let c = db._collection('_apps');
-  if (c === null) {
-    console.warn("_apps collection did not exist, "+
-                 "should have been created already");
-    try {
-      c = db._create('_apps', {
-        isSystem: true,
-        replicationFactor: DEFAULT_REPLICATION_FACTOR_SYSTEM,
-        distributeShardsLike: '_graphs',
-        journalSize: 4 * 1024 * 1024
-      });
-      c.ensureIndex({
-        type: 'hash',
-        fields: ['mount'],
-        unique: true
-      });
-    } catch (e) {
-      c = db._collection('_apps');
-      if (!c) {
-        throw e;
-      }
-    }
-  }
-  return c;
+  return db._collection('_apps');
 }
 
 function getBundleStorage () {
-  let c = db._collection('_appbundles');
-  if (c === null) {
-    console.warn("_appbundles collection did not exist, "+
-                 "should have been created already");
-    try {
-      c = db._create('_appbundles', {
-        isSystem: true,
-        replicationFactor: DEFAULT_REPLICATION_FACTOR_SYSTEM,
-        distributeShardsLike: '_graphs',
-        journalSize: 4 * 1024 * 1024
-      });
-    } catch (e) {
-      c = db._collection('_appbundles');
-      if (!c) {
-        throw e;
-      }
-    }
-  }
-  return c;
+  return db._collection('_appbundles');
 }
 
 // //////////////////////////////////////////////////////////////////////////////

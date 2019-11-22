@@ -22,6 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "SystemDatabaseFeature.h"
+
+#include "Basics/application-exit.h"
 #include "Logger/LogMacros.h"
 #include "RestServer/DatabaseFeature.h"
 #include "VocBase/vocbase.h"
@@ -42,7 +44,7 @@ SystemDatabaseFeature::SystemDatabaseFeature(application_features::ApplicationSe
                                              TRI_vocbase_t* vocbase /*= nullptr*/
                                              )
     : ApplicationFeature(server, SystemDatabaseFeature::name()), _vocbase(vocbase) {
-  startsAfter("Database");
+  startsAfter<DatabaseFeature>();
 }
 
 /*static*/ std::string const& SystemDatabaseFeature::name() noexcept {
@@ -50,17 +52,14 @@ SystemDatabaseFeature::SystemDatabaseFeature(application_features::ApplicationSe
 }
 
 void SystemDatabaseFeature::start() {
-  auto* feature =
-      application_features::ApplicationServer::lookupFeature<arangodb::DatabaseFeature>(
-          "Database");
-
-  if (feature) {
-    _vocbase.store(feature->lookupDatabase(TRI_VOC_SYSTEM_DATABASE));
+  if (server().hasFeature<arangodb::DatabaseFeature>()) {
+    auto& feature = server().getFeature<arangodb::DatabaseFeature>();
+    _vocbase.store(feature.lookupDatabase(TRI_VOC_SYSTEM_DATABASE));
 
     return;
   }
 
-  LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+  LOG_TOPIC("59d62", WARN, arangodb::Logger::FIXME)
       << "failure to find feature 'Database' while starting feature '"
       << FEATURE_NAME << "'";
   FATAL_ERROR_EXIT();

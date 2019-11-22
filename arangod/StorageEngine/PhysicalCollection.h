@@ -24,19 +24,19 @@
 #ifndef ARANGOD_VOCBASE_PHYSICAL_COLLECTION_H
 #define ARANGOD_VOCBASE_PHYSICAL_COLLECTION_H 1
 
-#include "Basics/Common.h"
-#include "Basics/ReadWriteLock.h"
-#include "Indexes/Index.h"
-#include "Indexes/IndexIterator.h"
-#include "VocBase/voc-types.h"
+#include <set>
 
 #include <velocypack/Builder.h>
 
-namespace arangodb {
+#include "Basics/Common.h"
+#include "Basics/ReadWriteLock.h"
+#include "Futures/Future.h"
+#include "Indexes/Index.h"
+#include "Indexes/IndexIterator.h"
+#include "Utils/OperationResult.h"
+#include "VocBase/voc-types.h"
 
-namespace transaction {
-class Methods;
-}
+namespace arangodb {
 
 struct KeyLockInfo;
 class LocalDocumentId;
@@ -49,6 +49,8 @@ class Result;
 
 class PhysicalCollection {
  public:
+  constexpr static double defaultLockTimeout = 10.0 * 60.0;
+  
   virtual ~PhysicalCollection() = default;
 
   virtual PhysicalCollection* clone(LogicalCollection& logical) const = 0;
@@ -87,10 +89,10 @@ class PhysicalCollection {
   /// @brief fetches current index selectivity estimates
   /// if allowUpdate is true, will potentially make a cluster-internal roundtrip
   /// to fetch current values!
-  virtual std::unordered_map<std::string, double> clusterIndexEstimates(bool allowUpdate) const;
+  virtual IndexEstMap clusterIndexEstimates(bool allowUpdating, TRI_voc_tick_t tid);
 
   /// @brief sets the current index selectivity estimates
-  virtual void clusterIndexEstimates(std::unordered_map<std::string, double>&& estimates);
+  virtual void setClusterIndexEstimates(IndexEstMap&& estimates);
 
   /// @brief flushes the current index selectivity estimates
   virtual void flushClusterIndexEstimates();
@@ -99,21 +101,33 @@ class PhysicalCollection {
 
   bool hasIndexOfType(arangodb::Index::IndexType type) const;
 
+  /// @brief determines order of index execution on collection
+  struct IndexOrder {
+    bool operator()(const std::shared_ptr<Index>& left,
+                              const std::shared_ptr<Index>& right) const;
+  };
+
+  using IndexContainerType = std::set<std::shared_ptr<Index>, IndexOrder> ;
   /// @brief find index by definition
   static std::shared_ptr<Index> findIndex(velocypack::Slice const&,
-                                          std::vector<std::shared_ptr<Index>> const&);
+                                          IndexContainerType const&);
   /// @brief Find index by definition
   std::shared_ptr<Index> lookupIndex(velocypack::Slice const&) const;
 
   /// @brief Find index by iid
   std::shared_ptr<Index> lookupIndex(TRI_idx_iid_t) const;
+
+  /// @brief Find index by name
+  std::shared_ptr<Index> lookupIndex(std::string const&) const;
+
+  /// @brief get list of all indices
   std::vector<std::shared_ptr<Index>> getIndexes() const;
 
-  void getIndexesVPack(velocypack::Builder&, unsigned flags,
-                       std::function<bool(arangodb::Index const*)> const& filter) const;
+  void getIndexesVPack(velocypack::Builder&,
+                       std::function<bool(arangodb::Index const*, std::underlying_type<Index::Serialize>::type&)> const& filter) const;
 
   /// @brief return the figures for a collection
-  virtual std::shared_ptr<velocypack::Builder> figures();
+  virtual futures::Future<OperationResult> figures();
 
   /// @brief create or restore an index
   /// @param restore utilize specified ID, assume index has to be created
@@ -124,14 +138,15 @@ class PhysicalCollection {
 
   virtual std::unique_ptr<IndexIterator> getAllIterator(transaction::Methods* trx) const = 0;
   virtual std::unique_ptr<IndexIterator> getAnyIterator(transaction::Methods* trx) const = 0;
-  virtual void invokeOnAllElements(transaction::Methods* trx,
-                                   std::function<bool(LocalDocumentId const&)> callback) = 0;
 
   ////////////////////////////////////
   // -- SECTION DML Operations --
   ///////////////////////////////////
 
   virtual Result truncate(transaction::Methods& trx, OperationOptions& options) = 0;
+
+  /// @brief compact-data operation
+  virtual Result compact() = 0;
 
   /// @brief Defer a callback to be executed when the collection
   ///        can be dropped. The callback is supposed to drop
@@ -143,73 +158,69 @@ class PhysicalCollection {
                                     arangodb::velocypack::Slice const&) const = 0;
 
   virtual Result read(transaction::Methods*, arangodb::velocypack::StringRef const& key,
-                      ManagedDocumentResult& result, bool) = 0;
+                      ManagedDocumentResult& result, bool lock) = 0;
 
   virtual Result read(transaction::Methods*, arangodb::velocypack::Slice const& key,
-                      ManagedDocumentResult& result, bool) = 0;
+                      ManagedDocumentResult& result, bool lock) = 0;
 
+  /// @brief read a documument referenced by token (internal method)
   virtual bool readDocument(transaction::Methods* trx, LocalDocumentId const& token,
                             ManagedDocumentResult& result) const = 0;
 
+  /// @brief read a documument referenced by token (internal method)
   virtual bool readDocumentWithCallback(transaction::Methods* trx,
                                         LocalDocumentId const& token,
                                         IndexIterator::DocumentCallback const& cb) const = 0;
   /**
-   * @param callbackDuringLock Called immediately after a successful insert. If
-   * it returns a failure, the insert will be rolled back. If the insert wasn't
-   * successful, it isn't called. May be nullptr.
+   * @brief Perform document insert, may generate a '_key' value
+   * If (options.returnNew == false && !options.silent) result might
+   * just contain an object with the '_key' field
+   * @param callbackDuringLock Called immediately after a successful insert.
+   *        If the insert wasn't successful, it isn't called. May be nullptr.
    */
   virtual Result insert(arangodb::transaction::Methods* trx,
                         arangodb::velocypack::Slice newSlice,
                         arangodb::ManagedDocumentResult& result,
-                        OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
-                        bool lock, TRI_voc_tick_t& revisionId, KeyLockInfo* keyLockInfo,
-                        std::function<Result(void)> callbackDuringLock) = 0;
+                        OperationOptions& options, bool lock, KeyLockInfo* keyLockInfo,
+                        std::function<void()> const& cbDuringLock) = 0;
 
   Result insert(arangodb::transaction::Methods* trx, arangodb::velocypack::Slice newSlice,
-                arangodb::ManagedDocumentResult& result, OperationOptions& options,
-                TRI_voc_tick_t& resultMarkerTick, bool lock) {
-    TRI_voc_rid_t unused;
-    return insert(trx, newSlice, result, options, resultMarkerTick, lock,
-                  unused, nullptr, nullptr);
+                arangodb::ManagedDocumentResult& result,
+                OperationOptions& options, bool lock) {
+    return insert(trx, newSlice, result, options, lock, nullptr, nullptr);
   }
 
   virtual Result update(arangodb::transaction::Methods* trx,
                         arangodb::velocypack::Slice newSlice,
                         ManagedDocumentResult& result, OperationOptions& options,
-                        TRI_voc_tick_t& resultMarkerTick, bool lock,
-                        TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous,
-                        arangodb::velocypack::Slice key,
-                        std::function<Result(void)> callbackDuringLock) = 0;
+                        bool lock, ManagedDocumentResult& previous) = 0;
 
-  virtual Result replace(transaction::Methods* trx, arangodb::velocypack::Slice newSlice,
+  virtual Result replace(arangodb::transaction::Methods* trx,
+                         arangodb::velocypack::Slice newSlice,
                          ManagedDocumentResult& result, OperationOptions& options,
-                         TRI_voc_tick_t& resultMarkerTick, bool lock,
-                         TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous,
-                         std::function<Result(void)> callbackDuringLock) = 0;
+                         bool lock, ManagedDocumentResult& previous) = 0;
 
   virtual Result remove(transaction::Methods& trx, velocypack::Slice slice,
                         ManagedDocumentResult& previous, OperationOptions& options,
-                        TRI_voc_tick_t& resultMarkerTick, bool lock, TRI_voc_rid_t& prevRev,
-                        TRI_voc_rid_t& revisionId, KeyLockInfo* keyLockInfo,
-                        std::function<Result(void)> callbackDuringLock) = 0;
+                        bool lock, KeyLockInfo* keyLockInfo,
+                        std::function<void()> const& cbDuringLock) = 0;
+
+  /// @brief new object for insert, value must have _key set correctly.
+  Result newObjectForInsert(transaction::Methods* trx, velocypack::Slice const& value,
+                            bool isEdgeCollection, velocypack::Builder& builder,
+                            bool isRestore, TRI_voc_rid_t& revisionId) const;
 
  protected:
   PhysicalCollection(LogicalCollection& collection, arangodb::velocypack::Slice const& info);
 
   /// @brief Inject figures that are specific to StorageEngine
-  virtual void figuresSpecific(std::shared_ptr<arangodb::velocypack::Builder>&) = 0;
+  virtual void figuresSpecific(arangodb::velocypack::Builder&) = 0;
 
   // SECTION: Document pre commit preperation
 
   TRI_voc_rid_t newRevisionId() const;
 
   bool isValidEdgeAttribute(velocypack::Slice const& slice) const;
-
-  /// @brief new object for insert, value must have _key set correctly.
-  Result newObjectForInsert(transaction::Methods* trx, velocypack::Slice const& value,
-                            bool isEdgeCollection, velocypack::Builder& builder,
-                            bool isRestore, TRI_voc_rid_t& revisionId) const;
 
   /// @brief new object for remove, must have _key set
   void newObjectForRemove(transaction::Methods* trx, velocypack::Slice const& oldValue,
@@ -236,7 +247,7 @@ class PhysicalCollection {
   bool const _isDBServer;
 
   mutable basics::ReadWriteLock _indexesLock;
-  std::vector<std::shared_ptr<Index>> _indexes;
+  IndexContainerType _indexes;
 };
 
 }  // namespace arangodb

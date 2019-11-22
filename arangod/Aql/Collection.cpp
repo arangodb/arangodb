@@ -29,6 +29,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Transaction/Methods.h"
@@ -58,6 +59,9 @@ void Collection::setExclusiveAccess() {
 /// @brief get the collection id
 TRI_voc_cid_t Collection::id() const { return getCollection()->id(); }
 
+/// @brief collection type
+TRI_col_type_e Collection::type() const { return getCollection()->type(); }
+
 /// @brief count the number of documents in the collection
 size_t Collection::count(transaction::Methods* trx) const {
   // estimate for the number of documents in the collection. may be outdated...
@@ -73,23 +77,23 @@ TRI_voc_cid_t Collection::getPlanId() const { return getCollection()->id(); }
 
 std::unordered_set<std::string> Collection::responsibleServers() const {
   std::unordered_set<std::string> result;
-  auto clusterInfo = arangodb::ClusterInfo::instance();
+  auto& clusterInfo = _vocbase->server().getFeature<ClusterFeature>().clusterInfo();
 
   auto shardIds = this->shardIds();
   for (auto const& it : *shardIds) {
-    auto servers = clusterInfo->getResponsibleServer(it);
+    auto servers = clusterInfo.getResponsibleServer(it);
     result.emplace((*servers)[0]);
   }
   return result;
 }
 
 size_t Collection::responsibleServers(std::unordered_set<std::string>& result) const {
-  auto clusterInfo = arangodb::ClusterInfo::instance();
+  auto& clusterInfo = _vocbase->server().getFeature<ClusterFeature>().clusterInfo();
 
   size_t n = 0;
   auto shardIds = this->shardIds();
   for (auto const& it : *shardIds) {
-    auto servers = clusterInfo->getResponsibleServer(it);
+    auto servers = clusterInfo.getResponsibleServer(it);
     result.emplace((*servers)[0]);
     ++n;
   }
@@ -102,14 +106,14 @@ std::string Collection::distributeShardsLike() const {
 
 /// @brief returns the shard ids of a collection
 std::shared_ptr<std::vector<std::string>> Collection::shardIds() const {
-  auto clusterInfo = arangodb::ClusterInfo::instance();
+  auto& clusterInfo = _vocbase->server().getFeature<ClusterFeature>().clusterInfo();
   auto coll = getCollection();
   if (coll->isSmart() && coll->type() == TRI_COL_TYPE_EDGE) {
     auto names = coll->realNamesForRead();
     auto res = std::make_shared<std::vector<std::string>>();
     for (auto const& n : names) {
-      auto collectionInfo = clusterInfo->getCollection(_vocbase->name(), n);
-      auto list = clusterInfo->getShardList(
+      auto collectionInfo = clusterInfo.getCollection(_vocbase->name(), n);
+      auto list = clusterInfo.getShardList(
           arangodb::basics::StringUtils::itoa(collectionInfo->id()));
       for (auto const& x : *list) {
         res->push_back(x);
@@ -118,7 +122,7 @@ std::shared_ptr<std::vector<std::string>> Collection::shardIds() const {
     return res;
   }
 
-  return clusterInfo->getShardList(arangodb::basics::StringUtils::itoa(getPlanId()));
+  return clusterInfo.getShardList(arangodb::basics::StringUtils::itoa(getPlanId()));
 }
 
 /// @brief returns the filtered list of shard ids of a collection
@@ -147,12 +151,24 @@ std::shared_ptr<std::vector<std::string>> Collection::shardIds(
 }
 
 /// @brief returns the shard keys of a collection
-std::vector<std::string> Collection::shardKeys() const {
+std::vector<std::string> Collection::shardKeys(bool normalize) const {
   auto coll = getCollection();
-  std::vector<std::string> keys;
-  for (auto const& x : coll->shardKeys()) {
-    keys.emplace_back(x);
+  auto const& originalKeys = coll->shardKeys();
+
+  if (normalize && coll->isSmart() && coll->type() == TRI_COL_TYPE_DOCUMENT) {
+    // smart vertex collection always has ["_key:"] as shard keys
+    TRI_ASSERT(originalKeys.size() == 1);
+    TRI_ASSERT(originalKeys[0] == "_key:");
+    // now normalize it this to _key
+    return std::vector<std::string>{StaticStrings::KeyString};
   }
+
+  std::vector<std::string> keys;
+  keys.reserve(originalKeys.size());
+  for (auto const& key : originalKeys) {
+    keys.emplace_back(key);
+  }
+
   return keys;
 }
 
@@ -165,7 +181,7 @@ bool Collection::usesDefaultSharding() const {
   return getCollection()->usesDefaultShardKeys();
 }
 
-void Collection::setCollection(arangodb::LogicalCollection* coll) {
+void Collection::setCollection(std::shared_ptr<arangodb::LogicalCollection> const& coll) {
   _collection = coll;
 }
 
@@ -173,12 +189,10 @@ void Collection::setCollection(arangodb::LogicalCollection* coll) {
 std::shared_ptr<LogicalCollection> Collection::getCollection() const {
   if (_collection == nullptr) {
     TRI_ASSERT(ServerState::instance()->isRunningInCluster());
-    auto clusterInfo = arangodb::ClusterInfo::instance();
-    return clusterInfo->getCollection(_vocbase->name(), _name);
+    auto& clusterInfo = _vocbase->server().getFeature<ClusterFeature>().clusterInfo();
+    return clusterInfo.getCollection(_vocbase->name(), _name);
   }
-  std::shared_ptr<LogicalCollection> dummy;  // intentionally empty
-  // Use the aliasing constructor:
-  return std::shared_ptr<LogicalCollection>(dummy, _collection);
+  return _collection;
 }
 
 /// @brief check smartness of the underlying collection
@@ -186,3 +200,36 @@ bool Collection::isSmart() const { return getCollection()->isSmart(); }
 
 /// @brief check if collection is a satellite collection
 bool Collection::isSatellite() const { return getCollection()->isSatellite(); }
+
+/// @brief return the name of the smart join attribute (empty string
+/// if no smart join attribute is present)
+std::string const& Collection::smartJoinAttribute() const {
+  return getCollection()->smartJoinAttribute();
+}
+
+TRI_vocbase_t* Collection::vocbase() const { return _vocbase; }
+
+AccessMode::Type Collection::accessType() const { return _accessType; }
+
+void Collection::accessType(AccessMode::Type type) { _accessType = type; }
+
+bool Collection::isReadWrite() const { return _isReadWrite; }
+
+void Collection::isReadWrite(bool isReadWrite) { _isReadWrite = isReadWrite; }
+
+void Collection::setCurrentShard(std::string const& shard) {
+  _currentShard = shard;
+}
+
+void Collection::resetCurrentShard() { _currentShard.clear(); }
+
+std::string const& Collection::name() const {
+  if (!_currentShard.empty()) {
+    // sharding case: return the current shard name instead of the collection
+    // name
+    return _currentShard;
+  }
+
+  // non-sharding case: simply return the name
+  return _name;
+}

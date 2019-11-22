@@ -27,8 +27,12 @@
 #include "Aql/QueryProfile.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/Result.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/system-functions.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "VocBase/vocbase.h"
 
@@ -52,24 +56,16 @@ QueryEntryCopy::QueryEntryCopy(TRI_voc_tick_t id, std::string&& queryString,
       stream(stream) {}
 
 /// @brief create a query list
-QueryList::QueryList(TRI_vocbase_t*)
+QueryList::QueryList(QueryRegistryFeature& feature, TRI_vocbase_t*)
     : _lock(),
       _current(),
       _slow(),
       _slowCount(0),
-      _enabled(application_features::ApplicationServer::getFeature<arangodb::QueryRegistryFeature>("QueryRegistry")
-                   ->trackSlowQueries()),
-      _trackSlowQueries(
-          application_features::ApplicationServer::getFeature<arangodb::QueryRegistryFeature>("QueryRegistry")
-              ->trackSlowQueries()),
-      _trackBindVars(application_features::ApplicationServer::getFeature<arangodb::QueryRegistryFeature>("QueryRegistry")
-                         ->trackBindVars()),
-      _slowQueryThreshold(
-          application_features::ApplicationServer::getFeature<arangodb::QueryRegistryFeature>("QueryRegistry")
-              ->slowQueryThreshold()),
-      _slowStreamingQueryThreshold(
-          application_features::ApplicationServer::getFeature<arangodb::QueryRegistryFeature>("QueryRegistry")
-              ->slowStreamingQueryThreshold()),
+      _enabled(feature.trackSlowQueries()),
+      _trackSlowQueries(feature.trackSlowQueries()),
+      _trackBindVars(feature.trackBindVars()),
+      _slowQueryThreshold(feature.slowQueryThreshold()),
+      _slowStreamingQueryThreshold(feature.slowStreamingQueryThreshold()),
       _maxSlowQueries(defaultMaxSlowQueries),
       _maxQueryStringLength(defaultMaxQueryStringLength) {
   _current.reserve(64);
@@ -114,13 +110,11 @@ void QueryList::remove(Query* query) {
   }
 
   WRITE_LOCKER(writeLocker, _lock);
-  auto it = _current.find(query->id());
 
-  if (it == _current.end()) {
+  if (_current.erase(query->id()) == 0) {
+    // not found
     return;
   }
-
-  _current.erase(it);
 
   bool const isStreaming = query->queryOptions().stream;
   double threshold = (isStreaming ? _slowStreamingQueryThreshold : _slowQueryThreshold);
@@ -165,12 +159,12 @@ void QueryList::remove(Query* query) {
       }
 
       if (loadTime >= 0.1) {
-        LOG_TOPIC(WARN, Logger::QUERIES)
+        LOG_TOPIC("d728e", WARN, Logger::QUERIES)
             << "slow " << (isStreaming ? "streaming " : "") << "query: '" << q
             << "'" << bindParameters << ", took: " << Logger::FIXED(now - started)
             << " s, loading took: " << Logger::FIXED(loadTime) << " s";
       } else {
-        LOG_TOPIC(WARN, Logger::QUERIES)
+        LOG_TOPIC("8bcee", WARN, Logger::QUERIES)
             << "slow " << (isStreaming ? "streaming " : "") << "query: '" << q << "'"
             << bindParameters << ", took: " << Logger::FIXED(now - started) << " s";
       }
@@ -178,7 +172,7 @@ void QueryList::remove(Query* query) {
       _slow.emplace_back(query->id(), std::move(q),
                          _trackBindVars ? query->bindParameters() : nullptr,
                          started, now - started,
-                         QueryExecutionState::ValueType::FINISHED, isStreaming);
+                         query->killed() ? QueryExecutionState::ValueType::KILLED : QueryExecutionState::ValueType::FINISHED, isStreaming);
 
       if (++_slowCount > _maxSlowQueries) {
         // free first element
@@ -191,41 +185,46 @@ void QueryList::remove(Query* query) {
 }
 
 /// @brief kills a query
-int QueryList::kill(TRI_voc_tick_t id) {
-  WRITE_LOCKER(writeLocker, _lock);
+Result QueryList::kill(TRI_voc_tick_t id) {
+  READ_LOCKER(writeLocker, _lock);
 
   auto it = _current.find(id);
 
   if (it == _current.end()) {
-    return TRI_ERROR_QUERY_NOT_FOUND;
+    return {TRI_ERROR_QUERY_NOT_FOUND};
   }
 
   Query* query = (*it).second;
-  LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+  LOG_TOPIC("25cc4", WARN, arangodb::Logger::FIXME)
       << "killing AQL query " << id << " '" << query->queryString() << "'";
 
   query->kill();
-  return TRI_ERROR_NO_ERROR;
+  return Result();
 }
 
-/// @brief kills all currently running queries
-uint64_t QueryList::killAll(bool silent) {
+/// @brief kills all currently running queries that match the filter function
+/// (i.e. the filter should return true for a queries to be killed)
+uint64_t QueryList::kill(std::function<bool(Query&)> const& filter, bool silent) {
   uint64_t killed = 0;
 
-  WRITE_LOCKER(writeLocker, _lock);
+  READ_LOCKER(readLocker, _lock);
 
   for (auto& it : _current) {
-    Query* query = it.second;
+    Query& query = *(it.second);
 
-    if (silent) {
-      LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
-          << "killing AQL query " << query->id() << " '" << query->queryString() << "'";
-    } else {
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME)
-          << "killing AQL query " << query->id() << " '" << query->queryString() << "'";
+    if (!filter(query)) {
+      continue;
     }
 
-    query->kill();
+    if (silent) {
+      LOG_TOPIC("f7722", TRACE, arangodb::Logger::FIXME)
+          << "killing AQL query " << query.id() << " '" << query.queryString() << "'";
+    } else {
+      LOG_TOPIC("90113", WARN, arangodb::Logger::FIXME)
+          << "killing AQL query " << query.id() << " '" << query.queryString() << "'";
+    }
+
+    query.kill();
     ++killed;
   }
 
@@ -259,7 +258,9 @@ std::vector<QueryEntryCopy> QueryList::listCurrent() {
 
       result.emplace_back(query->id(), extractQueryString(query, maxLength),
                           _trackBindVars ? query->bindParameters() : nullptr, started,
-                          now - started, query->state(), query->queryOptions().stream);
+                          now - started, 
+                          query->killed() ? QueryExecutionState::ValueType::KILLED : query->state(),
+                          query->queryOptions().stream);
     }
   }
 
@@ -292,6 +293,11 @@ void QueryList::clearSlow() {
   WRITE_LOCKER(writeLocker, _lock);
   _slow.clear();
   _slowCount = 0;
+}
+  
+size_t QueryList::count() {
+  READ_LOCKER(writeLocker, _lock);
+  return _current.size();
 }
 
 std::string QueryList::extractQueryString(Query const* query, size_t maxLength) const {

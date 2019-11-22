@@ -1,8 +1,9 @@
-/* A Bison parser, made by GNU Bison 3.0.4.  */
+/* A Bison parser, made by GNU Bison 3.3.2.  */
 
 /* Bison interface for Yacc-like parsers in C
 
-   Copyright (C) 1984, 1989-1990, 2000-2015 Free Software Foundation, Inc.
+   Copyright (C) 1984, 1989-1990, 2000-2015, 2018-2019 Free Software Foundation,
+   Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -29,6 +30,9 @@
 
    This special exception was added by the Free Software Foundation in
    version 2.2 of Bison.  */
+
+/* Undocumented macros, especially those whose name start with YY_,
+   are private implementation details.  Do not rely on them.  */
 
 #ifndef YY_AQL_AQL_GRAMMAR_HPP_INCLUDED
 # define YY_AQL_AQL_GRAMMAR_HPP_INCLUDED
@@ -61,26 +65,26 @@ extern int Aqldebug;
     T_AGGREGATE = 270,
     T_GRAPH = 271,
     T_SHORTEST_PATH = 272,
-    T_DISTINCT = 273,
-    T_REMOVE = 274,
-    T_INSERT = 275,
-    T_UPDATE = 276,
-    T_REPLACE = 277,
-    T_UPSERT = 278,
-    T_NULL = 279,
-    T_TRUE = 280,
-    T_FALSE = 281,
-    T_STRING = 282,
-    T_QUOTED_STRING = 283,
-    T_INTEGER = 284,
-    T_DOUBLE = 285,
-    T_PARAMETER = 286,
-    T_DATA_SOURCE_PARAMETER = 287,
-    T_ASSIGN = 288,
-    T_NOT = 289,
-    T_AND = 290,
-    T_OR = 291,
-    T_NIN = 292,
+    T_K_SHORTEST_PATHS = 273,
+    T_DISTINCT = 274,
+    T_REMOVE = 275,
+    T_INSERT = 276,
+    T_UPDATE = 277,
+    T_REPLACE = 278,
+    T_UPSERT = 279,
+    T_NULL = 280,
+    T_TRUE = 281,
+    T_FALSE = 282,
+    T_STRING = 283,
+    T_QUOTED_STRING = 284,
+    T_INTEGER = 285,
+    T_DOUBLE = 286,
+    T_PARAMETER = 287,
+    T_DATA_SOURCE_PARAMETER = 288,
+    T_ASSIGN = 289,
+    T_NOT = 290,
+    T_AND = 291,
+    T_OR = 292,
     T_REGEX_MATCH = 293,
     T_REGEX_NON_MATCH = 294,
     T_EQ = 295,
@@ -113,10 +117,11 @@ extern int Aqldebug;
     T_NONE = 322,
     UMINUS = 323,
     UPLUS = 324,
-    FUNCCALL = 325,
-    REFERENCE = 326,
-    INDEXED = 327,
-    EXPANSION = 328
+    UNEGATION = 325,
+    FUNCCALL = 326,
+    REFERENCE = 327,
+    INDEXED = 328,
+    EXPANSION = 329
   };
 #endif
 
@@ -125,7 +130,7 @@ extern int Aqldebug;
 
 union YYSTYPE
 {
-#line 35 "Aql/grammar.y" /* yacc.c:1909  */
+#line 36 "Aql/grammar.y" /* yacc.c:1921  */
 
   arangodb::aql::AstNode*  node;
   struct {
@@ -135,7 +140,7 @@ union YYSTYPE
   bool                     boolval;
   int64_t                  intval;
 
-#line 139 "Aql/grammar.hpp" /* yacc.c:1909  */
+#line 144 "Aql/grammar.hpp" /* yacc.c:1921  */
 };
 
 typedef union YYSTYPE YYSTYPE;

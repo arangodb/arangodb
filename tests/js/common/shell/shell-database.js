@@ -52,8 +52,7 @@ function DatabaseSuite () {
       try {
         // drop this database if it exists
         internal.db._dropDatabase("UnitTestsDatabase0");
-      }
-      catch (err) {
+      } catch (err) {
         // ignore
       }
 
@@ -165,6 +164,20 @@ function DatabaseSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test AQL literal and options
+////////////////////////////////////////////////////////////////////////////////
+
+    testAQLWithLiteralAndOptions : function () {
+      var aql = require("@arangodb").aql;
+      var result = internal.db._query(
+        aql`${aql.literal('RETURN 1')}`,
+        {fullCount: true}
+      );
+      assertEqual([ 1 ], result.toArray());
+      assertEqual(1, result.getExtra().stats.fullCount);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test _executeTransaction
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -223,8 +236,7 @@ function DatabaseSuite () {
 
       try {
         internal.db._dropDatabase("UnitTestsDatabase0");
-      }
-      catch (err) {
+      } catch (err) {
       }
 
       internal.db._createDatabase("UnitTestsDatabase0");
@@ -253,14 +265,12 @@ function DatabaseSuite () {
 
       try {
         internal.db._dropDatabase("UnitTestsDatabase0");
-      }
-      catch (err1) {
+      } catch (err1) {
       }
 
       try {
         internal.db._dropDatabase("UnitTestsDatabase1");
-      }
-      catch (err2) {
+      } catch (err2) {
       }
 
       assertTrue(internal.db._createDatabase("UnitTestsDatabase0"));
@@ -279,8 +289,7 @@ function DatabaseSuite () {
 
       try {
         internal.db._dropDatabase("UnitTestsDatabase0");
-      }
-      catch (err1) {
+      } catch (err1) {
       }
 
       // empty users
@@ -298,8 +307,7 @@ function DatabaseSuite () {
 
       try {
         internal.db._dropDatabase("UnitTestsDatabase0");
-      }
-      catch (err1) {
+      } catch (err1) {
       }
 
       var users = [
@@ -336,8 +344,7 @@ function DatabaseSuite () {
 
       try {
         internal.db._dropDatabase("UnitTestsDatabase0");
-      }
-      catch (err1) {
+      } catch (err1) {
       }
 
       var users = [
@@ -368,8 +375,7 @@ function DatabaseSuite () {
         try {
           internal.db._createDatabase(d);
           fail();
-        }
-        catch (err) {
+        } catch (err) {
           assertEqual(ERRORS.ERROR_ARANGO_DATABASE_NAME_INVALID.code, err.errorNum);
         }
       });
@@ -384,8 +390,7 @@ function DatabaseSuite () {
 
       try {
         internal.db._dropDatabase("UnitTestsDatabase0");
-      }
-      catch (err1) {
+      } catch (err1) {
       }
 
       internal.db._createDatabase("UnitTestsDatabase0");
@@ -396,8 +401,7 @@ function DatabaseSuite () {
       try {
         internal.db._createDatabase("UnitTestsDatabase1");
         fail();
-      }
-      catch (err2) {
+      } catch (err2) {
         assertEqual(ERRORS.ERROR_ARANGO_USE_SYSTEM_DATABASE.code, err2.errorNum);
       }
 
@@ -405,8 +409,7 @@ function DatabaseSuite () {
       try {
         internal.db._dropDatabase("UnitTestsDatabase1");
         fail();
-      }
-      catch (err3) {
+      } catch (err3) {
         assertEqual(ERRORS.ERROR_ARANGO_USE_SYSTEM_DATABASE.code, err3.errorNum);
       }
 
@@ -423,8 +426,7 @@ function DatabaseSuite () {
 
       try {
         internal.db._dropDatabase("UnitTestsDatabase0");
-      }
-      catch (err1) {
+      } catch (err1) {
       }
 
       internal.db._createDatabase("UnitTestsDatabase0");
@@ -432,8 +434,7 @@ function DatabaseSuite () {
       try {
         internal.db._createDatabase("UnitTestsDatabase0");
         fail();
-      }
-      catch (err2) {
+      } catch (err2) {
         assertEqual(ERRORS.ERROR_ARANGO_DUPLICATE_NAME.code, err2.errorNum);
       }
 
@@ -462,14 +463,12 @@ function DatabaseSuite () {
 
       try {
         internal.db._dropDatabase("UnitTestsDatabase0");
-      }
-      catch (err1) {
+      } catch (err1) {
       }
 
       try {
         internal.db._dropDatabase("UNITTESTSDATABASE0");
-      }
-      catch (err2) {
+      } catch (err2) {
       }
 
       assertTrue(internal.db._createDatabase("UnitTestsDatabase0"));
@@ -527,8 +526,7 @@ function DatabaseSuite () {
 
       try {
         internal.db._dropDatabase("UnitTestsDatabase0");
-      }
-      catch (err1) {
+      } catch (err1) {
       }
 
       internal.db._createDatabase("UnitTestsDatabase0");
@@ -546,8 +544,7 @@ function DatabaseSuite () {
       try {
         internal.db._useDatabase("UnitTestsDatabase0");
         fail();
-      }
-      catch (err2) {
+      } catch (err2) {
         assertTrue(err2.errorNum === ERRORS.ERROR_ARANGO_DATABASE_NOT_FOUND.code ||
                    err2.errorNum === ERRORS.ERROR_HTTP_NOT_FOUND.code);
       }
@@ -557,8 +554,7 @@ function DatabaseSuite () {
       try {
         internal.db._useDatabase("THISDATABASEDOESNOTEXIST");
         fail();
-      }
-      catch (err3) {
+      } catch (err3) {
         assertTrue(err3.errorNum === ERRORS.ERROR_ARANGO_DATABASE_NOT_FOUND.code ||
                    err3.errorNum === ERRORS.ERROR_HTTP_NOT_FOUND.code);
       }
@@ -573,8 +569,7 @@ function DatabaseSuite () {
 
       try {
         internal.db._dropDatabase("UnitTestsDatabase0");
-      }
-      catch (err1) {
+      } catch (err1) {
       }
 
       var isContained = function (name) {
@@ -632,8 +627,7 @@ function DatabaseSuite () {
       try {
         db[name].save({ _key: "foo", value: 1 });
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         // cannot call method ... of undefined
         assertMatch(/^Cannot read property 'save' of undefined/, err.message);
       }
@@ -665,8 +659,7 @@ function DatabaseSuite () {
       try {
         db[name].save({ _key: "foo", value: 1 });
         fail();
-      }
-      catch (err) {
+      } catch (err) {
         // cannot call method ... of undefined
         assertMatch(/^Cannot read property 'save' of undefined/, err.message);
       }
@@ -698,4 +691,3 @@ function DatabaseSuite () {
 jsunity.run(DatabaseSuite);
 
 return jsunity.done();
-

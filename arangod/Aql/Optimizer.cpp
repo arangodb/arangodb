@@ -22,27 +22,30 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Optimizer.h"
+
 #include "Aql/AqlItemBlock.h"
 #include "Aql/ExecutionEngine.h"
+#include "Aql/OptimizerRule.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/QueryOptions.h"
 #include "Cluster/ServerState.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 
 using namespace arangodb::aql;
 
-// @brief constructor, this will initialize the rules database
+// @brief constructor
 Optimizer::Optimizer(size_t maxNumberOfPlans)
-    : _maxNumberOfPlans(maxNumberOfPlans), _runOnlyRequiredRules(false) {
-  for (auto& r : OptimizerRulesFeature::_rules) {
-    _rules.emplace(r.first, Rule{r.second, true});
-  }
-}
+    : _maxNumberOfPlans(maxNumberOfPlans), _runOnlyRequiredRules(false) {}
 
-void Optimizer::disableRule(int rule) {
-  auto it = _rules.find(rule);
-  TRI_ASSERT(it != _rules.end());
-  it->second.enabled = false;
+void Optimizer::disableRules(ExecutionPlan* plan,
+                             std::function<bool(OptimizerRule const&)> const& predicate) {
+  for (auto& it : _rules) {
+    auto const& rule = OptimizerRulesFeature::ruleByIndex(it);
+    if (predicate(rule)) {
+      plan->disableRule(rule.level);
+    }
+  }
 }
 
 bool Optimizer::runOnlyRequiredRules(size_t extraPlans) const {
@@ -52,23 +55,35 @@ bool Optimizer::runOnlyRequiredRules(size_t extraPlans) const {
 
 // @brief add a plan to the optimizer
 void Optimizer::addPlan(std::unique_ptr<ExecutionPlan> plan,
-                        OptimizerRule const* rule, bool wasModified, int newLevel) {
-  TRI_ASSERT(plan != nullptr);
-  TRI_ASSERT(&_currentRule->second.rule == rule);
+                        OptimizerRule const& rule, bool wasModified) {
 
   auto it = _currentRule;
+  TRI_ASSERT(it != _rules.end());
+  // move it to the next rule to be processed in the next iteration
+  addPlanInternal(std::move(plan), rule, wasModified, ++it);
+}
 
-  if (newLevel <= 0) {
-    ++it;  // move it to the next rule to be processed in the next iteration
-  } else {
-    it = _rules.upper_bound(newLevel);
-  }
+void Optimizer::addPlanAndRerun(std::unique_ptr<ExecutionPlan> plan,
+                                OptimizerRule const& rule, bool wasModified) {
+  auto it = _rules.begin() + OptimizerRulesFeature::ruleIndex(rule.level);
+  TRI_ASSERT(it != _rules.end());
+  addPlanInternal(std::move(plan), rule, wasModified, it);
+}
+
+  // @brief add a plan to the optimizer
+void Optimizer::addPlanInternal(std::unique_ptr<ExecutionPlan> plan,
+                                OptimizerRule const& rule, bool wasModified,
+                                RuleDatabase::iterator const& nextRule) {
+  TRI_ASSERT(plan != nullptr);
+  TRI_ASSERT(!_rules.empty());
+
+  plan->setValidity(true);
 
   if (wasModified) {
-    if (!rule->isHidden) {
+    if (!rule.isHidden()) {
       // register which rules modified / created the plan
       // hidden rules are excluded here
-      plan->addAppliedRule(static_cast<int>(rule->level));
+      plan->addAppliedRule(static_cast<int>(rule.level));
     }
 
     plan->clearVarUsageComputed();
@@ -76,7 +91,7 @@ void Optimizer::addPlan(std::unique_ptr<ExecutionPlan> plan,
   }
 
   // hand over ownership
-  _newPlans.push_back(std::move(plan), it);
+  _newPlans.push_back(std::move(plan), nextRule);
 
   // stop adding new plans in case we already have enough
   if (_newPlans.size() + _plans.size() >= _maxNumberOfPlans) {
@@ -85,10 +100,30 @@ void Optimizer::addPlan(std::unique_ptr<ExecutionPlan> plan,
 }
 
 // @brief the actual optimization
-int Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
-                           QueryOptions const& queryOptions, bool estimateAllPlans) {
+void Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
+                            QueryOptions const& queryOptions, bool estimateAllPlans) {
   _runOnlyRequiredRules = false;
   ExecutionPlan* initialPlan = plan.get();
+
+  if (ADB_LIKELY(_rules.empty())) {
+    auto const& rules = OptimizerRulesFeature::rules();
+    _rules.reserve(rules.size());
+
+    TRI_ASSERT(std::is_sorted(rules.begin(), rules.end(), [](OptimizerRule const& lhs, OptimizerRule const& rhs) {
+      return lhs.level < rhs.level;
+    }));
+
+    int index = -1;
+    for (auto& rule : OptimizerRulesFeature::rules()) {
+      // insert position of rule inside OptimizerRulesFeature::_rules
+      _rules.emplace_back(++index);
+      if (rule.isDisabledByDefault()) {
+        disableRule(initialPlan, rule.level);
+      }
+    }
+  }
+
+  TRI_ASSERT(!_rules.empty());
 
   // _plans contains the previous optimization result
   _plans.clear();
@@ -106,16 +141,20 @@ int Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
       initialPlan->invalidateCost();
       initialPlan->getCost();
     }
-    return TRI_ERROR_NO_ERROR;
+    return;
   }
 
-  TRI_ASSERT(!_rules.empty());
-
-  // which optimizer rules are disabled?
-  for (auto rule : OptimizerRulesFeature::getDisabledRuleIds(queryOptions.optimizerRules)) {
-    disableRule(rule);
+  // enable/disable rules as per user request
+  for (auto const& name : queryOptions.optimizerRules) {
+    if (name.empty()) {
+      continue;
+    }
+    if (name[0] == '-') {
+      disableRule(initialPlan, arangodb::velocypack::StringRef(name));
+    } else {
+      enableRule(initialPlan, arangodb::velocypack::StringRef(name));
+    }
   }
-
   _newPlans.clear();
 
   while (true) {
@@ -133,26 +172,27 @@ int Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
       std::tie(p, _currentRule) = _plans.pop_front();
 
       if (_currentRule == _rules.end()) {
-        _newPlans.push_back(std::move(p),
-                            _currentRule);  // nothing to do, just keep it
-      } else {                              // find next rule
+        // nothing to do, just keep it
+        _newPlans.push_back(std::move(p), _currentRule);
+      } else {
+        // find next rule
         auto it = _currentRule;
         TRI_ASSERT(it != _rules.end());
 
-        auto& rule = it->second.rule;
+        auto const& rule = OptimizerRulesFeature::ruleByIndex(*it);
 
         // skip over rules if we should
         // however, we don't want to skip those rules that will not create
         // additional plans
-        if (!it->second.enabled ||
-            (_runOnlyRequiredRules && rule.canCreateAdditionalPlans && rule.canBeDisabled)) {
+        if (p->isDisabledRule(rule.level) ||
+            (_runOnlyRequiredRules && rule.canCreateAdditionalPlans() && rule.canBeDisabled())) {
           // we picked a disabled rule or we have reached the max number of
           // plans and just skip this rule
           ++it;  // move it to the next rule to be processed in the next
                  // iteration
           _newPlans.push_back(std::move(p), it);  // nothing to do, just keep it
 
-          if (!rule.isHidden) {
+          if (!rule.isHidden()) {
             ++_stats.rulesSkipped;
           }
 
@@ -174,9 +214,10 @@ int Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
         // optimizer.
         //   thus the rule must not have deleted the plan itself or add it
         //   back to the optimizer
-        rule.func(this, std::move(p), &rule);
+        p->setValidity(false);
+        rule.func(this, std::move(p), rule);
 
-        if (!rule.isHidden) {
+        if (!rule.isHidden()) {
           ++_stats.rulesExecuted;
         }
       }
@@ -191,10 +232,11 @@ int Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
     // reuse them in the next iteration
     _plans.swap(_newPlans);
 
-    auto fully_optimized = [this](auto const& v) {
+    auto fullyOptimized = [this](auto const& v) {
       return v.second == _rules.end();
     };
-    if (std::all_of(_plans.list.begin(), _plans.list.end(), fully_optimized)) {
+
+    if (std::all_of(_plans.list.begin(), _plans.list.end(), fullyOptimized)) {
       break;
     }
   }
@@ -229,7 +271,60 @@ int Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
     }
   }
 
-  LOG_TOPIC(TRACE, Logger::FIXME) << "optimization ends with " << _plans.size() << " plans";
+  LOG_TOPIC("5b5f6", TRACE, Logger::FIXME)
+      << "optimization ends with " << _plans.size() << " plans";
+}
 
-  return TRI_ERROR_NO_ERROR;
+void Optimizer::disableRule(ExecutionPlan* plan, int level) {
+  if (level <= 0) {
+    // invalid rule
+    return;
+  }
+
+  auto const& rule = OptimizerRulesFeature::ruleByLevel(level);
+  if (rule.canBeDisabled()) {
+    plan->disableRule(level);
+  }
+}
+
+void Optimizer::disableRule(ExecutionPlan* plan, arangodb::velocypack::StringRef name) {
+  if (!name.empty() && name[0] == '-') {
+    name = name.substr(1);
+  }
+
+  if (name == "all") {
+    // disable all rules
+    for (auto& r : _rules) {
+      auto const& rule = OptimizerRulesFeature::ruleByIndex(r);
+      disableRule(plan, rule.level);
+    }
+  } else {
+    disableRule(plan, OptimizerRulesFeature::translateRule(name));
+  }
+}
+
+void Optimizer::enableRule(ExecutionPlan* plan, int level) {
+  if (level <= 0) {
+    // invalid rule
+    return;
+  }
+  plan->enableRule(level);
+}
+
+void Optimizer::enableRule(ExecutionPlan* plan, arangodb::velocypack::StringRef name) {
+  if (!name.empty() && name[0] == '+') {
+    name = name.substr(1);
+  }
+
+  if (name == "all") {
+    // enable all rules
+    for (auto& r : _rules) {
+      auto const& rule = OptimizerRulesFeature::ruleByIndex(r);
+      if (!rule.isDisabledByDefault()) {
+        enableRule(plan, rule.level);
+      }
+    }
+  } else {
+    enableRule(plan, OptimizerRulesFeature::translateRule(name));
+  }
 }

@@ -365,7 +365,7 @@ function getQueryMultiplePlansAndExecutions (query, bindVars, testObject, debug)
 
 function removeAlwaysOnClusterRules (rules) {
   return rules.filter(function (rule) {
-    return ([ 'distribute-filtercalc-to-cluster', 'scatter-in-cluster', 'distribute-in-cluster', 'remove-unnecessary-remote-scatter' ].indexOf(rule) === -1);
+    return ([ 'distribute-filtercalc-to-cluster', 'scatter-in-cluster', 'distribute-in-cluster', 'remove-unnecessary-remote-scatter', 'parallelize-gather' ].indexOf(rule) === -1);
   });
 }
 
@@ -380,6 +380,30 @@ function removeClusterNodesFromPlan (nodes) {
     return ([ 'ScatterNode', 'GatherNode', 'DistributeNode', 'RemoteNode' ].indexOf(node.type) === -1);
   });
 }
+
+function roundCost (obj) {
+  if (Array.isArray(obj)) {
+    return obj.map(roundCost);
+  } else if (typeof obj === 'object') {
+    var result = {};
+    for (var key in obj) {
+      if (obj.hasOwnProperty(key)) {
+        if (key === "estimatedCost") {
+          result[key] = Math.round(obj[key]);
+        } else if (key === "selectivityEstimate") {
+          // Round the estimate to 3 digits after ,
+          result[key] = obj[key].toFixed(3);
+        } else {
+          result[key] = roundCost(obj[key]);
+        }
+      }
+    }
+    return result;
+  } else {
+    return obj;
+  }
+}
+
 
 exports.getParseResults = getParseResults;
 exports.assertParseError = assertParseError;
@@ -398,3 +422,4 @@ exports.getQueryMultiplePlansAndExecutions = getQueryMultiplePlansAndExecutions;
 exports.removeAlwaysOnClusterRules = removeAlwaysOnClusterRules;
 exports.removeClusterNodes = removeClusterNodes;
 exports.removeClusterNodesFromPlan = removeClusterNodesFromPlan;
+exports.roundCost = roundCost;

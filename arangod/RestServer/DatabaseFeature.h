@@ -29,32 +29,42 @@
 #include "Basics/Thread.h"
 #include "Utils/VersionTracker.h"
 #include "VocBase/voc-types.h"
-
-#include <velocypack/Builder.h>
-#include <velocypack/Slice.h>
+#include "VocBase/Methods/Databases.h"
 
 struct TRI_vocbase_t;
 
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
 class LogicalCollection;
 
-namespace aql {
-class QueryRegistry;
 }
+
+namespace arangodb {
+namespace velocypack {
+
+  class Builder; // forward declaration
+  class Slice; // forward declaration
+
+} // velocypack
+} //arangodb
+
+namespace arangodb {
 
 class DatabaseManagerThread final : public Thread {
  public:
   DatabaseManagerThread(DatabaseManagerThread const&) = delete;
   DatabaseManagerThread& operator=(DatabaseManagerThread const&) = delete;
 
-  DatabaseManagerThread();
+  explicit DatabaseManagerThread(application_features::ApplicationServer&);
   ~DatabaseManagerThread();
 
   void run() override;
 
  private:
   // how long will the thread pause between iterations
-  static constexpr unsigned long waitTime() { return 500 * 1000; }
+  static constexpr unsigned long waitTime() { return static_cast<unsigned long>(500U * 1000U); }
 };
 
 class DatabaseFeature : public application_features::ApplicationFeature {
@@ -73,11 +83,21 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   void stop() override final;
   void unprepare() override final;
 
+  // used by catch tests
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  inline int loadDatabases(velocypack::Slice const& databases) {
+    return iterateDatabases(databases);
+  }
+#endif
+
   /// @brief will be called when the recovery phase has run
   /// this will call the engine-specific recoveryDone() procedures
   /// and will execute engine-unspecific operations (such as starting
   /// the replication appliers) for all databases
   void recoveryDone();
+
+  /// @brief enumerate all databases
+  void enumerate(std::function<void(TRI_vocbase_t*)> const& callback);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief register a callback
@@ -96,17 +116,18 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   std::vector<std::string> getDatabaseNames();
   std::vector<std::string> getDatabaseNamesForUser(std::string const& user);
 
-  int createDatabase(TRI_voc_tick_t id, std::string const& name, TRI_vocbase_t*& result);
+  Result createDatabase(arangodb::CreateDatabaseInfo&& , TRI_vocbase_t*& result);
+
   int dropDatabase(std::string const& name, bool waitForDeletion, bool removeAppsDirectory);
   int dropDatabase(TRI_voc_tick_t id, bool waitForDeletion, bool removeAppsDirectory);
 
   void inventory(arangodb::velocypack::Builder& result, TRI_voc_tick_t,
                  std::function<bool(arangodb::LogicalCollection const*)> const& nameFilter);
 
-  TRI_vocbase_t* useDatabase(std::string const& name);
-  TRI_vocbase_t* useDatabase(TRI_voc_tick_t id);
+  TRI_vocbase_t* useDatabase(std::string const& name) const;
+  TRI_vocbase_t* useDatabase(TRI_voc_tick_t id) const;
 
-  TRI_vocbase_t* lookupDatabase(std::string const& name);
+  TRI_vocbase_t* lookupDatabase(std::string const& name) const;
   void enumerateDatabases(std::function<void(TRI_vocbase_t& vocbase)> const& func);
   std::string translateCollectionName(std::string const& dbName,
                                       std::string const& collectionName);
@@ -122,6 +143,7 @@ class DatabaseFeature : public application_features::ApplicationFeature {
 
   void enableCheckVersion() { _checkVersion = true; }
   void enableUpgrade() { _upgrade = true; }
+  void disableUpgrade() { _upgrade = false; }
   bool throwCollectionNotLoadedError() const {
     return _throwCollectionNotLoadedError.load(std::memory_order_relaxed);
   }
@@ -165,8 +187,8 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   std::atomic<DatabasesLists*> _databasesLists;
   // TODO: Make this again a template once everybody has gcc >= 4.9.2
   // arangodb::basics::DataProtector<64>
-  arangodb::basics::DataProtector _databasesProtector;
-  arangodb::Mutex _databasesMutex;
+  mutable arangodb::basics::DataProtector _databasesProtector;
+  mutable arangodb::Mutex _databasesMutex;
 
   bool _isInitiallyEmpty;
   bool _checkVersion;
@@ -181,6 +203,11 @@ class DatabaseFeature : public application_features::ApplicationFeature {
   /// maintains a global counter that is increased on every modification
   /// (addition, removal, change) of database objects
   VersionTracker _versionTracker;
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // i am here for debugging only.
+  static TRI_vocbase_t* CURRENT_VOCBASE;
+#endif
 };
 
 }  // namespace arangodb

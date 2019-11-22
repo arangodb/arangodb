@@ -55,7 +55,7 @@ struct ExpressionCompilationContext {
 
   size_t hash() const noexcept;
 
-  arangodb::aql::ExecutionPlan* plan{};
+  arangodb::aql::ExecutionPlan const* plan{};
   arangodb::aql::Ast* ast{};
   std::shared_ptr<arangodb::aql::AstNode> node{};
 };  // ExpressionCompilationContext
@@ -95,13 +95,13 @@ class ByExpression final : public irs::filter {
 
   ByExpression() noexcept;
 
-  void init(aql::ExecutionPlan& plan, aql::Ast& ast, arangodb::aql::AstNode& node) noexcept {
+  void init(aql::ExecutionPlan const& plan, aql::Ast& ast, arangodb::aql::AstNode& node) noexcept {
     _ctx.plan = &plan;
     _ctx.ast = &ast;
     _ctx.node.reset(&node, [](arangodb::aql::AstNode*) {});
   }
 
-  void init(aql::ExecutionPlan& plan, aql::Ast& ast,
+  void init(aql::ExecutionPlan const& plan, aql::Ast& ast,
             std::shared_ptr<arangodb::aql::AstNode>&& node) noexcept {
     _ctx.plan = &plan;
     _ctx.ast = &ast;
@@ -112,7 +112,7 @@ class ByExpression final : public irs::filter {
 
   virtual irs::filter::prepared::ptr prepare(irs::index_reader const& index,
                                              irs::order::prepared const& ord,
-                                             irs::boost::boost_t boost,
+                                             irs::boost_t boost,
                                              irs::attribute_view const& ctx) const override;
 
   virtual size_t hash() const noexcept override;

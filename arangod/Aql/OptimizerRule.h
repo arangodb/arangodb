@@ -25,6 +25,10 @@
 
 #include "Basics/Common.h"
 
+#include <velocypack/StringRef.h>
+
+#include <type_traits>
+
 namespace arangodb {
 namespace aql {
 class ExecutionPlan;
@@ -38,10 +42,54 @@ struct OptimizerRule;
 /// set the level of the appended plan to the largest level of rule
 /// that ought to be considered as done to indicate which rule is to be
 /// applied next.
-typedef std::function<void(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const*)> RuleFunction;
+typedef void (*RuleFunction)(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);
 
 /// @brief type of an optimizer rule
 struct OptimizerRule {
+  enum class Flags : int {
+    Default = 0,
+    Hidden = 1,
+    ClusterOnly = 2,
+    CanBeDisabled = 4,
+    CanCreateAdditionalPlans = 8,
+    DisabledByDefault = 16,
+  };
+
+  /// @brief helper for building flags
+  template <typename... Args>
+  static std::underlying_type<Flags>::type makeFlags(Flags flag, Args... args) {
+    return static_cast<std::underlying_type<Flags>::type>(flag) + makeFlags(args...);
+  }
+
+  static std::underlying_type<Flags>::type makeFlags() {
+    return static_cast<std::underlying_type<Flags>::type>(Flags::Default);
+  }
+
+  /// @brief check a flag for the rule
+  bool hasFlag(Flags flag) const {
+    return ((flags & static_cast<std::underlying_type<Flags>::type>(flag)) != 0);
+  }
+
+  bool canBeDisabled() const {
+    return hasFlag(Flags::CanBeDisabled);
+  }
+
+  bool isClusterOnly() const {
+    return hasFlag(Flags::ClusterOnly);
+  }
+
+  bool isHidden() const {
+    return hasFlag(Flags::Hidden);
+  }
+
+  bool canCreateAdditionalPlans() const {
+    return hasFlag(Flags::CanCreateAdditionalPlans);
+  }
+
+  bool isDisabledByDefault() const {
+    return hasFlag(Flags::DisabledByDefault);
+  }
+
   /// @brief optimizer rules
   enum RuleLevel : int {
     // List all the rules in the system here:
@@ -55,9 +103,6 @@ struct OptimizerRule {
     replaceNearWithinFulltext,
 
     inlineSubqueriesRule,
-
-    // split and-combined filters into multiple smaller filters
-    splitFiltersRule,
 
     /// simplify some conditions in CalculationNodes
     simplifyConditionsRule,
@@ -145,9 +190,6 @@ struct OptimizerRule {
     // remove FILTER and SORT if there are geoindexes
     applyGeoIndexRule,
 
-    // replace FULLTEXT with index
-    applyFulltextIndexRule,
-
     useIndexesRule,
 
     // try to remove filters covered by index ranges
@@ -166,10 +208,8 @@ struct OptimizerRule {
     // remove redundant filters statements
     removeFiltersCoveredByTraversal,
 
-#ifdef USE_IRESEARCH
     // move filters and sort conditions into views and remove them
     handleArangoSearchViewsRule,
-#endif
 
     // remove calculations that are redundant
     // needs to run after filter removal
@@ -182,9 +222,6 @@ struct OptimizerRule {
     // when we have single document operations, fill in special cluster
     // handling.
     substituteSingleDocumentOperations,
-
-    // make sort node aware of subsequent limit statements for internal optimizations
-    applySortLimitRule,
 
     /// Pass 9: push down calculations beyond FILTERs and LIMITs
     moveCalculationsDownRule,
@@ -199,22 +236,25 @@ struct OptimizerRule {
 
     // optimize queries in the cluster so that the entire query
     // gets pushed to a single server
-    optimizeClusterSingleShardRule,
+    // if applied, this rule will turn all other cluster rules off
+    // for the current plan
+#ifdef USE_ENTERPRISE
+    clusterOneShardRule,
+#endif
 
     // make operations on sharded collections use distribute
     distributeInClusterRule,
 
-    // try to find candidates for shard-local joins in the cluster
-    optimizeClusterJoinsRule,
+#ifdef USE_ENTERPRISE
+    smartJoinsRule,
+#endif
 
     // make operations on sharded collections use scatter / gather / remote
     scatterInClusterRule,
 
-#ifdef USE_IRESEARCH
     // FIXME order-???
     // make operations on sharded IResearch views use scatter / gather / remote
     scatterIResearchViewInClusterRule,
-#endif
 
     // move FilterNodes & Calculation nodes in between
     // scatter(remote) <-> gather(remote) so they're
@@ -242,31 +282,78 @@ struct OptimizerRule {
     // push collect operations to the db servers
     collectInClusterRule,
 
+    // make sort node aware of subsequent limit statements for internal optimizations
+    applySortLimitRule,
+
     // try to restrict fragments to a single shard if possible
     restrictToSingleShardRule,
 
     // simplify an EnumerationCollectionNode that fetches an
     // entire document to a projection of this document
     reduceExtractionToProjectionRule,
+
+    // moves filters on collection data into EnumerateCollection/Index to
+    // avoid copying large amounts of unneeded documents
+    moveFiltersIntoEnumerateRule,
+
+    // parallelizes execution in coordinator-sided GatherNodes
+    parallelizeGatherRule,
+
+    // move document materialization after SORT and LIMIT
+    // this must be run AFTER all cluster rules as this rule
+    // needs to take into account query distribution across cluster nodes
+    // for arango search view
+    lateDocumentMaterializationArangoSearchRule,
+
+    // move document materialization after SORT and LIMIT
+    // this must be run AFTER all cluster rules as this rule
+    // needs to take into account query distribution across cluster nodes
+    // for index
+    lateDocumentMaterializationRule,
+
+    // splice subquery into the place of a subquery node
+    // enclosed by a SubqueryStartNode and a SubqueryEndNode
+    // Must run last.
+    spliceSubqueriesRule
   };
 
-  std::string name;
+#ifdef USE_ENTERPRISE
+  static_assert(clusterOneShardRule < distributeInClusterRule);
+  static_assert(clusterOneShardRule < smartJoinsRule);
+  static_assert(clusterOneShardRule < scatterInClusterRule);
+  
+  // smart joins must come before we move filters around, so the smart-join
+  // detection code does not need to take the special filters into account
+  static_assert(smartJoinsRule < moveFiltersIntoEnumerateRule);
+#endif
+  
+  static_assert(scatterInClusterRule < parallelizeGatherRule);
+
+  velocypack::StringRef name;
   RuleFunction func;
-  RuleLevel const level;
-  bool const canCreateAdditionalPlans;
-  bool const canBeDisabled;
-  bool const isHidden;
+  RuleLevel level;
+  std::underlying_type<Flags>::type flags;
 
   OptimizerRule() = delete;
-
-  OptimizerRule(std::string const& name, RuleFunction const& func, RuleLevel level,
-                bool canCreateAdditionalPlans, bool canBeDisabled, bool isHidden)
+  OptimizerRule(velocypack::StringRef name, RuleFunction const& ruleFunc, RuleLevel level, std::underlying_type<Flags>::type flags)
       : name(name),
-        func(func),
+        func(ruleFunc),
         level(level),
-        canCreateAdditionalPlans(canCreateAdditionalPlans),
-        canBeDisabled(canBeDisabled),
-        isHidden(isHidden) {}
+        flags(flags) {}
+
+  OptimizerRule(OptimizerRule&& other) = default;
+  OptimizerRule& operator=(OptimizerRule&& other) = default;
+
+  OptimizerRule(OptimizerRule const& other) = delete;
+  OptimizerRule& operator=(OptimizerRule const& other) = delete;
+
+  friend bool operator<(OptimizerRule const& lhs, int rhs) {
+    return lhs.level < rhs;
+  }
+
+  friend bool operator<(int lhs, OptimizerRule const& rhs) {
+    return lhs < rhs.level;
+  }
 };
 
 }  // namespace aql

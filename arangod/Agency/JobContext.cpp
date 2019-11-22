@@ -31,6 +31,7 @@
 #include "Agency/FailedServer.h"
 #include "Agency/MoveShard.h"
 #include "Agency/RemoveFollower.h"
+#include "Agency/ResignLeadership.h"
 
 using namespace arangodb::consensus;
 
@@ -53,6 +54,8 @@ JobContext::JobContext(JOB_STATUS status, std::string id, Node const& snapshot,
     _job = std::make_unique<FailedServer>(snapshot, agent, status, id);
   } else if (type == "cleanOutServer") {
     _job = std::make_unique<CleanOutServer>(snapshot, agent, status, id);
+  } else if (type == "resignLeadership") {
+    _job = std::make_unique<ResignLeadership>(snapshot, agent, status, id);
   } else if (type == "moveShard") {
     _job = std::make_unique<MoveShard>(snapshot, agent, status, id);
   } else if (type == "addFollower") {
@@ -62,7 +65,7 @@ JobContext::JobContext(JOB_STATUS status, std::string id, Node const& snapshot,
   } else if (type == "activeFailover") {
     _job = std::make_unique<ActiveFailoverJob>(snapshot, agent, status, id);
   } else {
-    LOG_TOPIC(ERR, Logger::AGENCY)
+    LOG_TOPIC("bb53f", ERR, Logger::AGENCY)
         << "Failed to run supervision job " << type << " with id " << id;
   }
 }
@@ -73,20 +76,20 @@ void JobContext::create(std::shared_ptr<VPackBuilder> b) {
   }
 }
 
-void JobContext::start() {
+void JobContext::start(bool& aborts) {
   if (_job != nullptr) {
-    _job->start();
+    _job->start(aborts);
   }
 }
 
-void JobContext::run() {
+void JobContext::run(bool& aborts) {
   if (_job != nullptr) {
-    _job->run();
+    _job->run(aborts);
   }
 }
 
-void JobContext::abort() {
+void JobContext::abort(std::string const& reason) {
   if (_job != nullptr) {
-    _job->abort();
+    _job->abort(reason);
   }
 }

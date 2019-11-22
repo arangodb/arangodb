@@ -23,12 +23,13 @@
 #include "ClusterRestWalHandler.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
-#include "RestServer/TransactionManagerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
-#include "StorageEngine/TransactionManager.h"
+#include "Transaction/Manager.h"
+#include "Transaction/ManagerFeature.h"
 #include "Utils/ExecContext.h"
 
 #include <rocksdb/utilities/transaction_db.h>
@@ -36,8 +37,10 @@
 using namespace arangodb;
 using namespace arangodb::rest;
 
-ClusterRestWalHandler::ClusterRestWalHandler(GeneralRequest* request, GeneralResponse* response)
-    : RestBaseHandler(request, response) {}
+ClusterRestWalHandler::ClusterRestWalHandler(application_features::ApplicationServer& server,
+                                             GeneralRequest* request,
+                                             GeneralResponse* response)
+    : RestBaseHandler(server, request, response) {}
 
 RestStatus ClusterRestWalHandler::execute() {
   std::vector<std::string> const& suffixes = _request->suffixes();
@@ -144,7 +147,8 @@ void ClusterRestWalHandler::flush() {
     }
   }
 
-  int res = flushWalOnAllDBServers(waitForSync, waitForCollector, maxWaitTime);
+  auto& feature = server().getFeature<ClusterFeature>();
+  int res = flushWalOnAllDBServers(feature, waitForSync, waitForCollector, maxWaitTime);
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
   }
@@ -152,7 +156,7 @@ void ClusterRestWalHandler::flush() {
 }
 
 void ClusterRestWalHandler::transactions() {
-  TransactionManager* mngr = TransactionManagerFeature::manager();
+  auto* mngr = transaction::ManagerFeature::manager();
   VPackBuilder builder;
   builder.openObject();
   builder.add("runningTransactions", VPackValue(mngr->getActiveTransactionCount()));

@@ -27,7 +27,9 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "MMFiles/mmfiles-fulltext-index.h"
 #include "MMFiles/mmfiles-fulltext-query.h"
 #include "StorageEngine/TransactionState.h"
@@ -51,7 +53,7 @@ void MMFilesFulltextIndex::extractWords(std::set<std::string>& words,
     // We don't care for the result. If the result is false, words stays
     // unchanged and is not indexed
   } else if (value.isArray() && level == 0) {
-    for (auto const& v : VPackArrayIterator(value)) {
+    for (VPackSlice v : VPackArrayIterator(value)) {
       extractWords(words, v, level + 1);
     }
   } else if (value.isObject() && level == 0) {
@@ -105,7 +107,7 @@ MMFilesFulltextIndex::MMFilesFulltextIndex(TRI_idx_iid_t iid,
 
 MMFilesFulltextIndex::~MMFilesFulltextIndex() {
   if (_fulltextIndex != nullptr) {
-    LOG_TOPIC(TRACE, arangodb::Logger::ENGINES) << "destroying fulltext index";
+    LOG_TOPIC("a5f64", TRACE, arangodb::Logger::ENGINES) << "destroying fulltext index";
     TRI_FreeFtsIndex(_fulltextIndex);
   }
 }
@@ -238,8 +240,8 @@ void MMFilesFulltextIndex::unload() {
   TRI_TruncateMMFilesFulltextIndex(_fulltextIndex);
 }
 
-IndexIterator* MMFilesFulltextIndex::iteratorForCondition(
-    transaction::Methods* trx, ManagedDocumentResult*, aql::AstNode const* condNode,
+std::unique_ptr<IndexIterator> MMFilesFulltextIndex::iteratorForCondition(
+    transaction::Methods* trx, aql::AstNode const* condNode,
     aql::Variable const* var, IndexIteratorOptions const& opts) {
   TRI_ASSERT(!isSorted() || opts.sorted);
   TRI_ASSERT(condNode != nullptr);
@@ -274,7 +276,7 @@ IndexIterator* MMFilesFulltextIndex::iteratorForCondition(
   // note: the following call will free "ft"!
   std::set<TRI_voc_rid_t> results = TRI_QueryMMFilesFulltextIndex(_fulltextIndex, ft);
 
-  return new MMFilesFulltextIndexIterator(&_collection, trx, std::move(results));
+  return std::make_unique<MMFilesFulltextIndexIterator>(&_collection, trx, std::move(results));
 }
 
 /// @brief callback function called by the fulltext index to determine the

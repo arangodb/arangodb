@@ -24,6 +24,7 @@
 #ifndef IRESEARCH_EXCLUSION_H
 #define IRESEARCH_EXCLUSION_H
 
+#include "analysis/token_attributes.hpp"
 #include "index/iterators.hpp"
 
 NS_ROOT
@@ -37,10 +38,14 @@ class exclusion final : public doc_iterator {
     : incl_(std::move(incl)), excl_(std::move(excl)) {
     assert(incl_);
     assert(excl_);
+    incl_doc_ = incl_->attributes().get<document>().get();
+    excl_doc_ = excl_->attributes().get<document>().get();
+    assert(incl_doc_);
+    assert(excl_doc_);
   }
 
   virtual doc_id_t value() const override {
-    return incl_->value();
+    return incl_doc_->value;
   }
 
   virtual bool next() override {
@@ -48,15 +53,15 @@ class exclusion final : public doc_iterator {
       return false;
     }
 
-    return !type_limits<type_t::doc_id_t>::eof(next(incl_->value()));
+    return !doc_limits::eof(next(incl_doc_->value));
   }
 
   virtual doc_id_t seek(doc_id_t target) override {
-    if (!type_limits<type_t::doc_id_t>::valid(target)) {
-      return incl_->value();
+    if (!doc_limits::valid(target)) {
+      return incl_doc_->value;
     }
 
-    if (type_limits<type_t::doc_id_t>::eof(target = incl_->seek(target))) {
+    if (doc_limits::eof(target = incl_->seek(target))) {
       return target;
     }
 
@@ -71,7 +76,7 @@ class exclusion final : public doc_iterator {
   // moves iterator to next not excluded
   // document not less than "target"
   doc_id_t next(doc_id_t target) {
-    auto excl = excl_->value();
+    auto excl = excl_doc_->value;
 
     if (excl < target) {
       excl = excl_->seek(target);
@@ -79,10 +84,10 @@ class exclusion final : public doc_iterator {
 
     for (; excl == target; ) {
       if (!incl_->next()) {
-        return incl_->value();
+        return incl_doc_->value;
       }
 
-      target = incl_->value();
+      target = incl_doc_->value;
 
       if (excl < target) {
         excl = excl_->seek(target);
@@ -94,6 +99,8 @@ class exclusion final : public doc_iterator {
 
   doc_iterator::ptr incl_;
   doc_iterator::ptr excl_;
+  const document* incl_doc_;
+  const document* excl_doc_;
 }; // exclusion
 
 NS_END // ROOT

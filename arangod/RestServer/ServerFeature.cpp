@@ -22,17 +22,29 @@
 
 #include "ServerFeature.h"
 
+#include "ApplicationFeatures/DaemonFeature.h"
+#include "ApplicationFeatures/HttpEndpointProvider.h"
+#include "ApplicationFeatures/ShutdownFeature.h"
+#include "ApplicationFeatures/SupervisorFeature.h"
 #include "Basics/ArangoGlobalContext.h"
+#include "Basics/application-exit.h"
 #include "Basics/process-utils.h"
 #include "Cluster/HeartbeatThread.h"
 #include "Cluster/ServerState.h"
+#include "FeaturePhases/AqlFeaturePhase.h"
+#include "GeneralServer/GeneralServerFeature.h"
+#include "GeneralServer/SslServerFeature.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/UpgradeFeature.h"
 #include "RestServer/VocbaseContext.h"
 #include "Scheduler/SchedulerFeature.h"
+#include "Statistics/StatisticsFeature.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
@@ -47,7 +59,6 @@ namespace arangodb {
 
 ServerFeature::ServerFeature(application_features::ApplicationServer& server, int* res)
     : ApplicationFeature(server, "Server"),
-      _vstMaxSize(1024 * 30),
       _result(res),
       _operationMode(OperationMode::MODE_SERVER)
 #if _WIN32
@@ -57,10 +68,10 @@ ServerFeature::ServerFeature(application_features::ApplicationServer& server, in
 #endif
 {
   setOptional(true);
+  startsAfter<AqlFeaturePhase>();
 
-  startsAfter("AQLPhase");
-  startsAfter("Statistics");
-  startsAfter("Upgrade");
+  startsAfter<StatisticsFeature>();
+  startsAfter<UpgradeFeature>();
 }
 
 void ServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -84,9 +95,9 @@ void ServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options->addSection("vst", "Configure the VelocyStream protocol");
 
-  options->addOption("--vst.maxsize",
-                     "maximal size (in bytes) for a VelocyPack chunk",
-                     new UInt32Parameter(&_vstMaxSize));
+  options->addObsoleteOption("--vst.maxsize", "maximal size (in bytes) "
+                             "for a VelocyPack chunk", false);
+
 #if _WIN32
   options->addOption("--console.code-page",
                      "Windows code page to use; defaults to UTF8",
@@ -109,58 +120,62 @@ void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   }
 
   if (1 < count) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC("353cd", FATAL, arangodb::Logger::FIXME)
         << "cannot combine '--console', '--javascript.unit-tests' and "
         << "'--javascript.script'";
     FATAL_ERROR_EXIT();
   }
 
   if (_operationMode == OperationMode::MODE_SERVER && !_restServer) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC("8daab", FATAL, arangodb::Logger::FIXME)
         << "need at least '--console', '--javascript.unit-tests' or"
         << "'--javascript.script if rest-server is disabled";
     FATAL_ERROR_EXIT();
   }
 
-  V8DealerFeature* v8dealer =
-      ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
+  V8DealerFeature& v8dealer = server().getFeature<V8DealerFeature>();
 
-  if (v8dealer->isEnabled()) {
+  if (v8dealer.isEnabled()) {
     if (_operationMode == OperationMode::MODE_SCRIPT) {
-      v8dealer->setMinimumContexts(2);
+      v8dealer.setMinimumContexts(2);
     } else {
-      v8dealer->setMinimumContexts(1);
+      v8dealer.setMinimumContexts(1);
     }
   } else if (_operationMode != OperationMode::MODE_SERVER) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC("a114b", FATAL, arangodb::Logger::FIXME)
         << "Options '--console', '--javascript.unit-tests'"
         << " or '--javascript.script' are not supported without V8";
     FATAL_ERROR_EXIT();
   }
 
   if (!_restServer) {
-    ApplicationServer::disableFeatures({"Daemon", "Endpoint", "GeneralServer",
-                                        "SslServer", "Statistics",
-                                        "Supervisor"});
+    server().disableFeatures(
+        std::vector<std::type_index>{std::type_index(typeid(DaemonFeature)),
+                                     std::type_index(typeid(HttpEndpointProvider)),
+                                     std::type_index(typeid(GeneralServerFeature)),
+                                     std::type_index(typeid(SslServerFeature)),
+                                     std::type_index(typeid(StatisticsFeature)),
+                                     std::type_index(typeid(SupervisorFeature))});
 
     if (!options->processingResult().touched("replication.auto-start")) {
       // turn off replication applier when we do not have a rest server
       // but only if the config option is not explicitly set (the recovery
       // test want the applier to be enabled for testing it)
-      ReplicationFeature* replicationFeature =
-          ApplicationServer::getFeature<ReplicationFeature>("Replication");
-      replicationFeature->disableReplicationApplier();
+      ReplicationFeature& replicationFeature = server().getFeature<ReplicationFeature>();
+      replicationFeature.disableReplicationApplier();
     }
   }
 
   if (_operationMode == OperationMode::MODE_CONSOLE) {
-    ApplicationServer::disableFeatures({"Daemon", "Supervisor"});
-    v8dealer->setMinimumContexts(2);
+    server().disableFeatures(
+        std::vector<std::type_index>{std::type_index(typeid(DaemonFeature)),
+                                     std::type_index(typeid(SupervisorFeature))});
+    v8dealer.setMinimumContexts(2);
   }
 
   if (_operationMode == OperationMode::MODE_SERVER ||
       _operationMode == OperationMode::MODE_CONSOLE) {
-    ApplicationServer::getFeature<ApplicationFeature>("Shutdown")->disable();
+    server().getFeature<ShutdownFeature>().disable();
   }
 }
 
@@ -182,7 +197,7 @@ void ServerFeature::start() {
       break;
 
     case OperationMode::MODE_SERVER:
-      LOG_TOPIC(TRACE, Logger::STARTUP) << "server operation mode: SERVER";
+      LOG_TOPIC("7031b", TRACE, Logger::STARTUP) << "server operation mode: SERVER";
       break;
   }
 
@@ -193,8 +208,8 @@ void ServerFeature::start() {
 
   if (!isConsoleMode()) {
     // install CTRL-C handlers
-    server()->registerStartupCallback([]() {
-      ApplicationServer::getFeature<SchedulerFeature>("Scheduler")->buildControlCHandler();
+    server().registerStartupCallback([this]() {
+      server().getFeature<SchedulerFeature>().buildControlCHandler();
     });
   }
 }
@@ -224,7 +239,7 @@ void ServerFeature::waitForHeartbeat() {
     if (HeartbeatThread::hasRunOnce()) {
       break;
     }
-    std::this_thread::sleep_for(std::chrono::microseconds(100 * 1000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
   }
 }
 

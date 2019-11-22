@@ -35,19 +35,18 @@ class Methods;
 
 namespace aql {
 
-template <bool>
+template <BlockPassthrough>
 class SingleRowFetcher;
-class AqlItemMatrix;
 class ExecutorInfos;
 class NoStats;
 class OutputAqlItemRow;
-struct SortRegister;
 
 class NoResultsExecutor {
  public:
   struct Properties {
-    static const bool preservesOrder = true;
-    static const bool allowsBlockPassthrough = false;
+    static constexpr bool preservesOrder = true;
+    static constexpr BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Disable;
+    static constexpr bool inputSizeRestrictsOutputSize = true;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = ExecutorInfos;
@@ -61,7 +60,12 @@ class NoResultsExecutor {
    * @return ExecutionState,
    *         if something was written output.hasValue() == true
    */
-  std::pair<ExecutionState, Stats> produceRow(OutputAqlItemRow& output);
+  std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
+
+  inline std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t) const {
+    // Well nevermind the input, but we will always return 0 rows here.
+    return {ExecutionState::DONE, 0};
+  }
 };
 }  // namespace aql
 }  // namespace arangodb

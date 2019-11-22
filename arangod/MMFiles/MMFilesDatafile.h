@@ -23,6 +23,7 @@
 
 #ifndef ARANGOD_MMFILES_MMFILES_DATAFILE_H
 #define ARANGOD_MMFILES_MMFILES_DATAFILE_H 1
+#include <cstddef>
 
 #include "Basics/Common.h"
 #include "VocBase/vocbase.h"
@@ -394,7 +395,7 @@ struct MMFilesMarker {
 
  public:
   MMFilesMarker() : _size(0), _crc(0), _typeAndTick(0) {}
-  ~MMFilesMarker() {}
+  ~MMFilesMarker() = default;
 
   inline off_t offsetOfSize() const noexcept {
     return offsetof(MMFilesMarker, _size);

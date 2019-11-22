@@ -22,7 +22,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/CleanupFunctions.h"
+
 #include "Basics/Common.h"
+#include "Basics/application-exit.h"
+
+#ifdef TRI_HAVE_UNISTD_H
+#include <unistd.h>
+#endif
 
 static void defaultExitFunction(int, void*);
 

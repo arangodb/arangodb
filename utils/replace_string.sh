@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 while read file; do
     echo "$file: $1 -> $2"

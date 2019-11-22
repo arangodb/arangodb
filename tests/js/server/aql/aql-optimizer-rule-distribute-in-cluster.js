@@ -31,6 +31,7 @@
 var db = require("@arangodb").db;
 var jsunity = require("jsunity");
 var helper = require("@arangodb/aql-helper");
+var isMMFiles = db._engine().name === "mmfiles";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -40,9 +41,9 @@ function optimizerRuleTestSuite () {
   var ruleName = "distribute-in-cluster";
   // various choices to control the optimizer: 
   var rulesNone        = { optimizer: { rules: [ "-all" ] } };
-  var rulesAll         = { optimizer: { rules: [ "+all", "-reduce-extraction-to-projection" ] } };
+  var rulesAll         = { optimizer: { rules: [ "+all", "-reduce-extraction-to-projection", "-parallelize-gather" ] } };
   var thisRuleEnabled  = { optimizer: { rules: [ "-all", "+" + ruleName ] } };
-  var thisRuleDisabled = { optimizer: { rules: [ "+all", "-reduce-extraction-to-projection", "-" + ruleName ] } };
+  var thisRuleDisabled = { optimizer: { rules: [ "+all", "-reduce-extraction-to-projection", "-parallelize-gather", "-" + ruleName ] } };
   var maxPlans         = { optimizer: { rules: [ "-all" ] }, maxNumberOfPlans: 1 };
 
   var cn1 = "UnitTestsAqlOptimizerRuleUndist1";
@@ -60,7 +61,7 @@ function optimizerRuleTestSuite () {
     /// @brief set up
     ////////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
+    setUpAll : function () {
       var i;
       db._drop(cn1);
       db._drop(cn2);
@@ -76,7 +77,7 @@ function optimizerRuleTestSuite () {
     /// @brief tear down
     ////////////////////////////////////////////////////////////////////////////////
 
-    tearDown : function () {
+    tearDownAll : function () {
       db._drop(cn1);
       db._drop(cn2);
     },
@@ -646,13 +647,15 @@ function interactionOtherRulesTestSuite () {
   var undist = "undistribute-remove-after-enum-coll"; // Rule 3
 
   // various choices to control the optimizer: 
-  var allRules         = { optimizer: { rules: [ "+all" ] } };
+  var allRules         = { optimizer: { rules: [ "+all", "-reduce-extraction-to-projection", "-move-filters-into-enumerate" ] } };
   var allRulesNoInter  = 
-    { optimizer: { rules: [ "+all", "-interchange-adjacent-enumerations" ] } };
-  var ruleDisabled   = { optimizer: { rules: [ "+all", "-" + undist ] } };
+    { optimizer: { rules: [ "+all", "-interchange-adjacent-enumerations", "-reduce-extraction-to-projection", "-move-filters-into-enumerate" ] } };
+  var ruleDisabled   = { optimizer: { rules: [ "+all", "-" + undist, "-move-filters-into-enumerate" ] } };
   var ruleDisabledNoInter  = 
     { optimizer: { rules: [ "+all", 
                             "-interchange-adjacent-enumerations", 
+                            "-reduce-extraction-to-projection",
+                            "-move-filters-into-enumerate",
                             "-" + undist ] } };
 
   var cn1 = "UnitTestsAql1";
@@ -704,6 +707,8 @@ function interactionOtherRulesTestSuite () {
     ////////////////////////////////////////////////////////////////////////////////
     
     testRule1AndRule2 : function () {
+      const projectionNode = isMMFiles ? "EnumerateCollectionNode" : "IndexNode";
+      
       var queries = [ 
         // collection sharded by _key
         "FOR d IN " + cn1 + " FILTER d.age > 4 REMOVE d._key IN " + cn1,
@@ -777,7 +782,7 @@ function interactionOtherRulesTestSuite () {
                                     ],
                                     [
                                       "SingletonNode", 
-                                      "EnumerateCollectionNode", 
+                                      projectionNode, 
                                       "RemoteNode", 
                                       "GatherNode", 
                                       "ScatterNode", 
@@ -899,9 +904,6 @@ function interactionOtherRulesTestSuite () {
         "LET x = {_key: 'blah'} FOR y IN  " + cn1 + " REMOVE x._key IN  " + cn1,
 
         // not removing x or x._key 
-        "FOR x IN  " + cn1 + " FILTER x.age > 5 REMOVE {_key: x._key} IN  " + cn1,
-
-        // not removing x or x._key 
         "FOR x IN  " + cn1 + " FILTER x.age > 5 REMOVE {_key: x._key} IN  " + cn2,
 
         // different collections  (the outer scatters, the inner distributes)
@@ -913,117 +915,103 @@ function interactionOtherRulesTestSuite () {
 
       var expectedNodes = [ 
         [
-        "SingletonNode", 
-        "EnumerateCollectionNode", 
-        "CalculationNode", 
-        "FilterNode", 
-        "RemoteNode", 
-        "GatherNode", 
-        "DistributeNode", 
-        "RemoteNode", 
-        "RemoveNode", 
-        "RemoteNode", 
-        "GatherNode" 
-          ],
+          "SingletonNode", 
+          "EnumerateCollectionNode", 
+          "CalculationNode", 
+          "FilterNode", 
+          "RemoteNode", 
+          "GatherNode", 
+          "DistributeNode", 
+          "RemoteNode", 
+          "RemoveNode", 
+          "RemoteNode", 
+          "GatherNode" 
+        ],
         [
           "SingletonNode", 
-        "EnumerateCollectionNode", 
-        "CalculationNode", 
-        "FilterNode", 
-        "CalculationNode", 
-        "RemoteNode", 
-        "GatherNode", 
-        "DistributeNode", 
-        "RemoteNode", 
-        "RemoveNode", 
-        "RemoteNode", 
-        "GatherNode" 
-          ],
+          "EnumerateCollectionNode", 
+          "CalculationNode", 
+          "FilterNode", 
+          "CalculationNode", 
+          "RemoteNode", 
+          "GatherNode", 
+          "DistributeNode", 
+          "RemoteNode", 
+          "RemoveNode", 
+          "RemoteNode", 
+          "GatherNode" 
+        ],
         [
           "SingletonNode", 
-        "CalculationNode", 
-        "EnumerateCollectionNode", 
-        "RemoteNode", 
-        "GatherNode", 
-        "DistributeNode", 
-        "RemoteNode", 
-        "RemoveNode", 
-        "RemoteNode", 
-        "GatherNode" 
-          ],
+          "CalculationNode", 
+          "EnumerateCollectionNode", 
+          "RemoteNode", 
+          "GatherNode", 
+          "DistributeNode", 
+          "RemoteNode", 
+          "RemoveNode", 
+          "RemoteNode", 
+          "GatherNode" 
+        ],
         [
           "SingletonNode", 
-        "CalculationNode", 
-        "EnumerateCollectionNode", 
-        "RemoteNode", 
-        "GatherNode", 
-        "DistributeNode", 
-        "RemoteNode", 
-        "RemoveNode", 
-        "RemoteNode", 
-        "GatherNode" 
-          ],
+          "CalculationNode", 
+          "EnumerateCollectionNode", 
+          "RemoteNode", 
+          "GatherNode", 
+          "DistributeNode", 
+          "RemoteNode", 
+          "RemoveNode", 
+          "RemoteNode", 
+          "GatherNode" 
+        ],
         [
           "SingletonNode", 
-        "EnumerateCollectionNode", 
-        "CalculationNode", 
-        "FilterNode", 
-        "CalculationNode", 
-        "RemoteNode", 
-        "GatherNode", 
-        "DistributeNode", 
-        "RemoteNode", 
-        "RemoveNode", 
-        "RemoteNode", 
-        "GatherNode" 
-          ],
+          "EnumerateCollectionNode", 
+          "CalculationNode", 
+          "FilterNode", 
+          "CalculationNode", 
+          "RemoteNode", 
+          "GatherNode", 
+          "DistributeNode", 
+          "RemoteNode", 
+          "RemoveNode", 
+          "RemoteNode", 
+          "GatherNode" 
+        ],
         [
           "SingletonNode", 
-        "EnumerateCollectionNode", 
-        "CalculationNode", 
-        "FilterNode", 
-        "CalculationNode", 
-        "RemoteNode", 
-        "GatherNode", 
-        "DistributeNode", 
-        "RemoteNode", 
-        "RemoveNode", 
-        "RemoteNode", 
-        "GatherNode" 
-          ],
+          "EnumerateCollectionNode", 
+          "RemoteNode", 
+          "GatherNode", 
+          "ScatterNode", 
+          "RemoteNode", 
+          "EnumerateCollectionNode", 
+          "RemoteNode", 
+          "GatherNode", 
+          "DistributeNode", 
+          "RemoteNode", 
+          "RemoveNode", 
+          "RemoteNode", 
+          "GatherNode" 
+        ],
         [
           "SingletonNode", 
-        "EnumerateCollectionNode", 
-        "RemoteNode", 
-        "GatherNode", 
-        "ScatterNode", 
-        "RemoteNode", 
-        "EnumerateCollectionNode", 
-        "RemoteNode", 
-        "GatherNode", 
-        "DistributeNode", 
-        "RemoteNode", 
-        "RemoveNode", 
-        "RemoteNode", 
-        "GatherNode" 
-          ],
-        [
-          "SingletonNode", 
-        "EnumerateCollectionNode", 
-        "RemoteNode", 
-        "GatherNode", 
-        "ScatterNode", 
-        "RemoteNode", 
-        "EnumerateCollectionNode", 
-        "RemoteNode", 
-        "GatherNode", 
-        "DistributeNode", 
-        "RemoteNode", 
-        "RemoveNode", 
-        "RemoteNode", 
-        "GatherNode" 
-          ]
-          ];
+          "EnumerateCollectionNode", 
+          "RemoteNode", 
+          "GatherNode", 
+          "ScatterNode", 
+          "RemoteNode", 
+          "EnumerateCollectionNode", 
+          "RemoteNode", 
+          "GatherNode", 
+          "DistributeNode", 
+          "RemoteNode", 
+          "RemoveNode", 
+          "RemoteNode", 
+          "GatherNode" 
+        ]
+      ];
 
       queries.forEach(function(query, i) {
         var result = AQL_EXPLAIN(query, { }, allRulesNoInter);
@@ -1187,4 +1175,3 @@ jsunity.run(optimizerRuleTestSuite);
 jsunity.run(interactionOtherRulesTestSuite);
 
 return jsunity.done();
-

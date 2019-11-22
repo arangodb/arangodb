@@ -25,7 +25,6 @@
 #define ARANGOD_UTILS_VERSION_TRACKER_H 1
 
 #include "Basics/Common.h"
-#include "Logger/Logger.h"
 
 namespace arangodb {
 
@@ -39,7 +38,7 @@ class VersionTracker {
   void track(char const*) {
     ++_value;
     // can enable this for tracking things later
-    // LOG_TOPIC(TRACE, Logger::FIXME) << "version updated by " << msg;
+    // LOG_TOPIC("08a33", TRACE, Logger::FIXME) << "version updated by " << msg;
   }
 
   uint64_t current() const { return _value; }

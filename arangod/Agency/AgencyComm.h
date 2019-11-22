@@ -25,20 +25,21 @@
 #ifndef ARANGOD_CLUSTER_AGENCY_COMM_H
 #define ARANGOD_CLUSTER_AGENCY_COMM_H 1
 
-#include "Basics/Common.h"
-
+#include <deque>
 #include <list>
-
-#include <boost/uuid/uuid.hpp>
-#include <boost/uuid/uuid_generators.hpp>
-#include <boost/uuid/uuid_io.hpp>
+#include <memory>
+#include <string>
+#include <unordered_map>
 
 #include <velocypack/Slice.h>
+#include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 #include <type_traits>
 
 #include "Basics/Mutex.h"
-#include "Rest/HttpRequest.h"
+#include "Basics/Result.h"
+#include "GeneralServer/GeneralDefinitions.h"
+#include "Rest/CommonDefines.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 
 namespace arangodb {
@@ -171,344 +172,6 @@ class AgencyOperationType {
 };
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                AgencyPrecondition
-// -----------------------------------------------------------------------------
-
-class AgencyPrecondition {
- public:
-  enum class Type { NONE, EMPTY, VALUE };
-
- public:
-  AgencyPrecondition();
-  AgencyPrecondition(std::string const& key, Type, bool e);
-  AgencyPrecondition(std::string const& key, Type, VPackSlice const&);
-
- public:
-  void toVelocyPack(arangodb::velocypack::Builder& builder) const;
-  void toGeneralBuilder(arangodb::velocypack::Builder& builder) const;
-
- public:
-  std::string key;
-  Type type;
-  bool empty;
-  VPackSlice const value;
-};
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   AgencyOperation
-// -----------------------------------------------------------------------------
-
-class AgencyOperation {
- public:
-  explicit AgencyOperation(std::string const& key);
-
-  AgencyOperation(std::string const& key, AgencySimpleOperationType opType);
-
-  AgencyOperation(std::string const& key, AgencyValueOperationType opType,
-                  VPackSlice const value);
-
-  AgencyOperation(std::string const& key, AgencyValueOperationType opType,
-                  VPackSlice const newValue, VPackSlice const oldValue);
-
- public:
-  void toVelocyPack(arangodb::velocypack::Builder& builder) const;
-  void toGeneralBuilder(arangodb::velocypack::Builder& builder) const;
-  AgencyOperationType type() const;
-
- public:
-  uint64_t _ttl = 0;
-  VPackSlice _oldValue;
-
- private:
-  std::string const _key;
-  AgencyOperationType _opType;
-  VPackSlice _value;
-  VPackSlice _value2;
-};
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  AgencyCommResult
-// -----------------------------------------------------------------------------
-
-class AgencyCommResult {
- public:
-  AgencyCommResult();
-  AgencyCommResult(int code, std::string const& message,
-                   std::string const& transactionId = std::string());
-
-  ~AgencyCommResult() = default;
-
- public:
-  void set(int code, std::string const& message);
-
-  bool successful() const { return (_statusCode >= 200 && _statusCode <= 299); }
-
-  bool connected() const;
-
-  int httpCode() const;
-
-  int errorCode() const;
-
-  std::string errorMessage() const;
-
-  std::string errorDetails() const;
-
-  std::string const location() const { return _location; }
-
-  std::string const body() const { return _body; }
-  std::string const& bodyRef() const { return _body; }
-
-  bool sent() const;
-
-  void clear();
-
-  VPackSlice slice() const;
-  void setVPack(std::shared_ptr<velocypack::Builder> const& vpack) {
-    _vpack = vpack;
-  }
-
- public:
-  std::string _location;
-  std::string _message;
-  std::string _body;
-
-  std::unordered_map<std::string, AgencyCommResultEntry> _values;
-  int _statusCode;
-  bool _connected;
-  bool _sent;
-
- private:
-  std::shared_ptr<velocypack::Builder> _vpack;
-};
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 AgencyTransaction
-// -----------------------------------------------------------------------------
-
-class AgencyTransaction {
- public:
-  virtual ~AgencyTransaction() = default;
-
-  static const std::vector<std::string> TypeUrl;
-
-  std::string toJson() const;
-  virtual void toVelocyPack(arangodb::velocypack::Builder&) const = 0;
-  virtual std::string const& path() const = 0;
-  virtual std::string getClientId() const = 0;
-
-  virtual bool validate(AgencyCommResult const& result) const = 0;
-  virtual char const* typeName() const = 0;
-};
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                          AgencyGeneralTransaction
-// -----------------------------------------------------------------------------
-
-/*struct AgencyGeneralTransaction : public AgencyTransaction {
-
-  typedef
-std::pair<std::vector<AgencyOperation>,std::vector<AgencyPrecondition>>
-TransactionType;
-
-  explicit AgencyGeneralTransaction(AgencyOperation const& op,
-                                    AgencyPrecondition const& pre) :
-    clientId(to_string(boost::uuids::random_generator()())) {
-    transactions.emplace_back(
-    TransactionType(std::vector<AgencyOperation>(1, op),
-                    std::vector<AgencyPrecondition>(1, pre)));
-  }
-
-  explicit AgencyGeneralTransaction(
-    std::vector<std::pair<AgencyOperation,AgencyPrecondition>> const& trxs) :
-    clientId(to_string(boost::uuids::random_generator()())) {
-    for (const auto& trx : trxs) {
-      transactions.emplace_back(
-        TransactionType(std::vector<AgencyOperation>(1,trx.first),
-                        std::vector<AgencyPrecondition>(1,trx.second)));
-
-    }
-  }
-
-  AgencyGeneralTransaction() = default;
-
-  std::vector<TransactionType> transactions;
-
-  void toVelocyPack(
-    arangodb::velocypack::Builder& builder) const override final;
-
-  void push_back(AgencyOperation const& op);
-  void push_back(std::pair<AgencyOperation, AgencyPrecondition> const&);
-
-  inline virtual std::string const& path() const override final {
-    return AgencyTransaction::TypeUrl[2];
-  }
-
-  inline virtual std::string getClientId() const override final {
-    return clientId;
-  }
-
-  virtual bool validate(AgencyCommResult const& result) const override final;
-  char const* typeName() const override { return "AgencyGeneralTransaction"; }
-  std::string clientId;
-
-};*/
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                            AgencyWriteTransaction
-// -----------------------------------------------------------------------------
-
-struct AgencyWriteTransaction : public AgencyTransaction {
- public:
-  explicit AgencyWriteTransaction(AgencyOperation const& operation)
-      : clientId(to_string(boost::uuids::random_generator()())) {
-    operations.push_back(operation);
-  }
-
-  explicit AgencyWriteTransaction(std::vector<AgencyOperation> const& _opers)
-      : operations(_opers), clientId(to_string(boost::uuids::random_generator()())) {}
-
-  AgencyWriteTransaction(AgencyOperation const& operation, AgencyPrecondition const& precondition)
-      : clientId(to_string(boost::uuids::random_generator()())) {
-    operations.push_back(operation);
-    preconditions.push_back(precondition);
-  }
-
-  AgencyWriteTransaction(std::vector<AgencyOperation> const& _operations,
-                         AgencyPrecondition const& precondition)
-      : clientId(to_string(boost::uuids::random_generator()())) {
-    for (auto const& op : _operations) {
-      operations.push_back(op);
-    }
-    preconditions.push_back(precondition);
-  }
-
-  AgencyWriteTransaction(AgencyOperation const& operation,
-                         std::vector<AgencyPrecondition> const& precs)
-      : clientId(to_string(boost::uuids::random_generator()())) {
-    operations.push_back(operation);
-    for (auto const& pre : precs) {
-      preconditions.push_back(pre);
-    }
-  }
-
-  AgencyWriteTransaction(std::vector<AgencyOperation> const& opers,
-                         std::vector<AgencyPrecondition> const& precs)
-      : clientId(to_string(boost::uuids::random_generator()())) {
-    for (auto const& op : opers) {
-      operations.push_back(op);
-    }
-    for (auto const& pre : precs) {
-      preconditions.push_back(pre);
-    }
-  }
-
-  AgencyWriteTransaction() = default;
-
-  void toVelocyPack(arangodb::velocypack::Builder& builder) const override final;
-
-  inline virtual std::string const& path() const override final {
-    return AgencyTransaction::TypeUrl[1];
-  }
-
-  inline virtual std::string getClientId() const override final {
-    return clientId;
-  }
-
-  virtual bool validate(AgencyCommResult const& result) const override final;
-  char const* typeName() const override { return "AgencyWriteTransaction"; }
-
-  std::vector<AgencyPrecondition> preconditions;
-  std::vector<AgencyOperation> operations;
-  std::string clientId;
-};
-
-// -----------------------------------------------------------------------------
-// --SECTION-- AgencyTransientTransaction
-// -----------------------------------------------------------------------------
-
-struct AgencyTransientTransaction : public AgencyTransaction {
- public:
-  explicit AgencyTransientTransaction(AgencyOperation const& operation) {
-    operations.push_back(operation);
-  }
-
-  explicit AgencyTransientTransaction(std::vector<AgencyOperation> const& _operations)
-      : operations(_operations) {}
-
-  AgencyTransientTransaction(AgencyOperation const& operation,
-                             AgencyPrecondition const& precondition) {
-    operations.push_back(operation);
-    preconditions.push_back(precondition);
-  }
-
-  AgencyTransientTransaction(std::vector<AgencyOperation> const& _operations,
-                             AgencyPrecondition const& precondition) {
-    for (auto const& op : _operations) {
-      operations.push_back(op);
-    }
-    preconditions.push_back(precondition);
-  }
-
-  AgencyTransientTransaction(std::vector<AgencyOperation> const& opers,
-                             std::vector<AgencyPrecondition> const& precs) {
-    for (auto const& op : opers) {
-      operations.push_back(op);
-    }
-    for (auto const& pre : precs) {
-      preconditions.push_back(pre);
-    }
-  }
-
-  AgencyTransientTransaction() = default;
-
-  void toVelocyPack(arangodb::velocypack::Builder& builder) const override final;
-
-  inline std::string const& path() const override final {
-    return AgencyTransaction::TypeUrl[3];
-  }
-
-  inline virtual std::string getClientId() const override final {
-    return std::string();
-  }
-
-  virtual bool validate(AgencyCommResult const& result) const override final;
-  char const* typeName() const override { return "AgencyTransientTransaction"; }
-
-  std::vector<AgencyPrecondition> preconditions;
-  std::vector<AgencyOperation> operations;
-};
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                             AgencyReadTransaction
-// -----------------------------------------------------------------------------
-
-struct AgencyReadTransaction : public AgencyTransaction {
- public:
-  explicit AgencyReadTransaction(std::string const& key) {
-    keys.push_back(key);
-  }
-
-  explicit AgencyReadTransaction(std::vector<std::string>&& k) : keys(k) {}
-
-  AgencyReadTransaction() = default;
-
-  void toVelocyPack(arangodb::velocypack::Builder& builder) const override final;
-
-  inline virtual std::string const& path() const override final {
-    return AgencyTransaction::TypeUrl[0];
-  }
-
-  inline virtual std::string getClientId() const override final {
-    return std::string();
-  }
-
-  virtual bool validate(AgencyCommResult const& result) const override final;
-  char const* typeName() const override { return "AgencyReadTransaction"; }
-
-  std::vector<std::string> keys;
-};
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                                 AgencyCommManager
 // -----------------------------------------------------------------------------
 
@@ -570,7 +233,7 @@ class AgencyCommManager {
   void updateEndpoints(std::vector<std::string> const& endpoints);
   std::string endpointsString() const;
   std::vector<std::string> endpoints() const;
-  std::shared_ptr<VPackBuilder> summery() const;
+  std::shared_ptr<velocypack::Builder> summery() const;
 
  private:
   // caller must hold _lock
@@ -612,6 +275,373 @@ class AgencyCommManager {
 };
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                AgencyPrecondition
+// -----------------------------------------------------------------------------
+
+class AgencyPrecondition {
+ public:
+  enum class Type { NONE, EMPTY, VALUE };
+
+ public:
+  AgencyPrecondition();
+  AgencyPrecondition(std::string const& key, Type, bool e);
+  AgencyPrecondition(std::string const& key, Type, velocypack::Slice const&);
+  template<typename T>
+  AgencyPrecondition(std::string const& key, Type t, T const& v)
+    : key(AgencyCommManager::path(key)), type(t), empty(false),
+      builder(std::make_shared<VPackBuilder>()) {
+    builder->add(VPackValue(v));
+    value = builder->slice();
+  };
+
+ public:
+  void toVelocyPack(arangodb::velocypack::Builder& builder) const;
+  void toGeneralBuilder(arangodb::velocypack::Builder& builder) const;
+
+ public:
+  std::string key;
+  Type type;
+  bool empty;
+  velocypack::Slice value;
+  std::shared_ptr<VPackBuilder> builder;
+};
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   AgencyOperation
+// -----------------------------------------------------------------------------
+
+class AgencyOperation {
+ public:
+  explicit AgencyOperation(std::string const& key);
+
+  AgencyOperation(std::string const& key, AgencySimpleOperationType opType);
+
+  AgencyOperation(std::string const& key, AgencyValueOperationType opType,
+                  velocypack::Slice const value);
+
+  template<typename T>
+  AgencyOperation(std::string const& key, AgencyValueOperationType opType, T const& value)
+    : _key(AgencyCommManager::path(key)), _opType(), _holder(std::make_shared<VPackBuilder>()) {
+    _holder->add(VPackValue(value));
+    _value = _holder->slice();
+    _opType.type = AgencyOperationType::Type::VALUE;
+    _opType.value = opType;
+  }
+
+  AgencyOperation(std::string const& key, AgencyValueOperationType opType,
+                  velocypack::Slice const newValue, velocypack::Slice const oldValue);
+
+ public:
+  void toVelocyPack(arangodb::velocypack::Builder& builder) const;
+  void toGeneralBuilder(arangodb::velocypack::Builder& builder) const;
+  AgencyOperationType type() const;
+
+ public:
+  uint64_t _ttl = 0;
+  velocypack::Slice _oldValue;
+
+ private:
+  std::string const _key;
+  AgencyOperationType _opType;
+  velocypack::Slice _value;
+  velocypack::Slice _value2;
+  std::shared_ptr<VPackBuilder> _holder;
+};
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  AgencyCommResult
+// -----------------------------------------------------------------------------
+
+class AgencyCommResult {
+ public:
+  AgencyCommResult();
+  AgencyCommResult(int code, std::string const& message,
+                   std::string const& transactionId = std::string());
+
+  ~AgencyCommResult() = default;
+
+  AgencyCommResult(AgencyCommResult const& other) = delete;
+  AgencyCommResult& operator=(AgencyCommResult const& other) = delete;
+
+  AgencyCommResult(AgencyCommResult&& other) noexcept;
+  AgencyCommResult& operator=(AgencyCommResult&& other) noexcept;
+
+ public:
+  void set(int code, std::string const& message);
+
+  bool successful() const { return (_statusCode >= 200 && _statusCode <= 299); }
+
+  bool connected() const;
+
+  int httpCode() const;
+
+  int errorCode() const;
+
+  std::string errorMessage() const;
+
+  std::string errorDetails() const;
+
+  std::string const location() const { return _location; }
+
+  std::string const body() const { return _body; }
+  std::string const& bodyRef() const { return _body; }
+
+  bool sent() const;
+
+  void clear();
+
+  velocypack::Slice slice() const;
+  void setVPack(std::shared_ptr<velocypack::Builder> const& vpack) {
+    _vpack = vpack;
+  }
+
+  Result asResult() {
+    if (successful()) {
+      return Result{};
+    }
+    return Result{errorCode(), errorMessage()};
+  }
+
+  void toVelocyPack(VPackBuilder& builder) const;
+
+  VPackBuilder toVelocyPack() const;
+
+ public:
+  std::string _location;
+  std::string _message;
+  std::string _body;
+
+  std::unordered_map<std::string, AgencyCommResultEntry> _values;
+  int _statusCode;
+  bool _connected;
+  bool _sent;
+
+ private:
+  std::shared_ptr<velocypack::Builder> _vpack;
+};
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 AgencyTransaction
+// -----------------------------------------------------------------------------
+
+class AgencyTransaction {
+ public:
+  virtual ~AgencyTransaction() = default;
+
+  static const std::vector<std::string> TypeUrl;
+
+  std::string toJson() const;
+  virtual void toVelocyPack(arangodb::velocypack::Builder&) const = 0;
+  virtual std::string const& path() const = 0;
+  virtual std::string getClientId() const = 0;
+
+  virtual bool validate(AgencyCommResult const& result) const = 0;
+  virtual char const* typeName() const = 0;
+};
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                          AgencyGeneralTransaction
+// -----------------------------------------------------------------------------
+
+/*struct AgencyGeneralTransaction : public AgencyTransaction {
+
+  typedef std::pair<std::vector<AgencyOperation>,std::vector<AgencyPrecondition>> TransactionType;
+
+  explicit AgencyGeneralTransaction(AgencyOperation const& op,
+                                    AgencyPrecondition const& pre) :
+    clientId(to_string(boost::uuids::random_generator()())) {
+    transactions.emplace_back(
+    TransactionType(std::vector<AgencyOperation>(1, op),
+                    std::vector<AgencyPrecondition>(1, pre)));
+  }
+
+  explicit AgencyGeneralTransaction(
+    std::vector<std::pair<AgencyOperation,AgencyPrecondition>> const& trxs) :
+    clientId(to_string(boost::uuids::random_generator()())) {
+    for (const auto& trx : trxs) {
+      transactions.emplace_back(
+        TransactionType(std::vector<AgencyOperation>(1,trx.first),
+                        std::vector<AgencyPrecondition>(1,trx.second)));
+
+    }
+  }
+
+  AgencyGeneralTransaction() = default;
+
+  std::vector<TransactionType> transactions;
+
+  void toVelocyPack(
+    arangodb::velocypack::Builder& builder) const override final;
+
+  void push_back(AgencyOperation const& op);
+  void push_back(std::pair<AgencyOperation, AgencyPrecondition> const&);
+
+  inline virtual std::string const& path() const override final {
+    return AgencyTransaction::TypeUrl[2];
+  }
+
+  inline virtual std::string getClientId() const override final {
+    return clientId;
+  }
+
+  virtual bool validate(AgencyCommResult const& result) const override final;
+  char const* typeName() const override { return "AgencyGeneralTransaction"; }
+  std::string clientId;
+
+};*/
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                            AgencyWriteTransaction
+// -----------------------------------------------------------------------------
+
+struct AgencyWriteTransaction : public AgencyTransaction {
+ public:
+
+  static std::string randomClientId();
+
+  explicit AgencyWriteTransaction(AgencyOperation const& operation)
+      : clientId(randomClientId()) {
+    operations.push_back(operation);
+  }
+
+  explicit AgencyWriteTransaction(std::vector<AgencyOperation> const& _opers)
+      : operations(_opers), clientId(randomClientId()) {}
+
+  AgencyWriteTransaction(AgencyOperation const& operation, AgencyPrecondition const& precondition)
+      : clientId(randomClientId()) {
+    operations.push_back(operation);
+    preconditions.push_back(precondition);
+  }
+
+  AgencyWriteTransaction(std::vector<AgencyOperation> const& opers,
+                         AgencyPrecondition const& precondition)
+      : clientId(randomClientId()) {
+    std::copy(opers.begin(), opers.end(),
+              std::back_inserter(operations));
+    preconditions.push_back(precondition);
+  }
+
+  AgencyWriteTransaction(AgencyOperation const& operation,
+                         std::vector<AgencyPrecondition> const& precs)
+      : clientId(randomClientId()) {
+    operations.push_back(operation);
+    std::copy(precs.begin(), precs.end(),
+              std::back_inserter(preconditions));
+  }
+
+  AgencyWriteTransaction(std::vector<AgencyOperation> const& opers,
+                         std::vector<AgencyPrecondition> const& precs)
+      : clientId(randomClientId()) {
+    std::copy(opers.begin(), opers.end(),
+              std::back_inserter(operations));
+    std::copy(precs.begin(), precs.end(),
+              std::back_inserter(preconditions));
+  }
+
+  AgencyWriteTransaction() : clientId(randomClientId()) {}
+
+  void toVelocyPack(arangodb::velocypack::Builder& builder) const override final;
+
+  inline virtual std::string const& path() const override final {
+    return AgencyTransaction::TypeUrl[1];
+  }
+
+  inline virtual std::string getClientId() const override final {
+    return clientId;
+  }
+
+  virtual bool validate(AgencyCommResult const& result) const override final;
+  char const* typeName() const override { return "AgencyWriteTransaction"; }
+
+  std::vector<AgencyPrecondition> preconditions;
+  std::vector<AgencyOperation> operations;
+  std::string clientId;
+};
+
+// -----------------------------------------------------------------------------
+// --SECTION-- AgencyTransientTransaction
+// -----------------------------------------------------------------------------
+
+struct AgencyTransientTransaction : public AgencyTransaction {
+ public:
+  explicit AgencyTransientTransaction(AgencyOperation const& operation) {
+    operations.push_back(operation);
+  }
+
+  explicit AgencyTransientTransaction(std::vector<AgencyOperation> const& _operations)
+      : operations(_operations) {}
+
+  AgencyTransientTransaction(AgencyOperation const& operation,
+                             AgencyPrecondition const& precondition) {
+    operations.push_back(operation);
+    preconditions.push_back(precondition);
+  }
+
+  AgencyTransientTransaction(std::vector<AgencyOperation> const& opers,
+                             AgencyPrecondition const& precondition) {
+    std::copy(opers.begin(), opers.end(),
+              std::back_inserter(operations));
+    preconditions.push_back(precondition);
+  }
+
+  AgencyTransientTransaction(std::vector<AgencyOperation> const& opers,
+                             std::vector<AgencyPrecondition> const& precs) {
+    std::copy(opers.begin(), opers.end(),
+              std::back_inserter(operations));
+    std::copy(precs.begin(), precs.end(),
+              std::back_inserter(preconditions));
+  }
+
+  AgencyTransientTransaction() = default;
+
+  void toVelocyPack(arangodb::velocypack::Builder& builder) const override final;
+
+  inline std::string const& path() const override final {
+    return AgencyTransaction::TypeUrl[3];
+  }
+
+  inline virtual std::string getClientId() const override final {
+    return std::string();
+  }
+
+  virtual bool validate(AgencyCommResult const& result) const override final;
+  char const* typeName() const override { return "AgencyTransientTransaction"; }
+
+  std::vector<AgencyPrecondition> preconditions;
+  std::vector<AgencyOperation> operations;
+};
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                             AgencyReadTransaction
+// -----------------------------------------------------------------------------
+
+struct AgencyReadTransaction : public AgencyTransaction {
+ public:
+  explicit AgencyReadTransaction(std::string const& key) {
+    keys.push_back(key);
+  }
+
+  explicit AgencyReadTransaction(std::vector<std::string>&& k) : keys(k) {}
+
+  AgencyReadTransaction() = default;
+
+  void toVelocyPack(arangodb::velocypack::Builder& builder) const override final;
+
+  inline virtual std::string const& path() const override final {
+    return AgencyTransaction::TypeUrl[0];
+  }
+
+  inline virtual std::string getClientId() const override final {
+    return std::string();
+  }
+
+  virtual bool validate(AgencyCommResult const& result) const override final;
+  char const* typeName() const override { return "AgencyReadTransaction"; }
+
+  std::vector<std::string> keys;
+};
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                        AgencyComm
 // -----------------------------------------------------------------------------
 
@@ -630,6 +660,8 @@ class AgencyComm {
   AgencyCommResult sendServerState(double ttl);
 
   std::string version();
+
+  AgencyCommResult dump();
 
   bool increaseVersion(std::string const& key) {
     AgencyCommResult result = increment(key);
@@ -683,7 +715,7 @@ class AgencyComm {
   bool ensureStructureInitialized();
 
   AgencyCommResult sendWithFailover(arangodb::rest::RequestType, double,
-                                    std::string const&, VPackSlice);
+                                    std::string const&, velocypack::Slice);
 
  private:
   bool lock(std::string const&, double, double, arangodb::velocypack::Slice const&);
@@ -698,5 +730,9 @@ class AgencyComm {
   bool shouldInitializeStructure();
 };
 }  // namespace arangodb
+
+namespace std {
+ostream& operator<<(ostream& o, arangodb::AgencyCommResult const& a);
+}
 
 #endif

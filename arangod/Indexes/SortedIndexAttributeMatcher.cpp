@@ -20,6 +20,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <cmath>
+
 #include "SortedIndexAttributeMatcher.h"
 
 #include "Aql/Ast.h"
@@ -42,19 +44,26 @@ bool SortedIndexAttributeMatcher::accessFitsIndex(
     arangodb::aql::AstNode const* op,  // binary operation that is parent of access and other
     arangodb::aql::Variable const* reference,  // variable used in access(es)
     std::unordered_map<size_t /*offset in idx->fields()*/, std::vector<arangodb::aql::AstNode const*> /*conjunct - operation*/>& found,  // marks operations covered by index-fields
-    std::unordered_set<std::string>& nonNullAttributes,  // set of stringified op-childeren (access other) that may not be null
+    std::unordered_set<std::string>& nonNullAttributes,  // set of stringified op-children (access other) that may not be null
     bool isExecution  // skip usage check in execution phase
 ) {
   if (!idx->canUseConditionPart(access, other, op, reference, nonNullAttributes, isExecution)) {
     return false;
   }
 
-  arangodb::aql::AstNode const* what = access;
   std::pair<arangodb::aql::Variable const*, std::vector<arangodb::basics::AttributeName>> attributeData;
   bool const isPrimaryIndex = idx->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX;
+      
+  if (idx->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_TTL_INDEX && 
+      (!other->isConstant() || !(other->isIntValue() || other->isDoubleValue()))) {
+    // TTL index can only be used for numeric lookup values, no date strings or
+    // anything else
+    // TODO: move this into the specific index class
+    return false;
+  }
 
   if (op->type != arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
-    if (!what->isAttributeAccessForVariable(attributeData) || attributeData.first != reference) {
+    if (!access->isAttributeAccessForVariable(attributeData) || attributeData.first != reference) {
       // this access is not referencing this collection
       return false;
     }
@@ -71,7 +80,7 @@ bool SortedIndexAttributeMatcher::accessFitsIndex(
     // doc.value[*]
     TRI_ASSERT(op->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN);
 
-    if (what->isAttributeAccessForVariable(attributeData) && attributeData.first == reference &&
+    if (access->isAttributeAccessForVariable(attributeData) && attributeData.first == reference &&
         !arangodb::basics::TRI_AttributeNamesHaveExpansion(attributeData.second) &&
         idx->attributeMatches(attributeData.second, isPrimaryIndex)) {
       // doc.value IN 'value'
@@ -81,7 +90,6 @@ bool SortedIndexAttributeMatcher::accessFitsIndex(
                idx->isAttributeExpanded(attributeData.second) &&
                idx->attributeMatches(attributeData.second, isPrimaryIndex)) {
       // check for  'value' IN doc.value  AND  'value' IN doc.value[*]
-      what = other;  // if what should be used later
     } else {
       return false;
     }
@@ -136,13 +144,15 @@ void SortedIndexAttributeMatcher::matchAttributes(
     arangodb::Index const* idx, arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference,
     std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>>& found,
-    size_t& values, std::unordered_set<std::string>& nonNullAttributes, bool isExecution) {
-  // assert we have a proper formed conditiona - naray conjunction
+    size_t& postFilterConditions, size_t& values, 
+    std::unordered_set<std::string>& nonNullAttributes, bool isExecution) {
+  // assert we have a proper formed conditions - nary conjunction
   TRI_ASSERT(node->type == arangodb::aql::NODE_TYPE_OPERATOR_NARY_AND);
 
   // inspect the the conjuncts - allowed are binary comparisons and a contains check
   for (size_t i = 0; i < node->numMembers(); ++i) {
-    auto op = node->getMember(i);
+    bool matches = false;
+    auto op = node->getMemberUnchecked(i);
 
     switch (op->type) {
       case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NE:
@@ -152,21 +162,22 @@ void SortedIndexAttributeMatcher::matchAttributes(
       case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT:
       case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE:
         TRI_ASSERT(op->numMembers() == 2);
-        accessFitsIndex(idx, op->getMember(0), op->getMember(1), op, reference,
-                        found, nonNullAttributes, isExecution);
-        accessFitsIndex(idx, op->getMember(1), op->getMember(0), op, reference,
-                        found, nonNullAttributes, isExecution);
+        matches = accessFitsIndex(idx, op->getMemberUnchecked(0), op->getMemberUnchecked(1), op, reference,
+                                  found, nonNullAttributes, isExecution);
+        matches |= accessFitsIndex(idx, op->getMemberUnchecked(1), op->getMemberUnchecked(0), op, reference,
+                                   found, nonNullAttributes, isExecution);
         break;
 
       case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN:
-        if (accessFitsIndex(idx, op->getMember(0), op->getMember(1), op,
+        if (accessFitsIndex(idx, op->getMemberUnchecked(0), op->getMemberUnchecked(1), op,
                             reference, found, nonNullAttributes, isExecution)) {
-          if (op->getMember(1)->isAttributeAccessForVariable(reference, /*indexed access*/ false)) {
+          matches = true;
+          if (op->getMemberUnchecked(1)->isAttributeAccessForVariable(reference, /*indexed access*/ false)) {
             // 'abc' IN doc.attr[*]
             ++values;
           } else {
             size_t av = SimpleAttributeEqualityMatcher::estimateNumberOfArrayMembers(
-                op->getMember(1));
+                op->getMemberUnchecked(1));
             if (av > 1) {
               // attr IN [ a, b, c ]  =>  this will produce multiple items, so
               // count them!
@@ -177,41 +188,50 @@ void SortedIndexAttributeMatcher::matchAttributes(
         break;
 
       default:
+        matches = false;
         break;
+    }
+
+    if (!matches) {
+      // count the number of conditions we will not be able to satisfy
+      ++postFilterConditions;
     }
   }
 }
 
-bool SortedIndexAttributeMatcher::supportsFilterCondition(
+Index::FilterCosts SortedIndexAttributeMatcher::supportsFilterCondition(
     std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
     arangodb::Index const* idx, arangodb::aql::AstNode const* node,
-    arangodb::aql::Variable const* reference, size_t itemsInIndex,
-    size_t& estimatedItems, double& estimatedCost) {
+    arangodb::aql::Variable const* reference, size_t itemsInIndex) {
   // mmfiles failure point compat
   if (idx->type() == Index::TRI_IDX_TYPE_HASH_INDEX) {
     TRI_IF_FAILURE("SimpleAttributeMatcher::accessFitsIndex") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
   }
-
+  
   std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>> found;
   std::unordered_set<std::string> nonNullAttributes;
   size_t values = 0;
-  matchAttributes(idx, node, reference, found, values, nonNullAttributes, false);
+  size_t postFilterConditions = 0;
+  matchAttributes(idx, node, reference, found, postFilterConditions, values, nonNullAttributes, false);
 
   bool lastContainsEquality = true;
   size_t attributesCovered = 0;
   size_t attributesCoveredByEquality = 0;
   double equalityReductionFactor = 20.0;
-  estimatedCost = static_cast<double>(itemsInIndex);
+  double estimatedItems = static_cast<double>(itemsInIndex);
 
   for (size_t i = 0; i < idx->fields().size(); ++i) {
     auto it = found.find(i);
 
-    if (it == found.end()) {
-      // index attribute not covered by condition
+    if (it == found.end() || !lastContainsEquality) {
+      // index attribute not covered by condition, or unsupported condition. 
+      // must abort
       break;
     }
+    
+    ++attributesCovered;
 
     // check if the current condition contains an equality condition
     auto const& nodes = (*it).second;
@@ -224,15 +244,9 @@ bool SortedIndexAttributeMatcher::supportsFilterCondition(
       }
     }
 
-    if (!lastContainsEquality) {
-      // unsupported condition. must abort
-      break;
-    }
-
-    ++attributesCovered;
     if (containsEquality) {
       ++attributesCoveredByEquality;
-      estimatedCost /= equalityReductionFactor;
+      estimatedItems /= equalityReductionFactor;
 
       // decrease the effect of the equality reduction factor
       equalityReductionFactor *= 0.25;
@@ -245,10 +259,10 @@ bool SortedIndexAttributeMatcher::supportsFilterCondition(
       if (nodes.size() >= 2) {
         // at least two (non-equality) conditions. probably a range with lower
         // and upper bound defined
-        estimatedCost /= 7.5;
+        estimatedItems /= 7.5;
       } else {
         // one (non-equality). this is either a lower or a higher bound
-        estimatedCost /= 2.0;
+        estimatedItems /= 2.0;
       }
     }
 
@@ -258,25 +272,9 @@ bool SortedIndexAttributeMatcher::supportsFilterCondition(
   if (values == 0) {
     values = 1;
   }
-
-  if (attributesCoveredByEquality == idx->fields().size() &&
-      (idx->unique() || idx->implicitlyUnique())) {
-    // index is unique and condition covers all attributes by equality
-    if (itemsInIndex == 0) {
-      estimatedItems = 0;
-      estimatedCost = 0.0;
-      return true;
-    }
-
-    estimatedItems = values;
-    // ALTERNATIVE: estimatedCost = static_cast<double>(estimatedItems * values);
-    estimatedCost = (std::max)(static_cast<double>(1),
-                               std::log2(static_cast<double>(itemsInIndex)) * values);
-
-    // cost is already low... now slightly prioritize unique indexes
-    estimatedCost *= 0.995 - 0.05 * (idx->fields().size() - 1);
-    return true;
-  }
+  
+  Index::FilterCosts costs = Index::FilterCosts::defaultCosts(itemsInIndex);
+  costs.coveredAttributes = attributesCovered;
 
   if (attributesCovered > 0 &&
       (!idx->sparse() || attributesCovered == idx->fields().size())) {
@@ -284,125 +282,130 @@ bool SortedIndexAttributeMatcher::supportsFilterCondition(
     // or the index is sparse and all attributes are covered by the condition,
     // then it can be used (note: additional checks for condition parts in
     // sparse indexes are contained in Index::canUseConditionPart)
-    estimatedItems = static_cast<size_t>(
-        (std::max)(static_cast<size_t>(estimatedCost * values), static_cast<size_t>(1)));
+    costs.supportsCondition = true;
 
-    // check if the index has a selectivity estimate ready
-    if (idx->hasSelectivityEstimate() &&
-        attributesCoveredByEquality == idx->fields().size()) {
-      double estimate = idx->selectivityEstimate();
-      if (estimate > 0.0) {
-        estimatedItems = static_cast<size_t>(1.0 / estimate);
-      }
-    } else if (attributesCoveredByEquality > 0) {
-      TRI_ASSERT(attributesCovered > 0);
-      // the index either does not have a selectivity estimate, or not all
-      // of its attributes are covered by the condition using an equality lookup
-      // however, if the search condition uses equality lookups on the prefix
-      // of the index, then we can check if there is another index which is just
-      // indexing the prefix, and "steal" the selectivity estimate from that
-      // index for example, if the condition is "doc.a == 1 && doc.b > 2", and
-      // the current index is created on ["a", "b"], then we will not use the
-      // selectivity estimate of the current index (due to the range condition
-      // used for the second index attribute). however, if there is another
-      // index on just "a", we know that the current index is at least as
-      // selective as the index on the single attribute. and that the extra
-      // condition we have will make it even more selectivity. so in this case
-      // we will re-use the selectivity estimate from the other index, and are
-      // happy.
-      for (auto const& otherIdx : allIndexes) {
-        auto const* other = otherIdx.get();
-        if (other == idx || !other->hasSelectivityEstimate()) {
-          continue;
-        }
-        auto const& otherFields = other->fields();
-        if (otherFields.size() >= attributesCovered) {
-          // other index has more fields than we have, or the same amount.
-          // then it will not be helpful
-          continue;
-        }
-        size_t matches = 0;
-        for (size_t i = 0; i < otherFields.size(); ++i) {
-          if (otherFields[i] != idx->fields()[i]) {
-            break;
-          }
-          ++matches;
-        }
-        if (matches == otherFields.size()) {
-          double estimate = other->selectivityEstimate();
-          if (estimate > 0.0) {
-            // reuse the estimate from the other index
-            estimatedItems = static_cast<size_t>(1.0 / estimate);
-            break;
-          }
-        }
-      }
-    }
+    if (itemsInIndex > 0) {
+      costs.estimatedItems = static_cast<size_t>(estimatedItems * values);
 
-    if (itemsInIndex == 0) {
-      estimatedCost = 0.0;
-    } else {
-      // lookup cost is O(log(n))
-      estimatedCost = (std::max)(static_cast<double>(1),
-                                 std::log2(static_cast<double>(itemsInIndex)) * values);
+      // check if the index has a selectivity estimate ready
+      if (idx->hasSelectivityEstimate() &&
+          attributesCoveredByEquality == idx->fields().size()) {
+        double estimate = idx->selectivityEstimate();
+        if (estimate > 0.0) {
+          costs.estimatedItems = static_cast<size_t>(1.0 / estimate * values);
+        }
+      } else if (attributesCoveredByEquality > 0) {
+        TRI_ASSERT(attributesCovered > 0);
+        // the index either does not have a selectivity estimate, or not all
+        // of its attributes are covered by the condition using an equality lookup
+        // however, if the search condition uses equality lookups on the prefix
+        // of the index, then we can check if there is another index which is just
+        // indexing the prefix, and "steal" the selectivity estimate from that
+        // index for example, if the condition is "doc.a == 1 && doc.b > 2", and
+        // the current index is created on ["a", "b"], then we will not use the
+        // selectivity estimate of the current index (due to the range condition
+        // used for the second index attribute). however, if there is another
+        // index on just "a", we know that the current index is at least as
+        // selective as the index on the single attribute. and that the extra
+        // condition we have will make it even more selectivity. so in this case
+        // we will re-use the selectivity estimate from the other index, and are
+        // happy.
+        for (auto const& otherIdx : allIndexes) {
+          auto const* other = otherIdx.get();
+          if (other == idx || !other->hasSelectivityEstimate()) {
+            continue;
+          }
+          auto const& otherFields = other->fields();
+          if (otherFields.size() >= attributesCovered) {
+            // other index has more fields than we have, or the same amount.
+            // then it will not be helpful
+            continue;
+          }
+          size_t matches = 0;
+          for (size_t i = 0; i < otherFields.size(); ++i) {
+            if (otherFields[i] != idx->fields()[i]) {
+              break;
+            }
+            ++matches;
+          }
+          if (matches == otherFields.size()) {
+            double estimate = other->selectivityEstimate();
+            if (estimate > 0.0) {
+              // reuse the estimate from the other index
+              costs.estimatedItems = static_cast<size_t>(1.0 / estimate * values);
+              break;
+            }
+          }
+        }
+      }
+
+      // costs.estimatedItems is always set here, make it at least 1
+      costs.estimatedItems = std::max(size_t(1), costs.estimatedItems);
+      
+      // seek cost is O(log(n))
+      costs.estimatedCosts = std::max(double(1.0),
+                                      std::log2(double(itemsInIndex)) * values);
+      // add per-document processing cost
+      costs.estimatedCosts += costs.estimatedItems * 0.05;
       // slightly prefer indexes that cover more attributes
-      estimatedCost -= (attributesCovered - 1) * 0.02;
-    }
-    return true;
-  }
-
-  // index does not help for this condition
-  estimatedItems = itemsInIndex;
-  estimatedCost = static_cast<double>(estimatedItems);
-  return false;
-}
-
-bool SortedIndexAttributeMatcher::supportsSortCondition(
-    arangodb::Index const* idx, arangodb::aql::SortCondition const* sortCondition,
-    arangodb::aql::Variable const* reference, size_t itemsInIndex,
-    double& estimatedCost, size_t& coveredAttributes) {
-  TRI_ASSERT(sortCondition != nullptr);
-
-  if (!idx->sparse()) {
-    // only non-sparse indexes can be used for sorting
-    if (!idx->hasExpansion() && sortCondition->isUnidirectional() &&
-        sortCondition->isOnlyAttributeAccess()) {
-      coveredAttributes = sortCondition->coveredAttributes(reference, idx->fields());
-
-      if (coveredAttributes >= sortCondition->numAttributes()) {
-        // sort is fully covered by index. no additional sort costs!
-        // forward iteration does not have high costs
-        estimatedCost = itemsInIndex * 0.001;
-        if (idx->isPersistent() && sortCondition->isDescending()) {
-          // reverse iteration has higher costs than forward iteration
-          estimatedCost *= 4;
-        }
-        return true;
-      } else if (coveredAttributes > 0) {
-        estimatedCost = (itemsInIndex / coveredAttributes) *
-                        std::log2(static_cast<double>(itemsInIndex));
-        if (idx->isPersistent() && sortCondition->isDescending()) {
-          // reverse iteration is more expensive
-          estimatedCost *= 4;
-        }
-        return true;
+      costs.estimatedCosts -= (attributesCovered - 1) * 0.02;
+    
+      // cost is already low... now slightly prioritize unique indexes
+      if (idx->unique() || idx->implicitlyUnique()) {
+        costs.estimatedCosts *= 0.995 - 0.05 * (idx->fields().size() - 1);
       }
-    }
-  }
 
-  coveredAttributes = 0;
-  // by default no sort conditions are supported
-  if (itemsInIndex > 0) {
-    estimatedCost = itemsInIndex * std::log2(static_cast<double>(itemsInIndex));
-    // slightly penalize this type of index against other indexes which
-    // are in memory
-    if (idx->isPersistent()) {
-      estimatedCost *= 1.05;
+      // box the estimated costs to [0 - inf
+      costs.estimatedCosts = std::max(double(0.0), costs.estimatedCosts);
     }
   } else {
-    estimatedCost = 0.0;
+    // index does not help for this condition
+    TRI_ASSERT(!costs.supportsCondition);
   }
-  return false;
+  
+  // honor the costs of post-index filter conditions
+  costs.estimatedCosts += costs.estimatedItems * postFilterConditions;
+
+  return costs;
+}
+
+Index::SortCosts SortedIndexAttributeMatcher::supportsSortCondition(
+    arangodb::Index const* idx, arangodb::aql::SortCondition const* sortCondition,
+    arangodb::aql::Variable const* reference, size_t itemsInIndex) {
+  TRI_ASSERT(sortCondition != nullptr);
+      
+  Index::SortCosts costs = Index::SortCosts::defaultCosts(itemsInIndex, idx->isPersistent());
+
+  if (!idx->sparse() ||
+      sortCondition->onlyUsesNonNullSortAttributes(idx->fields())) {
+    // non-sparse indexes can be used for sorting, but sparse indexes can only be
+    // used if we can prove that we only need to return non-null index attribute values
+    if (!idx->hasExpansion() && sortCondition->isUnidirectional() &&
+        sortCondition->isOnlyAttributeAccess()) {
+      costs.coveredAttributes = sortCondition->coveredAttributes(reference, idx->fields());
+
+      if (costs.coveredAttributes >= sortCondition->numAttributes()) {
+        // sort is fully covered by index. no additional sort costs!
+        // forward iteration does not have high costs
+        costs.estimatedCosts = itemsInIndex * 0.001;
+        if (idx->isPersistent() && sortCondition->isDescending()) {
+          // reverse iteration has higher costs than forward iteration
+          costs.estimatedCosts *= 4;
+        }
+        costs.supportsCondition = true;
+      } else if (costs.coveredAttributes > 0) {
+        costs.estimatedCosts = (itemsInIndex / costs.coveredAttributes) *
+                               std::log2(double(itemsInIndex));
+        if (idx->isPersistent() && sortCondition->isDescending()) {
+          // reverse iteration is more expensive
+          costs.estimatedCosts *= 4;
+        }
+        costs.supportsCondition = true;
+      }
+    }
+  }
+
+  return costs;
 }
 
 /// @brief specializes the condition for use with the index
@@ -421,8 +424,9 @@ arangodb::aql::AstNode* SortedIndexAttributeMatcher::specializeCondition(
 
   std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>> found;
   std::unordered_set<std::string> nonNullAttributes;
-  size_t values = 0;
-  matchAttributes(idx, node, reference, found, values, nonNullAttributes, false);
+  size_t values = 0; // ignored here
+  size_t postFilterConditions = 0; // ignored here
+  matchAttributes(idx, node, reference, found, postFilterConditions, values, nonNullAttributes, false);
 
   std::vector<arangodb::aql::AstNode const*> children;
   bool lastContainsEquality = true;
@@ -430,13 +434,9 @@ arangodb::aql::AstNode* SortedIndexAttributeMatcher::specializeCondition(
   for (size_t i = 0; i < idx->fields().size(); ++i) {
     auto it = found.find(i);
 
-    if (it == found.end()) {
-      // index attribute not covered by condition
-      break;
-    }
-
-    if (!lastContainsEquality) {
-      // unsupported condition. must abort
+    if (it == found.end() || !lastContainsEquality) {
+      // index attribute not covered by condition, or unsupported condition. 
+      // must abort
       break;
     }
 
@@ -453,7 +453,7 @@ arangodb::aql::AstNode* SortedIndexAttributeMatcher::specializeCondition(
                 return Index::sortWeight(lhs) < Index::sortWeight(rhs);
               });
 
-    arangodb::HashSet<int> operatorsFound;
+    ::arangodb::containers::HashSet<int> operatorsFound;
     for (auto& it : nodes) {
       if (it->type == arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NE) {
         // ignore all != operators here
@@ -484,8 +484,9 @@ arangodb::aql::AstNode* SortedIndexAttributeMatcher::specializeCondition(
   return node;
 }
 
-bool SortedIndexAttributeMatcher::isDuplicateOperator(arangodb::aql::AstNode const* node,
-                                                      arangodb::HashSet<int> const& operatorsFound) {
+bool SortedIndexAttributeMatcher::isDuplicateOperator(
+    arangodb::aql::AstNode const* node,
+    ::arangodb::containers::HashSet<int> const& operatorsFound) {
   auto type = node->type;
   if (operatorsFound.find(static_cast<int>(type)) != operatorsFound.end()) {
     // duplicate operator

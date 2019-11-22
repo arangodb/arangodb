@@ -21,7 +21,19 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+#include <cstring>
+#endif
+
+#include <cstdlib>
+
 #include "Basics/Common.h"
+#include "Basics/error.h"
+#include "Basics/voc-errors.h"
+
+#ifdef _WIN32
+#include <windows.h>
+#endif
 
 /// @brief basic memory management for allocate
 void* TRI_Allocate(size_t n) {

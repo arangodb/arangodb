@@ -22,7 +22,7 @@
 
 #include "Pregel/Worker.cpp"
 
-// custom algorihm types
+// custom algorithm types
 template class arangodb::pregel::Worker<SCCValue, int8_t, SenderMessage<uint64_t>>;
 template class arangodb::pregel::Worker<HITSValue, int8_t, SenderMessage<double>>;
 template class arangodb::pregel::Worker<ECValue, int8_t, HLLCounter>;

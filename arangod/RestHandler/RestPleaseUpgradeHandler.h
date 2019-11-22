@@ -29,13 +29,14 @@
 namespace arangodb {
 class RestPleaseUpgradeHandler : public rest::RestHandler {
  public:
-  explicit RestPleaseUpgradeHandler(GeneralRequest*, GeneralResponse*);
+  explicit RestPleaseUpgradeHandler(application_features::ApplicationServer&,
+                                    GeneralRequest*, GeneralResponse*);
 
  public:
   char const* name() const override final { return "RestPleaseUpgradeHandler"; }
   RequestLane lane() const override final { return RequestLane::CLIENT_FAST; }
   RestStatus execute() override;
-  void handleError(const basics::Exception&) override;
+  void handleError(basics::Exception const&) override {}
 };
 }  // namespace arangodb
 

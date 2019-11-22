@@ -24,8 +24,11 @@
 #ifndef ARANGOD_AQL_BLOCK_COLLECTOR_H
 #define ARANGOD_AQL_BLOCK_COLLECTOR_H 1
 
+#include "Aql/SharedAqlItemBlockPtr.h"
 #include "Aql/types.h"
-#include "Basics/Common.h"
+
+#include <cstdint>
+#include <vector>
 
 namespace arangodb {
 namespace aql {
@@ -47,14 +50,13 @@ class BlockCollector {
 
   void clear();
 
-  void add(std::unique_ptr<AqlItemBlock> block);
-  void add(AqlItemBlock* block);
+  void add(SharedAqlItemBlockPtr block);
 
-  AqlItemBlock* steal();
+  SharedAqlItemBlockPtr steal();
 
  private:
   AqlItemBlockManager* _blockManager;
-  std::vector<AqlItemBlock*> _blocks;
+  std::vector<SharedAqlItemBlockPtr> _blocks;
   size_t _totalSize;
 };
 

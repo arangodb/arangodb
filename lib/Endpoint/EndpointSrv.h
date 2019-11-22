@@ -24,6 +24,10 @@
 #ifndef ARANGODB_ENDPOINT_ENDPOINT_SRV_H
 #define ARANGODB_ENDPOINT_ENDPOINT_SRV_H 1
 
+#include <memory>
+#include <string>
+
+#include "Basics/socket-utils.h"
 #include "Endpoint/Endpoint.h"
 
 namespace arangodb {

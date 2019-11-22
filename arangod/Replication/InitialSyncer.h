@@ -26,7 +26,6 @@
 
 #include "Basics/Common.h"
 #include "Basics/Result.h"
-#include "Basics/asio_ns.h"
 #include "Replication/ReplicationApplierConfiguration.h"
 #include "Replication/Syncer.h"
 #include "Replication/utilities.h"
@@ -94,6 +93,7 @@ class InitialSyncer : public Syncer {
  protected:
   replutils::BatchInfo _batch;
   replutils::ProgressInfo _progress;
+  
   /// recurring task to keep the batch alive
   Scheduler::WorkHandle _batchPingTimer;
 };

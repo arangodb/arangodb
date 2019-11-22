@@ -21,13 +21,21 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <stddef.h>
+#include <type_traits>
+#include <utility>
+
 #include "ScriptLoader.h"
+
 #include "Basics/FileUtils.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
+#include "Basics/error.h"
 #include "Basics/files.h"
 #include "Basics/tri-strings.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -107,10 +115,10 @@ std::string const& ScriptLoader::findScript(std::string const& name) {
 
   MUTEX_LOCKER(mutexLocker, _lock);
 
-  std::map<std::string, std::string>::iterator i = _scripts.find(name);
+  auto it = _scripts.find(name);
 
-  if (i != _scripts.end()) {
-    return i->second;
+  if (it != _scripts.end()) {
+    return it->second;
   }
 
   if (!_directory.empty()) {
@@ -121,7 +129,7 @@ std::string const& ScriptLoader::findScript(std::string const& name) {
       char* result = TRI_SlurpFile(filename.c_str(), nullptr);
 
       if (result == nullptr && (i == parts.size() - 1)) {
-        LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        LOG_TOPIC("8d6a7", ERR, arangodb::Logger::FIXME)
             << "cannot locate file '" << StringUtils::correctPath(name)
             << "', path: '" << parts[i] << "': " << TRI_last_error();
       }
@@ -151,9 +159,9 @@ std::vector<std::string> ScriptLoader::getDirectoryParts() {
     // .........................................................................
 
 #ifdef _WIN32
-    std::vector<std::string> parts = basics::StringUtils::split(_directory, ';', '\0');
+    std::vector<std::string> parts = basics::StringUtils::split(_directory, ';');
 #else
-    std::vector<std::string> parts = basics::StringUtils::split(_directory, ":;", '\0');
+    std::vector<std::string> parts = basics::StringUtils::split(_directory, ":;");
 #endif
 
     for (size_t i = 0; i < parts.size(); ++i) {

@@ -26,6 +26,7 @@
 
 #include "analysis/token_stream.hpp"
 #include "utils/type_id.hpp"
+#include "utils/text_format.hpp"
 
 NS_ROOT
 NS_BEGIN(analysis)
@@ -47,12 +48,14 @@ class IRESEARCH_API analyzer: public token_stream {
     string_ref name_;
   };
 
-  explicit analyzer(const type_id& id);
+  explicit analyzer(const type_id& id) NOEXCEPT;
 
   virtual bool reset(const string_ref& data) = 0;
 
-  const type_id& type() const { return *type_; }
+  const type_id& type() const NOEXCEPT { return *type_; }
 
+protected:
+ 
  private:
   const type_id* type_;
 };

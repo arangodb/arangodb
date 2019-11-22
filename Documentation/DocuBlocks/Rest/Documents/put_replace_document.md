@@ -2,7 +2,7 @@
 @startDocuBlock put_replace_document
 @brief replaces a document
 
-@RESTHEADER{PUT /_api/document/{document-handle},Replace document}
+@RESTHEADER{PUT /_api/document/{document-handle},Replace document, replaceDocument}
 
 @RESTALLBODYPARAM{document,json,required}
 A JSON representation of a single document.
@@ -48,6 +48,9 @@ Replaces the document with handle <document-handle> with the one in
 the body, provided there is such a document and no precondition is
 violated.
 
+The value of the `_key` attribute as well as attributes
+used as sharding keys may not be changed.
+
 If the *If-Match* header is specified and the revision of the
 document in the database is unequal to the given revision, the
 precondition is violated.
@@ -64,6 +67,11 @@ an *HTTP 202* is returned (depending on *waitForSync*, see below),
 the *Etag* header field contains the new revision of the document
 and the *Location* header contains a complete URL under which the
 document can be queried.
+
+Cluster only: The replace documents _may_ contain  
+values for the collection's pre-defined shard keys. Values for the shard keys 
+are treated as hints to improve performance. Should the shard keys
+values be incorrect ArangoDB may answer with a *not found* error.
 
 Optionally, the query parameter *waitForSync* can be used to force
 synchronization of the document replacement operation to disk even in case

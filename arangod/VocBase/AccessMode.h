@@ -27,6 +27,8 @@
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
 
+#include <cstring>
+
 namespace arangodb {
 
 struct AccessMode {

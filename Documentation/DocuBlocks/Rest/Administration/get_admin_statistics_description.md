@@ -2,7 +2,7 @@
 @startDocuBlock get_admin_statistics_description
 @brief fetch descriptive info of statistics
 
-@RESTHEADER{GET /_admin/statistics-description, Statistics description}
+@RESTHEADER{GET /_admin/statistics-description, Statistics description, getStatisticsDescription}
 
 @RESTDESCRIPTION
 Returns a description of the statistics returned by */_admin/statistics*.

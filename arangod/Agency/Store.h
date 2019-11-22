@@ -27,6 +27,7 @@
 #include "AgentInterface.h"
 #include "Basics/ConditionVariable.h"
 #include "Node.h"
+#include <map>
 
 namespace arangodb {
 namespace consensus {
@@ -69,7 +70,8 @@ class Agent;
 class Store {
  public:
   /// @brief Construct with name
-  explicit Store(Agent* agent, std::string const& name = "root");
+  explicit Store(application_features::ApplicationServer& server, Agent* agent,
+                 std::string const& name = "root");
 
   /// @brief Destruct
   virtual ~Store();
@@ -146,6 +148,10 @@ class Store {
   std::unordered_multimap<std::string, std::string>& observedTable();
   std::unordered_multimap<std::string, std::string> const& observedTable() const;
 
+  /// @brief Split strings by forward slashes, omitting empty strings
+  /// this function is only public so that it can be test by unit tests
+  static std::vector<std::string> split(std::string const& str);
+
  private:
   /// @brief Check precondition
   check_ret_t check(arangodb::velocypack::Slice const&, CheckMode = FIRST_FAIL) const;
@@ -155,6 +161,9 @@ class Store {
 
   /// @brief Run thread
  private:
+  /// @brief underlying application server, needed for testing code
+  application_features::ApplicationServer& _server;
+
   /// @brief Condition variable guarding removal of expired entries
   mutable arangodb::basics::ConditionVariable _cv;
 

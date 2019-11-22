@@ -24,11 +24,12 @@
 #ifndef ARANGOD_AQL_ATTRIBUTE_ACCESSOR_H
 #define ARANGOD_AQL_ATTRIBUTE_ACCESSOR_H 1
 
-#include "Aql/AqlValue.h"
 #include "Aql/types.h"
-#include "Basics/Common.h"
 
 namespace arangodb {
+
+class CollectionNameResolver;
+
 namespace transaction {
 class Methods;
 }
@@ -38,6 +39,7 @@ namespace aql {
 class AqlItemBlock;
 class ExpressionContext;
 struct Variable;
+struct AqlValue;
 
 /// @brief AttributeAccessor
 class AttributeAccessor {

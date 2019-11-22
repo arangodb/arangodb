@@ -29,15 +29,16 @@
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Aql/ShadowAqlItemRow.h"
+#include "Aql/types.h"
 
 #include <memory>
 
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
 
 class AqlItemBlock;
-template <bool>
-class BlockFetcher;
+template <BlockPassthrough>
+class DependencyProxy;
 
 /**
  * @brief Interface for all AqlExecutors that do only need one
@@ -47,21 +48,19 @@ class BlockFetcher;
  *        this row stays valid until the next call
  *        of fetchRow.
  */
-template <bool passBlocksThrough>
+template <BlockPassthrough blockPassthrough>
 class SingleRowFetcher {
  public:
-  explicit SingleRowFetcher(BlockFetcher<passBlocksThrough>& executionBlock);
+  explicit SingleRowFetcher(DependencyProxy<blockPassthrough>& executionBlock);
   TEST_VIRTUAL ~SingleRowFetcher() = default;
 
  protected:
-  // only for testing! Does not initialize _blockFetcher!
+  // only for testing! Does not initialize _dependencyProxy!
   SingleRowFetcher();
 
  public:
   /**
    * @brief Fetch one new AqlItemRow from upstream.
-   *        **Guarantee**: the pointer returned is valid only
-   *        until the next call to fetchRow.
    *
    * @param atMost may be passed if a block knows the maximum it might want to
    *        fetch from upstream (should apply only to the LimitExecutor). Will
@@ -70,7 +69,7 @@ class SingleRowFetcher {
    *
    * @return A pair with the following properties:
    *         ExecutionState:
-   *           WAITING => IO going on, immediatly return to caller.
+   *           WAITING => IO going on, immediately return to caller.
    *           DONE => No more to expect from Upstream, if you are done with
    *                   this row return DONE to caller.
    *           HASMORE => There is potentially more from above, call again if
@@ -82,20 +81,36 @@ class SingleRowFetcher {
    */
   // This is only TEST_VIRTUAL, so we ignore this lint warning:
   // NOLINTNEXTLINE google-default-arguments
-  TEST_VIRTUAL std::pair<ExecutionState, InputAqlItemRow> fetchRow(
+  [[nodiscard]] TEST_VIRTUAL std::pair<ExecutionState, InputAqlItemRow> fetchRow(
       size_t atMost = ExecutionBlock::DefaultBatchSize());
 
-  // TODO enable_if<passBlocksThrough>
-  std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> fetchBlockForPassthrough(size_t atMost);
+  // NOLINTNEXTLINE google-default-arguments
+  [[nodiscard]] TEST_VIRTUAL std::pair<ExecutionState, ShadowAqlItemRow> fetchShadowRow(
+      size_t atMost = ExecutionBlock::DefaultBatchSize());
 
-  std::pair<ExecutionState, size_t> preFetchNumberOfRows() {
-    // This is not implemented for this fetcher
-    TRI_ASSERT(false);
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-  }
+  [[nodiscard]] TEST_VIRTUAL std::pair<ExecutionState, size_t> skipRows(size_t atMost);
+
+  // template methods may not be virtual, thus this #ifdef.
+#ifndef ARANGODB_USE_GOOGLE_TESTS
+  template <BlockPassthrough allowPass = blockPassthrough, typename = std::enable_if_t<allowPass == BlockPassthrough::Enable>>
+  [[nodiscard]]
+#else
+  [[nodiscard]]
+  TEST_VIRTUAL
+#endif
+  std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlockForPassthrough(size_t atMost);
+
+  [[nodiscard]] std::pair<ExecutionState, size_t> preFetchNumberOfRows(size_t atMost);
+
+  void setDistributeId(std::string const& id);
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  [[nodiscard]] bool hasRowsLeftInBlock() const;
+  [[nodiscard]] bool isAtShadowRow() const;
+#endif
 
  private:
-  BlockFetcher<passBlocksThrough>* _blockFetcher;
+  DependencyProxy<blockPassthrough>* _dependencyProxy;
 
   /**
    * @brief Holds state returned by the last fetchBlock() call.
@@ -104,14 +119,20 @@ class SingleRowFetcher {
    *        Part of the Fetcher, and may be moved if the Fetcher implementations
    *        are moved into separate classes.
    */
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+ protected:
+#endif
+  // NOLINTNEXTLINE(cppcoreguidelines-non-private-member-variables-in-classes, misc-non-private-member-variables-in-classes)
   ExecutionState _upstreamState;
-
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+ private:
+#endif
   /**
    * @brief Input block currently in use. Used for memory management by the
    *        SingleRowFetcher. May be moved if the Fetcher implementations
    *        are moved into separate classes.
    */
-  std::shared_ptr<AqlItemBlockShell> _currentBlock;
+  SharedAqlItemBlockPtr _currentBlock;
 
   /**
    * @brief Index of the row to be returned next by fetchRow(). This is valid
@@ -126,94 +147,25 @@ class SingleRowFetcher {
    *        until the next fetchRow() call.
    */
   InputAqlItemRow _currentRow;
+  ShadowAqlItemRow _currentShadowRow;
 
  private:
   /**
    * @brief Delegates to ExecutionBlock::fetchBlock()
    */
-  std::pair<ExecutionState, std::shared_ptr<AqlItemBlockShell>> fetchBlock(size_t atMost);
+  [[nodiscard]] TEST_VIRTUAL std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlock(size_t atMost);
+
+  [[nodiscard]] bool fetchBlockIfNecessary(size_t atMost);
 
   /**
    * @brief Delegates to ExecutionBlock::getNrInputRegisters()
    */
-  RegisterId getNrInputRegisters() const {
-    return _blockFetcher->getNrInputRegisters();
-  }
-  bool indexIsValid() const;
+  [[nodiscard]] RegisterId getNrInputRegisters() const;
 
-  bool isLastRowInBlock() const {
-    TRI_ASSERT(indexIsValid());
-    return _rowIndex + 1 == _currentBlock->block().size();
-  }
+  [[nodiscard]] bool indexIsValid() const;
 
-  size_t getRowIndex() const {
-    TRI_ASSERT(indexIsValid());
-    return _rowIndex;
-  }
+  [[nodiscard]] ExecutionState returnState(bool isShadowRow) const;
 };
-
-template <bool passBlocksThrough>
-// NOLINTNEXTLINE google-default-arguments
-std::pair<ExecutionState, InputAqlItemRow> SingleRowFetcher<passBlocksThrough>::fetchRow(size_t atMost) {
-  // Fetch a new block iff necessary
-  if (!indexIsValid()) {
-    // This returns the AqlItemBlock to the ItemBlockManager before fetching a
-    // new one, so we might reuse it immediately!
-    _currentBlock = nullptr;
-
-    ExecutionState state;
-    std::shared_ptr<AqlItemBlockShell> newBlock;
-    std::tie(state, newBlock) = fetchBlock(atMost);
-    if (state == ExecutionState::WAITING) {
-      return {ExecutionState::WAITING, InputAqlItemRow{CreateInvalidInputRowHint{}}};
-    }
-
-    _currentBlock = std::move(newBlock);
-    _rowIndex = 0;
-  }
-
-  ExecutionState rowState;
-
-  if (_currentBlock == nullptr) {
-    TRI_ASSERT(_upstreamState == ExecutionState::DONE);
-    _currentRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
-    rowState = ExecutionState::DONE;
-  } else {
-    TRI_ASSERT(_currentBlock);
-    _currentRow = InputAqlItemRow{_currentBlock, _rowIndex};
-
-    TRI_ASSERT(_upstreamState != ExecutionState::WAITING);
-    if (isLastRowInBlock() && _upstreamState == ExecutionState::DONE) {
-      rowState = ExecutionState::DONE;
-    } else {
-      rowState = ExecutionState::HASMORE;
-    }
-
-    _rowIndex++;
-  }
-
-  return {rowState, _currentRow};
-}
-
-template <bool passBlocksThrough>
-bool SingleRowFetcher<passBlocksThrough>::indexIsValid() const {
-  // TODO Hopefully we can get rid of this distinction later. When there are no
-  // more old blocks, we can replace the old getSome interface easily,
-  // specifically replace std::unique_ptr<AqlItemBlock> with a shared_ptr
-  // with a custom deleter (like AqlItemBlockShell), or a shared_ptr to an
-  // AqlItemBlockShell. Then we will never lose the block.
-  if /* constexpr */ (passBlocksThrough) {
-    return _currentBlock != nullptr && _currentBlock->hasBlock() &&
-           _rowIndex < _currentBlock->block().size();
-  } else {
-    // The current block must never become invalid (i.e. !hasBlock()), unless
-    // it's passed through and therefore the output block steals it.
-    TRI_ASSERT(_currentBlock == nullptr || _currentBlock->hasBlock());
-    return _currentBlock != nullptr && _rowIndex < _currentBlock->block().size();
-  }
-}
-
-}  // namespace aql
 }  // namespace arangodb
 
 #endif  // ARANGOD_AQL_SINGLE_ROW_FETCHER_H

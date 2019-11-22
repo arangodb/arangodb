@@ -109,36 +109,36 @@ function nestedArraySimpleSuite () {
     },
 
     testAll : function () {
-      var expected = [ "1", "2" ];
-      var q = "FOR doc IN " + c.name() + " RETURN doc._key";
+      var expected = [ "UnitTestsArray/1", "UnitTestsArray/2" ];
+      var q = "FOR doc IN " + c.name() + " RETURN doc._id";
 
       runQueries(q, expected, false, false);
     },
 
     testOne : function () {
-      var expected = [ "1" ];
-      var q = "FOR doc IN " + c.name() + " FILTER doc.value IN [ 'foo' ] RETURN doc._key";
+      var expected = [ "UnitTestsArray/1" ];
+      var q = "FOR doc IN " + c.name() + " FILTER doc.value IN [ 'foo' ] RETURN doc._id";
       
       runQueries(q, expected, true, false);
     },
    
     testOneExpansion : function () {
       var expected = [ ];
-      var q = "FOR doc IN " + c.name() + " FILTER doc.value[*] IN [ 'foo' ] RETURN doc._key";
+      var q = "FOR doc IN " + c.name() + " FILTER doc.value[*] IN [ 'foo' ] RETURN doc._id";
 
       runQueries(q, expected, false, false);
     },
       
     testOneReverse : function () {
-      var expected = [ "2" ];
-      var q = "FOR doc IN " + c.name() + " FILTER 'foo' IN doc.value RETURN doc._key";
+      var expected = [ "UnitTestsArray/2" ];
+      var q = "FOR doc IN " + c.name() + " FILTER 'foo' IN doc.value RETURN doc._id";
 
       runQueries(q, expected, false, true);
     },
    
     testOneReverseExpansion : function () {
-      var expected = [ "2" ];
-      var q = "FOR doc IN " + c.name() + " FILTER 'foo' IN doc.value[*] RETURN doc._key";
+      var expected = [ "UnitTestsArray/2" ];
+      var q = "FOR doc IN " + c.name() + " FILTER 'foo' IN doc.value[*] RETURN doc._id";
 
       runQueries(q, expected, false, true);
     }

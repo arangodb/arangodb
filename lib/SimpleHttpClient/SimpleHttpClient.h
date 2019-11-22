@@ -26,11 +26,23 @@
 #ifndef ARANGODB_SIMPLE_HTTP_CLIENT_SIMPLE_HTTP_CLIENT_H
 #define ARANGODB_SIMPLE_HTTP_CLIENT_SIMPLE_HTTP_CLIENT_H 1
 
-#include "Basics/Common.h"
+#include <string.h>
+#include <atomic>
+#include <cstdint>
+#include <memory>
+#include <string>
+#include <unordered_map>
 
 #include "Basics/StringBuffer.h"
+#include "Basics/StringUtils.h"
+#include "Basics/debugging.h"
+#include "Basics/error.h"
+#include "Basics/voc-errors.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
-#include "Rest/HttpRequest.h"
+#include "Logger/LoggerStream.h"
+#include "Rest/CommonDefines.h"
+#include "Rest/GeneralRequest.h"
 
 namespace arangodb {
 namespace httpclient {
@@ -277,7 +289,7 @@ class SimpleHttpClient {
     _errorMessage = message;
 
     if (_params._warn || forceWarn) {
-      LOG_TOPIC(WARN, arangodb::Logger::HTTPCLIENT) << "" << _errorMessage;
+      LOG_TOPIC("a1b4d", WARN, arangodb::Logger::HTTPCLIENT) << "" << _errorMessage;
     }
   }
 

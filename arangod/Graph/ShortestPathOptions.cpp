@@ -98,7 +98,7 @@ ShortestPathOptions::ShortestPathOptions(aql::Query* query, VPackSlice info, VPa
   }
 }
 
-ShortestPathOptions::~ShortestPathOptions() {}
+ShortestPathOptions::~ShortestPathOptions() = default;
 
 void ShortestPathOptions::buildEngineInfo(VPackBuilder& result) const {
   result.openObject();
@@ -150,7 +150,7 @@ void ShortestPathOptions::toVelocyPackIndexes(VPackBuilder& builder) const {
   builder.add("base", VPackValue(VPackValueType::Array));
   for (auto const& it : _baseLookupInfos) {
     for (auto const& it2 : it.idxHandles) {
-      it2.getIndex()->toVelocyPack(builder, Index::makeFlags(Index::Serialize::Basics));
+      it2->toVelocyPack(builder, Index::makeFlags(Index::Serialize::Basics, Index::Serialize::Estimates));
     }
   }
   builder.close();
@@ -173,26 +173,24 @@ void ShortestPathOptions::addReverseLookupInfo(aql::ExecutionPlan* plan,
   injectLookupInfoInList(_reverseLookupInfos, plan, collectionName, attributeName, condition);
 }
 
-double ShortestPathOptions::weightEdge(VPackSlice edge) {
+double ShortestPathOptions::weightEdge(VPackSlice edge) const {
   TRI_ASSERT(useWeight());
   return arangodb::basics::VelocyPackHelper::getNumericValue<double>(
       edge, weightAttribute.c_str(), defaultWeight);
 }
 
-EdgeCursor* ShortestPathOptions::nextCursor(ManagedDocumentResult* mmdr, arangodb::velocypack::StringRef vid) {
+EdgeCursor* ShortestPathOptions::nextCursor(arangodb::velocypack::StringRef vid) {
   if (_isCoordinator) {
     return nextCursorCoordinator(vid);
   }
-  TRI_ASSERT(mmdr != nullptr);
-  return nextCursorLocal(mmdr, vid, _baseLookupInfos);
+  return nextCursorLocal(vid, _baseLookupInfos);
 }
 
-EdgeCursor* ShortestPathOptions::nextReverseCursor(ManagedDocumentResult* mmdr, arangodb::velocypack::StringRef vid) {
+EdgeCursor* ShortestPathOptions::nextReverseCursor(arangodb::velocypack::StringRef vid) {
   if (_isCoordinator) {
     return nextReverseCursorCoordinator(vid);
   }
-  TRI_ASSERT(mmdr != nullptr);
-  return nextCursorLocal(mmdr, vid, _reverseLookupInfos);
+  return nextCursorLocal(vid, _reverseLookupInfos);
 }
 
 EdgeCursor* ShortestPathOptions::nextCursorCoordinator(arangodb::velocypack::StringRef vid) {
@@ -205,7 +203,8 @@ EdgeCursor* ShortestPathOptions::nextReverseCursorCoordinator(arangodb::velocypa
   return cursor.release();
 }
 
-void ShortestPathOptions::fetchVerticesCoordinator(std::deque<arangodb::velocypack::StringRef> const& vertexIds) {
+void ShortestPathOptions::fetchVerticesCoordinator(
+    std::deque<arangodb::velocypack::StringRef> const& vertexIds) {
   // TRI_ASSERT(arangodb::ServerState::instance()->isCoordinator());
   if (!arangodb::ServerState::instance()->isCoordinator()) {
     return;
@@ -225,9 +224,13 @@ void ShortestPathOptions::fetchVerticesCoordinator(std::deque<arangodb::velocypa
     }
   }
   if (!fetch.empty()) {
-    transaction::BuilderLeaser leased(trx());
+    fetchVerticesFromEngines(*_trx, ch->engines(), fetch, cache, ch->datalake(),
+                             /*forShortestPath*/ true);
+  }
+}
 
-    fetchVerticesFromEngines(trx()->vocbase().name(), ch->engines(), fetch,
-                             cache, ch->datalake(), *(leased.get()));
+void ShortestPathOptions::isQueryKilledCallback() const {
+  if (query()->killed()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
   }
 }

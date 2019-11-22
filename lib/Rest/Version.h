@@ -24,7 +24,9 @@
 #ifndef ARANGODB_REST_VERSION_H
 #define ARANGODB_REST_VERSION_H 1
 
-#include "Basics/Common.h"
+#include <map>
+
+#include "Basics/operating-system.h"
 
 #include "Basics/build.h"
 
@@ -119,10 +121,8 @@ class Version {
   /// @brief get ICU version
   static std::string getICUVersion();
 
-#ifdef USE_IRESEARCH
   /// @brief get IResearch version
   static std::string getIResearchVersion();
-#endif
 
   /// @brief get compiler
   static std::string getCompiler();

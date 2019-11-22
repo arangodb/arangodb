@@ -46,15 +46,16 @@ class RocksDBMethods;
 
 class RocksDBIndex : public Index {
  protected:
+  
   // This is the number of distinct elements the index estimator can reliably
   // store
   // This correlates directly with the memory of the estimator:
   // memory == ESTIMATOR_SIZE * 6 bytes
-  static uint64_t const ESTIMATOR_SIZE;
+  static constexpr uint64_t ESTIMATOR_SIZE = 4096;
 
  public:
   ~RocksDBIndex();
-  void toVelocyPackFigures(VPackBuilder& builder) const override;
+  void toVelocyPackFigures(velocypack::Builder& builder) const override;
 
   /// @brief return a VelocyPack representation of the index
   void toVelocyPack(velocypack::Builder& builder,
@@ -78,12 +79,6 @@ class RocksDBIndex : public Index {
 
   /// compact the index, should reduce read amplification
   void compact();
-
-  /// @brief provides a size hint for the index
-  Result sizeHint(transaction::Methods& /*trx*/, size_t /*size*/
-                  ) override final {
-    return Result();  // nothing to do here
-  }
 
   void setCacheEnabled(bool enable) {
     // allow disabling and enabling of caches for the primary index
@@ -116,7 +111,7 @@ class RocksDBIndex : public Index {
 
   RocksDBKeyBounds getBounds() const {
     return RocksDBIndex::getBounds(type(), _objectId, _unique);
-  };
+  }
 
   static RocksDBKeyBounds getBounds(Index::IndexType type, uint64_t objectId, bool unique);
 
@@ -124,11 +119,11 @@ class RocksDBIndex : public Index {
   virtual RocksDBCuckooIndexEstimator<uint64_t>* estimator() { return nullptr; }
   virtual void setEstimator(std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>>) {}
   virtual void recalculateEstimates() {}
-  
-  virtual bool isPersistent() const override { return true; }
+
+  bool isPersistent() const override final { return true; }
 
  protected:
-  RocksDBIndex(TRI_idx_iid_t id, LogicalCollection& collection,
+  RocksDBIndex(TRI_idx_iid_t id, LogicalCollection& collection, std::string const& name,
                std::vector<std::vector<arangodb::basics::AttributeName>> const& attributes,
                bool unique, bool sparse, rocksdb::ColumnFamilyHandle* cf,
                uint64_t objectId, bool useCache);
@@ -137,18 +132,17 @@ class RocksDBIndex : public Index {
                arangodb::velocypack::Slice const& info,
                rocksdb::ColumnFamilyHandle* cf, bool useCache);
 
-  inline bool useCache() const { return (_cacheEnabled && _cachePresent); }
+  inline bool useCache() const { return (_cacheEnabled && _cache); }
   void blackListKey(char const* data, std::size_t len);
-  void blackListKey(arangodb::velocypack::StringRef& ref) { blackListKey(ref.data(), ref.size()); };
+  void blackListKey(arangodb::velocypack::StringRef& ref) {
+    blackListKey(ref.data(), ref.size());
+  };
 
  protected:
   uint64_t _objectId;
   rocksdb::ColumnFamilyHandle* _cf;
 
   mutable std::shared_ptr<cache::Cache> _cache;
-  // we use this boolean for testing whether _cache is set.
-  // it's quicker than accessing the shared_ptr each time
-  bool _cachePresent;
   bool _cacheEnabled;
 };
 }  // namespace arangodb

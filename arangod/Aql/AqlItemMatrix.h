@@ -23,59 +23,58 @@
 #ifndef ARANGOD_AQL_AQL_ITEM_MATRIX_H
 #define ARANGOD_AQL_AQL_ITEM_MATRIX_H 1
 
-#include <lib/Logger/Logger.h>
-#include "Aql/AqlItemBlock.h"
-#include "Aql/AqlItemBlockShell.h"
-#include "Aql/ExecutionBlock.h"
-#include "Aql/InputAqlItemRow.h"
-#include "Aql/types.h"
-#include "Basics/Common.h"
+#include "Aql/ShadowAqlItemRow.h"
 
-#include <math.h>
+#include <cstdint>
+#include <utility>
+#include <vector>
 
 namespace arangodb {
 namespace aql {
+
+class InputAqlItemRow;
+class SharedAqlItemBlockPtr;
 
 /**
  * @brief A Matrix of AqlItemRows
  */
 class AqlItemMatrix {
-  friend class AllRowsFetcher;
-
  public:
-  explicit AqlItemMatrix(size_t nrRegs) : _size(0), _nrRegs(nrRegs) {}
+  // uint32_t in this vector is a reasonable trade-off between performance and amount of data.
+  // With this values we can sort up to ~ 4.000.000.000 times 1000 elements in memory.
+  // Anything beyond that has a questionable runtime on nowadays hardware anyways.
+  using RowIndex = std::pair<uint32_t, uint32_t>;
+
+  explicit AqlItemMatrix(RegisterId nrRegs);
   ~AqlItemMatrix() = default;
 
   /**
    * @brief Add this block of rows into the Matrix
    *
-   * @param blockShell Block of rows to append in the matrix
+   * @param blockPtr Block of rows to append in the matrix
    */
-  void addBlock(std::shared_ptr<AqlItemBlockShell> blockShell) {
-    TRI_ASSERT(blockShell->block().getNrRegs() == getNrRegisters());
-    size_t blockSize = blockShell->block().size();
-    _blocks.emplace_back(_size, std::move(blockShell));
-    _size += blockSize;
-  }
+  void addBlock(SharedAqlItemBlockPtr blockPtr);
 
   /**
    * @brief Get the number of rows stored in this Matrix
    *
    * @return Number of Rows
    */
-  size_t size() const { return _size; }
+  uint64_t size() const noexcept;
 
   /**
    * @brief Number of registers, i.e. width of the matrix.
    */
-  size_t getNrRegisters() const { return _nrRegs; };
+  RegisterId getNrRegisters() const noexcept;
 
   /**
    * @brief Test if this matrix is empty
    *
    * @return True if empty
    */
-  bool empty() const { return _blocks.empty(); }
+  bool empty() const noexcept;
+
+  std::vector<RowIndex> produceRowIndexes() const;
 
   /**
    * @brief Get the AqlItemRow at the given index
@@ -84,92 +83,26 @@ class AqlItemMatrix {
    *
    * @return A single row in the Matrix
    */
-  InputAqlItemRow getRow(size_t index) const {
-    TRI_ASSERT(index < _size);
-    TRI_ASSERT(!empty());
+  InputAqlItemRow getRow(RowIndex index) const noexcept;
 
-    // Most blocks will have DefaultBatchSize
-    size_t mostLikelyIndex =
-        (std::min)(static_cast<size_t>(floor(index / ExecutionBlock::DefaultBatchSize())),
-                   _blocks.size() - 1);
+  size_t numberOfBlocks() const noexcept;
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    size_t iterations = 0;
-#endif
-    size_t minIndex = 0;
-    size_t maxIndex = _blocks.size() - 1;
+  SharedAqlItemBlockPtr getBlock(size_t index) const noexcept;
 
-    // Under the assumption that all but the last block will have the
-    // DefaultBatchSize size, this algorithm will hit the correct block in the
-    // first attempt.
-    // As a fallback, it does a binary search on the blocks.
-    while (true) {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      ++iterations;
-      TRI_ASSERT(iterations < _blocks.size() * 2);
-#endif
-      TRI_ASSERT(minIndex <= maxIndex);
-      TRI_ASSERT(maxIndex < _blocks.size());
-      TRI_ASSERT(mostLikelyIndex <= maxIndex);
-      TRI_ASSERT(mostLikelyIndex >= minIndex);
-      auto& candidate = _blocks[mostLikelyIndex];
-      TRI_ASSERT(candidate.second != nullptr);
-      if (index < candidate.first) {
-        // This block starts after the requested index, go left.
-        // Assert that there is a left to go to. This could only go wrong if the
-        // candidate.first values are wrong.
-        TRI_ASSERT(mostLikelyIndex > 0);
-        // To assure yourself of the correctness, remember that / rounds down and
-        // 0 <= mostLikelyIndex / 2 < mostLikelyIndex
-        // Narrow down upper Border
-        maxIndex = mostLikelyIndex;
+  bool stoppedOnShadowRow() const noexcept;
 
-        mostLikelyIndex = minIndex + (mostLikelyIndex - minIndex) / 2;
-      } else if (index >= candidate.first + candidate.second->block().size()) {
-        minIndex = mostLikelyIndex;
-        // This block ends before the requested index, go right.
-        // Assert that there is a right to go to. This could only go wrong if
-        // the candidate.first values are wrong.
-        TRI_ASSERT(mostLikelyIndex < _blocks.size() - 1);
-        // To assure yourself of the correctness, remember that / rounds down,
-        // numBlocksRightFromHere >= 1 (see assert above) and
-        //   0
-        //   <= numBlocksRightFromHere / 2
-        //   < numBlocksRightFromHere
-        // . Therefore
-        //   mostLikelyIndex
-        //   < mostLikelyIndex + 1 + numBlocksRightFromHere / 2
-        //   < _blocks.size()
-        // .
-        //
-        // Please do not bother to shorten the following expression, the
-        // compilers are perfectly capable of doing that, and here the
-        // correctness is easier to see.
-        size_t const numBlocksRightFromHere = maxIndex - mostLikelyIndex;
-        mostLikelyIndex += 1 + numBlocksRightFromHere / 2;
-      } else {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-        LOG_TOPIC_IF(WARN, Logger::AQL, iterations > 1)
-            << "Suboptimal AqlItemMatrix index lookup: Did " << iterations
-            << " iterations.";
-#endif
-        // Got it
-        return InputAqlItemRow{candidate.second, index - candidate.first};
-      }
-    }
+  ShadowAqlItemRow popShadowRow();
 
-    // We have asked for a row outside of this Vector
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "Internal Aql Logic Error: An executor "
-                                   "block is reading out of bounds.");
-  }
+  ShadowAqlItemRow peekShadowRow() const;
 
  private:
-  std::vector<std::pair<size_t, std::shared_ptr<AqlItemBlockShell>>> _blocks;
+  std::vector<SharedAqlItemBlockPtr> _blocks;
 
-  size_t _size;
+  uint64_t _size;
 
-  size_t _nrRegs;
+  RegisterId _nrRegs;
+
+  size_t _lastShadowRow;
 };
 
 }  // namespace aql

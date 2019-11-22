@@ -32,6 +32,10 @@
 #include "s2/util/coding/varint.h"
 #include "s2/util/endian/endian.h"
 
+#ifdef _WIN32
+#define memccpy _memccpy
+#endif
+
 /* Class for encoding data into a memory buffer */
 class Decoder;
 class Encoder {

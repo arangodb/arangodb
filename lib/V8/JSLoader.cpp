@@ -21,10 +21,21 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <map>
+#include <utility>
+
+#include <v8.h>
+
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include "JSLoader.h"
 
 #include "Basics/StringUtils.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
+#include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
 
@@ -38,52 +49,12 @@ using namespace arangodb::basics;
 JSLoader::JSLoader() {}
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief executes a named script in the global context
-////////////////////////////////////////////////////////////////////////////////
-
-v8::Handle<v8::Value> JSLoader::executeGlobalScript(v8::Isolate* isolate,
-                                                    v8::Handle<v8::Context> context,
-                                                    std::string const& name) {
-  v8::EscapableHandleScope scope(isolate);
-  v8::TryCatch tryCatch(isolate);
-  v8::Handle<v8::Value> result;
-
-  findScript(name);
-
-  std::map<std::string, std::string>::iterator i = _scripts.find(name);
-
-  if (i == _scripts.end()) {
-    // correct the path/name
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << "unknown script '" << StringUtils::correctPath(name) << "'";
-    return v8::Undefined(isolate);
-  }
-
-  result = TRI_ExecuteJavaScriptString(isolate, context,
-                                       TRI_V8_STD_STRING(isolate, i->second),
-                                       TRI_V8_STD_STRING(isolate, name), false);
-
-  if (tryCatch.HasCaught()) {
-    if (tryCatch.CanContinue()) {
-      TRI_LogV8Exception(isolate, &tryCatch);  // TODO: could this be the place
-                                               // where we lose the information
-                                               // about parse errors of scripts?
-      return v8::Undefined(isolate);
-    } else {
-      TRI_GET_GLOBALS();
-
-      v8g->_canceled = true;
-    }
-  }
-  return scope.Escape<v8::Value>(result);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief loads a named script
 ////////////////////////////////////////////////////////////////////////////////
 
 JSLoader::eState JSLoader::loadScript(v8::Isolate* isolate, v8::Handle<v8::Context>& context,
-                                      std::string const& name, VPackBuilder* builder) {
+                                      std::string const& name,
+                                      velocypack::Builder* builder) {
   v8::HandleScope scope(isolate);
   v8::TryCatch tryCatch(isolate);
 
@@ -93,7 +64,7 @@ JSLoader::eState JSLoader::loadScript(v8::Isolate* isolate, v8::Handle<v8::Conte
 
   if (i == _scripts.end()) {
     // correct the path/name
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("3f81d", ERR, arangodb::Logger::FIXME)
         << "unknown script '" << StringUtils::correctPath(name) << "'";
     return eFailLoad;
   }

@@ -24,14 +24,15 @@
 #ifndef ARANGOD_AQL_EXECUTION_PLAN_H
 #define ARANGOD_AQL_EXECUTION_PLAN_H 1
 
+#include <array>
+
 #include "Aql/CollectOptions.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ModificationOptions.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
-#include "Basics/SmallVector.h"
-
-#include <array>
+#include "Containers/HashSet.h"
+#include "Containers/SmallVector.h"
 
 namespace arangodb {
 namespace velocypack {
@@ -44,6 +45,7 @@ struct AstNode;
 class CalculationNode;
 class CollectNode;
 class ExecutionNode;
+struct OptimizerRule;
 class Query;
 
 class ExecutionPlan {
@@ -84,15 +86,20 @@ class ExecutionPlan {
   /// @brief check if the plan is empty
   inline bool empty() const { return (_root == nullptr); }
 
-  bool isResponsibleForInitialize() const {
-    return _isResponsibleForInitialize;
-  }
-
   /// @brief note that an optimizer rule was applied
-  inline void addAppliedRule(int level) { _appliedRules.emplace_back(level); }
+  void addAppliedRule(int level); 
+  
+  /// @brief check if a specific optimizer rule was applied
+  bool hasAppliedRule(int level) const;
+  
+  /// @brief check if a specific rule is disabled
+  bool isDisabledRule(int rule) const;
+  
+  /// @brief enable a specific rule
+  void enableRule(int rule);
 
-  /// @brief get a list of all applied rules
-  std::vector<std::string> getAppliedRules() const;
+  /// @brief disable a specific rule
+  void disableRule(int rule);
 
   /// @brief return the next value for a node id
   inline size_t nextId() { return ++_nextId; }
@@ -129,13 +136,17 @@ class ExecutionPlan {
     return _root->getCost();
   }
 
+  /// @brief this can be called by the optimizer to tell that the
+  /// plan is temporarily in an invalid state
+  inline void setValidity(bool value) { _planValid = value; }
+
   /// @brief returns true if a plan is so simple that optimizations would
   /// probably cost more than simply executing the plan
   bool isDeadSimple() const;
 
 /// @brief show an overview over the plan
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  void show();
+  void show() const;
 #endif
 
   /// @brief note this node for being excluded from producing scatter/gather
@@ -159,17 +170,18 @@ class ExecutionPlan {
   }
 
   /// @brief find nodes of a certain type
-  void findNodesOfType(SmallVector<ExecutionNode*>& result,
+  void findNodesOfType(::arangodb::containers::SmallVector<ExecutionNode*>& result,
                        ExecutionNode::NodeType, bool enterSubqueries);
 
   /// @brief find nodes of a certain types
-  void findNodesOfType(SmallVector<ExecutionNode*>& result,
+  void findNodesOfType(::arangodb::containers::SmallVector<ExecutionNode*>& result,
                        std::vector<ExecutionNode::NodeType> const&, bool enterSubqueries);
 
   /// @brief find all end nodes in a plan
-  void findEndNodes(SmallVector<ExecutionNode*>& result, bool enterSubqueries) const;
+  void findEndNodes(::arangodb::containers::SmallVector<ExecutionNode*>& result,
+                    bool enterSubqueries) const;
 
-  /// @brief determine and set _varsUsedLater and _valid and _varSetBy
+  /// @brief determine and set _varsUsedLater and _varSetBy
   void findVarUsage();
 
   /// @brief determine if the above are already set
@@ -187,7 +199,7 @@ class ExecutionPlan {
   /// @brief unlinkNodes, note that this does not delete the removed
   /// nodes and that one cannot remove the root node of the plan.
   void unlinkNodes(std::unordered_set<ExecutionNode*> const& toUnlink);
-  void unlinkNodes(arangodb::HashSet<ExecutionNode*> const& toUnlink);
+  void unlinkNodes(::arangodb::containers::HashSet<ExecutionNode*> const& toUnlink);
 
   /// @brief unlinkNode, note that this does not delete the removed
   /// node and that one cannot remove the root node of the plan.
@@ -199,6 +211,9 @@ class ExecutionPlan {
   /// @brief add a node to the plan, will delete node if addition
   /// fails and throw an exception
   ExecutionNode* registerNode(ExecutionNode*);
+
+  template<typename Node, typename... Args>
+  Node* createNode(Args&&...);
 
   /// @brief add a subquery to the plan, will call registerNode internally
   SubqueryNode* registerSubquery(SubqueryNode*);
@@ -241,9 +256,11 @@ class ExecutionPlan {
   /// @brief increase the node counter for the type
   void increaseCounter(ExecutionNode::NodeType type) noexcept;
 
+  bool fullCount() const noexcept;
+
  private:
   /// @brief creates a calculation node
-  ExecutionNode* createCalculation(Variable*, Variable const*, AstNode const*, ExecutionNode*);
+  ExecutionNode* createCalculation(Variable*, AstNode const*, ExecutionNode*);
 
   /// @brief get the subquery node from an expression
   /// this will return a nullptr if the expression does not refer to a subquery
@@ -281,6 +298,9 @@ class ExecutionPlan {
 
   /// @brief create an execution plan element from an AST SHORTEST PATH node
   ExecutionNode* fromNodeShortestPath(ExecutionNode*, AstNode const*);
+
+  /// @brief create an execution plan element from an AST K-SHORTEST PATHS node
+  ExecutionNode* fromNodeKShortestPaths(ExecutionNode*, AstNode const*);
 
   /// @brief create an execution plan element from an AST FILTER node
   ExecutionNode* fromNodeFilter(ExecutionNode*, AstNode const*);
@@ -337,11 +357,17 @@ class ExecutionPlan {
 
   /// @brief which optimizer rules were applied for a plan
   std::vector<int> _appliedRules;
+  
+  /// @brief which optimizer rules were disabled for a plan
+  ::arangodb::containers::HashSet<int> _disabledRules;
+
+  /// @brief if the plan is supposed to be in a valid state
+  /// this will always be true, except while a plan is handed to
+  /// the optimizer while applying optimizer rules
+  bool _planValid;
 
   /// @brief flag to indicate whether the variable usage is computed
   bool _varUsageComputed;
-
-  bool _isResponsibleForInitialize;
 
   /// @brief current nesting level while building the plan
   int _nestingLevel;
@@ -365,7 +391,14 @@ class ExecutionPlan {
   /// @brief number of nodes used in the plan, by type
   std::array<uint32_t, ExecutionNode::MAX_NODE_TYPE_VALUE> _typeCounts;
 };
+
 }  // namespace aql
 }  // namespace arangodb
+
+template <typename Node, typename... Args>
+Node* ::arangodb::aql::ExecutionPlan::createNode(Args&&... args) {
+  auto node = std::make_unique<Node>(std::forward<Args>(args)...);
+  return ExecutionNode::castTo<Node*>(registerNode(std::move(node)));
+}
 
 #endif

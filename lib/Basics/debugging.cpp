@@ -21,14 +21,33 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/Common.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <set>
+#include <string>
+#include <type_traits>
+#include <utility>
+
+#include "debugging.h"
+
 #include "Basics/ReadLocker.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/memory.h"
 #include "Logger/LogAppender.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
+
+#ifdef TRI_HAVE_SIGNAL_H
+#include <signal.h>
+#endif
 
 #include <velocypack/StringRef.h>
+
+#ifdef TRI_HAVE_UNISTD_H
+#include <unistd.h>
+#endif
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 #if ARANGODB_ENABLE_BACKTRACE
@@ -77,19 +96,23 @@ std::set<std::string, ::Comparer> failurePoints(comparer);
 
 /// @brief cause a segmentation violation
 /// this is used for crash and recovery tests
-void TRI_SegfaultDebugging(char const* message) {
-  LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "" << message << ": summon Baal!";
+void TRI_TerminateDebugging(char const* message) {
+  LOG_TOPIC("bde58", WARN, arangodb::Logger::FIXME) << "" << message << ": summon Baal!";
   // make sure the latest log messages are flushed
   TRI_FlushDebugging();
 
   // and now crash
-#ifndef __APPLE__
-  // on MacOS, the following statement makes the server hang but not crash
-  *((char*)-1) = '!';
+#ifdef _WIN32
+  auto hSelf = GetCurrentProcess();
+  TerminateProcess(hSelf, -999);
+  // TerminateProcess is async, alright wait here  for selfdestruct (we will never exit wait)
+  WaitForSingleObject(hSelf, INFINITE);
+#else
+  kill(getpid(), SIGKILL);  //to kill the complete process tree.
 #endif
 
   // ensure the process is terminated
-  abort();
+  TRI_ASSERT(false);
 }
 
 /// @brief check whether we should fail at a specific failure point
@@ -104,7 +127,7 @@ void TRI_AddFailurePointDebugging(char const* value) {
   WRITE_LOCKER(writeLocker, ::failurePointsLock);
 
   if (::failurePoints.emplace(value).second) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+    LOG_TOPIC("d8a5f", WARN, arangodb::Logger::FIXME)
         << "activating intentional failure point '" << value
         << "'. the server will misbehave!";
   }
@@ -260,7 +283,7 @@ void TRI_LogBacktrace() {
   std::string bt;
   TRI_GetBacktrace(bt);
   if (!bt.empty()) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << bt;
+    LOG_TOPIC("3945a", WARN, arangodb::Logger::FIXME) << bt;
   }
 #endif
 #endif
@@ -274,8 +297,13 @@ void TRI_FlushDebugging() {
 
 /// @brief flushes the logger and shuts it down
 void TRI_FlushDebugging(char const* file, int line, char const* message) {
-  LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+  LOG_TOPIC("36a91", FATAL, arangodb::Logger::FIXME)
       << "assertion failed in " << file << ":" << line << ": " << message;
   Logger::flush();
   Logger::shutdown();
 }
+
+template<> char const conpar<true>::open = '{';
+template<> char const conpar<true>::close = '}';
+template<> char const conpar<false>::open = '[';
+template<> char const conpar<false>::close = ']';

@@ -79,7 +79,7 @@ class MMFilesWalSlots {
 
  public:
   /// @brief create the slots
-  MMFilesWalSlots(MMFilesLogfileManager*, size_t, MMFilesWalSlot::TickType);
+  MMFilesWalSlots(MMFilesLogfileManager&, size_t, MMFilesWalSlot::TickType);
 
   /// @brief destroy the slots
   ~MMFilesWalSlots();
@@ -154,7 +154,7 @@ class MMFilesWalSlots {
 
  private:
   /// @brief the logfile manager
-  MMFilesLogfileManager* _logfileManager;
+  MMFilesLogfileManager& _logfileManager;
 
   /// @brief condition variable for slots
   basics::ConditionVariable _condition;

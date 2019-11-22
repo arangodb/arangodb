@@ -22,10 +22,18 @@
 /// @author Achim Brandt
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Mutex.h"
-#include "Logger/Logger.h"
-
+#include <errno.h>
+#include <cstring>
 #include <limits>
+
+#include "Mutex.h"
+
+#include "Basics/Thread.h"
+#include "Basics/application-exit.h"
+#include "Basics/debugging.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 
 using namespace arangodb;
 
@@ -35,7 +43,7 @@ using namespace arangodb;
 
 #if defined(TRI_HAVE_POSIX_THREADS)
 
-#ifdef ARANGO_ENABLE_DEADLOCK_DETECTION
+#ifdef ARANGODB_ENABLE_DEADLOCK_DETECTION
 // initialize _holder to "maximum" thread id. this will work if the type of
 // _holder is numeric, but will not work if its type is more complex.
 Mutex::Mutex()
@@ -54,7 +62,7 @@ Mutex::~Mutex() {
 }
 
 void Mutex::lock() {
-#ifdef ARANGO_ENABLE_DEADLOCK_DETECTION
+#ifdef ARANGODB_ENABLE_DEADLOCK_DETECTION
   // we must not hold the lock ourselves here
   TRI_ASSERT(_holder != Thread::currentThreadId());
 #endif
@@ -63,21 +71,21 @@ void Mutex::lock() {
 
   if (rc != 0) {
     if (rc == EDEADLK) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "mutex deadlock detected";
+      LOG_TOPIC("141bb", ERR, arangodb::Logger::FIXME) << "mutex deadlock detected";
     }
 
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC("4732f", FATAL, arangodb::Logger::FIXME)
         << "could not lock the mutex object: " << strerror(rc);
     FATAL_ERROR_ABORT();
   }
 
-#ifdef ARANGO_ENABLE_DEADLOCK_DETECTION
+#ifdef ARANGODB_ENABLE_DEADLOCK_DETECTION
   _holder = Thread::currentThreadId();
 #endif
 }
 
 bool Mutex::tryLock() {
-#ifdef ARANGO_ENABLE_DEADLOCK_DETECTION
+#ifdef ARANGODB_ENABLE_DEADLOCK_DETECTION
   // we must not hold the lock ourselves here
   TRI_ASSERT(_holder != Thread::currentThreadId());
 #endif
@@ -88,15 +96,15 @@ bool Mutex::tryLock() {
     if (rc == EBUSY) {  // lock is already being held
       return false;
     } else if (rc == EDEADLK) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "mutex deadlock detected";
+      LOG_TOPIC("72989", ERR, arangodb::Logger::FIXME) << "mutex deadlock detected";
     }
 
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC("1b2a6", FATAL, arangodb::Logger::FIXME)
         << "could not lock the mutex object: " << strerror(rc);
     FATAL_ERROR_ABORT();
   }
 
-#ifdef ARANGO_ENABLE_DEADLOCK_DETECTION
+#ifdef ARANGODB_ENABLE_DEADLOCK_DETECTION
   _holder = Thread::currentThreadId();
 #endif
 
@@ -104,20 +112,20 @@ bool Mutex::tryLock() {
 }
 
 void Mutex::unlock() {
-#ifdef ARANGO_ENABLE_DEADLOCK_DETECTION
+#ifdef ARANGODB_ENABLE_DEADLOCK_DETECTION
   TRI_ASSERT(_holder == Thread::currentThreadId());
   _holder = 0;
 #endif
   int rc = pthread_mutex_unlock(&_mutex);
 
   if (rc != 0) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC("a4985", FATAL, arangodb::Logger::FIXME)
         << "could not release the mutex: " << strerror(rc);
     FATAL_ERROR_ABORT();
   }
 }
 
-#ifdef ARANGO_ENABLE_DEADLOCK_DETECTION
+#ifdef ARANGODB_ENABLE_DEADLOCK_DETECTION
 void Mutex::assertLockedByCurrentThread() {
   TRI_ASSERT(_holder == Thread::currentThreadId());
 }
@@ -142,7 +150,7 @@ bool Mutex::tryLock() { return TryAcquireSRWLockExclusive(&_mutex) != 0; }
 
 void Mutex::unlock() { ReleaseSRWLockExclusive(&_mutex); }
 
-#ifdef ARANGO_ENABLE_DEADLOCK_DETECTION
+#ifdef ARANGODB_ENABLE_DEADLOCK_DETECTION
 void Mutex::assertLockedByCurrentThread() {}
 void Mutex::assertNotLockedByCurrentThread() {}
 #endif

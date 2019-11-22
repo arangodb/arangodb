@@ -24,12 +24,12 @@
 #ifndef ARANGOD_MMFILES_HASH_INDEX_H
 #define ARANGOD_MMFILES_HASH_INDEX_H 1
 
-#include "Basics/AssocMulti.h"
-#include "Basics/AssocUnique.h"
 #include "Basics/Common.h"
-#include "Basics/SmallVector.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/fasthash.h"
+#include "Containers/AssocMulti.h"
+#include "Containers/AssocUnique.h"
+#include "Containers/SmallVector.h"
 #include "Indexes/IndexIterator.h"
 #include "MMFiles/MMFilesIndexElement.h"
 #include "MMFiles/MMFilesIndexLookupContext.h"
@@ -60,14 +60,14 @@ struct MMFilesHashIndexHelper {
   }
 
   static inline uint64_t HashElement(MMFilesHashIndexElement const* element, bool byKey) {
-    uint64_t hash = element->hash();
+    uint64_t hashval = element->hash();
 
     if (byKey) {
-      return hash;
+      return hashval;
     }
 
     uint64_t documentId = element->localDocumentIdValue();
-    return fasthash64_uint64(documentId, hash);
+    return fasthash64_uint64(documentId, hashval);
   }
 
   /// @brief determines if a key corresponds to an element
@@ -179,8 +179,10 @@ class MMFilesHashIndexLookupBuilder {
   bool _isEmpty;
   size_t _coveredFields;
 
-  SmallVector<arangodb::aql::AstNode const*> _mappingFieldCondition;
-  SmallVector<arangodb::aql::AstNode const*>::allocator_type::arena_type _mappingFieldConditionArena;
+  using MappingCondition =
+      ::arangodb::containers::SmallVector<arangodb::aql::AstNode const*>;
+  MappingCondition _mappingFieldCondition;
+  MappingCondition::allocator_type::arena_type _mappingFieldConditionArena;
 
   std::unordered_map<size_t, std::pair<size_t, std::vector<arangodb::velocypack::Slice>>> _inPosition;
   transaction::BuilderLeaser _inStorage;
@@ -268,20 +270,18 @@ class MMFilesHashIndex final : public MMFilesPathBasedIndex {
 
   Result sizeHint(transaction::Methods& trx, size_t size) override;
 
-  bool hasBatchInsert() const override { return true; }
+  Index::FilterCosts supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
+                                             arangodb::aql::AstNode const* node,
+                                             arangodb::aql::Variable const* reference, 
+                                             size_t itemsInIndex) const override;
 
-  bool supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
-                               arangodb::aql::AstNode const*,
-                               arangodb::aql::Variable const*, size_t, size_t&,
-                               double&) const override;
+  std::unique_ptr<IndexIterator> iteratorForCondition(transaction::Methods* trx, 
+                                                      arangodb::aql::AstNode const* node,
+                                                      arangodb::aql::Variable const* reference,
+                                                      IndexIteratorOptions const& opts) override;
 
-  IndexIterator* iteratorForCondition(transaction::Methods*, ManagedDocumentResult*,
-                                      arangodb::aql::AstNode const*,
-                                      arangodb::aql::Variable const*,
-                                      IndexIteratorOptions const&) override;
-
-  arangodb::aql::AstNode* specializeCondition(arangodb::aql::AstNode*,
-                                              arangodb::aql::Variable const*) const override;
+  arangodb::aql::AstNode* specializeCondition(arangodb::aql::AstNode* node,
+                                              arangodb::aql::Variable const* reference) const override;
 
  private:
   /// @brief locates entries in the hash index given a velocypack slice
@@ -306,31 +306,28 @@ class MMFilesHashIndex final : public MMFilesPathBasedIndex {
 
   int removeMultiElement(transaction::Methods*, MMFilesHashIndexElement*, OperationMode mode);
 
-  bool accessFitsIndex(arangodb::aql::AstNode const* access,
-                       arangodb::aql::AstNode const* other,
-                       arangodb::aql::Variable const* reference,
-                       std::unordered_set<size_t>& found) const;
-
-  /// @brief given an element generates a hash integer
  private:
   /// @brief the actual hash index (unique type)
-  typedef arangodb::basics::AssocUnique<arangodb::velocypack::Slice, MMFilesHashIndexElement*, MMFilesUniqueHashIndexHelper> TRI_HashArray_t;
+  using ImplTypeUnique =
+      arangodb::containers::AssocUnique<arangodb::velocypack::Slice, MMFilesHashIndexElement*, MMFilesUniqueHashIndexHelper>;
 
   struct UniqueArray {
     UniqueArray() = delete;
-    UniqueArray(size_t numPaths, std::unique_ptr<TRI_HashArray_t>);
-    std::unique_ptr<TRI_HashArray_t> _hashArray;  // the hash array itself, unique values
+    UniqueArray(size_t numPaths, std::unique_ptr<ImplTypeUnique>);
+    std::unique_ptr<ImplTypeUnique> _hashArray;  // the hash array itself, unique values
     size_t _numPaths;
   };
 
   /// @brief the actual hash index (multi type)
-  typedef arangodb::basics::AssocMulti<arangodb::velocypack::Slice, MMFilesHashIndexElement*, uint32_t, false, MMFilesMultiHashIndexHelper> TRI_HashArrayMulti_t;
+  using ImplTypeMulti =
+      ::arangodb::containers::AssocMulti<arangodb::velocypack::Slice, MMFilesHashIndexElement*,
+                                         uint32_t, false, MMFilesMultiHashIndexHelper>;
 
   struct MultiArray {
     MultiArray() = delete;
-    MultiArray(size_t numPaths, std::unique_ptr<TRI_HashArrayMulti_t>);
+    MultiArray(size_t numPaths, std::unique_ptr<ImplTypeMulti>);
 
-    std::unique_ptr<TRI_HashArrayMulti_t> _hashArray;  // the hash array itself, non-unique values
+    std::unique_ptr<ImplTypeMulti> _hashArray;  // the hash array itself, non-unique values
     size_t _numPaths;
   };
 

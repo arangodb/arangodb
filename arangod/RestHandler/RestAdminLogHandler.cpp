@@ -28,25 +28,34 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include "Basics/StringUtils.h"
+#include "GeneralServer/ServerSecurityFeature.h"
 #include "Logger/LogBuffer.h"
 #include "Logger/Logger.h"
-#include "Rest/HttpRequest.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestAdminLogHandler::RestAdminLogHandler(GeneralRequest* request, GeneralResponse* response)
-    : RestBaseHandler(request, response) {}
+RestAdminLogHandler::RestAdminLogHandler(application_features::ApplicationServer& server,
+                                         GeneralRequest* request, GeneralResponse* response)
+    : RestBaseHandler(server, request, response) {}
 
 RestStatus RestAdminLogHandler::execute() {
-  size_t const len = _request->suffixes().size();
+  auto& server = application_features::ApplicationServer::server();
+  ServerSecurityFeature& security = server.getFeature<ServerSecurityFeature>();
 
+  if (!security.canAccessHardenedApi()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
+    return RestStatus::DONE;
+  }
+
+  size_t const len = _request->suffixes().size();
   if (len == 0) {
     reportLogs();
   } else {
     setLogLevel();
   }
+
   return RestStatus::DONE;
 }
 
@@ -137,7 +146,7 @@ void RestAdminLogHandler::reportLogs() {
   std::vector<LogBuffer> clean;
 
   if (search) {
-    for (auto entry : entries) {
+    for (auto const& entry : entries) {
       std::string text = StringUtils::tolower(entry._message);
 
       if (text.find(searchString) == std::string::npos) {
@@ -308,7 +317,7 @@ void RestAdminLogHandler::setLogLevel() {
     if (slice.isString()) {
       Logger::setLogLevel(slice.copyString());
     } else if (slice.isObject()) {
-      for (auto const& it : VPackObjectIterator(slice)) {
+      for (auto it : VPackObjectIterator(slice)) {
         if (it.value.isString()) {
           std::string const l = it.key.copyString() + "=" + it.value.copyString();
           Logger::setLogLevel(l);

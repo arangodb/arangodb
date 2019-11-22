@@ -24,6 +24,8 @@
 #ifndef ARANGOD_AQL_QUERY_OPTIONS_H
 #define ARANGOD_AQL_QUERY_OPTIONS_H 1
 
+#include <unordered_set>
+
 #include "Basics/Common.h"
 #include "Transaction/Options.h"
 
@@ -59,9 +61,10 @@ struct QueryOptions {
   size_t memoryLimit;
   size_t maxNumberOfPlans;
   size_t maxWarningCount;
-  int64_t literalSizeThreshold;
+  double timeout; // query has to execute within the given time or will be killed
   double satelliteSyncWait;
-  double ttl;
+  double ttl; // time until query cursor expires - avoids coursors to
+              // stick around for ever if client does not collect the data
   /// Level 0 nothing, Level 1 profile, Level 2,3 log tracing info
   ProfileLevel profile;
   bool allPlans;

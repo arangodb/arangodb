@@ -28,7 +28,8 @@
 namespace arangodb {
 class RestPregelHandler : public arangodb::RestVocbaseBaseHandler {
  public:
-  explicit RestPregelHandler(GeneralRequest*, GeneralResponse*);
+  explicit RestPregelHandler(application_features::ApplicationServer&,
+                             GeneralRequest*, GeneralResponse*);
 
  public:
   RestStatus execute() override;

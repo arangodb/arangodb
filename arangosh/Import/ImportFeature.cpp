@@ -25,6 +25,9 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
+#include "Basics/application-exit.h"
+#include "Basics/system-functions.h"
+#include "FeaturePhases/BasicFeaturePhaseClient.h"
 #include "Import/ImportHelper.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -68,7 +71,7 @@ ImportFeature::ImportFeature(application_features::ApplicationServer& server, in
       _latencyStats(false) {
   requiresElevatedPrivileges(false);
   setOptional(false);
-  startsAfter("BasicsPhase");
+  startsAfter<application_features::BasicFeaturePhaseClient>();
 }
 
 void ImportFeature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
@@ -188,7 +191,7 @@ void ImportFeature::validateOptions(std::shared_ptr<options::ProgramOptions> opt
       _filename = positionals[0];
     }
   } else if (1 < n) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC("0dc12", FATAL, arangodb::Logger::FIXME)
         << "expecting at most one filename, got " +
                StringUtils::join(positionals, ", ");
     FATAL_ERROR_EXIT();
@@ -201,7 +204,7 @@ void ImportFeature::validateOptions(std::shared_ptr<options::ProgramOptions> opt
     // it's not sensible to raise the batch size beyond this value
     // because the server has a built-in limit for the batch size too
     // and will reject bigger HTTP request bodies
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+    LOG_TOPIC("e6d71", WARN, arangodb::Logger::FIXME)
         << "capping --batch-size value to "
         << arangodb::import::ImportHelper::MaxBatchSize;
     _chunkSize = arangodb::import::ImportHelper::MaxBatchSize;
@@ -209,35 +212,35 @@ void ImportFeature::validateOptions(std::shared_ptr<options::ProgramOptions> opt
 
   if (_threadCount < 1) {
     // it's not sensible to use just one thread
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "capping --threads value to " << 1;
+    LOG_TOPIC("9e3f9", WARN, arangodb::Logger::FIXME) << "capping --threads value to " << 1;
     _threadCount = 1;
   }
   if (_threadCount > TRI_numberProcessors() * 2) {
     // it's not sensible to use just one thread ...
     //  and import's CPU usage is negligible, real limit is cluster cores
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+    LOG_TOPIC("aca46", WARN, arangodb::Logger::FIXME)
         << "capping --threads value to " << TRI_numberProcessors() * 2;
     _threadCount = (uint32_t)TRI_numberProcessors() * 2;
   }
 
   for (auto const& it : _translations) {
-    auto parts = StringUtils::split(it, "=");
+    auto parts = StringUtils::split(it, '=');
     if (parts.size() != 2) {
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "invalid translation '" << it << "'";
+      LOG_TOPIC("e322b", FATAL, arangodb::Logger::FIXME) << "invalid translation '" << it << "'";
       FATAL_ERROR_EXIT();
     }
     StringUtils::trimInPlace(parts[0]);
     StringUtils::trimInPlace(parts[1]);
 
     if (parts[0].empty() || parts[1].empty()) {
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "invalid translation '" << it << "'";
+      LOG_TOPIC("83ae7", FATAL, arangodb::Logger::FIXME) << "invalid translation '" << it << "'";
       FATAL_ERROR_EXIT();
     }
   }
   for (std::string& str : _removeAttributes) {
     StringUtils::trimInPlace(str);
     if (str.empty()) {
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+      LOG_TOPIC("74cfc", FATAL, arangodb::Logger::FIXME)
           << "cannot remove an empty attribute";
       FATAL_ERROR_EXIT();
     }
@@ -245,14 +248,13 @@ void ImportFeature::validateOptions(std::shared_ptr<options::ProgramOptions> opt
 }
 
 void ImportFeature::start() {
-  ClientFeature* client = application_features::ApplicationServer::getFeature<ClientFeature>(
-      "Client");
+  ClientFeature& client = server().getFeature<HttpEndpointProvider, ClientFeature>();
 
   int ret = EXIT_SUCCESS;
   *_result = ret;
 
   if (_typeImport == "auto") {
-    std::regex re = std::regex(".*?\\.([a-zA-Z]+)", std::regex::ECMAScript);
+    std::regex re = std::regex(".*?\\.([a-zA-Z]+)(.gz|)", std::regex::ECMAScript);
     std::smatch match;
     if (std::regex_match(_filename, match, re)) {
       std::string extension = StringUtils::tolower(match[1].str());
@@ -260,12 +262,12 @@ void ImportFeature::start() {
           extension == "tsv") {
         _typeImport = extension;
       } else {
-        LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+        LOG_TOPIC("cb067", FATAL, arangodb::Logger::FIXME)
             << "Unsupported file extension '" << extension << "'";
         FATAL_ERROR_EXIT();
       }
     } else {
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+      LOG_TOPIC("0ee99", WARN, arangodb::Logger::FIXME)
           << "Unable to auto-detect file type from filename '" << _filename
           << "'. using filetype 'json'";
       _typeImport = "json";
@@ -273,33 +275,31 @@ void ImportFeature::start() {
   }
 
   try {
-    _httpClient = client->createHttpClient();
+    _httpClient = client.createHttpClient();
   } catch (...) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC("8477c", FATAL, arangodb::Logger::FIXME)
         << "cannot create server connection, giving up!";
     FATAL_ERROR_EXIT();
   }
 
-  _httpClient->params().setLocationRewriter(static_cast<void*>(client),
-
-                                            &rewriteLocation);
-  _httpClient->params().setUserNamePassword("/", client->username(), client->password());
+  _httpClient->params().setLocationRewriter(static_cast<void*>(&client), &rewriteLocation);
+  _httpClient->params().setUserNamePassword("/", client.username(), client.password());
 
   // must stay here in order to establish the connection
 
   int err = TRI_ERROR_NO_ERROR;
   auto versionString = _httpClient->getServerVersion(&err);
-  auto dbName = client->databaseName();
-  bool createdDatabase = false;
+  auto const dbName = client.databaseName();
 
   auto successfulConnection = [&]() {
-    std::cout << "Connected to ArangoDB '"
-              << _httpClient->getEndpointSpecification() << "', version "
-              << versionString << ", database: '" << client->databaseName()
-              << "', username: '" << client->username() << "'" << std::endl;
+    std::cout << ClientFeature::buildConnectedMessage(_httpClient->getEndpointSpecification(),
+                                                      versionString, /*role*/ "",
+                                                      /*mode*/ "", client.databaseName(),
+                                                      client.username())
+              << std::endl;
 
     std::cout << "----------------------------------------" << std::endl;
-    std::cout << "database:               " << client->databaseName() << std::endl;
+    std::cout << "database:               " << client.databaseName() << std::endl;
     std::cout << "collection:             " << _collectionName << std::endl;
     if (!_fromCollectionPrefix.empty()) {
       std::cout << "from collection prefix: " << _fromCollectionPrefix << std::endl;
@@ -322,8 +322,8 @@ void ImportFeature::start() {
     }
     std::cout << "threads:                " << _threadCount << std::endl;
 
-    std::cout << "connect timeout:        " << client->connectionTimeout() << std::endl;
-    std::cout << "request timeout:        " << client->requestTimeout() << std::endl;
+    std::cout << "connect timeout:        " << client.connectionTimeout() << std::endl;
+    std::cout << "request timeout:        " << client.requestTimeout() << std::endl;
     std::cout << "----------------------------------------" << std::endl;
   };
 
@@ -331,41 +331,46 @@ void ImportFeature::start() {
     // database not found, but database creation requested
     std::cout << "Creating database '" << dbName << "'" << std::endl;
 
-    client->setDatabaseName("_system");
+    client.setDatabaseName("_system");
 
     int res = tryCreateDatabase(client, dbName);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC("90431", ERR, arangodb::Logger::FIXME)
           << "Could not create database '" << dbName << "'";
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << _httpClient->getErrorMessage() << "'";
+      LOG_TOPIC("891eb", FATAL, arangodb::Logger::FIXME) << _httpClient->getErrorMessage() << "'";
       FATAL_ERROR_EXIT();
     }
 
-    successfulConnection();
-
     // restore old database name
-    client->setDatabaseName(dbName);
-    versionString = _httpClient->getServerVersion(nullptr);
-    createdDatabase = true;
+    client.setDatabaseName(dbName);
+    err = TRI_ERROR_NO_ERROR;
+    versionString = _httpClient->getServerVersion(&err);
+  
+    if (err != TRI_ERROR_NO_ERROR) {
+      // disconnecting here will abort arangoimport a few lines below
+      _httpClient->disconnect();
+    }
   }
 
   if (!_httpClient->isConnected()) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-        << "Could not connect to endpoint '" << client->endpoint() << "', database: '"
-        << client->databaseName() << "', username: '" << client->username() << "'";
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << _httpClient->getErrorMessage() << "'";
+    LOG_TOPIC("541c6", ERR, arangodb::Logger::FIXME)
+        << "Could not connect to endpoint '" << client.endpoint() << "', database: '"
+        << client.databaseName() << "', username: '" << client.username() << "'";
+    LOG_TOPIC("034c9", FATAL, arangodb::Logger::FIXME) << _httpClient->getErrorMessage() << "'";
     FATAL_ERROR_EXIT();
   }
 
+  TRI_ASSERT(client.databaseName() == dbName);
+    
   // successfully connected
-  if (!createdDatabase) {
-    successfulConnection();
-  }
+  // print out connection info
+  successfulConnection();
+
   _httpClient->disconnect();  // we do not reuse this anymore
 
   SimpleHttpClientParams params = _httpClient->params();
-  arangodb::import::ImportHelper ih(client, client->endpoint(), params,
+  arangodb::import::ImportHelper ih(client, client.endpoint(), params,
                                     _chunkSize, _threadCount, _autoChunkSize);
 
   // create colletion
@@ -385,7 +390,7 @@ void ImportFeature::start() {
 
   std::unordered_map<std::string, std::string> translations;
   for (auto const& it : _translations) {
-    auto parts = StringUtils::split(it, "=");
+    auto parts = StringUtils::split(it, '=');
     TRI_ASSERT(parts.size() == 2);  // already validated before
     StringUtils::trimInPlace(parts[0]);
     StringUtils::trimInPlace(parts[1]);
@@ -400,7 +405,7 @@ void ImportFeature::start() {
   if (_quote.length() <= 1) {
     ih.setQuote(_quote);
   } else {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC("f0b3a", FATAL, arangodb::Logger::FIXME)
         << "Wrong length of quote character.";
     FATAL_ERROR_EXIT();
   }
@@ -417,33 +422,33 @@ void ImportFeature::start() {
       _separator == "\\t") {
     ih.setSeparator(_separator);
   } else {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC("59186", FATAL, arangodb::Logger::FIXME)
         << "_separator must be exactly one character.";
     FATAL_ERROR_EXIT();
   }
 
   // collection name
   if (_collectionName == "") {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "Collection name is missing.";
+    LOG_TOPIC("a64ef", FATAL, arangodb::Logger::FIXME) << "Collection name is missing.";
     FATAL_ERROR_EXIT();
   }
 
   // filename
   if (_filename == "") {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "File name is missing.";
+    LOG_TOPIC("10531", FATAL, arangodb::Logger::FIXME) << "File name is missing.";
     FATAL_ERROR_EXIT();
   }
 
   if (_filename != "-" && !FileUtils::isRegularFile(_filename)) {
     if (!FileUtils::exists(_filename)) {
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+      LOG_TOPIC("6f83e", FATAL, arangodb::Logger::FIXME)
           << "Cannot open file '" << _filename << "'. File not found.";
     } else if (FileUtils::isDirectory(_filename)) {
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+      LOG_TOPIC("70dac", FATAL, arangodb::Logger::FIXME)
           << "Specified file '" << _filename
           << "' is a directory. Please use a regular file.";
     } else {
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+      LOG_TOPIC("8699d", FATAL, arangodb::Logger::FIXME)
           << "Cannot open '" << _filename << "'. Invalid file type.";
     }
 
@@ -462,7 +467,7 @@ void ImportFeature::start() {
 
   if (_onDuplicateAction != "error" && _onDuplicateAction != "update" &&
       _onDuplicateAction != "replace" && _onDuplicateAction != "ignore") {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC("6ad02", FATAL, arangodb::Logger::FIXME)
         << "Invalid value for '--on-duplicate'. Possible values: 'error', "
            "'update', 'replace', 'ignore'.";
     FATAL_ERROR_EXIT();
@@ -496,49 +501,48 @@ void ImportFeature::start() {
     }
 
     else {
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "Wrong type '" << _typeImport << "'.";
+      LOG_TOPIC("8941e", FATAL, arangodb::Logger::FIXME) << "Wrong type '" << _typeImport << "'.";
       FATAL_ERROR_EXIT();
     }
 
     std::cout << std::endl;
 
-    // give information about import
-    if (ok) {
-      std::cout << "created:          " << ih.getNumberCreated() << std::endl;
-      std::cout << "warnings/errors:  " << ih.getNumberErrors() << std::endl;
-      std::cout << "updated/replaced: " << ih.getNumberUpdated() << std::endl;
-      std::cout << "ignored:          " << ih.getNumberIgnored() << std::endl;
+    // give information about import (even if errors occur)
+    std::cout << "created:          " << ih.getNumberCreated() << std::endl;
+    std::cout << "warnings/errors:  " << ih.getNumberErrors() << std::endl;
+    std::cout << "updated/replaced: " << ih.getNumberUpdated() << std::endl;
+    std::cout << "ignored:          " << ih.getNumberIgnored() << std::endl;
 
-      if (_typeImport == "csv" || _typeImport == "tsv") {
-        std::cout << "lines read:       " << ih.getReadLines() << std::endl;
-      }
+    if (_typeImport == "csv" || _typeImport == "tsv") {
+      std::cout << "lines read:       " << ih.getReadLines() << std::endl;
+    }
 
-    } else {
+    if (!ok) {
       auto const& msgs = ih.getErrorMessages();
       if (!msgs.empty()) {
-        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "error message(s):";
+        LOG_TOPIC("46995", ERR, arangodb::Logger::FIXME) << "error message(s):";
         for (std::string const& msg : msgs) {
-          LOG_TOPIC(ERR, arangodb::Logger::FIXME) << msg;
+          LOG_TOPIC("25049", ERR, arangodb::Logger::FIXME) << msg;
         }
       }
     }
   } catch (std::exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught exception: " << ex.what();
+    LOG_TOPIC("a7dca", ERR, arangodb::Logger::FIXME) << "caught exception: " << ex.what();
   } catch (...) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught unknown exception";
+    LOG_TOPIC("fc131", ERR, arangodb::Logger::FIXME) << "caught unknown exception";
   }
 
   *_result = ret;
 }
 
-int ImportFeature::tryCreateDatabase(ClientFeature* client, std::string const& name) {
+int ImportFeature::tryCreateDatabase(ClientFeature& client, std::string const& name) {
   VPackBuilder builder;
   builder.openObject();
   builder.add("name", VPackValue(name));
   builder.add("users", VPackValue(VPackValueType::Array));
   builder.openObject();
-  builder.add("username", VPackValue(client->username()));
-  builder.add("passwd", VPackValue(client->password()));
+  builder.add("username", VPackValue(client.username()));
+  builder.add("passwd", VPackValue(client.password()));
   builder.close();
   builder.close();
   builder.close();

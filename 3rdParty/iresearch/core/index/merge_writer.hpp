@@ -26,6 +26,7 @@
 
 #include <vector>
 
+#include "column_info.hpp"
 #include "index_meta.hpp"
 #include "utils/memory.hpp"
 #include "utils/noncopyable.hpp"
@@ -34,7 +35,9 @@
 NS_ROOT
 
 struct directory;
+struct tracking_directory;
 struct sub_reader;
+class comparer;
 
 class IRESEARCH_API merge_writer: public util::noncopyable {
  public:
@@ -51,13 +54,21 @@ class IRESEARCH_API merge_writer: public util::noncopyable {
 
   merge_writer() NOEXCEPT;
 
-  explicit merge_writer(directory& dir) NOEXCEPT
-    : dir_(dir) {
+  explicit merge_writer(
+      directory& dir,
+      const column_info_provider_t& column_info,
+      const comparer* comparator = nullptr) NOEXCEPT
+    : dir_(dir),
+      column_info_(&column_info),
+      comparator_(comparator) {
+    assert(column_info);
   }
 
   merge_writer(merge_writer&& rhs) NOEXCEPT
     : dir_(rhs.dir_),
-      readers_(std::move(rhs.readers_)) {
+      readers_(std::move(rhs.readers_)),
+      column_info_(rhs.column_info_),
+      comparator_(rhs.comparator_){
   }
 
   merge_writer& operator=(merge_writer&&) = delete;
@@ -98,9 +109,23 @@ class IRESEARCH_API merge_writer: public util::noncopyable {
   }
 
  private:
+  bool flush_sorted(
+    tracking_directory& dir,
+    index_meta::index_segment_t& segment,
+    const flush_progress_t& progress
+  );
+
+  bool flush(
+    tracking_directory& dir,
+    index_meta::index_segment_t& segment,
+    const flush_progress_t& progress
+  );
+
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   directory& dir_;
   std::vector<reader_ctx> readers_;
+  const column_info_provider_t* column_info_;
+  const comparer* comparator_;
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // merge_writer
 

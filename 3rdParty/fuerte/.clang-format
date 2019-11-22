@@ -1,0 +1,5 @@
+BasedOnStyle: Google
+DerivePointerAlignment: false
+Standard: Cpp11
+PointerAlignment: Left
+CompactNamespaces: true

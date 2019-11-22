@@ -23,54 +23,69 @@
 #ifndef ARANGOD_AQL_OPTIMIZER_RULES_FEATURE_H
 #define ARANGOD_AQL_OPTIMIZER_RULES_FEATURE_H 1
 
+#include <unordered_map>
+#include <vector>
+
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Aql/OptimizerRule.h"
+
+#include <velocypack/StringRef.h>
 
 namespace arangodb {
 namespace aql {
 
 class OptimizerRulesFeature final : public application_features::ApplicationFeature {
-  friend class Optimizer;
-
  public:
   explicit OptimizerRulesFeature(application_features::ApplicationServer& server);
 
+  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
   void unprepare() override final;
+  
+  std::vector<std::string> const& optimizerRules() const { return _optimizerRules; }
 
   /// @brief translate a list of rule ids into rule name
-  static std::vector<std::string> translateRules(std::vector<int> const&);
+  static std::vector<velocypack::StringRef> translateRules(std::vector<int> const&);
 
   /// @brief translate a single rule
-  static char const* translateRule(int);
+  static velocypack::StringRef translateRule(int rule);
+  
+  /// @brief translate a single rule
+  static int translateRule(velocypack::StringRef name);
 
-  /// @brief look up the ids of all disabled rules
-  static std::unordered_set<int> getDisabledRuleIds(std::vector<std::string> const&);
+  /// @brief return a reference to all rules
+  static std::vector<OptimizerRule> const& rules() { return _rules; }
 
-  /// @brief register a rule
-  static void registerRule(std::string const& name, RuleFunction func,
-                           OptimizerRule::RuleLevel level, bool canCreateAdditionalPlans,
-                           bool canBeDisabled, bool isHidden = false);
-
-  /// @brief register a hidden rule
-  static void registerHiddenRule(std::string const& name, RuleFunction const& func,
-                                 OptimizerRule::RuleLevel level,
-                                 bool canCreateAdditionalPlans, bool canBeDisabled) {
-    registerRule(name, func, level, canCreateAdditionalPlans, canBeDisabled, true);
-  }
+  /// @brief return a rule by its level
+  static OptimizerRule& ruleByLevel(int level);
+  
+  /// @brief return a rule by its index
+  static OptimizerRule& ruleByIndex(int index);
+  
+  /// @brief return the index of a rule
+  static int ruleIndex(int level);
+  
+  /// @brief register a rule, don't call this after prepare()
+  void registerRule(char const* name, RuleFunction func,
+                    OptimizerRule::RuleLevel level,
+                    std::underlying_type<OptimizerRule::Flags>::type flags);
 
  private:
   void addRules();
   void addStorageEngineRules();
-
-  static void disableRule(std::string const& name, std::unordered_set<int>& disabled);
-  static void enableRule(std::string const& name, std::unordered_set<int>& disabled);
-
+  void enableOrDisableRules();
+  
+  std::vector<std::string> _optimizerRules;
+  
   /// @brief the rules database
-  static std::map<int, OptimizerRule> _rules;
+  static std::vector<OptimizerRule> _rules;
 
   /// @brief map to look up rule id by name
-  static std::unordered_map<std::string, std::pair<int, bool>> _ruleLookup;
+  static std::unordered_map<velocypack::StringRef, int> _ruleLookup;
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  bool _fixed = false;
+#endif
 };
 
 }  // namespace aql

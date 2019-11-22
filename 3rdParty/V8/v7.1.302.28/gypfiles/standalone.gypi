@@ -78,7 +78,7 @@
         'host_arch%': '<(host_arch)',
         'target_arch%': '<(target_arch)',
         'use_sysroot%': '<(use_sysroot)',
-        'base_dir%': '<!(cd <(DEPTH) && python -c "import os; print os.getcwd()")',
+        'base_dir%': '<!(cd <(DEPTH) && <(PYTHON_EXECUTABLE) -c "import os; print os.getcwd()")',
 
         # Instrument for code coverage and use coverage wrapper to exclude some
         # files. Uses gcov if clang=0 is set explicitly. Otherwise,
@@ -87,6 +87,9 @@
 
         # Default sysroot if no sysroot can be provided.
         'sysroot%': '',
+
+        # Default clcache mode if no use_clcache_mode can be provided.
+        'use_clcache_mode%': 'false',
 
         'conditions': [
           # The system root for linux builds.
@@ -943,9 +946,13 @@
             'RuntimeTypeInfo': 'false',
             'WarningLevel': '3',
             'WarnAsError': 'true',
-            'DebugInformationFormat': '3',
             'Detect64BitPortabilityProblems': 'false',
             'conditions': [
+              ['use_clcache_mode=="true"', {
+                'DebugInformationFormat': '1',
+              }, {
+                'DebugInformationFormat': '3',
+              }],
               [ 'msvs_multi_core_compile', {
                 'AdditionalOptions': ['/MP'],
               }],

@@ -133,6 +133,12 @@ exports.aql.join = function (values, sep = " ") {
   );
 };
 
+exports.isValidDocumentKey = function (documentKey) {
+  if (!documentKey) return false;
+  // see VocBase/KeyGenerator.cpp keyCharLookupTable
+  return /^[-_!$%'()*+,.:;=@0-9a-z]+$/i.test(documentKey);
+};
+
 exports.errors = internal.errors;
 
 exports.time = internal.time;
@@ -150,17 +156,6 @@ exports.ArangoError = internal.ArangoError;
 exports.defineModule = function(path, file) {
   let content = fs.read(file);
   let mc = internal.db._collection('_modules');
-
-  if (mc === null) {
-    // lazily create _modules collection if it does not yet exist
-    const DEFAULT_REPLICATION_FACTOR_SYSTEM = internal.DEFAULT_REPLICATION_FACTOR_SYSTEM;
-    mc = internal.db._create('_modules', {
-      isSystem: true,
-      journalSize: 1024 * 1024,
-      replicationFactor: DEFAULT_REPLICATION_FACTOR_SYSTEM,
-      distributeShardsLike: '_graphs'
-    });
-  }
 
   path = module.normalize(path);
   let m = mc.firstExample({path: path});
@@ -549,7 +544,13 @@ exports.checkAvailableVersions = function(version) {
     );
     return;
   }
-
+  
+  if (require('@arangodb').isServer || internal.isEnterprise()) {
+    // don't check for version updates in the server
+    // nor in the enterprise version
+    return;
+  }
+  
   try {
     var u =
       'https://www.arangodb.com/repositories/versions.php?version=' +

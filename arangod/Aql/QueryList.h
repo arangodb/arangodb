@@ -24,12 +24,13 @@
 #ifndef ARANGOD_AQL_QUERY_LIST_H
 #define ARANGOD_AQL_QUERY_LIST_H 1
 
+#include <cmath>
+#include <list>
+
 #include "Aql/QueryExecutionState.h"
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
 #include "VocBase/voc-types.h"
-
-#include <list>
 
 struct TRI_vocbase_t;
 
@@ -37,6 +38,8 @@ namespace arangodb {
 namespace velocypack {
 class Builder;
 }
+class QueryRegistryFeature;
+class Result;
 
 namespace aql {
 
@@ -60,7 +63,7 @@ struct QueryEntryCopy {
 class QueryList {
  public:
   /// @brief create a query list
-  explicit QueryList(TRI_vocbase_t*);
+  explicit QueryList(QueryRegistryFeature&, TRI_vocbase_t*);
 
   /// @brief destroy a query list
   ~QueryList() = default;
@@ -184,10 +187,11 @@ class QueryList {
   void remove(Query*);
 
   /// @brief kills a query
-  int kill(TRI_voc_tick_t);
+  Result kill(TRI_voc_tick_t id);
 
-  /// @brief kills all currently running queries
-  uint64_t killAll(bool silent);
+  /// @brief kills all currently running queries that match the filter function
+  /// (i.e. the filter should return true for a queries to be killed)
+  uint64_t kill(std::function<bool(Query&)> const& filter, bool silent);
 
   /// @brief return the list of running queries
   std::vector<QueryEntryCopy> listCurrent();
@@ -197,6 +201,8 @@ class QueryList {
 
   /// @brief clear the list of slow queries
   void clearSlow();
+
+  size_t count();
 
  private:
   std::string extractQueryString(Query const* query, size_t maxLength) const;

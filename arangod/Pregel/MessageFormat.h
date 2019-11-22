@@ -35,7 +35,7 @@ namespace pregel {
 
 template <typename M>
 struct MessageFormat {
-  virtual ~MessageFormat() {}
+  virtual ~MessageFormat() = default;
   virtual void unwrapValue(VPackSlice body, M& value) const = 0;
   virtual void addValue(VPackBuilder& arrayBuilder, M const& val) const = 0;
 };

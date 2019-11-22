@@ -35,9 +35,6 @@ DEFINE_FACTORY_DEFAULT(custom_sort)
 DEFINE_SORT_TYPE(frequency_sort)
 DEFINE_FACTORY_DEFAULT(frequency_sort)
 
-DEFINE_ATTRIBUTE_TYPE(frequency_sort::prepared::count)
-DEFINE_FACTORY_DEFAULT(frequency_sort::prepared::count)
-
 NS_END // NS_BEGIN(sort)
 NS_END // NS_BEGIN(tests)
 

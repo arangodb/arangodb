@@ -1,12 +1,13 @@
 /* global arango, describe, beforeEach, afterEach, it*/
 'use strict';
 
-var expect = require('chai').expect;
-var FoxxManager = require('org/arangodb/foxx/manager');
-var fs = require('fs');
-var internal = require('internal');
-var basePath = fs.makeAbsolute(fs.join(internal.pathForTesting('common'), 'test-data', 'apps', 'headers'));
-var origin = arango.getEndpoint().replace(/\+vpp/, '').replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:');
+const expect = require('chai').expect;
+const FoxxManager = require('org/arangodb/foxx/manager');
+const fs = require('fs');
+const internal = require('internal');
+const arango = require('@arangodb').arango;
+const basePath = fs.makeAbsolute(fs.join(internal.pathForTesting('common'), 'test-data', 'apps', 'headers'));
+const origin = arango.getEndpoint().replace(/\+vpp/, '').replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:').replace(/^vst:/, 'http:');
 
 describe('HTTP headers in Foxx services', function () {
   describe('Check request-response', function () {
@@ -41,7 +42,7 @@ describe('HTTP headers in Foxx services', function () {
       expect(result.code).to.equal(204);
       expect(result.headers['x-foobar']).to.equal('baz');
       expect(result.headers['x-nofoobar']).to.equal('baz');
-      const irrelevantHeaders = ['http/1.1', 'connection', 'content-type'];
+      const irrelevantHeaders = ['http/1.1', 'connection', 'content-type', 'keep-alive'];
       expect(result.headers['access-control-expose-headers']).to.equal(Object.keys(result.headers).filter(x => !x.startsWith('x-content-type-options') && !x.startsWith('access-control-') && !irrelevantHeaders.includes(x)).sort().join(', '));
       expect(result.headers['access-control-allow-credentials']).to.equal('true');
     });
@@ -67,7 +68,7 @@ describe('HTTP headers in Foxx services', function () {
     it("sets defaults for responses without headers", function () {
       var opts = { headers: { origin }, method: "POST" };
       var result = internal.download(origin + "/unittest/headers/header-empty", "", opts);
-      const irrelevantHeaders = ['http/1.1', 'connection', 'content-type'];
+      const irrelevantHeaders = ['http/1.1', 'connection', 'content-type', 'keep-alive'];
       expect(result.headers['access-control-expose-headers']).to.equal(Object.keys(result.headers).filter(x => !x.startsWith('x-content-type-options') && !x.startsWith('access-control-') && !irrelevantHeaders.includes(x)).sort().join(', '));
       expect(result.headers['access-control-allow-credentials']).to.equal('true');
     });

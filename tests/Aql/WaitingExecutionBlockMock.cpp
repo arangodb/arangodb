@@ -23,7 +23,9 @@
 #include "WaitingExecutionBlockMock.h"
 
 #include "Aql/AqlItemBlock.h"
+#include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionState.h"
+#include "Aql/QueryOptions.h"
 
 #include <velocypack/velocypack-aliases.h>
 
@@ -32,9 +34,9 @@ using namespace arangodb::aql;
 using namespace arangodb::tests;
 using namespace arangodb::tests::aql;
 
-WaitingExecutionBlockMock::WaitingExecutionBlockMock(
-    ExecutionEngine* engine, ExecutionNode const* node,
-    std::deque<std::unique_ptr<AqlItemBlock>> &&data)
+WaitingExecutionBlockMock::WaitingExecutionBlockMock(ExecutionEngine* engine,
+                                                     ExecutionNode const* node,
+                                                     std::deque<SharedAqlItemBlockPtr>&& data)
     : ExecutionBlock(engine, node),
       _data(std::move(data)),
       _resourceMonitor(),
@@ -42,7 +44,7 @@ WaitingExecutionBlockMock::WaitingExecutionBlockMock(
       _hasWaited(false) {}
 
 std::pair<arangodb::aql::ExecutionState, arangodb::Result> WaitingExecutionBlockMock::initializeCursor(
-      arangodb::aql::AqlItemBlock* items, size_t pos) {
+    arangodb::aql::InputAqlItemRow const& input) {
   if (!_hasWaited) {
     _hasWaited = true;
     return {ExecutionState::WAITING, TRI_ERROR_NO_ERROR};
@@ -52,9 +54,13 @@ std::pair<arangodb::aql::ExecutionState, arangodb::Result> WaitingExecutionBlock
   return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
 }
 
-std::pair<arangodb::aql::ExecutionState,
-          std::unique_ptr<arangodb::aql::AqlItemBlock>>
-WaitingExecutionBlockMock::getSome(size_t atMost) {
+std::pair<arangodb::aql::ExecutionState, Result> WaitingExecutionBlockMock::shutdown(int errorCode) {
+  ExecutionState state;
+  Result res;
+  return std::make_pair(state, res);
+}
+
+std::pair<arangodb::aql::ExecutionState, SharedAqlItemBlockPtr> WaitingExecutionBlockMock::getSome(size_t atMost) {
   if (!_hasWaited) {
     _hasWaited = true;
     if (_returnedDone) {
@@ -80,31 +86,24 @@ WaitingExecutionBlockMock::getSome(size_t atMost) {
   }
 }
 
-std::pair<arangodb::aql::ExecutionState, size_t> WaitingExecutionBlockMock::skipSome(
-  size_t atMost
-) {
-
+std::pair<arangodb::aql::ExecutionState, size_t> WaitingExecutionBlockMock::skipSome(size_t atMost) {
   traceSkipSomeBegin(atMost);
   if (!_hasWaited) {
     _hasWaited = true;
-    traceSkipSomeEnd(0, ExecutionState::WAITING);
-    return {ExecutionState::WAITING, 0};
+    return traceSkipSomeEnd(ExecutionState::WAITING, 0);
   }
   _hasWaited = false;
 
   if (_data.empty()) {
-    traceSkipSomeEnd(0, ExecutionState::DONE);
-    return {ExecutionState::DONE, 0};
+    return traceSkipSomeEnd(ExecutionState::DONE, 0);
   }
 
   size_t skipped = _data.front()->size();
   _data.pop_front();
 
   if (_data.empty()) {
-    traceSkipSomeEnd(skipped, ExecutionState::DONE);
-    return {ExecutionState::DONE, skipped};
+    return traceSkipSomeEnd(ExecutionState::DONE, skipped);
   } else {
-    traceSkipSomeEnd(skipped, ExecutionState::HASMORE);
-    return {ExecutionState::HASMORE, skipped};
+    return traceSkipSomeEnd(ExecutionState::HASMORE, skipped);
   }
 }

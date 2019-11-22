@@ -1,24 +1,26 @@
-#define CATCH_CONFIG_RUNNER
-#include "catch.hpp"
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "Basics/ArangoGlobalContext.h"
-#include "Basics/Thread.h"
 #include "Basics/ConditionLocker.h"
+#include "Basics/Thread.h"
+#include "Rest/Version.h"
 #include "Cluster/ServerState.h"
-#include "Logger/Logger.h"
 #include "Logger/LogAppender.h"
+#include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
 #include "RestServer/ServerIdFeature.h"
-#include "tests/Basics/icu-helper.h"
+#include "gtest/gtest.h"
+
+#include "Basics/icu-helper.h"
 
 #include <chrono>
 #include <thread>
 
-template<class Function> class TestThread : public arangodb::Thread {
-public:
-
-  TestThread(Function&& f, int i, char* c[]) :
-    arangodb::Thread("catch"), _f(f), _i(i), _c(c), _done(false) {
+template <class Function>
+class TestThread : public arangodb::Thread {
+ public:
+  TestThread(arangodb::application_features::ApplicationServer& server,
+             Function&& f, int i, char* c[])
+      : arangodb::Thread(server, "gtest"), _f(f), _i(i), _c(c), _done(false) {
     run();
     CONDITION_LOCKER(guard, _wait);
     while (true) {
@@ -29,17 +31,17 @@ public:
     }
   }
   ~TestThread() { shutdown(); }
-  
+
   void run() override {
     CONDITION_LOCKER(guard, _wait);
-    _result = _f(_i,_c);
+    _result = _f(_i, _c);
     _done = true;
     _wait.broadcast();
   }
-  
+
   int result() { return _result; }
 
-private:
+ private:
   Function _f;
   int _i;
   char** _c;
@@ -50,14 +52,28 @@ private:
 
 char const* ARGV0 = "";
 
+namespace arangodb {
+  // Only to please the linker, this is not used in the tests.
+  std::function<int()>* restartAction;
+}
+
 int main(int argc, char* argv[]) {
+  ::testing::InitGoogleTest(&argc, argv);
+
   TRI_GET_ARGV(argc, argv);
   int subargc = 0;
-  char **subargv = (char**)malloc(sizeof(char*) * argc);
+  char** subargv = (char**)malloc(sizeof(char*) * argc);
   bool logLineNumbers = false;
   arangodb::RandomGenerator::initialize(arangodb::RandomGenerator::RandomType::MERSENNE);
   // global setup...
-  for (int i = 0; i < argc; i ++) {
+  for (int i = 0; i < argc; i++) {
+    if (strcmp(argv[i], "--version") == 0) {
+      arangodb::rest::Version::initialize();
+      std::cout << arangodb::rest::Version::getServerVersion() << std::endl
+                << std::endl
+                << arangodb::rest::Version::getDetailed() << std::endl;
+      exit(EXIT_SUCCESS);
+    }
     if (strcmp(argv[i], "--log.line-number") == 0) {
       if (i < argc) {
         i++;
@@ -68,27 +84,26 @@ int main(int argc, char* argv[]) {
           i++;
         }
       }
-    }
-    else {
+    } else {
       subargv[subargc] = argv[i];
-      subargc ++;
+      subargc++;
     }
   }
 
   ARGV0 = subargv[0];
-  arangodb::Logger::setShowLineNumber(logLineNumbers);
-  arangodb::Logger::initialize(false);
-  arangodb::LogAppender::addAppender("-"); 
 
   arangodb::ServerState::instance()->setRole(arangodb::ServerState::ROLE_SINGLE);
   arangodb::application_features::ApplicationServer server(nullptr, nullptr);
   arangodb::ShellColorsFeature sc(server);
 
-  arangodb::application_features::ApplicationServer::server = nullptr; // avoid "ApplicationServer initialized twice"
+  arangodb::Logger::setShowLineNumber(logLineNumbers);
+  arangodb::Logger::initialize(server, false);
+  arangodb::LogAppender::addAppender("-");
+
   sc.prepare();
 
   arangodb::ArangoGlobalContext ctx(1, const_cast<char**>(&ARGV0), ".");
-  ctx.exit(0); // set "good" exit code by default
+  ctx.exit(0);  // set "good" exit code by default
 
   arangodb::ServerIdFeature::setId(12345);
   IcuInitializer::setup(ARGV0);
@@ -97,14 +112,14 @@ int main(int argc, char* argv[]) {
   // the stack size for subthreads has been reconfigured in the
   // ArangoGlobalContext above in the libmusl case:
   int result;
-  auto tests = [] (int argc, char* argv[]) -> int {
-    return Catch::Session().run( argc, argv );
+  auto tests = [](int argc, char* argv[]) -> int {
+    return RUN_ALL_TESTS();
   };
-  TestThread<decltype(tests)> t(std::move(tests), subargc, subargv);
+  TestThread<decltype(tests)> t(server, std::move(tests), subargc, subargv);
   result = t.result();
 
   arangodb::Logger::shutdown();
   // global clean-up...
   free(subargv);
-  return ( result < 0xff ? result : 0xff );
+  return (result < 0xff ? result : 0xff);
 }

@@ -41,6 +41,12 @@ R"=(
     "Supervision": {
       "DBServers": {},
       "Health": {
+        "free2": {
+          "Status": "BAD"
+        },
+        "free": {
+          "Status": "GOOD"
+        },
         "follower1": {
           "Status": "GOOD"
         },

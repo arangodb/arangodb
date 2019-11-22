@@ -27,10 +27,9 @@
 #include "Basics/Common.h"
 #include "Graph/EdgeDocumentToken.h"
 #include <velocypack/StringRef.h>
+#include <deque>
 
 namespace arangodb {
-
-class ManagedDocumentResult;
 
 namespace aql {
 struct AqlValue;
@@ -48,12 +47,13 @@ namespace graph {
 
 class AttributeWeightShortestPathFinder;
 class ConstantWeightShortestPathFinder;
+class KShortestPathsFinder;
 class TraverserCache;
 
 class ShortestPathResult {
   friend class arangodb::graph::AttributeWeightShortestPathFinder;
   friend class arangodb::graph::ConstantWeightShortestPathFinder;
-
+  friend class arangodb::graph::KShortestPathsFinder;
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Constructor. This is an abstract only class.

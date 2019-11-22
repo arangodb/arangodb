@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2019 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,7 +26,6 @@
 
 #include "Agency/AgencyCommon.h"
 #include "Agency/AgencyStrings.h"
-#include "Agency/AgentCallback.h"
 #include "Agency/AgentConfiguration.h"
 #include "Agency/AgentInterface.h"
 #include "Agency/Compactor.h"
@@ -37,6 +36,7 @@
 #include "Agency/Supervision.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/ReadWriteLock.h"
+#include "RestServer/MetricsFeature.h"
 
 struct TRI_vocbase_t;
 
@@ -46,7 +46,7 @@ namespace consensus {
 class Agent final : public arangodb::Thread, public AgentInterface {
  public:
   /// @brief Construct with program options
-  explicit Agent(config_t const&);
+  explicit Agent(application_features::ApplicationServer& server, config_t const&);
 
   /// @brief Clean up
   ~Agent();
@@ -145,7 +145,14 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   /// @brief Resign leadership
   void resign(term_t otherTerm = 0);
 
+  /// @brief collect store callbacks for removal
+  void trashStoreCallback(std::string const& url, velocypack::Slice body);
+
  private:
+
+  /// @brief empty callback trash bin
+  void emptyCbTrashBin();
+
   /// @brief Invoked by leader to replicate log entries ($5.3);
   ///        also used as heartbeat ($5.2).
   void sendAppendEntriesRPC();
@@ -159,7 +166,7 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   ///        also used as heartbeat ($5.2). This is the version used by
   ///        the constituent to send out empty heartbeats to keep
   ///        the term alive.
-  void sendEmptyAppendEntriesRPC(std::string followerId);
+  void sendEmptyAppendEntriesRPC(std::string const& followerId);
 
   /// @brief 1. Deal with appendEntries to slaves.
   ///        2. Report success of write processes.
@@ -169,13 +176,16 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   bool booting();
 
   /// @brief Gossip in
-  query_t gossip(query_t const&, bool callback = false, size_t version = 0);
+  query_t gossip(velocypack::Slice, bool callback = false, size_t version = 0);
 
   /// @brief Persisted agents
   bool persistedAgents();
 
   /// @brief Gossip in
   bool activeAgency();
+
+  /// @brief Get the index at which the leader is
+  index_t index();
 
   /// @brief Start orderly shutdown of threads
   void beginShutdown() override final;
@@ -217,6 +227,9 @@ class Agent final : public arangodb::Thread, public AgentInterface {
 
   /// @brief Get read store and compaction index
   index_t readDB(Node&) const;
+
+  /// @brief Get read store and compaction index
+  index_t readDB(VPackBuilder&) const;
 
   /// @brief Get read store
   ///  WARNING: this assumes caller holds appropriate
@@ -309,8 +322,7 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   /// @brief Activate this agent in single agent mode.
   void activateAgency();
 
-  /// @brief add agent to configuration (from State after successful local
-  /// persistence)
+  /// @brief add agent to configuration (from State after successful local persistence)
   void updateConfiguration(VPackSlice const&);
 
  private:
@@ -397,6 +409,11 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   ///
   mutable arangodb::Mutex _ioLock;
 
+  /// @brief Callback trash bin lock
+  ///   _callbackTrashBin
+  ///
+  mutable arangodb::Mutex _cbtLock;
+
   /// @brief RAFT consistency lock:
   ///   _readDB and _commitIndex
   /// Allows reading from one or both if used alone.
@@ -433,8 +450,7 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   /// For _ioLock: We put in assertions to ensure that when this lock is
   /// acquired we do not have the _tiLock.
 
-  /// @brief Inception thread getting an agent up to join RAFT from cmd or
-  /// persistence
+  /// @brief Inception thread getting an agent up to join RAFT from cmd or persistence
   std::unique_ptr<Inception> _inception;
 
   /// @brief Compactor
@@ -451,13 +467,25 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   /// since the epoch of the steady clock.
   std::atomic<int64_t> _leaderSince;
 
+  /// @brief Container for callbacks for removal
+  std::unordered_map<std::string, std::unordered_set<std::string>> _callbackTrashBin;
+  std::chrono::time_point<std::chrono::steady_clock> _callbackLastPurged;
+
   /// @brief Ids of ongoing transactions, used for inquire:
   std::unordered_set<std::string> _ongoingTrxs;
 
   // lock for _ongoingTrxs
   arangodb::Mutex _trxsLock;
+
+  Counter& _write_ok;
+  Counter& _write_no_leader;
+  Counter& _read_ok;
+  Counter& _read_no_leader;
+  Histogram<double>& _write_hist_msec;
+  
 };
 }  // namespace consensus
 }  // namespace arangodb
 
 #endif
+ 

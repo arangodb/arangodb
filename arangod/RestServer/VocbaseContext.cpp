@@ -24,7 +24,9 @@
 #include "VocbaseContext.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb::rest;
@@ -68,7 +70,8 @@ VocbaseContext* VocbaseContext::create(GeneralRequest& req, TRI_vocbase_t& vocba
                                 /*sysLevel*/ auth::Level::RO,
                                 /*dbLevel*/ auth::Level::RO);
     }
-    return new VocbaseContext(req, vocbase, ExecContext::Type::Default,
+    return new VocbaseContext(req, vocbase, req.user().empty() ?
+                              ExecContext::Type::Internal : ExecContext::Type::Default,
                               /*sysLevel*/ auth::Level::RW,
                               /*dbLevel*/ auth::Level::RW);
   }
@@ -79,13 +82,13 @@ VocbaseContext* VocbaseContext::create(GeneralRequest& req, TRI_vocbase_t& vocba
                               /*dbLevel*/ auth::Level::NONE);
   } else if (req.user().empty()) {
     std::string msg = "only jwt can be used to authenticate as superuser";
-    LOG_TOPIC(WARN, Logger::AUTHENTICATION) << msg;
+    LOG_TOPIC("2d0f6", WARN, Logger::AUTHENTICATION) << msg;
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, msg);
   }
 
   auth::UserManager* um = auth->userManager();
   if (um == nullptr) {
-    LOG_TOPIC(WARN, Logger::AUTHENTICATION)
+    LOG_TOPIC("aae8a", WARN, Logger::AUTHENTICATION)
         << "users are not supported on this server";
     return nullptr;
   }

@@ -24,12 +24,12 @@
 #define ARANGOD_CLUSTER_SHARD_DISTRIBUTED_REPORTER_H 1
 
 #include "Basics/Common.h"
+#include "Network/Methods.h"
 
 #include <queue>
 
 namespace arangodb {
 
-class ClusterComm;
 class ClusterInfo;
 
 namespace velocypack {
@@ -45,7 +45,7 @@ class ShardDistributionReporter {
   // During production use this singleton instance.
   // Do not actively create your own instance.
   // The Constructor is only public for testing purposes.
-  static std::shared_ptr<ShardDistributionReporter> instance();
+  static std::shared_ptr<ShardDistributionReporter> instance(application_features::ApplicationServer&);
 
  private:
   //////////////////////////////////////////////////////////////////////////////
@@ -54,7 +54,7 @@ class ShardDistributionReporter {
   static std::shared_ptr<ShardDistributionReporter> _theInstance;
 
  public:
-  ShardDistributionReporter(std::shared_ptr<ClusterComm> cc, ClusterInfo* ci);
+  ShardDistributionReporter(ClusterInfo* ci, network::Sender sender);
 
   ~ShardDistributionReporter();
 
@@ -75,8 +75,8 @@ class ShardDistributionReporter {
       std::unordered_map<std::string, std::string>& aliases, bool progress);
 
  private:
-  std::shared_ptr<ClusterComm> _cc;
   ClusterInfo* _ci;
+  network::Sender _send;
 };
 }  // namespace cluster
 }  // namespace arangodb

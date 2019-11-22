@@ -36,8 +36,8 @@ class MMFilesCollectionExport;
 class MMFilesExportCursor final : public Cursor {
  public:
   MMFilesExportCursor(TRI_vocbase_t& vocbase, CursorId id,
-                      arangodb::MMFilesCollectionExport* ex, size_t batchSize,
-                      double ttl, bool hasCount);
+                      std::unique_ptr<arangodb::MMFilesCollectionExport> ex, 
+                      size_t batchSize, double ttl, bool hasCount);
 
   ~MMFilesExportCursor();
 
@@ -49,8 +49,7 @@ class MMFilesExportCursor final : public Cursor {
 
   size_t count() const override final;
 
-  std::pair<arangodb::aql::ExecutionState, Result> dump(velocypack::Builder& result,
-                                                        std::function<void()> const& ch) override final;
+  std::pair<aql::ExecutionState, Result> dump(velocypack::Builder& result) override final;
 
   Result dumpSync(velocypack::Builder& result) override final;
 
@@ -58,7 +57,7 @@ class MMFilesExportCursor final : public Cursor {
 
  private:
   DatabaseGuard _guard;
-  arangodb::MMFilesCollectionExport* _ex;
+  std::unique_ptr<arangodb::MMFilesCollectionExport> _ex;
   size_t _position;
   size_t const _size;
 };

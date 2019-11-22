@@ -21,28 +21,33 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <chrono>
+#include <thread>
+
 #include "SchedulerFeature.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/GreetingsFeaturePhase.h"
+#include "Basics/ArangoGlobalContext.h"
+#include "Basics/application-exit.h"
+#include "Basics/system-functions.h"
+#include "Logger/LogAppender.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
+#include "ProgramOptions/ProgramOptions.h"
+#include "ProgramOptions/Section.h"
+#include "RestServer/FileDescriptorsFeature.h"
+#include "RestServer/ServerFeature.h"
+#include "Scheduler/Scheduler.h"
+#include "Scheduler/SupervisedScheduler.h"
+#include "V8Server/V8DealerFeature.h"
+#include "V8Server/v8-dispatcher.h"
 
 #ifdef _WIN32
 #include <stdio.h>
 #include <windows.h>
 #endif
-
-#include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/ArangoGlobalContext.h"
-#include "Logger/LogAppender.h"
-#include "Logger/Logger.h"
-#include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
-#include "RestServer/ServerFeature.h"
-#include "Scheduler/Scheduler.h"
-#include "V8Server/V8DealerFeature.h"
-#include "V8Server/v8-dispatcher.h"
-
-#include "Scheduler/SupervisedScheduler.h"
-
-#include <chrono>
-#include <thread>
 
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
@@ -65,16 +70,18 @@ size_t defaultNumberOfThreads() {
 
 namespace arangodb {
 
-Scheduler* SchedulerFeature::SCHEDULER = nullptr;
+SupervisedScheduler* SchedulerFeature::SCHEDULER = nullptr;
 
 SchedulerFeature::SchedulerFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Scheduler"), _scheduler(nullptr) {
+    : ApplicationFeature(server, "Scheduler"), 
+      _scheduler(nullptr) {
   setOptional(false);
-  startsAfter("GreetingsPhase");
-  startsAfter("FileDescriptors");
+  startsAfter<GreetingsFeaturePhase>();
+
+  startsAfter<FileDescriptorsFeature>();
 }
 
-SchedulerFeature::~SchedulerFeature() {}
+SchedulerFeature::~SchedulerFeature() = default;
 
 void SchedulerFeature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
   // Different implementations of the Scheduler may require different
@@ -119,12 +126,12 @@ void SchedulerFeature::collectOptions(std::shared_ptr<options::ProgramOptions> o
 void SchedulerFeature::validateOptions(std::shared_ptr<options::ProgramOptions>) {
   auto const N = TRI_numberProcessors();
 
-  LOG_TOPIC(DEBUG, arangodb::Logger::THREADS)
+  LOG_TOPIC("2ef39", DEBUG, arangodb::Logger::THREADS)
       << "Detected number of processors: " << N;
 
   TRI_ASSERT(N > 0);
   if (_nrMaximalThreads > 8 * N) {
-    LOG_TOPIC(WARN, arangodb::Logger::THREADS)
+    LOG_TOPIC("0a92a", WARN, arangodb::Logger::THREADS)
         << "--server.maximal-threads (" << _nrMaximalThreads
         << ") is more than eight times the number of cores (" << N
         << "), this might overload the server";
@@ -133,13 +140,13 @@ void SchedulerFeature::validateOptions(std::shared_ptr<options::ProgramOptions>)
   }
 
   if (_nrMinimalThreads < 2) {
-    LOG_TOPIC(WARN, arangodb::Logger::THREADS)
+    LOG_TOPIC("bf034", WARN, arangodb::Logger::THREADS)
         << "--server.minimal-threads (" << _nrMinimalThreads << ") should be at least 2";
     _nrMinimalThreads = 2;
   }
 
   if (_nrMinimalThreads >= _nrMaximalThreads) {
-    LOG_TOPIC(WARN, arangodb::Logger::THREADS)
+    LOG_TOPIC("48e02", WARN, arangodb::Logger::THREADS)
         << "--server.maximal-threads (" << _nrMaximalThreads
         << ") should be at least " << (_nrMinimalThreads + 1) << ", raising it";
     _nrMaximalThreads = _nrMinimalThreads;
@@ -161,10 +168,21 @@ void SchedulerFeature::validateOptions(std::shared_ptr<options::ProgramOptions>)
 void SchedulerFeature::prepare() {
   TRI_ASSERT(2 <= _nrMinimalThreads);
   TRI_ASSERT(_nrMinimalThreads <= _nrMaximalThreads);
-  _scheduler =
-      std::make_unique<SupervisedScheduler>(_nrMinimalThreads, _nrMaximalThreads,
-                                            _queueSize, _fifo1Size, _fifo2Size);
-  SCHEDULER = _scheduler.get();
+// wait for windows fix or implement operator new
+#if (_MSC_VER >= 1)
+#pragma warning(push)
+#pragma warning(disable : 4316)  // Object allocated on the heap may not be aligned for this type
+#endif
+  auto sched = std::make_unique<SupervisedScheduler>(server(), _nrMinimalThreads,
+                                                     _nrMaximalThreads, _queueSize,
+                                                     _fifo1Size, _fifo2Size);
+#if (_MSC_VER >= 1)
+#pragma warning(pop)
+#endif
+
+  SCHEDULER = sched.get();
+
+  _scheduler = std::move(sched);
 }
 
 void SchedulerFeature::start() {
@@ -172,11 +190,11 @@ void SchedulerFeature::start() {
 
   bool ok = _scheduler->start();
   if (!ok) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC("7f497", FATAL, arangodb::Logger::FIXME)
         << "the scheduler cannot be started";
     FATAL_ERROR_EXIT();
   }
-  LOG_TOPIC(DEBUG, Logger::STARTUP) << "scheduler has started";
+  LOG_TOPIC("14e6f", DEBUG, Logger::STARTUP) << "scheduler has started";
 
   initV8Stuff();
 }
@@ -200,9 +218,9 @@ void SchedulerFeature::unprepare() {
 void SchedulerFeature::initV8Stuff() {
   // THIS CODE IS TOTALLY UNRELATED TO THE SCHEDULER!?!
   try {
-    auto* dealer = ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
-    if (dealer->isEnabled()) {
-      dealer->defineContextUpdate(
+    auto& dealer = server().getFeature<V8DealerFeature>();
+    if (dealer.isEnabled()) {
+      dealer.defineContextUpdate(
           [](v8::Isolate* isolate, v8::Handle<v8::Context> context, size_t) {
             TRI_InitV8Dispatcher(isolate, context);
           },
@@ -238,7 +256,7 @@ void SchedulerFeature::signalStuffInit() {
   int res = sigaction(SIGPIPE, &action, nullptr);
 
   if (res < 0) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("91d20", ERR, arangodb::Logger::FIXME)
         << "cannot initialize signal handlers for pipe";
   }
 #endif
@@ -308,7 +326,7 @@ bool CtrlHandler(DWORD eventType) {
   }
 
   if (shutdown == false) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("ec3b4", ERR, arangodb::Logger::FIXME)
         << "Invalid CTRL HANDLER event received - ignoring event";
     return true;
   }
@@ -316,12 +334,10 @@ bool CtrlHandler(DWORD eventType) {
   static bool seen = false;
 
   if (!seen) {
-    LOG_TOPIC(INFO, arangodb::Logger::FIXME)
+    LOG_TOPIC("3278a", INFO, arangodb::Logger::FIXME)
         << shutdownMessage << ", beginning shut down sequence";
 
-    if (application_features::ApplicationServer::server != nullptr) {
-      application_features::ApplicationServer::server->beginShutdown();
-    }
+    application_features::ApplicationServer::CTRL_C.store(true);
 
     seen = true;
     return true;
@@ -331,7 +347,7 @@ bool CtrlHandler(DWORD eventType) {
   // user is desperate to kill the server!
   // ........................................................................
 
-  LOG_TOPIC(INFO, arangodb::Logger::FIXME) << shutdownMessage << ", terminating";
+  LOG_TOPIC("18daf", INFO, arangodb::Logger::FIXME) << shutdownMessage << ", terminating";
   _exit(EXIT_FAILURE);  // quick exit for windows
   return true;
 }
@@ -339,20 +355,18 @@ bool CtrlHandler(DWORD eventType) {
 #else
 
 extern "C" void c_exit_handler(int signal) {
-  static bool seen = false;
-
   if (signal == SIGQUIT || signal == SIGTERM || signal == SIGINT) {
+    static bool seen = false;
+
     if (!seen) {
-      LOG_TOPIC(INFO, arangodb::Logger::FIXME)
+      LOG_TOPIC("b4133", INFO, arangodb::Logger::FIXME)
           << "control-c received, beginning shut down sequence";
 
-      if (application_features::ApplicationServer::server != nullptr) {
-        application_features::ApplicationServer::server->beginShutdown();
-      }
+      application_features::ApplicationServer::CTRL_C.store(true);
 
       seen = true;
     } else {
-      LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER)
+      LOG_TOPIC("11ca3", FATAL, arangodb::Logger::CLUSTER)
           << "control-c received (again!), terminating";
       FATAL_ERROR_EXIT();
     }
@@ -361,10 +375,10 @@ extern "C" void c_exit_handler(int signal) {
 
 extern "C" void c_hangup_handler(int signal) {
   if (signal == SIGHUP) {
-    LOG_TOPIC(INFO, arangodb::Logger::FIXME)
+    LOG_TOPIC("33eae", INFO, arangodb::Logger::FIXME)
         << "hangup received, about to reopen logfile";
     LogAppender::reopen();
-    LOG_TOPIC(INFO, arangodb::Logger::FIXME)
+    LOG_TOPIC("23db2", INFO, arangodb::Logger::FIXME)
         << "hangup received, reopened logfile";
   }
 }
@@ -380,7 +394,7 @@ void SchedulerFeature::buildHangupHandler() {
   int res = sigaction(SIGHUP, &action, nullptr);
 
   if (res < 0) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("b7ed0", ERR, arangodb::Logger::FIXME)
         << "cannot initialize signal handlers for hang up";
   }
 #endif
@@ -392,7 +406,7 @@ void SchedulerFeature::buildControlCHandler() {
     int result = SetConsoleCtrlHandler((PHANDLER_ROUTINE)CtrlHandler, true);
 
     if (result == 0) {
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+      LOG_TOPIC("e21e8", WARN, arangodb::Logger::FIXME)
           << "unable to install control-c handler";
     }
   }
@@ -416,19 +430,19 @@ void SchedulerFeature::buildControlCHandler() {
   int res;
   res = sigaction(SIGINT, &action, nullptr);
   if (res < 0) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("cc8d8", ERR, arangodb::Logger::FIXME)
         << "cannot initialize signal handlers for hang up";
   }
 
   res = sigaction(SIGQUIT, &action, nullptr);
   if (res < 0) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("78075", ERR, arangodb::Logger::FIXME)
         << "cannot initialize signal handlers for hang up";
   }
 
   res = sigaction(SIGTERM, &action, nullptr);
   if (res < 0) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC("e666b", ERR, arangodb::Logger::FIXME)
         << "cannot initialize signal handlers for hang up";
   }
 #endif

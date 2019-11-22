@@ -1,4 +1,4 @@
-![ArangoDB-Logo](https://docs.arangodb.com/assets/arangodb_logo_2016_inverted.png)
+![ArangoDB-Logo](https://www.arangodb.com/docs/assets/arangodb_logo_2016_inverted.png)
 
 ArangoDB
 ========
@@ -14,7 +14,7 @@ The supported data models can be mixed in queries and allow ArangoDB to be the
 aggregation point for your data.
 
 To get started, try one of our 10 minutes [tutorials](https://www.arangodb.com/tutorials)
-in your favorite programming language or try one of our [ArangoDB Cookbook recipes](https://docs.arangodb.com/cookbook).
+in your favorite programming language or try one of our [ArangoDB Cookbook recipes](https://www.arangodb.com/docs/stable/cookbook/).
 
 For the impatient: [download](https://www.arangodb.com/download) and install
 ArangoDB. Start the server `arangod` and point your browser to `http://127.0.0.1:8529/`.
@@ -31,7 +31,7 @@ Key Features in ArangoDB
 
 Here is an AQL query that makes use of all those features:
 
-![AQL Query Example](https://docs.arangodb.com/assets/aql_query_with_traversal.png)
+![AQL Query Example](https://www.arangodb.com/docs/assets/aql_query_with_traversal.png)
 
 Joins and transactions are key features for flexible, secure data designs,
 widely used in relational databases but lacking in many NoSQL products. However,
@@ -49,7 +49,7 @@ Microservice Example
 By extending the HTTP API with user code written in JavaScript, ArangoDB can be
 turned into a strict schema-enforcing persistence engine.
 
-Next step, bundle your Foxx application as a [docker container](https://docs.arangodb.com/cookbook/Cloud/NodeJsDocker.html)
+Next step, bundle your Foxx application as a [docker container](https://www.arangodb.com/docs/stable/cookbook/cloud-node-js-docker.html)
 and get it running in the cloud.
 
 Other features of ArangoDB include:
@@ -85,16 +85,16 @@ Latest Release
 
 Packages for all supported platforms can be downloaded from [https://www.arangodb.com/download](https://www.arangodb.com/download/).
 
-Please also check [what's new in ArangoDB](https://docs.arangodb.com/latest/Manual/ReleaseNotes/).
+Please also check [what's new in ArangoDB](https://www.arangodb.com/docs/stable/release-notes.html).
 
 
 More Information
 ----------------
 
-Please check the [Installation Manual](https://docs.arangodb.com/latest/Manual/GettingStarted/Installing/)
+Please check the [Installation Manual](https://www.arangodb.com/docs/stable/installation.html)
 for installation and compilation instructions.
 
-The [User Manual](https://docs.arangodb.com/latest/Manual/GettingStarted/) has an
+The [User Manual](https://www.arangodb.com/docs/stable/getting-started.html) has an
 introductory chapter showing the basic operations of ArangoDB.
 
 

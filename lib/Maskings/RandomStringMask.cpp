@@ -26,8 +26,6 @@
 #include "Basics/fasthash.h"
 #include "Maskings/Maskings.h"
 
-static std::string const xxxx("xxxx");
-
 using namespace arangodb;
 using namespace arangodb::maskings;
 

@@ -23,9 +23,14 @@
 #ifndef ARANGODB_APPLICATION_FEATURES_PAGE_SIZE_FEATURE_H
 #define ARANGODB_APPLICATION_FEATURES_PAGE_SIZE_FEATURE_H 1
 
+#include <stddef.h>
+
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
 
 class PageSizeFeature final : public application_features::ApplicationFeature {
  public:

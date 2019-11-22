@@ -50,6 +50,7 @@
 #define ARANGODB_V8_V8__WRAPPER_H 1
 
 #include "Basics/Common.h"
+#include "Basics/debugging.h"
 
 #include <v8.h>
 

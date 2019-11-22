@@ -23,7 +23,7 @@
 
 #include "tests_shared.hpp"
 #include "index/index_tests.hpp"
-#include "store/memory_directory.hpp"
+#include "search/all_filter.hpp"
 #include "search/boolean_filter.hpp"
 #include "search/phrase_filter.hpp"
 #include "search/prefix_filter.hpp"
@@ -34,8 +34,11 @@
 #include "search/term_filter.hpp"
 #include "search/tfidf.hpp"
 #include "utils/utf8_path.hpp"
+#include "utils/type_limits.hpp"
 
 NS_LOCAL
+
+using namespace tests;
 
 struct bstring_data_output: public data_output {
   irs::bstring out_;
@@ -46,24 +49,8 @@ struct bstring_data_output: public data_output {
   }
 };
 
-NS_END
-
-NS_BEGIN(tests)
-
 class tfidf_test: public index_test_base { 
- protected:
-  virtual iresearch::directory* get_directory() {
-    return new iresearch::memory_directory();
-   }
-
-  virtual iresearch::format::ptr get_codec() {
-    return irs::formats::get("1_0");
-  }
 };
-
-NS_END
-
-using namespace tests;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
@@ -92,7 +79,7 @@ using namespace tests;
 // AverageDocLength (TotalFreq/DocsCount) = 6.5 //
 //////////////////////////////////////////////////
 
-TEST_F(tfidf_test, test_load) {
+TEST_P(tfidf_test, test_load) {
   irs::order order;
   auto scorer = irs::scorers::get("tfidf", irs::text_format::json, irs::string_ref::NIL);
 
@@ -102,8 +89,8 @@ TEST_F(tfidf_test, test_load) {
 
 #ifndef IRESEARCH_DLL
 
-TEST_F(tfidf_test, make_from_bool) {
-  // `with-norms` argument
+TEST_P(tfidf_test, make_from_bool) {
+  // `withNorms` argument
   {
     auto scorer = irs::scorers::get("tfidf", irs::text_format::json, "true");
     ASSERT_NE(nullptr, scorer);
@@ -111,13 +98,13 @@ TEST_F(tfidf_test, make_from_bool) {
     ASSERT_EQ(true, tfidf.normalize());
   }
 
-  // invalid `with-norms` argument
+  // invalid `withNorms` argument
   ASSERT_EQ(nullptr, irs::scorers::get("tfidf", irs::text_format::json, "\"false\""));
   ASSERT_EQ(nullptr, irs::scorers::get("tfidf", irs::text_format::json, "null"));
   ASSERT_EQ(nullptr, irs::scorers::get("tfidf", irs::text_format::json, "1"));
 }
 
-TEST_F(tfidf_test, make_from_array) {
+TEST_P(tfidf_test, make_from_array) {
   // default args
   {
     auto scorer = irs::scorers::get("tfidf", irs::text_format::json, irs::string_ref::NIL);
@@ -134,7 +121,7 @@ TEST_F(tfidf_test, make_from_array) {
     ASSERT_EQ(irs::tfidf_sort::WITH_NORMS(), tfidf.normalize());
   }
 
-  // `with-norms` argument
+  // `withNorms` argument
   {
     auto scorer = irs::scorers::get("tfidf", irs::text_format::json, "[ true ]");
     ASSERT_NE(nullptr, scorer);
@@ -142,7 +129,7 @@ TEST_F(tfidf_test, make_from_array) {
     ASSERT_EQ(true, tfidf.normalize());
   }
 
-  // invalid `with-norms` argument
+  // invalid `withNorms` argument
   ASSERT_EQ(nullptr, irs::scorers::get("tfidf", irs::text_format::json, "[ \"false\" ]"));
   ASSERT_EQ(nullptr, irs::scorers::get("tfidf", irs::text_format::json, "[ null]"));
   ASSERT_EQ(nullptr, irs::scorers::get("tfidf", irs::text_format::json, "[ 1 ]"));
@@ -152,7 +139,7 @@ TEST_F(tfidf_test, make_from_array) {
 
 #endif // IRESEARCH_DLL
 
-TEST_F(tfidf_test, test_normalize_features) {
+TEST_P(tfidf_test, test_normalize_features) {
   // default norms
   {
     auto scorer = irs::scorers::get("tfidf", irs::text_format::json, irs::string_ref::NIL);
@@ -173,7 +160,7 @@ TEST_F(tfidf_test, test_normalize_features) {
 
   // with norms
   {
-    auto scorer = irs::scorers::get("tfidf", irs::text_format::json, "{\"with-norms\": true}");
+    auto scorer = irs::scorers::get("tfidf", irs::text_format::json, "{\"withNorms\": true}");
     ASSERT_NE(nullptr, scorer);
     auto prepared = scorer->prepare();
     ASSERT_NE(nullptr, prepared);
@@ -191,7 +178,7 @@ TEST_F(tfidf_test, test_normalize_features) {
 
   // without norms
   {
-    auto scorer = irs::scorers::get("tfidf", irs::text_format::json, "{\"with-norms\": false}");
+    auto scorer = irs::scorers::get("tfidf", irs::text_format::json, "{\"withNorms\": false}");
     ASSERT_NE(nullptr, scorer);
     auto prepared = scorer->prepare();
     ASSERT_NE(nullptr, prepared);
@@ -199,7 +186,7 @@ TEST_F(tfidf_test, test_normalize_features) {
   }
 }
 
-TEST_F(tfidf_test, test_phrase) {
+TEST_P(tfidf_test, test_phrase) {
   auto analyzed_json_field_factory = [](
       tests::document& doc,
       const std::string& name,
@@ -302,7 +289,7 @@ TEST_F(tfidf_test, test_phrase) {
   }
 }
 
-TEST_F(tfidf_test, test_query) {
+TEST_P(tfidf_test, test_query) {
   {
     tests::json_doc_generator gen(
       resource("simple_sequential_order.json"),
@@ -892,11 +879,36 @@ TEST_F(tfidf_test, test_query) {
       ASSERT_EQ(expected_entry.second, entry.second);
     }
   }
+
+  // all
+  {
+    irs::all filter;
+    filter.boost(1.5f);
+
+    irs::bytes_ref actual_value;
+    auto prepared_filter = filter.prepare(reader, prepared_order);
+    auto docs = prepared_filter->execute(segment, prepared_order);
+    auto& score = docs->attributes().get<irs::score>();
+    ASSERT_TRUE(bool(score));
+
+    // ensure that we avoid COW for pre c++11 std::basic_string
+    const irs::bytes_ref score_value = score->value();
+
+    irs::doc_id_t doc = irs::type_limits<irs::type_t::doc_id_t>::min();
+    while(docs->next()) {
+      ASSERT_EQ(doc, docs->value());
+      score->evaluate();
+      ASSERT_TRUE(values(docs->value(), actual_value));
+      ++doc;
+      ASSERT_EQ(1.5f, *reinterpret_cast<const float_t*>(score_value.c_str()));
+    }
+    ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), docs->value());
+  }
 }
 
 #ifndef IRESEARCH_DLL
 
-TEST_F(tfidf_test, test_collector_serialization) {
+TEST_P(tfidf_test, test_collector_serialization) {
   // initialize test data
   {
     tests::json_doc_generator gen(
@@ -1033,7 +1045,7 @@ TEST_F(tfidf_test, test_collector_serialization) {
   }
 }
 
-TEST_F(tfidf_test, test_make) {
+TEST_P(tfidf_test, test_make) {
   // default values
   {
     auto scorer = irs::scorers::get("tfidf", irs::text_format::json, irs::string_ref::NIL);
@@ -1064,20 +1076,20 @@ TEST_F(tfidf_test, test_make) {
 
   // custom values
   {
-    auto scorer = irs::scorers::get("tfidf", irs::text_format::json, "{\"with-norms\": true}");
+    auto scorer = irs::scorers::get("tfidf", irs::text_format::json, "{\"withNorms\": true}");
     ASSERT_NE(nullptr, scorer);
     auto& scr = dynamic_cast<irs::tfidf_sort&>(*scorer);
     ASSERT_EQ(true, scr.normalize());
   }
 
-  // invalid values (with-norms)
+  // invalid values (withNorms)
   {
-    auto scorer = irs::scorers::get("tfidf", irs::text_format::json, "{\"with-norms\": 42}");
+    auto scorer = irs::scorers::get("tfidf", irs::text_format::json, "{\"withNorms\": 42}");
     ASSERT_EQ(nullptr, scorer);
   }
 }
 
-TEST_F(tfidf_test, test_order) {
+TEST_P(tfidf_test, test_order) {
   {
     tests::json_doc_generator gen(
       resource("simple_sequential_order.json"),
@@ -1147,7 +1159,23 @@ TEST_F(tfidf_test, test_order) {
   }
 }
 
+INSTANTIATE_TEST_CASE_P(
+  tfidf_test,
+  tfidf_test,
+  ::testing::Combine(
+    ::testing::Values(
+      &tests::memory_directory,
+      &tests::fs_directory,
+      &tests::mmap_directory
+    ),
+    ::testing::Values("1_0")
+  ),
+  tests::to_string
+);
+
 #endif // IRESEARCH_DLL
+
+NS_END // NS_LOCAL
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

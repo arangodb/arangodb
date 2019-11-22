@@ -88,7 +88,7 @@ function runSetup () {
     // we should have two journals when we get here
     // if not, we crash the server prematurely so the asserts in
     // the second phase will fail
-    internal.debugSegfault('crashing server - expectation failed');
+    internal.debugTerminate('crashing server - expectation failed');
   }
 
   for (i = 200; i < 300; ++i) {
@@ -99,7 +99,7 @@ function runSetup () {
   }
   c.remove('test0');
 
-  internal.debugSegfault('crashing server');
+  internal.debugTerminate('crashing server');
 }
 
 // //////////////////////////////////////////////////////////////////////////////

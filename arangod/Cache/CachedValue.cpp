@@ -26,6 +26,8 @@
 #include <stdint.h>
 #include <cstring>
 
+#include "Basics/debugging.h"
+
 using namespace arangodb::cache;
 
 const size_t CachedValue::_headerAllocSize = sizeof(CachedValue) + CachedValue::_padding;

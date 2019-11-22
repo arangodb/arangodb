@@ -44,7 +44,7 @@ class MMFilesCollectorThread final : public Thread {
   MMFilesCollectorThread& operator=(MMFilesCollectorThread const&) = delete;
 
  public:
-  explicit MMFilesCollectorThread(MMFilesLogfileManager*);
+  explicit MMFilesCollectorThread(MMFilesLogfileManager&);
   ~MMFilesCollectorThread() { shutdown(); }
 
  public:
@@ -90,23 +90,23 @@ class MMFilesCollectorThread final : public Thread {
   size_t numQueuedOperations();
 
   /// @brief step 1: perform collection of a logfile (if any)
-  int collectLogfiles(bool&);
+  int collectLogfiles(bool& worked);
 
   /// @brief step 2: process all still-queued collection operations
-  int processQueuedOperations(bool&);
+  void processQueuedOperations(bool& worked);
 
   /// @brief process all operations for a single collection
   int processCollectionOperations(MMFilesCollectorCache*);
 
   /// @brief collect one logfile
-  int collect(MMFilesWalLogfile*);
+  int collect(MMFilesWalLogfile* logfile);
 
   /// @brief transfer markers into a collection
   int transferMarkers(MMFilesWalLogfile*, TRI_voc_cid_t, TRI_voc_tick_t,
                       int64_t, MMFilesOperationsType const&);
 
   /// @brief insert the collect operations into a per-collection queue
-  int queueOperations(MMFilesWalLogfile*, std::unique_ptr<MMFilesCollectorCache>&);
+  void queueOperations(MMFilesWalLogfile*, std::unique_ptr<MMFilesCollectorCache>);
 
   /// @brief update a collection's datafile information
   int updateDatafileStatistics(LogicalCollection*, MMFilesCollectorCache*);
@@ -119,7 +119,7 @@ class MMFilesCollectorThread final : public Thread {
 
  private:
   /// @brief the logfile manager
-  MMFilesLogfileManager* _logfileManager;
+  MMFilesLogfileManager& _logfileManager;
 
   /// @brief condition variable for the collector thread
   basics::ConditionVariable _condition;
@@ -132,7 +132,7 @@ class MMFilesCollectorThread final : public Thread {
   arangodb::Mutex _operationsQueueLock;
 
   /// @brief operations to collect later
-  std::unordered_map<TRI_voc_cid_t, std::vector<MMFilesCollectorCache*>> _operationsQueue;
+  std::unordered_map<TRI_voc_cid_t, std::vector<std::unique_ptr<MMFilesCollectorCache>>> _operationsQueue;
 
   /// @brief whether or not the queue is currently in use
   bool _operationsQueueInUse;

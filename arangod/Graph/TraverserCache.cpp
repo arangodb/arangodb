@@ -29,7 +29,10 @@
 #include "Aql/Query.h"
 #include "Cluster/ServerState.h"
 #include "Graph/EdgeDocumentToken.h"
+#include "Graph/BaseOptions.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
@@ -42,16 +45,23 @@
 using namespace arangodb;
 using namespace arangodb::graph;
 
-TraverserCache::TraverserCache(aql::Query* query)
+TraverserCache::TraverserCache(aql::Query* query, BaseOptions const* opts)
     : _mmdr(new ManagedDocumentResult{}),
       _query(query),
       _trx(query->trx()),
       _insertedDocuments(0),
       _filteredDocuments(0),
-      _stringHeap(new StringHeap{4096}) /* arbitrary block-size may be adjusted for performance */ {
+      _stringHeap(new StringHeap{4096}), /* arbitrary block-size may be adjusted for performance */
+      _baseOptions(opts) {
 }
 
-TraverserCache::~TraverserCache() {}
+TraverserCache::~TraverserCache() = default;
+
+void TraverserCache::clear() {
+  _stringHeap->clear();
+  _persistedStrings.clear();
+  _mmdr->clear();
+}
 
 VPackSlice TraverserCache::lookupToken(EdgeDocumentToken const& idToken) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
@@ -59,7 +69,7 @@ VPackSlice TraverserCache::lookupToken(EdgeDocumentToken const& idToken) {
 
   if (col == nullptr) {
     // collection gone... should not happen
-    LOG_TOPIC(ERR, arangodb::Logger::GRAPHS)
+    LOG_TOPIC("3b2ba", ERR, arangodb::Logger::GRAPHS)
         << "Could not extract indexed edge document. collection not found";
     TRI_ASSERT(col != nullptr);  // for maintainer mode
     return arangodb::velocypack::Slice::nullSlice();
@@ -67,7 +77,7 @@ VPackSlice TraverserCache::lookupToken(EdgeDocumentToken const& idToken) {
 
   if (!col->readDocument(_trx, idToken.localDocumentId(), *_mmdr.get())) {
     // We already had this token, inconsistent state. Return NULL in Production
-    LOG_TOPIC(ERR, arangodb::Logger::GRAPHS)
+    LOG_TOPIC("3acb3", ERR, arangodb::Logger::GRAPHS)
         << "Could not extract indexed edge document, return 'null' instead. "
         << "This is most likely a caching issue. Try: 'db." << col->name()
         << ".unload(); db." << col->name() << ".load()' in arangosh to fix this.";
@@ -88,7 +98,18 @@ VPackSlice TraverserCache::lookupInCollection(arangodb::velocypack::StringRef id
     return arangodb::velocypack::Slice::nullSlice();
   }
 
-  Result res = _trx->documentFastPathLocal(id.substr(0, pos).toString(),
+
+  std::string collectionName = id.substr(0,pos).toString();
+
+  auto const& map = _baseOptions->collectionToShard();
+  if (!map.empty()) {
+    auto found = map.find(collectionName);
+    if (found != map.end()) {
+      collectionName = found->second;
+    }
+  }
+
+  Result res = _trx->documentFastPathLocal(collectionName,
                                            id.substr(pos + 1), *_mmdr, true);
   if (res.ok()) {
     ++_insertedDocuments;
@@ -132,7 +153,7 @@ arangodb::velocypack::StringRef TraverserCache::persistString(arangodb::velocypa
   if (it != _persistedStrings.end()) {
     return *it;
   }
-  arangodb::velocypack::StringRef res = _stringHeap->registerString(idString.begin(), idString.length());
+  arangodb::velocypack::StringRef res = _stringHeap->registerString(idString.data(), idString.length());
   _persistedStrings.emplace(res);
   return res;
 }

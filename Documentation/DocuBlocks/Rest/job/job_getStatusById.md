@@ -2,7 +2,7 @@
 @startDocuBlock job_getStatusById
 @brief Returns the status of a specific job
 
-@RESTHEADER{GET /_api/job/{job-id}, Returns async job}
+@RESTHEADER{GET /_api/job/{job-id}, Returns async job, getJobById}
 
 @RESTURLPARAMETERS
 
@@ -54,7 +54,7 @@ Querying the status of a pending job:
   var url = "/_api/transaction";
   var body = {
     collections: {
-      read : [ "_frontend" ]
+      read : [ "_aqlfunctions" ]
     },
     action: "function () {require('internal').sleep(15.0);}"
   };

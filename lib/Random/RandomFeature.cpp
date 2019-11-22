@@ -23,6 +23,7 @@
 #include "RandomFeature.h"
 
 #include "Logger/Logger.h"
+#include "Logger/LoggerFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Random/RandomGenerator.h"
@@ -36,7 +37,7 @@ RandomFeature::RandomFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Random"),
       _randomGenerator((uint32_t)RandomGenerator::RandomType::MERSENNE) {
   setOptional(false);
-  startsAfter("Logger");
+  startsAfter<LoggerFeature>();
 }
 
 void RandomFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {

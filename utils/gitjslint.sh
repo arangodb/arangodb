@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 if test "`git status --short | grep '^\(.[MAU]\|[MAU].\) .*js$' | wc -l`" -eq 0; then
   exit 0;

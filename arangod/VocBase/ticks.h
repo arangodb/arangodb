@@ -24,7 +24,8 @@
 #ifndef ARANGOD_VOC_BASE_TICKS_H
 #define ARANGOD_VOC_BASE_TICKS_H 1
 
-#include "Basics/Common.h"
+#include <cstdint>
+
 #include "VocBase/voc-types.h"
 
 /// @brief create a new tick, using a hybrid logical clock
@@ -46,6 +47,9 @@ TRI_voc_tick_t TRI_CurrentTickServer();
 
 /// @brief generates a new tick which also encodes this server's id
 TRI_voc_tick_t TRI_NewServerSpecificTick();
+
+/// @brief generates a new tick which also encodes this server's id
+TRI_voc_tick_t TRI_NewServerSpecificTickMod4();
 
 /// @brief extracts the server id from a server-specific tick
 uint32_t TRI_ExtractServerIdFromTick(TRI_voc_tick_t);

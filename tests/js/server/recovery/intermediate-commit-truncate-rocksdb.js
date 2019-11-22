@@ -44,7 +44,7 @@ function runSetup () {
   }
 
   c.truncate({ waitForSync: true, intermediateCommitCount: 1000 });
-  internal.debugSegfault('crashing server');
+  internal.debugTerminate('crashing server');
 }
 
 // //////////////////////////////////////////////////////////////////////////////

@@ -24,7 +24,9 @@
 #include "MMFilesCompactionFeature.h"
 
 #include "Basics/Exceptions.h"
+#include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "Logger/Logger.h"
+#include "MMFiles/MMFilesEngine.h"
 #include "MMFiles/MMFilesLogfileManager.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
@@ -49,9 +51,9 @@ MMFilesCompactionFeature::MMFilesCompactionFeature(application_features::Applica
       _deadSizeThreshold(128 * 1024),
       _deadShare(0.1) {
   setOptional(true);
-  onlyEnabledWith("MMFilesEngine");
+  onlyEnabledWith<MMFilesEngine>();
 
-  startsAfter("BasicsPhase");
+  startsAfter<BasicFeaturePhaseServer>();
 
   MMFilesCompactionFeature::COMPACTOR = this;
 }
@@ -103,32 +105,32 @@ void MMFilesCompactionFeature::collectOptions(std::shared_ptr<options::ProgramOp
 
 void MMFilesCompactionFeature::validateOptions(std::shared_ptr<options::ProgramOptions> options) {
   if (_deadNumberThreshold < 1024) {
-    LOG_TOPIC(WARN, Logger::COMPACTOR)
+    LOG_TOPIC("0ed00", WARN, Logger::COMPACTOR)
         << "compaction.dead-documents-threshold should be at least 1024.";
     _deadNumberThreshold = 1024;
   }
 
   if (_deadSizeThreshold < 10240) {
-    LOG_TOPIC(WARN, Logger::COMPACTOR)
+    LOG_TOPIC("018bf", WARN, Logger::COMPACTOR)
         << "compaction.dead-size-threshold should be at least 10k.";
     _deadSizeThreshold = 10240;
   }
 
   if (_deadShare < 0.001) {
-    LOG_TOPIC(WARN, Logger::COMPACTOR)
+    LOG_TOPIC("624da", WARN, Logger::COMPACTOR)
         << "compaction.dead-size-percent-threshold should be at least 0.001%.";
     _deadShare = 0.01;
   }
 
   if (_maxResultFilesize < TRI_JOURNAL_MINIMAL_SIZE) {
-    LOG_TOPIC(WARN, Logger::COMPACTOR)
+    LOG_TOPIC("a0f60", WARN, Logger::COMPACTOR)
         << "compaction.max-result-file-size should be at least: "
         << TRI_JOURNAL_MINIMAL_SIZE;
     _maxResultFilesize = TRI_JOURNAL_MINIMAL_SIZE;
   }
 
   if (_maxSizeFactor < 1) {
-    LOG_TOPIC(WARN, Logger::COMPACTOR)
+    LOG_TOPIC("80167", WARN, Logger::COMPACTOR)
         << "compaction.max-file-size-factor should be at least: 1";
     _maxSizeFactor = 1;
   }

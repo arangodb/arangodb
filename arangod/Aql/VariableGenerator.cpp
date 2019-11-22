@@ -23,6 +23,7 @@
 
 #include "Aql/VariableGenerator.h"
 #include "Basics/Exceptions.h"
+#include "Basics/debugging.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -52,7 +53,7 @@ std::unordered_map<VariableId, std::string const> VariableGenerator::variables(b
       continue;
     }
 
-    result.emplace(it.first, it.second->name);
+    result.try_emplace(it.first, it.second->name);
   }
 
   return result;
@@ -68,7 +69,7 @@ Variable* VariableGenerator::createVariable(char const* name, size_t length, boo
     TRI_ASSERT(variable->isUserDefined());
   }
 
-  _variables.emplace(variable->id, variable.get());
+  _variables.try_emplace(variable->id, variable.get());
   return variable.release();
 }
 
@@ -80,7 +81,7 @@ Variable* VariableGenerator::createVariable(std::string const& name, bool isUser
     TRI_ASSERT(variable->isUserDefined());
   }
 
-  _variables.emplace(variable->id, variable.get());
+  _variables.try_emplace(variable->id, variable.get());
   return variable.release();
 }
 
@@ -89,7 +90,7 @@ Variable* VariableGenerator::createVariable(Variable const* original) {
   std::unique_ptr<Variable> variable(original->clone());
 
   // check if insertion into the table actually works.
-  auto inserted = _variables.emplace(variable->id, variable.get()).second;
+  auto inserted = _variables.try_emplace(variable->id, variable.get()).second;
   if (!inserted) {
     // variable was already present. this is unexpected...
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -110,7 +111,7 @@ Variable* VariableGenerator::createVariable(VPackSlice const slice) {
     return existing;
   }
 
-  _variables.emplace(variable->id, variable.get());
+  _variables.try_emplace(variable->id, variable.get());
   return variable.release();
 }
 
