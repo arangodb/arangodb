@@ -202,6 +202,7 @@ class GeneralRequest {
     return std::make_shared<velocypack::Builder>(payload());
   };
 
+  virtual void setDefaultContentType() = 0;
   /// @brieg should reflect the Content-Type header
   ContentType contentType() const { return _contentType; }
   /// @brief should generally reflect the Accept header
