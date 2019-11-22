@@ -86,6 +86,9 @@ class StatisticsFeature final : public application_features::ApplicationFeature 
   void prepare() override final;
   void start() override final;
   void stop() override final;
+  void toPrometheus(std::string& result, double const& now) {
+    _statisticsWorker->generateRawStatistics(result, now);
+  }
 
   static stats::Descriptions const* descriptions() {
     if (STATISTICS != nullptr) {
