@@ -50,7 +50,8 @@ cppcheck "$@" \
   --suppress="unreadVariable" \
   --suppress="useStlAlgorithm" \
   --suppress="variableScope" \
-  arangod/ arangosh/ lib/ enterprise/ 2> cppcheck.out.xml \
+  arangod/ arangosh/ lib/ enterprise/ \
+  2> cppcheck.out.xml \
   || ferr "failed to run cppcheck"
 
 grep -E "<error |<location|</error>" cppcheck.out.xml \
