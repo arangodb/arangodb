@@ -21,7 +21,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "MetricsFeature.h"
-
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Basics/application-exit.h"
 #include "Logger/LogMacros.h"
@@ -31,6 +30,7 @@
 #include "ProgramOptions/Section.h"
 #include "RestServer/Metrics.h"
 #include "RocksDBEngine/RocksDBEngine.h"
+#include "MMFiles/MMFilesEngine.h"
 #include "Statistics/StatisticsFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -72,15 +72,11 @@ void MetricsFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {}
 
 void MetricsFeature::validateOptions(std::shared_ptr<ProgramOptions>) {}
 
-void MetricsFeature::prepare() {}
-
-void MetricsFeature::start() {
-  TRI_ASSERT(isEnabled());
-}
-
-void MetricsFeature::stop() {
+void MetricsFeature::unprepare() {
   METRICS = nullptr;
 }
+
+void MetricsFeature::prepare() {}
 
 double time() {
   return std::chrono::duration<double>( // time since epoch in seconds
