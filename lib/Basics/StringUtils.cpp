@@ -24,7 +24,6 @@
 #include "StringUtils.h"
 
 #include <algorithm>
-#include <ctype.h>
 #include <math.h>
 #include <stdlib.h>
 #include <algorithm>
@@ -164,11 +163,17 @@ unsigned char const BASE64U_REVS[256] = {
 };
 
 inline bool isBase64(unsigned char c) {
-  return (isalnum(c) || (c == '+') || (c == '/'));
+  return (c >= '0' && c <= '9') ||
+         (c >= 'a' && c <= 'z') ||
+         (c >= 'A' && c <= 'Z') ||
+         c == '+' || c == '/';
 }
 
 inline bool isBase64U(unsigned char c) {
-  return (isalnum(c) || (c == '-') || (c == '_'));
+  return (c >= '0' && c <= '9') ||
+         (c >= 'a' && c <= 'z') ||
+         (c >= 'A' && c <= 'Z') ||
+         c == '-' || c == '_';
 }
 
 unsigned char consume(char const*& s) {

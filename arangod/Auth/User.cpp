@@ -554,7 +554,7 @@ auth::Level auth::User::collectionAuthLevel(std::string const& dbname,
     return auth::Level::NONE;  // invalid collection names
   }
   // we must have got a non-empty collection name when we get here
-  TRI_ASSERT(!isdigit(cname[0]));
+  TRI_ASSERT(cname[0] < '0' || cname[0] > '9');
 
   bool isSystem = cname[0] == '_';
   if (isSystem) {

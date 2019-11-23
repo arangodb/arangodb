@@ -2134,6 +2134,26 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
   }
 }
 
+void RocksDBEngine::getStatistics(std::string& result) const {
+  VPackBuilder stats;
+  getStatistics(stats);
+  VPackSlice sslice = stats.slice();
+  TRI_ASSERT(sslice.isObject());
+  for (auto const& a : VPackObjectIterator(sslice)) {
+    if (a.value.isNumber()) {
+      std::string name = a.key.copyString();
+      std::replace(name.begin(), name.end(), '.', '_');
+      std::replace(name.begin(), name.end(), '-', '_');
+      if (name.front() != 'r') {
+        name = EngineName + "_" + name ; 
+      }
+      result += "#TYPE " + name +
+        " counter\n" + "#HELP " + name + " " + name + "\n" +
+        name + " " + std::to_string(a.value.getNumber<uint64_t>()) + "\n";
+    }
+  }
+}
+
 void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
   // add int properties
   auto addInt = [&](std::string const& s) {

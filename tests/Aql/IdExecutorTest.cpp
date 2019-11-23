@@ -32,15 +32,12 @@
 #include "Aql/ResourceUsage.h"
 #include "Aql/Stats.h"
 
-#include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
 
-namespace arangodb {
-namespace tests {
-namespace aql {
+namespace arangodb::tests::aql {
 
 class IdExecutorTest : public ::testing::Test {
  protected:
@@ -66,7 +63,7 @@ class IdExecutorTest : public ::testing::Test {
 
 TEST_F(IdExecutorTest, there_are_no_rows_upstream) {
   ConstFetcherHelper fetcher(itemBlockManager, nullptr);
-  IdExecutor<::arangodb::aql::BlockPassthrough::Enable, ConstFetcher> testee(fetcher, infos);
+  IdExecutor<ConstFetcher> testee(fetcher, infos);
   NoStats stats{};
 
   std::tie(state, stats) = testee.produceRows(row);
@@ -77,7 +74,7 @@ TEST_F(IdExecutorTest, there_are_no_rows_upstream) {
 TEST_F(IdExecutorTest, there_are_rows_in_the_upstream) {
   auto input = VPackParser::fromJson("[ [true], [false], [true] ]");
   ConstFetcherHelper fetcher(itemBlockManager, input->buffer());
-  IdExecutor<::arangodb::aql::BlockPassthrough::Enable, ConstFetcher> testee(fetcher, infos);
+  IdExecutor<ConstFetcher> testee(fetcher, infos);
   NoStats stats{};
 
   // This block consumes all rows at once.
@@ -98,6 +95,4 @@ TEST_F(IdExecutorTest, there_are_rows_in_the_upstream) {
   }
 }
 
-}  // namespace aql
-}  // namespace tests
 }  // namespace arangodb

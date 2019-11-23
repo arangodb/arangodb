@@ -37,10 +37,6 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-constexpr bool LimitExecutor::Properties::preservesOrder;
-constexpr BlockPassthrough LimitExecutor::Properties::allowsBlockPassthrough;
-constexpr bool LimitExecutor::Properties::inputSizeRestrictsOutputSize;
-
 LimitExecutorInfos::LimitExecutorInfos(RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
                                        // cppcheck-suppress passedByValue
                                        std::unordered_set<RegisterId> registersToClear,

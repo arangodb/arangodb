@@ -3668,7 +3668,7 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_vpack_create) {
                     .ok());
     EXPECT_TRUE(result.first);
     EXPECT_EQUAL_SLICES(VPackParser::fromJson(
-                            "{\"min\":1,\"max\":5,\"preserveOriginal\":false}")
+                            "{\"min\":1,\"max\":5,\"preserveOriginal\":false, \"startMarker\":\"\",\"endMarker\":\"\", \"streamType\":\"binary\"}")
                             ->slice(),
                         result.first->properties());
   }
@@ -3676,7 +3676,7 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_vpack_create) {
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
     // with changed parameters
     auto vpack = VPackParser::fromJson(
-        "{\"min\":11,\"max\":22,\"preserveOriginal\":true}");
+        "{\"min\":11,\"max\":22,\"preserveOriginal\":true, \"startMarker\":\"\",\"endMarker\":\"\", \"streamType\":\"binary\"}");
     EXPECT_TRUE(feature
                     .emplace(result, arangodb::StaticStrings::SystemDatabase + "::test_ngram_analyzer2",
                              "ngram", vpack->slice())

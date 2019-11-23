@@ -264,7 +264,7 @@ void RocksDBTransactionCollection::trackIndexRemove(TRI_idx_iid_t iid, uint64_t 
 /// no other error occurred returns any other error code otherwise
 int RocksDBTransactionCollection::doLock(AccessMode::Type type, int nestingLevel) {
 
-  if(AccessMode::Type::WRITE == type && _exclusiveWrites) {
+  if (AccessMode::Type::WRITE == type && _exclusiveWrites) {
     type = AccessMode::Type::EXCLUSIVE;
   }
 
@@ -321,8 +321,7 @@ int RocksDBTransactionCollection::doLock(AccessMode::Type type, int nestingLevel
 
 /// @brief unlock a collection
 int RocksDBTransactionCollection::doUnlock(AccessMode::Type type, int nestingLevel) {
-
-  if(AccessMode::Type::WRITE == type && _exclusiveWrites) {
+  if (AccessMode::Type::WRITE == type && _exclusiveWrites) {
     type = AccessMode::Type::EXCLUSIVE;
   }
 
