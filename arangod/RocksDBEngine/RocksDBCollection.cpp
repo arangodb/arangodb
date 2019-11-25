@@ -68,6 +68,14 @@
 
 using namespace arangodb;
 
+namespace {
+LocalDocumentId generateDocumentId(LogicalCollection const& collection,
+                                   TRI_voc_rid_t revisionId) {
+  bool useRev = collection.usesRevisionsAsDocumentIds();
+  return useRev ? LocalDocumentId::create(revisionId) : LocalDocumentId::create();
+}
+}  // namespace
+
 RocksDBCollection::RocksDBCollection(LogicalCollection& collection,
                                      arangodb::velocypack::Slice const& info)
     : RocksDBMetaCollection(collection, info),
@@ -852,7 +860,7 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
     }
   }
 
-  LocalDocumentId const documentId = LocalDocumentId::create(revisionId);
+  LocalDocumentId const documentId = ::generateDocumentId(_logicalCollection, revisionId);
 
   RocksDBSavePoint guard(trx, TRI_VOC_DOCUMENT_OPERATION_INSERT);
 
@@ -950,7 +958,7 @@ Result RocksDBCollection::update(arangodb::transaction::Methods* trx,
   if (res.fail()) {
     return res;
   }
-  LocalDocumentId const newDocumentId = LocalDocumentId::create(revisionId);
+  LocalDocumentId const newDocumentId = ::generateDocumentId(_logicalCollection, revisionId);
 
   if (_isDBServer) {
     // Need to check that no sharding keys have changed:
@@ -1050,7 +1058,7 @@ Result RocksDBCollection::replace(transaction::Methods* trx,
   if (res.fail()) {
     return res;
   }
-  LocalDocumentId const newDocumentId = LocalDocumentId::create(revisionId);
+  LocalDocumentId const newDocumentId = ::generateDocumentId(_logicalCollection, revisionId);
 
   if (_isDBServer) {
     // Need to check that no sharding keys have changed:

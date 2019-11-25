@@ -358,7 +358,8 @@ ArangoCollection.prototype.properties = function (properties) {
     'minReplicationFactor': true,
     'distributeShardsLike': false,
     'shardingStrategy': false,
-    'cacheEnabled': true
+    'cacheEnabled': true,
+    'usesRevisionsAsDocumentIds': false
   };
   var a;
 

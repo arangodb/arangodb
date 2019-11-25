@@ -142,7 +142,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
           info, "version", static_cast<uint32_t>(currentVersion())))),
       _v8CacheVersion(0),
       _type(Helper::getNumericValue<TRI_col_type_e, int>(info, StaticStrings::DataSourceType,
-                                                          TRI_COL_TYPE_UNKNOWN)),
+                                                         TRI_COL_TYPE_UNKNOWN)),
       _status(Helper::getNumericValue<TRI_vocbase_col_status_e, int>(
           info, "status", TRI_VOC_COL_STATUS_CORRUPTED)),
       _isAStub(isAStub),
@@ -150,6 +150,8 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
       _isSmart(Helper::getBooleanValue(info, StaticStrings::IsSmart, false)),
       _isSmartChild(Helper::getBooleanValue(info, StaticStrings::IsSmartChild, false)),
 #endif
+      _usesRevisionsAsDocumentIds(
+          Helper::getBooleanValue(info, StaticStrings::UsesRevisionsAsDocumentIds, false)),
       _waitForSync(Helper::getBooleanValue(info, StaticStrings::WaitForSyncString, false)),
       _allowUserKeys(Helper::getBooleanValue(info, "allowUserKeys", true)),
 #ifdef USE_ENTERPRISE
@@ -376,8 +378,7 @@ uint64_t LogicalCollection::numberDocuments(transaction::Methods* trx,
 }
 
 bool LogicalCollection::hasClusterWideUniqueRevs() const {
-  return isSmartChild() &&
-         vocbase().server().getFeature<EngineSelectorFeature>().isRocksDB();
+  return usesRevisionsAsDocumentIds() && isSmartChild();
 }
 
 uint32_t LogicalCollection::v8CacheVersion() const { return _v8CacheVersion; }
@@ -432,6 +433,10 @@ TRI_voc_rid_t LogicalCollection::revision(transaction::Methods* trx) const {
   // TODO CoordinatorCase
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   return _physical->revision(trx);
+}
+
+bool LogicalCollection::usesRevisionsAsDocumentIds() const {
+  return _usesRevisionsAsDocumentIds;
 }
 
 std::unique_ptr<FollowerInfo> const& LogicalCollection::followers() const {
@@ -678,7 +683,9 @@ arangodb::Result LogicalCollection::appendVelocyPack(arangodb::velocypack::Build
   // Cluster Specific
   result.add(StaticStrings::IsSmart, VPackValue(isSmart()));
   result.add(StaticStrings::IsSmartChild, VPackValue(isSmartChild()));
-
+  result.add(StaticStrings::UsesRevisionsAsDocumentIds,
+             VPackValue(usesRevisionsAsDocumentIds()));
+             
   if (hasSmartJoinAttribute()) {
     result.add(StaticStrings::SmartJoinAttribute, VPackValue(_smartJoinAttribute));
   }

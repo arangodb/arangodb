@@ -224,7 +224,8 @@ class StaticStrings {
   static std::string const SmartJoinAttribute;
   static std::string const Sharding;
   static std::string const Satellite;
-
+  static std::string const UsesRevisionsAsDocumentIds;
+  
   // graph attribute names
   static std::string const GraphCollection;
   static std::string const GraphIsSmart;

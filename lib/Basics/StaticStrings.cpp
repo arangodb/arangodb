@@ -242,6 +242,8 @@ std::string const StaticStrings::ShardingStrategy("shardingStrategy");
 std::string const StaticStrings::SmartJoinAttribute("smartJoinAttribute");
 std::string const StaticStrings::Sharding("sharding");
 std::string const StaticStrings::Satellite("satellite");
+std::string const StaticStrings::UsesRevisionsAsDocumentIds(
+    "usesRevisionsAsDocumentIds");
 
 // graph attribute names
 std::string const StaticStrings::GraphCollection("_graphs");
