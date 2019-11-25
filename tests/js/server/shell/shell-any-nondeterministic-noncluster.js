@@ -167,10 +167,22 @@ function AnySuite () {
       var statsExp = statsExpected(l, n * 100);
       var stats = statsFound(dist);
       assertEqual(stats.count, n * 100);
+      if (Math.abs(stats.average - statsExp.average)
+        >= statsExp.averageStddev * 3) {
+        require('internal').print(`real: ${stats.average}; exp: ${statsExp.average}; stddev: ${statsExp.averageStddev}}`);
+      }      
+      if (Math.abs(stats.average - statsExp.average)
+        >= statsExp.averageStddev * 3) {
+        require('internal').print(`real: ${stats.average}; exp: ${statsExp.average}; stddev: ${statsExp.averageStddev}}`);
+      }      
       assertTrue(Math.abs(stats.average - statsExp.average) 
-                 < statsExp.averageStddev * 3);
+                 < statsExp.averageStddev * 4);
+      if (Math.abs(stats.variance - statsExp.variance)
+        >= statsExp.varianceStddev * 3) {
+        require('internal').print(`real: ${stats.variance}; exp: ${statsExp.variance}; stddev: ${statsExp.varianceStddev}}`);
+      }      
       assertTrue(Math.abs(stats.variance - statsExp.variance)
-                 < statsExp.varianceStddev * 3);
+                 < statsExp.varianceStddev * 4);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -213,8 +225,16 @@ function AnySuite () {
       var statsExp = statsExpected(l, n * 200);
       var stats = statsFound(dist);
       assertEqual(stats.count, n * 200);
+      if (Math.abs(stats.average - statsExp.average)
+        >= statsExp.averageStddev * 4) {
+        require('internal').print(`real: ${stats.average}; exp: ${statsExp.average}; stddev: ${statsExp.averageStddev}}`);
+      }      
       assertTrue(Math.abs(stats.average - statsExp.average) 
                  < statsExp.averageStddev * 4);
+      if (Math.abs(stats.variance - statsExp.variance)
+        >= statsExp.varianceStddev * 4) {
+        require('internal').print(`real: ${stats.variance}; exp: ${statsExp.variance}; stddev: ${statsExp.varianceStddev}}`);
+      }      
       assertTrue(Math.abs(stats.variance - statsExp.variance)
                  < statsExp.varianceStddev * 4);
     },
@@ -241,8 +261,16 @@ function AnySuite () {
       var statsExp = statsExpected(l, n * 100);
       var stats = statsFound(dist);
       assertEqual(stats.count, n * 100);
+      if (Math.abs(stats.average - statsExp.average)
+        >= statsExp.averageStddev * 4) {
+        require('internal').print(`real: ${stats.average}; exp: ${statsExp.average}; stddev: ${statsExp.averageStddev}}`);
+      }      
       assertTrue(Math.abs(stats.average - statsExp.average) 
                  < statsExp.averageStddev * 4);
+      if (Math.abs(stats.variance - statsExp.variance)
+        >= statsExp.varianceStddev * 4) {
+        require('internal').print(`real: ${stats.variance}; exp: ${statsExp.variance}; stddev: ${statsExp.varianceStddev}}`);
+      }      
       assertTrue(Math.abs(stats.variance - statsExp.variance)
                  < statsExp.varianceStddev * 4);
     },
@@ -270,10 +298,18 @@ function AnySuite () {
       var statsExp = statsExpected(l, n * 100);
       var stats = statsFound(dist);
       assertEqual(stats.count, n * 100);
+      if(Math.abs(stats.average - statsExp.average)
+        >= statsExp.averageStddev * 3) {
+        require('internal').print(`real: ${stats.average}; exp: ${statsExp.average}; stddev: ${statsExp.averageStddev}}`);
+      }      
       assertTrue(Math.abs(stats.average - statsExp.average) 
-                 < statsExp.averageStddev * 3);
+                 < statsExp.averageStddev * 4);
+      if (Math.abs(stats.variance - statsExp.variance)
+        >= statsExp.varianceStddev * 3) {
+        require('internal').print(`real: ${stats.variance}; exp: ${statsExp.variance}; stddev: ${statsExp.varianceStddev}}`);
+      }      
       assertTrue(Math.abs(stats.variance - statsExp.variance)
-                 < statsExp.varianceStddev * 3);
+                 < statsExp.varianceStddev * 4);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -304,10 +340,18 @@ function AnySuite () {
       var statsExp = statsExpected(l, n * 50);
       var stats = statsFound(dist);
       assertEqual(stats.count, n * 50);
+      if (Math.abs(stats.average - statsExp.average)
+        >= statsExp.averageStddev * 3) {
+        require('internal').print(`real: ${stats.average}; exp: ${statsExp.average}; stddev: ${statsExp.averageStddev}}`);
+      }      
       assertTrue(Math.abs(stats.average - statsExp.average) 
-                 < statsExp.averageStddev * 3);
+                 < statsExp.averageStddev * 4);
+      if (Math.abs(stats.variance - statsExp.variance)
+        >= statsExp.varianceStddev * 3) {
+        require('internal').print(`real: ${stats.variance}; exp: ${statsExp.variance}; stddev: ${statsExp.varianceStddev}}`);
+      }      
       assertTrue(Math.abs(stats.variance - statsExp.variance)
-                 < statsExp.varianceStddev * 3);
+                 < statsExp.varianceStddev * 4);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -338,10 +382,18 @@ function AnySuite () {
       var statsExp = statsExpected(l, n * 5);
       var stats = statsFound(dist);
       assertEqual(stats.count, n * 5);
+      if (Math.abs(stats.average - statsExp.average)
+        >= statsExp.averageStddev * 3) {
+        require('internal').print(`real: ${stats.average}; exp: ${statsExp.average}; stddev: ${statsExp.averageStddev}}`);
+      }      
       assertTrue(Math.abs(stats.average - statsExp.average) 
-                 < statsExp.averageStddev * 3);
+                 < statsExp.averageStddev * 4);
+      if (Math.abs(stats.variance - statsExp.variance)
+        >= statsExp.varianceStddev * 3) {
+        require('internal').print(`real: ${stats.variance}; exp: ${statsExp.variance}; stddev: ${statsExp.varianceStddev}}`);
+      }      
       assertTrue(Math.abs(stats.variance - statsExp.variance)
-                 < statsExp.varianceStddev * 3);
+                 < statsExp.varianceStddev * 4);
     }
 
   };
