@@ -32,7 +32,6 @@ as body with the following attributes:
 
 - *stream*: Create this cursor as a stream query (optional). 
 
-
 Returns a cursor containing the result, see [HTTP Cursor](../AqlQueryCursor/README.md) for details.
 
 @RESTRETURNCODES
@@ -96,4 +95,3 @@ Using a *batchSize* value
     db._drop(cn);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

@@ -45,4 +45,3 @@ Every other status indicates a corrupted collection.
 If the *collection-name* is unknown, then a *HTTP 404* is
 returned.
 @endDocuBlock
-

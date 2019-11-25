@@ -41,4 +41,3 @@ Trying to fetch a non-existing task
 
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

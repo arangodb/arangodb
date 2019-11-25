@@ -111,4 +111,3 @@ Using new Signature for attributes WaitForSync and limit
     db._drop(cn);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

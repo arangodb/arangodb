@@ -87,7 +87,6 @@ number of values summarized
 @RESTSTRUCT{counts,setof_statistics_struct,array,required,integer}
 array containing the values
 
-
 @RESTSTRUCT{connectionTime,client_statistics_struct,object,required,setof_statistics_struct}
 total connection times
 

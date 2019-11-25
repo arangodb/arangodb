@@ -27,7 +27,6 @@ of documents is considered an error.
 
 @RESTSTRUCT{lastValue,key_generator_type,integer,required,}
 
-
 @RESTSTRUCT{isVolatile,collection_info,boolean,required,}
 If *true* then the collection data will be
 kept in memory only and ArangoDB will not write or sync the data

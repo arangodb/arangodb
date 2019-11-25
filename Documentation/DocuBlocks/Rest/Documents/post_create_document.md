@@ -238,4 +238,3 @@ Use of returnNew:
 @END_EXAMPLE_ARANGOSH_RUN
 
 @endDocuBlock
-

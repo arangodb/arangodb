@@ -107,4 +107,3 @@ Creating a sparse skiplist index
   ~ db._drop(cn);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

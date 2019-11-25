@@ -138,4 +138,3 @@ in this case try to find the boundary at the beginning of the request body).
     logPlainResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

@@ -69,4 +69,3 @@ A message created for this error.
   graph._drop("myGraph", true);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

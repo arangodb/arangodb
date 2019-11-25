@@ -152,5 +152,4 @@ The `result` object of the body holds the `downloadId` string attribute which ca
     };
 @END_EXAMPLE_ARANGOSH_RUN
 
-
 @endDocuBlock

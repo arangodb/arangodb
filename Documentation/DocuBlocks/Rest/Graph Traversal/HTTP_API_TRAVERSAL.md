@@ -491,7 +491,6 @@ With the directed edges:
 - *Alice* knows *Bob*
 - *Bob* knows *Alice*
 
-
 @EXAMPLE_ARANGOSH_RUN{RestTraversalMaxIterations}
     var examples = require("@arangodb/graph-examples/example-graph.js");
     var g = examples.loadGraph("knows_graph");
@@ -520,4 +519,3 @@ With the directed edges:
 @END_EXAMPLE_ARANGOSH_RUN
 
 @endDocuBlock
-

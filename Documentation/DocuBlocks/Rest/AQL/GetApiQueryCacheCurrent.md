@@ -38,4 +38,3 @@ Is returned when the list of results can be retrieved successfully.
 The server will respond with *HTTP 400* in case of a malformed request,
 
 @endDocuBlock
-

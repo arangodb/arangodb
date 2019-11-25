@@ -21,4 +21,3 @@ in case of an active failover setup.
 HTTP 503 will be returned in case the server is during startup or during shutdown,
 is set to read-only mode or is currently a follower in an active failover setup.
 @endDocuBlock
-

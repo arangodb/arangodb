@@ -14,7 +14,6 @@ The collection name.
 @RESTDESCRIPTION
 **NOTE** Swagger examples won't work due to the anchor.
 
-
 Creates a new index in the collection *collection*. Expects
 an object containing the index details.
 

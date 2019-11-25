@@ -43,4 +43,3 @@ Returns the available tick ranges.
     logJsonResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

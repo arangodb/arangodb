@@ -142,7 +142,6 @@ Use of returnNew:
     db._drop(cn);
 @END_EXAMPLE_ARANGOSH_RUN
 
-
 Partially illegal documents:
 
 @EXAMPLE_ARANGOSH_RUN{RestDocumentHandlerPostBadJsonMulti}
@@ -162,4 +161,3 @@ Partially illegal documents:
 @END_EXAMPLE_ARANGOSH_RUN
 
 @endDocuBlock
-

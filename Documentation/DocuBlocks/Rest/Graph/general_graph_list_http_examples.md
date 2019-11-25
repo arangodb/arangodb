@@ -74,4 +74,3 @@ The name of the sharding attribute in smart graph case (Enterprise Edition only)
 ~ examples.dropGraph("routeplanner");
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

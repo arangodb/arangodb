@@ -22,9 +22,7 @@ Number of seconds initial delay
 @RESTDESCRIPTION
 creates a new task with a generated id
 
-
 @RESTRETURNCODES
-
 
 @RESTRETURNCODE{200}
 The task was registered
@@ -37,8 +35,8 @@ The timestamp when this task was created
 
 @RESTREPLYBODY{type,string,required,}
 What type of task is this [ `periodic`, `timed`]
- - periodic are tasks that repeat periodically
- - timed are tasks that execute once at a specific time
+  - periodic are tasks that repeat periodically
+  - timed are tasks that execute once at a specific time
 
 @RESTREPLYBODY{period,number,required,}
 this task should run each `period` seconds
@@ -85,4 +83,3 @@ If the post body is not accurate, a *HTTP 400* is returned.
 
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

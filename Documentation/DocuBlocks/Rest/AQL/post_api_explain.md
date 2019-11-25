@@ -244,4 +244,3 @@ the optimizer has removed so that there are less top-level statements.
   ~ db._drop(cn);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

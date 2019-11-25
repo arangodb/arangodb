@@ -47,7 +47,6 @@ the collection. This index also defines which attribute holds the
 coordinates for the document.  If you have more than one geo-spatial index,
 you can use the *geo* field to select a particular index.
 
-
 Returns a cursor containing the result, see [HTTP Cursor](../AqlQueryCursor/README.md) for details.
 
 Note: the *within* simple query is **deprecated** as of ArangoDB 2.6. 
@@ -125,4 +124,3 @@ With distance
     db._drop(cn);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

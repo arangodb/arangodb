@@ -105,4 +105,3 @@ an error document in this case.
 is returned if the collection was not found.
 
 @endDocuBlock
-

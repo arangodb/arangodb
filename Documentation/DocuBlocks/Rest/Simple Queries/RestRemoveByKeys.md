@@ -109,4 +109,3 @@ is returned if the operation was called with a different HTTP METHOD than PUT.
 @END_EXAMPLE_ARANGOSH_RUN
 
 @endDocuBlock
-

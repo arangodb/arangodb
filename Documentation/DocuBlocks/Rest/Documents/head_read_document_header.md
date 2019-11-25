@@ -61,4 +61,3 @@ document's current revision in the *Etag* header.
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
 @endDocuBlock
-

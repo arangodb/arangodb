@@ -208,4 +208,3 @@ Merging attributes of an object using `mergeObjects`:
   ~ db._drop(cn);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

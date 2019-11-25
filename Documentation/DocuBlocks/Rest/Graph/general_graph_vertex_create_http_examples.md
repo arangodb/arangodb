@@ -121,4 +121,3 @@ A message created for this error.
   examples.dropGraph("social");
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

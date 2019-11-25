@@ -68,4 +68,3 @@ a descriptive error message
   logJsonResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

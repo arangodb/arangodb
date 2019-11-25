@@ -150,4 +150,3 @@ The server will respond with *HTTP 501* if this API is called on a cluster
 coordinator.
 
 @endDocuBlock
-

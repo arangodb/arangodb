@@ -63,7 +63,6 @@ details. The object has the following attributes:
 
 - *errorMessage*: a descriptive error message
 
-
 @RESTRETURNCODES
 
 @RESTRETURNCODE{201}
@@ -120,4 +119,3 @@ Referring to a non-existing collection
     logJsonResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

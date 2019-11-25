@@ -213,4 +213,3 @@ Using an identifier and requesting the figures of the collection (RocksDB storag
 @END_EXAMPLE_ARANGOSH_RUN
 
 @endDocuBlock
-

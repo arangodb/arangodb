@@ -95,4 +95,3 @@ is returned if an error occurred during synchronization.
 @RESTRETURNCODE{501}
 is returned when this operation is called on a coordinator in a cluster.
 @endDocuBlock
-

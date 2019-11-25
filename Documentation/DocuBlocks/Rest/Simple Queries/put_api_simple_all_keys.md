@@ -114,4 +114,3 @@ Collection does not exist
     logJsonResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

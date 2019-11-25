@@ -30,7 +30,6 @@ A statistics figure is described by
 @RESTRETURNCODE{200}
 Description was returned successfully.
 
-
 @RESTREPLYBODY{groups,array,required,admin_statistics_group_struct}
 A statistics group
 
@@ -84,4 +83,3 @@ the error, *false* in this case
     logJsonResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

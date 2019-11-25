@@ -184,4 +184,3 @@ Produce a revision conflict
   ~ db._drop(cn);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

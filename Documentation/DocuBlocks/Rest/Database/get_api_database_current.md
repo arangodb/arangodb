@@ -21,7 +21,6 @@ The response is a JSON object with the following attributes:
 
 - *replicationFactor*: the default replication factor for collections in this database
 
-
 @RESTRETURNCODES
 
 @RESTRETURNCODE{200}
@@ -44,4 +43,3 @@ is returned if the database could not be found.
     logJsonResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

@@ -40,7 +40,6 @@ details. The object has the following attributes:
 
 - *errorMessage*: a descriptive error message
 
-
 @RESTRETURNCODES
 
 @RESTRETURNCODE{200}
@@ -84,4 +83,3 @@ Aborting a transaction:
 @END_EXAMPLE_ARANGOSH_RUN
 
 @endDocuBlock
-

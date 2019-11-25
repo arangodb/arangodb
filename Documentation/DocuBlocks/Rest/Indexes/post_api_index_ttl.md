@@ -67,4 +67,3 @@ Creating a TTL index
 @END_EXAMPLE_ARANGOSH_RUN
 
 @endDocuBlock
-

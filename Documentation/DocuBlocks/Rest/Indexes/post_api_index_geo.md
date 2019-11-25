@@ -36,7 +36,6 @@ http://geojson.org/geojson-spec.html#positions
 @RESTDESCRIPTION
 **NOTE** Swagger examples won't work due to the anchor.
 
-
 Creates a geo-spatial index in the collection *collection-name*, if
 it does not already exist. Expects an object containing the index details.
 
@@ -100,4 +99,3 @@ Creating a geo index with latitude and longitude attributes
   ~ db._drop(cn);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

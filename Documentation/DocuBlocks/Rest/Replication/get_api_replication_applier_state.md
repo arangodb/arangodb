@@ -140,4 +140,3 @@ Fetching the state of an active applier:
     logJsonResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

@@ -34,4 +34,3 @@ is not specified or illegal on a coordinator.
 @RESTRETURNCODE{405}
 is returned when an invalid HTTP method is used.
 @endDocuBlock
-

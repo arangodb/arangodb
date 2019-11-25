@@ -35,4 +35,3 @@ is returned if ArangoDB is not running in cluster mode.
 is returned if ArangoDB was not compiled for cluster operation.
 
 @endDocuBlock
-

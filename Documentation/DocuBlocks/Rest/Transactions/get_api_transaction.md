@@ -56,4 +56,3 @@ Get transaction status
 @END_EXAMPLE_ARANGOSH_RUN
 
 @endDocuBlock
-

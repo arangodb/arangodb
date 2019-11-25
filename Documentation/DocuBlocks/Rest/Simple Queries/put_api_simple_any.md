@@ -57,4 +57,3 @@ response body contains an error document in this case.
     db._drop(cn);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-
