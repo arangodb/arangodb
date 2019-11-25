@@ -120,8 +120,8 @@ line in the import data is empty
     db._drop(cn);
     db._create(cn);
 
-    var body = '[ "_key", "value1", "value2" ]\n' + 
-               '[ "abc", 25, "test" ]\n\n' + 
+    var body = '[ "_key", "value1", "value2" ]\n' +
+               '[ "abc", 25, "test" ]\n\n' +
                '[ "foo", "bar", "baz" ]';
 
     var response = logCurlRequestRaw('POST', "/_api/import?collection=" + cn, body);
@@ -145,7 +145,7 @@ Importing into an edge collection, with attributes `_from`, `_to` and `name`
     db._drop("products");
     db._create("products");
 
-    var body = '[ "_from", "_to", "name" ]\n' + 
+    var body = '[ "_from", "_to", "name" ]\n' +
                '[ "products/123","products/234", "some name" ]\n' +
                '[ "products/332", "products/abc", "other name" ]';
 
@@ -190,7 +190,7 @@ Violating a unique constraint, but allow partial imports
     db._drop(cn);
     db._create(cn);
 
-    var body = '[ "_key", "value1", "value2" ]\n' + 
+    var body = '[ "_key", "value1", "value2" ]\n' +
                '[ "abc", 25, "test" ]\n' +
                '["abc", "bar", "baz" ]';
 
@@ -214,7 +214,7 @@ Violating a unique constraint, not allowing partial imports
     db._create(cn);
 
     var body = '[ "_key", "value1", "value2" ]\n' +
-               '[ "abc", 25, "test" ]\n' + 
+               '[ "abc", 25, "test" ]\n' +
                '["abc", "bar", "baz" ]';
 
     var response = logCurlRequest('POST', "/_api/import?collection=" + cn + "&complete=true", body);
@@ -231,8 +231,8 @@ Using a non-existing collection
     var cn = "products";
     db._drop(cn);
 
-    var body = '[ "_key", "value1", "value2" ]\n' + 
-               '[ "abc", 25, "test" ]\n' + 
+    var body = '[ "_key", "value1", "value2" ]\n' +
+               '[ "abc", 25, "test" ]\n' +
                '["foo", "bar", "baz" ]';
 
     var response = logCurlRequest('POST', "/_api/import?collection=" + cn, body);

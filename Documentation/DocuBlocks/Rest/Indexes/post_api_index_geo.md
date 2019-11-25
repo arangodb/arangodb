@@ -65,9 +65,9 @@ Creating a geo index with a location attribute
     db._create(cn);
 
     var url = "/_api/index?collection=" + cn;
-    var body = { 
-      type: "geo", 
-      fields : [ "b" ] 
+    var body = {
+      type: "geo",
+      fields : [ "b" ]
     };
 
     var response = logCurlRequest('POST', url, body);
@@ -86,9 +86,9 @@ Creating a geo index with latitude and longitude attributes
     db._create(cn);
 
     var url = "/_api/index?collection=" + cn;
-    var body = { 
-      type: "geo", 
-      fields: [ "e", "f" ] 
+    var body = {
+      type: "geo",
+      fields: [ "e", "f" ]
     };
 
     var response = logCurlRequest('POST', url, body);

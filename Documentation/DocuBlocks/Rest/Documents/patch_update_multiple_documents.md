@@ -33,14 +33,14 @@ value. If set to *true*, objects will be merged. The default is
 Wait until the new documents have been synced to disk.
 
 @RESTQUERYPARAM{ignoreRevs,boolean,optional}
-By default, or if this is set to *true*, the *_rev* attributes in 
+By default, or if this is set to *true*, the *_rev* attributes in
 the given documents are ignored. If this is set to *false*, then
 any *_rev* attribute given in a body document is taken as a
 precondition. The document is only updated if the current revision
 is the one specified.
 
 @RESTQUERYPARAM{returnOld,boolean,optional}
-Return additionally the complete previous revision of the changed 
+Return additionally the complete previous revision of the changed
 documents under the attribute *old* in the result.
 
 @RESTQUERYPARAM{returnNew,boolean,optional}
@@ -67,8 +67,8 @@ document in the body and its value does not match the revision of
 the corresponding document in the database, the precondition is
 violated.
 
-Cluster only: The patch document _may_ contain  
-values for the collection's pre-defined shard keys. Values for the shard keys 
+Cluster only: The patch document _may_ contain
+values for the collection's pre-defined shard keys. Values for the shard keys
 are treated as hints to improve performance. Should the shard keys
 values be incorrect ArangoDB may answer with a *not found* error
 

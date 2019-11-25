@@ -15,7 +15,7 @@ in the list of slow queries if their runtime exceeds the value set in
 property must also be set to *true*.
 
 @RESTBODYPARAM{trackBindVars,boolean,required,}
-If set to *true*, then the bind variables used in queries will be tracked 
+If set to *true*, then the bind variables used in queries will be tracked
 along with queries.
 
 @RESTBODYPARAM{maxSlowQueries,integer,required,int64}

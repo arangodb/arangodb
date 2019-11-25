@@ -31,7 +31,7 @@ Additionally return the complete old document under the attribute *old*
 in the result. Only available if the overwrite option is used.
 
 @RESTQUERYPARAM{silent,boolean,optional}
-If set to *true*, an empty object will be returned as response. No meta-data 
+If set to *true*, an empty object will be returned as response. No meta-data
 will be returned for the created document. This option can be used to
 save some network traffic.
 
@@ -53,7 +53,7 @@ contains the path to the newly created document. The *Etag* header field
 contains the revision of the document. Both are only set in the single
 document case.
 
-If *silent* is not set to *true*, the body of the response contains a 
+If *silent* is not set to *true*, the body of the response contains a
 JSON object with the following attributes:
 
   - *_id* contains the document handle of the newly created document

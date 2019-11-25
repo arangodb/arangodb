@@ -10,7 +10,7 @@
 The transaction identifier.
 
 @RESTDESCRIPTION
-The result is an object describing the status of the transaction. 
+The result is an object describing the status of the transaction.
 It has at least the following attributes:
 
 - *id*: the identifier of the transaction

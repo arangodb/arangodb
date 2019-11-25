@@ -11,10 +11,10 @@ Gets a vertex from the given collection.
 @RESTURLPARAM{graph,string,required}
 The name of the graph.
 
-@RESTURLPARAM{collection,string,required} 
+@RESTURLPARAM{collection,string,required}
 The name of the vertex collection the vertex belongs to.
 
-@RESTURLPARAM{vertex,string,required} 
+@RESTURLPARAM{vertex,string,required}
 The *_key* attribute of the vertex.
 
 @RESTQUERYPARAMETERS
@@ -34,7 +34,7 @@ you can supply the Etag in an query parameter *rev*.
 
 @RESTHEADERPARAM{if-none-match,string,optional}
 If the "If-None-Match" header is given, then it must contain exactly one Etag. The document is returned,
-only if it has a different revision as the given Etag. Otherwise a HTTP 304 is returned. 
+only if it has a different revision as the given Etag. Otherwise a HTTP 304 is returned.
 
 @RESTRETURNCODES
 

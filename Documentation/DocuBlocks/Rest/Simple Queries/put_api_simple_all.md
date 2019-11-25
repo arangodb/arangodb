@@ -28,9 +28,9 @@ as body with the following attributes:
 
 - *batchSize*: The number of documents to return in one go. (optional)
 
-- *ttl*: The time-to-live for the cursor (in seconds, optional). 
+- *ttl*: The time-to-live for the cursor (in seconds, optional).
 
-- *stream*: Create this cursor as a stream query (optional). 
+- *stream*: Create this cursor as a stream query (optional).
 
 Returns a cursor containing the result, see [HTTP Cursor](../AqlQueryCursor/README.md) for details.
 

@@ -16,7 +16,7 @@ the name of the AQL user function.
   a namespace prefix, and all functions in the specified namespace will be deleted.
   The returned number of deleted functions may become 0 if none matches the string.
 - *false*: The function name provided in *name* must be fully
-  qualified, including any namespaces. If none matches the *name*, HTTP 404 is returned. 
+  qualified, including any namespaces. If none matches the *name*, HTTP 404 is returned.
 
 @RESTDESCRIPTION
 Removes an existing AQL user function or function group, identified by *name*.
@@ -34,7 +34,7 @@ boolean flag to indicate whether an error occurred (*false* in this case)
 the HTTP status code
 
 @RESTREPLYBODY{deletedCount,integer,required,int64}
-The number of deleted user functions, always `1` when `group` is set to *false*. 
+The number of deleted user functions, always `1` when `group` is set to *false*.
 Any number `>= 0` when `group` is set to *true*
 
 @RESTRETURNCODE{400}
@@ -74,9 +74,9 @@ deletes a function:
 @EXAMPLE_ARANGOSH_RUN{RestAqlfunctionDelete}
   var url = "/_api/aqlfunction/square::x::y";
 
-  var body = { 
-    name : "square::x::y", 
-    code : "function (x) { return x*x; }" 
+  var body = {
+    name : "square::x::y",
+    code : "function (x) { return x*x; }"
   };
 
   db._connection.POST("/_api/aqlfunction", body);

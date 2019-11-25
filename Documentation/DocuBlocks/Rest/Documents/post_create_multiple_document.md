@@ -31,7 +31,7 @@ Additionally return the complete old document under the attribute *old*
 in the result. Only available if the overwrite option is used.
 
 @RESTQUERYPARAM{silent,boolean,optional}
-If set to *true*, an empty object will be returned as response. No meta-data 
+If set to *true*, an empty object will be returned as response. No meta-data
 will be returned for the created document. This option can be used to
 save some network traffic.
 
@@ -54,7 +54,7 @@ errorCode set to the error code that has happened.
 Possibly given *_id* and *_rev* attributes in the body are always ignored,
 the URL part or the query parameter collection respectively counts.
 
-If *silent* is not set to *true*, the body of the response contains an 
+If *silent* is not set to *true*, the body of the response contains an
 array of JSON objects with the following attributes:
 
   - *_id* contains the document handle of the newly created document

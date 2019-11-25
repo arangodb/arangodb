@@ -8,10 +8,10 @@
 
 @RESTURLPARAM{type,string,required}
 The type of jobs to delete. type can be:
-* *all*: Deletes all jobs results. Currently executing or queued async 
+* *all*: Deletes all jobs results. Currently executing or queued async
   jobs will not be stopped by this call.
-* *expired*: Deletes expired results. To determine the expiration status of a 
-  result, pass the stamp query parameter. stamp needs to be a UNIX timestamp, 
+* *expired*: Deletes expired results. To determine the expiration status of a
+  result, pass the stamp query parameter. stamp needs to be a UNIX timestamp,
   and all async job results created at a lower timestamp will be deleted.
 * *an actual job-id*: In this case, the call will remove the result of the
   specified async job. If the job is currently executing or queued, it will

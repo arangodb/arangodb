@@ -14,7 +14,7 @@ The name of the graph.
 @RESTURLPARAM{collection,string,required}
 The name of the vertex collection the vertex belongs to.
 
-@RESTURLPARAM{vertex,string,required} 
+@RESTURLPARAM{vertex,string,required}
 The *_key* attribute of the vertex.
 
 @RESTQUERYPARAMETERS

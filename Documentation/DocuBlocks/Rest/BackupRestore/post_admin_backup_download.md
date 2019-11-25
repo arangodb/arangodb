@@ -16,7 +16,7 @@ attribute.
 @RESTBODYPARAM{remoteRepository,string,required,string}
 URL of remote reporsitory. This is required when a download
 operation is scheduled. In this case leave out the `downloadId`
-attribute. Provided repository URLs are normalized and validated as follows: One single colon must appear separating the configurtion section name and the path. The URL prefix up to the colon must exist as a key in the config object below. No slashes must appear before the colon. Multiple back to back slashes are collapsed to one, as `..` and `.` are applied accordingly. Local repositories must be absolute paths and must begin with a `/`. Trailing `/` are removed.  
+attribute. Provided repository URLs are normalized and validated as follows: One single colon must appear separating the configurtion section name and the path. The URL prefix up to the colon must exist as a key in the config object below. No slashes must appear before the colon. Multiple back to back slashes are collapsed to one, as `..` and `.` are applied accordingly. Local repositories must be absolute paths and must begin with a `/`. Trailing `/` are removed.
 
 @RESTBODYPARAM{config,object,required,object}
 Configuration of remote repository. This is required when a download

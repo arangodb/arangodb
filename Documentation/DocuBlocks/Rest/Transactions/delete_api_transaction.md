@@ -10,10 +10,10 @@
 The transaction identifier,
 
 @RESTDESCRIPTION
-Abort a running server-side transaction. Aborting is an idempotent operation. 
+Abort a running server-side transaction. Aborting is an idempotent operation.
 It is not an error to abort a transaction more than once.
 
-If the transaction can be aborted, *HTTP 200* will be returned. 
+If the transaction can be aborted, *HTTP 200* will be returned.
 The returned JSON object has the following properties:
 
 - *error*: boolean flag to indicate if an error occurred (*false*
@@ -25,7 +25,7 @@ The returned JSON object has the following properties:
     - *id*: the identifier of the transaction
     - *status*: containing the string 'aborted'
 
-If the transaction cannot be found, aborting is not allowed or the 
+If the transaction cannot be found, aborting is not allowed or the
 transaction was already committed, the server
 will respond with *HTTP 400*, *HTTP 404* or *HTTP 409*.
 

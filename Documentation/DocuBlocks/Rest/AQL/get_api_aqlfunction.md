@@ -26,7 +26,7 @@ boolean flag to indicate whether an error occurred (*false* in this case)
 the HTTP status code
 
 @RESTREPLYBODY{result,array,required,aql_userfunction_struct}
-All functions, or the ones matching the *namespace* parameter 
+All functions, or the ones matching the *namespace* parameter
 
 @RESTSTRUCT{name,aql_userfunction_struct,string,required,}
 The fully qualified name of the user function

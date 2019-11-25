@@ -14,10 +14,10 @@ JSON object with the following properties:
 - *maxResults*: the maximum number of query results that will be stored per database-specific
   cache.
 
-- *maxResultsSize*: the maximum cumulated size of query results that will be stored per 
+- *maxResultsSize*: the maximum cumulated size of query results that will be stored per
   database-specific cache.
 
-- *maxEntrySize*: the maximum individual result size of queries that will be stored per 
+- *maxEntrySize*: the maximum individual result size of queries that will be stored per
   database-specific cache.
 
 - *includeSystem*: whether or not results of queries that involve system collections will be

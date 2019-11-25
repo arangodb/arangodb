@@ -146,19 +146,19 @@ attributes:
     then the remote server has additional data that the applier has not yet
     fetched and processed, or the remote server may have more data that is not
     applicable to the applier.
-    
+
     Client applications can use it to determine approximately how far the applier
-    is behind the remote server, and can periodically check if the value is 
+    is behind the remote server, and can periodically check if the value is
     increasing (applier is falling behind) or decreasing (applier is catching up).
-    
-    Please note that as the remote server will only keep one last log tick value 
-    for all of its databases, but replication may be restricted to just certain 
-    databases on the applier, this value is more meaningful when the global applier 
+
+    Please note that as the remote server will only keep one last log tick value
+    for all of its databases, but replication may be restricted to just certain
+    databases on the applier, this value is more meaningful when the global applier
     is used.
     Additionally, the last log tick provided by the remote server may increase
     due to writes into system collections that are not replicated due to replication
     configuration. So the reported value may exaggerate the reality a bit for
-    some scenarios. 
+    some scenarios.
 
   - *time*: the time on the applier server.
 

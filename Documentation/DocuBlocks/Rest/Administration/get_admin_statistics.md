@@ -91,7 +91,7 @@ array containing the values
 total connection times
 
 @RESTSTRUCT{totalTime,client_statistics_struct,object,required,setof_statistics_struct}
-the system time 
+the system time
 
 @RESTSTRUCT{requestTime,client_statistics_struct,object,required,setof_statistics_struct}
 the request times

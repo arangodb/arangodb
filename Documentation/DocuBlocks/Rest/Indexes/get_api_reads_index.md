@@ -18,7 +18,7 @@ attributes:
 - *type*: the index type
 
 All other attributes are type-dependent. For example, some indexes provide
-*unique* or *sparse* flags, whereas others don't. Some indexes also provide 
+*unique* or *sparse* flags, whereas others don't. Some indexes also provide
 a selectivity estimate in the *selectivityEstimate* attribute of the result.
 
 @RESTRETURNCODES

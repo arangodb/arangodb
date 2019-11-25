@@ -17,7 +17,7 @@ The parameters to be passed into command
 number of seconds between the executions
 
 @RESTBODYPARAM{offset,integer,optional,int64}
-Number of seconds initial delay 
+Number of seconds initial delay
 
 @RESTDESCRIPTION
 creates a new task with a generated id

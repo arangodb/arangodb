@@ -42,7 +42,7 @@ Number of shards created for every new collection in the graph.
 The replication factor used for every new collection in the graph.
 
 @RESTSTRUCT{_id,graph_representation,string,required,}
-The internal id value of this graph. 
+The internal id value of this graph.
 
 @RESTSTRUCT{_rev,graph_representation,string,required,}
 The revision of this graph. Can be used to make sure to not override

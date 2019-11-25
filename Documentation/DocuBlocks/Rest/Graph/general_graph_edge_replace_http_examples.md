@@ -11,10 +11,10 @@ Replaces the data of an edge in the collection.
 @RESTURLPARAM{graph,string,required}
 The name of the graph.
 
-@RESTURLPARAM{collection,string,required} 
+@RESTURLPARAM{collection,string,required}
 The name of the edge collection the edge belongs to.
 
-@RESTURLPARAM{edge,string,required} 
+@RESTURLPARAM{edge,string,required}
 The *_key* attribute of the vertex.
 
 @RESTQUERYPARAMETERS
