@@ -52,7 +52,7 @@ class arena {
     return (n + (alignment - 1)) & ~(alignment - 1);
   }
 
-  bool pointer_in_buffer(char* p) noexcept {
+  bool pointer_in_buffer(char* p) const noexcept {
     return buf_ <= p && p <= buf_ + N;
   }
 };

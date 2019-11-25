@@ -2,6 +2,12 @@
 
 ferr() { echo "$*"; exit 1; }
 
+if [[ -n $* ]];
+  files=( "$@" )
+then
+  files=( arangod/ arangosh/ lib/ enterprise/ )
+fi
+
 cppcheck "$@" \
   --xml --xml-version=2 \
   -I arangod \
@@ -13,7 +19,7 @@ cppcheck "$@" \
   -I lib \
   -D USE_PLAN_CACHE \
   --std=c++17 \
-  --enable=warning,style,performance,portability,missingInclude \
+  --enable=warning,performance,portability,missingInclude \
   --force \
   --quiet \
   --platform=unix64 \
@@ -50,7 +56,7 @@ cppcheck "$@" \
   --suppress="unreadVariable" \
   --suppress="useStlAlgorithm" \
   --suppress="variableScope" \
-  arangod/ arangosh/ lib/ enterprise/ \
+  "${files[@]}" \
   2> cppcheck.out.xml \
   || ferr "failed to run cppcheck"
 
