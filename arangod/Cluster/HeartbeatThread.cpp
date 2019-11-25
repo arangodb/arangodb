@@ -774,7 +774,13 @@ void HeartbeatThread::runSingleServer() {
         config._idleMinWaitTime = 250 * 1000; // 250ms
         config._idleMaxWaitTime = 3 * 1000 * 1000; // 3s
         TRI_ASSERT(!config._skipCreateDrop);
-        config._includeFoxxQueues = true;  // sync _queues and _jobs
+        config._includeFoxxQueues = true; // sync _queues and _jobs
+    
+        if (_server.hasFeature<ReplicationFeature>()) {
+          auto& feature = _server.getFeature<ReplicationFeature>();
+          config._connectTimeout = feature.checkConnectTimeout(config._connectTimeout);
+          config._requestTimeout = feature.checkRequestTimeout(config._requestTimeout);
+        }
 
         applier->forget();  // forget about any existing configuration
         applier->reconfigure(config);

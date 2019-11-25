@@ -213,43 +213,6 @@ bool upgradeSingleServerArangoSearchView0_1(
     arangodb::velocypack::Slice const& /*upgradeParams*/) {
   using arangodb::application_features::ApplicationServer;
 
-  // NOTE: during the upgrade 'ClusterFeature' is disabled which means 'ClusterFeature::validateOptions(...)'
-  // hasn't been called and server role in 'ServerState' is not set properly.
-  // In order to upgrade ArangoSearch views from version 0 to version 1 we need to
-  // differentiate between single server and cluster, therefore we temporary set role in 'ServerState',
-  // actually supplied by a user, only for the duration of task to avoid other upgrade tasks, that
-  // potentially rely on the original behavior, to be affected.
-  struct ServerRoleGuard {
-    ServerRoleGuard() {
-      auto& server = ApplicationServer::server();
-      auto* state = arangodb::ServerState::instance();
-
-      if (state && server.hasFeature<arangodb::ClusterFeature>()) {
-        auto const& clusterFeature = server.getFeature<arangodb::ClusterFeature>();
-        if (!clusterFeature.isEnabled()) {
-          auto const role = arangodb::ServerState::stringToRole(clusterFeature.myRole());
-
-          // only for cluster
-          if (arangodb::ServerState::isClusterRole(role)) {
-            _originalRole = state->getRole();
-            state->setRole(role);
-            _state = state;
-          }
-        }
-      }
-    }
-
-    ~ServerRoleGuard() {
-      if (_state) {
-        // restore the original server role
-        _state->setRole(_originalRole);
-      }
-    }
-
-    arangodb::ServerState* _state{};
-    arangodb::ServerState::RoleEnum _originalRole{arangodb::ServerState::ROLE_UNDEFINED};
-  } guard;
-
   if (!arangodb::ServerState::instance()->isSingleServer() &&
       !arangodb::ServerState::instance()->isDBServer()) {
     return true;  // not applicable for other ServerState roles

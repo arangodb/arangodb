@@ -2457,6 +2457,8 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
           "/_api/collection/" + arangodb::basics::StringUtils::urlEncode(collectionName) +
           "/truncate";
       VPackBuffer<uint8_t> body;
+      VPackSlice s = VPackSlice::emptyObjectSlice();
+      body.append(s.start(), s.byteSize());
 
       // Now prepare the requests:
       std::vector<network::FutureRes> futures;

@@ -82,11 +82,12 @@ void EngineSelectorFeature::prepare() {
   auto& databasePathFeature = server().getFeature<DatabasePathFeature>();
   auto path = databasePathFeature.directory();
   _engineFilePath = basics::FileUtils::buildFilename(path, "ENGINE");
-  LOG_TOPIC("98b5c", DEBUG, Logger::STARTUP)
-      << "looking for previously selected engine in file '" << _engineFilePath << "'";
 
-  // file if engine in file does not match command-line option
-  if (basics::FileUtils::isRegularFile(_engineFilePath)) {
+  // fail if engine value in file does not match command-line option
+  if (!ServerState::instance()->isCoordinator() &&
+      basics::FileUtils::isRegularFile(_engineFilePath)) {
+    LOG_TOPIC("98b5c", DEBUG, Logger::STARTUP)
+        << "looking for previously selected engine in file '" << _engineFilePath << "'";
     try {
       std::string content =
           basics::StringUtils::trim(basics::FileUtils::slurp(_engineFilePath));
@@ -170,7 +171,8 @@ void EngineSelectorFeature::start() {
   TRI_ASSERT(ENGINE != nullptr);
 
   // write engine File
-  if (!basics::FileUtils::isRegularFile(_engineFilePath)) {
+  if (!ServerState::instance()->isCoordinator() &&
+      !basics::FileUtils::isRegularFile(_engineFilePath)) {
     try {
       basics::FileUtils::spit(_engineFilePath, _engine, true);
     } catch (std::exception const& ex) {

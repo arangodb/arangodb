@@ -390,7 +390,6 @@ void addClusterOptions(VPackBuilder& builder, std::string const& sharding,
 }
 
 void addClusterOptions(VPackBuilder& builder, VocbaseOptions const& opt) {
-  addClusterOptions(builder, opt.sharding, opt.replicationFactor,
-                                opt.writeConcern);
+  addClusterOptions(builder, opt.sharding, opt.replicationFactor, opt.writeConcern);
 }
 }  // namespace arangodb

@@ -2134,6 +2134,26 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
   }
 }
 
+void RocksDBEngine::getStatistics(std::string& result) const {
+  VPackBuilder stats;
+  getStatistics(stats);
+  VPackSlice sslice = stats.slice();
+  TRI_ASSERT(sslice.isObject());
+  for (auto const& a : VPackObjectIterator(sslice)) {
+    if (a.value.isNumber()) {
+      std::string name = a.key.copyString();
+      std::replace(name.begin(), name.end(), '.', '_');
+      std::replace(name.begin(), name.end(), '-', '_');
+      if (name.front() != 'r') {
+        name = EngineName + "_" + name ; 
+      }
+      result += "#TYPE " + name +
+        " counter\n" + "#HELP " + name + " " + name + "\n" +
+        name + " " + std::to_string(a.value.getNumber<uint64_t>()) + "\n";
+    }
+  }
+}
+
 void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
   // add int properties
   auto addInt = [&](std::string const& s) {
@@ -2240,6 +2260,14 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
     for (auto const& stat : rocksdb::TickersNameMap) {
       builder.add(stat.second, VPackValue(_options.statistics->getTickerCount(stat.first)));
     }
+
+    uint64_t walWrite, flushWrite, compactionWrite, userWrite;
+    walWrite = _options.statistics->getTickerCount(rocksdb::WAL_FILE_BYTES);
+    flushWrite = _options.statistics->getTickerCount(rocksdb::FLUSH_WRITE_BYTES);
+    compactionWrite = _options.statistics->getTickerCount(rocksdb::COMPACT_WRITE_BYTES);
+    userWrite = _options.statistics->getTickerCount(rocksdb::BYTES_WRITTEN);
+    builder.add("rocksdbengine.write.amplification.x100",
+                VPackValue( (0 != userWrite) ? ((walWrite+flushWrite+compactionWrite)*100)/userWrite : 100));
   }
 
   cache::Manager* manager = CacheManagerFeature::MANAGER;
