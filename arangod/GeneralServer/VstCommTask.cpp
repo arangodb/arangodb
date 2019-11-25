@@ -334,9 +334,14 @@ void VstCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes, Requ
   bool expected = _writing.load();
   if (false == expected) {
     if (_writing.compare_exchange_strong(expected, true)) {
-      this->_protocol->context.io_context.post([this, self = this->shared_from_this()]{
-        this->doWrite(); // we managed to start writing
-      });
+      if constexpr (SocketType::Ssl == T) {
+        this->_protocol->context.io_context.post([self = this->shared_from_this()]() {
+          auto* thisPtr = static_cast<VstCommTask<T>*>(self.get());
+          thisPtr->doWrite(); // we managed to start writing
+        });
+      } else {
+        doWrite();
+      }
     }
   }
 }
