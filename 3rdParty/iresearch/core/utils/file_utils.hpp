@@ -18,7 +18,7 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
+/// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_FILE_UTILS_H
@@ -29,7 +29,7 @@
 #include <functional>
 #include <fcntl.h> // open/_wopen
 
-#ifdef _WIN32
+#ifdef _WIN32  
   #include <tchar.h>
   #include <io.h> // _close
   #define file_blksize_t uint32_t // DWORD (same as GetDriveGeometry(...) DISK_GEOMETRY::BytesPerSector)
@@ -59,7 +59,7 @@
   #define file_blksize_t blksize_t
   #define file_path_delimiter '/'
   #define file_path_t char*
-  #define file_stat_t struct stat
+  #define file_stat_t struct stat    
 
   #define file_stat stat
   #define file_fstat fstat

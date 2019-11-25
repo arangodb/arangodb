@@ -486,6 +486,21 @@ json_doc_generator::json_doc_generator(
   next_ = docs_.begin();
 }
 
+json_doc_generator::json_doc_generator(
+    const char* data,
+    const json_doc_generator::factory_f& factory) {
+  assert(data);
+
+  rapidjson::StringStream stream(data);
+  parse_json_handler handler(factory, docs_);
+  rapidjson::Reader reader;
+
+  const auto res = reader.Parse(stream, handler);
+  assert(!res.IsError());
+
+  next_ = docs_.begin();
+}
+
 json_doc_generator::json_doc_generator(json_doc_generator&& rhs) noexcept
   : docs_(std::move(rhs.docs_)), 
     prev_(std::move(rhs.prev_)), 

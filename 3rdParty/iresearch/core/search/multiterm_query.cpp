@@ -64,6 +64,8 @@ doc_iterator::ptr multiterm_query::execute(
     ));
   }
 
+  auto& stats = this->stats();
+
   // add an iterator for each of the scored states
   for (auto& entry : state->scored_states) {
     assert(entry.first);
@@ -71,14 +73,16 @@ doc_iterator::ptr multiterm_query::execute(
       return doc_iterator::empty(); // internal error
     }
 
-    auto* stats = stats_[entry.second].c_str();
     auto docs = terms->postings(features);
     auto& attrs = docs->attributes();
 
     // set score
     auto& score = attrs.get<irs::score>();
     if (score) {
-      score->prepare(ord, ord.prepare_scorers(segment, *state->reader, stats, attrs, boost()));
+      assert(entry.second < stats.size());
+      auto* stat = stats[entry.second].c_str();
+
+      score->prepare(ord, ord.prepare_scorers(segment, *state->reader, stat, attrs, boost()));
     }
 
     itrs.emplace_back(std::move(docs));

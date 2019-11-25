@@ -18,7 +18,6 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_MATH_UTILS_H
@@ -26,9 +25,9 @@
 
 #ifdef _MSC_VER
   #include <intrin.h>
-  
+
   #pragma intrinsic(_BitScanReverse)
-  #pragma intrinsic(_BitScanForward)  
+  #pragma intrinsic(_BitScanForward)
 #endif
 
 #include "shared.hpp"

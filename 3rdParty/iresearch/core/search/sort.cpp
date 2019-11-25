@@ -166,10 +166,10 @@ order::prepared order::prepare() const {
 
 order::prepared::collectors::collectors(
     const order::prepared& buckets,
-    size_t terms_count
-): buckets_(buckets.order_) {
-   field_collectors_.reserve(buckets_.size());
-   term_collectors_.reserve(buckets_.size() * terms_count);
+    size_t terms_count)
+  : buckets_(buckets.order_) {
+  field_collectors_.reserve(buckets_.size());
+  term_collectors_.reserve(buckets_.size() * terms_count);
 
   // add field collectors from each bucket
   for (auto& entry: buckets_) {
@@ -194,9 +194,8 @@ order::prepared::collectors::collectors(collectors&& other) noexcept
 }
 
 void order::prepared::collectors::collect(
-  const sub_reader& segment,
-  const term_reader& field
-) const {
+    const sub_reader& segment,
+    const term_reader& field) const {
   for (auto& entry: field_collectors_) {
     if (entry) { // may be null if prepare_field_collector() returned nullptr
       entry->collect(segment, field);
@@ -205,14 +204,14 @@ void order::prepared::collectors::collect(
 }
 
 void order::prepared::collectors::collect(
-  const sub_reader& segment,
-  const term_reader& field,
-  size_t term_offset,
-  const attribute_view& term_attrs
-) const {
+    const sub_reader& segment,
+    const term_reader& field,
+    size_t term_offset,
+    const attribute_view& term_attrs) const {
   for (size_t i = 0, count = buckets_.size(); i < count; ++i) {
-    assert(i * buckets_.size() + term_offset < term_collectors_.size()); // enforced by allocation in the constructor
-    auto& entry = term_collectors_[term_offset * buckets_.size() + i];
+    const auto idx = term_offset * buckets_.size() + i;
+    assert(idx < term_collectors_.size()); // enforced by allocation in the constructor
+    auto& entry = term_collectors_[idx];
 
     if (entry) { // may be null if prepare_term_collector() returned nullptr
       entry->collect(segment, field, term_attrs);

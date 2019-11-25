@@ -56,6 +56,7 @@ set(IReSearch_tests_sources
   ./index/index_meta_tests.cpp
   ./index/index_profile_tests.cpp
   ./index/index_tests.cpp
+  ./index/index_column_tests.cpp
   ./index/sorted_index_tests.cpp
   ./index/index_death_tests.cpp
   ./index/field_meta_test.cpp

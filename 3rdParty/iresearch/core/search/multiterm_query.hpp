@@ -49,10 +49,22 @@ class multiterm_query : public filter::prepared {
 
   DECLARE_SHARED_PTR(multiterm_query);
 
+  explicit multiterm_query(states_t&& states,
+                           std::shared_ptr<stats_t> const& stats,
+                           boost_t boost)
+    : prepared(boost),
+      states_(std::move(states)),
+      stats_ptr_(stats) {
+    assert(stats_ptr_);
+  }
+
+  // multiterm_query will own stats
   explicit multiterm_query(states_t&& states, stats_t&& stats, boost_t boost)
     : prepared(boost),
       states_(std::move(states)),
-      stats_(std::move(stats)) {
+      stats_(std::move(stats)),
+      stats_ptr_(std::shared_ptr<stats_t>(), &stats_) {
+    assert(stats_ptr_);
   }
 
   virtual doc_iterator::ptr execute(
@@ -61,8 +73,14 @@ class multiterm_query : public filter::prepared {
       const attribute_view& /*ctx*/) const override;
 
  private:
+  const stats_t& stats() const noexcept {
+    assert(stats_ptr_);
+    return *stats_ptr_;
+  }
+
   states_t states_;
   stats_t stats_;
+  std::shared_ptr<stats_t> stats_ptr_;
 }; // multiterm_query
 
 NS_END // ROOT

@@ -619,25 +619,31 @@ filter::prepared::ptr by_granular_range::prepare(
   // build up a disjunction of range_queries each of the grouped states
   // ...........................................................................
 
+  auto shared_stats = std::make_shared<decltype(stats)>(std::move(stats));
+
   // dummy class for returning the stored prepared query on a call to prepare(...)
   class multiterm_filter_proxy: public filter {
    public:
-    multiterm_query::ptr query_;
-    multiterm_filter_proxy(): filter(by_range::type()) {}
     static ptr make() { return memory::make_unique<multiterm_filter_proxy>(); }
-    virtual filter::prepared::ptr prepare(
-      const index_reader&,
-      const order::prepared&,
-      boost_t,
-      const attribute_view&) const override {
-        return query_;
+
+    multiterm_filter_proxy()
+      : filter(by_range::type()) {
     }
+
+    virtual filter::prepared::ptr prepare(
+        const index_reader&, const order::prepared&,
+        boost_t, const attribute_view&) const override {
+      return query_;
+    }
+
+    multiterm_query::ptr query_;
   };
 
   Or multirange_filter;
 
   for (auto& range_state: range_states) {
-    multirange_filter.add<multiterm_filter_proxy>().query_ = memory::make_shared<multiterm_query>(std::move(range_state), std::move(stats), irs::no_boost());
+    multirange_filter.add<multiterm_filter_proxy>().query_
+        = memory::make_shared<multiterm_query>(std::move(range_state), shared_stats, irs::no_boost());
   }
 
   return multirange_filter.boost(this->boost()).prepare(rdr, ord, boost);

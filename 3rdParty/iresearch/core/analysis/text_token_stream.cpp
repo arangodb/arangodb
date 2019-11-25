@@ -19,6 +19,8 @@
 ///
 /// @author Andrey Abramov
 /// @author Vasiliy Nabatchikov
+/// @author Andrei Lobov
+/// @author Yuriy Popov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <cctype> // for std::isspace(...)
