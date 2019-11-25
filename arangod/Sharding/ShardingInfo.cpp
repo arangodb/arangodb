@@ -45,7 +45,7 @@ using namespace arangodb;
 
 ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* collection)
     : _collection(collection),
-      _numberOfShards(basics::VelocyPackHelper::readNumericValue<size_t>(info, StaticStrings::NumberOfShards,
+      _numberOfShards(basics::VelocyPackHelper::getNumericValue<size_t>(info, StaticStrings::NumberOfShards,
                                                                          1)),
       _replicationFactor(1),
       _writeConcern(1),
@@ -53,7 +53,7 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
                                                                      "")),
       _shardIds(new ShardMap()) {
   bool const isSmart =
-      basics::VelocyPackHelper::readBooleanValue(info, StaticStrings::IsSmart, false);
+      basics::VelocyPackHelper::getBooleanValue(info, StaticStrings::IsSmart, false);
       
   if (isSmart && _collection->type() == TRI_COL_TYPE_EDGE) {
     // smart edge collection
@@ -223,7 +223,7 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
         for (auto const& serverSlice : VPackArrayIterator(shardSlice.value)) {
           servers.push_back(serverSlice.copyString());
         }
-        _shardIds->emplace(shard, servers);
+        _shardIds->try_emplace(shard, servers);
       }
     }
   }
@@ -467,7 +467,7 @@ std::shared_ptr<ShardMap> ShardingInfo::shardIds(std::unordered_set<std::string>
       // a shard we are not interested in
       continue;
     }
-    result->emplace(it.first, it.second);
+    result->try_emplace(it.first, it.second);
   }
   return result;
 }
@@ -484,7 +484,7 @@ int ShardingInfo::getResponsibleShard(arangodb::velocypack::Slice slice, bool do
 }
 
 Result ShardingInfo::validateShardsAndReplicationFactor(arangodb::velocypack::Slice slice,
-                                                        application_features::ApplicationServer& server) {
+                                                        application_features::ApplicationServer const& server) {
   if (slice.isObject()) {
     auto const& cl = server.getFeature<ClusterFeature>();
 

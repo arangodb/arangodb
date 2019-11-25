@@ -30,20 +30,13 @@
 #include "Basics/StaticStrings.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
-#include "ModificationExecutorTraits.h"
+#include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <algorithm>
 
 using namespace arangodb;
 using namespace arangodb::aql;
-
-template <typename Modifier>
-constexpr bool SingleRemoteModificationExecutor<Modifier>::Properties::preservesOrder;
-template <typename Modifier>
-constexpr BlockPassthrough SingleRemoteModificationExecutor<Modifier>::Properties::allowsBlockPassthrough;
-template <typename Modifier>
-constexpr bool SingleRemoteModificationExecutor<Modifier>::Properties::inputSizeRestrictsOutputSize;
 
 namespace {
 std::unique_ptr<VPackBuilder> merge(VPackSlice document, std::string const& key,

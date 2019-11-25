@@ -7,7 +7,8 @@ const fs = require('fs');
 const internal = require('internal');
 const basePath = fs.makeAbsolute(fs.join(internal.pathForTesting('common'), 'test-data', 'apps'));
 const arango = require('@arangodb').arango;
-const baseUrl = arango.getEndpoint().replace('tcp://', 'http://') + '/_db/_system';
+const origin = arango.getEndpoint().replace(/\+vpp/, '').replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:').replace(/^vst:/, 'http:');
+const baseUrl = origin + '/_db/_system';
 
 describe('Foxx service path handling', () => {
   const mount = '/unittest/paths';

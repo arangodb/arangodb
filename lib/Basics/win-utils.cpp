@@ -21,11 +21,10 @@
 /// @author Dr. Oreste Costa-Panaia
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/Common.h"
-
 #include <WinSock2.h>  // must be before windows.h
 #include <shellapi.h>
 #include <windows.h>
+
 
 #include <errno.h>
 #include <fcntl.h>
@@ -47,9 +46,9 @@
 #include <crtdbg.h>
 #include <malloc.h>
 #include <string.h>
-#include <windows.h>
 
 #include "Basics/Common.h"
+
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Utf8Helper.h"

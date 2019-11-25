@@ -79,6 +79,9 @@ class HttpRequest final : public GeneralRequest {
     return _cookies;
   }
 
+  virtual void setDefaultContentType() override {
+    _contentType = rest::ContentType::JSON;
+  }
   /// @brief the body content length
   size_t contentLength() const override { return _contentLength; }
   // Payload
@@ -87,7 +90,7 @@ class HttpRequest final : public GeneralRequest {
   arangodb::velocypack::Buffer<uint8_t>& body() {
     return _body;
   }
-      
+
   /// @brief sets a key/value header
   //  this function is called by setHeaders and get offsets to
   //  the found key / value with respective lengths.

@@ -43,10 +43,6 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-constexpr bool EnumerateCollectionExecutor::Properties::preservesOrder;
-constexpr BlockPassthrough EnumerateCollectionExecutor::Properties::allowsBlockPassthrough;
-constexpr bool EnumerateCollectionExecutor::Properties::inputSizeRestrictsOutputSize;
-
 EnumerateCollectionExecutorInfos::EnumerateCollectionExecutorInfos(
     RegisterId outputRegister, RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
     // cppcheck-suppress passedByValue

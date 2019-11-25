@@ -60,6 +60,7 @@ RestAqlHandler::RestAqlHandler(application_features::ApplicationServer& server,
     : RestVocbaseBaseHandler(server, request, response),
       _queryRegistry(registries->first),
       _traverserRegistry(registries->second),
+      _query(nullptr),
       _qId(0) {
   TRI_ASSERT(_queryRegistry != nullptr);
   TRI_ASSERT(_traverserRegistry != nullptr);
@@ -188,9 +189,8 @@ void RestAqlHandler::setupClusterQuery() {
   // If we have a new format then it has to be included here.
   // If not default to classic (old coordinator will not send it)
   SerializationFormat format = static_cast<SerializationFormat>(
-      VelocyPackHelper::getNumericValue<int>(querySlice, "serializationFormat",
+      VelocyPackHelper::getNumericValue<int>(querySlice, StaticStrings::SerializationFormat,
                                              static_cast<int>(SerializationFormat::CLASSIC)));
-
   // Now we need to create shared_ptr<VPackBuilder>
   // That contains the old-style cluster snippet in order
   // to prepare create a Query object.
@@ -314,8 +314,6 @@ bool RestAqlHandler::registerSnippets(
     }
 
     try {
-      QueryId qId = TRI_NewTickServer();
-
       if (needToLock) {
         // Directly try to lock only the first snippet is required to be locked.
         // For all others locking is pointless
@@ -340,6 +338,8 @@ bool RestAqlHandler::registerSnippets(
         // No need to cleanup...
       }
 
+      QueryId qId = query->id();  // not true in general
+      TRI_ASSERT(qId > 0);
       _queryRegistry->insert(qId, query.get(), ttl, true, false);
       query.release();
       answerBuilder.add(it.key);
@@ -441,24 +441,30 @@ RestStatus RestAqlHandler::useQuery(std::string const& operation, std::string co
     return RestStatus::DONE;
   }
 
-  // the PUT verb
-  Query* query = nullptr;
-  if (!findQuery(idString, query)) {
-    return RestStatus::DONE;
+  if (!_query) {  // the PUT verb
+    TRI_ASSERT(this->state() == RestHandler::HandlerState::EXECUTE);
+
+    _query = findQuery(idString);
+    if (!_query) {
+      return RestStatus::DONE;
+    }
+    std::shared_ptr<SharedQueryState> ss = _query->sharedState();
+    ss->setWakeupHandler(
+        [self = shared_from_this()] { return self->wakeupHandler(); });
   }
 
   TRI_ASSERT(_qId > 0);
-  TRI_ASSERT(query != nullptr);
-  TRI_ASSERT(query->engine() != nullptr);
+  TRI_ASSERT(_query != nullptr);
+  TRI_ASSERT(_query->engine() != nullptr);
 
-  if (query->queryOptions().profile >= PROFILE_LEVEL_TRACE_1) {
+  if (_query->queryOptions().profile >= PROFILE_LEVEL_TRACE_1) {
     LOG_TOPIC("1bf67", INFO, Logger::QUERIES)
-        << "[query#" << query->id() << "] remote request received: " << operation
+        << "[query#" << _qId << "] remote request received: " << operation
         << " registryId=" << idString;
   }
 
   try {
-    return handleUseQuery(operation, query, querySlice);
+    return handleUseQuery(operation, querySlice);
   } catch (arangodb::basics::Exception const& ex) {
     generateError(rest::ResponseCode::SERVER_ERROR, ex.code(), ex.what());
   } catch (std::exception const& ex) {
@@ -527,20 +533,17 @@ RestStatus RestAqlHandler::execute() {
           VPackBuilder answerBody;
           {
             VPackObjectBuilder guard(&answerBody);
-            answerBody.add("error", VPackValue(false));
+            answerBody.add(StaticStrings::Error, VPackValue(false));
           }
-          sendResponse(rest::ResponseCode::OK, answerBody.slice());
+          generateResult(rest::ResponseCode::OK, answerBody.slice());
         } else {
           generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_QUERY_NOT_FOUND);
         }
       }
       break;
     }
-    case rest::RequestType::GET: 
-    case rest::RequestType::HEAD:
-    case rest::RequestType::PATCH:
-    case rest::RequestType::OPTIONS:
-    case rest::RequestType::ILLEGAL: {
+
+    default: {
       generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                     TRI_ERROR_NOT_IMPLEMENTED, "illegal method for /_api/aql");
       break;
@@ -559,6 +562,7 @@ RestStatus RestAqlHandler::continueExecute() {
   if (type == rest::RequestType::PUT) {
     // This cannot be changed!
     TRI_ASSERT(suffixes.size() == 2);
+    TRI_ASSERT(_query != nullptr);
     return useQuery(suffixes[0], suffixes[1]);
   }
   generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
@@ -567,10 +571,33 @@ RestStatus RestAqlHandler::continueExecute() {
   return RestStatus::DONE;
 }
 
+void RestAqlHandler::shutdownExecute(bool isFinalized) noexcept {
+  try {
+    if (isFinalized) {
+      if (_query) {
+        _query->sharedState()->resetWakeupHandler();
+      }
+      if (_qId != 0) {
+        _queryRegistry->close(&_vocbase, _qId);
+      }
+    }
+  } catch (arangodb::basics::Exception const& ex) {
+    LOG_TOPIC("f73b8", INFO, Logger::FIXME)
+        << "Ignoring exception during rest handler shutdown: "
+        << "[" << ex.code() << "] " << ex.message();
+  } catch (std::exception const& ex) {
+    LOG_TOPIC("b7335", INFO, Logger::FIXME)
+        << "Ignoring exception during rest handler shutdown: " << ex.what();
+  } catch (...) {
+    LOG_TOPIC("c4db4", INFO, Logger::FIXME)
+        << "Ignoring unknown exception during rest handler shutdown.";
+  }
+}
+
 // dig out the query from ID, handle errors
-bool RestAqlHandler::findQuery(std::string const& idString, Query*& query) {
+Query* RestAqlHandler::findQuery(std::string const& idString) {
+  TRI_ASSERT(_qId == 0);
   _qId = arangodb::basics::StringUtils::uint64(idString);
-  query = nullptr;
 
   // sleep for 10ms each time, wait for at most 30 seconds...
   static int64_t const SingleWaitPeriod = 10 * 1000;
@@ -579,10 +606,11 @@ bool RestAqlHandler::findQuery(std::string const& idString, Query*& query) {
 
   int64_t iterations = 0;
 
+  Query* q = nullptr;
   // probably need to cycle here until we can get hold of the query
   while (++iterations < MaxIterations) {
     try {
-      query = _queryRegistry->open(&_vocbase, _qId);
+      q = _queryRegistry->open(&_vocbase, _qId);
       // we got the query (or it was not found - at least no one else
       // can now have access to the same query)
       break;
@@ -593,38 +621,34 @@ bool RestAqlHandler::findQuery(std::string const& idString, Query*& query) {
     }
   }
 
-  if (query == nullptr) {
+  if (q == nullptr) {
     LOG_TOPIC_IF("baef6", ERR, Logger::AQL, iterations == MaxIterations)
         << "Timeout waiting for query " << _qId;
     _qId = 0;
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_QUERY_NOT_FOUND);
-    return false;
+    return q;
   }
 
   TRI_ASSERT(_qId > 0);
 
-  return true;
+  return q;
 }
 
 // handle for useQuery
-RestStatus RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
+RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
                                           VPackSlice const querySlice) {
-  auto closeGuard = scopeGuard([this] { _queryRegistry->close(&_vocbase, _qId); });
-
-  std::shared_ptr<SharedQueryState> ss = query->sharedState();
-  ss->setContinueHandler(
-      [self = shared_from_this(), ss]() { self->continueHandlerExecution(); });
-
-  bool found;
-  std::string const& shardId = _request->header("shard-id", found);
+  std::string const& shardId = _request->header("shard-id");
 
   // upon first usage, the "initializeCursor" method must be called
   // note: if the operation is "initializeCursor" itself, we do not initialize
   // the cursor here but let the case for "initializeCursor" process it.
   // this is because the request may contain additional data
   if ((operation == "getSome" || operation == "skipSome") &&
-      !query->engine()->initializeCursorCalled()) {
-    auto res = query->engine()->initializeCursor(nullptr, 0);
+      !_query->engine()->initializeCursorCalled()) {
+    TRI_IF_FAILURE("RestAqlHandler::getSome") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+    auto res = _query->engine()->initializeCursor(nullptr, 0);
     if (res.first == ExecutionState::WAITING) {
       return RestStatus::WAITING;
     }
@@ -636,183 +660,132 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation, Query* q
     }
   }
 
-  VPackBuilder answerBuilder;
-  auto transactionContext = query->trx()->transactionContext();
-  try {
-    {
-      VPackObjectBuilder guard(&answerBuilder);
-      if (operation == "lock") {
-        int res = query->trx()->lockCollections();
-        // let exceptions propagate from here
+  auto transactionContext = _query->trx()->transactionContext();
 
-        answerBuilder.add(StaticStrings::Error, VPackValue(res != TRI_ERROR_NO_ERROR));
-        answerBuilder.add(StaticStrings::Code, VPackValue(res));
-      } else if (operation == "getSome") {
-        auto atMost =
-            VelocyPackHelper::getNumericValue<size_t>(querySlice, "atMost",
-                                                      ExecutionBlock::DefaultBatchSize());
-        SharedAqlItemBlockPtr items;
-        ExecutionState state;
-        if (shardId.empty()) {
-          std::tie(state, items) = query->engine()->getSome(atMost);
-          if (state == ExecutionState::WAITING) {
-            return RestStatus::WAITING;
-          }
-        } else {
-          auto block = dynamic_cast<BlocksWithClients*>(query->engine()->root());
-          if (block == nullptr) {
-            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                           "unexpected node type");
-          }
-          TRI_ASSERT(block->getPlanNode()->getType() == ExecutionNode::SCATTER ||
-                     block->getPlanNode()->getType() == ExecutionNode::DISTRIBUTE);
-          std::tie(state, items) = block->getSomeForShard(atMost, shardId);
-          if (state == ExecutionState::WAITING) {
-            return RestStatus::WAITING;
-          }
-        }
-        // Used in 3.4.0 onwards.
-        answerBuilder.add("done", VPackValue(state == ExecutionState::DONE));
-        if (items.get() == nullptr) {
-          // Backwards Compatibility
-          answerBuilder.add(StaticStrings::Error, VPackValue(false));
-        } else {
-          items->toVelocyPack(query->trx(), answerBuilder);
-        }
-      } else if (operation == "skipSome") {
-        auto atMost =
-            VelocyPackHelper::getNumericValue<size_t>(querySlice, "atMost",
-                                                      ExecutionBlock::DefaultBatchSize());
-        size_t skipped;
-        if (shardId.empty()) {
-          auto tmpRes = query->engine()->skipSome(atMost);
-          if (tmpRes.first == ExecutionState::WAITING) {
-            return RestStatus::WAITING;
-          }
-          skipped = tmpRes.second;
-        } else {
-          auto block = dynamic_cast<BlocksWithClients*>(query->engine()->root());
-          if (block == nullptr) {
-            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                           "unexpected node type");
-          }
-          TRI_ASSERT(block->getPlanNode()->getType() == ExecutionNode::SCATTER ||
-                     block->getPlanNode()->getType() == ExecutionNode::DISTRIBUTE);
+  VPackBuffer<uint8_t> answerBuffer;
+  VPackBuilder answerBuilder(answerBuffer);
+  answerBuilder.openObject(/*unindexed*/ true);
 
-          auto tmpRes = block->skipSomeForShard(atMost, shardId);
-          if (tmpRes.first == ExecutionState::WAITING) {
-            return RestStatus::WAITING;
-          }
-          skipped = tmpRes.second;
-        }
-        answerBuilder.add("skipped", VPackValue(skipped));
-        answerBuilder.add(StaticStrings::Error, VPackValue(false));
-      } else if (operation == "initialize") {
-        // this is a no-op now
-        answerBuilder.add(StaticStrings::Error, VPackValue(false));
-        answerBuilder.add(StaticStrings::Code, VPackValue(TRI_ERROR_NO_ERROR));
-      } else if (operation == "initializeCursor") {
-        auto pos = VelocyPackHelper::getNumericValue<size_t>(querySlice, "pos", 0);
-        Result res;
-        if (VelocyPackHelper::getBooleanValue(querySlice, "done", true)) {
-          auto tmpRes = query->engine()->initializeCursor(nullptr, 0);
-          if (tmpRes.first == ExecutionState::WAITING) {
-            return RestStatus::WAITING;
-          }
-          res = tmpRes.second;
-        } else {
-          auto items = query->engine()->itemBlockManager().requestAndInitBlock(
-              querySlice.get("items"));
-          auto tmpRes = query->engine()->initializeCursor(std::move(items), pos);
-          if (tmpRes.first == ExecutionState::WAITING) {
-            return RestStatus::WAITING;
-          }
-          res = tmpRes.second;
-        }
-        answerBuilder.add(StaticStrings::Error, VPackValue(res.fail()));
-        answerBuilder.add(StaticStrings::Code, VPackValue(res.errorNumber()));
-      } else if (operation == "shutdown") {
-        int errorCode =
-            VelocyPackHelper::getNumericValue<int>(querySlice, "code", TRI_ERROR_INTERNAL);
-
-        ExecutionState state;
-        Result res;
-        std::tie(state, res) = query->engine()->shutdown(errorCode);
-        if (state == ExecutionState::WAITING) {
-          return RestStatus::WAITING;
-        }
-
-        // return statistics
-        answerBuilder.add(VPackValue("stats"));
-        query->getStats(answerBuilder);
-
-        // return warnings if present
-        query->addWarningsToVelocyPack(answerBuilder);
-
-        // return the query to the registry
-        _queryRegistry->close(&_vocbase, _qId);
-        closeGuard.cancel();
-
-        // delete the query from the registry
-        _queryRegistry->destroy(_vocbase.name(), _qId, errorCode, false);
-        _qId = 0;
-        answerBuilder.add(StaticStrings::Error, VPackValue(res.fail()));
-        answerBuilder.add(StaticStrings::Code, VPackValue(res.errorNumber()));
-      } else {
-        generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
-        return RestStatus::DONE;
+  if (operation == "getSome") {
+    TRI_IF_FAILURE("RestAqlHandler::getSome") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+    auto atMost =
+        VelocyPackHelper::getNumericValue<size_t>(querySlice, "atMost",
+                                                  ExecutionBlock::DefaultBatchSize());
+    SharedAqlItemBlockPtr items;
+    ExecutionState state;
+    if (shardId.empty()) {
+      std::tie(state, items) = _query->engine()->getSome(atMost);
+      if (state == ExecutionState::WAITING) {
+        return RestStatus::WAITING;
       }
-    }  // here, answerBuilder is closed
+    } else {
+      auto block = dynamic_cast<BlocksWithClients*>(_query->engine()->root());
+      if (block == nullptr) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                       "unexpected node type");
+      }
+      TRI_ASSERT(block->getPlanNode()->getType() == ExecutionNode::SCATTER ||
+                 block->getPlanNode()->getType() == ExecutionNode::DISTRIBUTE);
+      std::tie(state, items) = block->getSomeForShard(atMost, shardId);
+      if (state == ExecutionState::WAITING) {
+        return RestStatus::WAITING;
+      }
+    }
+    // Used in 3.4.0 onwards.
+    answerBuilder.add("done", VPackValue(state == ExecutionState::DONE));
+    answerBuilder.add(StaticStrings::Code, VPackValue(TRI_ERROR_NO_ERROR));
+    if (items.get() == nullptr) {
+      // Backwards Compatibility
+      answerBuilder.add(StaticStrings::Error, VPackValue(false));
+    } else {
+      items->toVelocyPack(_query->trx()->transactionContextPtr()->getVPackOptions(),
+                          answerBuilder);
+    }
+  } else if (operation == "skipSome") {
+    auto atMost =
+        VelocyPackHelper::getNumericValue<size_t>(querySlice, "atMost",
+                                                  ExecutionBlock::DefaultBatchSize());
+    size_t skipped;
+    if (shardId.empty()) {
+      auto tmpRes = _query->engine()->skipSome(atMost);
+      if (tmpRes.first == ExecutionState::WAITING) {
+        return RestStatus::WAITING;
+      }
+      skipped = tmpRes.second;
+    } else {
+      auto block = dynamic_cast<BlocksWithClients*>(_query->engine()->root());
+      if (block == nullptr) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                       "unexpected node type");
+      }
+      TRI_ASSERT(block->getPlanNode()->getType() == ExecutionNode::SCATTER ||
+                 block->getPlanNode()->getType() == ExecutionNode::DISTRIBUTE);
 
-    sendResponse(rest::ResponseCode::OK, answerBuilder.slice(),
-                 transactionContext.get());
-  } catch (arangodb::basics::Exception const& ex) {
-    generateError(GeneralResponse::responseCode(ex.code()), ex.code(), ex.message());
-  } catch (std::exception const& ex) {
-    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL, ex.what());
-  } catch (...) {
-    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
-                  "unknown exception caught in handleUseQuery");
+      auto tmpRes = block->skipSomeForShard(atMost, shardId);
+      if (tmpRes.first == ExecutionState::WAITING) {
+        return RestStatus::WAITING;
+      }
+      skipped = tmpRes.second;
+    }
+    answerBuilder.add("skipped", VPackValue(skipped));
+    answerBuilder.add(StaticStrings::Error, VPackValue(false));
+  } else if (operation == "initializeCursor") {
+    auto pos = VelocyPackHelper::getNumericValue<size_t>(querySlice, "pos", 0);
+    Result res;
+    if (VelocyPackHelper::getBooleanValue(querySlice, "done", true)) {
+      auto tmpRes = _query->engine()->initializeCursor(nullptr, 0);
+      if (tmpRes.first == ExecutionState::WAITING) {
+        return RestStatus::WAITING;
+      }
+      res = tmpRes.second;
+    } else {
+      auto items = _query->engine()->itemBlockManager().requestAndInitBlock(
+          querySlice.get("items"));
+      auto tmpRes = _query->engine()->initializeCursor(std::move(items), pos);
+      if (tmpRes.first == ExecutionState::WAITING) {
+        return RestStatus::WAITING;
+      }
+      res = tmpRes.second;
+    }
+    answerBuilder.add(StaticStrings::Error, VPackValue(res.fail()));
+    answerBuilder.add(StaticStrings::Code, VPackValue(res.errorNumber()));
+  } else if (operation == "shutdown") {
+    int errorCode = VelocyPackHelper::getNumericValue<int>(querySlice, StaticStrings::Code,
+                                                           TRI_ERROR_INTERNAL);
+
+    ExecutionState state;
+    Result res;
+    std::tie(state, res) = _query->engine()->shutdown(errorCode);
+    if (state == ExecutionState::WAITING) {
+      return RestStatus::WAITING;
+    }
+
+    // return statistics
+    answerBuilder.add(VPackValue("stats"));
+    _query->getStats(answerBuilder);
+
+    // return warnings if present
+    _query->addWarningsToVelocyPack(answerBuilder);
+    _query->sharedState()->resetWakeupHandler();
+    _query = nullptr;
+
+    // return the query to the registry
+    _queryRegistry->close(&_vocbase, _qId);
+
+    // delete the query from the registry
+    _queryRegistry->destroy(_vocbase.name(), _qId, errorCode, false);
+    _qId = 0;
+    answerBuilder.add(StaticStrings::Error, VPackValue(res.fail()));
+    answerBuilder.add(StaticStrings::Code, VPackValue(res.errorNumber()));
+  } else {
+    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
+    return RestStatus::DONE;
   }
+
+  answerBuilder.close();
+  generateResult(rest::ResponseCode::OK, std::move(answerBuffer), transactionContext);
+
   return RestStatus::DONE;
-}
-
-// extract the VelocyPack from the request
-std::shared_ptr<VPackBuilder> RestAqlHandler::parseVelocyPackBody() {
-  try {
-    std::shared_ptr<VPackBuilder> body = _request->toVelocyPackBuilderPtr();
-    if (body == nullptr) {
-      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_CORRUPTED_JSON,
-                    "cannot parse json object");
-      return nullptr;
-    }
-    VPackSlice tmp = body->slice();
-    if (!tmp.isObject()) {
-      // Validate the input has correct format.
-      LOG_TOPIC("358f2", ERR, arangodb::Logger::AQL)
-          << "body of request must be a VelocyPack object";
-      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                    "body of request must be a VelcoyPack object");
-      return nullptr;
-    }
-    return body;
-  } catch (...) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_CORRUPTED_JSON,
-                  "cannot parse json object");
-  }
-  return nullptr;
-}
-
-// Send slice as result with the given response type.
-void RestAqlHandler::sendResponse(rest::ResponseCode code, VPackSlice const slice,
-                                  transaction::Context* transactionContext) {
-  resetResponse(code);
-  writeResult(slice, *(transactionContext->getVPackOptionsForDump()));
-}
-// Send slice as result with the given response type.
-void RestAqlHandler::sendResponse(rest::ResponseCode code, VPackSlice const slice) {
-  resetResponse(code);
-  VPackOptions options = VPackOptions::Defaults;
-  options.escapeUnicode = true;
-  writeResult(slice, options);
 }

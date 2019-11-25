@@ -281,7 +281,7 @@ void VstConnection<ST>::asyncWriteNextRequest() {
     setTimeout();             // prepare request / connection timeouts
 
     asio_ns::async_write(this->_proto.socket, item->prepareForNetwork(_vstVersion),
-                        [self = Connection::shared_from_this(), req(std::move(item))]
+                        [self = Connection::shared_from_this(), req(item)]
                         (asio_ns::error_code const& ec, std::size_t nwrite) mutable {
      auto& thisPtr = static_cast<VstConnection<ST>&>(*self);
      thisPtr.asyncWriteCallback(ec, std::move(req), nwrite);
