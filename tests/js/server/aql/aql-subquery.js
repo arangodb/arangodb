@@ -35,6 +35,7 @@ var getQueryResults = helper.getQueryResults;
 var findExecutionNodes = helper.findExecutionNodes;
 const { db } = require("@arangodb");
 const isCoordinator = require('@arangodb/cluster').isCoordinator();
+const isEnterprise = require("internal").isEnterprise();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -485,15 +486,17 @@ function ahuacatlSubqueryTestSuite () {
         b.save(docs);
         const statement = db._createStatement(q);
         const rules = statement.explain().plan.rules;
-        // Has one shard rule
-        assertTrue(rules.indexOf("cluster-one-shard") !== -1);
+        if (isEnterprise) {
+          // Has one shard rule
+          assertTrue(rules.indexOf("cluster-one-shard") !== -1);
+        }
         // Has one splice subquery rule
         assertTrue(rules.indexOf("splice-subqueries") !== -1);
         // Result is as expected
         const result = statement.execute().toArray();
         for (let i = 0; i < 100; ++i) {
           assertEqual(result[i].x.foo, i);
-          assertTrue(result[i].subquery.length, 1);
+          assertEqual(result[i].subquery.length, 1);
           assertEqual(result[i].subquery[0].foo, i);
         }
       } finally {
