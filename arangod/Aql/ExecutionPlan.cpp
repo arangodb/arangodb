@@ -1190,7 +1190,7 @@ ExecutionNode* ExecutionPlan::fromNodeLet(ExecutionNode* previous, AstNode const
       // the LET. and don't create the LET
 
       subquery->replaceOutVariable(v);
-      return subquery;
+      return previous;
     }
     // otherwise fall-through to normal behavior
 
