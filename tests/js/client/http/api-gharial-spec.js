@@ -244,7 +244,6 @@ describe('_api/gharial', () => {
         "from": [vColName, oColName],
         "to": [vColName]
       });
-      require("internal").print(JSON.stringify(res));
       expect(res).to.have.keys("error", "code", "graph");
       expect(res.code).to.equal(202);
       expect(res.error).to.be.false;
