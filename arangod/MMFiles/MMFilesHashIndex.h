@@ -180,7 +180,7 @@ class MMFilesHashIndexLookupBuilder {
   size_t _coveredFields;
 
   using MappingCondition =
-      ::arangodb::containers::SmallVector<arangodb::aql::AstNode const*>;
+      SmallVector<arangodb::aql::AstNode const*>;
   MappingCondition::allocator_type::arena_type _mappingFieldConditionArena;
   MappingCondition _mappingFieldCondition;
 
