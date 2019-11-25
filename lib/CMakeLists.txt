@@ -123,6 +123,7 @@ add_library(arango STATIC
   Basics/Mutex.cpp
   Basics/Nonce.cpp
   Basics/ReadWriteLock.cpp
+  Basics/ReadWriteSpinLock.cpp
   Basics/Result.cpp
   Basics/FileResult.cpp
   Basics/RocksDBLogger.cpp
@@ -220,7 +221,7 @@ add_library(arango STATIC
   Zip/unzip.cpp
   Zip/zip.cpp
   ${ADDITIONAL_LIB_ARANGO_SOURCES}
-  Basics/ReadWriteSpinLock.cpp)
+)
 
 target_link_libraries(arango
   s2
