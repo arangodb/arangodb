@@ -21,8 +21,11 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <algorithm>
+
 #include "MMFilesPrimaryIndex.h"
 #include "Aql/AstNode.h"
+#include "Aql/ExecutionBlock.cpp"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/hashes.h"
@@ -123,7 +126,7 @@ bool MMFilesAllIndexIterator::next(LocalDocumentIdCallback const& cb, size_t lim
 
 bool MMFilesAllIndexIterator::nextDocument(DocumentCallback const& cb, size_t limit) {
   _documentIds.clear();
-  _documentIds.reserve(limit);
+  _documentIds.reserve((std::min)(limit, aql::ExecutionBlock::DefaultBatchSize()));
 
   bool done = false;
   while (limit > 0) {
