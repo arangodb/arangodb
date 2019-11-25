@@ -58,7 +58,6 @@ The status code, 200 in this case.
 @RESTREPLYBODY{error,boolean,required,}
 *false* in this case
 
-
 @RESTRETURNCODE{400}
 If the post body is not accurate, a *HTTP 400* is returned.
 

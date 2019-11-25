@@ -50,7 +50,6 @@ the HTTP status code
 @RESTREPLYBODY{isNewlyCreated,boolean,required,}
 boolean flag to indicate whether the function was newly created (*true* in this case)
 
-
 @RESTRETURNCODE{400}
 If the JSON representation is malformed or mandatory data is missing from the
 request, the server will respond with *HTTP 400*.

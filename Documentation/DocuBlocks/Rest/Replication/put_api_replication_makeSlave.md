@@ -233,7 +233,7 @@ is returned if the configuration is incomplete or malformed.
 is returned when an invalid HTTP method is used.
 
 @RESTRETURNCODE{500}
-is returned if an error occurred during sychronization or when starting the
+is returned if an error occurred during synchronization or when starting the
 continuous replication.
 
 @RESTRETURNCODE{501}

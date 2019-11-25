@@ -56,8 +56,7 @@ should be a JSON array containing the following attributes:
 
 @RESTSTRUCT{type,post_api_collection_opts,string,required,string}
 specifies the type of the key generator. The currently available generators are
-*traditional*, *autoincrement*, *uuid* and *padded*.
-
+*traditional*, *autoincrement*, *uuid* and *padded*.<br>
 The *traditional* key generator generates numerical keys in ascending order.
 The *autoincrement* key generator generates numerical keys in ascending order, 
 the inital offset and the spacing can be configured

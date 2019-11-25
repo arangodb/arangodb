@@ -43,7 +43,6 @@ The name of the group.
 @RESTSTRUCT{description,admin_statistics_group_struct,string,required,}
 A description of the group.
 
-
 @RESTREPLYBODY{figures,array,required,admin_statistics_figures_struct}
 A statistics figure
 

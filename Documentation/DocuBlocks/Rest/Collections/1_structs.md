@@ -83,8 +83,6 @@ corrosponds to **statusString**; *Only relevant for the MMFiles storage engine*
   - 5: "deleted"
   - 6: "loading"
 
-
-
 @RESTSTRUCT{statusString,collection_info,string,optional,}
 any of: ["unloaded", "loading", "loaded", "unloading", "deleted", "unknown"] *Only relevant for the MMFiles storage engine*
 

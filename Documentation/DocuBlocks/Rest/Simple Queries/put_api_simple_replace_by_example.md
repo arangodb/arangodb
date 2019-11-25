@@ -34,7 +34,6 @@ replace at most. If *limit* is specified but is less than the number
 of documents in the collection, it is undefined which of the documents
 will be replaced.
 
-
 @RESTDESCRIPTION
 
 This will find all documents in the collection that match the specified

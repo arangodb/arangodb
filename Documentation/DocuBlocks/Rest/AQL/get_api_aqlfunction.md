@@ -41,7 +41,6 @@ the input value and return value is the same for repeated calls with same
 input). The *isDeterministic* attribute is currently not used but may be
 used later for optimizations.
 
-
 @RESTRETURNCODE{400}
 If the user function name is malformed, the server will respond with *HTTP 400*.
 

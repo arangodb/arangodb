@@ -7,8 +7,7 @@
 **Note**: These calls are uninteresting to users.
 
 @RESTBODYPARAM{ttl,integer,required,int64}
-the time-to-live for the new batch (in seconds)
-
+the time-to-live for the new batch (in seconds)<br>
 A JSON object with the batch configuration.
 
 @RESTDESCRIPTION

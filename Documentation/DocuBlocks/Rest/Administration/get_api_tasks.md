@@ -16,7 +16,6 @@ The requested task
 @RESTREPLYBODY{,object,required,api_task_struct}
 The function in question
 
-
 @EXAMPLES
 
 Fetching a single task by its id

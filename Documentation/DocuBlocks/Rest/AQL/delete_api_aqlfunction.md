@@ -37,7 +37,6 @@ the HTTP status code
 The number of deleted user functions, always `1` when `group` is set to *false*. 
 Any number `>= 0` when `group` is set to *true*
 
-
 @RESTRETURNCODE{400}
 If the user function name is malformed, the server will respond with *HTTP 400*.
 
@@ -52,7 +51,6 @@ the server error number
 
 @RESTREPLYBODY{errorMessage,string,required,string}
 a descriptive error message
-
 
 @RESTRETURNCODE{404}
 If the specified user user function does not exist, the server will respond with *HTTP 404*.
