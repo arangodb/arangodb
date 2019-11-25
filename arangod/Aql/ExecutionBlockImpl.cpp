@@ -166,6 +166,7 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::g
     }
     if (newBlock == nullptr) {
       TRI_ASSERT(state == ExecutionState::DONE);
+      _state = InternalState::DONE;
       // _rowFetcher must be DONE now already
       return {state, nullptr};
     }
