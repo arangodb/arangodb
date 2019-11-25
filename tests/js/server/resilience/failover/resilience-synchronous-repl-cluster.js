@@ -417,7 +417,7 @@ function SynchronousReplicationSuite () {
 /// @brief run a standard check without failures:
 ////////////////////////////////////////////////////////////////////////////////
 
-    /*testBasicOperations : function () {
+    testBasicOperations : function () {
       assertTrue(waitForSynchronousReplication("_system"));
       runBasicOperations({}, {});
     },
@@ -612,7 +612,7 @@ function SynchronousReplicationSuite () {
       assertTrue(waitForSynchronousReplication("_system"));
       runBasicOperations({place:18, follower:true}, {place:18, follower:true});
       assertTrue(waitForSynchronousReplication("_system"));
-    },*/
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief run a standard check with failures:
