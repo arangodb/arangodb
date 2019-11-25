@@ -823,6 +823,9 @@ void HttpCommTask<T>::writeResponse(RequestStatistics* stat) {
                          auto* thisPtr = static_cast<HttpCommTask<T>*>(self.get());
                          RequestStatistics::SET_WRITE_END(stat);
                          RequestStatistics::ADD_SENT_BYTES(stat, nwrite);
+    
+                         thisPtr->_response.reset();
+
                          llhttp_errno_t err = llhttp_get_errno(&thisPtr->_parser);
                          if (ec || !thisPtr->_shouldKeepAlive || err != HPE_PAUSED) {
                            if (ec) {
@@ -831,7 +834,6 @@ void HttpCommTask<T>::writeResponse(RequestStatistics* stat) {
                            }
                            thisPtr->close();
                          } else {  // ec == HPE_PAUSED
-
                            llhttp_resume(&thisPtr->_parser);
                            thisPtr->asyncReadSome();
                          }
