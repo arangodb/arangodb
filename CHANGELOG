@@ -1,6 +1,8 @@
 v3.4.9 (XXXX-XX-XX)
 -------------------
 
+* The _users collection is now properly restored when using arangorestore.
+
 * Make the timeouts for replication requests (for active failover and master-slave 
   replication configurable via startup options:
 
