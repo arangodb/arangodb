@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -17,26 +17,40 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
+/// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_IRESEARCH__IRESEARCH_ANALYZER_COLLECTION_FEATURE_H
-#define ARANGOD_IRESEARCH__IRESEARCH_ANALYZER_COLLECTION_FEATURE_H 1
+#ifndef IRESEARCH_UTF8_UTILS_H
+#define IRESEARCH_UTF8_UTILS_H
 
-#include "ApplicationFeatures/ApplicationFeature.h"
+#include "shared.hpp"
+#include "log.hpp"
 
-namespace arangodb {
+NS_ROOT
+NS_BEGIN(utf8_utils)
 
-/// @brief the sole purpose of this feature is to create potentially
-/// missing `_analyzers` collection after startup. It can be removed
-/// eventually once the entire upgrading logic has been revised
-class IResearchAnalyzerCollectionFeature final : public arangodb::application_features::ApplicationFeature {
- public:
-  explicit IResearchAnalyzerCollectionFeature(arangodb::application_features::ApplicationServer& server);
+FORCE_INLINE  const byte_type* next(const byte_type* it, const byte_type* end) noexcept {
+  IRS_ASSERT(it);
+  IRS_ASSERT(end);
+  if (it < end) {
+    const uint8_t symbol_start = *it;
+    if (symbol_start < 0x80) {
+      ++it;
+    } else if ((symbol_start >> 5) == 0x06) {
+      it += 2;
+    } else if ((symbol_start >> 4) == 0x0E) {
+      it += 3;
+    } else if ((symbol_start >> 3) == 0x1E) {
+      it += 4;
+    } else {
+      IR_FRMT_ERROR("Invalid UTF-8 symbol increment");
+      it = end;
+    }
+  }
+  return it > end ? end : it;
+}
 
-  void start() override;
-};
-
-}  // namespace arangodb
+NS_END
+NS_END
 
 #endif

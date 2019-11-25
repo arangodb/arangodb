@@ -33,20 +33,14 @@
   var db = require("@arangodb").db;
   var i, c;
 
-  try {
-    db._dropDatabase("UnitTestsDumpSrc");
-  } catch (err1) {
-  }
-  db._createDatabase("UnitTestsDumpSrc");
-
-  try {
-    db._dropDatabase("UnitTestsDumpDst");
-  } catch (err2) {
-  }
-
-
+  ["UnitTestsDumpSrc", "UnitTestsDumpDst"].forEach(function(name) {
+    try {
+      db._dropDatabase(name);
+    } catch (err) {}
+    db._createDatabase(name);
+  });
+  
   db._useDatabase("UnitTestsDumpSrc");
-
 
   // this remains empty
   db._create("UnitTestsDumpEmpty", { waitForSync: true, indexBuckets: 256 });

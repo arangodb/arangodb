@@ -23,6 +23,7 @@
 
 #include "EngineInfoContainerDBServerServerBased.h"
 
+#include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
 #include "Aql/ExecutionNode.h"
@@ -78,8 +79,7 @@ EngineInfoContainerDBServerServerBased::TraverserEngineShardLists::TraverserEngi
     : _node(node), _hasShard(false) {
   auto const& edges = _node->edgeColls();
   TRI_ASSERT(!edges.empty());
-  std::unordered_set<std::string> const& restrictToShards =
-      query.queryOptions().shardIds;
+  std::unordered_set<std::string> const& restrictToShards = query.queryOptions().shardIds;
   // Extract the local shards for edge collections.
   for (auto const& col : edges) {
     _edgeCollections.emplace_back(
@@ -197,7 +197,7 @@ void EngineInfoContainerDBServerServerBased::injectVertexColletions(GraphNode* g
   auto const& vCols = graphNode->vertexColls();
   if (vCols.empty()) {
     std::map<std::string, Collection*> const* allCollections =
-      _query.collections()->collections();
+        _query.collections()->collections();
     auto& resolver = _query.resolver();
     for (auto const& it : *allCollections) {
       // If resolver cannot resolve this collection
@@ -292,11 +292,11 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
   // Build Lookup Infos
   VPackBuilder infoBuilder;
   transaction::Methods* trx = _query.trx();
-  
+
   network::RequestOptions options;
   options.database = _query.vocbase().name();
   options.timeout = network::Timeout(SETUP_TIMEOUT);
-  options.skipScheduler = true; // hack to speed up future.get()
+  options.skipScheduler = true;  // hack to speed up future.get()
   options.param("ttl", std::to_string(_query.queryOptions().ttl));
 
   for (auto const& server : dbServers) {
@@ -323,6 +323,8 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
     TRI_ASSERT(didCreateEngine.size() == _graphNodes.size());
     TRI_ASSERT(infoBuilder.isOpenObject());
 
+    infoBuilder.add(StaticStrings::SerializationFormat,
+                    VPackValue(static_cast<int>(aql::SerializationFormat::SHADOWROWS)));
     infoBuilder.close();  // Base object
     TRI_ASSERT(infoBuilder.isClosed());
 
@@ -468,8 +470,8 @@ void EngineInfoContainerDBServerServerBased::cleanupEngines(
   network::RequestOptions options;
   options.database = dbname;
   options.timeout = network::Timeout(10.0);  // Picked arbitrarily
-  options.skipScheduler = true; // hack to speed up future.get()
-  
+  options.skipScheduler = true;              // hack to speed up future.get()
+
   // Shutdown query snippets
   std::string url("/_api/aql/shutdown/");
   VPackBuffer<uint8_t> body;
@@ -485,7 +487,7 @@ void EngineInfoContainerDBServerServerBased::cleanupEngines(
       for (auto const& shardId : serToSnippets.second) {
         // fire and forget
         network::sendRequest(pool, server, fuerte::RestVerb::Put, url + shardId,
-                             /*copy*/body, options);
+                             /*copy*/ body, options);
       }
       _query.incHttpRequests(serToSnippets.second.size());
     }
@@ -500,8 +502,7 @@ void EngineInfoContainerDBServerServerBased::cleanupEngines(
     for (auto const& engine : *allEngines) {
       // fire and forget
       network::sendRequest(pool, engine.first, fuerte::RestVerb::Delete,
-                           url + basics::StringUtils::itoa(engine.second),
-                           noBody, options);
+                           url + basics::StringUtils::itoa(engine.second), noBody, options);
     }
     _query.incHttpRequests(allEngines->size());
   }

@@ -389,29 +389,26 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
 // --SECTION-- statistics handling                             protected methods
 // -----------------------------------------------------------------------------
 
-
-void CommTask::setStatistics(uint64_t id, RequestStatistics* stat) {
-  std::lock_guard<std::mutex> guard(_statisticsMutex);
-
-  if (stat == nullptr) {
-    auto it = _statisticsMap.find(id);
-    if (it != _statisticsMap.end()) {
-      it->second->release();
-      _statisticsMap.erase(it);
-    }
-  } else {
-    auto result = _statisticsMap.insert({id, stat});
-    if (!result.second) {
-      result.first->second->release();
-      result.first->second = stat;
-    }
-  }
-}
-
-
 RequestStatistics* CommTask::acquireStatistics(uint64_t id) {
   RequestStatistics* stat = RequestStatistics::acquire();
-  setStatistics(id, stat);
+  
+  {
+    std::lock_guard<std::mutex> guard(_statisticsMutex);
+    if (stat == nullptr) {
+      auto it = _statisticsMap.find(id);
+      if (it != _statisticsMap.end()) {
+        it->second->release();
+        _statisticsMap.erase(it);
+      }
+    } else {
+      auto result = _statisticsMap.insert({id, stat});
+      if (!result.second) {
+        result.first->second->release();
+        result.first->second = stat;
+      }
+    }
+  }
+  
   return stat;
 }
 

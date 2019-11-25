@@ -30,7 +30,9 @@
 #include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "RestServer/MetricsFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
+#include "RestServer/DatabaseFeature.h"
 #include "Statistics/ConnectionStatistics.h"
 #include "Statistics/Descriptions.h"
 #include "Statistics/RequestStatistics.h"
@@ -97,6 +99,12 @@ class StatisticsThread final : public Thread {
 
  public:
   void run() override {
+    auto& databaseFeature = server().getFeature<arangodb::DatabaseFeature>();
+    if (databaseFeature.upgrade()) {
+      // don't start the thread when we are running an upgrade
+      return;
+    }
+
     uint64_t const MAX_SLEEP_TIME = 250;
 
     uint64_t sleepTime = 100;
@@ -179,7 +187,7 @@ void StatisticsFeature::prepare() {
 
   STATISTICS = this;
 
-  ServerStatistics::initialize(StatisticsFeature::time());
+  MetricsFeature::metrics()->serverStatistics().initialize(StatisticsFeature::time());
   ConnectionStatistics::initialize();
   RequestStatistics::initialize();
 }
