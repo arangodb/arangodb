@@ -237,6 +237,7 @@ class DumpRestoreHelper {
   restoreFoxxComplete(database) {
     this.print('Foxx Apps with full restore');
     this.restoreConfig.setDatabase(database);
+    this.restoreConfig.setIncludeSystem(true);
     this.results.restoreFoxxComplete = this.arangorestore();
     return this.validate(this.results.restoreFoxxComplete);
   }
