@@ -136,7 +136,7 @@ function findFreePort() {
 }
 
 function main(argv) {
-  let thePython = 'python3';
+  let thePython = 'python';
   if (fs.exists('build/CMakeCache.txt')) {
     let CMakeCache = fs.readFileSync('build/CMakeCache.txt');
     thePython = CMakeCache.toString().match(/^PYTHON_EXECUTABLE:FILEPATH=(.*)$/m)[1];
