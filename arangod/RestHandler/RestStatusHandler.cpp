@@ -49,7 +49,9 @@ using namespace arangodb::rest;
 
 RestStatusHandler::RestStatusHandler(application_features::ApplicationServer& server,
                                      GeneralRequest* request, GeneralResponse* response)
-    : RestBaseHandler(server, request, response) {}
+    : RestBaseHandler(server, request, response) {
+  _allowDirectExecution = true;
+}
 
 RestStatus RestStatusHandler::execute() {
   auto& server = application_features::ApplicationServer::server();
@@ -57,7 +59,7 @@ RestStatus RestStatusHandler::execute() {
 
   if (!security.canAccessHardenedApi()) {
     // dont leak information about server internals here
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN); 
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
     return RestStatus::DONE;
   }
 

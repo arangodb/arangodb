@@ -40,7 +40,9 @@ using namespace arangodb::rest;
 
 RestClusterHandler::RestClusterHandler(application_features::ApplicationServer& server,
                                        GeneralRequest* request, GeneralResponse* response)
-    : RestBaseHandler(server, request, response) {}
+    : RestBaseHandler(server, request, response) {
+  _allowDirectExecution = true;
+}
 
 RestStatus RestClusterHandler::execute() {
   if (_request->requestType() != RequestType::GET) {
@@ -58,8 +60,8 @@ RestStatus RestClusterHandler::execute() {
       handleAgencyDump();
       return RestStatus::DONE;
     }
-  } 
-  
+  }
+
   generateError(
     Result(TRI_ERROR_FORBIDDEN, "expecting _api/cluster/[endpoints,agency-dump]"));
 
