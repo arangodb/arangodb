@@ -1321,10 +1321,16 @@
         ['CXX.host', '<(host_cxx)'],
       ],
     }],
-    ['clang!=1 and host_clang==1 and target_arch!="ia32" and target_arch!="x64"', {
+    ['clang!=1 and host_clang==1 and target_arch!="ia32" and target_arch!="x64" and target_arch!="mips64" and target_arch!="mips64el" ', {
       'make_global_settings': [
         ['CC.host', '<(clang_dir)/bin/clang'],
         ['CXX.host', '<(clang_dir)/bin/clang++'],
+      ],
+    }],
+    ['clang!=1 and host_clang==1 and target_arch=="mips64" or target_arch=="mips64el" ', {
+      'make_global_settings': [
+        ['CC.host', '$(CC)'],
+        ['CXX.host', '$(CXX)'],
       ],
     }],
     ['clang==0 and host_clang==1 and target_arch!="ia32" and target_arch!="x64"', {
