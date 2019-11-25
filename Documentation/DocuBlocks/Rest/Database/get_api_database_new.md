@@ -19,6 +19,11 @@ Default replication factor for new collections created in this database.
 Special values include "satellite", which will replicate the collection to
 every DB-server, and 1, which disables replication.
 
+@RESTSTRUCT{minReplicationFactor,get_api_database_new_USERS,string,optional,number}
+Default minimum replication factor for new collections created in this database.
+You can not have less replication.
+
+
 @RESTBODYPARAM{users,array,optional,get_api_database_new_USERS}
 Has to be an array of user objects to initially create for the new database.
 User information will not be changed for users that already exist.
