@@ -1,6 +1,9 @@
 v3.4.9 (XXXX-XX-XX)
 -------------------
 
+* Allow the optimizer to use indexes when a collection attribute is compared to an
+  expansion followed by an attribute name, e.g. `doc.value IN something[*].name`.
+
 * Make the timeouts for replication requests (for active failover and master-slave 
   replication configurable via startup options:
 
