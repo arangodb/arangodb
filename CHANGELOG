@@ -1,6 +1,8 @@
 v3.5.3 (XXXX-XX-XX)
 -------------------
 
+* The _users collection is now properly restored when using arangorestore.
+
 * Fixed issue #10470: The WebUI now shows potential errors and details which
   occured using _api/import (e.g. unique constraint violated).
 
