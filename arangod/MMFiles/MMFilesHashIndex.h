@@ -181,8 +181,8 @@ class MMFilesHashIndexLookupBuilder {
 
   using MappingCondition =
       ::arangodb::containers::SmallVector<arangodb::aql::AstNode const*>;
-  MappingCondition _mappingFieldCondition;
   MappingCondition::allocator_type::arena_type _mappingFieldConditionArena;
+  MappingCondition _mappingFieldCondition;
 
   std::unordered_map<size_t, std::pair<size_t, std::vector<arangodb::velocypack::Slice>>> _inPosition;
   transaction::BuilderLeaser _inStorage;
@@ -272,10 +272,10 @@ class MMFilesHashIndex final : public MMFilesPathBasedIndex {
 
   Index::FilterCosts supportsFilterCondition(std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
                                              arangodb::aql::AstNode const* node,
-                                             arangodb::aql::Variable const* reference, 
+                                             arangodb::aql::Variable const* reference,
                                              size_t itemsInIndex) const override;
 
-  std::unique_ptr<IndexIterator> iteratorForCondition(transaction::Methods* trx, 
+  std::unique_ptr<IndexIterator> iteratorForCondition(transaction::Methods* trx,
                                                       arangodb::aql::AstNode const* node,
                                                       arangodb::aql::Variable const* reference,
                                                       IndexIteratorOptions const& opts) override;

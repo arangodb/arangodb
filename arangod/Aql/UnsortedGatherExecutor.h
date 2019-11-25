@@ -17,56 +17,58 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
+/// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_UNSORTED_GATHER_EXECUTOR_H
-#define ARANGOD_AQL_UNSORTED_GATHER_EXECUTOR_H
+#ifndef ARANGOD_AQL_UNSORTEDGATHEREXECUTOR_H
+#define ARANGOD_AQL_UNSORTEDGATHEREXECUTOR_H
 
-#include "Aql/ClusterNodes.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutorInfos.h"
-#include "Aql/InputAqlItemRow.h"
-#include "Containers/SmallVector.h"
+#include "Aql/MultiDependencySingleRowFetcher.h"
+#include "Aql/types.h"
 
-namespace arangodb {
+#include <string>
+#include <unordered_set>
 
-namespace transaction {
-class Methods;
-}
+namespace arangodb::aql {
 
-namespace aql {
-
-class MultiDependencySingleRowFetcher;
 class NoStats;
+class InputAqlItemRow;
 class OutputAqlItemRow;
-struct SortRegister;
+class IdExecutorInfos;
+class SharedAqlItemBlockPtr;
 
-class UnsortedGatherExecutorInfos : public ExecutorInfos {
- public:
-  UnsortedGatherExecutorInfos(RegisterId nrInOutRegisters, std::unordered_set<RegisterId> registersToKeep,
-                              std::unordered_set<RegisterId> registersToClear);
-  UnsortedGatherExecutorInfos() = delete;
-  UnsortedGatherExecutorInfos(UnsortedGatherExecutorInfos&&) = default;
-  UnsortedGatherExecutorInfos(UnsortedGatherExecutorInfos const&) = delete;
-  ~UnsortedGatherExecutorInfos() = default;
-};
-
+/**
+* @brief Produces all rows from its dependencies, which may be more than one,
+* in some unspecified order. It is, purposefully, strictly synchronous, and
+* always waits for an answer before requesting the next row(s). This is as
+* opposed to the ParallelUnsortedGather, which already starts fetching the next
+* dependenci(es) while waiting for an answer.
+*
+* The actual implementation fetches all available rows from the first
+* dependency, then from the second, and so forth. But that is not guaranteed.
+*/
 class UnsortedGatherExecutor {
  public:
-
- public:
   struct Properties {
-    static constexpr bool preservesOrder = true;
+    static constexpr bool preservesOrder = false;
     static constexpr BlockPassthrough allowsBlockPassthrough = BlockPassthrough::Disable;
+    // This (inputSizeRestrictsOutputSize) could be set to true, but its
+    // usefulness would be limited.
+    // We either can only use it for the last dependency, in which case it's
+    // already too late to avoid a large allocation for a small result set; or
+    // we'd have to prefetch all dependencies (at least until we got >=1000
+    // rows) before answering hasExpectedNumberOfRows(). This might be okay,
+    // but would increase the latency.
     static constexpr bool inputSizeRestrictsOutputSize = false;
   };
-
   using Fetcher = MultiDependencySingleRowFetcher;
-  using Infos = UnsortedGatherExecutorInfos;
+  // TODO I should probably implement custom Infos, we don't need distributeId().
+  using Infos = IdExecutorInfos;
   using Stats = NoStats;
 
-  UnsortedGatherExecutor(Fetcher& fetcher, Infos& info);
+  UnsortedGatherExecutor(Fetcher& fetcher, Infos&);
   ~UnsortedGatherExecutor();
 
   /**
@@ -75,29 +77,29 @@ class UnsortedGatherExecutor {
    * @return ExecutionState,
    *         if something was written output.hasValue() == true
    */
-  std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
+  [[nodiscard]] auto produceRows(OutputAqlItemRow& output)
+      -> std::pair<ExecutionState, Stats>;
 
-  std::tuple<ExecutionState, Stats, size_t> skipRows(size_t atMost);
-  
+  [[nodiscard]] auto skipRows(size_t atMost) -> std::tuple<ExecutionState, NoStats, size_t>;
+
  private:
-  
-  void initDependencies();
-  
+  [[nodiscard]] auto numDependencies() const
+      noexcept(noexcept(static_cast<Fetcher*>(nullptr)->numberDependencies())) -> size_t;
+  [[nodiscard]] auto fetcher() const noexcept -> Fetcher const&;
+  [[nodiscard]] auto fetcher() noexcept -> Fetcher&;
+  [[nodiscard]] auto done() const noexcept -> bool;
+  [[nodiscard]] auto currentDependency() const noexcept -> size_t;
+  [[nodiscard]] auto fetchNextRow(size_t atMost)
+      -> std::pair<ExecutionState, InputAqlItemRow>;
+  [[nodiscard]] auto skipNextRows(size_t atMost) -> std::pair<ExecutionState, size_t>;
+  auto advanceDependency() noexcept -> void;
+
  private:
   Fetcher& _fetcher;
-  
-  ::arangodb::containers::SmallVector<ExecutionState>::allocator_type::arena_type _arena;
-  ::arangodb::containers::SmallVector<ExecutionState> _upstream{_arena};
-
-  // Total Number of dependencies
-  size_t _numberDependencies;
-  
-  size_t _currentDependency;
-  
-  size_t _skipped;
+  size_t _currentDependency{0};
+  size_t _skipped{0};
 };
 
-}  // namespace aql
-}  // namespace arangodb
+}  // namespace arangodb::aql
 
-#endif
+#endif  // ARANGOD_AQL_UNSORTEDGATHEREXECUTOR_H

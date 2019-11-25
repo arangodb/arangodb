@@ -911,6 +911,12 @@ void TRI_vocbase_t::inventory(VPackBuilder& result, TRI_voc_tick_t maxTick,
   }
 
   ExecContext const& exec = ExecContext::current();
+
+  result.add(VPackValue(arangodb::StaticStrings::Properties));
+  result.openObject();
+  _info.toVelocyPack(result);
+  result.close();
+
   result.add("collections", VPackValue(VPackValueType::Array));
   std::string const& dbName = _info.getName();
   for (auto& collection : collections) {
@@ -949,9 +955,6 @@ void TRI_vocbase_t::inventory(VPackBuilder& result, TRI_voc_tick_t maxTick,
           case Index::TRI_IDX_TYPE_PRIMARY_INDEX:
           case Index::TRI_IDX_TYPE_EDGE_INDEX:
             return false;
-          case Index::TRI_IDX_TYPE_IRESEARCH_LINK:
-            flags = Index::makeFlags(Index::Serialize::Internals);
-            return true;
           default:
             flags = Index::makeFlags(Index::Serialize::Basics);
             return !idx->isHidden();
@@ -1818,13 +1821,13 @@ void TRI_vocbase_t::addReplicationApplier() {
 }
 
 void TRI_vocbase_t::toVelocyPack(VPackBuilder& result) const {
-    VPackObjectBuilder b(&result);
-    _info.toVelocyPack(result);
-    if (ServerState::instance()->isCoordinator()) {
-      result.add("path", VPackValue(path()));
-    } else {
-      result.add("path", VPackValue("none"));
-    }
+  VPackObjectBuilder b(&result);
+  _info.toVelocyPack(result);
+  if (ServerState::instance()->isCoordinator()) {
+    result.add("path", VPackValue(path()));
+  } else {
+    result.add("path", VPackValue("none"));
+  }
 }
 
 /// @brief sets prototype collection for sharding (_users or _graphs)
@@ -1836,7 +1839,7 @@ void TRI_vocbase_t::setShardingPrototype(ShardingPrototype type) {
 ShardingPrototype TRI_vocbase_t::shardingPrototype() const {
   return _info.shardingPrototype();
 }
-  
+
 /// @brief gets name of prototype collection for sharding (_users or _graphs)
 std::string const& TRI_vocbase_t::shardingPrototypeName() const {
   return _info.shardingPrototype() == ShardingPrototype::Users ? StaticStrings::UsersCollection : StaticStrings::GraphCollection;

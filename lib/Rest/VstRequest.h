@@ -60,6 +60,10 @@ class VstRequest final : public GeneralRequest {
   arangodb::velocypack::StringRef rawPayload() const override;
   velocypack::Slice payload(arangodb::velocypack::Options const*) override;
 
+  virtual void setDefaultContentType() override {
+    _contentType = rest::ContentType::VPACK;
+  }
+
   arangodb::Endpoint::TransportType transportType() override {
     return arangodb::Endpoint::TransportType::VST;
   };

@@ -62,3 +62,7 @@ crca9:
 	.size	_TRI_BlockCrc32_SSE42, .-_TRI_BlockCrc32_SSE42
 #endif
 /* end of TRI_BlockCrc32_SSE42  */
+
+#if defined(__ELF__)
+.section	.note.GNU-stack,"",@progbits
+#endif

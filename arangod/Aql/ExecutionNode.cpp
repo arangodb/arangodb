@@ -1204,7 +1204,7 @@ const ::arangodb::containers::HashSet<const Variable*>& ExecutionNode::getVarsUs
   return _varsUsedLater;
 }
 
-void ExecutionNode::setVarsValid(::arangodb::containers::HashSet<const Variable*>& v) {
+void ExecutionNode::setVarsValid(::arangodb::containers::HashSet<const Variable*> const& v) {
   _varsValid = v;
 }
 
@@ -1283,8 +1283,8 @@ std::unique_ptr<ExecutionBlock> SingletonNode::createBlock(
 
   IdExecutorInfos infos(nrRegs, std::move(toKeep), getRegsToClear());
 
-  return std::make_unique<ExecutionBlockImpl<IdExecutor<BlockPassthrough::Enable, ConstFetcher>>>(
-      &engine, this, std::move(infos));
+  return std::make_unique<ExecutionBlockImpl<IdExecutor<ConstFetcher>>>(&engine, this,
+                                                                        std::move(infos));
 }
 
 /// @brief toVelocyPack, for SingletonNode
@@ -2170,8 +2170,8 @@ std::unique_ptr<ExecutionBlock> ReturnNode::createBlock(
       returnInheritedResults ? getRegisterPlan()->nrRegs[getDepth()] : 1;
 
   if (returnInheritedResults) {
-    return std::make_unique<ExecutionBlockImpl<IdExecutor<BlockPassthrough::Enable, void>>>(
-        &engine, this, inputRegister, _count);
+    return std::make_unique<ExecutionBlockImpl<IdExecutor<void>>>(&engine, this,
+                                                                  inputRegister, _count);
   } else {
     TRI_ASSERT(!returnInheritedResults);
     ReturnExecutorInfos infos(inputRegister, numberInputRegisters,
