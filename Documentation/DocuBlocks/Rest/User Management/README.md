@@ -1,5 +1,3 @@
-<!-- ---------------------------------------------------------------------- -->
-
 @startDocuBlock UserHandling_create
 @brief Create a new user.
 
@@ -61,7 +59,6 @@ Returned if a user with the same name already exists.
 
 @endDocuBlock
 
-<!-- ---------------------------------------------------------------------- -->
 
 @startDocuBlock UserHandling_grantDatabase
 @brief Set the database access level.
@@ -121,7 +118,6 @@ Returned if you have *No access* server access level.
 
 @endDocuBlock
 
-<!-- ---------------------------------------------------------------------- -->
 
 @startDocuBlock UserHandling_revokeDatabase
 @brief Clear the database access level, revert back to the default access level
@@ -170,7 +166,6 @@ users.remove(theUser);
 
 @endDocuBlock
 
-<!-- ---------------------------------------------------------------------- -->
 
 @startDocuBlock UserHandling_grantCollection
 @brief Set the collection access level.
@@ -239,7 +234,6 @@ Returned if you have *No access* server access level.
 
 @endDocuBlock
 
-<!-- ---------------------------------------------------------------------- -->
 
 @startDocuBlock UserHandling_revokeCollection
 @brief Clear the collection access level, revert back to the default access level
@@ -295,7 +289,6 @@ If there was an error
 
 @endDocuBlock
 
-<!-- ---------------------------------------------------------------------- -->
 
 @startDocuBlock UserHandling_fetchDatabaseList
 @brief List the accessible databases for a user
@@ -375,7 +368,6 @@ users.remove(theUser);
 
 @endDocuBlock
 
-<!-- ---------------------------------------------------------------------- -->
 
 @startDocuBlock UserHandling_fetchDatabasePermission
 @brief Get specific database access level
@@ -427,7 +419,6 @@ users.remove(theUser);
 
 @endDocuBlock
 
-<!-- ---------------------------------------------------------------------- -->
 
 @startDocuBlock UserHandling_fetchCollectionPermission
 @brief Get the collection access level
@@ -482,7 +473,6 @@ users.remove(theUser);
 
 @endDocuBlock
 
-<!-- ---------------------------------------------------------------------- -->
 
 @startDocuBlock UserHandling_replace
 @brief Replace an existing user.
@@ -547,7 +537,6 @@ The specified user does not exist
 
 @endDocuBlock
 
-<!-- ---------------------------------------------------------------------- -->
 
 @startDocuBlock UserHandling_modify
 @brief Modify attributes of an existing user
@@ -615,7 +604,6 @@ The specified user does not exist
 
 @endDocuBlock
 
-<!-- ---------------------------------------------------------------------- -->
 
 @startDocuBlock UserHandling_delete
 @brief delete a user permanently.
@@ -663,7 +651,6 @@ The specified user does not exist
 
 @endDocuBlock
 
-<!-- ---------------------------------------------------------------------- -->
 
 @startDocuBlock UserHandling_fetch
 @brief fetch the properties of a user.
@@ -713,7 +700,6 @@ The user with the specified name does not exist.
 
 @endDocuBlock
 
-<!-- ---------------------------------------------------------------------- -->
 
 @startDocuBlock UserHandling_fetchProperties
 @brief fetch the properties of a user.
