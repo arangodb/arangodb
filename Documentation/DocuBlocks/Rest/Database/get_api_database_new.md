@@ -21,7 +21,7 @@ every DB-server, and 1, which disables replication.
 
 @RESTSTRUCT{minReplicationFactor,get_api_database_new_USERS,number,optional,number}
 Default minimum replication factor for new collections created in this database.
-If there are less than minReplicationFactor replicas availabe the collection
+If there are less than minReplicationFactor replicas available the collection
 will become read-only.
 
 @RESTBODYPARAM{users,array,optional,get_api_database_new_USERS}
