@@ -1508,8 +1508,7 @@ Result RestReplicationHandler::processRestoreUsersBatch(std::string const& colle
   AuthenticationFeature* af = AuthenticationFeature::instance();
   TRI_ASSERT(af->userManager() != nullptr);
   if (af->userManager() != nullptr) {
-    af->userManager()->triggerLocalReload();
-    af->userManager()->triggerGlobalReload();
+    af->userManager()->triggerCacheRevalidation();
   }
 
   return queryResult.result;
