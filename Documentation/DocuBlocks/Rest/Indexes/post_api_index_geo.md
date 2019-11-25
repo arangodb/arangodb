@@ -9,7 +9,6 @@
 @RESTQUERYPARAM{collection,string,required}
 The collection name.
 
-
 @RESTBODYPARAM{type,string,required,string}
 must be equal to *"geo"*.
 

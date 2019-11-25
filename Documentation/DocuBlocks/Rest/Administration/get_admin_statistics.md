@@ -75,10 +75,8 @@ RSS of process in %
 @RESTSTRUCT{virtualSize,system_statistics_struct,integer,required,}
 VSS of the process
 
-
 @RESTREPLYBODY{client,object,required,client_statistics_struct}
 information about the connected clients and their resource usage
-
 
 @RESTSTRUCT{sum,setof_statistics_struct,number,required,}
 summarized value of all counts

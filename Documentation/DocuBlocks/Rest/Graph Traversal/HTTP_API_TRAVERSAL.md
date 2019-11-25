@@ -100,8 +100,7 @@ item iteration order can be *"forward"* or *"backward"*
 
 @RESTBODYPARAM{uniqueness,string,optional,string}
 specifies uniqueness for vertices and edges visited.
-If set, must be an object like this:
-
+If set, must be an object like this:<br>
 `"uniqueness": {"vertices": "none"|"global"|"path", "edges": "none"|"global"|"path"}`
 
 @RESTBODYPARAM{maxIterations,string,optional,string}

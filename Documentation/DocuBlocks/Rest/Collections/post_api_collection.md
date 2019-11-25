@@ -85,8 +85,7 @@ Not used for other key generator types.
 
 @RESTBODYPARAM{type,integer,optional,int64}
 (The default is *2*): the type of the collection to create.
-The following values for *type* are valid:
-
+The following values for *type* are valid:<br>
 - *2*: document collection
 - *3*: edge collection
 

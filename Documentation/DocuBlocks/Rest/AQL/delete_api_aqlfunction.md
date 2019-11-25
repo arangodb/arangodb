@@ -67,7 +67,6 @@ the server error number
 @RESTREPLYBODY{errorMessage,string,required,string}
 a descriptive error message
 
-
 @EXAMPLES
 
 deletes a function:

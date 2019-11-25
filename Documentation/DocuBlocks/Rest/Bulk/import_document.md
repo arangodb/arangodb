@@ -28,28 +28,23 @@ specifying just the keys for `_to`.
 @RESTQUERYPARAM{overwrite,boolean,optional}
 If this parameter has a value of `true` or `yes`, then all data in the
 collection will be removed prior to the import. Note that any existing
-index definitions will be preseved.
+index definitions will be preserved.
 
 @RESTQUERYPARAM{waitForSync,boolean,optional}
 Wait until documents have been synced to disk before returning.
 
 @RESTQUERYPARAM{onDuplicate,string,optional}
 Controls what action is carried out in case of a unique key constraint
-violation. Possible values are:
-
+violation. Possible values are:<br>
 - *error*: this will not import the current document because of the unique
   key constraint violation. This is the default setting.
-
 - *update*: this will update an existing document in the database with the
   data specified in the request. Attributes of the existing document that
-  are not present in the request will be preseved.
-
+  are not present in the request will be preserved.
 - *replace*: this will replace an existing document in the database with the
   data specified in the request.
-
 - *ignore*: this will not update an existing document and simply ignore the
-  error caused by the unique key constraint violation.
-
+  error caused by the unique key constraint violation.<br>
 Note that *update*, *replace* and *ignore* will only work when the
 import document in the request contains the *_key* attribute. *update* and
 *replace* may also fail because of secondary unique key constraint
