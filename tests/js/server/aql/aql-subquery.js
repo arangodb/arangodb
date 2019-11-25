@@ -486,7 +486,7 @@ function ahuacatlSubqueryTestSuite () {
         b.save(docs);
         const statement = db._createStatement(q);
         const rules = statement.explain().plan.rules;
-        if (isEnterprise) {
+        if (isEnterprise && isCoordinator) {
           // Has one shard rule
           assertTrue(rules.indexOf("cluster-one-shard") !== -1);
         }
