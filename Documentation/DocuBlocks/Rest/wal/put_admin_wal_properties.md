@@ -29,7 +29,6 @@ Is returned if the operation succeeds.
 
 @RESTRETURNCODE{405}
 is returned when an invalid HTTP method is used.
-@endDocuBlock
 
 @EXAMPLES
 
