@@ -66,7 +66,7 @@ function SkipListPerfSuite() {
     }
 
     collection = null;
-    internal.wait(0.0);
+    internal.wait(0.5);
   },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -75,7 +75,6 @@ function SkipListPerfSuite() {
 
     testDeletionPerformance : function () {
       var time = require("internal").time;
-      collection.ensureSkiplist("value");
       var N=100000;
       var p=14777;  // must be coprime to N
 
@@ -84,6 +83,8 @@ function SkipListPerfSuite() {
         p = 333;
       }
 
+      //first run
+      collection.ensureSkiplist("value");
       for (i = 0;i < N;i++) {
         collection.save({value:i});
       }
@@ -97,6 +98,8 @@ function SkipListPerfSuite() {
         collection.remove(x._key);
       }
       var t1 = time()-t;
+
+      //second run -- %10
       internal.db._drop(cn);
       collection = internal.db._create(cn);
       collection.ensureSkiplist("value");
@@ -112,7 +115,9 @@ function SkipListPerfSuite() {
         collection.remove(x._key);
       }
       var t2 = time()-t;
-      assertFalse(t2 > 5*t1,"Removal with skip-list index is slow");
+
+
+      assertFalse(t2 > 10*t1,"Removal with skip-list index is slow");
     }
 
   };
@@ -126,5 +131,3 @@ function SkipListPerfSuite() {
 jsunity.run(SkipListPerfSuite);
 
 return jsunity.done();
-
-
