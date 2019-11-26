@@ -14,12 +14,12 @@ Optional object which can contain the following attributes:
 The sharding method to use for new collections in this database. Valid values
 are: "", "flexible", or "single". The first two are equivalent.
 
-@RESTSTRUCT{replicationFactor,get_api_database_new_USERS,string,optional,number}
+@RESTSTRUCT{replicationFactor,get_api_database_new_USERS,string,optional,}
 Default replication factor for new collections created in this database.
 Special values include "satellite", which will replicate the collection to
 every DB-server, and 1, which disables replication.
 
-@RESTSTRUCT{minReplicationFactor,get_api_database_new_USERS,number,optional,number}
+@RESTSTRUCT{minReplicationFactor,get_api_database_new_USERS,number,optional,}
 Default minimum replication factor for new collections created in this database.
 If there are less than minReplicationFactor replicas available the collection
 will become read-only.
