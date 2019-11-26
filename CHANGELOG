@@ -3,6 +3,13 @@ devel
 
 * Enable the `parallelize-gather` AQL optimizer rule for certain write queries. 
     
+* Shard synchronisation readlock aware of rebootId.
+
+* Bugfix: In an AQL cluster query, when gathering unsorted data in combination
+  with a LIMIT with non-zero offset, if this offset exactly matches the number
+  of documents in the first shards consumed, the rest of the documents was not
+  returned.
+
 * Fixed GET _api/gharial to also include the name property in every returned graph.
   This is a consistency fix within the API as all other APIs include the name.
   As a work around the returned _key can be used, which is identical to the name.
