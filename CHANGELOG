@@ -4,6 +4,8 @@ v3.5.3 (XXXX-XX-XX)
 * Bugfix: An AQL ternary expression with the condition being true at query
   compile time would not execute its false branch.
 
+* The _users collection is now properly restored when using arangorestore.
+
 * Allow the optimizer to use indexes when a collection attribute is compared to
   an expansion followed by an attribute name, e.g.
   `doc.value IN something[*].name`.
