@@ -70,10 +70,15 @@ class CheckPlan : public WalkerWorker<ExecutionNode> {
     bool ok = true;
     std::vector<std::stringstream> errors;
 
+    auto emplaceError = [&errors]() -> auto& {
+      errors.emplace_back();
+      return errors.back();
+    };
+
     switch (node->getType()) {
       case ExecutionNode::RETURN:
         if (node->getParents().size() != 0) {
-          errors.emplace_back() << "#parents == " << node->getParents().size() << " at [" << node->id() << "] " << node->getTypeString();
+          emplaceError() << "#parents == " << node->getParents().size() << " at [" << node->id() << "] " << node->getTypeString();
           ok = false;
         }
         break;
@@ -83,13 +88,13 @@ class CheckPlan : public WalkerWorker<ExecutionNode> {
       case ExecutionNode::UPSERT:
       case ExecutionNode::REMOVE:
         if (node->getParents().size() > 1) {
-          errors.emplace_back() << "#parents == " << node->getParents().size() << " at [" << node->id() << "] " << node->getTypeString();
+          emplaceError() << "#parents == " << node->getParents().size() << " at [" << node->id() << "] " << node->getTypeString();
           ok = false;
         }
         break;
       default:
         if (node->getParents().size() != 1) {
-          errors.emplace_back() << "#parents == " << node->getParents().size() << " at [" << node->id() << "] " << node->getTypeString();
+          emplaceError() << "#parents == " << node->getParents().size() << " at [" << node->id() << "] " << node->getTypeString();
           ok = false;
         }
         break;
@@ -97,13 +102,13 @@ class CheckPlan : public WalkerWorker<ExecutionNode> {
     switch (node->getType()) {
       case ExecutionNode::SINGLETON:
         if (node->getDependencies().size() != 0) {
-          errors.emplace_back() << "#dependencies == " << node->getDependencies().size() << " at [" << node->id() << "] " << node->getTypeString();
+          emplaceError() << "#dependencies == " << node->getDependencies().size() << " at [" << node->id() << "] " << node->getTypeString();
           ok = false;
         }
         break;
       default:
         if (node->getDependencies().size() != 1) {
-          errors.emplace_back() << "#dependencies == " << node->getDependencies().size() << " at [" << node->id() << "] " << node->getTypeString();
+          emplaceError() << "#dependencies == " << node->getDependencies().size() << " at [" << node->id() << "] " << node->getTypeString();
           ok = false;
         }
         break;
@@ -120,17 +125,17 @@ class CheckPlan : public WalkerWorker<ExecutionNode> {
 
     for (auto const& parent : node->getParents()) {
       if (!isDepOf(node, parent)) {
-        errors.emplace_back() << "!isDepOf(" << node->id() << ", " << parent->id() << ")";
-        errors.emplace_back() << "  node is a " << node->getTypeString();
-        errors.emplace_back() << "  parent is a " << parent->getTypeString();
+        emplaceError() << "!isDepOf(" << node->id() << ", " << parent->id() << ")";
+        emplaceError() << "  node is a " << node->getTypeString();
+        emplaceError() << "  parent is a " << parent->getTypeString();
         ok = false;
       }
     }
     for (auto const& dep : node->getDependencies()) {
       if (!isParentOf(node, dep)) {
-        errors.emplace_back() << "!isParentOf(" << dep->id() << ", " << node->id() << ")";
-        errors.emplace_back() << "  dependency is a " << dep->getTypeString();
-        errors.emplace_back() << "  node is a " << node->getTypeString();
+        emplaceError() << "!isParentOf(" << dep->id() << ", " << node->id() << ")";
+        emplaceError() << "  dependency is a " << dep->getTypeString();
+        emplaceError() << "  node is a " << node->getTypeString();
         ok = false;
       }
     }
