@@ -454,8 +454,8 @@ arangodb::Result SynchronizeShard::getReadLock(
     options.timeout = network::Timeout(timeout);
     auto res = network::sendRequest(
       pool, endpoint, fuerte::RestVerb::Post,
-      url, *buf, network::Headers(), options).get();
-  
+      url, *buf, options).get();
+
   if (!res.fail() && res.response->statusCode() == fuerte::StatusOK) {
     // Habemus clausum, we have a lock
     return arangodb::Result();
@@ -481,7 +481,7 @@ arangodb::Result SynchronizeShard::getReadLock(
   // Ambiguous POST, we'll try to DELETE a potentially acquired lock
   try {
     auto r = network::sendRequest(pool, endpoint, fuerte::RestVerb::Delete, url,
-                                  *buf, network::Headers(), options)
+                                  *buf, options)
                  .get();
     if (r.fail() || r.response->statusCode() != fuerte::StatusOK) {
       std::string addendum = network::fuerteToArangoErrorMessage(r);
@@ -923,7 +923,7 @@ bool SynchronizeShard::first() {
       }
 
       auto lastTick =
-        arangodb::basics::VelocyPackHelper::readNumericValue<TRI_voc_tick_t>(
+        arangodb::basics::VelocyPackHelper::getNumericValue<TRI_voc_tick_t>(
           sy, LAST_LOG_TICK, 0);
       VPackBuilder builder;
 
