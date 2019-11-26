@@ -825,8 +825,7 @@ bool Index::canUseConditionPart(arangodb::aql::AstNode const* access,
        other->type == arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS)) {
     // value IN a.b  OR  value IN a.b[*]
     arangodb::aql::Ast::getReferencedVariables(access, variables);
-    if (other->type == arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS &&
-        variables.find(reference) != variables.end()) {
+    if (variables.find(reference) != variables.end()) {
       variables.clear();
       arangodb::aql::Ast::getReferencedVariables(other, variables);
     }

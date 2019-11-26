@@ -3,6 +3,12 @@ v3.5.3 (XXXX-XX-XX)
 
 * The _users collection is now properly restored when using arangorestore.
 
+* Allow the optimizer to use indexes when a collection attribute is compared to
+  an expansion followed by an attribute name, e.g.
+  `doc.value IN something[*].name`.
+
+* Updated arangosync to 0.7.0.
+
 * Fixed issue #10470: The WebUI now shows potential errors and details which
   occured using _api/import (e.g. unique constraint violated).
 
