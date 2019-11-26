@@ -121,7 +121,6 @@ protected:
   void executeRequest(std::unique_ptr<GeneralRequest>,
                       std::unique_ptr<GeneralResponse>);
 
-  void setStatistics(uint64_t, RequestStatistics*);
   RequestStatistics* acquireStatistics(uint64_t);
   RequestStatistics* statistics(uint64_t);
   RequestStatistics* stealStatistics(uint64_t);
