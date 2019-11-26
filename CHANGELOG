@@ -1,7 +1,7 @@
 devel
 -----
 
-* Added highly experimental startup option `--query.parallelize-gather-writes`
+* Added highly experimental startup option `--query.parallelize-gather-writes`.
     
   Turning this option on will enable the `parallelize-gather` AQL optimizer rule for 
   certain write queries. This option is `false`by default.
@@ -10,6 +10,20 @@ devel
   The option is therefore also hidden. We will use this option for testing certain
   workloads on dedicated test environments. If it turns out to be beneficial, the
   feature may be enabled by default later.
+
+* Fixed GET _api/gharial to also include the name property in every returned graph.
+  This is a consistency fix within the API as all other APIs include the name.
+  As a work around the returned _key can be used, which is identical to the name.
+
+* Updated arangosync to 0.7.0.
+
+* REMOTE and GATHER no longer make subqueries unsuitable for the
+  `splice-subqueries` optimization.
+
+* New internal counter and histogram support.
+
+* Add a Prometheus endpoint for metrics, expose new metrics, old statistics
+  and RocksDB metrics.
 
 * Fixed known issue #509: ArangoSearch index consolidation does not work during creation of a link
   on existing collection which may lead to massive file descriptors consumption.
