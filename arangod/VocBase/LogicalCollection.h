@@ -146,6 +146,7 @@ class LogicalCollection : public LogicalDataSource {
   bool isSmartChild() const { return false; }
 #endif
   bool usesRevisionsAsDocumentIds() const;
+  TRI_voc_rid_t minRevision() const;
   /// @brief is this a cluster-wide Plan (ClusterInfo) collection
   bool isAStub() const { return _isAStub; }
   /// @brief is this a cluster-wide Plan (ClusterInfo) collection
@@ -378,6 +379,8 @@ class LogicalCollection : public LogicalDataSource {
 #endif
 
   bool const _usesRevisionsAsDocumentIds;
+
+  TRI_voc_rid_t const _minRevision;
 
   // SECTION: Properties
   bool _waitForSync;

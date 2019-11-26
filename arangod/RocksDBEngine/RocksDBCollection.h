@@ -138,7 +138,6 @@ class RocksDBCollection final : public RocksDBMetaCollection {
   inline bool cacheEnabled() const { return _cacheEnabled; }
 
   std::unique_ptr<containers::RevisionTree> revisionTree(transaction::Methods& trx,
-                                                         std::size_t rangeMin,
                                                          std::size_t rangeMax) override;
 
   void adjustNumberDocuments(transaction::Methods&, int64_t) override;

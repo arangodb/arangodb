@@ -152,6 +152,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice const& i
 #endif
       _usesRevisionsAsDocumentIds(
           Helper::getBooleanValue(info, StaticStrings::UsesRevisionsAsDocumentIds, false)),
+      _minRevision(Helper::getNumericValue<TRI_voc_rid_t>(info, StaticStrings::MinRevision, 0)),
       _waitForSync(Helper::getBooleanValue(info, StaticStrings::WaitForSyncString, false)),
       _allowUserKeys(Helper::getBooleanValue(info, "allowUserKeys", true)),
 #ifdef USE_ENTERPRISE
@@ -439,6 +440,10 @@ bool LogicalCollection::usesRevisionsAsDocumentIds() const {
   return _usesRevisionsAsDocumentIds;
 }
 
+TRI_voc_rid_t LogicalCollection::minRevision() const {
+  return _minRevision;
+}
+
 std::unique_ptr<FollowerInfo> const& LogicalCollection::followers() const {
   return _followers;
 }
@@ -685,6 +690,7 @@ arangodb::Result LogicalCollection::appendVelocyPack(arangodb::velocypack::Build
   result.add(StaticStrings::IsSmartChild, VPackValue(isSmartChild()));
   result.add(StaticStrings::UsesRevisionsAsDocumentIds,
              VPackValue(usesRevisionsAsDocumentIds()));
+  result.add(StaticStrings::MinRevision, VPackValue(minRevision()));
              
   if (hasSmartJoinAttribute()) {
     result.add(StaticStrings::SmartJoinAttribute, VPackValue(_smartJoinAttribute));

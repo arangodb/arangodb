@@ -223,7 +223,7 @@ class PhysicalCollection {
                             bool isRestore, TRI_voc_rid_t& revisionId) const;
 
   virtual std::unique_ptr<containers::RevisionTree> revisionTree(
-      transaction::Methods& trx, std::size_t rangeMin, std::size_t rangeMax);
+      transaction::Methods& trx, std::size_t rangeMax);
 
  protected:
   PhysicalCollection(LogicalCollection& collection, arangodb::velocypack::Slice const& info);

@@ -225,6 +225,7 @@ class StaticStrings {
   static std::string const Sharding;
   static std::string const Satellite;
   static std::string const UsesRevisionsAsDocumentIds;
+  static std::string const MinRevision;
   
   // graph attribute names
   static std::string const GraphCollection;

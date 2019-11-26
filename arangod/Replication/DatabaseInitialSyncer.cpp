@@ -1382,7 +1382,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
   // diff with local tree
   std::pair<std::size_t, std::size_t> fullRange = treeMaster->range();
   std::unique_ptr<containers::RevisionTree> treeLocal =
-      physical->revisionTree(*trx, fullRange.first, fullRange.second);
+      physical->revisionTree(*trx, fullRange.second);
   std::vector<std::pair<std::size_t, std::size_t>> ranges = treeMaster->diff(*treeLocal);
   if (ranges.empty()) {
     // no differences, done!

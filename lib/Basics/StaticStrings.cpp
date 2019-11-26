@@ -244,6 +244,7 @@ std::string const StaticStrings::Sharding("sharding");
 std::string const StaticStrings::Satellite("satellite");
 std::string const StaticStrings::UsesRevisionsAsDocumentIds(
     "usesRevisionsAsDocumentIds");
+std::string const StaticStrings::MinRevision("minRevision");
 
 // graph attribute names
 std::string const StaticStrings::GraphCollection("_graphs");

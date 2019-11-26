@@ -33,6 +33,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/hashes.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterHelpers.h"
 #include "Cluster/ClusterMethods.h"
@@ -2901,11 +2902,11 @@ void RestReplicationHandler::handleCommandRevisionTree() {
       *static_cast<RevisionReplicationIterator*>(ctx.iter.get());
 
   std::size_t constexpr maxDepth = 6;
-  std::size_t const rangeMin = it.hasMore() ? it.revision() : 0;
+  std::size_t const rangeMin = static_cast<std::size_t>(ctx.collection->minRevision());
   containers::RevisionTree tree(maxDepth, rangeMin);
 
   while (it.hasMore()) {
-    tree.insert(it.revision(), it.document().hashString());
+    tree.insert(it.revision(), TRI_FnvHashPod(it.revision())/*it.document().hashString()*/);
     it.next();
   }
 

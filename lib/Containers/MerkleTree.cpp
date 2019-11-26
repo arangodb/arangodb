@@ -37,6 +37,9 @@
 #include <utility>
 #include <vector>
 
+#include <chrono>
+#include <thread>
+
 #include "MerkleTree.h"
 
 #include "Basics/debugging.h"
@@ -336,6 +339,12 @@ std::size_t MerkleTree<BranchingBits, LockStripes>::index(std::size_t key,
   // not thread-safe, lock buffer from outside
   TRI_ASSERT(depth <= meta().maxDepth);
   TRI_ASSERT(key >= meta().rangeMin);
+  if (key >= meta().rangeMax) {
+    while (true) {
+      LOG_DEVEL << "WAITING FOR DEBUG";
+      std::this_thread::sleep_for(std::chrono::seconds(10));
+    }
+  }
   TRI_ASSERT(key < meta().rangeMax);
 
   // special fast case

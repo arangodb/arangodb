@@ -529,7 +529,7 @@ Result PhysicalCollection::newObjectForReplace(transaction::Methods*,
 }
 
 std::unique_ptr<containers::RevisionTree> PhysicalCollection::revisionTree(
-    transaction::Methods& trx, std::size_t rangeMin, std::size_t rangeMax) {
+    transaction::Methods& trx, std::size_t rangeMax) {
   return nullptr;
 }
 
