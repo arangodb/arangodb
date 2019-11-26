@@ -1,9 +1,18 @@
 v3.5.3 (XXXX-XX-XX)
 -------------------
 
-* Fixed GET _api/gharial to also include the name property in every returned graph.
-  This is a consistency fix within the API as all other APIs include the name.
-  As a work around the returned _key can be used, which is identical to the name.
+* Fixed GET _api/gharial to also include the name property in every returned
+  graph. This is a consistency fix within the API as all other APIs include the
+  name. As a work around the returned _key can be used, which is identical to
+  the name.
+
+* The _users collection is now properly restored when using arangorestore.
+
+* Allow the optimizer to use indexes when a collection attribute is compared to
+  an expansion followed by an attribute name, e.g.
+  `doc.value IN something[*].name`.
+
+* Updated arangosync to 0.7.0.
 
 * Fixed issue #10470: The WebUI now shows potential errors and details which
   occured using _api/import (e.g. unique constraint violated).
