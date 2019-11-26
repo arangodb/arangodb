@@ -1,16 +1,8 @@
 devel
 -----
 
-* Added highly experimental startup option `--query.parallelize-gather-writes`.
+* Enable the `parallelize-gather` AQL optimizer rule for certain write queries. 
     
-  Turning this option on will enable the `parallelize-gather` AQL optimizer rule for 
-  certain write queries. This option is `false`by default.
-    
-  The feature is highly experimental and **should not be used on any production system**. 
-  The option is therefore also hidden. We will use this option for testing certain
-  workloads on dedicated test environments. If it turns out to be beneficial, the
-  feature may be enabled by default later.
-
 * Fixed GET _api/gharial to also include the name property in every returned graph.
   This is a consistency fix within the API as all other APIs include the name.
   As a work around the returned _key can be used, which is identical to the name.

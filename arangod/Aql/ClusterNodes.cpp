@@ -568,16 +568,15 @@ struct ParallelizableFinder final : public WalkerWorker<ExecutionNode> {
       _isParallelizable = false;
       return true;  // true to abort the whole walking process
     }
-    if (node->isModificationNode()) {
-      if (!_vocbase.server().getFeature<OptimizerRulesFeature>().parallelizeGatherWrites() ||
-          (node->getType() != ExecutionNode::REMOVE &&
-           node->getType() != ExecutionNode::REPLACE && 
-           node->getType() != ExecutionNode::UPDATE)) {
-        _isParallelizable = false;
-        return true;  // true to abort the whole walking process
-      }
-      // go on here and parallelize these write ops when the said optimizer rule
-      // is enabled
+    // write operations of type REMOVE, REPLACE and UPDATE
+    // can be parallelized, provided the rest of the plan
+    // does not prohibit this
+    if (node->isModificationNode() &&
+        (node->getType() != ExecutionNode::REMOVE &&
+         node->getType() != ExecutionNode::REPLACE && 
+         node->getType() != ExecutionNode::UPDATE)) {
+      _isParallelizable = false;
+      return true;  // true to abort the whole walking process
     }
 
     // continue inspecting

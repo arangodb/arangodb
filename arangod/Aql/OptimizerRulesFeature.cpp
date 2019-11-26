@@ -50,8 +50,7 @@ std::vector<OptimizerRule> OptimizerRulesFeature::_rules;
 std::unordered_map<velocypack::StringRef, int> OptimizerRulesFeature::_ruleLookup;
 
 OptimizerRulesFeature::OptimizerRulesFeature(arangodb::application_features::ApplicationServer& server)
-    : application_features::ApplicationFeature(server, "OptimizerRules"),
-      _parallelizeGatherWrites(false) {
+    : application_features::ApplicationFeature(server, "OptimizerRules") {
   setOptional(false);
   startsAfter<V8FeaturePhase>();
 
@@ -62,12 +61,6 @@ void OptimizerRulesFeature::collectOptions(std::shared_ptr<arangodb::options::Pr
   options->addOption("--query.optimizer-rules",
                      "enable or disable specific optimizer rules (use rule name prefixed with '-' for disabling, '+' for enabling)",
                      new arangodb::options::VectorParameter<arangodb::options::StringParameter>(&_optimizerRules),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden))
-                     .setIntroducedIn(30600);
-  
-  options->addOption("--query.parallelize-gather-writes",
-                     "enable or disable write parallelization for gather nodes (enabling it is highly experimental and not recommend on a production system)",
-                     new arangodb::options::BooleanParameter(&_parallelizeGatherWrites),
                      arangodb::options::makeFlags(arangodb::options::Flags::Hidden))
                      .setIntroducedIn(30600);
 }
