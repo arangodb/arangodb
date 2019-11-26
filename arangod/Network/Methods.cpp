@@ -240,16 +240,7 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
     switch (err) {
       case fuerte::Error::NoError: {
         TRI_ASSERT(res);
-        if (res->statusCode() == fuerte::StatusOK || res->statusCode() == fuerte::StatusCreated ||
-            res->statusCode() == fuerte::StatusAccepted ||
-            res->statusCode() == fuerte::StatusNoContent) {
-          callResponse(Error::NoError, std::move(res));
-          break;
-        } else if (res->statusCode() == fuerte::StatusNotFound && _options.retryNotFound &&
-                   TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND ==
-                       network::errorCodeFromBody(res->slice())) {
-        } else {  // a "proper error" which has to be returned to the client
-          callResponse(err, std::move(res));
+        if (checkResponse(err, req, res)) {
           break;
         }
         [[fallthrough]];
@@ -281,6 +272,32 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
       default:  // a "proper error" which has to be returned to the client
         callResponse(err, std::move(res));
         break;
+    }
+  }
+  
+  bool checkResponse(fuerte::Error err,
+                     std::unique_ptr<fuerte::Request>& req,
+                     std::unique_ptr<fuerte::Response>& res) {
+    switch (res->statusCode()) {
+      case fuerte::StatusOK:
+      case fuerte::StatusCreated:
+      case fuerte::StatusAccepted:
+      case fuerte::StatusNoContent:
+        callResponse(Error::NoError, std::move(res));
+        return true; // done
+        
+      case fuerte::StatusUnavailable:
+        return false; // goto retry
+      
+      case fuerte::StatusNotFound:
+        if (_options.retryNotFound &&
+            TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND == network::errorCodeFromBody(res->slice())) {
+          return false; // goto retry
+        }
+        [[fallthrough]];
+      default:  // a "proper error" which has to be returned to the client
+        callResponse(err, std::move(res));
+        return true; // done
     }
   }
 

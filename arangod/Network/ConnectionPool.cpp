@@ -224,6 +224,7 @@ ConnectionPtr ConnectionPool::selectConnection(std::string const& endpoint,
 
   fuerte::ConnectionBuilder builder;
   builder.endpoint(endpoint); // picks the socket type
+  builder.verifyHost(_config.verifyHosts);
   builder.protocolType(_config.protocol); // always overwrite protocol
   TRI_ASSERT(builder.socketType() != SocketType::Undefined);
 

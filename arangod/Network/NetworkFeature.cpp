@@ -138,7 +138,7 @@ void NetworkFeature::prepare() {
       for (ServerID const& srvId : failed) {
         std::string endpoint = ci->getServerEndpoint(srvId);
         size_t n = _pool->cancelConnections(endpoint);
-        LOG_TOPIC_IF("15d94", DEBUG, Logger::COMMUNICATION, n > 0)
+        LOG_TOPIC_IF("15d94", INFO, Logger::COMMUNICATION, n > 0)
             << "canceling " << n << " connections to failed server '"
             << srvId << "' on endpoint '" << endpoint << "'";
       }
