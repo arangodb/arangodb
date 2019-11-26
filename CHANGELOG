@@ -5,6 +5,8 @@ v3.5.3 (XXXX-XX-XX)
   an expansion followed by an attribute name, e.g.
   `doc.value IN something[*].name`.
 
+* Updated arangosync to 0.7.0.
+
 * Fixed issue #10470: The WebUI now shows potential errors and details which
   occured using _api/import (e.g. unique constraint violated).
 
