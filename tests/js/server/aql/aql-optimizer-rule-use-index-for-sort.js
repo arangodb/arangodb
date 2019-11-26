@@ -189,17 +189,16 @@ function optimizerRuleTestSuite() {
         [ "FOR v IN " + colName + " FILTER v.b == 1 SORT v.b, v.a RETURN 1", false, true ],
         [ "FOR v IN " + colName + " FILTER v.a == 1 && v.b == 1 SORT v.b, v.a RETURN 1", true, false ],
         [ "FOR v IN " + colName + " FILTER v.a == 1 && v.b == 1 SORT v.a, v.b RETURN 1", true, false ],
-        [ "FOR v IN " + colName + " FILTER v.a == 1 && v.b == 1 SORT v.a, v.c RETURN 1", true, true ],
+        [ "FOR v IN " + colName + " FILTER v.a == 1 && v.b == 1 SORT v.a, v.c RETURN 1", false, true ],
         [ "FOR v IN " + colName + " FILTER v.a == 1 && v.b == 1 SORT v.b, v.a RETURN 1", true, false ],
-        [ "FOR v IN " + colName + " FILTER v.a == 1 && v.b == 1 SORT v.a, v.b, v.c RETURN 1", true, true ]
+        [ "FOR v IN " + colName + " FILTER v.a == 1 && v.b == 1 SORT v.a, v.b, v.c RETURN 1", false, true ]
       ];
 
       queries.forEach(function(query) {
         var result = AQL_EXPLAIN(query[0]);
         if (query[1]) {
           assertNotEqual(-1, removeAlwaysOnClusterRules(result.plan.rules).indexOf(ruleName), query[0]);
-        }
-        else {
+        } else {
           assertEqual(-1, removeAlwaysOnClusterRules(result.plan.rules).indexOf(ruleName), query[0]);
         }
         if (query[2]) {
@@ -402,7 +401,6 @@ function optimizerRuleTestSuite() {
     //    place since the index can't fullfill all of the sorting criteria.
     ////////////////////////////////////////////////////////////////////////////////
     testSortMoreThanIndexed: function () {
-
       var query = "FOR v IN " + colName + " FILTER v.a == 1 SORT v.a, v.c RETURN [v.a, v.b, v.c]";
       // no index can be used for v.c -> sort has to remain in place!
       var XPresult;
@@ -431,7 +429,7 @@ function optimizerRuleTestSuite() {
       QResults[2] = AQL_EXECUTE(query, { }, paramIndexFromSort_IndexRange).json;
       XPresult    = AQL_EXPLAIN(query, { }, paramIndexFromSort_IndexRange);
 
-      assertEqual([ ruleName, secondRuleName ], removeAlwaysOnClusterRules(XPresult.plan.rules).sort());
+      assertEqual([ secondRuleName ], removeAlwaysOnClusterRules(XPresult.plan.rules).sort());
       // The sortnode and its calculation node should not have been removed.
       hasSortNode(XPresult);
       hasCalculationNodes(XPresult, 4);
@@ -1124,7 +1122,7 @@ function optimizerRuleTestSuite() {
     testSortModifyFilterCondition : function () {
       var query = "FOR v IN " + colName + " FILTER v.a == 123 SORT v.a, v.xxx RETURN v";
       var rules = AQL_EXPLAIN(query).plan.rules;
-      assertNotEqual(-1, rules.indexOf(ruleName));
+      assertEqual(-1, rules.indexOf(ruleName));
       assertNotEqual(-1, rules.indexOf(secondRuleName));
       assertNotEqual(-1, rules.indexOf("remove-filter-covered-by-index"));
 
@@ -1135,9 +1133,8 @@ function optimizerRuleTestSuite() {
           ++seen;
           assertFalse(node.reverse);
         } else if (node.type === "SortNode") {
-          // first sort condition (v.a) should have been removed because it is const
           ++seen;
-          assertEqual(1, node.elements.length);
+          assertEqual(2, node.elements.length);
         }
       });
       assertEqual(2, seen);

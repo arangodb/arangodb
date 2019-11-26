@@ -3235,12 +3235,6 @@ struct SortToIndexNode final : public WalkerWorker<ExecutionNode> {
             // sorted GatherNode in the cluster
             indexNode->needsGatherNodeSort(true);
             _modified = true;
-          } else if (numCovered > 0 && sortCondition.isUnidirectional()) {
-            // remove the first few attributes if they are constant
-            SortNode* sortNode =
-                ExecutionNode::castTo<SortNode*>(_plan->getNodeById(_sortNode->id()));
-            sortNode->removeConditions(numCovered);
-            _modified = true;
           }
         }
       }

@@ -26,6 +26,7 @@
 #include "Basics/Exceptions.h"
 #include "Cluster/ClusterFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
+#include "Replication/ReplicationFeature.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -63,7 +64,13 @@ ReplicationApplierConfiguration::ReplicationApplierConfiguration()
       _requireFromPresent(true),
       _incremental(false),
       _verbose(false),
-      _restrictType(RestrictType::None) {}
+      _restrictType(RestrictType::None) {
+  auto* feature = application_features::ApplicationServer::lookupFeature<ReplicationFeature>("Replication");
+  if (feature != nullptr) {
+    _requestTimeout = feature->requestTimeout();
+    _connectTimeout = feature->connectTimeout();
+  }
+}
 
 /// @brief reset the configuration to defaults
 void ReplicationApplierConfiguration::reset() {
@@ -99,6 +106,12 @@ void ReplicationApplierConfiguration::reset() {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   _force32mode = false;
 #endif
+      
+  auto* feature = application_features::ApplicationServer::lookupFeature<ReplicationFeature>("Replication");
+  if (feature != nullptr) {
+    _requestTimeout = feature->requestTimeout();
+    _connectTimeout = feature->connectTimeout();
+  }
 }
 
 /// @brief get a VelocyPack representation
@@ -219,12 +232,18 @@ ReplicationApplierConfiguration ReplicationApplierConfiguration::fromVelocyPack(
 
   value = slice.get("requestTimeout");
   if (value.isNumber()) {
-    configuration._requestTimeout = value.getNumber<double>();
+    auto* feature = application_features::ApplicationServer::lookupFeature<ReplicationFeature>("Replication");
+    if (feature != nullptr) {
+      configuration._requestTimeout = feature->checkRequestTimeout(value.getNumber<double>());
+    }
   }
 
   value = slice.get("connectTimeout");
   if (value.isNumber()) {
-    configuration._connectTimeout = value.getNumber<double>();
+    auto* feature = application_features::ApplicationServer::lookupFeature<ReplicationFeature>("Replication");
+    if (feature != nullptr) {
+      configuration._connectTimeout = feature->checkConnectTimeout(value.getNumber<double>());
+    }
   }
 
   value = slice.get("maxConnectRetries");

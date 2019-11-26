@@ -688,7 +688,7 @@ arangodb::aql::AstNode* Index::specializeCondition(arangodb::aql::AstNode* /* no
                                                    arangodb::aql::Variable const* /* reference */) const {
   // the default implementation should never be called
   TRI_ASSERT(false); 
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "no default implementation for specializeCondition");
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, std::string("no default implementation for specializeCondition. index type: ") + typeName());
 }
 
 std::unique_ptr<IndexIterator> Index::iteratorForCondition(transaction::Methods* /* trx */,
@@ -697,7 +697,7 @@ std::unique_ptr<IndexIterator> Index::iteratorForCondition(transaction::Methods*
                                                            IndexIteratorOptions const& /* opts */) {
   // the default implementation should never be called
   TRI_ASSERT(false); 
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "no default implementation for iteratorForCondition");
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, std::string("no default implementation for iteratorForCondition. index type: ") + typeName());
 }
 
 /// @brief perform some base checks for an index condition part
@@ -825,8 +825,7 @@ bool Index::canUseConditionPart(arangodb::aql::AstNode const* access,
        other->type == arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS)) {
     // value IN a.b  OR  value IN a.b[*]
     arangodb::aql::Ast::getReferencedVariables(access, variables);
-    if (other->type == arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS &&
-        variables.find(reference) != variables.end()) {
+    if (variables.find(reference) != variables.end()) {
       variables.clear();
       arangodb::aql::Ast::getReferencedVariables(other, variables);
     }
