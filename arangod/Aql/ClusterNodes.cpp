@@ -548,12 +548,10 @@ bool GatherNode::isSortingGather() const noexcept {
 
 /// @brief is the node parallelizable?
 struct ParallelizableFinder final : public WalkerWorker<ExecutionNode> {
-  TRI_vocbase_t const& _vocbase;
   bool _isParallelizable = true;
 
-  ParallelizableFinder(TRI_vocbase_t const& vocbase) : 
-      _vocbase(vocbase),
-      _isParallelizable(true) {}
+  ParallelizableFinder()
+      : _isParallelizable(true) {}
 
   ~ParallelizableFinder() = default;
 
@@ -591,7 +589,7 @@ bool GatherNode::isParallelizable() const {
     return false;
   }
 
-  ParallelizableFinder finder(*_vocbase);
+  ParallelizableFinder finder;
   for (ExecutionNode* e : _dependencies) {
     e->walk(finder);
     if (!finder._isParallelizable) {
