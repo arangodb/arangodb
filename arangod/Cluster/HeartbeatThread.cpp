@@ -774,7 +774,13 @@ void HeartbeatThread::runSingleServer() {
         config._idleMinWaitTime = 250 * 1000; // 250ms
         config._idleMaxWaitTime = 3 * 1000 * 1000; // 3s
         TRI_ASSERT(!config._skipCreateDrop);
-        config._includeFoxxQueues = true;  // sync _queues and _jobs
+        config._includeFoxxQueues = true; // sync _queues and _jobs
+    
+        if (_server.hasFeature<ReplicationFeature>()) {
+          auto& feature = _server.getFeature<ReplicationFeature>();
+          config._connectTimeout = feature.checkConnectTimeout(config._connectTimeout);
+          config._requestTimeout = feature.checkRequestTimeout(config._requestTimeout);
+        }
 
         applier->forget();  // forget about any existing configuration
         applier->reconfigure(config);
@@ -1143,7 +1149,7 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
       info.allowSystemDB(TRI_vocbase_t::IsSystemName(options.value.get("name").copyString()));
 
       auto infoResult =  info.load(options.value, VPackSlice::emptyArraySlice());
-      if(infoResult.fail()) {
+      if (infoResult.fail()) {
         LOG_TOPIC("3fa12", ERR, Logger::HEARTBEAT) << "In agency database plan" << infoResult.errorMessage();
         TRI_ASSERT(false);
       }

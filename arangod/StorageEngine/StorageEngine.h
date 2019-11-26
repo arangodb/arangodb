@@ -413,6 +413,8 @@ class StorageEngine : public application_features::ApplicationFeature {
     builder.close();
   }
 
+  virtual void getStatistics(std::string& result) const {}
+
   // management methods for synchronizing with external persistent stores
   virtual TRI_voc_tick_t currentTick() const = 0;
   virtual TRI_voc_tick_t releasedTick() const = 0;

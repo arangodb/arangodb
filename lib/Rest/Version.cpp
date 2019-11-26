@@ -107,12 +107,17 @@ void Version::initialize() {
 #else
   Values["debug"] = "false";
 #endif
+#ifdef ARANGODB_USE_IPO 
+  Values["ipo"] = "true";
+#else
+  Values["ipo"] = "false";
+#endif
 #ifdef NDEBUG
   Values["ndebug"] = "true";
 #else
   Values["ndebug"] = "false";
 #endif
-#if defined(ARCHITECTURE_OPTIMIZATIONS)
+#ifdef ARCHITECTURE_OPTIMIZATIONS
   Values["optimization-flags"] = std::string(ARCHITECTURE_OPTIMIZATIONS);
 #endif
   Values["endianness"] = getEndianness();

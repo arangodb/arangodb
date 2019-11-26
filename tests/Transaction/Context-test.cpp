@@ -54,7 +54,8 @@ class TransactionContextTest : public ::testing::Test {
   TRI_vocbase_t vocbase;
 
   TransactionContextTest()
-      : vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(setup.server.server())) {}
+      : vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL,
+                testDBInfo(setup.server.server())) {}
 };
 
 TEST_F(TransactionContextTest, StandaloneContext) {
@@ -116,10 +117,12 @@ TEST_F(TransactionContextTest, StandaloneSmartContext) {
   ASSERT_TRUE(trxSlice.isArray());
   ASSERT_EQ(trxSlice.length(), 2);
 
-  aql::QueryString queryString{
-      "FOR doc IN @@collection "
-      "FILTER doc.hello != '' "
-      "RETURN doc"};
+  aql::QueryString queryString{R"aql(
+    FOR doc IN @@collection
+      FILTER doc.hello != ''
+      SORT doc.hello
+      RETURN doc
+  )aql"};
 
   auto bindVars = std::make_shared<VPackBuilder>();
   bindVars->add(VPackValue(VPackValueType::Object));

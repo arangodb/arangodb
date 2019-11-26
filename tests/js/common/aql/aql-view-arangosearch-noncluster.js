@@ -470,6 +470,26 @@ function iResearchAqlTestSuite () {
 
       assertEqual(result3.length, 1);
       assertEqual(result3[0].name, 'full');
+      
+      var result4 = db._query("FOR doc IN UnitTestsView SEARCH ANALYZER(PHRASE(doc.text,  'quick ', 1, ' fox jumps'), 'text_en') OPTIONS { waitForSync : true } RETURN doc").toArray();
+
+      assertEqual(result4.length, 1);
+      assertEqual(result4[0].name, 'full');
+      
+      var result5 = db._query("FOR doc IN UnitTestsView SEARCH ANALYZER(PHRASE(doc.text, [ 'quick ', 1, ' fox jumps' ]), 'text_en') OPTIONS { waitForSync : true } RETURN doc").toArray();
+
+      assertEqual(result5.length, 1);
+      assertEqual(result5[0].name, 'full');
+      
+      var result6 = db._query("FOR doc IN UnitTestsView SEARCH ANALYZER(PHRASE(doc.text,  'quick ', 0, 'brown', 0, [' fox',  ' jumps']), 'text_en') OPTIONS { waitForSync : true } RETURN doc").toArray();
+
+      assertEqual(result6.length, 1);
+      assertEqual(result6[0].name, 'full');
+      
+      var result7 = db._query("FOR doc IN UnitTestsView SEARCH ANALYZER(PHRASE(doc.text, [ 'quick ', 'brown', ' fox jumps' ]), 'text_en') OPTIONS { waitForSync : true } RETURN doc").toArray();
+
+      assertEqual(result7.length, 1);
+      assertEqual(result7[0].name, 'full');
     },
 
     testExistsFilter : function () {

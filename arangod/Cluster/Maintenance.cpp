@@ -474,7 +474,7 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
                 break;
               }
             }
-          }  // else if(!shard.value.isArray()) - intentionally do nothing
+          }  // else if (!shard.value.isArray()) - intentionally do nothing
         }
       }
     }

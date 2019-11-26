@@ -61,7 +61,7 @@ VstRequest::VstRequest(ConnectionInfo const& connectionInfo,
       _payloadOffset(payloadOffset),
       _messageId(messageId),
       _validatedPayload(false) {
-  _contentType = ContentType::VPACK;
+  _contentType = ContentType::UNSET;
   _contentTypeResponse = ContentType::VPACK;
   parseHeaderInformation();
 }
@@ -86,7 +86,7 @@ VPackSlice VstRequest::payload(VPackOptions const* options) {
     if (_vpackBuilder) {
       return _vpackBuilder->slice();
     }
-  } else if (_contentType == ContentType::VPACK) {
+  } else if ((_contentType == ContentType::UNSET) || (_contentType == ContentType::VPACK)) {
     if (_buffer.size() > _payloadOffset) {
       uint8_t const* ptr = _buffer.data() + _payloadOffset;
       if (!_validatedPayload) {
@@ -113,19 +113,29 @@ void VstRequest::setHeader(VPackSlice keySlice, VPackSlice valSlice) {
   std::string value = valSlice.copyString();
   std::string key = StringUtils::tolower(keySlice.copyString());
   std::string val = StringUtils::tolower(value);
-  static const char* mime = "application/json";
-  if (key == StaticStrings::Accept && val.length() >= 16 &&
-      memcmp(val.data(), mime, 16) == 0) {
+  if (key == StaticStrings::Accept &&
+      val.length() == StaticStrings::MimeTypeJsonNoEncoding.length() &&
+      (val == StaticStrings::MimeTypeJsonNoEncoding)) {
     _contentTypeResponse = ContentType::JSON;
     return;  // don't insert this header!!
-  } else if (key == StaticStrings::ContentTypeHeader && val.length() >= 16 &&
-             memcmp(val.data(), mime, 16) == 0) {
-    _contentType = ContentType::JSON;
-    return;  // don't insert this header!!
+  } else if ((_contentType == ContentType::UNSET) &&
+             (key == StaticStrings::ContentTypeHeader)) {
+    if ((val.length() == StaticStrings::MimeTypeVPack.length()) &&
+        (val == StaticStrings::MimeTypeVPack)) {
+      _contentType = ContentType::VPACK;
+      return;  // don't insert this header!!
+    }
+    if (val.length() >= StaticStrings::MimeTypeJsonNoEncoding.length() &&
+        memcmp(value.c_str(), StaticStrings::MimeTypeJsonNoEncoding.c_str(),
+               StaticStrings::MimeTypeJsonNoEncoding.length()) == 0) {
+      _contentType = ContentType::JSON;
+      // don't insert this header!!
+      return;
+    }
   }
 
   // must lower-case the header key
-  _headers.emplace(std::move(key), std::move(value));
+  _headers.try_emplace(std::move(key), std::move(value));
 }
 
 void VstRequest::parseHeaderInformation() {
@@ -162,9 +172,9 @@ void VstRequest::parseHeaderInformation() {
         for (auto itInner : VPackArrayIterator(it.value)) {
           tmp.emplace_back(itInner.copyString());
         }
-        _arrayValues.emplace(it.key.copyString(), move(tmp));
+        _arrayValues.try_emplace(it.key.copyString(), move(tmp));
       } else {
-        _values.emplace(it.key.copyString(), it.value.copyString());
+        _values.try_emplace(it.key.copyString(), it.value.copyString());
       }
     }
 
@@ -173,7 +183,8 @@ void VstRequest::parseHeaderInformation() {
     }
 
     // fullUrl should not be necessary for Vst
-    _fullUrl = _requestPath + "?";
+    _fullUrl = _requestPath;
+    _fullUrl.push_back('?'); // intentional
     for (auto const& param : _values) {
       _fullUrl.append(param.first + "=" +
                       basics::StringUtils::urlEncode(param.second) + "&");

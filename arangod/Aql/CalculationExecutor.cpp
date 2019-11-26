@@ -36,13 +36,6 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-template <CalculationType calculationType>
-constexpr bool CalculationExecutor<calculationType>::Properties::preservesOrder;
-template <CalculationType calculationType>
-constexpr BlockPassthrough CalculationExecutor<calculationType>::Properties::allowsBlockPassthrough;
-template <CalculationType calculationType>
-constexpr bool CalculationExecutor<calculationType>::Properties::inputSizeRestrictsOutputSize;
-
 CalculationExecutorInfos::CalculationExecutorInfos(
     RegisterId outputRegister, RegisterId nrInputRegisters,
     RegisterId nrOutputRegisters, std::unordered_set<RegisterId> registersToClear,
@@ -91,7 +84,7 @@ std::vector<RegisterId> const& CalculationExecutorInfos::getExpInRegs() const no
 }
 
 template <CalculationType calculationType>
-inline std::pair<ExecutionState, typename CalculationExecutor<calculationType>::Stats>
+std::pair<ExecutionState, typename CalculationExecutor<calculationType>::Stats>
 CalculationExecutor<calculationType>::produceRows(OutputAqlItemRow& output) {
   ExecutionState state;
   InputAqlItemRow row = InputAqlItemRow{CreateInvalidInputRowHint{}};
@@ -105,7 +98,10 @@ CalculationExecutor<calculationType>::produceRows(OutputAqlItemRow& output) {
 
   if (!row) {
     TRI_ASSERT(state == ExecutionState::DONE);
-    TRI_ASSERT(!_infos.getQuery().hasEnteredContext());
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    TRI_ASSERT(_fetcher.isAtShadowRow() || (!_fetcher.hasRowsLeftInBlock() &&
+                                            !_infos.getQuery().hasEnteredContext()));
+#endif
     return {state, NoStats{}};
   }
 
@@ -211,7 +207,7 @@ void CalculationExecutor<CalculationType::V8Condition>::doEvaluation(InputAqlIte
   // upstream might send us to sleep, it is expected that we enter the context
   // exactly on the first row of every block.
   TRI_ASSERT(!shouldExitContextBetweenBlocks() ||
-             _hasEnteredContext == !input.isFirstRowInBlock());
+             _hasEnteredContext == !input.isFirstDataRowInBlock());
 
   enterContext();
   auto contextGuard = scopeGuard([this]() { exitContext(); });
@@ -232,7 +228,7 @@ void CalculationExecutor<CalculationType::V8Condition>::doEvaluation(InputAqlIte
 
   output.moveValueInto(_infos.getOutputRegisterId(), input, guard);
 
-  if (input.blockHasMoreRows()) {
+  if (input.blockHasMoreDataRowsAfterThis()) {
     // We will be called again before the fetcher needs to get a new block.
     // Thus we won't wait for upstream, nor will get a WAITING on the next
     // fetchRow().

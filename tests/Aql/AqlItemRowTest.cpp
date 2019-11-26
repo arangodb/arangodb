@@ -28,6 +28,7 @@
 #include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/OutputAqlItemRow.h"
+#include "Aql/ShadowAqlItemRow.h"
 
 #include "Basics/VelocyPackHelper.h"
 
@@ -46,6 +47,7 @@ class AqlItemRowsTest : public ::testing::Test {
  protected:
   ResourceMonitor monitor;
   AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
+  velocypack::Options const* const options{&velocypack::Options::Defaults};
 
   void AssertResultMatrix(AqlItemBlock* in, VPackSlice result,
                           std::unordered_set<RegisterId> const& regsToKeep,
@@ -319,6 +321,7 @@ class AqlItemRowsCommonEqTest : public ::testing::Test {
  protected:
   ResourceMonitor monitor;
   AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
+  velocypack::Options const* const options{&velocypack::Options::Defaults};
 };
 
 using RowTypes = ::testing::Types<InputAqlItemRow, ShadowAqlItemRow>;
@@ -403,6 +406,7 @@ TYPED_TEST(AqlItemRowsCommonEqTest, row_eq_operators) {
 
 TYPED_TEST(AqlItemRowsCommonEqTest, row_equivalence) {
   using RowType = TypeParam;
+  auto const options = this->options;
   SharedAqlItemBlockPtr block =
       buildBlock<1>(this->itemBlockManager, {{{0}}, {{1}}});
   SharedAqlItemBlockPtr otherBlock =
@@ -417,33 +421,34 @@ TYPED_TEST(AqlItemRowsCommonEqTest, row_equivalence) {
   RowType const otherInvalidRow = createInvalidRow<RowType>();
 
   // same rows must be considered equivalent
-  EXPECT_TRUE((RowType{block, 0}.equates(RowType{block, 0})));
-  EXPECT_TRUE((RowType{block, 1}.equates(RowType{block, 1})));
+  EXPECT_TRUE((RowType{block, 0}.equates(RowType{block, 0}, options)));
+  EXPECT_TRUE((RowType{block, 1}.equates(RowType{block, 1}, options)));
 
   // different rows must be non-equivalent
-  EXPECT_FALSE((RowType{block, 0}.equates(RowType{block, 1})));
-  EXPECT_FALSE((RowType{block, 1}.equates(RowType{block, 0})));
+  EXPECT_FALSE((RowType{block, 0}.equates(RowType{block, 1}, options)));
+  EXPECT_FALSE((RowType{block, 1}.equates(RowType{block, 0}, options)));
 
   // different row in different block must be non-equivalent, even with the same index
-  EXPECT_FALSE((RowType{block, 0}.equates(RowType{otherBlock, 0})));
-  EXPECT_FALSE((RowType{otherBlock, 0}.equates(RowType{block, 0})));
+  EXPECT_FALSE((RowType{block, 0}.equates(RowType{otherBlock, 0}, options)));
+  EXPECT_FALSE((RowType{otherBlock, 0}.equates(RowType{block, 0}, options)));
 
   // an equivalent row in a different block must be considered equivalent, even with a different index
-  EXPECT_TRUE((RowType{block, 1}.equates(RowType{otherBlock, 0})));
-  EXPECT_TRUE((RowType{otherBlock, 0}.equates(RowType{block, 1})));
+  EXPECT_TRUE((RowType{block, 1}.equates(RowType{otherBlock, 0}, options)));
+  EXPECT_TRUE((RowType{otherBlock, 0}.equates(RowType{block, 1}, options)));
 
   // comparisons with an invalid row must be false
-  EXPECT_FALSE((RowType{block, 0}.equates(invalidRow)));
-  EXPECT_FALSE((invalidRow.equates(RowType{block, 0})));
+  EXPECT_FALSE((RowType{block, 0}.equates(invalidRow, options)));
+  EXPECT_FALSE((invalidRow.equates(RowType{block, 0}, options)));
 
   // two invalid rows must be equal
-  EXPECT_TRUE((invalidRow.equates(otherInvalidRow)));
+  EXPECT_TRUE((invalidRow.equates(otherInvalidRow, options)));
 }
 
 class AqlShadowRowsEqTest : public ::testing::Test {
  protected:
   ResourceMonitor monitor;
   AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
+  velocypack::Options const* const options{&velocypack::Options::Defaults};
 };
 
 TEST_F(AqlShadowRowsEqTest, shadow_row_depth_equivalence) {
@@ -459,20 +464,20 @@ TEST_F(AqlShadowRowsEqTest, shadow_row_depth_equivalence) {
   otherBlock->setShadowRowDepth(0, AqlValue{AqlValueHintUInt{1}});
 
   // same rows must be considered equivalent
-  EXPECT_TRUE((ShadowAqlItemRow{block, 0}.equates(ShadowAqlItemRow{block, 0})));
-  EXPECT_TRUE((ShadowAqlItemRow{block, 1}.equates(ShadowAqlItemRow{block, 1})));
+  EXPECT_TRUE((ShadowAqlItemRow{block, 0}.equates(ShadowAqlItemRow{block, 0}, options)));
+  EXPECT_TRUE((ShadowAqlItemRow{block, 1}.equates(ShadowAqlItemRow{block, 1}, options)));
 
   // different rows must be non-equivalent
-  EXPECT_FALSE((ShadowAqlItemRow{block, 0}.equates(ShadowAqlItemRow{block, 1})));
-  EXPECT_FALSE((ShadowAqlItemRow{block, 1}.equates(ShadowAqlItemRow{block, 0})));
+  EXPECT_FALSE((ShadowAqlItemRow{block, 0}.equates(ShadowAqlItemRow{block, 1}, options)));
+  EXPECT_FALSE((ShadowAqlItemRow{block, 1}.equates(ShadowAqlItemRow{block, 0}, options)));
 
   // different row in different block must be non-equivalent, even with the same index
-  EXPECT_FALSE((ShadowAqlItemRow{block, 0}.equates(ShadowAqlItemRow{otherBlock, 0})));
-  EXPECT_FALSE((ShadowAqlItemRow{otherBlock, 0}.equates(ShadowAqlItemRow{block, 0})));
+  EXPECT_FALSE((ShadowAqlItemRow{block, 0}.equates(ShadowAqlItemRow{otherBlock, 0}, options)));
+  EXPECT_FALSE((ShadowAqlItemRow{otherBlock, 0}.equates(ShadowAqlItemRow{block, 0}, options)));
 
   // an equivalent row in a different block must be considered equivalent, even with a different index
-  EXPECT_TRUE((ShadowAqlItemRow{block, 1}.equates(ShadowAqlItemRow{otherBlock, 0})));
-  EXPECT_TRUE((ShadowAqlItemRow{otherBlock, 0}.equates(ShadowAqlItemRow{block, 1})));
+  EXPECT_TRUE((ShadowAqlItemRow{block, 1}.equates(ShadowAqlItemRow{otherBlock, 0}, options)));
+  EXPECT_TRUE((ShadowAqlItemRow{otherBlock, 0}.equates(ShadowAqlItemRow{block, 1}, options)));
 }
 
 }  // namespace aql

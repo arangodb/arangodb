@@ -33,12 +33,10 @@
 #include <unordered_set>
 
 namespace arangodb {
-namespace transaction {
-class Methods;
-}
 namespace velocypack {
 class Builder;
-}
+struct Options;
+}  // namespace velocypack
 namespace aql {
 
 class AqlItemBlock;
@@ -103,17 +101,18 @@ class InputAqlItemRow {
   // blocks are equal, because comparing rows of blocks with different layouts
   // does not make sense.
   // Invalid rows are considered equivalent.
-  bool equates(InputAqlItemRow const& other) const noexcept;
+  [[nodiscard]] bool equates(InputAqlItemRow const& other,
+                             velocypack::Options const* options) const noexcept;
 
   bool isInitialized() const noexcept;
 
   explicit operator bool() const noexcept;
 
-  bool isFirstRowInBlock() const noexcept;
+  bool isFirstDataRowInBlock() const noexcept;
 
   bool isLastRowInBlock() const noexcept;
 
-  bool blockHasMoreRows() const noexcept;
+  bool blockHasMoreDataRowsAfterThis() const noexcept;
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   /**
@@ -132,7 +131,9 @@ class InputAqlItemRow {
   /// @brief toVelocyPack, transfer a single AqlItemRow to Json, the result can
   /// be used to recreate the AqlItemBlock via the Json constructor
   /// Uses the same API as an AqlItemBlock with only a single row
-  void toVelocyPack(transaction::Methods* trx, arangodb::velocypack::Builder&) const;
+  void toVelocyPack(velocypack::Options const*, arangodb::velocypack::Builder&) const;
+
+  void toSimpleVelocyPack(velocypack::Options const*, arangodb::velocypack::Builder&) const;
 
  private:
   AqlItemBlock& block() noexcept;

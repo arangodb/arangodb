@@ -84,7 +84,7 @@ Function const* AqlFunctionFeature::getFunctionByName(std::string const& name) {
 void AqlFunctionFeature::add(Function const& func) {
   TRI_ASSERT(_functionNames.find(func.name) == _functionNames.end());
   // add function to the map
-  _functionNames.emplace(func.name, func);
+  _functionNames.try_emplace(func.name, func);
 }
 
 void AqlFunctionFeature::addAlias(std::string const& alias, std::string const& original) {

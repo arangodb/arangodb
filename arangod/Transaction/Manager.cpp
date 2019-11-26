@@ -127,7 +127,7 @@ void Manager::registerTransaction(TRI_voc_tid_t transactionId,
 
     try {
       // insert into currently running list of transactions
-      _transactions[bucket]._activeTransactions.emplace(transactionId, std::move(data));
+      _transactions[bucket]._activeTransactions.try_emplace(transactionId, std::move(data));
     } catch (...) {
       _nrRunning.fetch_sub(1, std::memory_order_relaxed);
       if (!isReadOnlyTransaction) {
@@ -275,8 +275,7 @@ void Manager::registerAQLTrx(TransactionState* state) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_INTERNAL,
                                      std::string("transaction ID ") + std::to_string(tid) + "' already used in registerAQLTrx");
     }
-    buck._managed.emplace(std::piecewise_construct, std::forward_as_tuple(tid),
-                          std::forward_as_tuple(MetaType::StandaloneAQL, state));
+    buck._managed.try_emplace(tid, MetaType::StandaloneAQL, state);
   }
 }
 
@@ -368,6 +367,9 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
   if (_disallowInserts.load(std::memory_order_acquire)) {
     return res.reset(TRI_ERROR_SHUTTING_DOWN);
   }
+
+  LOG_TOPIC("7bd2d", DEBUG, Logger::TRANSACTIONS)
+    << "managed trx creating: '" << tid << "'";
 
   const size_t bucket = getBucket(tid);
 
@@ -476,10 +478,13 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
                        std::string("transaction ID '") + std::to_string(tid) + "' already used in createManagedTrx insert");
     }
     TRI_ASSERT(state->id() == tid);
-    _transactions[bucket]._managed.emplace(std::piecewise_construct,
-                                           std::forward_as_tuple(tid),
-                                           std::forward_as_tuple(MetaType::Managed,
-                                                                 state.release()));
+    bool emplaced = _transactions[bucket]._managed.try_emplace(
+        tid,
+        MetaType::Managed, state.get()
+    ).second;
+    if (emplaced) {
+      state.release();
+    }
   }
 
   LOG_TOPIC("d6806", DEBUG, Logger::TRANSACTIONS) << "created managed trx '" << tid << "'";
@@ -894,7 +899,9 @@ void Manager::toVelocyPack(VPackBuilder& builder, std::string const& database,
     auto auth = AuthenticationFeature::instance();
 
     network::RequestOptions options;
+    options.database = database;
     options.timeout = network::Timeout(30.0);
+    options.param("local", "true");
 
     VPackBuffer<uint8_t> body;
 
@@ -913,18 +920,16 @@ void Manager::toVelocyPack(VPackBuilder& builder, std::string const& database,
             payload->add("preferred_username", VPackValue(username));
           }
           VPackSlice slice = authBuilder.slice();
-          headers.emplace(StaticStrings::Authorization,
+          headers.try_emplace(StaticStrings::Authorization,
                           "bearer " + auth->tokenCache().generateJwt(slice));
         } else {
-          headers.emplace(StaticStrings::Authorization,
+          headers.try_emplace(StaticStrings::Authorization,
                           "bearer " + auth->tokenCache().jwtToken());
         }
       }
 
       auto f = network::sendRequest(pool, "server:" + coordinator, fuerte::RestVerb::Get,
-                                    "/_db/" + database +
-                                        "/_api/transaction?local=true",
-                                    body, std::move(headers), options);
+                                    "/_api/transaction", body, options, std::move(headers));
       futures.emplace_back(std::move(f));
     }
 
@@ -967,7 +972,7 @@ void Manager::toVelocyPack(VPackBuilder& builder, std::string const& database,
 Result Manager::abortAllManagedWriteTrx(std::string const& username, bool fanout) {
   LOG_TOPIC("bba16", INFO, Logger::QUERIES) << "aborting all " << (fanout ? "" : "local ") << "write transactions";
   Result res;
- 
+
   DatabaseFeature& databaseFeature = _feature.server().getFeature<DatabaseFeature>();
   databaseFeature.enumerate([](TRI_vocbase_t* vocbase) {
     auto queryList = vocbase->queryList();
@@ -976,7 +981,7 @@ Result Manager::abortAllManagedWriteTrx(std::string const& username, bool fanout
     queryList->kill([](aql::Query& query) {
       auto* state = query.trx()->state();
       return state && !state->isReadOnlyTransaction();
-    }, false); 
+    }, false);
   });
 
   // abort local transactions
@@ -984,7 +989,7 @@ Result Manager::abortAllManagedWriteTrx(std::string const& username, bool fanout
     return ::authorized(user) && !state.isReadOnlyTransaction();
   });
 
-  if (fanout && 
+  if (fanout &&
       ServerState::instance()->isCoordinator()) {
     auto& ci = _feature.server().getFeature<ClusterFeature>().clusterInfo();
 
@@ -1017,17 +1022,17 @@ Result Manager::abortAllManagedWriteTrx(std::string const& username, bool fanout
             payload->add("preferred_username", VPackValue(username));
           }
           VPackSlice slice = builder.slice();
-          headers.emplace(StaticStrings::Authorization,
+          headers.try_emplace(StaticStrings::Authorization,
                           "bearer " + auth->tokenCache().generateJwt(slice));
         } else {
-          headers.emplace(StaticStrings::Authorization,
+          headers.try_emplace(StaticStrings::Authorization,
                           "bearer " + auth->tokenCache().jwtToken());
         }
       }
 
       auto f = network::sendRequest(pool, "server:" + coordinator, fuerte::RestVerb::Delete,
                                     "/_db/_system/_api/transaction/write?local=true",
-                                    body, std::move(headers), options);
+                                    body, options, std::move(headers));
       futures.emplace_back(std::move(f));
     }
 

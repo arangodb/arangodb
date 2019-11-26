@@ -25,6 +25,7 @@
 #define ARANGOD_IRESEARCH__IRESEARCH_VIEW_NODE_H 1
 
 #include "Aql/ExecutionNode.h"
+#include "Aql/LateMaterializedOptimizerRulesCommon.h"
 #include "Aql/types.h"
 #include "IResearch/IResearchOrderFactory.h"
 #include "IResearch/IResearchViewSort.h"
@@ -40,6 +41,10 @@ struct VarInfo;
 }  // namespace aql
 
 namespace iresearch {
+
+enum class MaterializeType {
+  Materialized, LateMaterialized, LateMaterializedWithVars
+};
 
 /// @brief class EnumerateViewNode
 class IResearchViewNode final : public arangodb::aql::ExecutionNode {
@@ -83,7 +88,7 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   bool empty() const noexcept;
 
   void setLateMaterialized(aql::Variable const* colPtrVariable,
-                             aql::Variable const* docIdVariable) noexcept {
+                           aql::Variable const* docIdVariable) noexcept {
     TRI_ASSERT((docIdVariable != nullptr) == (colPtrVariable != nullptr));
     _outNonMaterializedDocId = docIdVariable;
     _outNonMaterializedColPtr = colPtrVariable;
@@ -171,10 +176,49 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
 
   std::shared_ptr<std::unordered_set<aql::RegisterId>> calcInputRegs() const;
 
-  inline bool isLateMaterialized() const {
+  bool isLateMaterialized() const {
     return _outNonMaterializedDocId != nullptr &&
            _outNonMaterializedColPtr != nullptr;
   }
+
+  struct ViewVariable {
+    size_t viewFieldNum;
+    aql::Variable const* var;
+  };
+
+  using ViewValuesVars = std::unordered_map<size_t, aql::Variable const*>;
+
+  using ViewValuesRegisters = std::map<size_t, aql::RegisterId>;
+
+  using ViewVarsInfo = std::unordered_map<std::vector<arangodb::basics::AttributeName> const*, ViewVariable>;
+
+  void setViewVariables(ViewVarsInfo const& viewVariables) {
+    _outNonMaterializedViewVars.clear();
+    for (auto& viewVars : viewVariables) {
+      _outNonMaterializedViewVars[viewVars.second.viewFieldNum] = viewVars.second.var;
+    }
+  }
+
+  // The structure is used for temporary saving of optimization rule data.
+  // It contains document references that could be replaced in late materialization rule.
+  struct OptimizationState {
+    using ViewVarsToBeReplaced = std::vector<aql::latematerialized::AstAndFieldData>;
+
+    /// @brief calculation node with ast nodes that can be replaced by view values (e.g. primary sort)
+    std::unordered_map<aql::CalculationNode*, ViewVarsToBeReplaced> _nodesToChange;
+
+    void saveCalcNodesForViewVariables(std::vector<aql::latematerialized::NodeWithAttrs> const& nodesToChange);
+
+    bool canVariablesBeReplaced(aql::CalculationNode* calclulationNode) const;
+
+    IResearchViewNode::ViewVarsInfo replaceViewVariables(std::vector<aql::CalculationNode*> const& calcNodes);
+
+    void clearViewVariables() {
+      _nodesToChange.clear();
+    }
+  };
+
+  OptimizationState& state() noexcept { return _optState; }
 
  private:
   /// @brief the database
@@ -189,8 +233,8 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
 
   // Following two variables should be set in pairs.
   // Info is split between 2 registers to allow constructing
-  // AqlValue with type VPACK_INLINE, which is much faster(no allocations!).
-  // CollectionPtr  is needed for materialization step -
+  // AqlValue with type VPACK_INLINE, which is much faster (no allocations!).
+  // CollectionPtr is needed for materialization step -
   // as view could return documents from different collections.
   // We store raw ptr to collection as materialization is expected to happen
   // on same server (it is ensured by optimizer rule as network hop is expensive!)
@@ -199,6 +243,10 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   /// @brief output variable to write only non-materialized collection ids
   aql::Variable const* _outNonMaterializedColPtr;
 
+  /// @brief output variables to non-materialized document view sort references
+  ViewValuesVars _outNonMaterializedViewVars;
+
+  OptimizationState _optState;
 
   /// @brief filter node to pass to the view
   aql::AstNode const* _filterCondition;

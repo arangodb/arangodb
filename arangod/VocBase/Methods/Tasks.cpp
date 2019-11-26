@@ -104,7 +104,7 @@ std::shared_ptr<Task> Task::createTask(std::string const& id, std::string const&
   
   MUTEX_LOCKER(guard, _tasksLock);
 
-  if (!_tasks.emplace(id, std::make_pair(user, task)).second) {
+  if (!_tasks.try_emplace(id, user, task).second) {
     ec = TRI_ERROR_TASK_DUPLICATE_ID;
 
     return {nullptr};
@@ -193,7 +193,13 @@ void Task::shutdownTasks() {
 
     if (++iterations % 10 == 0) {
       LOG_TOPIC("3966b", INFO, Logger::FIXME) << "waiting for " << size << " task(s) to complete";
+    } else if (iterations >= 25) {
+      LOG_TOPIC("54653", INFO, Logger::FIXME) << "giving up waiting for unfinished tasks";
+      MUTEX_LOCKER(guard, _tasksLock);
+      _tasks.clear();
+      break;
     }
+
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
   }
 }

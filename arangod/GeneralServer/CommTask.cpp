@@ -337,9 +337,10 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
   bool forwarded;
   auto res = handler->forwardRequest(forwarded);
   if (forwarded) {
-    std::move(res).thenFinal([self = shared_from_this(), handler = std::move(handler)](
+    RequestStatistics::SET_SUPERUSER(statistics(messageId));
+    std::move(res).thenFinal([self = shared_from_this(), handler = std::move(handler), messageId](
                                  futures::Try<Result> && /*ignored*/) -> void {
-      self->sendResponse(handler->stealResponse(), handler->stealStatistics());
+      self->sendResponse(handler->stealResponse(), self->stealStatistics(messageId));
     });
     return;
   }
@@ -388,29 +389,26 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
 // --SECTION-- statistics handling                             protected methods
 // -----------------------------------------------------------------------------
 
-
-void CommTask::setStatistics(uint64_t id, RequestStatistics* stat) {
-  std::lock_guard<std::mutex> guard(_statisticsMutex);
-
-  if (stat == nullptr) {
-    auto it = _statisticsMap.find(id);
-    if (it != _statisticsMap.end()) {
-      it->second->release();
-      _statisticsMap.erase(it);
-    }
-  } else {
-    auto result = _statisticsMap.insert({id, stat});
-    if (!result.second) {
-      result.first->second->release();
-      result.first->second = stat;
-    }
-  }
-}
-
-
 RequestStatistics* CommTask::acquireStatistics(uint64_t id) {
   RequestStatistics* stat = RequestStatistics::acquire();
-  setStatistics(id, stat);
+  
+  {
+    std::lock_guard<std::mutex> guard(_statisticsMutex);
+    if (stat == nullptr) {
+      auto it = _statisticsMap.find(id);
+      if (it != _statisticsMap.end()) {
+        it->second->release();
+        _statisticsMap.erase(it);
+      }
+    } else {
+      auto result = _statisticsMap.insert({id, stat});
+      if (!result.second) {
+        result.first->second->release();
+        result.first->second = stat;
+      }
+    }
+  }
+  
   return stat;
 }
 

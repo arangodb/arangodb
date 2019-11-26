@@ -29,6 +29,7 @@
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "StorageEngine/TransactionState.h"
+#include "StorageEngine/RocksDBOptionFeature.h"
 #include "Transaction/Hints.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
@@ -40,12 +41,15 @@ RocksDBTransactionCollection::RocksDBTransactionCollection(TransactionState* trx
                                                            AccessMode::Type accessType,
                                                            int nestingLevel)
     : TransactionCollection(trx, cid, accessType, nestingLevel),
+      _usageLocked(false),
+      _exclusiveWrites(trx->vocbase().server().getFeature<arangodb::RocksDBOptionFeature>()._exclusiveWrites),
       _initialNumberDocuments(0),
       _revision(0),
       _numInserts(0),
       _numUpdates(0),
-      _numRemoves(0),
-      _usageLocked(false) {}
+      _numRemoves(0)
+      {}
+
 
 RocksDBTransactionCollection::~RocksDBTransactionCollection() = default;
 
@@ -208,7 +212,7 @@ void RocksDBTransactionCollection::abortCommit(uint64_t trxId) {
 void RocksDBTransactionCollection::commitCounts(TRI_voc_tid_t trxId, uint64_t commitSeq) {
   TRI_ASSERT(_collection != nullptr);
   auto* rcoll = static_cast<RocksDBMetaCollection*>(_collection->getPhysical());
-  
+
   // Update the collection count
   int64_t const adj = _numInserts - _numRemoves;
   if (hasOperations()) {
@@ -259,6 +263,11 @@ void RocksDBTransactionCollection::trackIndexRemove(TRI_idx_iid_t iid, uint64_t 
 /// returns TRI_ERROR_NO_ERROR in case the lock does not need to be acquired and
 /// no other error occurred returns any other error code otherwise
 int RocksDBTransactionCollection::doLock(AccessMode::Type type, int nestingLevel) {
+
+  if (AccessMode::Type::WRITE == type && _exclusiveWrites) {
+    type = AccessMode::Type::EXCLUSIVE;
+  }
+
   if (!AccessMode::isWriteOrExclusive(type)) {
     _lockType = type;
     return TRI_ERROR_NO_ERROR;
@@ -312,6 +321,10 @@ int RocksDBTransactionCollection::doLock(AccessMode::Type type, int nestingLevel
 
 /// @brief unlock a collection
 int RocksDBTransactionCollection::doUnlock(AccessMode::Type type, int nestingLevel) {
+  if (AccessMode::Type::WRITE == type && _exclusiveWrites) {
+    type = AccessMode::Type::EXCLUSIVE;
+  }
+
   if (!AccessMode::isWriteOrExclusive(type) || !AccessMode::isWriteOrExclusive(_lockType)) {
     _lockType = AccessMode::Type::NONE;
     return TRI_ERROR_NO_ERROR;

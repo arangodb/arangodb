@@ -38,8 +38,11 @@ class OptimizerRulesFeature final : public application_features::ApplicationFeat
  public:
   explicit OptimizerRulesFeature(application_features::ApplicationServer& server);
 
+  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
   void unprepare() override final;
+  
+  std::vector<std::string> const& optimizerRules() const { return _optimizerRules; }
 
   /// @brief translate a list of rule ids into rule name
   static std::vector<velocypack::StringRef> translateRules(std::vector<int> const&);
@@ -54,10 +57,10 @@ class OptimizerRulesFeature final : public application_features::ApplicationFeat
   static std::vector<OptimizerRule> const& rules() { return _rules; }
 
   /// @brief return a rule by its level
-  static OptimizerRule const& ruleByLevel(int level);
+  static OptimizerRule& ruleByLevel(int level);
   
   /// @brief return a rule by its index
-  static OptimizerRule const& ruleByIndex(int index);
+  static OptimizerRule& ruleByIndex(int index);
   
   /// @brief return the index of a rule
   static int ruleIndex(int level);
@@ -70,6 +73,9 @@ class OptimizerRulesFeature final : public application_features::ApplicationFeat
  private:
   void addRules();
   void addStorageEngineRules();
+  void enableOrDisableRules();
+  
+  std::vector<std::string> _optimizerRules;
   
   /// @brief the rules database
   static std::vector<OptimizerRule> _rules;

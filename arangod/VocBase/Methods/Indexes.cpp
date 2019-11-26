@@ -112,23 +112,29 @@ arangodb::Result Indexes::getAll(LogicalCollection const* collection,
     auto& databaseName = collection->vocbase().name();
     std::string const& cid = collection->name();
 
-    // add code for estimates here
     std::unordered_map<std::string, double> estimates;
 
-    auto& feature = collection->vocbase().server().getFeature<ClusterFeature>();
-    int rv = selectivityEstimatesOnCoordinator(feature, databaseName, cid, estimates);
-    if (rv != TRI_ERROR_NO_ERROR) {
-      return Result(rv, "could not retrieve estimates");
-    }
+    if (Index::hasFlag(flags, Index::Serialize::Estimates)) {
+      auto& feature = collection->vocbase().server().getFeature<ClusterFeature>();
+      Result rv = selectivityEstimatesOnCoordinator(feature, databaseName, cid, estimates);
+      if (rv.fail()) {
+        return Result(rv.errorNumber(), "could not retrieve estimates: '" + rv.errorMessage() + "'");
+      }
 
-    // we will merge in the index estimates later
-    flags &= ~Index::makeFlags(Index::Serialize::Estimates);
+      // we will merge in the index estimates later
+      flags &= ~Index::makeFlags(Index::Serialize::Estimates);
+    }
 
     VPackBuilder tmpInner;
     auto& ci = collection->vocbase().server().getFeature<ClusterFeature>().clusterInfo();
     auto c = ci.getCollection(databaseName, cid);
-    c->getIndexesVPack(tmpInner, flags, [&](arangodb::Index const* idx) {
-      return withHidden || !idx->isHidden();
+    c->getIndexesVPack(tmpInner, [withHidden, flags](arangodb::Index const* idx, decltype(flags)& indexFlags) {
+      if (withHidden || !idx->isHidden()) {
+        indexFlags = flags;
+        return true;
+      }
+
+      return false;
     });
 
     tmp.openArray();

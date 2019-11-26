@@ -147,10 +147,13 @@ static arangodb::Result getReadLockId(network::ConnectionPool* pool,
   }
 
   network::RequestOptions options;
+  options.database = database;
   options.timeout = network::Timeout(timeout);
+  options.skipScheduler = true; // hack to speed up future.get()
+  
   auto res = network::sendRequest(pool, endpoint, fuerte::RestVerb::Get,
-                                  DB + database + REPL_HOLD_READ_LOCK,
-                                  VPackBuffer<uint8_t>(), network::Headers(), options)
+                                  REPL_HOLD_READ_LOCK,
+                                  VPackBuffer<uint8_t>(), options)
                  .get();
 
   if (res.ok() && res.response->statusCode() == fuerte::StatusOK) {
@@ -267,12 +270,14 @@ static arangodb::Result addShardFollower(
       }
     }
 
-
     network::RequestOptions options;
+    options.database = database;
     options.timeout = network::Timeout(timeout);
+    options.skipScheduler = true; // hack to speed up future.get()
+    
     auto res = network::sendRequest(pool, endpoint, fuerte::RestVerb::Put,
-                                    DB + database + REPL_ADD_FOLLOWER,
-                                    std::move(*body.steal()), network::Headers(), options)
+                                    REPL_ADD_FOLLOWER,
+                                    std::move(*body.steal()), options)
                    .get();
 
     std::string errorMessage(
@@ -318,10 +323,13 @@ static arangodb::Result cancelReadLockOnLeader(network::ConnectionPool* pool,
   }
 
   network::RequestOptions options;
+  options.database = database;
   options.timeout = network::Timeout(timeout);
+  options.skipScheduler = true; // hack to speed up future.get()
+  
   auto res = network::sendRequest(pool, endpoint, fuerte::RestVerb::Delete,
-                                  DB + database + REPL_HOLD_READ_LOCK,
-                                  std::move(*body.steal()), network::Headers(), options)
+                                  REPL_HOLD_READ_LOCK,
+                                  std::move(*body.steal()), options)
                  .get();
 
   if (res.ok() && res.response && res.response->statusCode() == fuerte::StatusNotFound) {
@@ -370,11 +378,14 @@ static arangodb::Result cancelBarrier(network::ConnectionPool* pool,
   }
 
   network::RequestOptions options;
+  options.database = database;
   options.timeout = network::Timeout(timeout);
+  options.skipScheduler = true; // hack to speed up future.get()
+  
   auto res =
       network::sendRequest(pool, endpoint, fuerte::RestVerb::Delete,
-                           DB + database + REPL_BARRIER_API + std::to_string(barrierId),
-                           VPackBuffer<uint8_t>(), network::Headers(), options)
+                           REPL_BARRIER_API + std::to_string(barrierId),
+                           VPackBuffer<uint8_t>(), options)
           .get();
 
   if (res.ok()) {

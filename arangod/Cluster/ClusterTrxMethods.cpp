@@ -52,9 +52,6 @@ using namespace arangodb::futures;
 
 namespace {
 
-// Timeout for read operations:
-static double const CL_DEFAULT_TIMEOUT = 120.0;
-
 void buildTransactionBody(TransactionState& state, ServerID const& server,
                           VPackBuilder& builder) {
   // std::vector<ServerID> DBservers = ci->getCurrentDBServers();
@@ -131,8 +128,7 @@ void buildTransactionBody(TransactionState& state, ServerID const& server,
 }
 
 /// @brief lazy begin a transaction on subordinate servers
-Future<network::Response> beginTransactionRequest(transaction::Methods const* trx,
-                                                  TransactionState& state,
+Future<network::Response> beginTransactionRequest(TransactionState& state,
                                                   ServerID const& server) {
   TRI_voc_tid_t tid = state.id() + 1;
   TRI_ASSERT(!transaction::isLegacyTransactionId(tid));
@@ -140,18 +136,16 @@ Future<network::Response> beginTransactionRequest(transaction::Methods const* tr
   VPackBuffer<uint8_t> buffer;
   VPackBuilder builder(buffer);
   buildTransactionBody(state, server, builder);
-
-  std::string path = std::string("/_db/")
-                         .append(StringUtils::urlEncode(state.vocbase().name()))
-                         .append("/_api/transaction/begin");
+  
+  network::RequestOptions reqOpts;
+  reqOpts.database = state.vocbase().name();
 
   auto* pool = state.vocbase().server().getFeature<NetworkFeature>().pool();
   network::Headers headers;
-  headers.emplace(StaticStrings::TransactionId, std::to_string(tid));
+  headers.try_emplace(StaticStrings::TransactionId, std::to_string(tid));
   auto body = std::make_shared<std::string>(builder.slice().toJson());
   return network::sendRequest(pool, "server:" + server, fuerte::RestVerb::Post,
-                              std::move(path), std::move(buffer),
-                              network::Timeout(::CL_DEFAULT_TIMEOUT), std::move(headers));
+                              "/_api/transaction/begin", std::move(buffer), reqOpts, std::move(headers));
 }
 
 /// check the transaction cluster response with desited TID and status
@@ -215,9 +209,11 @@ Future<Result> commitAbortTransaction(transaction::Methods& trx, transaction::St
   }
   TRI_ASSERT(!state->isDBServer() || !transaction::isFollowerTransactionId(state->id()));
 
+  network::RequestOptions reqOpts;
+  reqOpts.database = state->vocbase().name();
+
   TRI_voc_tid_t tidPlus = state->id() + 1;
-  const std::string path = "/_db/" + StringUtils::urlEncode(state->vocbase().name()) +
-                           "/_api/transaction/" + std::to_string(tidPlus);
+  const std::string path = "/_api/transaction/" + std::to_string(tidPlus);
 
   fuerte::RestVerb verb;
   if (status == transaction::Status::COMMITTED) {
@@ -230,10 +226,10 @@ Future<Result> commitAbortTransaction(transaction::Methods& trx, transaction::St
 
   auto* pool = trx.vocbase().server().getFeature<NetworkFeature>().pool();
   std::vector<Future<network::Response>> requests;
+  requests.reserve(state->knownServers().size());
   for (std::string const& server : state->knownServers()) {
     requests.emplace_back(network::sendRequest(pool, "server:" + server, verb,
-                                               path, VPackBuffer<uint8_t>(),
-                                               network::Timeout(::CL_DEFAULT_TIMEOUT)));
+                                               path, VPackBuffer<uint8_t>(), reqOpts));
   }
 
   return futures::collectAll(requests).thenValue(
@@ -309,7 +305,7 @@ Future<Result> beginTransactionOnLeaders(TransactionState& state,
       continue;  // already send a begin transaction there
     }
     state.addKnownServer(leader);
-    requests.emplace_back(::beginTransactionRequest(nullptr, state, leader));
+    requests.emplace_back(::beginTransactionRequest(state, leader));
   }
 
   if (requests.empty()) {
@@ -362,12 +358,12 @@ void addTransactionHeader(transaction::Methods const& trx,
                transaction::isLeaderTransactionId(state.id()));
     transaction::BuilderLeaser builder(trx.transactionContextPtr());
     ::buildTransactionBody(state, server, *builder.get());
-    headers.emplace(StaticStrings::TransactionBody, builder->toJson());
-    headers.emplace(arangodb::StaticStrings::TransactionId,
+    headers.try_emplace(StaticStrings::TransactionBody, builder->toJson());
+    headers.try_emplace(arangodb::StaticStrings::TransactionId,
                     std::to_string(tidPlus).append(" begin"));
     state.addKnownServer(server);  // remember server
   } else {
-    headers.emplace(arangodb::StaticStrings::TransactionId, std::to_string(tidPlus));
+    headers.try_emplace(arangodb::StaticStrings::TransactionId, std::to_string(tidPlus));
   }
 }
 template void addTransactionHeader<std::map<std::string, std::string>>(
@@ -394,14 +390,16 @@ void addAQLTransactionHeader(transaction::Methods const& trx,
     } else if (state.hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
       transaction::BuilderLeaser builder(trx.transactionContextPtr());
       ::buildTransactionBody(state, server, *builder.get());
-      headers.emplace(StaticStrings::TransactionBody, builder->toJson());
+      headers.try_emplace(StaticStrings::TransactionBody, builder->toJson());
       value.append(" begin");  // part of a managed transaction
     } else {
       TRI_ASSERT(false);
     }
     state.addKnownServer(server);  // remember server
+  } else if (state.hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL)) {
+     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "illegal AQL transaction state");
   }
-  headers.emplace(arangodb::StaticStrings::TransactionId, std::move(value));
+  headers.try_emplace(arangodb::StaticStrings::TransactionId, std::move(value));
 }
 template void addAQLTransactionHeader<std::map<std::string, std::string>>(
     transaction::Methods const&, ServerID const&, std::map<std::string, std::string>&);

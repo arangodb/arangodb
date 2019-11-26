@@ -384,7 +384,7 @@ Result BatchInfo::start(replutils::Connection const& connection,
     if (!connection.clientInfo().empty()) {
       parameters.add("clientInfo", connection.clientInfo());
     }
-    return Location(Path{path}, Query{parameters}, boost::none).toString();
+    return Location(Path{path}, Query{parameters}, std::nullopt).toString();
   }();
 
   VPackBuilder b;
@@ -463,7 +463,7 @@ Result BatchInfo::extend(replutils::Connection const& connection,
     if (!connection.clientInfo().empty()) {
       parameters.add("clientInfo", connection.clientInfo());
     }
-    return Location(Path{path}, Query{parameters}, boost::none).toString();
+    return Location(Path{path}, Query{parameters}, std::nullopt).toString();
   }();
   std::string const body = "{\"ttl\":" + basics::StringUtils::itoa(ttl) + "}";
   progress.set("sending batch extend command to url " + url);
@@ -507,7 +507,7 @@ Result BatchInfo::finish(replutils::Connection const& connection,
       if (!connection.clientInfo().empty()) {
         parameters.add("clientInfo", connection.clientInfo());
       }
-      return Location(Path{path}, Query{parameters}, boost::none).toString();
+      return Location(Path{path}, Query{parameters}, std::nullopt).toString();
     }();
     progress.set("sending batch finish command to url " + url);
 
@@ -641,6 +641,8 @@ Result parseResponse(velocypack::Builder& builder,
     velocypack::Parser parser(builder);
     parser.parse(response->getBody().begin(), response->getBody().length());
     return Result();
+  } catch (VPackException const& e) {
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, e.what());
   } catch (...) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE);
   }
