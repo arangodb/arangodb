@@ -823,18 +823,18 @@ arangodb::Result triggerFoxxHeal(arangodb::httpclient::SimpleHttpClient& httpCli
   std::unique_ptr<SimpleHttpResult> response(
       httpClient.request(arangodb::rest::RequestType::POST, statusUrl,
                          body.c_str(), body.length()));
-  auto res =  ::checkHttpResponse(httpClient, response, "check status", body);
-  if(res.fail()) {
-    res.reset(res.errorNumber(), "While checking avilablility of foxx-api for heal: " + res.errorMessage());
-    return res;
-  }
 
-  auto builder = response->getBodyVelocyPack();
-  bool foxxApiEnabled = builder->slice().get("foxxApi").getBool();
-  if(!foxxApiEnabled) {
-    LOG_TOPIC("9e9b9", INFO, Logger::RESTORE)
-                << "skipping foxx heal because foxx-api is disabled";
-    return { };
+  auto res =  ::checkHttpResponse(httpClient, response, "check status", body);
+  if (res.ok() && response) {
+    try {
+        if(!response->getBodyVelocyPack()->slice().get("foxxApi").getBool()) {
+          LOG_TOPIC("9e9b9", INFO, Logger::RESTORE)
+                  << "skipping foxx self-healing because Foxx API is disabled";
+          return { };
+        }
+    } catch (...) {
+      //API Not available because of older version or whatever
+    }
   }
 
   const std::string FoxxHealUrl = "/_api/foxx/_local/heal";
