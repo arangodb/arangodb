@@ -271,8 +271,8 @@ Query* Query::clone(QueryPart part, bool withPlan) {
 }
 
 bool Query::killed() const {
-  if(_queryOptions.timeout > std::numeric_limits<double>::epsilon()) {
-    if(TRI_microtime() > (_startTime + _queryOptions.timeout)) {
+  if(_queryOptions.maxRuntime > std::numeric_limits<double>::epsilon()) {
+    if(TRI_microtime() > (_startTime + _queryOptions.maxRuntime)) {
       return true;
     }
   }
@@ -295,7 +295,7 @@ void Query::setExecutionTime() {
     _engine->_stats.setExecutionTime(TRI_microtime() - _startTime);
   }
 }
-    
+
 /// @brief increase number of HTTP requests. this is normally
 /// called during the setup of a query
 void Query::incHttpRequests(size_t requests) {
@@ -588,7 +588,7 @@ ExecutionState Query::execute(QueryRegistry* registry, QueryResult& queryResult)
     if (_killed) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
     }
-    
+
     bool useQueryCache = canUseQueryCache();
 
     switch (_executionPhase) {
@@ -908,7 +908,7 @@ ExecutionState Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry,
             }
           }
         }
-    
+
         if (_killed) {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
         }
@@ -975,7 +975,7 @@ ExecutionState Query::finalize(QueryResult& result) {
     LOG_TOPIC("fc22c", DEBUG, Logger::QUERIES) << TRI_microtime() - _startTime << " "
                                       << "Query::finalize: before _trx->commit"
                                       << " this: " << (uintptr_t)this;
-    
+
     if (!_isClonedQuery) {
       Result commitResult = _trx->commit();
       if (commitResult.fail()) {
