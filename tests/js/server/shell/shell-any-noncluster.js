@@ -100,7 +100,7 @@ function AnySuite() {
       });
 
       // make sure we hit everything
-      assertTrue(Object.keys(dist).length == 3);
+      assertEqual(Object.keys(dist).length, 3);
     },
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -123,7 +123,7 @@ function AnySuite() {
       });
 
       // make sure we hit everything
-      assertTrue(Object.keys(dist).length == 10);
+      assertEqual(Object.keys(dist).length, 10);
     },
 
     ////////////////////////////////////////////////////////////////////////////////
