@@ -1,4 +1,4 @@
-v3.5.3 (XXXX-XX-XX)
+v3.5.3 (2019-11-28)
 -------------------
 
 * Fixed GET _api/gharial to also include the name property in every returned
