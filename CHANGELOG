@@ -93,7 +93,7 @@ devel
   exclusively for writes.
 
 * Added new maxRuntime option for queries. If a query does not finish execution within
-  the given time in second it will be killed.
+  the given time (in seconds) it will be killed.
 
 * Fixed undefined behaviour with creation of ArangoSearch links with custom
   analyzers in cluster environment.
