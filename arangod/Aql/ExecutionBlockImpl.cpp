@@ -647,7 +647,7 @@ void ExecutionBlockImpl<Executor>::traceExecuteEnd(
           VPackBuilder builder;
           {
             VPackObjectBuilder guard(&builder);
-            block->toVelocyPack(transaction(), builder);
+            block->toSimpleVPack(transaction(), builder);
           }
           auto options = transaction()->transactionContextPtr()->getVPackOptions();
           LOG_TOPIC("f12f9", INFO, Logger::QUERIES)
