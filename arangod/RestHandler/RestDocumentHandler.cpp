@@ -46,9 +46,17 @@ using namespace arangodb::rest;
 RestDocumentHandler::RestDocumentHandler(application_features::ApplicationServer& server,
                                          GeneralRequest* request, GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {
-  if(request->requestType() == rest::RequestType::POST
-      && request->contentLength() <= 1024) {
-    _allowDirectExecution = true;
+  
+  if (!ServerState::instance()->isClusterRole()) {
+    auto const type = _request->requestType();
+    if ((type == rest::RequestType::GET ||
+         type == rest::RequestType::POST ||
+         type == rest::RequestType::PUT ||
+         type == rest::RequestType::PATCH ||
+         type == rest::RequestType::DELETE_REQ) &&
+        request->contentLength() <= 1024) {
+      _allowDirectExecution = true;
+    }
   }
 }
 
