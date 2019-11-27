@@ -31,11 +31,13 @@ using velocypack::StringRef;
 RestPleaseUpgradeHandler::RestPleaseUpgradeHandler(application_features::ApplicationServer& server,
                                                    GeneralRequest* request,
                                                    GeneralResponse* response)
-    : RestHandler(server, request, response) {}
+    : RestHandler(server, request, response) {
+  _allowDirectExecution = true;
+}
 
 RestStatus RestPleaseUpgradeHandler::execute() {
   resetResponse(rest::ResponseCode::OK);
-  
+
   _response->setContentType(rest::ContentType::TEXT);
   _response->addRawPayload(StringRef("Database: "));
   _response->addRawPayload(StringRef(_request->databaseName()));
