@@ -70,13 +70,13 @@ function DeadlockSuite () {
 
     testCreateTaskInvalidPeriod1 : function () {
       // start a task that will write-lock collection2 and then read-lock collection1
-      tasks.register({ 
+      tasks.register({
         command: function() {
           var db = require("internal").db;
-          db._executeTransaction({ 
-            collections: { write: [ "UnitTestsDeadlock2" ] }, 
+          db._executeTransaction({
+            collections: { write: [ "UnitTestsDeadlock2" ] },
             action: function () {
-              require("internal").wait(7, false);
+              require("internal").wait(5, false);
               var db = require("internal").db;
               db.UnitTestsDeadlock1.any();
               db.UnitTestsDeadlock2.insert({ done: true });
@@ -84,15 +84,14 @@ function DeadlockSuite () {
           });
         }
       });
-       
-      try {   
+
+      try {
         // and start a transaction that does the opposite
-        db._executeTransaction({ 
-          collections: { write: [ "UnitTestsDeadlock1" ] }, 
+        db._executeTransaction({
+          collections: { write: [ "UnitTestsDeadlock1" ] },
           action: function () {
-            require("internal").wait(7, false);
             var db = require("internal").db;
-            db.UnitTestsDeadlock2.any();
+            db.UnitTestsDeadlock2.any(); // deadlock here
             db.UnitTestsDeadlock1.insert({ done: true });
           }
         });
@@ -100,6 +99,7 @@ function DeadlockSuite () {
         // nothing to do here
       }
 
+      require("internal").wait(8, false);
       // only one transaction should have succeeded
       assertEqual(1, db.UnitTestsDeadlock1.count() + db.UnitTestsDeadlock2.count());
     }
