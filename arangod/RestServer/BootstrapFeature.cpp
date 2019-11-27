@@ -345,7 +345,7 @@ void BootstrapFeature::start() {
     }
   }
   
-  if (ServerState::isCoordinator(role)) {
+  if (ServerState::isClusterRole(role)) {
     waitForHealthEntry();
   }
 
