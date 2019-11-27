@@ -93,10 +93,10 @@ function DeadlockSuite () {
 
       // wait until task is started
       while(db.UnitTestsDeadlock3.count() === 0) {
-        internal.sleep(1);
+        internal.sleep(0.1);
       }
       // wait a bit longer to make sure the transaction is started
-      internal.sleep(2);
+      internal.sleep(1);
 
       // start transaction that will fail
       db._executeTransaction({
