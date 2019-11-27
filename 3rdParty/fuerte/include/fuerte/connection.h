@@ -102,7 +102,9 @@ class Connection : public std::enable_shared_from_this<Connection> {
   // Invoke the configured ConnectionFailureCallback (if any)
   void onFailure(Error errorCode, const std::string& errorMessage) {
     if (_config._onFailure) {
-      _config._onFailure(errorCode, errorMessage);
+      try {
+        _config._onFailure(errorCode, errorMessage);
+      } catch(...) {}
     }
   }
 

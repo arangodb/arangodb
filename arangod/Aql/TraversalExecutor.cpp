@@ -37,10 +37,6 @@ using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::traverser;
 
-constexpr bool TraversalExecutor::Properties::preservesOrder;
-constexpr BlockPassthrough TraversalExecutor::Properties::allowsBlockPassthrough;
-constexpr bool TraversalExecutor::Properties::inputSizeRestrictsOutputSize;
-
 TraversalExecutorInfos::TraversalExecutorInfos(
     std::shared_ptr<std::unordered_set<RegisterId>> inputRegisters,
     std::shared_ptr<std::unordered_set<RegisterId>> outputRegisters, RegisterId nrInputRegisters,
@@ -231,7 +227,6 @@ std::pair<ExecutionState, TraversalStats> TraversalExecutor::produceRows(OutputA
       }
       if (_infos.usePathOutput()) {
         transaction::BuilderLeaser tmp(_traverser.trx());
-        tmp->clear();
         AqlValue path = _traverser.pathToAqlValue(*tmp.builder());
         AqlValueGuard guard{path, true};
         output.moveValueInto(_infos.pathRegister(), _input, guard);

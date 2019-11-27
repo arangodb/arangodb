@@ -33,6 +33,10 @@
 namespace arangodb {
 class HttpRequest;
 
+namespace basics {
+class StringBuffer;
+}
+
 namespace rest {
 
 template <SocketType T>
@@ -84,17 +88,23 @@ private:
   ResponseCode handleAuthHeader(HttpRequest& request);
   /// decompress content
   bool handleContentEncoding(HttpRequest&);
+  
+  // called on IO context thread
+  void writeResponse(RequestStatistics* stat);
 
  private:
   /// the node http-parser
   llhttp_t _parser;
   llhttp_settings_t _parserSettings;
+  
+  velocypack::Buffer<uint8_t> _header;
 
   // ==== parser state ====
   std::string _lastHeaderField;
   std::string _lastHeaderValue;
   std::string _origin;  // value of the HTTP origin header the client sent (if
   std::unique_ptr<HttpRequest> _request;
+  std::unique_ptr<basics::StringBuffer> _response;
   bool _lastHeaderWasValue;
   bool _shouldKeepAlive;  /// keep connection open
   bool _messageDone;

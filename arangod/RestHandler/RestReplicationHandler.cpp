@@ -31,10 +31,12 @@
 #include "Basics/RocksDBUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/StaticStrings.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterHelpers.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/FollowerInfo.h"
+#include "Cluster/RebootTracker.h"
 #include "Cluster/ResignShardLeadership.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Indexes/Index.h"
@@ -72,6 +74,7 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
+using namespace arangodb::cluster;
 
 namespace {
 std::string const dataString("data");
@@ -701,6 +704,14 @@ void RestReplicationHandler::handleCommandClusterInventory() {
   std::vector<std::shared_ptr<LogicalCollection>> cols = ci.getCollections(dbName);
   VPackBuilder resultBuilder;
   resultBuilder.openObject();
+
+  DatabaseFeature& databaseFeature = _vocbase.server().getFeature<DatabaseFeature>();
+  TRI_vocbase_t* vocbase = databaseFeature.lookupDatabase(dbName);
+  if (vocbase) {
+    resultBuilder.add(VPackValue(StaticStrings::Properties));
+    vocbase->toVelocyPack(resultBuilder);
+  }
+
   resultBuilder.add("collections", VPackValue(VPackValueType::Array));
   for (std::shared_ptr<LogicalCollection> const& c : cols) {
     // We want to check if the collection is usable and all followers
@@ -730,8 +741,7 @@ void RestReplicationHandler::handleCommandClusterInventory() {
   LogicalView::enumerate(_vocbase, [&resultBuilder](LogicalView::ptr const& view) -> bool {
     if (view) {
       resultBuilder.openObject();
-      view->properties(resultBuilder, LogicalDataSource::makeFlags(
-                                          LogicalDataSource::Serialize::Detailed));
+      view->properties(resultBuilder, LogicalDataSource::Serialization::Inventory);
       // details, !forPersistence because on restore any datasource ids will
       // differ, so need an end-user representation
       resultBuilder.close();
@@ -1090,23 +1100,43 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
   std::string newId = StringUtils::itoa(newIdTick);
   toMerge.add("id", VPackValue(newId));
 
-  // Number of shards. Will be overwritten if not existent
-  VPackSlice const numberOfShardsSlice = parameters.get(StaticStrings::NumberOfShards);
-  if (!numberOfShardsSlice.isInteger()) {
-    // The information does not contain numberOfShards. Overwrite it.
-    VPackSlice const shards = parameters.get("shards");
-    if (shards.isObject()) {
-      numberOfShards = static_cast<uint64_t>(shards.length());
-    } else {
-      // "shards" not specified
-      // now check if numberOfShards property was given
-      if (numberOfShards == 0) {
-        // We take one shard if no value was given
-        numberOfShards = 1;
-      }
+  if (_vocbase.server().getFeature<ClusterFeature>().forceOneShard()) {
+    // force one shard, and force distributeShardsLike to be "_graphs"
+    toMerge.add(StaticStrings::NumberOfShards, VPackValue(1));
+    if (!_vocbase.IsSystemName(name)) {
+      // system-collections will be sharded normally. only user collections will get
+      // the forced sharding
+      toMerge.add(StaticStrings::DistributeShardsLike, VPackValue(_vocbase.shardingPrototypeName()));
     }
-    TRI_ASSERT(numberOfShards > 0);
-    toMerge.add(StaticStrings::NumberOfShards, VPackValue(numberOfShards));
+  } else {
+    // Number of shards. Will be overwritten if not existent
+    VPackSlice const numberOfShardsSlice = parameters.get(StaticStrings::NumberOfShards);
+    if (!numberOfShardsSlice.isInteger()) {
+      // The information does not contain numberOfShards. Overwrite it.
+      VPackSlice const shards = parameters.get("shards");
+      if (shards.isObject()) {
+        numberOfShards = static_cast<uint64_t>(shards.length());
+      } else {
+        // "shards" not specified
+        // now check if numberOfShards property was given
+        if (numberOfShards == 0) {
+          // We take one shard if no value was given
+          numberOfShards = 1;
+        }
+      }
+      TRI_ASSERT(numberOfShards > 0);
+      toMerge.add(StaticStrings::NumberOfShards, VPackValue(numberOfShards));
+    } else {
+      numberOfShards = numberOfShardsSlice.getUInt();
+    }
+
+    if (_vocbase.sharding() == "single" &&
+        parameters.get(StaticStrings::DistributeShardsLike).isNone() &&
+        !_vocbase.IsSystemName(name) &&
+        numberOfShards <= 1) {
+      // shard like _graphs
+      toMerge.add(StaticStrings::DistributeShardsLike, VPackValue(_vocbase.shardingPrototypeName()));
+    }
   }
 
   // Replication Factor. Will be overwritten if not existent
@@ -2501,16 +2531,36 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
     return;
   }
 
+  RebootId rebootId(0);
+  std::string serverId;
+
   if (!body.isObject()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "body needs to be an object with attributes 'collection', "
                   "'ttl' and 'id'");
     return;
   }
+  
+  VPackSlice collection = body.get("collection");
+  VPackSlice ttlSlice = body.get("ttl");
+  VPackSlice idSlice = body.get("id");
 
-  VPackSlice const collection = body.get("collection");
-  VPackSlice const ttlSlice = body.get("ttl");
-  VPackSlice const idSlice = body.get("id");
+  if (body.hasKey(StaticStrings::RebootId)) {
+    if (body.get(StaticStrings::RebootId).isInteger()) {
+      if (body.hasKey("serverId") && body.get("serverId").isString()) {
+        rebootId = RebootId(body.get(StaticStrings::RebootId).getNumber<uint64_t>());
+        serverId = body.get("serverId").copyString();
+      } else {
+        generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                      "'rebootId' must be accompanied by string attribute 'serverId'");
+        return;
+      }
+    } else {
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                    "'rebootId' must be an integer attribute");
+      return;
+    }
+  }
 
   if (!collection.isString() || !ttlSlice.isNumber() || !idSlice.isString()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
@@ -2556,7 +2606,7 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
   LOG_TOPIC("4fac2", DEBUG, Logger::REPLICATION)
       << "Attempt to create a Lock: " << id << " for shard: " << _vocbase.name()
       << "/" << col->name() << " of type: " << (doSoftLock ? "soft" : "hard");
-  Result res = createBlockingTransaction(id, *col, ttl, lockType);
+  Result res = createBlockingTransaction(id, *col, ttl, lockType, rebootId, serverId);
   if (!res.ok()) {
     generateError(res);
     return;
@@ -2890,7 +2940,9 @@ ReplicationApplier* RestReplicationHandler::getApplier(bool& global) {
 
 Result RestReplicationHandler::createBlockingTransaction(aql::QueryId id,
                                                          LogicalCollection& col, double ttl,
-                                                         AccessMode::Type access) const {
+                                                         AccessMode::Type access,
+                                                         RebootId const& rebootId,
+                                                         std::string const& serverId) {
   // This is a constant JSON structure for Queries.
   // we actually do not need a plan, as we only want the query registry to have
   // a hold of our transaction
@@ -2912,6 +2964,7 @@ Result RestReplicationHandler::createBlockingTransaction(aql::QueryId id,
   {
     auto ctx = transaction::StandaloneContext::Create(_vocbase);
     auto trx = std::make_shared<SingleCollectionTransaction>(ctx, col, access);
+
     query->setTransactionContext(ctx);
     // Inject will take over responsiblilty of transaction, even on error case.
     query->injectTransaction(std::move(trx));
@@ -2922,8 +2975,29 @@ Result RestReplicationHandler::createBlockingTransaction(aql::QueryId id,
 
   TRI_ASSERT(isLockHeld(id).is(TRI_ERROR_HTTP_NOT_FOUND));
 
+  ClusterInfo& ci = server().getFeature<ClusterFeature>().clusterInfo();
+
+  std::string vn = _vocbase.name();
   try {
-    queryRegistry->insert(id, query.get(), ttl, true, true);
+    std::function<void(void)> f =
+      [=]() {
+        try {
+          // Code does not matter, read only access, so we can roll back.
+          QueryRegistryFeature::registry()->destroy(vn, id, TRI_ERROR_QUERY_KILLED, false);
+        } catch (...) {
+          // All errors that show up here can only be
+          // triggered if the query is destroyed in between.
+        }
+      };
+
+    std::string comment = std::string("SynchronizeShard from ") + serverId +
+      " for " + col.name() + " access mode " + AccessMode::typeString(access);
+    auto rGuard = std::make_unique<CallbackGuard>(
+      ci.rebootTracker().callMeOnChange(
+        RebootTracker::PeerState(serverId, rebootId), f, comment));
+
+    queryRegistry->insert(id, query.get(), ttl, true, true, std::move(rGuard));
+    
   } catch (...) {
     // For compatibility we only return this error
     return {TRI_ERROR_TRANSACTION_INTERNAL, "cannot begin read transaction"};
@@ -3092,7 +3166,7 @@ void RestReplicationHandler::registerTombstone(aql::QueryId id) const {
   std::string key = IdToTombstoneKey(_vocbase, id);
   {
     WRITE_LOCKER(writeLocker, RestReplicationHandler::_tombLock);
-    RestReplicationHandler::_tombstones.emplace(key, std::chrono::steady_clock::now() +
+    RestReplicationHandler::_tombstones.try_emplace(key, std::chrono::steady_clock::now() +
                                                          RestReplicationHandler::_tombstoneTimeout);
   }
   timeoutTombstones();

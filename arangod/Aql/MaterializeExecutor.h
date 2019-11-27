@@ -31,6 +31,7 @@
 #include "Aql/types.h"
 #include "Indexes/IndexIterator.h"
 #include "VocBase/LocalDocumentId.h"
+#include "VocBase/LogicalCollection.h"
 
 #include <iosfwd>
 #include <memory>
@@ -44,38 +45,47 @@ template <BlockPassthrough>
 class SingleRowFetcher;
 class NoStats;
 
+template<typename T>
 class MaterializerExecutorInfos : public ExecutorInfos {
  public:
   MaterializerExecutorInfos(RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-                     std::unordered_set<RegisterId> registersToClear,
-                     std::unordered_set<RegisterId> registersToKeep,
-                     RegisterId inNmColPtr, RegisterId inNmDocId,
-                     RegisterId outDocRegId, transaction::Methods* trx);
+                            std::unordered_set<RegisterId> registersToClear,
+                            std::unordered_set<RegisterId> registersToKeep,
+                            T collectionSource, RegisterId inNmDocId,
+                            RegisterId outDocRegId, transaction::Methods* trx);
 
   MaterializerExecutorInfos() = delete;
   MaterializerExecutorInfos(MaterializerExecutorInfos&&) = default;
   MaterializerExecutorInfos(MaterializerExecutorInfos const&) = delete;
   ~MaterializerExecutorInfos() = default;
 
-  inline RegisterId outputMaterializedDocumentRegId() const {
+  RegisterId outputMaterializedDocumentRegId() const {
     return _outMaterializedDocumentRegId;
   }
 
-  inline RegisterId inputNonMaterializedColRegId() const {
-    return _inNonMaterializedColRegId;
-  }
-
-  inline RegisterId inputNonMaterializedDocRegId() const {
+  RegisterId inputNonMaterializedDocRegId() const {
     return _inNonMaterializedDocRegId;
   }
 
-  inline transaction::Methods* trx() const {
+  transaction::Methods* trx() const {
     return _trx;
   }
 
+  T collectionSource() const {
+    return _collectionSource;
+  }
+
  private:
-  /// @brief register to store raw collection pointer
-  RegisterId const _inNonMaterializedColRegId;
+  std::shared_ptr<std::unordered_set<RegisterId>> getReadableInputRegisters(T const collectionSource, RegisterId inNmDocId) {
+    if constexpr (std::is_same<T, RegisterId>::value) {
+      return make_shared_unordered_set(std::initializer_list<RegisterId>({collectionSource, inNmDocId}));
+    } else {
+      return make_shared_unordered_set(std::initializer_list<RegisterId>({inNmDocId}));
+    }
+  }
+
+  /// @brief register to store raw collection pointer or collection name
+  T const _collectionSource;
   /// @brief register to store local document id
   RegisterId const _inNonMaterializedDocRegId;
   /// @brief register to store materialized document
@@ -84,6 +94,7 @@ class MaterializerExecutorInfos : public ExecutorInfos {
   transaction::Methods* _trx;
 };
 
+template<typename T>
 class MaterializeExecutor {
  public:
   struct Properties {
@@ -92,7 +103,7 @@ class MaterializeExecutor {
     static constexpr bool inputSizeRestrictsOutputSize = false;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
-  using Infos = MaterializerExecutorInfos;
+  using Infos = MaterializerExecutorInfos<T>;
   using Stats = NoStats;
 
   MaterializeExecutor(MaterializeExecutor&&) = default;
@@ -124,6 +135,9 @@ class MaterializeExecutor {
   ReadContext _readDocumentContext;
   Infos const& _infos;
   Fetcher& _fetcher;
+
+  // for single collection case
+  LogicalCollection const* _collection = nullptr;
 };
 
 }  // namespace aql

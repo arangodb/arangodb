@@ -220,7 +220,7 @@
       $('#documents_first').css('visibility', 'visible');
       this.addDocumentSwitch = true;
       this.collection.resetFilter();
-      this.collection.loadTotal(callback);
+      this.collection.loadCollectionConfig(callback);
       this.restoredFilters = [];
 
       // for resetting json upload
@@ -249,6 +249,7 @@
         if (error) {
           arangoHelper.arangoError('Upload', msg);
         } else {
+          arangoHelper.arangoMessage('Upload', msg);
           this.hideImportModal();
           this.resetView();
         }
@@ -1175,7 +1176,7 @@
 
       if (window.App.naviView && $('#subNavigationBar .breadcrumb').html() !== undefined) {
         $('#subNavigationBar .breadcrumb').html(
-          'Collection: ' + arangoHelper.escapeHtml(this.collectionName)
+          'Collection: ' + arangoHelper.escapeHtml(this.collectionName.length > 64 ? this.collectionName.substr(0, 64) + "..." : this.collectionName)
         );
         arangoHelper.buildCollectionSubNav(this.collectionName, 'Content');
       } else {

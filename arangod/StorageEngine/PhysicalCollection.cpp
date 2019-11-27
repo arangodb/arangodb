@@ -210,7 +210,7 @@ Result PhysicalCollection::mergeObjectsForUpdate(
         }  // else do nothing
       } else {
         // regular attribute
-        newValues.emplace(key, current.value);
+        newValues.try_emplace(key, current.value);
       }
 
       it.next();
@@ -527,28 +527,33 @@ int PhysicalCollection::checkRevision(transaction::Methods*, TRI_voc_rid_t expec
 }
 
 /// @brief hands out a list of indexes
-std::vector<std::shared_ptr<arangodb::Index>> PhysicalCollection::getIndexes() const {
+std::vector<std::shared_ptr<Index>> PhysicalCollection::getIndexes() const {
   READ_LOCKER(guard, _indexesLock);
   return { _indexes.begin(), _indexes.end() };
 }
 
-void PhysicalCollection::getIndexesVPack(VPackBuilder& result, unsigned flags,
-                                         std::function<bool(arangodb::Index const*)> const& filter) const {
+void PhysicalCollection::getIndexesVPack(VPackBuilder& result,
+                                         std::function<bool(Index const*, std::underlying_type<Index::Serialize>::type&)> const& filter) const {
   READ_LOCKER(guard, _indexesLock);
   result.openArray();
   for (std::shared_ptr<Index> const& idx : _indexes) {
-    if (!filter(idx.get())) {
+    std::underlying_type<Index::Serialize>::type flags = Index::makeFlags();
+
+    if (!filter(idx.get(), flags)) {
       continue;
     }
+
     idx->toVelocyPack(result, flags);
   }
   result.close();
 }
 
 /// @brief return the figures for a collection
-futures::Future<std::shared_ptr<arangodb::velocypack::Builder>> PhysicalCollection::figures() {
-  auto builder = std::make_shared<VPackBuilder>();
-  builder->openObject();
+futures::Future<OperationResult> PhysicalCollection::figures() {
+  auto buffer = std::make_shared<VPackBufferUInt8>();
+  VPackBuilder builder(buffer);
+  
+  builder.openObject();
 
   // add index information
   size_t sizeIndexes = memory();
@@ -569,15 +574,15 @@ futures::Future<std::shared_ptr<arangodb::velocypack::Builder>> PhysicalCollecti
     }
   }
 
-  builder->add("indexes", VPackValue(VPackValueType::Object));
-  builder->add("count", VPackValue(numIndexes));
-  builder->add("size", VPackValue(sizeIndexes));
-  builder->close();  // indexes
+  builder.add("indexes", VPackValue(VPackValueType::Object));
+  builder.add("count", VPackValue(numIndexes));
+  builder.add("size", VPackValue(sizeIndexes));
+  builder.close();  // indexes
 
   // add engine-specific figures
   figuresSpecific(builder);
-  builder->close();
-  return futures::makeFuture(builder);
+  builder.close();
+  return OperationResult(Result(), std::move(buffer));
 }
 
 

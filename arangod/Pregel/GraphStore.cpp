@@ -338,11 +338,12 @@ void GraphStore<V, E>::_loadVertices(ShardID const& vertexShard,
     for (ShardID const& edgeShard : edgeShards) {
       _loadEdges(trx, *ventry, edgeShard, documentId, edges, eKeys);
     }
+    return true;
   };
   
   _localVertexCount += numVertices;
   bool hasMore = true;
-  while(hasMore && numVertices > 0) {
+  while (hasMore && numVertices > 0) {
     TRI_ASSERT(segmentSize > 0);
     hasMore = cursor.nextDocument(cb, segmentSize);
     if (_destroyed) {
@@ -442,6 +443,7 @@ void GraphStore<V, E>::_loadEdges(transaction::Methods& trx, Vertex<V, E>& verte
       allocateSpace(toValue.size());
       Edge<E>* edge = edgeBuff->appendElement();
       buildEdge(edge, toValue);
+      return true;
     };
     while (cursor->nextWithExtra(cb, 1000)) {
       if (_destroyed) {
@@ -463,6 +465,7 @@ void GraphStore<V, E>::_loadEdges(transaction::Methods& trx, Vertex<V, E>& verte
       if (res == TRI_ERROR_NO_ERROR) {
         _graphFormat->copyEdgeData(slice, edge->data());
       }
+      return true;
     };
     while (cursor->nextDocument(cb, 1000)) {
       if (_destroyed) {

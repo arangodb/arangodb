@@ -61,8 +61,10 @@ struct QueryOptions {
   size_t memoryLimit;
   size_t maxNumberOfPlans;
   size_t maxWarningCount;
+  double maxRuntime; // query has to execute within the given time or will be killed
   double satelliteSyncWait;
-  double ttl;
+  double ttl; // time until query cursor expires - avoids coursors to
+              // stick around for ever if client does not collect the data
   /// Level 0 nothing, Level 1 profile, Level 2,3 log tracing info
   ProfileLevel profile;
   bool allPlans;

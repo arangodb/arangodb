@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertFalse, assertTrue, assertNotEqual, AQL_EXPLAIN, AQL_EXECUTE */
+/*global AQL_EXPLAIN, AQL_EXECUTE */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for optimizer rules
@@ -28,15 +28,17 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var internal = require("internal");
-var db = internal.db;
-var jsunity = require("jsunity");
-var helper = require("@arangodb/aql-helper");
-var isEqual = helper.isEqual;
-var findExecutionNodes = helper.findExecutionNodes;
-var findReferencedNodes = helper.findReferencedNodes;
-var getQueryMultiplePlansAndExecutions = helper.getQueryMultiplePlansAndExecutions;
-var removeAlwaysOnClusterRules = helper.removeAlwaysOnClusterRules;
+const internal = require("internal");
+const db = internal.db;
+const jsunity = require("jsunity");
+const assert = require("jsunity").jsUnity.assertions;
+const {assertEqual, assertFalse, assertTrue, assertNotEqual} = assert;
+const helper = require("@arangodb/aql-helper");
+const isEqual = helper.isEqual;
+const findExecutionNodes = helper.findExecutionNodes;
+const findReferencedNodes = helper.findReferencedNodes;
+const getQueryMultiplePlansAndExecutions = helper.getQueryMultiplePlansAndExecutions;
+const removeAlwaysOnClusterRules = helper.removeAlwaysOnClusterRules;
   
 const ruleName = "use-index-for-sort";
 
@@ -194,17 +196,16 @@ function optimizerRuleTestSuite() {
         [ "FOR v IN " + colName + " FILTER v.b == 1 SORT v.b, v.a RETURN 1", false, true ],
         [ "FOR v IN " + colName + " FILTER v.a == 1 && v.b == 1 SORT v.b, v.a RETURN 1", true, false ],
         [ "FOR v IN " + colName + " FILTER v.a == 1 && v.b == 1 SORT v.a, v.b RETURN 1", true, false ],
-        [ "FOR v IN " + colName + " FILTER v.a == 1 && v.b == 1 SORT v.a, v.c RETURN 1", true, true ],
+        [ "FOR v IN " + colName + " FILTER v.a == 1 && v.b == 1 SORT v.a, v.c RETURN 1", false, true ],
         [ "FOR v IN " + colName + " FILTER v.a == 1 && v.b == 1 SORT v.b, v.a RETURN 1", true, false ],
-        [ "FOR v IN " + colName + " FILTER v.a == 1 && v.b == 1 SORT v.a, v.b, v.c RETURN 1", true, true ]
+        [ "FOR v IN " + colName + " FILTER v.a == 1 && v.b == 1 SORT v.a, v.b, v.c RETURN 1", false, true ]
       ];
 
       queries.forEach(function(query) {
         var result = AQL_EXPLAIN(query[0]);
         if (query[1]) {
           assertNotEqual(-1, removeAlwaysOnClusterRules(result.plan.rules).indexOf(ruleName), query[0]);
-        }
-        else {
+        } else {
           assertEqual(-1, removeAlwaysOnClusterRules(result.plan.rules).indexOf(ruleName), query[0]);
         }
         if (query[2]) {
@@ -407,7 +408,6 @@ function optimizerRuleTestSuite() {
     //    place since the index can't fullfill all of the sorting criteria.
     ////////////////////////////////////////////////////////////////////////////////
     testSortMoreThanIndexed: function () {
-
       var query = "FOR v IN " + colName + " FILTER v.a == 1 SORT v.a, v.c RETURN [v.a, v.b, v.c]";
       // no index can be used for v.c -> sort has to remain in place!
       var XPresult;
@@ -436,7 +436,7 @@ function optimizerRuleTestSuite() {
       QResults[2] = AQL_EXECUTE(query, { }, paramIndexFromSort_IndexRange).json;
       XPresult    = AQL_EXPLAIN(query, { }, paramIndexFromSort_IndexRange);
 
-      assertEqual([ ruleName, secondRuleName ], removeAlwaysOnClusterRules(XPresult.plan.rules).sort());
+      assertEqual([ secondRuleName ], removeAlwaysOnClusterRules(XPresult.plan.rules).sort());
       // The sortnode and its calculation node should not have been removed.
       hasSortNode(XPresult);
       hasCalculationNodes(XPresult, 4);
@@ -1051,41 +1051,85 @@ function optimizerRuleTestSuite() {
     },
     
     testSortAscWithFilterSubquery : function () {
-      var query = "FOR i IN [123] RETURN (FOR v IN " + colName + " FILTER v.a == i SORT v.b ASC RETURN v)";
-      var rules = AQL_EXPLAIN(query).plan.rules;
+      const query = `FOR i IN [123] RETURN (FOR v IN ${colName} FILTER v.a == i SORT v.b ASC RETURN v)`;
+      const plan = AQL_EXPLAIN(query, {}, {optimizer: {rules: ['-splice-subqueries']}}).plan;
+      const rules = plan.rules;
       assertNotEqual(-1, rules.indexOf(ruleName));
       assertNotEqual(-1, rules.indexOf(secondRuleName));
       assertNotEqual(-1, rules.indexOf("remove-filter-covered-by-index"));
+      assertEqual(-1, rules.indexOf("splice-subqueries"));
 
-      var nodes = helper.findExecutionNodes(AQL_EXPLAIN(query).plan, "SubqueryNode")[0].subquery.nodes;
-      var seen = false;
-      nodes.forEach(function(node) {
-        assertNotEqual("SortNode", node.type);
-        if (node.type === "IndexNode") {
-          seen = true;
-          assertFalse(node.reverse); 
-        }
-      });
-      assertTrue(seen);
+      const nodes = helper.findExecutionNodes(plan, "SubqueryNode")[0].subquery.nodes;
+      // We expect no SortNode...
+      assertFalse(nodes.some(node => node.type === 'SortNode'));
+      const indexNodes = nodes.filter(node => node.type === 'IndexNode');
+      // ...and one IndexNode...
+      assertEqual(1, indexNodes.length);
+      // ...which is not reversed.
+      assertFalse(indexNodes[0].reverse);
+    },
+
+    testSortAscWithFilterSplicedSubquery : function () {
+      const query = `FOR i IN [123] RETURN (FOR v IN ${colName} FILTER v.a == i SORT v.b ASC RETURN v)`;
+      const plan = AQL_EXPLAIN(query, {}, {optimizer: {rules: ['+splice-subqueries']}}).plan;
+      const rules = plan.rules;
+      assertNotEqual(-1, rules.indexOf(ruleName));
+      assertNotEqual(-1, rules.indexOf(secondRuleName));
+      assertNotEqual(-1, rules.indexOf("remove-filter-covered-by-index"));
+      assertNotEqual(-1, rules.indexOf("splice-subqueries"));
+
+      const subqueryStartIdx = plan.nodes.findIndex(node => node.type === 'SubqueryStartNode');
+      const subqueryEndIdx = plan.nodes.findIndex(node => node.type === 'SubqueryEndNode');
+
+      const nodes = plan.nodes.slice(subqueryStartIdx+1, subqueryEndIdx);
+      // We expect no SortNode...
+      assertFalse(nodes.some(node => node.type === 'SortNode'));
+      const indexNodes = nodes.filter(node => node.type === 'IndexNode');
+      // ...and one IndexNode...
+      assertEqual(1, indexNodes.length);
+      // ...which is not reversed.
+      assertFalse(indexNodes[0].reverse);
     },
     
     testSortDescWithFilterSubquery : function () {
-      var query = "FOR i IN [123] RETURN (FOR v IN " + colName + " FILTER v.a == i SORT v.b DESC RETURN v)";
-      var rules = AQL_EXPLAIN(query).plan.rules;
+      const query = `FOR i IN [123] RETURN (FOR v IN ${colName} FILTER v.a == i SORT v.b DESC RETURN v)`;
+      const plan = AQL_EXPLAIN(query, {}, {optimizer: {rules: ['-splice-subqueries']}}).plan;
+      const rules = plan.rules;
       assertNotEqual(-1, rules.indexOf(ruleName));
       assertNotEqual(-1, rules.indexOf(secondRuleName));
       assertNotEqual(-1, rules.indexOf("remove-filter-covered-by-index"));
+      assertEqual(-1, rules.indexOf("splice-subqueries"));
 
-      var nodes = helper.findExecutionNodes(AQL_EXPLAIN(query).plan, "SubqueryNode")[0].subquery.nodes;
-      var seen = false;
-      nodes.forEach(function(node) {
-        assertNotEqual("SortNode", node.type);
-        if (node.type === "IndexNode") {
-          seen = true;
-          assertTrue(node.reverse); 
-        }
-      });
-      assertTrue(seen);
+      const nodes = helper.findExecutionNodes(plan, "SubqueryNode")[0].subquery.nodes;
+      // We expect no SortNode...
+      assertFalse(nodes.some(node => node.type === 'SortNode'));
+      const indexNodes = nodes.filter(node => node.type === 'IndexNode');
+      // ...and one IndexNode...
+      assertTrue(indexNodes.length === 1);
+      // ...which is reversed.
+      assertTrue(indexNodes[0].reverse);
+    },
+
+    testSortDescWithFilterSplicedSubquery : function () {
+      const query = `FOR i IN [123] RETURN (FOR v IN ${colName} FILTER v.a == i SORT v.b DESC RETURN v)`;
+      const plan = AQL_EXPLAIN(query, {}, {optimizer: {rules: ['+splice-subqueries']}}).plan;
+      const rules = plan.rules;
+      assertNotEqual(-1, rules.indexOf(ruleName));
+      assertNotEqual(-1, rules.indexOf(secondRuleName));
+      assertNotEqual(-1, rules.indexOf("remove-filter-covered-by-index"));
+      assertNotEqual(-1, rules.indexOf("splice-subqueries"));
+
+      const subqueryStartIdx = plan.nodes.findIndex(node => node.type === 'SubqueryStartNode');
+      const subqueryEndIdx = plan.nodes.findIndex(node => node.type === 'SubqueryEndNode');
+
+      const nodes = plan.nodes.slice(subqueryStartIdx+1, subqueryEndIdx);
+      // We expect no SortNode...
+      assertFalse(nodes.some(node => node.type === 'SortNode'));
+      const indexNodes = nodes.filter(node => node.type === 'IndexNode');
+      // ...and one IndexNode...
+      assertTrue(indexNodes.length === 1);
+      // ...which is reversed.
+      assertTrue(indexNodes[0].reverse);
     },
 
     testSortDescWithFilterNonConst : function () {
@@ -1129,7 +1173,7 @@ function optimizerRuleTestSuite() {
     testSortModifyFilterCondition : function () {
       var query = "FOR v IN " + colName + " FILTER v.a == 123 SORT v.a, v.xxx RETURN v";
       var rules = AQL_EXPLAIN(query).plan.rules;
-      assertNotEqual(-1, rules.indexOf(ruleName));
+      assertEqual(-1, rules.indexOf(ruleName));
       assertNotEqual(-1, rules.indexOf(secondRuleName));
       assertNotEqual(-1, rules.indexOf("remove-filter-covered-by-index"));
 
@@ -1140,9 +1184,8 @@ function optimizerRuleTestSuite() {
           ++seen;
           assertFalse(node.reverse);
         } else if (node.type === "SortNode") {
-          // first sort condition (v.a) should have been removed because it is const
           ++seen;
-          assertEqual(1, node.elements.length);
+          assertEqual(2, node.elements.length);
         }
       });
       assertEqual(2, seen);

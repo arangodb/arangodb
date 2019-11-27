@@ -30,10 +30,6 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-constexpr bool SubqueryStartExecutor::Properties::preservesOrder;
-constexpr BlockPassthrough SubqueryStartExecutor::Properties::allowsBlockPassthrough;
-constexpr bool SubqueryStartExecutor::Properties::inputSizeRestrictsOutputSize;
-
 SubqueryStartExecutor::SubqueryStartExecutor(Fetcher& fetcher, Infos& infos)
     : _fetcher(fetcher),
       _state(ExecutionState::HASMORE),
@@ -60,7 +56,8 @@ std::pair<ExecutionState, NoStats> SubqueryStartExecutor::produceRows(OutputAqlI
         output.createShadowRow(_input);
         _input = InputAqlItemRow(CreateInvalidInputRowHint{});
       } else {
-        std::tie(_state, _input) = _fetcher.fetchRow(output.numRowsLeft() / 2);
+        // We need to round the number of rows, otherwise this might be called with atMost == 0
+        std::tie(_state, _input) = _fetcher.fetchRow((output.numRowsLeft() + 1) / 2);
         if (!_input.isInitialized()) {
           TRI_ASSERT(_state == ExecutionState::WAITING || _state == ExecutionState::DONE);
           return {_state, NoStats{}};
@@ -72,7 +69,7 @@ std::pair<ExecutionState, NoStats> SubqueryStartExecutor::produceRows(OutputAqlI
     output.advanceRow();
   }
   if (_input.isInitialized()) {
-    // We atleast need to insert the Shadow row!
+    // We at least need to insert the Shadow row!
     return {ExecutionState::HASMORE, NoStats{}};
   }
   // Take state from dependency.

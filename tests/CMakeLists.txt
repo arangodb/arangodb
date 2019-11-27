@@ -44,10 +44,15 @@ set(ARANGODB_TESTS_SOURCES
   Aql/FilterExecutorTest.cpp
   Aql/HashedCollectExecutorTest.cpp
   Aql/IdExecutorTest.cpp
+  Aql/IndexNodeTest.cpp
+  Aql/InsertExecutorTest.cpp
   Aql/LimitExecutorTest.cpp
   Aql/MultiDepFetcherHelper.cpp
   Aql/MultiDependencySingleRowFetcherTest.cpp
   Aql/NoResultsExecutorTest.cpp
+  Aql/QueryHelper.cpp
+  Aql/RemoveExecutorTest.cpp
+  Aql/ReplaceExecutorTest.cpp
   Aql/ReturnExecutorTest.cpp
   Aql/RowFetcherHelper.cpp
   Aql/ShortestPathExecutorTest.cpp
@@ -61,6 +66,8 @@ set(ARANGODB_TESTS_SOURCES
   Aql/TestEmptyExecutorHelper.cpp
   Aql/TestExecutorHelper.cpp
   Aql/TraversalExecutorTest.cpp
+  Aql/UpdateExecutorTest.cpp
+  Aql/UpsertExecutorTest.cpp
   Aql/VelocyPackHelper.cpp
   Aql/WaitingExecutionBlockMock.cpp
   Auth/UserManagerTest.cpp
@@ -72,11 +79,12 @@ set(ARANGODB_TESTS_SOURCES
   Basics/hashes-test.cpp
   Basics/icu-helper.cpp
   Basics/json-test.cpp
+  Basics/overload-test.cpp
   Basics/priorityqueue-test.cpp
   Basics/string-buffer-test.cpp
+  Basics/string-test.cpp
   Basics/string-utf8-normalize-test.cpp
   Basics/string-utf8-test.cpp
-  Basics/string-test.cpp
   Basics/structure-size-test.cpp
   Basics/vector-test.cpp
   Basics/ApplicationServerTest.cpp
@@ -158,6 +166,7 @@ set(ARANGODB_TESTS_SOURCES
   IResearch/IResearchQueryIn-test.cpp
   IResearch/IResearchQueryInRange-test.cpp
   IResearch/IResearchQueryJoin-test.cpp
+  IResearch/IResearchQueryLateMaterialization-test.cpp
   IResearch/IResearchQueryMinMatch-test.cpp
   IResearch/IResearchQueryNullTerm-test.cpp
   IResearch/IResearchQueryNumericTerm-test.cpp
@@ -272,7 +281,7 @@ endif()
 
 if (DARWIN AND FAIL_ON_WARNINGS)
   # Missing Braces is broken in older CLangs - disable them here.
-  target_compile_options(arangodbtests PRIVATE -Werror -Wno-missing-braces)
+  target_compile_options(arangodbtests PRIVATE -Werror -Wno-error=deprecated-declarations -Wno-missing-braces)
 endif()
 
 # add these includes as system includes because otherwise

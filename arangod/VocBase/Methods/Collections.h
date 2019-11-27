@@ -104,7 +104,7 @@ struct Collections {
 
   static std::pair<Result, std::shared_ptr<LogicalCollection>> createSystem(
       TRI_vocbase_t& vocbase, std::string const& name, bool isNewDatabase);
-  static void createSystemCollectionProperties(std::string collectionName,
+  static void createSystemCollectionProperties(std::string const& collectionName,
                                                VPackBuilder& builder, TRI_vocbase_t const&);
 
   static Result load(TRI_vocbase_t& vocbase, LogicalCollection* coll);

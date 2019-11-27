@@ -134,55 +134,49 @@ function legacyOptimizerRuleTestSuite() {
         geocol.ensureIndex({ type: "hash", fields: [ "y", "z" ], unique: false });
 
         var queries = [
-          { string  : "FOR d IN " + colName + " SORT distance(d.lat, d.lon, 0 ,0 ) ASC LIMIT 1 RETURN d",
+          { string  : "FOR d IN " + colName + " SORT distance(d.lat, d.lon, 0 ,0) ASC LIMIT 1 RETURN d",
             cluster : false,
             sort    : false,
             filter  : false,
             index   : true
           },
-          { string  : "FOR d IN " + colName + " SORT distance(d.loca.tion.lat, d.loca.tion.lon, 0 ,0 ) ASC LIMIT 1 RETURN d",
+          { string  : "FOR d IN " + colName + " SORT distance(d.loca.tion.lat, d.loca.tion.lon, 0 ,0) ASC LIMIT 1 RETURN d",
             cluster : false,
             sort    : false,
             filter  : false,
             index   : true
           },
-          { string  : "FOR d IN " + colName + " SORT distance(0, 0, d.lat,d.lon ) ASC LIMIT 1 RETURN d",
+          { string  : "FOR d IN " + colName + " SORT distance(0, 0, d.lat,d.lon) ASC LIMIT 1 RETURN d",
             cluster : false,
             sort    : false,
             filter  : false,
             index   : true
           },
-          { string  : "FOR d IN " + colName + " FILTER distance(0, 0, d.lat,d.lon ) < 1 LIMIT 1 RETURN d",
+          { string  : "FOR d IN " + colName + " FILTER distance(0, 0, d.lat,d.lon) < 1 LIMIT 1 RETURN d",
             cluster : false,
             sort    : false,
             filter  : false,
             index   : true
           },
-          { string  : "FOR d IN " + colName + " FILTER distance(0, 0, d.geo[0],d.geo[1] ) < 1 LIMIT 1 RETURN d",
+          { string  : "FOR d IN " + colName + " FILTER distance(0, 0, d.geo[0],d.geo[1]) < 1 LIMIT 1 RETURN d",
             cluster : false,
             sort    : false,
             filter  : false,
             index   : true
           },
-          { string  : "FOR d IN " + colName + " FILTER distance(0, 0, d.lat, d.geo[1] ) < 1 LIMIT 1 RETURN d",
+          { string  : "FOR d IN " + colName + " FILTER distance(0, 0, d.lat, d.geo[1]) < 1 LIMIT 1 RETURN d",
             cluster : false,
             sort    : false,
-            filter  : true,
+            filter  : false,
             index   : false
           },
-          { string  : "FOR d IN " + colName + " SORT distance(0, 0, d.lat, d.lon) FILTER distance(0, 0, d.lat,d.lon ) < 1 LIMIT 1 RETURN d",
+          { string  : "FOR d IN " + colName + " SORT distance(0, 0, d.lat, d.lon) FILTER distance(0, 0, d.lat, d.lon) < 1 LIMIT 1 RETURN d",
             cluster : false,
             sort    : false,
             filter  : false,
             index   : true
           },
-          { string  : "FOR d IN " + colName + " SORT distance(0, 0, d.lat, d.lon) FILTER distance(0, 0, d.lat,d.lon ) < 1 LIMIT 1 RETURN d",
-            cluster : false,
-            sort    : false,
-            filter  : false,
-            index   : true
-          },
-          { string  : "FOR i in 1..2 FOR d IN " + colName + " FILTER distance(0, 0, d.lat,d.lon ) < 1 && i > 1 LIMIT 1 RETURN d",
+          { string  : "FOR i in 1..2 FOR d IN " + colName + " FILTER distance(0, 0, d.lat, d.lon) < 1 && i > 1 LIMIT 1 RETURN d",
             cluster : false,
             sort    : false,
             filter  : true,
@@ -543,49 +537,42 @@ function optimizerRuleTestSuite() {
             index: true
           },
           {
-            string: "FOR d IN " + colName + " SORT distance(0, 0, d.lat,d.lon ) ASC LIMIT 1 RETURN d",
+            string: "FOR d IN " + colName + " SORT distance(0, 0, d.lat, d.lon) ASC LIMIT 1 RETURN d",
             cluster: false,
             sort: false,
             filter: false,
             index: true
           },
           {
-            string: "FOR d IN " + colName + " FILTER distance(0, 0, d.lat,d.lon ) < 1 LIMIT 1 RETURN d",
+            string: "FOR d IN " + colName + " FILTER distance(0, 0, d.lat, d.lon) < 1 LIMIT 1 RETURN d",
             cluster: false,
             sort: false,
             filter: false,
             index: true
           },
           {
-            string: "FOR d IN " + colName + " FILTER distance(0, 0, d.geo[0],d.geo[1] ) < 1 LIMIT 1 RETURN d",
+            string: "FOR d IN " + colName + " FILTER distance(0, 0, d.geo[0], d.geo[1]) < 1 LIMIT 1 RETURN d",
             cluster: false,
             sort: false,
             filter: false,
             index: true
           },
           {
-            string: "FOR d IN " + colName + " FILTER distance(0, 0, d.lat, d.geo[1] ) < 1 LIMIT 1 RETURN d",
+            string: "FOR d IN " + colName + " FILTER distance(0, 0, d.lat, d.geo[1]) < 1 LIMIT 1 RETURN d",
             cluster: false,
             sort: false,
-            filter: true,
+            filter: false,
             index: false
           },
           {
-            string: "FOR d IN " + colName + " SORT distance(0, 0, d.lat, d.lon) FILTER distance(0, 0, d.lat,d.lon ) < 1 LIMIT 1 RETURN d",
+            string: "FOR d IN " + colName + " SORT distance(0, 0, d.lat, d.lon) FILTER distance(0, 0, d.lat, d.lon) < 1 LIMIT 1 RETURN d",
             cluster: false,
             sort: false,
             filter: false,
             index: true
           },
           {
-            string: "FOR d IN " + colName + " SORT distance(0, 0, d.lat, d.lon) FILTER distance(0, 0, d.lat,d.lon ) < 1 LIMIT 1 RETURN d",
-            cluster: false,
-            sort: false,
-            filter: false,
-            index: true
-          },
-          {
-            string: "FOR i in 1..2 FOR d IN " + colName + " FILTER distance(0, 0, d.lat,d.lon ) < 1 && i > 1 LIMIT 1 RETURN d",
+            string: "FOR i in 1..2 FOR d IN " + colName + " FILTER distance(0, 0, d.lat, d.lon) < 1 && i > 1 LIMIT 1 RETURN d",
             cluster: false,
             sort: false,
             filter: true,
