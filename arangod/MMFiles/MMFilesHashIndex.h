@@ -179,8 +179,10 @@ class MMFilesHashIndexLookupBuilder {
   bool _isEmpty;
   size_t _coveredFields;
 
-  SmallVector<arangodb::aql::AstNode const*> _mappingFieldCondition;
-  SmallVector<arangodb::aql::AstNode const*>::allocator_type::arena_type _mappingFieldConditionArena;
+  using MappingCondition =
+      SmallVector<arangodb::aql::AstNode const*>;
+  MappingCondition::allocator_type::arena_type _mappingFieldConditionArena;
+  MappingCondition _mappingFieldCondition;
 
   std::unordered_map<size_t, std::pair<size_t, std::vector<arangodb::velocypack::Slice>>> _inPosition;
   transaction::BuilderLeaser _inStorage;
