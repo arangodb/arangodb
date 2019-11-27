@@ -151,25 +151,18 @@ void ConnectionPool::pruneConnections() {
 }
 
 /// @brief cancel connections to this endpoint
-void ConnectionPool::cancelConnections(std::string const& endpoint) {
-  fuerte::ConnectionBuilder builder;
-  builder.endpoint(endpoint);
-  builder.protocolType(_config.protocol); // always overwrite protocol
-
-  std::string normalized = builder.normalizedEndpoint();
-
+size_t ConnectionPool::cancelConnections(std::string const& endpoint) {
   WRITE_LOCKER(guard, _lock);
-  auto const& it = _connections.find(normalized);
+  auto const& it = _connections.find(endpoint);
   if (it != _connections.end()) {
-//    {
-//      ConnectionList& list = *(it->second);
-//      std::lock_guard<std::mutex> guard(list.mutex);
-//      for (auto& c : list.connections) {
-//        c->shutdown();
-//      }
-//    }
+    size_t n = it->second->list.size();
+    for (auto& c : it->second->list) {
+      c.fuerte->cancel();
+    }
     _connections.erase(it);
+    return n;
   }
+  return 0;
 }
 
 /// @brief return the number of open connections
@@ -231,6 +224,7 @@ ConnectionPtr ConnectionPool::selectConnection(std::string const& endpoint,
 
   fuerte::ConnectionBuilder builder;
   builder.endpoint(endpoint); // picks the socket type
+  builder.verifyHost(_config.verifyHosts);
   builder.protocolType(_config.protocol); // always overwrite protocol
   TRI_ASSERT(builder.socketType() != SocketType::Undefined);
 
