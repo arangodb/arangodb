@@ -91,9 +91,9 @@ function AnySuite() {
 
       l = [];
       for (i = 0; i < n; ++i) {
-        c.save({ value: i });
-        l.push(i);
+        l.push({ value: i });
       }
+      c.save(l);
 
       var dist = getDistribution(n * 200, function () {
         return c.any().value;
@@ -114,9 +114,9 @@ function AnySuite() {
 
       l = [];
       for (i = 0; i < n; ++i) {
-        c.save({ value: i });
-        l.push(i);
+        l.push({ value: i });
       }
+      c.save(l);
 
       var dist = getDistribution(n * 100, function () {
         return c.any().value;
@@ -137,9 +137,9 @@ function AnySuite() {
 
       l = [];
       for (i = 0; i < n; ++i) {
-        c.save({ value: i });
-        l.push(i);
+        l.push({ value: i });
       }
+      c.save(l);
 
       var dist = getDistribution(n * 100, function () {
         return c.any().value;
@@ -159,9 +159,11 @@ function AnySuite() {
 
       n = 500;
 
+      l = [];
       for (i = 0; i < n; ++i) {
-        c.save({ value: i });
+        l.push({ value: i });
       }
+      c.save(l);
 
       // remove 50 % of entries
       var d = Math.round(n * 0.5);
@@ -188,9 +190,11 @@ function AnySuite() {
 
       n = 500;
 
+      l = [];
       for (i = 0; i < n; ++i) {
-        c.save({ value: i });
+        l.push({ value: i });
       }
+      c.save(l);
 
       // remove 50 % of entries
       var d = Math.round(n * 0.95);
