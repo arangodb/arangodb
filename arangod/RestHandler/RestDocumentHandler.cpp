@@ -48,6 +48,8 @@ RestDocumentHandler::RestDocumentHandler(application_features::ApplicationServer
     : RestVocbaseBaseHandler(server, request, response) {
   
   if (!ServerState::instance()->isClusterRole()) {
+    // in the cluster we will have (blocking) communication, so we only
+    // want the request to be executed directly when we are on a single server.
     auto const type = _request->requestType();
     if ((type == rest::RequestType::GET ||
          type == rest::RequestType::POST ||
@@ -55,6 +57,7 @@ RestDocumentHandler::RestDocumentHandler(application_features::ApplicationServer
          type == rest::RequestType::PATCH ||
          type == rest::RequestType::DELETE_REQ) &&
         request->contentLength() <= 1024) {
+      // only allow direct execution if we don't have huge payload
       _allowDirectExecution = true;
     }
   }
