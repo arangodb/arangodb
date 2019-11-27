@@ -163,7 +163,7 @@ function gatherBlocksTestSuite() {
               catch (ex) {
                 print("Failed in " + t.query);
                 print(bindvars);
-                print(db._explain(t.query , bindvars));
+                db._explain(t.query , bindvars);
                 print(ex);
 
                 throw ex;
