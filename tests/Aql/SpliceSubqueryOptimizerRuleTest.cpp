@@ -263,7 +263,7 @@ TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_subquery_plan) {
   verifySubquerySplicing(query, 1);
 
   auto expected = arangodb::velocypack::Parser::fromJson(R"([[1],[2]])");
-  verifyQueryResult(query, expected->slice(), R"({"profile": 5})");
+  verifyQueryResult(query, expected->slice());
 }
 
 TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_subquery_in_subquery_plan) {
