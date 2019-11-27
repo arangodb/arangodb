@@ -44,6 +44,8 @@ class AqlItemBlockInputRange {
 
   ExecutorState state() const noexcept;
 
+  ExecutorState shadowState() const noexcept;
+
   std::pair<ExecutorState, arangodb::aql::InputAqlItemRow> peek();
 
   std::pair<ExecutorState, arangodb::aql::InputAqlItemRow> next();

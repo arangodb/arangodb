@@ -699,7 +699,8 @@ void AqlItemBlock::toVelocyPack(transaction::Methods* trx, VPackBuilder& result)
   result.add("raw", raw.slice());
 }
 
-void AqlItemBlock::rowToSimpleVPack(size_t const row, transaction::Methods* trx, arangodb::velocypack::Builder& builder) const {
+void AqlItemBlock::rowToSimpleVPack(size_t const row, transaction::Methods* trx,
+                                    arangodb::velocypack::Builder& builder) const {
   VPackArrayBuilder rowBuilder{&builder};
 
   if (isShadowRow(row)) {
@@ -712,7 +713,8 @@ void AqlItemBlock::rowToSimpleVPack(size_t const row, transaction::Methods* trx,
   }
 }
 
-void AqlItemBlock::toSimpleVPack(transaction::Methods* trx, arangodb::velocypack::Builder& builder) const {
+void AqlItemBlock::toSimpleVPack(transaction::Methods* trx,
+                                 arangodb::velocypack::Builder& builder) const {
   VPackObjectBuilder block{&builder};
   block->add("nrItems", VPackValue(size()));
   block->add("nrRegs", VPackValue(getNrRegs()));
@@ -882,18 +884,14 @@ size_t AqlItemBlock::size() const noexcept { return _nrItems; }
 
 std::tuple<size_t, size_t> AqlItemBlock::getRelevantRange() {
   size_t startIndex = _rowIndex;
-  size_t endIndex = 0;
+  ++_rowIndex;
 
-  for (; _rowIndex < this->size(); _rowIndex++) {
-    if (isShadowRow(_rowIndex)) {
-      endIndex = _rowIndex - 1;
-      break;
-    }
-    if (_rowIndex - 1 != this->size()) {
-      endIndex = _rowIndex;
-    }
+  for (; _rowIndex < this->size() && !isShadowRow(_rowIndex); _rowIndex++) {
+    // Move on as long as we are not at the end or at a shadow row
   }
-
+  size_t endIndex = _rowIndex;
+  TRI_ASSERT(startIndex < endIndex);
+  TRI_ASSERT(endIndex <= this->size());
   return std::make_pair(startIndex, endIndex);
 }
 

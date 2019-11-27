@@ -1026,7 +1026,6 @@ ExecutionBlockImpl<FilterExecutor>::executeWithoutTrace(AqlCallStack stack) {
   AqlCall executorRequest;
 
   while (execState != ExecState::DONE) {
-    LOG_DEVEL << "State: " << execState;
     switch (execState) {
       case ExecState::SKIP: {
         auto [state, skippedLocal, call] =

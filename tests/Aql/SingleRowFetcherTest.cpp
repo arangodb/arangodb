@@ -37,6 +37,7 @@
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/ResourceUsage.h"
 #include "Aql/SingleRowFetcher.h"
+#include "Basics/StringUtils.h"
 
 #include "FetcherTestHelper.h"
 
@@ -65,6 +66,58 @@ class SingleRowFetcherTestPassBlocks : public ::testing::Test {
       ::arangodb::aql::BlockPassthrough::Enable;
   SingleRowFetcherTestPassBlocks()
       : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS) {}
+
+  void validateInputRange(AqlItemBlockInputRange& input,
+                          std::vector<std::string> const& result) {
+    EXPECT_EQ(result.size(), input.getEndIndex() - input.getRowIndex());
+    for (auto const& value : result) {
+      SCOPED_TRACE("Checking for value: " + value);
+      // We need more rows
+      ASSERT_TRUE(input.hasMore());
+      EXPECT_FALSE(input.hasShadowRow());
+
+      auto [state, row] = input.next();
+
+      if (value == result.back()) {
+        EXPECT_EQ(state, ExecutorState::DONE);
+      } else {
+        EXPECT_EQ(state, ExecutorState::HASMORE);
+      }
+      ASSERT_TRUE(row.isInitialized());
+      auto const& inputVal = row.getValue(0);
+      ASSERT_TRUE(inputVal.isString());
+      EXPECT_TRUE(inputVal.slice().isEqualString(value))
+          << inputVal.slice().toJson() << " should be equal to \"" << value << "\"";
+    }
+    // We always fetch to the end
+    EXPECT_FALSE(input.hasMore());
+  }
+
+  void validateShadowRange(AqlItemBlockInputRange& input,
+                           std::vector<std::pair<uint64_t, std::string>> const& result) {
+    for (auto const& [depth, value] : result) {
+      SCOPED_TRACE("Checking for depth " + basics::StringUtils::itoa(depth) +
+                   " with value: " + value);
+      // We need more rows
+      ASSERT_TRUE(input.hasShadowRow());
+      EXPECT_FALSE(input.hasMore());
+
+      auto [state, row] = input.nextShadowRow();
+
+      if (depth == result.back().first && value == result.back().second) {
+        EXPECT_EQ(state, ExecutorState::DONE);
+      } else {
+        EXPECT_EQ(state, ExecutorState::HASMORE);
+      }
+      ASSERT_TRUE(row.isInitialized());
+      auto const& inputVal = row.getValue(0);
+
+      ASSERT_TRUE(inputVal.isString());
+      EXPECT_TRUE(inputVal.slice().isEqualString(value))
+          << inputVal.slice().toJson() << " should be equal to \"" << value << "\"";
+      EXPECT_EQ(row.getDepth(), depth);
+    }
+  }
 };
 
 class SingleRowFetcherTestDoNotPassBlocks : public ::testing::Test {
@@ -1160,9 +1213,9 @@ TEST_F(SingleRowFetcherTestPassBlocks, handling_shadowrows_in_execute_oneAndDone
     block->emplaceValue(2, 0, "c");
     block->emplaceValue(3, 0, "d");
     block->emplaceValue(4, 0, "e");  // first shadowrow
-    block->setShadowRowDepth(4, AqlValue(AqlValueHintUInt(1ull)));
+    block->setShadowRowDepth(4, AqlValue(AqlValueHintUInt(0ull)));
     block->emplaceValue(5, 0, "f");
-    block->setShadowRowDepth(5, AqlValue(AqlValueHintUInt(0ull)));
+    block->setShadowRowDepth(5, AqlValue(AqlValueHintUInt(1ull)));
     block->emplaceValue(6, 0, "g");
     block->setShadowRowDepth(6, AqlValue(AqlValueHintUInt(0ull)));
     dependencyProxyMock.shouldReturn(ExecutionState::DONE, std::move(block));
@@ -1176,7 +1229,7 @@ TEST_F(SingleRowFetcherTestPassBlocks, handling_shadowrows_in_execute_oneAndDone
     // First no data row
     auto [state, skipped, input] = testee.execute(stack);
     EXPECT_EQ(input.getRowIndex(), 0);
-    EXPECT_EQ(input.getEndIndex(), 3);
+    EXPECT_EQ(input.getEndIndex(), 4);
     EXPECT_EQ(skipped, 0);
     EXPECT_EQ(state, ExecutionState::DONE);
   }  // testee is destroyed here
@@ -1194,9 +1247,9 @@ TEST_F(SingleRowFetcherTestPassBlocks, handling_shadowrows_in_execute_twoAndHasM
     block->emplaceValue(2, 0, "c");
     block->emplaceValue(3, 0, "d");
     block->emplaceValue(4, 0, "e");  // first shadowrow
-    block->setShadowRowDepth(4, AqlValue(AqlValueHintUInt(1ull)));
+    block->setShadowRowDepth(4, AqlValue(AqlValueHintUInt(0ull)));
     block->emplaceValue(5, 0, "f");
-    block->setShadowRowDepth(5, AqlValue(AqlValueHintUInt(0ull)));
+    block->setShadowRowDepth(5, AqlValue(AqlValueHintUInt(1ull)));
     block->emplaceValue(6, 0, "g");
     block->setShadowRowDepth(6, AqlValue(AqlValueHintUInt(0ull)));
     block->emplaceValue(7, 0, "h");
@@ -1209,20 +1262,21 @@ TEST_F(SingleRowFetcherTestPassBlocks, handling_shadowrows_in_execute_twoAndHasM
     AqlCall call;
     AqlCallStack stack = {call};
 
-    {
-      auto [state, skipped, input] = testee.execute(stack);
-      EXPECT_EQ(input.getRowIndex(), 0);
-      EXPECT_EQ(input.getEndIndex(), 3);
-      EXPECT_EQ(state, ExecutionState::HASMORE);
-      // EXPECT_EQ(skipped, 0);
-    }
+    auto [state, skipped, input] = testee.execute(stack);
+    // We only have one block, no more calls to execute necessary
+    EXPECT_EQ(state, ExecutionState::DONE);
+    EXPECT_EQ(skipped, 0);
+    EXPECT_EQ(input.getRowIndex(), 0);
+    EXPECT_EQ(input.getEndIndex(), 4);
 
-    {
-      auto [state, skipped, input] = testee.execute(stack);
-      EXPECT_EQ(input.getRowIndex(), 7);
-      EXPECT_EQ(input.getEndIndex(), 8);
-      EXPECT_EQ(state, ExecutionState::DONE);
-    }
+    // Now validate the input range
+    validateInputRange(input, std::vector<std::string>{"a", "b", "c", "d"});
+    validateShadowRange(input, std::vector<std::pair<uint64_t, std::string>>{
+                                   {0ull, "e"}, {1ull, "f"}});
+    validateShadowRange(input, std::vector<std::pair<uint64_t, std::string>>{
+                                   {0ull, "g"}});
+    validateInputRange(input, std::vector<std::string>{"h", "i"});
+
   }  // testee is destroyed here
 }
 

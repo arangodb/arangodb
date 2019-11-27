@@ -77,6 +77,23 @@ ExecutorState AqlItemBlockInputRange::state() const noexcept {
   return hasMoreAfterThis() ? ExecutorState::HASMORE : _finalState;
 }
 
+ExecutorState AqlItemBlockInputRange::shadowState() const noexcept {
+  if (_block == nullptr) {
+    return _finalState;
+  }
+  // We Return HASMORE, if the next shadow row is NOT relevant.
+  // So we can directly fetch the next shadow row without informing
+  // the executor about an empty subquery.
+  size_t nextRowIndex = _rowIndex + 1;
+  if (_block != nullptr && nextRowIndex < _block->size() && _block->isShadowRow(nextRowIndex)) {
+    ShadowAqlItemRow nextRow{_block, nextRowIndex};
+    if (!nextRow.isRelevant()) {
+      return ExecutorState::HASMORE;
+    }
+  }
+  return ExecutorState::DONE;
+}
+
 bool AqlItemBlockInputRange::hasShadowRow() const noexcept {
   if (_block == nullptr) {
     // No block => no ShadowRow
@@ -98,9 +115,9 @@ bool AqlItemBlockInputRange::hasShadowRow() const noexcept {
 
 std::pair<ExecutorState, ShadowAqlItemRow> AqlItemBlockInputRange::peekShadowRow() {
   if (hasShadowRow()) {
-    return std::make_pair(state(), ShadowAqlItemRow{_block, _rowIndex});
+    return std::make_pair(shadowState(), ShadowAqlItemRow{_block, _rowIndex});
   }
-  return std::make_pair(state(), ShadowAqlItemRow{CreateInvalidShadowRowHint{}});
+  return std::make_pair(shadowState(), ShadowAqlItemRow{CreateInvalidShadowRowHint{}});
 }
 
 std::pair<ExecutorState, ShadowAqlItemRow> AqlItemBlockInputRange::nextShadowRow() {
