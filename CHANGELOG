@@ -2,6 +2,9 @@ devel
 -----
 
 * Enable the `parallelize-gather` AQL optimizer rule for certain write queries. 
+
+  The optimization is turned on by default and can be disabled by setting the
+  startup option `--query.parallelize-gather-writes` to `false`.
     
 * Shard synchronisation readlock aware of rebootId.
 
