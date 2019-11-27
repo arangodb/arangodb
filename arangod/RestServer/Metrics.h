@@ -77,9 +77,12 @@ public:
   std::ostream& print (std::ostream&) const;
   Counter& operator++();
   Counter& operator++(int);
+  Counter& operator+=(uint64_t const&);
+  Counter& operator=(uint64_t const&);
   void count();
   void count(uint64_t);
   uint64_t load() const;
+  void store(uint64_t const&);
   void push();
   virtual void toPrometheus(std::string&) const override;
 private:
@@ -91,12 +94,12 @@ private:
 template<typename T> class Gauge : public Metric {
 public:
   Gauge() = delete;
-  Gauge(uint64_t const& val, std::string const& name, std::string const& help) 
+  Gauge(T const& val, std::string const& name, std::string const& help) 
     : Metric(name, help) {
     _g.store(val);
   }
   Gauge(Gauge const&) = delete;
-  virtual ~Gauge();
+  virtual ~Gauge() {};
   std::ostream& print (std::ostream&) const;
   Gauge<T>& operator+=(T const& t) {
     _g.store(_g + t);
@@ -142,7 +145,7 @@ public:
       _lowr(std::numeric_limits<T>::max()), _highr(std::numeric_limits<T>::min()) {
     TRI_ASSERT(_c.size() > 0);
     _n = _c.size() - 1;
-    _div = std::floor((double)(high - low) / (double)_c.size());
+    _div = (high - low) / (double)_c.size();
     TRI_ASSERT(_div != 0);
   }
 
@@ -162,7 +165,7 @@ public:
     } else if (t >= _high) {
       ++_c[_n];
     } else {
-      ++_c[static_cast<size_t>(std::floor(t / _div))];
+      ++_c[static_cast<size_t>(std::floor(_low + t / _div))];
     }
     records(t);
   }
@@ -173,7 +176,7 @@ public:
     } else if (t >= _high) {
       _c[_n] += n;
     } else {
-      _c[static_cast<size_t>(std::floor(t / _div))] += n;
+      _c[static_cast<size_t>(std::floor(_low + t / _div))] += n;
     }
     records(t);
   }

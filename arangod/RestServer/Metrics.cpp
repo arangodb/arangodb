@@ -66,6 +66,16 @@ Counter& Counter::operator++(int n) {
   return *this;
 }
 
+Counter& Counter::operator+=(uint64_t const& n) {
+  count(n);
+  return *this;
+}
+
+Counter& Counter::operator=(uint64_t const& n) {
+  store(n);
+  return *this;
+}
+
 void Counter::count() {
   ++_b;
 }
@@ -82,6 +92,10 @@ std::ostream& Counter::print(std::ostream& o) const {
 uint64_t Counter::load() const {
   _b.push();
   return _c.load();
+}
+
+void Counter::store(uint64_t const& n) {
+  _c.exchange(n);
 }
 
 void Counter::toPrometheus(std::string& result) const {
