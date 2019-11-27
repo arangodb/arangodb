@@ -96,6 +96,7 @@ class CheckPlan : public WalkerWorker<ExecutionNode> {
       case ExecutionNode::UPSERT:
       case ExecutionNode::REMOVE:
       case ExecutionNode::GATHER:
+      case ExecutionNode::REMOTESINGLE:
         if (node->getParents().size() > 1) {
           errors.emplace_back() << "#parents == " << node->getParents().size() << " at [" << node->id() << "] " << node->getTypeString();
           ok = false;
