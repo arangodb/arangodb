@@ -4,6 +4,13 @@ devel
 * Bugfix: An AQL ternary expression with the condition being true at query
   compile time would not execute its false branch.
 
+* Shard synchronisation readlock aware of rebootId
+
+* Bugfix: In an AQL cluster query, when gathering unsorted data in combination
+  with a LIMIT with non-zero offset, if this offset exactly matches the number
+  of documents in the first shards consumed, the rest of the documents was not
+  returned.
+
 * Fixed GET _api/gharial to also include the name property in every returned graph.
   This is a consistency fix within the API as all other APIs include the name.
   As a work around the returned _key can be used, which is identical to the name.
@@ -155,6 +162,7 @@ devel
 * Added "SmartJoins for Views" to the ArangoDB Enterprise Edition that allows running
   cluster joins between two certain sharded collections or views with performance close
   to that of a local join operation.
+>>>>>>> a50f07e928e0e50168aac0039a5b9f2333a0520e
 
 * Allow collection names to be at most 256 characters long, instead of 64 characters
   in previous versions.
