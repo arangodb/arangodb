@@ -97,31 +97,34 @@ OperationResult GraphManager::createCollection(std::string const& name, TRI_col_
   TRI_ASSERT(colType == TRI_COL_TYPE_DOCUMENT || colType == TRI_COL_TYPE_EDGE);
 
   auto& vocbase = ctx()->vocbase();
-  
+
   VPackBuilder helper;
   helper.openObject();
 
   if (ServerState::instance()->isCoordinator()) {
-    Result res = ShardingInfo::validateShardsAndReplicationFactor(options, vocbase.server());
+    Result res =
+        ShardingInfo::validateShardsAndReplicationFactor(options, vocbase.server());
     if (res.fail()) {
       return OperationResult(res);
     }
 
-    bool forceOneShard = 
-      vocbase.server().getFeature<ClusterFeature>().forceOneShard() ||
-      (vocbase.sharding() == "single" && 
-       options.get(StaticStrings::DistributeShardsLike).isNone() &&
-       arangodb::basics::VelocyPackHelper::getNumericValue<uint64_t>(options, StaticStrings::NumberOfShards, 0) <= 1);
-    
+    bool forceOneShard =
+        vocbase.server().getFeature<ClusterFeature>().forceOneShard() ||
+        (vocbase.sharding() == "single" &&
+         options.get(StaticStrings::DistributeShardsLike).isNone() &&
+         arangodb::basics::VelocyPackHelper::getNumericValue<uint64_t>(options, StaticStrings::NumberOfShards,
+                                                                       0) <= 1);
+
     if (forceOneShard) {
       // force a single shard with shards distributed like "_graph"
       helper.add(StaticStrings::NumberOfShards, VPackValue(1));
-      helper.add(StaticStrings::DistributeShardsLike, VPackValue(vocbase.shardingPrototypeName()));
+      helper.add(StaticStrings::DistributeShardsLike,
+                 VPackValue(vocbase.shardingPrototypeName()));
     }
   }
 
   helper.close();
-    
+
   VPackBuilder mergedBuilder =
       VPackCollection::merge(options, helper.slice(), false, true);
 
@@ -604,7 +607,8 @@ Result GraphManager::ensureCollections(Graph const* graph, bool waitForSync) con
 
 OperationResult GraphManager::readGraphs(velocypack::Builder& builder,
                                          aql::QueryPart const queryPart) const {
-  std::string const queryStr{"FOR g IN _graphs RETURN g"};
+  std::string const queryStr{
+      "FOR g IN _graphs RETURN MERGE(g, {name: g._key})"};
   return readGraphByQuery(builder, queryPart, queryStr);
 }
 
@@ -997,7 +1001,9 @@ ResultT<std::unique_ptr<Graph>> GraphManager::buildGraphFromInput(std::string co
     TRI_ASSERT(input.isObject());
     if (ServerState::instance()->isCoordinator()) {
       // validate numberOfShards and replicationFactor
-      Result res = ShardingInfo::validateShardsAndReplicationFactor(input.get("options"), _vocbase.server());
+      Result res =
+          ShardingInfo::validateShardsAndReplicationFactor(input.get("options"),
+                                                           _vocbase.server());
       if (res.fail()) {
         return res;
       }
