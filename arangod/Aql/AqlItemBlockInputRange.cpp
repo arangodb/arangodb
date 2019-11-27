@@ -35,7 +35,7 @@ AqlItemBlockInputRange::AqlItemBlockInputRange(ExecutorState state,
                                                SharedAqlItemBlockPtr const& block,
                                                std::size_t index, std::size_t endIndex)
     : _block{block}, _rowIndex{index}, _endIndex(endIndex), _finalState{state} {
-  TRI_ASSERT(index < endIndex);
+  TRI_ASSERT(index <= endIndex);
   TRI_ASSERT(endIndex <= block->size());
 }
 
@@ -43,7 +43,7 @@ AqlItemBlockInputRange::AqlItemBlockInputRange(ExecutorState state,
                                                SharedAqlItemBlockPtr&& block,
                                                std::size_t index, std::size_t endIndex) noexcept
     : _block{std::move(block)}, _rowIndex{index}, _endIndex(endIndex), _finalState{state} {
-  TRI_ASSERT(index < endIndex);
+  TRI_ASSERT(index <= endIndex);
   TRI_ASSERT(endIndex <= block->size());
 }
 

@@ -1101,13 +1101,11 @@ ExecutionBlockImpl<FilterExecutor>::executeWithoutTrace(AqlCallStack stack) {
           }
           TRI_ASSERT(_outputItemRow->produced());
           _outputItemRow->advanceRow();
-          if (_lastRange.hasShadowRow()) {
-            auto const& [state, shadowRow] = _lastRange.peekShadowRow();
-            TRI_ASSERT(shadowRow.isInitialized());
-            if (shadowRow.isRelevant()) {
-              // We need to call The Executor with this input again.
-              execState = ExecState::DONE;
-            }
+          if (state == ExecutorState::DONE) {
+            // Right now we cannot support to have more than one set of
+            // ShadowRows inside of a Range.
+            // We do not know how to continue with the above executor after a shadowrow.
+            execState = ExecState::DONE;
           }
         } else {
           execState = ExecState::DONE;
@@ -1127,6 +1125,9 @@ ExecutionBlockImpl<FilterExecutor>::executeWithoutTrace(AqlCallStack stack) {
   // This is not strictly necessary here, as we shouldn't be called again
   // after DONE.
   _outputItemRow.reset();
+  if (_lastRange.hasMore()) {
+    return {ExecutionState::HASMORE, skipped, std::move(outputBlock)};
+  }
   return {_upstreamState, skipped, std::move(outputBlock)};
 }
 

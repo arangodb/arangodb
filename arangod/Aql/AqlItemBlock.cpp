@@ -37,6 +37,8 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "Logger/LogMacros.h"
+
 using namespace arangodb;
 using namespace arangodb::aql;
 
@@ -883,16 +885,18 @@ RegisterId AqlItemBlock::getNrRegs() const noexcept { return _nrRegs; }
 size_t AqlItemBlock::size() const noexcept { return _nrItems; }
 
 std::tuple<size_t, size_t> AqlItemBlock::getRelevantRange() {
-  size_t startIndex = _rowIndex;
-  ++_rowIndex;
-
-  for (; _rowIndex < this->size() && !isShadowRow(_rowIndex); _rowIndex++) {
-    // Move on as long as we are not at the end or at a shadow row
+  // NOTE:
+  // Right now we can only support a range of datarows, that ends
+  // In a range of ShadowRows.
+  // After a shadow row, we do NOT know how to continue with
+  // The next Executor.
+  // So we can hardcode to return 0 -> firstShadowRow || endOfBlock
+  if (hasShadowRows()) {
+    auto const& shadows = getShadowRowIndexes();
+    TRI_ASSERT(!shadows.empty());
+    return {0, *shadows.begin()};
   }
-  size_t endIndex = _rowIndex;
-  TRI_ASSERT(startIndex < endIndex);
-  TRI_ASSERT(endIndex <= this->size());
-  return std::make_pair(startIndex, endIndex);
+  return {0, size()};
 }
 
 size_t AqlItemBlock::numEntries() const { return internalNrRegs() * _nrItems; }
