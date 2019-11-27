@@ -33,6 +33,7 @@ var jsunity = require("jsunity");
 var arangodb = require("@arangodb");
 var db = arangodb.db;
 var tasks = require("@arangodb/tasks");
+const internal = require("internal");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -41,6 +42,7 @@ var tasks = require("@arangodb/tasks");
 function DeadlockSuite () {
   var cn1 = "UnitTestsDeadlock1";
   var cn2 = "UnitTestsDeadlock2";
+  var cn3 = "UnitTestsDeadlock3";
 
   return {
 
@@ -51,8 +53,10 @@ function DeadlockSuite () {
     setUp : function () {
       db._drop(cn1);
       db._drop(cn2);
+      db._drop(cn3);
       db._create(cn1);
       db._create(cn2);
+      db._create(cn3);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -62,6 +66,7 @@ function DeadlockSuite () {
     tearDown : function () {
       db._drop(cn1);
       db._drop(cn2);
+      db._drop(cn3);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -73,10 +78,11 @@ function DeadlockSuite () {
       tasks.register({
         command: function() {
           var db = require("internal").db;
+          db.UnitTestsDeadlock3.insert({ started: true });
           db._executeTransaction({
             collections: { write: [ "UnitTestsDeadlock2" ] },
             action: function () {
-              require("internal").wait(5, false);
+              require("internal").wait(8, false);
               var db = require("internal").db;
               db.UnitTestsDeadlock1.any();
               db.UnitTestsDeadlock2.insert({ done: true });
@@ -85,21 +91,25 @@ function DeadlockSuite () {
         }
       });
 
-      try {
-        // and start a transaction that does the opposite
-        db._executeTransaction({
-          collections: { write: [ "UnitTestsDeadlock1" ] },
-          action: function () {
-            var db = require("internal").db;
-            db.UnitTestsDeadlock2.any(); // deadlock here
-            db.UnitTestsDeadlock1.insert({ done: true });
-          }
-        });
-      } catch (err) {
-        // nothing to do here
+      // wait until task is started
+      while(db.UnitTestsDeadlock3.count() === 0) {
+        internal.sleep(1);
       }
+      // wait a bit longer to make sure the transaction is started
+      internal.sleep(2);
 
-      require("internal").wait(8, false);
+      // start transaction that will fail
+      db._executeTransaction({
+        collections: { write: [ "UnitTestsDeadlock1" ] },
+        action: function () {
+          var db = require("internal").db;
+          db.UnitTestsDeadlock2.any(); // deadlock here
+          db.UnitTestsDeadlock1.insert({ done: true });
+        }
+      });
+
+      // wait for first taks to finish
+      require("internal").wait(9, false);
       // only one transaction should have succeeded
       assertEqual(1, db.UnitTestsDeadlock1.count() + db.UnitTestsDeadlock2.count());
     }
