@@ -322,7 +322,7 @@ bool parse_ngram_vpack_config(const irs::string_ref& args, irs::analysis::ngram_
       options.stream_bytes_type = itr->second;
   }
 
-  min = std::max(min, size_t(1));
+  min = std::max(min, decltype(min)(1));
   max = std::max(max, min);
 
   options.min_gram = min;

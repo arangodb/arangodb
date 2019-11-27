@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -17,32 +17,29 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
+/// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_HANDLER_REST_CLUSTER_HANDLER_H
-#define ARANGOD_REST_HANDLER_REST_CLUSTER_HANDLER_H 1
+#ifndef ARANGOD_REST_HANDLER_REST_METRICS_HANDLER_H
+#define ARANGOD_REST_HANDLER_REST_METRICS_HANDLER_H 1
 
 #include "RestHandler/RestBaseHandler.h"
+#include "RestServer/MetricsFeature.h"
 
 namespace arangodb {
-class RestClusterHandler : public arangodb::RestBaseHandler {
+class RestMetricsHandler : public arangodb::RestBaseHandler {
  public:
-  RestClusterHandler(application_features::ApplicationServer&, GeneralRequest*,
+  RestMetricsHandler(application_features::ApplicationServer&, GeneralRequest*,
                      GeneralResponse*);
 
- public:
-  virtual char const* name() const override { return "RestClusterHandler"; }
-  RequestLane lane() const override final { return RequestLane::CLIENT_FAST; }
+  char const* name() const override final { return "RestMetricsHandler"; }
+  RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
   RestStatus execute() override;
 
- private:
-  /// _api/cluster/endpoints
-  void handleCommandEndpoints();
-
-  /// _api/cluster/agency-dump
-  void handleAgencyDump();
 };
+
+
+
 }  // namespace arangodb
 
 #endif

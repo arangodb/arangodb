@@ -7282,11 +7282,6 @@ void arangodb::aql::parallelizeGatherRule(Optimizer* opt, std::unique_ptr<Execut
 namespace {
 
 bool nodeMakesThisQueryLevelUnsuitableForSubquerySplicing(ExecutionNode const* const node) {
-  // TODO Enable modification nodes again, as soon as the corresponding branch
-  //  is merged. Fix them in the switch statement below, too!
-  if (node->isModificationNode()) {
-    return true;
-  }
   switch (node->getType()) {
     case ExecutionNode::CALCULATION:
     case ExecutionNode::SUBQUERY:
@@ -7306,6 +7301,11 @@ bool nodeMakesThisQueryLevelUnsuitableForSubquerySplicing(ExecutionNode const* c
     case ExecutionNode::GATHER:
     case ExecutionNode::REMOTE:
     case ExecutionNode::REMOTESINGLE:
+    case ExecutionNode::INSERT:
+    case ExecutionNode::REMOVE:
+    case ExecutionNode::REPLACE:
+    case ExecutionNode::UPDATE:
+    case ExecutionNode::UPSERT:
     case ExecutionNode::MATERIALIZE:
     case ExecutionNode::DISTRIBUTE_CONSUMER:
     case ExecutionNode::SUBQUERY_START:
@@ -7323,16 +7323,6 @@ bool nodeMakesThisQueryLevelUnsuitableForSubquerySplicing(ExecutionNode const* c
       // Collect nodes skip iff using the COUNT method.
       return collectNode->aggregationMethod() == CollectOptions::CollectMethod::COUNT;
     }
-    // TODO Enable modification nodes again, as soon as the corresponding branch
-    //  is merged.
-    case ExecutionNode::INSERT:
-    case ExecutionNode::REMOVE:
-    case ExecutionNode::REPLACE:
-    case ExecutionNode::UPDATE:
-    case ExecutionNode::UPSERT:
-      // These should already have been handled
-      TRI_ASSERT(false);
-      return true;
     case ExecutionNode::MAX_NODE_TYPE_VALUE:
       break;
   }

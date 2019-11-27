@@ -201,7 +201,6 @@ std::string const StaticStrings::PotentialDirtyRead(
     "x-arango-potential-dirty-read");
 std::string const StaticStrings::RequestForwardedTo(
     "x-arango-request-forwarded-to");
-std::string const StaticStrings::ResponseCode("x-arango-response-code");
 std::string const StaticStrings::Server("server");
 std::string const StaticStrings::TransferEncoding("transfer-encoding");
 std::string const StaticStrings::TransactionBody("x-arango-trx-body");

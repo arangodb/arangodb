@@ -89,6 +89,7 @@
 #include "RestServer/InitDatabaseFeature.h"
 #include "RestServer/LanguageCheckFeature.h"
 #include "RestServer/LockfileFeature.h"
+#include "RestServer/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ScriptFeature.h"
 #include "RestServer/ServerFeature.h"
@@ -155,6 +156,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
         std::type_index(typeid(GreetingsFeature)),
         std::type_index(typeid(HttpEndpointProvider)),
         std::type_index(typeid(LoggerBufferFeature)),
+        std::type_index(typeid(MetricsFeature)),
         std::type_index(typeid(pregel::PregelFeature)),
         std::type_index(typeid(ServerFeature)),
         std::type_index(typeid(SslServerFeature)),
@@ -228,6 +230,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
         std::vector<std::type_index>{std::type_index(typeid(ScriptFeature))});
     server.addFeature<SslFeature>();
     server.addFeature<StatisticsFeature>();
+    server.addFeature<MetricsFeature>();
     server.addFeature<StorageEngineFeature>();
     server.addFeature<SystemDatabaseFeature>();
     server.addFeature<TempFeature>(name);

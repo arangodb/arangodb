@@ -74,6 +74,7 @@
 #include "RestHandler/RestImportHandler.h"
 #include "RestHandler/RestIndexHandler.h"
 #include "RestHandler/RestJobHandler.h"
+#include "RestHandler/RestMetricsHandler.h"
 #include "RestHandler/RestPleaseUpgradeHandler.h"
 #include "RestHandler/RestPregelHandler.h"
 #include "RestHandler/RestQueryCacheHandler.h"
@@ -437,6 +438,7 @@ void GeneralServerFeature::defineHandlers() {
         agency.agent());
   }
 
+  
   if (cluster.isEnabled()) {
     // add "/agency-callbacks" handler
     _handlerFactory->addPrefixHandler(
@@ -531,6 +533,9 @@ void GeneralServerFeature::defineHandlers() {
 
   _handlerFactory->addHandler("/_admin/statistics",
                               RestHandlerCreator<arangodb::RestAdminStatisticsHandler>::createNoData);
+
+  _handlerFactory->addHandler("/_admin/metrics",
+                              RestHandlerCreator<arangodb::RestMetricsHandler>::createNoData);
 
   _handlerFactory->addHandler("/_admin/statistics-description",
                               RestHandlerCreator<arangodb::RestAdminStatisticsHandler>::createNoData);

@@ -160,6 +160,7 @@ class RocksDBEngine final : public StorageEngine {
       LogicalCollection& collection, velocypack::Slice const& info) override;
 
   void getStatistics(velocypack::Builder& builder) const override;
+  void getStatistics(std::string& result) const override;
 
   // inventory functionality
   // -----------------------
