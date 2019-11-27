@@ -132,7 +132,7 @@ class TableMatcher final : public MatcherBase<typename F::Arc> {
     auto end = start_labels_.end();
     for (size_t i = 0, offset = 0;
          i < IRESEARCH_COUNTOF(cached_label_offsets_); ++i) {
-      if (begin != end && *begin == i) {
+      if (begin != end && size_t(*begin) == i) {
         cached_label_offsets_[i] = offset;
         ++offset;
         ++begin;
@@ -180,7 +180,7 @@ class TableMatcher final : public MatcherBase<typename F::Arc> {
 
   virtual bool Find(Label label) noexcept final {
     assert(!error_);
-    auto label_offset = (label < IRESEARCH_COUNTOF(cached_label_offsets_)
+    auto label_offset = (size_t(label) < IRESEARCH_COUNTOF(cached_label_offsets_)
                            ? cached_label_offsets_[size_t(label)]
                            : find_label_offset(label));
 

@@ -1750,35 +1750,19 @@ TEST_P(granular_range_filter_test_case, by_range_order_multiple_sorts) {
 
   auto rdr = open_reader();
 
-  // value = [-3;...)
-  {
-    docs_t docs{ 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38 };
+  // value = [...;...)
+  const int seed = -6;
+  for (int begin = seed, end = begin + int(rdr->docs_count()); begin != end; ++begin) {
+    docs_t docs;
+    docs.resize(size_t(end - begin));
+    std::iota(docs.begin(), docs.end(), size_t(begin - seed + irs::doc_limits::min()));
     costs_t costs{ docs.size() };
     irs::order order;
     irs::numeric_token_stream min_stream;
-    min_stream.reset((double_t)-3.);
+    min_stream.reset((double_t)begin);
 
     order.add<tests::sort::frequency_sort>(false);
     order.add<tests::sort::frequency_sort>(true);
-    check_query(
-      irs::by_granular_range()
-        .field("seq")
-        .insert<irs::Bound::MIN>(min_stream)
-        .include<irs::Bound::MIN>(true)
-      , order, docs, rdr
-    );
-  }
-
-  // value = [23;...)
-  {
-    docs_t docs{ 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37 };
-    costs_t costs{ docs.size() };
-    irs::order order;
-    irs::numeric_token_stream min_stream;
-    min_stream.reset((double_t)23.);
-
-    order.add<tests::sort::frequency_sort>(false);
-    order.add<tests::sort::frequency_sort>(false);
     check_query(
       irs::by_granular_range()
         .field("seq")

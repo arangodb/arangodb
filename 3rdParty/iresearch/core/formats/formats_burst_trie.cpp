@@ -462,10 +462,7 @@ class block_iterator : util::noncopyable {
   byte_type meta() const noexcept { return cur_meta_; }
   size_t prefix() const noexcept { return prefix_; }
   EntryType type() const noexcept { return cur_type_; }
-  uint64_t block_start() const noexcept {
-    assert(ET_BLOCK == cur_type_);
-    return cur_block_start_;
-  }
+  uint64_t block_start() const noexcept { return cur_block_start_; }
   int16_t next_label() const noexcept { return next_label_; }
   uint64_t sub_count() const noexcept { return sub_count_; }
   uint64_t start() const noexcept { return start_; }

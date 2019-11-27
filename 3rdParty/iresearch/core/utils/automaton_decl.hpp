@@ -38,7 +38,7 @@ class TableMatcher;
 
 NS_BEGIN(fsa)
 
-class Transition;
+struct Transition;
 
 using AutomatonState = VectorState<Transition, std::allocator<Transition>>;
 using Automaton = VectorFst<Transition, AutomatonState>;

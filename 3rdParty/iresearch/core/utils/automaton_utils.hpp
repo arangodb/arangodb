@@ -29,8 +29,6 @@
 
 NS_ROOT
 
-typedef fst::fsa::Automaton automaton;
-
 template<typename Char>
 struct wildcard_traits {
   using char_type = Char;

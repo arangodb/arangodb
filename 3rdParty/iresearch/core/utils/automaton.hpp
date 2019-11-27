@@ -52,6 +52,7 @@
   #pragma GCC diagnostic pop
 #endif
 
+#include "automaton_decl.hpp"
 #include "string.hpp"
 
 NS_BEGIN(fst)
