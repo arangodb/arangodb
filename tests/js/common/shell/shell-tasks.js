@@ -454,12 +454,12 @@ function TaskSuite () {
       assertEqual(1, t.length);
 
       var tries = 0;
-      while (tries++ < 10) {
+      while (tries++ < 15) {
         if (db[cn].count() === 1) {
           return; // alright
         }
 
-        internal.wait(1);
+        internal.wait(2);
       }
 
       fail();
@@ -490,12 +490,12 @@ function TaskSuite () {
       assertEqual("_system", task.database);
 
       var tries = 0;
-      while (tries++ < 10) {
+      while (tries++ < 15) {
         if (db[cn].count() === 1) {
           return; // alright
         }
 
-        internal.wait(1);
+        internal.wait(2);
       }
 
       fail();
@@ -525,13 +525,15 @@ function TaskSuite () {
       assertEqual(5, task.offset);
       assertEqual("_system", task.database);
 
+      internal.wait(5);
+
       var tries = 0;
-      while (tries++ < 20) {
+      while (tries++ < 15) {
         if (db[cn].count() === 1) {
           return; // alright
         }
 
-        internal.wait(1);
+        internal.wait(2);
       }
 
       // task hasn't been executed
@@ -553,13 +555,13 @@ function TaskSuite () {
       var task = tasks.register({
         name: "UnitTests1",
         command: command,
-        offset: 10,
+        offset: 15,
         params: 23
       });
 
       assertEqual("UnitTests1", task.name);
       assertEqual("timed", task.type);
-      assertEqual(10, task.offset);
+      assertEqual(15, task.offset);
       assertEqual("_system", task.database);
 
       tasks.unregister(task);
@@ -599,13 +601,13 @@ function TaskSuite () {
       assertEqual("_system", task.database);
 
       var tries = 0;
-      while (tries++ < 20) {
+      while (tries++ < 15) {
         if (db[cn].count() > 0) {
           assertTrue(db[cn].byExample({ value: 17 }).toArray().length > 0);
           return; // alright
         }
 
-        internal.wait(1);
+        internal.wait(2);
       }
 
       fail();
@@ -639,13 +641,13 @@ function TaskSuite () {
       assertEqual("_system", task.database);
 
       var tries = 0;
-      while (tries++ < 20) {
+      while (tries++ < 15) {
         if (db[cn].count() > 0) {
           assertTrue(db[cn].byExample({ value: 42 }).toArray().length > 0);
           return; // alright
         }
 
-        internal.wait(1);
+        internal.wait(2);
       }
 
       fail();
