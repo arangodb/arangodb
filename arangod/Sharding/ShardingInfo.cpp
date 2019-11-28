@@ -138,27 +138,28 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info, LogicalCollection* 
   }
 
   if (!isASatellite) {
-    auto writeConcernSlice = info.get(StaticStrings::MinReplicationFactor);
+    auto writeConcernSlice = info.get(StaticStrings::WriteConcern);
+    if (writeConcernSlice.isNone()) { // minReplicationFactor is deprecated in 3.6
+      writeConcernSlice = info.get(StaticStrings::MinReplicationFactor);
+    }
     if (!writeConcernSlice.isNone()) {
       if (writeConcernSlice.isNumber()) {
         _writeConcern = writeConcernSlice.getNumber<size_t>();
         if (!isSatellite() && _writeConcern > _replicationFactor) {
-          // note: writeConcern is named minReplicationFactor in the API for historical reasons
           THROW_ARANGO_EXCEPTION_MESSAGE(
               TRI_ERROR_BAD_PARAMETER,
-              "minReplicationFactor cannot be larger than replicationFactor (" +
+              "writeConcern cannot be larger than replicationFactor (" +
                   basics::StringUtils::itoa(_writeConcern) + " > " +
                   basics::StringUtils::itoa(_replicationFactor) + ")");
         }
         if (!isSatellite() && _writeConcern == 0) {
           THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                         "minReplicationFactor cannot be 0");
+                                         "writeConcern cannot be 0");
         }
       } else {
-        // note: writeConcern is named minReplicationFactor in the API for historical reasons
         THROW_ARANGO_EXCEPTION_MESSAGE(
             TRI_ERROR_BAD_PARAMETER,
-            "minReplicationFactor needs to be an integer number");
+            "writeConcern needs to be an integer number");
       }
     }
   }
@@ -300,6 +301,8 @@ void ShardingInfo::toVelocyPack(VPackBuilder& result, bool translateCids) {
     result.add(StaticStrings::ReplicationFactor, VPackValue(_replicationFactor));
   }
 
+  // minReplicationFactor deprecated in 3.6
+  result.add(StaticStrings::WriteConcern, VPackValue(_writeConcern));
   result.add(StaticStrings::MinReplicationFactor, VPackValue(_writeConcern));
 
   if (!_distributeShardsLike.empty() && ServerState::instance()->isCoordinator()) {
@@ -381,10 +384,9 @@ size_t ShardingInfo::replicationFactor() const {
 
 void ShardingInfo::replicationFactor(size_t replicationFactor) {
   if (!isSatellite() && replicationFactor < _writeConcern) {
-    // note: writeConcern is named minReplicationFactor in the API for historical reasons
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
-        "replicationFactor cannot be smaller than minReplicationFactor (" +
+        "replicationFactor cannot be smaller than writeConcern (" +
             basics::StringUtils::itoa(_replicationFactor) + " < " +
             basics::StringUtils::itoa(_writeConcern) + ")");
   }
@@ -398,10 +400,9 @@ size_t ShardingInfo::writeConcern() const {
 
 void ShardingInfo::writeConcern(size_t writeConcern) {
   if (!isSatellite() && writeConcern > _replicationFactor) {
-    // note: writeConcern is named minReplicationFactor in the API for historical reasons
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
-        "minReplicationFactor cannot be larger than replicationFactor (" +
+        "writeConcern cannot be larger than replicationFactor (" +
             basics::StringUtils::itoa(_writeConcern) + " > " +
             basics::StringUtils::itoa(_replicationFactor) + ")");
   }
@@ -410,10 +411,9 @@ void ShardingInfo::writeConcern(size_t writeConcern) {
 
 void ShardingInfo::setWriteConcernAndReplicationFactor(size_t writeConcern, size_t replicationFactor) {
   if (writeConcern > replicationFactor) {
-    // note: writeConcern is named minReplicationFactor in the API for historical reasons
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
-        "minReplicationFactor cannot be larger than replicationFactor (" +
+        "writeConcern cannot be larger than replicationFactor (" +
             basics::StringUtils::itoa(writeConcern) + " > " +
             basics::StringUtils::itoa(replicationFactor) + ")");
   }

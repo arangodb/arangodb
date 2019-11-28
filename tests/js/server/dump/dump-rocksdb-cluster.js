@@ -69,11 +69,12 @@ function dumpTestSuite () {
         let props = db._properties();
         assertEqual(1, props.replicationFactor);
         assertEqual(1, props.minReplicationFactor);
-
+        assertEqual(1, props.writeConcern);
         db._useDatabase("UnitTestsDumpProperties2");
         props = db._properties();
         assertEqual(2, props.replicationFactor);
         assertEqual(2, props.minReplicationFactor);
+        assertEqual(2, props.writeConcern);
       } finally {
         db._useDatabase(old);
       };
