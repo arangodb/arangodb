@@ -465,32 +465,39 @@ RestStatus RestCollectionHandler::handleCommandPut() {
   } else if (sub == "responsibleShard") {
     if (!ServerState::instance()->isCoordinator()) {
       res.reset(TRI_ERROR_CLUSTER_ONLY_ON_COORDINATOR);
-    } else {
-      VPackBuilder temp;
-      if (body.isString()) {
-        temp.openObject();
-        temp.add(StaticStrings::KeyString, body);
-        temp.close();
-        body = temp.slice();
-      } else if (body.isNumber()) {
-        temp.openObject();
-        temp.add(StaticStrings::KeyString, VPackValue(std::to_string(body.getNumber<int64_t>())));
-        temp.close();
-        body = temp.slice();
-      }
-      if (!body.isObject()) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "expecting object for responsibleShard");
-      }
-
-      std::string shardId;
-      res = coll->getResponsibleShard(body, false, shardId);
-
-      if (res.ok()) {
-        _builder.openObject();
-        _builder.add("shardId", VPackValue(shardId));
-        _builder.close();
-      }
+      generateError(res);
+      return RestStatus::DONE;
     }
+    
+    VPackBuilder temp;
+    if (body.isString()) {
+      temp.openObject();
+      temp.add(StaticStrings::KeyString, body);
+      temp.close();
+      body = temp.slice();
+    } else if (body.isNumber()) {
+      temp.openObject();
+      temp.add(StaticStrings::KeyString, VPackValue(std::to_string(body.getNumber<int64_t>())));
+      temp.close();
+      body = temp.slice();
+    }
+    if (!body.isObject()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "expecting object for responsibleShard");
+    }
+
+    std::string shardId;
+    res = coll->getResponsibleShard(body, false, shardId);
+
+    if (res.ok()) {
+      _builder.openObject();
+      _builder.add("shardId", VPackValue(shardId));
+      _builder.close();
+      return standardResponse();
+    } else {
+      generateError(res);
+      return RestStatus::DONE;
+    }
+    
   } else if (sub == "truncate") {
     OperationOptions opts;
 
