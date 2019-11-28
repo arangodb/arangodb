@@ -345,11 +345,11 @@ constexpr inline basic_string_ref<ElemDst> ref_cast(const std::basic_string<Elem
 
 NS_BEGIN(hash_utils)
 
-IRESEARCH_API size_t hash(const irs::bstring& value);
-IRESEARCH_API size_t hash(const char* value);
-IRESEARCH_API size_t hash(const wchar_t* value);
-IRESEARCH_API size_t hash(const bytes_ref& value);
-IRESEARCH_API size_t hash(const string_ref& value);
+IRESEARCH_API size_t hash(const irs::bstring& value) noexcept;
+IRESEARCH_API size_t hash(const char* value) noexcept;
+IRESEARCH_API size_t hash(const wchar_t* value) noexcept;
+IRESEARCH_API size_t hash(const bytes_ref& value) noexcept;
+IRESEARCH_API size_t hash(const string_ref& value) noexcept;
 
 NS_END // hash_utils
 
@@ -363,35 +363,35 @@ NS_BEGIN(std)
 
 template<>
 struct hash<char*> {
-  size_t operator()(const char* value) const {
+  size_t operator()(const char* value) const noexcept {
     return ::iresearch::hash_utils::hash(value);
   }
 }; // hash
 
 template<>
 struct hash<wchar_t*> {
-  size_t operator()(const wchar_t* value) const {
+  size_t operator()(const wchar_t* value) const noexcept {
     return ::iresearch::hash_utils::hash(value);
   }
 }; // hash
 
 template<>
 struct hash<::iresearch::bstring> {
-  size_t operator()(const ::iresearch::bstring& value) const {
+  size_t operator()(const ::iresearch::bstring& value) const noexcept {
     return ::iresearch::hash_utils::hash(value);
   }
 }; // hash
 
 template<>
 struct hash<::iresearch::bytes_ref> {
-  size_t operator()(const ::iresearch::bytes_ref& value) const {
+  size_t operator()(const ::iresearch::bytes_ref& value) const noexcept {
     return ::iresearch::hash_utils::hash(value);
   }
 }; // hash
 
 template<>
 struct hash<::iresearch::string_ref> {
-  size_t operator()(const ::iresearch::string_ref& value) const {
+  size_t operator()(const ::iresearch::string_ref& value) const noexcept {
     return ::iresearch::hash_utils::hash(value);
   }
 }; // hash

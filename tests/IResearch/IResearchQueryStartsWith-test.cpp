@@ -231,7 +231,7 @@ TEST_F(IResearchQueryStartsWithTest, test) {
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
       ASSERT_TRUE(resolved.isBool());
-      ASSERT_TRUE(resolved.getBool());
+      ASSERT_FALSE(resolved.getBool());
     }
   }
 

@@ -101,13 +101,14 @@ class limited_sample_scorer : util::noncopyable {
         const sub_reader& segment,
         limited_sample_state& scored_state,
         size_t scored_state_offset,
-        const seek_term_iterator& term)
-      : cookie(term.cookie()),
+        const bytes_ref& term,
+        seek_term_iterator::seek_cookie::ptr&& cookie)
+      : cookie(std::move(cookie)),
         state(&scored_state),
         state_offset(scored_state_offset),
         priority(priority),
         segment(&segment),
-        term(term.value()) {
+        term(term) {
       assert(this->cookie);
     }
 
@@ -119,9 +120,10 @@ class limited_sample_scorer : util::noncopyable {
     bstring term; // actual term value this state is for
   }; // scored_term_state_t
 
-  typedef std::multimap<size_t, scored_term_state> scored_term_states_t;
+  typedef std::vector<scored_term_state> scored_term_states_t;
 
   scored_term_states_t scored_states_;
+  std::vector<size_t> scored_states_heap_; // use external heap as states are big
   size_t scored_terms_limit_;
 }; // limited_sample_scorer
 

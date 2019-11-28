@@ -78,6 +78,9 @@ NS_LOCAL
 
 using namespace irs;
 
+// name of the module holding different formats
+const string_ref MODULE_NAME = "10";
+
 struct format_traits {
   FORCE_INLINE static void write_block(
       index_output& out,
@@ -5475,7 +5478,7 @@ irs::postings_reader::ptr format10::get_postings_reader() const {
 }
 
 DEFINE_FORMAT_TYPE_NAMED(::format10, "1_0")
-REGISTER_FORMAT(::format10);
+REGISTER_FORMAT_MODULE(::format10, MODULE_NAME);
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                                         format11
@@ -5537,7 +5540,7 @@ column_meta_writer::ptr format11::get_column_meta_writer() const {
 }
 
 DEFINE_FORMAT_TYPE_NAMED(::format11, "1_1");
-REGISTER_FORMAT(::format11);
+REGISTER_FORMAT_MODULE(::format11, MODULE_NAME);
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                                         format12
@@ -5572,7 +5575,7 @@ columnstore_writer::ptr format12::get_columnstore_writer() const {
 }
 
 DEFINE_FORMAT_TYPE_NAMED(::format12, "1_2");
-REGISTER_FORMAT(::format12);
+REGISTER_FORMAT_MODULE(::format12, MODULE_NAME);
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                                      format12sse
@@ -5635,7 +5638,7 @@ irs::postings_reader::ptr format12simd::get_postings_reader() const {
 }
 
 DEFINE_FORMAT_TYPE_NAMED(::format12simd, "1_2simd");
-REGISTER_FORMAT(::format12simd);
+REGISTER_FORMAT_MODULE(::format12simd, MODULE_NAME);
 
 #endif // IRESEARCH_SSE2
 

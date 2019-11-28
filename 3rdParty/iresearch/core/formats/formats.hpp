@@ -585,17 +585,20 @@ class IRESEARCH_API format_registrar {
  public:
   format_registrar(
     const format::type_id& type,
+    const string_ref& module,
     format::ptr(*factory)(),
-    const char* source = nullptr
-  );
+    const char* source = nullptr);
+
   operator bool() const noexcept;
+
  private:
   bool registered_;
 };
 
-#define REGISTER_FORMAT__(format_name, line, source) static iresearch::format_registrar format_registrar ## _ ## line(format_name::type(), &format_name::make, source)
-#define REGISTER_FORMAT_EXPANDER__(format_name, file, line) REGISTER_FORMAT__(format_name, line, file ":" TOSTRING(line))
-#define REGISTER_FORMAT(format_name) REGISTER_FORMAT_EXPANDER__(format_name, __FILE__, __LINE__)
+#define REGISTER_FORMAT__(format_name, mudule_name, line, source) static iresearch::format_registrar format_registrar ## _ ## line(format_name::type(), mudule_name, &format_name::make, source)
+#define REGISTER_FORMAT_EXPANDER__(format_name, mudule_name, file, line) REGISTER_FORMAT__(format_name, mudule_name, line, file ":" TOSTRING(line))
+#define REGISTER_FORMAT_MODULE(format_name, module_name) REGISTER_FORMAT_EXPANDER__(format_name, module_name, __FILE__, __LINE__)
+#define REGISTER_FORMAT(format_name) REGISTER_FORMAT_MODULE(format_name, irs::string_ref::NIL)
 
 NS_END
 
