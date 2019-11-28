@@ -250,7 +250,7 @@ bool SingleRowFetcher<blockPassthrough>::isAtShadowRow() const {
 
 #ifndef ARANGODB_USE_GOOGLE_TESTS
 template std::pair<ExecutionState, SharedAqlItemBlockPtr>
-SingleRowFetcher<BlockPassthrough::Enable>::fetchBlockForPassthrough(size_t atMost);
+SingleRowFetcher<BlockPassthrough::Enable>::fetchBlockForPassthrough<BlockPassthrough::Enable, void>(size_t atMost);
 #endif
 
 template class ::arangodb::aql::SingleRowFetcher<BlockPassthrough::Disable>;

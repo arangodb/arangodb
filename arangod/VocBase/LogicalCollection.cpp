@@ -603,9 +603,6 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
       case Index::TRI_IDX_TYPE_PRIMARY_INDEX:
       case Index::TRI_IDX_TYPE_EDGE_INDEX:
         return false;
-      case Index::TRI_IDX_TYPE_IRESEARCH_LINK:
-        flags = Index::makeFlags(Index::Serialize::Internals);
-        return true;
       default:
         flags = Index::makeFlags();
         return !idx->isHidden() && !idx->inProgress();

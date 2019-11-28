@@ -1094,7 +1094,7 @@ function ahuacatlModifySuite () {
       let actual = getModifyQueryResultsRaw(query);
       if (isCluster) {
         let nodes = AQL_EXPLAIN(query).plan.nodes;
-        assertTrue(hasDistributeNode(nodes));
+        assertFalse(hasDistributeNode(nodes));
       }
 
       assertEqual(100, c.count());
@@ -1114,7 +1114,7 @@ function ahuacatlModifySuite () {
       let actual = getModifyQueryResultsRaw(query);
       if (isCluster) {
         let nodes = AQL_EXPLAIN(query).plan.nodes;
-        assertTrue(hasDistributeNode(nodes));
+        assertFalse(hasDistributeNode(nodes));
       }
 
       assertEqual(100, c.count());
@@ -1400,7 +1400,7 @@ function ahuacatlModifySuite () {
         c.insert({ id: i });
       }
 
-      let expected = { writesExecuted: 100, writesIgnored: isCluster ? 400 : 0 };
+      let expected = { writesExecuted: 100, writesIgnored: 0 };
       let actual = getModifyQueryResultsRaw("FOR d IN " + cn + " UPDATE d WITH { value: 2 } IN " + cn);
 
       assertEqual(100, c.count());
@@ -1415,7 +1415,7 @@ function ahuacatlModifySuite () {
         c.insert({ id: i });
       }
 
-      let expected = { writesExecuted: 100, writesIgnored: isCluster ? 400 : 0 };
+      let expected = { writesExecuted: 100, writesIgnored: 0 };
       let actual = getModifyQueryResultsRaw("FOR d IN " + cn + " UPDATE d WITH { value: 2 } IN " + cn + " RETURN OLD");
 
       assertEqual(100, c.count());
@@ -1430,7 +1430,7 @@ function ahuacatlModifySuite () {
         c.insert({ id: i });
       }
 
-      let expected = { writesExecuted: 100, writesIgnored: isCluster ? 400 : 0 };
+      let expected = { writesExecuted: 100, writesIgnored: 0 };
       let actual = getModifyQueryResultsRaw("FOR d IN " + cn + " UPDATE d WITH { value: 2 } IN " + cn + " RETURN NEW");
 
       assertEqual(100, c.count());
@@ -1445,7 +1445,7 @@ function ahuacatlModifySuite () {
         c.insert({ id: i });
       }
 
-      let expected = { writesExecuted: 100, writesIgnored: isCluster ? 400 : 0 };
+      let expected = { writesExecuted: 100, writesIgnored: 0 };
       let actual = getModifyQueryResultsRaw("RETURN (FOR d IN " + cn + " UPDATE d WITH { value: 2 } IN " + cn + ")");
 
       assertEqual(100, c.count());
@@ -1461,7 +1461,7 @@ function ahuacatlModifySuite () {
         c.insert({ id: i });
       }
 
-      let expected = { writesExecuted: 100, writesIgnored: isCluster ? 400 : 0 };
+      let expected = { writesExecuted: 100, writesIgnored: 0 };
       let actual = getModifyQueryResultsRaw("RETURN (FOR d IN " + cn + " UPDATE d WITH { value: 2 } IN " + cn + " RETURN OLD)");
 
       assertEqual(100, c.count());
@@ -1477,7 +1477,7 @@ function ahuacatlModifySuite () {
         c.insert({ id: i });
       }
 
-      let expected = { writesExecuted: 100, writesIgnored: isCluster ? 400 : 0 };
+      let expected = { writesExecuted: 100, writesIgnored: 0 };
       let actual = getModifyQueryResultsRaw("RETURN (FOR d IN " + cn + " UPDATE d WITH { value: 2 } IN " + cn + " RETURN NEW)");
 
       assertEqual(100, c.count());

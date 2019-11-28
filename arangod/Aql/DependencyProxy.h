@@ -68,7 +68,8 @@ class DependencyProxy {
   DependencyProxy(std::vector<ExecutionBlock*> const& dependencies,
                   AqlItemBlockManager& itemBlockManager,
                   std::shared_ptr<std::unordered_set<RegisterId> const> inputRegisters,
-                  RegisterId nrInputRegisters);
+                  RegisterId nrInputRegisters,
+                  velocypack::Options const*);
 
   TEST_VIRTUAL ~DependencyProxy() = default;
 
@@ -112,6 +113,8 @@ class DependencyProxy {
 
   void setDistributeId(std::string const& distId) { _distributeId = distId; }
 
+  [[nodiscard]] velocypack::Options const* velocypackOptions() const noexcept;
+
  protected:
   [[nodiscard]] AqlItemBlockManager& itemBlockManager();
   [[nodiscard]] AqlItemBlockManager const& itemBlockManager() const;
@@ -137,6 +140,7 @@ class DependencyProxy {
   // only modified in case of multiple dependencies + Passthrough otherwise always 0
   size_t _currentDependency;
   size_t _skipped;
+  velocypack::Options const* const _vpackOptions;
 };
 
 }  // namespace arangodb::aql

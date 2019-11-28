@@ -70,15 +70,17 @@ V8ClientConnection::V8ClientConnection(application_features::ApplicationServer& 
       _role("UNKNOWN"),
       _loop(1),
       _vpackOptions(VPackOptions::Defaults),
-      _forceJson(false) {
+      _forceJson(false),
+      _setCustomError(false) {
   _vpackOptions.buildUnindexedObjects = true;
   _vpackOptions.buildUnindexedArrays = true;
   _builder.onFailure([this](fuerte::Error error, std::string const& msg) {
     std::unique_lock<std::recursive_mutex> guard(_lock, std::try_to_lock);
-    if (guard) {
+    if (guard && !_setCustomError) {
       _lastHttpReturnCode = 503;
       _lastErrorMessage = msg;
     }
+    _setCustomError = false;
   });
 }
 
@@ -97,20 +99,6 @@ std::shared_ptr<fuerte::Connection> V8ClientConnection::createConnection() {
     auto res = newConnection->sendRequest(std::move(req));
 
     _lastHttpReturnCode = res->statusCode();
-    if (_lastHttpReturnCode >= 400) {
-      auto const& headers = res->messageHeader().meta();
-      auto it = headers.find("http/1.1");
-      if (it != headers.end()) {
-        _lastErrorMessage = (*it).second;
-      }
-    }
-
-    if (_lastHttpReturnCode != 200) {
-      return nullptr;
-    }
-    
-    std::lock_guard<std::recursive_mutex> guard(_lock);
-    _connection = newConnection;
 
     std::shared_ptr<VPackBuilder> parsedBody;
     VPackSlice body;
@@ -122,10 +110,34 @@ std::shared_ptr<fuerte::Connection> V8ClientConnection::createConnection() {
                                 res->payload().size());
       body = parsedBody->slice();
     }
-    if (!body.isObject()) {
-      _lastErrorMessage = "invalid response";
-      _lastHttpReturnCode = 503;
+    if (_lastHttpReturnCode >= 400) {
+      auto const& headers = res->messageHeader().meta();
+      auto it = headers.find("http/1.1");
+      if (it != headers.end()) {
+        std::string errorMessage = (*it).second;
+        if (body.isObject()) {
+          std::string const msg =
+            VelocyPackHelper::getStringValue(body, StaticStrings::ErrorMessage, "");
+          if (!msg.empty()) {
+            errorMessage = msg;
+          }
+        }
+        setCustomError(_lastHttpReturnCode, errorMessage);
+        return nullptr;
+      }
     }
+
+    if (!body.isObject()) {
+      std::string msg("invalid response: '");
+      msg += std::string(reinterpret_cast<char const*>(res->payload().data()),
+                         res->payload().size());
+      msg += "'";
+      setCustomError(503, msg);
+      return nullptr;
+    }
+    
+    std::lock_guard<std::recursive_mutex> guard(_lock);
+    _connection = newConnection;
 
     std::string const server =
         VelocyPackHelper::getStringValue(body, "server", "");
@@ -157,15 +169,16 @@ std::shared_ptr<fuerte::Connection> V8ClientConnection::createConnection() {
         // major version of server is too low
         //_client->disconnect();
         shutdownConnection();
-        _lastErrorMessage = "Server version number ('" + versionString +
-                            "') is too low. Expecting 3.0 or higher";
+        std::string msg("Server version number ('" + versionString +
+                        "') is too low. Expecting 3.0 or higher");;
+        setCustomError(500, msg);
         return newConnection;
       }
     }
     return _connection;
   } catch (fuerte::Error const& e) {  // connection error
-    _lastErrorMessage = fuerte::to_string(e);
-    _lastHttpReturnCode = 503;
+    std::string msg(fuerte::to_string(e));
+    setCustomError(503, msg);
     return nullptr;
   }
 }
@@ -280,7 +293,8 @@ void V8ClientConnection::reconnect(ClientFeature* client) {
     if (client->getWarnConnect()) {
       LOG_TOPIC("9d7ea", ERR, arangodb::Logger::FIXME)
           << "Could not connect to endpoint '" << client->endpoint()
-          << "', username: '" << client->username() << "'";
+          << "', username: '" << client->username() << "' - Server message: " <<
+        _lastErrorMessage;
     }
 
     std::string errorMsg = "could not connect";
@@ -427,7 +441,7 @@ static void ClientConnection_reconnect(v8::FunctionCallbackInfo<v8::Value> const
   ClientFeature* client = static_cast<ClientFeature*>(wrap->Value());
 
   if (v8connection == nullptr || client == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL("connection class corrupted");
+    TRI_V8_THROW_EXCEPTION_INTERNAL("reconnect() must be invoked on an arango connection object instance.");
   }
 
   if (args.Length() < 2) {
@@ -511,7 +525,7 @@ static void ClientConnection_connectedUser(v8::FunctionCallbackInfo<v8::Value> c
   v8::Local<v8::External> wrap = v8::Local<v8::External>::Cast(args.Data());
   ClientFeature* client = static_cast<ClientFeature*>(wrap->Value());
   if (client == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL("connection class corrupted");
+    TRI_V8_THROW_EXCEPTION_INTERNAL("connectedUser() must be invoked on an arango connection object instance.");
   }
 
   TRI_V8_RETURN(TRI_V8_STD_STRING(isolate, client->username()));
@@ -532,7 +546,7 @@ static void ClientConnection_httpGetAny(v8::FunctionCallbackInfo<v8::Value> cons
       TRI_UnwrapClass<V8ClientConnection>(args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
   if (v8connection == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL("connection class corrupted");
+    TRI_V8_THROW_EXCEPTION_INTERNAL("get() must be invoked on an arango connection object instance.");
   }
 
   // check params
@@ -583,7 +597,7 @@ static void ClientConnection_httpHeadAny(v8::FunctionCallbackInfo<v8::Value> con
       TRI_UnwrapClass<V8ClientConnection>(args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
   if (v8connection == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL("connection class corrupted");
+    TRI_V8_THROW_EXCEPTION_INTERNAL("head() must be invoked on an arango connection object instance.");
   }
 
   // check params
@@ -635,7 +649,7 @@ static void ClientConnection_httpDeleteAny(v8::FunctionCallbackInfo<v8::Value> c
       TRI_UnwrapClass<V8ClientConnection>(args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
   if (v8connection == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL("connection class corrupted");
+    TRI_V8_THROW_EXCEPTION_INTERNAL("delete() must be invoked on an arango connection object instance.");
   }
 
   // check params
@@ -691,7 +705,7 @@ static void ClientConnection_httpOptionsAny(v8::FunctionCallbackInfo<v8::Value> 
       TRI_UnwrapClass<V8ClientConnection>(args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
   if (v8connection == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL("connection class corrupted");
+    TRI_V8_THROW_EXCEPTION_INTERNAL("options() must be invoked on an arango connection object instance.");
   }
 
   // check params
@@ -743,7 +757,7 @@ static void ClientConnection_httpPostAny(v8::FunctionCallbackInfo<v8::Value> con
       TRI_UnwrapClass<V8ClientConnection>(args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
   if (v8connection == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL("connection class corrupted");
+    TRI_V8_THROW_EXCEPTION_INTERNAL("post() must be invoked on an arango connection object instance.");
   }
 
   // check params
@@ -794,7 +808,7 @@ static void ClientConnection_httpPutAny(v8::FunctionCallbackInfo<v8::Value> cons
       TRI_UnwrapClass<V8ClientConnection>(args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
   if (v8connection == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL("connection class corrupted");
+    TRI_V8_THROW_EXCEPTION_INTERNAL("put() must be invoked on an arango connection object instance.");
   }
 
   // check params
@@ -846,7 +860,7 @@ static void ClientConnection_httpPatchAny(v8::FunctionCallbackInfo<v8::Value> co
       TRI_UnwrapClass<V8ClientConnection>(args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
   if (v8connection == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL("connection class corrupted");
+    TRI_V8_THROW_EXCEPTION_INTERNAL("patch() must be invoked on an arango connection object instance.");
   }
 
   // check params
@@ -896,7 +910,7 @@ static void ClientConnection_httpSendFile(v8::FunctionCallbackInfo<v8::Value> co
       TRI_UnwrapClass<V8ClientConnection>(args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
   if (v8connection == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL("connection class corrupted");
+    TRI_V8_THROW_EXCEPTION_INTERNAL("sendFile() must be invoked on an arango connection object instance.");
   }
 
   // check params
@@ -953,7 +967,7 @@ static void ClientConnection_getEndpoint(v8::FunctionCallbackInfo<v8::Value> con
   ClientFeature* client = static_cast<ClientFeature*>(wrap->Value());
 
   if (v8connection == nullptr || client == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL("connection class corrupted");
+    TRI_V8_THROW_EXCEPTION_INTERNAL("getEndpoint() must be invoked on an arango connection object instance.");
   }
 
   // check params
@@ -1151,7 +1165,7 @@ static void ClientConnection_lastHttpReturnCode(v8::FunctionCallbackInfo<v8::Val
       TRI_UnwrapClass<V8ClientConnection>(args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
   if (v8connection == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL("connection class corrupted");
+    TRI_V8_THROW_EXCEPTION_INTERNAL("lastHttpReturnCode() must be invoked on an arango connection object instance.");
   }
 
   // check params
@@ -1176,7 +1190,7 @@ static void ClientConnection_lastErrorMessage(v8::FunctionCallbackInfo<v8::Value
       TRI_UnwrapClass<V8ClientConnection>(args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
   if (v8connection == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL("connection class corrupted");
+    TRI_V8_THROW_EXCEPTION_INTERNAL("lastErrorMessage() must be invoked on an arango connection object instance.");
   }
 
   // check params
@@ -1201,7 +1215,7 @@ static void ClientConnection_isConnected(v8::FunctionCallbackInfo<v8::Value> con
       TRI_UnwrapClass<V8ClientConnection>(args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
   if (v8connection == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL("connection class corrupted");
+    TRI_V8_THROW_EXCEPTION_INTERNAL("isConnected() must be invoked on an arango connection object instance.");
   }
 
   if (args.Length() != 0) {
@@ -1228,7 +1242,7 @@ static void ClientConnection_forceJson(v8::FunctionCallbackInfo<v8::Value> const
       TRI_UnwrapClass<V8ClientConnection>(args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
   if (v8connection == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL("connection class corrupted");
+    TRI_V8_THROW_EXCEPTION_INTERNAL("forceJson() must be invoked on an arango connection object instance.");
   }
 
   if (args.Length() != 1) {
@@ -1238,7 +1252,7 @@ static void ClientConnection_forceJson(v8::FunctionCallbackInfo<v8::Value> const
   v8::Local<v8::External> wrap = v8::Local<v8::External>::Cast(args.Data());
   ClientFeature* client = static_cast<ClientFeature*>(wrap->Value());
   if (client == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL("connection class corrupted");
+    TRI_V8_THROW_EXCEPTION_INTERNAL("forceJson() unable to get client instance");
   }
 
   bool forceJson = TRI_ObjectToBoolean(isolate, args[0]);
@@ -1261,7 +1275,7 @@ static void ClientConnection_timeout(v8::FunctionCallbackInfo<v8::Value> const& 
       TRI_UnwrapClass<V8ClientConnection>(args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
   if (v8connection == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL("connection class corrupted");
+    TRI_V8_THROW_EXCEPTION_INTERNAL("timeout() must be invoked on an arango connection object instance.");
   }
 
   if (args.Length() == 0) {
@@ -1274,7 +1288,7 @@ static void ClientConnection_timeout(v8::FunctionCallbackInfo<v8::Value> const& 
     ClientFeature* client = static_cast<ClientFeature*>(wrap->Value());
 
     if (client == nullptr) {
-      TRI_V8_THROW_EXCEPTION_INTERNAL("connection class corrupted");
+      TRI_V8_THROW_EXCEPTION_INTERNAL("timeout() unable to get client instance");
     }
 
     client->requestTimeout(value);
@@ -1298,7 +1312,10 @@ static void ClientConnection_toString(v8::FunctionCallbackInfo<v8::Value> const&
       TRI_UnwrapClass<V8ClientConnection>(args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
   if (v8connection == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL("connection class corrupted");
+    // when invoking ArangoConnection.toString() we end here, i.e. printObject does this.
+    // be silent about this.
+    isolate->ThrowException(v8::Object::New(isolate));
+    return;
   }
 
   if (args.Length() != 0) {
@@ -1331,7 +1348,7 @@ static void ClientConnection_getVersion(v8::FunctionCallbackInfo<v8::Value> cons
       TRI_UnwrapClass<V8ClientConnection>(args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
   if (v8connection == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL("connection class corrupted");
+    TRI_V8_THROW_EXCEPTION_INTERNAL("getVersion() must be invoked on an arango connection object instance.");
   }
 
   if (args.Length() != 0) {
@@ -1355,7 +1372,7 @@ static void ClientConnection_getMode(v8::FunctionCallbackInfo<v8::Value> const& 
       TRI_UnwrapClass<V8ClientConnection>(args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
   if (v8connection == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL("connection class corrupted");
+    TRI_V8_THROW_EXCEPTION_INTERNAL("getMode() must be invoked on an arango connection object instance.");
   }
 
   if (args.Length() != 0) {
@@ -1379,7 +1396,7 @@ static void ClientConnection_getRole(v8::FunctionCallbackInfo<v8::Value> const& 
       TRI_UnwrapClass<V8ClientConnection>(args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
   if (v8connection == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL("connection class corrupted");
+    TRI_V8_THROW_EXCEPTION_INTERNAL("getRole() must be invoked on an arango connection object instance.");
   }
 
   if (args.Length() != 0) {
@@ -1403,7 +1420,7 @@ static void ClientConnection_getDatabaseName(v8::FunctionCallbackInfo<v8::Value>
       TRI_UnwrapClass<V8ClientConnection>(args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
 
   if (v8connection == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL("connection class corrupted");
+    TRI_V8_THROW_EXCEPTION_INTERNAL("getDatabaseName() must be invoked on an arango connection object instance.");
   }
 
   if (args.Length() != 0) {
@@ -1430,7 +1447,7 @@ static void ClientConnection_setDatabaseName(v8::FunctionCallbackInfo<v8::Value>
   ClientFeature* client = static_cast<ClientFeature*>(wrap->Value());
 
   if (v8connection == nullptr || client == nullptr) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL("connection class corrupted");
+    TRI_V8_THROW_EXCEPTION_INTERNAL("setDatabaseName() must be invoked on an arango connection object instance.");
   }
 
   if (args.Length() != 1 || !args[0]->IsString()) {
@@ -1966,7 +1983,7 @@ void V8ClientConnection::initServer(v8::Isolate* isolate, v8::Local<v8::Context>
                         v8::FunctionTemplate::New(isolate, ClientConnection_timeout, v8client));
 
   connection_proto->Set(isolate, "toString",
-                        v8::FunctionTemplate::New(isolate, ClientConnection_toString));
+                        v8::FunctionTemplate::New(isolate, ClientConnection_toString, v8client));
 
   connection_proto->Set(isolate, "getVersion",
                         v8::FunctionTemplate::New(isolate, ClientConnection_getVersion));

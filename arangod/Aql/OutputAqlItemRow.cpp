@@ -192,9 +192,9 @@ void OutputAqlItemRow::advanceRow() {
   _numValuesWritten = 0;
 }
 
-void OutputAqlItemRow::toVelocyPack(transaction::Methods& trx, VPackBuilder& builder) {
+void OutputAqlItemRow::toVelocyPack(velocypack::Options const* options, VPackBuilder& builder) {
   TRI_ASSERT(produced());
-  block().rowToSimpleVPack(_baseIndex, &trx, builder);
+  block().rowToSimpleVPack(_baseIndex, options, builder);
 }
 
 SharedAqlItemBlockPtr OutputAqlItemRow::stealBlock() {

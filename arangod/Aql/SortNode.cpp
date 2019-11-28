@@ -37,6 +37,8 @@
 #include "Aql/WalkerWorker.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Transaction/Context.h"
+#include "Transaction/Methods.h"
 
 namespace {
 std::string const ConstrainedHeap = "constrained-heap";
@@ -233,12 +235,14 @@ std::unique_ptr<ExecutionBlock> SortNode::createBlock(
     auto it = getRegisterPlan()->varInfo.find(element.var->id);
     TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
     RegisterId id = it->second.registerId;
-    sortRegs.push_back(SortRegister{id, element});
+    sortRegs.emplace_back(id, element);
   }
   SortExecutorInfos infos(std::move(sortRegs), _limit, engine.itemBlockManager(),
                           getRegisterPlan()->nrRegs[previousNode->getDepth()],
-                          getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
-                          calcRegsToKeep(), engine.getQuery()->trx(), _stable);
+                          getRegisterPlan()->nrRegs[getDepth()],
+                          getRegsToClear(), calcRegsToKeep(),
+                          engine.getQuery()->trx()->transactionContextPtr()->getVPackOptions(),
+                          _stable);
   if (sorterType() == SorterType::Standard) {
     return std::make_unique<ExecutionBlockImpl<SortExecutor>>(&engine, this,
                                                               std::move(infos));

@@ -34,6 +34,7 @@
 #include "Aql/Functions.h"
 #include "Aql/Query.h"
 #include "Containers/SmallVector.h"
+#include "Transaction/Context.h"
 #include "Transaction/Methods.h"
 
 #include <velocypack/Builder.h>
@@ -64,16 +65,25 @@ protected:
 
   fakeit::Mock<transaction::Methods> trxMock;
   transaction::Methods& trx;
+  fakeit::Mock<transaction::Context> contextMock;
+  transaction::Context& context;
 
     SmallVector<AqlValue>::allocator_type::arena_type arena;
     SmallVector<AqlValue> paramsA;
     SmallVector<AqlValue> paramsB;
     SmallVector<AqlValue> paramsC;
-  
-    GeoEqualsTest() : expressionContext(expressionContextMock.get()),
-    trx(trxMock.get()), paramsA{arena}, paramsB{arena}, paramsC{arena} {
+
+    GeoEqualsTest()
+        : expressionContext(expressionContextMock.get()),
+          trx(trxMock.get()),
+          context(contextMock.get()),
+          paramsA{arena},
+          paramsB{arena},
+          paramsC{arena} {
+      fakeit::When(Method(trxMock, transactionContextPtr)).AlwaysReturn(&context);
+      fakeit::When(Method(contextMock, getVPackOptions)).AlwaysReturn(&velocypack::Options::Defaults);
     }
-    
+
     ~GeoEqualsTest() {
       clearVector(paramsA);
       clearVector(paramsB);

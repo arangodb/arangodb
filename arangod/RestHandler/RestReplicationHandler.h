@@ -29,6 +29,7 @@
 #include "Basics/Common.h"
 #include "Basics/Result.h"
 #include "Cluster/ResultT.h"
+#include "Cluster/ClusterTypes.h"
 #include "Replication/Syncer.h"
 #include "Replication/common-defines.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
@@ -476,7 +477,9 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   ///        the given time to live.
   //////////////////////////////////////////////////////////////////////////////
   Result createBlockingTransaction(aql::QueryId id, LogicalCollection& col,
-                                   double ttl, AccessMode::Type access) const;
+                                   double ttl, AccessMode::Type access,
+                                   RebootId const& rebootId,
+                                   std::string const& serverId);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Test if we already have the read-lock

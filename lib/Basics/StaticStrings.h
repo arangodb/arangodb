@@ -104,6 +104,7 @@ class StaticStrings {
   static std::string const DatabaseCoordinator;
   static std::string const DatabaseCoordinatorRebootId;
   static std::string const DatabaseIsBuilding;
+  static std::string const Properties;
 
   // LogicalDataSource definition fields
   static std::string const DataSourceDeleted;  // data-source deletion marker
@@ -185,7 +186,6 @@ class StaticStrings {
   static std::string const Origin;
   static std::string const PotentialDirtyRead;
   static std::string const RequestForwardedTo;
-  static std::string const ResponseCode;
   static std::string const Server;
   static std::string const TransferEncoding;
   static std::string const TransactionBody;
@@ -254,6 +254,7 @@ class StaticStrings {
   static std::string const UpgradeEnvName;
   static std::string const BackupToDeleteName;
   static std::string const BackupSearchToDeleteName;
+  static std::string const SerializationFormat;
 };
 }  // namespace arangodb
 
