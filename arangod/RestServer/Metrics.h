@@ -169,7 +169,6 @@ public:
     } else if (t >= _high) {
       ++_c[_n];
     } else {
-      LOG_DEVEL << pos(t);
       ++_c[pos(t)];
     }
     records(t);
