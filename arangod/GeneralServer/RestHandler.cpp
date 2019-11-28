@@ -113,7 +113,15 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
     return futures::makeFuture(Result());
   }
 
-  std::string serverId = forwardingTarget();
+  auto forwardPair = forwardingTarget();
+  std::string serverId = std::get<0>(forwardPair);
+  bool removeHeader = std::get<1>(forwardPair);
+
+  if (removeHeader) {
+    _request->removeHeader(StaticStrings::Authorization);
+    _request->setUser("");
+  }
+
   if (serverId.empty()) {
     // no need to actually forward
     return futures::makeFuture(Result());
