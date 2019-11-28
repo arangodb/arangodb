@@ -21,11 +21,11 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "IResearchDocument.h"
 #include "Basics/Endian.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "IResearchCommon.h"
-#include "IResearchDocument.h"
 #include "IResearchKludge.h"
 #include "IResearchPrimaryKeyFilter.h"
 #include "IResearchViewMeta.h"
@@ -88,7 +88,6 @@ static_assert(arangodb::iresearch::adjacencyChecker<AttributeType>::checkAdjacen
                   AT_TO, AT_FROM, AT_ID, AT_REV, AT_KEY, AT_REG>(),
               "Values are not adjacent");
 
-irs::string_ref const CID_FIELD("@_CID");
 irs::string_ref const PK_COLUMN("@_PK");
 
 // wrapper for use objects with the IResearch unbounded_object_pool
@@ -158,8 +157,7 @@ inline bool keyFromSlice(VPackSlice keySlice, irs::string_ref& key) {
   }
 }
 
-inline bool canHandleValue(std::string const& key,
-                           VPackSlice const& value,
+inline bool canHandleValue(std::string const& key, VPackSlice const& value,
                            arangodb::iresearch::FieldMeta const& context) noexcept {
   switch (value.type()) {
     case VPackValueType::None:
@@ -191,9 +189,8 @@ inline bool canHandleValue(std::string const& key,
 }
 
 // returns 'context' in case if can't find the specified 'field'
-inline arangodb::iresearch::FieldMeta const* findMeta(
-    irs::string_ref const& key,
-    arangodb::iresearch::FieldMeta const* context) {
+inline arangodb::iresearch::FieldMeta const* findMeta(irs::string_ref const& key,
+                                                      arangodb::iresearch::FieldMeta const* context) {
   TRI_ASSERT(context);
 
   auto const* meta = context->_fields.findPtr(key);
@@ -221,8 +218,7 @@ inline bool inObjectFiltered(std::string& buffer,
   return canHandleValue(buffer, value.value, *context);
 }
 
-inline bool inObject(std::string& buffer,
-                     arangodb::iresearch::FieldMeta const*& context,
+inline bool inObject(std::string& buffer, arangodb::iresearch::FieldMeta const*& context,
                      arangodb::iresearch::IteratorValue const& value) {
   irs::string_ref key;
 
@@ -246,37 +242,33 @@ inline bool inArrayOrdered(std::string& buffer,
   return canHandleValue(buffer, value.value, *context);
 }
 
-inline bool inArray(std::string& buffer,
-                    arangodb::iresearch::FieldMeta const*& context,
+inline bool inArray(std::string& buffer, arangodb::iresearch::FieldMeta const*& context,
                     arangodb::iresearch::IteratorValue const& value) noexcept {
   return canHandleValue(buffer, value.value, *context);
 }
 
-typedef bool (*Filter)(std::string& buffer,
-                       arangodb::iresearch::FieldMeta const*& context,
+typedef bool (*Filter)(std::string& buffer, arangodb::iresearch::FieldMeta const*& context,
                        arangodb::iresearch::IteratorValue const& value);
 
 Filter const valueAcceptors[] = {
-  // type == Object, nestListValues == false, // includeAllValues == false
-  &inObjectFiltered,
-  // type == Object, nestListValues == false, includeAllValues == // true
-  &inObject,
-  // type == Object, nestListValues == true , // includeAllValues == false
-  &inObjectFiltered,
-  // type == Object, nestListValues == true , includeAllValues == // true
-  &inObject,
-  // type == Array , nestListValues == flase, includeAllValues == // false
-  &inArray,
-  // type == Array , nestListValues == flase, includeAllValues == // true
-  &inArray,
-  // type == Array , nestListValues == true, // includeAllValues == false
-  &inArrayOrdered,
-  // type == Array , nestListValues == true, includeAllValues // == true
-  &inArrayOrdered
-};
+    // type == Object, nestListValues == false, // includeAllValues == false
+    &inObjectFiltered,
+    // type == Object, nestListValues == false, includeAllValues == // true
+    &inObject,
+    // type == Object, nestListValues == true , // includeAllValues == false
+    &inObjectFiltered,
+    // type == Object, nestListValues == true , includeAllValues == // true
+    &inObject,
+    // type == Array , nestListValues == flase, includeAllValues == // false
+    &inArray,
+    // type == Array , nestListValues == flase, includeAllValues == // true
+    &inArray,
+    // type == Array , nestListValues == true, // includeAllValues == false
+    &inArrayOrdered,
+    // type == Array , nestListValues == true, includeAllValues // == true
+    &inArrayOrdered};
 
-inline Filter getFilter(VPackSlice value,
-                        arangodb::iresearch::FieldMeta const& meta) noexcept {
+inline Filter getFilter(VPackSlice value, arangodb::iresearch::FieldMeta const& meta) noexcept {
   TRI_ASSERT(arangodb::iresearch::isArrayOrObject(value));
 
   return valueAcceptors[4 * value.isArray() + 2 * meta._trackListPositions + meta._includeAllFields];
@@ -416,16 +408,15 @@ void FieldIterator::setNullValue(VPackSlice const value) {
 
   // set field properties
   _value._name = name;
-  _value._analyzer = stream.release(); // FIXME don't use shared_ptr
+  _value._analyzer = stream.release();  // FIXME don't use shared_ptr
   _value._features = &irs::flags::empty_instance();
 }
 
-bool FieldIterator::setStringValue(
-    arangodb::velocypack::Slice const value,
-    FieldMeta::Analyzer const& valueAnalyzer) {
-  TRI_ASSERT( // assert
-    (value.isCustom() && nameBuffer() == arangodb::StaticStrings::IdString) // custom string
-    || value.isString()); // verbatim string
+bool FieldIterator::setStringValue(arangodb::velocypack::Slice const value,
+                                   FieldMeta::Analyzer const& valueAnalyzer) {
+  TRI_ASSERT(  // assert
+      (value.isCustom() && nameBuffer() == arangodb::StaticStrings::IdString)  // custom string
+      || value.isString());  // verbatim string
 
   irs::string_ref valueRef;
 
@@ -438,10 +429,10 @@ bool FieldIterator::setStringValue(
     auto const baseSlice = _stack.front().it.slice();
     auto& buffer = valueBuffer();
 
-    buffer = transaction::helpers::extractIdString( // extract id
-      _trx->resolver(), // resolver
-      value, // value
-      baseSlice // base slice
+    buffer = transaction::helpers::extractIdString(  // extract id
+        _trx->resolver(),                            // resolver
+        value,                                       // value
+        baseSlice                                    // base slice
     );
 
     valueRef = buffer;
@@ -452,7 +443,8 @@ bool FieldIterator::setStringValue(
   auto& pool = valueAnalyzer._pool;
 
   if (!pool) {
-    LOG_TOPIC("189da", WARN, iresearch::TOPIC) << "got nullptr analyzer factory";
+    LOG_TOPIC("189da", WARN, iresearch::TOPIC)
+        << "got nullptr analyzer factory";
 
     return false;
   }

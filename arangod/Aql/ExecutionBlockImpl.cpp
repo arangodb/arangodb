@@ -155,14 +155,6 @@ ExecutionBlockImpl<Executor>::~ExecutionBlockImpl() = default;
 
 template <class Executor>
 std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::getSome(size_t atMost) {
-  /*
-  getSome(x) = > {
-    offset: 0,
-    batchSize : x,
-    limit : AqlCall::Infinity{},
-    fullCount : <egal> | false
-  }
-  */
   traceGetSomeBegin(atMost);
   auto result = getSomeWithoutTrace(atMost);
   return traceGetSomeEnd(result.first, std::move(result.second));
@@ -433,14 +425,6 @@ static SkipVariants constexpr skipType() {
 
 template <class Executor>
 std::pair<ExecutionState, size_t> ExecutionBlockImpl<Executor>::skipSome(size_t const atMost) {
-  /*
-  skipSome(x) = > AqlCall{
-    offset : x,
-    batchSize : 0,
-    limit : AqlCall::Infinity{},
-    fullCount : <egal> | false
-  }
-  */
   traceSkipSomeBegin(atMost);
   auto state = ExecutionState::HASMORE;
 

@@ -91,13 +91,18 @@ class FilterExecutor {
   [[nodiscard]] std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
 
   /**
-   * @brief produce the next Row of Aql Values.
+   * @brief produce the next Rows of Aql Values.
    *
    * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
    */
   [[nodiscard]] std::tuple<ExecutorState, Stats, AqlCall> produceRows(
       size_t atMost, AqlItemBlockInputRange& input, OutputAqlItemRow& output);
 
+  /**
+   * @brief skip the next Row of Aql Values.
+   *
+   * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
+   */
   [[nodiscard]] std::tuple<ExecutorState, size_t, AqlCall> skipRowsRange(
       size_t atMost, AqlItemBlockInputRange& input);
 
