@@ -44,7 +44,6 @@
     "/mode-aql.js": {
       "path": "react/build/assets/src/mode-aql.js",
       "gzip": false
-    },
-    "/ext-searchbox.js": "frontend/src/ext-searchbox.js"
+    }
   }
 }

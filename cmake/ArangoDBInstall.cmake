@@ -74,14 +74,19 @@ include(InstallArangoDBJSClient)
 ### @brief install server-side JavaScript files
 ################################################################################
 
+# js/apps/system/_admin/aardvark/APP/manifest.json list files must be included
 install(
   DIRECTORY
     ${PROJECT_SOURCE_DIR}/js/actions
     ${PROJECT_SOURCE_DIR}/js/apps
     ${PROJECT_SOURCE_DIR}/js/server
   DESTINATION ${CMAKE_INSTALL_DATAROOTDIR_ARANGO}/${ARANGODB_JS_VERSION}
-  REGEX       "^.*/aardvark/APP/node_modules$"             EXCLUDE
-  REGEX       "^.*/aardvark/APP/frontend/js/lib"           EXCLUDE
+  REGEX       "^.*/aardvark/APP/react/node_modules$"       EXCLUDE
+  REGEX       "^.*/aardvark/APP/react/build$"              EXCLUDE
+  REGEX       "^.*/aardvark/APP/react/build/static"        INCLUDE
+  REGEX       "^.*/aardvark/APP/react/build/public"        INCLUDE
+  REGEX       "^.*/aardvark/APP/frontend$"                 EXCLUDE
+  REGEX       "^.*/aardvark/APP/frontend/img"              INCLUDE
   REGEX       "^.*/js/server/assets/swagger/*.map$"        EXCLUDE
   REGEX       "^.*/.bin"                                   EXCLUDE
 )
