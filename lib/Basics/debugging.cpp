@@ -60,13 +60,18 @@ void TRI_SegfaultDebugging(char const* message) {
   TRI_FlushDebugging();
 
   // and now crash
-#ifndef __APPLE__
-  // on MacOS, the following statement makes the server hang but not crash
-  *((char*)-1) = '!';
+#ifdef _WIN32
+  auto hSelf = GetCurrentProcess();
+  TerminateProcess(hSelf, -999);
+  // TerminateProcess is async, alright wait here  for selfdestruct (we will never exit wait)
+  WaitForSingleObject(hSelf, INFINITE);
+#else
+  kill(getpid(), SIGKILL);  //to kill the complete process tree.
+  std::this_thread::sleep_for(std::chrono::seconds(5));
 #endif
 
   // ensure the process is terminated
-  abort();
+  TRI_ASSERT(false);
 }
 
 /// @brief check whether we should fail at a specific failure point
