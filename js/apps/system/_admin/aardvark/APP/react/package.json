@@ -49,7 +49,7 @@
     "http-proxy-middleware": "^0.20.0",
     "identity-obj-proxy": "3.0.0",
     "imports-loader": "^0.8.0",
-    "jest": "23.6.0",
+    "jest": "^25.0.0",
     "jest-pnp-resolver": "1.0.1",
     "jest-resolve": "23.6.0",
     "jquery": "2.1.2",
