@@ -525,14 +525,18 @@
         this.waitForInit(this.logger.bind(this));
         return;
       }
-      if (!this.loggerView) {
-        var co = new window.ArangoLogs(
-          {upto: true, loglevel: 4}
-        );
-        this.loggerView = new window.LoggerView({
-          collection: co
-        });
+
+      if (this.loggerView) {
+        this.loggerView.remove();
       }
+
+      var co = new window.ArangoLogs({
+        upto: true,
+        loglevel: 4
+      });
+      this.loggerView = new window.LoggerView({
+        collection: co
+      });
       this.loggerView.render();
     },
 
