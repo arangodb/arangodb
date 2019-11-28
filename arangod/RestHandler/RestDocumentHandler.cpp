@@ -45,7 +45,12 @@ using namespace arangodb::rest;
 
 RestDocumentHandler::RestDocumentHandler(application_features::ApplicationServer& server,
                                          GeneralRequest* request, GeneralResponse* response)
-    : RestVocbaseBaseHandler(server, request, response) {}
+    : RestVocbaseBaseHandler(server, request, response) {
+  if(request->requestType() == rest::RequestType::POST
+      && request->contentLength() <= 1024) {
+    _allowDirectExecution = true;
+  }
+}
 
 RestDocumentHandler::~RestDocumentHandler() = default;
 
