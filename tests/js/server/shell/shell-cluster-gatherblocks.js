@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertFalse, assertTrue, assertNotEqual, AQL_EXPLAIN, AQL_EXECUTE */
+/*global assertEqual, assertFalse, assertTrue, assertNotEqual, AQL_EXPLAIN, AQL_EXECUTE, print */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests that tests if collecting results from multiple
@@ -113,7 +113,7 @@ function gatherBlocksTestSuite() {
         let query3 = 'for doc in @@col SORT doc.value return doc';
         let bindvars3 = false;
 
-        //q(int) query 
+        //q(int) query
         //s(int) shards
         //i(bool) index
         let tests = [
@@ -124,7 +124,6 @@ function gatherBlocksTestSuite() {
           { test : "q3s3if", query: query3, bindvars: bindvars3, collection: colName1, gathernodes: 1, sortmode: 'minelement' , count: 4000        , sorted: true },
           { test : "q3s9if", query: query3, bindvars: bindvars3, collection: colName2, gathernodes: 1, sortmode: 'heap'       , count: documents   , sorted: true },
         ];
-
         let loop = 10;
         tests.forEach(t => {
             var assertMessage;
@@ -156,10 +155,19 @@ function gatherBlocksTestSuite() {
             var time = 0;
             for(var i=0; i < loop; i++){
               let start = Date.now();
-              rv = db._query(t.query , bindvars);
-              rv = rv.toArray().map(doc => { return doc.value; } );
-              time += (Date.now() - start);
+              try  {
+                rv = db._query(t.query , bindvars);
+                rv = rv.toArray().map(doc => { return doc.value; } );
+                time += (Date.now() - start);
+              }
+              catch (ex) {
+                print("Failed in " + t.query);
+                print(bindvars);
+                db._explain(t.query , bindvars);
+                print(ex);
 
+                throw ex;
+              }
               // check number of returned documents
               assertEqual(rv.length, t.count);
 

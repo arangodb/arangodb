@@ -34,21 +34,18 @@ void resolveConnect(detail::ConnectionConfiguration const& config,
                     asio_ns::ip::tcp::resolver& resolver,
                     SocketT& socket,
                     F&& done) {
-  auto cb = [&socket, done = std::forward<F>(done)]
-  (asio_ns::error_code const& ec,
-   asio_ns::ip::tcp::resolver::iterator it) {
-    if (ec) { // error
+  auto cb = [&socket, done(std::forward<F>(done))](auto ec, auto it) mutable {
+    if (ec) { // error in address resolver
       done(ec);
       return;
     }
     
     // A successful resolve operation is guaranteed to pass a
     // non-empty range to the handler.
-    auto cb = [done](asio_ns::error_code const& ec,
-                     asio_ns::ip::tcp::resolver::iterator const&) {
-      done(ec);
-    };
-    asio_ns::async_connect(socket, it, std::move(cb));
+    asio_ns::async_connect(socket, it,
+      [done(std::move(done))](auto ec, auto it) mutable {
+      std::forward<F>(done)(ec);
+    });
   };
   
   // windows does not like async_resolve
@@ -114,7 +111,9 @@ struct Socket<fuerte::SocketType::Ssl> {
   
   template<typename F>
   void connect(detail::ConnectionConfiguration const& config, F&& done) {
-    auto cb = [this, &config, done = std::forward<F>(done)](asio_ns::error_code const& ec) {
+    bool verify = config._verifyHost;    
+    resolveConnect(config, resolver, socket.next_layer(),
+                   [=, done(std::forward<F>(done))](auto const& ec) mutable {
       if (ec) {
         done(ec);
         return;
@@ -122,7 +121,7 @@ struct Socket<fuerte::SocketType::Ssl> {
       
       // Perform SSL handshake and verify the remote host's certificate.
       socket.next_layer().set_option(asio_ns::ip::tcp::no_delay(true));
-      if (config._verifyHost) {
+      if (verify) {
         socket.set_verify_mode(asio_ns::ssl::verify_peer);
         socket.set_verify_callback(asio_ns::ssl::rfc2818_verification(config._host));
       } else {
@@ -130,9 +129,7 @@ struct Socket<fuerte::SocketType::Ssl> {
       }
       
       socket.async_handshake(asio_ns::ssl::stream_base::client, std::move(done));
-    };
-    
-    resolveConnect(config, resolver, socket.next_layer(), std::move(cb));
+    });
   }
   
   void shutdown() {
