@@ -75,12 +75,10 @@ void GeneralConnection<ST>::shutdownConnection(const Error err,
   auto state = _state.load();
   if (state != Connection::State::Failed) {
     state = Connection::State::Disconnected;
-#ifdef __linux__
-    // hack to fix SSL streams on linux
+    // hack to fix SSL streams
     if (_config._socketType == SocketType::Ssl) {
       state = Connection::State::Failed;
     }
-#endif
     _state.store(state);
   }
 
