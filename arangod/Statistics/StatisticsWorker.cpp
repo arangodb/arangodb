@@ -126,15 +126,23 @@ void StatisticsWorker::collectGarbage() {
   // but only one task at a time. this should spread the load more evenly
   auto time = TRI_microtime();
 
-  if (_gcTask == GC_STATS) {
-    collectGarbage(statisticsCollection, time - 3600.0);  // 1 hour
-    _gcTask = GC_STATS_RAW;
-  } else if (_gcTask == GC_STATS_RAW) {
-    collectGarbage(statisticsRawCollection, time - 3600.0);  // 1 hour
-    _gcTask = GC_STATS_15;
-  } else if (_gcTask == GC_STATS_15) {
-    collectGarbage(statistics15Collection, time - 30.0 * 86400.0);  // 30 days
-    _gcTask = GC_STATS;
+  try {
+    if (_gcTask == GC_STATS) {
+      collectGarbage(statisticsCollection, time - 3600.0);  // 1 hour
+      _gcTask = GC_STATS_RAW;
+    } else if (_gcTask == GC_STATS_RAW) {
+      collectGarbage(statisticsRawCollection, time - 3600.0);  // 1 hour
+      _gcTask = GC_STATS_15;
+    } else if (_gcTask == GC_STATS_15) {
+      collectGarbage(statistics15Collection, time - 30.0 * 86400.0);  // 30 days
+      _gcTask = GC_STATS;
+    }
+  } catch (basics::Exception const& ex) {
+    if (ex.code() != TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
+      // if the underlying collection does not exist, it does not matter
+      // that the garbage collection query failed
+      throw;
+    }
   }
 }
 
@@ -1304,6 +1312,7 @@ void StatisticsWorker::run() {
 
   uint64_t seconds = 0;
   while (!isStopping() && StatisticsFeature::enabled()) {
+    seconds++;
     try {
       if (seconds % STATISTICS_INTERVAL == 0) {
         // new stats are produced every 10 seconds
@@ -1325,8 +1334,6 @@ void StatisticsWorker::run() {
       LOG_TOPIC("9a4f9", WARN, Logger::STATISTICS)
           << "caught unknown exception in StatisticsWorker";
     }
-
-    seconds++;
 
     CONDITION_LOCKER(guard, _cv);
     guard.wait(1000 * 1000);
