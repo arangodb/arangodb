@@ -1,6 +1,9 @@
 devel
 -----
 
+* rename `minReplicationFactor` info `writeConcern` to make it consistent with
+  `--cluster.write-concern` and avoid confusion with `--cluster.min-replication-factor`
+
 * Enable the `parallelize-gather` AQL optimizer rule for certain write queries. 
 
   The optimization is turned on by default and can be disabled by setting the
