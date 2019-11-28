@@ -195,7 +195,7 @@
         "options" : {
           "sharding" : sharding,
           "replicationFactor" : Number(replicationFactor),
-          "minReplicationFactor" : Number(writeConcern),
+          "writeConcern" : Number(writeConcern),
         },
         users: [{
           username: userName
@@ -406,7 +406,7 @@
           window.modalView.createTextEntry(
             'new-write-concern',
             'Minimum replication factor',
-            dbDefaultProperties.minReplicationFactor,
+            dbDefaultProperties.writeConcern,
             'Numeric value. Must be at least 1 and must be smaller or equal compared to the replication factor. Minimal number of copies of the data in the cluster to be in sync in order to allow writes.',
             'Default minimum replication factor',
             false,

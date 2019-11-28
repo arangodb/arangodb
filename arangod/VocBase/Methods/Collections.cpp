@@ -68,8 +68,9 @@
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
-using namespace arangodb::basics;
 using namespace arangodb::methods;
+
+using Helper = arangodb::basics::VelocyPackHelper;
 
 Collections::Context::Context(TRI_vocbase_t& vocbase, LogicalCollection& coll)
     : _vocbase(vocbase), _coll(coll), _trx(nullptr), _responsibleForTrx(true) {}
@@ -138,10 +139,10 @@ void Collections::enumerate(TRI_vocbase_t* vocbase,
   }
 }
 
-/*static*/ arangodb::Result methods::Collections::lookup(  // find collection
+/*static*/ Result methods::Collections::lookup(  // find collection
     TRI_vocbase_t const& vocbase,                          // vocbase to search
     std::string const& name,                               // collection name
-    FuncCallback func  // invoke on found collection
+    std::shared_ptr<LogicalCollection>& ret
 ) {
   if (name.empty()) {
     return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
@@ -159,7 +160,6 @@ void Collections::enumerate(TRI_vocbase_t* vocbase,
       auto& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
 
       auto coll = ci.getCollectionNT(vocbase.name(), name);
-
       if (coll) {
         // check authentication after ensuring the collection exists
         if (!ExecContext::current().canUseCollection(vocbase.name(), coll->name(), auth::Level::RO)) {
@@ -167,7 +167,7 @@ void Collections::enumerate(TRI_vocbase_t* vocbase,
                         "No access to collection '" + name + "'");
         }
 
-        func(coll);
+        ret = std::move(coll);
 
         return Result();
       } else {
@@ -193,7 +193,7 @@ void Collections::enumerate(TRI_vocbase_t* vocbase,
                     "No access to collection '" + name + "'");
     }
     try {
-      func(coll);
+      ret = std::move(coll);
     } catch (basics::Exception const& ex) {
       return Result(ex.code(), ex.what());
     } catch (std::exception const& ex) {
@@ -216,7 +216,7 @@ void Collections::enumerate(TRI_vocbase_t* vocbase,
     bool createWaitsForSyncReplication,             // replication wait flag
     bool enforceReplicationFactor,                  // replication factor flag
     bool isNewDatabase,
-    FuncCallback func) {  // invoke on collection creation
+    std::shared_ptr<LogicalCollection>& ret) {  // invoke on collection creation
   if (name.empty()) {
     events::CreateCollection(vocbase.name(), name, TRI_ERROR_ARANGO_ILLEGAL_NAME);
     return TRI_ERROR_ARANGO_ILLEGAL_NAME;
@@ -226,12 +226,14 @@ void Collections::enumerate(TRI_vocbase_t* vocbase,
     return TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID;
   }
   std::vector<CollectionCreationInfo> infos{{name, collectionType, properties}};
-  return create(vocbase, infos, createWaitsForSyncReplication,
-                enforceReplicationFactor, isNewDatabase, nullptr,
-                [&func](std::vector<std::shared_ptr<LogicalCollection>> const& cols) {
-                  TRI_ASSERT(cols.size() == 1);
-                  func(cols[0]);
-                });
+  std::vector<std::shared_ptr<LogicalCollection>> collections;
+  Result res = create(vocbase, infos, createWaitsForSyncReplication,
+                      enforceReplicationFactor, isNewDatabase, nullptr,
+                      collections);
+  if (res.ok() && collections.size() > 0) {
+    ret = std::move(collections[0]);
+  }
+  return res;
 }
 
 Result Collections::create(TRI_vocbase_t& vocbase,
@@ -239,7 +241,7 @@ Result Collections::create(TRI_vocbase_t& vocbase,
                            bool createWaitsForSyncReplication,
                            bool enforceReplicationFactor, bool isNewDatabase,
                            std::shared_ptr<LogicalCollection> const& colToDistributeShardsLike,
-                           MultiFuncCallback const& func) {
+                           std::vector<std::shared_ptr<LogicalCollection>>& ret) {
   ExecContext const& exec = ExecContext::current();
   if (!exec.canUseDatabase(vocbase.name(), auth::Level::RW)) {
     for (auto const& info : infos) {
@@ -299,7 +301,7 @@ Result Collections::create(TRI_vocbase_t& vocbase,
       }
 
       if (!vocbase.IsSystemName(info.name)) {
-        uint64_t numberOfShards = arangodb::basics::VelocyPackHelper::getNumericValue<uint64_t>(info.properties, StaticStrings::NumberOfShards, 0);
+        uint64_t numberOfShards = Helper::getNumericValue<uint64_t>(info.properties, StaticStrings::NumberOfShards, 0);
         // system-collections will be sharded normally. only user collections will get
         // the forced sharding
         if (vocbase.server().getFeature<ClusterFeature>().forceOneShard()) {
@@ -316,16 +318,20 @@ Result Collections::create(TRI_vocbase_t& vocbase,
         }
       }
 
-      // not an error: for historical reasons the write concern is read from the
-      // variable "minReplicationFactor"
-      auto writeConcernSlice = info.properties.get(StaticStrings::MinReplicationFactor);
+      auto writeConcernSlice = info.properties.get(StaticStrings::WriteConcern);
+      if (writeConcernSlice.isNone()) { // "minReplicationFactor" deprecated in 3.6
+        writeConcernSlice = info.properties.get(StaticStrings::MinReplicationFactor);
+      }
+      
       if (writeConcernSlice.isNone()) {
         helper.add(StaticStrings::MinReplicationFactor, VPackValue(vocbase.writeConcern()));
+        helper.add(StaticStrings::WriteConcern, VPackValue(vocbase.writeConcern()));
       }
     } else  { // single server
       helper.add(StaticStrings::DistributeShardsLike, VPackSlice::nullSlice()); //delete empty string from info slice
       helper.add(StaticStrings::ReplicationFactor, VPackSlice::nullSlice());
-      helper.add(StaticStrings::MinReplicationFactor, VPackSlice::nullSlice());
+      helper.add(StaticStrings::MinReplicationFactor, VPackSlice::nullSlice()); // deprecated
+      helper.add(StaticStrings::WriteConcern, VPackSlice::nullSlice());
     }
 
     helper.close();
@@ -426,7 +432,7 @@ Result Collections::create(TRI_vocbase_t& vocbase,
             << "Updating user failed with error: " << r.errorMessage() << ". trying again";
       }
     }
-    func(collections);
+    ret = std::move(collections);
   } catch (basics::Exception const& ex) {
     for (auto const& info : infos) {
       events::CreateCollection(vocbase.name(), info.name, ex.code());
@@ -467,7 +473,8 @@ void Collections::createSystemCollectionProperties(std::string const& collection
     bb.add(StaticStrings::WaitForSyncString, VPackSlice::falseSlice());
     bb.add(StaticStrings::JournalSize, VPackValue(1024 * 1024));
     bb.add(StaticStrings::ReplicationFactor, VPackValue(defaultReplicationFactor));
-    bb.add(StaticStrings::MinReplicationFactor, VPackValue(defaultWriteConcern));
+    bb.add(StaticStrings::MinReplicationFactor, VPackValue(defaultWriteConcern));  // deprecated
+    bb.add(StaticStrings::WriteConcern, VPackValue(defaultWriteConcern));
 
     // that forces all collections to be on the same physical DBserver
     if (vocbase.isSystem()) {
@@ -482,23 +489,16 @@ void Collections::createSystemCollectionProperties(std::string const& collection
   }
 }
 
-/*static*/ std::pair<Result, std::shared_ptr<LogicalCollection>> Collections::createSystem(
-    TRI_vocbase_t& vocbase, std::string const& name, bool isNewDatabase) {
+/*static*/ Result Collections::createSystem(
+    TRI_vocbase_t& vocbase, std::string const& name, bool isNewDatabase,
+    std::shared_ptr<LogicalCollection>& createdCollection) {
 
-  std::shared_ptr<LogicalCollection> createdCollection;
-
-  FuncCallback const returnColPtr =
-      [&createdCollection](std::shared_ptr<LogicalCollection> const& col) -> void {
-    TRI_ASSERT(col!=nullptr);
-    createdCollection = col;
-  };
-
-  Result res = methods::Collections::lookup(vocbase, name, returnColPtr);
+  Result res = methods::Collections::lookup(vocbase, name, createdCollection);
 
   if (res.ok()) {
     // Collection lookup worked and we have a pointer to the collection
-    TRI_ASSERT(createdCollection!=nullptr);
-    return {res, createdCollection};
+    TRI_ASSERT(createdCollection);
+    return res;
   } else if (res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
     VPackBuilder bb;
     createSystemCollectionProperties(name, bb, vocbase);
@@ -510,17 +510,17 @@ void Collections::createSystemCollectionProperties(std::string const& collection
                               true,        // waitsForSyncReplication
                               true,        // enforceReplicationFactor
                               isNewDatabase,
-                              returnColPtr);  // callback
+                              createdCollection);
 
     if (res.ok()) {
-      TRI_ASSERT(createdCollection!=nullptr);
-      return {res, createdCollection};
+      TRI_ASSERT(createdCollection);
+      return res;
     }
   }
 
   // Something went wrong, we return res and nullptr
   TRI_ASSERT(!res.ok());
-  return {res, nullptr};
+  return res;
 }
 
 Result Collections::load(TRI_vocbase_t& vocbase, LogicalCollection* coll) {
@@ -602,10 +602,12 @@ Result Collections::properties(Context& ctxt, VPackBuilder& builder) {
 }
 
 Result Collections::updateProperties(LogicalCollection& collection,
-                                     velocypack::Slice const& props, bool partialUpdate) {
+                                     velocypack::Slice const& props) {
+  const bool partialUpdate = false; // always a full update for collections
+  
   ExecContext const& exec = ExecContext::current();
   bool canModify = exec.canUseCollection(collection.name(), auth::Level::RW);
-
+  
   if (!canModify || !exec.canUseDatabase(auth::Level::RW)) {
     return TRI_ERROR_FORBIDDEN;
   }
@@ -615,6 +617,27 @@ Result Collections::updateProperties(LogicalCollection& collection,
         collection.vocbase().server().getFeature<ClusterFeature>().clusterInfo();
     auto info = ci.getCollection(collection.vocbase().name(),
                                  std::to_string(collection.id()));
+    
+    // replication checks
+    int64_t replFactor = Helper::getNumericValue<int64_t>(props, StaticStrings::ReplicationFactor, 0);
+    if (replFactor > 0) {
+      if (static_cast<size_t>(replFactor) > ci.getCurrentDBServers().size()) {
+        return TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS;
+      }
+    }
+    
+    // not an error: for historical reasons the write concern is read from the
+    // variable "minReplicationFactor" if it exists
+    uint64_t writeConcern = Helper::getNumericValue(props, StaticStrings::MinReplicationFactor, 0);
+    if (props.hasKey(StaticStrings::WriteConcern)) {
+      writeConcern = Helper::getNumericValue(props, StaticStrings::WriteConcern, 0);
+    }
+
+    // write-concern checks
+    if (writeConcern > ci.getCurrentDBServers().size()) {
+      TRI_ASSERT(writeConcern > 0);
+      return TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS;
+    }
 
     Result res = ShardingInfo::validateShardsAndReplicationFactor(props, collection.vocbase().server());
     if (res.fail()) {
@@ -656,7 +679,7 @@ static int RenameGraphCollections(TRI_vocbase_t* vocbase, std::string const& old
     return TRI_ERROR_NO_ERROR;  // V8 might is disabled
   }
 
-  StringBuffer buffer(true);
+  basics::StringBuffer buffer(true);
   buffer.appendText(
       "require('@arangodb/general-graph-common')._renameCollection(");
   buffer.appendJsonEncoded(oldName.c_str(), oldName.size());

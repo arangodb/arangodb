@@ -354,18 +354,16 @@ VocbaseOptions getVocbaseOptions(application_features::ApplicationServer& server
   }
 
   {
-    // not an error: for historical reasons the write concern is read from the
-    // variable "minReplicationFactor"
-    VPackSlice writeConcernSlice = options.get(StaticStrings::MinReplicationFactor);
+    // simon: new API in 3.6 no need to check legacy "minReplicationFactor"
+    VPackSlice writeConcernSlice = options.get(StaticStrings::WriteConcern);
     bool isNumber =
         (writeConcernSlice.isNumber() && writeConcernSlice.getNumber<int>() > 0);
     if (!isNumber) {
       if (haveCluster) {
         vocbaseOptions.writeConcern = server.getFeature<ClusterFeature>().writeConcern();
       } else {
-        // note: writeConcern is named "minReplicationFactor" in the APIs for historical reasons
         LOG_TOPIC("eeeed", ERR, Logger::CLUSTER)
-            << "Cannot access ClusterFeature to determine minReplicationFactor";
+            << "Cannot access ClusterFeature to determine writeConcern";
       }
     } else if (isNumber) {
       vocbaseOptions.writeConcern =
@@ -386,7 +384,7 @@ void addClusterOptions(VPackBuilder& builder, std::string const& sharding,
   } else {  // 0 is satellite
     builder.add(StaticStrings::ReplicationFactor, VPackValue(StaticStrings::Satellite));
   }
-  builder.add(StaticStrings::MinReplicationFactor, VPackValue(writeConcern));
+  builder.add(StaticStrings::WriteConcern, VPackValue(writeConcern));
 }
 
 void addClusterOptions(VPackBuilder& builder, VocbaseOptions const& opt) {
