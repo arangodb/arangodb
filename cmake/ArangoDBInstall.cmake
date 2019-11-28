@@ -82,11 +82,6 @@ install(
     ${PROJECT_SOURCE_DIR}/js/server
   DESTINATION ${CMAKE_INSTALL_DATAROOTDIR_ARANGO}/${ARANGODB_JS_VERSION}
   REGEX       "^.*/aardvark/APP/react/node_modules$"       EXCLUDE
-  REGEX       "^.*/aardvark/APP/react/build$"              EXCLUDE
-  REGEX       "^.*/aardvark/APP/react/build/static"        INCLUDE
-  REGEX       "^.*/aardvark/APP/react/build/public"        INCLUDE
-  REGEX       "^.*/aardvark/APP/frontend$"                 EXCLUDE
-  REGEX       "^.*/aardvark/APP/frontend/img"              INCLUDE
   REGEX       "^.*/js/server/assets/swagger/*.map$"        EXCLUDE
   REGEX       "^.*/.bin"                                   EXCLUDE
 )
