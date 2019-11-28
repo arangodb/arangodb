@@ -30,7 +30,7 @@ function sendQuery (count, async) {
     }
   }
   if (async === true) {
-    internal.wait(1);
+    internal.wait(1, false);
   }
 }
 
@@ -104,13 +104,35 @@ describe('AQL query analyzer', function () {
       if (isServer && internal.debugCanUseFailAt()) {
         internal.debugClearFailAt();
       }
-      const list = testee.current().filter(filterQueries);
-      for (let item of list) {
-        try {
-          testee.kill(item.id);
-        } catch (e) {
-          // noop
+      // kill all async tasks that will execute the query that we
+      // are looking for
+      tasks.get().forEach(function(task) {
+        if (task.command.match(/SLEEP\(@value\)/)) {
+          try {
+            tasks.unregister(task.id);
+          } catch (err) {
+            // not an error if this fails, as the task may have completed 
+            // between `tasks.get()` and `tasks.unregister()`
+          }
         }
+      });
+      // wait a bit for tasks to be finished
+      internal.wait(0.2, false);
+      // now kill all queries we are looking for that may still be
+      // executed
+      while (true) {
+        const list = testee.current().filter(filterQueries);
+        if (list.length === 0) {
+          break;
+        }
+        for (let item of list) {
+          try {
+            testee.kill(item.id);
+          } catch (e) {
+            // noop
+          }
+        }
+        internal.wait(0.1, false);
       }
     });
 
@@ -182,7 +204,7 @@ describe('AQL query analyzer', function () {
         if (testee.current().filter(filterQueries).length === 0) {
           break;
         }
-        internal.wait(1);
+        internal.wait(1, false);
       }
 
       expect(testee.current().filter(filterQueries).length).to.equal(0);
