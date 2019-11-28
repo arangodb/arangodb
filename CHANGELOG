@@ -1,10 +1,10 @@
 v3.4.9 (XXXX-XX-XX)
 -------------------
 
+* Updated arangosync to 0.7.1.
+
 * Fixed issue #10470: The WebUI now shows potential errors and details which
   occured using _api/import (e.g. unique constraint violated).
-
-* Updated arangosync to 0.7.0.
 
 * Make the timeouts for replication requests (for active failover and master-slave 
   replication configurable via startup options:
