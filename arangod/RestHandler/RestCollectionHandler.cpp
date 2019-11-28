@@ -616,6 +616,10 @@ RestStatus RestCollectionHandler::handleCommandPut() {
         "expecting one of the actions 'load', 'unload', 'truncate',"
         " 'properties', 'compact', 'rename', 'loadIndexesIntoMemory'");
     generateError(res);
+  } else if (res.fail()) {
+    generateError(res);
+  } else {
+    standardResponse();
   }
   
   return RestStatus::DONE;
