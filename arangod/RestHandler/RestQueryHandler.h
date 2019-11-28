@@ -96,7 +96,7 @@ class RestQueryHandler : public RestVocbaseBaseHandler {
 
   bool parseQuery();
 
-  virtual std::string forwardingTarget() override;
+  virtual std::pair<std::string, bool> forwardingTarget() override;
 };
 }  // namespace arangodb
 

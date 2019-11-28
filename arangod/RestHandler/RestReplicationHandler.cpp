@@ -29,9 +29,9 @@
 #include "Basics/ReadLocker.h"
 #include "Basics/Result.h"
 #include "Basics/RocksDBUtils.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
-#include "Basics/StaticStrings.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterHelpers.h"
 #include "Cluster/ClusterMethods.h"
@@ -588,26 +588,39 @@ BAD_CALL:
 }
 
 /// @brief returns the short id of the server which should handle this request
-std::string RestReplicationHandler::forwardingTarget() {
+std::pair<std::string, bool> RestReplicationHandler::forwardingTarget() {
   if (!ServerState::instance()->isCoordinator()) {
-    return "";
+    return std::make_pair("", false);
   }
 
-  auto const& suffixes = _request->suffixes();
-  size_t const len = suffixes.size();
-  if (len >= 1) {
-    auto const type = _request->requestType();
-    std::string const& command = suffixes[0];
-    if ((command == Batch) || (command == Inventory && type == rest::RequestType::GET) ||
-        (command == Dump && type == rest::RequestType::GET)) {
-      ServerID const& DBserver = _request->value("DBserver");
-      if (!DBserver.empty()) {
-        return DBserver;
+  std::string user = _request->user();
+  if (_request->authenticated()) {
+    auto const& suffixes = _request->suffixes();
+    size_t const len = suffixes.size();
+    if (len >= 1) {
+      auto const type = _request->requestType();
+      std::string const& command = suffixes[0];
+      if ((command == Batch) || (command == Inventory && type == rest::RequestType::GET) ||
+          (command == Dump && type == rest::RequestType::GET)) {
+        if (command == Dump) {
+          // check auth collection level
+          auth::UserManager* um = AuthenticationFeature::instance()->userManager();
+          TRI_ASSERT(um != nullptr);  // should not get here
+          if (um != nullptr) {
+            // TOOO: check collection {permissions
+          }
+        }
+
+        ServerID const& DBserver = _request->value("DBserver");
+        if (!DBserver.empty()) {
+          // if DBserver property present, remove auth header
+          return std::make_pair(DBserver, true);
+        }
       }
     }
   }
 
-  return "";
+  return std::make_pair("", false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1002,8 +1015,8 @@ Result RestReplicationHandler::processRestoreCollection(VPackSlice const& collec
 
 Result RestReplicationHandler::processRestoreCollectionCoordinator(
     VPackSlice const& collection, bool dropExisting, bool force,
-    uint64_t numberOfShards, uint64_t replicationFactor,
-    uint64_t writeConcern, bool ignoreDistributeShardsLikeErrors) {
+    uint64_t numberOfShards, uint64_t replicationFactor, uint64_t writeConcern,
+    bool ignoreDistributeShardsLikeErrors) {
   if (!collection.isObject()) {
     return Result(TRI_ERROR_HTTP_BAD_PARAMETER,
                   "collection declaration is invalid");
@@ -1102,9 +1115,10 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
     // force one shard, and force distributeShardsLike to be "_graphs"
     toMerge.add(StaticStrings::NumberOfShards, VPackValue(1));
     if (!_vocbase.IsSystemName(name)) {
-      // system-collections will be sharded normally. only user collections will get
-      // the forced sharding
-      toMerge.add(StaticStrings::DistributeShardsLike, VPackValue(_vocbase.shardingPrototypeName()));
+      // system-collections will be sharded normally. only user collections will
+      // get the forced sharding
+      toMerge.add(StaticStrings::DistributeShardsLike,
+                  VPackValue(_vocbase.shardingPrototypeName()));
     }
   } else {
     // Number of shards. Will be overwritten if not existent
@@ -1130,10 +1144,10 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
 
     if (_vocbase.sharding() == "single" &&
         parameters.get(StaticStrings::DistributeShardsLike).isNone() &&
-        !_vocbase.IsSystemName(name) &&
-        numberOfShards <= 1) {
+        !_vocbase.IsSystemName(name) && numberOfShards <= 1) {
       // shard like _graphs
-      toMerge.add(StaticStrings::DistributeShardsLike, VPackValue(_vocbase.shardingPrototypeName()));
+      toMerge.add(StaticStrings::DistributeShardsLike,
+                  VPackValue(_vocbase.shardingPrototypeName()));
     }
   }
 
@@ -1143,9 +1157,10 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
   // variable "minReplicationFactor"
   VPackSlice const writeConcernSlice = parameters.get(StaticStrings::MinReplicationFactor);
 
-  bool isValidReplicationFactorSlice = replicationFactorSlice.isInteger() ||
-                                       (replicationFactorSlice.isString() &&
-                                        replicationFactorSlice.isEqualString(StaticStrings::Satellite));
+  bool isValidReplicationFactorSlice =
+      replicationFactorSlice.isInteger() ||
+      (replicationFactorSlice.isString() &&
+       replicationFactorSlice.isEqualString(StaticStrings::Satellite));
 
   bool isValidWriteConcernSlice =
       replicationFactorSlice.isInteger() && writeConcernSlice.isInteger() &&
@@ -1154,7 +1169,8 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
 
   if (!isValidReplicationFactorSlice) {
     if (replicationFactor == 0) {
-      replicationFactor = _vocbase.server().getFeature<ClusterFeature>().defaultReplicationFactor();
+      replicationFactor =
+          _vocbase.server().getFeature<ClusterFeature>().defaultReplicationFactor();
       if (replicationFactor == 0) {
         replicationFactor = 1;
       }
@@ -1269,7 +1285,8 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
     // not desired, so it is hardcoded to false
     auto cols =
         ClusterMethods::createCollectionOnCoordinator(_vocbase, merged, ignoreDistributeShardsLikeErrors,
-                                                      createWaitsForSyncReplication, false, false, nullptr);
+                                                      createWaitsForSyncReplication,
+                                                      false, false, nullptr);
     ExecContext const& exec = ExecContext::current();
     TRI_ASSERT(cols.size() == 1);
     if (name[0] != '_' && !exec.isSuperuser()) {
@@ -1930,8 +1947,8 @@ void RestReplicationHandler::handleCommandRestoreView() {
       if (!overwrite) {
         generateError(GeneralResponse::responseCode(TRI_ERROR_ARANGO_DUPLICATE_NAME),
                       TRI_ERROR_ARANGO_DUPLICATE_NAME,
-                      std::string("unable to restore view '") + nameSlice.copyString() + ": " +
-                      TRI_errno_string(TRI_ERROR_ARANGO_DUPLICATE_NAME));
+                      std::string("unable to restore view '") + nameSlice.copyString() +
+                          ": " + TRI_errno_string(TRI_ERROR_ARANGO_DUPLICATE_NAME));
         return;
       }
 
@@ -2896,7 +2913,6 @@ uint64_t RestReplicationHandler::determineChunkSize() const {
   return chunkSize;
 }
 
-
 ReplicationApplier* RestReplicationHandler::getApplier(bool& global) {
   global = _request->parsedValue("global", false);
 
@@ -3119,8 +3135,8 @@ void RestReplicationHandler::registerTombstone(aql::QueryId id) const {
   std::string key = IdToTombstoneKey(_vocbase, id);
   {
     WRITE_LOCKER(writeLocker, RestReplicationHandler::_tombLock);
-    RestReplicationHandler::_tombstones.try_emplace(key, std::chrono::steady_clock::now() +
-                                                         RestReplicationHandler::_tombstoneTimeout);
+    RestReplicationHandler::_tombstones.try_emplace(
+        key, std::chrono::steady_clock::now() + RestReplicationHandler::_tombstoneTimeout);
   }
   timeoutTombstones();
 }
