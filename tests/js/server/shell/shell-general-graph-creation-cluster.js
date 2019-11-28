@@ -94,7 +94,6 @@ function GeneralGraphClusterCreationSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test replicationFactor
 ////////////////////////////////////////////////////////////////////////////////
-    
     testMinReplicationFactor : function () {
       let min = internal.minReplicationFactor;
       let myGraph = graph._create(gn, edgeDef, null, { replicationFactor: min });

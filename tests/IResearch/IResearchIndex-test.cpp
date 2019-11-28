@@ -193,8 +193,9 @@ class IResearchIndexTest
 
     auto& dbFeature = server.getFeature<arangodb::DatabaseFeature>();
     dbFeature.createDatabase(testDBInfo(server.server()), _vocbase);  // required for IResearchAnalyzerFeature::emplace(...)
+    std::shared_ptr<arangodb::LogicalCollection> unused;
     arangodb::methods::Collections::createSystem(*_vocbase, arangodb::tests::AnalyzerCollectionName,
-                                                 false);
+                                                 false, unused);
     analyzers.emplace(
         result, "testVocbase::test_A", "TestInsertAnalyzer",
         arangodb::velocypack::Parser::fromJson("{ \"args\": \"X\" }")->slice());
