@@ -54,9 +54,9 @@ bool Optimizer::runOnlyRequiredRules(size_t extraPlans) const {
 
 // Check the plan for inconsistencies, like more than one parent or dependency,
 // or mismatching parents and dependencies in adjacent nodes.
-class CheckPlan : public WalkerWorker<ExecutionNode> {
+class PlanChecker : public WalkerWorker<ExecutionNode> {
  public:
-  CheckPlan(ExecutionPlan& plan) : _plan{plan} {}
+  PlanChecker(ExecutionPlan& plan) : _plan{plan} {}
 
   bool before(ExecutionNode* node) override {
     bool ok = true;
@@ -160,7 +160,7 @@ void Optimizer::addPlan(std::unique_ptr<ExecutionPlan> plan,
   TRI_ASSERT(&_currentRule->second.rule == rule);
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  auto checker = CheckPlan{*plan};
+  auto checker = PlanChecker{*plan};
   plan->root()->walk(checker);
 #endif // ARANGODB_ENABLE_MAINTAINER_MODE
 
@@ -202,7 +202,7 @@ int Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
   ExecutionPlan* initialPlan = plan.get();
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  auto checker = CheckPlan{*plan};
+  auto checker = PlanChecker{*plan};
   plan->root()->walk(checker);
 #endif // ARANGODB_ENABLE_MAINTAINER_MODE
 
