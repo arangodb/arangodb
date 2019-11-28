@@ -43,13 +43,34 @@ describe ArangoDB do
   end
 
   def contains_query (body, testq = @query)
-      res = JSON.parse body
-      res.each do |q|
-        if q["query"] === testq
-          return q
-        end
+    res = JSON.parse body
+    res.each do |q|
+      if q["query"] === testq
+        return q
       end
-      return false
+    end
+    return false
+  end
+  
+  def wait_for_query (query, type, maxWait)
+    if type == "slow"
+      doc = ArangoDB.log_get("#{@prefix}-slow", @slow)
+    elsif type == "current"
+      doc = ArangoDB.log_get("#{@prefix}-current", @current)
+    end
+    doc.code.should eq(200)
+   
+    while true
+      found = contains_query doc.body, query
+      if found 
+        return found
+      end
+      maxWait -= 1
+      if maxWait == 0
+        return false
+      end
+      sleep 1
+    end
   end
 
   it "should activate tracking" do
@@ -58,7 +79,6 @@ describe ArangoDB do
   end
 
   describe "tracking" do
-
     before do
       ArangoDB.log_put("#{@prefix}-properties", @properties, :body => JSON.dump({enable: true, slowQueryThreshold: 20, trackSlowQueries: true}))
     end
@@ -69,22 +89,29 @@ describe ArangoDB do
 
     after(:each) do
       # Let the queries finish
-      doc = ArangoDB.log_get("#{@prefix}-current", @current)
-      res = JSON.parse doc.body
       count = 0
-      while res.length > 0 && count < 10 do
-        sleep 1
+      while true
         doc = ArangoDB.log_get("#{@prefix}-current", @current)
         res = JSON.parse doc.body
+        if res.length == 0 
+          break
+        end
+        res.each do |q|
+          if q["query"].match(/SLEEP/)
+            doc = ArangoDB.log_delete(@prefix, "#{@api}/" + q["id"])
+          end
+        end
         count += 1
+        if count == 10
+          break
+        end
+        sleep 1
       end
     end
-
+      
     it "should track running queries" do
       send_queries
-      doc = ArangoDB.log_get("#{@prefix}-current", @current)
-      doc.code.should eq(200)
-      found = contains_query doc.body, @query
+      found = wait_for_query @query, "current", 10
       found.should_not eq(false)
       found.should have_key("id")
       found["id"].should match(/^\d+$/)
@@ -101,9 +128,7 @@ describe ArangoDB do
     
     it "should track running queries, with bind parameters" do
       send_queries_with_bind
-      doc = ArangoDB.log_get("#{@prefix}-current-bind", @current)
-      doc.code.should eq(200)
-      found = contains_query doc.body, @queryWithBind
+      found = wait_for_query @queryWithBind, "current", 10
       found.should_not eq(false)
       found.should have_key("id")
       found["id"].should match(/^\d+$/)
@@ -119,22 +144,16 @@ describe ArangoDB do
     end
 
     it "should track slow queries by threshold" do
-      send_fast_queries 1,"false"
-      doc = ArangoDB.log_get("#{@prefix}-slow", @slow)
-      doc.code.should eq(200)
-      found = contains_query doc.body, @fastQuery
+      send_fast_queries 1, "false"
+      found = wait_for_query @fastQuery, "slow", 1
       found.should eq(false)
 
       ArangoDB.log_put("#{@prefix}-properties", @properties, :body => JSON.dump({slowQueryThreshold: 0.1}))
 
-      send_fast_queries 1,"false"
-      doc = ArangoDB.log_get("#{@prefix}-current", @current)
-      doc.code.should eq(200)
-      found = contains_query doc.body, @fastQuery
+      send_fast_queries 1, "false"
+      found = wait_for_query @fastQuery, "current", 1
       found.should eq(false)
-      doc = ArangoDB.log_get("#{@prefix}-slow", @slow)
-      doc.code.should eq(200)
-      found = contains_query doc.body, @fastQuery
+      found = wait_for_query @fastQuery, "slow", 1
       found.should_not eq(false)
       found.should have_key("query")
       found["query"].should eq(@fastQuery)
@@ -157,17 +176,13 @@ describe ArangoDB do
     end
 
     it "should not track slow queries if turned off" do
-      doc = ArangoDB.log_get("#{@prefix}-slow", @slow)
-      doc.code.should eq(200)
-      found = contains_query doc.body, @fastQuery
+      found = wait_for_query @fastQuery, "slow", 1
       found.should eq(false)
 
       ArangoDB.log_put("#{@prefix}-properties", @properties, :body => JSON.dump({slowQueryThreshold: 0.1, trackSlowQueries: false}))
       send_fast_queries 1, "false"
 
-      doc = ArangoDB.log_get("#{@prefix}-slow", @slow)
-      doc.code.should eq(200)
-      found = contains_query doc.body, @fastQuery
+      found = wait_for_query @fastQuery, "slow", 1
       found.should eq(false)
     end
 
