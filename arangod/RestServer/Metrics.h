@@ -158,6 +158,10 @@ public:
       _highr = t;
     }    
   }
+
+  size_t pos(T const& t) const {
+    return static_cast<size_t>(std::floor((t - _low)/ _div));
+  }
       
   void count(T const& t) {
     if (t < _low) {
@@ -165,7 +169,8 @@ public:
     } else if (t >= _high) {
       ++_c[_n];
     } else {
-      ++_c[static_cast<size_t>(std::floor(_low + t / _div))];
+      LOG_DEVEL << pos(t);
+      ++_c[pos(t)];
     }
     records(t);
   }
@@ -176,7 +181,7 @@ public:
     } else if (t >= _high) {
       _c[_n] += n;
     } else {
-      _c[static_cast<size_t>(std::floor(_low + t / _div))] += n;
+      _c[pos(t)] += n;
     }
     records(t);
   }
