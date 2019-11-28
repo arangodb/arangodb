@@ -34,6 +34,7 @@
 #include "Containers.h"
 #include "IResearchAnalyzerFeature.h"
 #include "IResearchViewSort.h"
+#include "IResearchViewStoredValue.h"
 
 namespace arangodb {
 namespace velocypack {
@@ -180,15 +181,18 @@ struct IResearchLinkMeta : public FieldMeta {
     explicit Mask(bool mask = false) noexcept
       : FieldMeta::Mask(mask),
         _analyzerDefinitions(mask),
-        _sort(mask) {
+        _sort(mask),
+        _storedValue(mask) {
     }
 
     bool _analyzerDefinitions;
     bool _sort;
+    bool _storedValue;
   };
 
   std::set<AnalyzerPool::ptr, FieldMeta::AnalyzerComparer> _analyzerDefinitions;
   IResearchViewSort _sort; // sort condition associated with the link
+  IResearchViewStoredValue _storedValue; // stored value associated with the link
   // NOTE: if adding fields don't forget to modify the comparison operator !!!
   // NOTE: if adding fields don't forget to modify IResearchLinkMeta::Mask !!!
   // NOTE: if adding fields don't forget to modify IResearchLinkMeta::Mask constructor !!!

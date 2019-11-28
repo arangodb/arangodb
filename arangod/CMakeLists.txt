@@ -65,6 +65,7 @@ add_library(arango_iresearch
   IResearch/IResearchView.cpp IResearch/IResearchView.h
   IResearch/IResearchVPackComparer.cpp IResearch/IResearchVPackComparer.h
   IResearch/IResearchViewSort.cpp IResearch/IResearchViewSort.h
+  IResearch/IResearchViewStoredValue.cpp IResearch/IResearchViewStoredValue.h
   IResearch/IResearchViewCoordinator.cpp IResearch/IResearchViewCoordinator.h
   IResearch/IResearchExpressionContext.cpp IResearch/IResearchExpressionContext.h
   IResearch/IResearchViewMeta.cpp IResearch/IResearchViewMeta.h

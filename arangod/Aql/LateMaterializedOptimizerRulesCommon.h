@@ -49,17 +49,23 @@ struct AstAndFieldData {
   size_t number;
 };
 
+struct AstAndColumnFieldData : AstAndFieldData {
+  int columnNumber;
+};
+
+template<typename T>
 struct NodeWithAttrs {
   struct AttributeAndField {
     std::vector<arangodb::basics::AttributeName> attr;
-    AstAndFieldData afData;
+    T afData;
   };
 
   std::vector<AttributeAndField> attrs;
   CalculationNode* node;
 };
 
-bool getReferencedAttributes(AstNode* node, Variable const* variable, NodeWithAttrs& nodeAttrs);
+template<typename T>
+bool getReferencedAttributes(AstNode* node, Variable const* variable, NodeWithAttrs<T>& nodeAttrs);
 
 }  // latematerialized
 }  // namespace aql

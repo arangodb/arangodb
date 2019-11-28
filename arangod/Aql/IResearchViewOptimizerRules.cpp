@@ -64,6 +64,16 @@ inline IResearchViewSort const& primarySort(arangodb::LogicalView const& view) {
   return viewImpl.primarySort();
 }
 
+inline IResearchViewStoredValue const& storedValue(arangodb::LogicalView const& view) {
+  if (arangodb::ServerState::instance()->isCoordinator()) {
+    auto& viewImpl = arangodb::LogicalView::cast<IResearchViewCoordinator>(view);
+    return viewImpl.storedValue();
+  }
+
+  auto& viewImpl = arangodb::LogicalView::cast<IResearchView>(view);
+  return viewImpl.storedValue();
+}
+
 bool addView(arangodb::LogicalView const& view, Query& query) {
   auto* collections = query.collections();
 
@@ -263,19 +273,45 @@ bool optimizeSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
   }
 }
 
-bool attributesMatch(IResearchViewSort const& primarySort, latematerialized::NodeWithAttrs& node) {
+bool attributesMatch(IResearchViewSort const& primarySort, IResearchViewStoredValue const& storedValue,
+                     latematerialized::NodeWithAttrs<latematerialized::AstAndColumnFieldData>& node) {
+  // TODO: choose the best variant!
+
   // check all node attributes to be in sort
   for (auto& nodeAttr : node.attrs) {
-    size_t sortFieldNum = 0;
+    nodeAttr.afData.field = nullptr;
+    // try to find in the sort column
+    size_t fieldNum = 0;
     for (auto const& field : primarySort.fields()) {
       if (arangodb::basics::AttributeName::isIdentical(nodeAttr.attr, field, false)) {
-        nodeAttr.afData.number = sortFieldNum;
+        nodeAttr.afData.number = fieldNum;
+        nodeAttr.afData.columnNumber = IResearchViewNode::SortColumnNumber;
         nodeAttr.afData.field = &field;
         nodeAttr.attr.clear(); // we do not need later
         nodeAttr.attr.shrink_to_fit();
         break;
       }
-      ++sortFieldNum;
+      ++fieldNum;
+    }
+    if (nodeAttr.afData.field != nullptr) {
+      continue;
+    }
+    // try to find in other columns
+    int columnNum = 0;
+    fieldNum = 0;
+    for (auto const& column : storedValue.columns()) {
+      for (auto const& field : column) {
+        if (arangodb::basics::AttributeName::isIdentical(nodeAttr.attr, field.second, false)) {
+          nodeAttr.afData.number = fieldNum;
+          nodeAttr.afData.field = &field.second;
+          nodeAttr.afData.columnNumber = columnNum;
+          nodeAttr.attr.clear(); // we do not need later
+          nodeAttr.attr.shrink_to_fit();
+          break;
+        }
+        ++fieldNum;
+      }
+      ++columnNum;
     }
     // not found
     if (nodeAttr.afData.field == nullptr) {
@@ -287,13 +323,14 @@ bool attributesMatch(IResearchViewSort const& primarySort, latematerialized::Nod
 
 void keepReplacementViewVariables(arangodb::containers::SmallVector<ExecutionNode*> const& calcNodes,
                                   arangodb::containers::SmallVector<ExecutionNode*> const& viewNodes) {
-  std::vector<latematerialized::NodeWithAttrs> nodesToChange;
+  std::vector<latematerialized::NodeWithAttrs<latematerialized::AstAndColumnFieldData>> nodesToChange;
   for (auto* vNode : viewNodes) {
     TRI_ASSERT(vNode && ExecutionNode::ENUMERATE_IRESEARCH_VIEW == vNode->getType());
     auto& viewNode = *ExecutionNode::castTo<IResearchViewNode*>(vNode);
     auto const& primarySort = ::primarySort(*viewNode.view());
-    if (primarySort.empty()) {
-      // no primary sort
+    auto const& storedValue = ::storedValue(*viewNode.view());
+    if (primarySort.empty() && storedValue.empty()) {
+      // neither primary sort nor stored value
       continue;
     }
     auto const& var = viewNode.outVariable();
@@ -302,11 +339,11 @@ void keepReplacementViewVariables(arangodb::containers::SmallVector<ExecutionNod
       TRI_ASSERT(cNode && ExecutionNode::CALCULATION == cNode->getType());
       auto& calcNode = *ExecutionNode::castTo<CalculationNode*>(cNode);
       auto astNode = calcNode.expression()->nodeForModification();
-      latematerialized::NodeWithAttrs node;
+      latematerialized::NodeWithAttrs<latematerialized::AstAndColumnFieldData> node;
       node.node = &calcNode;
       // find attributes referenced to view node out variable
       if (latematerialized::getReferencedAttributes(astNode, &var, node) &&
-          !node.attrs.empty() && attributesMatch(primarySort, node)) {
+          !node.attrs.empty() && attributesMatch(primarySort, storedValue, node)) {
         nodesToChange.emplace_back(std::move(node));
       }
     }

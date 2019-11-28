@@ -155,6 +155,35 @@ inline arangodb::Result insertDocument(irs::index_writer::documents_context& ctx
     }
   }
 
+  // Stored value field
+  {
+    struct StoredValue {
+      bool write(irs::data_output& out) const {
+        out.write_bytes(slice.start(), slice.byteSize());
+        return true;
+      }
+
+      irs::string_ref const& name() {
+        return fieldName;
+      }
+
+      VPackSlice slice;
+      irs::string_ref fieldName;
+    } field; // StoredValue
+
+    for (auto const& column : meta._storedValue.columns()) {
+      field.fieldName = irs::string_ref{};
+      for (auto const& storedValue : column) {
+        // column name is equal to the first field name (TODO: two can have the same)
+        if (field.fieldName.empty()) {
+          field.fieldName = irs::string_ref(storedValue.first);
+        }
+        field.slice = arangodb::iresearch::get(document, storedValue.second, VPackSlice::nullSlice());
+      }
+      doc.insert<irs::Action::STORE>(field);
+    }
+  }
+
   // System fields
 
   // Indexed and Stored: LocalDocumentId
@@ -1802,6 +1831,10 @@ void IResearchLink::toVelocyPackStats(VPackBuilder& builder) const {
   builder.add("numSegments", VPackValue(stats.numSegments));
   builder.add("numFiles", VPackValue(stats.numFiles));
   builder.add("indexSize", VPackValue(stats.indexSize));
+}
+
+IResearchViewStoredValue const& IResearchLink::storedValue() const {
+  return _meta._storedValue;
 }
 
 }  // namespace iresearch

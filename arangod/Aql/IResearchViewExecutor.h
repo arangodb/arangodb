@@ -66,6 +66,7 @@ class IResearchViewExecutorInfos : public ExecutorInfos {
       RegisterId firstOutputRegister, RegisterId numScoreRegisters,
       Query& query, std::vector<iresearch::Scorer> const& scorers,
       std::pair<iresearch::IResearchViewSort const*, size_t> const& sort,
+      iresearch::IResearchViewStoredValue const& storedValue,
       ExecutionPlan const& plan,
       Variable const& outVariable,
       aql::AstNode const& filterCondition,
@@ -92,6 +93,8 @@ class IResearchViewExecutorInfos : public ExecutorInfos {
   // second - number of sort conditions to take into account
   std::pair<iresearch::IResearchViewSort const*, size_t> const& sort() const noexcept;
 
+  iresearch::IResearchViewStoredValue const& storedValue() const noexcept;
+
   bool isScoreReg(RegisterId reg) const noexcept;
 
  private:
@@ -101,6 +104,7 @@ class IResearchViewExecutorInfos : public ExecutorInfos {
   Query& _query;
   std::vector<iresearch::Scorer> const& _scorers;
   std::pair<iresearch::IResearchViewSort const*, size_t> _sort;
+  iresearch::IResearchViewStoredValue const& _storedValue;
   ExecutionPlan const& _plan;
   Variable const& _outVariable;
   aql::AstNode const& _filterCondition;
@@ -244,9 +248,9 @@ class IResearchViewExecutorBase {
     // before and after.
     void assertSizeCoherence() const noexcept;
 
-    void pushSortValue(irs::bytes_ref&& sortValue);
+    void pushStoredValue(std::unordered_map<int, irs::bytes_ref>&& storedValue);
 
-    irs::bytes_ref getSortValue(IndexReadBufferEntry bufferEntry) const noexcept;
+    std::unordered_map<int, irs::bytes_ref> const& getStoredValue(IndexReadBufferEntry bufferEntry) const noexcept;
 
    private:
     // _keyBuffer, _scoreBuffer, _sortValueBuffer together hold all the
@@ -260,7 +264,7 @@ class IResearchViewExecutorBase {
     // .
     std::vector<ValueType> _keyBuffer;
     std::vector<AqlValue> _scoreBuffer;
-    std::vector<irs::bytes_ref> _sortValueBuffer;
+    std::vector<std::unordered_map<int, irs::bytes_ref>> _storedValueBuffer;
     std::size_t _numScoreRegisters;
     std::size_t _keyBaseIdx;
   };
@@ -344,6 +348,7 @@ class IResearchViewExecutor : public IResearchViewExecutorBase<IResearchViewExec
 
   irs::columnstore_reader::values_reader_f _pkReader;   // current primary key reader
   irs::columnstore_reader::values_reader_f _sortReader; // current sort reader
+  std::unordered_map<int, irs::columnstore_reader::values_reader_f> _storedValueReaders; // current stored value readers
   irs::doc_iterator::ptr _itr;
   irs::document const* _doc{};
   size_t _readerOffset;

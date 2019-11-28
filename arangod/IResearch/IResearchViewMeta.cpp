@@ -252,6 +252,7 @@ IResearchViewMeta& IResearchViewMeta::operator=(IResearchViewMeta&& other) noexc
     _writebufferIdle = std::move(other._writebufferIdle);
     _writebufferSizeMax = std::move(other._writebufferSizeMax);
     _primarySort = std::move(other._primarySort);
+    _storedValue = std::move(other._storedValue);
   }
 
   return *this;
@@ -269,6 +270,7 @@ IResearchViewMeta& IResearchViewMeta::operator=(IResearchViewMeta const& other) 
     _writebufferIdle = other._writebufferIdle;
     _writebufferSizeMax = other._writebufferSizeMax;
     _primarySort = other._primarySort;
+    _storedValue = other._storedValue;
   }
 
   return *this;
@@ -298,27 +300,16 @@ bool IResearchViewMeta::operator==(IResearchViewMeta const& other) const noexcep
   if (irs::locale_utils::language(_locale) != irs::locale_utils::language(other._locale) ||
       irs::locale_utils::country(_locale) != irs::locale_utils::country(other._locale) ||
       irs::locale_utils::encoding(_locale) != irs::locale_utils::encoding(other._locale)) {
-    return false;  // values do not match
+    return false;
   }
 
-  if (_version != other._version) {
-    return false;  // values do not match
-  }
-
-  if (_writebufferActive != other._writebufferActive) {
-    return false;  // values do not match
-  }
-
-  if (_writebufferIdle != other._writebufferIdle) {
-    return false;  // values do not match
-  }
-
-  if (_writebufferSizeMax != other._writebufferSizeMax) {
-    return false;  // values do not match
-  }
-
-  if (_primarySort != other._primarySort) {
-    return false;  // values do not match
+  if (_version != other._version ||
+      _writebufferActive != other._writebufferActive ||
+      _writebufferIdle != other._writebufferIdle ||
+      _writebufferSizeMax != other._writebufferSizeMax ||
+      _primarySort != other._primarySort ||
+      _storedValue != other._storedValue) {
+    return false;
   }
 
   return true;
@@ -588,7 +579,27 @@ bool IResearchViewMeta::init(arangodb::velocypack::Slice const& slice, std::stri
     } else if (!_primarySort.fromVelocyPack(field, errorSubField)) {
       errorField = fieldName.toString();
       if (!errorSubField.empty()) {
-       errorField += errorSubField;
+        errorField += errorSubField;
+      }
+
+      return false;
+    }
+  }
+
+  {
+    // optional object
+    static VPackStringRef const fieldName("storedFields");
+    std::string errorSubField;
+
+    auto const field = slice.get(fieldName);
+    mask->_storedValue = field.isArray();
+
+    if (!mask->_storedValue) {
+      _storedValue = defaults._storedValue;
+    } else if (!_storedValue.fromVelocyPack(field, errorSubField)) {
+      errorField = fieldName.toString();
+      if (!errorSubField.empty()) {
+        errorField += errorSubField;
       }
 
       return false;
@@ -658,6 +669,13 @@ bool IResearchViewMeta::json(arangodb::velocypack::Builder& builder,
   if ((!ignoreEqual || _primarySort != ignoreEqual->_primarySort) && (!mask || mask->_primarySort)) {
     velocypack::ArrayBuilder arrayScope(&builder, "primarySort");
     if (!_primarySort.toVelocyPack(builder)) {
+      return false;
+    }
+  }
+
+  if ((!ignoreEqual || _storedValue != ignoreEqual->_storedValue) && (!mask || mask->_storedValue)) {
+    velocypack::ArrayBuilder arrayScope(&builder, "storedFields");
+    if (!_storedValue.toVelocyPack(builder)) {
       return false;
     }
   }

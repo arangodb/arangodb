@@ -95,6 +95,12 @@ inline irs::columnstore_reader::values_reader_f sortColumn(irs::sub_reader const
   return reader ? reader->values() : irs::columnstore_reader::values_reader_f{};
 }
 
+inline irs::columnstore_reader::values_reader_f storedValueColumn(irs::sub_reader const& segment, irs::string_ref const& name) {
+  auto const* reader = segment.column_reader(name);
+
+  return reader ? reader->values() : irs::columnstore_reader::values_reader_f{};
+}
+
 }  // namespace
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -106,6 +112,7 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
     RegisterId firstOutputRegister, RegisterId numScoreRegisters, Query& query,
     std::vector<Scorer> const& scorers,
     std::pair<arangodb::iresearch::IResearchViewSort const*, size_t> const& sort,
+    iresearch::IResearchViewStoredValue const& storedValue,
     ExecutionPlan const& plan, Variable const& outVariable,
     aql::AstNode const& filterCondition, std::pair<bool, bool> volatility,
     IResearchViewExecutorInfos::VarInfoMap const& varInfoMap, int depth,
@@ -117,6 +124,7 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
       _query(query),
       _scorers(scorers),
       _sort(sort),
+      _storedValue(storedValue),
       _plan(plan),
       _outVariable(outVariable),
       _filterCondition(filterCondition),
@@ -190,6 +198,10 @@ bool IResearchViewExecutorInfos::volatileFilter() const noexcept {
 const std::pair<const arangodb::iresearch::IResearchViewSort*, size_t>& IResearchViewExecutorInfos::sort() const
     noexcept {
   return _sort;
+}
+
+arangodb::iresearch::IResearchViewStoredValue const& IResearchViewExecutorInfos::storedValue() const noexcept {
+  return _storedValue;
 }
 
 bool IResearchViewExecutorInfos::isScoreReg(RegisterId reg) const noexcept {
@@ -285,7 +297,7 @@ std::vector<AqlValue>::iterator IResearchViewExecutorBase<Impl, Traits>::IndexRe
 template <typename Impl, typename Traits>
 template <typename ValueType>
 IResearchViewExecutorBase<Impl, Traits>::IndexReadBuffer<ValueType>::IndexReadBuffer(std::size_t const numScoreRegisters)
-  : _keyBuffer(), _scoreBuffer(), _sortValueBuffer(), _numScoreRegisters(numScoreRegisters), _keyBaseIdx(0) {}
+  : _keyBuffer(), _scoreBuffer(), _storedValueBuffer(), _numScoreRegisters(numScoreRegisters), _keyBaseIdx(0) {}
 
 template <typename Impl, typename Traits>
 template <typename ValueType>
@@ -314,16 +326,16 @@ void IResearchViewExecutorBase<Impl, Traits>::IndexReadBuffer<ValueType>::pushVa
 
 template <typename Impl, typename Traits>
 template <typename ValueType>
-void IResearchViewExecutorBase<Impl, Traits>::IndexReadBuffer<ValueType>::pushSortValue(irs::bytes_ref&& sortValue) {
-  _sortValueBuffer.emplace_back(std::move(sortValue));
+void IResearchViewExecutorBase<Impl, Traits>::IndexReadBuffer<ValueType>::pushStoredValue(std::unordered_map<int, irs::bytes_ref>&& storedValue) {
+  _storedValueBuffer.emplace_back(std::move(storedValue));
 }
 
 template <typename Impl, typename Traits>
 template <typename ValueType>
-irs::bytes_ref IResearchViewExecutorBase<Impl, Traits>::IndexReadBuffer<ValueType>::getSortValue(
+std::unordered_map<int, irs::bytes_ref> const& IResearchViewExecutorBase<Impl, Traits>::IndexReadBuffer<ValueType>::getStoredValue(
     const IResearchViewExecutorBase::IndexReadBufferEntry bufferEntry) const noexcept {
-  TRI_ASSERT(bufferEntry._keyIdx < _sortValueBuffer.size());
-  return _sortValueBuffer[bufferEntry._keyIdx];
+  TRI_ASSERT(bufferEntry._keyIdx < _storedValueBuffer.size());
+  return _storedValueBuffer[bufferEntry._keyIdx];
 }
 
 template <typename Impl, typename Traits>
@@ -346,7 +358,7 @@ void IResearchViewExecutorBase<Impl, Traits>::IndexReadBuffer<ValueType>::reset(
   _keyBaseIdx = 0;
   _keyBuffer.clear();
   _scoreBuffer.clear();
-  _sortValueBuffer.clear();
+  _storedValueBuffer.clear();
 }
 
 template <typename Impl, typename Traits>
@@ -666,18 +678,17 @@ bool IResearchViewExecutorBase<Impl, Traits>::writeRow(ReadContext& ctx,
     if constexpr (Traits::MaterializeType == MaterializeType::LateMaterializedWithVars) {
       auto const& outNonMaterializedViewRegs = infos().getOutNonMaterializedViewRegs();
       TRI_ASSERT(!outNonMaterializedViewRegs.empty());
-      if (ADB_LIKELY(!outNonMaterializedViewRegs.empty())) {
-        auto sortValue = _indexReadBuffer.getSortValue(bufferEntry);
-        TRI_ASSERT(!sortValue.empty());
-        if (ADB_UNLIKELY(sortValue.empty())) {
-          return false;
-        }
-        auto s = sortValue.c_str();
-        auto totalSize = sortValue.size();
+      auto const& storedValue = _indexReadBuffer.getStoredValue(bufferEntry);
+      for (auto const& [columnNum, fieldsRegs] : outNonMaterializedViewRegs) {
+        auto it = storedValue.find(columnNum);
+        TRI_ASSERT(it != storedValue.cend());
+        TRI_ASSERT(!it->second.empty());
+        auto s = it->second.c_str();
+        auto totalSize = it->second.size();
         auto slice = VPackSlice(s);
         size_t size = 0;
         size_t i = 0;
-        for (auto const& [fieldNum, registerId] : outNonMaterializedViewRegs) {
+        for (auto const& [fieldNum, registerId] : fieldsRegs) {
           while (i < fieldNum) {
             size += slice.byteSize();
             TRI_ASSERT(size <= totalSize);
@@ -834,14 +845,23 @@ void IResearchViewExecutor<ordered, materializeType>::fillBuffer(IResearchViewEx
     }
 
     if constexpr (materializeType == MaterializeType::LateMaterializedWithVars) {
-      TRI_ASSERT((!this->_infos.getOutNonMaterializedViewRegs().empty()));
-      if (ADB_LIKELY(!this->_infos.getOutNonMaterializedViewRegs().empty())) {
-        TRI_ASSERT(_sortReader);
-        irs::bytes_ref sortValue{irs::bytes_ref::NIL}; // sort column value
-        auto ok = _sortReader(_doc->value, sortValue);
+      auto const& columnsFieldsRegs = this->_infos.getOutNonMaterializedViewRegs();
+      TRI_ASSERT(!columnsFieldsRegs.empty());
+      std::unordered_map<int, irs::bytes_ref> storedValue;
+      irs::columnstore_reader::values_reader_f reader;
+      for (auto const& columnFieldsRegs : columnsFieldsRegs) {
+        if (columnFieldsRegs.first >= 0) { // not IResearchViewNode::SortColumnNumber
+          reader = _storedValueReaders[columnFieldsRegs.first];
+        } else { // IResearchViewNode::SortColumnNumber
+          reader = _sortReader;
+        }
+        TRI_ASSERT(reader);
+        irs::bytes_ref value{irs::bytes_ref::NIL}; // column value
+        auto ok = reader(_doc->value, value);
         TRI_ASSERT(ok);
-        this->_indexReadBuffer.pushSortValue(std::move(sortValue));
+        storedValue[columnFieldsRegs.first] = std::move(value);
       }
+      this->_indexReadBuffer.pushStoredValue(std::move(storedValue));
     }
     // doc and scores are both pushed, sizes must now be coherent
     this->_indexReadBuffer.assertSizeCoherence();
@@ -879,14 +899,33 @@ bool IResearchViewExecutor<ordered, materializeType>::resetIterator() {
   }
 
   if constexpr (materializeType == MaterializeType::LateMaterializedWithVars) {
-    if (!this->_infos.getOutNonMaterializedViewRegs().empty()) {
-      _sortReader = ::sortColumn(segmentReader);
-
-      if (!_sortReader) {
-        LOG_TOPIC("bc5bd", WARN, arangodb::iresearch::TOPIC)
-            << "encountered a sub-reader without a sort column while "
-               "executing a query, ignoring";
-        return false;
+    auto const& columnsfieldsRegs = this->_infos.getOutNonMaterializedViewRegs();
+    if (!columnsfieldsRegs.empty()) {
+      auto storedValue = this->_infos.storedValue();
+      for (auto const& columnfieldsRegs : columnsfieldsRegs) {
+        if (columnfieldsRegs.first >= 0) { // not IResearchViewNode::SortColumnNumber
+          TRI_ASSERT(!storedValue.empty());
+          auto const& columns = storedValue.columns();
+          auto const storedColumnNumber = static_cast<decltype(columns.size())>(columnfieldsRegs.first);
+          TRI_ASSERT(storedColumnNumber < columns.size());
+          // column name is equal to the first field name (TODO: two can have the same)
+          auto storedValueColumn = ::storedValueColumn(segmentReader, columns[storedColumnNumber].back().first);
+          if (!storedValueColumn) {
+            LOG_TOPIC("af7ec", WARN, arangodb::iresearch::TOPIC)
+                << "encountered a sub-reader without a stored value column while "
+                   "executing a query, ignoring";
+            return false;
+          }
+          _storedValueReaders[columnfieldsRegs.first] = storedValueColumn;
+        } else { // IResearchViewNode::SortColumnNumber
+          _sortReader = ::sortColumn(segmentReader);
+          if (!_sortReader) {
+            LOG_TOPIC("bc5bd", WARN, arangodb::iresearch::TOPIC)
+                << "encountered a sub-reader without a sort column while "
+                   "executing a query, ignoring";
+            return false;
+          }
+        }
       }
     }
   }

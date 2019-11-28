@@ -34,9 +34,10 @@
 using namespace arangodb::aql;
 
 namespace {
-  bool attributesMatch(TRI_idx_iid_t& commonIndexId, IndexNode const* indexNode, latematerialized::NodeWithAttrs& node) {
+  bool attributesMatch(TRI_idx_iid_t& commonIndexId, IndexNode const* indexNode, latematerialized::NodeWithAttrs<latematerialized::AstAndFieldData>& node) {
     // check all node attributes to be in index
     for (auto& nodeAttr : node.attrs) {
+      nodeAttr.afData.field = nullptr;
       for (auto& index : indexNode->getIndexes()) {
         if (!index->hasCoveringIterator()) {
           continue;
@@ -105,7 +106,7 @@ void arangodb::aql::lateDocumentMaterializationRule(Optimizer* opt,
       // this node could be appended with materializer
       bool stopSearch = false;
       bool stickToSortNode = false;
-      std::vector<latematerialized::NodeWithAttrs> nodesToChange;
+      std::vector<latematerialized::NodeWithAttrs<latematerialized::AstAndFieldData>> nodesToChange;
       TRI_idx_iid_t commonIndexId = 0; // use one index only
       while (current != loop) {
         auto type = current->getType();
@@ -118,7 +119,7 @@ void arangodb::aql::lateDocumentMaterializationRule(Optimizer* opt,
           case ExecutionNode::CALCULATION: {
             auto calculationNode = ExecutionNode::castTo<CalculationNode*>(current);
             auto astNode = calculationNode->expression()->nodeForModification();
-            latematerialized::NodeWithAttrs node;
+            latematerialized::NodeWithAttrs<latematerialized::AstAndFieldData> node;
             node.node = calculationNode;
             // find attributes referenced to index node out variable
             if (!latematerialized::getReferencedAttributes(astNode, indexNode->outVariable(), node)) {
