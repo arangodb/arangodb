@@ -1,6 +1,10 @@
 devel
 -----
 
+* rename `minReplicationFactor` into `writeConcern` to make it consistent with
+  `--cluster.write-concern` and avoid confusion with
+  `--cluster.min-replication-factor`
+
 * ArangoDB web UI was switched to React from previous framework and rebuilt.
 
 * Enable the `parallelize-gather` AQL optimizer rule for certain write queries. 
