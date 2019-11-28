@@ -105,7 +105,8 @@ void Counter::toPrometheus(std::string& result) const {
   result += name() + " " + std::to_string(load()) + "\n";
 }
 
-Counter::Counter(uint64_t const& val, std::string const& name, std::string const& help) :
+Counter::Counter(
+  uint64_t const& val, std::string const& name, std::string const& help) :
   Metric(name, help), _c(val), _b(_c) {}
 
 Counter::~Counter() { _b.push(); }

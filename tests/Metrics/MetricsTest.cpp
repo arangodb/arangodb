@@ -39,62 +39,62 @@ protected:
 TEST_F(MetricsTest, test_counter) {
 
   Counter c(0, "counter_1", "Counter 1");
-  ASSERT_EQ(c.load(),  0);
 
-  c++; 
+  ASSERT_EQ(c.load(),  0);
+  c++;
   ASSERT_EQ(c.load(),  1);
-  c += 9; 
+  c += 9;
   ASSERT_EQ(c.load(), 10);
   c =  0;
   ASSERT_EQ(c.load(),  0);
 
-  c.count(); 
+  c.count();
   ASSERT_EQ(c.load(),  1);
-  c.count(  9); 
+  c.count(  9);
   ASSERT_EQ(c.load(), 10);
   c.store(0);
   ASSERT_EQ(c.load(),  0);
-  
+
+  std::string s;
+  c.toPrometheus(s);
+  LOG_DEVEL << s;
+
+}
+
+template<typename T> void gauge_test() {
+
+  T zdo = .1, zero = 0., one = 1.;
+  Gauge g(zero, "gauge_1", "Gauge 1");
+
+  ASSERT_EQ(g.load(),  zero);
+  g += zdo;
+  ASSERT_EQ(g.load(),  zdo);
+  g -= zdo;
+  ASSERT_EQ(g.load(),  zero);
+  g += zdo;
+  g *= g.load();
+  ASSERT_EQ(g.load(),  zdo*zdo);
+  g /= g.load();
+  ASSERT_EQ(g.load(),  one);
+  g -= g.load();
+  ASSERT_EQ(g.load(),  zero);
+
+  std::string s;
+  g.toPrometheus(s);
+  LOG_DEVEL << s;
+
+}
+
+TEST_F(MetricsTest, long_double) {
+  gauge_test<long double>();
 }
 
 TEST_F(MetricsTest, test_gauge_double) {
-
-  double zdo = .1, zero = 0., one = 1.;
-
-  Gauge g(zero, "gauge_1", "Gauge 1");
-  ASSERT_EQ(g.load(),  zero);
-  g += zdo;
-  ASSERT_EQ(g.load(),  zdo);
-  g -= zdo;
-  ASSERT_EQ(g.load(),  zero);
-  g += zdo;
-  g *= g.load();
-  ASSERT_EQ(g.load(),  zdo*zdo);
-  g /= g.load();
-  ASSERT_EQ(g.load(),  one);
-  g -= g.load();
-  ASSERT_EQ(g.load(),  zero);
-  
+  gauge_test<double>();
 }
 
 TEST_F(MetricsTest, test_gauge_float) {
-
-  float zdo = .1, zero = 0., one = 1.;
-
-  Gauge g(zero, "gauge_1", "Gauge 1");
-  ASSERT_EQ(g.load(),  zero);
-  g += zdo;
-  ASSERT_EQ(g.load(),  zdo);
-  g -= zdo;
-  ASSERT_EQ(g.load(),  zero);
-  g += zdo;
-  g *= g.load();
-  ASSERT_EQ(g.load(),  zdo*zdo);
-  g /= g.load();
-  ASSERT_EQ(g.load(),  one);
-  g -= g.load();
-  ASSERT_EQ(g.load(),  zero);
-  
+  gauge_test<float>();
 }
 
 template<typename T> void histogram_test(
@@ -135,16 +135,26 @@ template<typename T> void histogram_test(
   std::string s;
   h.toPrometheus(s);
   LOG_DEVEL << s;
-  
+
 }
 
-TEST_F(MetricsTest, test_double_2_histogram) {
 
+TEST_F(MetricsTest, test_float_histogram) {
   histogram_test<long double>(10, -1., 1.);
-  histogram_test<double>(8, -1., 1.);
-  histogram_test<float>(5, -1., 1.);
+  histogram_test<long double>(10, -1., -.1);
+}
+TEST_F(MetricsTest, test_double_histogram) {
+  histogram_test<long double>(8, -1., 1.);
+}
+TEST_F(MetricsTest, test_long_double_histogram) {
+  histogram_test<long double>(17, -1., 1.);
+}
+TEST_F(MetricsTest, test_short_histogram) {
   histogram_test<short>(6, -17, 349);
+}
+TEST_F(MetricsTest, test_int_histogram) {
   histogram_test<int>(12, -17, 349);
+}
+TEST_F(MetricsTest, test_long_histogram) {
   histogram_test<long>(7, -17, 349);
-
 }

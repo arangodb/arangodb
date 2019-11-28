@@ -45,7 +45,7 @@ template<typename T> class Histogram;
 class Metric {
 public:
   Metric(std::string const& name, std::string const& help);
-  virtual ~Metric(); 
+  virtual ~Metric();
   std::string const& help() const;
   std::string const& name() const;
   virtual void toPrometheus(std::string& result) const = 0;
@@ -62,7 +62,7 @@ struct Metrics {
   using counter_type = gcl::counter::simplex<uint64_t, gcl::counter::atomicity::full>;
   using hist_type = gcl::counter::simplex_array<uint64_t, gcl::counter::atomicity::full>;
   using buffer_type = gcl::counter::buffer<uint64_t>;
-  
+
 };
 
 
@@ -94,7 +94,7 @@ private:
 template<typename T> class Gauge : public Metric {
 public:
   Gauge() = delete;
-  Gauge(T const& val, std::string const& name, std::string const& help) 
+  Gauge(T const& val, std::string const& name, std::string const& help)
     : Metric(name, help) {
     _g.store(val);
   }
@@ -124,7 +124,11 @@ public:
   T load() const {
     return _g.load();
   };
-  virtual void toPrometheus(std::string&) const override {};
+  virtual void toPrometheus(std::string& result) const override {
+    result += "#TYPE " + name() + " counter\n";
+    result += "#HELP " + name() + " " + help() + "\n";
+    result += name() + " " + std::to_string(load()) + "\n";
+  };
 private:
   std::atomic<T> _g;
 };
@@ -133,13 +137,13 @@ std::ostream& operator<< (std::ostream&, Metrics::hist_type const&);
 
 /**
  * @brief Histogram functionality
- */ 
+ */
 template<typename T> class Histogram : public Metric {
 
 public:
 
   Histogram() = delete;
-    
+
   Histogram (size_t const& buckets, T const& low, T const& high, std::string const& name, std::string const& help = "")
     : Metric(name, help), _c(Metrics::hist_type(buckets)), _low(low), _high(high),
       _lowr(std::numeric_limits<T>::max()), _highr(std::numeric_limits<T>::min()) {
@@ -150,19 +154,19 @@ public:
   }
 
   ~Histogram() {}
-    
+
   void records(T const& t) {
     if(t < _lowr) {
       _lowr = t;
     } else if (t > _highr) {
       _highr = t;
-    }    
+    }
   }
 
   size_t pos(T const& t) const {
     return static_cast<size_t>(std::floor((t - _low)/ _div));
   }
-      
+
   void count(T const& t) {
     if (t < _low) {
       ++_c[0];
@@ -201,7 +205,7 @@ public:
   }
 
   uint64_t load(size_t i) const { return _c.load(i); };
-      
+
   size_t size() const { return _c.size(); }
 
   virtual void toPrometheus(std::string& result) const override {
@@ -218,16 +222,16 @@ public:
     }
     result += name() + "_count " + std::to_string(sum) + "\n";
   }
-  
+
   std::ostream& print(std::ostream& o) const {
-    o << "_div: " << _div << ", _c: " << _c << ", _r: [" << _lowr << ", " << _highr << "] " << name();    
+    o << "_div: " << _div << ", _c: " << _c << ", _r: [" << _lowr << ", " << _highr << "] " << name();
     return o;
   }
 
   Metrics::hist_type _c;
   T _low, _high, _div, _lowr, _highr;
   size_t _n;
-      
+
 };
 
 
