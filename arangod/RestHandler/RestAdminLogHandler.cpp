@@ -38,7 +38,9 @@ using namespace arangodb::rest;
 
 RestAdminLogHandler::RestAdminLogHandler(application_features::ApplicationServer& server,
                                          GeneralRequest* request, GeneralResponse* response)
-    : RestBaseHandler(server, request, response) {}
+    : RestBaseHandler(server, request, response) {
+  _allowDirectExecution = true;
+}
 
 RestStatus RestAdminLogHandler::execute() {
   auto& server = application_features::ApplicationServer::server();

@@ -47,6 +47,7 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::basics;
+
 namespace arangodb {
 namespace aql {
 

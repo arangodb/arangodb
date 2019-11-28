@@ -92,7 +92,7 @@ _TRI_BlockCrc32_SSE42:
 /*  Next step is to prepare computed go-to       */
 /*  First get the jump address into %rdi         */
 
-        movq    %r10,%rdx  /* copy the length               */            
+        movq    %r10,%rdx  /* copy the length               */
         andq    $127,%rdx  /* get length mod 128            */
         addq    %rdx,%rsi  /* pointer to next 128 block     */
         addq    $256,%rdx  /* table disp for long strings   */
@@ -109,38 +109,38 @@ _TRI_BlockCrc32_SSE42:
 /* above goes to one of the labels and does the entire      */
 /* computation (apart from initial 8-15 bytes) in line      */
 
-x248:   crc32q  -120(%rsi),%rax 
-x240:   crc32q  -112(%rsi),%rax 
-x232:   crc32q  -104(%rsi),%rax 
-x224:   crc32q  -96(%rsi),%rax 
-x216:   crc32q  -88(%rsi),%rax 
-x208:   crc32q  -80(%rsi),%rax 
-x200:   crc32q  -72(%rsi),%rax 
+x248:   crc32q  -120(%rsi),%rax
+x240:   crc32q  -112(%rsi),%rax
+x232:   crc32q  -104(%rsi),%rax
+x224:   crc32q  -96(%rsi),%rax
+x216:   crc32q  -88(%rsi),%rax
+x208:   crc32q  -80(%rsi),%rax
+x200:   crc32q  -72(%rsi),%rax
 x192:   crc32q  -64(%rsi),%rax
-x184:   crc32q  -56(%rsi),%rax 
-x176:   crc32q  -48(%rsi),%rax 
-x168:   crc32q  -40(%rsi),%rax 
-x160:   crc32q  -32(%rsi),%rax 
-x152:   crc32q  -24(%rsi),%rax 
-x144:   crc32q  -16(%rsi),%rax 
-x136:   crc32q  -8(%rsi),%rax 
+x184:   crc32q  -56(%rsi),%rax
+x176:   crc32q  -48(%rsi),%rax
+x168:   crc32q  -40(%rsi),%rax
+x160:   crc32q  -32(%rsi),%rax
+x152:   crc32q  -24(%rsi),%rax
+x144:   crc32q  -16(%rsi),%rax
+x136:   crc32q  -8(%rsi),%rax
 x128:   crc32q  (%rsi),%rax
         addq    $128,%rsi
-x120:   crc32q  -120(%rsi),%rax 
-x112:   crc32q  -112(%rsi),%rax 
-x104:   crc32q  -104(%rsi),%rax 
-x96:    crc32q  -96(%rsi),%rax 
-x88:    crc32q  -88(%rsi),%rax 
-x80:    crc32q  -80(%rsi),%rax 
-x72:    crc32q  -72(%rsi),%rax 
+x120:   crc32q  -120(%rsi),%rax
+x112:   crc32q  -112(%rsi),%rax
+x104:   crc32q  -104(%rsi),%rax
+x96:    crc32q  -96(%rsi),%rax
+x88:    crc32q  -88(%rsi),%rax
+x80:    crc32q  -80(%rsi),%rax
+x72:    crc32q  -72(%rsi),%rax
 x64:    crc32q  -64(%rsi),%rax
-x56:    crc32q  -56(%rsi),%rax 
-x48:    crc32q  -48(%rsi),%rax 
-x40:    crc32q  -40(%rsi),%rax 
-x32:    crc32q  -32(%rsi),%rax 
-x24:    crc32q  -24(%rsi),%rax 
-x16:    crc32q  -16(%rsi),%rax 
-x8:     crc32q  -8(%rsi),%rax 
+x56:    crc32q  -56(%rsi),%rax
+x48:    crc32q  -48(%rsi),%rax
+x40:    crc32q  -40(%rsi),%rax
+x32:    crc32q  -32(%rsi),%rax
+x24:    crc32q  -24(%rsi),%rax
+x16:    crc32q  -16(%rsi),%rax
+x8:     crc32q  -8(%rsi),%rax
 x0:     ret
 
 /* The following code starts off by doing up to 120 bytes   */
@@ -149,21 +149,21 @@ x0:     ret
 
         .align 32
         .8byte 0,0                /* not sure this matters  */
-y120:   crc32q  -120(%rsi),%rax 
-y112:   crc32q  -112(%rsi),%rax 
-y104:   crc32q  -104(%rsi),%rax 
-y96:    crc32q  -96(%rsi),%rax 
-y88:    crc32q  -88(%rsi),%rax 
-y80:    crc32q  -80(%rsi),%rax 
-y72:    crc32q  -72(%rsi),%rax 
+y120:   crc32q  -120(%rsi),%rax
+y112:   crc32q  -112(%rsi),%rax
+y104:   crc32q  -104(%rsi),%rax
+y96:    crc32q  -96(%rsi),%rax
+y88:    crc32q  -88(%rsi),%rax
+y80:    crc32q  -80(%rsi),%rax
+y72:    crc32q  -72(%rsi),%rax
 y64:    crc32q  -64(%rsi),%rax
-y56:    crc32q  -56(%rsi),%rax 
-y48:    crc32q  -48(%rsi),%rax 
-y40:    crc32q  -40(%rsi),%rax 
-y32:    crc32q  -32(%rsi),%rax 
-y24:    crc32q  -24(%rsi),%rax 
-y16:    crc32q  -16(%rsi),%rax 
-y8:     crc32q  -8(%rsi),%rax 
+y56:    crc32q  -56(%rsi),%rax
+y48:    crc32q  -48(%rsi),%rax
+y40:    crc32q  -40(%rsi),%rax
+y32:    crc32q  -32(%rsi),%rax
+y24:    crc32q  -24(%rsi),%rax
+y16:    crc32q  -16(%rsi),%rax
+y8:     crc32q  -8(%rsi),%rax
 y0:
 
 /*  The following code does blocks of 128 bytes (16 words)  */
@@ -237,7 +237,7 @@ lp128:
 
 /*  Next chunk muliplies %eax by X^1024 mod poly by looking */
 /* up each byte in the table crct2 pointed to by %rcx       */
- 
+
         movzx   %al,%edx
         movl    0(%rcx,%rdx,4),%edi
         movzx   %ah,%edx
@@ -349,7 +349,7 @@ crctj:
         .8byte x24
         .8byte x32
         .8byte x40
-        .8byte x48  
+        .8byte x48
         .8byte x56
         .8byte x64
         .8byte x72
@@ -357,7 +357,7 @@ crctj:
         .8byte x88
         .8byte x96
         .8byte x104
-        .8byte x112  
+        .8byte x112
         .8byte x120
         .8byte x128
         .8byte x136
@@ -365,7 +365,7 @@ crctj:
         .8byte x152
         .8byte x160
         .8byte x168
-        .8byte x176  
+        .8byte x176
         .8byte x184
         .8byte x192
         .8byte x200
@@ -373,7 +373,7 @@ crctj:
         .8byte x216
         .8byte x224
         .8byte x232
-        .8byte x240  
+        .8byte x240
         .8byte x248
         .8byte y0
         .8byte y8
@@ -382,7 +382,7 @@ crctj:
         .8byte y32
         .8byte y40
         .8byte y48
-        .8byte y56  
+        .8byte y56
         .8byte y64
         .8byte y72
         .8byte y80
@@ -663,3 +663,6 @@ crct2:
 	.size	_TRI_BlockCrc32_SSE42, .-_TRI_BlockCrc32_SSE42
 /* end of TRI_BlockCrc32_SSE42  */
 
+#if defined(__ELF__)
+.section	.note.GNU-stack,"",@progbits
+#endif

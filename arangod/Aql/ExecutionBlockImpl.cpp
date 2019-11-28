@@ -43,7 +43,6 @@
 #include "Aql/IResearchViewExecutor.h"
 #include "Aql/IdExecutor.h"
 #include "Aql/IndexExecutor.h"
-#include "Aql/IndexNode.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/KShortestPathsExecutor.h"
 #include "Aql/LimitExecutor.h"
@@ -51,6 +50,7 @@
 #include "Aql/ModificationExecutor.h"
 #include "Aql/MultiDependencySingleRowFetcher.h"
 #include "Aql/NoResultsExecutor.h"
+#include "Aql/ParallelUnsortedGatherExecutor.h"
 #include "Aql/Query.h"
 #include "Aql/QueryOptions.h"
 #include "Aql/ReturnExecutor.h"
@@ -136,7 +136,8 @@ ExecutionBlockImpl<Executor>::ExecutionBlockImpl(ExecutionEngine* engine,
                                                  typename Executor::Infos&& infos)
     : ExecutionBlock(engine, node),
       _dependencyProxy(_dependencies, engine->itemBlockManager(),
-                       infos.getInputRegisters(), infos.numberOfInputRegisters()),
+                       infos.getInputRegisters(),
+                       infos.numberOfInputRegisters(), trxVpackOptions()),
       _rowFetcher(_dependencyProxy),
       _infos(std::move(infos)),
       _executor(_rowFetcher, _infos),
@@ -194,6 +195,7 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::g
     }
     if (newBlock == nullptr) {
       TRI_ASSERT(state == ExecutionState::DONE);
+      _state = InternalState::DONE;
       // _rowFetcher must be DONE now already
       return {state, nullptr};
     }
@@ -389,20 +391,22 @@ static SkipVariants constexpr skipType() {
   static_assert(
       useExecutor ==
           (std::is_same<Executor, IndexExecutor>::value ||
-           std::is_same<Executor, IResearchViewExecutor<false, true>>::value ||
-           std::is_same<Executor, IResearchViewExecutor<true, true>>::value ||
-           std::is_same<Executor, IResearchViewMergeExecutor<false, true>>::value ||
-           std::is_same<Executor, IResearchViewMergeExecutor<true, true>>::value ||
-           std::is_same<Executor, IResearchViewExecutor<false, false>>::value ||
-           std::is_same<Executor, IResearchViewExecutor<true, false>>::value ||
-           std::is_same<Executor, IResearchViewMergeExecutor<false, false>>::value ||
-           std::is_same<Executor, IResearchViewMergeExecutor<true, false>>::value ||
+           std::is_same<Executor, IResearchViewExecutor<false, iresearch::MaterializeType::Materialized>>::value ||
+           std::is_same<Executor, IResearchViewExecutor<false, iresearch::MaterializeType::LateMaterialized>>::value ||
+           std::is_same<Executor, IResearchViewExecutor<false, iresearch::MaterializeType::LateMaterializedWithVars>>::value ||
+           std::is_same<Executor, IResearchViewExecutor<true, iresearch::MaterializeType::Materialized>>::value ||
+           std::is_same<Executor, IResearchViewExecutor<true, iresearch::MaterializeType::LateMaterialized>>::value ||
+           std::is_same<Executor, IResearchViewExecutor<true, iresearch::MaterializeType::LateMaterializedWithVars>>::value ||
+           std::is_same<Executor, IResearchViewMergeExecutor<false, iresearch::MaterializeType::Materialized>>::value ||
+           std::is_same<Executor, IResearchViewMergeExecutor<false, iresearch::MaterializeType::LateMaterialized>>::value ||
+           std::is_same<Executor, IResearchViewMergeExecutor<true, iresearch::MaterializeType::Materialized>>::value ||
+           std::is_same<Executor, IResearchViewMergeExecutor<true, iresearch::MaterializeType::LateMaterialized>>::value ||
            std::is_same<Executor, EnumerateCollectionExecutor>::value ||
            std::is_same<Executor, LimitExecutor>::value ||
-           std::is_same<Executor, IdExecutor<BlockPassthrough::Disable, SingleRowFetcher<BlockPassthrough::Disable>>>::value ||
            std::is_same<Executor, ConstrainedSortExecutor>::value ||
            std::is_same<Executor, SortingGatherExecutor>::value ||
            std::is_same<Executor, UnsortedGatherExecutor>::value ||
+           std::is_same<Executor, ParallelUnsortedGatherExecutor>::value ||
            std::is_same<Executor, MaterializeExecutor<RegisterId>>::value ||
            std::is_same<Executor, MaterializeExecutor<std::string const&>>::value),
       "Unexpected executor for SkipVariants::EXECUTOR");
@@ -629,11 +633,8 @@ void ExecutionBlockImpl<Executor>::traceExecuteEnd(
               << "execute type=" << node->getTypeString() << " result: nullptr";
         } else {
           VPackBuilder builder;
-          {
-            VPackObjectBuilder guard(&builder);
-            block->toSimpleVPack(transaction(), builder);
-          }
-          auto options = transaction()->transactionContextPtr()->getVPackOptions();
+          auto const options = trxVpackOptions();
+          block->toSimpleVPack(options, builder);
           LOG_TOPIC("f12f9", INFO, Logger::QUERIES)
               << "[query#" << queryId << "] "
               << "execute type=" << node->getTypeString()
@@ -650,7 +651,7 @@ void ExecutionBlockImpl<Executor>::traceExecuteEnd(
 namespace arangodb::aql {
 // TODO -- remove this specialization when cpp 17 becomes available
 template <>
-std::pair<ExecutionState, Result> ExecutionBlockImpl<IdExecutor<BlockPassthrough::Enable, ConstFetcher>>::initializeCursor(
+std::pair<ExecutionState, Result> ExecutionBlockImpl<IdExecutor<ConstFetcher>>::initializeCursor(
     InputAqlItemRow const& input) {
   // reinitialize the DependencyProxy
   _dependencyProxy.reset();
@@ -760,13 +761,14 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<SubqueryExecutor<false>>::s
 }
 
 template <>
-std::pair<ExecutionState, Result> ExecutionBlockImpl<
-    IdExecutor<BlockPassthrough::Enable, SingleRowFetcher<BlockPassthrough::Enable>>>::shutdown(int errorCode) {
+std::pair<ExecutionState, Result>
+ExecutionBlockImpl<IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>::shutdown(int errorCode) {
   if (this->infos().isResponsibleForInitializeCursor()) {
     return ExecutionBlock::shutdown(errorCode);
   }
   return {ExecutionState::DONE, {errorCode}};
 }
+
 }  // namespace arangodb::aql
 
 namespace arangodb::aql {
@@ -1162,19 +1164,19 @@ template class ::arangodb::aql::ExecutionBlockImpl<EnumerateCollectionExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<EnumerateListExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<FilterExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<HashedCollectExecutor>;
-template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<false, true>>;
-template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<true, true>>;
-template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<false, true>>;
-template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<true, true>>;
-template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<false, false>>;
-template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<true, false>>;
-template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<false, false>>;
-template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<true, false>>;
-template class ::arangodb::aql::ExecutionBlockImpl<IdExecutor<BlockPassthrough::Enable, ConstFetcher>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IdExecutor<BlockPassthrough::Enable, SingleRowFetcher<BlockPassthrough::Enable>>>;
-template class ::arangodb::aql::ExecutionBlockImpl<
-    IdExecutor<BlockPassthrough::Disable, SingleRowFetcher<BlockPassthrough::Disable>>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<false, arangodb::iresearch::MaterializeType::Materialized>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<false, arangodb::iresearch::MaterializeType::LateMaterialized>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<false, arangodb::iresearch::MaterializeType::LateMaterializedWithVars>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<true, arangodb::iresearch::MaterializeType::Materialized>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<true, arangodb::iresearch::MaterializeType::LateMaterialized>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewExecutor<true, arangodb::iresearch::MaterializeType::LateMaterializedWithVars>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<false, arangodb::iresearch::MaterializeType::Materialized>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<false, arangodb::iresearch::MaterializeType::LateMaterialized>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<true, arangodb::iresearch::MaterializeType::Materialized>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IResearchViewMergeExecutor<true, arangodb::iresearch::MaterializeType::LateMaterialized>>;
+
+template class ::arangodb::aql::ExecutionBlockImpl<IdExecutor<ConstFetcher>>;
+template class ::arangodb::aql::ExecutionBlockImpl<IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>;
 template class ::arangodb::aql::ExecutionBlockImpl<IndexExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<LimitExecutor>;
 
@@ -1198,6 +1200,7 @@ template class ::arangodb::aql::ExecutionBlockImpl<SubqueryExecutor<false>>;
 template class ::arangodb::aql::ExecutionBlockImpl<SubqueryStartExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<TraversalExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<SortingGatherExecutor>;
+template class ::arangodb::aql::ExecutionBlockImpl<ParallelUnsortedGatherExecutor>;
 template class ::arangodb::aql::ExecutionBlockImpl<UnsortedGatherExecutor>;
 
 template class ::arangodb::aql::ExecutionBlockImpl<MaterializeExecutor<RegisterId>>;

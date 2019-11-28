@@ -17,167 +17,109 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
+/// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "UnsortedGatherExecutor.h"
 
+#include "Aql/IdExecutor.h"  // for IdExecutorInfos
 #include "Aql/MultiDependencySingleRowFetcher.h"
 #include "Aql/OutputAqlItemRow.h"
-#include "Aql/SortRegister.h"
 #include "Aql/Stats.h"
-#include "Transaction/Methods.h"
-
-#include "Logger/LogMacros.h"
+#include "Basics/debugging.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
 
-constexpr bool UnsortedGatherExecutor::Properties::preservesOrder;
-constexpr BlockPassthrough UnsortedGatherExecutor::Properties::allowsBlockPassthrough;
-constexpr bool UnsortedGatherExecutor::Properties::inputSizeRestrictsOutputSize;
-
-UnsortedGatherExecutorInfos::UnsortedGatherExecutorInfos(
-    RegisterId nrInOutRegisters, std::unordered_set<RegisterId> registersToKeep,
-    std::unordered_set<RegisterId> registersToClear)
-    : ExecutorInfos(make_shared_unordered_set(), make_shared_unordered_set(),
-                    nrInOutRegisters, nrInOutRegisters,
-                    std::move(registersToClear), std::move(registersToKeep)) {}
-
 UnsortedGatherExecutor::UnsortedGatherExecutor(Fetcher& fetcher, Infos& infos)
-    : _fetcher(fetcher),
-      _numberDependencies(0),
-      _currentDependency(0),
-      _skipped(0) {}
+    : _fetcher(fetcher) {}
 
 UnsortedGatherExecutor::~UnsortedGatherExecutor() = default;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Guarantees requiredby this this block:
-///        1) For every dependency the input is sorted, according to the same strategy.
-///
-///        What this block does:
-///        InitPhase:
-///          Fetch 1 Block for every dependency.
-///        ExecPhase:
-///          Fetch row of scheduled block.
-///          Pick the next (sorted) element (by strategy)
-///          Schedule this block to fetch Row
-///
-////////////////////////////////////////////////////////////////////////////////
-
-std::pair<ExecutionState, NoStats> UnsortedGatherExecutor::produceRows(OutputAqlItemRow& output) {
-
-  initDependencies();
-  
-  ExecutionState state;
-  InputAqlItemRow inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
-  
-  size_t x;
-  for (x = 0; x < _numberDependencies; ++x) {
-    size_t i = (_currentDependency + x) % _numberDependencies;
-  
-    if (_upstream[i] == ExecutionState::DONE) {
-      continue;
-    }
-    
-    size_t tmp = 0;
-    
-    state = ExecutionState::HASMORE;
-    while (!output.isFull() && state == ExecutionState::HASMORE) {
-      std::tie(state, inputRow) = _fetcher.fetchRowForDependency(i, output.numRowsLeft() /*atMost*/);
-      if (inputRow) {
-        output.copyRow(inputRow);
-        TRI_ASSERT(output.produced());
-        output.advanceRow();
-        tmp++;
-      }
-    }
-    
-    _upstream[i] = state;
-    if (output.isFull()) {
-      break;
-    }
-  }
-  _currentDependency = x;
-  
-  NoStats stats;
-  
-  // fix assert in ExecutionBlockImpl<E>::getSomeWithoutTrace
-  if (output.isFull()) {
-    return {ExecutionState::HASMORE, stats};
-  }
-  
-  size_t numWaiting = 0;
-  for (x = 0; x < _numberDependencies; ++x) {
-    if (_upstream[x] == ExecutionState::HASMORE) {
-      return {ExecutionState::HASMORE, stats};
-    } else if (_upstream[x] == ExecutionState::WAITING) {
-      numWaiting++;
-    }
-  }
-  if (numWaiting > 0) {
-    return {ExecutionState::WAITING, stats};
-  }
-  
-  TRI_ASSERT(std::all_of(_upstream.begin(), _upstream.end(), [](auto const& s) { return s == ExecutionState::DONE; } ));
-  return {ExecutionState::DONE, stats};
-}
-
-std::tuple<ExecutionState, UnsortedGatherExecutor::Stats, size_t> UnsortedGatherExecutor::skipRows(size_t const toSkip) {
-  
-  initDependencies();
-  TRI_ASSERT(_skipped <= toSkip);
-  
-  ExecutionState state = ExecutionState::HASMORE;
-  while (_skipped < toSkip) {
-    
-    const size_t i = _currentDependency;
-    if (_upstream[i] == ExecutionState::DONE) {
-      if (std::all_of(_upstream.begin(), _upstream.end(),
-                      [](auto s) { return s == ExecutionState::DONE; })) {
-         state = ExecutionState::DONE;
-         break;
-       }
-      _currentDependency = (i + 1) % _numberDependencies;
-       continue;
-     }
-    
-    TRI_ASSERT(_skipped <= toSkip);
-
-    size_t skippedNow;
-    std::tie(state, skippedNow) = _fetcher.skipRowsForDependency(i, toSkip - _skipped);
-    _upstream[i] = state;
+auto UnsortedGatherExecutor::produceRows(OutputAqlItemRow& output)
+    -> std::pair<ExecutionState, Stats> {
+  while (!output.isFull() && !done()) {
+    // Note that fetchNextRow may return DONE (because the current dependency is
+    // DONE), and also return an unitialized row in that case, but we are not
+    // DONE completely - that's what `done()` is for.
+    auto [state, inputRow] = fetchNextRow(output.numRowsLeft());
     if (state == ExecutionState::WAITING) {
-      TRI_ASSERT(skippedNow == 0);
-      return {ExecutionState::WAITING, NoStats{}, 0};
+      return {state, {}};
     }
-    _skipped += skippedNow;
-    
-    if (_upstream[i] == ExecutionState::DONE) {
-      if (std::all_of(_upstream.begin(), _upstream.end(),
-                      [](auto s) { return s == ExecutionState::DONE; })) {
-        break;
-      }
-       _currentDependency = (i + 1) % _numberDependencies;
-       continue;
-     }
+    // HASMORE => inputRow.isInitialized()
+    TRI_ASSERT(state == ExecutionState::DONE || inputRow.isInitialized());
+    if (inputRow.isInitialized()) {
+      output.copyRow(inputRow);
+      TRI_ASSERT(output.produced());
+      output.advanceRow();
+    }
   }
-  
-  size_t skipped = _skipped;
-  _skipped = 0;
 
-  TRI_ASSERT(skipped <= toSkip);
-  return {state, NoStats{}, skipped};
+  auto state = done() ? ExecutionState::DONE : ExecutionState::HASMORE;
+  return {state, {}};
 }
 
-void UnsortedGatherExecutor::initDependencies() {
-  if (_numberDependencies == 0) {
-    // We need to initialize the dependencies once, they are injected
-    // after the fetcher is created.
-    _numberDependencies = _fetcher.numberDependencies();
-    TRI_ASSERT(_numberDependencies > 0);
-    _upstream.resize(_numberDependencies, ExecutionState::HASMORE);
-    TRI_ASSERT(std::all_of(_upstream.begin(), _upstream.end(), [](auto const& s) { return s == ExecutionState::HASMORE; } ));
+auto UnsortedGatherExecutor::fetcher() const noexcept -> const Fetcher& {
+  return _fetcher;
+}
+
+auto UnsortedGatherExecutor::fetcher() noexcept -> Fetcher& { return _fetcher; }
+
+auto UnsortedGatherExecutor::numDependencies() const
+    noexcept(noexcept(_fetcher.numberDependencies())) -> size_t {
+  return _fetcher.numberDependencies();
+}
+
+auto UnsortedGatherExecutor::fetchNextRow(size_t atMost)
+    -> std::pair<ExecutionState, InputAqlItemRow> {
+  auto res = fetcher().fetchRowForDependency(currentDependency(), atMost);
+  if (res.first == ExecutionState::DONE) {
+    advanceDependency();
   }
+  return res;
+}
+
+auto UnsortedGatherExecutor::skipNextRows(size_t atMost)
+    -> std::pair<ExecutionState, size_t> {
+  auto res = fetcher().skipRowsForDependency(currentDependency(), atMost);
+  if (res.first == ExecutionState::DONE) {
+    advanceDependency();
+  }
+  return res;
+}
+
+auto UnsortedGatherExecutor::done() const noexcept -> bool {
+  return _currentDependency >= numDependencies();
+}
+
+auto UnsortedGatherExecutor::currentDependency() const noexcept -> size_t {
+  return _currentDependency;
+}
+
+auto UnsortedGatherExecutor::advanceDependency() noexcept -> void {
+  TRI_ASSERT(_currentDependency < numDependencies());
+  ++_currentDependency;
+}
+
+auto UnsortedGatherExecutor::skipRows(size_t const atMost)
+    -> std::tuple<ExecutionState, UnsortedGatherExecutor::Stats, size_t> {
+  auto const rowsLeftToSkip = [&atMost, &skipped = this->_skipped]() {
+    TRI_ASSERT(atMost >= skipped);
+    return atMost - skipped;
+  };
+  while (rowsLeftToSkip() > 0 && !done()) {
+    // Note that skipNextRow may return DONE (because the current dependency is
+    // DONE), and also return an unitialized row in that case, but we are not
+    // DONE completely - that's what `done()` is for.
+    auto [state, skipped] = skipNextRows(rowsLeftToSkip());
+    _skipped += skipped;
+    if (state == ExecutionState::WAITING) {
+      return {state, {}, 0};
+    }
+  }
+
+  auto state = done() ? ExecutionState::DONE : ExecutionState::HASMORE;
+  auto skipped = size_t{0};
+  std::swap(skipped, _skipped);
+  return {state, {}, skipped};
 }
