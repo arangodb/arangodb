@@ -76,7 +76,7 @@ void GeneralConnection<ST>::shutdownConnection(const Error err,
   if (state != Connection::State::Failed) {
     state = Connection::State::Disconnected;
     // hack to fix SSL streams
-    if (_config._socketType == SocketType::Ssl) {
+    if constexpr (ST == SocketType::Ssl) {
       state = Connection::State::Failed;
     }
     _state.store(state);
