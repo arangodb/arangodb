@@ -148,21 +148,38 @@ describe('AQL query analyzer', function () {
 
     it('should be able to get currently running queries', function () {
       sendQuery(1, true);
-      expect(testee.current().filter(filterQueries).length).to.equal(1);
+      let q;
+      let counter = 0;
+      while (++counter < 10) {
+        q = testee.current().filter(filterQueries).length;
+        if (q > 0) {
+          break;
+        }
+        internal.wait(0.25, false);
+      }
+      expect(q).to.equal(1);
     });
     
     it('should have proper running query descriptions', function () {
       sendQuery(1, true);
-      let queries = testee.current().filter(filterQueries);
-      expect(queries.length).to.equal(1);
-      expect(queries[0]).to.have.property('id');
-      expect(queries[0]).to.have.property('query', query);
-      expect(queries[0]).to.have.property('bindVars');
-      expect(queries[0].bindVars).to.eql({ value: 1 });
-      expect(queries[0]).to.have.property('started');
-      expect(queries[0]).to.have.property('runTime');
-      expect(queries[0]).to.have.property('state', 'executing');
-      expect(queries[0]).to.have.property('stream', false);
+      let q;
+      let counter = 0;
+      while (++counter < 10) {
+        q = testee.current().filter(filterQueries);
+        if (q.length > 0) {
+          break;
+        }
+        internal.wait(0.25, false);
+      }
+      expect(q.length).to.equal(1);
+      expect(q[0]).to.have.property('id');
+      expect(q[0]).to.have.property('query', query);
+      expect(q[0]).to.have.property('bindVars');
+      expect(q[0].bindVars).to.eql({ value: 1 });
+      expect(q[0]).to.have.property('started');
+      expect(q[0]).to.have.property('runTime');
+      expect(q[0]).to.have.property('state', 'executing');
+      expect(q[0]).to.have.property('stream', false);
     });
     
     it('should have proper running query descriptions, without bind vars', function () {
@@ -170,16 +187,24 @@ describe('AQL query analyzer', function () {
         trackBindVars: false
       });
       sendQuery(1, true);
-      let queries = testee.current().filter(filterQueries);
-      expect(queries.length).to.equal(1);
-      expect(queries[0]).to.have.property('id');
-      expect(queries[0]).to.have.property('query', query);
-      expect(queries[0]).to.have.property('bindVars');
-      expect(queries[0].bindVars).to.eql({ });
-      expect(queries[0]).to.have.property('started');
-      expect(queries[0]).to.have.property('runTime');
-      expect(queries[0]).to.have.property('state', 'executing');
-      expect(queries[0]).to.have.property('stream', false);
+      let q;
+      let counter = 0;
+      while (++counter < 10) {
+        q = testee.current().filter(filterQueries);
+        if (q.length > 0) {
+          break;
+        }
+        internal.wait(0.25, false);
+      }
+      expect(q.length).to.equal(1);
+      expect(q[0]).to.have.property('id');
+      expect(q[0]).to.have.property('query', query);
+      expect(q[0]).to.have.property('bindVars');
+      expect(q[0].bindVars).to.eql({ });
+      expect(q[0]).to.have.property('started');
+      expect(q[0]).to.have.property('runTime');
+      expect(q[0]).to.have.property('state', 'executing');
+      expect(q[0]).to.have.property('stream', false);
     });
 
     it('should not track queries if turned off', function () {
@@ -296,17 +321,33 @@ describe('AQL query analyzer', function () {
         trackBindVars: false
       });
       sendQuery(1, true);
-      let list = testee.current().filter(filterQueries);
-      expect(list.length).to.equal(1);
+      let q;
+      let counter = 0;
+      while (++counter < 10) {
+        q = testee.current().filter(filterQueries);
+        if (q.length > 0) {
+          break;
+        }
+        internal.wait(0.25, false);
+      }
+      expect(q.length).to.equal(1);
     });
 
     it('should be able to kill a query', function () {
       sendQuery(1, true);
-      let list = testee.current().filter(filterQueries);
-      expect(list.length).to.equal(1);
+      let q;
+      let counter = 0;
+      while (++counter < 10) {
+        q = testee.current().filter(filterQueries);
+        if (q.length > 0) {
+          break;
+        }
+        internal.wait(0.25, false);
+      }
+      expect(q.length).to.equal(1);
       expect(function () {
-        testee.kill(list[0].id);
-        list = testee.current().filter(filterQueries);
+        testee.kill(q[0].id);
+        let list = testee.current().filter(filterQueries);
         for (let i = 0; i < 10 && list.length > 0; ++i) {
           internal.wait(0.1);
           list = testee.current().filter(filterQueries);
