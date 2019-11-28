@@ -211,12 +211,19 @@ class TableMatcher final : public MatcherBase<typename F::Arc> {
 
   virtual void Next() noexcept final {
     assert(!error_);
-    while (!Done()) {
-      if (*++state_ != kNoLabel) {
-        auto& label = get_label(arc_);
+
+    if (Done()) {
+      return;
+    }
+
+    ++state_;
+
+    for (auto& label = get_label(arc_); !Done(); ++state_) {
+      if (*state_ != kNoLabel) {
+        assert(state_ > state_begin_ && state_ < state_end_);
         label = start_labels_[size_t(std::distance(state_begin_, state_))];
         arc_.nextstate = *state_;
-        break;
+        return;
       }
     }
   }
