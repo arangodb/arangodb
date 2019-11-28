@@ -308,7 +308,6 @@ arangodb::Result tryCreateDatabase(arangodb::application_features::ApplicationSe
     if (properties.isObject()) {
       ObjectBuilder guard(&builder, "options");
       for(auto const& key : std::vector<std::string>{
-        arangodb::StaticStrings::MinReplicationFactor, // deprecated
         arangodb::StaticStrings::ReplicationFactor,
         arangodb::StaticStrings::Sharding,
         arangodb::StaticStrings::WriteConcern

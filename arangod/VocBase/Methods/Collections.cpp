@@ -603,7 +603,7 @@ Result Collections::properties(Context& ctxt, VPackBuilder& builder) {
 
 Result Collections::updateProperties(LogicalCollection& collection,
                                      velocypack::Slice const& props) {
-  const bool partialUpdate = false; // always a full update
+  const bool partialUpdate = false; // always a full update for collections
   
   ExecContext const& exec = ExecContext::current();
   bool canModify = exec.canUseCollection(collection.name(), auth::Level::RW);
