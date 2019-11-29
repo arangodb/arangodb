@@ -2300,8 +2300,8 @@ arangodb::Result fromFuncLike(
 
   auto const argc = args.numMembers();
 
-  if (argc < 2 || argc > 3) {
-    auto message = "'LIKE' AQL function: Invalid number of arguments passed (should be 2..3)";
+  if (argc != 2) {
+    auto message = "'LIKE' AQL function: Invalid number of arguments passed (should be 2)";
     LOG_TOPIC("2f1a8", WARN, arangodb::iresearch::TOPIC) << message;
     return arangodb::Result{TRI_ERROR_BAD_PARAMETER, message};
   }
