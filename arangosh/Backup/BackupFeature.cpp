@@ -737,11 +737,11 @@ void BackupFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opti
 
   options->addOption("--force",
                      "abort transactions if needed to ensure a consistent snapshot."
-                     " (create operation).",
+                     " (create operation)."
                      " Note that this is rather brutal and is almost certainly not what your "
                      "application is going to like. In the presence of intermediate commits using "
                      "this option can even destroy the atomicity of your transactions. Use at your "
-                     "own risk and only if you really need a consistent backup at all costs."
+                     "own risk and only if you really need a consistent backup at all costs.",
                      new BooleanParameter(&_options.abortTransactionsIfNeeded));
 #endif
   /*
