@@ -1,7 +1,7 @@
 @startDocuBlock post_create_document_MULTI
 @brief creates multiple documents
 
-@RESTHEADER{POST /_api/document/{collection-name}, Create document, insertDocument}
+@RESTHEADER{POST /_api/document/{collection-name}, Create multiple documents, insertDocuments}
 
 @RESTURLPARAMETERS
 
