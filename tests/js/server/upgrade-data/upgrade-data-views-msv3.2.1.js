@@ -60,7 +60,7 @@ function UpgradeData() {
         v.properties(properties);
 
         const query =
-          `FOR doc in TestView
+         `FOR doc in TestView
           SEARCH(doc.name >= "Name 1114" &&  doc.name <= "Name 1117")
           OPTIONS { waitForSync: true }
           SORT doc.name ASC
