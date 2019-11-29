@@ -50,119 +50,11 @@ bool Optimizer::runOnlyRequiredRules(size_t extraPlans) const {
           (_newPlans.size() + _plans.size() + extraPlans >= _maxNumberOfPlans));
 }
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-
-// Check the plan for inconsistencies, like more than one parent or dependency,
-// or mismatching parents and dependencies in adjacent nodes.
-class PlanChecker : public WalkerWorker<ExecutionNode> {
- public:
-  PlanChecker(ExecutionPlan& plan) : _plan{plan} {}
-
-  bool before(ExecutionNode* node) override {
-    bool ok = true;
-    std::vector<std::stringstream> errors;
-
-    auto emplaceError = [&errors]() -> auto& {
-      errors.emplace_back();
-      return errors.back();
-    };
-
-    switch (node->getType()) {
-      case ExecutionNode::RETURN:
-        if (node->getParents().size() != 0) {
-          emplaceError() << "#parents == " << node->getParents().size() << " at [" << node->id() << "] " << node->getTypeString();
-          ok = false;
-        }
-        break;
-      case ExecutionNode::INSERT:
-      case ExecutionNode::UPDATE:
-      case ExecutionNode::REPLACE:
-      case ExecutionNode::UPSERT:
-      case ExecutionNode::REMOVE:
-      case ExecutionNode::GATHER:
-      case ExecutionNode::REMOTESINGLE:
-        if (node->getParents().size() > 1) {
-          emplaceError() << "#parents == " << node->getParents().size() << " at [" << node->id() << "] " << node->getTypeString();
-          ok = false;
-        }
-        break;
-      default:
-        if (node->getParents().size() != 1) {
-          emplaceError() << "#parents == " << node->getParents().size() << " at [" << node->id() << "] " << node->getTypeString();
-          ok = false;
-        }
-        break;
-    }
-    switch (node->getType()) {
-      case ExecutionNode::SINGLETON:
-        if (node->getDependencies().size() != 0) {
-          emplaceError() << "#dependencies == " << node->getDependencies().size() << " at [" << node->id() << "] " << node->getTypeString();
-          ok = false;
-        }
-        break;
-      default:
-        if (node->getDependencies().size() != 1) {
-          emplaceError() << "#dependencies == " << node->getDependencies().size() << " at [" << node->id() << "] " << node->getTypeString();
-          ok = false;
-        }
-        break;
-    }
-
-    auto isDepOf = [](ExecutionNode const* node, ExecutionNode const* parent) {
-      auto const& deps = parent->getDependencies();
-      return std::any_of(deps.begin(), deps.end(), [&](auto it) { return it == node; });
-    };
-    auto isParentOf = [](ExecutionNode const* node, ExecutionNode const* dep) {
-      auto const& parents = dep->getParents();
-      return std::any_of(parents.begin(), parents.end(), [&](auto it) { return it == node; });
-    };
-
-    for (auto const& parent : node->getParents()) {
-      if (!isDepOf(node, parent)) {
-        emplaceError() << "!isDepOf(" << node->id() << ", " << parent->id() << ")";
-        emplaceError() << "  node is a " << node->getTypeString();
-        emplaceError() << "  parent is a " << parent->getTypeString();
-        ok = false;
-      }
-    }
-    for (auto const& dep : node->getDependencies()) {
-      if (!isParentOf(node, dep)) {
-        emplaceError() << "!isParentOf(" << dep->id() << ", " << node->id() << ")";
-        emplaceError() << "  dependency is a " << dep->getTypeString();
-        emplaceError() << "  node is a " << node->getTypeString();
-        ok = false;
-      }
-    }
-
-    if (!ok) {
-      LOG_TOPIC("d45f8", ERR, arangodb::Logger::AQL) << "Inconsistent plan:";
-      _plan.show();
-      LOG_TOPIC("c14a2", ERR, arangodb::Logger::AQL) << "encountered the following error(s):";
-      for (auto const& err : errors) {
-        LOG_TOPIC("17a18", ERR, arangodb::Logger::AQL) << err.str();
-      }
-    }
-    TRI_ASSERT(ok);
-
-    return false;
-  }
-
- private:
-  ExecutionPlan& _plan;
-};
-
-#endif // ARANGODB_ENABLE_MAINTAINER_MODE
-
 // @brief add a plan to the optimizer
 void Optimizer::addPlan(std::unique_ptr<ExecutionPlan> plan,
                         OptimizerRule const* rule, bool wasModified, int newLevel) {
   TRI_ASSERT(plan != nullptr);
   TRI_ASSERT(&_currentRule->second.rule == rule);
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  auto checker = PlanChecker{*plan};
-  plan->root()->walk(checker);
-#endif // ARANGODB_ENABLE_MAINTAINER_MODE
 
   plan->setValidity(true);
 
@@ -200,11 +92,6 @@ int Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
                            QueryOptions const& queryOptions, bool estimateAllPlans) {
   _runOnlyRequiredRules = false;
   ExecutionPlan* initialPlan = plan.get();
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  auto checker = PlanChecker{*plan};
-  plan->root()->walk(checker);
-#endif // ARANGODB_ENABLE_MAINTAINER_MODE
 
   // _plans contains the previous optimization result
   _plans.clear();
