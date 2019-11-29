@@ -603,16 +603,18 @@ ResultT<std::pair<std::string, bool>> RestReplicationHandler::forwardingTarget()
       auto const type = _request->requestType();
       std::string const& command = suffixes[0];
       if ((command == Batch) || (command == Inventory && type == rest::RequestType::GET) ||
-          (command == Dump && type == rest::RequestType::GET)) {
+          (command == Dump && type == rest::RequestType::GET) ||
+          (command == RestoreCollection && type == rest::RequestType::PUT)) {
+        ClusterInfo& ci = server().getFeature<ClusterFeature>().clusterInfo();
+        auto& exec = ExecContext::current();
+        ExecContextSuperuserScope escope(exec.isAdminUser());
+
         if (command == Dump) {
           // check dump collection permissions (at least ro needed)
           ShardID const& ShardID = _request->value("collection");
-          ClusterInfo& ci = server().getFeature<ClusterFeature>().clusterInfo();
           std::string collectionName = ci.getCollectionNameForShard(ShardID);
 
           if (!collectionName.empty()) {
-            auto& exec = ExecContext::current();
-            ExecContextSuperuserScope escope(exec.isAdminUser());
             if (!exec.canUseCollection(collectionName, auth::Level::RO)) {
               // not enough rights
               return Result(TRI_ERROR_FORBIDDEN);
@@ -620,6 +622,40 @@ ResultT<std::pair<std::string, bool>> RestReplicationHandler::forwardingTarget()
           } else {
             // not found, return 404
             return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+          }
+        } else if (command == RestoreCollection) {
+          VPackSlice const slice = _request->payload();
+          VPackSlice const parameters = slice.get("parameters");
+          if (parameters.isObject()) {
+            if (parameters.get("name").isString()) {
+              std::string collectionName = parameters.get("name").copyString();
+              if (!collectionName.empty()) {
+                std::string dbName = _request->databaseName();
+                DatabaseFeature& databaseFeature = _vocbase.server().getFeature<DatabaseFeature>();
+                TRI_vocbase_t* vocbase = databaseFeature.lookupDatabase(dbName);
+                std::string const& overwriteCollection = _request->value("overwrite");
+
+                if (overwriteCollection == "true" || vocbase->lookupCollection(collectionName) == nullptr) {
+                  // 1.) re-create collection, means: overwrite=true (rw database)
+                  // OR 2.) not existing, new collection (rw database)
+                  if (!exec.canUseDatabase(dbName, auth::Level::RW)) {
+                    return Result(TRI_ERROR_FORBIDDEN);
+                  }
+                } else {
+                  // 3.) Existing collection (ro database, rw collection)
+                  // no overwrite. restoring into an existing collection
+                  if (!exec.canUseCollection(collectionName, auth::Level::RW) || !exec.canUseDatabase(dbName, auth::Level::RO)) {
+                    return Result(TRI_ERROR_FORBIDDEN);
+                  }
+                }
+              } else {
+                return Result(TRI_ERROR_HTTP_BAD_PARAMETER, "empty collection name");
+              }
+            } else {
+              return Result(TRI_ERROR_HTTP_BAD_PARAMETER, "invalid collection name type");
+            }
+          } else {
+            return Result(TRI_ERROR_HTTP_BAD_PARAMETER, "invalid collection parameter type");
           }
         }
 
