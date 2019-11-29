@@ -1,6 +1,8 @@
 devel
 -----
 
+* fixed permissions for dump/restore
+
 * The _users collection is now properly restored when using arangorestore.
 
 * Updated arangosync to 0.7.1.
