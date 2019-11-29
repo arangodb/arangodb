@@ -73,7 +73,7 @@ function UpgradeData() {
         assertEqual(results[3].name, "Name 1117");
       }
       finally {
-        v.drop();
+        db._dropView('TestView');
       }
     }
   };
