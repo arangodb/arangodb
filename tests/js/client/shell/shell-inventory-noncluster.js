@@ -101,6 +101,7 @@ function inventorySuite () {
     assertEqual("boolean", typeof parameters.keyOptions.allowUserKeys);
     assertEqual("string", typeof parameters.keyOptions.type);
     assertEqual("number", typeof parameters.minReplicationFactor);
+    assertEqual("number", typeof parameters.writeConcern);
     assertEqual("string", typeof parameters.name);
     assertEqual("number", typeof parameters.replicationFactor);
     assertEqual("number", typeof parameters.status);

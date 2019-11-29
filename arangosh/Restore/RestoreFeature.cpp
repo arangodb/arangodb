@@ -308,9 +308,9 @@ arangodb::Result tryCreateDatabase(arangodb::application_features::ApplicationSe
     if (properties.isObject()) {
       ObjectBuilder guard(&builder, "options");
       for(auto const& key : std::vector<std::string>{
-        arangodb::StaticStrings::MinReplicationFactor,
         arangodb::StaticStrings::ReplicationFactor,
         arangodb::StaticStrings::Sharding,
+        arangodb::StaticStrings::WriteConcern
       }) {
         VPackSlice slice = properties.get(key);
         if (!slice.isNone()) {
@@ -440,7 +440,7 @@ arangodb::Result sendRestoreCollection(arangodb::httpclient::SimpleHttpClient& h
   using arangodb::Logger;
   using arangodb::httpclient::SimpleHttpResult;
 
-  std::string url =
+  const std::string url =
       "/_api/replication/restore-collection"
       "?overwrite=" +
       std::string(options.overwrite ? "true" : "false") +
@@ -816,13 +816,32 @@ arangodb::Result restoreView(arangodb::httpclient::SimpleHttpClient& httpClient,
 arangodb::Result triggerFoxxHeal(arangodb::httpclient::SimpleHttpClient& httpClient) {
   using arangodb::Logger;
   using arangodb::httpclient::SimpleHttpResult;
-  const std::string FoxxHealUrl = "/_api/foxx/_local/heal";
-
   std::string body = "";
 
+  // check if the foxx api is available.
+  const std::string statusUrl = "/_admin/status";
   std::unique_ptr<SimpleHttpResult> response(
-      httpClient.request(arangodb::rest::RequestType::POST, FoxxHealUrl,
+      httpClient.request(arangodb::rest::RequestType::POST, statusUrl,
                          body.c_str(), body.length()));
+
+  auto res =  ::checkHttpResponse(httpClient, response, "check status", body);
+  if (res.ok() && response) {
+    try {
+        if(!response->getBodyVelocyPack()->slice().get("foxxApi").getBool()) {
+          LOG_TOPIC("9e9b9", INFO, Logger::RESTORE)
+                  << "skipping foxx self-healing because Foxx API is disabled";
+          return { };
+        }
+    } catch (...) {
+      //API Not available because of older version or whatever
+    }
+  }
+
+  const std::string FoxxHealUrl = "/_api/foxx/_local/heal";
+  response.reset(
+    httpClient.request(arangodb::rest::RequestType::POST, FoxxHealUrl,
+                       body.c_str(), body.length())
+  );
   return ::checkHttpResponse(httpClient, response, "trigger self heal", body);
 }
 
