@@ -75,15 +75,15 @@ class MetricsFeature final : public application_features::ApplicationFeature {
       THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL, std::string("No histogram booked as ") + name);
     }
-    std::shared_ptr<Histogram> metric = nullptr;
+    std::shared_ptr<Histogram<T>> metric = nullptr;
     std::string error;
     try {
-      metric = std::dynamic_pointer_cast<Histogram>(*it->second);
+      metric = std::dynamic_pointer_cast<Histogram<T>>(*it->second);
       if (metric == nullptr) {
-        error = "Failed to retrieve histogram " << name;
+        error = std::string("Failed to retrieve histogram ") + name;
       }
     } catch (std::exception const& e) {
-      error = "Failed to retrieve histogram " << name << ": " << e.what();
+      error = std::string("Failed to retrieve histogram ") + name + ": " + e.what();
     }
     if (!error.empty()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, error);
@@ -93,11 +93,11 @@ class MetricsFeature final : public application_features::ApplicationFeature {
   }
 
   Counter& counter(std::string const& name, uint64_t const& val, std::string const& help);
-  Counter& counter(std::string const& name);
+  //Counter& counter(std::string const& name);
 
   template<typename T>
   Gauge<T>& gauge(std::string const& name, T const& t, std::string const& help) {
-    auto metric = std::make_shared<Gauge>(t, name, help);
+    auto metric = std::make_shared<Gauge<T>>(t, name, help);
     bool success = false;
     {
       std::lock_guard<std::mutex> guard(_lock);
@@ -121,15 +121,15 @@ class MetricsFeature final : public application_features::ApplicationFeature {
       THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL, std::string("No gauge booked as ") + name);
     }
-    std::shared_ptr<Gauge> metric = nullptr;
+    std::shared_ptr<Gauge<T>> metric = nullptr;
     std::string error;
     try {
-      metric = std::dynamic_pointer_cast<Gauge>(*it->second);
+      metric = std::dynamic_pointer_cast<Gauge<T>>(*it->second);
       if (metric == nullptr) {
-        error = "Failed to retrieve gauge " << name;
+        error = std::string("Failed to retrieve gauge ") + name;
       }
     } catch (std::exception const& e) {
-      error = "Failed to retrieve gauge " << name << ": " << e.what();
+      error = std::string("Failed to retrieve gauge ") + name +  ": " + e.what();
     }
     if (!error.empty()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, error);

@@ -116,6 +116,7 @@ Counter& MetricsFeature::counter (
   return *metric;
 }
 
+/*
 Counter& MetricsFeature::counter (std::string const& name) {
   
   registry_type::const_iterator it;
@@ -132,10 +133,10 @@ Counter& MetricsFeature::counter (std::string const& name) {
   try {
     metric = std::dynamic_pointer_cast<Counter>(*it->second);
     if (metric == nullptr) {
-      error = "Failed to retrieve counter " << name;
+      error = std::string("Failed to retrieve counter ") + name;
     }
   } catch (std::exception const& e) {
-    error = "Failed to retrieve counter " << name << ": " << e.what();
+    error = std::string("Failed to retrieve counter ") + name + ": " + e.what();
   }
   if (!error.empty()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, error);
@@ -143,7 +144,7 @@ Counter& MetricsFeature::counter (std::string const& name) {
   return *metric;
 
 }
-
+*/
 
 ServerStatistics& MetricsFeature::serverStatistics() {
   return *_serverStatistics;
