@@ -25,9 +25,12 @@
 #include "search/all_filter.hpp"
 #include "search/all_iterator.hpp"
 #include "search/boolean_filter.hpp"
+#include "search/range_filter.hpp"
 #include "search/disjunction.hpp"
 #include "search/min_match_disjunction.hpp"
 #include "search/exclusion.hpp"
+#include "search/bm25.hpp"
+#include "search/tfidf.hpp"
 #include "filter_test_case_base.hpp"
 #include "index/iterators.hpp"
 #include "formats/formats.hpp"
@@ -6179,366 +6182,621 @@ TEST(exclusion_test, seek) {
 // --SECTION--                                                Boolean test case 
 // ----------------------------------------------------------------------------
 
-class boolean_filter_test_case : public filter_test_case_base {
- protected:
-  void mixed_sequential() {
+class boolean_filter_test_case : public filter_test_case_base { };
+
+TEST_P(boolean_filter_test_case, or_sequential_multiple_segments) {
+  // populate index
+  {
+    tests::json_doc_generator gen(
+      resource("simple_sequential.json"),
+      &tests::generic_json_field_factory);
+
+    tests::document const *doc1 = gen.next();
+    tests::document const *doc2 = gen.next();
+    tests::document const *doc3 = gen.next();
+    tests::document const *doc4 = gen.next();
+    tests::document const *doc5 = gen.next();
+    tests::document const *doc6 = gen.next();
+    tests::document const *doc7 = gen.next();
+    tests::document const *doc8 = gen.next();
+    tests::document const *doc9 = gen.next();
+
+    auto writer = open_writer();
+
+    ASSERT_TRUE(insert(*writer,
+      doc1->indexed.begin(), doc1->indexed.end(),
+      doc1->stored.begin(), doc1->stored.end()
+    )); // A
+    ASSERT_TRUE(insert(*writer,
+      doc2->indexed.begin(), doc2->indexed.end(),
+      doc2->stored.begin(), doc2->stored.end()
+    )); // B
+    ASSERT_TRUE(insert(*writer,
+      doc3->indexed.begin(), doc3->indexed.end(),
+      doc3->stored.begin(), doc3->stored.end()
+    )); // C
+    ASSERT_TRUE(insert(*writer,
+      doc4->indexed.begin(), doc4->indexed.end(),
+      doc4->stored.begin(), doc4->stored.end()
+    )); // D
+    writer->commit();
+    ASSERT_TRUE(insert(*writer,
+      doc5->indexed.begin(), doc5->indexed.end(),
+      doc5->stored.begin(), doc5->stored.end()
+    )); // E
+    ASSERT_TRUE(insert(*writer,
+      doc6->indexed.begin(), doc6->indexed.end(),
+      doc6->stored.begin(), doc6->stored.end()
+    )); // F
+    ASSERT_TRUE(insert(*writer,
+      doc7->indexed.begin(), doc7->indexed.end(),
+      doc7->stored.begin(), doc7->stored.end()
+    )); // G
+    writer->commit();
+    ASSERT_TRUE(insert(*writer,
+      doc8->indexed.begin(), doc8->indexed.end(),
+      doc8->stored.begin(), doc8->stored.end()
+    )); // H
+    ASSERT_TRUE(insert(*writer,
+      doc9->indexed.begin(), doc9->indexed.end(),
+      doc9->stored.begin(), doc9->stored.end()
+    )); // I
+    writer->commit();
+  }
+
+  auto rdr = open_reader();
+  {
+    irs::Or root;
+    root.add<irs::by_term>().field("name").term("B");
+    root.add<irs::by_term>().field("name").term("F");
+    root.add<irs::by_term>().field("name").term("I");
+
+    auto prep = root.prepare(rdr);
+    auto segment = rdr.begin();
     {
-      // add segment
-      {
-        tests::json_doc_generator gen( 
-          resource("simple_sequential.json"),
-          &tests::generic_json_field_factory);
-        add_segment( gen );
-      }
+      auto docs = prep->execute(*segment);
+      ASSERT_TRUE(docs->next());
+      ASSERT_EQ(2, docs->value());
+      ASSERT_FALSE(docs->next());
+    }
 
-      auto rdr = open_reader();
+    ++segment;
+    {
+      auto docs = prep->execute(*segment);
+      ASSERT_TRUE(docs->next());
+      ASSERT_EQ(2, docs->value());
+      ASSERT_FALSE(docs->next());
+    }
 
-      // (same=xyz AND duplicated=abcd) OR (same=xyz AND duplicated=vczc)
-      {
-        irs::Or root;
+    ++segment;
+    {
+      auto docs = prep->execute(*segment);
+      ASSERT_TRUE(docs->next());
+      ASSERT_EQ(2, docs->value());
+      ASSERT_FALSE(docs->next());
+    }
+  }
+}
 
-        // same=xyz AND duplicated=abcd
-        {
-          irs::And& child = root.add<irs::And>();
-          child.add<irs::by_term>().field("same").term("xyz");
-          child.add<irs::by_term>().field("duplicated").term("abcd");
-        }
+TEST_P(boolean_filter_test_case, or_sequential) {
+  // add segment
+  {
+    tests::json_doc_generator gen(
+      resource("simple_sequential.json"),
+      &tests::generic_json_field_factory);
+    add_segment( gen );
+  }
 
-        // same=xyz AND duplicated=vczc
-        {
-          irs::And& child = root.add<irs::And>();
-          child.add<irs::by_term>().field("same").term("xyz");
-          child.add<irs::by_term>().field("duplicated").term("vczc");
-        }
+  auto rdr = open_reader();
 
-        check_query(root, docs_t{ 1, 2, 3, 5, 8, 11, 14, 17, 19, 21, 24, 27, 31 }, rdr);
-      }
+  // empty query
+  {
+    check_query(irs::Or(), docs_t{}, rdr);
+  }
 
-      // ((same=xyz AND duplicated=abcd) OR (same=xyz AND duplicated=vczc)) AND name=X
-      {
-        irs::And root;
-        root.add<irs::by_term>().field("name").term("X");
+  // name=V
+  {
+    irs::Or root;
+    root.add<irs::by_term>().field("name").term("V"); // 22
 
-        // ( same = xyz AND duplicated = abcd ) OR( same = xyz AND duplicated = vczc )
-        {
-          irs::Or& child = root.add<irs::Or>();
+    check_query(root, docs_t{ 22 }, rdr);
+  }
 
-          // same=xyz AND duplicated=abcd
-          {
-            irs::And& subchild = child.add<irs::And>();
-            subchild.add<irs::by_term>().field("same").term("xyz");
-            subchild.add<irs::by_term>().field("duplicated").term("abcd");
-          }
+  // name=W OR name=Z
+  {
+    irs::Or root;
+    root.add<irs::by_term>().field("name").term("W"); // 23
+    root.add<irs::by_term>().field("name").term("C"); // 3
 
-          // same=xyz AND duplicated=vczc
-          {
-            irs::And& subchild = child.add<irs::And>();
-            subchild.add<irs::by_term>().field("same").term("xyz");
-            subchild.add<irs::by_term>().field("duplicated").term("vczc");
-          }
-        }
+    check_query(root, docs_t{ 3, 23 }, rdr);
+  }
 
-        check_query(root, docs_t{ 24 }, rdr);
-      }
+  // name=A OR name=Q OR name=Z
+  {
+    irs::Or root;
+    root.add<irs::by_term>().field("name").term("A"); // 1
+    root.add<irs::by_term>().field("name").term("Q"); // 17
+    root.add<irs::by_term>().field("name").term("Z"); // 26
 
-      // ((same=xyz AND duplicated=abcd) OR (name=A or name=C or NAME=P or name=U or name=X)) OR (same=xyz AND (duplicated=vczc OR (name=A OR name=C OR NAME=P OR name=U OR name=X)) )
-      // 1, 2, 3, 4, 5, 8, 11, 14, 16, 17, 19, 21, 24, 27, 31
-      {
-        irs::Or root;
+    check_query(root, docs_t{ 1, 17, 26 }, rdr);
+  }
 
-        // (same=xyz AND duplicated=abcd) OR (name=A or name=C or NAME=P or name=U or name=X)
-        // 1, 3, 5,11, 16, 21, 24, 27, 31
-        {
-          irs::Or& child = root.add<irs::Or>();
+  // name=A OR name=Q OR same!=xyz
+  {
+    irs::Or root;
+    root.add<irs::by_term>().field("name").term("A"); // 1
+    root.add<irs::by_term>().field("name").term("Q"); // 17
+    root.add<irs::Or>().add<irs::Not>().filter<irs::by_term>().field("same").term("xyz"); // none (not within an OR must be wrapped inside a single-branch OR)
 
-          // ( same = xyz AND duplicated = abcd )
-          {
-            irs::And& subchild = root.add<irs::And>();
-            subchild.add<irs::by_term>().field("same").term("xyz");
-            subchild.add<irs::by_term>().field("duplicated").term("abcd");
-          }
-         
-          child.add<irs::by_term>().field("name").term("A");
-          child.add<irs::by_term>().field("name").term("C");
-          child.add<irs::by_term>().field("name").term("P");
-          child.add<irs::by_term>().field("name").term("X");
-        }
+    check_query(root, docs_t{ 1, 17 }, rdr);
+  }
 
-        // (same=xyz AND (duplicated=vczc OR (name=A OR name=C OR NAME=P OR name=U OR name=X))
-        // 1, 2, 3, 8, 14, 16, 17, 19, 21, 24
-        {
-          irs::And& child = root.add<irs::And>();
-          child.add<irs::by_term>().field("same").term("xyz");
+  // (name=A OR name=Q) OR same!=xyz
+  {
+    irs::Or root;
+    root.add<irs::by_term>().field("name").term("A"); // 1
+    root.add<irs::by_term>().field("name").term("Q"); // 17
+    root.add<irs::Or>().add<irs::Not>().filter<irs::by_term>().field("same").term("xyz"); // none (not within an OR must be wrapped inside a single-branch OR)
 
-          // (duplicated=vczc OR (name=A OR name=C OR NAME=P OR name=U OR name=X)
-          {
-            irs::Or& subchild = child.add<irs::Or>();
-            subchild.add<irs::by_term>().field("duplicated").term("vczc");
+    check_query(root, docs_t{ 1, 17 }, rdr);
+  }
 
-            // name=A OR name=C OR NAME=P OR name=U OR name=X
-            {
-              irs::Or& subsubchild = subchild.add<irs::Or>();
-              subchild.add<irs::by_term>().field("name").term("A");
-              subchild.add<irs::by_term>().field("name").term("C");
-              subchild.add<irs::by_term>().field("name").term("P");
-              subchild.add<irs::by_term>().field("name").term("X");
-            }
-          }
-        }
+  // name=A OR name=Q OR name=Z OR same=invalid_term OR invalid_field=V
+  {
+    irs::Or root;
+    root.add<irs::by_term>().field("name").term("A"); // 1
+    root.add<irs::by_term>().field("name").term("Q"); // 17
+    root.add<irs::by_term>().field("name").term("Z"); // 26
+    root.add<irs::by_term>().field("same").term("invalid_term");
+    root.add<irs::by_term>().field("invalid_field").term("V");
 
-        check_query(root, docs_t{ 1, 2, 3, 5, 8, 11, 14, 16, 17, 19, 21, 24, 27, 31 }, rdr);
-      }
+    check_query(root, docs_t{ 1, 17, 26 }, rdr);
+  }
 
-      // (same=xyz AND duplicated=abcd) OR (same=xyz AND duplicated=vczc) AND *
-      {
-        irs::Or root;
+  // search : all terms
+  {
+    irs::Or root;
+    root.add<irs::by_term>().field("name").term("A"); // 1
+    root.add<irs::by_term>().field("name").term("Q"); // 17
+    root.add<irs::by_term>().field("name").term("Z"); // 26
+    root.add<irs::by_term>().field("same").term("xyz"); // 1..32
+    root.add<irs::by_term>().field("same").term("invalid_term");
 
-        // *
-        root.add<irs::all>();
+    check_query(
+      root,
+      docs_t{ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32 },
+      rdr
+    );
+  }
 
-        // same=xyz AND duplicated=abcd
-        {
-          irs::And& child = root.add<irs::And>();
-          child.add<irs::by_term>().field("same").term("xyz");
-          child.add<irs::by_term>().field("duplicated").term("abcd");
-        }
+  // search : empty result
+  check_query(
+    irs::by_term().field( "same" ).term( "invalid_term" ),
+    docs_t{},
+    rdr
+  );
+}
 
-        // same=xyz AND duplicated=vczc
-        {
-          irs::And& child = root.add<irs::And>();
-          child.add<irs::by_term>().field("same").term("xyz");
-          child.add<irs::by_term>().field("duplicated").term("vczc");
-        }
+TEST_P(boolean_filter_test_case, and_schemas) {
+  // write segments
+  {
+    auto writer = open_writer(irs::OM_CREATE);
 
-        check_query( 
-          root, 
-          docs_t{ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32 },
-          rdr
-        );
-      }
+    std::vector<doc_generator_base::ptr> gens;
 
-      // (same=xyz AND duplicated=abcd) OR (same=xyz AND duplicated=vczc) OR NOT *
-      {
-        irs::Or root;
+    gens.emplace_back(new tests::json_doc_generator(
+      resource("AdventureWorks2014.json"),
+      &tests::generic_json_field_factory));
+    gens.emplace_back(new tests::json_doc_generator(
+      resource("AdventureWorks2014Edges.json"),
+      &tests::generic_json_field_factory));
+    gens.emplace_back(new tests::json_doc_generator(
+      resource("Northwnd.json"),
+      &tests::generic_json_field_factory));
+    gens.emplace_back(new tests::json_doc_generator(
+      resource("NorthwndEdges.json"),
+      &tests::generic_json_field_factory));
 
-        // NOT *
-        root.add<irs::Not>().filter<irs::all>();
+    add_segments(*writer, gens);
+  }
 
-        // same=xyz AND duplicated=abcd
-        {
-          irs::And& child = root.add<irs::And>();
-          child.add<irs::by_term>().field("same").term("xyz");
-          child.add<irs::by_term>().field("duplicated").term("abcd");
-        }
+  auto rdr = open_reader();
 
-        // same=xyz AND duplicated=vczc
-        {
-          irs::And& child = root.add<irs::And>();
-          child.add<irs::by_term>().field("same").term("xyz");
-          child.add<irs::by_term>().field("duplicated").term("vczc");
-        }
+  // Name = Product AND source=AdventureWor3ks2014
+  {
+    irs::And root;
+    root.add<irs::by_term>().field("Name").term("Product");
+    root.add<irs::by_term>().field("source").term("AdventureWor3ks2014");
+    check_query(root, docs_t{}, rdr);
+  }
+}
 
-        check_query(root, docs_t{}, rdr);
-      }
+TEST_P(boolean_filter_test_case, and_sequential) {
+  // add segment
+  {
+    tests::json_doc_generator gen(
+      resource("simple_sequential.json"),
+      &tests::generic_json_field_factory);
+    add_segment( gen );
+  }
+
+  auto rdr = open_reader();
+
+  // empty query
+  {
+    check_query(irs::And(), docs_t{}, rdr);
+  }
+
+  // name=V
+  {
+    irs::And root;
+    root.add<irs::by_term>().field("name").term("V"); // 22
+
+    check_query(root, docs_t{ 22 }, rdr);
+  }
+
+  // duplicated=abcd AND same=xyz
+  {
+    irs::And root;
+    root.add<irs::by_term>().field("duplicated").term("abcd"); // 1,5,11,21,27,31
+    root.add<irs::by_term>().field("same").term("xyz"); // 1..32
+    check_query(root, docs_t{ 1, 5, 11, 21, 27, 31 }, rdr);
+  }
+
+  // duplicated=abcd AND same=xyz AND name=A
+  {
+    irs::And root;
+    root.add<irs::by_term>().field("duplicated").term("abcd"); // 1,5,11,21,27,31
+    root.add<irs::by_term>().field("same").term("xyz"); // 1..32
+    root.add<irs::by_term>().field("name").term("A"); // 1
+    check_query(root, docs_t{ 1 }, rdr);
+  }
+
+  // duplicated=abcd AND same=xyz AND name=B
+  {
+    irs::And root;
+    root.add<irs::by_term>().field("duplicated").term("abcd"); // 1,5,11,21,27,31
+    root.add<irs::by_term>().field("same").term("xyz"); // 1..32
+    root.add<irs::by_term>().field("name").term("B"); // 2
+    check_query(root, docs_t{}, rdr);
+  }
+}
+
+TEST_P(boolean_filter_test_case, not_standalone_sequential_ordered) {
+  // add segment
+  {
+    tests::json_doc_generator gen(
+      resource("simple_sequential.json"),
+      &tests::generic_json_field_factory);
+    add_segment(gen);
+  }
+
+  auto rdr = open_reader();
+
+  // reverse order
+  {
+    const std::string column_name = "duplicated";
+
+    std::vector<irs::doc_id_t> expected = { 32, 30, 29, 28, 26, 25, 24, 23, 22, 20, 19, 18, 17, 16, 15, 14, 13, 12, 10, 9, 8, 7, 6, 4, 3, 2 };
+
+    irs::Not not_node;
+    not_node.filter<irs::by_term>().field(column_name).term("abcd");
+
+    irs::order order;
+    size_t collector_collect_field_count = 0;
+    size_t collector_collect_term_count = 0;
+    size_t collector_finish_count = 0;
+    size_t scorer_score_count = 0;
+    auto& sort = order.add<sort::custom_sort>(false);
+
+    sort.collector_collect_field = [&collector_collect_field_count](const irs::sub_reader&, const irs::term_reader&)->void {
+      ++collector_collect_field_count;
+    };
+    sort.collector_collect_term = [&collector_collect_term_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void {
+      ++collector_collect_term_count;
+    };
+    sort.collectors_collect_ = [&collector_finish_count](irs::byte_type*, const irs::index_reader&, const irs::sort::field_collector*, const irs::sort::term_collector*)->void {
+      ++collector_finish_count;
+    };
+    sort.scorer_add = [](irs::doc_id_t& dst, const irs::doc_id_t& src)->void { ASSERT_TRUE(&dst); ASSERT_TRUE(&src); dst = src; };
+    sort.scorer_less = [](const irs::doc_id_t& lhs, const irs::doc_id_t& rhs)->bool { return (lhs > rhs); }; // reverse order
+    sort.scorer_score = [&scorer_score_count](irs::doc_id_t& score)->void { ASSERT_TRUE(&score); ++scorer_score_count; };
+
+    auto prepared_order = order.prepare();
+    auto prepared_filter = not_node.prepare(*rdr, prepared_order);
+    auto score_less = [&prepared_order](
+      const irs::bytes_ref& lhs, const irs::bytes_ref& rhs
+    )->bool {
+      return prepared_order.less(lhs.c_str(), rhs.c_str());
+    };
+    std::multimap<irs::bstring, irs::doc_id_t, decltype(score_less)> scored_result(score_less);
+
+    ASSERT_EQ(1, rdr->size());
+    auto& segment = (*rdr)[0];
+
+    auto filter_itr = prepared_filter->execute(segment, prepared_order);
+    ASSERT_EQ(32, irs::cost::extract(filter_itr->attributes()));
+
+    size_t docs_count = 0;
+    auto& score = filter_itr->attributes().get<irs::score>();
+
+    // ensure that we avoid COW for pre c++11 std::basic_string
+    const irs::bytes_ref score_value = score->value();
+
+    while (filter_itr->next()) {
+      score->evaluate();
+      ASSERT_FALSE(!score);
+      scored_result.emplace(score_value, filter_itr->value());
+      ++docs_count;
+    }
+
+    ASSERT_EQ(expected.size(), docs_count);
+
+    ASSERT_EQ(0, collector_collect_field_count); // should not be executed (a negated possibly complex filter)
+    ASSERT_EQ(0, collector_collect_term_count); // should not be executed
+    ASSERT_EQ(1, collector_finish_count); // from "all" query
+    ASSERT_EQ(expected.size(), scorer_score_count);
+
+    std::vector<irs::doc_id_t> actual;
+
+    for (auto& entry: scored_result) {
+      actual.emplace_back(entry.second);
+    }
+
+    ASSERT_EQ(expected, actual);
+  }
+}
+
+TEST_P(boolean_filter_test_case, not_sequential_ordered) {
+  // add segment
+  {
+    tests::json_doc_generator gen(
+      resource("simple_sequential.json"),
+      &tests::generic_json_field_factory);
+    add_segment(gen);
+  }
+
+  auto rdr = open_reader();
+
+  // reverse order
+  {
+    const std::string column_name = "duplicated";
+
+    std::vector<irs::doc_id_t> expected = { 32, 30, 29, 28, 26, 25, 24, 23, 22, 20, 19, 18, 17, 16, 15, 14, 13, 12, 10, 9, 8, 7, 6, 4, 3, 2 };
+
+    irs::And root;
+    root.add<irs::Not>().filter<irs::by_term>().field(column_name).term("abcd");
+
+    irs::order order;
+    size_t collector_collect_field_count = 0;
+    size_t collector_collect_term_count = 0;
+    size_t collector_finish_count = 0;
+    size_t scorer_score_count = 0;
+    auto& sort = order.add<sort::custom_sort>(false);
+
+    sort.collector_collect_field = [&collector_collect_field_count](const irs::sub_reader&, const irs::term_reader&)->void {
+      ++collector_collect_field_count;
+    };
+    sort.collector_collect_term = [&collector_collect_term_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void {
+      ++collector_collect_term_count;
+    };
+    sort.collectors_collect_ = [&collector_finish_count](irs::byte_type*, const irs::index_reader&, const irs::sort::field_collector*, const irs::sort::term_collector*)->void {
+      ++collector_finish_count;
+    };
+    sort.scorer_add = [](irs::doc_id_t& dst, const irs::doc_id_t& src)->void { ASSERT_TRUE(&dst); ASSERT_TRUE(&src); dst = src; };
+    sort.scorer_less = [](const irs::doc_id_t& lhs, const irs::doc_id_t& rhs)->bool { return (lhs > rhs); }; // reverse order
+    sort.scorer_score = [&scorer_score_count](irs::doc_id_t& score)->void { ASSERT_TRUE(&score); ++scorer_score_count; };
+
+    auto prepared_order = order.prepare();
+    auto prepared_filter = root.prepare(*rdr, prepared_order);
+    auto score_less = [&prepared_order](
+      const irs::bytes_ref& lhs, const irs::bytes_ref& rhs
+    )->bool {
+      return prepared_order.less(lhs.c_str(), rhs.c_str());
+    };
+    std::multimap<irs::bstring, irs::doc_id_t, decltype(score_less)> scored_result(score_less);
+
+    ASSERT_EQ(1, rdr->size());
+    auto& segment = (*rdr)[0];
+
+    auto filter_itr = prepared_filter->execute(segment, prepared_order);
+    ASSERT_EQ(32, irs::cost::extract(filter_itr->attributes()));
+
+    size_t docs_count = 0;
+    auto& score = filter_itr->attributes().get<irs::score>();
+
+    // ensure that we avoid COW for pre c++11 std::basic_string
+    const irs::bytes_ref score_value = score->value();
+
+    while (filter_itr->next()) {
+      score->evaluate();
+      ASSERT_FALSE(!score);
+      scored_result.emplace(score_value, filter_itr->value());
+      ++docs_count;
+    }
+
+    ASSERT_EQ(expected.size(), docs_count);
+
+    ASSERT_EQ(0, collector_collect_field_count); // should not be executed (a negated possibly complex filter)
+    ASSERT_EQ(0, collector_collect_term_count); // should not be executed
+    ASSERT_EQ(1, collector_finish_count); // from "all" query
+    ASSERT_EQ(expected.size(), scorer_score_count);
+
+    std::vector<irs::doc_id_t> actual;
+
+    for (auto& entry: scored_result) {
+      actual.emplace_back(entry.second);
+    }
+
+    ASSERT_EQ(expected, actual);
+  }
+}
+
+
+TEST_P(boolean_filter_test_case, not_sequential) {
+  // add segment
+  {
+    tests::json_doc_generator gen(
+      resource("simple_sequential.json"),
+      &tests::generic_json_field_factory);
+    add_segment( gen );
+  }
+
+  auto rdr = open_reader();
+
+  // empty query
+  {
+    check_query(irs::Not(), docs_t{}, rdr);
+  }
+
+  // single not statement - empty result
+  {
+    irs::Not not_node;
+    not_node.filter<irs::by_term>().field("same").term("xyz"),
+
+    check_query(not_node, docs_t{}, rdr);
+  }
+
+  // duplicated=abcd AND (NOT ( NOT name=A ))
+  {
+    irs::And root;
+    root.add<irs::by_term>().field("duplicated").term("abcd");
+    root.add<irs::Not>().filter<irs::Not>().filter<irs::by_term>().field("name").term("A");
+    check_query(root, docs_t{ 1 }, rdr);
+  }
+
+  // duplicated=abcd AND (NOT ( NOT (NOT (NOT ( NOT name=A )))))
+  {
+    irs::And root;
+    root.add<irs::by_term>().field("duplicated").term("abcd");
+    root.add<irs::Not>().filter<irs::Not>().filter<irs::Not>().filter<irs::Not>().filter<irs::Not>().filter<irs::by_term>().field("name").term("A");
+    check_query(root, docs_t{ 5, 11, 21, 27, 31 }, rdr);
+  }
+
+  // * AND NOT *
+  {
+    {
+      irs::And root;
+      root.add<irs::all>();
+      root.add<irs::Not>().filter<irs::all>();
+      check_query(root, docs_t{ }, rdr);
+    }
+
+    {
+      irs::Or root;
+      root.add<irs::all>();
+      root.add<irs::Not>().filter<irs::all>();
+      check_query(root, docs_t{ }, rdr);
     }
   }
 
-  void not_standalone_sequential() {
-    // add segment
-    {
-      tests::json_doc_generator gen(
-        resource("simple_sequential.json"),
-        &tests::generic_json_field_factory);
-      add_segment( gen );
-    }
-
-    auto rdr = open_reader();
-
-    // empty query
-    {
-      check_query(irs::Not(), docs_t{}, rdr);
-    }
-
-    // single not statement - empty result
-    {
-      irs::Not not_node;
-      not_node.filter<irs::by_term>().field("same").term("xyz"),
-
-      check_query(not_node, docs_t{}, rdr);
-    }
-
-    // single not statement - all docs
-    {
-      irs::Not not_node;
-      not_node.filter<irs::by_term>().field("same").term("invalid_term"),
-
-      check_query(not_node, docs_t{ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32 }, rdr);
-    }
-
-    // (NOT (NOT name=A))
-    {
-      irs::Not not_node;
-      not_node.filter<irs::Not>().filter<irs::by_term>().field("name").term("A");
-      check_query(not_node, docs_t{ 1 }, rdr);
-    }
-
-    // (NOT (NOT (NOT (NOT (NOT name=A)))))
-    {
-      irs::Not not_node;
-      not_node.filter<irs::Not>().filter<irs::Not>().filter<irs::Not>().filter<irs::Not>().filter<irs::by_term>().field("name").term("A");
-
-      check_query(not_node, docs_t{ 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32 }, rdr);
-    }
-  }
-
-  void not_sequential() {
-    // add segment
-    {
-      tests::json_doc_generator gen( 
-        resource("simple_sequential.json"),
-        &tests::generic_json_field_factory);
-      add_segment( gen );
-    }
-
-    auto rdr = open_reader();
-
-    // empty query
-    {
-      check_query(irs::Not(), docs_t{}, rdr);
-    }
-
-    // single not statement - empty result
-    {
-      irs::Not not_node;
-      not_node.filter<irs::by_term>().field("same").term("xyz"),
-
-      check_query(not_node, docs_t{}, rdr);
-    }
-
-    // duplicated=abcd AND (NOT ( NOT name=A ))
+  // duplicated=abcd AND NOT name=A
+  {
     {
       irs::And root;
       root.add<irs::by_term>().field("duplicated").term("abcd");
-      root.add<irs::Not>().filter<irs::Not>().filter<irs::by_term>().field("name").term("A");
-      check_query(root, docs_t{ 1 }, rdr);
-    }
-
-    // duplicated=abcd AND (NOT ( NOT (NOT (NOT ( NOT name=A )))))
-    {
-      irs::And root;
-      root.add<irs::by_term>().field("duplicated").term("abcd");
-      root.add<irs::Not>().filter<irs::Not>().filter<irs::Not>().filter<irs::Not>().filter<irs::Not>().filter<irs::by_term>().field("name").term("A");
+      root.add<irs::Not>().filter<irs::by_term>().field("name").term("A");
       check_query(root, docs_t{ 5, 11, 21, 27, 31 }, rdr);
     }
 
-    // * AND NOT *
     {
-      {
-        irs::And root;
-        root.add<irs::all>();
-        root.add<irs::Not>().filter<irs::all>();
-        check_query(root, docs_t{ }, rdr);
-      }
-
-      {
-        irs::Or root;
-        root.add<irs::all>();
-        root.add<irs::Not>().filter<irs::all>();
-        check_query(root, docs_t{ }, rdr);
-      }
-    }
-
-    // duplicated=abcd AND NOT name=A
-    {
-      {
-        irs::And root;
-        root.add<irs::by_term>().field("duplicated").term("abcd");
-        root.add<irs::Not>().filter<irs::by_term>().field("name").term("A");
-        check_query(root, docs_t{ 5, 11, 21, 27, 31 }, rdr);
-      }
-
-      {
-        irs::Or root;
-        root.add<irs::by_term>().field("duplicated").term("abcd");
-        root.add<irs::Not>().filter<irs::by_term>().field("name").term("A");
-        check_query(root, docs_t{ 5, 11, 21, 27, 31 }, rdr);
-      }
-    }
-
-    // duplicated=abcd AND NOT name=A AND NOT name=A
-    {
-      {
-        irs::And root;
-        root.add<irs::by_term>().field("duplicated").term("abcd");
-        root.add<irs::Not>().filter<irs::by_term>().field("name").term("A");
-        root.add<irs::Not>().filter<irs::by_term>().field("name").term("A");
-        check_query(root, docs_t{ 5, 11, 21, 27, 31 }, rdr);
-      }
-
-      {
-        irs::Or root;
-        root.add<irs::by_term>().field("duplicated").term("abcd");
-        root.add<irs::Not>().filter<irs::by_term>().field("name").term("A");
-        root.add<irs::Not>().filter<irs::by_term>().field("name").term("A");
-        check_query(root, docs_t{ 5, 11, 21, 27, 31 }, rdr);
-      }
-    }
-
-    // duplicated=abcd AND NOT name=A AND NOT name=E
-    {
-      {
-        irs::And root;
-        root.add<irs::by_term>().field("duplicated").term("abcd");
-        root.add<irs::Not>().filter<irs::by_term>().field("name").term("A");
-        root.add<irs::Not>().filter<irs::by_term>().field("name").term("E");
-        check_query(root, docs_t{ 11, 21, 27, 31 }, rdr);
-      }
-
-      {
-        irs::Or root;
-        root.add<irs::by_term>().field("duplicated").term("abcd");
-        root.add<irs::Not>().filter<irs::by_term>().field("name").term("A");
-        root.add<irs::Not>().filter<irs::by_term>().field("name").term("E");
-        check_query(root, docs_t{ 11, 21, 27, 31 }, rdr);
-      }
+      irs::Or root;
+      root.add<irs::by_term>().field("duplicated").term("abcd");
+      root.add<irs::Not>().filter<irs::by_term>().field("name").term("A");
+      check_query(root, docs_t{ 5, 11, 21, 27, 31 }, rdr);
     }
   }
 
-  void and_schemas() {
-    // write segments
-    {
-      auto writer = open_writer(irs::OM_CREATE);
-
-      std::vector<doc_generator_base::ptr> gens;
-
-      gens.emplace_back(new tests::json_doc_generator(
-        resource("AdventureWorks2014.json"),
-        &tests::generic_json_field_factory));
-      gens.emplace_back(new tests::json_doc_generator(
-        resource("AdventureWorks2014Edges.json"),
-        &tests::generic_json_field_factory));
-      gens.emplace_back(new tests::json_doc_generator(
-        resource("Northwnd.json"),
-        &tests::generic_json_field_factory));
-      gens.emplace_back(new tests::json_doc_generator(
-        resource("NorthwndEdges.json"),
-        &tests::generic_json_field_factory));
-
-      add_segments(*writer, gens);
-    }
-
-    auto rdr = open_reader();
-
-    // Name = Product AND source=AdventureWor3ks2014
+  // duplicated=abcd AND NOT name=A AND NOT name=A
+  {
     {
       irs::And root;
-      root.add<irs::by_term>().field("Name").term("Product");
-      root.add<irs::by_term>().field("source").term("AdventureWor3ks2014");
-      check_query(root, docs_t{}, rdr);
+      root.add<irs::by_term>().field("duplicated").term("abcd");
+      root.add<irs::Not>().filter<irs::by_term>().field("name").term("A");
+      root.add<irs::Not>().filter<irs::by_term>().field("name").term("A");
+      check_query(root, docs_t{ 5, 11, 21, 27, 31 }, rdr);
+    }
+
+    {
+      irs::Or root;
+      root.add<irs::by_term>().field("duplicated").term("abcd");
+      root.add<irs::Not>().filter<irs::by_term>().field("name").term("A");
+      root.add<irs::Not>().filter<irs::by_term>().field("name").term("A");
+      check_query(root, docs_t{ 5, 11, 21, 27, 31 }, rdr);
     }
   }
 
-  void and_sequential() {
+  // duplicated=abcd AND NOT name=A AND NOT name=E
+  {
+    {
+      irs::And root;
+      root.add<irs::by_term>().field("duplicated").term("abcd");
+      root.add<irs::Not>().filter<irs::by_term>().field("name").term("A");
+      root.add<irs::Not>().filter<irs::by_term>().field("name").term("E");
+      check_query(root, docs_t{ 11, 21, 27, 31 }, rdr);
+    }
+
+    {
+      irs::Or root;
+      root.add<irs::by_term>().field("duplicated").term("abcd");
+      root.add<irs::Not>().filter<irs::by_term>().field("name").term("A");
+      root.add<irs::Not>().filter<irs::by_term>().field("name").term("E");
+      check_query(root, docs_t{ 11, 21, 27, 31 }, rdr);
+    }
+  }
+}
+
+
+TEST_P(boolean_filter_test_case, not_standalone_sequential) {
+  // add segment
+  {
+    tests::json_doc_generator gen(
+      resource("simple_sequential.json"),
+      &tests::generic_json_field_factory);
+    add_segment( gen );
+  }
+
+  auto rdr = open_reader();
+
+  // empty query
+  {
+    check_query(irs::Not(), docs_t{}, rdr);
+  }
+
+  // single not statement - empty result
+  {
+    irs::Not not_node;
+    not_node.filter<irs::by_term>().field("same").term("xyz"),
+
+    check_query(not_node, docs_t{}, rdr);
+  }
+
+  // single not statement - all docs
+  {
+    irs::Not not_node;
+    not_node.filter<irs::by_term>().field("same").term("invalid_term"),
+
+    check_query(not_node, docs_t{ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32 }, rdr);
+  }
+
+  // (NOT (NOT name=A))
+  {
+    irs::Not not_node;
+    not_node.filter<irs::Not>().filter<irs::by_term>().field("name").term("A");
+    check_query(not_node, docs_t{ 1 }, rdr);
+  }
+
+  // (NOT (NOT (NOT (NOT (NOT name=A)))))
+  {
+    irs::Not not_node;
+    not_node.filter<irs::Not>().filter<irs::Not>().filter<irs::Not>().filter<irs::Not>().filter<irs::by_term>().field("name").term("A");
+
+    check_query(not_node, docs_t{ 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32 }, rdr);
+  }
+}
+
+TEST_P(boolean_filter_test_case, mixed) {
+  {
     // add segment
     {
       tests::json_doc_generator gen(
@@ -6549,393 +6807,122 @@ class boolean_filter_test_case : public filter_test_case_base {
 
     auto rdr = open_reader();
 
-    // empty query
-    {
-      check_query(irs::And(), docs_t{}, rdr);
-    }
-
-    // name=V
-    {
-      irs::And root;
-      root.add<irs::by_term>().field("name").term("V"); // 22
-
-      check_query(root, docs_t{ 22 }, rdr);
-    }
-
-    // duplicated=abcd AND same=xyz
-    {
-      irs::And root;
-      root.add<irs::by_term>().field("duplicated").term("abcd"); // 1,5,11,21,27,31
-      root.add<irs::by_term>().field("same").term("xyz"); // 1..32
-      check_query(root, docs_t{ 1, 5, 11, 21, 27, 31 }, rdr);
-    }
-
-    // duplicated=abcd AND same=xyz AND name=A
-    {
-      irs::And root;
-      root.add<irs::by_term>().field("duplicated").term("abcd"); // 1,5,11,21,27,31
-      root.add<irs::by_term>().field("same").term("xyz"); // 1..32
-      root.add<irs::by_term>().field("name").term("A"); // 1
-      check_query(root, docs_t{ 1 }, rdr);
-    }
-
-    // duplicated=abcd AND same=xyz AND name=B
-    {
-      irs::And root;
-      root.add<irs::by_term>().field("duplicated").term("abcd"); // 1,5,11,21,27,31
-      root.add<irs::by_term>().field("same").term("xyz"); // 1..32
-      root.add<irs::by_term>().field("name").term("B"); // 2
-      check_query(root, docs_t{}, rdr);
-    }
-  }
-
-  void not_standalone_sequential_ordered() {
-    // add segment
-    {
-      tests::json_doc_generator gen(
-        resource("simple_sequential.json"),
-        &tests::generic_json_field_factory);
-      add_segment(gen);
-    }
-
-    auto rdr = open_reader();
-
-    // reverse order
-    {
-      const std::string column_name = "duplicated";
-
-      std::vector<irs::doc_id_t> expected = { 32, 30, 29, 28, 26, 25, 24, 23, 22, 20, 19, 18, 17, 16, 15, 14, 13, 12, 10, 9, 8, 7, 6, 4, 3, 2 };
-
-      irs::Not not_node;
-      not_node.filter<irs::by_term>().field(column_name).term("abcd");
-
-      irs::order order;
-      size_t collector_collect_field_count = 0;
-      size_t collector_collect_term_count = 0;
-      size_t collector_finish_count = 0;
-      size_t scorer_score_count = 0;
-      auto& sort = order.add<sort::custom_sort>(false);
-
-      sort.collector_collect_field = [&collector_collect_field_count](const irs::sub_reader&, const irs::term_reader&)->void {
-        ++collector_collect_field_count;
-      };
-      sort.collector_collect_term = [&collector_collect_term_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void {
-        ++collector_collect_term_count;
-      };
-      sort.collectors_collect_ = [&collector_finish_count](irs::byte_type*, const irs::index_reader&, const irs::sort::field_collector*, const irs::sort::term_collector*)->void {
-        ++collector_finish_count;
-      };
-      sort.scorer_add = [](irs::doc_id_t& dst, const irs::doc_id_t& src)->void { ASSERT_TRUE(&dst); ASSERT_TRUE(&src); dst = src; };
-      sort.scorer_less = [](const irs::doc_id_t& lhs, const irs::doc_id_t& rhs)->bool { return (lhs > rhs); }; // reverse order
-      sort.scorer_score = [&scorer_score_count](irs::doc_id_t& score)->void { ASSERT_TRUE(&score); ++scorer_score_count; };
-
-      auto prepared_order = order.prepare();
-      auto prepared_filter = not_node.prepare(*rdr, prepared_order);
-      auto score_less = [&prepared_order](
-        const irs::bytes_ref& lhs, const irs::bytes_ref& rhs
-      )->bool {
-        return prepared_order.less(lhs.c_str(), rhs.c_str());
-      };
-      std::multimap<irs::bstring, irs::doc_id_t, decltype(score_less)> scored_result(score_less);
-
-      ASSERT_EQ(1, rdr->size());
-      auto& segment = (*rdr)[0];
-
-      auto filter_itr = prepared_filter->execute(segment, prepared_order);
-      ASSERT_EQ(32, irs::cost::extract(filter_itr->attributes()));
-
-      size_t docs_count = 0;
-      auto& score = filter_itr->attributes().get<irs::score>();
-
-      // ensure that we avoid COW for pre c++11 std::basic_string
-      const irs::bytes_ref score_value = score->value();
-
-      while (filter_itr->next()) {
-        score->evaluate();
-        ASSERT_FALSE(!score);
-        scored_result.emplace(score_value, filter_itr->value());
-        ++docs_count;
-      }
-
-      ASSERT_EQ(expected.size(), docs_count);
-
-      ASSERT_EQ(0, collector_collect_field_count); // should not be executed (a negated possibly complex filter)
-      ASSERT_EQ(0, collector_collect_term_count); // should not be executed
-      ASSERT_EQ(1, collector_finish_count); // from "all" query
-      ASSERT_EQ(expected.size(), scorer_score_count);
-
-      std::vector<irs::doc_id_t> actual;
-
-      for (auto& entry: scored_result) {
-        actual.emplace_back(entry.second);
-      }
-
-      ASSERT_EQ(expected, actual);
-    }
-  }
-
-  void not_sequential_ordered() {
-    // add segment
-    {
-      tests::json_doc_generator gen(
-        resource("simple_sequential.json"),
-        &tests::generic_json_field_factory);
-      add_segment(gen);
-    }
-
-    auto rdr = open_reader();
-
-    // reverse order
-    {
-      const std::string column_name = "duplicated";
-
-      std::vector<irs::doc_id_t> expected = { 32, 30, 29, 28, 26, 25, 24, 23, 22, 20, 19, 18, 17, 16, 15, 14, 13, 12, 10, 9, 8, 7, 6, 4, 3, 2 };
-
-      irs::And root;
-      root.add<irs::Not>().filter<irs::by_term>().field(column_name).term("abcd");
-
-      irs::order order;
-      size_t collector_collect_field_count = 0;
-      size_t collector_collect_term_count = 0;
-      size_t collector_finish_count = 0;
-      size_t scorer_score_count = 0;
-      auto& sort = order.add<sort::custom_sort>(false);
-
-      sort.collector_collect_field = [&collector_collect_field_count](const irs::sub_reader&, const irs::term_reader&)->void {
-        ++collector_collect_field_count;
-      };
-      sort.collector_collect_term = [&collector_collect_term_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void {
-        ++collector_collect_term_count;
-      };
-      sort.collectors_collect_ = [&collector_finish_count](irs::byte_type*, const irs::index_reader&, const irs::sort::field_collector*, const irs::sort::term_collector*)->void {
-        ++collector_finish_count;
-      };
-      sort.scorer_add = [](irs::doc_id_t& dst, const irs::doc_id_t& src)->void { ASSERT_TRUE(&dst); ASSERT_TRUE(&src); dst = src; };
-      sort.scorer_less = [](const irs::doc_id_t& lhs, const irs::doc_id_t& rhs)->bool { return (lhs > rhs); }; // reverse order
-      sort.scorer_score = [&scorer_score_count](irs::doc_id_t& score)->void { ASSERT_TRUE(&score); ++scorer_score_count; };
-
-      auto prepared_order = order.prepare();
-      auto prepared_filter = root.prepare(*rdr, prepared_order);
-      auto score_less = [&prepared_order](
-        const irs::bytes_ref& lhs, const irs::bytes_ref& rhs
-      )->bool {
-        return prepared_order.less(lhs.c_str(), rhs.c_str());
-      };
-      std::multimap<irs::bstring, irs::doc_id_t, decltype(score_less)> scored_result(score_less);
-
-      ASSERT_EQ(1, rdr->size());
-      auto& segment = (*rdr)[0];
-
-      auto filter_itr = prepared_filter->execute(segment, prepared_order);
-      ASSERT_EQ(32, irs::cost::extract(filter_itr->attributes()));
-
-      size_t docs_count = 0;
-      auto& score = filter_itr->attributes().get<irs::score>();
-
-      // ensure that we avoid COW for pre c++11 std::basic_string
-      const irs::bytes_ref score_value = score->value();
-
-      while (filter_itr->next()) {
-        score->evaluate();
-        ASSERT_FALSE(!score);
-        scored_result.emplace(score_value, filter_itr->value());
-        ++docs_count;
-      }
-
-      ASSERT_EQ(expected.size(), docs_count);
-
-      ASSERT_EQ(0, collector_collect_field_count); // should not be executed (a negated possibly complex filter)
-      ASSERT_EQ(0, collector_collect_term_count); // should not be executed
-      ASSERT_EQ(1, collector_finish_count); // from "all" query
-      ASSERT_EQ(expected.size(), scorer_score_count);
-
-      std::vector<irs::doc_id_t> actual;
-
-      for (auto& entry: scored_result) {
-        actual.emplace_back(entry.second);
-      }
-
-      ASSERT_EQ(expected, actual);
-    }
-  }
-
-  void or_sequential_multiple_segments() {
-    // populate index
-    {
-      tests::json_doc_generator gen(
-        resource("simple_sequential.json"),
-        &tests::generic_json_field_factory);
-
-      tests::document const *doc1 = gen.next();
-      tests::document const *doc2 = gen.next();
-      tests::document const *doc3 = gen.next();
-      tests::document const *doc4 = gen.next();
-      tests::document const *doc5 = gen.next();
-      tests::document const *doc6 = gen.next();
-      tests::document const *doc7 = gen.next();
-      tests::document const *doc8 = gen.next();
-      tests::document const *doc9 = gen.next();
-
-      auto writer = open_writer();
-
-      ASSERT_TRUE(insert(*writer,
-        doc1->indexed.begin(), doc1->indexed.end(),
-        doc1->stored.begin(), doc1->stored.end()
-      )); // A
-      ASSERT_TRUE(insert(*writer,
-        doc2->indexed.begin(), doc2->indexed.end(),
-        doc2->stored.begin(), doc2->stored.end()
-      )); // B
-      ASSERT_TRUE(insert(*writer,
-        doc3->indexed.begin(), doc3->indexed.end(),
-        doc3->stored.begin(), doc3->stored.end()
-      )); // C
-      ASSERT_TRUE(insert(*writer,
-        doc4->indexed.begin(), doc4->indexed.end(),
-        doc4->stored.begin(), doc4->stored.end()
-      )); // D
-      writer->commit();
-      ASSERT_TRUE(insert(*writer,
-        doc5->indexed.begin(), doc5->indexed.end(),
-        doc5->stored.begin(), doc5->stored.end()
-      )); // E
-      ASSERT_TRUE(insert(*writer,
-        doc6->indexed.begin(), doc6->indexed.end(),
-        doc6->stored.begin(), doc6->stored.end()
-      )); // F
-      ASSERT_TRUE(insert(*writer,
-        doc7->indexed.begin(), doc7->indexed.end(),
-        doc7->stored.begin(), doc7->stored.end()
-      )); // G
-      writer->commit();
-      ASSERT_TRUE(insert(*writer,
-        doc8->indexed.begin(), doc8->indexed.end(),
-        doc8->stored.begin(), doc8->stored.end()
-      )); // H
-      ASSERT_TRUE(insert(*writer,
-        doc9->indexed.begin(), doc9->indexed.end(),
-        doc9->stored.begin(), doc9->stored.end()
-      )); // I
-      writer->commit();
-    }
-
-    auto rdr = open_reader();
+    // (same=xyz AND duplicated=abcd) OR (same=xyz AND duplicated=vczc)
     {
       irs::Or root;
-      root.add<irs::by_term>().field("name").term("B");
-      root.add<irs::by_term>().field("name").term("F");
-      root.add<irs::by_term>().field("name").term("I");
 
-      auto prep = root.prepare(rdr);
-      auto segment = rdr.begin();
+      // same=xyz AND duplicated=abcd
       {
-        auto docs = prep->execute(*segment);
-        ASSERT_TRUE(docs->next());
-        ASSERT_EQ(2, docs->value());
-        ASSERT_FALSE(docs->next());
+        irs::And& child = root.add<irs::And>();
+        child.add<irs::by_term>().field("same").term("xyz");
+        child.add<irs::by_term>().field("duplicated").term("abcd");
       }
 
-      ++segment;
+      // same=xyz AND duplicated=vczc
       {
-        auto docs = prep->execute(*segment);
-        ASSERT_TRUE(docs->next());
-        ASSERT_EQ(2, docs->value());
-        ASSERT_FALSE(docs->next());
+        irs::And& child = root.add<irs::And>();
+        child.add<irs::by_term>().field("same").term("xyz");
+        child.add<irs::by_term>().field("duplicated").term("vczc");
       }
 
-      ++segment;
+      check_query(root, docs_t{ 1, 2, 3, 5, 8, 11, 14, 17, 19, 21, 24, 27, 31 }, rdr);
+    }
+
+    // ((same=xyz AND duplicated=abcd) OR (same=xyz AND duplicated=vczc)) AND name=X
+    {
+      irs::And root;
+      root.add<irs::by_term>().field("name").term("X");
+
+      // ( same = xyz AND duplicated = abcd ) OR( same = xyz AND duplicated = vczc )
       {
-        auto docs = prep->execute(*segment);
-        ASSERT_TRUE(docs->next());
-        ASSERT_EQ(2, docs->value());
-        ASSERT_FALSE(docs->next());
+        irs::Or& child = root.add<irs::Or>();
+
+        // same=xyz AND duplicated=abcd
+        {
+          irs::And& subchild = child.add<irs::And>();
+          subchild.add<irs::by_term>().field("same").term("xyz");
+          subchild.add<irs::by_term>().field("duplicated").term("abcd");
+        }
+
+        // same=xyz AND duplicated=vczc
+        {
+          irs::And& subchild = child.add<irs::And>();
+          subchild.add<irs::by_term>().field("same").term("xyz");
+          subchild.add<irs::by_term>().field("duplicated").term("vczc");
+        }
       }
-    }
-  }
 
-  void or_sequential() {
-    // add segment
-    {
-      tests::json_doc_generator gen(
-        resource("simple_sequential.json"),
-        &tests::generic_json_field_factory);
-      add_segment( gen );
+      check_query(root, docs_t{ 24 }, rdr);
     }
 
-    auto rdr = open_reader();
-
-    // empty query
-    {
-      check_query(irs::Or(), docs_t{}, rdr);
-    }
-
-    // name=V
+    // ((same=xyz AND duplicated=abcd) OR (name=A or name=C or NAME=P or name=U or name=X)) OR (same=xyz AND (duplicated=vczc OR (name=A OR name=C OR NAME=P OR name=U OR name=X)) )
+    // 1, 2, 3, 4, 5, 8, 11, 14, 16, 17, 19, 21, 24, 27, 31
     {
       irs::Or root;
-      root.add<irs::by_term>().field("name").term("V"); // 22
 
-      check_query(root, docs_t{ 22 }, rdr);
+      // (same=xyz AND duplicated=abcd) OR (name=A or name=C or NAME=P or name=U or name=X)
+      // 1, 3, 5,11, 16, 21, 24, 27, 31
+      {
+        irs::Or& child = root.add<irs::Or>();
+
+        // ( same = xyz AND duplicated = abcd )
+        {
+          irs::And& subchild = root.add<irs::And>();
+          subchild.add<irs::by_term>().field("same").term("xyz");
+          subchild.add<irs::by_term>().field("duplicated").term("abcd");
+        }
+
+        child.add<irs::by_term>().field("name").term("A");
+        child.add<irs::by_term>().field("name").term("C");
+        child.add<irs::by_term>().field("name").term("P");
+        child.add<irs::by_term>().field("name").term("X");
+      }
+
+      // (same=xyz AND (duplicated=vczc OR (name=A OR name=C OR NAME=P OR name=U OR name=X))
+      // 1, 2, 3, 8, 14, 16, 17, 19, 21, 24
+      {
+        irs::And& child = root.add<irs::And>();
+        child.add<irs::by_term>().field("same").term("xyz");
+
+        // (duplicated=vczc OR (name=A OR name=C OR NAME=P OR name=U OR name=X)
+        {
+          irs::Or& subchild = child.add<irs::Or>();
+          subchild.add<irs::by_term>().field("duplicated").term("vczc");
+
+          // name=A OR name=C OR NAME=P OR name=U OR name=X
+          {
+            irs::Or& subsubchild = subchild.add<irs::Or>();
+            subchild.add<irs::by_term>().field("name").term("A");
+            subchild.add<irs::by_term>().field("name").term("C");
+            subchild.add<irs::by_term>().field("name").term("P");
+            subchild.add<irs::by_term>().field("name").term("X");
+          }
+        }
+      }
+
+      check_query(root, docs_t{ 1, 2, 3, 5, 8, 11, 14, 16, 17, 19, 21, 24, 27, 31 }, rdr);
     }
 
-    // name=W OR name=Z
+    // (same=xyz AND duplicated=abcd) OR (same=xyz AND duplicated=vczc) AND *
     {
       irs::Or root;
-      root.add<irs::by_term>().field("name").term("W"); // 23
-      root.add<irs::by_term>().field("name").term("C"); // 3
 
-      check_query(root, docs_t{ 3, 23 }, rdr);
-    }
+      // *
+      root.add<irs::all>();
 
-    // name=A OR name=Q OR name=Z
-    {
-      irs::Or root;
-      root.add<irs::by_term>().field("name").term("A"); // 1
-      root.add<irs::by_term>().field("name").term("Q"); // 17
-      root.add<irs::by_term>().field("name").term("Z"); // 26
+      // same=xyz AND duplicated=abcd
+      {
+        irs::And& child = root.add<irs::And>();
+        child.add<irs::by_term>().field("same").term("xyz");
+        child.add<irs::by_term>().field("duplicated").term("abcd");
+      }
 
-      check_query(root, docs_t{ 1, 17, 26 }, rdr);
-    }
-
-    // name=A OR name=Q OR same!=xyz
-    {
-      irs::Or root;
-      root.add<irs::by_term>().field("name").term("A"); // 1
-      root.add<irs::by_term>().field("name").term("Q"); // 17
-      root.add<irs::Or>().add<irs::Not>().filter<irs::by_term>().field("same").term("xyz"); // none (not within an OR must be wrapped inside a single-branch OR)
-
-      check_query(root, docs_t{ 1, 17 }, rdr);
-    }
-
-    // (name=A OR name=Q) OR same!=xyz
-    {
-      irs::Or root;
-      root.add<irs::by_term>().field("name").term("A"); // 1
-      root.add<irs::by_term>().field("name").term("Q"); // 17
-      root.add<irs::Or>().add<irs::Not>().filter<irs::by_term>().field("same").term("xyz"); // none (not within an OR must be wrapped inside a single-branch OR)
-
-      check_query(root, docs_t{ 1, 17 }, rdr);
-    }
-
-    // name=A OR name=Q OR name=Z OR same=invalid_term OR invalid_field=V
-    {
-      irs::Or root;
-      root.add<irs::by_term>().field("name").term("A"); // 1
-      root.add<irs::by_term>().field("name").term("Q"); // 17
-      root.add<irs::by_term>().field("name").term("Z"); // 26
-      root.add<irs::by_term>().field("same").term("invalid_term");
-      root.add<irs::by_term>().field("invalid_field").term("V");
-
-      check_query(root, docs_t{ 1, 17, 26 }, rdr);
-    }
-
-    // search : all terms
-    {
-      irs::Or root;
-      root.add<irs::by_term>().field("name").term("A"); // 1
-      root.add<irs::by_term>().field("name").term("Q"); // 17
-      root.add<irs::by_term>().field("name").term("Z"); // 26
-      root.add<irs::by_term>().field("same").term("xyz"); // 1..32
-      root.add<irs::by_term>().field("same").term("invalid_term");
+      // same=xyz AND duplicated=vczc
+      {
+        irs::And& child = root.add<irs::And>();
+        child.add<irs::by_term>().field("same").term("xyz");
+        child.add<irs::by_term>().field("duplicated").term("vczc");
+      }
 
       check_query(
         root,
@@ -6944,34 +6931,93 @@ class boolean_filter_test_case : public filter_test_case_base {
       );
     }
 
-    // search : empty result
-    check_query(
-      irs::by_term().field( "same" ).term( "invalid_term" ),
-      docs_t{},
-      rdr
-    );
+    // (same=xyz AND duplicated=abcd) OR (same=xyz AND duplicated=vczc) OR NOT *
+    {
+      irs::Or root;
+
+      // NOT *
+      root.add<irs::Not>().filter<irs::all>();
+
+      // same=xyz AND duplicated=abcd
+      {
+        irs::And& child = root.add<irs::And>();
+        child.add<irs::by_term>().field("same").term("xyz");
+        child.add<irs::by_term>().field("duplicated").term("abcd");
+      }
+
+      // same=xyz AND duplicated=vczc
+      {
+        irs::And& child = root.add<irs::And>();
+        child.add<irs::by_term>().field("same").term("xyz");
+        child.add<irs::by_term>().field("duplicated").term("vczc");
+      }
+
+      check_query(root, docs_t{}, rdr);
+    }
   }
-};
-
-TEST_P(boolean_filter_test_case, or) {
-  or_sequential_multiple_segments();
-  or_sequential();
 }
 
-TEST_P(boolean_filter_test_case, and) {
-  and_schemas();
-  and_sequential();
-}
+TEST_P(boolean_filter_test_case, mixed_ordered) {
+  // add segment
+  {
+    tests::json_doc_generator gen(
+      resource("simple_sequential.json"),
+      &tests::generic_json_field_factory);
+    add_segment( gen );
+  }
 
-TEST_P(boolean_filter_test_case, not) {
-  not_standalone_sequential();
-  not_standalone_sequential_ordered();
-  not_sequential();
-  not_sequential_ordered();
-}
+  auto rdr = open_reader();
+  ASSERT_TRUE(bool(rdr));
 
-TEST_P(boolean_filter_test_case, mixed) {
-  mixed_sequential();
+  {
+    irs::Or root;
+    auto& sub = root.add<irs::And>();
+    sub.add<irs::by_range>().field("name").include<irs::Bound::MIN>(false).term<irs::Bound::MIN>("!");
+    sub.add<irs::by_range>().field("name").include<irs::Bound::MAX>(false).term<irs::Bound::MAX>("~");
+
+    irs::order ord;
+    ord.add<irs::tfidf_sort>(false);
+    ord.add<irs::bm25_sort>(false);
+
+    auto prepared_ord = ord.prepare();
+    ASSERT_FALSE(prepared_ord.empty());
+    ASSERT_EQ(2, prepared_ord.size());
+
+    auto prepared = root.prepare(*rdr, prepared_ord);
+    ASSERT_NE(nullptr, prepared);
+
+    std::vector<irs::doc_id_t> expected_docs {
+      1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14,
+      15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26,
+      29, 30, 31, 32
+    };
+
+    auto expected_doc = expected_docs.begin();
+    for (const auto& sub: rdr) {
+      auto docs = prepared->execute(sub, prepared_ord);
+
+      auto& doc = docs->attributes().get<irs::document>();
+      ASSERT_TRUE(bool(doc)); // ensure all iterators contain "document" attribute
+
+      const auto* score = docs->attributes().get<irs::score>().get();
+      ASSERT_NE(nullptr, score);
+
+      // ensure that we avoid COW for pre c++11 std::basic_string
+      irs::bytes_ref score_value = score->value();
+
+      std::vector<irs::bstring> scores;
+      while (docs->next()) {
+        EXPECT_EQ(*expected_doc, doc->value);
+        ++expected_doc;
+
+        score->evaluate();
+        scores.emplace_back(score_value.c_str(), score_value.size());
+      }
+
+      ASSERT_EQ(expected_docs.end(), expected_doc);
+      ASSERT_TRUE(irs::irstd::all_equal(scores.begin(), scores.end()));
+    }
+  }
 }
 
 // ----------------------------------------------------------------------------

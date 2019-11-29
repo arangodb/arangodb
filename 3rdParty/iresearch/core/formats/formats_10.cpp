@@ -1629,7 +1629,8 @@ class doc_iterator final : public irs::doc_iterator_base {
         if (doc_.value >= target) {
           if /*constexpr*/ (IteratorTraits::frequency()) {
             doc_freq_ = doc_freqs_ + relative_pos();
-            freq_.value = *doc_freq_++;
+            assert((doc_freq_ - 1) >= doc_freqs_ && (doc_freq_ - 1) < std::end(doc_freqs_));
+            freq_.value = doc_freq_[-1];
           }
           return doc_.value;
         }

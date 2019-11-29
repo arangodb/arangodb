@@ -413,7 +413,18 @@ class sort final : public irs::sort::prepared_basic<bm25::score_t, bm25::stats> 
     auto& freq = doc_attrs.get<frequency>();
 
     if (!freq) {
-      return { nullptr, nullptr };
+      if (0.f == boost) {
+        return { nullptr, nullptr };
+      }
+
+      // if there is no frequency then all the scores will be the same (e.g. filter irs::all)
+      return {
+        memory::make_unique<bm25::const_score_ctx>(boost),
+        [](const irs::score_ctx* ctx, byte_type* RESTRICT score_buf) noexcept {
+          auto& state = *static_cast<const bm25::const_score_ctx*>(ctx);
+          irs::sort::score_cast<score_t>(score_buf) = state.boost_;
+        }
+      };
     }
 
     auto& stats = stats_cast(query_stats);

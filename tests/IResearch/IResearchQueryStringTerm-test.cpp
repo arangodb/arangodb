@@ -2016,7 +2016,7 @@ TEST_F(IResearchQueryStringTermTest, test) {
     auto queryResult = arangodb::tests::executeQuery(
         vocbase,
         "FOR d IN testView SEARCH d.name > '!' AND d.name < '~' SORT tfidf(d), "
-        "BM25(d), d.seq DESC RETURN { doc: d, tfidf:tfidf(d), bm25:bm25(d)  }");
+        "BM25(d), d.seq DESC RETURN d");
     ASSERT_TRUE(queryResult.result.ok());
 
     auto result = queryResult.data->slice();
@@ -2029,11 +2029,9 @@ TEST_F(IResearchQueryStringTermTest, test) {
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
 
-      std::cerr << resolved.toString() << std::endl;
-
       EXPECT_TRUE(0 == arangodb::basics::VelocyPackHelper::compare(
                            arangodb::velocypack::Slice(expectedDoc->second->vpack()),
-                           resolved.get("doc"), true));
+                           resolved, true));
       ++expectedDoc;
     }
     EXPECT_EQ(expectedDoc, expectedDocs.rend());

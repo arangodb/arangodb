@@ -56,6 +56,14 @@ class IRESEARCH_API directory_reader final
 
   explicit operator bool() const noexcept { return bool(impl_); }
 
+  bool operator==(std::nullptr_t) const noexcept {
+    return !impl_;
+  }
+
+  bool operator!=(std::nullptr_t) const noexcept {
+    return !(*this == nullptr);
+  }
+
   bool operator==(const directory_reader& rhs) const noexcept {
     return impl_ == rhs.impl_;
   }
@@ -129,6 +137,14 @@ class IRESEARCH_API directory_reader final
 
   directory_reader(impl_ptr&& impl) noexcept;
 }; // directory_reader
+
+inline bool operator==(std::nullptr_t, const directory_reader& rhs) noexcept {
+  return rhs == nullptr;
+}
+
+inline bool operator!=(std::nullptr_t, const directory_reader& rhs) noexcept {
+  return rhs != nullptr;
+}
 
 NS_END
 
