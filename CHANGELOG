@@ -1,7 +1,7 @@
 devel
 -----
 
-* fixed permissions for dump/restore
+* Fixed permissions for dump/restore.
 
 * The _users collection is now properly restored when using arangorestore.
 
