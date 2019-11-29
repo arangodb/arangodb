@@ -606,7 +606,8 @@ Result RestReplicationHandler::testPermissions() {
     auto const type = _request->requestType();
     std::string const& command = suffixes[0];
     if ((command == Batch) || (command == Inventory && type == rest::RequestType::GET) ||
-        (command == Dump && type == rest::RequestType::GET)) {
+        (command == Dump && type == rest::RequestType::GET) ||
+        (command == RestoreCollection && type == rest::RequestType::PUT)) {
       if (command == Dump) {
         // check dump collection permissions (at least ro needed)
         std::string collectionName = _request->value("collection");
@@ -628,6 +629,54 @@ Result RestReplicationHandler::testPermissions() {
         } else {
           // not found, return 404
           return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+        }
+      } else if (command == RestoreCollection) {
+        VPackSlice const slice = _request->payload();
+        VPackSlice const parameters = slice.get("parameters");
+        if (parameters.isObject()) {
+          if (parameters.get("name").isString()) {
+            std::string collectionName = parameters.get("name").copyString();
+            if (!collectionName.empty()) {
+              std::string dbName = _request->databaseName();
+              DatabaseFeature& databaseFeature =
+                  _vocbase.server().getFeature<DatabaseFeature>();
+              TRI_vocbase_t* vocbase = databaseFeature.lookupDatabase(dbName);
+              if (vocbase == nullptr) {
+                return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+              }
+
+              std::string const& overwriteCollection =
+                  _request->value("overwrite");
+
+              auto& exec = ExecContext::current();
+              ExecContextSuperuserScope escope(exec.isAdminUser());
+
+              if (overwriteCollection == "true" ||
+                  vocbase->lookupCollection(collectionName) == nullptr) {
+                // 1.) re-create collection, means: overwrite=true (rw database)
+                // OR 2.) not existing, new collection (rw database)
+                if (!exec.isAdminUser() && !exec.canUseDatabase(dbName, auth::Level::RW)) {
+                  return Result(TRI_ERROR_FORBIDDEN);
+                }
+              } else {
+                // 3.) Existing collection (ro database, rw collection)
+                // no overwrite. restoring into an existing collection
+                if (!exec.isAdminUser() &&
+                    !exec.canUseCollection(collectionName, auth::Level::RW)) {
+                  return Result(TRI_ERROR_FORBIDDEN);
+                }
+              }
+            } else {
+              return Result(TRI_ERROR_HTTP_BAD_PARAMETER,
+                            "empty collection name");
+            }
+          } else {
+            return Result(TRI_ERROR_HTTP_BAD_PARAMETER,
+                          "invalid collection name type");
+          }
+        } else {
+          return Result(TRI_ERROR_HTTP_BAD_PARAMETER,
+                        "invalid collection parameter type");
         }
       }
     }
