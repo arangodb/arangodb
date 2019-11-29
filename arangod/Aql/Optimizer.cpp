@@ -55,7 +55,7 @@ void Optimizer::addPlan(std::unique_ptr<ExecutionPlan> plan,
                         OptimizerRule const* rule, bool wasModified, int newLevel) {
   TRI_ASSERT(plan != nullptr);
   TRI_ASSERT(&_currentRule->second.rule == rule);
-
+        
   plan->setValidity(true);
 
   auto it = _currentRule;
@@ -65,7 +65,6 @@ void Optimizer::addPlan(std::unique_ptr<ExecutionPlan> plan,
   } else {
     it = _rules.upper_bound(newLevel);
   }
-
 
   if (wasModified) {
     if (!rule->isHidden) {
