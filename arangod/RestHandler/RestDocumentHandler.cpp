@@ -109,9 +109,9 @@ void RestDocumentHandler::shutdownExecute(bool isFinalized) noexcept {
 }
 
 /// @brief returns the short id of the server which should handle this request
-std::pair<std::string, bool> RestDocumentHandler::forwardingTarget() {
+ResultT<std::pair<std::string, bool>> RestDocumentHandler::forwardingTarget() {
   if (!ServerState::instance()->isCoordinator()) {
-    return std::make_pair("", false);
+    return {std::make_pair(StaticStrings::Empty, false)};
   }
 
   bool found = false;
@@ -120,17 +120,17 @@ std::pair<std::string, bool> RestDocumentHandler::forwardingTarget() {
     uint64_t tid = basics::StringUtils::uint64(value);
     if (!transaction::isCoordinatorTransactionId(tid)) {
       TRI_ASSERT(transaction::isLegacyTransactionId(tid));
-      return std::make_pair("", false);
+      return {std::make_pair(StaticStrings::Empty, false)};
     }
     uint32_t sourceServer = TRI_ExtractServerIdFromTick(tid);
     if (sourceServer == ServerState::instance()->getShortId()) {
-      return std::make_pair("", false);
+      return {std::make_pair(StaticStrings::Empty, false)};
     }
     auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
-    return std::make_pair(ci.getCoordinatorByShortID(sourceServer), false);
+    return {std::make_pair(ci.getCoordinatorByShortID(sourceServer), false)};
   }
 
-  return std::make_pair("", false);
+  return {std::make_pair(StaticStrings::Empty, false)};
 }
 
 ////////////////////////////////////////////////////////////////////////////////

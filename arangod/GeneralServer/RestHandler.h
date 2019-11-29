@@ -144,8 +144,8 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   /// target server.
   /// std::string -> empty string or valid short name
   /// boolean -> should auth header and user be removed in that request
-  virtual std::pair<std::string, bool> forwardingTarget() {
-    return std::make_pair("", false);
+  virtual ResultT<std::pair<std::string, bool>> forwardingTarget() {
+    return {std::make_pair(StaticStrings::Empty, false)};
   }
 
   void resetResponse(rest::ResponseCode);

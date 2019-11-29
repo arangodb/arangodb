@@ -38,7 +38,7 @@ class RestTasksHandler : public arangodb::RestVocbaseBaseHandler {
   RestStatus execute() override;
 
  protected:
-  virtual std::pair<std::string, bool> forwardingTarget() override;
+  virtual ResultT<std::pair<std::string, bool>> forwardingTarget() override;
 
  private:
   void getTasks();

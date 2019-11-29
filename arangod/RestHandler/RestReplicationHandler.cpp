@@ -590,9 +590,9 @@ BAD_CALL:
 }
 
 /// @brief returns the short id of the server which should handle this request
-std::pair<std::string, bool> RestReplicationHandler::forwardingTarget() {
+ResultT<std::pair<std::string, bool>> RestReplicationHandler::forwardingTarget() {
   if (!ServerState::instance()->isCoordinator()) {
-    return std::make_pair("", false);
+    return {std::make_pair("", false)};
   }
 
   std::string user = _request->user();
@@ -605,25 +605,21 @@ std::pair<std::string, bool> RestReplicationHandler::forwardingTarget() {
       if ((command == Batch) || (command == Inventory && type == rest::RequestType::GET) ||
           (command == Dump && type == rest::RequestType::GET)) {
         if (command == Dump) {
-          // check auth collection level
-          auth::UserManager* um = AuthenticationFeature::instance()->userManager();
-          TRI_ASSERT(um != nullptr);  // should not get here
-          if (um != nullptr) {
-            // check dump collection permissions (at least ro needed)
-            ShardID const& ShardID = _request->value("collection");
+          // check dump collection permissions (at least ro needed)
+          ShardID const& ShardID = _request->value("collection");
+          ClusterInfo& ci = server().getFeature<ClusterFeature>().clusterInfo();
+          std::string collectionName = ci.getCollectionNameForShard(ShardID);
 
-            std::string collectionName = _vocbase.lookupCollectionByShardId(ShardID);
-            if (!collectionName.empty()) {
-              auth::Level colPermission =
-                  um->collectionAuthLevel(_request->user(),
-                                          _request->databaseName(), collectionName);
-              if (colPermission == auth::Level::NONE || colPermission == auth::Level::UNDEFINED) {
-                generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
-              }
-            } else {
-              // not found, return 404
-              generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+          if (!collectionName.empty()) {
+            auto& exec = ExecContext::current();
+            ExecContextSuperuserScope escope(exec.isAdminUser());
+            if (!exec.canUseCollection(collectionName, auth::Level::RO)) {
+              // not enough rights
+              return Result(TRI_ERROR_FORBIDDEN);
             }
+          } else {
+            // not found, return 404
+            return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
           }
         }
 
@@ -636,7 +632,7 @@ std::pair<std::string, bool> RestReplicationHandler::forwardingTarget() {
     }
   }
 
-  return std::make_pair("", false);
+  return {std::make_pair(StaticStrings::Empty, false)};
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -739,8 +735,15 @@ void RestReplicationHandler::handleCommandClusterInventory() {
     vocbase->toVelocyPack(resultBuilder);
   }
 
+  auto& exec = ExecContext::current();
+  ExecContextSuperuserScope escope(exec.isAdminUser());
+
   resultBuilder.add("collections", VPackValue(VPackValueType::Array));
   for (std::shared_ptr<LogicalCollection> const& c : cols) {
+    if (!exec.canUseCollection(vocbase->name(), c->name(), auth::Level::RO)) {
+      continue;
+    }
+
     // We want to check if the collection is usable and all followers
     // are in sync:
     std::shared_ptr<ShardMap> shardMap = c->shardIds();
