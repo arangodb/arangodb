@@ -36,6 +36,7 @@
 #include "Cluster/ClusterHelpers.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/FollowerInfo.h"
+#include "Cluster/RebootTracker.h"
 #include "Cluster/ResignShardLeadership.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Indexes/Index.h"
@@ -73,6 +74,7 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
+using namespace arangodb::cluster;
 
 namespace {
 std::string const dataString("data");
@@ -782,19 +784,10 @@ void RestReplicationHandler::handleCommandRestoreCollection() {
   bool force = _request->parsedValue<bool>("force", false);
   bool ignoreDistributeShardsLikeErrors =
       _request->parsedValue<bool>("ignoreDistributeShardsLikeErrors", false);
-  uint64_t numberOfShards =
-      _request->parsedValue<uint64_t>(StaticStrings::NumberOfShards, 0);
-  uint64_t replicationFactor =
-      _request->parsedValue<uint64_t>(StaticStrings::ReplicationFactor, 1);
-  // not an error: for historical reasons the write concern is read from the
-  // variable "minReplicationFactor"
-  uint64_t writeConcern =
-      _request->parsedValue<uint64_t>(StaticStrings::MinReplicationFactor, 1);
-
+  
   Result res;
   if (ServerState::instance()->isCoordinator()) {
-    res = processRestoreCollectionCoordinator(slice, overwrite, force, numberOfShards,
-                                              replicationFactor, writeConcern,
+    res = processRestoreCollectionCoordinator(slice, overwrite, force,
                                               ignoreDistributeShardsLikeErrors);
   } else {
     res = processRestoreCollection(slice, overwrite, force);
@@ -1002,8 +995,7 @@ Result RestReplicationHandler::processRestoreCollection(VPackSlice const& collec
 
 Result RestReplicationHandler::processRestoreCollectionCoordinator(
     VPackSlice const& collection, bool dropExisting, bool force,
-    uint64_t numberOfShards, uint64_t replicationFactor,
-    uint64_t writeConcern, bool ignoreDistributeShardsLikeErrors) {
+    bool ignoreDistributeShardsLikeErrors) {
   if (!collection.isObject()) {
     return Result(TRI_ERROR_HTTP_BAD_PARAMETER,
                   "collection declaration is invalid");
@@ -1088,7 +1080,7 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
   }
 
   // now re-create the collection
-
+  
   // Build up new information that we need to merge with the given one
   VPackBuilder toMerge;
   toMerge.openObject();
@@ -1107,6 +1099,7 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
       toMerge.add(StaticStrings::DistributeShardsLike, VPackValue(_vocbase.shardingPrototypeName()));
     }
   } else {
+    size_t numberOfShards = 1;
     // Number of shards. Will be overwritten if not existent
     VPackSlice const numberOfShardsSlice = parameters.get(StaticStrings::NumberOfShards);
     if (!numberOfShardsSlice.isInteger()) {
@@ -1114,13 +1107,6 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
       VPackSlice const shards = parameters.get("shards");
       if (shards.isObject()) {
         numberOfShards = static_cast<uint64_t>(shards.length());
-      } else {
-        // "shards" not specified
-        // now check if numberOfShards property was given
-        if (numberOfShards == 0) {
-          // We take one shard if no value was given
-          numberOfShards = 1;
-        }
       }
       TRI_ASSERT(numberOfShards > 0);
       toMerge.add(StaticStrings::NumberOfShards, VPackValue(numberOfShards));
@@ -1141,7 +1127,10 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
   VPackSlice const replicationFactorSlice = parameters.get(StaticStrings::ReplicationFactor);
   // not an error: for historical reasons the write concern is read from the
   // variable "minReplicationFactor"
-  VPackSlice const writeConcernSlice = parameters.get(StaticStrings::MinReplicationFactor);
+  VPackSlice writeConcernSlice = parameters.get(StaticStrings::WriteConcern);
+  if (writeConcernSlice.isNone()) { // minReplicationFactor is deprecated in 3.6
+    writeConcernSlice = parameters.get(StaticStrings::MinReplicationFactor);
+  }
 
   bool isValidReplicationFactorSlice = replicationFactorSlice.isInteger() ||
                                        (replicationFactorSlice.isString() &&
@@ -1153,27 +1142,24 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
       writeConcernSlice.getInt() > 0;
 
   if (!isValidReplicationFactorSlice) {
+    size_t replicationFactor = _vocbase.server().getFeature<ClusterFeature>().defaultReplicationFactor();
     if (replicationFactor == 0) {
-      replicationFactor = _vocbase.server().getFeature<ClusterFeature>().defaultReplicationFactor();
-      if (replicationFactor == 0) {
-        replicationFactor = 1;
-      }
+      replicationFactor = 1;
     }
     TRI_ASSERT(replicationFactor > 0);
     toMerge.add(StaticStrings::ReplicationFactor, VPackValue(replicationFactor));
   }
 
   if (!isValidWriteConcernSlice) {
+    size_t writeConcern = 1;
     if (replicationFactorSlice.isString() &&
         replicationFactorSlice.isEqualString(StaticStrings::Satellite)) {
       writeConcern = 0;
-    } else if (writeConcern == 0) {
-      writeConcern = 1;
     }
-    TRI_ASSERT(writeConcern <= replicationFactor);
     // not an error: for historical reasons the write concern is stored in the
     // variable "minReplicationFactor"
     toMerge.add(StaticStrings::MinReplicationFactor, VPackValue(writeConcern));
+    toMerge.add(StaticStrings::WriteConcern, VPackValue(writeConcern));
   }
 
   // always use current version number when restoring a collection,
@@ -2529,16 +2515,36 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
     return;
   }
 
+  RebootId rebootId(0);
+  std::string serverId;
+
   if (!body.isObject()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "body needs to be an object with attributes 'collection', "
                   "'ttl' and 'id'");
     return;
   }
+  
+  VPackSlice collection = body.get("collection");
+  VPackSlice ttlSlice = body.get("ttl");
+  VPackSlice idSlice = body.get("id");
 
-  VPackSlice const collection = body.get("collection");
-  VPackSlice const ttlSlice = body.get("ttl");
-  VPackSlice const idSlice = body.get("id");
+  if (body.hasKey(StaticStrings::RebootId)) {
+    if (body.get(StaticStrings::RebootId).isInteger()) {
+      if (body.hasKey("serverId") && body.get("serverId").isString()) {
+        rebootId = RebootId(body.get(StaticStrings::RebootId).getNumber<uint64_t>());
+        serverId = body.get("serverId").copyString();
+      } else {
+        generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                      "'rebootId' must be accompanied by string attribute 'serverId'");
+        return;
+      }
+    } else {
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                    "'rebootId' must be an integer attribute");
+      return;
+    }
+  }
 
   if (!collection.isString() || !ttlSlice.isNumber() || !idSlice.isString()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
@@ -2584,7 +2590,7 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
   LOG_TOPIC("4fac2", DEBUG, Logger::REPLICATION)
       << "Attempt to create a Lock: " << id << " for shard: " << _vocbase.name()
       << "/" << col->name() << " of type: " << (doSoftLock ? "soft" : "hard");
-  Result res = createBlockingTransaction(id, *col, ttl, lockType);
+  Result res = createBlockingTransaction(id, *col, ttl, lockType, rebootId, serverId);
   if (!res.ok()) {
     generateError(res);
     return;
@@ -2918,7 +2924,9 @@ ReplicationApplier* RestReplicationHandler::getApplier(bool& global) {
 
 Result RestReplicationHandler::createBlockingTransaction(aql::QueryId id,
                                                          LogicalCollection& col, double ttl,
-                                                         AccessMode::Type access) const {
+                                                         AccessMode::Type access,
+                                                         RebootId const& rebootId,
+                                                         std::string const& serverId) {
   // This is a constant JSON structure for Queries.
   // we actually do not need a plan, as we only want the query registry to have
   // a hold of our transaction
@@ -2940,6 +2948,7 @@ Result RestReplicationHandler::createBlockingTransaction(aql::QueryId id,
   {
     auto ctx = transaction::StandaloneContext::Create(_vocbase);
     auto trx = std::make_shared<SingleCollectionTransaction>(ctx, col, access);
+
     query->setTransactionContext(ctx);
     // Inject will take over responsiblilty of transaction, even on error case.
     query->injectTransaction(std::move(trx));
@@ -2950,8 +2959,29 @@ Result RestReplicationHandler::createBlockingTransaction(aql::QueryId id,
 
   TRI_ASSERT(isLockHeld(id).is(TRI_ERROR_HTTP_NOT_FOUND));
 
+  ClusterInfo& ci = server().getFeature<ClusterFeature>().clusterInfo();
+
+  std::string vn = _vocbase.name();
   try {
-    queryRegistry->insert(id, query.get(), ttl, true, true);
+    std::function<void(void)> f =
+      [=]() {
+        try {
+          // Code does not matter, read only access, so we can roll back.
+          QueryRegistryFeature::registry()->destroy(vn, id, TRI_ERROR_QUERY_KILLED, false);
+        } catch (...) {
+          // All errors that show up here can only be
+          // triggered if the query is destroyed in between.
+        }
+      };
+
+    std::string comment = std::string("SynchronizeShard from ") + serverId +
+      " for " + col.name() + " access mode " + AccessMode::typeString(access);
+    auto rGuard = std::make_unique<CallbackGuard>(
+      ci.rebootTracker().callMeOnChange(
+        RebootTracker::PeerState(serverId, rebootId), f, comment));
+
+    queryRegistry->insert(id, query.get(), ttl, true, true, std::move(rGuard));
+    
   } catch (...) {
     // For compatibility we only return this error
     return {TRI_ERROR_TRANSACTION_INTERNAL, "cannot begin read transaction"};
