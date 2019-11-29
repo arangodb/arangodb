@@ -48,7 +48,18 @@ namespace iresearch {
 
 class IResearchViewStoredValue {
  public:
-  using StoredColumn = std::vector<std::pair<std::string, std::vector<basics::AttributeName>>>;
+  struct StoredColumn {
+    std::string name;
+    std::vector<std::pair<std::string, std::vector<basics::AttributeName>>> fields;
+
+    bool operator==(StoredColumn const& rhs) const noexcept {
+      return name == rhs.name;
+    }
+
+    bool operator!=(StoredColumn const& rhs) const noexcept {
+      return !(*this == rhs);
+    }
+  };
 
   bool operator==(IResearchViewStoredValue const& rhs) const noexcept {
     return _storedColumns == rhs._storedColumns;

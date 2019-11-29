@@ -908,8 +908,7 @@ bool IResearchViewExecutor<ordered, materializeType>::resetIterator() {
           auto const& columns = storedValue.columns();
           auto const storedColumnNumber = static_cast<decltype(columns.size())>(columnfieldsRegs.first);
           TRI_ASSERT(storedColumnNumber < columns.size());
-          // column name is equal to the first field name (TODO: two can have the same)
-          auto storedValueColumn = ::storedValueColumn(segmentReader, columns[storedColumnNumber].back().first);
+          auto storedValueColumn = ::storedValueColumn(segmentReader, columns[storedColumnNumber].name);
           if (!storedValueColumn) {
             LOG_TOPIC("af7ec", WARN, arangodb::iresearch::TOPIC)
                 << "encountered a sub-reader without a stored value column while "

@@ -300,7 +300,7 @@ bool attributesMatch(IResearchViewSort const& primarySort, IResearchViewStoredVa
     int columnNum = 0;
     fieldNum = 0;
     for (auto const& column : storedValue.columns()) {
-      for (auto const& field : column) {
+      for (auto const& field : column.fields) {
         if (arangodb::basics::AttributeName::isIdentical(nodeAttr.attr, field.second, false)) {
           nodeAttr.afData.number = fieldNum;
           nodeAttr.afData.field = &field.second;

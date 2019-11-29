@@ -172,12 +172,8 @@ inline arangodb::Result insertDocument(irs::index_writer::documents_context& ctx
     } field; // StoredValue
 
     for (auto const& column : meta._storedValue.columns()) {
-      field.fieldName = irs::string_ref{};
-      for (auto const& storedValue : column) {
-        // column name is equal to the first field name (TODO: two can have the same)
-        if (field.fieldName.empty()) {
-          field.fieldName = irs::string_ref(storedValue.first);
-        }
+      field.fieldName = column.name;
+      for (auto const& storedValue : column.fields) {
         field.slice = arangodb::iresearch::get(document, storedValue.second, VPackSlice::nullSlice());
       }
       doc.insert<irs::Action::STORE>(field);
