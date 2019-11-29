@@ -44,8 +44,6 @@ class AqlItemBlockInputRange {
 
   ExecutorState state() const noexcept;
 
-  ExecutorState shadowState() const noexcept;
-
   std::pair<ExecutorState, arangodb::aql::InputAqlItemRow> peek();
 
   std::pair<ExecutorState, arangodb::aql::InputAqlItemRow> next();
@@ -61,9 +59,18 @@ class AqlItemBlockInputRange {
   std::pair<ExecutorState, arangodb::aql::ShadowAqlItemRow> nextShadowRow();
 
  private:
+  bool isIndexValid(std::size_t index) const noexcept;
+
   bool indexIsValid() const noexcept;
 
   bool hasMoreAfterThis() const noexcept;
+
+  bool isShadowRowAtIndex(std::size_t index) const noexcept;
+
+  enum LookAhead { NOW, NEXT };
+  enum RowType { DATA, SHADOW };
+  template <LookAhead doPeek, RowType type>
+  ExecutorState nextState() const noexcept;
 
  private:
   arangodb::aql::SharedAqlItemBlockPtr _block;

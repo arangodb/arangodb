@@ -23,6 +23,12 @@
 #include "AqlItemBlockInputRange.h"
 #include "Aql/ShadowAqlItemRow.h"
 
+#include "Logger/LogMacros.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
+#include <numeric>
+
 using namespace arangodb;
 using namespace arangodb::aql;
 
@@ -49,15 +55,16 @@ AqlItemBlockInputRange::AqlItemBlockInputRange(ExecutorState state,
 
 std::pair<ExecutorState, InputAqlItemRow> AqlItemBlockInputRange::peek() {
   if (indexIsValid()) {
-    return std::make_pair(state(), InputAqlItemRow{_block, _rowIndex});
+    return std::make_pair(nextState<LookAhead::NEXT, RowType::DATA>(),
+                          InputAqlItemRow{_block, _rowIndex});
   }
-  return std::make_pair(state(), InputAqlItemRow{CreateInvalidInputRowHint{}});
+  return std::make_pair(nextState<LookAhead::NOW, RowType::DATA>(),
+                        InputAqlItemRow{CreateInvalidInputRowHint{}});
 }
 
 std::pair<ExecutorState, InputAqlItemRow> AqlItemBlockInputRange::next() {
   auto res = peek();
-  if (indexIsValid()) {
-    TRI_ASSERT(res.second);
+  if (res.second) {
     ++_rowIndex;
   }
   return res;
@@ -74,50 +81,29 @@ bool AqlItemBlockInputRange::hasMoreAfterThis() const noexcept {
 }
 
 ExecutorState AqlItemBlockInputRange::state() const noexcept {
-  return hasMoreAfterThis() ? ExecutorState::HASMORE : _finalState;
-}
-
-ExecutorState AqlItemBlockInputRange::shadowState() const noexcept {
-  if (_block == nullptr) {
-    return _finalState;
-  }
-  // We Return HASMORE, if the next shadow row is NOT relevant.
-  // So we can directly fetch the next shadow row without informing
-  // the executor about an empty subquery.
-  size_t nextRowIndex = _rowIndex + 1;
-  if (_block != nullptr && nextRowIndex < _block->size() && _block->isShadowRow(nextRowIndex)) {
-    ShadowAqlItemRow nextRow{_block, nextRowIndex};
-    if (!nextRow.isRelevant()) {
-      return ExecutorState::HASMORE;
-    }
-  }
-  return ExecutorState::DONE;
+  return nextState<LookAhead::NOW, RowType::DATA>();
 }
 
 bool AqlItemBlockInputRange::hasShadowRow() const noexcept {
-  if (_block == nullptr) {
-    // No block => no ShadowRow
-    return false;
-  }
+  return isIndexValid(_rowIndex) && isShadowRowAtIndex(_rowIndex);
+}
 
-  if (hasMore()) {
-    // As long as hasMore() is true, we still have DataRows and are not on a ShadowRow now.
-    return false;
-  }
+bool AqlItemBlockInputRange::isIndexValid(std::size_t index) const noexcept {
+  return _block != nullptr && index < _block->size();
+}
 
-  if (_rowIndex < _block->size()) {
-    // We still have more rows here, get next ShadowRow
-    TRI_ASSERT(_block->isShadowRow(_rowIndex));
-    return true;
-  }
-  return false;
+bool AqlItemBlockInputRange::isShadowRowAtIndex(std::size_t index) const noexcept {
+  TRI_ASSERT(isIndexValid(index));
+  return _block->isShadowRow(index);
 }
 
 std::pair<ExecutorState, ShadowAqlItemRow> AqlItemBlockInputRange::peekShadowRow() {
   if (hasShadowRow()) {
-    return std::make_pair(shadowState(), ShadowAqlItemRow{_block, _rowIndex});
+    return std::make_pair(nextState<LookAhead::NEXT, RowType::SHADOW>(),
+                          ShadowAqlItemRow{_block, _rowIndex});
   }
-  return std::make_pair(shadowState(), ShadowAqlItemRow{CreateInvalidShadowRowHint{}});
+  return std::make_pair(nextState<LookAhead::NOW, RowType::SHADOW>(),
+                        ShadowAqlItemRow{CreateInvalidShadowRowHint{}});
 }
 
 std::pair<ExecutorState, ShadowAqlItemRow> AqlItemBlockInputRange::nextShadowRow() {
@@ -138,6 +124,54 @@ std::pair<ExecutorState, ShadowAqlItemRow> AqlItemBlockInputRange::nextShadowRow
     }
     // Advance the current row.
     _rowIndex++;
+    /*
+    {
+      std::string out = "Depths: [";
+      for (auto const& it : shadowRowIndexes) {
+        ShadowAqlItemRow sr(_block, it);
+        out += std::to_string(sr.getDepth()) + ", ";
+      }
+      LOG_DEVEL << out << "]";
+
+      VPackBuilder hund;
+      _block->toSimpleVPack(nullptr, hund);
+      LOG_DEVEL << hund.toJson();
+    }
+    */
   }
   return res;
+}
+
+template <AqlItemBlockInputRange::LookAhead doPeek, AqlItemBlockInputRange::RowType type>
+ExecutorState AqlItemBlockInputRange::nextState() const noexcept {
+  size_t testRowIndex = _rowIndex;
+  if constexpr (LookAhead::NEXT == doPeek) {
+    // Look ahead one
+    testRowIndex++;
+  }
+  if (!isIndexValid(testRowIndex)) {
+    return _finalState;
+  }
+
+  bool isShadowRow = isShadowRowAtIndex(testRowIndex);
+
+  if constexpr (RowType::DATA == type) {
+    // We Return HASMORE, if the next row is a data row
+    if (!isShadowRow) {
+      return ExecutorState::HASMORE;
+    }
+    return ExecutorState::DONE;
+  } else {
+    TRI_ASSERT(RowType::SHADOW == type);
+    // We Return HASMORE, if the next shadow row is NOT relevant.
+    // So we can directly fetch the next shadow row without informing
+    // the executor about an empty subquery.
+    if (isShadowRow) {
+      ShadowAqlItemRow nextRow{_block, testRowIndex};
+      if (!nextRow.isRelevant()) {
+        return ExecutorState::HASMORE;
+      }
+    }
+    return ExecutorState::DONE;
+  }
 }
