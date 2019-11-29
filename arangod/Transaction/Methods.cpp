@@ -1553,7 +1553,7 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
         // We cannot fulfill minimum replication Factor.
         // Reject write.
         LOG_TOPIC("d7306", ERR, Logger::REPLICATION)
-            << "Less than minReplicationFactor ("
+            << "Less than writeConcern ("
             << basics::StringUtils::itoa(collection->writeConcern())
             << ") followers in sync. Shard  " << collection->name()
             << " is temporarily in read-only mode.";
@@ -1866,7 +1866,7 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
         // We cannot fulfill minimum replication Factor.
         // Reject write.
         LOG_TOPIC("2e35a", ERR, Logger::REPLICATION)
-            << "Less than minReplicationFactor ("
+            << "Less than writeConcern ("
             << basics::StringUtils::itoa(collection->writeConcern())
             << ") followers in sync. Shard  " << collection->name()
             << " is temporarily in read-only mode.";
@@ -2152,7 +2152,7 @@ Future<OperationResult> transaction::Methods::removeLocal(std::string const& col
         // We cannot fulfill minimum replication Factor.
         // Reject write.
         LOG_TOPIC("f1f8e", ERR, Logger::REPLICATION)
-            << "Less than minReplicationFactor ("
+            << "Less than writeConcern ("
             << basics::StringUtils::itoa(collection->writeConcern())
             << ") followers in sync. Shard  " << collection->name()
             << " is temporarily in read-only mode.";
@@ -2397,7 +2397,7 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
         // We cannot fulfill minimum replication Factor.
         // Reject write.
         LOG_TOPIC("7c1d4", ERR, Logger::REPLICATION)
-            << "Less than minReplicationFactor ("
+            << "Less than writeConcern ("
             << basics::StringUtils::itoa(collection->writeConcern())
             << ") followers in sync. Shard  " << collection->name()
             << " is temporarily in read-only mode.";

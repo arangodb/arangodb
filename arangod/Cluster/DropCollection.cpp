@@ -75,15 +75,15 @@ bool DropCollection::first() {
   try {
     DatabaseGuard guard(database);
     auto& vocbase = guard.database();
-    Result found = methods::Collections::lookup(
-        vocbase, collection, [&](std::shared_ptr<LogicalCollection> const& coll) -> void {
-          TRI_ASSERT(coll);
-          LOG_TOPIC("03e2f", DEBUG, Logger::MAINTENANCE)
-              << "Dropping local collection " + collection;
-          _result = Collections::drop(*coll, false, 2.5);
-        });
-
-    if (found.fail()) {
+    
+    std::shared_ptr<LogicalCollection> coll;
+    Result found = methods::Collections::lookup(vocbase, collection, coll);
+    if (found.ok()) {
+      TRI_ASSERT(coll);
+      LOG_TOPIC("03e2f", DEBUG, Logger::MAINTENANCE)
+          << "Dropping local collection " + collection;
+      _result = Collections::drop(*coll, false, 2.5);
+    } else {
       std::stringstream error;
 
       error << "failed to lookup local collection " << database << "/" << collection;

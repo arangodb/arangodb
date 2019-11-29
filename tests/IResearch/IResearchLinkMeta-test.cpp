@@ -137,15 +137,17 @@ class IResearchLinkMetaTest
 
     auto& dbFeature = server.getFeature<arangodb::DatabaseFeature>();
     auto sysvocbase = dbFeature.useDatabase(arangodb::StaticStrings::SystemDatabase);
+    std::shared_ptr<arangodb::LogicalCollection> unused;
     arangodb::methods::Collections::createSystem(
         *sysvocbase,
-        arangodb::tests::AnalyzerCollectionName, false);
+        arangodb::tests::AnalyzerCollectionName, false, unused);
+    unused = nullptr;
     
     TRI_vocbase_t* vocbase;
     dbFeature.createDatabase(testDBInfo(server.server()), vocbase);  // required for IResearchAnalyzerFeature::emplace(...)
     arangodb::methods::Collections::createSystem(
       *vocbase,
-      arangodb::tests::AnalyzerCollectionName, false);
+      arangodb::tests::AnalyzerCollectionName, false, unused);
 
     auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
     arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
