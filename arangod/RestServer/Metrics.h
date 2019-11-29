@@ -99,7 +99,7 @@ public:
     _g.store(val);
   }
   Gauge(Gauge const&) = delete;
-  virtual ~Gauge() {};
+  ~Gauge() = default;
   std::ostream& print (std::ostream&) const;
   Gauge<T>& operator+=(T const& t) {
     _g.store(_g + t);
@@ -114,6 +114,7 @@ public:
     return *this;
   }
   Gauge<T>& operator/=(T const& t) {
+    TRI_ASSERT(t != T(0));
     _g.store(_g / t);
     return *this;
   }
@@ -125,7 +126,7 @@ public:
     return _g.load();
   };
   virtual void toPrometheus(std::string& result) const override {
-    result += "#TYPE " + name() + " counter\n";
+    result += "#TYPE " + name() + " gauge\n";
     result += "#HELP " + name() + " " + help() + "\n";
     result += name() + " " + std::to_string(load()) + "\n";
   };
@@ -153,7 +154,7 @@ public:
     TRI_ASSERT(_div != 0);
   }
 
-  ~Histogram() {}
+  ~Histogram() = default;
 
   void records(T const& t) {
     if(t < _lowr) {
@@ -168,14 +169,7 @@ public:
   }
 
   void count(T const& t) {
-    if (t < _low) {
-      ++_c[0];
-    } else if (t >= _high) {
-      ++_c[_n];
-    } else {
-      ++_c[pos(t)];
-    }
-    records(t);
+    count(t, 1);
   }
 
   void count(T const& t, uint64_t n) {
@@ -228,6 +222,7 @@ public:
     return o;
   }
 
+private:
   Metrics::hist_type _c;
   T _low, _high, _div, _lowr, _highr;
   size_t _n;
