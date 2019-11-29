@@ -39,8 +39,8 @@
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
 #include "Basics/voc-errors.h"
-#include "VocBase/voc-types.h"
 #include "VocBase/VocbaseInfo.h"
+#include "VocBase/voc-types.h"
 
 #include <velocypack/Slice.h>
 
@@ -137,6 +137,8 @@ struct TRI_vocbase_t {
 
   /// @brief database state
   enum class State { NORMAL = 0, SHUTDOWN_COMPACTOR = 1, SHUTDOWN_CLEANUP = 2 };
+
+  typedef std::string ShardID; // ID of a shard
 
   TRI_vocbase_t(TRI_vocbase_type_e type, arangodb::CreateDatabaseInfo&&);
   TEST_VIRTUAL ~TRI_vocbase_t();
@@ -278,7 +280,7 @@ struct TRI_vocbase_t {
 
   /// @brief gets prototype collection for sharding (_users or _graphs)
   ShardingPrototype shardingPrototype() const;
- 
+
   /// @brief gets name of prototype collection for sharding (_users or _graphs)
   std::string const& shardingPrototypeName() const;
 
@@ -312,6 +314,9 @@ struct TRI_vocbase_t {
   /// @brief looks up a collection by name or stringified cid or uuid
   std::shared_ptr<arangodb::LogicalCollection> lookupCollection(std::string const& nameOrId) const
       noexcept;
+
+  /// @brief returns the responsible collection name of a ShardID
+  std::string lookupCollectionByShardId(ShardID const& shardId);
 
   /// @brief looks up a collection by uuid
   std::shared_ptr<arangodb::LogicalCollection> lookupCollectionByUuid(std::string const& uuid) const

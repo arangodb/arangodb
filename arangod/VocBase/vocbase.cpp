@@ -457,7 +457,8 @@ int TRI_vocbase_t::loadCollection(arangodb::LogicalCollection* collection,
   // check if the collection is already loaded
   {
     std::string const& dbName = _info.getName();
-    if (!ExecContext::current().canUseCollection(dbName, collection->name(), auth::Level::RO)) {
+    if (!ExecContext::current().canUseCollection(dbName, collection->name(),
+                                                 auth::Level::RO)) {
       return TRI_set_errno(TRI_ERROR_FORBIDDEN);
     }
 
@@ -766,9 +767,9 @@ void TRI_vocbase_t::stop() {
     // mark all cursors as deleted so underlying collections can be freed soon
     _cursorRepository->garbageCollect(true);
 
-    // mark all collection keys as deleted so underlying collections can be freed
-    // soon, we have to retry, since some of these collection keys might currently
-    // still being in use:
+    // mark all collection keys as deleted so underlying collections can be
+    // freed soon, we have to retry, since some of these collection keys might
+    // currently still being in use:
     auto lastTime = TRI_microtime();
     _collectionKeys->stopStores();
     while (true) {
@@ -778,7 +779,8 @@ void TRI_vocbase_t::stop() {
       std::this_thread::sleep_for(std::chrono::milliseconds(100));
       if (TRI_microtime() - lastTime > 1.0) {
         LOG_TOPIC("ddaae", WARN, Logger::STARTUP)
-          << "Have collection keys left over, keep trying to garbage collect...";
+            << "Have collection keys left over, keep trying to garbage "
+               "collect...";
         lastTime = TRI_microtime();
       }
     }
@@ -949,7 +951,8 @@ void TRI_vocbase_t::inventory(VPackBuilder& result, TRI_voc_tick_t maxTick,
       // why are indexes added separately, when they are added by
       //  collection->toVelocyPackIgnore !?
       result.add(VPackValue("indexes"));
-      collection->getIndexesVPack(result, [](arangodb::Index const* idx, decltype(Index::makeFlags())& flags) {
+      collection->getIndexesVPack(result, [](arangodb::Index const* idx,
+                                             decltype(Index::makeFlags())& flags) {
         // we have to exclude the primary and edge index for dump / restore
         switch (idx->type()) {
           case Index::TRI_IDX_TYPE_PRIMARY_INDEX:
@@ -961,9 +964,10 @@ void TRI_vocbase_t::inventory(VPackBuilder& result, TRI_voc_tick_t maxTick,
         }
       });
       result.add("parameters", VPackValue(VPackValueType::Object));
-      collection->toVelocyPackIgnore(
-          result, {"objectId", "path", "statusString", "indexes"},
-          LogicalDataSource::Serialization::Inventory);
+      collection->toVelocyPackIgnore(result,
+                                     {"objectId", "path", "statusString",
+                                      "indexes"},
+                                     LogicalDataSource::Serialization::Inventory);
       result.close();
 
       result.close();
@@ -1012,6 +1016,22 @@ std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::lookupCollection(
 #endif
 }
 
+/// @brief looks up a collection by shardid
+std::string TRI_vocbase_t::lookupCollectionByShardId(ShardID const& shardId) {
+  std::string collectionName = "";
+
+  for (auto const& collection : collections(false)) {
+    std::shared_ptr<ShardMap> shards = collection.get()->shardIds();
+    for (auto const& shard : *shards) {
+      if (shard.first == shardId) {
+        collectionName = collection.get()->name();
+      }
+    }
+  }
+
+  return collectionName;
+}
+
 /// @brief looks up a collection by uuid
 std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::lookupCollectionByUuid(
     std::string const& uuid) const noexcept {
@@ -1032,8 +1052,8 @@ std::shared_ptr<arangodb::LogicalCollection> TRI_vocbase_t::lookupCollectionByUu
 }
 
 /// @brief looks up a data-source by identifier
-std::shared_ptr<arangodb::LogicalDataSource> TRI_vocbase_t::lookupDataSource(
-    TRI_voc_cid_t id) const noexcept {
+std::shared_ptr<arangodb::LogicalDataSource> TRI_vocbase_t::lookupDataSource(TRI_voc_cid_t id) const
+    noexcept {
   RECURSIVE_READ_LOCKER(_dataSourceLock, _dataSourceLockWriteOwner);
   auto itr = _dataSourceById.find(id);
 
@@ -1580,8 +1600,9 @@ std::shared_ptr<arangodb::LogicalView> TRI_vocbase_t::createView(arangodb::veloc
     THROW_ARANGO_EXCEPTION_MESSAGE(
         res.errorNumber(),
         res.errorMessage().empty()
-          ? std::string("failed to instantiate view from definition: ") + parameters.toString()
-          : res.errorMessage());
+            ? std::string("failed to instantiate view from definition: ") +
+                  parameters.toString()
+            : res.errorMessage());
   }
 
   READ_LOCKER(readLocker, _inventoryLock);
@@ -1710,17 +1731,15 @@ arangodb::Result TRI_vocbase_t::dropView(TRI_voc_cid_t cid, bool allowDropSystem
   return TRI_ERROR_NO_ERROR;
 }
 
-TRI_vocbase_t::TRI_vocbase_t(TRI_vocbase_type_e type,
-                           arangodb::CreateDatabaseInfo&& info)
-  : _server(info.server()),
-    _info(std::move(info)),
-    _type(type),
-    _refCount(0),
-    _state(TRI_vocbase_t::State::NORMAL),
-    _isOwnAppsDirectory(true),
-    _deadlockDetector(false),
-    _userStructures(nullptr) {
-
+TRI_vocbase_t::TRI_vocbase_t(TRI_vocbase_type_e type, arangodb::CreateDatabaseInfo&& info)
+    : _server(info.server()),
+      _info(std::move(info)),
+      _type(type),
+      _refCount(0),
+      _state(TRI_vocbase_t::State::NORMAL),
+      _isOwnAppsDirectory(true),
+      _deadlockDetector(false),
+      _userStructures(nullptr) {
   QueryRegistryFeature& feature = info.server().getFeature<QueryRegistryFeature>();
   _queries.reset(new arangodb::aql::QueryList(feature, this));
   _cursorRepository.reset(new arangodb::CursorRepository(*this));
@@ -1733,7 +1752,6 @@ TRI_vocbase_t::TRI_vocbase_t(TRI_vocbase_type_e type,
 
   TRI_CreateUserStructuresVocBase(this);
 }
-
 
 /// @brief destroy a vocbase object
 TRI_vocbase_t::~TRI_vocbase_t() {
@@ -1763,9 +1781,7 @@ std::string TRI_vocbase_t::path() const {
   return engine->databasePath(this);
 }
 
-std::string const& TRI_vocbase_t::sharding() const {
-  return _info.sharding();
-}
+std::string const& TRI_vocbase_t::sharding() const { return _info.sharding(); }
 
 std::uint32_t TRI_vocbase_t::replicationFactor() const {
   return _info.replicationFactor();
@@ -1795,7 +1811,8 @@ bool TRI_vocbase_t::IsAllowedName(bool allowSystem,
   for (char const* ptr = name.data(); length < name.size(); ++ptr, ++length) {
     bool ok;
     if (length == 0) {
-      ok = ('a' <= *ptr && *ptr <= 'z') || ('A' <= *ptr && *ptr <= 'Z') || (allowSystem && *ptr == '_');
+      ok = ('a' <= *ptr && *ptr <= 'z') || ('A' <= *ptr && *ptr <= 'Z') ||
+           (allowSystem && *ptr == '_');
     } else {
       ok = ('a' <= *ptr && *ptr <= 'z') || ('A' <= *ptr && *ptr <= 'Z') ||
            (*ptr == '_') || (*ptr == '-') || ('0' <= *ptr && *ptr <= '9');
@@ -1842,7 +1859,9 @@ ShardingPrototype TRI_vocbase_t::shardingPrototype() const {
 
 /// @brief gets name of prototype collection for sharding (_users or _graphs)
 std::string const& TRI_vocbase_t::shardingPrototypeName() const {
-  return _info.shardingPrototype() == ShardingPrototype::Users ? StaticStrings::UsersCollection : StaticStrings::GraphCollection;
+  return _info.shardingPrototype() == ShardingPrototype::Users
+             ? StaticStrings::UsersCollection
+             : StaticStrings::GraphCollection;
 }
 
 std::vector<std::shared_ptr<arangodb::LogicalView>> TRI_vocbase_t::views() {
@@ -1904,7 +1923,7 @@ void TRI_vocbase_t::processCollections(std::function<void(LogicalCollection*)> c
   }
 }
 
-std::vector<std::shared_ptr<arangodb::LogicalCollection>> TRI_vocbase_t::collections(bool includeDeleted) {
+std::vector<std::shared_ptr<arangodb::LogicalCollection>> TRI_vocbase_t::collections(bool includeDeleted) const {
   RECURSIVE_READ_LOCKER(_dataSourceLock, _dataSourceLockWriteOwner);
 
   if (includeDeleted) {
