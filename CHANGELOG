@@ -3,6 +3,14 @@ devel
 
 * The _users collection is now properly restored when using arangorestore.
 
+* Updated arangosync to 0.7.1.
+
+* rename `minReplicationFactor` into `writeConcern` to make it consistent with
+  `--cluster.write-concern` and avoid confusion with
+  `--cluster.min-replication-factor`
+
+* ArangoDB web UI was switched to React from previous framework and rebuilt.
+
 * Enable the `parallelize-gather` AQL optimizer rule for certain write queries. 
 
   The optimization is turned on by default and can be disabled by setting the
@@ -18,8 +26,6 @@ devel
 * Fixed GET _api/gharial to also include the name property in every returned graph.
   This is a consistency fix within the API as all other APIs include the name.
   As a work around the returned _key can be used, which is identical to the name.
-
-* Updated arangosync to 0.7.0.
 
 * REMOTE and GATHER no longer make subqueries unsuitable for the
   `splice-subqueries` optimization.

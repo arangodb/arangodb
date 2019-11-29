@@ -814,19 +814,10 @@ void RestReplicationHandler::handleCommandRestoreCollection() {
   bool force = _request->parsedValue<bool>("force", false);
   bool ignoreDistributeShardsLikeErrors =
       _request->parsedValue<bool>("ignoreDistributeShardsLikeErrors", false);
-  uint64_t numberOfShards =
-      _request->parsedValue<uint64_t>(StaticStrings::NumberOfShards, 0);
-  uint64_t replicationFactor =
-      _request->parsedValue<uint64_t>(StaticStrings::ReplicationFactor, 1);
-  // not an error: for historical reasons the write concern is read from the
-  // variable "minReplicationFactor"
-  uint64_t writeConcern =
-      _request->parsedValue<uint64_t>(StaticStrings::MinReplicationFactor, 1);
-
+  
   Result res;
   if (ServerState::instance()->isCoordinator()) {
-    res = processRestoreCollectionCoordinator(slice, overwrite, force, numberOfShards,
-                                              replicationFactor, writeConcern,
+    res = processRestoreCollectionCoordinator(slice, overwrite, force,
                                               ignoreDistributeShardsLikeErrors);
   } else {
     res = processRestoreCollection(slice, overwrite, force);
@@ -1120,7 +1111,7 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
   }
 
   // now re-create the collection
-
+  
   // Build up new information that we need to merge with the given one
   VPackBuilder toMerge;
   toMerge.openObject();
@@ -1140,6 +1131,7 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
                   VPackValue(_vocbase.shardingPrototypeName()));
     }
   } else {
+    size_t numberOfShards = 1;
     // Number of shards. Will be overwritten if not existent
     VPackSlice const numberOfShardsSlice = parameters.get(StaticStrings::NumberOfShards);
     if (!numberOfShardsSlice.isInteger()) {
@@ -1147,13 +1139,6 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
       VPackSlice const shards = parameters.get("shards");
       if (shards.isObject()) {
         numberOfShards = static_cast<uint64_t>(shards.length());
-      } else {
-        // "shards" not specified
-        // now check if numberOfShards property was given
-        if (numberOfShards == 0) {
-          // We take one shard if no value was given
-          numberOfShards = 1;
-        }
       }
       TRI_ASSERT(numberOfShards > 0);
       toMerge.add(StaticStrings::NumberOfShards, VPackValue(numberOfShards));
@@ -1174,7 +1159,10 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
   VPackSlice const replicationFactorSlice = parameters.get(StaticStrings::ReplicationFactor);
   // not an error: for historical reasons the write concern is read from the
   // variable "minReplicationFactor"
-  VPackSlice const writeConcernSlice = parameters.get(StaticStrings::MinReplicationFactor);
+  VPackSlice writeConcernSlice = parameters.get(StaticStrings::WriteConcern);
+  if (writeConcernSlice.isNone()) { // minReplicationFactor is deprecated in 3.6
+    writeConcernSlice = parameters.get(StaticStrings::MinReplicationFactor);
+  }
 
   bool isValidReplicationFactorSlice =
       replicationFactorSlice.isInteger() ||
@@ -1187,28 +1175,24 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
       writeConcernSlice.getInt() > 0;
 
   if (!isValidReplicationFactorSlice) {
+    size_t replicationFactor = _vocbase.server().getFeature<ClusterFeature>().defaultReplicationFactor();
     if (replicationFactor == 0) {
-      replicationFactor =
-          _vocbase.server().getFeature<ClusterFeature>().defaultReplicationFactor();
-      if (replicationFactor == 0) {
-        replicationFactor = 1;
-      }
+      replicationFactor = 1;
     }
     TRI_ASSERT(replicationFactor > 0);
     toMerge.add(StaticStrings::ReplicationFactor, VPackValue(replicationFactor));
   }
 
   if (!isValidWriteConcernSlice) {
+    size_t writeConcern = 1;
     if (replicationFactorSlice.isString() &&
         replicationFactorSlice.isEqualString(StaticStrings::Satellite)) {
       writeConcern = 0;
-    } else if (writeConcern == 0) {
-      writeConcern = 1;
     }
-    TRI_ASSERT(writeConcern <= replicationFactor);
     // not an error: for historical reasons the write concern is stored in the
     // variable "minReplicationFactor"
     toMerge.add(StaticStrings::MinReplicationFactor, VPackValue(writeConcern));
+    toMerge.add(StaticStrings::WriteConcern, VPackValue(writeConcern));
   }
 
   // always use current version number when restoring a collection,
