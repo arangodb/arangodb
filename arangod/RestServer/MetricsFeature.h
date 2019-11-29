@@ -46,6 +46,8 @@ class MetricsFeature final : public application_features::ApplicationFeature {
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
 
+
+
   template<typename T> Histogram<T>&
   histogram (std::string const& name, size_t const& buckets, T const& low,
              T const& high, std::string const& help = std::string()) {
@@ -66,30 +68,26 @@ class MetricsFeature final : public application_features::ApplicationFeature {
 
   template<typename T> Histogram<T>& histogram (std::string const& name) {
 
-    registry_type::const_iterator it;
-    {
-      std::lock_guard<std::mutex> guard(_lock);
-      it = _registry.find(name);
-    }
-    if (it == _registry.end()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL, std::string("No histogram booked as ") + name);
-    }
     std::shared_ptr<Histogram<T>> metric = nullptr;
     std::string error;
-    try {
-      metric = std::dynamic_pointer_cast<Histogram<T>>(*it->second);
-      if (metric == nullptr) {
-        error = std::string("Failed to retrieve histogram ") + name;
+    {
+      std::lock_guard<std::mutex> guard(_lock);
+      registry_type::const_iterator it = _registry.find(name);
+
+      try {
+        metric = std::dynamic_pointer_cast<Histogram<T>>(*it->second);
+        if (metric == nullptr) {
+          error = std::string("Failed to retrieve histogram ") + name;
+        }
+      } catch (std::exception const& e) {
+        error = std::string("Failed to retrieve histogram ") + name + ": " + e.what();
       }
-    } catch (std::exception const& e) {
-      error = std::string("Failed to retrieve histogram ") + name + ": " + e.what();
     }
     if (!error.empty()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, error);
     }
     return *metric;
-    
+
   }
 
   Counter& counter(std::string const& name, uint64_t const& val, std::string const& help);
@@ -112,38 +110,37 @@ class MetricsFeature final : public application_features::ApplicationFeature {
 
   template<typename T> Gauge<T>& gauge(std::string const& name) {
 
-    registry_type::const_iterator it;
-    {
-      std::lock_guard<std::mutex> guard(_lock);
-      it = _registry.find(name);
-    }
-    if (it == _registry.end()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL, std::string("No gauge booked as ") + name);
-    }
     std::shared_ptr<Gauge<T>> metric = nullptr;
     std::string error;
-    try {
-      metric = std::dynamic_pointer_cast<Gauge<T>>(*it->second);
-      if (metric == nullptr) {
-        error = std::string("Failed to retrieve gauge ") + name;
+    {
+      std::lock_guard<std::mutex> guard(_lock);
+      registry_type::const_iterator it = _registry.find(name);
+      if (it == _registry.end()) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL, std::string("No gauge booked as ") + name);
       }
-    } catch (std::exception const& e) {
-      error = std::string("Failed to retrieve gauge ") + name +  ": " + e.what();
+      try {
+        metric = std::dynamic_pointer_cast<Gauge<T>>(*it->second);
+        if (metric == nullptr) {
+          error = std::string("Failed to retrieve gauge ") + name;
+        }
+      } catch (std::exception const& e) {
+        error = std::string("Failed to retrieve gauge ") + name +  ": " + e.what();
+      }
     }
     if (!error.empty()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, error);
     }
     return *metric;
   }
-    
+
   void toPrometheus(std::string& result) const;
 
   ServerStatistics& serverStatistics();
 
  private:
   registry_type _registry;
-  
+
   mutable std::mutex _lock;
 
   std::unique_ptr<ServerStatistics> _serverStatistics;
