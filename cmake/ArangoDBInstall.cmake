@@ -94,7 +94,6 @@ set(APP_FILES
  "react/build/assets/src/worker-json.js"
  "react/build/assets/src/ace.min.js"
  "react/build/assets/src/mode-aql.js"
- "react/build/assets/src/ext-searchbox.js"
 )
 
 foreach (file ${APP_FILES})
