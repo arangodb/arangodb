@@ -19,7 +19,7 @@ Default replication factor for new collections created in this database.
 Special values include "satellite", which will replicate the collection to
 every DB-server, and 1, which disables replication.
 
-@RESTSTRUCT{minReplicationFactor,get_api_database_new_USERS,number,optional,}
+@RESTSTRUCT{writeConcern,get_api_database_new_USERS,number,optional,}
 Default minimum replication factor for new collections created in this database.
 If there are less than minReplicationFactor replicas available the collection
 will become read-only.

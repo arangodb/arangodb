@@ -240,6 +240,7 @@ std::string const StaticStrings::ShardingStrategy("shardingStrategy");
 std::string const StaticStrings::SmartJoinAttribute("smartJoinAttribute");
 std::string const StaticStrings::Sharding("sharding");
 std::string const StaticStrings::Satellite("satellite");
+std::string const StaticStrings::WriteConcern("writeConcern");
 
 // graph attribute names
 std::string const StaticStrings::GraphCollection("_graphs");

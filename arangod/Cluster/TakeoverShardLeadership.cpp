@@ -242,20 +242,21 @@ bool TakeoverShardLeadership::first() {
   try {
     DatabaseGuard guard(database);
     auto& vocbase = guard.database();
-    Result found = methods::Collections::lookup(
-        vocbase, shard, [&](std::shared_ptr<LogicalCollection> const& coll) -> void {
-          TRI_ASSERT(coll);
-          LOG_TOPIC("5632a", DEBUG, Logger::MAINTENANCE)
-              << "trying to become leader of shard '" << database << "/" << shard;
-          // We adjust local leadership, note that the planned
-          // resignation case is not handled here, since then
-          // ourselves does not appear in shards[shard] but only
-          // "_" + ourselves.
-          handleLeadership(*coll, localLeader, plannedLeader,
-                           vocbase.name(), oldCounter, feature());
-        });
-
-    if (found.fail()) {
+    
+    std::shared_ptr<LogicalCollection> coll;
+    Result found = methods::Collections::lookup(vocbase, shard, coll);
+    if (found.ok()) {
+      
+      TRI_ASSERT(coll);
+      LOG_TOPIC("5632a", DEBUG, Logger::MAINTENANCE)
+          << "trying to become leader of shard '" << database << "/" << shard;
+      // We adjust local leadership, note that the planned
+      // resignation case is not handled here, since then
+      // ourselves does not appear in shards[shard] but only
+      // "_" + ourselves.
+      handleLeadership(*coll, localLeader, plannedLeader,
+                       vocbase.name(), oldCounter, feature());
+    } else {
       std::stringstream error;
       error << "TakeoverShardLeadership: failed to lookup local collection " << shard << "in database " + database;
       LOG_TOPIC("65342", ERR, Logger::MAINTENANCE) << error.str();

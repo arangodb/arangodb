@@ -308,9 +308,9 @@ arangodb::Result tryCreateDatabase(arangodb::application_features::ApplicationSe
     if (properties.isObject()) {
       ObjectBuilder guard(&builder, "options");
       for(auto const& key : std::vector<std::string>{
-        arangodb::StaticStrings::MinReplicationFactor,
         arangodb::StaticStrings::ReplicationFactor,
         arangodb::StaticStrings::Sharding,
+        arangodb::StaticStrings::WriteConcern
       }) {
         VPackSlice slice = properties.get(key);
         if (!slice.isNone()) {
@@ -440,7 +440,7 @@ arangodb::Result sendRestoreCollection(arangodb::httpclient::SimpleHttpClient& h
   using arangodb::Logger;
   using arangodb::httpclient::SimpleHttpResult;
 
-  std::string url =
+  const std::string url =
       "/_api/replication/restore-collection"
       "?overwrite=" +
       std::string(options.overwrite ? "true" : "false") +
