@@ -53,11 +53,8 @@ using namespace arangodb::options;
 // --SECTION--                                                 MetricsFeature
 // -----------------------------------------------------------------------------
 
-MetricsFeature* MetricsFeature::METRICS = nullptr;
-
 MetricsFeature::MetricsFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Metrics") {
-  METRICS = this;
   _serverStatistics = std::make_unique<ServerStatistics>(
     std::chrono::duration<double>(std::chrono::system_clock::now().time_since_epoch()).count());
   setOptional(false);
@@ -68,12 +65,6 @@ MetricsFeature::MetricsFeature(application_features::ApplicationServer& server)
 void MetricsFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {}
 
 void MetricsFeature::validateOptions(std::shared_ptr<ProgramOptions>) {}
-
-void MetricsFeature::unprepare() {
-  METRICS = nullptr;
-}
-
-void MetricsFeature::prepare() {}
 
 void MetricsFeature::toPrometheus(std::string& result) const {
   {

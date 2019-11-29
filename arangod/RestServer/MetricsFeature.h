@@ -43,8 +43,6 @@ class MetricsFeature final : public application_features::ApplicationFeature {
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void prepare() override final;
-  void unprepare() override final;
 
   template<typename T> Histogram<T>&
   histogram (std::string const& name, size_t const& buckets, T const& low,
@@ -139,15 +137,9 @@ class MetricsFeature final : public application_features::ApplicationFeature {
     
   void toPrometheus(std::string& result) const;
 
-  static MetricsFeature* metrics() {
-    return METRICS;
-  }
-
   ServerStatistics& serverStatistics();
 
  private:
-  static MetricsFeature* METRICS;
-
   registry_type _registry;
 
   mutable std::mutex _lock;
