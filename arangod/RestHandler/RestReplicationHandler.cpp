@@ -814,7 +814,7 @@ void RestReplicationHandler::handleCommandRestoreCollection() {
   bool force = _request->parsedValue<bool>("force", false);
   bool ignoreDistributeShardsLikeErrors =
       _request->parsedValue<bool>("ignoreDistributeShardsLikeErrors", false);
-  
+
   Result res;
   if (ServerState::instance()->isCoordinator()) {
     res = processRestoreCollectionCoordinator(slice, overwrite, force,
@@ -1025,7 +1025,6 @@ Result RestReplicationHandler::processRestoreCollection(VPackSlice const& collec
 
 Result RestReplicationHandler::processRestoreCollectionCoordinator(
     VPackSlice const& collection, bool dropExisting, bool force,
-    uint64_t numberOfShards, uint64_t replicationFactor, uint64_t writeConcern,
     bool ignoreDistributeShardsLikeErrors) {
   if (!collection.isObject()) {
     return Result(TRI_ERROR_HTTP_BAD_PARAMETER,
@@ -1111,7 +1110,7 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
   }
 
   // now re-create the collection
-  
+
   // Build up new information that we need to merge with the given one
   VPackBuilder toMerge;
   toMerge.openObject();
@@ -1160,7 +1159,7 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
   // not an error: for historical reasons the write concern is read from the
   // variable "minReplicationFactor"
   VPackSlice writeConcernSlice = parameters.get(StaticStrings::WriteConcern);
-  if (writeConcernSlice.isNone()) { // minReplicationFactor is deprecated in 3.6
+  if (writeConcernSlice.isNone()) {  // minReplicationFactor is deprecated in 3.6
     writeConcernSlice = parameters.get(StaticStrings::MinReplicationFactor);
   }
 
@@ -1175,7 +1174,8 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
       writeConcernSlice.getInt() > 0;
 
   if (!isValidReplicationFactorSlice) {
-    size_t replicationFactor = _vocbase.server().getFeature<ClusterFeature>().defaultReplicationFactor();
+    size_t replicationFactor =
+        _vocbase.server().getFeature<ClusterFeature>().defaultReplicationFactor();
     if (replicationFactor == 0) {
       replicationFactor = 1;
     }
