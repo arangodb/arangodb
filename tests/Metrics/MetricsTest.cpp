@@ -109,27 +109,27 @@ template<typename T> void histogram_test(
   for (size_t i = 0; i < buckets; ++i) {
     auto d = mn + step*i + mmin;
     h.count(d);
-    ASSERT_EQ(h.load(i), 1);
+    ASSERT_DOUBLE_EQ(h.load(i), 1);
   }
 
   //upper bucket bounds
   for (size_t i = 0; i < buckets; ++i) {
     auto d = mn + step*(i+1) - mmin;
     h.count(d);
-    ASSERT_EQ(h.load(i), 2);
+    ASSERT_DOUBLE_EQ(h.load(i), 2);
   }
 
   //below lower limit
   h.count(mn - one);
   h.count(mn - ten);
   h.count(mn - thousand);
-  ASSERT_EQ(h.load(0), 5);
+  ASSERT_DOUBLE_EQ(h.load(0), 5);
 
   // above upper limit
   h.count(mx + one);
   h.count(mx + ten);
   h.count(mx + thousand);
-  ASSERT_EQ(h.load(buckets-1), 5);
+  ASSERT_DOUBLE_EQ(h.load(buckets-1), 5);
 
   // dump
   std::string s;
@@ -140,21 +140,32 @@ template<typename T> void histogram_test(
 
 
 TEST_F(MetricsTest, test_float_histogram) {
-  histogram_test<long double>(10, -1., 1.);
-  histogram_test<long double>(10, -1., -.1);
+  histogram_test<long double>( 9,  1.,  2.);
+  histogram_test<long double>(10, -1.,  1.);
+  histogram_test<long double>( 8, -2., -1.);
 }
 TEST_F(MetricsTest, test_double_histogram) {
-  histogram_test<long double>(8, -1., 1.);
+  histogram_test<long double>(12,  1.,  2.);
+  histogram_test<long double>(11, -1.,  1.);
+  histogram_test<long double>(13, -2., -1.);
 }
 TEST_F(MetricsTest, test_long_double_histogram) {
-  histogram_test<long double>(17, -1., 1.);
+  histogram_test<long double>(12,  1.,  2.);
+  histogram_test<long double>(17, -1.,  1.);
+  histogram_test<long double>( 7, -2., -1.);
 }
 TEST_F(MetricsTest, test_short_histogram) {
   histogram_test<short>(6, -17, 349);
+  histogram_test<short>(7,  20,  40);
+  histogram_test<short>(8, -63, -11);
 }
 TEST_F(MetricsTest, test_int_histogram) {
-  histogram_test<int>(12, -17, 349);
+  histogram_test<short>(6, -17, 349);
+  histogram_test<short>(7,  20,  40);
+  histogram_test<short>(8, -63, -11);
 }
 TEST_F(MetricsTest, test_long_histogram) {
-  histogram_test<long>(7, -17, 349);
+  histogram_test<short>(6, -17, 349);
+  histogram_test<short>(7,  20,  40);
+  histogram_test<short>(8, -63, -11);
 }

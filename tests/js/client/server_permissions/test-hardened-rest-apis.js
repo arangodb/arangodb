@@ -115,6 +115,28 @@ function testSuite() {
       assertFalse(result.hasOwnProperty("foxxApi"));
     },
     
+    testCanAccessAdminStatusRw : function() {
+      arango.reconnect(endpoint, db._name(), "test_rw", "testi");
+      let result = arango.GET("/_admin/metrics");
+      /*assertTrue(result.hasOwnProperty("version"));
+      assertTrue(result.hasOwnProperty("serverInfo"));
+      assertTrue(result.hasOwnProperty("server"));
+      assertTrue(result.hasOwnProperty("pid"));
+      assertTrue(result.hasOwnProperty("foxxApi"));*/
+    },
+
+    testCanAccessAdminStatusRo : function() {
+      arango.reconnect(endpoint, db._name(), "test_ro", "testi");
+      let result = arango.GET("/_admin/metrics");
+      assertTrue(result.error);
+      assertEqual(403, result.code);
+      /*assertFalse(result.hasOwnProperty("version"));
+      assertFalse(result.hasOwnProperty("serverInfo"));
+      assertFalse(result.hasOwnProperty("server"));
+      assertFalse(result.hasOwnProperty("pid"));
+      assertFalse(result.hasOwnProperty("foxxApi"));*/
+    },
+    
     testCanAccessAdminLogRw : function() {
       arango.reconnect(endpoint, db._name(), "test_rw", "testi");
       let result = arango.GET("/_admin/log");
