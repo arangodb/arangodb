@@ -54,7 +54,7 @@ using namespace arangodb::options;
 // -----------------------------------------------------------------------------
 
 MetricsFeature::MetricsFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Metrics") {
+  : ApplicationFeature(server, "Metrics"), _export(true) {
   _serverStatistics = std::make_unique<ServerStatistics>(
     std::chrono::duration<double>(std::chrono::system_clock::now().time_since_epoch()).count());
   setOptional(false);
@@ -62,7 +62,16 @@ MetricsFeature::MetricsFeature(application_features::ApplicationServer& server)
   startsBefore<GreetingsFeaturePhase>();
 }
 
-void MetricsFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {}
+void MetricsFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
+  options->addOption("--server.export-metrics-api",
+                     "turn metrics API on or off",
+                     new BooleanParameter(&_export),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+}
+
+bool MetricsFeature::exportAPI() const {
+  return _export;
+}
 
 void MetricsFeature::validateOptions(std::shared_ptr<ProgramOptions>) {}
 

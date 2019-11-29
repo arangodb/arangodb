@@ -66,18 +66,18 @@ template<typename T> void gauge_test() {
   T zdo = .1, zero = 0., one = 1.;
   Gauge g(zero, "gauge_1", "Gauge 1");
 
-  ASSERT_EQ(g.load(),  zero);
+  ASSERT_DOUBLE_EQ(g.load(),  zero);
   g += zdo;
-  ASSERT_EQ(g.load(),  zdo);
+  ASSERT_DOUBLE_EQ(g.load(),  zdo);
   g -= zdo;
-  ASSERT_EQ(g.load(),  zero);
+  ASSERT_DOUBLE_EQ(g.load(),  zero);
   g += zdo;
   g *= g.load();
-  ASSERT_EQ(g.load(),  zdo*zdo);
+  ASSERT_DOUBLE_EQ(g.load(),  zdo*zdo);
   g /= g.load();
-  ASSERT_EQ(g.load(),  one);
+  ASSERT_DOUBLE_EQ(g.load(),  one);
   g -= g.load();
-  ASSERT_EQ(g.load(),  zero);
+  ASSERT_DOUBLE_EQ(g.load(),  zero);
 
   std::string s;
   g.toPrometheus(s);
