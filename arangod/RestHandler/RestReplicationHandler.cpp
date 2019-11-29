@@ -609,7 +609,21 @@ std::pair<std::string, bool> RestReplicationHandler::forwardingTarget() {
           auth::UserManager* um = AuthenticationFeature::instance()->userManager();
           TRI_ASSERT(um != nullptr);  // should not get here
           if (um != nullptr) {
-            // TOOO: check collection {permissions
+            // check dump collection permissions (at least ro needed)
+            ShardID const& ShardID = _request->value("collection");
+
+            std::string collectionName = _vocbase.lookupCollectionByShardId(ShardID);
+            if (!collectionName.empty()) {
+              auth::Level colPermission =
+                  um->collectionAuthLevel(_request->user(),
+                                          _request->databaseName(), collectionName);
+              if (colPermission == auth::Level::NONE || colPermission == auth::Level::UNDEFINED) {
+                generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
+              }
+            } else {
+              // not found, return 404
+              generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+            }
           }
         }
 
@@ -2556,7 +2570,7 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
                   "'ttl' and 'id'");
     return;
   }
-  
+
   VPackSlice collection = body.get("collection");
   VPackSlice ttlSlice = body.get("ttl");
   VPackSlice idSlice = body.get("id");
@@ -2567,8 +2581,9 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
         rebootId = RebootId(body.get(StaticStrings::RebootId).getNumber<uint64_t>());
         serverId = body.get("serverId").copyString();
       } else {
-        generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                      "'rebootId' must be accompanied by string attribute 'serverId'");
+        generateError(
+            rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+            "'rebootId' must be accompanied by string attribute 'serverId'");
         return;
       }
     } else {
@@ -2953,11 +2968,9 @@ ReplicationApplier* RestReplicationHandler::getApplier(bool& global) {
   }
 }
 
-Result RestReplicationHandler::createBlockingTransaction(aql::QueryId id,
-                                                         LogicalCollection& col, double ttl,
-                                                         AccessMode::Type access,
-                                                         RebootId const& rebootId,
-                                                         std::string const& serverId) {
+Result RestReplicationHandler::createBlockingTransaction(
+    aql::QueryId id, LogicalCollection& col, double ttl, AccessMode::Type access,
+    RebootId const& rebootId, std::string const& serverId) {
   // This is a constant JSON structure for Queries.
   // we actually do not need a plan, as we only want the query registry to have
   // a hold of our transaction
@@ -2994,25 +3007,25 @@ Result RestReplicationHandler::createBlockingTransaction(aql::QueryId id,
 
   std::string vn = _vocbase.name();
   try {
-    std::function<void(void)> f =
-      [=]() {
-        try {
-          // Code does not matter, read only access, so we can roll back.
-          QueryRegistryFeature::registry()->destroy(vn, id, TRI_ERROR_QUERY_KILLED, false);
-        } catch (...) {
-          // All errors that show up here can only be
-          // triggered if the query is destroyed in between.
-        }
-      };
+    std::function<void(void)> f = [=]() {
+      try {
+        // Code does not matter, read only access, so we can roll back.
+        QueryRegistryFeature::registry()->destroy(vn, id, TRI_ERROR_QUERY_KILLED, false);
+      } catch (...) {
+        // All errors that show up here can only be
+        // triggered if the query is destroyed in between.
+      }
+    };
 
     std::string comment = std::string("SynchronizeShard from ") + serverId +
-      " for " + col.name() + " access mode " + AccessMode::typeString(access);
+                          " for " + col.name() + " access mode " +
+                          AccessMode::typeString(access);
     auto rGuard = std::make_unique<CallbackGuard>(
-      ci.rebootTracker().callMeOnChange(
-        RebootTracker::PeerState(serverId, rebootId), f, comment));
+        ci.rebootTracker().callMeOnChange(RebootTracker::PeerState(serverId, rebootId),
+                                          f, comment));
 
     queryRegistry->insert(id, query.get(), ttl, true, true, std::move(rGuard));
-    
+
   } catch (...) {
     // For compatibility we only return this error
     return {TRI_ERROR_TRANSACTION_INTERNAL, "cannot begin read transaction"};
