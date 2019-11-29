@@ -2364,18 +2364,18 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
   }
 
   if (!clones.empty()) {
-    std::string errorMsg("Collection ");
+    std::string errorMsg("Collection '");
     errorMsg += coll->name();
-    errorMsg += " must not be dropped while ";
-    errorMsg += arangodb::basics::StringUtils::join(clones, ", ");
+    errorMsg += "' must not be dropped while '";
+    errorMsg += arangodb::basics::StringUtils::join(clones, "', '");
     if (clones.size() == 1) {
-      errorMsg += " has ";
+      errorMsg += "' has ";
     } else {
-      errorMsg += " have ";
+      errorMsg += "' have ";
     };
-    errorMsg += "distributeShardsLike set to ";
+    errorMsg += "distributeShardsLike set to '";
     errorMsg += coll->name();
-    errorMsg += ".";
+    errorMsg += "'.";
 
     events::DropCollection(dbName, collectionID,
                            TRI_ERROR_CLUSTER_MUST_NOT_DROP_COLL_OTHER_DISTRIBUTESHARDSLIKE);
