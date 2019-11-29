@@ -280,6 +280,11 @@ std::string const RestReplicationHandler::HoldReadLockCollection =
 
 // main function that dispatches the different routes and commands
 RestStatus RestReplicationHandler::execute() {
+  auto res = testPermissions();
+  if (!res.ok()) {
+    generateError(res);
+    return RestStatus::DONE;
+  }
   // extract the request type
   auto const type = _request->requestType();
   auto const& suffixes = _request->suffixes();
@@ -589,47 +594,61 @@ BAD_CALL:
   return RestStatus::DONE;
 }
 
+Result RestReplicationHandler::testPermissions() {
+  if (!_request->authenticated()) {
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  std::string user = _request->user();
+  auto const& suffixes = _request->suffixes();
+  size_t const len = suffixes.size();
+  if (len >= 1) {
+    auto const type = _request->requestType();
+    std::string const& command = suffixes[0];
+    if ((command == Batch) || (command == Inventory && type == rest::RequestType::GET) ||
+        (command == Dump && type == rest::RequestType::GET)) {
+      if (command == Dump) {
+        // check dump collection permissions (at least ro needed)
+        std::string collectionName = _request->value("collection");
+
+        if (ServerState::instance()->isCoordinator()) {
+          // We have a shard id, need to translate
+          ClusterInfo& ci = server().getFeature<ClusterFeature>().clusterInfo();
+          collectionName = ci.getCollectionNameForShard(collectionName);
+        }
+
+        if (!collectionName.empty()) {
+          auto& exec = ExecContext::current();
+          ExecContextSuperuserScope escope(exec.isAdminUser());
+          if (!exec.isAdminUser() &&
+              !exec.canUseCollection(collectionName, auth::Level::RO)) {
+            // not enough rights
+            return Result(TRI_ERROR_FORBIDDEN);
+          }
+        } else {
+          // not found, return 404
+          return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+        }
+      }
+    }
+  }
+  return Result(TRI_ERROR_NO_ERROR);
+}
+
 /// @brief returns the short id of the server which should handle this request
 ResultT<std::pair<std::string, bool>> RestReplicationHandler::forwardingTarget() {
   if (!ServerState::instance()->isCoordinator()) {
     return {std::make_pair("", false)};
   }
+  auto res = testPermissions();
+  if (!res.ok()) {
+    return res;
+  }
 
-  std::string user = _request->user();
-  if (_request->authenticated()) {
-    auto const& suffixes = _request->suffixes();
-    size_t const len = suffixes.size();
-    if (len >= 1) {
-      auto const type = _request->requestType();
-      std::string const& command = suffixes[0];
-      if ((command == Batch) || (command == Inventory && type == rest::RequestType::GET) ||
-          (command == Dump && type == rest::RequestType::GET)) {
-        if (command == Dump) {
-          // check dump collection permissions (at least ro needed)
-          ShardID const& ShardID = _request->value("collection");
-          ClusterInfo& ci = server().getFeature<ClusterFeature>().clusterInfo();
-          std::string collectionName = ci.getCollectionNameForShard(ShardID);
-
-          if (!collectionName.empty()) {
-            auto& exec = ExecContext::current();
-            ExecContextSuperuserScope escope(exec.isAdminUser());
-            if (!exec.canUseCollection(collectionName, auth::Level::RO)) {
-              // not enough rights
-              return Result(TRI_ERROR_FORBIDDEN);
-            }
-          } else {
-            // not found, return 404
-            return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
-          }
-        }
-
-        ServerID const& DBserver = _request->value("DBserver");
-        if (!DBserver.empty()) {
-          // if DBserver property present, remove auth header
-          return std::make_pair(DBserver, true);
-        }
-      }
-    }
+  ServerID const& DBserver = _request->value("DBserver");
+  if (!DBserver.empty()) {
+    // if DBserver property present, remove auth header
+    return std::make_pair(DBserver, true);
   }
 
   return {std::make_pair(StaticStrings::Empty, false)};
@@ -740,7 +759,8 @@ void RestReplicationHandler::handleCommandClusterInventory() {
 
   resultBuilder.add("collections", VPackValue(VPackValueType::Array));
   for (std::shared_ptr<LogicalCollection> const& c : cols) {
-    if (!exec.canUseCollection(vocbase->name(), c->name(), auth::Level::RO)) {
+    if (!exec.isAdminUser() &&
+        !exec.canUseCollection(vocbase->name(), c->name(), auth::Level::RO)) {
       continue;
     }
 
