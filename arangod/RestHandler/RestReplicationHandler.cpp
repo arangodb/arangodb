@@ -624,14 +624,14 @@ Result RestReplicationHandler::testPermissions() {
               return Result(TRI_ERROR_HTTP_BAD_PARAMETER,
                             "empty collection name");
             }
+          } else {
+            return Result(TRI_ERROR_HTTP_BAD_PARAMETER,
+                          "invalid collection name type");
           }
         } else {
           return Result(TRI_ERROR_HTTP_BAD_PARAMETER,
-                        "invalid collection name type");
+                        "invalid collection parameter type");
         }
-      } else {
-        return Result(TRI_ERROR_HTTP_BAD_PARAMETER,
-                      "invalid collection parameter type");
       }
     }
   }
