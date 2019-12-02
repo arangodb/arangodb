@@ -88,11 +88,19 @@ function isClusterReadyForBusiness () {
   }()).every(response => response.statusCode === 200);
 }
 
-/ /////////////////////////////////////////////////////////////////////////////
+// /////////////////////////////////////////////////////////////////////////////
 // / @brief wait for a distributed response
 // /////////////////////////////////////////////////////////////////////////////
 
 var waitForDistributedResponse = function (data, numberOfRequests, ignoreHttpErrors) {
+  const raiseError = function (code, msg) {
+    var err = new ArangoError();
+    err.errorNum = code;
+    err.errorMessage = msg;
+
+    throw err;
+  };
+
   var received = [];
   try {
     while (received.length < numberOfRequests) {
