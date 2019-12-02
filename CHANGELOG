@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fix execution ability in CentOS 6 regarding newer boost.
+
 * rename `minReplicationFactor` into `writeConcern` to make it consistent with
   `--cluster.write-concern` and avoid confusion with
   `--cluster.min-replication-factor`
