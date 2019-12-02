@@ -46,7 +46,7 @@
 
 using namespace arangodb;
 using namespace arangodb::graph;
-using VelocyPackHelper = basics::VelocyPackHelper;
+using Helper = arangodb::basics::VelocyPackHelper;
 
 #ifndef USE_ENTERPRISE
 // Factory methods
@@ -73,19 +73,26 @@ std::unique_ptr<Graph> Graph::fromUserInput(std::string const& name,
   return Graph::fromUserInput(std::string{name}, document, options);
 }
 
+namespace {
+size_t getWriteConcern(VPackSlice slice) {
+  if (slice.hasKey(StaticStrings::WriteConcern)) {
+    return Helper::getNumericValue<uint64_t>(slice, StaticStrings::WriteConcern, 1);
+  }
+  return Helper::getNumericValue<uint64_t>(slice, StaticStrings::MinReplicationFactor, 1);
+}
+}
+
 // From persistence
 Graph::Graph(velocypack::Slice const& slice)
-    : _graphName(
-          VelocyPackHelper::getStringValue(slice, StaticStrings::KeyString, "")),
+    : _graphName(Helper::getStringValue(slice, StaticStrings::KeyString, "")),
       _vertexColls(),
       _edgeColls(),
-      _numberOfShards(basics::VelocyPackHelper::getNumericValue<uint64_t>(slice, StaticStrings::NumberOfShards,
+      _numberOfShards(Helper::getNumericValue<uint64_t>(slice, StaticStrings::NumberOfShards,
                                                                            1)),
-      _replicationFactor(basics::VelocyPackHelper::getNumericValue<uint64_t>(
+      _replicationFactor(Helper::getNumericValue<uint64_t>(
           slice, StaticStrings::ReplicationFactor, 1)),
-      _writeConcern(basics::VelocyPackHelper::getNumericValue<uint64_t>(
-              slice, StaticStrings::MinReplicationFactor, 1)),
-      _rev(basics::VelocyPackHelper::getStringValue(slice, StaticStrings::RevString,
+      _writeConcern(::getWriteConcern(slice)),
+      _rev(Helper::getStringValue(slice, StaticStrings::RevString,
                                                     "")) {
   // If this happens we have a document without an _key Attribute.
   if (_graphName.empty()) {
@@ -133,12 +140,9 @@ Graph::Graph(std::string&& graphName, VPackSlice const& info, VPackSlice const& 
     insertOrphanCollections(info.get(StaticStrings::GraphOrphans));
   }
   if (options.isObject()) {
-    _numberOfShards =
-        VelocyPackHelper::getNumericValue<uint64_t>(options, StaticStrings::NumberOfShards, 1);
-    _replicationFactor =
-        VelocyPackHelper::getNumericValue<uint64_t>(options, StaticStrings::ReplicationFactor, 1);
-    _writeConcern =
-            VelocyPackHelper::getNumericValue<uint64_t>(options, StaticStrings::MinReplicationFactor, 1);
+    _numberOfShards = Helper::getNumericValue<uint64_t>(options, StaticStrings::NumberOfShards, 1);
+    _replicationFactor = Helper::getNumericValue<uint64_t>(options, StaticStrings::ReplicationFactor, 1);
+    _writeConcern = ::getWriteConcern(options);
   }
 }
 
@@ -300,7 +304,8 @@ void Graph::toPersistence(VPackBuilder& builder) const {
   // Cluster Information
   builder.add(StaticStrings::NumberOfShards, VPackValue(_numberOfShards));
   builder.add(StaticStrings::ReplicationFactor, VPackValue(_replicationFactor));
-  builder.add(StaticStrings::MinReplicationFactor, VPackValue(_writeConcern));
+  builder.add(StaticStrings::MinReplicationFactor, VPackValue(_writeConcern)); // deprecated
+  builder.add(StaticStrings::WriteConcern, VPackValue(_writeConcern));
   builder.add(StaticStrings::GraphIsSmart, VPackValue(isSmart()));
 
   // EdgeDefinitions
@@ -680,7 +685,8 @@ void Graph::createCollectionOptions(VPackBuilder& builder, bool waitForSync) con
   builder.add(StaticStrings::WaitForSyncString, VPackValue(waitForSync));
   builder.add(StaticStrings::NumberOfShards, VPackValue(numberOfShards()));
   builder.add(StaticStrings::ReplicationFactor, VPackValue(replicationFactor()));
-  builder.add(StaticStrings::MinReplicationFactor, VPackValue(writeConcern()));
+  builder.add(StaticStrings::MinReplicationFactor, VPackValue(writeConcern())); // deprecated
+  builder.add(StaticStrings::WriteConcern, VPackValue(writeConcern()));
 }
 
 std::optional<std::reference_wrapper<const EdgeDefinition>> Graph::getEdgeDefinition(std::string const& collectionName) const {
