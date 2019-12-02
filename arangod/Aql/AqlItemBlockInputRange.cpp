@@ -23,8 +23,6 @@
 #include "AqlItemBlockInputRange.h"
 #include "Aql/ShadowAqlItemRow.h"
 
-#include "Logger/LogMacros.h"
-
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 #include <numeric>

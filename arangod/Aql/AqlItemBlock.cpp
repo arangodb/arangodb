@@ -39,8 +39,6 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include "Logger/LogMacros.h"
-
 using namespace arangodb;
 using namespace arangodb::aql;
 

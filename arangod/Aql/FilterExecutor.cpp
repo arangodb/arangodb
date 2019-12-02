@@ -35,8 +35,6 @@
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/Stats.h"
 
-#include "Logger/LogMacros.h"
-
 #include <utility>
 
 using namespace arangodb;

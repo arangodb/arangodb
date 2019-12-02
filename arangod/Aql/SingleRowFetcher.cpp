@@ -24,7 +24,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "SingleRowFetcher.h"
-#include <Logger/LogMacros.h>
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/DependencyProxy.h"
