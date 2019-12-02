@@ -35,6 +35,8 @@
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/Stats.h"
 
+#include "Logger/LogMacros.h"
+
 #include <utility>
 
 using namespace arangodb;
@@ -143,6 +145,10 @@ std::tuple<ExecutorState, FilterStats, AqlCall> FilterExecutor::produceRows(
   }
 
   AqlCall upstreamCall{};
-  upstreamCall.softLimit = limit;
+  /* We can use this value as a heuristic on overfetching.
+   * by default we do not skip, and do not set any soft or hardLimit
+   * on upstream
+   * upstreamCall.softLimit = limit;
+   */
   return {inputRange.state(), stats, upstreamCall};
 }

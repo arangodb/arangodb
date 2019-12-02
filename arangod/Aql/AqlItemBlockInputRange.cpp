@@ -39,22 +39,20 @@ AqlItemBlockInputRange::AqlItemBlockInputRange(ExecutorState state)
 
 AqlItemBlockInputRange::AqlItemBlockInputRange(ExecutorState state,
                                                SharedAqlItemBlockPtr const& block,
-                                               std::size_t index, std::size_t endIndex)
-    : _block{block}, _rowIndex{index}, _endIndex(endIndex), _finalState{state} {
-  TRI_ASSERT(index <= endIndex);
-  TRI_ASSERT(endIndex <= block->size());
+                                               std::size_t index, std::size_t)
+    : _block{block}, _rowIndex{index}, _endIndex(_block->size()), _finalState{state} {
+  TRI_ASSERT(index <= _block->size());
 }
 
 AqlItemBlockInputRange::AqlItemBlockInputRange(ExecutorState state,
                                                SharedAqlItemBlockPtr&& block,
-                                               std::size_t index, std::size_t endIndex) noexcept
-    : _block{std::move(block)}, _rowIndex{index}, _endIndex(endIndex), _finalState{state} {
-  TRI_ASSERT(index <= endIndex);
-  TRI_ASSERT(endIndex <= block->size());
+                                               std::size_t index, std::size_t) noexcept
+    : _block{std::move(block)}, _rowIndex{index}, _endIndex(_block->size()), _finalState{state} {
+  TRI_ASSERT(index <= _block->size());
 }
 
 std::pair<ExecutorState, InputAqlItemRow> AqlItemBlockInputRange::peek() {
-  if (indexIsValid()) {
+  if (hasMore()) {
     return std::make_pair(nextState<LookAhead::NEXT, RowType::DATA>(),
                           InputAqlItemRow{_block, _rowIndex});
   }
@@ -70,14 +68,8 @@ std::pair<ExecutorState, InputAqlItemRow> AqlItemBlockInputRange::next() {
   return res;
 }
 
-bool AqlItemBlockInputRange::indexIsValid() const noexcept {
-  return _block != nullptr && _rowIndex < _endIndex;
-}
-
-bool AqlItemBlockInputRange::hasMore() const noexcept { return indexIsValid(); }
-
-bool AqlItemBlockInputRange::hasMoreAfterThis() const noexcept {
-  return indexIsValid() && _rowIndex + 1 < _endIndex;
+bool AqlItemBlockInputRange::hasMore() const noexcept {
+  return isIndexValid(_rowIndex) && !isShadowRowAtIndex(_rowIndex);
 }
 
 ExecutorState AqlItemBlockInputRange::state() const noexcept {
@@ -108,20 +100,7 @@ std::pair<ExecutorState, ShadowAqlItemRow> AqlItemBlockInputRange::peekShadowRow
 
 std::pair<ExecutorState, ShadowAqlItemRow> AqlItemBlockInputRange::nextShadowRow() {
   auto res = peekShadowRow();
-  if (hasShadowRow()) {
-    auto const& shadowRowIndexes = _block->getShadowRowIndexes();
-    auto it = std::find(shadowRowIndexes.begin(), shadowRowIndexes.end(), _rowIndex);
-    // We have a shadow row in this index, so we cannot be at the end now.
-    TRI_ASSERT(it != shadowRowIndexes.end());
-    // Go to next ShadowRow.
-    it++;
-    if (it == shadowRowIndexes.end()) {
-      // No more shadow row here.
-      _endIndex = _block->size();
-    } else {
-      // Set endIndex to the next ShadowRowIndex.
-      _endIndex = *it;
-    }
+  if (res.second.isInitialized()) {
     // Advance the current row.
     _rowIndex++;
   }

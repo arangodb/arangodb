@@ -61,10 +61,6 @@ class AqlItemBlockInputRange {
  private:
   bool isIndexValid(std::size_t index) const noexcept;
 
-  bool indexIsValid() const noexcept;
-
-  bool hasMoreAfterThis() const noexcept;
-
   bool isShadowRowAtIndex(std::size_t index) const noexcept;
 
   enum LookAhead { NOW, NEXT };

@@ -128,6 +128,7 @@ class InputRangeTest : public ::testing::TestWithParam<ExecutorState> {
       ASSERT_NE(rowIndexBefore, testee.getRowIndex())
           << "Did not go to next row.";
     }
+    EXPECT_EQ(expectedState, testee.state());
   }
 
   void validateNextIsShadowRow(AqlItemBlockInputRange& testee, ExecutorState expectedState,

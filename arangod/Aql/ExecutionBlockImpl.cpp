@@ -1017,7 +1017,7 @@ ExecutionBlockImpl<FilterExecutor>::executeWithoutTrace(AqlCallStack stack) {
   }
   AqlCall executorRequest;
 
-  while (execState != ExecState::DONE) {
+  while (execState != ExecState::DONE && !_outputItemRow->isFull()) {
     switch (execState) {
       case ExecState::SKIP: {
         auto [state, skippedLocal, call] =
@@ -1028,6 +1028,7 @@ ExecutionBlockImpl<FilterExecutor>::executeWithoutTrace(AqlCallStack stack) {
         if (state == ExecutorState::DONE) {
           execState = ExecState::SHADOWROWS;
         } else if (myCall.getOffset() > 0) {
+          TRI_ASSERT(_upstreamState != ExecutionState::DONE);
           // We need to request more
           executorRequest = call;
           execState = ExecState::UPSTREAM;
@@ -1040,15 +1041,17 @@ ExecutionBlockImpl<FilterExecutor>::executeWithoutTrace(AqlCallStack stack) {
       case ExecState::PRODUCE: {
         auto linesBefore = _outputItemRow->numRowsWritten();
         TRI_ASSERT(myCall.getLimit() > 0);
+        auto limit = (std::min)(myCall.getLimit(), _outputItemRow->numRowsLeft());
         // Execute getSome
         auto const [state, stats, call] =
-            _executor.produceRows(myCall.getLimit(), _lastRange, *_outputItemRow);
+            _executor.produceRows(limit, _lastRange, *_outputItemRow);
         auto written = _outputItemRow->numRowsWritten() - linesBefore;
         _engine->_stats += stats;
         myCall.didProduce(written);
         if (state == ExecutorState::DONE) {
           execState = ExecState::SHADOWROWS;
         } else if (myCall.getLimit() > 0) {
+          TRI_ASSERT(_upstreamState != ExecutionState::DONE);
           // We need to request more
           executorRequest = call;
           execState = ExecState::UPSTREAM;
