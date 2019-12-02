@@ -113,6 +113,13 @@ class DumpRestoreHelper {
     print(CYAN + Date() + ': ' + this.which + ' and Restore - ' + s + RESET);
   }
 
+  adjustRestoreToDump()
+  {
+    this.restoreOptions = this.dumpOptions;
+    this.restoreConfig = pu.createBaseConfig('restore', this.dumpOptions, this.instanceInfo);
+    this.arangorestore = pu.run.arangoDumpRestoreWithConfig.bind(this, this.restoreConfig, this.restoreOptions, this.instanceInfo.rootDir, this.options.coreCheck);
+  }
+
   isAlive() {
     return pu.arangod.check.instanceAlive(this.instanceInfo, this.options);
   }
@@ -157,8 +164,14 @@ class DumpRestoreHelper {
     return this.validate(this.results.setup);
   }
 
-  dumpFrom(database) {
+  dumpFrom(database, separateDir = false) {
     this.print('dump');
+    if (separateDir) {
+      if (!fs.exists(fs.join(this.instanceInfo.rootDir, 'dump'))) {
+        fs.makeDirectory(fs.join(this.instanceInfo.rootDir, 'dump'));
+      }
+      this.dumpConfig.setOutputDirectory('dump' + fs.pathSeparator + database);
+    }
     if (!this.dumpConfig.haveSetAllDatabases()) {
       this.dumpConfig.setDatabase(database);
     }
@@ -166,8 +179,19 @@ class DumpRestoreHelper {
     return this.validate(this.results.dump);
   }
 
-  restoreTo(database) {
+  restoreTo(database, options = { separate: false, fromDir: '' }) {
     this.print('restore');
+
+    if (options.hasOwnProperty('separate') && options.separate === true) {
+      if (!options.hasOwnProperty('fromDir') || typeof options.fromDir !== 'string') {
+        options.fromDir = database;
+      }
+      if (!fs.exists(fs.join(this.instanceInfo.rootDir, 'dump'))) {
+        fs.makeDirectory(fs.join(this.instanceInfo.rootDir, 'dump'));
+      }
+      this.restoreConfig.setInputDirectory('dump' + fs.pathSeparator + options.fromDir, true);
+    }
+
     if (!this.restoreConfig.haveSetAllDatabases()) {
       this.restoreConfig.setDatabase(database);
     }
@@ -213,6 +237,7 @@ class DumpRestoreHelper {
   restoreFoxxComplete(database) {
     this.print('Foxx Apps with full restore');
     this.restoreConfig.setDatabase(database);
+    this.restoreConfig.setIncludeSystem(true);
     this.results.restoreFoxxComplete = this.arangorestore();
     return this.validate(this.results.restoreFoxxComplete);
   }
@@ -343,14 +368,28 @@ function dump_backend (options, serverAuthInfo, clientAuth, dumpOptions, restore
   const cleanupFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpCleanup));
   const testFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpAgain));
   const tearDownFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpTearDown));
-  if (
-    !helper.runSetupSuite(setupFile) ||
-    !helper.dumpFrom('UnitTestsDumpSrc') ||
-    !helper.runCleanupSuite(cleanupFile) ||  
-    !helper.restoreTo('UnitTestsDumpDst') ||
-    !helper.runTests(testFile,'UnitTestsDumpDst') ||
-    !helper.tearDown(tearDownFile)) {
-    return helper.extractResults();
+
+  if (options.hasOwnProperty("multipleDumps") && options.multipleDumps) {
+    if (!helper.runSetupSuite(setupFile) ||
+        !helper.dumpFrom('_system', true) ||
+        !helper.dumpFrom('UnitTestsDumpSrc', true) ||
+        !helper.runCleanupSuite(cleanupFile) ||
+        !helper.restoreTo('UnitTestsDumpDst', { separate: true, fromDir: 'UnitTestsDumpSrc'}) ||
+        !helper.restoreTo('_system', { separate: true }) ||
+        !helper.runTests(testFile,'UnitTestsDumpDst') ||
+        !helper.tearDown(tearDownFile)) {
+      return helper.extractResults();
+    }
+  }
+  else {
+    if (!helper.runSetupSuite(setupFile) ||
+        !helper.dumpFrom('UnitTestsDumpSrc') ||
+        !helper.runCleanupSuite(cleanupFile) ||
+        !helper.restoreTo('UnitTestsDumpDst') ||
+        !helper.runTests(testFile,'UnitTestsDumpDst') ||
+        !helper.tearDown(tearDownFile)) {
+      return helper.extractResults();
+    }
   }
 
   if (tstFiles.hasOwnProperty("dumpCheckGraph")) {
@@ -365,6 +404,10 @@ function dump_backend (options, serverAuthInfo, clientAuth, dumpOptions, restore
 
   if (tstFiles.hasOwnProperty("foxxTest")) {
     const foxxTestFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.foxxTest));
+    if (options.hasOwnProperty("multipleDumps") && options.multipleDumps) {
+      helper.adjustRestoreToDump();
+      helper.restoreConfig.setInputDirectory(fs.join('dump','UnitTestsDumpSrc'), true);
+    }
     if (!helper.restoreFoxxComplete('UnitTestsDumpFoxxComplete') ||
         !helper.testFoxxComplete(foxxTestFile, 'UnitTestsDumpFoxxComplete') ||
         !helper.restoreFoxxAppsBundle('UnitTestsDumpFoxxAppsBundle') ||
@@ -410,20 +453,6 @@ function dumpMultiple (options) {
 }
 
 function dumpAuthentication (options) {
-  if (options.cluster) {
-    if (options.extremeVerbosity) {
-      print(CYAN + 'Skipped because of cluster.' + RESET);
-    }
-
-    return {
-      'dump_authentication': {
-        'status': true,
-        'message': 'skipped because of cluster',
-        'skipped': true
-      }
-    };
-  }
-
   const clientAuth = {
     'server.authentication': 'true'
   };
@@ -438,16 +467,26 @@ function dumpAuthentication (options) {
     password: 'foobarpasswd'
   };
 
+  let restoreAuthOpts = {
+    username: 'foobaruser',
+    password: 'pinus'
+  };
+
   _.defaults(dumpAuthOpts, options);
+  _.defaults(restoreAuthOpts, options);
+
   let tstFiles = {
     dumpSetup: 'dump-authentication-setup.js',
-    dumpCleanup: 'cleanup-nothing.js',
+    dumpCleanup: 'cleanup-alter-user.js',
     dumpAgain: 'dump-authentication.js',
     dumpTearDown: 'dump-teardown.js',
     foxxTest: 'check-foxx.js'
   };
 
-  return dump_backend(options, serverAuthInfo, clientAuth, dumpAuthOpts, dumpAuthOpts, 'dump_authentication', tstFiles, function(){});
+  options.multipleDumps = true;
+  options['server.jwt-secret'] = 'haxxmann';
+
+  return dump_backend(options, serverAuthInfo, clientAuth, dumpAuthOpts, restoreAuthOpts, 'dump_authentication', tstFiles, function(){});
 }
 
 function dumpEncrypted (options) {
