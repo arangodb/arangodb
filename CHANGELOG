@@ -1,6 +1,10 @@
 devel
 -----
 
+* Fixed permissions for dump/restore.
+
+* The _users collection is now properly restored when using arangorestore.
+
 * Updated arangosync to 0.7.1.
 
 * rename `minReplicationFactor` into `writeConcern` to make it consistent with
