@@ -28,6 +28,7 @@ const tasks = require('@arangodb/tasks');
 const db = require('@arangodb').db;
 const foxxManager = require('@arangodb/foxx/manager');
 const wait = require('internal').wait;
+const warn = require('console').warn;
 
 const coordinatorId = (
   isCluster && cluster.isCoordinator()
@@ -134,7 +135,7 @@ const resetDeadJobs = function () {
         db._query(query);
         ok = true;
       } catch(e) {
-        print("Exception while resetting dead jobs " + e.message, " retrying in 10s");
+        warn("Exception while resetting dead jobs " + e.message, " retrying in 10s");
         wait(10);
       }
       }
@@ -144,7 +145,7 @@ const resetDeadJobs = function () {
         global.KEYSPACE_CREATE('queue-control', 1, true);
       }
     } catch (e) {
-      print("Exception while resetting dead jobs " + e.message);
+      warn("Exception while resetting dead jobs " + e.message);
       // noop
     }
   });
@@ -232,7 +233,7 @@ exports.manage = function () {
         runInDatabase();
       }
     } catch (e) {
-      print("An exception occurred while setting up foxx queue handling in database "
+      warn("An exception occurred while setting up foxx queue handling in database "
             + e.message + " "
             + JSON.stringify(e));
       // noop
