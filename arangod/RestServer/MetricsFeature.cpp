@@ -116,7 +116,7 @@ Counter& MetricsFeature::counter (
   return *metric;
 }
 
-/*
+
 Counter& MetricsFeature::counter (std::string const& name) {
   
   registry_type::const_iterator it;
@@ -144,7 +144,7 @@ Counter& MetricsFeature::counter (std::string const& name) {
   return *metric;
 
 }
-*/
+
 
 ServerStatistics& MetricsFeature::serverStatistics() {
   return *_serverStatistics;
