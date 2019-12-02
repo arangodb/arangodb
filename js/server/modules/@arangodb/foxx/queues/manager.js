@@ -131,13 +131,13 @@ const resetDeadJobs = function () {
       db._useDatabase(name);
       var ok = false;
       while (!ok) {
-      try {
-        db._query(query);
-        ok = true;
-      } catch(e) {
-        warn("Exception while resetting dead jobs " + e.message, " retrying in 10s");
-        wait(10);
-      }
+        try {
+          db._query(query);
+          ok = true;
+        } catch(e) {
+          warn("Exception while resetting dead jobs " + e.message, " retrying in 10s");
+          wait(10);
+        }
       }
       if (!isCluster) {
         queues._updateQueueDelay();
