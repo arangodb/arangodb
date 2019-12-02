@@ -91,7 +91,6 @@ class MetricsFeature final : public application_features::ApplicationFeature {
   }
 
   Counter& counter(std::string const& name, uint64_t const& val, std::string const& help);
-  Counter& counter(std::string const& name);
 
   template<typename T>
   Gauge<T>& gauge(std::string const& name, T const& t, std::string const& help) {

@@ -116,35 +116,6 @@ Counter& MetricsFeature::counter (
   return *metric;
 }
 
-
-Counter& MetricsFeature::counter (std::string const& name) {
-  
-    std::shared_ptr<Counter> metric = nullptr;
-    std::string error;
-    {
-      std::lock_guard<std::mutex> guard(_lock);
-      registry_type::const_iterator it = _registry.find(name);
-      if (it == _registry.end()) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_INTERNAL, std::string("No gauge booked as ") + name);
-      }
-      try {
-        metric = std::dynamic_pointer_cast<Counter>(*it->second);
-        if (metric == nullptr) {
-          error = std::string("Failed to retrieve counter ") + name;
-        }
-      } catch (std::exception const& e) {
-        error = std::string("Failed to retrieve counter ") + name +  ": " + e.what();
-      }
-    }
-    if (!error.empty()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, error);
-    }
-    return *metric;
-
-}
-
-
 ServerStatistics& MetricsFeature::serverStatistics() {
   return *_serverStatistics;
 }
