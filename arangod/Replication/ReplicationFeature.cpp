@@ -88,11 +88,11 @@ void ReplicationFeature::collectOptions(std::shared_ptr<ProgramOptions> options)
   options->addOption("--replication.connect-timeout",
                      "Default timeout value for replication connection attempts (in seconds)",
                      new DoubleParameter(&_connectTimeout))
-                     .setIntroducedIn(30409).setIntroducedIn(30504);
+                     .setIntroducedIn(30409).setIntroducedIn(30503);
   options->addOption("--replication.request-timeout",
                      "Default timeout value for replication requests (in seconds)",
                      new DoubleParameter(&_requestTimeout))
-                     .setIntroducedIn(30409).setIntroducedIn(30504);
+                     .setIntroducedIn(30409).setIntroducedIn(30503);
 }
 
 void ReplicationFeature::validateOptions(std::shared_ptr<options::ProgramOptions> options) {
