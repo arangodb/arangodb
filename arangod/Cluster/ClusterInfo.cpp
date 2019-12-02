@@ -241,6 +241,7 @@ void ClusterInfo::cleanup() {
   theInstance->_plannedViews.clear();
   theInstance->_plannedCollections.clear();
   theInstance->_shards.clear();
+  theInstance->_shardToName.clear();
   theInstance->_shardIds.clear();
   theInstance->_currentCollections.clear();
 }
