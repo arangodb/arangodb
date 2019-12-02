@@ -749,9 +749,11 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice const& slice,
   size_t rf = _sharding->replicationFactor();
   size_t wc = _sharding->writeConcern();
   VPackSlice rfSl = slice.get(StaticStrings::ReplicationFactor);
-  // not an error: for historical reasons the write concern is read from the
-  // variable "minReplicationFactor"
-  VPackSlice wcSl = slice.get(StaticStrings::MinReplicationFactor);
+
+  VPackSlice wcSl = slice.get(StaticStrings::WriteConcern);
+  if (wcSl.isNone()) { // deprecated in 3.6
+    wcSl = slice.get(StaticStrings::MinReplicationFactor);
+  }
 
   if (!rfSl.isNone()) {
     if (rfSl.isInteger()) {
@@ -812,34 +814,34 @@ arangodb::Result LogicalCollection::properties(velocypack::Slice const& slice,
       if (wcTest < 0) {
         // negative value for writeConcern... not good
         return Result(TRI_ERROR_BAD_PARAMETER,
-                      "bad value for minReplicationFactor");
+                      "bad value for writeConcern");
       }
 
       wc = wcSl.getNumber<size_t>();
       if (wc > rf) {
         return Result(TRI_ERROR_BAD_PARAMETER,
-                      "bad value for minReplicationFactor");
+                      "bad value for writeConcern");
       }
 
       if (ServerState::instance()->isCoordinator() &&
           rf != _sharding->writeConcern()) {  // sanity checks
         if (!_sharding->distributeShardsLike().empty()) {
           return Result(TRI_ERROR_FORBIDDEN,
-                        "Cannot change minReplicationFactor, please change " +
+                        "Cannot change writeConcern, please change " +
                             _sharding->distributeShardsLike());
         } else if (_type == TRI_COL_TYPE_EDGE && isSmart()) {
           return Result(TRI_ERROR_NOT_IMPLEMENTED,
-                        "Changing minReplicationFactor "
+                        "Changing writeConcern "
                         "not supported for smart edge collections");
         } else if (isSatellite()) {
           return Result(TRI_ERROR_FORBIDDEN,
                         "Satellite collection, "
-                        "cannot change minReplicationFactor");
+                        "cannot change writeConcern");
         }
       }
     } else {
       return Result(TRI_ERROR_BAD_PARAMETER,
-                    "bad value for minReplicationFactor");
+                    "bad value for writeConcern");
     }
     TRI_ASSERT((wc <= rf && !isSatellite()) || (wc == 0 && isSatellite()));
   }

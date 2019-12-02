@@ -198,9 +198,9 @@ void RocksDBMetadata::adjustNumberDocuments(rocksdb::SequenceNumber seq,
 
 /// @brief serialize the collection metadata
 Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
-                                            LogicalCollection& coll, bool force,
-                                            VPackBuilder& tmp,
-                                            rocksdb::SequenceNumber& appliedSeq) {
+                                      LogicalCollection& coll, bool force,
+                                      VPackBuilder& tmp,
+                                      rocksdb::SequenceNumber& appliedSeq) {
   TRI_ASSERT(appliedSeq != UINT64_MAX);
   
   Result res;

@@ -165,8 +165,9 @@ class IResearchDocumentTest
     {
       auto& sysDatabase = server.getFeature<arangodb::SystemDatabaseFeature>();
       auto vocbase = sysDatabase.use();
+      std::shared_ptr<arangodb::LogicalCollection> unused;
       arangodb::methods::Collections::createSystem(*vocbase, arangodb::tests::AnalyzerCollectionName,
-                                                   false);
+                                                   false, unused);
     }
 
     auto& analyzers = server.getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();

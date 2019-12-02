@@ -31,10 +31,6 @@
 let db = require("@arangodb").db;
 let jsunity = require("jsunity");
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
-
 function optimizerRuleTestSuite () {
   const ruleName = "parallelize-gather";
   const cn = "UnitTestsAqlOptimizerRule";
@@ -94,19 +90,53 @@ function optimizerRuleTestSuite () {
         "FOR doc IN " + cn + " SORT doc.value1 RETURN doc",
         "FOR doc IN " + cn + " SORT doc.value1 LIMIT 1000 RETURN doc",
         "FOR doc IN " + cn + " SORT doc.value1 LIMIT 1000, 1000 RETURN doc",
-        /* TODO
-        "FOR doc IN " + cn + " REMOVE doc IN " + cn,
-        "FOR doc IN " + cn + " REMOVE doc._key IN " + cn,
-        "FOR doc IN " + cn + " REPLACE doc WITH {} IN " + cn,
-        "FOR doc IN " + cn + " REPLACE doc WITH {a: 1} IN " + cn,
-        "FOR doc IN " + cn + " REPLACE doc._key WITH {} IN " + cn,
-        "FOR doc IN " + cn + " REPLACE doc._key WITH {a:1} IN " + cn,
-        "FOR doc IN " + cn + " UPDATE doc WITH {} IN " + cn,
-        "FOR doc IN " + cn + " UPDATE doc WITH {a: 1} IN " + cn,
-        "FOR doc IN " + cn + " UPDATE doc._key WITH {} IN " + cn,
-        "FOR doc IN " + cn + " UPDATE doc._key WITH {a:1} IN " + cn,
-        */
       ];
+
+      if (require("internal").options()["query.parallelize-gather-writes"]) {
+        queries.concat([
+          "FOR doc IN " + cn + " REMOVE doc IN " + cn,
+          "FOR doc IN " + cn + " REMOVE doc._key IN " + cn,
+          "FOR doc IN " + cn + " REPLACE doc WITH {} IN " + cn,
+          "FOR doc IN " + cn + " REPLACE doc WITH {a: 1} IN " + cn,
+          "FOR doc IN " + cn + " REPLACE doc._key WITH {} IN " + cn,
+          "FOR doc IN " + cn + " REPLACE doc._key WITH {a:1} IN " + cn,
+          "FOR doc IN " + cn + " UPDATE doc WITH {} IN " + cn,
+          "FOR doc IN " + cn + " UPDATE doc WITH {a: 1} IN " + cn,
+          "FOR doc IN " + cn + " UPDATE doc._key WITH {} IN " + cn,
+          "FOR doc IN " + cn + " UPDATE doc._key WITH {a:1} IN " + cn,
+        ]);
+      }
+
+      queries.forEach(function(query) {
+        let result = AQL_EXPLAIN(query,);
+        assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
+      });
+    },
+    
+    testRuleHasEffectWrites : function () {
+      let queries = [ 
+        "FOR doc IN " + cn + " RETURN doc",
+        "FOR doc IN " + cn + " LIMIT 1000 RETURN doc",
+        "FOR doc IN " + cn + " LIMIT 1000, 1000 RETURN doc",
+        "FOR doc IN " + cn + " SORT doc.value1 RETURN doc",
+        "FOR doc IN " + cn + " SORT doc.value1 LIMIT 1000 RETURN doc",
+        "FOR doc IN " + cn + " SORT doc.value1 LIMIT 1000, 1000 RETURN doc",
+      ];
+
+      if (require("internal").options()["query.parallelize-gather-writes"]) {
+        queries.concat([
+          "FOR doc IN " + cn + " REMOVE doc IN " + cn,
+          "FOR doc IN " + cn + " REMOVE doc._key IN " + cn,
+          "FOR doc IN " + cn + " REPLACE doc WITH {} IN " + cn,
+          "FOR doc IN " + cn + " REPLACE doc WITH {a: 1} IN " + cn,
+          "FOR doc IN " + cn + " REPLACE doc._key WITH {} IN " + cn,
+          "FOR doc IN " + cn + " REPLACE doc._key WITH {a:1} IN " + cn,
+          "FOR doc IN " + cn + " UPDATE doc WITH {} IN " + cn,
+          "FOR doc IN " + cn + " UPDATE doc WITH {a: 1} IN " + cn,
+          "FOR doc IN " + cn + " UPDATE doc._key WITH {} IN " + cn,
+          "FOR doc IN " + cn + " UPDATE doc._key WITH {a:1} IN " + cn,
+        ]);
+      }
 
       queries.forEach(function(query) {
         let result = AQL_EXPLAIN(query,);
