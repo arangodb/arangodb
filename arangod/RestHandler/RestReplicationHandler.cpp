@@ -273,6 +273,12 @@ std::string const RestReplicationHandler::HoldReadLockCollection =
 
 // main function that dispatches the different routes and commands
 RestStatus RestReplicationHandler::execute() {
+  auto res = testPermissions();
+  if (!res.ok()) {
+    generateError(res);
+    return RestStatus::DONE;
+  }
+
   // extract the request type
   auto const type = _request->requestType();
   auto const& suffixes = _request->suffixes();
@@ -581,6 +587,94 @@ BAD_CALL:
   }
 
   return RestStatus::DONE;
+}
+
+Result RestReplicationHandler::testPermissions() {
+  if (!_request->authenticated()) {
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  std::string user = _request->user();
+  auto const& suffixes = _request->suffixes();
+  size_t const len = suffixes.size();
+  if (len >= 1) {
+    auto const type = _request->requestType();
+    std::string const& command = suffixes[0];
+    if ((command == Batch) || (command == Inventory && type == rest::RequestType::GET) ||
+        (command == Dump && type == rest::RequestType::GET) ||
+        (command == RestoreCollection && type == rest::RequestType::PUT)) {
+      if (command == Dump) {
+        // check dump collection permissions (at least ro needed)
+        std::string collectionName = _request->value("collection");
+
+        if (ServerState::instance()->isCoordinator()) {
+          // We have a shard id, need to translate
+          auto ci = ClusterInfo::instance();
+          collectionName = ci->getCollectionNameForShard(collectionName);
+        }
+
+        if (!collectionName.empty()) {
+          auto& exec = ExecContext::CURRENT;
+          ExecContextSuperuserScope escope(exec->isAdminUser());
+          if (!exec->isAdminUser() &&
+              !exec->canUseCollection(collectionName, auth::Level::RO)) {
+            // not enough rights
+            return Result(TRI_ERROR_FORBIDDEN);
+          }
+        } else {
+          // not found, return 404
+          return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+        }
+      } else if (command == RestoreCollection) {
+        VPackSlice const slice = _request->payload();
+        VPackSlice const parameters = slice.get("parameters");
+        if (parameters.isObject()) {
+          if (parameters.get("name").isString()) {
+            std::string collectionName = parameters.get("name").copyString();
+            if (!collectionName.empty()) {
+              std::string dbName = _request->databaseName();
+              TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->lookupDatabase(dbName);
+              if (vocbase == nullptr) {
+                return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+              }
+
+              std::string const& overwriteCollection =
+                  _request->value("overwrite");
+
+              auto& exec = ExecContext::CURRENT;
+              ExecContextSuperuserScope escope(exec->isSuperuser());
+
+              if (overwriteCollection == "true" ||
+                  vocbase->lookupCollection(collectionName) == nullptr) {
+                // 1.) re-create collection, means: overwrite=true (rw database)
+                // OR 2.) not existing, new collection (rw database)
+                if (!exec->isAdminUser() && !exec->canUseDatabase(dbName, auth::Level::RW)) {
+                  return Result(TRI_ERROR_FORBIDDEN);
+                }
+              } else {
+                // 3u) Existing collection (ro database, rw collection)
+                // no overwrite. restoring into an existing collection
+                if (!exec->isAdminUser() &&
+                    !exec->canUseCollection(collectionName, auth::Level::RW)) {
+                  return Result(TRI_ERROR_FORBIDDEN);
+                }
+              }
+            } else {
+              return Result(TRI_ERROR_HTTP_BAD_PARAMETER,
+                            "empty collection name");
+            }
+          }
+        } else {
+          return Result(TRI_ERROR_HTTP_BAD_PARAMETER,
+                        "invalid collection name type");
+        }
+      } else {
+        return Result(TRI_ERROR_HTTP_BAD_PARAMETER,
+                      "invalid collection parameter type");
+      }
+    }
+  }
+  return Result(TRI_ERROR_NO_ERROR);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1190,7 +1284,10 @@ Result RestReplicationHandler::processRestoreCollectionCoordinator(
 
   if (!isValidReplFactorSlice) {
     if (replicationFactor == 0) {
-      replicationFactor = application_features::ApplicationServer::getFeature<ClusterFeature>("Cluster")->defaultReplicationFactor();
+      replicationFactor =
+          application_features::ApplicationServer::getFeature<ClusterFeature>(
+              "Cluster")
+              ->defaultReplicationFactor();
       if (replicationFactor == 0) {
         replicationFactor = 1;
       }
@@ -1970,9 +2067,9 @@ void RestReplicationHandler::handleCommandRestoreView() {
     if (view) {
       if (!overwrite) {
         generateError(GeneralResponse::responseCode(TRI_ERROR_ARANGO_DUPLICATE_NAME),
-                      TRI_ERROR_ARANGO_DUPLICATE_NAME, 
-                      std::string("unable to restore view '") + nameSlice.copyString() + ": " + 
-                      TRI_errno_string(TRI_ERROR_ARANGO_DUPLICATE_NAME));
+                      TRI_ERROR_ARANGO_DUPLICATE_NAME,
+                      std::string("unable to restore view '") + nameSlice.copyString() +
+                          ": " + TRI_errno_string(TRI_ERROR_ARANGO_DUPLICATE_NAME));
         return;
       }
 
