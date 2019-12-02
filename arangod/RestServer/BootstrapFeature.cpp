@@ -344,6 +344,10 @@ void BootstrapFeature::start() {
       um->createRootUser();
     }
   }
+  
+  if (ServerState::isClusterRole(role)) {
+    waitForHealthEntry();
+  }
 
   if (ServerState::isSingleServer(role) && AgencyCommManager::isEnabled()) {
     // simon: this is set to correct value in the heartbeat thread
@@ -351,10 +355,6 @@ void BootstrapFeature::start() {
   } else {
     // Start service properly:
     ServerState::setServerMode(ServerState::Mode::DEFAULT);
-  }
-  
-  if (ServerState::isCoordinator(role)) {
-    waitForHealthEntry();
   }
 
   if (!databaseFeature.upgrade()) {
