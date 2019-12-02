@@ -3,6 +3,8 @@ v3.5.4 (XXXX-XX-XX)
 
 * Fixed permissions for dump/restore.
 
+* Fix execution ability in CentOS 6 regarding newer boost.
+
 * Updated arangosync to 0.7.1.
 
 
