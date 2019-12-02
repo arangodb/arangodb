@@ -1,5 +1,5 @@
 /* jshint unused: false */
-/* global Blob, window, Joi, sigma, $, tippy, document, _, arangoHelper, frontendConfig, arangoHelper, sessionStorage, localStorage, XMLHttpRequest */
+/* global Noty, Blob, window, Joi, sigma, $, tippy, document, _, arangoHelper, frontendConfig, arangoHelper, sessionStorage, localStorage, XMLHttpRequest */
 
 (function () {
   'use strict';
@@ -7,8 +7,12 @@
 
   window.isCoordinator = function (callback) {
     if (isCoordinator === null) {
+      var url = 'cluster/amICoordinator';
+      if (frontendConfig.react) {
+        url = arangoHelper.databaseUrl('/_admin/aardvark/cluster/amICoordinator');
+      }
       $.ajax(
-        'cluster/amICoordinator',
+        url,
         {
           async: true,
           success: function (d) {
@@ -635,8 +639,7 @@
     },
 
     hideArangoNotifications: function () {
-      $.noty.clearQueue();
-      $.noty.closeAll();
+      Noty.closeAll();
     },
 
     openDocEditor: function (id, type, callback) {
@@ -950,10 +953,16 @@
 
       if (!databaseName) {
         databaseName = '_system';
-        if (frontendConfig.db) {
+        if (frontendConfig && frontendConfig.db) {
           databaseName = frontendConfig.db;
         }
       }
+
+      // react dev testing
+      if (!databaseName) {
+        databaseName = '_system';
+      }
+
       return this.backendUrl('/_db/' + encodeURIComponent(databaseName) + url);
     },
 
