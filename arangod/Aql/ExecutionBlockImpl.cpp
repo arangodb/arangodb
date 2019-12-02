@@ -1009,6 +1009,12 @@ ExecutionBlockImpl<FilterExecutor>::executeWithoutTrace(AqlCallStack stack) {
   // TODO: Need to make this member variable for waiting?
   AqlCall myCall = stack.popCall();
   ExecState execState = ::NextState(myCall);
+  if (_lastRange.hasShadowRow()) {
+    // We have not been able to move all shadowRows into the output last time.
+    // Continue from there.
+    // TODO test if this works with COUNT COLLECT
+    execState = ExecState::SHADOWROWS;
+  }
   AqlCall executorRequest;
 
   while (execState != ExecState::DONE) {
@@ -1088,17 +1094,20 @@ ExecutionBlockImpl<FilterExecutor>::executeWithoutTrace(AqlCallStack stack) {
           TRI_ASSERT(_outputItemRow->produced());
           _outputItemRow->advanceRow();
           if (state == ExecutorState::DONE) {
-            // Right now we cannot support to have more than one set of
-            // ShadowRows inside of a Range.
-            // We do not know how to continue with the above executor after a shadowrow.
-            execState = ExecState::DONE;
+            if (_lastRange.hasMore()) {
+              // TODO this state is invalid, and can just show up now if we exclude SKIP
+              execState = ExecState::PRODUCE;
+            } else {
+              // Right now we cannot support to have more than one set of
+              // ShadowRows inside of a Range.
+              // We do not know how to continue with the above executor after a shadowrow.
+              TRI_ASSERT(!_lastRange.hasMore());
+              execState = ExecState::DONE;
+            }
           }
         } else {
           execState = ExecState::DONE;
         }
-        // TRI_ASSERT(false);
-        // execState = ::NextState(myCall);
-
         break;
       }
       default:
@@ -1111,7 +1120,7 @@ ExecutionBlockImpl<FilterExecutor>::executeWithoutTrace(AqlCallStack stack) {
   // This is not strictly necessary here, as we shouldn't be called again
   // after DONE.
   _outputItemRow.reset();
-  if (_lastRange.hasMore()) {
+  if (_lastRange.hasMore() || _lastRange.hasShadowRow()) {
     return {ExecutionState::HASMORE, skipped, std::move(outputBlock)};
   }
   return {_upstreamState, skipped, std::move(outputBlock)};

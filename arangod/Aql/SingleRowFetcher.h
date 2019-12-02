@@ -101,10 +101,10 @@ class SingleRowFetcher {
   template <BlockPassthrough allowPass = blockPassthrough, typename = std::enable_if_t<allowPass == BlockPassthrough::Enable>>
   [[nodiscard]]
 #else
-  [[nodiscard]]
-  TEST_VIRTUAL
+  [[nodiscard]] TEST_VIRTUAL
 #endif
-  std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlockForPassthrough(size_t atMost);
+  std::pair<ExecutionState, SharedAqlItemBlockPtr>
+  fetchBlockForPassthrough(size_t atMost);
 
   [[nodiscard]] std::pair<ExecutionState, size_t> preFetchNumberOfRows(size_t atMost);
 
@@ -172,6 +172,6 @@ class SingleRowFetcher {
 
   [[nodiscard]] ExecutionState returnState(bool isShadowRow) const;
 };
-}  // namespace arangodb
+}  // namespace arangodb::aql
 
 #endif  // ARANGOD_AQL_SINGLE_ROW_FETCHER_H

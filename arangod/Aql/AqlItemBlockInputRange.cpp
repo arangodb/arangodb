@@ -124,20 +124,6 @@ std::pair<ExecutorState, ShadowAqlItemRow> AqlItemBlockInputRange::nextShadowRow
     }
     // Advance the current row.
     _rowIndex++;
-    /*
-    {
-      std::string out = "Depths: [";
-      for (auto const& it : shadowRowIndexes) {
-        ShadowAqlItemRow sr(_block, it);
-        out += std::to_string(sr.getDepth()) + ", ";
-      }
-      LOG_DEVEL << out << "]";
-
-      VPackBuilder hund;
-      _block->toSimpleVPack(nullptr, hund);
-      LOG_DEVEL << hund.toJson();
-    }
-    */
   }
   return res;
 }
