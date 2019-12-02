@@ -28,8 +28,8 @@
 #include "Aql/types.h"
 #include "Basics/Common.h"
 #include "Basics/Result.h"
-#include "Cluster/ResultT.h"
 #include "Cluster/ClusterTypes.h"
+#include "Cluster/ResultT.h"
 #include "Replication/Syncer.h"
 #include "Replication/common-defines.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
@@ -107,7 +107,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   static std::string const HoldReadLockCollection;
 
  protected:
-  std::string forwardingTarget() override final;
+  ResultT<std::pair<std::string, bool>> forwardingTarget() override final;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creates an error if called on a coordinator server
@@ -309,8 +309,8 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   /// @brief restores the structure of a collection, coordinator case
   //////////////////////////////////////////////////////////////////////////////
 
-  Result processRestoreCollectionCoordinator(VPackSlice const&, bool overwrite,
-                                             bool force,
+  Result processRestoreCollectionCoordinator(VPackSlice const& collection,
+                                             bool dropExisting, bool force,
                                              bool ignoreDistributeShardsLikeErrors);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -474,9 +474,8 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   ///        It will be registered with the given id, and it will have
   ///        the given time to live.
   //////////////////////////////////////////////////////////////////////////////
-  Result createBlockingTransaction(aql::QueryId id, LogicalCollection& col,
-                                   double ttl, AccessMode::Type access,
-                                   RebootId const& rebootId,
+  Result createBlockingTransaction(aql::QueryId id, LogicalCollection& col, double ttl,
+                                   AccessMode::Type access, RebootId const& rebootId,
                                    std::string const& serverId);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -504,6 +503,13 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   ResultT<bool> cancelBlockingTransaction(aql::QueryId id) const;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Validate that the requesting user has access rights to this route
+  ///        Will return TRI_ERROR_NO_ERROR if user has access
+  ///        Will return error code otherwise.
+  //////////////////////////////////////////////////////////////////////////////
+  Result testPermissions();
 };
 }  // namespace arangodb
 #endif
