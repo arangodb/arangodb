@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fix execution ability in CentOS 6 regarding newer boost.
+
 * Fixed permissions for dump/restore.
 
 * The _users collection is now properly restored when using arangorestore.
