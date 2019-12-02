@@ -18,17 +18,16 @@ describe('Foxx service path handling', () => {
     expect(encodeURIComponent('+')).not.to.equal('+');
     expect(encodeURIComponent('/')).not.to.equal('/');
     expect(encodeURIComponent(encodeURIComponent('/'))).not.to.equal(encodeURIComponent('/'));
-  });
-  beforeEach(function () {
+
     try {
       fm.uninstall(mount, {force: true});
     } catch (e) {}
     fm.install(fs.join(basePath, 'paths'), mount);
+    internal.sleep(1);
   });
 
-  afterEach(function () {
-    fm.uninstall(mount, {force: true});
-  });
+  beforeEach(function () { });
+  afterEach(function () { });
 
   it('supports plain URLs', () => {
     const res = request.get(`${baseUrl}/${mount}/hello/world`);
