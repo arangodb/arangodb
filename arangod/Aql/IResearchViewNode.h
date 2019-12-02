@@ -185,21 +185,30 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
   static constexpr int SortColumnNumber = -1;
 
   struct ViewVariable {
-    int columnNum;
     size_t fieldNum;
+    std::vector<std::string> postfix;
     aql::Variable const* var;
   };
 
-  using ViewValuesVars = std::unordered_map<int, std::vector<std::pair<size_t, aql::Variable const*>>>;
+  struct ViewVariableWithColumn : ViewVariable {
+    int columnNum;
+  };
 
-  using ViewValuesRegisters = std::map<int, std::map<size_t, aql::RegisterId>>;
+  struct ViewVariableRegister {
+    std::vector<irs::string_ref> postfix;
+    aql::RegisterId registerId;
+  };
 
-  using ViewVarsInfo = std::unordered_map<std::vector<arangodb::basics::AttributeName> const*, ViewVariable>;
+  using ViewValuesVars = std::unordered_map<int, std::vector<ViewVariable>>;
+
+  using ViewValuesRegisters = std::map<int, std::map<size_t, ViewVariableRegister>>;
+
+  using ViewVarsInfo = std::unordered_map<std::vector<arangodb::basics::AttributeName> const*, ViewVariableWithColumn>;
 
   void setViewVariables(ViewVarsInfo const& viewVariables) {
     _outNonMaterializedViewVars.clear();
     for (auto& viewVars : viewVariables) {
-      _outNonMaterializedViewVars[viewVars.second.columnNum].emplace_back(viewVars.second.fieldNum, viewVars.second.var);
+      _outNonMaterializedViewVars[viewVars.second.columnNum].emplace_back(ViewVariable{viewVars.second.fieldNum, viewVars.second.postfix, viewVars.second.var});
     }
   }
 

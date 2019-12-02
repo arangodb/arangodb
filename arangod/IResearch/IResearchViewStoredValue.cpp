@@ -80,7 +80,7 @@ bool IResearchViewStoredValue::fromVelocyPack(
           }
           auto fieldName = arangodb::iresearch::getStringRef(slice);
           // check field uniqueness
-          if (uniqueFields.find(fieldName) != uniqueFields.cend()) { // TODO: expansions
+          if (uniqueFields.find(fieldName) != uniqueFields.cend()) {
             continue;
           }
           uniqueFields.emplace_hint(uniqueFields.cend(), fieldName);
@@ -88,6 +88,7 @@ bool IResearchViewStoredValue::fromVelocyPack(
           fieldNames.emplace_back(std::move(fieldName));
           field.clear();
           try {
+            // No expansions
             arangodb::basics::TRI_ParseAttributeString(fieldName, field, false);
           } catch (...) {
             error = "." + std::string(fieldName);

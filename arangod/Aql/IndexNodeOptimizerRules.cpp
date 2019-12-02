@@ -53,7 +53,7 @@ namespace {
             if (commonIndexId == 0) {
               commonIndexId = indexId;
             }
-            nodeAttr.afData.number = indexFieldNum;
+            nodeAttr.afData.fieldNumber = indexFieldNum;
             nodeAttr.afData.field = &field;
             break;
           }
@@ -179,7 +179,7 @@ void arangodb::aql::lateDocumentMaterializationRule(Optimizer* opt,
         for (auto& node : nodesToChange) {
           std::transform(node.attrs.cbegin(), node.attrs.cend(), std::inserter(uniqueVariables, uniqueVariables.end()),
             [ast](auto const& attrAndField) {
-              return std::make_pair(attrAndField.afData.field, IndexNode::IndexVariable{attrAndField.afData.number,
+              return std::make_pair(attrAndField.afData.field, IndexNode::IndexVariable{attrAndField.afData.fieldNumber,
                 ast->variables()->createTemporaryVariable()});
             });
         }

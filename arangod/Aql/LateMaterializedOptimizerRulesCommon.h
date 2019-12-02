@@ -46,11 +46,12 @@ struct AstAndFieldData {
 
   // index data
   std::vector<arangodb::basics::AttributeName> const* field;
-  size_t number;
+  size_t fieldNumber;
 };
 
 struct AstAndColumnFieldData : AstAndFieldData {
   int columnNumber;
+  std::vector<std::string> postfix;
 };
 
 template<typename T>

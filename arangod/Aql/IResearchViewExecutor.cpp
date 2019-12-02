@@ -688,7 +688,7 @@ bool IResearchViewExecutorBase<Impl, Traits>::writeRow(ReadContext& ctx,
         auto slice = VPackSlice(s);
         size_t size = 0;
         size_t i = 0;
-        for (auto const& [fieldNum, registerId] : fieldsRegs) {
+        for (auto const& [fieldNum, postfixAndRegisterId] : fieldsRegs) {
           while (i < fieldNum) {
             size += slice.byteSize();
             TRI_ASSERT(size <= totalSize);
@@ -698,9 +698,18 @@ bool IResearchViewExecutorBase<Impl, Traits>::writeRow(ReadContext& ctx,
             slice = VPackSlice(s + slice.byteSize());
             ++i;
           }
+          if (!postfixAndRegisterId.postfix.empty()) {
+            for (auto const& attr : postfixAndRegisterId.postfix) {
+              slice = slice.get(attr);
+              TRI_ASSERT(!slice.isNone());
+              if (slice.isNull() || slice.isNone()) {
+                break;
+              }
+            }
+          }
           AqlValue v(slice);
           AqlValueGuard guard{v, true};
-          ctx.outputRow.moveValueInto(registerId, ctx.inputRow, guard);
+          ctx.outputRow.moveValueInto(postfixAndRegisterId.registerId, ctx.inputRow, guard);
         }
       }
     }

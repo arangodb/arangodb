@@ -677,16 +677,23 @@ const char* NODE_VIEW_VALUES_VARS = "ViewValuesVars";
 const char* NODE_VIEW_STORED_VALUES_VARS = "viewStoredValuesVars";
 const char* NODE_VIEW_VALUES_VAR_COLUMN_NUMBER = "columnNumber";
 const char* NODE_VIEW_VALUES_VAR_FIELD_NUMBER = "fieldNumber";
+const char* NODE_VIEW_VALUES_VAR_POSTFIX = "postfix";
 const char* NODE_VIEW_VALUES_VAR_ID = "id";
 const char* NODE_VIEW_VALUES_VAR_NAME = "name";
 const char* NODE_VIEW_VALUES_VAR_FIELD = "field";
 
 void addViewValuesVar(VPackBuilder& nodes, std::string const& fieldName,
-                      std::pair<size_t, aql::Variable const*> const& fieldVar) {
-  nodes.add(NODE_VIEW_VALUES_VAR_FIELD_NUMBER, VPackValue(fieldVar.first));
-  nodes.add(NODE_VIEW_VALUES_VAR_ID, VPackValue(fieldVar.second->id));
-  nodes.add(NODE_VIEW_VALUES_VAR_NAME, VPackValue(fieldVar.second->name)); // for explainer.js
+                      IResearchViewNode::ViewVariable const& fieldVar) {
+  nodes.add(NODE_VIEW_VALUES_VAR_FIELD_NUMBER, VPackValue(fieldVar.fieldNum));
+  nodes.add(NODE_VIEW_VALUES_VAR_ID, VPackValue(fieldVar.var->id));
+  nodes.add(NODE_VIEW_VALUES_VAR_NAME, VPackValue(fieldVar.var->name)); // for explainer.js
   nodes.add(NODE_VIEW_VALUES_VAR_FIELD, VPackValue(fieldName)); // for explainer.js
+  if (!fieldVar.postfix.empty()) {
+    VPackArrayBuilder arrayScope(&nodes, NODE_VIEW_VALUES_VAR_POSTFIX);
+    for (auto const& attr : fieldVar.postfix) {
+      nodes.add(VPackValue(attr));
+    }
+  }
 }
 
 void extractViewValuesVar(aql::VariableGenerator const* vars,
@@ -716,7 +723,26 @@ void extractViewValuesVar(aql::VariableGenerator const* vars,
         TRI_ERROR_BAD_PARAMETER, "\"ViewValuesVars[*].id\" unable to find variable by id %d",
         varId);
   }
-  viewValuesVars[columnNumber].emplace_back(fieldNumber, var);
+  std::vector<std::string> postfix;
+  if (fieldVar.hasKey(NODE_VIEW_VALUES_VAR_POSTFIX)) {
+    auto const postfixSlice = fieldVar.get(NODE_VIEW_VALUES_VAR_POSTFIX);
+    if (!postfixSlice.isArray()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_BAD_PARAMETER,
+            "\"ViewValuesVars[*].postfix\" attribute should be an array");
+    }
+    for (auto const attrSlice : velocypack::ArrayIterator(postfixSlice)) {
+      if (!attrSlice.isString()) {
+        THROW_ARANGO_EXCEPTION_FORMAT(
+            TRI_ERROR_BAD_PARAMETER, "\"ViewValuesVars[*].postfix[*]\" %s should be a string",
+            attrSlice.toString().c_str());
+      }
+      VPackValueLength l;
+      char const* s = attrSlice.getString(l);
+      postfix.emplace_back(std::string(s, l));
+    }
+  }
+  viewValuesVars[columnNumber].emplace_back(IResearchViewNode::ViewVariable{fieldNumber, std::move(postfix), var});
 }
 
 std::unique_ptr<aql::ExecutionBlock> (*executors[])(aql::ExecutionEngine*, IResearchViewNode const*, aql::IResearchViewExecutorInfos&&) = {
@@ -1033,7 +1059,7 @@ void IResearchViewNode::planNodeRegisters(
       for (auto const& fieldVar : columnFieldsVars.second) {
         ++nrRegsHere[depth];
         ++nrRegs[depth];
-        varInfo.try_emplace(fieldVar.second->id, aql::VarInfo(depth, totalNrRegs++));
+        varInfo.try_emplace(fieldVar.var->id, aql::VarInfo(depth, totalNrRegs++));
       }
     }
   } else {
@@ -1095,9 +1121,9 @@ void IResearchViewNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
         for (auto const& fieldVar : columnFieldsVars.second) {
           VPackObjectBuilder objectScope(&nodes);
           fieldName.clear();
-          TRI_ASSERT(fieldVar.first < columns[storedColumnNumber].fields.size());
+          TRI_ASSERT(fieldVar.fieldNum < columns[storedColumnNumber].fields.size());
           nodes.add(NODE_VIEW_VALUES_VAR_COLUMN_NUMBER, VPackValue(columnFieldsVars.first));
-          fieldName = columns[storedColumnNumber].fields[fieldVar.first].first;
+          fieldName = columns[storedColumnNumber].fields[fieldVar.fieldNum].first;
           addViewValuesVar(nodes, fieldName, fieldVar);
         }
       } else { // SortColumnNumber
@@ -1105,8 +1131,8 @@ void IResearchViewNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
         for (auto const& fieldVar : columnFieldsVars.second) {
           VPackObjectBuilder objectScope(&nodes);
           fieldName.clear();
-          TRI_ASSERT(fieldVar.first < primarySort.fields().size());
-          basics::TRI_AttributeNamesToString(primarySort.fields()[fieldVar.first], fieldName, true);
+          TRI_ASSERT(fieldVar.fieldNum < primarySort.fields().size());
+          basics::TRI_AttributeNamesToString(primarySort.fields()[fieldVar.fieldNum], fieldName, true);
           addViewValuesVar(nodes, fieldName, fieldVar);
         }
       }
@@ -1208,7 +1234,7 @@ aql::ExecutionNode* IResearchViewNode::clone(aql::ExecutionPlan* plan, bool with
     }
     for (auto& columnFieldsVars : outNonMaterializedViewVars) {
       for (auto& fieldVar : columnFieldsVars.second) {
-        fieldVar.second = plan->getAst()->variables()->createVariable(fieldVar.second);
+        fieldVar.var = plan->getAst()->variables()->createVariable(fieldVar.var);
       }
     }
   }
@@ -1271,7 +1297,7 @@ std::vector<arangodb::aql::Variable const*> IResearchViewNode::getVariablesSetHe
       std::transform(columnFieldsVars.second.cbegin(),
                      columnFieldsVars.second.cend(),
                      std::back_inserter(vars),
-        [](auto const& fieldVar) { return fieldVar.second; });
+        [](auto const& fieldVar) { return fieldVar.var; });
     }
   } else {
     vars.emplace_back(_outVariable);
@@ -1443,9 +1469,13 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
   for (auto const& columnFieldsVars : _outNonMaterializedViewVars) {
     for (auto const& fieldsVars : columnFieldsVars.second) {
       auto& fields = outNonMaterializedViewRegs[columnFieldsVars.first];
-      auto it = varInfos.find(fieldsVars.second->id);
+      auto it = varInfos.find(fieldsVars.var->id);
       TRI_ASSERT(it != varInfos.cend());
-      fields.insert({fieldsVars.first, it->second.registerId});
+      std::vector<irs::string_ref> postfix;
+      std::transform(fieldsVars.postfix.cbegin(), fieldsVars.postfix.cend(), std::back_inserter(postfix), [](auto const& attr) {
+        return irs::string_ref(attr.c_str(), attr.size());
+      });
+      fields.insert({fieldsVars.fieldNum, ViewVariableRegister{std::move(postfix), it->second.registerId}});
     }
   }
 
@@ -1496,8 +1526,8 @@ IResearchViewNode::ViewVarsInfo IResearchViewNode::OptimizationState::replaceVie
     auto const& calcNodeData = _nodesToChange[calcNode];
     std::transform(calcNodeData.cbegin(), calcNodeData.cend(), std::inserter(uniqueVariables, uniqueVariables.end()),
       [ast](auto const& afData) {
-        return std::make_pair(afData.field, ViewVariable{afData.columnNumber, afData.number,
-          ast->variables()->createTemporaryVariable()});
+        return std::make_pair(afData.field, ViewVariableWithColumn{afData.fieldNumber, afData.postfix,
+          ast->variables()->createTemporaryVariable(), afData.columnNumber});
       });
   }
   for (auto calcNode : calcNodes) {
