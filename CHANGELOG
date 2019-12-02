@@ -1,6 +1,8 @@
 v3.5.4 (XXXX-XX-XX)
 -------------------
 
+* Fixed permissions for dump/restore.
+
 * Updated arangosync to 0.7.1.
 
 
