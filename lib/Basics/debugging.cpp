@@ -22,11 +22,22 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/Common.h"
+
+#include "debugging.h"
+
 #include "Basics/ReadLocker.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/WriteLocker.h"
 #include "Logger/LogAppender.h"
 #include "Logger/Logger.h"
+
+#ifdef TRI_HAVE_SIGNAL_H
+#include <signal.h>
+#endif
+
+#ifdef TRI_HAVE_UNISTD_H
+#include <unistd.h>
+#endif
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 #if ARANGODB_ENABLE_BACKTRACE
