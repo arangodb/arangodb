@@ -181,7 +181,7 @@ bool parse_json_config(
 
           return true;
         }
-#ifdef IRESEARCH_CXX_17
+#if IRESEARCH_CXX > IRESEARCH_CXX_14
       [[fallthrough]];
 #endif
       default:  // fall through

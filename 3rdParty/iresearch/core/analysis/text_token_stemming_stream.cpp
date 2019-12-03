@@ -78,7 +78,7 @@ bool parse_json_config(const irs::string_ref& args, std::locale& locale) {
           return make_locale_from_name(
               json[LOCALE_PARAM_NAME.c_str()].GetString(), locale);
         }
-#ifdef IRESEARCH_CXX_17
+#if IRESEARCH_CXX > IRESEARCH_CXX_14
       [[fallthrough]];
 #endif
       default:  // fall through

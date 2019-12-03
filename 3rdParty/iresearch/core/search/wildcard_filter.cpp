@@ -103,7 +103,7 @@ filter::prepared::ptr by_wildcard::prepare(
                                 scored_terms_limit());
     case WildcardType::PREFIX: {
       assert(!term().empty());
-      const auto pos = term().rfind(wildcard_traits_t::MATCH_ANY_STRING);
+      const auto pos = term().find(wildcard_traits_t::MATCH_ANY_STRING);
       assert(pos != irs::bstring::npos);
 
       return by_prefix::prepare(index, order, boost, field,

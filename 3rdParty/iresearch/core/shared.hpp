@@ -59,8 +59,10 @@
   #elif _MSC_VER >= 1800 && _MSC_VER < 1910 // MSVC2013-2015
     // not MSVC2015 nor MSVC2017 are not c++14 compatible
     #define IRESEARCH_CXX IRESEARCH_CXX_11
-  #elif _MSC_VER >= 1910 // MSVC2017 and later
+  #elif _MSC_VER >= 1910 && _MSC_VER < 1920  // MSVC2017 and later
     #define IRESEARCH_CXX IRESEARCH_CXX_14
+  #elif _MSC_VER >= 1920 // MSVC2019 and later
+    #define IRESEARCH_CXX IRESEARCH_CXX_17
   #endif
 #else // GCC/Clang
   #if __cplusplus < IRESEARCH_CXX_11
@@ -297,15 +299,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// SSE compatibility
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef _MSC_VER
-
-#if (defined(_M_IX86_FP) && (_M_IX86_FP == 2))
-#define IRESEARCH_SSE2
-#endif
-
-#else
-
 #ifdef __SSE2__
 #define IRESEARCH_SSE2
 #endif
@@ -325,8 +318,6 @@
 #ifdef __AVX2__
 #define IRESEARCH_AVX2
 #endif
-
-#endif // _MSC_VER
 
 ////////////////////////////////////////////////////////////////////////////////
 

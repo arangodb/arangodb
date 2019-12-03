@@ -375,6 +375,31 @@ TEST_F(IResearchQuerWildcardTest, test) {
     EXPECT_EQ(i, expected.size());
   }
 
+  // prefix match
+  {
+    std::vector<arangodb::velocypack::Slice> expected = {
+      insertedDocs[30].slice(), insertedDocs[31].slice(),
+      insertedDocs[0].slice(), insertedDocs[3].slice(),
+      insertedDocs[20].slice(), insertedDocs[25].slice(),
+    };
+    auto result = arangodb::tests::executeQuery(
+        vocbase,
+        "FOR d IN testView SEARCH LIKE(d.prefix, 'abc%%') "
+        "SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d");
+    ASSERT_TRUE(result.result.ok());
+    auto slice = result.data->slice();
+    EXPECT_TRUE(slice.isArray());
+    size_t i = 0;
+
+    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+      auto const resolved = itr.value().resolveExternals();
+      EXPECT_TRUE(i < expected.size());
+      EXPECT_EQUAL_SLICES(expected[i++], resolved);
+    }
+
+    EXPECT_EQ(i, expected.size());
+  }
+
   // suffix match
   {
     std::vector<arangodb::velocypack::Slice> expected = {
