@@ -65,7 +65,6 @@ bool IResearchViewStoredValue::fromVelocyPack(
     std::unordered_set<std::string> uniqueColumns;
     std::unordered_set<irs::string_ref> uniqueFields;
     std::vector<irs::string_ref> fieldNames;
-    std::vector<basics::AttributeName> field;
     for (auto columnSlice : VPackArrayIterator(slice)) {
       if (columnSlice.isArray()) {
         uniqueFields.clear();
@@ -78,15 +77,13 @@ bool IResearchViewStoredValue::fromVelocyPack(
             clear();
             return false;
           }
-          auto fieldName = arangodb::iresearch::getStringRef(slice);
+          auto fieldName = arangodb::iresearch::getStringRef(fieldSlice);
           // check field uniqueness
           if (uniqueFields.find(fieldName) != uniqueFields.cend()) {
             continue;
           }
           uniqueFields.emplace_hint(uniqueFields.cend(), fieldName);
-          columnLength += fieldName.size();
-          fieldNames.emplace_back(std::move(fieldName));
-          field.clear();
+          std::vector<basics::AttributeName> field;
           try {
             // No expansions
             arangodb::basics::TRI_ParseAttributeString(fieldName, field, false);
@@ -96,6 +93,8 @@ bool IResearchViewStoredValue::fromVelocyPack(
             return false;
           }
           sc.fields.emplace_back(fieldName, std::move(field));
+          columnLength += fieldName.size();
+          fieldNames.emplace_back(std::move(fieldName));
         }
         // check column uniqueness
         std::sort(fieldNames.begin(), fieldNames.end());
@@ -114,8 +113,8 @@ bool IResearchViewStoredValue::fromVelocyPack(
         sc.name = std::move(columnName);
         _storedColumns.emplace_back(std::move(sc));
       } else if (columnSlice.isString()) {
-        auto fieldName = arangodb::iresearch::getStringRef(slice);
-        field.clear();
+        auto fieldName = arangodb::iresearch::getStringRef(columnSlice);
+        std::vector<basics::AttributeName> field;
         try {
           arangodb::basics::TRI_ParseAttributeString(fieldName, field, false);
         } catch (...) {

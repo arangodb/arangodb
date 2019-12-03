@@ -281,7 +281,7 @@ arangodb::Result modifyLinks( // modify links
     //        arangodb::Index::Compare(...)
     //        hence must use 'isCreation=true' for normalize(...) to match
     auto res = arangodb::iresearch::IResearchLinkHelper::normalize( // normalize to validate analyzer definitions
-      normalized, link, true, view.vocbase(), &view.primarySort() // args
+      normalized, link, true, view.vocbase(), &view.primarySort(), &view.storedValue()
     );
 
     if (!res.ok()) {
@@ -662,7 +662,8 @@ namespace iresearch {
     arangodb::velocypack::Slice definition, // source definition
     bool isCreation, // definition for index creation
     TRI_vocbase_t const& vocbase, // index vocbase
-    IResearchViewSort const* primarySort /* = nullptr */
+    IResearchViewSort const* primarySort, /* = nullptr */
+    IResearchViewStoredValue const* storedValue /* = nullptr */
 ) {
   if (!normalized.isOpenObject()) {
     return arangodb::Result(
@@ -720,6 +721,11 @@ namespace iresearch {
   if (primarySort) {
     // normalize sort if specified
     meta._sort = *primarySort;
+  }
+
+  if (storedValue) {
+    // normalize stored value if specified
+    meta._storedValue = *storedValue;
   }
 
   if (!meta.json(normalized, isCreation, nullptr, &vocbase)) { // 'isCreation' is set when forPersistence

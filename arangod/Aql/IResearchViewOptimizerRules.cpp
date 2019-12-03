@@ -368,8 +368,8 @@ bool attributesMatch(IResearchViewSort const& primarySort, IResearchViewStoredVa
     }
     // try to find in other columns
     int columnNum = 0;
-    fieldNum = 0;
     for (auto const& column : storedValue.columns()) {
+      fieldNum = 0;
       for (auto const& field : column.fields) {
         std::vector<std::string> postfix;
         if (isPrefix(field.second, nodeAttr.attr, false, postfix)) {
