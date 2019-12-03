@@ -227,8 +227,13 @@ function stopProcdump (options, instanceInfo, force = false) {
 }
 
 function calculateMonitorValues(options, instanceInfo, pid, cmd) {
-  if (platform.substr(0, 3) === 'win' && process.env.hasOwnProperty('COREDIR')) {
-    instanceInfo.coreFilePattern = process.env['COREDIR'] + cmd + '.' + pid + '.dmp';
+  
+  if (platform.substr(0, 3) === 'win') {
+    if (process.env.hasOwnProperty('WORKSPACE') &&
+        fs.isDirectory(fs.join(process.env['WORKSPACE'], 'core'))) {
+      print("have core directory!");
+      instanceInfo.coreFilePattern = fs.join(process.env['COREDIR'], 'core', cmd + '.' + pid + '.dmp');
+    }
   }
 }
 function isEnabledWindowsMonitor(options, instanceInfo, pid, cmd) {
