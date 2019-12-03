@@ -897,7 +897,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
         "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
         "\"name\":\"variable\", \"id\":0 }, \"outNmColPtr\": { \"name\":\"variable100\", \"id\":100 }, "
         "\"outNmDocId\": { \"name\":\"variable100\", \"id\":100 }, "
-        "\"ViewValuesVars\":{\"fieldNumber\":0, \"id\":101}, "
+        "\"viewValuesVars\":{\"fieldNumber\":0, \"id\":101}, "
         "\"options\": { \"waitForSync\" : "
         "true, \"collection\":null }, \"viewId\": \"" +
         std::to_string(logicalView->id()) + "\" }");
@@ -920,7 +920,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
         "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
         "\"name\":\"variable\", \"id\":0 }, \"outNmColPtr\": { \"name\":\"variable100\", \"id\":100 }, "
         "\"outNmDocId\": { \"name\":\"variable100\", \"id\":100 }, "
-        "\"ViewValuesVars\":[{\"fieldNumber\":\"0\", \"id\":101}], "
+        "\"viewValuesVars\":[{\"fieldNumber\":\"0\", \"id\":101}], "
         "\"options\": { \"waitForSync\" : "
         "true, \"collection\":null }, \"viewId\": \"" +
         std::to_string(logicalView->id()) + "\" }");
@@ -943,7 +943,7 @@ TEST_F(IResearchViewNodeTest, constructFromVPackSingleServer) {
         "\"varsUsedLater\":[], \"varsValid\":[], \"outVariable\": { "
         "\"name\":\"variable\", \"id\":0 }, \"outNmColPtr\": { \"name\":\"variable100\", \"id\":100 }, "
         "\"outNmDocId\": { \"name\":\"variable100\", \"id\":100 }, "
-        "\"ViewValuesVars\":[{\"fieldNumber\":0, \"id\":\"101\"}], "
+        "\"viewValuesVars\":[{\"fieldNumber\":0, \"id\":\"101\"}], "
         "\"options\": { \"waitForSync\" : "
         "true, \"collection\":null }, \"viewId\": \"" +
         std::to_string(logicalView->id()) + "\" }");
