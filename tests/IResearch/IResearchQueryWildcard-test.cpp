@@ -303,11 +303,11 @@ TEST_F(IResearchQuerWildcardTest, test) {
   // match any
   {
     std::vector<arangodb::velocypack::Slice> expected = {
+      insertedDocs[30].slice(), insertedDocs[31].slice(),
       insertedDocs[0].slice(), insertedDocs[3].slice(),
       insertedDocs[8].slice(), insertedDocs[15].slice(),
       insertedDocs[20].slice(), insertedDocs[23].slice(),
       insertedDocs[25].slice(), insertedDocs[28].slice(),
-      insertedDocs[31].slice(),
     };
     auto result = arangodb::tests::executeQuery(
         vocbase,
@@ -321,8 +321,7 @@ TEST_F(IResearchQuerWildcardTest, test) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_EQUAL_SLICES(expected[i++], resolved);
     }
 
     EXPECT_EQ(i, expected.size());
@@ -345,8 +344,7 @@ TEST_F(IResearchQuerWildcardTest, test) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_EQUAL_SLICES(expected[i++], resolved);
     }
 
     EXPECT_EQ(i, expected.size());
@@ -355,9 +353,9 @@ TEST_F(IResearchQuerWildcardTest, test) {
   // prefix match
   {
     std::vector<arangodb::velocypack::Slice> expected = {
+      insertedDocs[30].slice(), insertedDocs[31].slice(),
       insertedDocs[0].slice(), insertedDocs[3].slice(),
       insertedDocs[20].slice(), insertedDocs[25].slice(),
-      insertedDocs[30].slice(), insertedDocs[31].slice(),
     };
     auto result = arangodb::tests::executeQuery(
         vocbase,
@@ -371,8 +369,7 @@ TEST_F(IResearchQuerWildcardTest, test) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_EQUAL_SLICES(expected[i++], resolved);
     }
 
     EXPECT_EQ(i, expected.size());
@@ -382,7 +379,6 @@ TEST_F(IResearchQuerWildcardTest, test) {
   {
     std::vector<arangodb::velocypack::Slice> expected = {
       insertedDocs[0].slice(), insertedDocs[8].slice(),
-      insertedDocs[26].slice()
     };
     auto result = arangodb::tests::executeQuery(
         vocbase,
@@ -396,8 +392,7 @@ TEST_F(IResearchQuerWildcardTest, test) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_EQUAL_SLICES(expected[i++], resolved);
     }
 
     EXPECT_EQ(i, expected.size());
@@ -406,10 +401,10 @@ TEST_F(IResearchQuerWildcardTest, test) {
   // pattern match
   {
     std::vector<arangodb::velocypack::Slice> expected = {
+      insertedDocs[30].slice(), insertedDocs[31].slice(),
       insertedDocs[0].slice(), insertedDocs[3].slice(),
       insertedDocs[8].slice(), insertedDocs[20].slice(),
-      insertedDocs[25].slice(), insertedDocs[30].slice(),
-      insertedDocs[31].slice(),
+      insertedDocs[25].slice(),
     };
     auto result = arangodb::tests::executeQuery(
         vocbase,
@@ -423,8 +418,7 @@ TEST_F(IResearchQuerWildcardTest, test) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_EQUAL_SLICES(expected[i++], resolved);
     }
 
     EXPECT_EQ(i, expected.size());
@@ -433,9 +427,9 @@ TEST_F(IResearchQuerWildcardTest, test) {
   // pattern match
   {
     std::vector<arangodb::velocypack::Slice> expected = {
+      insertedDocs[30].slice(), insertedDocs[31].slice(),
       insertedDocs[0].slice(), insertedDocs[3].slice(),
       insertedDocs[20].slice(), insertedDocs[25].slice(),
-      insertedDocs[30].slice(), insertedDocs[31].slice(),
     };
     auto result = arangodb::tests::executeQuery(
         vocbase,
@@ -449,8 +443,7 @@ TEST_F(IResearchQuerWildcardTest, test) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_EQUAL_SLICES(expected[i++], resolved);
     }
 
     EXPECT_EQ(i, expected.size());
@@ -459,8 +452,8 @@ TEST_F(IResearchQuerWildcardTest, test) {
   // pattern match
   {
     std::vector<arangodb::velocypack::Slice> expected = {
-      insertedDocs[0].slice(),  insertedDocs[30].slice(),
-      insertedDocs[31].slice(),
+      insertedDocs[30].slice(), insertedDocs[31].slice(),
+      insertedDocs[0].slice(),
     };
     auto result = arangodb::tests::executeQuery(
         vocbase,
@@ -474,8 +467,7 @@ TEST_F(IResearchQuerWildcardTest, test) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_EQUAL_SLICES(expected[i++], resolved);
     }
 
     EXPECT_EQ(i, expected.size());
@@ -484,6 +476,7 @@ TEST_F(IResearchQuerWildcardTest, test) {
   // pattern match
   {
     std::vector<arangodb::velocypack::Slice> expected = {
+      insertedDocs[3].slice(),
     };
     auto result = arangodb::tests::executeQuery(
         vocbase,
@@ -497,8 +490,7 @@ TEST_F(IResearchQuerWildcardTest, test) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_EQUAL_SLICES(expected[i++], resolved);
     }
 
     EXPECT_EQ(i, expected.size());
@@ -507,6 +499,7 @@ TEST_F(IResearchQuerWildcardTest, test) {
   // pattern match
   {
     std::vector<arangodb::velocypack::Slice> expected = {
+      insertedDocs[3].slice(),
       insertedDocs[25].slice(),
     };
     auto result = arangodb::tests::executeQuery(
@@ -521,8 +514,7 @@ TEST_F(IResearchQuerWildcardTest, test) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_EQUAL_SLICES(expected[i++], resolved);
     }
 
     EXPECT_EQ(i, expected.size());
@@ -545,8 +537,7 @@ TEST_F(IResearchQuerWildcardTest, test) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_EQUAL_SLICES(expected[i++], resolved);
     }
 
     EXPECT_EQ(i, expected.size());
@@ -569,8 +560,7 @@ TEST_F(IResearchQuerWildcardTest, test) {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       EXPECT_TRUE(i < expected.size());
-      EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++],
-                                                                    resolved, true)));
+      EXPECT_EQUAL_SLICES(expected[i++], resolved);
     }
 
     EXPECT_EQ(i, expected.size());
