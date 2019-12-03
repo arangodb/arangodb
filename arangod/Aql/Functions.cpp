@@ -962,6 +962,8 @@ void getDocumentByIdentifier(transaction::Methods* trx, std::string& collectionN
 AqlValue mergeParameters(ExpressionContext* expressionContext, transaction::Methods* trx,
                          VPackFunctionParameters const& parameters,
                          char const* funcName, bool recursive) {
+  int *bla = nullptr;
+  *bla = 1;
   size_t const n = parameters.size();
 
   if (n == 0) {
