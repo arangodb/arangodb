@@ -25,6 +25,39 @@
 #include "utils/automaton_utils.hpp"
 
 TEST(automaton_test, match_wildcard) {
+  // check automaton structure
+  {
+    auto lhs = irs::from_wildcard<char>("%b%");
+    auto rhs = irs::from_wildcard<char>("%b%%%");
+    ASSERT_EQ(lhs.NumStates(), rhs.NumStates());
+
+    for (decltype(lhs)::StateId state = 0; state < lhs.NumStates(); ++state) {
+      ASSERT_EQ(lhs.NumArcs(state), rhs.NumArcs(state));
+    }
+  }
+
+  // check automaton structure
+  {
+    auto lhs = irs::from_wildcard<char>("b%%%%%s");
+    auto rhs = irs::from_wildcard<char>("b%%%s");
+    ASSERT_EQ(lhs.NumStates(), rhs.NumStates());
+
+    for (decltype(lhs)::StateId state = 0; state < lhs.NumStates(); ++state) {
+      ASSERT_EQ(lhs.NumArcs(state), rhs.NumArcs(state));
+    }
+  }
+
+  // check automaton structure
+  {
+    auto lhs = irs::from_wildcard<char>("b%%__%%%s%");
+    auto rhs = irs::from_wildcard<char>("b%%%%%%%__%%%%%%%%s%");
+    ASSERT_EQ(lhs.NumStates(), rhs.NumStates());
+
+    for (decltype(lhs)::StateId state = 0; state < lhs.NumStates(); ++state) {
+      ASSERT_EQ(lhs.NumArcs(state), rhs.NumArcs(state));
+    }
+  }
+
   // nil string
   {
     auto a = irs::from_wildcard<char>(irs::string_ref::NIL);

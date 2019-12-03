@@ -181,44 +181,86 @@ TEST(by_wildcard_test, boost) {
   }
 }
 
+TEST(by_wildcard_test, wildcard_type) {
+  ASSERT_EQ(irs::WildcardType::TERM, irs::wildcard_type(irs::ref_cast<irs::byte_type>(irs::string_ref("foo"))));
+  ASSERT_EQ(irs::WildcardType::TERM, irs::wildcard_type(irs::ref_cast<irs::byte_type>(irs::string_ref("\\foo"))));
+  ASSERT_EQ(irs::WildcardType::TERM, irs::wildcard_type(irs::ref_cast<irs::byte_type>(irs::string_ref("\\%foo"))));
+  ASSERT_EQ(irs::WildcardType::TERM, irs::wildcard_type(irs::ref_cast<irs::byte_type>(irs::string_ref("\foo"))));
+  ASSERT_EQ(irs::WildcardType::PREFIX, irs::wildcard_type(irs::ref_cast<irs::byte_type>(irs::string_ref("foo%"))));
+  ASSERT_EQ(irs::WildcardType::PREFIX, irs::wildcard_type(irs::ref_cast<irs::byte_type>(irs::string_ref("foo%%"))));
+  ASSERT_EQ(irs::WildcardType::WILDCARD, irs::wildcard_type(irs::ref_cast<irs::byte_type>(irs::string_ref("foo%_"))));
+  ASSERT_EQ(irs::WildcardType::WILDCARD, irs::wildcard_type(irs::ref_cast<irs::byte_type>(irs::string_ref("foo%\\"))));
+  ASSERT_EQ(irs::WildcardType::WILDCARD, irs::wildcard_type(irs::ref_cast<irs::byte_type>(irs::string_ref("foo_%"))));
+  ASSERT_EQ(irs::WildcardType::PREFIX, irs::wildcard_type(irs::ref_cast<irs::byte_type>(irs::string_ref("foo\\_%"))));
+  ASSERT_EQ(irs::WildcardType::WILDCARD, irs::wildcard_type(irs::ref_cast<irs::byte_type>(irs::string_ref("foo__"))));
+  ASSERT_EQ(irs::WildcardType::PREFIX, irs::wildcard_type(irs::ref_cast<irs::byte_type>(irs::string_ref("foo\\%%"))));
+  ASSERT_EQ(irs::WildcardType::PREFIX, irs::wildcard_type(irs::ref_cast<irs::byte_type>(irs::string_ref("foo\\%%%"))));
+  ASSERT_EQ(irs::WildcardType::TERM, irs::wildcard_type(irs::ref_cast<irs::byte_type>(irs::string_ref("foo\\%\\%"))));
+  ASSERT_EQ(irs::WildcardType::MATCH_ALL, irs::wildcard_type(irs::ref_cast<irs::byte_type>(irs::string_ref("%"))));
+  ASSERT_EQ(irs::WildcardType::MATCH_ALL, irs::wildcard_type(irs::ref_cast<irs::byte_type>(irs::string_ref("%%"))));
+  ASSERT_EQ(irs::WildcardType::WILDCARD, irs::wildcard_type(irs::ref_cast<irs::byte_type>(irs::string_ref("%c%"))));
+  ASSERT_EQ(irs::WildcardType::WILDCARD, irs::wildcard_type(irs::ref_cast<irs::byte_type>(irs::string_ref("%%c%"))));
+  ASSERT_EQ(irs::WildcardType::WILDCARD, irs::wildcard_type(irs::ref_cast<irs::byte_type>(irs::string_ref("%c%%"))));
+}
+
 #ifndef IRESEARCH_DLL
 
 TEST(by_wildcard_test, test_type_of_prepared_query) {
   // term query
-  ASSERT_EQ(
-    typeid(irs::by_term().field("foo").term("bar").prepare(irs::sub_reader::empty())),
-    typeid(irs::by_wildcard().field("foo").term("bar").prepare(irs::sub_reader::empty()))
-  );
+  {
+    auto lhs = irs::by_term().field("foo").term("bar").prepare(irs::sub_reader::empty());
+    auto rhs = irs::by_wildcard().field("foo").term("bar").prepare(irs::sub_reader::empty());
+    ASSERT_EQ(typeid(*lhs), typeid(*rhs));
+  }
 
   // term query
-  ASSERT_EQ(
-    typeid(irs::by_term().field("foo").term("").prepare(irs::sub_reader::empty())),
-    typeid(irs::by_wildcard().field("foo").term("").prepare(irs::sub_reader::empty()))
-  );
+  {
+    auto lhs = irs::by_term().field("foo").term("").prepare(irs::sub_reader::empty());
+    auto rhs = irs::by_wildcard().field("foo").term("").prepare(irs::sub_reader::empty());
+    ASSERT_EQ(typeid(*lhs), typeid(*rhs));
+  }
 
   // prefix query
-  ASSERT_EQ(
-    typeid(irs::by_prefix().field("foo").term("bar").prepare(irs::sub_reader::empty())),
-    typeid(irs::by_wildcard().field("foo").term("bar%").prepare(irs::sub_reader::empty()))
-  );
+  {
+    auto lhs = irs::by_prefix().field("foo").term("bar").prepare(irs::sub_reader::empty());
+    auto rhs = irs::by_wildcard().field("foo").term("bar%").prepare(irs::sub_reader::empty());
+    ASSERT_EQ(typeid(*lhs), typeid(*rhs));
+  }
+
+  // prefix query
+  {
+    auto lhs = irs::by_prefix().field("foo").term("bar").prepare(irs::sub_reader::empty());
+    auto rhs = irs::by_wildcard().field("foo").term("bar%%").prepare(irs::sub_reader::empty());
+    ASSERT_EQ(typeid(*lhs), typeid(*rhs));
+  }
 
   // term query
-  ASSERT_EQ(
-    typeid(irs::by_prefix().field("foo").term("bar%").prepare(irs::sub_reader::empty())),
-    typeid(irs::by_wildcard().field("foo").term("bar\\%").prepare(irs::sub_reader::empty()))
-  );
+  {
+    auto lhs = irs::by_term().field("foo").term("bar%").prepare(irs::sub_reader::empty());
+    auto rhs = irs::by_wildcard().field("foo").term("bar\\%").prepare(irs::sub_reader::empty());
+    ASSERT_EQ(typeid(*lhs), typeid(*rhs));
+  }
 
   // all query
-  ASSERT_EQ(
-    typeid(irs::all().prepare(irs::sub_reader::empty())),
-    typeid(irs::by_wildcard().field("foo").term("%").prepare(irs::sub_reader::empty()))
-  );
+  {
+    auto lhs = irs::by_prefix().field("foo").prepare(irs::sub_reader::empty());
+    auto rhs = irs::by_wildcard().field("foo").term("%").prepare(irs::sub_reader::empty());
+    ASSERT_EQ(typeid(*lhs), typeid(*rhs));
+  }
+
+  // all query
+  {
+    auto lhs = irs::by_prefix().field("foo").prepare(irs::sub_reader::empty());
+    auto rhs = irs::by_wildcard().field("foo").term("%%").prepare(irs::sub_reader::empty());
+    ASSERT_EQ(typeid(*lhs), typeid(*rhs));
+  }
 
   // term query
-  ASSERT_EQ(
-    typeid(irs::by_term().field("foo").term("%").prepare(irs::sub_reader::empty())),
-    typeid(irs::by_wildcard().field("foo").term("\\%").prepare(irs::sub_reader::empty()))
-  );
+  {
+    auto lhs = irs::by_term().field("foo").term("%").prepare(irs::sub_reader::empty());
+    auto rhs = irs::by_wildcard().field("foo").term("\\%").prepare(irs::sub_reader::empty());
+    ASSERT_EQ(typeid(*lhs), typeid(*rhs));
+  }
 }
 
 #endif
@@ -376,8 +418,21 @@ TEST_P(wildcard_filter_test_case, simple_sequential) {
 
     check_query(irs::by_wildcard().field("duplicated").term("v_z%"), docs, costs, rdr);
     check_query(irs::by_wildcard().field("duplicated").term("v%c"), docs, costs, rdr);
+    check_query(irs::by_wildcard().field("duplicated").term("v%%%%%c"), docs, costs, rdr);
     check_query(irs::by_wildcard().field("duplicated").term("%c"), docs, costs, rdr);
     check_query(irs::by_wildcard().field("duplicated").term("%_c"), docs, costs, rdr);
+  }
+
+  // pattern
+  {
+    docs_t docs{ 1, 4, 9, 21, 26, 31, 32 };
+    costs_t costs{ docs.size() };
+
+    check_query(irs::by_wildcard().field("prefix").term("%c%"), docs, costs, rdr);
+    check_query(irs::by_wildcard().field("prefix").term("%c%%"), docs, costs, rdr);
+    check_query(irs::by_wildcard().field("prefix").term("%%%%c%%"), docs, costs, rdr);
+    check_query(irs::by_wildcard().field("prefix").term("%%c%"), docs, costs, rdr);
+    check_query(irs::by_wildcard().field("prefix").term("%%c%%"), docs, costs, rdr);
   }
 
   // single digit prefix
@@ -397,6 +452,7 @@ TEST_P(wildcard_filter_test_case, simple_sequential) {
     costs_t costs{ docs.size() };
 
     check_query(irs::by_wildcard().field("duplicated").term("vcz%"), docs, costs, rdr);
+    check_query(irs::by_wildcard().field("duplicated").term("vcz%%%%%"), docs, costs, rdr);
   }
 
   {
@@ -410,6 +466,7 @@ TEST_P(wildcard_filter_test_case, simple_sequential) {
     costs_t costs{ docs.size() };
 
     check_query(irs::by_wildcard().field("prefix").term("abc%"), docs, costs, rdr);
+    check_query(irs::by_wildcard().field("prefix").term("abc%%"), docs, costs, rdr);
   }
 
   // whole word

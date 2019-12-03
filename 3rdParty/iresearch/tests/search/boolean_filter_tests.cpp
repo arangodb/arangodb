@@ -6957,6 +6957,8 @@ TEST_P(boolean_filter_test_case, mixed) {
   }
 }
 
+#ifndef IRESEARCH_DLL
+
 TEST_P(boolean_filter_test_case, mixed_ordered) {
   // add segment
   {
@@ -7019,6 +7021,8 @@ TEST_P(boolean_filter_test_case, mixed_ordered) {
     }
   }
 }
+
+#endif
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                                   Not base tests

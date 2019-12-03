@@ -41,7 +41,7 @@ NS_END
 
 NS_ROOT
 
-WildcardType wildcard_type(const irs::bstring& expr) noexcept {
+WildcardType wildcard_type(const bytes_ref& expr) noexcept {
   if (expr.empty()) {
     return WildcardType::TERM;
   }
@@ -51,16 +51,21 @@ WildcardType wildcard_type(const irs::bstring& expr) noexcept {
   for (const auto c : expr) {
     switch (c) {
       case wildcard_traits_t::MATCH_ANY_STRING:
-        num_match_any_string = size_t(!escaped);
+        num_match_any_string += size_t(!escaped);
+        escaped = false;
         break;
       case wildcard_traits_t::MATCH_ANY_CHAR:
         if (!escaped) {
           return WildcardType::WILDCARD;
         }
+        escaped = false;
         break;
       case wildcard_traits_t::ESCAPE:
-       escaped = !escaped;
-       break;
+        escaped = !escaped;
+        break;
+      default:
+        escaped = false;
+        break;
     }
   }
 
@@ -68,17 +73,14 @@ WildcardType wildcard_type(const irs::bstring& expr) noexcept {
     return WildcardType::TERM;
   }
 
-  if (1 == num_match_any_string) {
-    if (1 == expr.size()) {
-      return WildcardType::MATCH_ALL;
-    }
-
-    if (wildcard_traits_t::MATCH_ANY_STRING == expr.back()) {
-      return WildcardType::PREFIX;
-    }
+  if (expr.size() == num_match_any_string) {
+    return WildcardType::MATCH_ALL;
   }
 
-  return WildcardType::WILDCARD;
+  return std::all_of(expr.end() - num_match_any_string, expr.end(),
+                     [](byte_type c) { return c == wildcard_traits_t::MATCH_ANY_STRING; })
+    ?  WildcardType::PREFIX
+    :  WildcardType::WILDCARD;
 }
 
 DEFINE_FILTER_TYPE(by_wildcard)
@@ -99,11 +101,16 @@ filter::prepared::ptr by_wildcard::prepare(
       return by_prefix::prepare(index, order, boost, field,
                                 bytes_ref::EMPTY, // empty prefix == match all
                                 scored_terms_limit());
-    case WildcardType::PREFIX:
+    case WildcardType::PREFIX: {
       assert(!term().empty());
+      const auto pos = term().rfind(wildcard_traits_t::MATCH_ANY_STRING);
+      assert(pos != irs::bstring::npos);
+
       return by_prefix::prepare(index, order, boost, field,
-                                bytes_ref(term().c_str(), term().size() - 1), // remove trailing '%'
+                                bytes_ref(term().c_str(), pos), // remove trailing '%'
                                 scored_terms_limit());
+    }
+
     case WildcardType::WILDCARD:
       return prepare_automaton_filter(field, from_wildcard<byte_type, wildcard_traits_t>(term()),
                                       scored_terms_limit(), index, order, boost);

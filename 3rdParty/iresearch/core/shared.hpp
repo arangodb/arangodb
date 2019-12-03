@@ -298,6 +298,14 @@
 /// SSE compatibility
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifdef _MSC_VER
+
+#if (defined(_M_IX86_FP) && (_M_IX86_FP == 2))
+#define IRESEARCH_SSE2
+#endif
+
+#else
+
 #ifdef __SSE2__
 #define IRESEARCH_SSE2
 #endif
@@ -317,6 +325,8 @@
 #ifdef __AVX2__
 #define IRESEARCH_AVX2
 #endif
+
+#endif // _MSC_VER
 
 ////////////////////////////////////////////////////////////////////////////////
 
