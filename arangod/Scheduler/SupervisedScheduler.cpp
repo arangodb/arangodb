@@ -168,7 +168,7 @@ SupervisedScheduler::SupervisedScheduler(application_features::ApplicationServer
 
 SupervisedScheduler::~SupervisedScheduler() = default;
 
-bool SupervisedScheduler::queue(RequestLane lane, std::function<void()> handler) {}
+bool SupervisedScheduler::queue(RequestLane lane, std::function<void()> handler) {
   auto work = std::make_unique<WorkItem>(std::move(handler));
   
   // use memory order acquire to make sure, pushed item is visible
