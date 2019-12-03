@@ -335,6 +335,13 @@ Status WalManager::GetSortedWalsOfType(const std::string& path,
         }
       }
       if (!s.ok()) {
+        if ((s.IsNotFound() || s.IsIOError()) && log_type == kArchivedLogFile) {
+          // it may happen that the iteration performed by GetChildren() found
+          // a file in the archive, but that this file has been deleted by
+          // another thread in the meantime. in this case just ignore it.
+          s = Status::OK();
+          continue;
+        }
         return s;
       }
 
