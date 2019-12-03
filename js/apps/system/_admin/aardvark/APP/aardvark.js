@@ -59,9 +59,9 @@ router.get('/index.html', (req, res) => {
   if (encoding && encoding.indexOf('gzip') >= 0) {
     // gzip-encode?
     res.set('Content-Encoding', 'gzip');
-    res.sendFile(module.context.fileName('frontend/build/index-min.html.gz'));
+    res.sendFile(module.context.fileName('react/build/index.html.gz'));
   } else {
-    res.sendFile(module.context.fileName('frontend/build/index-min.html'));
+    res.sendFile(module.context.fileName('react/build/index.html'));
   }
   res.set('Content-Type', 'text/html; charset=utf-8');
   res.set('X-Frame-Options', 'DENY');
