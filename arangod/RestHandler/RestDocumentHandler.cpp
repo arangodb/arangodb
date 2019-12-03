@@ -46,9 +46,20 @@ using namespace arangodb::rest;
 RestDocumentHandler::RestDocumentHandler(application_features::ApplicationServer& server,
                                          GeneralRequest* request, GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {
-  if(request->requestType() == rest::RequestType::POST
-      && request->contentLength() <= 1024) {
-    _allowDirectExecution = true;
+  
+  if (!ServerState::instance()->isClusterRole()) {
+    // in the cluster we will have (blocking) communication, so we only
+    // want the request to be executed directly when we are on a single server.
+    auto const type = _request->requestType();
+    if ((type == rest::RequestType::GET ||
+         type == rest::RequestType::POST ||
+         type == rest::RequestType::PUT ||
+         type == rest::RequestType::PATCH ||
+         type == rest::RequestType::DELETE_REQ) &&
+        request->contentLength() <= 1024) {
+      // only allow direct execution if we don't have huge payload
+      _allowDirectExecution = true;
+    }
   }
 }
 
@@ -109,9 +120,9 @@ void RestDocumentHandler::shutdownExecute(bool isFinalized) noexcept {
 }
 
 /// @brief returns the short id of the server which should handle this request
-std::string RestDocumentHandler::forwardingTarget() {
+ResultT<std::pair<std::string, bool>> RestDocumentHandler::forwardingTarget() {
   if (!ServerState::instance()->isCoordinator()) {
-    return "";
+    return {std::make_pair(StaticStrings::Empty, false)};
   }
 
   bool found = false;
@@ -120,17 +131,17 @@ std::string RestDocumentHandler::forwardingTarget() {
     uint64_t tid = basics::StringUtils::uint64(value);
     if (!transaction::isCoordinatorTransactionId(tid)) {
       TRI_ASSERT(transaction::isLegacyTransactionId(tid));
-      return "";
+      return {std::make_pair(StaticStrings::Empty, false)};
     }
     uint32_t sourceServer = TRI_ExtractServerIdFromTick(tid);
     if (sourceServer == ServerState::instance()->getShortId()) {
-      return "";
+      return {std::make_pair(StaticStrings::Empty, false)};
     }
     auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
-    return ci.getCoordinatorByShortID(sourceServer);
+    return {std::make_pair(ci.getCoordinatorByShortID(sourceServer), false)};
   }
 
-  return "";
+  return {std::make_pair(StaticStrings::Empty, false)};
 }
 
 ////////////////////////////////////////////////////////////////////////////////

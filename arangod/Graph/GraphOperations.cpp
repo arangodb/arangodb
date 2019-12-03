@@ -159,20 +159,18 @@ OperationResult GraphOperations::eraseEdgeDefinition(bool waitForSync, std::stri
 
     // add the edge collection itself for removal
     gmngr.pushCollectionIfMayBeDropped(edgeDefinitionName, _graph.name(), collectionsToBeRemoved);
-    for (auto const& collection : collectionsToBeRemoved) {
-      Result resIn;
-      Result found = methods::Collections::lookup(
-          _vocbase,    // vocbase to search
-          collection,  // collection to find
-          [&](std::shared_ptr<LogicalCollection> const& coll) -> void {  // callback if found
-            TRI_ASSERT(coll);
-            resIn = methods::Collections::drop(*coll, false, -1.0);
-          });
+    for (auto const& cname : collectionsToBeRemoved) {
 
-      if (found.fail()) {
-        res = trx.finish(result.result);
-        return OperationResult(res);
-      } else if (resIn.fail()) {
+      std::shared_ptr<LogicalCollection> coll;
+      res = methods::Collections::lookup(_vocbase, cname, coll);
+      if (res.ok()) {
+        TRI_ASSERT(coll);
+        res = methods::Collections::drop(*coll, false, -1.0);
+        if (res.fail()) {
+          res = trx.finish(result.result);
+          return OperationResult(res);
+        }
+      } else {
         res = trx.finish(result.result);
         return OperationResult(res);
       }
@@ -409,19 +407,15 @@ OperationResult GraphOperations::eraseOrphanCollection(bool waitForSync, std::st
     GraphManager gmngr{_vocbase};
     gmngr.pushCollectionIfMayBeDropped(collectionName, "", collectionsToBeRemoved);
 
-    for (auto const& collection : collectionsToBeRemoved) {
-      Result resIn;
-      Result found = methods::Collections::lookup(
-          _vocbase,    // vocbase to search
-          collection,  // collection to find
-          [&](std::shared_ptr<LogicalCollection> const& coll) -> void {  // callback if found
-            TRI_ASSERT(coll);
-            resIn = methods::Collections::drop(*coll, false, -1.0);
-          });
-
-      if (found.fail()) {
-        return OperationResult(res);
-      } else if (resIn.fail()) {
+    for (auto const& cname : collectionsToBeRemoved) {
+      
+      std::shared_ptr<LogicalCollection> coll;
+      Result res = methods::Collections::lookup(_vocbase, cname, coll);
+      if (res.ok()) {
+        TRI_ASSERT(coll);
+        res = methods::Collections::drop(*coll, false, -1.0);
+      }
+      if (res.fail()) {
         return OperationResult(res);
       }
     }

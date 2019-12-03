@@ -59,23 +59,26 @@ class IResearchLinkHelperTestSingle : public ::testing::Test {
     auto& dbFeature = server.getFeature<arangodb::DatabaseFeature>();
     {
       TRI_vocbase_t* vocbase = dbFeature.useDatabase(arangodb::StaticStrings::SystemDatabase);
+      std::shared_ptr<arangodb::LogicalCollection> unused;
       arangodb::methods::Collections::createSystem(
         *vocbase,
-        arangodb::tests::AnalyzerCollectionName, false);
+        arangodb::tests::AnalyzerCollectionName, false, unused);
     }
     {
       TRI_vocbase_t* vocbase;
       dbFeature.createDatabase(testDBInfo(server.server(), "testVocbaseWithAnalyzer", 1), vocbase);
+      std::shared_ptr<arangodb::LogicalCollection> unused;
       arangodb::methods::Collections::createSystem(
         *vocbase,
-         arangodb::tests::AnalyzerCollectionName, false);
+         arangodb::tests::AnalyzerCollectionName, false, unused);
     }
     {
       TRI_vocbase_t* vocbase;
       dbFeature.createDatabase(testDBInfo(server.server(), "testVocbaseWithView",2), vocbase);
+      std::shared_ptr<arangodb::LogicalCollection> unused;
       arangodb::methods::Collections::createSystem(
         *vocbase,
-        arangodb::tests::AnalyzerCollectionName, false);
+        arangodb::tests::AnalyzerCollectionName, false, unused);
       auto collectionJson = arangodb::velocypack::Parser::fromJson(
           "{ \"id\":102, \"name\": \"foo\" }");
       EXPECT_NE(nullptr, vocbase->createCollection(collectionJson->slice()));
