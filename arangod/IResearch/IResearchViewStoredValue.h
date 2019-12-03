@@ -34,20 +34,12 @@ namespace velocypack {
 class Builder;
 }
 
-/*
-{"links" : {
-            "mycol1" : {"fields" : {"str" : {"analyzers" : ["text_en"]}}, "includeAllFields" : true, "storeValues" : "value",
-                       "storedFields": [["obj.foo.val1", "obj.foo.val2"], ["obj.bar.val1", "obj.bar.val2"]]}, // or string
-
-            "mycol2" : {"fields" : {"str" : {"analyzers" : ["text_en"]}}, "includeAllFields" : true, "storeValues" : "value"}
-           }
-}
-*/
-
 namespace iresearch {
 
 class IResearchViewStoredValue {
  public:
+  static constexpr char FIELDS_DELIMITER = '\1';
+
   struct StoredColumn {
     std::string name;
     std::vector<std::pair<std::string, std::vector<basics::AttributeName>>> fields;

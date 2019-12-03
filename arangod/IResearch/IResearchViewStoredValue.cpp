@@ -32,18 +32,6 @@
 namespace arangodb {
 namespace iresearch {
 
-/*
-{"links" : {
-            "mycol1" : {"fields" : {"str" : {"analyzers" : ["text_en"]}}, "includeAllFields" : true, "storeValues" : "value",
-                       "storedFields": [["obj.foo.val1", "obj.foo.val2"], ["obj.bar.val1", "obj.bar.val2"]]}, // string
-
-            "mycol2" : {"fields" : {"str" : {"analyzers" : ["text_en"]}}, "includeAllFields" : true, "storeValues" : "value"}
-           }
-}
-*/
-
-const char FIELDS_DELIMITER = '\1';
-
 bool IResearchViewStoredValue::toVelocyPack(velocypack::Builder& builder) const {
   if (!builder.isOpenArray()) {
     return false;
