@@ -40,7 +40,7 @@ struct TransactionStatistics {
   TransactionStatistics& operator=(TransactionStatistics const&) = delete;
   TransactionStatistics& operator=(TransactionStatistics &&) = delete;
 
-  arangodb::MetricsFeature* _metrics;
+  arangodb::MetricsFeature& _metrics;
   
   Counter& _transactionsStarted;
   Counter& _transactionsAborted;
