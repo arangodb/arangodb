@@ -28,19 +28,22 @@
 const fs = require('fs');
 const yaml = require('js-yaml');
 const internal = require('internal');
+const platform = internal.platform;
+const executeExternal = internal.executeExternal;
 const executeExternalAndWait = internal.executeExternalAndWait;
 const statusExternal = internal.statusExternal;
 const killExternal = internal.killExternal;
 const sleep = internal.sleep;
 const pu = require('@arangodb/process-utils');
 
-let GDB_OUTPUT = '';
 const abortSignal = 6;
+const termSignal = 15;
 
-const platform = internal.platform;
 
 const RED = internal.COLORS.COLOR_RED;
 const RESET = internal.COLORS.COLOR_RESET;
+
+let GDB_OUTPUT = '';
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief analyzes a core dump using gdb (Unix)
@@ -145,6 +148,96 @@ Crash analysis of: ` + JSON.stringify(instanceInfo) + '\n';
 // / @brief analyzes a core dump using cdb (Windows)
 // /  cdb is part of the WinDBG package.
 // //////////////////////////////////////////////////////////////////////////////
+
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief check whether process does bad on the wintendo
+// //////////////////////////////////////////////////////////////////////////////
+
+function runProcdump (options, instanceInfo, rootDir, pid, instantDump = false) {
+  let procdumpArgs = [ ];
+  let dumpFile = fs.join(rootDir, 'core_' + pid + '.dmp');
+  if (options.exceptionFilter != null) {
+    procdumpArgs = [
+      '-accepteula',
+      '-64',
+    ];
+    if (!instantDump) {
+      procdumpArgs.push('-e');
+      procdumpArgs.push(options.exceptionCount);
+    }
+    let filters = options.exceptionFilter.split(',');
+    for (let which in filters) {
+      procdumpArgs.push('-f');
+      procdumpArgs.push(filters[which]);
+    }
+    procdumpArgs.push('-ma');
+    procdumpArgs.push(pid);
+    procdumpArgs.push(dumpFile);
+  } else {
+    procdumpArgs = [
+      '-accepteula',
+    ];
+    if (!instantDump) {
+      procdumpArgs.push('-e');
+    }
+    procdumpArgs.push('-ma');
+    procdumpArgs.push(pid);
+    procdumpArgs.push(dumpFile);
+  }
+  try {
+    if (options.extremeVerbosity) {
+      print(Date() + " Starting procdump: " + JSON.stringify(procdumpArgs));
+    }
+    instanceInfo.coreFilePattern = dumpFile;
+    if (instantDump) {
+      // Wait for procdump to have written the dump before we attempt to kill the process:
+      instanceInfo.monitor = executeExternalAndWait('procdump', procdumpArgs);
+    } else {
+      instanceInfo.monitor = executeExternal('procdump', procdumpArgs);
+      // try to give procdump a little time to catch up with the process
+      sleep(0.25);
+      let status = statusExternal(instanceInfo.monitor.pid, false);
+      if (status.hasOwnProperty('signal')) {
+        print(RED + 'procdump didn\'t come up: ' + JSON.stringify(status));
+        instanceInfo.monitor.status = status;
+        return false;
+      }
+    }
+  } catch (x) {
+    print(Date() + ' failed to start procdump - is it installed?');
+    // throw x;
+    return false;
+  }
+  return true;
+}
+
+function stopProcdump (options, instanceInfo, force = false) {
+  if (instanceInfo.hasOwnProperty('monitor') &&
+      instanceInfo.monitor.pid !== null) {
+    if (force) {
+      print(Date() + " sending TERM to procdump to make it exit");
+      instanceInfo.monitor.status = killExternal(instanceInfo.monitor.pid, termSignal);
+    } else {
+      print(Date() + " waiting for procdump to exit");
+      statusExternal(instanceInfo.monitor.pid, true);
+    }
+    instanceInfo.monitor.pid = null;
+  }
+}
+
+function calculateMonitorValues(options, instanceInfo, pid, cmd) {
+  if (platform.substr(0, 3) === 'win' && process.env.hasOwnProperty('COREDIR')) {
+    instanceInfo.coreFilePattern = process.env['COREDIR'] + cmd + '.' + pid + '.dmp';
+  }
+}
+function isEnabledWindowsMonitor(options, instanceInfo, pid, cmd) {
+  if (platform.substr(0, 3) === 'win' && !options.disableMonitor) {
+    return true;
+  }
+  calculateMonitorValues(options, instanceInfo, pid, cmd);
+  return false;
+}
 
 function analyzeCoreDumpWindows (instanceInfo) {
   let cdbOutputFile = fs.getTempFile();
@@ -295,4 +388,8 @@ function analyzeCrash (binary, instanceInfo, options, checkStr) {
 
 exports.checkMonitorAlive = checkMonitorAlive;
 exports.analyzeCrash = analyzeCrash;
+exports.runProcdump = runProcdump;
+exports.stopProcdump = stopProcdump;
+exports.isEnabledWindowsMonitor = isEnabledWindowsMonitor;
+exports.calculateMonitorValues = calculateMonitorValues;
 Object.defineProperty(exports, 'GDB_OUTPUT', {get: () => GDB_OUTPUT});
