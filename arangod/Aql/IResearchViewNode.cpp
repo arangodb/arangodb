@@ -673,7 +673,7 @@ const char* NODE_OPTIONS_PARAM = "options";
 const char* NODE_VOLATILITY_PARAM = "volatility";
 const char* NODE_PRIMARY_SORT_PARAM = "primarySort";
 const char* NODE_PRIMARY_SORT_BUCKETS_PARAM = "primarySortBuckets";
-const char* NODE_VIEW_VALUES_VARS = "ViewValuesVars";
+const char* NODE_VIEW_VALUES_VARS = "viewValuesVars";
 const char* NODE_VIEW_STORED_VALUES_VARS = "viewStoredValuesVars";
 const char* NODE_VIEW_VALUES_VAR_COLUMN_NUMBER = "columnNumber";
 const char* NODE_VIEW_VALUES_VAR_FIELD_NUMBER = "fieldNumber";
@@ -999,7 +999,7 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan, velocypack::Slice
     auto const viewValuesVarsSlice = base.get(NODE_VIEW_VALUES_VARS);
     if (!viewValuesVarsSlice.isArray()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                     "\"ViewValuesVars\" attribute should be an array");
+                                     "\"viewValuesVars\" attribute should be an array");
     }
     ViewValuesVars viewValuesVars;
     for (auto const columnFieldsVars : velocypack::ArrayIterator(viewValuesVarsSlice)) {
@@ -1007,7 +1007,7 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan, velocypack::Slice
         auto const columnNumberSlice = columnFieldsVars.get(NODE_VIEW_VALUES_VAR_COLUMN_NUMBER);
         if (!columnNumberSlice.isNumber<size_t>()) {
           THROW_ARANGO_EXCEPTION_FORMAT(
-              TRI_ERROR_BAD_PARAMETER, "\"ViewValuesVars[*].columnNumber\" %s should be a number",
+              TRI_ERROR_BAD_PARAMETER, "\"viewValuesVars[*].columnNumber\" %s should be a number",
               columnNumberSlice.toString().c_str());
         }
         auto const columnNumber = columnNumberSlice.getNumber<int>();
@@ -1015,7 +1015,7 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan, velocypack::Slice
         if (!viewStoredValuesVarsSlice.isArray()) {
           THROW_ARANGO_EXCEPTION_MESSAGE(
                 TRI_ERROR_BAD_PARAMETER,
-                "\"ViewValuesVars[*].viewStoredValuesVars\" attribute should be an array");
+                "\"viewValuesVars[*].viewStoredValuesVars\" attribute should be an array");
         }
         for (auto const fieldVar : velocypack::ArrayIterator(viewStoredValuesVarsSlice)) {
           extractViewValuesVar(vars, viewValuesVars, columnNumber, fieldVar);
