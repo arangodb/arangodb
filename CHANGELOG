@@ -1,6 +1,10 @@
 v3.5.4 (XXXX-XX-XX)
 -------------------
 
+* Fix unprotected access to shared `_indexes` vector of RocksDB collections
+  when adding a background index. Modifying the indexes vector without acquiring
+  the required lock in write mode could result in undefined behavior.
+
 * Fix execution ability in CentOS 6 regarding newer boost.
 
 * Updated arangosync to 0.7.1.
