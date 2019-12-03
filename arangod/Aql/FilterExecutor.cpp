@@ -123,26 +123,27 @@ std::tuple<ExecutorState, size_t, AqlCall> FilterExecutor::skipRowsRange(
 }
 
 std::tuple<ExecutorState, FilterStats, AqlCall> FilterExecutor::produceRows(
-    size_t limit, AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output) {
+    AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output) {
   TRI_IF_FAILURE("FilterExecutor::produceRows") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   FilterStats stats{};
 
-  while (inputRange.hasMore() && limit > 0) {
+  while (inputRange.hasMore()) {
     TRI_ASSERT(!output.isFull());
     auto const& [state, input] = inputRange.next();
     TRI_ASSERT(input.isInitialized());
     if (input.getValue(_infos.getInputRegister()).toBoolean()) {
       output.copyRow(input);
       output.advanceRow();
-      limit--;
     } else {
       stats.incrFiltered();
     }
   }
 
   AqlCall upstreamCall{};
+  upstreamCall.softLimit = output.softLimit();
+  upstreamCall.hardLimit = output.hardLimit();
   /* We can use this value as a heuristic on overfetching.
    * by default we do not skip, and do not set any soft or hardLimit
    * on upstream

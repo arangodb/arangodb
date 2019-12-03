@@ -301,13 +301,12 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::g
 }
 
 template <class Executor>
-std::unique_ptr<OutputAqlItemRow> ExecutionBlockImpl<Executor>::createOutputRow(
-    SharedAqlItemBlockPtr& newBlock) const {
+std::unique_ptr<OutputAqlItemRow> ExecutionBlockImpl<Executor>::createOutputRow(SharedAqlItemBlockPtr& newBlock) {
   if /* constexpr */ (Executor::Properties::allowsBlockPassthrough == BlockPassthrough::Enable) {
-    return std::make_unique<OutputAqlItemRow>(newBlock, infos().getOutputRegisters(),
-                                              infos().registersToKeep(),
-                                              infos().registersToClear(),
-                                              OutputAqlItemRow::CopyRowBehavior::DoNotCopyInputRows);
+    return std::make_unique<OutputAqlItemRow>(
+        newBlock, infos().getOutputRegisters(), infos().registersToKeep(),
+        infos().registersToClear(), std::move(AqlCall{}),
+        OutputAqlItemRow::CopyRowBehavior::DoNotCopyInputRows);
   } else {
     return std::make_unique<OutputAqlItemRow>(newBlock, infos().getOutputRegisters(),
                                               infos().registersToKeep(),
@@ -996,6 +995,7 @@ ExecState NextState(AqlCall const& call) {
 template <>
 std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr>
 ExecutionBlockImpl<FilterExecutor>::executeWithoutTrace(AqlCallStack stack) {
+  AqlCall myCall = stack.popCall();
   if (!_outputItemRow) {
     // TODO: FIXME Hard coded size
     SharedAqlItemBlockPtr newBlock =
@@ -1007,7 +1007,7 @@ ExecutionBlockImpl<FilterExecutor>::executeWithoutTrace(AqlCallStack stack) {
   size_t skipped = 0;
 
   // TODO: Need to make this member variable for waiting?
-  AqlCall myCall = stack.popCall();
+
   ExecState execState = ::NextState(myCall);
   if (_lastRange.hasShadowRow()) {
     // We have not been able to move all shadowRows into the output last time.
@@ -1039,15 +1039,10 @@ ExecutionBlockImpl<FilterExecutor>::executeWithoutTrace(AqlCallStack stack) {
         break;
       }
       case ExecState::PRODUCE: {
-        auto linesBefore = _outputItemRow->numRowsWritten();
         TRI_ASSERT(myCall.getLimit() > 0);
-        auto limit = (std::min)(myCall.getLimit(), _outputItemRow->numRowsLeft());
         // Execute getSome
-        auto const [state, stats, call] =
-            _executor.produceRows(limit, _lastRange, *_outputItemRow);
-        auto written = _outputItemRow->numRowsWritten() - linesBefore;
+        auto const [state, stats, call] = _executor.produceRows(_lastRange, *_outputItemRow);
         _engine->_stats += stats;
-        myCall.didProduce(written);
         if (state == ExecutorState::DONE) {
           execState = ExecState::SHADOWROWS;
         } else if (myCall.getLimit() > 0) {

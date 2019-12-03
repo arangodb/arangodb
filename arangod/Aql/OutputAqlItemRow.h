@@ -26,6 +26,7 @@
 #ifndef ARANGOD_AQL_OUTPUT_AQL_ITEM_ROW_H
 #define ARANGOD_AQL_OUTPUT_AQL_ITEM_ROW_H
 
+#include "Aql/AqlCall.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
 #include "Aql/types.h"
@@ -54,6 +55,7 @@ class OutputAqlItemRow {
                             std::shared_ptr<std::unordered_set<RegisterId> const> outputRegisters,
                             std::shared_ptr<std::unordered_set<RegisterId> const> registersToKeep,
                             std::shared_ptr<std::unordered_set<RegisterId> const> registersToClear,
+                            AqlCall&& clientCall = AqlCall{},
                             CopyRowBehavior = CopyRowBehavior::CopyInputRows);
 
   ~OutputAqlItemRow() = default;
@@ -95,7 +97,9 @@ class OutputAqlItemRow {
   void copyBlockInternalRegister(InputAqlItemRow const& sourceRow,
                                  RegisterId input, RegisterId output);
 
-  [[nodiscard]] std::size_t getNrRegisters() const { return block().getNrRegs(); }
+  [[nodiscard]] std::size_t getNrRegisters() const {
+    return block().getNrRegs();
+  }
 
   /**
    * @brief May only be called after all output values in the current row have
@@ -105,7 +109,9 @@ class OutputAqlItemRow {
   void advanceRow();
 
   // returns true if row was produced
-  [[nodiscard]] bool produced() const { return _inputRowCopied && allValuesWritten(); }
+  [[nodiscard]] bool produced() const {
+    return _inputRowCopied && allValuesWritten();
+  }
 
   /**
    * @brief Steal the AqlItemBlock held by the OutputAqlItemRow. The returned
@@ -118,7 +124,9 @@ class OutputAqlItemRow {
    */
   SharedAqlItemBlockPtr stealBlock();
 
-  [[nodiscard]] bool isFull() const { return numRowsWritten() >= block().size(); }
+  [[nodiscard]] bool isFull() const {
+    return numRowsWritten() >= block().size();
+  }
 
   /**
    * @brief Returns the number of rows that were fully written.
@@ -131,7 +139,9 @@ class OutputAqlItemRow {
    *        NOTE that we later want to replace this with some "atMost" value
    *        passed from ExecutionBlockImpl.
    */
-  [[nodiscard]] size_t numRowsLeft() const { return block().size() - _baseIndex; }
+  [[nodiscard]] size_t numRowsLeft() const {
+    return block().size() - _baseIndex;
+  }
 
   // Use this function with caution! We need it only for the ConstrainedSortExecutor
   void setBaseIndex(std::size_t index);
@@ -160,6 +170,10 @@ class OutputAqlItemRow {
   void decreaseShadowRowDepth(ShadowAqlItemRow const& sourceRow);
 
   void toVelocyPack(velocypack::Options const* options, velocypack::Builder& builder);
+
+  AqlCall::Limit softLimit() const;
+
+  AqlCall::Limit hardLimit() const;
 
  private:
   [[nodiscard]] std::unordered_set<RegisterId> const& outputRegisters() const {
@@ -211,6 +225,13 @@ class OutputAqlItemRow {
   size_t _numValuesWritten;
 
   /**
+   * @brief Call recieved by the client to produce this outputblock
+   *        It is used for accounting of produced rows and number
+   *        of rows requested by client.
+   */
+  AqlCall _call;
+
+  /**
    * @brief Set if and only if the current ExecutionBlock passes the
    * AqlItemBlocks through.
    */
@@ -228,9 +249,13 @@ class OutputAqlItemRow {
   bool _allowSourceRowUninitialized;
 
  private:
-  [[nodiscard]] size_t nextUnwrittenIndex() const noexcept { return numRowsWritten(); }
+  [[nodiscard]] size_t nextUnwrittenIndex() const noexcept {
+    return numRowsWritten();
+  }
 
-  [[nodiscard]] size_t numRegistersToWrite() const { return outputRegisters().size(); }
+  [[nodiscard]] size_t numRegistersToWrite() const {
+    return outputRegisters().size();
+  }
 
   [[nodiscard]] bool allValuesWritten() const {
     // If we have a shadowRow in the output, it counts as written
@@ -260,6 +285,6 @@ class OutputAqlItemRow {
   template <class ItemRowType>
   void adjustShadowRowDepth(ItemRowType const& sourceRow);
 };
-}  // namespace arangodb
+}  // namespace arangodb::aql
 
 #endif  // ARANGOD_AQL_OUTPUT_AQL_ITEM_ROW_H

@@ -36,6 +36,7 @@
 
 namespace arangodb::aql {
 
+struct AqlCall;
 class AqlItemBlock;
 class ExecutionEngine;
 class ExecutionNode;
@@ -225,7 +226,7 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   [[nodiscard]] std::pair<ExecutionState, SharedAqlItemBlockPtr> requestWrappedBlock(
       size_t nrItems, RegisterId nrRegs);
 
-  [[nodiscard]] std::unique_ptr<OutputAqlItemRow> createOutputRow(SharedAqlItemBlockPtr& newBlock) const;
+  [[nodiscard]] std::unique_ptr<OutputAqlItemRow> createOutputRow(SharedAqlItemBlockPtr& newBlock);
 
   [[nodiscard]] Query const& getQuery() const;
 
@@ -243,6 +244,10 @@ class ExecutionBlockImpl final : public ExecutionBlock {
 
   // Trace the end of a getSome call, potentially with result
   void traceExecuteEnd(std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr> const& result);
+
+  // Ensure that we have an output block of the desired dimenstions
+  // Will as a side effect modify _outputItemRow
+  void ensureOutputBlock(AqlCall&& call);
 
  private:
   /**

@@ -96,7 +96,7 @@ class FilterExecutor {
    * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
    */
   [[nodiscard]] std::tuple<ExecutorState, Stats, AqlCall> produceRows(
-      size_t atMost, AqlItemBlockInputRange& input, OutputAqlItemRow& output);
+      AqlItemBlockInputRange& input, OutputAqlItemRow& output);
 
   /**
    * @brief skip the next Row of Aql Values.

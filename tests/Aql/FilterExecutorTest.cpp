@@ -368,7 +368,7 @@ TEST_F(FilterExecutorTest, test_produce_datarange) {
   OutputAqlItemRow output(std::move(block), outputRegisters, registersToKeep,
                           infos.registersToClear());
   EXPECT_EQ(output.numRowsWritten(), 0);
-  auto const [state, stats, call] = testee.produceRows(1000, input, output);
+  auto const [state, stats, call] = testee.produceRows(input, output);
   EXPECT_EQ(state, ExecutorState::DONE);
   EXPECT_EQ(stats.getFiltered(), 2);
   EXPECT_EQ(output.numRowsWritten(), 3);
@@ -393,7 +393,7 @@ TEST_F(FilterExecutorTest, test_produce_datarange_need_more) {
   OutputAqlItemRow output(std::move(block), outputRegisters, registersToKeep,
                           infos.registersToClear());
   EXPECT_EQ(output.numRowsWritten(), 0);
-  auto const [state, stats, call] = testee.produceRows(1000, input, output);
+  auto const [state, stats, call] = testee.produceRows(input, output);
   EXPECT_EQ(state, ExecutorState::HASMORE);
   EXPECT_EQ(stats.getFiltered(), 2);
   EXPECT_EQ(output.numRowsWritten(), 3);
@@ -452,7 +452,7 @@ TEST_F(FilterExecutorTest, test_produce_datarange_has_more) {
   AqlItemBlockInputRange input{ExecutorState::DONE, inBlock, 0, inBlock->size()};
   OutputAqlItemRow output(std::move(block), outputRegisters, registersToKeep,
                           infos.registersToClear());
-  auto const [state, stats, call] = testee.produceRows(2, input, output);
+  auto const [state, stats, call] = testee.produceRows(input, output);
   EXPECT_EQ(state, ExecutorState::HASMORE);
   EXPECT_EQ(stats.getFiltered(), 1);
   EXPECT_EQ(output.numRowsWritten(), 2);
