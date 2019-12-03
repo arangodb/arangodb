@@ -560,6 +560,7 @@ function unitTest (cases, options) {
   // testsuites may register more defaults...
   _.defaults(options, optionsDefaults);
   options.coreCheck = true;
+  print(process.env)
   try {
     pu.setupBinaries(options.build, options.buildType, options.configDir);
   }
