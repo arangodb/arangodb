@@ -785,7 +785,7 @@ namespace iresearch {
     std::string errorField;
 
     if (!linkDefinition.isNull()) { // have link definition
-      if (!meta.init(linkDefinition, false, errorField, &vocbase)) { // for db-server analyzer validation should have already applied on coordinator
+      if (!meta.init(linkDefinition, true, errorField, &vocbase)) { // for db-server analyzer validation should have already applied on coordinator
         return arangodb::Result( // result
           TRI_ERROR_BAD_PARAMETER, // code
           errorField.empty()

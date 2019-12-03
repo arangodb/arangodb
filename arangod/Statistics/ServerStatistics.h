@@ -26,15 +26,26 @@
 
 #include <atomic>
 #include <cstdint>
+#include "RestServer/Metrics.h"
+
+namespace arangodb {
+class MetricsFeature;
+}
 
 struct TransactionStatistics {
-  TransactionStatistics() : _transactionsStarted(0), _transactionsAborted(0)
-                          , _transactionsCommitted(0), _intermediateCommits(0) {}
 
-  std::atomic<std::uint64_t> _transactionsStarted;
-  std::atomic<std::uint64_t> _transactionsAborted;
-  std::atomic<std::uint64_t> _transactionsCommitted;
-  std::atomic<std::uint64_t> _intermediateCommits;
+  TransactionStatistics();
+  TransactionStatistics(TransactionStatistics const&) = delete;
+  TransactionStatistics(TransactionStatistics &&) = delete;
+  TransactionStatistics& operator=(TransactionStatistics const&) = delete;
+  TransactionStatistics& operator=(TransactionStatistics &&) = delete;
+
+  arangodb::MetricsFeature& _metrics;
+  
+  Counter& _transactionsStarted;
+  Counter& _transactionsAborted;
+  Counter& _transactionsCommitted;
+  Counter& _intermediateCommits;
 };
 
 struct ServerStatistics {
@@ -44,14 +55,15 @@ struct ServerStatistics {
   ServerStatistics& operator=(ServerStatistics const&) = delete;
   ServerStatistics& operator=(ServerStatistics &&) = delete;
 
-  static ServerStatistics& statistics();
-  static void initialize(double);
+  ServerStatistics& statistics();
+  void initialize(double);
 
   TransactionStatistics _transactionsStatistics;
   double _startTime;
   std::atomic<double> _uptime;
 
-  explicit ServerStatistics(double start) : _transactionsStatistics(), _startTime(start), _uptime(0.0) {}
+  explicit ServerStatistics(double start) :
+    _transactionsStatistics(), _startTime(start), _uptime(0.0) {}
 };
 
 #endif

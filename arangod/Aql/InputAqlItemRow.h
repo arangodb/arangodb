@@ -36,7 +36,7 @@ namespace arangodb {
 namespace velocypack {
 class Builder;
 struct Options;
-}
+}  // namespace velocypack
 namespace aql {
 
 class AqlItemBlock;
@@ -132,6 +132,8 @@ class InputAqlItemRow {
   /// be used to recreate the AqlItemBlock via the Json constructor
   /// Uses the same API as an AqlItemBlock with only a single row
   void toVelocyPack(velocypack::Options const*, arangodb::velocypack::Builder&) const;
+
+  void toSimpleVelocyPack(velocypack::Options const*, arangodb::velocypack::Builder&) const;
 
  private:
   AqlItemBlock& block() noexcept;

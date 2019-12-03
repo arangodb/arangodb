@@ -39,20 +39,6 @@ function dumpTestSuite () {
   return {
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
-
-    setUp : function () {
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
-
-    tearDown : function () {
-    },
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief test the empty collection
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -87,8 +73,18 @@ function dumpTestSuite () {
       assertEqual(100000, c.count());
 
       // test all documents
-      for (var i = 1; i < 200000; i += 2) {
-        var doc = c.document("test" + i);
+      let docs = [], results = [];
+      for (let i = 1; i < 200000; i += 2) {
+        docs.push("test" + i);
+        if (docs.length === 10000) {
+          results = results.concat(c.document(docs));
+          docs = [];
+        }
+      }
+
+      let j = 0;
+      for (let i = 1; i < 200000; i += 2) {
+        let doc = results[j++];
         assertEqual(i, doc.value1);
         assertEqual("this is a test", doc.value2);
         assertEqual("test" + i, doc.value3);
@@ -156,12 +152,10 @@ function dumpTestSuite () {
       assertEqual("primary", c.getIndexes()[0].type);
       assertEqual(8001, c.count());
 
-      var i;
-      for (i = 0; i < 10000; ++i) {
+      for (let i = 0; i < 10000; ++i) {
         if (i % 5 === 0) {
           assertFalse(c.exists("test" + i));
-        }
-        else {
+        } else {
           let doc = c.document("test" + i);
           assertEqual(i, doc.value1);
 
@@ -367,8 +361,7 @@ function dumpTestSuite () {
         assertEqual("this is a test", doc.value2);
         if (i % 2 === 0) {
           assertEqual(i, doc.value3);
-        }
-        else {
+        } else {
           assertEqual("test" + i, doc.value3);
         }
       }

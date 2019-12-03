@@ -1,6 +1,102 @@
 devel
 -----
 
+* Fix execution ability in CentOS 6 regarding newer boost.
+
+* Fixed permissions for dump/restore.
+
+* The _users collection is now properly restored when using arangorestore.
+
+* Updated arangosync to 0.7.1.
+
+* rename `minReplicationFactor` into `writeConcern` to make it consistent with
+  `--cluster.write-concern` and avoid confusion with
+  `--cluster.min-replication-factor`
+
+* ArangoDB web UI was switched to React from previous framework and rebuilt.
+
+* Enable the `parallelize-gather` AQL optimizer rule for certain write queries. 
+
+  The optimization is turned on by default and can be disabled by setting the
+  startup option `--query.parallelize-gather-writes` to `false`.
+    
+* Shard synchronisation readlock aware of rebootId.
+
+* Bugfix: In an AQL cluster query, when gathering unsorted data in combination
+  with a LIMIT with non-zero offset, if this offset exactly matches the number
+  of documents in the first shards consumed, the rest of the documents was not
+  returned.
+
+* Fixed GET _api/gharial to also include the name property in every returned graph.
+  This is a consistency fix within the API as all other APIs include the name.
+  As a work around the returned _key can be used, which is identical to the name.
+
+* REMOTE and GATHER no longer make subqueries unsuitable for the
+  `splice-subqueries` optimization.
+
+* New internal counter and histogram support.
+
+* Add a Prometheus endpoint for metrics, expose new metrics, old statistics
+  and RocksDB metrics.
+
+* Fixed known issue #509: ArangoSearch index consolidation does not work during creation of a link
+  on existing collection which may lead to massive file descriptors consumption.
+
+* Added support of array comparison operators to ArangoSearch.
+
+* Added support of arrays to TOKENS function.
+
+* Added support of arrays to PHRASE function.
+
+* Added a new optimization called `late-document-materialization`, `late-document-materialization`
+  for indexes and views correspondingly.
+
+  This optimization reduces amount of documents to read from storage engine to the limit expicitly
+  stated in LIMIT node.
+
+* Added support of "Edge Ngrams" to `text` analyzer.
+
+* Added support of UTF8 to `ngram` analyzer.
+
+* Added ability to mark beginning/end of the sequence to `ngram` analyzer.
+
+* Added a new subquery optimization called `splice-subqueries`.
+
+  This optimization splices the execution of subqueries inside the
+  execution of their surrounding query. For subqueries with a fairly
+  small number of returned documents this saves a significant amount of
+  overhead initializing cursors.
+
+  This optimization is performed by the optimizer rule
+  `splice-subqueries`, and currently only works on suitable
+  subqueries; A subquery becomes unsuitable if it contains a LIMIT,
+  REMOTE, GATHER or a COLLECT node where the operation is WITH COUNT INTO.
+  A subquery also becomes unsuitable if it is contained in an
+  (sub)query which contains unsuitable operations after the subquery.
+
+  The implementation of this feature required reworking the dataflow
+  query execution.
+
+* Fixed issue #10470: The WebUI now shows potential errors and details which occured using _api/import (e.g.
+  unique constraint violated).
+
+* Added startup option `--query.optimizer-rules` to selectively enable or disable
+  optimizer rules by default. The option can be specified multiple times, and takes
+  the same input as the query option of the same name. 
+  
+  For example, to turn off the rule _use-indexes-for-sort_, use
+
+      --query.optimizer-rules "-use-indexes-for-sort"
+
+  The purpose of this option is to be able to enable potential future experimental
+  optimizer rules, which may be shipped in a disabled-by-default state.
+
+* Allow the AQL query optimizer to remove the DistributeNodes for several data-modification
+  queries. So far, only REMOVE queries benefitted. Now the optimization can also be
+  applied for REPLACE and UPDATE queries in case the query does not use LIMIT and
+  there is no further cluster-internal communication after the REMOVE, REPLACE or UPDATE 
+  node. 
+
 * Include ArangoSearch data in hotbackups.
 
 * Allow to restore 3.5 hotbackups in 3.6.
@@ -20,8 +116,8 @@ devel
   engine, but comes with a big performance penalty as all collections will be locked
   exclusively for writes.
 
-* Added new timeout option for AQL queries. If a query does not finish execution
-  within the given time in seconds it will be killed.
+* Added new maxRuntime option for queries. If a query does not finish execution within
+  the given time (in seconds) it will be killed.
 
 * Fixed undefined behaviour with creation of ArangoSearch links with custom
   analyzers in cluster environment.
@@ -152,9 +248,8 @@ devel
 * Add replicationFactor, minReplicationFactor and sharding strategy to database creation
   dialog in web UI. Preselect database default values for collection creation in web UI.
 
-* Add new JavaScipt function `db._properties()` and REST route GET
-  `/_api/database/properties` that provides information about the current database's
-  properties.
+* Add new JavaScipt function `db._properties()` that provides information about
+  the current database's properties.
 
 * Add new options `sharding` and `replicationFactor` for database creation methods. The
   specified values will provide the defaults for all collections created in a database.

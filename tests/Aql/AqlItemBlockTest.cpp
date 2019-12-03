@@ -351,6 +351,77 @@ TEST_F(AqlItemBlockTest, test_serialization_deserialization_slices) {
   }
 }
 
+TEST_F(AqlItemBlockTest, test_serialization_deserialization_with_ranges) {
+  SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 3, 2)};
+  block->emplaceValue(0, 0, dummyData(4));
+  block->emplaceValue(0, 1, dummyData(5));
+  block->emplaceValue(1, 0, dummyData(0));
+  block->emplaceValue(1, 1, dummyData(1));
+  block->emplaceValue(2, 0, dummyData(2));
+  block->emplaceValue(2, 1, dummyData(3));
+  {
+    // test range 0->1
+    VPackBuilder result;
+    result.openObject();
+    block->toVelocyPack(0, 1, nullptr, result);
+    ASSERT_TRUE(result.isOpenObject());
+    result.close();
+
+    SharedAqlItemBlockPtr testee = itemBlockManager.requestAndInitBlock(result.slice());
+
+    // Check exposed attributes
+    EXPECT_EQ(testee->size(), 1);
+    EXPECT_EQ(testee->getNrRegs(), block->getNrRegs());
+    // check data
+    compareWithDummy(testee, 0, 0, 4);
+    compareWithDummy(testee, 0, 1, 5);
+
+    assertShadowRowIndexes(testee, {});
+  }
+
+  {
+    // Test range 1->2
+    VPackBuilder result;
+    result.openObject();
+    block->toVelocyPack(1, 2, nullptr, result);
+    ASSERT_TRUE(result.isOpenObject());
+    result.close();
+
+    SharedAqlItemBlockPtr testee = itemBlockManager.requestAndInitBlock(result.slice());
+
+    // Check exposed attributes
+    EXPECT_EQ(testee->size(), 1);
+    EXPECT_EQ(testee->getNrRegs(), block->getNrRegs());
+    // check data
+    compareWithDummy(testee, 0, 0, 0);
+    compareWithDummy(testee, 0, 1, 1);
+
+    assertShadowRowIndexes(testee, {});
+  }
+
+  {
+    // Test range 0->2
+    VPackBuilder result;
+    result.openObject();
+    block->toVelocyPack(0, 2, nullptr, result);
+    ASSERT_TRUE(result.isOpenObject());
+    result.close();
+
+    SharedAqlItemBlockPtr testee = itemBlockManager.requestAndInitBlock(result.slice());
+
+    // Check exposed attributes
+    EXPECT_EQ(testee->size(), 2);
+    EXPECT_EQ(testee->getNrRegs(), block->getNrRegs());
+    // check data
+    compareWithDummy(testee, 0, 0, 4);
+    compareWithDummy(testee, 0, 1, 5);
+    compareWithDummy(testee, 1, 0, 0);
+    compareWithDummy(testee, 1, 1, 1);
+
+    assertShadowRowIndexes(testee, {});
+  }
+}
+
 TEST_F(AqlItemBlockTest, test_serialization_deserialization_input_row) {
   SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 2, 2)};
   block->emplaceValue(0, 0, dummyData(4));

@@ -393,6 +393,12 @@ VPackBuilder auth::UserManager::allUsers() {
   return result;
 }
 
+void auth::UserManager::triggerCacheRevalidation() {
+  triggerLocalReload();
+  triggerGlobalReload();
+  loadFromDB();
+}
+
 /// Trigger eventual reload, user facing API call
 void auth::UserManager::triggerGlobalReload() {
   if (!ServerState::instance()->isCoordinator()) {
@@ -777,8 +783,9 @@ auth::Level auth::UserManager::collectionAuthLevel(std::string const& user,
     return auth::Level::NONE;  // no user found
   }
 
+  TRI_ASSERT(!coll.empty());
   auth::Level level;
-  if (isdigit(coll[0])) {
+  if (coll[0] >= '0' && coll[0] <= '9') {
     std::string tmpColl = DatabaseFeature::DATABASE->translateCollectionName(dbname, coll);
     level = it->second.collectionAuthLevel(dbname, tmpColl);
   } else {
