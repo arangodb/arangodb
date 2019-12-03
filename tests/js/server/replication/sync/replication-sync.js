@@ -1591,6 +1591,9 @@ function ReplicationSuite () {
       try {
         db._dropView(cn + 'View');
       } catch (ignored) {}
+      try {
+        db._dropView('analyzersView');
+      } catch (ignored) {}
       db._drop(cn);
     },
 
@@ -1603,10 +1606,33 @@ function ReplicationSuite () {
       try {
         db._dropView(cn + 'View');
       } catch (ignored) {}
+      try {
+        db._dropView('analyzersView');
+      } catch (ignored) {}
       db._drop(cn);
+      db._drop(sysCn, {isSystem: true});
+      try {
+        analyzers.remove('custom');
+      } catch (e) { }
+      try {
+        analyzers.remove('smartCustom');
+      } catch (e) { }
 
       connectToSlave();
+      try {
+        db._dropView(cn + 'View');
+      } catch (ignored) {}
+      try {
+        db._dropView('analyzersView');
+      } catch (ignored) {}
       db._drop(cn);
+      db._drop(sysCn, {isSystem: true});
+      try {
+        analyzers.remove('custom');
+      } catch (e) { }
+      try {
+        analyzers.remove('smartCustom');
+      } catch (e) { }
     }
   };
   deriveTestSuite(BaseTestConfig(), suite, '_Repl');
