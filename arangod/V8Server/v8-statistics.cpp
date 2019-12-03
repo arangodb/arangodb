@@ -99,7 +99,9 @@ static void JS_ServerStatistics(v8::FunctionCallbackInfo<v8::Value> const& args)
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
 
-  ServerStatistics const& info = MetricsFeature::metrics()->serverStatistics();
+  ServerStatistics const& info =
+    application_features::ApplicationServer::server().
+    getFeature<MetricsFeature>().serverStatistics();
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
