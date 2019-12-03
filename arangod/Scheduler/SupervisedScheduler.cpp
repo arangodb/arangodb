@@ -46,26 +46,6 @@ using namespace arangodb;
 using namespace arangodb::basics;
 
 namespace {
-uint64_t getTickCount_ns() {
-  auto now = std::chrono::high_resolution_clock::now();
-
-  return std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch())
-      .count();
-}
-
-bool isDirectDeadlockLane(RequestLane lane) {
-  // Some lane have tasks deadlock because they hold a mutex while calling queue that must be locked to execute the handler.
-  // Those tasks can not be executed directly.
-  return lane == RequestLane::TASK_V8 || lane == RequestLane::CLIENT_V8 ||
-         lane == RequestLane::CLUSTER_V8 || lane == RequestLane::INTERNAL_LOW ||
-         lane == RequestLane::SERVER_REPLICATION || lane == RequestLane::CLUSTER_ADMIN ||
-         lane == RequestLane::CLUSTER_INTERNAL || lane == RequestLane::AGENCY_CLUSTER ||
-         lane == RequestLane::CLIENT_AQL || lane == RequestLane::CLUSTER_AQL;
-}
-
-}  // namespace
-
-namespace {
 typedef std::chrono::time_point<std::chrono::steady_clock> time_point;
 
 // value-initialize these arrays, otherwise mac will crash
@@ -188,28 +168,7 @@ SupervisedScheduler::SupervisedScheduler(application_features::ApplicationServer
 
 SupervisedScheduler::~SupervisedScheduler() = default;
 
-bool SupervisedScheduler::queue(RequestLane lane, std::function<void()> handler,
-                                bool allowDirectHandling) {
-  if (!isDirectDeadlockLane(lane) && 
-      allowDirectHandling &&
-      !ServerState::instance()->isClusterRole()) {
-    uint64_t const jobsDone = _jobsDone.load(std::memory_order_acquire);
-    uint64_t const jobsSubmitted = _jobsSubmitted.load(std::memory_order_relaxed);
-    if (jobsSubmitted - jobsDone < 2) {
-      _jobsSubmitted.fetch_add(1, std::memory_order_relaxed);
-      _jobsDequeued.fetch_add(1, std::memory_order_relaxed);
-      _jobsDirectExec.fetch_add(1, std::memory_order_relaxed);
-      try {
-        handler();
-        _jobsDone.fetch_add(1, std::memory_order_release);
-        return true;
-      } catch (...) {
-        _jobsDone.fetch_add(1, std::memory_order_release);
-        throw;
-      }
-    }
-  }
-  
+bool SupervisedScheduler::queue(RequestLane lane, std::function<void()> handler) {}
   auto work = std::make_unique<WorkItem>(std::move(handler));
   
   // use memory order acquire to make sure, pushed item is visible
@@ -243,12 +202,6 @@ bool SupervisedScheduler::queue(RequestLane lane, std::function<void()> handler,
   // queue now has ownership for the WorkItem
   work.release();
 
-  static thread_local uint64_t lastSubmitTime_ns = 0;
-
-  uint64_t now_ns = getTickCount_ns();
-  uint64_t sleepyTime_ns = now_ns - lastSubmitTime_ns;
-  lastSubmitTime_ns = now_ns;
-
   if (approxQueueLength > _maxFifoSize / 2) {
     if ((::queueWarningTick++ & 0xFF) == 0) {
       auto const& now = std::chrono::steady_clock::now();
@@ -266,16 +219,50 @@ bool SupervisedScheduler::queue(RequestLane lane, std::function<void()> handler,
     ::conditionQueueFullSince = time_point{};
   }
 
-  bool doNotify = false;
-  if (sleepyTime_ns > _definitiveWakeupTime_ns.load(std::memory_order_relaxed)) {
-    doNotify = true;
-  } else if (sleepyTime_ns > _wakeupTime_ns &&
-             approxQueueLength > _wakeupQueueLength.load(std::memory_order_relaxed)) {
-    doNotify = true;
-  }
-  if (doNotify) {
-    _conditionWork.notify_one();
-  }
+  // PLEASE LEAVE THESE EXPLANATIONS IN THE CODE, SINCE WE HAVE HAD MANY PROBLEMS
+  // IN THIS AREA IN THE PAST, AND WE MIGHT FORGET AGAIN WHAT WE INVESTIGATED IF
+  // IT IS NOT WRITEN ANYWHERE.
+  // We always notify some potentially sleeping thread without acquiring the mutex.
+  // Here is why:
+  // We have just put something on the queue. Some threads might be sleeping, so we better
+  // wake at least one up to do the work. Let's consider different cases:
+  //  1. Everybody is sleeping: In this case, we have to wake somebody up to
+  //     keep the latency low. This is for the single-threaded customer case.
+  //  2. Some threads are working, some are sleeping: In this case we could
+  //     just let some thread finish its work, after which it will look at the
+  //     queues anyway. However, this could take some time, and since there are
+  //     sleepers, we might as well wake one up.
+  //  3. Everybody is busy: In this case there is no point waking somebody up.
+  //     However, the sleeper's queue is also empty. Measurements have shown that
+  //     the notify_one() will only take a few nanoseconds in this case. Therefore,
+  //     we can afford to do it without slowing down the current thread.
+  // Finally, why do we not (need to) acquire the mutex? First of all, this would be
+  // a possible point of contention on a cache line, and we want to avoid this. Yes,
+  // there is a very small risk that in the case that all threads are working, one thread
+  // finishes its work right at the same time that we put something on the queue. In this
+  // case it is conceivable that this sequence of events happens:
+  //  a) Worker finishes work
+  //  b) Worker checks the queue, finds nothing
+  //  c) Worker acquires the mutex
+  //  d) checks the queue again, finds nothing
+  //  e) IO thread here puts something on the queue
+  //  f) IO thread here calls notify_one(), which has no effect
+  //  g) Worker goes to sleep
+  // Net result: There is something on the queue, and a sleeping thread.
+  // This is extremely unlikely. In this case, either some other worker finishes soon
+  // and will find the work on the queue, or the sleeping worker wakes up after some
+  // time anyway. So the worst that can happen is a tiny bit of additional latency for this
+  // particular request.
+  // On the plus side, we completely eradicate contention on the Mutex. This seems like a
+  // reasonable tradeoff. If we wanted to remove this additional latency in this very unlikely
+  // case, we would have to recognise the danger of this situation here and in this case
+  // acquire the mutex. For example, we could add an atomic counter which counts how many
+  // threads are currently sleeping. If that would be close to zero, we could acquire the
+  // mutex. This would remove the problem at the cost of two additional potentially contented
+  // atomic operations per request plus the fact that we would have to acquire the mutex when
+  // all threads are busy, which is another point of contention for the IO threads. This does
+  // not look like the right choice.
+  _conditionWork.notify_one();
 
   return true;
 }
