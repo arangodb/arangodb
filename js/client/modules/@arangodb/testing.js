@@ -262,7 +262,9 @@ const internalMembers = [
   'crashed',
   'ok',
   'message',
-  'suiteName'
+  'suiteName',
+  'startupTime',
+  'testDuration'
 ];
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -719,6 +721,9 @@ function iterateTests(cases, options, jsonReply) {
       delete result.status;
       delete result.failed;
       delete result.crashed;
+      delete result.startupTime;
+      delete result.testDuration;
+      delete result.shutdown;
 
       status = Object.values(result).every(testCase => testCase.status === true);
       let failed = Object.values(result).reduce((prev, testCase) => prev + !testCase.status, 0);
