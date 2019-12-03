@@ -703,7 +703,7 @@ void extractViewValuesVar(aql::VariableGenerator const* vars,
   auto const fieldNumberSlice = fieldVar.get(NODE_VIEW_VALUES_VAR_FIELD_NUMBER);
   if (!fieldNumberSlice.isNumber<size_t>()) {
     THROW_ARANGO_EXCEPTION_FORMAT(
-        TRI_ERROR_BAD_PARAMETER, "\"ViewValuesVars[*].fieldNumber\" %s should be a number",
+        TRI_ERROR_BAD_PARAMETER, "\"viewValuesVars[*].fieldNumber\" %s should be a number",
         fieldNumberSlice.toString().c_str());
   }
   auto const fieldNumber = fieldNumberSlice.getNumber<size_t>();
@@ -711,7 +711,7 @@ void extractViewValuesVar(aql::VariableGenerator const* vars,
   auto const varIdSlice = fieldVar.get(NODE_VIEW_VALUES_VAR_ID);
   if (!varIdSlice.isNumber<aql::VariableId>()) {
     THROW_ARANGO_EXCEPTION_FORMAT(
-        TRI_ERROR_BAD_PARAMETER, "\"ViewValuesVars[*].id\" variable id %s should be a number",
+        TRI_ERROR_BAD_PARAMETER, "\"viewValuesVars[*].id\" variable id %s should be a number",
         varIdSlice.toString().c_str());
   }
 
@@ -720,7 +720,7 @@ void extractViewValuesVar(aql::VariableGenerator const* vars,
 
   if (!var) {
     THROW_ARANGO_EXCEPTION_FORMAT(
-        TRI_ERROR_BAD_PARAMETER, "\"ViewValuesVars[*].id\" unable to find variable by id %d",
+        TRI_ERROR_BAD_PARAMETER, "\"viewValuesVars[*].id\" unable to find variable by id %d",
         varId);
   }
   std::vector<std::string> postfix;
@@ -729,12 +729,12 @@ void extractViewValuesVar(aql::VariableGenerator const* vars,
     if (!postfixSlice.isArray()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
             TRI_ERROR_BAD_PARAMETER,
-            "\"ViewValuesVars[*].postfix\" attribute should be an array");
+            "\"viewValuesVars[*].postfix\" attribute should be an array");
     }
     for (auto const attrSlice : velocypack::ArrayIterator(postfixSlice)) {
       if (!attrSlice.isString()) {
         THROW_ARANGO_EXCEPTION_FORMAT(
-            TRI_ERROR_BAD_PARAMETER, "\"ViewValuesVars[*].postfix[*]\" %s should be a string",
+            TRI_ERROR_BAD_PARAMETER, "\"viewValuesVars[*].postfix[*]\" %s should be a string",
             attrSlice.toString().c_str());
       }
       VPackValueLength l;
