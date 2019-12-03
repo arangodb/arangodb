@@ -17,6 +17,8 @@ const Backbone = require('backbone');
 const _ = require('underscore');
 const Sigma = require('sigma');
 const Noty = require('noty');
+const Marked = require('marked');
+const CryptoJS = require('crypto-js');
 
 // highlight.js
 const hljs = require('highlight.js/lib/highlight');
@@ -95,7 +97,7 @@ require('../../frontend/js/lib/jquery-ui-1.9.2.custom.min.js');
 require('../../frontend/js/lib/jquery.uploadfile.min.js');
 require('../../frontend/js/lib/bootstrap-min.js');
 
-// Collect all Backbone.js relateds
+// Collect all Backbone.js related
 require('../../frontend/js/routers/router.js');
 require('../../frontend/js/routers/versionCheck.js');
 require('../../frontend/js/routers/startApp.js');
@@ -118,6 +120,7 @@ window.tippy = require('tippy.js');
 require('../../frontend/js/lib/bootstrap-pagination.min.js');
 window.numeral = require('../../frontend/js/lib/numeral.min.js'); // TODO 
 window.JSONEditor = jsoneditor;
+
 // ace 
 window.define = window.ace.define;
 window.aqltemplates = require('../public/assets/aqltemplates.json');
@@ -133,6 +136,8 @@ window.moment = require('../../frontend/js/lib/moment.min.js');
 
 // sigma
 window.sigma = Sigma;
+window.marked = Marked;
+window.CryptoJS = CryptoJS;
 
 // import additional sigma plugins
 require('sigma/build/plugins/sigma.layout.forceAtlas2.min'); // workaround to work with webpack
