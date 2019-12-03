@@ -273,7 +273,9 @@ const internalMembers = [
   'crashed',
   'ok',
   'message',
-  'suiteName'
+  'suiteName',
+  'startupTime',
+  'testDuration'
 ];
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -737,6 +739,8 @@ function iterateTests(cases, options, jsonReply) {
       delete result.status;
       delete result.failed;
       delete result.crashed;
+      delete result.startupTime;
+      delete result.testDuration;
       if (result.hasOwnProperty('shutdown')) {
         shutdownSuccess = result['shutdown'];
         delete result.shutdown;
