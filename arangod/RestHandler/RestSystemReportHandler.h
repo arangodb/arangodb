@@ -37,6 +37,7 @@ class RestSystemReportHandler : public arangodb::RestBaseHandler {
 private:
   bool isAdminUser() const;
 
+  static std::mutex _exclusive;
   std::unordered_map<std::string, std::string> const cmds;
   
 };

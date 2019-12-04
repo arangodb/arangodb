@@ -41,6 +41,8 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
+std::mutex RestSystemReportHandler::_exclusive;
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoDB server
 ////////////////////////////////////////////////////////////////////////////////
@@ -83,8 +85,6 @@ bool RestSystemReportHandler::isAdminUser() const {
     return ExecContext::current().isAdminUser();
   }
 }
-
-std::mutex _exclusive;
 
 RestStatus RestSystemReportHandler::execute() {
 
