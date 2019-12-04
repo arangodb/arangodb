@@ -1,6 +1,9 @@
 v3.4.9 (XXXX-XX-XX)
 -------------------
 
+* Fixed a bug in smart graph bfs traversals that might violate path uniqueness
+  requirements in rare cases.
+
 * The _users collection is now properly restored when using arangorestore.
 
 * Updated arangosync to 0.7.1.

@@ -249,10 +249,10 @@ bool substituteClusterSingleDocumentOperationsIndex(Optimizer* opt, ExecutionPla
           }
         }
 
-        ExecutionNode* singleOperationNode = plan->registerNode(new SingleRemoteOperationNode(
+        ExecutionNode* singleOperationNode = plan->createNode<SingleRemoteOperationNode>(
             plan, plan->nextId(), parentType, true, key, mod->collection(),
             mod->getOptions(), update, indexNode->outVariable(),
-            mod->getOutVariableOld(), mod->getOutVariableNew()));
+            mod->getOutVariableOld(), mod->getOutVariableNew());
 
         ::replaceNode(plan, mod, singleOperationNode);
         plan->unlinkNode(indexNode);
