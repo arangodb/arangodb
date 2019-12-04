@@ -393,6 +393,12 @@ VPackBuilder auth::UserManager::allUsers() {
   return result;
 }
 
+void auth::UserManager::triggerCacheRevalidation() {
+  triggerLocalReload();
+  triggerGlobalReload();
+  loadFromDB();
+}
+
 /// Trigger eventual reload, user facing API call
 void auth::UserManager::triggerGlobalReload() {
   if (!ServerState::instance()->isCoordinator()) {

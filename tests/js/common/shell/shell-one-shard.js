@@ -121,38 +121,40 @@ function OneShardPropertiesSuite () {
     },
     
     testReplicationFactorAndOverrides : function () {
-      assertTrue(db._createDatabase(dn, { replicationFactor : 2, minReplicationFactor : 2 }));
+      assertTrue(db._createDatabase(dn, { replicationFactor : 2, writeConcern : 2 }));
 
       db._useDatabase(dn);
       let props = db._properties();
       if (!isCluster) {
         assertEqual(props.sharding, undefined);
         assertEqual(props.replicationFactor, undefined);
-        assertEqual(props.minReplicationFactor, undefined);
+        assertEqual(props.minReplicationFactor, undefined);  // deprecated
+        assertEqual(props.writeConcern, undefined);
       } else {
         assertEqual(props.sharding, "");
         assertEqual(props.replicationFactor, 2);
-        assertEqual(props.minReplicationFactor, 2);
+        assertEqual(props.writeConcern, 2);
 
         {
           let col = db._create("somecollection");
           let colProperties = col.properties();
           assertEqual(colProperties.replicationFactor, 2);
-          assertEqual(colProperties.minReplicationFactor, 2);
+          assertEqual(colProperties.minReplicationFactor, 2);  // deprecated
+          assertEqual(colProperties.writeConcern, 2);
         }
 
         {
-          let col = db._create("overrideCollection1", { minReplicationFactor : 1});
+          let col = db._create("overrideCollection1", { writeConcern : 1});
           let colProperties = col.properties();
-          assertEqual(colProperties.minReplicationFactor, 1);
-          assertEqual(colProperties.minReplicationFactor, 1);
+          assertEqual(colProperties.minReplicationFactor, 1);  // deprecated
+          assertEqual(colProperties.writeConcern, 1);
         }
 
         {
-          let col = db._create("overrideCollection2", { minReplicationFactor : 1, replicationFactor : 1, numberOfShards : 3});
+          let col = db._create("overrideCollection2", { writeConcern : 1, replicationFactor : 1, numberOfShards : 3});
           let colProperties = col.properties();
-          assertEqual(colProperties.minReplicationFactor, 1);
-          assertEqual(colProperties.minReplicationFactor, 1);
+          assertEqual(colProperties.minReplicationFactor, 1);  // deprecated
+          assertEqual(colProperties.writeConcern, 1);
         }
 
         {
