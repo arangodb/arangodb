@@ -95,6 +95,9 @@ class UserManager {
   /// Trigger eventual reload on all other coordinators (and in TokenCache)
   void triggerGlobalReload();
 
+  /// Trigger cache revalidation after user restore
+  void triggerCacheRevalidation();
+
   /// Create the root user with a default password, will fail if the user
   /// already exists. Only ever call if you can guarantee to be in charge
   void createRootUser();

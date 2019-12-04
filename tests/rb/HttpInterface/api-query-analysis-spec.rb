@@ -19,7 +19,7 @@ describe ArangoDB do
     @longQuery = "FOR x IN 1..1 LET y = SLEEP(0.2) LET a = y LET b = a LET c = b LET d = c LET e = d LET f = e  RETURN x"
     @longQueryBody = JSON.dump({query: @longQuery})
     @queryWithBind = "FOR x IN 1..5 LET y = SLEEP(@value) RETURN x"
-    @queryWithBindBody = JSON.dump({query: @queryWithBind, bindVars: {value: 2}})
+    @queryWithBindBody = JSON.dump({query: @queryWithBind, bindVars: {value: 4}})
     @queryEndpoint ="/_api/cursor"
     @queryPrefix = "api-cursor"
   end
@@ -135,7 +135,7 @@ describe ArangoDB do
       found.should have_key("query")
       found["query"].should eq(@queryWithBind)
       found.should have_key("bindVars")
-      found["bindVars"].should eq({"value" => 2})
+      found["bindVars"].should eq({"value" => 4})
       found.should have_key("runTime")
       found["runTime"].should be_kind_of(Numeric)
       found.should have_key("started")
