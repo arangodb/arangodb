@@ -1609,6 +1609,7 @@ function ReplicationSuite () {
       try {
         db._dropView(cn + 'View');
       } catch (ignored) {}
+      db._drop(cn);
     }
   };
   deriveTestSuite(BaseTestConfig(), suite, '_Repl');
