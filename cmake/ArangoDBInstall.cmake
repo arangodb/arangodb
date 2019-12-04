@@ -106,11 +106,12 @@ foreach (file ${APP_FILES})
         )
     else()
       get_filename_component(dir ${file} DIRECTORY)
+      get_filename_component(parent ${dir} DIRECTORY)
       install(
         FILES
           ${app_files_source_dir}/${file}
         DESTINATION
-          ${app_files_target_dir}/${dir}
+          ${app_files_target_dir}/${parent}
       )
     endif()
 endforeach()
