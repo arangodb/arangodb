@@ -21,6 +21,7 @@ The response is a JSON object with the following attributes:
 
 - *replicationFactor*: the default replication factor for collections in this database
 
+- *minReplicationFactor*: the default minimum replication factor for collections in this database 
 
 @RESTRETURNCODES
 

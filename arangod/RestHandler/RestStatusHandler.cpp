@@ -49,14 +49,16 @@ using namespace arangodb::rest;
 
 RestStatusHandler::RestStatusHandler(application_features::ApplicationServer& server,
                                      GeneralRequest* request, GeneralResponse* response)
-    : RestBaseHandler(server, request, response) {}
+    : RestBaseHandler(server, request, response) {
+  _allowDirectExecution = true;
+}
 
 RestStatus RestStatusHandler::execute() {
   ServerSecurityFeature& security = server().getFeature<ServerSecurityFeature>();
 
   if (!security.canAccessHardenedApi()) {
     // dont leak information about server internals here
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN); 
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
     return RestStatus::DONE;
   }
 
@@ -76,6 +78,7 @@ RestStatus RestStatusHandler::execute() {
   auto& serverFeature = server().getFeature<ServerFeature>();
   result.add("mode", VPackValue(serverFeature.operationModeString()));  // to be deprecated - 3.3 compat
   result.add("operationMode", VPackValue(serverFeature.operationModeString()));
+  result.add("foxxApi", VPackValue(!security.isFoxxApiDisabled()));
 
   std::string host = ServerState::instance()->getHost();
 

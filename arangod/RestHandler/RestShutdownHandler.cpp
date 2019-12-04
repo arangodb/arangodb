@@ -39,7 +39,9 @@ using namespace arangodb::rest;
 
 RestShutdownHandler::RestShutdownHandler(application_features::ApplicationServer& server,
                                          GeneralRequest* request, GeneralResponse* response)
-    : RestBaseHandler(server, request, response) {}
+    : RestBaseHandler(server, request, response) {
+  _allowDirectExecution = true;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock JSF_get_api_initiate

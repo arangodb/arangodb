@@ -89,7 +89,7 @@ class ConnectionPool final {
   void pruneConnections();
   
   /// @brief cancel connections to this endpoint
-  void cancelConnections(std::string const& endpoint);
+  size_t cancelConnections(std::string const& endpoint);
 
   /// @brief return the number of open connections
   size_t numOpenConnections() const;

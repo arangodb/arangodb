@@ -37,10 +37,6 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-constexpr bool CountCollectExecutor::Properties::preservesOrder;
-constexpr BlockPassthrough CountCollectExecutor::Properties::allowsBlockPassthrough;
-constexpr bool CountCollectExecutor::Properties::inputSizeRestrictsOutputSize;
-
 CountCollectExecutorInfos::CountCollectExecutorInfos(
     RegisterId collectRegister, RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
     // cppcheck-suppress passedByValue

@@ -17,11 +17,12 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
+/// @author Simon Graetzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Descriptions.h"
 #include "Basics/process-utils.h"
+#include "RestServer/MetricsFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Statistics/ConnectionStatistics.h"
@@ -411,15 +412,18 @@ stats::Descriptions::Descriptions(V8DealerFeature& dealer)
 }
 
 void stats::Descriptions::serverStatistics(velocypack::Builder& b) const {
-  ServerStatistics const& info = ServerStatistics::statistics();
+  auto& server = application_features::ApplicationServer::server();
+
+  ServerStatistics const& info =
+    server.getFeature<MetricsFeature>().serverStatistics();
   b.add("uptime", VPackValue(info._uptime));
   b.add("physicalMemory", VPackValue(TRI_PhysicalMemory));
 
   b.add("transactions", VPackValue(VPackValueType::Object));
-  b.add("started", VPackValue(info._transactionsStatistics._transactionsStarted));
-  b.add("aborted", VPackValue(info._transactionsStatistics._transactionsAborted));
-  b.add("committed", VPackValue(info._transactionsStatistics._transactionsCommitted));
-  b.add("intermediateCommits", VPackValue(info._transactionsStatistics._intermediateCommits));
+  b.add("started", VPackValue(info._transactionsStatistics._transactionsStarted.load()));
+  b.add("aborted", VPackValue(info._transactionsStatistics._transactionsAborted.load()));
+  b.add("committed", VPackValue(info._transactionsStatistics._transactionsCommitted.load()));
+  b.add("intermediateCommits", VPackValue(info._transactionsStatistics._intermediateCommits.load()));
   b.close();
 
   if (_dealer.isEnabled()) {

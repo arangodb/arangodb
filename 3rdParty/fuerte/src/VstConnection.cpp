@@ -70,7 +70,8 @@ MessageID VstConnection<ST>::sendRequest(std::unique_ptr<Request> req,
   // Add item to send queue
   if (!_writeQueue.push(item.get())) {
     FUERTE_LOG_ERROR << "connection queue capacity exceeded\n";
-    throw std::length_error("connection queue capacity exceeded");
+    item->invokeOnError(Error::QueueCapacityExceeded);
+    return 0;
   }
   item.release();  // queue owns this now
   

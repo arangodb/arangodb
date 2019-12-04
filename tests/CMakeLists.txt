@@ -166,6 +166,7 @@ set(ARANGODB_TESTS_SOURCES
   IResearch/IResearchQueryIn-test.cpp
   IResearch/IResearchQueryInRange-test.cpp
   IResearch/IResearchQueryJoin-test.cpp
+  IResearch/IResearchQueryLateMaterialization-test.cpp
   IResearch/IResearchQueryMinMatch-test.cpp
   IResearch/IResearchQueryNullTerm-test.cpp
   IResearch/IResearchQueryNumericTerm-test.cpp
@@ -193,6 +194,7 @@ set(ARANGODB_TESTS_SOURCES
   Maintenance/MaintenanceRestHandlerTest.cpp
   Maintenance/MaintenanceTest.cpp
   ${RCFILE}
+  Metrics/MetricsTest.cpp
   Mocks/LogLevels.cpp
   Mocks/StorageEngineMock.cpp
   Mocks/Servers.cpp
@@ -280,7 +282,7 @@ endif()
 
 if (DARWIN AND FAIL_ON_WARNINGS)
   # Missing Braces is broken in older CLangs - disable them here.
-  target_compile_options(arangodbtests PRIVATE -Werror -Wno-missing-braces)
+  target_compile_options(arangodbtests PRIVATE -Werror -Wno-error=deprecated-declarations -Wno-missing-braces)
 endif()
 
 # add these includes as system includes because otherwise

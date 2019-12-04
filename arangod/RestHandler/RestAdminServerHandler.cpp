@@ -39,7 +39,9 @@ using namespace arangodb::rest;
 RestAdminServerHandler::RestAdminServerHandler(application_features::ApplicationServer& server,
                                                GeneralRequest* request,
                                                GeneralResponse* response)
-    : RestBaseHandler(server, request, response) {}
+    : RestBaseHandler(server, request, response) {
+  _allowDirectExecution = true;
+}
 
 RestStatus RestAdminServerHandler::execute() {
   std::vector<std::string> const& suffixes = _request->suffixes();

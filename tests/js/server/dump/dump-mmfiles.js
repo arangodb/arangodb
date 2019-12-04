@@ -91,8 +91,17 @@ function dumpTestSuite () {
       assertEqual(100000, c.count());
 
       // test all documents
-      for (var i = 0; i < 100000; ++i) {
-        var doc = c.document("test" + i);
+      let docs = [], results = [];
+      for (let i = 0; i < 100000; ++i) {
+        docs.push("test" + i);
+        if (docs.length === 10000) {
+          results = results.concat(c.document(docs));
+          docs = [];
+        }
+      }
+
+      for (let i = 0; i < 100000; ++i) {
+        let doc = results[i];
         assertEqual(i, doc.value1);
         assertEqual("this is a test", doc.value2);
         assertEqual("test" + i, doc.value3);

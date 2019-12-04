@@ -42,6 +42,8 @@
 #include "Aql/IndexNode.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/MultiDependencySingleRowFetcher.h"
+#include "Aql/ParallelUnsortedGatherExecutor.h"
+#include "Aql/OptimizerRulesFeature.h"
 #include "Aql/Query.h"
 #include "Aql/RemoteExecutor.h"
 #include "Aql/ScatterExecutor.h"
@@ -49,7 +51,6 @@
 #include "Aql/SortRegister.h"
 #include "Aql/SortingGatherExecutor.h"
 #include "Aql/UnsortedGatherExecutor.h"
-#include "Aql/UnsortingGatherExecutor.h"
 #include "Aql/types.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
@@ -421,6 +422,7 @@ CostEstimate DistributeNode::estimateCost() const {
 GatherNode::GatherNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base,
                        SortElementVector const& elements)
     : ExecutionNode(plan, base),
+      _vocbase(&(plan->getAst()->query()->vocbase())),
       _elements(elements),
       _sortmode(SortMode::MinElement),
       _parallelism(Parallelism::Undefined), 
@@ -444,6 +446,7 @@ GatherNode::GatherNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& b
 
 GatherNode::GatherNode(ExecutionPlan* plan, size_t id, SortMode sortMode, Parallelism parallelism) noexcept
     : ExecutionNode(plan, id), 
+      _vocbase(&(plan->getAst()->query()->vocbase())),
       _sortmode(sortMode), 
       _parallelism(parallelism),
       _limit(0) {}
@@ -494,14 +497,15 @@ std::unique_ptr<ExecutionBlock> GatherNode::createBlock(
     TRI_ASSERT(getRegisterPlan()->nrRegs[previousNode->getDepth()] ==
                getRegisterPlan()->nrRegs[getDepth()]);
     if (ServerState::instance()->isCoordinator() && _parallelism == Parallelism::Parallel) {
-      UnsortedGatherExecutorInfos infos(getRegisterPlan()->nrRegs[getDepth()],
-                                        calcRegsToKeep(), getRegsToClear());
-      return std::make_unique<ExecutionBlockImpl<UnsortedGatherExecutor>>(&engine, this, std::move(infos));
+      ParallelUnsortedGatherExecutorInfos infos(getRegisterPlan()->nrRegs[getDepth()],
+                                                calcRegsToKeep(), getRegsToClear());
+      return std::make_unique<ExecutionBlockImpl<ParallelUnsortedGatherExecutor>>(
+          &engine, this, std::move(infos));
     } else {
       IdExecutorInfos infos(getRegisterPlan()->nrRegs[getDepth()],
                             calcRegsToKeep(), getRegsToClear());
 
-      return std::make_unique<ExecutionBlockImpl<UnsortingGatherExecutor>>(&engine, this,
+      return std::make_unique<ExecutionBlockImpl<UnsortedGatherExecutor>>(&engine, this,
                                                                            std::move(infos));
     }
   }
@@ -544,9 +548,13 @@ bool GatherNode::isSortingGather() const noexcept {
 
 /// @brief is the node parallelizable?
 struct ParallelizableFinder final : public WalkerWorker<ExecutionNode> {
-  bool _isParallelizable = true;
+  bool const _parallelizeWrites;
+  bool _isParallelizable;
 
-  ParallelizableFinder() : _isParallelizable(true) {}
+  explicit ParallelizableFinder(TRI_vocbase_t const& _vocbase)
+      : _parallelizeWrites(_vocbase.server().getFeature<OptimizerRulesFeature>().parallelizeGatherWrites()),
+        _isParallelizable(true) {}
+
   ~ParallelizableFinder() = default;
 
   bool enterSubquery(ExecutionNode*, ExecutionNode*) override final {
@@ -554,13 +562,25 @@ struct ParallelizableFinder final : public WalkerWorker<ExecutionNode> {
   }
 
   bool before(ExecutionNode* node) override final {
-    if (node->isModificationNode() ||
-        node->getType() == ExecutionNode::SCATTER ||
+    if (node->getType() == ExecutionNode::SCATTER ||
         node->getType() == ExecutionNode::GATHER ||
         node->getType() == ExecutionNode::DISTRIBUTE) {
       _isParallelizable = false;
       return true;  // true to abort the whole walking process
     }
+    // write operations of type REMOVE, REPLACE and UPDATE
+    // can be parallelized, provided the rest of the plan
+    // does not prohibit this
+    if (node->isModificationNode() &&
+        _parallelizeWrites &&
+        (node->getType() != ExecutionNode::REMOVE &&
+         node->getType() != ExecutionNode::REPLACE && 
+         node->getType() != ExecutionNode::UPDATE)) {
+      _isParallelizable = false;
+      return true;  // true to abort the whole walking process
+    }
+
+    // continue inspecting
     return false;
   }
 };
@@ -572,7 +592,7 @@ bool GatherNode::isParallelizable() const {
     return false;
   }
 
-  ParallelizableFinder finder;
+  ParallelizableFinder finder(*_vocbase);
   for (ExecutionNode* e : _dependencies) {
     e->walk(finder);
     if (!finder._isParallelizable) {

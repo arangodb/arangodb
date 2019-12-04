@@ -35,7 +35,6 @@
 #include "Basics/win-utils.h"
 #endif
 
-#include <ctype.h>
 #include <errno.h>
 #include <signal.h>
 #include <stdio.h>
@@ -1337,7 +1336,7 @@ static void JS_ChMod(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   long mode = 0;
   for (uint32_t i = 0; i < length; ++i) {
-    if (!isdigit(modeStr[i])) {
+    if (modeStr[i] < '0' || modeStr[i] > '9') {
       TRI_V8_THROW_TYPE_ERROR(
           "<mode> must be a string with up to 4 octal digits in it plus a "
           "leading zero.");

@@ -445,6 +445,7 @@ v8::Handle<v8::Object> TRI_RequestCppToV8(v8::Isolate* isolate,
         optionsWithUniquenessCheck.checkAttributeUniqueness = true;
         auto parsed = request->payload(&optionsWithUniquenessCheck);
         if (parsed.isObject() || parsed.isArray()) {
+          request->setDefaultContentType();
           digesteable = true;
         }
       } catch ( ... ) {} 
