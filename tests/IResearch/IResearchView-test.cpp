@@ -7409,16 +7409,16 @@ TEST_F(IResearchViewTest, test_remove_referenced_analyzer) {
 }
 
 TEST_F(IResearchViewTest, create_view_with_stored_value) {
-  auto json = arangodb::velocypack::Parser::fromJson(
-        "{ "
-        "  \"name\": \"testView\", "
-        "  \"type\": \"arangosearch\", "
-        "  \"storedFields\": [ "
-        "    \"obj.a\", \"obj.b.b1\", "
-        "    [\"obj.c\", \"obj.d\"], [\"obj.e\", \"obj.f.f1\", \"obj.g\"] ] "
-        "}");
-
+  // default
   {
+    auto json = arangodb::velocypack::Parser::fromJson(
+          "{ "
+          "  \"name\": \"testView\", "
+          "  \"type\": \"arangosearch\", "
+          "  \"storedFields\": [ "
+          "    \"obj.a\", \"obj.b.b1\", "
+          "    [\"obj.c\", \"obj.d\"], [\"obj.e\", \"obj.f.f1\", \"obj.g\"] ] "
+          "}");
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
     arangodb::LogicalView::ptr view;
     EXPECT_TRUE((arangodb::iresearch::IResearchView::factory().create(view, vocbase, json->slice()).ok()));
@@ -7431,7 +7431,7 @@ TEST_F(IResearchViewTest, create_view_with_stored_value) {
     auto slice = builder.slice();
     arangodb::iresearch::IResearchViewMeta meta;
     std::string error;
-    EXPECT_EQ(18, slice.length());
+    EXPECT_EQ(14, slice.length());
     EXPECT_EQ("testView", slice.get("name").copyString());
     EXPECT_TRUE(meta.init(slice, error));
     ASSERT_EQ(4, meta._storedValue.columns().size());
@@ -7445,5 +7445,44 @@ TEST_F(IResearchViewTest, create_view_with_stored_value) {
     EXPECT_EQ(3, meta._storedValue.columns()[3].fields.size());
     EXPECT_EQ(std::string("obj.e") + arangodb::iresearch::IResearchViewStoredValue::FIELDS_DELIMITER +"obj.f.f1" +
               arangodb::iresearch::IResearchViewStoredValue::FIELDS_DELIMITER + "obj.g", meta._storedValue.columns()[3].name);
+  }
+
+  // repeated fields and columns
+  {
+    auto json = arangodb::velocypack::Parser::fromJson(
+          "{ "
+          "  \"name\": \"testView\", "
+          "  \"type\": \"arangosearch\", "
+          "  \"storedFields\": [ "
+          "    \"obj.a\", \"obj.a\", \"obj.b\", \"obj.c\", \"obj.d\", "
+          "    [\"obj.d\"], [\"obj.c\", \"obj.c\", \"obj.d\"], [\"obj.b\", \"obj.b\"] ] "
+          "}");
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+    arangodb::LogicalView::ptr view;
+    EXPECT_TRUE((arangodb::iresearch::IResearchView::factory().create(view, vocbase, json->slice()).ok()));
+    EXPECT_FALSE(!view);
+
+    arangodb::velocypack::Builder builder;
+    builder.openObject();
+    view->properties(builder, arangodb::LogicalDataSource::Serialization::Properties);
+    builder.close();
+    auto slice = builder.slice();
+    arangodb::iresearch::IResearchViewMeta meta;
+    std::string error;
+    EXPECT_EQ(14, slice.length());
+    EXPECT_EQ("testView", slice.get("name").copyString());
+    EXPECT_TRUE(meta.init(slice, error));
+    ASSERT_EQ(5, meta._storedValue.columns().size());
+    EXPECT_EQ(1, meta._storedValue.columns()[0].fields.size());
+    EXPECT_EQ("obj.a", meta._storedValue.columns()[0].name);
+    EXPECT_EQ(1, meta._storedValue.columns()[1].fields.size());
+    EXPECT_EQ("obj.b", meta._storedValue.columns()[1].name);
+    EXPECT_EQ(1, meta._storedValue.columns()[2].fields.size());
+    EXPECT_EQ("obj.c", meta._storedValue.columns()[2].name);
+    EXPECT_EQ(1, meta._storedValue.columns()[3].fields.size());
+    EXPECT_EQ("obj.d", meta._storedValue.columns()[3].name);
+    EXPECT_EQ(2, meta._storedValue.columns()[4].fields.size());
+    EXPECT_EQ(std::string("obj.c") + arangodb::iresearch::IResearchViewStoredValue::FIELDS_DELIMITER + "obj.d",
+              meta._storedValue.columns()[4].name);
   }
 }
