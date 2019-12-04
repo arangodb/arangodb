@@ -2,12 +2,15 @@
 @startDocuBlock get_read_document
 @brief reads a single document
 
-@RESTHEADER{GET /_api/document/{document-handle},Read document, readDocument}
+@RESTHEADER{GET /_api/document/{collection}/{key},Read document,readDocument}
 
 @RESTURLPARAMETERS
 
-@RESTURLPARAM{document-handle,string,required}
-The handle of the document.
+@RESTURLPARAM{collection,string,required}
+Name of the *collection* from which the document is to be read.
+
+@RESTURLPARAM{key,string,required}
+The document key.
 
 @RESTHEADERPARAMETERS
 

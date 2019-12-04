@@ -2,18 +2,18 @@
 @startDocuBlock get_read_document_MULTI
 @brief reads a single document
 
-@RESTHEADER{PUT /_api/document/{collection-name},Read multiple documents, readDocuments}
+@RESTHEADER{PUT /_api/document/{collection}?onlyget=true,Read multiple documents,readDocuments}
 
 @RESTURLPARAMETERS
 
-@RESTURLPARAM{collection-name,string,required}
-The *collection* from which the documents are to be read.
+@RESTURLPARAM{collection,string,required}
+Name of the *collection* from which the documents are to be read.
 
 @RESTQUERYPARAMETERS
 
 @RESTQUERYPARAM{onlyget,boolean,required}
 This parameter is required to be **true**, otherwise a replace
-operation is executed
+operation is executed!
 
 @RESTQUERYPARAM{ignoreRevs,string,optional}
 Should the value be *true* (the default):
