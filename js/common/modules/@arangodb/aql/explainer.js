@@ -1141,7 +1141,7 @@ function processQuery(query, explain, planIndex) {
               } else {
                 return viewValuesColumn.viewStoredValuesVars.map(function (viewValuesVar) {
                   return keyword(' LET ') + variableName(viewValuesVar) + ' = ' + variableName(node.outVariable) + '.' + attribute(viewValuesVar.field);
-                }).join('')
+                }).join('');
               }
             }).join('');
           }
