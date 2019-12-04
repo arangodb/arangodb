@@ -380,12 +380,18 @@ function analyzeCrash (binary, instanceInfo, options, checkStr) {
 
   let hint = '';
   if (platform.substr(0, 3) === 'win') {
-    if (!instanceInfo.hasOwnProperty('monitor')) {
+    if (instanceInfo.hasOwnProperty('monitor')) {
+      pu.stopProcdump(options, instanceInfo);
+    }
+    if (!instanceInfo.hasOwnProperty('coreFilePattern') ) {
       print("your process wasn't monitored by procdump, won't have a coredump!");
       instanceInfo.exitStatus['gdbHint'] = "coredump unavailable";
       return;
+    } else if (!fs.exists(instanceInfo.coreFilePattern)) {
+      print("No coredump exists at " + instanceInfo.coreFilePattern);
+      instanceInfo.exitStatus['gdbHint'] = "coredump unavailable";
+      return;
     }
-    pu.stopProcdump(options, instanceInfo);
     hint = analyzeCoreDumpWindows(instanceInfo);
   } else if (platform === 'darwin') {
     // fs.copyFile(binary, storeArangodPath);

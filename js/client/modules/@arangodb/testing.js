@@ -577,6 +577,7 @@ function unitTest (cases, options) {
       }]
     };
   }
+  fs.list( fs.join(process.env['WORKSPACE'], 'core'));
 
   arango.forceJson(options.forceJson);
 
