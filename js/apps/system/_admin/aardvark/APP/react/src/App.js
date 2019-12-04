@@ -61,8 +61,6 @@ function requireAll(context) {
   });
 }
 
-
-
 // templates ejs
 requireAll(require.context(
   '../../frontend/js/templates/'
@@ -96,6 +94,10 @@ if (window.frontendConfig && env === 'development') {
 require('../../frontend/js/lib/jquery-ui-1.9.2.custom.min.js');
 require('../../frontend/js/lib/jquery.uploadfile.min.js');
 require('../../frontend/js/lib/bootstrap-min.js');
+
+// typeahead
+require("typeahead.js/dist/typeahead.jquery.min.js")
+require("typeahead.js/dist/bloodhound.min.js")
 
 // Collect all Backbone.js related
 require('../../frontend/js/routers/router.js');
