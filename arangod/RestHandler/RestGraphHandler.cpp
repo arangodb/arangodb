@@ -35,7 +35,6 @@
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
-#include "Logger/LogMacros.h"
 
 using namespace arangodb;
 using namespace arangodb::graph;
@@ -743,15 +742,12 @@ Result RestGraphHandler::modifyVertexDefinition(graph::Graph& graph,
     result = gops.addOrphanCollection(body, waitForSync, createCollection);
   } else if (action == VertexDefinitionAction::REMOVE) {
     result = gops.eraseOrphanCollection(waitForSync, vertexDefinitionName, dropCollection);
-    LOG_DEVEL << "xxxx"; 
   } else {
     TRI_ASSERT(false);
   }
 
   if (result.fail()) {
-    LOG_DEVEL << result.errorMessage();
     generateTransactionError(result);
-    LOG_DEVEL << result.errorMessage();
     return result.result;
   }
 

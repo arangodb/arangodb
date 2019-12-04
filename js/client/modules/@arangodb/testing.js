@@ -559,9 +559,6 @@ function unitTest (cases, options) {
   loadTestSuites(options);
   // testsuites may register more defaults...
   _.defaults(options, optionsDefaults);
-  options.coreCheck = true;
-  print(process.env)
-//   require('@arangodb/crash-utils').calculateMonitorValues(options, {}, 1234, "/home/willi/arangod");
   try {
     pu.setupBinaries(options.build, options.buildType, options.configDir);
   }
@@ -576,8 +573,7 @@ function unitTest (cases, options) {
         message: err.message
       }]
     };
-  }
-  fs.list( fs.join(process.env['WORKSPACE'], 'core'));
+  };
 
   arango.forceJson(options.forceJson);
 
