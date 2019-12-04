@@ -97,16 +97,15 @@ set(app_files_source_dir ${PROJECT_SOURCE_DIR}/js/apps/system/_admin/aardvark/AP
 set(app_files_target_dir ${CMAKE_INSTALL_DATAROOTDIR_ARANGO}/${ARANGODB_JS_VERSION}/apps/system/_admin/aardvark/APP)
 
 foreach (file ${APP_FILES})
+    get_filename_component(parent ${file} DIRECTORY)
     if(IS_DIRECTORY ${app_files_source_dir}/${file})
       install(
         DIRECTORY
           ${app_files_source_dir}/${file}
         DESTINATION
-          ${app_files_target_dir}/${file}
+          ${app_files_target_dir}/${parent}
         )
     else()
-      get_filename_component(dir ${file} DIRECTORY)
-      get_filename_component(parent ${dir} DIRECTORY)
       install(
         FILES
           ${app_files_source_dir}/${file}
