@@ -228,22 +228,26 @@ function stopProcdump (options, instanceInfo, force = false) {
 
 function calculateMonitorValues(options, instanceInfo, pid, cmd) {
   
-  if (platform.substr(0, 3) === 'win') {
+//  if (platform.substr(0, 3) === 'win') {
     if (process.env.hasOwnProperty('WORKSPACE') &&
         fs.isDirectory(fs.join(process.env['WORKSPACE'], 'core'))) {
       print("have core directory!");
       print(cmd)
       print(pid)
       print(typeof(pid))
-      instanceInfo.coreFilePattern = fs.join(process.env['COREDIR'], 'core', cmd + '.' + pid.toString() + '.dmp');
+      let spcmd = fs.normalize(cmd).split(fs.pathSeparator)
+      print(spcmd)
+      let executeable = spcmd[spcmd.length - 1];
+      print(process.env['WORKSPACE'], 'core',  executeable + '.' + pid.toString() + '.dmp');
+      instanceInfo.coreFilePattern = fs.join(process.env['WORKSPACE'], 'core',  executeable + '.' + pid.toString() + '.dmp');
     }
-  }
+//  }
 }
 function isEnabledWindowsMonitor(options, instanceInfo, pid, cmd) {
+  calculateMonitorValues(options, instanceInfo, pid, cmd);
   if (platform.substr(0, 3) === 'win' && !options.disableMonitor) {
     return true;
   }
-  calculateMonitorValues(options, instanceInfo, pid, cmd);
   return false;
 }
 

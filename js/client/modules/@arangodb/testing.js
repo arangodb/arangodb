@@ -561,6 +561,7 @@ function unitTest (cases, options) {
   _.defaults(options, optionsDefaults);
   options.coreCheck = true;
   print(process.env)
+//   require('@arangodb/crash-utils').calculateMonitorValues(options, {}, 1234, "/home/willi/arangod");
   try {
     pu.setupBinaries(options.build, options.buildType, options.configDir);
   }
