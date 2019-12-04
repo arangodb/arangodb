@@ -232,7 +232,10 @@ function calculateMonitorValues(options, instanceInfo, pid, cmd) {
     if (process.env.hasOwnProperty('WORKSPACE') &&
         fs.isDirectory(fs.join(process.env['WORKSPACE'], 'core'))) {
       print("have core directory!");
-      instanceInfo.coreFilePattern = fs.join(process.env['COREDIR'], 'core', cmd + '.' + pid + '.dmp');
+      print(cmd)
+      print(pid)
+      print(typeof(pid))
+      instanceInfo.coreFilePattern = fs.join(process.env['COREDIR'], 'core', cmd + '.' + pid.toString() + '.dmp');
     }
   }
 }
