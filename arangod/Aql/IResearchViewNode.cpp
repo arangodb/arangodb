@@ -1526,8 +1526,8 @@ IResearchViewNode::ViewVarsInfo IResearchViewNode::OptimizationState::replaceVie
     auto const& calcNodeData = _nodesToChange[calcNode];
     std::transform(calcNodeData.cbegin(), calcNodeData.cend(), std::inserter(uniqueVariables, uniqueVariables.end()),
       [ast](auto const& afData) {
-        return std::make_pair(afData.field, ViewVariableWithColumn{afData.fieldNumber, afData.postfix,
-          ast->variables()->createTemporaryVariable(), afData.columnNumber});
+        return std::make_pair(afData.field, ViewVariableWithColumn{{afData.fieldNumber, afData.postfix,
+          ast->variables()->createTemporaryVariable()}, afData.columnNumber});
       });
   }
   for (auto calcNode : calcNodes) {
