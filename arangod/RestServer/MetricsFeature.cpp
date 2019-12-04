@@ -76,6 +76,10 @@ bool MetricsFeature::exportAPI() const {
 void MetricsFeature::validateOptions(std::shared_ptr<ProgramOptions>) {}
 
 void MetricsFeature::toPrometheus(std::string& result) const {
+
+  // minimise reallocs
+  result.reserve(65536);
+  
   {
     std::lock_guard<std::mutex> guard(_lock);
     for (auto const& i : _registry) {
