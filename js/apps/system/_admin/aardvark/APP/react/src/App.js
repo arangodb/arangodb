@@ -169,7 +169,7 @@ require('../../frontend/js/lib/wheelnav.min.js');
 window.Raphael = require('../../frontend/js/lib/raphael.min.js');
 require('../../frontend/js/lib/raphael.icons.min.js');
 
-require('../../frontend/js/lib/randomColor.js');
+window.randomColor = require('../../frontend/js/lib/randomColor.js');
 //require('../../frontend/src/ace.js');
 //require('../../frontend/src/theme-textmate.js');
 //require('../../frontend/src/mode-json.js');
