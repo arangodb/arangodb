@@ -1,6 +1,8 @@
 devel
 -----
 
+* Add acquisition of system report to arangod instances
+
 * Fix execution ability in CentOS 6 regarding newer boost.
 
 * Fixed permissions for dump/restore.
@@ -15,11 +17,11 @@ devel
 
 * ArangoDB web UI was switched to React from previous framework and rebuilt.
 
-* Enable the `parallelize-gather` AQL optimizer rule for certain write queries. 
+* Enable the `parallelize-gather` AQL optimizer rule for certain write queries.
 
   The optimization is turned on by default and can be disabled by setting the
   startup option `--query.parallelize-gather-writes` to `false`.
-    
+
 * Shard synchronisation readlock aware of rebootId.
 
 * Bugfix: In an AQL cluster query, when gathering unsorted data in combination
