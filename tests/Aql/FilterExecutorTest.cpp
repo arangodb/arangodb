@@ -387,11 +387,12 @@ TEST_F(FilterExecutorTest, test_produce_datarange_need_more) {
   SharedAqlItemBlockPtr inBlock =
       buildBlock<1>(itemBlockManager,
                     {{R"(true)"}, {R"(false)"}, {R"(true)"}, {R"(false)"}, {R"(true)"}});
-
+  size_t softLimit = 1000;
   AqlItemBlockInputRange input{ExecutorState::HASMORE, inBlock, 0, inBlock->size()};
-
+  AqlCall limitedCall{};
+  limitedCall.softLimit = softLimit;
   OutputAqlItemRow output(std::move(block), outputRegisters, registersToKeep,
-                          infos.registersToClear());
+                          infos.registersToClear(), std::move(limitedCall));
   EXPECT_EQ(output.numRowsWritten(), 0);
   auto const [state, stats, call] = testee.produceRows(input, output);
   EXPECT_EQ(state, ExecutorState::HASMORE);
@@ -401,9 +402,8 @@ TEST_F(FilterExecutorTest, test_produce_datarange_need_more) {
   // Test the Call we send to upstream
   EXPECT_EQ(call.offset, 0);
   EXPECT_FALSE(call.hasHardLimit());
-  // Avoid overfetching. I do not have a strong requirement on this
-  // test, however this is what we do right now.
-  EXPECT_EQ(call.getLimit(), 997);
+  // We have a given softLimit, so we do not do overfetching
+  EXPECT_EQ(call.getLimit(), softLimit - 3);
   EXPECT_FALSE(call.fullCount);
 }
 
@@ -450,8 +450,10 @@ TEST_F(FilterExecutorTest, test_produce_datarange_has_more) {
                     {{R"(true)"}, {R"(false)"}, {R"(true)"}, {R"(false)"}, {R"(true)"}});
 
   AqlItemBlockInputRange input{ExecutorState::DONE, inBlock, 0, inBlock->size()};
+  block.reset(new AqlItemBlock(itemBlockManager, 2, 1));
   OutputAqlItemRow output(std::move(block), outputRegisters, registersToKeep,
                           infos.registersToClear());
+
   auto const [state, stats, call] = testee.produceRows(input, output);
   EXPECT_EQ(state, ExecutorState::HASMORE);
   EXPECT_EQ(stats.getFiltered(), 1);
