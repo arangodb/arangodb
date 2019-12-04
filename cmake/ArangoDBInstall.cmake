@@ -81,35 +81,36 @@ install(
     ${PROJECT_SOURCE_DIR}/js/apps
     ${PROJECT_SOURCE_DIR}/js/server
   DESTINATION ${CMAKE_INSTALL_DATAROOTDIR_ARANGO}/${ARANGODB_JS_VERSION}
-  REGEX       "^.*/aardvark/APP/.*/.*$"                    EXCLUDE
+  REGEX       "^.*/aardvark/APP/frontend.*$"               EXCLUDE
+  REGEX       "^.*/aardvark/APP/react.*$"                  EXCLUDE
   REGEX       "^.*/js/server/assets/swagger/*.map$"        EXCLUDE
   REGEX       "^.*/.bin"                                   EXCLUDE
 )
 
 set(APP_FILES
- "generator"
  "frontend/img"
  "react/build"
  "react/public/assets/aqltemplates.json"
 )
 
+set(app_files_source_dir ${PROJECT_SOURCE_DIR}/js/apps/system/_admin/aardvark/APP)
+set(app_files_target_dir ${CMAKE_INSTALL_DATAROOTDIR_ARANGO}/${ARANGODB_JS_VERSION}/apps/system/_admin/aardvark/APP)
+
 foreach (file ${APP_FILES})
-    if(IS_DIRECTORY ${PROJECT_SOURCE_DIR}/js/apps/system/_admin/aardvark/APP/${file})
+    if(IS_DIRECTORY ${app_files_source_dir}/${file})
       install(
         DIRECTORY
-          ${PROJECT_SOURCE_DIR}/js/apps/system/_admin/aardvark/APP/${file}
+          ${app_files_source_dir}/${file}
         DESTINATION
-          ${CMAKE_INSTALL_DATAROOTDIR_ARANGO}/${ARANGODB_JS_VERSION}/apps/system/_admin/aardvark/APP/${file}
-        REGEX
-          ".*react.*" EXCLUDE
-      )
+          ${app_files_target_dir}/${file}
+        )
     else()
       get_filename_component(dir ${file} DIRECTORY)
       install(
         FILES
-          ${PROJECT_SOURCE_DIR}/js/apps/system/_admin/aardvark/APP/${file}
+          ${app_files_source_dir}/${file}
         DESTINATION
-          ${CMAKE_INSTALL_DATAROOTDIR_ARANGO}/${ARANGODB_JS_VERSION}/system/_admin/aardvark/APP/${dir}
+          ${app_files_target_dir}/${dir}
       )
     endif()
 endforeach()
