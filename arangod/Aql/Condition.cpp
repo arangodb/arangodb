@@ -691,9 +691,9 @@ std::vector<std::vector<arangodb::basics::AttributeName>> Condition::getConstAtt
 }
 
 /// @brief get the attributes for a sub-condition that are not-null
-arangodb::HashSet<std::vector<arangodb::basics::AttributeName>> Condition::getNonNullAttributes(
+::arangodb::containers::HashSet<std::vector<arangodb::basics::AttributeName>> Condition::getNonNullAttributes(
     Variable const* reference) const {
-  arangodb::HashSet<std::vector<arangodb::basics::AttributeName>> result;
+  ::arangodb::containers::HashSet<std::vector<arangodb::basics::AttributeName>> result;
 
   if (_root == nullptr) {
     return result;
@@ -790,7 +790,7 @@ void Condition::normalize() {
 
 void Condition::collectOverlappingMembers(ExecutionPlan const* plan, Variable const* variable,
                                           AstNode const* andNode, AstNode const* otherAndNode,
-                                          arangodb::HashSet<size_t>& toRemove,
+                                          ::arangodb::containers::HashSet<size_t>& toRemove,
                                           Index const* index, /* may be nullptr */
                                           bool isFromTraverser) {
   bool const isSparse = (index != nullptr && index->sparse());
@@ -892,7 +892,7 @@ AstNode* Condition::removeIndexCondition(ExecutionPlan const* plan, Variable con
   auto conditionAndNode = condition->getMemberUnchecked(0);
   TRI_ASSERT(conditionAndNode->type == NODE_TYPE_OPERATOR_NARY_AND);
 
-  arangodb::HashSet<size_t> toRemove;
+  ::arangodb::containers::HashSet<size_t> toRemove;
   collectOverlappingMembers(plan, variable, andNode, conditionAndNode, toRemove, index, false);
 
   if (toRemove.empty()) {
@@ -941,7 +941,7 @@ AstNode* Condition::removeTraversalCondition(ExecutionPlan const* plan,
   TRI_ASSERT(otherAndNode->type == NODE_TYPE_OPERATOR_NARY_AND);
   size_t const n = andNode->numMembers();
 
-  arangodb::HashSet<size_t> toRemove;
+  ::arangodb::containers::HashSet<size_t> toRemove;
   collectOverlappingMembers(plan, variable, andNode, otherAndNode, toRemove, nullptr, true);
 
   if (toRemove.empty()) {
@@ -969,7 +969,7 @@ AstNode* Condition::removeTraversalCondition(ExecutionPlan const* plan,
 }
 
 /// @brief remove (now) invalid variables from the condition
-bool Condition::removeInvalidVariables(arangodb::HashSet<Variable const*> const& validVars) {
+bool Condition::removeInvalidVariables(::arangodb::containers::HashSet<Variable const*> const& validVars) {
   if (_root == nullptr) {
     return false;
   }
@@ -985,7 +985,7 @@ bool Condition::removeInvalidVariables(arangodb::HashSet<Variable const*> const&
 
   // handle sub nodes of top-level OR node
   size_t const n = _root->numMembers();
-  arangodb::HashSet<Variable const*> varsUsed;
+  ::arangodb::containers::HashSet<Variable const*> varsUsed;
 
   for (size_t i = 0; i < n; ++i) {
     auto oldAndNode = _root->getMemberUnchecked(i);

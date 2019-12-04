@@ -96,7 +96,7 @@ void ServerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("vst", "Configure the VelocyStream protocol");
 
   options->addObsoleteOption("--vst.maxsize", "maximal size (in bytes) "
-                             "for a VelocyPack chunk", false);
+                             "for a VelocyPack chunk", true);
 
 #if _WIN32
   options->addOption("--console.code-page",

@@ -30,6 +30,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/HashedCollectExecutor.h"
 #include "Aql/Query.h"
+#include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/SortedCollectExecutor.h"
 #include "Aql/VariableGenerator.h"
@@ -475,7 +476,7 @@ struct UserVarFinder final : public WalkerWorker<ExecutionNode> {
 };
 
 /// @brief getVariablesUsedHere, modifying the set in-place
-void CollectNode::getVariablesUsedHere(arangodb::HashSet<Variable const*>& vars) const {
+void CollectNode::getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& vars) const {
   for (auto const& p : _groupVariables) {
     vars.emplace(p.second);
   }

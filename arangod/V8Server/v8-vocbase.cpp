@@ -43,6 +43,7 @@
 #include "Aql/QueryExecutionState.h"
 #include "Aql/QueryList.h"
 #include "Aql/QueryRegistry.h"
+#include "Aql/QueryResultV8.h"
 #include "Aql/QueryString.h"
 #include "Basics/HybridLogicalClock.h"
 #include "Basics/MutexLocker.h"
@@ -168,17 +169,17 @@ static void JS_Transaction(v8::FunctionCallbackInfo<v8::Value> const& args) {
 static void JS_Transactions(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-  
+
   auto& vocbase = GetContextVocBase(isolate);
 
   // check if we have some transaction object
   if (args.Length() != 0) {
     TRI_V8_THROW_EXCEPTION_USAGE("TRANSACTIONS()");
   }
-    
+
   VPackBuilder builder;
   builder.openArray();
-    
+
   bool const fanout = ServerState::instance()->isCoordinator();
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
   std::string user;
@@ -186,9 +187,9 @@ static void JS_Transactions(v8::FunctionCallbackInfo<v8::Value> const& args) {
     user = ExecContext::current().user();
   }
   mgr->toVelocyPack(builder, vocbase.name(), user, fanout);
- 
+
   builder.close();
-  
+
   v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, builder.slice());
 
   TRI_V8_RETURN(result);
@@ -768,19 +769,7 @@ static void JS_ExecuteAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
   arangodb::aql::Query query(true, vocbase, aql::QueryString(queryString),
                              bindVars, options, arangodb::aql::PART_MAIN);
 
-  std::shared_ptr<arangodb::aql::SharedQueryState> ss = query.sharedState();
-  ss->setContinueCallback();
-
-  aql::QueryResultV8 queryResult;
-  while (true) {
-    auto state =
-        query.executeV8(isolate, static_cast<arangodb::aql::QueryRegistry*>(queryRegistry),
-                        queryResult);
-    if (state != aql::ExecutionState::WAITING) {
-      break;
-    }
-    ss->waitForAsyncResponse();
-  }
+  arangodb::aql::QueryResultV8 queryResult = query.executeV8(isolate, queryRegistry);
 
   if (queryResult.result.fail()) {
     if (queryResult.result.is(TRI_ERROR_REQUEST_CANCELED)) {
@@ -801,26 +790,27 @@ static void JS_ExecuteAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // return the array value as it is. this is a performance optimization
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
-  if (!queryResult.data.IsEmpty()) {
-    result->Set(TRI_V8_ASCII_STRING(isolate, "json"), queryResult.data);
+  if (!queryResult.v8Data.IsEmpty()) {
+    result->Set(TRI_V8_ASCII_STRING(isolate, "json"), queryResult.v8Data);
   }
 
   if (queryResult.extra != nullptr) {
-    VPackSlice stats = queryResult.extra->slice().get("stats");
+    VPackSlice extra = queryResult.extra->slice();
+    VPackSlice stats = extra.get("stats");
     if (!stats.isNone()) {
       result->Set(TRI_V8_ASCII_STRING(isolate, "stats"), TRI_VPackToV8(isolate, stats));
     }
-    VPackSlice warnings = queryResult.extra->slice().get("warnings");
+    VPackSlice warnings = extra.get("warnings");
     if (warnings.isNone()) {
       result->Set(TRI_V8_ASCII_STRING(isolate, "warnings"), v8::Array::New(isolate));
     } else {
       result->Set(TRI_V8_ASCII_STRING(isolate, "warnings"), TRI_VPackToV8(isolate, warnings));
     }
-    VPackSlice profile = queryResult.extra->slice().get("profile");
+    VPackSlice profile = extra.get("profile");
     if (!profile.isNone()) {
       result->Set(TRI_V8_ASCII_STRING(isolate, "profile"), TRI_VPackToV8(isolate, profile));
     }
-    VPackSlice plan = queryResult.extra->slice().get("plan");
+    VPackSlice plan = extra.get("plan");
     if (!plan.isNone()) {
       result->Set(TRI_V8_ASCII_STRING(isolate, "plan"), TRI_VPackToV8(isolate, plan));
     }
@@ -1041,9 +1031,9 @@ static void JS_QueriesKillAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto* queryList = vocbase.queryList();
   TRI_ASSERT(queryList != nullptr);
 
-  auto res = queryList->kill(id);
+  Result res = queryList->kill(id);
 
-  if (res == TRI_ERROR_NO_ERROR) {
+  if (res.ok()) {
     TRI_V8_RETURN_TRUE();
   }
 
@@ -1241,7 +1231,7 @@ static void MapGetVocBase(v8::Local<v8::Name> const name,
       // with that transaction. if we now lock again, we may deadlock!
       auto status = collection->status();
       auto cid = collection->id();
-      auto internalVersion = collection->internalVersion();
+      auto internalVersion = collection->v8CacheVersion();
 
       // check if the collection is still alive
       if (status != TRI_VOC_COL_STATUS_DELETED && cid > 0 &&
@@ -1649,10 +1639,7 @@ static void JS_DBProperties(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto& vocbase = GetContextVocBase(isolate);
 
   VPackBuilder builder;
-  arangodb::Result res = vocbase.toVelocyPack(builder);
-  if(res.fail()){
-    TRI_V8_THROW_EXCEPTION(res);
-  }
+  vocbase.toVelocyPack(builder);
 
   auto result = TRI_VPackToV8(isolate, builder.slice());
 
@@ -2097,29 +2084,29 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
                           TRI_V8_ASCII_STRING(isolate, "DEFAULT_REPLICATION_FACTOR"),
                           v8::Number::New(isolate,
                                           vocbase.server().getFeature<ClusterFeature>().defaultReplicationFactor()), v8::ReadOnly)
-      .FromMaybe(false);  // ignore result  
-  
+      .FromMaybe(false);  // ignore result
+
   context->Global()
       ->DefineOwnProperty(TRI_IGETC,
                           TRI_V8_ASCII_STRING(isolate, "MIN_REPLICATION_FACTOR"),
                           v8::Number::New(isolate,
                                           vocbase.server().getFeature<ClusterFeature>().minReplicationFactor()), v8::ReadOnly)
-      .FromMaybe(false);  // ignore result  
-  
+      .FromMaybe(false);  // ignore result
+
   context->Global()
       ->DefineOwnProperty(TRI_IGETC,
                           TRI_V8_ASCII_STRING(isolate, "MAX_REPLICATION_FACTOR"),
                           v8::Number::New(isolate,
                                           vocbase.server().getFeature<ClusterFeature>().maxReplicationFactor()), v8::ReadOnly)
-      .FromMaybe(false);  // ignore result  
-  
+      .FromMaybe(false);  // ignore result
+
   // max number of shards
   context->Global()
       ->DefineOwnProperty(TRI_IGETC,
                           TRI_V8_ASCII_STRING(isolate, "MAX_NUMBER_OF_SHARDS"),
                           v8::Number::New(isolate,
                                           vocbase.server().getFeature<ClusterFeature>().maxNumberOfShards()), v8::ReadOnly)
-      .FromMaybe(false);  // ignore result  
+      .FromMaybe(false);  // ignore result
 
   // a thread-global variable that will is supposed to contain the AQL module
   // do not remove this, otherwise AQL queries will break

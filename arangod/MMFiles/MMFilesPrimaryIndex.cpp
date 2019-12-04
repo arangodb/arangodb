@@ -21,7 +21,10 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <algorithm>
+
 #include "Aql/AstNode.h"
+#include "Aql/ExecutionBlock.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/hashes.h"
@@ -142,7 +145,7 @@ void MMFilesPrimaryIndexInIterator::reset() { _iterator.reset(); }
 MMFilesAllIndexIterator::MMFilesAllIndexIterator(LogicalCollection* collection,
                                                  transaction::Methods* trx,
                                                  MMFilesPrimaryIndex const* index,
-                                                 MMFilesPrimaryIndexImpl const* indexImpl)
+                                                 MMFilesPrimaryIndex::ImplType const* indexImpl)
     : IndexIterator(collection, trx), _index(indexImpl), _total(0) {}
 
 bool MMFilesAllIndexIterator::next(LocalDocumentIdCallback const& cb, size_t limit) {
@@ -161,7 +164,7 @@ bool MMFilesAllIndexIterator::next(LocalDocumentIdCallback const& cb, size_t lim
 
 bool MMFilesAllIndexIterator::nextDocument(DocumentCallback const& cb, size_t limit) {
   _documentIds.clear();
-  _documentIds.reserve(limit);
+  _documentIds.reserve((std::min)(limit, aql::ExecutionBlock::DefaultBatchSize()));
 
   bool done = false;
   while (limit > 0) {
@@ -200,7 +203,7 @@ void MMFilesAllIndexIterator::reset() { _position.reset(); }
 MMFilesAnyIndexIterator::MMFilesAnyIndexIterator(LogicalCollection* collection,
                                                  transaction::Methods* trx,
                                                  MMFilesPrimaryIndex const* index,
-                                                 MMFilesPrimaryIndexImpl const* indexImpl)
+                                                 MMFilesPrimaryIndex::ImplType const* indexImpl)
     : IndexIterator(collection, trx), _index(indexImpl), _step(0), _total(0) {}
 
 bool MMFilesAnyIndexIterator::next(LocalDocumentIdCallback const& cb, size_t limit) {
@@ -243,10 +246,10 @@ MMFilesPrimaryIndex::MMFilesPrimaryIndex(arangodb::LogicalCollection& collection
     indexBuckets = 1;
   }
 
-  _primaryIndex.reset(new MMFilesPrimaryIndexImpl(MMFilesPrimaryIndexHelper(),
-                                                  indexBuckets, [this]() -> std::string {
-                                                    return this->context();
-                                                  }));
+  _primaryIndex.reset(new MMFilesPrimaryIndex::ImplType(MMFilesPrimaryIndexHelper(), indexBuckets,
+                                                        [this]() -> std::string {
+                                                          return this->context();
+                                                        }));
 }
 
 /// @brief return the number of documents from the index
@@ -339,7 +342,8 @@ MMFilesSimpleIndexElement* MMFilesPrimaryIndex::lookupKeyRef(transaction::Method
 ///        Convention: position === 0 indicates a new start.
 ///        DEPRECATED
 MMFilesSimpleIndexElement MMFilesPrimaryIndex::lookupSequential(
-    transaction::Methods* trx, arangodb::basics::BucketPosition& position, uint64_t& total) {
+    transaction::Methods* trx, arangodb::containers::BucketPosition& position,
+    uint64_t& total) {
   ManagedDocumentResult result;
   MMFilesIndexLookupContext context(&_collection, &result, 1);
 
@@ -365,7 +369,7 @@ IndexIterator* MMFilesPrimaryIndex::anyIterator(transaction::Methods* trx) const
 ///        Convention: position === UINT64_MAX indicates a new start.
 ///        DEPRECATED
 MMFilesSimpleIndexElement MMFilesPrimaryIndex::lookupSequentialReverse(
-    transaction::Methods* trx, arangodb::basics::BucketPosition& position) {
+    transaction::Methods* trx, arangodb::containers::BucketPosition& position) {
   ManagedDocumentResult result;
   MMFilesIndexLookupContext context(&_collection, &result, 1);
 
@@ -474,8 +478,8 @@ std::unique_ptr<IndexIterator> MMFilesPrimaryIndex::iteratorForCondition(
   if (aap.opType == aql::NODE_TYPE_OPERATOR_BINARY_EQ) {
     // a.b == value
     return createEqIterator(trx, aap.attribute, aap.value);
-  } 
-  
+  }
+
   if (aap.opType == aql::NODE_TYPE_OPERATOR_BINARY_IN &&
       aap.value->isArray()) {
     // a.b IN array

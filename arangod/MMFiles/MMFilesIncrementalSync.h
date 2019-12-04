@@ -173,12 +173,20 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
     // The LogicalCollection is protected by trx.
     // Neither it nor it's indexes can be invalidated
 
-    markers.reserve(trx.documentCollection()->numberDocuments(&trx, transaction::CountType::Normal));
+    LogicalCollection* coll =  trx.documentCollection();
+    MMFilesCollection* mmColl = MMFilesCollection::toMMFilesCollection(coll);
+
+    markers.reserve(coll->numberDocuments(&trx, transaction::CountType::Normal));
 
     uint64_t iterations = 0;
     ManagedDocumentResult mdr;
-    trx.invokeOnAllElements(trx.name(), [&syncer, &trx, &mdr, &markers,
-                                         &iterations](LocalDocumentId const& token) {
+    
+    TRI_ASSERT(trx.isLocked(coll, AccessMode::Type::READ));
+    trx.transactionContextPtr()->pinData(coll);
+    
+    ManagedDocumentResult mmdr;
+    mmColl->invokeOnAllElements(&trx, [&syncer, &trx, &mdr, &markers,
+                                       &iterations](LocalDocumentId const& token) {
       if (trx.documentCollection()->readDocument(&trx, token, mdr)) {
         markers.emplace_back(mdr.vpack());
 

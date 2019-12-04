@@ -37,51 +37,18 @@
 #include <velocypack/Buffer.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include <ctime>
 #include <iomanip>
-#include <regex>
 
 using namespace arangodb::consensus;
 using namespace arangodb::basics;
 
-/// Non-Emptyness of string
-struct NotEmpty {
-  bool operator()(const std::string& s) { return !s.empty(); }
-};
-
-/// @brief Split strings by separator
-inline static std::vector<std::string> split(const std::string& str, char separator) {
-  std::vector<std::string> result;
-  if (str.empty()) {
-    return result;
-  }
-  std::regex reg("/+");
-  std::string key = std::regex_replace(str, reg, "/");
-
-  if (!key.empty() && key.front() == '/') {
-    key.erase(0, 1);
-  }
-  if (!key.empty() && key.back() == '/') {
-    key.pop_back();
-  }
-
-  std::string::size_type p = 0;
-  std::string::size_type q;
-  while ((q = key.find(separator, p)) != std::string::npos) {
-    result.emplace_back(key, p, q - p);
-    p = q + 1;
-  }
-  result.emplace_back(key, p);
-  result.erase(std::find_if(result.rbegin(), result.rend(), NotEmpty()).base(),
-               result.end());
-  return result;
-}
-
 /// Build endpoint from URL
-inline static bool endpointPathFromUrl(std::string const& url,
-                                       std::string& endpoint, std::string& path) {
+static bool endpointPathFromUrl(std::string const& url,
+                                std::string& endpoint, std::string& path) {
   std::stringstream ep;
   path = "/";
   size_t pos = 7;
@@ -329,6 +296,9 @@ std::vector<bool> Store::applyLogEntries(arangodb::velocypack::Builder const& qu
     
     auto const& nf = _server.getFeature<arangodb::NetworkFeature>();
     network::ConnectionPool* cp = nf.pool();
+    
+    network::RequestOptions reqOpts;
+    reqOpts.timeout = network::Timeout(2);
 
     // Callback
 
@@ -371,7 +341,7 @@ std::vector<bool> Store::applyLogEntries(arangodb::velocypack::Builder const& qu
         
         Agent* agent = _agent;
         network::sendRequest(cp, endpoint, fuerte::RestVerb::Post, path,
-                             *buffer, network::Timeout(1)).thenValue([=](network::Response r) {
+                             *buffer, reqOpts).thenValue([=](network::Response r) {
           if (r.fail() || r.response->statusCode() >= 400) {
             LOG_TOPIC("9dbf0", TRACE, Logger::AGENCY)
               << url << "(" << r.response->statusCode() << ", " << fuerte::to_string(r.error)
@@ -405,7 +375,7 @@ check_ret_t Store::check(VPackSlice const& slice, CheckMode mode) const {
   for (auto const& precond : VPackObjectIterator(slice)) {  // Preconditions
 
     std::string key = precond.key.copyString();
-    std::vector<std::string> pv = split(key, '/');
+    std::vector<std::string> pv = split(key);
 
     Node const* node = &Node::dummyNode();
 
@@ -578,7 +548,7 @@ bool Store::read(VPackSlice const& query, Builder& ret) const {
   MUTEX_LOCKER(storeLocker, _storeLock);  // Freeze KV-Store for read
   if (query_strs.size() == 1) {
     auto const& path = query_strs[0];
-    std::vector<std::string> pv = split(path, '/');
+    std::vector<std::string> pv = split(path);
     // Build surrounding object structure:
     size_t e = _node.exists(pv).size();   // note: e <= pv.size()!
     size_t i = 0;
@@ -599,7 +569,7 @@ bool Store::read(VPackSlice const& query, Builder& ret) const {
     // Create response tree
     Node copy("copy");
     for (auto const& path : query_strs) {
-      std::vector<std::string> pv = split(path, '/');
+      std::vector<std::string> pv = split(path);
       size_t e = _node.exists(pv).size();
       if (e == pv.size()) {  // existing
         copy(pv) = _node(pv);
@@ -652,7 +622,7 @@ void Store::dumpToBuilder(Builder& builder) const {
   MUTEX_LOCKER(storeLocker, _storeLock);
   toBuilder(builder, true);
 
-  std::map<std::string, int64_t> clean {};
+  std::map<std::string, int64_t> clean;
   for (auto const& i : _timeTable) {
     auto ts = std::chrono::duration_cast<std::chrono::seconds>(
       i.first.time_since_epoch()).count();
@@ -688,41 +658,78 @@ void Store::dumpToBuilder(Builder& builder) const {
 
 /// Apply transaction to key value store. Guarded by caller
 bool Store::applies(arangodb::velocypack::Slice const& transaction) {
-  std::vector<std::string> keys;
-  std::vector<std::string> abskeys;
-  std::vector<size_t> idx;
-  std::regex reg("/+");
-  size_t counter = 0;
-
-  for (const auto& atom : VPackObjectIterator(transaction)) {
-    std::string key(atom.key.copyString());
-    keys.push_back(key);
-    key = std::regex_replace(key, reg, "/");
-    abskeys.push_back(((key[0] == '/') ? key : std::string("/") + key));
-    idx.push_back(counter++);
-  }
-
-  sort(idx.begin(), idx.end(),
-       [&abskeys](size_t i1, size_t i2) { return abskeys[i1] < abskeys[i2]; });
-
   _storeLock.assertLockedByCurrentThread();
 
+  auto it = VPackObjectIterator(transaction);
+  
+  std::vector<std::string> abskeys;
+  abskeys.reserve(it.size());
+  
+  std::vector<std::pair<size_t, VPackSlice>> idx;
+  idx.reserve(it.size());
+
+  size_t counter = 0;
+  while (it.valid()) {
+    VPackStringRef key = it.key().stringRef();
+   
+    // push back an empty string first, so we can avoid a later move
+    abskeys.emplace_back(); 
+
+    // and now work on this string
+    std::string& absoluteKey = abskeys.back();
+    absoluteKey.reserve(key.size());
+
+    // turn the path into an absolute path, collapsing all duplicate
+    // forward slashes into a single forward slash
+    char const* p = key.data();
+    char const* e = key.data() + key.size();
+    char last = '\0';
+    if (p == e || *p != '/') {
+      // key must start with '/'
+      absoluteKey.push_back('/');
+      last = '/';
+    }
+    while (p < e) {
+      char current = *p;
+      if (current != '/' || last != '/') {
+        // avoid repeated forward slashes
+        absoluteKey.push_back(current);
+        last = current;
+      }
+      ++p;
+    }
+
+    TRI_ASSERT(!absoluteKey.empty());
+    TRI_ASSERT(absoluteKey[0] == '/');
+    TRI_ASSERT(absoluteKey.find("//") == std::string::npos);
+
+    idx.emplace_back(counter++, it.value());
+
+    it.next();
+  }
+
+  std::sort(idx.begin(), idx.end(),
+       [&abskeys](std::pair<size_t, VPackSlice> const& i1, std::pair<size_t, VPackSlice> const& i2) noexcept { 
+    return abskeys[i1.first] < abskeys[i2.first]; 
+  });
+
   for (const auto& i : idx) {
-    std::string const& key = keys.at(i);
-    Slice value = transaction.get(key);
+    Slice value = i.second; 
 
     if (value.isObject() && value.hasKey("op")) {
-      if (value.get("op").isEqualString("delete") ||
-          value.get("op").isEqualString("replace") ||
-          value.get("op").isEqualString("erase")) {
-        if (!_node.has(abskeys.at(i))) {
+      Slice const op = value.get("op");
+
+      if (op.isEqualString("delete") ||
+          op.isEqualString("replace") ||
+          op.isEqualString("erase")) {
+        if (!_node.has(abskeys.at(i.first))) {
           continue;
         }
       }
-      auto uri = Node::normalize(abskeys.at(i));
-      if (value.get("op").isEqualString("observe")) {
+      auto uri = Node::normalize(abskeys.at(i.first));
+      if (op.isEqualString("observe")) {
         bool found = false;
-        if (value.hasKey("url") && value.get("url").isString()) {
+        if (value.get("url").isString()) {
           auto url = value.get("url").copyString();
           auto ret = _observerTable.equal_range(url);
           for (auto it = ret.first; it != ret.second; ++it) {
@@ -736,8 +743,8 @@ bool Store::applies(arangodb::velocypack::Slice const& transaction) {
             _observedTable.emplace(std::pair<std::string, std::string>(uri, url));
           }
         }
-      } else if (value.get("op").isEqualString("unobserve")) {
-        if (value.hasKey("url") && value.get("url").isString()) {
+      } else if (op.isEqualString("unobserve")) {
+        if (value.get("url").isString()) {
           auto url = value.get("url").copyString();
           auto ret = _observerTable.equal_range(url);
           for (auto it = ret.first; it != ret.second; ++it) {
@@ -755,10 +762,10 @@ bool Store::applies(arangodb::velocypack::Slice const& transaction) {
           }
         }
       } else {
-        _node.hasAsWritableNode(abskeys.at(i)).first.applieOp(value);
+        _node.hasAsWritableNode(abskeys.at(i.first)).first.applieOp(value);
       }
     } else {
-      _node.hasAsWritableNode(abskeys.at(i)).first.applies(value);
+      _node.hasAsWritableNode(abskeys.at(i.first)).first.applies(value);
     }
   }
 
@@ -799,7 +806,7 @@ Store& Store::operator=(VPackSlice const& s) {
   }
 
   TRI_ASSERT(slice[2].isArray());
-  for (auto const& entry : VPackArrayIterator(slice[2])) {
+  for (VPackSlice entry : VPackArrayIterator(slice[2])) {
     TRI_ASSERT(entry.isObject());
     _observerTable.emplace(
         std::pair<std::string, std::string>(entry.keyAt(0).copyString(),
@@ -807,7 +814,7 @@ Store& Store::operator=(VPackSlice const& s) {
   }
 
   TRI_ASSERT(slice[3].isArray());
-  for (auto const& entry : VPackArrayIterator(slice[3])) {
+  for (VPackSlice entry : VPackArrayIterator(slice[3])) {
     TRI_ASSERT(entry.isObject());
     _observedTable.emplace(
         std::pair<std::string, std::string>(entry.keyAt(0).copyString(),
@@ -883,4 +890,43 @@ void Store::removeTTL(std::string const& uri) {
       }
     }
   }
+}
+
+/// @brief Split strings by forward slashes, omitting empty strings
+std::vector<std::string> Store::split(std::string const& str) {
+  std::vector<std::string> result;
+
+  char const* p = str.data();
+  char const* e = str.data() + str.size();
+
+  // strip leading forward slashes
+  while (p != e && *p == '/') {
+    ++p;
+  }
+  
+  // strip trailing forward slashes
+  while (p != e && *(e - 1) == '/') {
+    --e;
+  }
+
+  char const* start = nullptr;
+  while (p != e) {
+    if (*p == '/') {
+      if (start != nullptr) {
+        // had already found something
+        result.emplace_back(start, p - start);
+        start = nullptr;
+      }
+    } else {
+      if (start == nullptr) {
+        start = p;
+      }
+    }
+    ++p;
+  }
+  if (start != nullptr) {
+    result.emplace_back(start, p - start);
+  }
+
+  return result;
 }

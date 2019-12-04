@@ -32,6 +32,7 @@
 #include "Aql/ExecutionEngine.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Query.h"
+#include "Aql/RegisterPlan.h"
 #include "Aql/SortedCollectExecutor.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"

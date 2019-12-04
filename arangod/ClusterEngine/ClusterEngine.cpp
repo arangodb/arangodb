@@ -204,28 +204,19 @@ VPackBuilder ClusterEngine::getReplicationApplierConfiguration(int& status) {
 // database, collection and index management
 // -----------------------------------------
 
-std::unique_ptr<TRI_vocbase_t> ClusterEngine::openDatabase(arangodb::velocypack::Slice const& args,
-                                                           bool isUpgrade, int& status) {
-  VPackSlice idSlice = args.get("id");
-  TRI_voc_tick_t id =
-      static_cast<TRI_voc_tick_t>(basics::StringUtils::uint64(idSlice.copyString()));
+std::unique_ptr<TRI_vocbase_t> ClusterEngine::openDatabase(arangodb::CreateDatabaseInfo&& info,
+                                                           bool isUpgrade) {
 
-  status = TRI_ERROR_NO_ERROR;
+  return std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_COORDINATOR, std::move(info));
 
-  return openExistingDatabase(id, args, true, isUpgrade);
 }
 
-std::unique_ptr<TRI_vocbase_t> ClusterEngine::createDatabase(
-    TRI_voc_tick_t id, arangodb::velocypack::Slice const& args, int& status) {
+std::unique_ptr<TRI_vocbase_t> ClusterEngine::createDatabase(arangodb::CreateDatabaseInfo&& info,
+    int& status) {
 
+  //error lol
   status = TRI_ERROR_INTERNAL;
-  arangodb::CreateDatabaseInfo info(server());
-  auto res = info.load(id, args, VPackSlice::emptyArraySlice());
-  if (res.fail()) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
-
-  auto rv = std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_COORDINATOR, info);
+  auto rv = std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_COORDINATOR, std::move(info));
   status = TRI_ERROR_NO_ERROR;
   return rv;
 }
@@ -361,21 +352,6 @@ void ClusterEngine::waitForEstimatorSync(std::chrono::milliseconds maxWaitTime) 
   // If test `shell-cluster-collection-selectivity.js` fails consider increasing
   // timeout
   std::this_thread::sleep_for(std::chrono::seconds(5));
-}
-
-/// @brief open an existing database. internal function
-std::unique_ptr<TRI_vocbase_t> ClusterEngine::openExistingDatabase(
-    TRI_voc_tick_t id, VPackSlice args , bool wasCleanShutdown, bool isUpgrade) {
-
-  arangodb::CreateDatabaseInfo info(server());
-  TRI_ASSERT(args.get("name").isString());
-  info.allowSystemDB(TRI_vocbase_t::IsSystemName(args.get("name").copyString()));
-  auto res = info.load(id, args, VPackSlice::emptyArraySlice());
-  if (res.fail()) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
-
-  return std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_COORDINATOR, info);
 }
 
 // -----------------------------------------------------------------------------

@@ -27,8 +27,8 @@
 #include "Aql/Variable.h"
 #include "Basics/AttributeNameParser.h"
 #include "Basics/Common.h"
-#include "Basics/HashSet.h"
 #include "Basics/debugging.h"
+#include "Containers/HashSet.h"
 
 namespace arangodb {
 
@@ -45,10 +45,10 @@ class SortCondition {
   SortCondition();
 
   /// @brief create the sort condition
-  SortCondition(ExecutionPlan* plan, 
+  SortCondition(ExecutionPlan* plan,
                 std::vector<std::pair<Variable const*, bool>> const& sorts,
                 std::vector<std::vector<arangodb::basics::AttributeName>> const& constAttributes,
-                arangodb::HashSet<std::vector<arangodb::basics::AttributeName>> const& nonNullAttributes,
+                ::arangodb::containers::HashSet<std::vector<arangodb::basics::AttributeName>> const& nonNullAttributes,
                 std::unordered_map<VariableId, AstNode const*> const& variableDefinitions);
 
   /// @brief destroy the sort condition
@@ -113,7 +113,7 @@ class SortCondition {
   std::vector<std::vector<arangodb::basics::AttributeName>> const _constAttributes;
   
   /// @brief non-null attributes
-  arangodb::HashSet<std::vector<arangodb::basics::AttributeName>> const _nonNullAttributes;
+  ::arangodb::containers::HashSet<std::vector<arangodb::basics::AttributeName>> const _nonNullAttributes;
 
   /// @brief whether or not the sort is unidirectional
   bool _unidirectional;

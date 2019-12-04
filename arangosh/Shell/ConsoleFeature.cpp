@@ -114,7 +114,8 @@ void ConsoleFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("console", "Configure the console");
 
   options->addOption("--console.colors", "enable color support",
-                     new BooleanParameter(&_colors));
+                     new BooleanParameter(&_colors),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Dynamic));
 
   options->addOption("--console.auto-complete", "enable auto completion",
                      new BooleanParameter(&_autoComplete));
@@ -195,7 +196,7 @@ void ConsoleFeature::_print(std::string const& s) {
   if (pos == std::string::npos) {
     _print2(s);
   } else {
-    std::vector<std::string> lines = StringUtils::split(s, '\x1b', '\0');
+    std::vector<std::string> lines = StringUtils::split(s, '\x1b');
 
     int i = 0;
 

@@ -40,6 +40,7 @@
 #include "V8Server/v8-externals.h"
 #include "V8Server/v8-vocbase.h"
 #include "V8Server/v8-vocindex.h"
+#include "VocBase/Methods/Collections.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 #include "v8-query.h"
@@ -60,26 +61,13 @@ aql::QueryResultV8 AqlQuery(v8::Isolate* isolate, arangodb::LogicalCollection co
                             std::string const& aql, std::shared_ptr<VPackBuilder> bindVars) {
   TRI_ASSERT(col != nullptr);
   
-  auto queryRegistry = QueryRegistryFeature::registry();
+  arangodb::aql::QueryRegistry* queryRegistry = QueryRegistryFeature::registry();
   TRI_ASSERT(queryRegistry != nullptr);
 
   arangodb::aql::Query query(true, col->vocbase(), arangodb::aql::QueryString(aql),
                              bindVars, nullptr, arangodb::aql::PART_MAIN);
 
-  std::shared_ptr<arangodb::aql::SharedQueryState> ss = query.sharedState();
-  ss->setContinueCallback();
-
-  aql::QueryResultV8 queryResult;
-  while (true) {
-    auto state =
-        query.executeV8(isolate, static_cast<arangodb::aql::QueryRegistry*>(queryRegistry),
-                        queryResult);
-    if (state != aql::ExecutionState::WAITING) {
-      break;
-    }
-    ss->waitForAsyncResponse();
-  }
-
+  arangodb::aql::QueryResultV8 queryResult = query.executeV8(isolate, queryRegistry);
   if (queryResult.result.fail()) {
     if (queryResult.result.is(TRI_ERROR_REQUEST_CANCELED) ||
         queryResult.result.is(TRI_ERROR_QUERY_KILLED)) {
@@ -191,8 +179,8 @@ static void EdgesQuery(TRI_edge_direction_e direction,
       "FOR doc IN @@collection " + filter + " RETURN doc";
   auto queryResult = AqlQuery(isolate, collection, queryString, bindVars);
 
-  if (!queryResult.data.IsEmpty()) {
-    TRI_V8_RETURN(queryResult.data);
+  if (!queryResult.v8Data.IsEmpty()) {
+    TRI_V8_RETURN(queryResult.v8Data);
   }
 
   TRI_V8_RETURN_NULL();
@@ -233,8 +221,9 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   resultBuilder.openArray();
 
   opCursor.allDocuments(
-      [&resultBuilder](LocalDocumentId const& token, VPackSlice slice) {
+      [&resultBuilder](LocalDocumentId const&, VPackSlice slice) {
         resultBuilder.add(slice);
+        return true;
       },
       1000);
 
@@ -343,14 +332,24 @@ static void JS_ChecksumCollection(v8::FunctionCallbackInfo<v8::Value> const& arg
       withData = TRI_ObjectToBoolean(isolate, args[1]);
     }
   }
+  
+  uint64_t checksum;
+  TRI_voc_rid_t revId;
+  
+  Result r = methods::Collections::checksum(*col, withRevisions,
+                                            withData, checksum, revId);
 
-  auto result = col->checksum(withRevisions, withData);
-
-  if (!result.ok()) {
-    TRI_V8_THROW_EXCEPTION(std::move(result).result());
+  if (!r.ok()) {
+    TRI_V8_THROW_EXCEPTION(r);
   }
+  
+  v8::Local<v8::Object> obj = v8::Object::New(isolate);
+  obj->Set(TRI_V8_ASCII_STRING(isolate, "checksum"),
+           TRI_V8_ASCII_STD_STRING(isolate, std::to_string(checksum)));
+  obj->Set(TRI_V8_ASCII_STRING(isolate, "revision"),
+           TRI_V8_ASCII_STD_STRING(isolate, TRI_RidToString(revId)));
 
-  TRI_V8_RETURN(TRI_VPackToV8(isolate, result.builder().slice()));
+  TRI_V8_RETURN(obj);
   TRI_V8_TRY_CATCH_END
 }
 
@@ -427,8 +426,8 @@ static void JS_LookupByKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto queryResult = AqlQuery(isolate, collection, queryString, bindVars);
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
-  if (!queryResult.data.IsEmpty()) {
-    result->Set(TRI_V8_ASCII_STRING(isolate, "documents"), queryResult.data);
+  if (!queryResult.v8Data.IsEmpty()) {
+    result->Set(TRI_V8_ASCII_STRING(isolate, "documents"), queryResult.v8Data);
   }
 
   TRI_V8_RETURN(result);

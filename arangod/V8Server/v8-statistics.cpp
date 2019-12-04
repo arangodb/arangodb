@@ -28,6 +28,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/process-utils.h"
 #include "Rest/GeneralRequest.h"
+#include "RestServer/MetricsFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Statistics/ConnectionStatistics.h"
@@ -98,7 +99,9 @@ static void JS_ServerStatistics(v8::FunctionCallbackInfo<v8::Value> const& args)
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
 
-  ServerStatistics const& info = ServerStatistics::statistics();
+  ServerStatistics const& info =
+    application_features::ApplicationServer::server().
+    getFeature<MetricsFeature>().serverStatistics();
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
@@ -111,13 +114,13 @@ static void JS_ServerStatistics(v8::FunctionCallbackInfo<v8::Value> const& args)
   auto const& ts = info._transactionsStatistics;
   v8::Handle<v8::Object> v8TransactionInfoObj = v8::Object::New(isolate);
   v8TransactionInfoObj->Set(TRI_V8_ASCII_STRING(isolate, "started"),
-              v8::Number::New(isolate, (double)ts._transactionsStarted));
+              v8::Number::New(isolate, (double)ts._transactionsStarted.load()));
   v8TransactionInfoObj->Set(TRI_V8_ASCII_STRING(isolate, "aborted"),
-              v8::Number::New(isolate, (double)ts._transactionsAborted));
+              v8::Number::New(isolate, (double)ts._transactionsAborted.load()));
   v8TransactionInfoObj->Set(TRI_V8_ASCII_STRING(isolate, "committed"),
-              v8::Number::New(isolate, (double)ts._transactionsCommitted));
+              v8::Number::New(isolate, (double)ts._transactionsCommitted.load()));
   v8TransactionInfoObj->Set(TRI_V8_ASCII_STRING(isolate, "intermediateCommits"),
-              v8::Number::New(isolate, (double)ts._intermediateCommits));
+              v8::Number::New(isolate, (double)ts._intermediateCommits.load()));
   result->Set(TRI_V8_ASCII_STRING(isolate, "transactions"), v8TransactionInfoObj);
 
   // v8 counters
@@ -224,7 +227,7 @@ static void JS_ClientStatistics(v8::FunctionCallbackInfo<v8::Value> const& args)
   StatisticsDistribution bytesSent;
   StatisticsDistribution bytesReceived;
 
-  RequestStatistics::fill(totalTime, requestTime, queueTime, ioTime, bytesSent, bytesReceived);
+  RequestStatistics::fill(totalTime, requestTime, queueTime, ioTime, bytesSent, bytesReceived, stats::RequestStatisticsSource::ALL);
 
   FillDistribution(isolate, result, TRI_V8_ASCII_STRING(isolate, "totalTime"), totalTime);
   FillDistribution(isolate, result, TRI_V8_ASCII_STRING(isolate, "requestTime"), requestTime);

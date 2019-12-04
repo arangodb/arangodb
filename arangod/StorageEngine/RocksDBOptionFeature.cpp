@@ -95,7 +95,8 @@ RocksDBOptionFeature::RocksDBOptionFeature(application_features::ApplicationServ
       _enableStatistics(false),
       _useFileLogging(false),
       _limitOpenFilesAtStartup(false),
-      _allowFAllocate(true) {
+      _allowFAllocate(true),
+      _exclusiveWrites(false) {
   // setting the number of background jobs to
   _maxBackgroundJobs = static_cast<int32_t>(
       std::max((size_t)2, std::min(TRI_numberProcessors(), (size_t)8)));
@@ -158,7 +159,9 @@ void RocksDBOptionFeature::collectOptions(std::shared_ptr<ProgramOptions> option
                      new UInt64Parameter(&_writeBufferSize));
 
   options->addOption("--rocksdb.max-write-buffer-number",
-                     "maximum number of write buffers that built up in memory",
+                     "maximum number of write buffers that build up in memory "
+                     "(default: number of column families + 2 = 9 write buffers). "
+                     "You can increase the amount only",
                      new UInt64Parameter(&_maxWriteBufferNumber));
 
   options->addOption("--rocksdb.max-total-wal-size",
@@ -340,6 +343,12 @@ void RocksDBOptionFeature::collectOptions(std::shared_ptr<ProgramOptions> option
                   arangodb::options::makeFlags(arangodb::options::Flags::Hidden))
       .setIntroducedIn(30405)
       .setIntroducedIn(30500);
+  options
+      ->addOption("--rocksdb.exclusive-writes",
+                  "if true, writes are exclusive. This allows the RocksDB engine to mimic "
+                  "the MMFiles collection locks behavior, but will inhibit concurrent write operations",
+                  new BooleanParameter(&_exclusiveWrites))
+      .setIntroducedIn(30504);
 }
 
 void RocksDBOptionFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {

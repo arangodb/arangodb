@@ -898,7 +898,7 @@ function multiCollectionGraphSuite() {
       /* this test is intended to trigger the clone functionality. */
       var query = 'FOR t IN ' + vn +
         ' FOR s IN ' + vn2 +
-        ' FOR x, e, p IN OUTBOUND t ' + en + ' SORT x._key RETURN {vertex: x, path: p}';
+        ' FOR x, e, p IN OUTBOUND t ' + en + ' SORT x._key, e._key RETURN {vertex: x, path: p}';
       var result = db._query(query).toArray();
       var plans = AQL_EXPLAIN(query, {}, opts).plans;
       plans.forEach(function (plan) {
@@ -2252,6 +2252,20 @@ function complexFilteringSuite() {
     },
 
     tearDownAll: cleanup,
+
+    testPruneWithSubquery: function () {
+      let query = `FOR v,e,p IN 1..100 OUTBOUND @start @ecol PRUNE 2 <= LENGTH(FOR w IN p.vertices FILTER w._id == v._id RETURN 1) RETURN p`;
+      try {
+        let bindVars = {
+          '@eCol': en,
+          'start': vertex.Tri1
+        };
+        db._query(query, bindVars);
+        fail();
+      } catch (err) {
+        assertEqual(err.errorNum, errors.ERROR_QUERY_PARSE.code);
+      }
+    },
 
     testVertexEarlyPruneHighDepth: function () {
       var query = `WITH ${vn}

@@ -23,17 +23,22 @@
 
 #include "Manager.h"
 
+#include "Aql/Query.h"
+#include "Aql/QueryList.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/ScopeGuard.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/system-functions.h"
-#include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "Futures/Utilities.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/LogMacros.h"
-#include "Logger/Logger.h"
-#include "Logger/LoggerStream.h"
+#include "Network/Methods.h"
+#include "Network/NetworkFeature.h"
+#include "Network/Utils.h"
+#include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionState.h"
@@ -70,7 +75,7 @@ std::string currentUser() {
 namespace arangodb {
 namespace transaction {
 
-const size_t Manager::maxTransactionSize;  // 128 MiB
+size_t constexpr Manager::maxTransactionSize;
 
 namespace {
 struct MGMethods final : arangodb::transaction::Methods {
@@ -122,9 +127,12 @@ void Manager::registerTransaction(TRI_voc_tid_t transactionId,
 
     try {
       // insert into currently running list of transactions
-      _transactions[bucket]._activeTransactions.emplace(transactionId, std::move(data));
+      _transactions[bucket]._activeTransactions.try_emplace(transactionId, std::move(data));
     } catch (...) {
       _nrRunning.fetch_sub(1, std::memory_order_relaxed);
+      if (!isReadOnlyTransaction) {
+        _rwLock.unlockRead();
+      }
       throw;
     }
   }
@@ -133,6 +141,13 @@ void Manager::registerTransaction(TRI_voc_tid_t transactionId,
 // unregisters a transaction
 void Manager::unregisterTransaction(TRI_voc_tid_t transactionId, bool markAsFailed,
                                     bool isReadOnlyTransaction) {
+  // always perform an unlock when we leave this function
+  auto guard = scopeGuard([this, &isReadOnlyTransaction]() {
+    if (!isReadOnlyTransaction) {
+      _rwLock.unlockRead();
+    }
+  });
+
   uint64_t r = _nrRunning.fetch_sub(1, std::memory_order_relaxed);
   TRI_ASSERT(r > 0);
 
@@ -146,9 +161,6 @@ void Manager::unregisterTransaction(TRI_voc_tid_t transactionId, bool markAsFail
     if (markAsFailed) {
       _transactions[bucket]._failedTransactions.emplace(transactionId);
     }
-  }
-  if (!isReadOnlyTransaction) {
-    _rwLock.unlockRead();
   }
 }
 
@@ -263,8 +275,7 @@ void Manager::registerAQLTrx(TransactionState* state) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_INTERNAL,
                                      std::string("transaction ID ") + std::to_string(tid) + "' already used in registerAQLTrx");
     }
-    buck._managed.emplace(std::piecewise_construct, std::forward_as_tuple(tid),
-                          std::forward_as_tuple(MetaType::StandaloneAQL, state));
+    buck._managed.try_emplace(tid, MetaType::StandaloneAQL, state);
   }
 }
 
@@ -356,6 +367,9 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
   if (_disallowInserts.load(std::memory_order_acquire)) {
     return res.reset(TRI_ERROR_SHUTTING_DOWN);
   }
+
+  LOG_TOPIC("7bd2d", DEBUG, Logger::TRANSACTIONS)
+    << "managed trx creating: '" << tid << "'";
 
   const size_t bucket = getBucket(tid);
 
@@ -464,10 +478,13 @@ Result Manager::createManagedTrx(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
                        std::string("transaction ID '") + std::to_string(tid) + "' already used in createManagedTrx insert");
     }
     TRI_ASSERT(state->id() == tid);
-    _transactions[bucket]._managed.emplace(std::piecewise_construct,
-                                           std::forward_as_tuple(tid),
-                                           std::forward_as_tuple(MetaType::Managed,
-                                                                 state.release()));
+    bool emplaced = _transactions[bucket]._managed.try_emplace(
+        tid,
+        MetaType::Managed, state.get()
+    ).second;
+    if (emplaced) {
+      state.release();
+    }
   }
 
   LOG_TOPIC("d6806", DEBUG, Logger::TRANSACTIONS) << "created managed trx '" << tid << "'";
@@ -482,7 +499,7 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(TRI_voc_tid_t tid
   if (_disallowInserts.load(std::memory_order_acquire)) {
     return nullptr;
   }
-  
+
   size_t const bucket = getBucket(tid);
   int i = 0;
   TransactionState* state = nullptr;
@@ -600,7 +617,7 @@ transaction::Status Manager::getManagedTrxStatus(TRI_voc_tid_t tid) const {
     return transaction::Status::ABORTED;
   }
 }
-  
+
 
 Result Manager::statusChangeWithTimeout(TRI_voc_tid_t tid, transaction::Status status) {
   double startTime = 0.0;
@@ -762,8 +779,8 @@ void Manager::iterateManagedTrx(std::function<void(TRI_voc_tid_t, ManagedTrx con
 /// @brief collect forgotten transactions
 bool Manager::garbageCollect(bool abortAll) {
   bool didWork = false;
-  SmallVector<TRI_voc_tid_t, 64>::allocator_type::arena_type arena;
-  SmallVector<TRI_voc_tid_t, 64> toAbort{arena};
+  ::arangodb::containers::SmallVector<TRI_voc_tid_t, 64>::allocator_type::arena_type arena;
+  ::arangodb::containers::SmallVector<TRI_voc_tid_t, 64> toAbort{arena};
 
   READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
 
@@ -773,7 +790,7 @@ bool Manager::garbageCollect(bool abortAll) {
     auto it = _transactions[bucket]._managed.begin();
     while (it != _transactions[bucket]._managed.end()) {
       ManagedTrx& mtrx = it->second;
-      
+
       if (mtrx.type == MetaType::Managed) {
         TRI_ASSERT(mtrx.state != nullptr);
         if (abortAll || mtrx.expired()) {
@@ -803,16 +820,15 @@ bool Manager::garbageCollect(bool abortAll) {
   }
 
   for (TRI_voc_tid_t tid : toAbort) {
-    LOG_TOPIC("6fbaf", DEBUG, Logger::TRANSACTIONS) << "garbage collecting "
-                                                       "transaction: '"
-                                                    << tid << "'";
+    LOG_TOPIC("6fbaf", INFO, Logger::TRANSACTIONS) << "garbage collecting "
+                                                   << "transaction: '" << tid << "'";
     Result res = updateTransaction(tid, Status::ABORTED, /*clearSrvs*/ true);
     // updateTransaction can return TRI_ERROR_TRANSACTION_ABORTED when it
     // successfully aborts, so ignore this error.
     // we can also get the TRI_ERROR_LOCKED error in case we cannot
     // immediately acquire the lock on the transaction. this _can_ happen
     // infrequently, but is not an error
-    if (res.fail() && 
+    if (res.fail() &&
         !res.is(TRI_ERROR_TRANSACTION_ABORTED) &&
         !res.is(TRI_ERROR_LOCKED)) {
       LOG_TOPIC("0a07f", INFO, Logger::TRANSACTIONS) << "error while aborting "
@@ -831,9 +847,9 @@ bool Manager::garbageCollect(bool abortAll) {
 }
 
 /// @brief abort all transactions matching
-bool Manager::abortManagedTrx(std::function<bool(TransactionState const&)> cb) {
-  SmallVector<TRI_voc_tid_t, 64>::allocator_type::arena_type arena;
-  SmallVector<TRI_voc_tid_t, 64> toAbort{arena};
+bool Manager::abortManagedTrx(std::function<bool(TransactionState const&, std::string const&)> cb) {
+  ::arangodb::containers::SmallVector<TRI_voc_tid_t, 64>::allocator_type::arena_type arena;
+  ::arangodb::containers::SmallVector<TRI_voc_tid_t, 64> toAbort{arena};
 
   READ_LOCKER(allTransactionsLocker, _allTransactionsLock);
   for (size_t bucket = 0; bucket < numBuckets; ++bucket) {
@@ -845,7 +861,7 @@ bool Manager::abortManagedTrx(std::function<bool(TransactionState const&)> cb) {
       if (mtrx.type == MetaType::Managed) {
         TRI_ASSERT(mtrx.state != nullptr);
         TRY_READ_LOCKER(tryGuard, mtrx.rwlock);  // needs lock to access state
-        if (tryGuard.isLocked() && cb(*mtrx.state)) {
+        if (tryGuard.isLocked() && cb(*mtrx.state, mtrx.user)) {
           toAbort.emplace_back(it->first);
         }
       }
@@ -873,13 +889,21 @@ void Manager::toVelocyPack(VPackBuilder& builder, std::string const& database,
     TRI_ASSERT(ServerState::instance()->isCoordinator());
     auto& ci = _feature.server().getFeature<ClusterFeature>().clusterInfo();
 
-    std::shared_ptr<ClusterComm> cc = ClusterComm::instance();
-    if (cc == nullptr) {
+    NetworkFeature const& nf = _feature.server().getFeature<NetworkFeature>();
+    network::ConnectionPool* pool = nf.pool();
+    if (pool == nullptr) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
     }
 
-    std::vector<ClusterCommRequest> requests;
+    std::vector<network::FutureRes> futures;
     auto auth = AuthenticationFeature::instance();
+
+    network::RequestOptions options;
+    options.database = database;
+    options.timeout = network::Timeout(30.0);
+    options.param("local", "true");
+
+    VPackBuffer<uint8_t> body;
 
     for (auto const& coordinator : ci.getCurrentCoordinators()) {
       if (coordinator == ServerState::instance()->getId()) {
@@ -887,42 +911,45 @@ void Manager::toVelocyPack(VPackBuilder& builder, std::string const& database,
         continue;
       }
 
-      auto headers = std::make_unique<std::unordered_map<std::string, std::string>>();
+      network::Headers headers;
       if (auth != nullptr && auth->isActive()) {
-        // when in superuser mode, username is empty
-        // in this case ClusterComm will add the default superuser token
         if (!username.empty()) {
-          VPackBuilder builder;
+          VPackBuilder authBuilder;
           {
-            VPackObjectBuilder payload{&builder};
+            VPackObjectBuilder payload{&authBuilder};
             payload->add("preferred_username", VPackValue(username));
           }
-          VPackSlice slice = builder.slice();
-          headers->emplace(StaticStrings::Authorization,
-                           "bearer " + auth->tokenCache().generateJwt(slice));
+          VPackSlice slice = authBuilder.slice();
+          headers.try_emplace(StaticStrings::Authorization,
+                          "bearer " + auth->tokenCache().generateJwt(slice));
+        } else {
+          headers.try_emplace(StaticStrings::Authorization,
+                          "bearer " + auth->tokenCache().jwtToken());
         }
       }
 
-      requests.emplace_back("server:" + coordinator, rest::RequestType::GET,
-                            "/_db/" + database + "/_api/transaction?local=true",
-                            std::make_shared<std::string>(), std::move(headers));
+      auto f = network::sendRequest(pool, "server:" + coordinator, fuerte::RestVerb::Get,
+                                    "/_api/transaction", body, options, std::move(headers));
+      futures.emplace_back(std::move(f));
     }
 
-    if (!requests.empty()) {
-      size_t nrGood = cc->performRequests(requests, 30.0, Logger::COMMUNICATION, false);
-
-      if (nrGood != requests.size()) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE);
-      }
-      for (auto const& it : requests) {
-        if (it.result.result && it.result.result->getHttpReturnCode() == 200) {
-          auto const body = it.result.result->getBodyVelocyPack();
-          VPackSlice slice = body->slice();
-          if (slice.isObject()) {
-            slice = slice.get("transactions");
-            if (slice.isArray()) {
-              for (auto const& it : VPackArrayIterator(slice)) {
-                builder.add(it);
+    if (!futures.empty()) {
+      auto responses = futures::collectAll(futures).get();
+      for (auto const& it : responses) {
+        if (!it.hasValue()) {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE);
+        }
+        auto& res = it.get();
+        if (res.response && res.response->statusCode() == fuerte::StatusOK) {
+          auto slices = res.response->slices();
+          if (!slices.empty()) {
+            VPackSlice slice = slices[0];
+            if (slice.isObject()) {
+              slice = slice.get("transactions");
+              if (slice.isArray()) {
+                for (VPackSlice it : VPackArrayIterator(slice)) {
+                  builder.add(it);
+                }
               }
             }
           }
@@ -940,6 +967,94 @@ void Manager::toVelocyPack(VPackBuilder& builder, std::string const& database,
       builder.close();
     }
   });
+}
+
+Result Manager::abortAllManagedWriteTrx(std::string const& username, bool fanout) {
+  LOG_TOPIC("bba16", INFO, Logger::QUERIES) << "aborting all " << (fanout ? "" : "local ") << "write transactions";
+  Result res;
+
+  DatabaseFeature& databaseFeature = _feature.server().getFeature<DatabaseFeature>();
+  databaseFeature.enumerate([](TRI_vocbase_t* vocbase) {
+    auto queryList = vocbase->queryList();
+    TRI_ASSERT(queryList != nullptr);
+    // we are only interested in killed write queries
+    queryList->kill([](aql::Query& query) {
+      auto* state = query.trx()->state();
+      return state && !state->isReadOnlyTransaction();
+    }, false);
+  });
+
+  // abort local transactions
+  abortManagedTrx([](TransactionState const& state, std::string const& user) {
+    return ::authorized(user) && !state.isReadOnlyTransaction();
+  });
+
+  if (fanout &&
+      ServerState::instance()->isCoordinator()) {
+    auto& ci = _feature.server().getFeature<ClusterFeature>().clusterInfo();
+
+    NetworkFeature const& nf = _feature.server().getFeature<NetworkFeature>();
+    network::ConnectionPool* pool = nf.pool();
+    if (pool == nullptr) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+    }
+
+    std::vector<network::FutureRes> futures;
+    auto auth = AuthenticationFeature::instance();
+
+    network::RequestOptions options;
+    options.timeout = network::Timeout(30.0);
+
+    VPackBuffer<uint8_t> body;
+
+    for (auto const& coordinator : ci.getCurrentCoordinators()) {
+      if (coordinator == ServerState::instance()->getId()) {
+        // ourselves!
+        continue;
+      }
+
+      network::Headers headers;
+      if (auth != nullptr && auth->isActive()) {
+        if (!username.empty()) {
+          VPackBuilder builder;
+          {
+            VPackObjectBuilder payload{&builder};
+            payload->add("preferred_username", VPackValue(username));
+          }
+          VPackSlice slice = builder.slice();
+          headers.try_emplace(StaticStrings::Authorization,
+                          "bearer " + auth->tokenCache().generateJwt(slice));
+        } else {
+          headers.try_emplace(StaticStrings::Authorization,
+                          "bearer " + auth->tokenCache().jwtToken());
+        }
+      }
+
+      auto f = network::sendRequest(pool, "server:" + coordinator, fuerte::RestVerb::Delete,
+                                    "/_db/_system/_api/transaction/write?local=true",
+                                    body, options, std::move(headers));
+      futures.emplace_back(std::move(f));
+    }
+
+    if (!futures.empty()) {
+      auto responses = futures::collectAll(futures).get();
+      for (auto const& it : responses) {
+        if (!it.hasValue()) {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE);
+        }
+        auto& resp = it.get();
+        if (resp.response && resp.response->statusCode() != fuerte::StatusOK) {
+          auto slices = resp.response->slices();
+          if (!slices.empty()) {
+            VPackSlice slice = slices[0];
+            res.reset(network::resultFromBody(slice, TRI_ERROR_FAILED));
+          }
+        }
+      }
+    }
+  }
+
+  return res;
 }
 
 }  // namespace transaction

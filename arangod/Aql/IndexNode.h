@@ -24,16 +24,17 @@
 #ifndef ARANGOD_AQL_INDEX_NODE_H
 #define ARANGOD_AQL_INDEX_NODE_H 1
 
+#include <memory>
+#include <vector>
+
 #include "Aql/CollectionAccessingNode.h"
 #include "Aql/DocumentProducingNode.h"
 #include "Aql/ExecutionNode.h"
+#include "Aql/RegisterPlan.h"
 #include "Aql/types.h"
-#include "Basics/HashSet.h"
+#include "Containers/HashSet.h"
 #include "Indexes/IndexIterator.h"
 #include "Transaction/Methods.h"
-
-#include <memory>
-#include <vector>
 
 namespace arangodb {
 
@@ -103,7 +104,7 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode, public Col
   std::vector<Variable const*> getVariablesSetHere() const final;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(arangodb::HashSet<Variable const*>& vars) const final;
+  void getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& vars) const final;
 
   /// @brief estimateCost
   CostEstimate estimateCost() const final;
@@ -114,6 +115,30 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode, public Col
   /// @brief called to build up the matching positions of the index values for
   /// the projection attributes (if any)
   void initIndexCoversProjections();
+
+  void planNodeRegisters(std::vector<aql::RegisterId>& nrRegsHere,
+                         std::vector<aql::RegisterId>& nrRegs,
+                         std::unordered_map<aql::VariableId, aql::VarInfo>& varInfo,
+                         unsigned int& totalNrRegs, unsigned int depth) const;
+
+  bool isLateMaterialized() const noexcept {
+    TRI_ASSERT((_outNonMaterializedDocId == nullptr && _outNonMaterializedIndVars.second.empty()) ||
+               !(_outNonMaterializedDocId == nullptr || _outNonMaterializedIndVars.second.empty()));
+    return !_outNonMaterializedIndVars.second.empty();
+  }
+
+  struct IndexVariable {
+    size_t indexFieldNum;
+    Variable const* var;
+  };
+
+  using IndexValuesVars = std::pair<TRI_idx_iid_t, std::unordered_map<size_t, Variable const*>>;
+
+  using IndexValuesRegisters = std::pair<TRI_idx_iid_t, std::unordered_map<size_t, RegisterId>>;
+
+  using IndexVarsInfo = std::unordered_map<std::vector<arangodb::basics::AttributeName> const*, IndexVariable>;
+
+  void setLateMaterialized(aql::Variable const* docIdVariable, TRI_idx_iid_t commonIndexId, IndexVarsInfo const& indexVariables);
 
  private:
   void initializeOnce(bool hasV8Expression, std::vector<Variable const*>& inVars,
@@ -136,6 +161,12 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode, public Col
 
   /// @brief the index iterator options - same for all indexes
   IndexIteratorOptions _options;
+
+  /// @brief output variable to write only non-materialized document ids
+  aql::Variable const* _outNonMaterializedDocId;
+
+  /// @brief output variables to non-materialized document index references
+  IndexValuesVars _outNonMaterializedIndVars;
 };
 
 }  // namespace aql

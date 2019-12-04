@@ -1155,7 +1155,17 @@ function checkInstanceAlive (instanceInfo, options) {
       rc = instanceInfo.arangods.reduce((previous, arangod) => {
         if (arangod.role === "agent") return true;
         if (arangod.role === "single") return true;
-        return health.hasOwnProperty(arangod.id) && health[arangod.id].Status === "GOOD";
+        if (health.hasOwnProperty(arangod.id)) {
+          if (health[arangod.id].Status === "GOOD") {
+            return true;
+          } else {
+            print(RED + "ClusterHealthCheck failed " + arangod.id + " has status " + health[arangod.id].Status + " (which is not equal to GOOD)");
+            return false;
+          }
+        } else {
+          print(RED + "ClusterHealthCheck failed " + arangod.id + " does not have health property");
+          return false;
+        }
       }, true);
     } catch (x) {
       print(Date() + " ClusterHealthCheck failed: " + x);
@@ -1701,6 +1711,7 @@ function startInstanceCluster (instanceInfo, protocol, options,
       let port = findFreePort(options.minPort, options.maxPort, usedPorts);
       usedPorts.push(port);
       let endpoint = protocol + '://127.0.0.1:' + port;
+      instanceInfo['vstEndpoint'] = 'vst://127.0.0.1:' + port;
       let coordinatorArgs = _.clone(options.extraArgs);
       coordinatorArgs['server.endpoint'] = endpoint;
       coordinatorArgs['cluster.my-address'] = endpoint;
@@ -1714,6 +1725,7 @@ function startInstanceCluster (instanceInfo, protocol, options,
       let port = findFreePort(options.minPort, options.maxPort, usedPorts);
       usedPorts.push(port);
       let endpoint = protocol + '://127.0.0.1:' + port;
+      instanceInfo['vstEndpoint'] = 'vst://127.0.0.1:' + port;
       let singleArgs = _.clone(options.extraArgs);
       singleArgs['server.endpoint'] = endpoint;
       singleArgs['cluster.my-address'] = endpoint;
@@ -1803,14 +1815,6 @@ function launchFinalize(options, instanceInfo, startTime) {
       device = options.sniffDevice;
     }
 
-    let pcapFile = fs.join(instanceInfo.rootDir, 'out.pcap');
-    let args = ['-ni', device, '-s0', '-w', pcapFile];
-    for (let port = 0; port < ports.length; port ++) {
-      if (port > 0) {
-        args.push('or');
-      }
-      args.push(ports[port]);
-    }
     let prog = 'tcpdump';
     if (platform.substr(0, 3) === 'win') {
       prog = 'c:/Program Files/Wireshark/tshark.exe';
@@ -1818,6 +1822,21 @@ function launchFinalize(options, instanceInfo, startTime) {
     if (options.sniffProgram !== undefined) {
       prog = options.sniffProgram;
     }
+
+    let pcapFile = fs.join(instanceInfo.rootDir, 'out.pcap');
+    let args;
+    if (prog === 'ngrep') {
+      args = ['-l', '-Wbyline', '-d', device];
+    } else {
+      args = ['-ni', device, '-s0', '-w', pcapFile];
+    }
+    for (let port = 0; port < ports.length; port ++) {
+      if (port > 0) {
+        args.push('or');
+      }
+      args.push(ports[port]);
+    }
+
     if (options.sniff === 'sudo') {
       args.unshift(prog);
       prog = 'sudo';
@@ -1984,6 +2003,7 @@ function startInstanceSingleServer (instanceInfo, protocol, options,
 
   instanceInfo.endpoint = instanceInfo.arangods[instanceInfo.arangods.length - 1].endpoint;
   instanceInfo.url = instanceInfo.arangods[instanceInfo.arangods.length - 1].url;
+  instanceInfo.vstEndpoint = instanceInfo.arangods[instanceInfo.arangods.length - 1].url.replace(/.*\/\//, 'vst://');
 
   return instanceInfo;
 }

@@ -201,7 +201,7 @@ CommTask::Flow CommTask::prepareExecution(GeneralRequest& req) {
         break;  // continue with auth check
       }
     }
-    // intentionally falls through
+    [[fallthrough]];
     case ServerState::Mode::TRYAGAIN: {
       if (!::startsWith(path, "/_admin/shutdown") &&
           !::startsWith(path, "/_admin/cluster/health") &&
@@ -305,7 +305,7 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
   bool found;
   // check for an async request (before the handler steals the request)
   std::string const& asyncExec = request->header(StaticStrings::Async, found);
-  
+
   // store the message id for error handling
   uint64_t messageId = 0UL;
   if (request) {
@@ -337,9 +337,10 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
   bool forwarded;
   auto res = handler->forwardRequest(forwarded);
   if (forwarded) {
-    std::move(res).thenFinal([self = shared_from_this(), handler = std::move(handler)](
+    RequestStatistics::SET_SUPERUSER(statistics(messageId));
+    std::move(res).thenFinal([self = shared_from_this(), handler = std::move(handler), messageId](
                                  futures::Try<Result> && /*ignored*/) -> void {
-      self->sendResponse(handler->stealResponse(), handler->stealStatistics());
+      self->sendResponse(handler->stealResponse(), self->stealStatistics(messageId));
     });
     return;
   }
@@ -388,29 +389,26 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
 // --SECTION-- statistics handling                             protected methods
 // -----------------------------------------------------------------------------
 
-
-void CommTask::setStatistics(uint64_t id, RequestStatistics* stat) {
-  std::lock_guard<std::mutex> guard(_statisticsMutex);
-
-  if (stat == nullptr) {
-    auto it = _statisticsMap.find(id);
-    if (it != _statisticsMap.end()) {
-      it->second->release();
-      _statisticsMap.erase(it);
-    }
-  } else {
-    auto result = _statisticsMap.insert({id, stat});
-    if (!result.second) {
-      result.first->second->release();
-      result.first->second = stat;
-    }
-  }
-}
-
-
 RequestStatistics* CommTask::acquireStatistics(uint64_t id) {
   RequestStatistics* stat = RequestStatistics::acquire();
-  setStatistics(id, stat);
+  
+  {
+    std::lock_guard<std::mutex> guard(_statisticsMutex);
+    if (stat == nullptr) {
+      auto it = _statisticsMap.find(id);
+      if (it != _statisticsMap.end()) {
+        it->second->release();
+        _statisticsMap.erase(it);
+      }
+    } else {
+      auto result = _statisticsMap.insert({id, stat});
+      if (!result.second) {
+        result.first->second->release();
+        result.first->second = stat;
+      }
+    }
+  }
+  
   return stat;
 }
 
@@ -476,22 +474,23 @@ void CommTask::addErrorResponse(rest::ResponseCode code, rest::ContentType respT
 bool CommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
 
   RequestStatistics::SET_QUEUE_START(handler->statistics(), SchedulerFeature::SCHEDULER->queueStatistics()._queued);
-  
+
   RequestLane lane = handler->getRequestLane();
   ContentType respType = handler->request()->contentTypeResponse();
   uint64_t mid = handler->messageId();
+  bool handlerAllowDirectExecution = handler->allowDirectExecution();
 
   // queue the operation in the scheduler, and make it eligible for direct execution
   // only if the current CommTask type allows it (HttpCommTask: yes, CommTask: no)
   // and there is currently only a single client handled by the IoContext
-  auto cb = [self = shared_from_this(), handler = std::move(handler)]() {
+  auto cb = [self = shared_from_this(), handler = std::move(handler)]() mutable {
     RequestStatistics::SET_QUEUE_END(handler->statistics());
     handler->runHandler([self = std::move(self)](rest::RestHandler* handler) {
       // Pass the response the io context
       self->sendResponse(handler->stealResponse(), handler->stealStatistics());
     });
   };
-  bool ok = SchedulerFeature::SCHEDULER->queue(lane, std::move(cb), allowDirectHandling());
+  bool ok = SchedulerFeature::SCHEDULER->queue(lane, std::move(cb), allowDirectHandling() && handlerAllowDirectExecution);
 
   if (!ok) {
     addErrorResponse(rest::ResponseCode::SERVICE_UNAVAILABLE,

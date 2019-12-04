@@ -21,6 +21,8 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <algorithm>
+
 #include "ShardLocking.h"
 
 #include "Aql/Collection.h"
@@ -30,8 +32,7 @@
 #include "Aql/ModificationNodes.h"
 #include "Aql/Query.h"
 #include "Cluster/ClusterFeature.h"
-
-#include <algorithm>
+#include "Logger/LogMacros.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -158,7 +159,7 @@ void ShardLocking::updateLocking(Collection const* col,
   auto snippetPart = info.snippetInfo.find(snippetId);
   if (snippetPart == info.snippetInfo.end()) {
     std::tie(snippetPart, std::ignore) =
-        info.snippetInfo.emplace(snippetId, SnippetInformation{});
+        info.snippetInfo.try_emplace(snippetId, SnippetInformation{});
   }
   TRI_ASSERT(snippetPart != info.snippetInfo.end());
   SnippetInformation& snip = snippetPart->second;

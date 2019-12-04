@@ -18,11 +18,11 @@ set(LIB_ARANGO_SHELL_SOURCES
   V8Client/ArangoClientHelper.cpp
 )
 
-add_library(lib_arango_shell STATIC
+add_library(arango_shell STATIC
   ${LIB_ARANGO_SHELL_SOURCES}
 )
 
-target_link_libraries(lib_arango_shell
+target_link_libraries(arango_shell
   arango
   ${MSVC_LIBS}
   ${SYSTEM_LIBRARIES}
@@ -59,7 +59,7 @@ target_link_libraries(${BIN_ARANGOBENCH}
   ${SYSTEM_LIBRARIES}
   boost_system
   boost_boost
-  lib_arango_shell
+  arango_shell
 )
 
 install(
@@ -78,13 +78,13 @@ if (USE_JEMALLOC)
   add_dependencies(arangobench jemalloc)
 endif ()
 
-if(MSVC)
-  target_compile_options(arangobench PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
-endif()
-
-if (DARWIN)
-  target_compile_options(arangobench PRIVATE -Werror)
-endif()
+if (USE_FAIL_ON_WARNINGS)
+ if (MSVC)
+    target_compile_options(arangobench PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+ else ()
+   target_compile_options(arangobench PRIVATE -Werror -Wno-error=deprecated-declarations)
+ endif ()
+endif ()
 
 ################################################################################
 ## arangobackup
@@ -118,7 +118,7 @@ target_link_libraries(${BIN_ARANGOBACKUP}
   ${SYSTEM_LIBRARIES}
   boost_system
   boost_boost
-  lib_arango_shell
+  arango_shell
 )
 
 install(
@@ -137,13 +137,13 @@ if (USE_JEMALLOC)
   add_dependencies(arangobackup jemalloc)
 endif ()
 
-if(MSVC)
-  target_compile_options(arangobackup PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
-endif()
-
-if (DARWIN)
-  target_compile_options(arangobackup PRIVATE -Werror)
-endif()
+if (USE_FAIL_ON_WARNINGS)
+ if (MSVC)
+    target_compile_options(arangobackup PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+ else ()
+   target_compile_options(arangobackup PRIVATE -Werror -Wno-error=deprecated-declarations)
+ endif ()
+endif ()
 
 endif () # USE_ENTERPRISE
 
@@ -177,7 +177,7 @@ target_link_libraries(${BIN_ARANGODUMP}
   ${SYSTEM_LIBRARIES}
   boost_system
   boost_boost
-  lib_arango_shell
+  arango_shell
 )
 
 install(
@@ -196,13 +196,13 @@ if (USE_JEMALLOC)
   add_dependencies(arangodump jemalloc)
 endif ()
 
-if(MSVC)
-  target_compile_options(arangodump PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
-endif()
-
-if (DARWIN)
-  target_compile_options(arangodump PRIVATE -Werror)
-endif()
+if (USE_FAIL_ON_WARNINGS)
+ if (MSVC)
+    target_compile_options(arangodump PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+ else ()
+   target_compile_options(arangodump PRIVATE -Werror -Wno-error=deprecated-declarations)
+ endif ()
+endif ()
 
 ################################################################################
 ## arangoexport
@@ -233,7 +233,7 @@ target_link_libraries(${BIN_ARANGOEXPORT}
   ${SYSTEM_LIBRARIES}
   boost_system
   boost_boost
-  lib_arango_shell
+  arango_shell
 )
 
 install(
@@ -252,13 +252,13 @@ if (USE_JEMALLOC)
   add_dependencies(arangoexport jemalloc)
 endif ()
 
-if(MSVC)
-  target_compile_options(arangoexport PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
-endif()
-
-if (DARWIN)
-  target_compile_options(arangoexport PRIVATE -Werror)
-endif()
+if (USE_FAIL_ON_WARNINGS)
+ if (MSVC)
+    target_compile_options(arangoexport PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+ else ()
+   target_compile_options(arangoexport PRIVATE -Werror -Wno-error=deprecated-declarations)
+ endif ()
+endif ()
 
 ################################################################################
 ## arangoimport
@@ -293,7 +293,7 @@ target_link_libraries(${BIN_ARANGOIMPORT}
   fuerte
   boost_system
   boost_boost
-  lib_arango_shell
+  arango_shell
 )
 
 install(
@@ -320,13 +320,13 @@ install_command_alias(arangoimport
   arangoimp
 )
 
-if(MSVC)
-  target_compile_options(arangoimport PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
-endif()
-
-if (DARWIN)
-  target_compile_options(arangoimport PRIVATE -Werror)
-endif()
+if (USE_FAIL_ON_WARNINGS)
+ if (MSVC)
+    target_compile_options(arangoimport PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+ else ()
+   target_compile_options(arangoimport PRIVATE -Werror -Wno-error=deprecated-declarations)
+ endif ()
+endif ()
 
 ################################################################################
 ## arangorestore
@@ -358,7 +358,7 @@ target_link_libraries(${BIN_ARANGORESTORE}
   ${SYSTEM_LIBRARIES}
   boost_system
   boost_boost
-  lib_arango_shell
+  arango_shell
 )
 
 install(
@@ -377,13 +377,13 @@ if (USE_JEMALLOC)
   add_dependencies(arangorestore jemalloc)
 endif ()
 
-if(MSVC)
-  target_compile_options(arangorestore PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
-endif()
-
-if (DARWIN)
-  target_compile_options(arangorestore PRIVATE -Werror)
-endif()
+if (USE_FAIL_ON_WARNINGS)
+ if (MSVC)
+    target_compile_options(arangorestore PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+ else ()
+   target_compile_options(arangorestore PRIVATE -Werror -Wno-error=deprecated-declarations)
+ endif ()
+endif ()
 
 ################################################################################
 ## arangosh
@@ -423,7 +423,7 @@ target_link_libraries(${BIN_ARANGOSH}
   ${SYSTEM_LIBRARIES}
   boost_system
   boost_boost
-  lib_arango_shell
+  arango_shell
 )
 
 install(
@@ -442,13 +442,13 @@ if (USE_JEMALLOC)
   add_dependencies(arangosh jemalloc)
 endif ()
 
-if(MSVC)
-  target_compile_options(arangosh PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
-endif()
-
-if (DARWIN)
-  target_compile_options(arangosh PRIVATE -Werror)
-endif()
+if (USE_FAIL_ON_WARNINGS)
+ if (MSVC)
+    target_compile_options(arangosh PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+ else ()
+   target_compile_options(arangosh PRIVATE -Werror -Wno-error=deprecated-declarations)
+ endif ()
+endif ()
 
 ################################################################################
 ## arangovpack
@@ -479,7 +479,7 @@ target_link_libraries(${BIN_ARANGOVPACK}
   ${SYSTEM_LIBRARIES}
   boost_system
   boost_boost
-  lib_arango_shell
+  arango_shell
 )
 
 install(
@@ -498,13 +498,13 @@ if (USE_JEMALLOC)
   add_dependencies(arangovpack jemalloc)
 endif ()
 
-if(MSVC)
-  target_compile_options(arangovpack PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
-endif()
-
-if (DARWIN)
-  target_compile_options(arangovpack PRIVATE -Werror)
-endif()
+if (USE_FAIL_ON_WARNINGS)
+ if (MSVC)
+    target_compile_options(arangovpack PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+ else ()
+   target_compile_options(arangovpack PRIVATE -Werror -Wno-error=deprecated-declarations)
+ endif ()
+endif ()
 
 ################################################################################
 ## foxx-manager

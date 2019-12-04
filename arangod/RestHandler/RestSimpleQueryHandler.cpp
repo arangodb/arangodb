@@ -74,7 +74,7 @@ RestStatus RestSimpleQueryHandler::allDocuments() {
   bool parseSuccess = false;
   VPackSlice const body = this->parseVPackBody(parseSuccess);
   if (!parseSuccess) {
-    // error message generated in parseVelocyPackBody
+    // error message generated in parseVPackBody
     return RestStatus::DONE;
   }
 
@@ -235,7 +235,7 @@ static void buildExampleQuery(VPackBuilder& result, std::string const& cname,
     std::string key =
         basics::StringUtils::replace(pair.key.copyString(), "`", "");
     key =
-        basics::StringUtils::join(basics::StringUtils::split(key, "."), "`.`");
+        basics::StringUtils::join(basics::StringUtils::split(key, '.'), "`.`");
     std::string istr = std::to_string(i++);
     query.append(" FILTER doc.`").append(key).append("` == @value").append(istr);
     result.add(std::string("value") + istr, pair.value);

@@ -51,6 +51,8 @@ struct BackupMeta {
   unsigned int _nrDBServers;
   std::string _serverId;
   bool _potentiallyInconsistent;
+  bool _isAvailable;
+  unsigned int _nrPiecesPresent;
 
   static constexpr const char *ID = "id";
   static constexpr const char *VERSION = "version";
@@ -60,6 +62,9 @@ struct BackupMeta {
   static constexpr const char *NRDBSERVERS = "nrDBServers";
   static constexpr const char *SERVERID = "serverId";
   static constexpr const char *POTENTIALLYINCONSISTENT = "potentiallyInconsistent";
+  static constexpr const char *AVAILABLE = "available";
+  static constexpr const char *NRPIECESPRESENT = "nrPiecesPresent";
+
 
   void toVelocyPack(VPackBuilder &builder) const {
     {
@@ -72,6 +77,10 @@ struct BackupMeta {
       builder.add(NRDBSERVERS, VPackValue(_nrDBServers));
       if (ServerState::instance()->isDBServer()) {
         builder.add(SERVERID, VPackValue(_serverId));
+      }
+      if (ServerState::instance()->isCoordinator() || ServerState::instance()->isSingleServer()) {
+        builder.add(AVAILABLE, VPackValue(_isAvailable));
+        builder.add(NRPIECESPRESENT, VPackValue(_nrPiecesPresent));
       }
       builder.add(POTENTIALLYINCONSISTENT, VPackValue(_potentiallyInconsistent));
     }
@@ -91,6 +100,9 @@ struct BackupMeta {
           slice, NRDBSERVERS, 1);
       meta._serverId = basics::VelocyPackHelper::getStringValue(slice, SERVERID, "");
       meta._potentiallyInconsistent = basics::VelocyPackHelper::getBooleanValue(slice, POTENTIALLYINCONSISTENT, false);
+      meta._isAvailable = basics::VelocyPackHelper::getBooleanValue(slice, AVAILABLE, true);
+      meta._nrPiecesPresent = basics::VelocyPackHelper::getNumericValue<unsigned int>(
+          slice, NRPIECESPRESENT, 1);
       return meta;
     } catch (std::exception const& e) {
       return ResultT<BackupMeta>::error(TRI_ERROR_BAD_PARAMETER, e.what());
@@ -100,7 +112,7 @@ struct BackupMeta {
   BackupMeta(std::string const& id, std::string const& version, std::string const& datetime, size_t sizeInBytes, size_t nrFiles, unsigned int nrDBServers, std::string const& serverId, bool potentiallyInconsistent) :
     _id(id), _version(version), _datetime(datetime),
     _sizeInBytes(sizeInBytes), _nrFiles(nrFiles), _nrDBServers(nrDBServers),
-    _serverId(serverId), _potentiallyInconsistent(potentiallyInconsistent) {}
+    _serverId(serverId), _potentiallyInconsistent(potentiallyInconsistent),_isAvailable(true), _nrPiecesPresent(1) {}
 
 private:
   BackupMeta() {}

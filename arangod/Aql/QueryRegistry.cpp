@@ -35,6 +35,7 @@
 
 using namespace arangodb;
 using namespace arangodb::aql;
+using namespace arangodb::cluster;
 
 QueryRegistry::~QueryRegistry() {
   std::vector<std::pair<std::string, QueryId>> toDelete;
@@ -70,7 +71,8 @@ QueryRegistry::~QueryRegistry() {
 
 /// @brief insert
 void QueryRegistry::insert(QueryId id, Query* query, double ttl,
-                           bool isPrepared, bool keepLease) {
+                           bool isPrepared, bool keepLease,
+                           std::unique_ptr<CallbackGuard>&& rGuard) {
   TRI_ASSERT(query != nullptr);
   TRI_ASSERT(query->trx() != nullptr);
   LOG_TOPIC("77778", DEBUG, arangodb::Logger::AQL)
@@ -83,7 +85,7 @@ void QueryRegistry::insert(QueryId id, Query* query, double ttl,
   }
 
   // create the query info object outside of the lock
-  auto p = std::make_unique<QueryInfo>(id, query, ttl, isPrepared);
+  auto p = std::make_unique<QueryInfo>(id, query, ttl, isPrepared, std::move(rGuard));
   p->_isOpen = keepLease;
 
   // now insert into table of running queries
@@ -93,12 +95,30 @@ void QueryRegistry::insert(QueryId id, Query* query, double ttl,
       THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
     }
 
-    auto result = _queries[vocbase.name()].emplace(id, std::move(p));
+    auto result = _queries[vocbase.name()].try_emplace(id, std::move(p));
     if (!result.second) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_INTERNAL, "query with given vocbase and id already there");
     }
   }
+}
+
+/// @brief kill a query
+bool QueryRegistry::kill(TRI_vocbase_t* vocbase, QueryId id) {
+  READ_LOCKER(writeLocker, _lock);
+
+  auto m = _queries.find(vocbase->name());
+  if (m == _queries.end()) {
+    return false;
+  }
+  auto q = m->second.find(id);
+  if (q == m->second.end()) {
+    return false;
+  }
+
+  std::unique_ptr<QueryInfo>& qi = q->second;
+  qi->_query->setKilled();
+  return true;
 }
 
 /// @brief open
@@ -206,6 +226,10 @@ void QueryRegistry::destroy(std::string const& vocbase, QueryId id,
     if (q == m->second.end()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_BAD_PARAMETER, "query with given vocbase and id not found");
+    }
+
+    if (q->second->_rebootGuard != nullptr) {
+      q->second->_rebootGuard->callAndClear();
     }
 
     if (q->second->_isOpen && !ignoreOpened) {
@@ -390,13 +414,15 @@ void QueryRegistry::disallowInserts() {
   // from here on, there shouldn't be any more inserts into the registry
 }
 
-QueryRegistry::QueryInfo::QueryInfo(QueryId id, Query* query, double ttl, bool isPrepared)
+QueryRegistry::QueryInfo::QueryInfo(QueryId id, Query* query, double ttl, bool isPrepared,
+  std::unique_ptr<arangodb::cluster::CallbackGuard>&& rebootGuard)
     : _vocbase(&(query->vocbase())),
       _id(id),
       _query(query),
       _isOpen(false),
       _isPrepared(isPrepared),
       _timeToLive(ttl),
-      _expires(TRI_microtime() + ttl) {}
+      _expires(TRI_microtime() + ttl),
+      _rebootGuard(std::move(rebootGuard)) {}
 
 QueryRegistry::QueryInfo::~QueryInfo() { delete _query; }

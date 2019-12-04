@@ -26,6 +26,7 @@
 #include "Aql/ExecutionNode.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Query.h"
+#include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/Stats.h"
 #include "Graph/KShortestPathsFinder.h"
@@ -41,10 +42,6 @@
 
 using namespace arangodb;
 using namespace arangodb::aql;
-
-constexpr bool KShortestPathsExecutor::Properties::preservesOrder;
-constexpr BlockPassthrough KShortestPathsExecutor::Properties::allowsBlockPassthrough;
-constexpr bool KShortestPathsExecutor::Properties::inputSizeRestrictsOutputSize;
 using namespace arangodb::graph;
 
 namespace {

@@ -210,11 +210,12 @@ std::pair<ExecutionState, size_t> DependencyProxy<blockPassthrough>::skipSome(si
     _skipped += skippedNow;
 
     // When the current dependency is done, advance.
-    if (state == ExecutionState::DONE && !advanceDependency()) {
-      size_t skipped = _skipped;
-      _skipped = 0;
-      TRI_ASSERT(skipped <= toSkip);
-      return {state, skipped};
+    if (state == ExecutionState::DONE) {
+      if (!advanceDependency()) {
+        break;
+      } else {
+        state = ExecutionState::HASMORE;
+      }
     }
   }
 
@@ -254,7 +255,8 @@ template <BlockPassthrough blockPassthrough>
 DependencyProxy<blockPassthrough>::DependencyProxy(
     std::vector<ExecutionBlock*> const& dependencies, AqlItemBlockManager& itemBlockManager,
     std::shared_ptr<std::unordered_set<RegisterId> const> inputRegisters,
-    RegisterId nrInputRegisters)
+    RegisterId nrInputRegisters,
+    velocypack::Options const* const options)
     : _dependencies(dependencies),
       _itemBlockManager(itemBlockManager),
       _inputRegisters(std::move(inputRegisters)),
@@ -263,7 +265,8 @@ DependencyProxy<blockPassthrough>::DependencyProxy(
       _blockQueue(),
       _blockPassThroughQueue(),
       _currentDependency(0),
-      _skipped(0) {}
+      _skipped(0),
+      _vpackOptions(options) {}
 
 template <BlockPassthrough blockPassthrough>
 RegisterId DependencyProxy<blockPassthrough>::getNrInputRegisters() const {
@@ -313,6 +316,12 @@ bool DependencyProxy<blockPassthrough>::advanceDependency() {
   }
   _currentDependency++;
   return true;
+}
+
+template <BlockPassthrough allowBlockPassthrough>
+velocypack::Options const* DependencyProxy<allowBlockPassthrough>::velocypackOptions() const
+    noexcept {
+  return _vpackOptions;
 }
 
 template class ::arangodb::aql::DependencyProxy<BlockPassthrough::Enable>;

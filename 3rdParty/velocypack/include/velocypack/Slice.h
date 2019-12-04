@@ -36,6 +36,11 @@
 #include <functional>
 #include <type_traits>
 
+#if __cplusplus >= 201703L
+#include <string_view>
+#define VELOCYPACK_HAS_STRING_VIEW 1
+#endif
+
 #include "velocypack/velocypack-common.h"
 #include "velocypack/Exception.h"
 #include "velocypack/Options.h"
@@ -47,13 +52,12 @@
 namespace arangodb {
 namespace velocypack {
 
+// This class provides read only access to a VPack value, it is
+// intentionally light-weight (only one pointer value), such that
+// it can easily be used to traverse larger VPack values.
+
+// A Slice does not own the VPack data it points to!
 class Slice {
-  // This class provides read only access to a VPack value, it is
-  // intentionally light-weight (only one pointer value), such that
-  // it can easily be used to traverse larger VPack values.
-
-  // A Slice does not own the VPack data it points to!
-
   friend class Builder;
   friend class ArrayIterator;
   friend class ObjectIterator;
@@ -711,6 +715,12 @@ class Slice {
 
     throw Exception(Exception::InvalidValueType, "Expecting type String");
   }
+#ifdef VELOCYPACK_HAS_STRING_VIEW
+  std::string_view stringView() const {
+    StringRef ref  = this->stringRef();
+    return std::string_view(ref.data(), ref.size());
+  }
+#endif
 
   // return the value for a Binary object
   uint8_t const* getBinary(ValueLength& length) const {
@@ -1104,6 +1114,9 @@ class Slice {
     return value;
   }
 };
+
+static_assert(!std::is_polymorphic<Slice>::value, "Slice must not be polymorphic");
+static_assert(!std::has_virtual_destructor<Slice>::value, "Slice must not have virtual dtor");
 
 }  // namespace arangodb::velocypack
 }  // namespace arangodb

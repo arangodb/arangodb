@@ -47,14 +47,7 @@ using namespace arangodb::basics;
 using namespace arangodb::options;
 
 ClusterFeature::ClusterFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Cluster"),
-      _unregisterOnShutdown(false),
-      _enableCluster(false),
-      _requirePersistedId(false),
-      _heartbeatThread(nullptr),
-      _heartbeatInterval(0),
-      _agencyCallbackRegistry(nullptr),
-      _requestedRole(ServerState::RoleEnum::ROLE_UNDEFINED) {
+    : ApplicationFeature(server, "Cluster") {
   setOptional(true);
   startsAfter<CommunicationFeaturePhase>();
   startsAfter<DatabaseFeaturePhase>();
@@ -148,15 +141,19 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      "maximum replication factor for new collections (0 = unrestricted)",
                      new UInt32Parameter(&_maxReplicationFactor)).setIntroducedIn(30600);
 
+  options->addOption("--cluster.max-number-of-shards",
+                     "maximum number of shards when creating new collections (0 = unrestricted)",
+                     new UInt32Parameter(&_maxNumberOfShards)).setIntroducedIn(30501);
+  
+  options->addOption("--cluster.force-one-shard",
+                     "force one-shard mode for all new collections",
+                     new BooleanParameter(&_forceOneShard)).setIntroducedIn(30600);
+  
   options->addOption(
       "--cluster.create-waits-for-sync-replication",
       "active coordinator will wait for all replicas to create collection",
       new BooleanParameter(&_createWaitsForSyncReplication),
       arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
-
-  options->addOption("--cluster.max-number-of-shards",
-                     "maximum number of shards when creating new collections (0 = unrestricted)",
-                     new UInt32Parameter(&_maxNumberOfShards)).setIntroducedIn(30501);
 
   options->addOption(
       "--cluster.index-create-timeout",
@@ -176,6 +173,14 @@ void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
         << "ArangoDBStarter for this now! See "
         << "https://github.com/arangodb-helper/ArangoDBStarter/ for more "
         << "details.";
+    FATAL_ERROR_EXIT();
+  }
+
+  if (_forceOneShard) {
+    _maxNumberOfShards = 1;
+  } else if (_maxNumberOfShards == 0) {
+    LOG_TOPIC("e83c2", FATAL, arangodb::Logger::CLUSTER)
+        << "Invalid value for `--max-number-of-shards`. The value must be at least 1";
     FATAL_ERROR_EXIT();
   }
   
@@ -497,10 +502,14 @@ void ClusterFeature::start() {
   std::string myId = ServerState::instance()->getId();
 
   LOG_TOPIC("b6826", INFO, arangodb::Logger::CLUSTER)
-      << "Cluster feature is turned on. Agency version: " << version
-      << ", Agency endpoints: " << endpoints << ", server id: '" << myId
+      << "Cluster feature is turned on" 
+      << (_forceOneShard ? " with one-shard mode" : "") 
+      << ". Agency version: " << version
+      << ", Agency endpoints: " << endpoints 
+      << ", server id: '" << myId
       << "', internal endpoint / address: " << _myEndpoint
-      << "', advertised endpoint: " << _myAdvertisedEndpoint << ", role: " << role;
+      << "', advertised endpoint: " << _myAdvertisedEndpoint 
+      << ", role: " << role;
 
   AgencyCommResult result = comm.getValues("Sync/HeartbeatIntervalMs");
 
@@ -538,22 +547,7 @@ void ClusterFeature::start() {
 void ClusterFeature::beginShutdown() { ClusterComm::instance()->disable(); }
 
 void ClusterFeature::stop() {
-  if (_heartbeatThread != nullptr) {
-    _heartbeatThread->beginShutdown();
-  }
-
-  if (_heartbeatThread != nullptr) {
-    int counter = 0;
-    while (_heartbeatThread->isRunning()) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(100));
-      // emit warning after 5 seconds
-      if (++counter == 10 * 5) {
-        LOG_TOPIC("acaa9", WARN, arangodb::Logger::CLUSTER)
-            << "waiting for heartbeat thread to finish";
-      }
-    }
-  }
-
+  shutdownHeartbeatThread();
   ClusterComm::instance()->stopBackgroundThreads();
 }
 
@@ -563,9 +557,7 @@ void ClusterFeature::unprepare() {
     return;
   }
 
-  if (_heartbeatThread != nullptr) {
-    _heartbeatThread->beginShutdown();
-  }
+  shutdownHeartbeatThread();
 
   // change into shutdown state
   ServerState::instance()->setState(ServerState::STATE_SHUTDOWN);
@@ -658,7 +650,7 @@ void ClusterFeature::setUnregisterOnShutdown(bool unregisterOnShutdown) {
 /// @brief common routine to start heartbeat with or without cluster active
 void ClusterFeature::startHeartbeatThread(AgencyCallbackRegistry* agencyCallbackRegistry,
                                           uint64_t interval_ms, uint64_t maxFailsBeforeWarning,
-                                          const std::string& endpoints) {
+                                          std::string const& endpoints) {
   _heartbeatThread =
       std::make_shared<HeartbeatThread>(server(), agencyCallbackRegistry,
                                         std::chrono::microseconds(interval_ms * 1000),
@@ -674,6 +666,24 @@ void ClusterFeature::startHeartbeatThread(AgencyCallbackRegistry* agencyCallback
   while (!_heartbeatThread->isReady()) {
     // wait until heartbeat is ready
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
+  }
+}
+
+void ClusterFeature::shutdownHeartbeatThread() {
+  if (_heartbeatThread == nullptr) {
+    return;
+  }
+  
+  _heartbeatThread->beginShutdown();
+
+  int counter = 0;
+  while (_heartbeatThread->isRunning()) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    // emit warning after 5 seconds
+    if (++counter == 10 * 5) {
+      LOG_TOPIC("acaa9", WARN, arangodb::Logger::CLUSTER)
+          << "waiting for heartbeat thread to finish";
+    }
   }
 }
 

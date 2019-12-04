@@ -37,6 +37,7 @@
 #include "Aql/Range.h"
 #include "Aql/V8Executor.h"
 #include "Aql/Variable.h"
+#include "Aql/AqlValueMaterializer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/StringBuffer.h"
@@ -75,7 +76,7 @@ Expression::Expression(ExecutionPlan const* plan, Ast* ast, arangodb::velocypack
 Expression::~Expression() { freeInternals(); }
 
 /// @brief return all variables used in the expression
-void Expression::variables(arangodb::HashSet<Variable const*>& result) const {
+void Expression::variables(::arangodb::containers::HashSet<Variable const*>& result) const {
   Ast::getReferencedVariables(_node, result);
 }
 
@@ -768,12 +769,12 @@ AqlValue Expression::executeSimpleExpressionFCallCxx(AstNode const* node,
     // use stack-based allocation for the first few function call
     // parameters. this saves a few heap allocations per function
     // call invocation
-    SmallVector<AqlValue>::allocator_type::arena_type arena;
+    ::arangodb::containers::SmallVector<AqlValue>::allocator_type::arena_type arena;
     VPackFunctionParameters parameters{arena};
 
     // same here
-    SmallVector<uint64_t>::allocator_type::arena_type arena2;
-    SmallVector<uint64_t> destroyParameters{arena2};
+    ::arangodb::containers::SmallVector<uint64_t>::allocator_type::arena_type arena2;
+    ::arangodb::containers::SmallVector<uint64_t> destroyParameters{arena2};
 
     explicit FunctionParameters(size_t n) {
       parameters.reserve(n);
@@ -1621,6 +1622,7 @@ bool Expression::canRunOnDBServer() {
   TRI_ASSERT(_node != nullptr);
   return _node->canRunOnDBServer();
 }
+
 bool Expression::isDeterministic() {
   if (_type == UNPROCESSED) {
     initExpression();

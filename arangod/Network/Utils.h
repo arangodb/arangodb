@@ -26,6 +26,7 @@
 
 #include "Basics/Result.h"
 #include "Network/types.h"
+#include "Rest/CommonDefines.h"
 #include "Utils/OperationResult.h"
 
 #include <fuerte/types.h>
@@ -57,7 +58,7 @@ OperationResult opResultFromBody(T const& body, int defaultErrorCode) {
 }
 
 /// @brief extract the error code form the body
-int errorCodeFromBody(arangodb::velocypack::Slice body);
+int errorCodeFromBody(arangodb::velocypack::Slice body, int defaultErrorCode = 0);
 
 /// @brief Extract all error baby-style error codes and store them in a map
 void errorCodesFromHeaders(network::Headers headers,
@@ -67,6 +68,12 @@ void errorCodesFromHeaders(network::Headers headers,
 /// @brief transform response into arango error code
 int fuerteToArangoErrorCode(network::Response const& res);
 int fuerteToArangoErrorCode(fuerte::Error err);
+std::string fuerteToArangoErrorMessage(network::Response const& res);
+std::string fuerteToArangoErrorMessage(fuerte::Error err);
+
+/// @brief convert between arango and fuerte rest methods
+fuerte::RestVerb arangoRestVerbToFuerte(rest::RequestType);
+rest::RequestType fuerteRestVerbToArango(fuerte::RestVerb);
 
 }  // namespace network
 }  // namespace arangodb

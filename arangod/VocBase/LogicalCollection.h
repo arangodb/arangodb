@@ -31,6 +31,7 @@
 #include "Futures/Future.h"
 #include "Indexes/IndexIterator.h"
 #include "Transaction/CountCache.h"
+#include "Utils/OperationResult.h"
 #include "VocBase/LogicalDataSource.h"
 #include "VocBase/voc-types.h"
 
@@ -59,31 +60,6 @@ namespace transaction {
 class Methods;
 }
 
-class ChecksumResult {
- public:
-  explicit ChecksumResult(Result&& result) : _result(std::move(result)) {}
-  explicit ChecksumResult(velocypack::Builder&& builder)
-      : _result(TRI_ERROR_NO_ERROR), _builder(std::move(builder)) {}
-
-  velocypack::Builder builder() { return _builder; }
-
-  velocypack::Slice slice() { return _builder.slice(); }
-
-  // forwarded methods
-  bool ok() const { return _result.ok(); }
-  bool fail() const { return _result.fail(); }
-  int errorNumber() const { return _result.errorNumber(); }
-  std::string errorMessage() const { return _result.errorMessage(); }
-
-  // access methods
-  Result const& result() const& { return _result; }
-  Result result() && { return std::move(_result); }
-
- private:
-  Result _result;
-  velocypack::Builder _builder;
-};
-
 /// please note that coordinator-based logical collections are frequently
 /// created and discarded, so ctor & dtor need to be as efficient as possible.
 /// additionally, do not put any volatile state into this object in the
@@ -107,11 +83,11 @@ class LogicalCollection : public LogicalDataSource {
   LogicalCollection& operator=(LogicalCollection const&) = delete;
   virtual ~LogicalCollection();
 
-  enum CollectionVersions {
-    VERSION_30 = 5,
-    VERSION_31 = 6,
-    VERSION_33 = 7,
-    VERSION_34 = 8
+  enum class Version {
+    v30 = 5,
+    v31 = 6,
+    v33 = 7,
+    v34 = 8
   };
 
   //////////////////////////////////////////////////////////////////////////////
@@ -120,16 +96,16 @@ class LogicalCollection : public LogicalDataSource {
   static Category const& category() noexcept;
 
   /// @brief hard-coded minimum version number for collections
-  static constexpr uint32_t minimumVersion() { return VERSION_30; }
+  static constexpr Version minimumVersion() { return Version::v30; }
   /// @brief current version for collections
-  static constexpr uint32_t currentVersion() { return VERSION_34; }
+  static constexpr Version currentVersion() { return Version::v34; }
 
   // SECTION: Meta Information
-  uint32_t version() const { return _version; }
+  Version version() const { return _version; }
 
-  void setVersion(CollectionVersions version) { _version = version; }
+  void setVersion(Version version) { _version = version; }
 
-  uint32_t internalVersion() const;
+  uint32_t v8CacheVersion() const;
 
   TRI_col_type_e type() const;
 
@@ -166,7 +142,11 @@ class LogicalCollection : public LogicalDataSource {
   TRI_voc_rid_t revision(transaction::Methods*) const;
   bool waitForSync() const { return _waitForSync; }
   void waitForSync(bool value) { _waitForSync = value; }
+#ifdef USE_ENTERPRISE
   bool isSmart() const { return _isSmart; }
+#else
+  bool isSmart() const { return false; }
+#endif
   /// @brief is this a cluster-wide Plan (ClusterInfo) collection
   bool isAStub() const { return _isAStub; }
   /// @brief is this a cluster-wide Plan (ClusterInfo) collection
@@ -213,9 +193,6 @@ class LogicalCollection : public LogicalDataSource {
   std::unique_ptr<IndexIterator> getAllIterator(transaction::Methods* trx);
   std::unique_ptr<IndexIterator> getAnyIterator(transaction::Methods* trx);
 
-  void invokeOnAllElements(transaction::Methods* trx,
-                           std::function<bool(LocalDocumentId const&)> callback);
-
   /// @brief fetches current index selectivity estimates
   /// if allowUpdate is true, will potentially make a cluster-internal roundtrip
   /// to fetch current values!
@@ -231,9 +208,8 @@ class LogicalCollection : public LogicalDataSource {
   /// @brief return all indexes of the collection
   std::vector<std::shared_ptr<Index>> getIndexes() const;
 
-  void getIndexesVPack(velocypack::Builder&, uint8_t,
-                       std::function<bool(arangodb::Index const*)> const& filter =
-                           [](arangodb::Index const*) -> bool { return true; }) const;
+  void getIndexesVPack(velocypack::Builder&,
+                       std::function<bool(arangodb::Index const*, uint8_t&)> const& filter) const;
 
   /// @brief a method to skip certain documents in AQL write operations,
   /// this is only used in the enterprise edition for smart graphs
@@ -252,10 +228,10 @@ class LogicalCollection : public LogicalDataSource {
   // SECTION: Serialization
   void toVelocyPackIgnore(velocypack::Builder& result,
                           std::unordered_set<std::string> const& ignoreKeys,
-                          std::underlying_type<Serialize>::type flags) const;
+                          Serialization context) const;
 
   velocypack::Builder toVelocyPackIgnore(std::unordered_set<std::string> const& ignoreKeys,
-                                         std::underlying_type<Serialize>::type flags) const;
+                                         Serialization context) const;
 
   virtual void toVelocyPackForClusterInventory(velocypack::Builder&, bool useSystem,
                                                bool isReady, bool allInSync) const;
@@ -265,7 +241,7 @@ class LogicalCollection : public LogicalDataSource {
   virtual arangodb::Result properties(velocypack::Slice const& slice, bool partialUpdate) override;
 
   /// @brief return the figures for a collection
-  virtual futures::Future<std::shared_ptr<velocypack::Builder>> figures() const;
+  virtual futures::Future<OperationResult> figures() const;
 
   /// @brief opens an existing collection
   void open(bool ignoreErrors);
@@ -358,18 +334,16 @@ class LogicalCollection : public LogicalDataSource {
 
   transaction::CountCache& countCache() { return _countCache; }
 
-  ChecksumResult checksum(bool, bool) const;
-
   std::unique_ptr<FollowerInfo> const& followers() const;
 
  protected:
   virtual arangodb::Result appendVelocyPack(arangodb::velocypack::Builder& builder,
-                                            std::underlying_type<Serialize>::type flags) const override;
+                                           Serialization context) const override;
 
  private:
   void prepareIndexes(velocypack::Slice indexesSlice);
 
-  void increaseInternalVersion();
+  void increaseV8Version();
 
   transaction::CountCache _countCache;
 
@@ -381,10 +355,10 @@ class LogicalCollection : public LogicalDataSource {
   mutable basics::ReadWriteLock _lock;  // lock protecting the status and name
 
   /// @brief collection format version
-  uint32_t _version;
+  Version _version;
 
   // @brief Internal version used for caching
-  uint32_t _internalVersion;
+  uint32_t _v8CacheVersion;
 
   // @brief Collection type
   TRI_col_type_e const _type;
@@ -395,9 +369,11 @@ class LogicalCollection : public LogicalDataSource {
   /// @brief is this a global collection on a DBServer
   bool const _isAStub;
 
+#ifdef USE_ENTERPRISE
   // @brief Flag if this collection is a smart one. (Enterprise only)
-  bool _isSmart;
-
+  bool const _isSmart;
+#endif
+  
   // SECTION: Properties
   bool _waitForSync;
 

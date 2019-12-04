@@ -24,7 +24,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Common.h"
 #include "Cluster/ClusterFeature.h"
-#include "Cluster/ClusterMethods.h"
+#include "Cluster/ClusterTtlMethods.h"
 #include "Cluster/ServerState.h"
 #include "RestServer/TtlFeature.h"
 

@@ -21,6 +21,9 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include "ExecutionPlan.h"
 
 #include "Aql/Aggregator.h"
@@ -45,16 +48,14 @@
 #include "Aql/Variable.h"
 #include "Aql/WalkerWorker.h"
 #include "Basics/Exceptions.h"
-#include "Basics/SmallVector.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
+#include "Containers/SmallVector.h"
 #include "Graph/ShortestPathOptions.h"
 #include "Graph/TraverserOptions.h"
+#include "Logger/LoggerStream.h"
 #include "VocBase/AccessMode.h"
-
-#include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -817,8 +818,8 @@ ExecutionNode* ExecutionPlan::registerNode(std::unique_ptr<ExecutionNode> node) 
   TRI_ASSERT(node->plan() == this);
   TRI_ASSERT(node->id() > 0);
   TRI_ASSERT(_ids.find(node->id()) == _ids.end());
-
-  _ids.emplace(node->id(), node.get());  // take ownership
+  auto emplaced = _ids.try_emplace(node->id(), node.get()).second;  // take ownership
+  TRI_ASSERT(emplaced);
   return node.release();
 }
 
@@ -830,7 +831,11 @@ ExecutionNode* ExecutionPlan::registerNode(ExecutionNode* node) {
   TRI_ASSERT(_ids.find(node->id()) == _ids.end());
 
   try {
-    _ids.emplace(node->id(), node);
+    auto [it, emplaced] = _ids.try_emplace(node->id(), node);
+    if (!emplaced) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to register node in plan");
+    }
+    TRI_ASSERT(it != _ids.end());
   } catch (...) {
     delete node;
     throw;
@@ -1275,7 +1280,8 @@ ExecutionNode* ExecutionPlan::fromNodeLet(ExecutionNode* previous, AstNode const
       // the LET. and don't create the LET
 
       subquery->replaceOutVariable(v);
-      return subquery;
+      // TODO Local fix of #10304. Remove this note after #10304 is merged back.
+      return previous;
     }
     // otherwise fall-through to normal behavior
 
@@ -2043,7 +2049,7 @@ ExecutionNode* ExecutionPlan::fromNode(AstNode const* node) {
 }
 
 /// @brief find nodes of a certain type
-void ExecutionPlan::findNodesOfType(SmallVector<ExecutionNode*>& result,
+void ExecutionPlan::findNodesOfType(::arangodb::containers::SmallVector<ExecutionNode*>& result,
                                     ExecutionNode::NodeType type, bool enterSubqueries) {
   // consult our nodes-of-type counters array
   if (!contains(type)) {
@@ -2056,7 +2062,7 @@ void ExecutionPlan::findNodesOfType(SmallVector<ExecutionNode*>& result,
 }
 
 /// @brief find nodes of a certain types
-void ExecutionPlan::findNodesOfType(SmallVector<ExecutionNode*>& result,
+void ExecutionPlan::findNodesOfType(::arangodb::containers::SmallVector<ExecutionNode*>& result,
                                     std::vector<ExecutionNode::NodeType> const& types,
                                     bool enterSubqueries) {
   // check if any of the node types is actually present in the plan
@@ -2072,7 +2078,7 @@ void ExecutionPlan::findNodesOfType(SmallVector<ExecutionNode*>& result,
 }
 
 /// @brief find all end nodes in a plan
-void ExecutionPlan::findEndNodes(SmallVector<ExecutionNode*>& result,
+void ExecutionPlan::findEndNodes(::arangodb::containers::SmallVector<ExecutionNode*>& result,
                                  bool enterSubqueries) const {
   EndNodeFinder finder(result, enterSubqueries);
   root()->walk(finder);
@@ -2080,8 +2086,8 @@ void ExecutionPlan::findEndNodes(SmallVector<ExecutionNode*>& result,
 
 /// @brief helper struct for findVarUsage
 struct VarUsageFinder final : public WalkerWorker<ExecutionNode> {
-  arangodb::HashSet<Variable const*> _usedLater;
-  arangodb::HashSet<Variable const*> _valid;
+  ::arangodb::containers::HashSet<Variable const*> _usedLater;
+  ::arangodb::containers::HashSet<Variable const*> _valid;
   std::unordered_map<VariableId, ExecutionNode*>* _varSetBy;
   bool const _ownsVarSetBy;
 
@@ -2168,7 +2174,7 @@ void ExecutionPlan::unlinkNodes(std::unordered_set<ExecutionNode*> const& toRemo
   }
 }
 
-void ExecutionPlan::unlinkNodes(arangodb::HashSet<ExecutionNode*> const& toRemove) {
+void ExecutionPlan::unlinkNodes(::arangodb::containers::HashSet<ExecutionNode*> const& toRemove) {
   for (auto& node : toRemove) {
     unlinkNode(node);
   }
@@ -2319,7 +2325,7 @@ ExecutionNode* ExecutionPlan::fromSlice(VPackSlice const& slice) {
 
   // first, re-create all nodes from the Slice, using the node ids
   // no dependency links will be set up in this step
-  for (auto const& it : VPackArrayIterator(nodes)) {
+  for (VPackSlice it : VPackArrayIterator(nodes)) {
     if (!it.isObject()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                      "node entry in plan is not an object");
@@ -2352,7 +2358,7 @@ ExecutionNode* ExecutionPlan::fromSlice(VPackSlice const& slice) {
   }
 
   // all nodes have been created. now add the dependencies
-  for (auto const& it : VPackArrayIterator(nodes)) {
+  for (VPackSlice it : VPackArrayIterator(nodes)) {
     // read the node's own id
     auto thisId = it.get("id").getNumericValue<size_t>();
     auto thisNode = getNodeById(thisId);
@@ -2412,25 +2418,40 @@ struct Shower final : public WalkerWorker<ExecutionNode> {
 
   ~Shower() = default;
 
-  bool enterSubquery(ExecutionNode*, ExecutionNode*) override final {
+  bool enterSubquery(ExecutionNode*, ExecutionNode*) final {
     indent++;
     return true;
   }
 
-  void leaveSubquery(ExecutionNode*, ExecutionNode*) override final {
+  void leaveSubquery(ExecutionNode*, ExecutionNode*) final {
     indent--;
   }
 
-  void after(ExecutionNode* en) override final {
-    for (int i = 0; i < indent; i++) {
-      std::cout << ' ';
+  bool before(ExecutionNode* en) final {
+    return false;
+  }
+
+  void after(ExecutionNode* en) final {
+    if (en->getType() == ExecutionNode::SUBQUERY_END) {
+      --indent;
     }
-    std::cout << en->getTypeString() << std::endl;
+
+    auto logLn{LoggerStream()};
+    logLn << LogLevel::INFO << Logger::AQL;
+
+    for (int i = 0; i < 2 * indent; i++) {
+      logLn << ' ';
+    }
+    logLn << "[" << en->id() << "]" << en->getTypeString();
+
+    if (en->getType() == ExecutionNode::SUBQUERY_START) {
+      ++indent;
+    }
   }
 };
 
 /// @brief show an overview over the plan
-void ExecutionPlan::show() {
+void ExecutionPlan::show() const {
   Shower shower;
   _root->walk(shower);
 }

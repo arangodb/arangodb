@@ -82,8 +82,8 @@ std::pair<ExecutionState, InputAqlItemRow> AllRowsFetcher::fetchRow(size_t atMos
       }
       _nextReturn = 0;
       _dataFetchedState = DATA_FETCH_ONGOING;
-      // intentionally falls through
     }
+    [[fallthrough]];
     case DATA_FETCH_ONGOING: {
       TRI_ASSERT(_nextReturn < _rowIndexes.size());
       TRI_ASSERT(_aqlItemMatrix != nullptr);
@@ -207,11 +207,6 @@ ExecutionState AllRowsFetcher::upstreamState() {
     return ExecutionState::DONE;
   }
   return ExecutionState::HASMORE;
-}
-
-std::pair<ExecutionState, SharedAqlItemBlockPtr> AllRowsFetcher::fetchBlockForPassthrough(size_t) {
-  TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 std::pair<ExecutionState, ShadowAqlItemRow> AllRowsFetcher::fetchShadowRow(size_t atMost) {

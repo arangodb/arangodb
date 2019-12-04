@@ -23,13 +23,16 @@
 #include "StatisticsFeature.h"
 
 #include "Basics/application-exit.h"
+#include "Cluster/ServerState.h"
 #include "FeaturePhases/AqlFeaturePhase.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "RestServer/MetricsFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
+#include "RestServer/DatabaseFeature.h"
 #include "Statistics/ConnectionStatistics.h"
 #include "Statistics/Descriptions.h"
 #include "Statistics/RequestStatistics.h"
@@ -74,6 +77,12 @@ StatisticsDistribution TRI_IoTimeDistributionStatistics(TRI_RequestTimeDistribut
 StatisticsDistribution TRI_QueueTimeDistributionStatistics(TRI_RequestTimeDistributionVectorStatistics);
 StatisticsDistribution TRI_RequestTimeDistributionStatistics(TRI_RequestTimeDistributionVectorStatistics);
 StatisticsDistribution TRI_TotalTimeDistributionStatistics(TRI_RequestTimeDistributionVectorStatistics);
+StatisticsDistribution TRI_BytesReceivedDistributionStatisticsUser(TRI_BytesReceivedDistributionVectorStatistics);
+StatisticsDistribution TRI_BytesSentDistributionStatisticsUser(TRI_BytesSentDistributionVectorStatistics);
+StatisticsDistribution TRI_IoTimeDistributionStatisticsUser(TRI_RequestTimeDistributionVectorStatistics);
+StatisticsDistribution TRI_QueueTimeDistributionStatisticsUser(TRI_RequestTimeDistributionVectorStatistics);
+StatisticsDistribution TRI_RequestTimeDistributionStatisticsUser(TRI_RequestTimeDistributionVectorStatistics);
+StatisticsDistribution TRI_TotalTimeDistributionStatisticsUser(TRI_RequestTimeDistributionVectorStatistics);
 
 }  // namespace basics
 }  // namespace arangodb
@@ -90,6 +99,12 @@ class StatisticsThread final : public Thread {
 
  public:
   void run() override {
+    auto& databaseFeature = server().getFeature<arangodb::DatabaseFeature>();
+    if (databaseFeature.upgrade()) {
+      // don't start the thread when we are running an upgrade
+      return;
+    }
+
     uint64_t const MAX_SLEEP_TIME = 250;
 
     uint64_t sleepTime = 100;
@@ -133,6 +148,8 @@ StatisticsFeature* StatisticsFeature::STATISTICS = nullptr;
 StatisticsFeature::StatisticsFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Statistics"),
       _statistics(true),
+      _statisticsHistory(true),
+      _statisticsHistoryTouched(false),
       _descriptions(new stats::Descriptions()) {
   setOptional(true);
   startsAfter<AqlFeaturePhase>();
@@ -147,13 +164,22 @@ void StatisticsFeature::collectOptions(std::shared_ptr<ProgramOptions> options) 
                      "turn statistics gathering on or off",
                      new BooleanParameter(&_statistics),
                      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+  options->addOption("--server.statistics-history",
+                     "turn storing statistics in database on or off",
+                     new BooleanParameter(&_statisticsHistory),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden))
+    .setIntroducedIn(30409)
+    .setIntroducedIn(30501);
 }
 
-void StatisticsFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
+void StatisticsFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   if (!_statistics) {
     // turn ourselves off
     disable();
   }
+
+  _statisticsHistoryTouched = options->processingResult().touched("--server.statistics-history");
+
 }
 
 void StatisticsFeature::prepare() {
@@ -161,7 +187,8 @@ void StatisticsFeature::prepare() {
 
   STATISTICS = this;
 
-  ServerStatistics::initialize(StatisticsFeature::time());
+  server().getFeature<MetricsFeature>().serverStatistics().initialize(
+    StatisticsFeature::time());
   ConnectionStatistics::initialize();
   RequestStatistics::initialize();
 }
@@ -185,7 +212,6 @@ void StatisticsFeature::start() {
   }
 
   _statisticsThread.reset(new StatisticsThread(server()));
-  _statisticsWorker.reset(new StatisticsWorker(*vocbase));
 
   if (!_statisticsThread->start()) {
     LOG_TOPIC("46b0c", FATAL, arangodb::Logger::STATISTICS)
@@ -193,11 +219,20 @@ void StatisticsFeature::start() {
     FATAL_ERROR_EXIT();
   }
 
-  if (!_statisticsWorker->start()) {
-    LOG_TOPIC("6ecdc", FATAL, arangodb::Logger::STATISTICS)
+  // force history disable on Agents
+  if (arangodb::ServerState::instance()->isAgent() && !_statisticsHistoryTouched) {
+    _statisticsHistory = false;
+  } // if
+
+  if (_statisticsHistory) {
+    _statisticsWorker.reset(new StatisticsWorker(*vocbase));
+
+    if (!_statisticsWorker->start()) {
+      LOG_TOPIC("6ecdc", FATAL, arangodb::Logger::STATISTICS)
         << "could not start statistics worker";
-    FATAL_ERROR_EXIT();
-  }
+      FATAL_ERROR_EXIT();
+    }
+  } // if
 }
 
 void StatisticsFeature::stop() {

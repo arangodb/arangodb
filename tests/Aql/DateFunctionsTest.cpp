@@ -32,7 +32,7 @@
 #include "Aql/AqlValue.h"
 #include "Aql/ExpressionContext.h"
 #include "Aql/Functions.h"
-#include "Basics/SmallVector.h"
+#include "Containers/SmallVector.h"
 #include "Transaction/Methods.h"
 
 #include <velocypack/Builder.h>
@@ -45,6 +45,7 @@
 
 using namespace arangodb;
 using namespace arangodb::aql;
+using namespace arangodb::containers;
 
 namespace arangodb {
 namespace tests {
@@ -172,7 +173,7 @@ struct TestDate {
   }
 
   void buildParams(VPackFunctionParameters& input) const {
-    for (auto const& it : VPackArrayIterator(_argBuilder.slice())) {
+    for (VPackSlice it : VPackArrayIterator(_argBuilder.slice())) {
       input.emplace_back(it);
     }
   }
@@ -426,7 +427,7 @@ struct TestDate {
 
   void buildParams(VPackFunctionParameters& input) const {
     VPackSlice s = _input->slice();
-    for (auto const& it : VPackArrayIterator(s)) {
+    for (VPackSlice it : VPackArrayIterator(s)) {
       input.emplace_back(it);
     }
   }

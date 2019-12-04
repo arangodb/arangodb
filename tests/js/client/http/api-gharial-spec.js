@@ -26,13 +26,14 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const chai = require('chai');
+const Joi = require('joi');
 const expect = chai.expect;
 chai.Assertion.addProperty('does', function () {
   return this;
 });
 
 const arangodb = require('@arangodb');
-const request = require('@arangodb/request');
+const arango = arangodb.arango;
 
 const ERRORS = arangodb.errors;
 const db = arangodb.db;
@@ -87,6 +88,29 @@ describe('_api/gharial', () => {
     }
   };
 
+  const validateGraphFormat = (graph) => {
+    const edgeDefinition = Joi.object({
+      collection: Joi.string().required(),
+      from: Joi.array().items(Joi.string()).required(),
+      to: Joi.array().items(Joi.string()).required()
+    });
+    const schema = Joi.object({
+      "_key": Joi.string().required(),
+      "_rev": Joi.string().required(),
+      "_id": Joi.string().required(),
+      name: Joi.string().required(),
+      numberOfShards: Joi.number().integer().min(1).required(),
+      replicationFactor: Joi.number().integer().min(1).required(),
+      minReplicationFactor: Joi.number().integer().min(1).required(),
+      writeConcern: Joi.number().integer().min(1).required(),
+      isSmart: Joi.boolean().required(),
+      orphanCollections: Joi.array().items(Joi.string()).required(),
+      edgeDefinitions: Joi.array().items(edgeDefinition).required()
+    });
+    const res = schema.validate(graph);
+    expect(res.error).to.be.null;
+  };
+
   beforeEach(cleanup);
 
   afterEach(cleanup);
@@ -105,19 +129,25 @@ describe('_api/gharial', () => {
       };
       expect(db._collection(eColName)).to.be.null;
       expect(db._collection(vColName)).to.be.null;
-      let req = request.post(url, {
-        body: JSON.stringify(graphDef)
-      });
-      expect(req.statusCode).to.equal(202);
+      let req = arango.POST(url, graphDef);
+      expect(req).to.have.keys("error", "code", "graph");
+      expect(req.code).to.equal(202);
+      expect(req.error).to.be.false;
+      validateGraphFormat(req.graph);
 
       // This is all async give it some time
       do {
         wait(0.1);
-        req = request.get(url + "/" + graphName);
-      } while (req.statusCode !== 200);
+        req = arango.GET(url + "/" + graphName);
+      } while (req.code !== 200);
 
       expect(db._collection(eColName)).to.not.be.null;
       expect(db._collection(vColName)).to.not.be.null;
+    
+      expect(req).to.have.keys("error", "code", "graph");
+      expect(req.code).to.equal(200);
+      expect(req.error).to.be.false;
+      validateGraphFormat(req.graph);
     });
 
     it('should create a graph with orphans', () => {
@@ -139,21 +169,88 @@ describe('_api/gharial', () => {
       expect(db._collection(vColName)).to.be.null;
       expect(db._collection(oColName)).to.be.null;
       expect(db._collection(oColName2)).to.be.null;
-      let req = request.post(url, {
-        body: JSON.stringify(graphDef)
-      });
-      expect(req.statusCode).to.equal(202);
+      let req = arango.POST(url, graphDef);
+      expect(req).to.have.keys("error", "code", "graph");
+      expect(req.code).to.equal(202);
+      expect(req.error).to.be.false;
+      validateGraphFormat(req.graph);
 
       // This is all async give it some time
       do {
         wait(0.1);
-        req = request.get(url + "/" + graphName);
-      } while (req.statusCode !== 200);
+        req = arango.GET(url + "/" + graphName);
+      } while (req.code !== 200);
 
       expect(db._collection(eColName)).to.not.be.null;
       expect(db._collection(vColName)).to.not.be.null;
       expect(db._collection(oColName)).to.not.be.null;
       expect(db._collection(oColName2)).to.not.be.null;
+
+      expect(req).to.have.keys("error", "code", "graph");
+      expect(req.code).to.equal(200);
+      expect(req.error).to.be.false;
+      validateGraphFormat(req.graph);
+    });
+
+  });
+
+  describe('graph modification test suite', function () {
+    const vertexUrl = `${url}/${graphName}/vertex`;
+    const edgeUrl = `${url}/${graphName}/edge`;
+
+    beforeEach(() => {
+      const graphDef = {
+        "name": graphName,
+        "edgeDefinitions": [{
+          "collection": eColName,
+          "from": [vColName],
+          "to": [vColName]
+        }
+        ],
+        "isSmart": false
+      };
+      expect(db._collection(eColName)).to.be.null;
+      expect(db._collection(vColName)).to.be.null;
+      let req = arango.POST(url, graphDef);
+
+      // Just make sure the graph exists
+      do {
+        wait(0.1);
+        req = arango.GET(url + "/" + graphName);
+      } while (req.code !== 200);
+    });
+
+    it('should list all graphs in correct format', () => {
+      const res = arango.GET(url);
+      expect(res).to.have.keys("error", "code", "graphs");
+      expect(res.code).to.equal(200);
+      expect(res.error).to.be.false;
+      res.graphs.map(validateGraphFormat);
+    });
+
+    it('should be able to add an orphan', () => {
+      const res = arango.POST(vertexUrl, {collection: oColName});
+
+      expect(res).to.have.keys("error", "code", "graph");
+      expect(res.code).to.equal(202);
+      expect(res.error).to.be.false;
+      validateGraphFormat(res.graph);
+
+      expect(db._collection(oColName)).to.not.be.null;
+    });
+
+    it('should be able to modify edge definition', () => {
+      const res = arango.PUT(`${edgeUrl}/${eColName}`, {
+        "collection": eColName,
+        "from": [vColName, oColName],
+        "to": [vColName]
+      });
+      expect(res).to.have.keys("error", "code", "graph");
+      expect(res.code).to.equal(202);
+      expect(res.error).to.be.false;
+      validateGraphFormat(res.graph);
+
+      expect(db._collection(oColName)).to.not.be.null;
     });
   });
 
@@ -175,10 +272,8 @@ describe('_api/gharial', () => {
             _from: 'persons/bob',
             _to: 'persons/charlie'
           };
-          let req = request.post(url + '/' + exampleGraphName + '/edge/knows', {
-            body: JSON.stringify(edgeDef)
-          });
-          expect(req.statusCode).to.equal(202);
+          let req = arango.POST(url + '/' + exampleGraphName + '/edge/knows', edgeDef );
+          expect(req.code).to.equal(202);
 
           expect(db._collection(eName)).to.not.be.null;
           expect(db._collection(vName)).to.not.be.null;
@@ -196,11 +291,9 @@ describe('_api/gharial', () => {
             _from: 'persons/notavailable',
             _to: 'persons/charlie'
           };
-          let req = request.post(url + '/' + exampleGraphName + '/edge/knows', {
-            body: JSON.stringify(edgeDef)
-          });
-          expect(req.statusCode).to.equal(404);
-          expect(req.json.errorNum).to.equal(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code);
+          let req = arango.POST(url + '/' + exampleGraphName + '/edge/knows', edgeDef);
+          expect(req.code).to.equal(404);
+          expect(req.errorNum).to.equal(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code);
 
           expect(db._collection(eName)).to.not.be.null;
           expect(db._collection(vName)).to.not.be.null;
@@ -216,11 +309,9 @@ describe('_api/gharial', () => {
             _from: 'persons/bob',
             _to: 'persons/notavailable'
           };
-          let req = request.post(url + '/' + exampleGraphName + '/edge/knows', {
-            body: JSON.stringify(edgeDef)
-          });
-          expect(req.statusCode).to.equal(404);
-          expect(req.json.errorNum).to.equal(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code);
+          let req = arango.POST(url + '/' + exampleGraphName + '/edge/knows', edgeDef);
+          expect(req.code).to.equal(404);
+          expect(req.errorNum).to.equal(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code);
 
           expect(db._collection(eName)).to.not.be.null;
           expect(db._collection(vName)).to.not.be.null;
@@ -236,11 +327,9 @@ describe('_api/gharial', () => {
             _from: 'persons/notavailable',
             _to: 'persons/notavailable'
           };
-          let req = request.post(url + '/' + exampleGraphName + '/edge/knows', {
-            body: JSON.stringify(edgeDef)
-          });
-          expect(req.statusCode).to.equal(404);
-          expect(req.json.errorNum).to.equal(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code);
+          let req = arango.POST(url + '/' + exampleGraphName + '/edge/knows', edgeDef);
+          expect(req.code).to.equal(404);
+          expect(req.errorNum).to.equal(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code);
 
           expect(db._collection(eName)).to.not.be.null;
           expect(db._collection(vName)).to.not.be.null;
@@ -260,11 +349,9 @@ describe('_api/gharial', () => {
             _from: 'xxx/peter',
             _to: 'persons/charlie'
           };
-          let req = request.post(url + '/' + exampleGraphName + '/edge/knows', {
-            body: JSON.stringify(edgeDef)
-          });
-          expect(req.statusCode).to.equal(404);
-          expect(req.json.errorNum).to.equal(ERRORS.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
+          let req = arango.POST(url + '/' + exampleGraphName + '/edge/knows', edgeDef);
+          expect(req.code).to.equal(404);
+          expect(req.errorNum).to.equal(ERRORS.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
 
           expect(db._collection(eName)).to.not.be.null;
           expect(db._collection(vName)).to.not.be.null;
@@ -282,11 +369,9 @@ describe('_api/gharial', () => {
           };
 
           // get a (any) valid key of an existing edge document
-          let req = request.post(url + '/' + exampleGraphName + '/edge/knows/', {
-            body: JSON.stringify(edgeDef)
-          });
-          expect(req.statusCode).to.equal(404);
-          expect(req.json.errorNum).to.equal(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code);
+          let req = arango.POST(url + '/' + exampleGraphName + '/edge/knows/', edgeDef);
+          expect(req.code).to.equal(404);
+          expect(req.errorNum).to.equal(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code);
 
           expect(db._collection(eName)).to.not.be.null;
           expect(db._collection(vName)).to.not.be.null;
@@ -304,11 +389,9 @@ describe('_api/gharial', () => {
           };
 
           // get a (any) valid key of an existing edge document
-          let req = request.post(url + '/' + exampleGraphName + '/edge/knows/', {
-            body: JSON.stringify(edgeDef)
-          });
-          expect(req.statusCode).to.equal(404);
-          expect(req.json.errorNum).to.equal(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code);
+          let req = arango.POST(url + '/' + exampleGraphName + '/edge/knows/', edgeDef);
+          expect(req.code).to.equal(404);
+          expect(req.errorNum).to.equal(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code);
 
           expect(db._collection(eName)).to.not.be.null;
           expect(db._collection(vName)).to.not.be.null;
@@ -326,11 +409,9 @@ describe('_api/gharial', () => {
           };
 
           // get a (any) valid key of an existing edge document
-          let req = request.post(url + '/' + exampleGraphName + '/edge/knows/', {
-            body: JSON.stringify(edgeDef)
-          });
-          expect(req.statusCode).to.equal(404);
-          expect(req.json.errorNum).to.equal(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code);
+          let req = arango.POST(url + '/' + exampleGraphName + '/edge/knows/', edgeDef);
+          expect(req.code).to.equal(404);
+          expect(req.errorNum).to.equal(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code);
 
           expect(db._collection(eName)).to.not.be.null;
           expect(db._collection(vName)).to.not.be.null;
@@ -346,11 +427,9 @@ describe('_api/gharial', () => {
             _from: 'persons/bob',
             _to: 'xxx/charlie'
           };
-          let req = request.post(url + '/' + exampleGraphName + '/edge/knows', {
-            body: JSON.stringify(edgeDef)
-          });
-          expect(req.statusCode).to.equal(404);
-          expect(req.json.errorNum).to.equal(ERRORS.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
+          let req = arango.POST(url + '/' + exampleGraphName + '/edge/knows', edgeDef);
+          expect(req.code).to.equal(404);
+          expect(req.errorNum).to.equal(ERRORS.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
 
           expect(db._collection(eName)).to.not.be.null;
           expect(db._collection(vName)).to.not.be.null;
@@ -366,11 +445,9 @@ describe('_api/gharial', () => {
             _from: 'xxx/peter',
             _to: 'xxx/charlie'
           };
-          let req = request.post(url + '/' + exampleGraphName + '/edge/knows', {
-            body: JSON.stringify(edgeDef)
-          });
-          expect(req.statusCode).to.equal(404);
-          expect(req.json.errorNum).to.equal(ERRORS.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
+          let req = arango.POST(url + '/' + exampleGraphName + '/edge/knows', edgeDef);
+          expect(req.code).to.equal(404);
+          expect(req.errorNum).to.equal(ERRORS.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
 
           expect(db._collection(eName)).to.not.be.null;
           expect(db._collection(vName)).to.not.be.null;
@@ -386,11 +463,9 @@ describe('_api/gharial', () => {
             _from: 'peter',
             _to: 'persons/charlie'
           };
-          let req = request.post(url + '/' + exampleGraphName + '/edge/knows', {
-            body: JSON.stringify(edgeDef)
-          });
-          expect(req.statusCode).to.equal(400);
-          expect(req.json.errorNum).to.equal(ERRORS.ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE.code);
+          let req = arango.POST(url + '/' + exampleGraphName + '/edge/knows', edgeDef);
+          expect(req.code).to.equal(400);
+          expect(req.errorNum).to.equal(ERRORS.ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE.code);
 
           expect(db._collection(eName)).to.not.be.null;
           expect(db._collection(vName)).to.not.be.null;
@@ -406,11 +481,9 @@ describe('_api/gharial', () => {
             _from: 'persons/peter',
             _to: 'charlie'
           };
-          let req = request.post(url + '/' + exampleGraphName + '/edge/knows', {
-            body: JSON.stringify(edgeDef)
-          });
-          expect(req.statusCode).to.equal(400);
-          expect(req.json.errorNum).to.equal(ERRORS.ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE.code);
+          let req = arango.POST(url + '/' + exampleGraphName + '/edge/knows', edgeDef);
+          expect(req.code).to.equal(400);
+          expect(req.errorNum).to.equal(ERRORS.ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE.code);
 
           expect(db._collection(eName)).to.not.be.null;
           expect(db._collection(vName)).to.not.be.null;
@@ -426,11 +499,9 @@ describe('_api/gharial', () => {
             _from: 'peter',
             _to: 'charlie'
           };
-          let req = request.post(url + '/' + exampleGraphName + '/edge/knows', {
-            body: JSON.stringify(edgeDef)
-          });
-          expect(req.statusCode).to.equal(400);
-          expect(req.json.errorNum).to.equal(ERRORS.ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE.code);
+          let req = arango.POST(url + '/' + exampleGraphName + '/edge/knows', edgeDef);
+          expect(req.code).to.equal(400);
+          expect(req.errorNum).to.equal(ERRORS.ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE.code);
 
           expect(db._collection(eName)).to.not.be.null;
           expect(db._collection(vName)).to.not.be.null;
@@ -447,11 +518,9 @@ describe('_api/gharial', () => {
           expect(g).to.not.be.null;
 
           const edgeDef = {};
-          let req = request.post(url + '/' + exampleGraphName + '/edge/knows', {
-            body: JSON.stringify(edgeDef)
-          });
-          expect(req.statusCode).to.equal(400);
-          expect(req.json.errorNum).to.equal(ERRORS.ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE.code);
+          let req = arango.POST(url + '/' + exampleGraphName + '/edge/knows', edgeDef);
+          expect(req.code).to.equal(400);
+          expect(req.errorNum).to.equal(ERRORS.ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE.code);
 
           expect(db._collection(eName)).to.not.be.null;
           expect(db._collection(vName)).to.not.be.null;
@@ -473,14 +542,11 @@ describe('_api/gharial', () => {
           edgeDef._from = 'persons/charlie';
           edgeDef._to = 'persons/charlie';
 
-          let res = request.patch(url + '/' + exampleGraphName + '/edge/knows/' + edgeDef._key, {
-            body: JSON.stringify(edgeDef)
-          });
+          let res = arango.PATCH(url + '/' + exampleGraphName + '/edge/knows/' + edgeDef._key, edgeDef);
           // 202 without waitForSync (default)
-          expect(res.statusCode).to.equal(202);
-          expect(res.json.code).to.equal(202);
-          expect(res.json.error).to.equal(false);
-          expect(res.json.edge._key).to.equal(edgeDef._key);
+          expect(res.code).to.equal(202);
+          expect(res.error).to.equal(false);
+          expect(res.edge._key).to.equal(edgeDef._key);
 
           expect(db._collection(eName)).to.not.be.null;
           expect(db._collection(vName)).to.not.be.null;
@@ -501,11 +567,9 @@ describe('_api/gharial', () => {
 
           // get a (any) valid key of an existing edge document
           const _key = db.knows.any()._key;
-          let req = request.patch(url + '/' + exampleGraphName + '/edge/knows/' + _key, {
-            body: JSON.stringify(edgeDef)
-          });
-          expect(req.statusCode).to.equal(400);
-          expect(req.json.errorNum).to.equal(ERRORS.ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE.code);
+          let req = arango.PATCH(url + '/' + exampleGraphName + '/edge/knows/' + _key, edgeDef);
+          expect(req.code).to.equal(400);
+          expect(req.errorNum).to.equal(ERRORS.ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE.code);
 
           expect(db._collection(eName)).to.not.be.null;
           expect(db._collection(vName)).to.not.be.null;
@@ -524,11 +588,9 @@ describe('_api/gharial', () => {
 
           // get a (any) valid key of an existing edge document
           const _key = db.knows.any()._key;
-          let req = request.patch(url + '/' + exampleGraphName + '/edge/knows/' + _key, {
-            body: JSON.stringify(edgeDef)
-          });
-          expect(req.statusCode).to.equal(404);
-          expect(req.json.errorNum).to.equal(ERRORS.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
+          let req = arango.PATCH(url + '/' + exampleGraphName + '/edge/knows/' + _key, edgeDef);
+          expect(req.code).to.equal(400);
+          expect(req.errorNum).to.equal(ERRORS.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
 
           expect(db._collection(eName)).to.not.be.null;
           expect(db._collection(vName)).to.not.be.null;
@@ -547,11 +609,9 @@ describe('_api/gharial', () => {
 
           // get a (any) valid key of an existing edge document
           const _key = db.knows.any()._key;
-          let req = request.patch(url + '/' + exampleGraphName + '/edge/knows/' + _key, {
-            body: JSON.stringify(edgeDef)
-          });
-          expect(req.statusCode).to.equal(404);
-          expect(req.json.errorNum).to.equal(ERRORS.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
+          let req = arango.PATCH(url + '/' + exampleGraphName + '/edge/knows/' + _key, edgeDef);
+          expect(req.code).to.equal(400);
+          expect(req.errorNum).to.equal(ERRORS.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
 
           expect(db._collection(eName)).to.not.be.null;
           expect(db._collection(vName)).to.not.be.null;
@@ -570,11 +630,9 @@ describe('_api/gharial', () => {
 
           // get a (any) valid key of an existing edge document
           const _key = db.knows.any()._key;
-          let req = request.patch(url + '/' + exampleGraphName + '/edge/knows/' + _key, {
-            body: JSON.stringify(edgeDef)
-          });
-          expect(req.statusCode).to.equal(404);
-          expect(req.json.errorNum).to.equal(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code);
+          let req = arango.PATCH(url + '/' + exampleGraphName + '/edge/knows/' + _key, edgeDef);
+          expect(req.code).to.equal(404);
+          expect(req.errorNum).to.equal(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code);
 
           expect(db._collection(eName)).to.not.be.null;
           expect(db._collection(vName)).to.not.be.null;
@@ -593,11 +651,9 @@ describe('_api/gharial', () => {
 
           // get a (any) valid key of an existing edge document
           const _key = db.knows.any()._key;
-          let req = request.patch(url + '/' + exampleGraphName + '/edge/knows/' + _key, {
-            body: JSON.stringify(edgeDef)
-          });
-          expect(req.statusCode).to.equal(404);
-          expect(req.json.errorNum).to.equal(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code);
+          let req = arango.PATCH(url + '/' + exampleGraphName + '/edge/knows/' + _key, edgeDef);
+          expect(req.code).to.equal(404);
+          expect(req.errorNum).to.equal(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code);
 
           expect(db._collection(eName)).to.not.be.null;
           expect(db._collection(vName)).to.not.be.null;
@@ -616,11 +672,9 @@ describe('_api/gharial', () => {
 
           // get a (any) valid key of an existing edge document
           const _key = db.knows.any()._key;
-          let req = request.patch(url + '/' + exampleGraphName + '/edge/knows/' + _key, {
-            body: JSON.stringify(edgeDef)
-          });
-          expect(req.statusCode).to.equal(404);
-          expect(req.json.errorNum).to.equal(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code);
+          let req = arango.PATCH(url + '/' + exampleGraphName + '/edge/knows/' + _key, edgeDef);
+          expect(req.code).to.equal(404);
+          expect(req.errorNum).to.equal(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code);
 
           expect(db._collection(eName)).to.not.be.null;
           expect(db._collection(vName)).to.not.be.null;
@@ -639,11 +693,9 @@ describe('_api/gharial', () => {
 
           // get a (any) valid key of an existing edge document
           const _key = db.knows.any()._key;
-          let req = request.patch(url + '/' + exampleGraphName + '/edge/knows/' + _key, {
-            body: JSON.stringify(edgeDef)
-          });
-          expect(req.statusCode).to.equal(400);
-          expect(req.json.errorNum).to.equal(ERRORS.ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE.code);
+          let req = arango.PATCH(url + '/' + exampleGraphName + '/edge/knows/' + _key, edgeDef);
+          expect(req.code).to.equal(400);
+          expect(req.errorNum).to.equal(ERRORS.ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE.code);
 
           expect(db._collection(eName)).to.not.be.null;
           expect(db._collection(vName)).to.not.be.null;
@@ -662,11 +714,9 @@ describe('_api/gharial', () => {
 
           // get a (any) valid key of an existing edge document
           const _key = db.knows.any()._key;
-          let req = request.patch(url + '/' + exampleGraphName + '/edge/knows/' + _key, {
-            body: JSON.stringify(edgeDef)
-          });
-          expect(req.statusCode).to.equal(404);
-          expect(req.json.errorNum).to.equal(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code);
+          let req = arango.PATCH(url + '/' + exampleGraphName + '/edge/knows/' + _key, edgeDef);
+          expect(req.code).to.equal(404);
+          expect(req.errorNum).to.equal(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code);
 
           expect(db._collection(eName)).to.not.be.null;
           expect(db._collection(vName)).to.not.be.null;
@@ -694,16 +744,13 @@ describe('_api/gharial', () => {
           const newEdge = Object.assign({}, e);
           newEdge.newAttribute = 'new value';
 
-          const res = request.put(
-            `${url}/${exampleGraphName}/edge/${eName}/${e._key}`,
-            {body: JSON.stringify(newEdge)}
-          );
+          const res = arango.PUT(
+            `${url}/${exampleGraphName}/edge/${eName}/${e._key}`, newEdge);
 
           // 202 without waitForSync (default)
-          expect(res.statusCode).to.equal(202);
-          expect(res.json.code).to.equal(202);
-          expect(res.json.error).to.equal(false);
-          expect(res.json.edge._key).to.equal(e._key);
+          expect(res.code).to.equal(202);
+          expect(res.error).to.equal(false);
+          expect(res.edge._key).to.equal(e._key);
 
           expect(db.knows.document(e._key))
             .to.be.an('object')
@@ -743,13 +790,12 @@ describe('_api/gharial', () => {
             const description = key;
             const newEdge = newEdges[key];
 
-            const res = request.put(
+            const res = arango.PUT(
               `${url}/${exampleGraphName}/edge/${eName}/${e._key}`,
-              {body: JSON.stringify(newEdge)}
-            );
+              newEdge);
 
-            expect(res.statusCode, description).to.equal(400);
-            expect(res.json.errorNum, description)
+            expect(res.code, description).to.equal(400);
+            expect(res.errorNum, description)
               .to.equal(ERRORS.ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE.code);
           }
 
@@ -771,11 +817,9 @@ describe('_api/gharial', () => {
 
           // get a (any) valid key of an existing edge document
           const _key = db.knows.any()._key;
-          let req = request.put(url + '/' + exampleGraphName + '/edge/knows/' + _key, {
-            body: JSON.stringify(edgeDef)
-          });
-          expect(req.statusCode).to.equal(400);
-          expect(req.json.errorNum).to.equal(ERRORS.ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE.code);
+          let req = arango.PUT(url + '/' + exampleGraphName + '/edge/knows/' + _key, edgeDef);
+          expect(req.code).to.equal(400);
+          expect(req.errorNum).to.equal(ERRORS.ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE.code);
 
           expect(db._collection(eName)).to.not.be.null;
           expect(db._collection(vName)).to.not.be.null;
@@ -794,11 +838,9 @@ describe('_api/gharial', () => {
 
           // get a (any) valid key of an existing edge document
           const _key = db.knows.any()._key;
-          let req = request.put(url + '/' + exampleGraphName + '/edge/knows/' + _key, {
-            body: JSON.stringify(edgeDef)
-          });
-          expect(req.statusCode).to.equal(404);
-          expect(req.json.errorNum).to.equal(ERRORS.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
+          let req = arango.PUT(url + '/' + exampleGraphName + '/edge/knows/' + _key, edgeDef);
+          expect(req.code).to.equal(400);
+          expect(req.errorNum).to.equal(ERRORS.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
 
           expect(db._collection(eName)).to.not.be.null;
           expect(db._collection(vName)).to.not.be.null;
@@ -817,11 +859,9 @@ describe('_api/gharial', () => {
 
           // get a (any) valid key of an existing edge document
           const _key = db.knows.any()._key;
-          let req = request.put(url + '/' + exampleGraphName + '/edge/knows/' + _key, {
-            body: JSON.stringify(edgeDef)
-          });
-          expect(req.statusCode).to.equal(404);
-          expect(req.json.errorNum).to.equal(ERRORS.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
+          let req = arango.PUT(url + '/' + exampleGraphName + '/edge/knows/' + _key, edgeDef);
+          expect(req.code).to.equal(400);
+          expect(req.errorNum).to.equal(ERRORS.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
 
           expect(db._collection(eName)).to.not.be.null;
           expect(db._collection(vName)).to.not.be.null;
@@ -840,11 +880,9 @@ describe('_api/gharial', () => {
 
           // get a (any) valid key of an existing edge document
           const _key = db.knows.any()._key;
-          let req = request.put(url + '/' + exampleGraphName + '/edge/knows/' + _key, {
-            body: JSON.stringify(edgeDef)
-          });
-          expect(req.statusCode).to.equal(404);
-          expect(req.json.errorNum).to.equal(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code);
+          let req = arango.PUT(url + '/' + exampleGraphName + '/edge/knows/' + _key, edgeDef);
+          expect(req.code).to.equal(404);
+          expect(req.errorNum).to.equal(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code);
 
           expect(db._collection(eName)).to.not.be.null;
           expect(db._collection(vName)).to.not.be.null;
@@ -863,11 +901,9 @@ describe('_api/gharial', () => {
 
           // get a (any) valid key of an existing edge document
           const _key = db.knows.any()._key;
-          let req = request.put(url + '/' + exampleGraphName + '/edge/knows/' + _key, {
-            body: JSON.stringify(edgeDef)
-          });
-          expect(req.statusCode).to.equal(404);
-          expect(req.json.errorNum).to.equal(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code);
+          let req = arango.PUT(url + '/' + exampleGraphName + '/edge/knows/' + _key, edgeDef);
+          expect(req.code).to.equal(404);
+          expect(req.errorNum).to.equal(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code);
 
           expect(db._collection(eName)).to.not.be.null;
           expect(db._collection(vName)).to.not.be.null;
@@ -886,11 +922,9 @@ describe('_api/gharial', () => {
 
           // get a (any) valid key of an existing edge document
           const _key = db.knows.any()._key;
-          let req = request.put(url + '/' + exampleGraphName + '/edge/knows/' + _key, {
-            body: JSON.stringify(edgeDef)
-          });
-          expect(req.statusCode).to.equal(404);
-          expect(req.json.errorNum).to.equal(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code);
+          let req = arango.PUT(url + '/' + exampleGraphName + '/edge/knows/' + _key, edgeDef);
+          expect(req.code).to.equal(404);
+          expect(req.errorNum).to.equal(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code);
 
           expect(db._collection(eName)).to.not.be.null;
           expect(db._collection(vName)).to.not.be.null;
@@ -909,11 +943,9 @@ describe('_api/gharial', () => {
 
           // get a (any) valid key of an existing edge document
           const _key = db.knows.any()._key;
-          let req = request.patch(url + '/' + exampleGraphName + '/edge/knows/' + _key, {
-            body: JSON.stringify(edgeDef)
-          });
-          expect(req.statusCode).to.equal(400);
-          expect(req.json.errorNum).to.equal(ERRORS.ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE.code);
+          let req = arango.PATCH(url + '/' + exampleGraphName + '/edge/knows/' + _key, edgeDef);
+          expect(req.code).to.equal(400);
+          expect(req.errorNum).to.equal(ERRORS.ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE.code);
 
           expect(db._collection(eName)).to.not.be.null;
           expect(db._collection(vName)).to.not.be.null;
@@ -932,11 +964,9 @@ describe('_api/gharial', () => {
 
           // get a (any) valid key of an existing edge document
           const _key = db.knows.any()._key;
-          let req = request.put(url + '/' + exampleGraphName + '/edge/knows/' + _key, {
-            body: JSON.stringify(edgeDef)
-          });
-          expect(req.statusCode).to.equal(404);
-          expect(req.json.errorNum).to.equal(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code);
+          let req = arango.PUT(url + '/' + exampleGraphName + '/edge/knows/' + _key, edgeDef);
+          expect(req.code).to.equal(404);
+          expect(req.errorNum).to.equal(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code);
 
           expect(db._collection(eName)).to.not.be.null;
           expect(db._collection(vName)).to.not.be.null;
@@ -964,16 +994,13 @@ describe('_api/gharial', () => {
         expect(db[eName].all().toArray().length).to.equal(5);
 
         // delete vertex bob
-        const res = request.delete(
+        const res = arango.DELETE(
           `${url}/${exampleGraphName}/vertex/${vName}/${bob}`
         );
 
         // check response
-        expect(res).to.be.an.instanceof(request.Response);
-        expect(res.body).to.be.a('string');
-        const body = JSON.parse(res.body);
         // 202 without waitForSync (default)
-        expect(body).to.eql({
+        expect(res).to.eql({
           error: false,
           code: 202,
           removed: true
@@ -1031,16 +1058,13 @@ describe('_api/gharial', () => {
         expect(db[eName].all().toArray().length).to.equal(5);
 
         // delete vertex bob
-        const res = request.delete(
+        const res = arango.DELETE(
           `${url}/${exampleGraphName}/vertex/${vName}/${bob}`
         );
 
         // check response
-        expect(res).to.be.an.instanceof(request.Response);
-        expect(res.body).to.be.a('string');
-        const body = JSON.parse(res.body);
         // 202 without waitForSync (default)
-        expect(body).to.eql({
+        expect(res).to.eql({
           error: false,
           code: 202,
           removed: true
@@ -1094,18 +1118,14 @@ describe('_api/gharial', () => {
           };
 
           // create the actual edge pointing from bob to alice
-          let reqB = request.post(url + '/' + exampleGraphName + '/edge/' + eName_2, {
-            body: JSON.stringify(edgeDefBToA)
-          });
-          expect(reqB.statusCode).to.equal(202);
-          let bobToAlice = reqB.json.edge;
+          let reqB = arango.POST(url + '/' + exampleGraphName + '/edge/' + eName_2, edgeDefBToA);
+          expect(reqB.code).to.equal(202);
+          let bobToAlice = reqB.edge;
 
           // create the actual edge pointing from alice to bob
-          let reqA = request.post(url + '/' + exampleGraphName + '/edge/' + eName_2, {
-            body: JSON.stringify(edgeDefAToB)
-          });
-          expect(reqA.statusCode).to.equal(202);
-          let aliceToBob = reqA.json.edge;
+          let reqA = arango.POST(url + '/' + exampleGraphName + '/edge/' + eName_2, edgeDefAToB);
+          expect(reqA.code).to.equal(202);
+          let aliceToBob = reqA.edge;
 
 
           // now create a new edge between the edges from A->B and B->A
@@ -1114,12 +1134,10 @@ describe('_api/gharial', () => {
             _to: bobToAlice._id
           };
 
-          let reqx = request.post(url + '/' + exampleGraphName + '/edge/' + eName_2, {
-            body: JSON.stringify(edgeLinkDef)
-          });
+          let reqx = arango.POST(url + '/' + exampleGraphName + '/edge/' + eName_2, edgeLinkDef);
 
-          let newEdge = reqx.json.edge;
-          expect(reqx.statusCode).to.equal(202);
+          let newEdge = reqx.edge;
+          expect(reqx.code).to.equal(202);
 
           const updateEdgeLinkDef = {
             _to: aliceToBob._id,
@@ -1127,23 +1145,19 @@ describe('_api/gharial', () => {
           };
 
           // UPDATE that edge
-          reqx = request.patch(url + '/' + exampleGraphName + '/edge/' + eName_2 + "/" + newEdge._key, {
-            body: JSON.stringify(updateEdgeLinkDef)
-          });
-          newEdge = reqx.json.edge;
-          expect(reqx.statusCode).to.equal(202);
+          reqx = arango.PATCH(url + '/' + exampleGraphName + '/edge/' + eName_2 + "/" + newEdge._key, updateEdgeLinkDef);
+          newEdge = reqx.edge;
+          expect(reqx.code).to.equal(202);
 
           // REPLACE that edge
-          reqx = request.put(url + '/' + exampleGraphName + '/edge/' + eName_2 + "/" + newEdge._key, {
-            body: JSON.stringify(edgeLinkDef)
-          });
-          newEdge = reqx.json.edge;
-          expect(reqx.statusCode).to.equal(202);
+          reqx = arango.PUT(url + '/' + exampleGraphName + '/edge/' + eName_2 + "/" + newEdge._key, edgeLinkDef);
+          newEdge = reqx.edge;
+          expect(reqx.code).to.equal(202);
 
           // DELETE that edge
-          reqx = request.delete(url + '/' + exampleGraphName + '/edge/' + eName_2 + "/" + newEdge._key, {
+          reqx = arango.DELETE(url + '/' + exampleGraphName + '/edge/' + eName_2 + "/" + newEdge._key, {
           });
-          expect(reqx.statusCode).to.equal(202);
+          expect(reqx.code).to.equal(202);
         });
       });
 
@@ -1178,11 +1192,9 @@ describe('_api/gharial', () => {
           };
 
           // create the actual edge pointing from bob to alice
-          let req = request.post(url + '/' + exampleGraphName + '/edge/' + eName, {
-            body: JSON.stringify(edgeDef)
-          });
-          expect(req.statusCode).to.equal(202);
-          let bobToAlice = req.json.edge;
+          let req = arango.POST(url + '/' + exampleGraphName + '/edge/' + eName, edgeDef);
+          expect(req.code).to.equal(202);
+          let bobToAlice = req.edge;
 
           // now create a new edge between the edges from A->B and B->A
           const edgeLinkDef = {
@@ -1190,12 +1202,10 @@ describe('_api/gharial', () => {
             _to: bobToAlice._id
           };
 
-          let reqx = request.post(url + '/' + exampleGraphName + '/edge/' + eName, {
-            body: JSON.stringify(edgeLinkDef)
-          });
-          expect(reqx.statusCode).to.equal(404);
-          expect(reqx.json.errorNum).to.equal(ERRORS.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
-          expect(reqx.json.error).to.equal(true);
+          let reqx = arango.POST(url + '/' + exampleGraphName + '/edge/' + eName, edgeLinkDef);
+          expect(reqx.code).to.equal(404);
+          expect(reqx.errorNum).to.equal(ERRORS.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
+          expect(reqx.error).to.equal(true);
         });
       });
     });
@@ -1217,13 +1227,13 @@ describe('_api/gharial', () => {
         const doc = db[vName].document(key);
         const revision = doc._rev; // get a valid revision
 
-        let req = request.get(url + '/' + exampleGraphName + '/edge/' + vName + '/' + key, {
+        let req = arango.GET(url + '/' + exampleGraphName + '/edge/' + vName + '/' + key, {
           headers: {
             'if-match': revision
           }
         });
-        expect(req.statusCode).to.equal(200);
-        expect(req.json.edge).to.deep.equal(doc);
+        expect(req.code).to.equal(200);
+        expect(req.edge).to.deep.equal(doc);
       });
 
       it('should check if the if-match header is working - negative', () => {
@@ -1246,15 +1256,12 @@ describe('_api/gharial', () => {
         const revisions = [null, undefined, true, false, revision];
 
         revisions.forEach(function (rev) {
-          let req = request.get(url + '/' + exampleGraphName + '/edge/' + vName + '/' + key, {
-            headers: {
+          let req = arango.GET(url + '/' + exampleGraphName + '/edge/' + vName + '/' + key, {
               'if-match': rev
-            }
           });
-          expect(req.json.error).to.equal(true);
-          expect(req.statusCode).to.equal(ERRORS.ERROR_HTTP_PRECONDITION_FAILED.code);
-          expect(req.json.code).to.equal(ERRORS.ERROR_HTTP_PRECONDITION_FAILED.code);
-          expect(req.json.errorMessage).to.equal(ERRORS.ERROR_HTTP_PRECONDITION_FAILED.message);
+          expect(req.error).to.equal(true);
+          expect(req.code).to.equal(ERRORS.ERROR_HTTP_PRECONDITION_FAILED.code);
+          expect(req.errorMessage).to.equal(ERRORS.ERROR_HTTP_PRECONDITION_FAILED.message);
         });
       });
 
@@ -1274,13 +1281,10 @@ describe('_api/gharial', () => {
         const doc = db[vName].document(key);
         const revision = doc._rev; // get a valid revision
 
-        let req = request.get(url + '/' + exampleGraphName + '/edge/' + vName + '/' + key, {
-          headers: {
+        let req = arango.GET(url + '/' + exampleGraphName + '/edge/' + vName + '/' + key, {
             'if-none-match': revision
-          }
         });
-        expect(req.status).to.equal(304);
-        expect(req.json).to.equal(undefined);
+        expect(req.code).to.equal(304);
       });
 
       it('should check if the if-none-match header is working - negative', () => {
@@ -1303,13 +1307,11 @@ describe('_api/gharial', () => {
         const revisions = [null, undefined, true, false, revision];
 
         revisions.forEach(function (rev) {
-          let req = request.get(url + '/' + exampleGraphName + '/edge/' + vName + '/' + key, {
-            headers: {
+          let req = arango.GET(url + '/' + exampleGraphName + '/edge/' + vName + '/' + key, {
               'if-none-match': rev
-            }
           });
-          expect(req.statusCode).to.equal(200);
-          expect(req.json.edge).to.deep.equal(doc);
+          expect(req.code).to.equal(200);
+          expect(req.edge).to.deep.equal(doc);
         });
       });
     });
@@ -1367,15 +1369,13 @@ describe('_api/gharial', () => {
         };
 
         // create edge pointing from g2 to g1 (edge)
-        let req = request.post(url + '/' + 'secondGraph' + '/edge/secondEdge', {
-          body: JSON.stringify(edgeDef)
-        });
-        expect(req.statusCode).to.equal(202);
-        let toBeRemovedEdgeID = req.json.edge._id;
+        let req = arango.POST(url + '/' + 'secondGraph' + '/edge/secondEdge', edgeDef);
+        expect(req.code).to.equal(202);
+        let toBeRemovedEdgeID = req.edge._id;
 
         // now delete the target edge of g1
-        let req2 = request.delete(url + '/' + 'firstGraph' + '/edge/' + edgeID1);
-        expect(req2.statusCode).to.equal(202);
+        let req2 = arango.DELETE(url + '/' + 'firstGraph' + '/edge/' + edgeID1);
+        expect(req2.code).to.equal(202);
 
         var deleted = false;
         try {
@@ -1423,15 +1423,13 @@ describe('_api/gharial', () => {
         };
 
         // create edge pointing from g2 to g1 (edge)
-        let req = request.post(url + '/' + 'secondGraph' + '/edge/secondEdge', {
-          body: JSON.stringify(edgeDef)
-        });
-        expect(req.statusCode).to.equal(202);
-        let toBeRemovedEdgeID = req.json.edge._id;
+        let req = arango.POST(url + '/' + 'secondGraph' + '/edge/secondEdge', edgeDef);
+        expect(req.code).to.equal(202);
+        let toBeRemovedEdgeID = req.edge._id;
 
         // now delete the target edge of g1 (a vertex)
-        let req2 = request.delete(url + '/' + 'firstGraph' + '/vertex/' + vertexIDTo1);
-        expect(req2.statusCode).to.equal(202);
+        let req2 = arango.DELETE(url + '/' + 'firstGraph' + '/vertex/' + vertexIDTo1);
+        expect(req2.code).to.equal(202);
 
         var deleted = false;
         try {
@@ -1459,13 +1457,11 @@ describe('_api/gharial', () => {
           to: [to]
         };
         var createAndDropEdgeDefinition = function () {
-          let req = request.post(url + '/' + gName + '/edge', {
-            body: JSON.stringify(edgeDef)
-          });
-          expect(req.statusCode).to.equal(202);
+          let req = arango.POST(url + '/' + gName + '/edge', edgeDef);
+          expect(req.code).to.equal(202);
           // now delete the created edge definition
-          let req2 = request.delete(url + '/' + gName + '/edge/' + collection + '?dropCollections=true');
-          expect(req2.statusCode).to.equal(202);
+          let req2 = arango.DELETE(url + '/' + gName + '/edge/' + collection + '?dropCollections=true');
+          expect(req2.code).to.equal(202);
         };
         createAndDropEdgeDefinition();
         createAndDropEdgeDefinition();

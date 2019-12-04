@@ -65,9 +65,7 @@ DatabaseTailingSyncer::DatabaseTailingSyncer(TRI_vocbase_t& vocbase,
                     useTick, barrierId),
       _vocbase(&vocbase),
       _queriedTranslations(false) {
-  _state.vocbases.emplace(std::piecewise_construct,
-                          std::forward_as_tuple(vocbase.name()),
-                          std::forward_as_tuple(vocbase));
+  _state.vocbases.try_emplace(vocbase.name(), vocbase);
 
   if (configuration._database.empty()) {
     _state.databaseName = vocbase.name();
@@ -278,7 +276,7 @@ bool DatabaseTailingSyncer::skipMarker(VPackSlice const& slice) {
         return false;
       }
 
-      for (auto const& it : VPackArrayIterator(invSlice)) {
+      for (VPackSlice it : VPackArrayIterator(invSlice)) {
         if (!it.isObject()) {
           continue;
         }

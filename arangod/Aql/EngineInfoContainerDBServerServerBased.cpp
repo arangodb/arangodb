@@ -23,16 +23,21 @@
 
 #include "EngineInfoContainerDBServerServerBased.h"
 
+#include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/GraphNode.h"
 #include "Aql/Query.h"
 #include "Aql/QuerySnippet.h"
-#include "Cluster/ClusterComm.h"
+#include "Basics/StringUtils.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterTrxMethods.h"
 #include "Graph/BaseOptions.h"
+#include "Logger/LogMacros.h"
+#include "Network/Methods.h"
+#include "Network/NetworkFeature.h"
+#include "Network/Utils.h"
 #include "StorageEngine/TransactionState.h"
 #include "Utils/CollectionNameResolver.h"
 
@@ -66,10 +71,6 @@ Result ExtractRemoteAndShard(VPackSlice keySlice, size_t& remoteId, std::string&
   return {TRI_ERROR_NO_ERROR};
 }
 
-struct NoopCb final : public arangodb::ClusterCommCallback {
-  bool operator()(ClusterCommResult*) override { return true; }
-};
-
 }  // namespace
 
 EngineInfoContainerDBServerServerBased::TraverserEngineShardLists::TraverserEngineShardLists(
@@ -78,8 +79,7 @@ EngineInfoContainerDBServerServerBased::TraverserEngineShardLists::TraverserEngi
     : _node(node), _hasShard(false) {
   auto const& edges = _node->edgeColls();
   TRI_ASSERT(!edges.empty());
-  std::unordered_set<std::string> const& restrictToShards =
-      query.queryOptions().shardIds;
+  std::unordered_set<std::string> const& restrictToShards = query.queryOptions().shardIds;
   // Extract the local shards for edge collections.
   for (auto const& col : edges) {
     _edgeCollections.emplace_back(
@@ -101,7 +101,7 @@ EngineInfoContainerDBServerServerBased::TraverserEngineShardLists::TraverserEngi
       }
     }
 #endif
-    _vertexCollections.emplace(col->name(), std::move(shards));
+    _vertexCollections.try_emplace(col->name(), std::move(shards));
   }
 }
 
@@ -193,22 +193,22 @@ EngineInfoContainerDBServerServerBased::EngineInfoContainerDBServerServerBased(Q
   // NOTE: We need to start with _lastSnippetID > 0. 0 is reserved for GraphNodes
 }
 
-void EngineInfoContainerDBServerServerBased::injectVertexColletions(GraphNode* graphNode){
-    auto const& vCols = graphNode->vertexColls();
-    if (vCols.empty()) {
-      std::map<std::string, Collection*> const* allCollections =
-          _query.collections()->collections();
-      auto& resolver = _query.resolver();
-      for (auto const& it : *allCollections) {
-        // If resolver cannot resolve this collection
-        // it has to be a view.
-        if (!resolver.getCollection(it.first)) {
-          continue;
-        }
-        // All known edge collections will be ignored by this call!
-        graphNode->injectVertexCollection(it.second);
+void EngineInfoContainerDBServerServerBased::injectVertexColletions(GraphNode* graphNode) {
+  auto const& vCols = graphNode->vertexColls();
+  if (vCols.empty()) {
+    std::map<std::string, Collection*> const* allCollections =
+        _query.collections()->collections();
+    auto& resolver = _query.resolver();
+    for (auto const& it : *allCollections) {
+      // If resolver cannot resolve this collection
+      // it has to be a view.
+      if (!resolver.getCollection(it.first)) {
+        continue;
       }
+      // All known edge collections will be ignored by this call!
+      graphNode->injectVertexCollection(it.second);
     }
+  }
 }
 
 // Insert a new node into the last engine on the stack
@@ -278,25 +278,26 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
   // Otherwise the locking needs to be empty.
   TRI_ASSERT(!_closedSnippets.empty() || !_graphNodes.empty());
 
-  auto cc = ClusterComm::instance();
-  if (cc == nullptr) {
+  NetworkFeature const& nf = _query.vocbase().server().getFeature<NetworkFeature>();
+  network::ConnectionPool* pool = nf.pool();
+  if (pool == nullptr) {
     // nullptr only happens on controlled shutdown
     return {TRI_ERROR_SHUTTING_DOWN};
   }
 
-  double ttl = _query.queryOptions().ttl;
-
-  std::string const url(
-      "/_db/" + arangodb::basics::StringUtils::urlEncode(_query.vocbase().name()) +
-      "/_api/aql/setup?ttl=" + std::to_string(ttl));
-
-  auto cleanupGuard = scopeGuard([this, &cc, &queryIds]() {
-    cleanupEngines(cc, TRI_ERROR_INTERNAL, _query.vocbase().name(), queryIds);
+  auto cleanupGuard = scopeGuard([this, pool, &queryIds]() {
+    cleanupEngines(pool, TRI_ERROR_INTERNAL, _query.vocbase().name(), queryIds);
   });
 
   // Build Lookup Infos
   VPackBuilder infoBuilder;
   transaction::Methods* trx = _query.trx();
+
+  network::RequestOptions options;
+  options.database = _query.vocbase().name();
+  options.timeout = network::Timeout(SETUP_TIMEOUT);
+  options.skipScheduler = true;  // hack to speed up future.get()
+  options.param("ttl", std::to_string(_query.queryOptions().ttl));
 
   for (auto const& server : dbServers) {
     std::string const serverDest = "server:" + server;
@@ -322,6 +323,8 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
     TRI_ASSERT(didCreateEngine.size() == _graphNodes.size());
     TRI_ASSERT(infoBuilder.isOpenObject());
 
+    infoBuilder.add(StaticStrings::SerializationFormat,
+                    VPackValue(static_cast<int>(aql::SerializationFormat::SHADOWROWS)));
     infoBuilder.close();  // Base object
     TRI_ASSERT(infoBuilder.isClosed());
 
@@ -344,22 +347,30 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
                 !infoSlice.get("snippets").isEmptyObject()) ||
                infoSlice.hasKey("traverserEngines"));
 
+    VPackBuffer<uint8_t> buffer(infoSlice.byteSize());
+    buffer.append(infoSlice.begin(), infoSlice.byteSize());
+
     // add the transaction ID header
-    std::unordered_map<std::string, std::string> headers;
+    network::Headers headers;
     ClusterTrxMethods::addAQLTransactionHeader(*trx, server, headers);
-    CoordTransactionID coordTransactionID = TRI_NewTickServer();
-    auto res = cc->syncRequest(coordTransactionID, serverDest, RequestType::POST,
-                               url, infoSlice.toJson(), headers, SETUP_TIMEOUT);
+    auto res = network::sendRequest(pool, serverDest, fuerte::RestVerb::Post,
+                                    "/_api/aql/setup", std::move(buffer),
+                                    options, std::move(headers))
+                   .get();
     _query.incHttpRequests(1);
-    if (res->getErrorCode() != TRI_ERROR_NO_ERROR) {
+    if (res.fail()) {
+      int code = network::fuerteToArangoErrorCode(res);
+      std::string message = network::fuerteToArangoErrorMessage(res);
       LOG_TOPIC("f9a77", DEBUG, Logger::AQL)
-          << server << " responded with " << res->getErrorCode() << " -> "
-          << res->stringifyErrorMessage();
+          << server << " responded with " << code << " -> " << message;
       LOG_TOPIC("41082", TRACE, Logger::AQL) << infoSlice.toJson();
-      return {res->getErrorCode(), res->stringifyErrorMessage()};
+      return {code, message};
     }
-    std::shared_ptr<VPackBuilder> builder = res->result->getBodyVelocyPack();
-    VPackSlice response = builder->slice();
+
+    VPackSlice response = res.response->slice();
+    if (response.isNone()) {
+      return {TRI_ERROR_INTERNAL, "malformed response while building engines"};
+    }
     auto result = parseResponse(response, queryIds, server, serverDest, didCreateEngine);
     if (!result.ok()) {
       return result;
@@ -447,48 +458,51 @@ Result EngineInfoContainerDBServerServerBased::parseResponse(
  * they may be leftovers from Coordinator.
  * Will also clear the list of queryIds after return.
  *
- * @param cc The ClusterComm
+ * @param pool The ConnectionPool
  * @param errorCode error Code to be send to DBServers for logging.
  * @param dbname Name of the database this query is executed in.
  * @param queryIds A map of QueryIds of the format: (remoteNodeId:shardId)
  * -> queryid.
  */
 void EngineInfoContainerDBServerServerBased::cleanupEngines(
-    std::shared_ptr<ClusterComm> cc, int errorCode, std::string const& dbname,
+    network::ConnectionPool* pool, int errorCode, std::string const& dbname,
     MapRemoteToSnippet& queryIds) const {
+  network::RequestOptions options;
+  options.database = dbname;
+  options.timeout = network::Timeout(10.0);  // Picked arbitrarily
+  options.skipScheduler = true;              // hack to speed up future.get()
+
   // Shutdown query snippets
-  std::string url("/_db/" + arangodb::basics::StringUtils::urlEncode(dbname) +
-                  "/_api/aql/shutdown/");
-  std::vector<ClusterCommRequest> requests;
-  auto body = std::make_shared<std::string>(
-      "{\"code\":" + std::to_string(errorCode) + "}");
+  std::string url("/_api/aql/shutdown/");
+  VPackBuffer<uint8_t> body;
+  VPackBuilder builder(body);
+  builder.openObject();
+  builder.add("code", VPackValue(std::to_string(errorCode)));
+  builder.close();
   for (auto const& it : queryIds) {
     // it.first == RemoteNodeId, we don't need this
     // it.second server -> [snippets]
     for (auto const& serToSnippets : it.second) {
       auto server = serToSnippets.first;
       for (auto const& shardId : serToSnippets.second) {
-        requests.emplace_back(server, rest::RequestType::PUT, url + shardId, body);
+        // fire and forget
+        network::sendRequest(pool, server, fuerte::RestVerb::Put, url + shardId,
+                             /*copy*/ body, options);
       }
+      _query.incHttpRequests(serToSnippets.second.size());
     }
   }
 
   // Shutdown traverser engines
-  url = "/_db/" + arangodb::basics::StringUtils::urlEncode(dbname) +
-        "/_internal/traverser/";
-  std::unordered_map<std::string, std::string> headers;
-  std::shared_ptr<std::string> noBody;
+  url = "/_internal/traverser/";
+  VPackBuffer<uint8_t> noBody;
 
-  CoordTransactionID coordinatorTransactionID = TRI_NewTickServer();
-  auto cb = std::make_shared<::NoopCb>();
-
-  constexpr double shortTimeout = 10.0;  // Picked arbitrarily
   for (auto const& gn : _graphNodes) {
     auto allEngines = gn->engines();
     for (auto const& engine : *allEngines) {
-      cc->asyncRequest(coordinatorTransactionID, engine.first, rest::RequestType::DELETE_REQ,
-                       url + basics::StringUtils::itoa(engine.second), noBody,
-                       headers, cb, shortTimeout, false, 2.0);
+      // fire and forget
+      network::sendRequest(pool, engine.first, fuerte::RestVerb::Delete,
+                           url + basics::StringUtils::itoa(engine.second), noBody, options);
     }
     _query.incHttpRequests(allEngines->size());
   }

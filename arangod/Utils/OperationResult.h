@@ -70,13 +70,12 @@ struct OperationResult {
   // create result with details
   OperationResult(Result result, std::shared_ptr<VPackBuffer<uint8_t>> buffer,
                   OperationOptions options = {},
-                  std::unordered_map<int, size_t> countErrorCodes =
-                      std::unordered_map<int, size_t>())
+                  std::unordered_map<int, size_t> countErrorCodes = std::unordered_map<int, size_t>())
       : result(std::move(result)),
         buffer(std::move(buffer)),
         _options(std::move(options)),
         countErrorCodes(std::move(countErrorCodes)) {
-    if (result.ok()) {
+    if (this->result.ok()) {
       TRI_ASSERT(this->buffer != nullptr);
       TRI_ASSERT(this->buffer->data() != nullptr);
     }
@@ -88,10 +87,13 @@ struct OperationResult {
   bool ok() const noexcept { return result.ok(); }
   bool fail() const noexcept { return result.fail(); }
   int errorNumber() const noexcept { return result.errorNumber(); }
-  bool is(int errorNumber) const noexcept { return result.errorNumber() == errorNumber; }
+  bool is(int errorNumber) const noexcept {
+    return result.errorNumber() == errorNumber;
+  }
   bool isNot(int errorNumber) const noexcept { return !is(errorNumber); }
   std::string errorMessage() const { return result.errorMessage(); }
 
+  inline bool hasSlice() const { return buffer != nullptr; }
   inline VPackSlice slice() const {
     TRI_ASSERT(buffer != nullptr);
     return VPackSlice(buffer->data());

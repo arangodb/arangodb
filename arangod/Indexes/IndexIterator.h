@@ -68,9 +68,9 @@ struct IndexIteratorOptions;
 /// at the index itself
 class IndexIterator {
  public:
-  typedef std::function<void(LocalDocumentId const& token)> LocalDocumentIdCallback;
-  typedef std::function<void(LocalDocumentId const& token, velocypack::Slice doc)> DocumentCallback;
-  typedef std::function<void(LocalDocumentId const& token, velocypack::Slice extra)> ExtraCallback;
+  typedef std::function<bool(LocalDocumentId const& token)> LocalDocumentIdCallback;
+  typedef std::function<bool(LocalDocumentId const& token, velocypack::Slice doc)> DocumentCallback;
+  typedef std::function<bool(LocalDocumentId const& token, velocypack::Slice extra)> ExtraCallback;
 
  public:
   IndexIterator(IndexIterator const&) = delete;

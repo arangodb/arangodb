@@ -23,7 +23,6 @@
 
 #include "GeoJson.h"
 
-#include <cctype>
 #include <string>
 #include <vector>
 
@@ -35,6 +34,7 @@
 #include <s2/s2polygon.h>
 #include <s2/s2polyline.h>
 
+#include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/debugging.h"
 #include "Geo/GeoParams.h"
@@ -56,7 +56,7 @@ const std::string kTypeStringGeometryCollection = "GeometryCollection";
 
 namespace {
 inline bool sameCharIgnoringCase(char a, char b) {
-  return std::toupper(a) == std::toupper(b);
+  return arangodb::basics::StringUtils::toupper(a) == arangodb::basics::StringUtils::toupper(b);
 }
 }  // namespace
 

@@ -24,7 +24,7 @@
 #ifndef ARANGOD_AQL_COLLECTION_H
 #define ARANGOD_AQL_COLLECTION_H 1
 
-#include "Cluster/ClusterComm.h"
+#include "Cluster/ClusterTypes.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/vocbase.h"
 
@@ -124,7 +124,7 @@ struct Collection {
   void addShardToServer(ShardID const& sid, ServerID const& server) const {
     // Cannot add the same shard twice!
     TRI_ASSERT(_shardToServerMapping.find(sid) == _shardToServerMapping.end());
-    _shardToServerMapping.emplace(sid, server);
+    _shardToServerMapping.try_emplace(sid, server);
   }
 
   /// @brief lookup the server responsible for the given shard.

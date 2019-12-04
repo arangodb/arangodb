@@ -1,5 +1,5 @@
 /* jshint strict: false, sub: true */
-/* global print */
+/* global print, arango */
 'use strict';
 
 // /////////////////////////////////////////////////////////////////////////////
@@ -86,6 +86,8 @@ let optionsDocumentation = [
   '   - `arangosearch`: if set to true enable the ArangoSearch-related tests',
   '   - `minPort`: minimum port number to use',
   '   - `maxPort`: maximum port number to use',
+  '   - `forceJson`: don\'t use vpack - for better debugability',
+  '   - `vst`: attempt to connect to the SUT via vst',
   '   - `dbServers`: number of DB-Servers to use',
   '   - `coordinators`: number coordinators to use',
   '   - `agency`: if set to true agency tests are done',
@@ -168,6 +170,7 @@ const optionsDefaults = {
   'extraArgs': {},
   'extremeVerbosity': false,
   'force': true,
+  'forceJson': false,
   'getSockStat': false,
   'arangosearch':true,
   'loopEternal': false,
@@ -208,6 +211,7 @@ const optionsDefaults = {
   'valgrindArgs': {},
   'valgrindHosts': false,
   'verbose': false,
+  'vst': false,
   'walFlushTimeout': 30000,
   'writeXmlReport': false,
   'testFailureText': 'testfailures.txt',
@@ -571,6 +575,8 @@ function unitTest (cases, options) {
       }]
     };
   }
+
+  arango.forceJson(options.forceJson);
 
   if ((cases.length === 1) && cases[0] === 'auto') {
     return autoTest(options);

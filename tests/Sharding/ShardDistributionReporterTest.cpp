@@ -25,13 +25,24 @@
 /// @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <queue>
+#include <thread>
+
 #include "gtest/gtest.h"
 
 #include "fakeit.hpp"
 
-#include "../IResearch/common.h"
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+
+#include "IResearch/common.h"
+#include "Mocks/LogLevels.h"
+#include "Mocks/StorageEngineMock.h"
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ClusterComm.h"
+#include "Futures/Utilities.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "Sharding/ShardDistributionReporter.h"
@@ -39,15 +50,6 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
-
-#include "Mocks/StorageEngineMock.h"
-
-#include <velocypack/Builder.h>
-#include <velocypack/Slice.h>
-#include <velocypack/velocypack-aliases.h>
-
-#include <queue>
-#include <thread>
 
 using namespace arangodb;
 using namespace arangodb::cluster;
@@ -88,29 +90,37 @@ static void VerifyNumbers(VPackSlice result, std::string const& colName,
 
   VPackSlice total = progress.get("total");
   ASSERT_TRUE(total.isNumber());
-  ASSERT_TRUE(total.getNumber<uint64_t>() == testTotal);
+  ASSERT_EQ(total.getNumber<uint64_t>(), testTotal);
 
   VPackSlice current = progress.get("current");
   ASSERT_TRUE(current.isNumber());
   ASSERT_EQ(current.getNumber<uint64_t>(), testCurrent);
 }
 
-static std::shared_ptr<VPackBuilder> buildCountBody(uint64_t count) {
-  auto res = std::make_shared<VPackBuilder>();
-  res->openObject();
-  res->add("count", VPackValue(count));
-  res->close();
-  return res;
+static std::unique_ptr<fuerte::Response> generateCountResponse(uint64_t count) {
+  VPackBuffer<uint8_t> responseBuffer;
+  VPackBuilder builder(responseBuffer);
+  builder.openObject();
+  builder.add("count", VPackValue(count));
+  builder.close();
+
+  fuerte::ResponseHeader header;
+  header.contentType(fuerte::ContentType::VPack);
+  std::unique_ptr<fuerte::Response> response(new fuerte::Response(std::move(header)));
+  response->setPayload(std::move(responseBuffer), /*offset*/ 0);
+
+  TRI_ASSERT(!response->slices().empty());
+
+  return response;
 }
 
-class ShardDistributionReporterTest : public ::testing::Test {
+class ShardDistributionReporterTest
+    : public ::testing::Test,
+      public arangodb::tests::LogSuppressor<arangodb::Logger::CLUSTER, arangodb::LogLevel::FATAL> {
  protected:
   arangodb::application_features::ApplicationServer server;
   StorageEngineMock engine;
   std::vector<std::pair<arangodb::application_features::ApplicationFeature&, bool>> features;
-
-  fakeit::Mock<ClusterComm> commMock;
-  ClusterComm& cc;
 
   fakeit::Mock<ClusterInfo> infoMock;
   ClusterInfo& ci;
@@ -150,12 +160,9 @@ class ShardDistributionReporterTest : public ::testing::Test {
   // Fake the collections
   std::vector<std::shared_ptr<LogicalCollection>> allCollections;
 
-  ShardDistributionReporter testee;
-
   ShardDistributionReporterTest()
       : server(nullptr, nullptr),
         engine(server),
-        cc(commMock.get()),
         ci(infoMock.get()),
         cicInst(infoCurrentMock.get()),
         cic(&cicInst, [](CollectionInfoCurrent*) {}),
@@ -173,8 +180,7 @@ class ShardDistributionReporterTest : public ::testing::Test {
         dbserver3short("DBServer3"),
         json(arangodb::velocypack::Parser::fromJson(
             "{ \"cid\" : \"1337\", \"name\": \"UnitTestCollection\" }")),
-        shards(std::make_shared<ShardMap>()),
-        testee(std::shared_ptr<ClusterComm>(&cc, [](ClusterComm*) {}), &ci) {
+        shards(std::make_shared<ShardMap>()) {
     aliases[dbserver1] = dbserver1short;
     aliases[dbserver2] = dbserver2short;
     aliases[dbserver3] = dbserver3short;
@@ -250,34 +256,6 @@ TEST_F(ShardDistributionReporterTest,
   uint64_t shard3LeaderCount = 4651;
   uint64_t shard3FollowerCount = 912;
 
-  // Moking HttpResults
-  fakeit::Mock<SimpleHttpResult> db1s2CountMock;
-  SimpleHttpResult& httpdb1s2Count = db1s2CountMock.get();
-
-  fakeit::Mock<SimpleHttpResult> db1s3CountMock;
-  SimpleHttpResult& httpdb1s3Count = db1s3CountMock.get();
-
-  fakeit::Mock<SimpleHttpResult> db2s2CountMock;
-  SimpleHttpResult& httpdb2s2Count = db2s2CountMock.get();
-
-  fakeit::Mock<SimpleHttpResult> db3s2CountMock;
-  SimpleHttpResult& httpdb3s2Count = db3s2CountMock.get();
-
-  fakeit::Mock<SimpleHttpResult> db3s3CountMock;
-  SimpleHttpResult& httpdb3s3Count = db3s3CountMock.get();
-
-  bool gotFirstRequest = false;
-  CoordTransactionID cordTrxId = 0;
-
-  std::queue<ClusterCommResult> responses;
-  ClusterCommResult leaderS2Response;
-  OperationID leaderS2Id;
-  bool leaderS2Delivered = true;
-
-  ClusterCommResult leaderS3Response;
-  OperationID leaderS3Id;
-  bool leaderS3Delivered = true;
-
   shards->emplace(s1, std::vector<ServerID>{dbserver1, dbserver2, dbserver3});
   shards->emplace(s2, std::vector<ServerID>{dbserver2, dbserver1, dbserver3});
   shards->emplace(s3, std::vector<ServerID>{dbserver3, dbserver1, dbserver2});
@@ -296,144 +274,54 @@ TEST_F(ShardDistributionReporterTest,
     return currentShards[sid];
   });
 
-  // Mocking HTTP Response
-  fakeit::When(ConstOverloadedMethod(db1s2CountMock, getBodyVelocyPack,
-                                     std::shared_ptr<VPackBuilder>()))
-      .AlwaysDo([&]() { return buildCountBody(shard2LowFollowerCount); });
+  // Mocking sendRequest for count calls
+  auto sender = [&, this](network::DestinationId const& destination,
+                          arangodb::fuerte::RestVerb reqType, std::string const& path,
+                          velocypack::Buffer<uint8_t> body, network::Timeout timeout,
+                          network::Headers headerFields) -> network::FutureRes {
+    EXPECT_TRUE(reqType == fuerte::RestVerb::Get);
+    EXPECT_TRUE(headerFields.empty());
+    // This feature has at most 2s to do its job
+    // otherwise default values will be returned
+    EXPECT_TRUE(timeout.count() <= 2.0);
 
-  fakeit::When(ConstOverloadedMethod(db1s3CountMock, getBodyVelocyPack,
-                                     std::shared_ptr<VPackBuilder>()))
-      .AlwaysDo([&]() { return buildCountBody(shard3FollowerCount); });
+    network::Response response;
+    response.destination = destination;
+    response.error = fuerte::Error::NoError;
 
-  fakeit::When(ConstOverloadedMethod(db2s2CountMock, getBodyVelocyPack,
-                                     std::shared_ptr<VPackBuilder>()))
-      .AlwaysDo([&]() { return buildCountBody(shard2LeaderCount); });
+    // '/_db/UnitTestDB/_api/collection/' + shard.shard + '/count'
+    if (destination == "server:" + dbserver1) {
+      // off-sync follows s2,s3
+      if (path == "/_db/UnitTestDB/_api/collection/" + s2 + "/count") {
+        response.response = generateCountResponse(shard2LowFollowerCount);
+      } else {
+        EXPECT_TRUE(path == "/_db/UnitTestDB/_api/collection/" + s3 + "/count");
+        response.response = generateCountResponse(shard3FollowerCount);
+      }
+    } else if (destination == "server:" + dbserver2) {
+      // Leads s2
+      EXPECT_TRUE(path == "/_db/UnitTestDB/_api/collection/" + s2 + "/count");
+      response.response = generateCountResponse(shard2LeaderCount);
+    } else if (destination == "server:" + dbserver3) {
+      // Leads s3
+      // off-sync follows s2
+      if (path == "/_db/UnitTestDB/_api/collection/" + s2 + "/count") {
+        response.response = generateCountResponse(shard2HighFollowerCount);
+      } else {
+        EXPECT_TRUE(path == "/_db/UnitTestDB/_api/collection/" + s3 + "/count");
+        response.response = generateCountResponse(shard3LeaderCount);
+      }
+    } else {
+      // Unknown Server!!
+      EXPECT_TRUE(false);
+    }
 
-  fakeit::When(ConstOverloadedMethod(db3s2CountMock, getBodyVelocyPack,
-                                     std::shared_ptr<VPackBuilder>()))
-      .AlwaysDo([&]() { return buildCountBody(shard2HighFollowerCount); });
-
-  fakeit::When(ConstOverloadedMethod(db3s3CountMock, getBodyVelocyPack,
-                                     std::shared_ptr<VPackBuilder>()))
-      .AlwaysDo([&]() { return buildCountBody(shard3LeaderCount); });
-
-  // Mocking the ClusterComm for count calls
-  fakeit::When(Method(commMock, asyncRequest))
-      .AlwaysDo([&](CoordTransactionID const coordTransactionID,
-                    std::string const& destination, rest::RequestType reqtype,
-                    std::string const& path, std::shared_ptr<std::string const> body,
-                    std::unordered_map<std::string, std::string> const& headerFields,
-                    std::shared_ptr<ClusterCommCallback> callback, ClusterCommTimeout timeout,
-                    bool singleRequest, ClusterCommTimeout initTimeout) -> OperationID {
-        EXPECT_TRUE(initTimeout == -1.0);  // Default
-        EXPECT_TRUE(!singleRequest);       // we want to use keep-alive
-        EXPECT_TRUE(callback == nullptr);  // We actively wait
-        EXPECT_TRUE(reqtype == rest::RequestType::GET);  // count is only get!
-        EXPECT_TRUE(headerFields.empty());               // Nono headers
-
-        // This feature has at most 2s to do its job
-        // otherwise default values will be returned
-        EXPECT_TRUE(timeout <= 2.0);
-
-        if (!gotFirstRequest) {
-          gotFirstRequest = true;
-          cordTrxId = coordTransactionID;
-        } else {
-          // We always use the same id
-          EXPECT_EQ(cordTrxId, coordTransactionID);
-        }
-
-        OperationID opId = TRI_NewTickServer();
-
-        ClusterCommResult response;
-        response.coordTransactionID = cordTrxId;
-        response.operationID = opId;
-        response.answer_code = rest::ResponseCode::OK;
-        response.status = CL_COMM_RECEIVED;
-
-        // '/_db/UnitTestDB/_api/collection/' + shard.shard + '/count'
-        if (destination == "server:" + dbserver1) {
-          // off-sync follows s2,s3
-          if (path == "/_db/UnitTestDB/_api/collection/" + s2 + "/count") {
-            response.result =
-                std::shared_ptr<SimpleHttpResult>(&httpdb1s2Count,
-                                                  [](SimpleHttpResult*) {});
-          } else {
-            EXPECT_TRUE(path ==
-                        "/_db/UnitTestDB/_api/collection/" + s3 + "/count");
-            response.result =
-                std::shared_ptr<SimpleHttpResult>(&httpdb1s3Count,
-                                                  [](SimpleHttpResult*) {});
-          }
-        } else if (destination == "server:" + dbserver2) {
-          // Leads s2
-          EXPECT_TRUE(path ==
-                      "/_db/UnitTestDB/_api/collection/" + s2 + "/count");
-          response.result = std::shared_ptr<SimpleHttpResult>(&httpdb2s2Count,
-                                                              [](SimpleHttpResult*) {});
-          leaderS2Response = response;
-          leaderS2Id = opId;
-          leaderS2Delivered = false;
-          return opId;
-        } else if (destination == "server:" + dbserver3) {
-          // Leads s3
-          // off-sync follows s2
-          if (path == "/_db/UnitTestDB/_api/collection/" + s2 + "/count") {
-            response.result =
-                std::shared_ptr<SimpleHttpResult>(&httpdb3s2Count,
-                                                  [](SimpleHttpResult*) {});
-          } else {
-            EXPECT_TRUE(path ==
-                        "/_db/UnitTestDB/_api/collection/" + s3 + "/count");
-            response.result =
-                std::shared_ptr<SimpleHttpResult>(&httpdb3s3Count,
-                                                  [](SimpleHttpResult*) {});
-            leaderS3Response = response;
-            leaderS3Id = opId;
-            leaderS3Delivered = false;
-            return opId;
-          }
-        } else {
-          // Unknown Server!!
-          EXPECT_TRUE(false);
-        }
-
-        responses.push(response);
-        return opId;
-      });
-
-  fakeit::When(Method(commMock, wait))
-      .AlwaysDo([&](CoordTransactionID const coordTransactionID, OperationID const operationID,
-                    ShardID const& shardID, ClusterCommTimeout timeout) {
-        EXPECT_EQ(coordTransactionID, cordTrxId);
-        EXPECT_TRUE(shardID == "");  // Superfluous
-        EXPECT_TRUE(timeout == 0.0);  // Default, the requests has timeout already
-
-        if (operationID == leaderS2Id && !leaderS2Delivered) {
-          EXPECT_TRUE(leaderS2Id != 0);
-          EXPECT_TRUE(!leaderS2Delivered);
-          leaderS2Delivered = true;
-          return leaderS2Response;
-        }
-
-        if (operationID == leaderS3Id && !leaderS3Delivered) {
-          EXPECT_TRUE(leaderS3Id != 0);
-          EXPECT_TRUE(!leaderS3Delivered);
-          leaderS3Delivered = true;
-          return leaderS3Response;
-        }
-
-        EXPECT_TRUE(operationID == 0);  // We do not wait for a specific one
-
-        EXPECT_TRUE(!responses.empty());
-        ClusterCommResult last = responses.front();
-        responses.pop();
-        return last;
-      });
+    return futures::makeFuture(std::move(response));
+  };
 
   {  // testing distribution for database
-    gotFirstRequest = false;
     VPackBuilder resultBuilder;
+    ShardDistributionReporter testee(&ci, sender);
     testee.getDistributionForDatabase(dbname, resultBuilder);
     VPackSlice result = resultBuilder.slice();
 
@@ -656,8 +544,8 @@ TEST_F(ShardDistributionReporterTest,
   }
 
   {  // testing distribution for collection database
-    gotFirstRequest = false;
     VPackBuilder resultBuilder;
+    ShardDistributionReporter testee(&ci, sender);
     testee.getCollectionDistributionForDatabase(dbname, colName, resultBuilder);
     VPackSlice result = resultBuilder.slice();
 
@@ -755,11 +643,11 @@ TEST_F(ShardDistributionReporterTest,
 
             VPackSlice total = progress.get("total");
             ASSERT_TRUE(total.isNumber());
-            ASSERT_TRUE(total.getNumber<uint64_t>() == shard2LeaderCount);
+            ASSERT_EQ(total.getNumber<uint64_t>(), shard2LeaderCount);
 
             VPackSlice current = progress.get("current");
             ASSERT_TRUE(current.isNumber());
-            ASSERT_TRUE(current.getNumber<uint64_t>() == shard2LowFollowerCount);
+            ASSERT_EQ(current.getNumber<uint64_t>(), shard2LowFollowerCount);
           }
         }
 
@@ -895,107 +783,6 @@ TEST_F(ShardDistributionReporterTest,
     }
   }
 }
-
-TEST_F(ShardDistributionReporterTest,
-       testing_distribution_for_database_a_single_collection_of_three_shards_and_three_replicas) {
-  shards->emplace(s1, std::vector<ServerID>{dbserver1, dbserver2, dbserver3});
-
-  col->setShardMap(shards);
-
-  currentShards.emplace(s1, std::vector<ServerID>{dbserver1});
-
-  allCollections.emplace_back(
-      std::shared_ptr<LogicalCollection>(col.get(), [](LogicalCollection*) {}));
-
-  fakeit::When(Method(infoCurrentMock, servers)).AlwaysDo([&](ShardID const& sid) {
-    EXPECT_TRUE(sid == s1);
-    return currentShards[sid];
-  });
-
-  // Moking HttpResults
-  fakeit::Mock<SimpleHttpResult> leaderCountMock;
-  SimpleHttpResult& lCount = leaderCountMock.get();
-
-  fakeit::Mock<SimpleHttpResult> followerOneCountMock;
-  SimpleHttpResult& f1Count = followerOneCountMock.get();
-
-  fakeit::Mock<SimpleHttpResult> followerTwoCountMock;
-  SimpleHttpResult& f2Count = followerTwoCountMock.get();
-
-  uint64_t leaderCount = 1337;
-  uint64_t smallerFollowerCount = 456;
-  uint64_t largerFollowerCount = 1111;
-
-  // Mocking HTTP Response
-  fakeit::When(ConstOverloadedMethod(leaderCountMock, getBodyVelocyPack,
-                                     std::shared_ptr<VPackBuilder>()))
-      .AlwaysDo([&]() { return buildCountBody(leaderCount); });
-
-  fakeit::When(ConstOverloadedMethod(followerOneCountMock, getBodyVelocyPack,
-                                     std::shared_ptr<VPackBuilder>()))
-      .AlwaysDo([&]() { return buildCountBody(largerFollowerCount); });
-
-  fakeit::When(ConstOverloadedMethod(followerTwoCountMock, getBodyVelocyPack,
-                                     std::shared_ptr<VPackBuilder>()))
-      .AlwaysDo([&]() { return buildCountBody(smallerFollowerCount); });
-
-  ClusterCommResult leaderRes;
-  ClusterCommResult follower1Res;
-  ClusterCommResult follower2Res;
-
-  bool returnedFirstFollower = false;
-
-  // Mocking the ClusterComm for count calls
-  fakeit::When(Method(commMock, asyncRequest))
-      .AlwaysDo([&](CoordTransactionID const coordTransactionID,
-                    std::string const& destination, rest::RequestType reqtype,
-                    std::string const& path, std::shared_ptr<std::string const> body,
-                    std::unordered_map<std::string, std::string> const& headerFields,
-                    std::shared_ptr<ClusterCommCallback> callback, ClusterCommTimeout timeout,
-                    bool singleRequest, ClusterCommTimeout initTimeout) -> OperationID {
-        EXPECT_TRUE(path == "/_db/UnitTestDB/_api/collection/" + s1 + "/count");
-
-        OperationID opId = TRI_NewTickServer();
-
-        ClusterCommResult response;
-        response.coordTransactionID = coordTransactionID;
-        response.operationID = opId;
-        response.answer_code = rest::ResponseCode::OK;
-        response.status = CL_COMM_RECEIVED;
-
-        if (destination == "server:" + dbserver1) {
-          response.result =
-              std::shared_ptr<SimpleHttpResult>(&lCount, [](SimpleHttpResult*) {});
-          leaderRes = response;
-        } else if (destination == "server:" + dbserver2) {
-          response.result =
-              std::shared_ptr<SimpleHttpResult>(&f1Count, [](SimpleHttpResult*) {});
-          follower1Res = response;
-        } else if (destination == "server:" + dbserver3) {
-          response.result =
-              std::shared_ptr<SimpleHttpResult>(&f2Count, [](SimpleHttpResult*) {});
-          follower2Res = response;
-        } else {
-          EXPECT_TRUE(false);
-        }
-        return opId;
-      });
-
-  fakeit::When(Method(commMock, wait))
-      .AlwaysDo([&](CoordTransactionID const coordTransactionID, OperationID const operationID,
-                    ShardID const& shardID, ClusterCommTimeout timeout) {
-        if (operationID != 0) {
-          return leaderRes;
-        }
-        if (returnedFirstFollower) {
-          return follower2Res;
-        } else {
-          returnedFirstFollower = true;
-          return follower1Res;
-        }
-      });
-}
-
 TEST_F(ShardDistributionReporterTest,
        testing_collection_distribution_for_database_a_single_collection_of_three_shards_and_three_replicas) {
   shards->emplace(s1, std::vector<ServerID>{dbserver1, dbserver2, dbserver3});
@@ -1012,88 +799,33 @@ TEST_F(ShardDistributionReporterTest,
     return currentShards[sid];
   });
 
-  // Moking HttpResults
-  fakeit::Mock<SimpleHttpResult> leaderCountMock;
-  SimpleHttpResult& lCount = leaderCountMock.get();
-
-  fakeit::Mock<SimpleHttpResult> followerOneCountMock;
-  SimpleHttpResult& f1Count = followerOneCountMock.get();
-
-  fakeit::Mock<SimpleHttpResult> followerTwoCountMock;
-  SimpleHttpResult& f2Count = followerTwoCountMock.get();
-
   uint64_t leaderCount = 1337;
   uint64_t smallerFollowerCount = 456;
   uint64_t largerFollowerCount = 1111;
 
-  // Mocking HTTP Response
-  fakeit::When(ConstOverloadedMethod(leaderCountMock, getBodyVelocyPack,
-                                     std::shared_ptr<VPackBuilder>()))
-      .AlwaysDo([&]() { return buildCountBody(leaderCount); });
+  // Mocking sendRequest for count calls
+  auto sender = [&, this](network::DestinationId const& destination,
+                          arangodb::fuerte::RestVerb reqType, std::string const& path,
+                          velocypack::Buffer<uint8_t> body, network::Timeout timeout,
+                          network::Headers headerFields) -> network::FutureRes {
+    EXPECT_TRUE(path == "/_db/UnitTestDB/_api/collection/" + s1 + "/count");
 
-  fakeit::When(ConstOverloadedMethod(followerOneCountMock, getBodyVelocyPack,
-                                     std::shared_ptr<VPackBuilder>()))
-      .AlwaysDo([&]() { return buildCountBody(largerFollowerCount); });
+    network::Response response;
+    response.destination = destination;
+    response.error = fuerte::Error::NoError;
 
-  fakeit::When(ConstOverloadedMethod(followerTwoCountMock, getBodyVelocyPack,
-                                     std::shared_ptr<VPackBuilder>()))
-      .AlwaysDo([&]() { return buildCountBody(smallerFollowerCount); });
+    if (destination == "server:" + dbserver1) {
+      response.response = generateCountResponse(leaderCount);
+    } else if (destination == "server:" + dbserver2) {
+      response.response = generateCountResponse(largerFollowerCount);
+    } else if (destination == "server:" + dbserver3) {
+      response.response = generateCountResponse(smallerFollowerCount);
+    } else {
+      EXPECT_TRUE(false);
+    }
 
-  ClusterCommResult leaderRes;
-  ClusterCommResult follower1Res;
-  ClusterCommResult follower2Res;
-
-  bool returnedFirstFollower = false;
-
-  // Mocking the ClusterComm for count calls
-  fakeit::When(Method(commMock, asyncRequest))
-      .AlwaysDo([&](CoordTransactionID const coordTransactionID,
-                    std::string const& destination, rest::RequestType reqtype,
-                    std::string const& path, std::shared_ptr<std::string const> body,
-                    std::unordered_map<std::string, std::string> const& headerFields,
-                    std::shared_ptr<ClusterCommCallback> callback, ClusterCommTimeout timeout,
-                    bool singleRequest, ClusterCommTimeout initTimeout) -> OperationID {
-        EXPECT_TRUE(path == "/_db/UnitTestDB/_api/collection/" + s1 + "/count");
-
-        OperationID opId = TRI_NewTickServer();
-
-        ClusterCommResult response;
-        response.coordTransactionID = coordTransactionID;
-        response.operationID = opId;
-        response.answer_code = rest::ResponseCode::OK;
-        response.status = CL_COMM_RECEIVED;
-
-        if (destination == "server:" + dbserver1) {
-          response.result =
-              std::shared_ptr<SimpleHttpResult>(&lCount, [](SimpleHttpResult*) {});
-          leaderRes = response;
-        } else if (destination == "server:" + dbserver2) {
-          response.result =
-              std::shared_ptr<SimpleHttpResult>(&f1Count, [](SimpleHttpResult*) {});
-          follower1Res = response;
-        } else if (destination == "server:" + dbserver3) {
-          response.result =
-              std::shared_ptr<SimpleHttpResult>(&f2Count, [](SimpleHttpResult*) {});
-          follower2Res = response;
-        } else {
-          EXPECT_TRUE(false);
-        }
-        return opId;
-      });
-
-  fakeit::When(Method(commMock, wait))
-      .AlwaysDo([&](CoordTransactionID const coordTransactionID, OperationID const operationID,
-                    ShardID const& shardID, ClusterCommTimeout timeout) {
-        if (operationID != 0) {
-          return leaderRes;
-        }
-        if (returnedFirstFollower) {
-          return follower2Res;
-        } else {
-          returnedFirstFollower = true;
-          return follower1Res;
-        }
-      });
+    return futures::makeFuture(std::move(response));
+  };
 
   {    // testing collection distribution for database
     {  // Both followers have a smaller amount of documents
@@ -1102,6 +834,7 @@ TEST_F(ShardDistributionReporterTest,
 
       {  // The minimum should be reported
         VPackBuilder resultBuilder;
+        ShardDistributionReporter testee(&ci, sender);
         testee.getCollectionDistributionForDatabase(dbname, colName, resultBuilder);
 
         VerifyNumbers(resultBuilder.slice(), colName, s1, leaderCount, smallerFollowerCount);
@@ -1109,12 +842,12 @@ TEST_F(ShardDistributionReporterTest,
     }
 
     {  // Both followers have a larger amount of documents
-      returnedFirstFollower = false;
       smallerFollowerCount = 1987;
       largerFollowerCount = 2345;
 
       {  // The maximum should be reported
         VPackBuilder resultBuilder;
+        ShardDistributionReporter testee(&ci, sender);
         testee.getCollectionDistributionForDatabase(dbname, colName, resultBuilder);
 
         VerifyNumbers(resultBuilder.slice(), colName, s1, leaderCount, largerFollowerCount);
@@ -1127,6 +860,7 @@ TEST_F(ShardDistributionReporterTest,
 
       {  // The lesser should be reported
         VPackBuilder resultBuilder;
+        ShardDistributionReporter testee(&ci, sender);
         testee.getCollectionDistributionForDatabase(dbname, colName, resultBuilder);
 
         VerifyNumbers(resultBuilder.slice(), colName, s1, leaderCount, smallerFollowerCount);
@@ -1151,67 +885,33 @@ TEST_F(ShardDistributionReporterTest,
     return currentShards[sid];
   });
 
-  ClusterCommResult leaderRes;
+  // Mocking sendRequest for count calls
+  auto sender = [&, this](network::DestinationId const& destination,
+                          arangodb::fuerte::RestVerb reqType, std::string const& path,
+                          velocypack::Buffer<uint8_t> body, network::Timeout timeout,
+                          network::Headers headerFields) -> network::FutureRes {
+    EXPECT_TRUE(path == "/_db/UnitTestDB/_api/collection/" + s1 + "/count");
 
-  CoordTransactionID coordId = 0;
-  // Mocking the ClusterComm for count calls
-  fakeit::When(Method(commMock, asyncRequest))
-      .AlwaysDo([&](CoordTransactionID const coordTransactionID,
-                    std::string const& destination, rest::RequestType reqtype,
-                    std::string const& path, std::shared_ptr<std::string const> body,
-                    std::unordered_map<std::string, std::string> const& headerFields,
-                    std::shared_ptr<ClusterCommCallback> callback, ClusterCommTimeout timeout,
-                    bool singleRequest, ClusterCommTimeout initTimeout) -> OperationID {
-        EXPECT_TRUE(path == "/_db/UnitTestDB/_api/collection/" + s1 + "/count");
+    network::Response response;
+    response.destination = destination;
+    response.error = fuerte::Error::NoError;
 
-        OperationID opId = TRI_NewTickServer();
-        coordId = coordTransactionID;
+    if (destination == "server:" + dbserver1) {
+      response.error = fuerte::Error::Timeout;
+    } else if (destination == "server:" + dbserver2) {
+    } else if (destination == "server:" + dbserver3) {
+    } else {
+      EXPECT_TRUE(false);
+    }
 
-        ClusterCommResult response;
-        response.coordTransactionID = coordTransactionID;
-        response.operationID = opId;
-        response.answer_code = rest::ResponseCode::OK;
-        response.status = CL_COMM_RECEIVED;
-
-        if (destination == "server:" + dbserver1) {
-          response.status = CL_COMM_TIMEOUT;
-        } else if (destination == "server:" + dbserver2) {
-        } else if (destination == "server:" + dbserver3) {
-        } else {
-          EXPECT_TRUE(false);
-        }
-        return opId;
-      });
-
-  fakeit::When(Method(commMock, wait))
-      .AlwaysDo([&](CoordTransactionID const coordTransactionID, OperationID const operationID,
-                    ShardID const& shardID, ClusterCommTimeout timeout) {
-        if (operationID != 0) {
-          return leaderRes;
-        }
-        // If we get here we tried to wait for followers and we cannot use the answer...
-        EXPECT_TRUE(false);
-        return leaderRes;
-      });
-
-  fakeit::When(Method(commMock, drop))
-      .AlwaysDo([&](CoordTransactionID const coordTransactionID,
-                    OperationID const operationID, ShardID const& shardID) {
-        // We need to abort this trx
-        EXPECT_TRUE(coordTransactionID == coordId);
-        // For all operations and shards
-        EXPECT_TRUE(operationID == 0);
-        EXPECT_TRUE(shardID == "");
-      });
+    return futures::makeFuture(std::move(response));
+  };
 
   {  // It should use the defaults total: 1 current: 0
     VPackBuilder resultBuilder;
+    ShardDistributionReporter testee(&ci, sender);
     testee.getDistributionForDatabase(dbname, resultBuilder);
     VerifyAttributes(resultBuilder.slice(), colName, s1);
-  }
-
-  {  // It needs to call drop
-    fakeit::Verify(Method(commMock, drop)).Exactly(1);
   }
 }
 
@@ -1232,111 +932,37 @@ TEST_F(ShardDistributionReporterTest,
   });
 
   uint64_t leaderCount = 1337;
-  uint64_t smallerFollowerCount = 456;
   uint64_t largerFollowerCount = 1111;
 
-  // Moking HttpResults
-  fakeit::Mock<SimpleHttpResult> leaderCountMock;
-  SimpleHttpResult& lCount = leaderCountMock.get();
+  // Mocking sendRequest for count calls
+  auto sender = [&, this](network::DestinationId const& destination,
+                          arangodb::fuerte::RestVerb reqType, std::string const& path,
+                          velocypack::Buffer<uint8_t> body, network::Timeout timeout,
+                          network::Headers headerFields) -> network::FutureRes {
+    EXPECT_TRUE(path == "/_db/UnitTestDB/_api/collection/" + s1 + "/count");
 
-  fakeit::Mock<SimpleHttpResult> followerOneCountMock;
-  SimpleHttpResult& f1Count = followerOneCountMock.get();
+    network::Response response;
+    response.destination = destination;
+    response.error = fuerte::Error::NoError;
 
-  fakeit::Mock<SimpleHttpResult> followerTwoCountMock;
-  SimpleHttpResult& f2Count = followerTwoCountMock.get();
+    if (destination == "server:" + dbserver1) {
+      response.response = generateCountResponse(leaderCount);
+    } else if (destination == "server:" + dbserver2) {
+      response.response = generateCountResponse(largerFollowerCount);
+    } else if (destination == "server:" + dbserver3) {
+      response.error = fuerte::Error::Timeout;
+    } else {
+      EXPECT_TRUE(false);
+    }
 
-  // Mocking HTTP Response
-  fakeit::When(ConstOverloadedMethod(leaderCountMock, getBodyVelocyPack,
-                                     std::shared_ptr<VPackBuilder>()))
-      .AlwaysDo([&]() { return buildCountBody(leaderCount); });
-
-  fakeit::When(ConstOverloadedMethod(followerOneCountMock, getBodyVelocyPack,
-                                     std::shared_ptr<VPackBuilder>()))
-      .AlwaysDo([&]() { return buildCountBody(largerFollowerCount); });
-
-  fakeit::When(ConstOverloadedMethod(followerTwoCountMock, getBodyVelocyPack,
-                                     std::shared_ptr<VPackBuilder>()))
-      .AlwaysDo([&]() {
-        EXPECT_TRUE(false);
-        return buildCountBody(smallerFollowerCount);
-      });
-
-  ClusterCommResult leaderRes;
-  ClusterCommResult follower1Res;
-  ClusterCommResult follower2Res;
-  bool returnedFirstFollower = false;
-
-  CoordTransactionID coordId = 0;
-  // Mocking the ClusterComm for count calls
-  fakeit::When(Method(commMock, asyncRequest))
-      .AlwaysDo([&](CoordTransactionID const coordTransactionID,
-                    std::string const& destination, rest::RequestType reqtype,
-                    std::string const& path, std::shared_ptr<std::string const> body,
-                    std::unordered_map<std::string, std::string> const& headerFields,
-                    std::shared_ptr<ClusterCommCallback> callback, ClusterCommTimeout timeout,
-                    bool singleRequest, ClusterCommTimeout initTimeout) -> OperationID {
-        EXPECT_TRUE(path == "/_db/UnitTestDB/_api/collection/" + s1 + "/count");
-
-        OperationID opId = TRI_NewTickServer();
-        coordId = coordTransactionID;
-
-        ClusterCommResult response;
-        response.coordTransactionID = coordTransactionID;
-        response.operationID = opId;
-        response.answer_code = rest::ResponseCode::OK;
-        response.status = CL_COMM_RECEIVED;
-
-        if (destination == "server:" + dbserver1) {
-          response.result =
-              std::shared_ptr<SimpleHttpResult>(&lCount, [](SimpleHttpResult*) {});
-          leaderRes = response;
-        } else if (destination == "server:" + dbserver2) {
-          response.result =
-              std::shared_ptr<SimpleHttpResult>(&f1Count, [](SimpleHttpResult*) {});
-          follower1Res = response;
-        } else if (destination == "server:" + dbserver3) {
-          response.status = CL_COMM_TIMEOUT;
-          response.result =
-              std::shared_ptr<SimpleHttpResult>(&f2Count, [](SimpleHttpResult*) {});
-          follower2Res = response;
-        } else {
-          EXPECT_TRUE(false);
-        }
-
-        return opId;
-      });
-  fakeit::When(Method(commMock, wait))
-      .AlwaysDo([&](CoordTransactionID const coordTransactionID, OperationID const operationID,
-                    ShardID const& shardID, ClusterCommTimeout timeout) {
-        if (operationID != 0) {
-          return leaderRes;
-        }
-        if (returnedFirstFollower) {
-          return follower2Res;
-        } else {
-          returnedFirstFollower = true;
-          return follower1Res;
-        }
-      });
-
-  fakeit::When(Method(commMock, drop))
-      .AlwaysDo([&](CoordTransactionID const coordTransactionID,
-                    OperationID const operationID, ShardID const& shardID) {
-        // We need to abort this trx
-        EXPECT_TRUE(coordTransactionID == coordId);
-        // For all operations and shards
-        EXPECT_TRUE(operationID == 0);
-        EXPECT_TRUE(shardID == "");
-      });
+    return futures::makeFuture(std::move(response));
+  };
 
   {  // It should use the leader and the other one
     VPackBuilder resultBuilder;
+    ShardDistributionReporter testee(&ci, sender);
     testee.getDistributionForDatabase(dbname, resultBuilder);
     VerifyAttributes(resultBuilder.slice(), colName, s1);
-  }
-
-  {  // It should not call drop
-    fakeit::Verify(Method(commMock, drop)).Exactly(0);
   }
 }
 
@@ -1357,115 +983,36 @@ TEST_F(ShardDistributionReporterTest,
   });
 
   uint64_t leaderCount = 1337;
-  uint64_t smallerFollowerCount = 456;
-  uint64_t largerFollowerCount = 1111;
 
-  // Moking HttpResults
-  fakeit::Mock<SimpleHttpResult> leaderCountMock;
-  SimpleHttpResult& lCount = leaderCountMock.get();
+  // Mocking sendRequest for count calls
+  auto sender = [&, this](network::DestinationId const& destination,
+                          arangodb::fuerte::RestVerb reqType, std::string const& path,
+                          velocypack::Buffer<uint8_t> body, network::Timeout timeout,
+                          network::Headers headerFields) -> network::FutureRes {
+    EXPECT_TRUE(path == "/_db/UnitTestDB/_api/collection/" + s1 + "/count");
 
-  fakeit::Mock<SimpleHttpResult> followerOneCountMock;
-  SimpleHttpResult& f1Count = followerOneCountMock.get();
+    network::Response response;
+    response.destination = destination;
+    response.error = fuerte::Error::NoError;
 
-  fakeit::Mock<SimpleHttpResult> followerTwoCountMock;
-  SimpleHttpResult& f2Count = followerTwoCountMock.get();
+    if (destination == "server:" + dbserver1) {
+      response.response = generateCountResponse(leaderCount);
+    } else if (destination == "server:" + dbserver2) {
+      response.error = fuerte::Error::Timeout;
+    } else if (destination == "server:" + dbserver3) {
+      response.error = fuerte::Error::Timeout;
+    } else {
+      EXPECT_TRUE(false);
+    }
 
-  // Mocking HTTP Response
-  fakeit::When(ConstOverloadedMethod(leaderCountMock, getBodyVelocyPack,
-                                     std::shared_ptr<VPackBuilder>()))
-      .AlwaysDo([&]() { return buildCountBody(leaderCount); });
-
-  fakeit::When(ConstOverloadedMethod(followerOneCountMock, getBodyVelocyPack,
-                                     std::shared_ptr<VPackBuilder>()))
-      .AlwaysDo([&]() {
-        EXPECT_TRUE(false);
-        return buildCountBody(largerFollowerCount);
-      });
-
-  fakeit::When(ConstOverloadedMethod(followerTwoCountMock, getBodyVelocyPack,
-                                     std::shared_ptr<VPackBuilder>()))
-      .AlwaysDo([&]() {
-        EXPECT_TRUE(false);
-        return buildCountBody(smallerFollowerCount);
-      });
-
-  ClusterCommResult leaderRes;
-  ClusterCommResult follower1Res;
-  ClusterCommResult follower2Res;
-  bool returnedFirstFollower = false;
-
-  CoordTransactionID coordId = 0;
-  // Mocking the ClusterComm for count calls
-  fakeit::When(Method(commMock, asyncRequest))
-      .AlwaysDo([&](CoordTransactionID const coordTransactionID,
-                    std::string const& destination, rest::RequestType reqtype,
-                    std::string const& path, std::shared_ptr<std::string const> body,
-                    std::unordered_map<std::string, std::string> const& headerFields,
-                    std::shared_ptr<ClusterCommCallback> callback, ClusterCommTimeout timeout,
-                    bool singleRequest, ClusterCommTimeout initTimeout) -> OperationID {
-        EXPECT_TRUE(path == "/_db/UnitTestDB/_api/collection/" + s1 + "/count");
-
-        OperationID opId = TRI_NewTickServer();
-        coordId = coordTransactionID;
-
-        ClusterCommResult response;
-        response.coordTransactionID = coordTransactionID;
-        response.operationID = opId;
-        response.answer_code = rest::ResponseCode::OK;
-        response.status = CL_COMM_RECEIVED;
-
-        if (destination == "server:" + dbserver1) {
-          response.result =
-              std::shared_ptr<SimpleHttpResult>(&lCount, [](SimpleHttpResult*) {});
-          leaderRes = response;
-        } else if (destination == "server:" + dbserver2) {
-          response.status = CL_COMM_TIMEOUT;
-          response.result =
-              std::shared_ptr<SimpleHttpResult>(&f1Count, [](SimpleHttpResult*) {});
-          follower1Res = response;
-        } else if (destination == "server:" + dbserver3) {
-          response.status = CL_COMM_TIMEOUT;
-          response.result =
-              std::shared_ptr<SimpleHttpResult>(&f2Count, [](SimpleHttpResult*) {});
-          follower2Res = response;
-        } else {
-          EXPECT_TRUE(false);
-        }
-
-        return opId;
-      });
-  fakeit::When(Method(commMock, wait))
-      .AlwaysDo([&](CoordTransactionID const coordTransactionID, OperationID const operationID,
-                    ShardID const& shardID, ClusterCommTimeout timeout) {
-        if (operationID != 0) {
-          return leaderRes;
-        }
-        if (returnedFirstFollower) {
-          return follower2Res;
-        } else {
-          returnedFirstFollower = true;
-          return follower1Res;
-        }
-      });
-
-  fakeit::When(Method(commMock, drop))
-      .AlwaysDo([&](CoordTransactionID const coordTransactionID,
-                    OperationID const operationID, ShardID const& shardID) {
-        // We need to abort this trx
-        EXPECT_TRUE(coordTransactionID == coordId);
-        // For all operations and shards
-        EXPECT_TRUE(operationID == 0);
-        EXPECT_TRUE(shardID == "");
-      });
+    return futures::makeFuture(std::move(response));
+  };
 
   {  // It should use the leader
     VPackBuilder resultBuilder;
+    ShardDistributionReporter testee(&ci, sender);
     testee.getDistributionForDatabase(dbname, resultBuilder);
     VerifyAttributes(resultBuilder.slice(), colName, s1);
-  }
-
-  {  // It should not call drop
-    fakeit::Verify(Method(commMock, drop)).Exactly(0);
   }
 }
 
@@ -1485,67 +1032,33 @@ TEST_F(ShardDistributionReporterTest,
     return currentShards[sid];
   });
 
-  ClusterCommResult leaderRes;
+  // Mocking sendRequest for count calls
+  auto sender = [&, this](network::DestinationId const& destination,
+                          arangodb::fuerte::RestVerb reqType, std::string const& path,
+                          velocypack::Buffer<uint8_t> body, network::Timeout timeout,
+                          network::Headers headerFields) -> network::FutureRes {
+    EXPECT_TRUE(path == "/_db/UnitTestDB/_api/collection/" + s1 + "/count");
 
-  CoordTransactionID coordId = 0;
-  // Mocking the ClusterComm for count calls
-  fakeit::When(Method(commMock, asyncRequest))
-      .AlwaysDo([&](CoordTransactionID const coordTransactionID,
-                    std::string const& destination, rest::RequestType reqtype,
-                    std::string const& path, std::shared_ptr<std::string const> body,
-                    std::unordered_map<std::string, std::string> const& headerFields,
-                    std::shared_ptr<ClusterCommCallback> callback, ClusterCommTimeout timeout,
-                    bool singleRequest, ClusterCommTimeout initTimeout) -> OperationID {
-        EXPECT_TRUE(path == "/_db/UnitTestDB/_api/collection/" + s1 + "/count");
+    network::Response response;
+    response.destination = destination;
+    response.error = fuerte::Error::NoError;
 
-        OperationID opId = TRI_NewTickServer();
-        coordId = coordTransactionID;
+    if (destination == "server:" + dbserver1) {
+      response.error = fuerte::Error::Timeout;
+    } else if (destination == "server:" + dbserver2) {
+    } else if (destination == "server:" + dbserver3) {
+    } else {
+      EXPECT_TRUE(false);
+    }
 
-        ClusterCommResult response;
-        response.coordTransactionID = coordTransactionID;
-        response.operationID = opId;
-        response.answer_code = rest::ResponseCode::OK;
-        response.status = CL_COMM_RECEIVED;
-
-        if (destination == "server:" + dbserver1) {
-          response.status = CL_COMM_TIMEOUT;
-        } else if (destination == "server:" + dbserver2) {
-        } else if (destination == "server:" + dbserver3) {
-        } else {
-          EXPECT_TRUE(false);
-        }
-        return opId;
-      });
-
-  fakeit::When(Method(commMock, wait))
-      .AlwaysDo([&](CoordTransactionID const coordTransactionID, OperationID const operationID,
-                    ShardID const& shardID, ClusterCommTimeout timeout) {
-        if (operationID != 0) {
-          return leaderRes;
-        }
-        // If we get here we tried to wait for followers and we cannot use the answer...
-        EXPECT_TRUE(false);
-        return leaderRes;
-      });
-
-  fakeit::When(Method(commMock, drop))
-      .AlwaysDo([&](CoordTransactionID const coordTransactionID,
-                    OperationID const operationID, ShardID const& shardID) {
-        // We need to abort this trx
-        EXPECT_TRUE(coordTransactionID == coordId);
-        // For all operations and shards
-        EXPECT_TRUE(operationID == 0);
-        EXPECT_TRUE(shardID == "");
-      });
+    return futures::makeFuture(std::move(response));
+  };
 
   {  // It should use the defaults total: 1 current: 0
     VPackBuilder resultBuilder;
+    ShardDistributionReporter testee(&ci, sender);
     testee.getCollectionDistributionForDatabase(dbname, colName, resultBuilder);
     VerifyNumbers(resultBuilder.slice(), colName, s1, 1, 0);
-  }
-
-  {  // It needs to call drop
-    fakeit::Verify(Method(commMock, drop)).Exactly(1);
   }
 }
 
@@ -1566,111 +1079,37 @@ TEST_F(ShardDistributionReporterTest,
   });
 
   uint64_t leaderCount = 1337;
-  uint64_t smallerFollowerCount = 456;
   uint64_t largerFollowerCount = 1111;
 
-  // Moking HttpResults
-  fakeit::Mock<SimpleHttpResult> leaderCountMock;
-  SimpleHttpResult& lCount = leaderCountMock.get();
+  // Mocking sendRequest for count calls
+  auto sender = [&, this](network::DestinationId const& destination,
+                          arangodb::fuerte::RestVerb reqType, std::string const& path,
+                          velocypack::Buffer<uint8_t> body, network::Timeout timeout,
+                          network::Headers headerFields) -> network::FutureRes {
+    EXPECT_TRUE(path == "/_db/UnitTestDB/_api/collection/" + s1 + "/count");
 
-  fakeit::Mock<SimpleHttpResult> followerOneCountMock;
-  SimpleHttpResult& f1Count = followerOneCountMock.get();
+    network::Response response;
+    response.destination = destination;
+    response.error = fuerte::Error::NoError;
 
-  fakeit::Mock<SimpleHttpResult> followerTwoCountMock;
-  SimpleHttpResult& f2Count = followerTwoCountMock.get();
+    if (destination == "server:" + dbserver1) {
+      response.response = generateCountResponse(leaderCount);
+    } else if (destination == "server:" + dbserver2) {
+      response.response = generateCountResponse(largerFollowerCount);
+    } else if (destination == "server:" + dbserver3) {
+      response.error = fuerte::Error::Timeout;
+    } else {
+      EXPECT_TRUE(false);
+    }
 
-  // Mocking HTTP Response
-  fakeit::When(ConstOverloadedMethod(leaderCountMock, getBodyVelocyPack,
-                                     std::shared_ptr<VPackBuilder>()))
-      .AlwaysDo([&]() { return buildCountBody(leaderCount); });
-
-  fakeit::When(ConstOverloadedMethod(followerOneCountMock, getBodyVelocyPack,
-                                     std::shared_ptr<VPackBuilder>()))
-      .AlwaysDo([&]() { return buildCountBody(largerFollowerCount); });
-
-  fakeit::When(ConstOverloadedMethod(followerTwoCountMock, getBodyVelocyPack,
-                                     std::shared_ptr<VPackBuilder>()))
-      .AlwaysDo([&]() {
-        EXPECT_TRUE(false);
-        return buildCountBody(smallerFollowerCount);
-      });
-
-  ClusterCommResult leaderRes;
-  ClusterCommResult follower1Res;
-  ClusterCommResult follower2Res;
-  bool returnedFirstFollower = false;
-
-  CoordTransactionID coordId = 0;
-  // Mocking the ClusterComm for count calls
-  fakeit::When(Method(commMock, asyncRequest))
-      .AlwaysDo([&](CoordTransactionID const coordTransactionID,
-                    std::string const& destination, rest::RequestType reqtype,
-                    std::string const& path, std::shared_ptr<std::string const> body,
-                    std::unordered_map<std::string, std::string> const& headerFields,
-                    std::shared_ptr<ClusterCommCallback> callback, ClusterCommTimeout timeout,
-                    bool singleRequest, ClusterCommTimeout initTimeout) -> OperationID {
-        EXPECT_TRUE(path == "/_db/UnitTestDB/_api/collection/" + s1 + "/count");
-
-        OperationID opId = TRI_NewTickServer();
-        coordId = coordTransactionID;
-
-        ClusterCommResult response;
-        response.coordTransactionID = coordTransactionID;
-        response.operationID = opId;
-        response.answer_code = rest::ResponseCode::OK;
-        response.status = CL_COMM_RECEIVED;
-
-        if (destination == "server:" + dbserver1) {
-          response.result =
-              std::shared_ptr<SimpleHttpResult>(&lCount, [](SimpleHttpResult*) {});
-          leaderRes = response;
-        } else if (destination == "server:" + dbserver2) {
-          response.result =
-              std::shared_ptr<SimpleHttpResult>(&f1Count, [](SimpleHttpResult*) {});
-          follower1Res = response;
-        } else if (destination == "server:" + dbserver3) {
-          response.status = CL_COMM_TIMEOUT;
-          response.result =
-              std::shared_ptr<SimpleHttpResult>(&f2Count, [](SimpleHttpResult*) {});
-          follower2Res = response;
-        } else {
-          EXPECT_TRUE(false);
-        }
-
-        return opId;
-      });
-  fakeit::When(Method(commMock, wait))
-      .AlwaysDo([&](CoordTransactionID const coordTransactionID, OperationID const operationID,
-                    ShardID const& shardID, ClusterCommTimeout timeout) {
-        if (operationID != 0) {
-          return leaderRes;
-        }
-        if (returnedFirstFollower) {
-          return follower2Res;
-        } else {
-          returnedFirstFollower = true;
-          return follower1Res;
-        }
-      });
-
-  fakeit::When(Method(commMock, drop))
-      .AlwaysDo([&](CoordTransactionID const coordTransactionID,
-                    OperationID const operationID, ShardID const& shardID) {
-        // We need to abort this trx
-        EXPECT_TRUE(coordTransactionID == coordId);
-        // For all operations and shards
-        EXPECT_TRUE(operationID == 0);
-        EXPECT_TRUE(shardID == "");
-      });
+    return futures::makeFuture(std::move(response));
+  };
 
   {  // It should use the leader and the other one
     VPackBuilder resultBuilder;
+    ShardDistributionReporter testee(&ci, sender);
     testee.getCollectionDistributionForDatabase(dbname, colName, resultBuilder);
     VerifyNumbers(resultBuilder.slice(), colName, s1, leaderCount, largerFollowerCount);
-  }
-
-  {  // It should not call drop
-    fakeit::Verify(Method(commMock, drop)).Exactly(0);
   }
 }
 
@@ -1691,114 +1130,35 @@ TEST_F(ShardDistributionReporterTest,
   });
 
   uint64_t leaderCount = 1337;
-  uint64_t smallerFollowerCount = 456;
-  uint64_t largerFollowerCount = 1111;
 
-  // Moking HttpResults
-  fakeit::Mock<SimpleHttpResult> leaderCountMock;
-  SimpleHttpResult& lCount = leaderCountMock.get();
+  // Mocking sendRequest for count calls
+  auto sender = [&, this](network::DestinationId const& destination,
+                          arangodb::fuerte::RestVerb reqType, std::string const& path,
+                          velocypack::Buffer<uint8_t> body, network::Timeout timeout,
+                          network::Headers headerFields) -> network::FutureRes {
+    EXPECT_TRUE(path == "/_db/UnitTestDB/_api/collection/" + s1 + "/count");
 
-  fakeit::Mock<SimpleHttpResult> followerOneCountMock;
-  SimpleHttpResult& f1Count = followerOneCountMock.get();
+    network::Response response;
+    response.destination = destination;
+    response.error = fuerte::Error::NoError;
 
-  fakeit::Mock<SimpleHttpResult> followerTwoCountMock;
-  SimpleHttpResult& f2Count = followerTwoCountMock.get();
+    if (destination == "server:" + dbserver1) {
+      response.response = generateCountResponse(leaderCount);
+    } else if (destination == "server:" + dbserver2) {
+      response.error = fuerte::Error::Timeout;
+    } else if (destination == "server:" + dbserver3) {
+      response.error = fuerte::Error::Timeout;
+    } else {
+      EXPECT_TRUE(false);
+    }
 
-  // Mocking HTTP Response
-  fakeit::When(ConstOverloadedMethod(leaderCountMock, getBodyVelocyPack,
-                                     std::shared_ptr<VPackBuilder>()))
-      .AlwaysDo([&]() { return buildCountBody(leaderCount); });
-
-  fakeit::When(ConstOverloadedMethod(followerOneCountMock, getBodyVelocyPack,
-                                     std::shared_ptr<VPackBuilder>()))
-      .AlwaysDo([&]() {
-        EXPECT_TRUE(false);
-        return buildCountBody(largerFollowerCount);
-      });
-
-  fakeit::When(ConstOverloadedMethod(followerTwoCountMock, getBodyVelocyPack,
-                                     std::shared_ptr<VPackBuilder>()))
-      .AlwaysDo([&]() {
-        EXPECT_TRUE(false);
-        return buildCountBody(smallerFollowerCount);
-      });
-
-  ClusterCommResult leaderRes;
-  ClusterCommResult follower1Res;
-  ClusterCommResult follower2Res;
-  bool returnedFirstFollower = false;
-
-  CoordTransactionID coordId = 0;
-  // Mocking the ClusterComm for count calls
-  fakeit::When(Method(commMock, asyncRequest))
-      .AlwaysDo([&](CoordTransactionID const coordTransactionID,
-                    std::string const& destination, rest::RequestType reqtype,
-                    std::string const& path, std::shared_ptr<std::string const> body,
-                    std::unordered_map<std::string, std::string> const& headerFields,
-                    std::shared_ptr<ClusterCommCallback> callback, ClusterCommTimeout timeout,
-                    bool singleRequest, ClusterCommTimeout initTimeout) -> OperationID {
-        EXPECT_TRUE(path == "/_db/UnitTestDB/_api/collection/" + s1 + "/count");
-
-        OperationID opId = TRI_NewTickServer();
-        coordId = coordTransactionID;
-
-        ClusterCommResult response;
-        response.coordTransactionID = coordTransactionID;
-        response.operationID = opId;
-        response.answer_code = rest::ResponseCode::OK;
-        response.status = CL_COMM_RECEIVED;
-
-        if (destination == "server:" + dbserver1) {
-          response.result =
-              std::shared_ptr<SimpleHttpResult>(&lCount, [](SimpleHttpResult*) {});
-          leaderRes = response;
-        } else if (destination == "server:" + dbserver2) {
-          response.status = CL_COMM_TIMEOUT;
-          response.result =
-              std::shared_ptr<SimpleHttpResult>(&f1Count, [](SimpleHttpResult*) {});
-          follower1Res = response;
-        } else if (destination == "server:" + dbserver3) {
-          response.status = CL_COMM_TIMEOUT;
-          response.result =
-              std::shared_ptr<SimpleHttpResult>(&f2Count, [](SimpleHttpResult*) {});
-          follower2Res = response;
-        } else {
-          EXPECT_TRUE(false);
-        }
-
-        return opId;
-      });
-  fakeit::When(Method(commMock, wait))
-      .AlwaysDo([&](CoordTransactionID const coordTransactionID, OperationID const operationID,
-                    ShardID const& shardID, ClusterCommTimeout timeout) {
-        if (operationID != 0) {
-          return leaderRes;
-        }
-        if (returnedFirstFollower) {
-          return follower2Res;
-        } else {
-          returnedFirstFollower = true;
-          return follower1Res;
-        }
-      });
-
-  fakeit::When(Method(commMock, drop))
-      .AlwaysDo([&](CoordTransactionID const coordTransactionID,
-                    OperationID const operationID, ShardID const& shardID) {
-        // We need to abort this trx
-        EXPECT_TRUE(coordTransactionID == coordId);
-        // For all operations and shards
-        EXPECT_TRUE(operationID == 0);
-        EXPECT_TRUE(shardID == "");
-      });
+    return futures::makeFuture(std::move(response));
+  };
 
   {  // It should use the leader and the default current of 0
     VPackBuilder resultBuilder;
+    ShardDistributionReporter testee(&ci, sender);
     testee.getCollectionDistributionForDatabase(dbname, colName, resultBuilder);
     VerifyNumbers(resultBuilder.slice(), colName, s1, leaderCount, 0);
-  }
-
-  {  // It should not call drop
-    fakeit::Verify(Method(commMock, drop)).Exactly(0);
   }
 }

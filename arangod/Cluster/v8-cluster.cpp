@@ -681,7 +681,7 @@ static void JS_GetCollectionInfoClusterInfo(v8::FunctionCallbackInfo<v8::Value> 
                                              "version",
                                              "objectId"};
   VPackBuilder infoBuilder =
-      col->toVelocyPackIgnore(ignoreKeys, LogicalDataSource::makeFlags());
+      col->toVelocyPackIgnore(ignoreKeys, LogicalDataSource::Serialization::List);
   VPackSlice info = infoBuilder.slice();
 
   TRI_ASSERT(info.isObject());
@@ -697,7 +697,7 @@ static void JS_GetCollectionInfoClusterInfo(v8::FunctionCallbackInfo<v8::Value> 
     TRI_ASSERT(p.value.isArray());
     v8::Handle<v8::Array> shorts = v8::Array::New(isolate);
     uint32_t pos = 0;
-    for (auto const& s : VPackArrayIterator(p.value)) {
+    for (VPackSlice s : VPackArrayIterator(p.value)) {
       try {
         std::string t = s.copyString();
         if (t.at(0) == '_') {
@@ -1632,7 +1632,7 @@ static void JS_SyncRequest(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string path;
   std::string body;
   auto headerFields = std::make_unique<std::unordered_map<std::string, std::string>>();
-  CoordTransactionID coordTransactionID;
+  CoordTransactionID coordTransactionID = TRI_NewTickServer();
   double timeout;
   double initTimeout = -1.0;
   bool singleRequest = false;  // of no relevance here

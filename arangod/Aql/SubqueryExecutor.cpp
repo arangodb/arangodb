@@ -30,13 +30,6 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-template <bool isModificationSubquery>
-constexpr bool SubqueryExecutor<isModificationSubquery>::Properties::preservesOrder;
-template <bool isModificationSubquery>
-constexpr BlockPassthrough SubqueryExecutor<isModificationSubquery>::Properties::allowsBlockPassthrough;
-template <bool isModificationSubquery>
-constexpr bool SubqueryExecutor<isModificationSubquery>::Properties::inputSizeRestrictsOutputSize;
-
 SubqueryExecutorInfos::SubqueryExecutorInfos(
     std::shared_ptr<std::unordered_set<RegisterId>> readableInputRegisters,
     std::shared_ptr<std::unordered_set<RegisterId>> writeableOutputRegisters,
@@ -89,7 +82,7 @@ std::pair<ExecutionState, NoStats> SubqueryExecutor<isModificationSubquery>::pro
       // Continue in subquery
 
       // Const case
-      if (_infos.isConst() && !_input.isFirstRowInBlock()) {
+      if (_infos.isConst() && !_input.isFirstDataRowInBlock()) {
         // Simply write
         writeOutput(output);
         return {_state, NoStats{}};
@@ -136,7 +129,7 @@ std::pair<ExecutionState, NoStats> SubqueryExecutor<isModificationSubquery>::pro
       }
 
       TRI_ASSERT(_input);
-      if (!_infos.isConst() || _input.isFirstRowInBlock()) {
+      if (!_infos.isConst() || _input.isFirstDataRowInBlock()) {
         auto initRes = _subquery.initializeCursor(_input);
         if (initRes.first == ExecutionState::WAITING) {
           return {ExecutionState::WAITING, NoStats{}};
@@ -159,22 +152,23 @@ void SubqueryExecutor<isModificationSubquery>::writeOutput(OutputAqlItemRow& out
   TRI_IF_FAILURE("SubqueryBlock::getSome") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-  if (!_infos.isConst() || _input.isFirstRowInBlock()) {
-    // In the non const case, or if we are the first row.
-    // We need to copy the data, and hand over ownership
+  if (!_infos.isConst() || _input.isFirstDataRowInBlock()) {
+    // In the non const case we need to move the data into the output for every
+    // row.
+    // In the const case we need to move the data into the output once per block.
     TRI_ASSERT(_subqueryResults != nullptr);
 
-    // We asser !returnsData => _subqueryResults is empty
+    // We assert !returnsData => _subqueryResults is empty
     TRI_ASSERT(_infos.returnsData() || _subqueryResults->empty());
     AqlValue resultDocVec{_subqueryResults.get()};
     AqlValueGuard guard{resultDocVec, true};
     // Responsibility is handed over
-    _subqueryResults.release();
+    std::ignore = _subqueryResults.release();
     output.moveValueInto(_infos.outputRegister(), _input, guard);
     TRI_ASSERT(_subqueryResults == nullptr);
   } else {
     // In this case we can simply reference the last written value
-    // We are not responsible for anything ourselfes anymore
+    // We are not responsible for anything ourselves anymore
     TRI_ASSERT(_subqueryResults == nullptr);
     bool didReuse = output.reuseLastStoredValue(_infos.outputRegister(), _input);
     TRI_ASSERT(didReuse);
@@ -199,6 +193,13 @@ std::pair<ExecutionState, Result> SubqueryExecutor<isModificationSubquery>::shut
     _shutdownDone = true;
   }
   return {_state, _shutdownResult};
+}
+
+template <bool isModificationSubquery>
+std::tuple<ExecutionState, typename SubqueryExecutor<isModificationSubquery>::Stats, SharedAqlItemBlockPtr>
+SubqueryExecutor<isModificationSubquery>::fetchBlockForPassthrough(size_t atMost) {
+  auto rv = _fetcher.fetchBlockForPassthrough(atMost);
+  return {rv.first, {}, std::move(rv.second)};
 }
 
 template class ::arangodb::aql::SubqueryExecutor<true>;

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2019 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -36,6 +36,7 @@
 #include "Agency/Supervision.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/ReadWriteLock.h"
+#include "RestServer/MetricsFeature.h"
 
 struct TRI_vocbase_t;
 
@@ -165,7 +166,7 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   ///        also used as heartbeat ($5.2). This is the version used by
   ///        the constituent to send out empty heartbeats to keep
   ///        the term alive.
-  void sendEmptyAppendEntriesRPC(std::string followerId);
+  void sendEmptyAppendEntriesRPC(std::string const& followerId);
 
   /// @brief 1. Deal with appendEntries to slaves.
   ///        2. Report success of write processes.
@@ -475,8 +476,16 @@ class Agent final : public arangodb::Thread, public AgentInterface {
 
   // lock for _ongoingTrxs
   arangodb::Mutex _trxsLock;
+
+  Counter& _write_ok;
+  Counter& _write_no_leader;
+  Counter& _read_ok;
+  Counter& _read_no_leader;
+  Histogram<double>& _write_hist_msec;
+  
 };
 }  // namespace consensus
 }  // namespace arangodb
 
 #endif
+ 

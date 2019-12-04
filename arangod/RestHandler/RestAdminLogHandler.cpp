@@ -38,7 +38,9 @@ using namespace arangodb::rest;
 
 RestAdminLogHandler::RestAdminLogHandler(application_features::ApplicationServer& server,
                                          GeneralRequest* request, GeneralResponse* response)
-    : RestBaseHandler(server, request, response) {}
+    : RestBaseHandler(server, request, response) {
+  _allowDirectExecution = true;
+}
 
 RestStatus RestAdminLogHandler::execute() {
   auto& server = application_features::ApplicationServer::server();
@@ -317,7 +319,7 @@ void RestAdminLogHandler::setLogLevel() {
     if (slice.isString()) {
       Logger::setLogLevel(slice.copyString());
     } else if (slice.isObject()) {
-      for (auto const& it : VPackObjectIterator(slice)) {
+      for (auto it : VPackObjectIterator(slice)) {
         if (it.value.isString()) {
           std::string const l = it.key.copyString() + "=" + it.value.copyString();
           Logger::setLogLevel(l);

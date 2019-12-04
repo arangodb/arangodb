@@ -164,7 +164,7 @@ class DynamicComponent : public std::enable_shared_from_this<T> /* (sic) */, pub
   V const _value;
 };
 
-std::ostream& operator<<(std::ostream& stream, Path const& path) {
+inline std::ostream& operator<<(std::ostream& stream, Path const& path) {
   return path.toStream(stream);
 }
 

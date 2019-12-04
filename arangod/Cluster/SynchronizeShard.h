@@ -33,6 +33,9 @@
 #include <chrono>
 
 namespace arangodb {
+namespace network {
+class ConnectionPool;
+}
 
 class LogicalCollection;
 struct SyncerId;
@@ -50,7 +53,8 @@ class SynchronizeShard : public ActionBase {
   void setState(ActionState state) override final;
 
  private:
-  arangodb::Result getReadLock(std::string const& endpoint, std::string const& database,
+  arangodb::Result getReadLock(network::ConnectionPool* pool,
+                               std::string const& endpoint, std::string const& database,
                                std::string const& collection, std::string const& clientId,
                                uint64_t rlid, bool soft, double timeout = 300.0);
 

@@ -40,7 +40,6 @@
 #include "ProgramOptions/Section.h"
 #include "RestServer/FrontendFeature.h"
 #include "RestServer/ScriptFeature.h"
-#include "Statistics/StatisticsFeature.h"
 #include "V8Server/FoxxQueuesFeature.h"
 #include "V8Server/V8DealerFeature.h"
 
@@ -88,12 +87,12 @@ void AgencyFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options->addOption(
       "--agency.election-timeout-min",
-      "minimum timeout before an agent calls for new election [s]",
+      "minimum timeout before an agent calls for new election (in seconds)",
       new DoubleParameter(&_minElectionTimeout));
 
   options->addOption(
       "--agency.election-timeout-max",
-      "maximum timeout before an agent calls for new election [s]",
+      "maximum timeout before an agent calls for new election (in seconds)",
       new DoubleParameter(&_maxElectionTimeout));
 
   options->addOption("--agency.endpoint", "agency endpoints",
@@ -108,12 +107,12 @@ void AgencyFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      new BooleanParameter(&_supervision));
 
   options->addOption("--agency.supervision-frequency",
-                     "arangodb cluster supervision frequency [s]",
+                     "arangodb cluster supervision frequency (in seconds)",
                      new DoubleParameter(&_supervisionFrequency));
 
   options->addOption(
       "--agency.supervision-grace-period",
-      "supervision time, after which a server is considered to have failed [s]",
+      "supervision time, after which a server is considered to have failed (in seconds)",
       new DoubleParameter(&_supervisionGracePeriod));
 
   options->addOption("--agency.compaction-step-size",
@@ -253,7 +252,7 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
       {std::type_index(typeid(MMFilesPersistentIndexFeature)),
        std::type_index(typeid(iresearch::IResearchFeature)),
        std::type_index(typeid(iresearch::IResearchAnalyzerFeature)),
-       std::type_index(typeid(StatisticsFeature)), std::type_index(typeid(ActionFeature)),
+       std::type_index(typeid(ActionFeature)),
        std::type_index(typeid(ScriptFeature)), std::type_index(typeid(FoxxQueuesFeature)),
        std::type_index(typeid(FrontendFeature))});
 

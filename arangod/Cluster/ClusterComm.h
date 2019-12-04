@@ -242,10 +242,10 @@ struct ClusterCommResult {
   /// @brief stringify a cluster comm status
   static char const* stringifyStatus(ClusterCommOpStatus status);
 
-  void fromError(int errorCode, std::unique_ptr<GeneralResponse> response) {
-    errorMessage = TRI_errno_string(errorCode);
-    this->errorCode = errorCode;
-    switch (errorCode) {
+  void fromError(int errCode, std::unique_ptr<GeneralResponse> response) {
+    errorMessage = TRI_errno_string(errCode);
+    this->errorCode = errCode;
+    switch (errCode) {
       case TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT:
         status = CL_COMM_BACKEND_UNAVAILABLE;
         break;
@@ -296,10 +296,10 @@ struct ClusterCommResult {
     auto const& headers = response->headers();
     auto errorCodes = headers.find(StaticStrings::ErrorCodes);
     if (errorCodes != headers.end()) {
-      request->setHeaderV2(StaticStrings::ErrorCodes, errorCodes->second);
+      request->setHeaderV2(std::string(StaticStrings::ErrorCodes),
+                           std::string(errorCodes->second));
     }
-    request->setHeaderV2(StaticStrings::ResponseCode,
-                         GeneralResponse::responseString(answer_code));
+    
     answer.reset(request);
     TRI_ASSERT(response != nullptr);
     result = std::make_shared<httpclient::SimpleHttpCommunicatorResult>(
@@ -465,7 +465,7 @@ class ClusterComm {
   /// new instances or copy them, except we ourselves.
   //////////////////////////////////////////////////////////////////////////////
 
-  ClusterComm(application_features::ApplicationServer&);
+  explicit ClusterComm(application_features::ApplicationServer&);
   explicit ClusterComm(ClusterComm const&);     // not implemented
   void operator=(ClusterComm const&);  // not implemented
 

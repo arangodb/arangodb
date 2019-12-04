@@ -21,6 +21,9 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifndef ARANGOD_AQL_IRESEARCH_QUERY_COMMON_H
+#define ARANGOD_AQL_IRESEARCH_QUERY_COMMON_H
+
 #include "gtest/gtest.h"
 
 #include "3rdParty/iresearch/tests/tests_config.hpp"
@@ -66,8 +69,11 @@ class IResearchQueryTest
 
     auto& dbFeature = server.getFeature<arangodb::DatabaseFeature>();
     dbFeature.createDatabase(testDBInfo(server.server()), _vocbase);  // required for IResearchAnalyzerFeature::emplace(...)
+    
+    std::shared_ptr<arangodb::LogicalCollection> unused;
     arangodb::methods::Collections::createSystem(*_vocbase, arangodb::tests::AnalyzerCollectionName,
-                                                 false);
+                                                 false, unused);
+    unused = nullptr;
 
     auto res =
         analyzers.emplace(result, "testVocbase::test_analyzer", "TestAnalyzer",
@@ -91,7 +97,8 @@ class IResearchQueryTest
 
     auto sysVocbase = server.getFeature<arangodb::SystemDatabaseFeature>().use();
     arangodb::methods::Collections::createSystem(*sysVocbase, arangodb::tests::AnalyzerCollectionName,
-                                                 false);
+                                                 false, unused);
+    unused = nullptr;
 
     res = analyzers.emplace(result, "_system::test_analyzer", "TestAnalyzer",
                             VPackParser::fromJson("\"abc\"")->slice(),
@@ -149,3 +156,5 @@ class IResearchQueryTest
     return *_vocbase;
   }
 };  // IResearchQueryTest
+
+#endif // ARANGOD_AQL_IRESEARCH_QUERY_COMMON_H
