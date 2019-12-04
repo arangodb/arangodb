@@ -112,7 +112,7 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
     RegisterId firstOutputRegister, RegisterId numScoreRegisters, Query& query,
     std::vector<Scorer> const& scorers,
     std::pair<arangodb::iresearch::IResearchViewSort const*, size_t> const& sort,
-    iresearch::IResearchViewStoredValue const& storedValue,
+    IResearchViewStoredValue const& storedValue,
     ExecutionPlan const& plan, Variable const& outVariable,
     aql::AstNode const& filterCondition, std::pair<bool, bool> volatility,
     IResearchViewExecutorInfos::VarInfoMap const& varInfoMap, int depth,
