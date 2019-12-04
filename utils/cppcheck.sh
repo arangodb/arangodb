@@ -2,13 +2,14 @@
 
 ferr() { echo "$*"; exit 1; }
 
-if [[ -n $* ]];
+if [[ -n $* ]]; then
   files=( "$@" )
-then
+else
   files=( arangod/ arangosh/ lib/ enterprise/ )
 fi
 
 cppcheck "$@" \
+  -j 64 \
   --xml --xml-version=2 \
   -I arangod \
   -I arangosh \
