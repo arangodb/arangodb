@@ -175,6 +175,10 @@ class OutputAqlItemRow {
 
   AqlCall::Limit hardLimit() const;
 
+  AqlCall const& getClientCall() const;
+
+  void didSkip(size_t n);
+
  private:
   [[nodiscard]] std::unordered_set<RegisterId> const& outputRegisters() const {
     TRI_ASSERT(_outputRegisters != nullptr);

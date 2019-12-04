@@ -217,6 +217,10 @@ AqlCall::Limit OutputAqlItemRow::softLimit() const { return _call.softLimit; }
 
 AqlCall::Limit OutputAqlItemRow::hardLimit() const { return _call.hardLimit; }
 
+AqlCall const& OutputAqlItemRow::getClientCall() const { return _call; }
+
+void OutputAqlItemRow::didSkip(size_t n) { _call.didSkip(n); }
+
 SharedAqlItemBlockPtr OutputAqlItemRow::stealBlock() {
   // numRowsWritten() inspects _block, so save this before resetting it!
   auto const numRows = numRowsWritten();

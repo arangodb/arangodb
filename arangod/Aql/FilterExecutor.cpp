@@ -129,8 +129,7 @@ std::tuple<ExecutorState, FilterStats, AqlCall> FilterExecutor::produceRows(
   }
   FilterStats stats{};
 
-  while (inputRange.hasMore()) {
-    TRI_ASSERT(!output.isFull());
+  while (inputRange.hasMore() && !output.isFull()) {
     auto const& [state, input] = inputRange.next();
     TRI_ASSERT(input.isInitialized());
     if (input.getValue(_infos.getInputRegister()).toBoolean()) {

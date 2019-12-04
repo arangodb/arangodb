@@ -202,7 +202,7 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::g
     TRI_ASSERT(newBlock != nullptr);
     TRI_ASSERT(newBlock->size() > 0);
     TRI_ASSERT(newBlock->size() <= atMost);
-    _outputItemRow = createOutputRow(newBlock);
+    _outputItemRow = createOutputRow(newBlock, AqlCall{});
   }
 
   ExecutionState state = ExecutionState::HASMORE;
@@ -301,16 +301,18 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::g
 }
 
 template <class Executor>
-std::unique_ptr<OutputAqlItemRow> ExecutionBlockImpl<Executor>::createOutputRow(SharedAqlItemBlockPtr& newBlock) {
+std::unique_ptr<OutputAqlItemRow> ExecutionBlockImpl<Executor>::createOutputRow(
+    SharedAqlItemBlockPtr& newBlock, AqlCall&& call) {
   if /* constexpr */ (Executor::Properties::allowsBlockPassthrough == BlockPassthrough::Enable) {
-    return std::make_unique<OutputAqlItemRow>(
-        newBlock, infos().getOutputRegisters(), infos().registersToKeep(),
-        infos().registersToClear(), std::move(AqlCall{}),
-        OutputAqlItemRow::CopyRowBehavior::DoNotCopyInputRows);
+    return std::make_unique<OutputAqlItemRow>(newBlock, infos().getOutputRegisters(),
+                                              infos().registersToKeep(),
+                                              infos().registersToClear(), std::move(call),
+                                              OutputAqlItemRow::CopyRowBehavior::DoNotCopyInputRows);
   } else {
     return std::make_unique<OutputAqlItemRow>(newBlock, infos().getOutputRegisters(),
                                               infos().registersToKeep(),
-                                              infos().registersToClear());
+                                              infos().registersToClear(),
+                                              std::move(call));
   }
 }
 
@@ -939,6 +941,17 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::r
       executor(), *_engine, nrItems, nrRegs);
 }
 
+template <class Executor>
+void ExecutionBlockImpl<Executor>::ensureOutputBlock(AqlCall&& call) {
+  if (_outputItemRow->isFull()) {
+    // We need to define the size of this block based on Input / Executor / Subquery depth
+    size_t blockSize = ExecutionBlock::DefaultBatchSize();
+    SharedAqlItemBlockPtr newBlock =
+        _engine->itemBlockManager().requestBlock(blockSize, _infos.numberOfOutputRegisters());
+    _outputItemRow = createOutputRow(newBlock, std::move(call));
+  }
+}
+
 /// @brief request an AqlItemBlock from the memory manager
 template <class Executor>
 SharedAqlItemBlockPtr ExecutionBlockImpl<Executor>::requestBlock(size_t nrItems,
@@ -995,20 +1008,20 @@ ExecState NextState(AqlCall const& call) {
 template <>
 std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr>
 ExecutionBlockImpl<FilterExecutor>::executeWithoutTrace(AqlCallStack stack) {
-  AqlCall myCall = stack.popCall();
+  ensureOutputBlock(stack.popCall());
+  /*
   if (!_outputItemRow) {
     // TODO: FIXME Hard coded size
     SharedAqlItemBlockPtr newBlock =
-        _engine->itemBlockManager().requestBlock(1000, _infos.numberOfOutputRegisters());
-    TRI_ASSERT(newBlock != nullptr);
-    TRI_ASSERT(newBlock->size() == 1000);
-    _outputItemRow = createOutputRow(newBlock);
+        _engine->itemBlockManager().requestBlock(1000,
+  _infos.numberOfOutputRegisters()); TRI_ASSERT(newBlock != nullptr); TRI_ASSERT(newBlock->size()
+  == 1000); _outputItemRow = createOutputRow(newBlock);
   }
+  */
   size_t skipped = 0;
 
-  // TODO: Need to make this member variable for waiting?
-
-  ExecState execState = ::NextState(myCall);
+  TRI_ASSERT(_outputItemRow);
+  ExecState execState = ::NextState(_outputItemRow->getClientCall());
   if (_lastRange.hasShadowRow()) {
     // We have not been able to move all shadowRows into the output last time.
     // Continue from there.
@@ -1020,39 +1033,41 @@ ExecutionBlockImpl<FilterExecutor>::executeWithoutTrace(AqlCallStack stack) {
   while (execState != ExecState::DONE && !_outputItemRow->isFull()) {
     switch (execState) {
       case ExecState::SKIP: {
+        auto const& clientCall = _outputItemRow->getClientCall();
         auto [state, skippedLocal, call] =
-            _executor.skipRowsRange(myCall.getOffset(), _lastRange);
-        myCall.didSkip(skippedLocal);
+            _executor.skipRowsRange(clientCall.getOffset(), _lastRange);
+        _outputItemRow->didSkip(skippedLocal);
         skipped += skippedLocal;
 
         if (state == ExecutorState::DONE) {
           execState = ExecState::SHADOWROWS;
-        } else if (myCall.getOffset() > 0) {
+        } else if (clientCall.getOffset() > 0) {
           TRI_ASSERT(_upstreamState != ExecutionState::DONE);
           // We need to request more
           executorRequest = call;
           execState = ExecState::UPSTREAM;
         } else {
           // We are done with skipping. Skip is not allowed to request more
-          execState = ::NextState(myCall);
+          execState = ::NextState(clientCall);
         }
         break;
       }
       case ExecState::PRODUCE: {
-        TRI_ASSERT(myCall.getLimit() > 0);
+        auto const& clientCall = _outputItemRow->getClientCall();
+        TRI_ASSERT(clientCall.getLimit() > 0);
         // Execute getSome
         auto const [state, stats, call] = _executor.produceRows(_lastRange, *_outputItemRow);
         _engine->_stats += stats;
         if (state == ExecutorState::DONE) {
           execState = ExecState::SHADOWROWS;
-        } else if (myCall.getLimit() > 0) {
+        } else if (clientCall.getLimit() > 0) {
           TRI_ASSERT(_upstreamState != ExecutionState::DONE);
           // We need to request more
           executorRequest = call;
           execState = ExecState::UPSTREAM;
         } else {
           // We are done with producing. Produce is not allowed to request more
-          execState = ::NextState(myCall);
+          execState = ::NextState(clientCall);
         }
         break;
       }
@@ -1067,10 +1082,11 @@ ExecutionBlockImpl<FilterExecutor>::executeWithoutTrace(AqlCallStack stack) {
         size_t skippedLocal = 0;
         stack.pushCall(std::move(executorRequest));
         std::tie(_upstreamState, skippedLocal, _lastRange) = _rowFetcher.execute(stack);
-        // Do we need to call it?
-        // myCall.didSkip(skippedLocal);
         skipped += skippedLocal;
-        execState = ::NextState(myCall);
+        auto const& clientCall = _outputItemRow->getClientCall();
+        // Do we need to call it?
+        // clientCall.didSkip(skippedLocal);
+        execState = ::NextState(clientCall);
         break;
       }
       case ExecState::SHADOWROWS: {
