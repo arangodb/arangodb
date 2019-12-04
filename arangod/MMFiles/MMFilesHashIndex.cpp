@@ -52,6 +52,7 @@ MMFilesHashIndexLookupBuilder::MMFilesHashIndexLookupBuilder(
     : _builder(trx),
       _usesIn(false),
       _isEmpty(false),
+      _mappingFieldConditionArena(),
       _mappingFieldCondition{_mappingFieldConditionArena},
       _inStorage(trx) {
   TRI_ASSERT(node->type == aql::NODE_TYPE_OPERATOR_NARY_AND);

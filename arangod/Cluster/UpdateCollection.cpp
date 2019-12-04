@@ -90,37 +90,38 @@ bool UpdateCollection::first() {
   try {
     DatabaseGuard guard(database);
     auto& vocbase = guard.database();
-    Result found = methods::Collections::lookup(
-        vocbase, shard, [&](std::shared_ptr<LogicalCollection> const& coll) -> void {
-          TRI_ASSERT(coll);
-          LOG_TOPIC("60543", DEBUG, Logger::MAINTENANCE)
-              << "Updating local collection " + shard;
+    
+    std::shared_ptr<LogicalCollection> coll;
+    Result found = methods::Collections::lookup(vocbase, shard, coll);
+    if (found.ok()) {
+      TRI_ASSERT(coll);
+      LOG_TOPIC("60543", DEBUG, Logger::MAINTENANCE)
+          << "Updating local collection " + shard;
 
-          // If someone (the Supervision most likely) has thrown
-          // out a follower from the plan, then the leader
-          // will not notice until it fails to replicate an operation
-          // to the old follower. This here is to drop such a follower
-          // from the local list of followers. Will be reported
-          // to Current in due course.
-          if (!followersToDrop.empty()) {
-            auto& followers = coll->followers();
-            std::vector<std::string> ftd =
-                arangodb::basics::StringUtils::split(followersToDrop, ',');
-            for (auto const& s : ftd) {
-              followers->remove(s);
-            }
-          }
-          _result = Collections::updateProperties(*coll, props, false);  // always a full-update
+      // If someone (the Supervision most likely) has thrown
+      // out a follower from the plan, then the leader
+      // will not notice until it fails to replicate an operation
+      // to the old follower. This here is to drop such a follower
+      // from the local list of followers. Will be reported
+      // to Current in due course.
+      if (!followersToDrop.empty()) {
+        auto& followers = coll->followers();
+        std::vector<std::string> ftd =
+            arangodb::basics::StringUtils::split(followersToDrop, ',');
+        for (auto const& s : ftd) {
+          followers->remove(s);
+        }
+      }
+      _result = Collections::updateProperties(*coll, props);
 
-          if (!_result.ok()) {
-            LOG_TOPIC("c3733", ERR, Logger::MAINTENANCE)
-                << "failed to update properties"
-                   " of collection "
-                << shard << ": " << _result.errorMessage();
-          }
-        });
-
-    if (found.fail()) {
+      if (!_result.ok()) {
+        LOG_TOPIC("c3733", ERR, Logger::MAINTENANCE)
+            << "failed to update properties"
+               " of collection "
+            << shard << ": " << _result.errorMessage();
+      }
+      
+    } else {
       std::stringstream error;
       error << "failed to lookup local collection " << shard << "in database " + database;
       LOG_TOPIC("620fb", ERR, Logger::MAINTENANCE) << error.str();

@@ -224,7 +224,6 @@ void ClusterInfo::cleanup() {
   _plannedViews.clear();
   _plannedCollections.clear();
   _shards.clear();
-  _shardKeys.clear();
   _shardIds.clear();
   _currentCollections.clear();
 }
@@ -235,6 +234,7 @@ void ClusterInfo::triggerBackgroundGetIds() {
   _uniqid._nextUpperValue = 0ULL;
 
   try {
+    _idLock.assertLockedByCurrentThread();
     if (_uniqid._backgroundJobIsRunning) {
       return;
     }
@@ -598,7 +598,7 @@ void ClusterInfo::loadPlan() {
                                                  //    >
   decltype(_shards) newShards;
   decltype(_shardServers) newShardServers;
-  decltype(_shardKeys) newShardKeys;
+  decltype(_shardToName) newShardToName;
 
   bool swapDatabases = false;
   bool swapCollections = false;
@@ -957,17 +957,16 @@ void ClusterInfo::loadPlan() {
             databaseCollections.try_emplace(collectionId, newCollection);
           }
 
-          newShardKeys.try_emplace(collectionId, std::make_shared<std::vector<std::string>>(
-                                                 newCollection->shardKeys()));
-
           auto shardIDs = newCollection->shardIds();
           auto shards = std::make_shared<std::vector<std::string>>();
           shards->reserve(shardIDs->size());
+          newShardToName.reserve(shardIDs->size());
 
           for (auto const& p : *shardIDs) {
             TRI_ASSERT(p.first.size() >= 2);
             shards->push_back(p.first);
             newShardServers.try_emplace(p.first, p.second);
+            newShardToName.try_emplace(p.first, newCollection->name());
           }
 
           // Sort by the number in the shard ID ("s0000001" for example):
@@ -1053,8 +1052,8 @@ void ClusterInfo::loadPlan() {
   if (swapCollections) {
     _plannedCollections.swap(newCollections);
     _shards.swap(newShards);
-    _shardKeys.swap(newShardKeys);
     _shardServers.swap(newShardServers);
+    _shardToName.swap(newShardToName);
   }
 
   if (swapViews) {
@@ -2364,18 +2363,18 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
   }
 
   if (!clones.empty()) {
-    std::string errorMsg("Collection ");
+    std::string errorMsg("Collection '");
     errorMsg += coll->name();
-    errorMsg += " must not be dropped while ";
-    errorMsg += arangodb::basics::StringUtils::join(clones, ", ");
+    errorMsg += "' must not be dropped while '";
+    errorMsg += arangodb::basics::StringUtils::join(clones, "', '");
     if (clones.size() == 1) {
-      errorMsg += " has ";
+      errorMsg += "' has ";
     } else {
-      errorMsg += " have ";
+      errorMsg += "' have ";
     };
-    errorMsg += "distributeShardsLike set to ";
+    errorMsg += "distributeShardsLike set to '";
     errorMsg += coll->name();
-    errorMsg += ".";
+    errorMsg += "'.";
 
     events::DropCollection(dbName, collectionID,
                            TRI_ERROR_CLUSTER_MUST_NOT_DROP_COLL_OTHER_DISTRIBUTESHARDSLIKE);
@@ -2546,7 +2545,8 @@ Result ClusterInfo::setCollectionPropertiesCoordinator(std::string const& databa
   temp.openObject();
   temp.add(StaticStrings::WaitForSyncString, VPackValue(info->waitForSync()));
   temp.add(StaticStrings::ReplicationFactor, VPackValue(info->replicationFactor()));
-  temp.add(StaticStrings::MinReplicationFactor, VPackValue(info->writeConcern()));
+  temp.add(StaticStrings::MinReplicationFactor, VPackValue(info->writeConcern())); // deprecated in 3.6
+  temp.add(StaticStrings::WriteConcern, VPackValue(info->writeConcern()));
   info->getPhysical()->getPropertiesVPack(temp);
   temp.close();
 
@@ -4285,6 +4285,16 @@ arangodb::Result ClusterInfo::getShardServers(ShardID const& shardId,
   LOG_TOPIC("16d14", DEBUG, Logger::CLUSTER)
       << "Strange, did not find shard in _shardServers: " << shardId;
   return arangodb::Result(TRI_ERROR_FAILED);
+}
+
+CollectionID ClusterInfo::getCollectionNameForShard(ShardID const& shardId) {
+  READ_LOCKER(readLocker, _planProt.lock);
+
+  auto it = _shardToName.find(shardId);
+  if (it != _shardToName.end()) {
+    return it->second;
+  }
+  return StaticStrings::Empty;
 }
 
 arangodb::Result ClusterInfo::agencyDump(std::shared_ptr<VPackBuilder> body) {

@@ -79,6 +79,9 @@ class HttpRequest final : public GeneralRequest {
     return _cookies;
   }
 
+  virtual void setDefaultContentType() override {
+    _contentType = rest::ContentType::JSON;
+  }
   /// @brief the body content length
   size_t contentLength() const override { return _contentLength; }
   // Payload
@@ -99,7 +102,7 @@ class HttpRequest final : public GeneralRequest {
   
   /// @brief parse an existing url
   void parseUrl(char const* start, size_t len);
-  void setHeaderV2(std::string key, std::string value);
+  void setHeaderV2(std::string&& key, std::string&& value);
   
   static HttpRequest* createHttpRequest(ContentType contentType,
                                         char const* body, int64_t contentLength,

@@ -34,122 +34,122 @@ namespace arangodb {
 
 class MetricsFeature final : public application_features::ApplicationFeature {
  public:
-  bool enabled() const {
-    return _enabled;
-  }
+
+  using registry_type = std::unordered_map<std::string, std::shared_ptr<Metric>>;
 
   static double time();
 
   explicit MetricsFeature(application_features::ApplicationServer& server);
 
+  bool exportAPI() const;
+
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void prepare() override final;
-  void start() override final;
-  void stop() override final;
+
+
 
   template<typename T> Histogram<T>&
   histogram (std::string const& name, size_t const& buckets, T const& low,
              T const& high, std::string const& help = std::string()) {
-    
-    std::lock_guard<std::mutex> guard(_lock);
-    auto const it = _registry.find(name);
-    if (it != _registry.end()) {
-      LOG_TOPIC("32e85", ERR, Logger::STATISTICS) << "histogram "  << name << " alredy exists";
-      TRI_ASSERT(false);
+
+    auto metric = std::make_shared<Histogram<T>>(buckets, low, high, name, help);
+    bool success = false;
+    {
+      std::lock_guard<std::mutex> guard(_lock);
+      success = _registry.try_emplace(
+        name, std::dynamic_pointer_cast<Metric>(metric)).second;
     }
-    auto h = std::make_shared<Histogram<T>>(buckets, low, high, name, help);
-    _registry.emplace(name, std::dynamic_pointer_cast<Metric>(h));
-    return *h;
+    if (!success) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL, std::string("histogram ") + name + " alredy exists");
+    }
+    return *metric;
+
   };
 
   template<typename T> Histogram<T>& histogram (std::string const& name) {
-    std::lock_guard<std::mutex> guard(_lock);
-    auto const it = _registry.find(name);
-    if (it == _registry.end()) {
-      LOG_TOPIC("32d85", ERR, Logger::STATISTICS) << "No histogram booked as " << name;
-      TRI_ASSERT(false);
-      throw std::exception();
-    } 
-    std::shared_ptr<Histogram<T>> h = nullptr;
-    try {
-      h = std::dynamic_pointer_cast<Histogram<T>>(*it->second);
-      if (h == nullptr) {
-        LOG_TOPIC("d2358", ERR, Logger::STATISTICS) << "Failed to retrieve histogram " << name;
-      }
-    } catch (std::exception const& e) {
-      LOG_TOPIC("32d75", ERR, Logger::STATISTICS)
-        << "Failed to retrieve histogram " << name << ": " << e.what();
-    }
-    if (h == nullptr) {
-      TRI_ASSERT(false);
-    }
 
-    return *h;
-  };
+    std::shared_ptr<Histogram<T>> metric = nullptr;
+    std::string error;
+    {
+      std::lock_guard<std::mutex> guard(_lock);
+      registry_type::const_iterator it = _registry.find(name);
+
+      try {
+        metric = std::dynamic_pointer_cast<Histogram<T>>(*it->second);
+        if (metric == nullptr) {
+          error = std::string("Failed to retrieve histogram ") + name;
+        }
+      } catch (std::exception const& e) {
+        error = std::string("Failed to retrieve histogram ") + name + ": " + e.what();
+      }
+    }
+    if (!error.empty()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, error);
+    }
+    return *metric;
+
+  }
 
   Counter& counter(std::string const& name, uint64_t const& val, std::string const& help);
-  Counter& counter(std::string const& name);
 
   template<typename T>
   Gauge<T>& gauge(std::string const& name, T const& t, std::string const& help) {
-    std::lock_guard<std::mutex> guard(_lock);
-    auto it = _registry.find(name);
-    if (it != _registry.end()) {
-      LOG_TOPIC("c7b37", ERR, Logger::STATISTICS) << "gauge "  << name << " alredy exists";
-      TRI_ASSERT(false);
-      throw(std::exception());
+    auto metric = std::make_shared<Gauge<T>>(t, name, help);
+    bool success = false;
+    {
+      std::lock_guard<std::mutex> guard(_lock);
+      success = _registry.try_emplace(
+        name, std::dynamic_pointer_cast<Metric>(metric)).second;
     }
-    auto g = std::make_shared<Gauge>(t, name, help);
-    _registry.emplace(name, std::dynamic_pointer_cast<Metric>(g));
-    return *g;
+    if (!success) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL, std::string("gauge ") + name + " alredy exists");
+    }
+    return *metric;
   }
 
   template<typename T> Gauge<T>& gauge(std::string const& name) {
-    std::lock_guard<std::mutex> guard(_lock);
-    auto it = _registry.find(name);
-    if (it == _registry.end()) {
-      LOG_TOPIC("5832d", ERR, Logger::STATISTICS) << "No metric booked as " << name;
-      TRI_ASSERT(false);
-      throw std::exception();
-    }
-    std::shared_ptr<Gauge<T>> g = nullptr;
-    try {
-      g = std::dynamic_pointer_cast<Gauge<T>>(it->second);
-      if (g == nullptr) {
-        LOG_TOPIC("d4368", ERR, Logger::STATISTICS) << "Failed to retrieve gauge metric " << name;
-        TRI_ASSERT(false);
-        throw std::exception();
+
+    std::shared_ptr<Gauge<T>> metric = nullptr;
+    std::string error;
+    {
+      std::lock_guard<std::mutex> guard(_lock);
+      registry_type::const_iterator it = _registry.find(name);
+      if (it == _registry.end()) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL, std::string("No gauge booked as ") + name);
       }
-    } catch (std::exception const& e) {
-      LOG_TOPIC("c2348", ERR, Logger::STATISTICS)
-        << "Failed to retrieve gauge metric " << name << ": " << e.what();
-      TRI_ASSERT(false);
-      throw(e);
+      try {
+        metric = std::dynamic_pointer_cast<Gauge<T>>(*it->second);
+        if (metric == nullptr) {
+          error = std::string("Failed to retrieve gauge ") + name;
+        }
+      } catch (std::exception const& e) {
+        error = std::string("Failed to retrieve gauge ") + name +  ": " + e.what();
+      }
     }
+    if (!error.empty()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, error);
+    }
+    return *metric;
   }
 
   void toPrometheus(std::string& result) const;
 
-  static MetricsFeature* metrics() {
-    return METRICS;
-  }
-
   ServerStatistics& serverStatistics();
-  
- private:
-  static MetricsFeature* METRICS;
 
-  bool _enabled;
-  
-  std::unordered_map<std::string, std::shared_ptr<Metric>> _registry;
+ private:
+  registry_type _registry;
 
   mutable std::mutex _lock;
 
-  ServerStatistics* _serverStatistics;
-  
+  std::unique_ptr<ServerStatistics> _serverStatistics;
+
+  bool _export;
+
 };
 
 }  // namespace arangodb
 
-#endif 
+#endif

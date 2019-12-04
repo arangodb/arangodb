@@ -39,6 +39,12 @@
 }
 
 .pure-table {
+  border: 0;
+  display: block;
+
+  &.pure-table-header {
+    // min-width: 100%;
+  }
 
   padding: {
     left: 20px;
@@ -88,6 +94,7 @@
   .pure-table-row {
     border-bottom: 1px solid $c-content-border;
     color: $c-pure-text;
+    display: inline-block;
     font-weight: 100;
     line-height: 40px;
     width: 100%;

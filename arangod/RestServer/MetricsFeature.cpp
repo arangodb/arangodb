@@ -21,7 +21,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "MetricsFeature.h"
-
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Basics/application-exit.h"
 #include "Logger/LogMacros.h"
@@ -31,6 +30,7 @@
 #include "ProgramOptions/Section.h"
 #include "RestServer/Metrics.h"
 #include "RocksDBEngine/RocksDBEngine.h"
+#include "MMFiles/MMFilesEngine.h"
 #include "Statistics/StatisticsFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -53,40 +53,27 @@ using namespace arangodb::options;
 // --SECTION--                                                 MetricsFeature
 // -----------------------------------------------------------------------------
 
-MetricsFeature* MetricsFeature::METRICS = nullptr;
-
-#include <iostream>
 MetricsFeature::MetricsFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "Metrics"),
-      _enabled(true) {
-  METRICS = this;
-  _serverStatistics = new
-    ServerStatistics(std::chrono::duration<double>(
-                       std::chrono::system_clock::now().time_since_epoch()).count());
+  : ApplicationFeature(server, "Metrics"), _export(true) {
   setOptional(false);
   startsAfter<LoggerFeature>();
   startsBefore<GreetingsFeaturePhase>();
 }
 
-void MetricsFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {}
+void MetricsFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
+  _serverStatistics = std::make_unique<ServerStatistics>(
+    std::chrono::duration<double>(std::chrono::system_clock::now().time_since_epoch()).count());
+  options->addOption("--server.export-metrics-api",
+                     "turn metrics API on or off",
+                     new BooleanParameter(&_export),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+}
+
+bool MetricsFeature::exportAPI() const {
+  return _export;
+}
 
 void MetricsFeature::validateOptions(std::shared_ptr<ProgramOptions>) {}
-
-void MetricsFeature::prepare() {}
-
-void MetricsFeature::start() {
-  TRI_ASSERT(isEnabled());
-}
-
-void MetricsFeature::stop() {
-  METRICS = nullptr;
-}
-
-double time() {
-  return std::chrono::duration<double>( // time since epoch in seconds
-    std::chrono::system_clock::now().time_since_epoch())
-    .count();
-}
 
 void MetricsFeature::toPrometheus(std::string& result) const {
   {
@@ -115,38 +102,19 @@ void MetricsFeature::toPrometheus(std::string& result) const {
 
 Counter& MetricsFeature::counter (
   std::string const& name, uint64_t const& val, std::string const& help) {
-  std::lock_guard<std::mutex> guard(_lock);
-  auto const it = _registry.find(name);
-  if (it != _registry.end()) {
-    LOG_TOPIC("8523d", ERR, Logger::STATISTICS) << "Failed to retrieve histogram " << name;
-    TRI_ASSERT(false);
-  }
-  auto c = std::make_shared<Counter>(val, name, help);
-  _registry.emplace(name, std::dynamic_pointer_cast<Metric>(c));
-  return *c;
-};
 
-Counter& MetricsFeature::counter (std::string const& name) {
-  std::lock_guard<std::mutex> guard(_lock);
-  auto it = _registry.find(name);
-  if (it == _registry.end()) {
-    LOG_TOPIC("32d58", ERR, Logger::STATISTICS)
-      << "Failed to retrieve counter " << name;
-    TRI_ASSERT(false);
-    throw std::exception();
-  } 
-  std::shared_ptr<Counter> h;
-  try {
-    h = std::dynamic_pointer_cast<Counter>(it->second);
-  } catch (std::exception const& e) {
-    LOG_TOPIC("853d2", ERR, Logger::STATISTICS)
-      << "Failed to retrieve counter " << name;
-    TRI_ASSERT(false);
-    throw(e);
+  auto metric = std::make_shared<Counter>(val, name, help);
+  bool success = false;
+  {
+    std::lock_guard<std::mutex> guard(_lock);
+    success = _registry.emplace(name, std::dynamic_pointer_cast<Metric>(metric)).second;
   }
-  return *h;
-};
-
+  if (!success) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_INTERNAL, std::string("counter ") + name + " alredy exists");
+  }
+  return *metric;
+}
 
 ServerStatistics& MetricsFeature::serverStatistics() {
   return *_serverStatistics;

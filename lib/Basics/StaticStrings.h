@@ -186,7 +186,6 @@ class StaticStrings {
   static std::string const Origin;
   static std::string const PotentialDirtyRead;
   static std::string const RequestForwardedTo;
-  static std::string const ResponseCode;
   static std::string const Server;
   static std::string const TransferEncoding;
   static std::string const TransactionBody;
@@ -223,6 +222,7 @@ class StaticStrings {
   static std::string const SmartJoinAttribute;
   static std::string const Sharding;
   static std::string const Satellite;
+  static std::string const WriteConcern;
 
   // graph attribute names
   static std::string const GraphCollection;

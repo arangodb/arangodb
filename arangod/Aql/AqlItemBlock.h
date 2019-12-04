@@ -258,6 +258,16 @@ class AqlItemBlock {
   /// @brief Quick test if we have any ShadowRows within this block;
   bool hasShadowRows() const noexcept;
 
+  /// @brief Moves all values *from* source *to* this block.
+  /// Returns the row index of the last written row plus one (may equal size()).
+  /// Expects size() - targetRow >= source->size(); and, of course, an equal
+  /// number of registers.
+  /// The source block will be cleared after this.
+  size_t moveOtherBlockHere(size_t targetRow, AqlItemBlock& source);
+
+  void copySubQueryDepthFromOtherBlock(size_t targetRow, AqlItemBlock const& source,
+                                       size_t sourceRow);
+
  protected:
   AqlItemBlockManager& aqlItemBlockManager() noexcept;
   size_t getRefCount() const noexcept;
@@ -274,9 +284,6 @@ class AqlItemBlock {
   size_t getSubqueryDepthAddress(size_t index) const noexcept;
 
   void copySubqueryDepth(size_t currentRow, size_t fromRow);
-
-  void copySubQueryDepthToOtherBlock(SharedAqlItemBlockPtr& target,
-                                     size_t sourceRow, size_t targetRow) const;
 
  private:
   /// @brief _data, the actual data as a single vector of dimensions _nrItems
