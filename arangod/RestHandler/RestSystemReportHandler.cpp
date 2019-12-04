@@ -72,15 +72,15 @@ bool RestSystemReportHandler::isAdminUser() const {
 }
 
 std::unordered_map<std::string, std::string> const cmds {
-  {"date", "time date -u \"+%Y-%m-%d %H:%M:%S %Z\" 2>1"},
-  {"dmesg", "time dmesg 2>1"},
-  {"df", "time df -h 2>1"},
-  {"memory", "time cat /proc/meminfo 2>1"},
-  {"uptime", "time uptime 2>1"},
-  {"uname", "time uname -a 2>1"},
+  {"date", "time date -u \"+%Y-%m-%d %H:%M:%S %Z\" 2>&1"},
+  {"dmesg", "time dmesg 2>&1"},
+  {"df", "time df -h 2>&1"},
+  {"memory", "time cat /proc/meminfo 2>&1"},
+  {"uptime", "time uptime 2>&1"},
+  {"uname", "time uname -a 2>&1"},
   {"topp", std::string("time top -b -n 1 -H -p ") +
-      std::to_string(Thread::currentProcessId()) + " 2>1"},
-  {"top", "time top -b -n 1 2>1"}
+      std::to_string(Thread::currentProcessId()) + " 2>&1"},
+  {"top", "time top -b -n 1 2>&1"}
 };
 
 RestStatus RestSystemReportHandler::execute() {
