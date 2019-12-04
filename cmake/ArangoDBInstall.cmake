@@ -87,6 +87,8 @@ install(
 )
 
 set(APP_FILES
+ "generator"
+ "frontend/img"
  "react/build"
  "react/public/assets/aqltemplates.json"
 )
