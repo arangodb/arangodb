@@ -235,6 +235,10 @@ void MMFilesEngine::validateOptions(std::shared_ptr<options::ProgramOptions>) {}
 void MMFilesEngine::prepare() {
   TRI_ASSERT(&(server().getFeature<EngineSelectorFeature>().engine()) == this);
 
+  LOG_TOPIC("80866", WARN, arangodb::Logger::STARTUP)
+      << "The MMFiles engine is deprecated since ArangoDB 3.6. "
+      << "Please plan for a migration to the RocksDB engine.";
+
   // get base path from DatabaseServerFeature
   auto& databasePathFeature = server().getFeature<DatabasePathFeature>();
   _basePath = databasePathFeature.directory();
