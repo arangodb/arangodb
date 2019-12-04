@@ -93,7 +93,7 @@ RestStatus RestSystemReportHandler::execute() {
 
   if (!security.canAccessHardenedApi()) {
     // dont leak information about server internals here
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN); 
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
     return RestStatus::DONE;
   }
 
@@ -104,17 +104,17 @@ RestStatus RestSystemReportHandler::execute() {
 
   using namespace std::chrono;
   auto start = steady_clock::now();
-  
+
   VPackBuilder result;
   { VPackObjectBuilder o(&result);
-    
+
     while (true) {
-      
+
       if (steady_clock::now() - start > seconds(60)) {
         generateError(ResponseCode::BAD, TRI_ERROR_LOCK_TIMEOUT);
         return RestStatus::DONE;
       }
-      
+
       if (!server.isStopping()) {
         // Allow only one simultaneous call
         std::unique_lock<std::mutex> exclusive(_exclusive, std::defer_lock);
@@ -138,11 +138,11 @@ RestStatus RestSystemReportHandler::execute() {
         generateError(ResponseCode::BAD, TRI_ERROR_SHUTTING_DOWN);
         return RestStatus::DONE;
       }
-      
-    } 
-    
+
+    }
+
   } // result
-  
+
   generateResult(rest::ResponseCode::OK, result.slice());
   return RestStatus::DONE;
 }

@@ -39,7 +39,7 @@ private:
 
   static std::mutex _exclusive;
   std::unordered_map<std::string, std::string> const cmds;
-  
+
 };
 }  // namespace arangodb
 
