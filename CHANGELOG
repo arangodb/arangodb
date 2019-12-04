@@ -1,6 +1,8 @@
 v3.5.4 (XXXX-XX-XX)
 -------------------
 
+* Fix execution ability in CentOS 6 regarding newer boost.
+
 * Updated arangosync to 0.7.1.
 
 * removed content from Documentation/Books, but keeping the subfolders.
