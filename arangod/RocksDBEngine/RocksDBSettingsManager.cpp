@@ -207,7 +207,7 @@ Result RocksDBSettingsManager::sync(bool force) {
   auto const lastSync = _lastSync.load();
   if (minSeqNr < lastSync) {
     LOG_TOPIC("1038e", ERR, Logger::ENGINES) << "min tick is smaller than "
-    "safe delete tick (" << lastSync << " < " << minSeqNr << ")";
+    "safe delete tick (minSeqNr: " << minSeqNr << ") < (lastSync = " << lastSync << ")";
     return Result(); // do not move backwards in time
   }
   TRI_ASSERT(lastSync <= minSeqNr);
