@@ -134,6 +134,7 @@ class LogicalCollection : public LogicalDataSource {
   /// if the boolean is false, the return value is always
   /// TRI_VOC_COL_STATUS_CORRUPTED
   TRI_vocbase_col_status_e tryFetchStatus(bool&);
+  std::string statusString() const;
 
   uint64_t numberDocuments(transaction::Methods*, transaction::CountType type);
 
@@ -316,8 +317,7 @@ class LogicalCollection : public LogicalDataSource {
   ///        created and only on Sinlge/DBServer
   void persistPhysicalCollection();
 
-  /// lock protecting the status and name
-  basics::ReadWriteLock& statusLock() { return _statusLock; }
+  basics::ReadWriteLock& lock() { return _lock; }
 
   /// @brief Defer a callback to be executed when the collection
   ///        can be dropped. The callback is supposed to drop
@@ -352,8 +352,7 @@ class LogicalCollection : public LogicalDataSource {
 
   // SECTION: Meta Information
 
-  /// lock protecting the status and name
-  mutable basics::ReadWriteLock _statusLock;
+  mutable basics::ReadWriteLock _lock;  // lock protecting the status and name
 
   /// @brief collection format version
   Version _version;

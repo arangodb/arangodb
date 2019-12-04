@@ -717,7 +717,7 @@ int MMFilesCollection::close() {
 
     // give the cleanup thread more time to clean up
     {
-      WRITE_UNLOCKER(unlocker, _logicalCollection.statusLock());
+      WRITE_UNLOCKER(unlocker, _logicalCollection.lock());
       std::this_thread::sleep_for(std::chrono::milliseconds(20));
     }
 

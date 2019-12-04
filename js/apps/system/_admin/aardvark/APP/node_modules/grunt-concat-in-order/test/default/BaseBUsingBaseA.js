@@ -1,6 +1,0 @@
-/*start BaseBUsingBaseA*/
-framwork.require('module.BaseA');
-framework.declare('module.BaseBUsingBaseA');
-framework.declare('module.BaseB');
-var third = function thirdFunction(){};
-/*end  BaseBUsingBaseA*/

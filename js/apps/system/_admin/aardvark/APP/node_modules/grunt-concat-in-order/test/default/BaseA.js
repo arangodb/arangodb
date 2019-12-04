@@ -1,4 +1,0 @@
-/*start BaseA*/
-framework.declare('module.BaseA');
-var first = function firstFunction(){};
-/*end BaseA*/

@@ -382,22 +382,22 @@ TRI_col_type_e LogicalCollection::type() const { return _type; }
 TRI_vocbase_col_status_e LogicalCollection::status() const { return _status; }
 
 TRI_vocbase_col_status_e LogicalCollection::getStatusLocked() {
-  READ_LOCKER(readLocker, _statusLock);
+  READ_LOCKER(readLocker, _lock);
   return _status;
 }
 
 void LogicalCollection::executeWhileStatusWriteLocked(std::function<void()> const& callback) {
-  WRITE_LOCKER_EVENTUAL(locker, _statusLock);
+  WRITE_LOCKER_EVENTUAL(locker, _lock);
   callback();
 }
 
 void LogicalCollection::executeWhileStatusLocked(std::function<void()> const& callback) {
-  READ_LOCKER(locker, _statusLock);
+  READ_LOCKER(locker, _lock);
   callback();
 }
 
 bool LogicalCollection::tryExecuteWhileStatusLocked(std::function<void()> const& callback) {
-  TRY_READ_LOCKER(readLocker, _statusLock);
+  TRY_READ_LOCKER(readLocker, _lock);
   if (!readLocker.isLocked()) {
     return false;
   }
@@ -407,13 +407,19 @@ bool LogicalCollection::tryExecuteWhileStatusLocked(std::function<void()> const&
 }
 
 TRI_vocbase_col_status_e LogicalCollection::tryFetchStatus(bool& didFetch) {
-  TRY_READ_LOCKER(locker, _statusLock);
+  TRY_READ_LOCKER(locker, _lock);
   if (locker.isLocked()) {
     didFetch = true;
     return _status;
   }
   didFetch = false;
   return TRI_VOC_COL_STATUS_CORRUPTED;
+}
+
+/// @brief returns a translation of a collection status
+std::string LogicalCollection::statusString() const {
+  READ_LOCKER(readLocker, _lock);
+  return ::translateStatus(_status);
 }
 
 // SECTION: Properties
