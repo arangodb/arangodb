@@ -37,6 +37,7 @@ class RestSystemReportHandler : public arangodb::RestBaseHandler {
 private:
   bool isAdminUser() const;
 
+  std::mutex _exclusive;
   
 };
 }  // namespace arangodb

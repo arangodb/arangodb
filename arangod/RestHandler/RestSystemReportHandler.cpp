@@ -26,6 +26,7 @@
 #include "Agency/Agent.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ServerState.h"
+#include "GeneralServer/ServerSecurityFeature.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/Version.h"
 #include "RestServer/ServerFeature.h"
@@ -48,14 +49,17 @@ RestSystemReportHandler::RestSystemReportHandler(
   application_features::ApplicationServer& server, GeneralRequest* request,
   GeneralResponse* response) : RestBaseHandler(server, request, response) {}
 
-std::string executeOSCmd(std::string const& cmd) {
-  static std::string const tmpFile("/tmp/arango-inspect.tmp");
-  static std::string const pipe(" | tee ");
-  static std::string const terminate(" > /dev/null");
-  std::system ((cmd + pipe + tmpFile + terminate).c_str());
-  std::ifstream tmpStream(tmpFile.c_str());
-  return std::string(
-    std::istreambuf_iterator<char>(tmpStream), std::istreambuf_iterator<char>());
+std::string exec(std::string const& cmd) {
+  std::array<char, 128> buffer;
+  std::string result;
+  std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd.c_str(), "r"), pclose);
+  if (!pipe) {
+    throw std::runtime_error("popen() failed!");
+  }
+  while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
+    result += buffer.data();
+  }
+  return result;
 }
 
 bool RestSystemReportHandler::isAdminUser() const {
@@ -67,10 +71,26 @@ bool RestSystemReportHandler::isAdminUser() const {
   return false;
 }
 
+std::unordered_map<std::string, std::string> const cmds {
+  {"date", "time date -u \"+%Y-%m-%d %H:%M:%S %Z\" 2>1"},
+  {"dmesg", "time dmesg 2>1"},
+  {"df", "time df -h 2>1"},
+  {"memory", "time cat /proc/meminfo 2>1"},
+  {"uptime", "time uptime 2>1"},
+  {"uname", "time uname -a 2>1"},
+  {"topp", std::string("time top -b -n 1 -H -p ") +
+      std::to_string(Thread::currentProcessId()) + " 2>1"},
+  {"top", "time top -b -n 1 2>1"}
+};
+
 RestStatus RestSystemReportHandler::execute() {
 
-  if (!isAdminUser()) {
-    generateError(ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
+  auto& server = application_features::ApplicationServer::server();
+  ServerSecurityFeature& security = server.getFeature<ServerSecurityFeature>();
+
+  if (!security.canAccessHardenedApi()) {
+    // dont leak information about server internals here
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN); 
     return RestStatus::DONE;
   }
 
@@ -79,26 +99,47 @@ RestStatus RestSystemReportHandler::execute() {
     return RestStatus::DONE;
   }
 
-  static std::unordered_map<std::string, std::string> const cmds {
-    {"date", "date -u \"+%Y-%m-%d %H:%M:%S %Z\""},
-    {"dmesg", "dmesg"},
-    {"df", "df -h"},
-    {"memory", "cat /proc/meminfo"},
-    {"uptime", "uptime"},
-    {"uname", "uname -a"},
-    {"top", std::string("top -b -n 1 -H -p ") +
-        std::to_string(Thread::currentProcessId())}};
-
+  using namespace std::chrono;
+  auto start = steady_clock::now();
+  
   VPackBuilder result;
   { VPackObjectBuilder o(&result);
-    for (auto cmd : cmds) {
-      try {
-        result.add(cmd.first, VPackValue(executeOSCmd(cmd.second)));
-      } catch (std::exception const& e) {
-        result.add(cmd.first, VPackValue(e.what()));
+    
+    while (true) {
+      
+      if (steady_clock::now()-start > seconds(60)) {
+        generateError(ResponseCode::BAD, TRI_ERROR_LOCK_TIMEOUT);
+        return RestStatus::DONE;
       }
-    }}
-
+      
+      if (!server.isStopping()) {
+        // Allow only one simultaneous call
+        std::unique_lock<std::mutex> exclusive(_exclusive, std::defer_lock);
+        if (exclusive.try_lock()) {
+          for (auto cmd : cmds) {
+            if(server.isStopping()) {
+              generateError(ResponseCode::BAD, TRI_ERROR_SHUTTING_DOWN);
+              return RestStatus::DONE;
+            }
+            try {
+              result.add(cmd.first, VPackValue(exec(cmd.second)));
+            } catch (std::exception const& e) {
+              result.add(cmd.first, VPackValue(e.what()));
+            }
+          }
+          break;
+        } else {
+          std::this_thread::sleep_for(seconds(1));
+        }
+      } else {
+        generateError(ResponseCode::BAD, TRI_ERROR_SHUTTING_DOWN);
+        return RestStatus::DONE;
+      }
+      
+    } 
+    
+  } // result
+  
   generateResult(rest::ResponseCode::OK, result.slice());
   return RestStatus::DONE;
 }
