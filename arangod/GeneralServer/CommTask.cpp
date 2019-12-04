@@ -389,29 +389,26 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
 // --SECTION-- statistics handling                             protected methods
 // -----------------------------------------------------------------------------
 
-
-void CommTask::setStatistics(uint64_t id, RequestStatistics* stat) {
-  std::lock_guard<std::mutex> guard(_statisticsMutex);
-
-  if (stat == nullptr) {
-    auto it = _statisticsMap.find(id);
-    if (it != _statisticsMap.end()) {
-      it->second->release();
-      _statisticsMap.erase(it);
-    }
-  } else {
-    auto result = _statisticsMap.insert({id, stat});
-    if (!result.second) {
-      result.first->second->release();
-      result.first->second = stat;
-    }
-  }
-}
-
-
 RequestStatistics* CommTask::acquireStatistics(uint64_t id) {
   RequestStatistics* stat = RequestStatistics::acquire();
-  setStatistics(id, stat);
+  
+  {
+    std::lock_guard<std::mutex> guard(_statisticsMutex);
+    if (stat == nullptr) {
+      auto it = _statisticsMap.find(id);
+      if (it != _statisticsMap.end()) {
+        it->second->release();
+        _statisticsMap.erase(it);
+      }
+    } else {
+      auto result = _statisticsMap.insert({id, stat});
+      if (!result.second) {
+        result.first->second->release();
+        result.first->second = stat;
+      }
+    }
+  }
+  
   return stat;
 }
 
@@ -481,18 +478,19 @@ bool CommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
   RequestLane lane = handler->getRequestLane();
   ContentType respType = handler->request()->contentTypeResponse();
   uint64_t mid = handler->messageId();
+  bool handlerAllowDirectExecution = handler->allowDirectExecution();
 
   // queue the operation in the scheduler, and make it eligible for direct execution
   // only if the current CommTask type allows it (HttpCommTask: yes, CommTask: no)
   // and there is currently only a single client handled by the IoContext
-  auto cb = [self = shared_from_this(), handler = std::move(handler)]() {
+  auto cb = [self = shared_from_this(), handler = std::move(handler)]() mutable {
     RequestStatistics::SET_QUEUE_END(handler->statistics());
     handler->runHandler([self = std::move(self)](rest::RestHandler* handler) {
       // Pass the response the io context
       self->sendResponse(handler->stealResponse(), handler->stealStatistics());
     });
   };
-  bool ok = SchedulerFeature::SCHEDULER->queue(lane, std::move(cb), allowDirectHandling());
+  bool ok = SchedulerFeature::SCHEDULER->queue(lane, std::move(cb), allowDirectHandling() && handlerAllowDirectExecution);
 
   if (!ok) {
     addErrorResponse(rest::ResponseCode::SERVICE_UNAVAILABLE,

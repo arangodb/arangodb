@@ -534,7 +534,7 @@ void HttpRequest::parseUrl(const char* path, size_t length) {
   }
 }
 
-void HttpRequest::setHeaderV2(std::string key, std::string value) {
+void HttpRequest::setHeaderV2(std::string&& key, std::string&& value) {
   StringUtils::tolowerInPlace(key); // always lowercase key
   
   if (key == StaticStrings::ContentLength) {
