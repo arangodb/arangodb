@@ -94,7 +94,8 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("log", "Configure the logging");
 
   options->addOption("--log.color", "use colors for TTY logging",
-                     new BooleanParameter(&_useColor));
+                     new BooleanParameter(&_useColor),
+                     arangodb::options::makeFlags(arangodb::options::Flags::Dynamic));
 
   options->addOption("--log.escape", "escape characters when logging",
                      new BooleanParameter(&_useEscaped));
@@ -181,7 +182,8 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options->addOption("--log.foreground-tty", "also log to tty if backgrounded",
                      new BooleanParameter(&_foregroundTty),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden,
+                                                  arangodb::options::Flags::Dynamic));
 
   options->addOption("--log.force-direct",
                      "do not start a seperate thread for logging",
