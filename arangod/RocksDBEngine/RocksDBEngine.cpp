@@ -1372,8 +1372,8 @@ arangodb::Result RocksDBEngine::dropCollection(TRI_vocbase_t& vocbase,
 
   if (numDocs > 0) {
     std::string errorMsg(
-        "deletion check in collection drop failed - not all documents in the "
-        "index have been deleted. remaining: ");
+        "deletion check in collection drop failed - not all documents "
+        "have been deleted. remaining: ");
     errorMsg.append(std::to_string(numDocs));
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, errorMsg);
   }
