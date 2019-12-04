@@ -573,7 +573,7 @@ function unitTest (cases, options) {
         message: err.message
       }]
     };
-  };
+  }
 
   arango.forceJson(options.forceJson);
 
