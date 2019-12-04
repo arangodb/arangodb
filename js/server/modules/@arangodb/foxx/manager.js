@@ -120,7 +120,7 @@ function parallelClusterRequests (requests) {
   if (!pending) {
     return [];
   }
-  const results = waitForDistributedResponse(options, pending, true);
+  const results = ArangoClusterControl.wait(options, pending, true);
   return results.sort(
     (a, b) => order.indexOf(a.coordTransactionID) - order.indexOf(b.coordTransactionID)
   );
