@@ -20,6 +20,7 @@
 /// @author Yuriy Popov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Basics/AttributeNameParser.h"
 #include "IResearchViewStoredValue.h"
 
 #include <velocypack/Builder.h>
@@ -28,6 +29,22 @@
 #include "VelocyPackHelper.h"
 
 #include <unordered_set>
+
+namespace {
+bool isPrefix(std::vector<arangodb::basics::AttributeName> const& prefix,
+              std::vector<arangodb::basics::AttributeName> const& attrs) {
+  TRI_ASSERT(prefix.size() < attrs.size());
+
+  for (decltype(prefix.size()) i = 0; i < prefix.size(); ++i) {
+    TRI_ASSERT(!prefix[i].shouldExpand);
+    if (prefix[i].name != attrs[i].name) {
+      return false;
+    }
+  }
+
+  return true;
+}
+}
 
 namespace arangodb {
 namespace iresearch {
@@ -51,11 +68,9 @@ bool IResearchViewStoredValue::fromVelocyPack(
   if (slice.isArray()) {
     _storedColumns.reserve(slice.length());
     std::unordered_set<std::string> uniqueColumns;
-    std::unordered_set<irs::string_ref> uniqueFields;
     std::vector<irs::string_ref> fieldNames;
     for (auto columnSlice : VPackArrayIterator(slice)) {
       if (columnSlice.isArray()) {
-        uniqueFields.clear();
         fieldNames.clear();
         size_t columnLength = 0;
         StoredColumn sc;
@@ -66,28 +81,54 @@ bool IResearchViewStoredValue::fromVelocyPack(
             return false;
           }
           auto fieldName = arangodb::iresearch::getStringRef(fieldSlice);
-          // check field uniqueness
-          if (uniqueFields.find(fieldName) != uniqueFields.cend()) {
-            continue;
-          }
-          uniqueFields.emplace_hint(uniqueFields.cend(), fieldName);
           std::vector<basics::AttributeName> field;
           try {
-            // No expansions
+            // no expansions
             arangodb::basics::TRI_ParseAttributeString(fieldName, field, false);
           } catch (...) {
             error = "." + std::string(fieldName);
             clear();
             return false;
           }
+          // check field uniqueness
+          auto newField = true;
+          auto fieldSize = field.size();
+          decltype(fieldNames.size()) i = 0;
+          for (auto& f : sc.fields) {
+            if (f.second.size() == fieldSize) {
+              if (arangodb::basics::AttributeName::isIdentical(f.second, field, false)) {
+                newField = false;
+                break;
+              }
+            } else if (f.second.size() < fieldSize) {
+              if (isPrefix(f.second, field)) {
+                newField = false;
+                break;
+              }
+            } else { // f.second.size() > fieldSize
+              if (isPrefix(field, f.second)) {
+                // take shortest path field (obj.a is better than obj.a.sub_a)
+                columnLength += fieldName.size() - f.second.size();
+                f.first = fieldName;
+                f.second = std::move(field);
+                fieldNames[i] = std::move(fieldName);
+                newField = false;
+                break;
+              }
+            }
+            ++i;
+          }
+          if (!newField) {
+            continue;
+          }
           sc.fields.emplace_back(fieldName, std::move(field));
-          columnLength += fieldName.size();
+          columnLength += fieldName.size() + 1; // + 1 for FIELDS_DELIMITER
           fieldNames.emplace_back(std::move(fieldName));
         }
         // check column uniqueness
         std::sort(fieldNames.begin(), fieldNames.end());
         std::string columnName;
-        columnName.reserve(columnLength);
+        columnName.reserve(columnLength - 1);
         for (auto const& fieldName : fieldNames) {
           if (!columnName.empty()) {
             columnName += FIELDS_DELIMITER;
@@ -104,9 +145,11 @@ bool IResearchViewStoredValue::fromVelocyPack(
         auto fieldName = arangodb::iresearch::getStringRef(columnSlice);
         std::vector<basics::AttributeName> field;
         try {
+          // no expansions
           arangodb::basics::TRI_ParseAttributeString(fieldName, field, false);
         } catch (...) {
           error = "." + std::string(fieldName);
+          clear();
           return false;
         }
         if (uniqueColumns.find(fieldName) != uniqueColumns.cend()) {

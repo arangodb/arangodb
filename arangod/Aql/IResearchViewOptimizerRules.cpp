@@ -397,7 +397,11 @@ void setAttributesMaxMatchedColumns(std::unordered_map<int, std::vector<ColumnVa
   columnVariants.assign(std::make_move_iterator(usedColumnsCounter.begin()), std::make_move_iterator(usedColumnsCounter.end()));
   // first is max size one
   std::sort(columnVariants.begin(), columnVariants.end(), [](auto const& lhs, auto const& rhs) {
-    return lhs.second.size() > rhs.second.size();
+    auto lSize = lhs.second.size();
+    auto rSize = rhs.second.size();
+    // column contains more fields or
+    // columns sizes == 1 and postfix is less (less column size)
+    return lSize > rSize || (lSize == rSize && lSize == 1 && lhs.second[0].postfix.size() < rhs.second[0].postfix.size());
   });
   // get values from columns which contain max number of appropriate values
   for (auto& cv : columnVariants) {
