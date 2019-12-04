@@ -2,6 +2,13 @@
 
 ferr() { echo "$*"; exit 1; }
 
+if [[ $1 == "-j" ]]; then
+  threads=$2
+  shift 2
+else
+  threads=$(nproc)
+fi
+
 if [[ -n $* ]]; then
   files=( "$@" )
 else
@@ -9,7 +16,7 @@ else
 fi
 
 cppcheck "$@" \
-  -j 64 \
+  -j $threads \
   --xml --xml-version=2 \
   -I arangod \
   -I arangosh \
