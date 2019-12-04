@@ -167,6 +167,10 @@ class GeneralRequest {
     return _headers;
   }
 
+  void removeHeader(std::string key) {
+    _headers.erase(key);
+  }
+
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   void addHeader(std::string key, std::string value) {
     _headers.try_emplace(std::move(key), std::move(value));

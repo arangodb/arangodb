@@ -1,7 +1,14 @@
+/*jshint globalstrict:false, strict:false */
+/* global db */
+
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief teardown for dump/reload tests
+///
+/// @file
+///
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -15,31 +22,20 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB Inc, Cologne, Germany
 ///
-/// @author Kaveh Vahedipour
+/// @author Wilfried Goesgens
+/// @author Copyright 2019, ArangoDB Inc, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_HANDLER_REST_METRICS_HANDLER_H
-#define ARANGOD_REST_HANDLER_REST_METRICS_HANDLER_H 1
+(function () {
+  'use strict';
 
-#include "RestHandler/RestBaseHandler.h"
-#include "RestServer/MetricsFeature.h"
+  var users = require("@arangodb/users");
+  users.update("foobaruser", "pinus", true);
+})();
 
-namespace arangodb {
-class RestMetricsHandler : public arangodb::RestBaseHandler {
- public:
-  RestMetricsHandler(application_features::ApplicationServer&, GeneralRequest*,
-                     GeneralResponse*);
-
-  char const* name() const override final { return "RestMetricsHandler"; }
-  RequestLane lane() const override final { return RequestLane::CLIENT_FAST; }
-  RestStatus execute() override;
-
+return {
+  status: true
 };
 
-
-
-}  // namespace arangodb
-
-#endif
