@@ -81,19 +81,14 @@ install(
     ${PROJECT_SOURCE_DIR}/js/apps
     ${PROJECT_SOURCE_DIR}/js/server
   DESTINATION ${CMAKE_INSTALL_DATAROOTDIR_ARANGO}/${ARANGODB_JS_VERSION}
-  REGEX       "^.*/aardvark/APP/.*/react/.*$"              EXCLUDE
+  REGEX       "^.*/aardvark/APP/.*/.*$"                    EXCLUDE
   REGEX       "^.*/js/server/assets/swagger/*.map$"        EXCLUDE
   REGEX       "^.*/.bin"                                   EXCLUDE
 )
 
 set(APP_FILES
+ "react/build"
  "react/public/assets/aqltemplates.json"
- "react/build/favicon.ico"
- "react/build/static"
- "react/build/static/media"
- "react/build/assets/src/worker-json.js"
- "react/build/assets/src/ace.min.js"
- "react/build/assets/src/mode-aql.js"
 )
 
 foreach (file ${APP_FILES})
@@ -102,7 +97,7 @@ foreach (file ${APP_FILES})
         DIRECTORY
           ${PROJECT_SOURCE_DIR}/js/apps/system/_admin/aardvark/APP/${file}
         DESTINATION
-          ${CMAKE_INSTALL_DATAROOTDIR_ARANGO}/${ARANGODB_JS_VERSION}/system/_admin/aardvark/APP/${file}
+          ${CMAKE_INSTALL_DATAROOTDIR_ARANGO}/${ARANGODB_JS_VERSION}/apps/system/_admin/aardvark/APP/${file}
         REGEX
           ".*react.*" EXCLUDE
       )
