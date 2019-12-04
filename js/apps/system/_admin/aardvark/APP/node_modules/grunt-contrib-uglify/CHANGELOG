@@ -1,0 +1,155 @@
+v1.0.2:
+  date: 2016-03-19
+  changes:
+    - Update grunt to ^1.0.0.
+    - Fix `beautify` when passed as an object.
+    - Fix docs about `report` values.
+v1.0.1:
+  date: 2016-03-16
+  changes:
+    - Downgrade maxmin for Node.js 0.10.
+v1.0.0:
+  date: 2016-03-04
+  changes:
+    - Use uglify-js ~2.6.2 to fix sourcemap issue.
+    - Improve docs for `global-defs` and `--define` options.
+    - Add `sourceMapUrl` option.
+    - Add `bare_returns` option.
+    - Optionally set report verbosity level using report option.
+v0.11.1:
+  date: 2016-01-29
+  changes:
+    - Update lodash to ^4.0.1.
+    - Update grunt-contrib-clean to ^0.7.0.
+    - Update grunt-contrib-jshint to ^0.12.0.
+v0.11.0:
+  date: 2015-11-20
+  changes:
+    - Update uglify-js to ~2.6.0.
+v0.10.1:
+  date: 2015-11-12
+  changes:
+    - Update uglify-js to ~2.5.
+v0.10.0:
+  date: 2015-10-27
+  changes:
+    - Update uglify-js to ^2.5.
+v0.9.2:
+  date: 2015-08-24
+  changes:
+    - Update uglify-js to ^2.4.24
+v0.9.1:
+  date: 2015-04-07
+  changes:
+    - More fixes for `mangle` options.
+v0.9.0:
+  date: 2015-04-07
+  changes:
+    - Add hook into uglify-js's mangling functionality.
+v0.8.1:
+  date: 2015-03-30
+  changes:
+    - Lock uglify-js to 2.4.17 due to breaking changes.
+v0.8.0:
+  date: 2015-02-19
+  changes:
+    - Add `screwIE8` option.
+    - Fix issue with explicit `compress` in Node.js 0.12.0.
+v0.7.0:
+  date: 2014-12-23
+  changes:
+    - Add `sourceMapRoot` options.
+    - Update readme descriptions.
+    - Remove reference to clean-css.
+v0.6.0:
+  date: 2014-09-17
+  changes:
+    - Output fixes.
+    - 'Add `ASCIIOnly` option.'
+    - Other fixes.
+v0.5.1:
+  date: 2014-07-25
+  changes:
+    - Update chalk to ^0.5.1.
+    - Output updates.
+v0.4.0:
+  date: 2014-03-01
+  changes:
+    - Remove grunt-lib-contrib dependency and add more colors.
+v0.3.3:
+  date: 2014-02-27
+  changes:
+    - Remove unnecessary calls to `grunt.template.process`.
+v0.3.2:
+  date: 2014-01-22
+  changes:
+    - Fix handling of `sourceMapIncludeSources` option.
+v0.3.1:
+  date: 2014-01-20
+  changes:
+    - Fix relative path issue in sourcemaps.
+v0.3.0:
+  date: 2014-01-16
+  changes:
+    - Refactor sourcemap support.
+v0.2.7:
+  date: 2013-11-09
+  changes:
+    - 'Prepend banner if `sourceMap` option not set, addresses #109.'
+v0.2.6:
+  date: 2013-11-08
+  changes:
+    - 'Merge #45, #53, #85 (#105 by way of duping #53).'
+    - Add support for banners in uglified files with sourcemaps.
+    - Update docs.
+v0.2.5:
+  date: 2013-10-28
+  changes:
+    - Add warning for banners when using sourcemaps.
+v0.2.4:
+  date: 2013-09-02
+  changes:
+    - 'Update sourcemap format via #83.'
+v0.2.3:
+  date: 2013-06-10
+  changes:
+    - Add `footer` option.
+v0.2.2:
+  date: 2013-05-31
+  changes:
+    - 'Revert #56 due to #58 until [chrome/239660](https://code.google.com/p/chromium/issues/detail?id=239660&q=sourcemappingurl&colspec=ID%20Pri%20M%20Iteration%20ReleaseBlock%20Cr%20Status%20Owner%20Summary%20OS%20Modified) [firefox/870361](https://bugzilla.mozilla.org/show_bug.cgi?id=870361) drop.'
+v0.2.1:
+  date: 2013-05-22
+  changes:
+    - 'Update uglify-js to ~2.3.5 #55 #40.'
+    - 'Change `sourcemappingUrl` syntax #56.'
+    - 'Disable sorting of names for consistent mangling #44.'
+    - 'Update docs for `sourceMapRoot` #47 #25.'
+v0.2.0:
+  date: 2013-03-14
+  changes:
+    - No longer report gzip results by default.
+    - Support `report` option.
+v0.1.2:
+  date: 2013-01-30
+  changes:
+    - Add better error reporting.
+    - Support for dynamic names of multiple sourcemaps.
+v0.1.1:
+  date: 2013-02-15
+  changes:
+    - First official release for Grunt 0.4.0.
+v0.1.1rc6:
+  date: 2013-01-18
+  changes:
+    - Update grunt/gruntplugin dependencies to rc6.
+    - Change in-development grunt/gruntplugin dependency versions from tilde version ranges to specific versions.
+v0.1.1rc5:
+  date: 2013-01-09
+  changes:
+    - Update to work with grunt v0.4.0rc5.
+    - Switch back to `this.files` API.
+v0.1.0:
+  date: 2012-11-28
+  changes:
+    - Work in progress, not officially released yet.

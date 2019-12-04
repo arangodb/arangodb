@@ -1,0 +1,14 @@
+info {
+  border-color: blue;}
+info {
+  border-width: 2px;}
+
+warning {
+  border-color: yellow;}
+warning {
+  border-width: 2px;}
+
+error {
+  border-color: red;}
+error {
+  border-width: 2px;}

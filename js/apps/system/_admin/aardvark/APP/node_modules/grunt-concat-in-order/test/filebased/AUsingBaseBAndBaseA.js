@@ -1,0 +1,8 @@
+/*start AUsingBaseBAndBaseA*/
+/**
+ * @depend BaseBUsingBaseA.js
+ * @depend BaseA.js
+ *
+ */
+var forth = function fourthFunction(){};
+/*end AUsingBaseBAnddBaseA*/

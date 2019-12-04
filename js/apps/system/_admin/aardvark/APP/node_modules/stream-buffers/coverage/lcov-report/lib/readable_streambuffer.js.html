@@ -1,0 +1,453 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <title>Code coverage report for lib/readable_streambuffer.js</title>
+    <meta charset="utf-8">
+    <link rel="stylesheet" href="../prettify.css">
+    <link rel="stylesheet" href="../base.css">
+    <style type='text/css'>
+        div.coverage-summary .sorter {
+            background-image: url(../sort-arrow-sprite.png);
+        }
+    </style>
+</head>
+<body>
+<div class="header high">
+    <h1>Code coverage report for <span class="entity">lib/readable_streambuffer.js</span></h1>
+    <h2>
+        Statements: <span class="metric">98.82% <small>(84 / 85)</small></span> &nbsp;&nbsp;&nbsp;&nbsp;
+        Branches: <span class="metric">94.34% <small>(50 / 53)</small></span> &nbsp;&nbsp;&nbsp;&nbsp;
+        Functions: <span class="metric">100% <small>(11 / 11)</small></span> &nbsp;&nbsp;&nbsp;&nbsp;
+        Lines: <span class="metric">100% <small>(83 / 83)</small></span> &nbsp;&nbsp;&nbsp;&nbsp;
+        Ignored: <span class="metric"><span class="ignore-none">none</span></span> &nbsp;&nbsp;&nbsp;&nbsp;
+    </h2>
+    <div class="path"><a href="../index.html">All files</a> &#187; <a href="index.html">lib/</a> &#187; readable_streambuffer.js</div>
+</div>
+<div class="body">
+<pre><table class="coverage">
+<tr><td class="line-count">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+37
+38
+39
+40
+41
+42
+43
+44
+45
+46
+47
+48
+49
+50
+51
+52
+53
+54
+55
+56
+57
+58
+59
+60
+61
+62
+63
+64
+65
+66
+67
+68
+69
+70
+71
+72
+73
+74
+75
+76
+77
+78
+79
+80
+81
+82
+83
+84
+85
+86
+87
+88
+89
+90
+91
+92
+93
+94
+95
+96
+97
+98
+99
+100
+101
+102
+103
+104
+105
+106
+107
+108
+109
+110
+111
+112
+113
+114
+115
+116
+117
+118
+119
+120
+121
+122
+123
+124
+125
+126
+127
+128
+129
+130
+131
+132
+133
+134
+135
+136
+137</td><td class="line-coverage"><span class="cline-any cline-yes">1</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1</span>
+<span class="cline-any cline-yes">12</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">12</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">12</span>
+<span class="cline-any cline-yes">12</span>
+<span class="cline-any cline-yes">12</span>
+<span class="cline-any cline-yes">12</span>
+<span class="cline-any cline-yes">12</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">12</span>
+<span class="cline-any cline-yes">12</span>
+<span class="cline-any cline-yes">12</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">12</span>
+<span class="cline-any cline-yes">12</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">12</span>
+<span class="cline-any cline-yes">268</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">268</span>
+<span class="cline-any cline-yes">44</span>
+<span class="cline-any cline-yes">44</span>
+<span class="cline-any cline-yes">9</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">35</span>
+<span class="cline-any cline-yes">35</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">44</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">44</span>
+<span class="cline-any cline-yes">44</span>
+<span class="cline-any cline-yes">44</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">268</span>
+<span class="cline-any cline-yes">7</span>
+<span class="cline-any cline-yes">7</span>
+<span class="cline-any cline-yes">7</span>
+<span class="cline-any cline-yes">6</span>
+<span class="cline-any cline-yes">6</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">12</span>
+<span class="cline-any cline-yes">3</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">12</span>
+<span class="cline-any cline-yes">5</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">12</span>
+<span class="cline-any cline-yes">13</span>
+<span class="cline-any cline-yes">2</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2</span>
+<span class="cline-any cline-yes">2</span>
+<span class="cline-any cline-yes">2</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">12</span>
+<span class="cline-any cline-yes">13</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">13</span>
+<span class="cline-any cline-yes">13</span>
+<span class="cline-any cline-yes">4</span>
+<span class="cline-any cline-yes">4</span>
+<span class="cline-any cline-yes">4</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">9</span>
+<span class="cline-any cline-yes">9</span>
+<span class="cline-any cline-yes">9</span>
+<span class="cline-any cline-yes">9</span>
+<span class="cline-any cline-yes">9</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">13</span>
+<span class="cline-any cline-yes">12</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">13</span>
+<span class="cline-any cline-yes">2</span>
+<span class="cline-any cline-yes">3</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">12</span>
+<span class="cline-any cline-yes">4</span>
+<span class="cline-any cline-yes">4</span>
+<span class="cline-any cline-yes">4</span>
+<span class="cline-any cline-yes">4</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">12</span>
+<span class="cline-any cline-yes">15</span>
+<span class="cline-any cline-yes">15</span>
+<span class="cline-any cline-yes">14</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">12</span>
+<span class="cline-any cline-yes">6</span>
+<span class="cline-any cline-yes">6</span>
+<span class="cline-any cline-yes">6</span>
+<span class="cline-any cline-yes">6</span>
+<span class="cline-any cline-yes">6</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">12</span>
+<span class="cline-any cline-yes">7</span>
+<span class="cline-any cline-yes">7</span>
+<span class="cline-any cline-yes">1</span>
+<span class="cline-any cline-yes">1</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">12</span>
+<span class="cline-any cline-yes">5</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">12</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1</span>
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">var stream = require("stream"),
+	constants = require("./constants"),
+	util = require("util");
+&nbsp;
+var ReadableStreamBuffer = module.exports = function(opts) {
+	var that = this;
+&nbsp;
+	stream.Stream.call(this);
+&nbsp;
+	opts = opts || {};
+	var frequency = opts.hasOwnProperty("frequency") ? opts.frequency : constants.DEFAULT_FREQUENCY;
+	var chunkSize = opts.chunkSize || constants.DEFAULT_CHUNK_SIZE;
+	var initialSize = opts.initialSize || constants.DEFAULT_INITIAL_SIZE;
+	var incrementAmount = opts.incrementAmount || constants.DEFAULT_INCREMENT_AMOUNT;
+&nbsp;
+	var size = 0;
+	var buffer = new Buffer(initialSize);
+	var encoding = null;
+&nbsp;
+	this.readable = true;
+	this.writable = false;
+&nbsp;
+	var sendData = function() {
+		var amount = Math.min(chunkSize, size);
+&nbsp;
+		if (amount &gt; 0) {
+			var chunk = null;
+			if(encoding) {
+				chunk = buffer.toString(encoding, 0, amount);
+			}
+			else {
+				chunk = new Buffer(amount);
+				buffer.copy(chunk, 0, 0, amount);
+			}
+&nbsp;
+			that.emit("data", chunk);
+&nbsp;
+			<span class="missing-if-branch" title="else path not taken" >E</span>if(amount &lt; buffer.length)
+				buffer.copy(buffer, 0, amount, size);
+			size -= amount;
+		}
+&nbsp;
+		if(size === 0 &amp;&amp; !that.readable) {
+			that.emit("end");
+			that.emit("close");
+			if (sendData &amp;&amp; sendData.interval) {
+				clearInterval(sendData.interval);
+				sendData.interval = null;
+			}
+		}
+	};
+&nbsp;
+	this.size = function() {
+		return size;
+	};
+&nbsp;
+	this.maxSize = function() {
+		return buffer.length;
+	};
+&nbsp;
+	var increaseBufferIfNecessary = function(incomingDataSize) {
+		if((buffer.length - size) &lt; incomingDataSize) {
+			var factor = Math.ceil((incomingDataSize - (buffer.length - size)) / incrementAmount);
+&nbsp;
+			var newBuffer = new Buffer(buffer.length + (incrementAmount * factor));
+			buffer.copy(newBuffer, 0, 0, size);
+			buffer = newBuffer;
+		}
+	};
+&nbsp;
+	this.put = function(data, encoding) {
+		<span class="missing-if-branch" title="if path not taken" >I</span>if(!that.readable) <span class="cstat-no" title="statement not covered" >return;</span>
+&nbsp;
+		var wasEmpty = size === 0;
+		if(Buffer.isBuffer(data)) {
+			increaseBufferIfNecessary(data.length);
+			data.copy(buffer, size, 0);
+			size += data.length;
+		}
+		else {
+			data = data + "";
+			var dataSizeInBytes = Buffer.byteLength(data);
+			increaseBufferIfNecessary(dataSizeInBytes);
+			buffer.write(data, size, encoding || "utf8");
+			size += dataSizeInBytes;
+		}
+&nbsp;
+		if (wasEmpty &amp;&amp; size &gt; 0) {
+			this.emit('readable')
+		}
+&nbsp;
+		if (!this.isPaused &amp;&amp; !frequency) {
+			while (size &gt; 0) {
+				sendData();
+			}
+		}
+	};
+&nbsp;
+	this.pause = function() {
+		this.isPaused = true;
+		<span class="missing-if-branch" title="else path not taken" >E</span>if(sendData &amp;&amp; sendData.interval) {
+			clearInterval(sendData.interval);
+			delete sendData.interval;
+		}
+	};
+&nbsp;
+	this.resume = function() {
+		this.isPaused = false;
+		if(sendData &amp;&amp; !sendData.interval &amp;&amp; frequency &gt; 0) {
+			sendData.interval = setInterval(sendData, frequency);
+		}
+	};
+&nbsp;
+	this.destroy = function() {
+		that.emit("end");
+		if(sendData.interval) clearInterval(sendData.interval);
+		sendData = null;
+		that.readable = false;
+		that.emit("close");
+	};
+&nbsp;
+	this.destroySoon = function() {
+		that.readable = false;
+		if (!sendData.interval) {
+			that.emit("end");
+			that.emit("close");
+		}
+	};
+&nbsp;
+	this.setEncoding = function(_encoding) {
+		encoding = _encoding;
+	};
+&nbsp;
+	this.resume();
+};
+util.inherits(ReadableStreamBuffer, stream.Stream);
+&nbsp;</pre></td></tr>
+</table></pre>
+
+</div>
+<div class="footer">
+    <div class="meta">Generated by <a href="http://istanbul-js.org/" target="_blank">istanbul</a> at Wed Jul 01 2015 04:16:19 GMT+0000 (UTC)</div>
+</div>
+<script src="../prettify.js"></script>
+<script>
+window.onload = function () {
+        if (typeof prettyPrint === 'function') {
+            prettyPrint();
+        }
+};
+</script>
+<script src="../sorter.js"></script>
+</body>
+</html>

@@ -1,0 +1,58 @@
+v1.0.1:
+  date: 2016-04-20
+  changes:
+    - Fix for concatenating multiple source map files.
+v1.0.0:
+  date: 2016-02-20
+  changes:
+    - Update source-map to 0.5.3.
+    - Tag Grunt as peerDep to >=0.4.0.
+    - Make source maps generation a little faster.
+    - Add `charset:utf-8` to `sourceMappingURL`.
+v0.5.1:
+  date: 2015-02-20
+  changes:
+    - Fix path issues with source maps on Windows.
+v0.5.0:
+  date: 2014-07-19
+  changes:
+    - Adds `sourceMap` option.
+v0.4.0:
+  date: 2014-03-21
+  changes:
+    - README updates.
+    - Output updates.
+v0.3.0:
+  date: 2013-04-25
+  changes:
+    - Add option to process files with a custom function.
+v0.2.0:
+  date: 2013-04-08
+  changes:
+    - Don't normalize separator to allow user to set LF even on a Windows environment.
+v0.1.3:
+  date: 2013-02-22
+  changes:
+    - Support footer option.
+v0.1.2:
+  date: 2013-02-15
+  changes:
+    - First official release for Grunt 0.4.0.
+v0.1.2rc6:
+  date: 2013-01-18
+  changes:
+    - Updating grunt/gruntplugin dependencies to rc6.
+    - Changing in-development grunt/gruntplugin dependency versions from tilde version ranges to specific versions.
+v0.1.2rc5:
+  date: 2013-01-09
+  changes:
+    - Updating to work with grunt v0.4.0rc5.
+    - Switching back to `this.files` API.
+v0.1.1:
+  date: 2012-11-13
+  changes:
+    - Switch to `this.file` API internally.
+v0.1.0:
+  date: 2012-10-03
+  changes:
+    - Work in progress, not yet officially released.

@@ -1,0 +1,13 @@
+body {
+  padding: 0;}
+body ul {
+  margin: 0;}
+body ul li {
+  list-style: none;}
+body ul li a {
+  color: #fff;}
+body form label {
+  display: none;}
+
+a {
+  color: #cc0000;}

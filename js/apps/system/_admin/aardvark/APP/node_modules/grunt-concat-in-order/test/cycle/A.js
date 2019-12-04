@@ -1,0 +1,2 @@
+declare('A');
+require('B');

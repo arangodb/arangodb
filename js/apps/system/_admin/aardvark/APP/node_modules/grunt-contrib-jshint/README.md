@@ -1,0 +1,258 @@
+# grunt-contrib-jshint v1.1.0 [![Build Status: Linux](https://travis-ci.org/gruntjs/grunt-contrib-jshint.svg?branch=master)](https://travis-ci.org/gruntjs/grunt-contrib-jshint) [![Build Status: Windows](https://ci.appveyor.com/api/projects/status/j04ik7qgx21ixyfw/branch/master?svg=true)](https://ci.appveyor.com/project/gruntjs/grunt-contrib-jshint/branch/master)
+
+> Validate files with JSHint
+
+
+
+## Getting Started
+
+If you haven't used [Grunt](http://gruntjs.com/) before, be sure to check out the [Getting Started](http://gruntjs.com/getting-started) guide, as it explains how to create a [Gruntfile](http://gruntjs.com/sample-gruntfile) as well as install and use Grunt plugins. Once you're familiar with that process, you may install this plugin with this command:
+
+```shell
+npm install grunt-contrib-jshint --save-dev
+```
+
+Once the plugin has been installed, it may be enabled inside your Gruntfile with this line of JavaScript:
+
+```js
+grunt.loadNpmTasks('grunt-contrib-jshint');
+```
+
+
+
+
+## Jshint task
+_Run this task with the `grunt jshint` command._
+
+Task targets, files and options may be specified according to the grunt [Configuring tasks](http://gruntjs.com/configuring-tasks) guide.
+
+For more explanations of the lint errors JSHint will throw at you please visit [jslinterrors.com](http://jslinterrors.com/).
+
+### Options
+
+Any specified option will be passed through directly to [JSHint][], thus you can specify any option that JSHint supports. See the [JSHint documentation][] for a list of supported options.
+
+[JSHint]: http://www.jshint.com/
+[JSHint documentation]: http://www.jshint.com/docs/
+
+A few additional options are supported:
+
+
+#### globals
+
+Type: `Object`  
+Default: `null`
+
+A map of global variables, with keys as names and a boolean value to determine if they are assignable. This is not a standard JSHint option, but is passed into the `JSHINT` function as its third argument. See the [JSHint documentation][] for more information.
+
+
+#### jshintrc
+
+Type: `String` or `true`  
+Default: `null`
+
+If set to `true`, no config will be sent to JSHint and JSHint will search for `.jshintrc` files relative to the files being linted.
+
+If a filename is specified, options and globals defined therein will be used. The `jshintrc` file must be valid JSON and looks something like this:
+
+```json
+{
+  "curly": true,
+  "eqnull": true,
+  "eqeqeq": true,
+  "undef": true,
+  "globals": {
+    "jQuery": true
+  }
+}
+```
+
+*Be aware that `jshintrc` settings are not merged with your Grunt options.*
+
+
+#### extensions
+
+Type: `String`  
+Default: `''`
+
+A list of non-dot-js extensions to check.
+
+
+#### ignores
+
+Type: `Array`  
+Default: `null`
+
+A list of files and dirs to ignore. This will override your `.jshintignore` file if set and does not merge.
+
+
+#### force
+
+Type: `Boolean`  
+Default: `false`
+
+Set `force` to `true` to report JSHint errors but not fail the task.
+
+
+#### reporter
+
+Type: `String`  
+Default: `null`
+
+Allows you to modify this plugins output. By default it will use a built-in Grunt reporter. Set the path to your own custom reporter or to one of the built-in JSHint reporters: `jslint` or `checkstyle`.
+
+See also: [Writing your own JSHint reporter.](http://jshint.com/docs/reporters/)
+
+You can also use an external reporter. For example [jshint-stylish](https://github.com/sindresorhus/jshint-stylish):
+
+```
+$ npm install --save-dev jshint-stylish
+```
+
+```js
+options: {
+    reporter: require('jshint-stylish')
+}
+```
+
+#### reporterOutput
+
+Type: `String`  
+Default: `null`
+
+Specify a filepath to output the results of a reporter. If `reporterOutput` is specified then all output will be written to the given filepath instead of printed to stdout.
+
+### Usage examples
+
+#### Wildcards
+In this example, running `grunt jshint:all` (or `grunt jshint` because `jshint` is a [multi task](http://gruntjs.com/configuring-tasks#task-configuration-and-targets)) will lint the project's Gruntfile as well as all JavaScript files in the `lib` and `test` directories and their subdirectories, using the default JSHint options.
+
+```js
+// Project configuration.
+grunt.initConfig({
+  jshint: {
+    all: ['Gruntfile.js', 'lib/**/*.js', 'test/**/*.js']
+  }
+});
+```
+
+#### Linting before and after concatenating
+In this example, running `grunt jshint` will lint both the "beforeconcat" set and "afterconcat" sets of files. This is not ideal, because `dist/output.js` may get linted before it gets created via the [grunt-contrib-concat plugin](https://github.com/gruntjs/grunt-contrib-concat) `concat` task.
+
+In this case, you should lint the "beforeconcat" files first, then concat, then lint the "afterconcat" files, by running `grunt jshint:beforeconcat concat jshint:afterconcat`.
+
+```js
+// Project configuration.
+grunt.initConfig({
+  concat: {
+    dist: {
+      src: ['src/foo.js', 'src/bar.js'],
+      dest: 'dist/output.js'
+    }
+  },
+  jshint: {
+    beforeconcat: ['src/foo.js', 'src/bar.js'],
+    afterconcat: ['dist/output.js']
+  }
+});
+```
+
+#### Specifying JSHint options and globals
+
+In this example, custom JSHint options are specified. Note that when `grunt jshint:uses_defaults` is run, those files are linted using the default options, but when `grunt jshint:with_overrides` is run, those files are linted using _merged_ task/target options.
+
+```js
+// Project configuration.
+grunt.initConfig({
+  jshint: {
+    options: {
+      curly: true,
+      eqeqeq: true,
+      eqnull: true,
+      browser: true,
+      globals: {
+        jQuery: true
+      },
+    },
+    uses_defaults: ['dir1/**/*.js', 'dir2/**/*.js'],
+    with_overrides: {
+      options: {
+        curly: false,
+        undef: true,
+      },
+      files: {
+        src: ['dir3/**/*.js', 'dir4/**/*.js']
+      },
+    }
+  },
+});
+```
+
+#### Ignoring specific warnings
+
+If you would like to ignore a specific warning:
+
+```shell
+[L24:C9] W015: Expected '}' to have an indentation at 11 instead at 9.
+```
+
+You can toggle it by prepending `-` to the warning id as an option:
+
+```js
+grunt.initConfig({
+  jshint: {
+    ignore_warning: {
+      options: {
+        '-W015': true,
+      },
+      src: ['**/*.js'],
+    },
+  },
+});
+```
+
+
+## Release History
+
+ * 2016-11-23   v1.1.0   Fix relative output Bump minor version
+ * 2016-02-16   v1.0.0   Replace String prototype colors with chalk. Update Grunt peerDep to `>=0.4.0`.
+ * 2016-01-17   v0.12.0   Update to JSHint ~2.9.0.
+ * 2015-09-03   v0.11.3   Update to JSHint ~2.8.0.
+ * 2015-04-16   v0.11.2   Fix default value of the `reporter` option.
+ * 2015-03-20   v0.11.1   Fix io.js compatibility issues. Other fixes to pathing.
+ * 2015-01-22   v0.11.0   Update to JSHint ~2.6.0.
+ * 2014-04-02   v0.10.0   Update to JSHint 2.5.0.
+ * 2014-03-12   v0.9.2   Fixes a bug where `reporterOutput` was still passed to JSHint.
+ * 2014-03-12   v0.9.1   Don't pass `reporterOutput` option to JSHint.
+ * 2014-03-12   v0.9.0   Replace deprecated `grunt.util._.clone` with `Object.create()`. Replace deprecated `grunt.util.hooker` with hooker lib. Enhancing the readability of the output. Reporter output is relative to the output file. Pass JSHint options to the external reporter.
+ * 2013-12-25   v0.8.0   Update to JSHint 2.4.0.
+ * 2013-11-16   v0.7.2   Only print file name once per error.
+ * 2013-10-31   v0.7.1   Ability to set jshintrc option to true to use JSHint's native ability for finding .jshintrc files relative to the linted files.
+ * 2013-10-23   v0.7.0   Update to JSHint 2.3.0.
+ * 2013-10-23   v0.6.5   Fix output when `maxerr` is low.
+ * 2013-08-29   v0.6.4   jshintrc now loaded by JSHint allowing comments.
+ * 2013-08-15   v0.6.3   Fix module location for JSHint 2.1.10.
+ * 2013-07-29   v0.6.2   Update to JSHint 2.1.7.
+ * 2013-07-27   v0.6.1   Peg JSHint to 2.1.4 until breaking changes in 2.1.5 are fixed.
+ * 2013-06-02   v0.6.0   Don't always succeed the task when using a custom reporter. Bump JSHint to 2.1.3.
+ * 2013-05-22   v0.5.4   Fix default reporter to show offending file.
+ * 2013-05-19   v0.5.3   Performance: Execute the reporter once rather than per file.
+ * 2013-05-18   v0.5.2   Fix printing too many erroneous ignored file errors.
+ * 2013-05-17   v0.5.1   Fix for when only 1 file is lint free.
+ * 2013-05-17   v0.5.0   Bump to JSHint 2.0. Add support for .jshintignore files and ignores option. Add support for `extensions` option. Add support for custom reporters and output report to a file.
+ * 2013-04-08   v0.4.3   Fix evaluation of `predef` option when it's an object.
+ * 2013-04-08   v0.4.2   Avoid wiping `force` option when jshintrc is used.
+ * 2013-04-06   v0.4.1   Fix to allow object type for deprecated predef.
+ * 2013-04-04   v0.4.0   Revert task level options to override jshintrc files.
+ * 2013-03-13   v0.3.0   Bump to JSHint 1.1.0. Add force option to report JSHint errors but not fail the task. Add error/warning code to message. Allow task level options to override jshintrc file.
+ * 2013-02-26   v0.2.0   Bump to JSHint 1.0.
+ * 2013-02-15   v0.1.1   First official release for Grunt 0.4.0.
+ * 2013-01-18   v0.1.1rc6   Updating grunt/gruntplugin dependencies to rc6. Changing in-development grunt/gruntplugin dependency versions from tilde version ranges to specific versions.
+ * 2013-01-09   v0.1.1rc5   Updating to work with grunt v0.4.0rc5. Switching to `this.filesSrc` API.
+ * 2012-10-18   v0.1.0   Work in progress, not yet officially released.
+
+---
+
+Task submitted by ["Cowboy" Ben Alman](http://benalman.com/)
+
+*This file was generated on Wed Nov 23 2016 17:34:42.*

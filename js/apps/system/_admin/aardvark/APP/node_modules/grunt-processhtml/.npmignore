@@ -1,0 +1,6 @@
+node_modules/
+test/
+.jshintrc
+.gitignore
+Gruntfile.coffee
+.travis.yml
