@@ -68,7 +68,6 @@ bool RestSystemReportHandler::isAdminUser() const {
   } else {
     return ExecContext::current().isAdminUser();
   }
-  return false;
 }
 
 std::unordered_map<std::string, std::string> const cmds {
@@ -116,7 +115,7 @@ RestStatus RestSystemReportHandler::execute() {
         // Allow only one simultaneous call
         std::unique_lock<std::mutex> exclusive(_exclusive, std::defer_lock);
         if (exclusive.try_lock()) {
-          for (auto cmd : cmds) {
+          for (auto const& cmd : cmds) {
             if(server.isStopping()) {
               generateError(ResponseCode::BAD, TRI_ERROR_SHUTTING_DOWN);
               return RestStatus::DONE;
