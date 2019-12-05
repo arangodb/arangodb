@@ -39,7 +39,7 @@ const gm = require('@arangodb/general-graph');
 const vn = 'UnitTestVertexCollection';
 const en = 'UnitTestEdgeCollection';
 const isCluster = require('@arangodb/cluster').isCluster();
-const roundCost = require('@arangodb/aql-helper').roundCost;
+const removeCost = require('@arangodb/aql-helper').removeCost;
 
 var _ = require('lodash');
 var vertex = {};
@@ -2197,13 +2197,15 @@ function optimizeInSuite() {
       var noOptPlans = AQL_EXPLAIN(vertexQuery, bindVars, noOpt).plan;
       assertEqual(optPlans.rules, []);
       // This query cannot be optimized by traversal rule
-      assertEqual(roundCost(optPlans), roundCost(noOptPlans));
+      // we do not want to test estimatedCost or selectivityEstimate here
+      assertEqual(removeCost(optPlans), removeCost(noOptPlans));
 
       optPlans = AQL_EXPLAIN(edgeQuery, bindVars, opt).plan;
       noOptPlans = AQL_EXPLAIN(edgeQuery, bindVars, noOpt).plan;
       assertEqual(optPlans.rules, []);
       // This query cannot be optimized by traversal rule
-      assertEqual(roundCost(optPlans), roundCost(noOptPlans));
+      // we do not want to test estimatedCost or selectivityEstimate here
+      assertEqual(removeCost(optPlans), removeCost(noOptPlans));
     }
   };
 }
