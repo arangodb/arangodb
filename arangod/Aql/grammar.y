@@ -1470,7 +1470,7 @@ operator_ternary:
       $$ = parser->ast()->createNodeTernaryOperator($1, $3, $5);
     }
   | expression T_QUESTION T_COLON expression {
-      $$ = parser->ast()->createNodeTernaryOperator($1, $1, $4);
+      $$ = parser->ast()->createNodeTernaryOperator($1, $4);
     }
   ;
 
