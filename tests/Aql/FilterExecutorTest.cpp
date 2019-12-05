@@ -387,10 +387,10 @@ TEST_F(FilterExecutorTest, test_produce_datarange_need_more) {
   SharedAqlItemBlockPtr inBlock =
       buildBlock<1>(itemBlockManager,
                     {{R"(true)"}, {R"(false)"}, {R"(true)"}, {R"(false)"}, {R"(true)"}});
-  size_t softLimit = 1000;
+  size_t hardLimit = 1000;
   AqlItemBlockInputRange input{ExecutorState::HASMORE, inBlock, 0, inBlock->size()};
   AqlCall limitedCall{};
-  limitedCall.softLimit = softLimit;
+  limitedCall.hardLimit = hardLimit;
   OutputAqlItemRow output(std::move(block), outputRegisters, registersToKeep,
                           infos.registersToClear(), std::move(limitedCall));
   EXPECT_EQ(output.numRowsWritten(), 0);
@@ -403,7 +403,7 @@ TEST_F(FilterExecutorTest, test_produce_datarange_need_more) {
   EXPECT_EQ(call.offset, 0);
   EXPECT_FALSE(call.hasHardLimit());
   // We have a given softLimit, so we do not do overfetching
-  EXPECT_EQ(call.getLimit(), softLimit - 3);
+  EXPECT_EQ(call.getLimit(), hardLimit - 3);
   EXPECT_FALSE(call.fullCount);
 }
 

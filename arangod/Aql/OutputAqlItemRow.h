@@ -125,7 +125,7 @@ class OutputAqlItemRow {
   SharedAqlItemBlockPtr stealBlock();
 
   [[nodiscard]] bool isFull() const {
-    return numRowsWritten() >= block().size();
+    return numRowsWritten() >= block().size() && _call.getLimit() > 0;
   }
 
   /**
@@ -140,7 +140,7 @@ class OutputAqlItemRow {
    *        passed from ExecutionBlockImpl.
    */
   [[nodiscard]] size_t numRowsLeft() const {
-    return block().size() - _baseIndex;
+    return (std::min)(block().size() - _baseIndex, _call.getLimit());
   }
 
   // Use this function with caution! We need it only for the ConstrainedSortExecutor
