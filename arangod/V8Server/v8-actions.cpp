@@ -1362,6 +1362,7 @@ static void JS_RequestParts(v8::FunctionCallbackInfo<v8::Value> const& args) {
         v8::Handle<v8::Object> partObject = v8::Object::New(isolate);
         partObject->Set(TRI_V8_ASCII_STRING(isolate, "headers"), headersObject);
 
+        // cppcheck-suppress nullPointerAritmetic ; cannot get here, if data is nullptr
         V8Buffer* buffer = V8Buffer::New(isolate, data, end - data);
         auto localHandle = v8::Local<v8::Object>::New(isolate, buffer->_handle);
 

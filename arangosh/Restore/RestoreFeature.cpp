@@ -656,6 +656,7 @@ arangodb::Result restoreIndexes(arangodb::httpclient::SimpleHttpClient& httpClie
     }
   }
 
+  // cppcheck-suppress uninitvar ; false positive
   return result;
 }
 

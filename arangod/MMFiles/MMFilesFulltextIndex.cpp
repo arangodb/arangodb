@@ -216,6 +216,7 @@ Result MMFilesFulltextIndex::insert(transaction::Methods& trx,
   if (r != TRI_ERROR_NO_ERROR) {
     addErrorMsg(res, r);
   }
+  //cppcheck-suppress uninitvar; false positive
   return res;
 }
 
@@ -233,6 +234,7 @@ Result MMFilesFulltextIndex::remove(transaction::Methods& trx,
   if (r != TRI_ERROR_NO_ERROR) {
     addErrorMsg(res, r);
   }
+  //cppcheck-suppress uninitvar; false positive
   return res;
 }
 
