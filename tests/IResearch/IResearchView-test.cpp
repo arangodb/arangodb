@@ -294,7 +294,7 @@ TEST_F(IResearchViewTest, test_defaults) {
     arangodb::iresearch::IResearchViewMetaState metaState;
     std::string error;
 
-    EXPECT_TRUE((18U == slice.length()));
+    EXPECT_EQ(18, slice.length());
     EXPECT_TRUE((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
     EXPECT_TRUE(slice.get("name").copyString() == "testView");
     EXPECT_TRUE(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
@@ -324,7 +324,7 @@ TEST_F(IResearchViewTest, test_defaults) {
     std::string error;
 
     EXPECT_TRUE((slice.isObject()));
-    EXPECT_TRUE((14U == slice.length()));
+    EXPECT_EQ(14, slice.length());
     EXPECT_TRUE((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
     EXPECT_TRUE(slice.get("name").copyString() == "testView");
     EXPECT_TRUE(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
@@ -419,7 +419,7 @@ TEST_F(IResearchViewTest, test_defaults) {
     arangodb::iresearch::IResearchViewMeta meta;
     std::string error;
     EXPECT_TRUE((slice.isObject()));
-    EXPECT_TRUE((14U == slice.length()));
+    EXPECT_EQ(14, slice.length());
     EXPECT_TRUE((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && !slice.get("globallyUniqueId").copyString().empty()));
     EXPECT_TRUE((slice.get("name").copyString() == "testView"));
     EXPECT_TRUE((slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name()));
@@ -4372,7 +4372,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
         std::string error;
 
         EXPECT_TRUE(slice.isObject());
-        EXPECT_TRUE((14U == slice.length()));
+        EXPECT_EQ(14, slice.length());
         EXPECT_TRUE((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
         EXPECT_TRUE(slice.get("name").copyString() == "testView");
         EXPECT_TRUE(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
@@ -4396,7 +4396,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
         std::string error;
 
         EXPECT_TRUE(slice.isObject());
-        EXPECT_TRUE((18U == slice.length()));
+        EXPECT_EQ(18, slice.length());
         EXPECT_TRUE(slice.get("name").copyString() == "testView");
         EXPECT_TRUE(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
         EXPECT_TRUE((slice.hasKey("deleted") && slice.get("deleted").isBoolean() && false == slice.get("deleted").getBoolean())); // has system properties
@@ -4431,7 +4431,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
         std::string error;
 
         EXPECT_TRUE(slice.isObject());
-        EXPECT_TRUE((14U == slice.length()));
+        EXPECT_EQ(14, slice.length());
         EXPECT_TRUE((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
         EXPECT_TRUE(slice.get("name").copyString() == "testView");
         EXPECT_TRUE(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
@@ -4455,7 +4455,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
         std::string error;
 
         EXPECT_TRUE(slice.isObject());
-        EXPECT_TRUE((18U == slice.length()));
+        EXPECT_EQ(18, slice.length());
         EXPECT_TRUE(slice.get("name").copyString() == "testView");
         EXPECT_TRUE(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
         EXPECT_TRUE((slice.hasKey("deleted") && slice.get("deleted").isBoolean() && false == slice.get("deleted").getBoolean())); // has system properties
@@ -4494,7 +4494,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
       std::string error;
 
       EXPECT_TRUE((slice.isObject()));
-      EXPECT_TRUE((14U == slice.length()));
+      EXPECT_EQ(14, slice.length());
       EXPECT_TRUE((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
       EXPECT_TRUE((slice.get("name").copyString() == "testView"));
       EXPECT_TRUE((slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name()));
@@ -4518,7 +4518,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
       std::string error;
 
       EXPECT_TRUE((slice.isObject()));
-      EXPECT_TRUE((18U == slice.length()));
+      EXPECT_EQ(18, slice.length());
       EXPECT_TRUE((slice.get("name").copyString() == "testView"));
       EXPECT_TRUE((slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name()));
       EXPECT_TRUE((slice.hasKey("deleted") && slice.get("deleted").isBoolean() && false == slice.get("deleted").getBoolean())); // has system properties
@@ -4557,7 +4557,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
       std::string error;
 
       EXPECT_TRUE((slice.isObject()));
-      EXPECT_TRUE((14U == slice.length()));
+      EXPECT_EQ(14, slice.length());
       EXPECT_TRUE((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
       EXPECT_TRUE((slice.get("name").copyString() == "testView"));
       EXPECT_TRUE((slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name()));
@@ -4581,7 +4581,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
       std::string error;
 
       EXPECT_TRUE((slice.isObject()));
-      EXPECT_TRUE((18U == slice.length()));
+      EXPECT_EQ(18, slice.length());
       EXPECT_TRUE((slice.get("name").copyString() == "testView"));
       EXPECT_TRUE((slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name()));
       EXPECT_TRUE((slice.hasKey("deleted") && slice.get("deleted").isBoolean() && false == slice.get("deleted").getBoolean())); // has system properties
@@ -4624,7 +4624,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
       std::string error;
 
       EXPECT_TRUE((slice.isObject()));
-      EXPECT_TRUE((14U == slice.length()));
+      EXPECT_EQ(14, slice.length());
       EXPECT_TRUE((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
       EXPECT_TRUE((slice.get("name").copyString() == "testView"));
       EXPECT_TRUE((slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name()));
@@ -4648,7 +4648,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
       std::string error;
 
       EXPECT_TRUE((slice.isObject()));
-      EXPECT_TRUE((18U == slice.length()));
+      EXPECT_EQ(18, slice.length());
       EXPECT_TRUE((slice.get("name").copyString() == "testView"));
       EXPECT_TRUE((slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name()));
       EXPECT_TRUE((slice.hasKey("deleted") && slice.get("deleted").isBoolean() && false == slice.get("deleted").getBoolean())); // has system properties
@@ -4695,7 +4695,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
         std::string error;
 
         EXPECT_TRUE((slice.isObject()));
-        EXPECT_TRUE((14U == slice.length()));
+        EXPECT_EQ(14, slice.length());
         EXPECT_TRUE((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
         EXPECT_TRUE((slice.get("name").copyString() == "testView"));
         EXPECT_TRUE((slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name()));
@@ -4736,7 +4736,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
         std::string error;
 
         EXPECT_TRUE((slice.isObject()));
-        EXPECT_TRUE((18U == slice.length()));
+        EXPECT_EQ(18, slice.length());
         EXPECT_TRUE((slice.get("name").copyString() == "testView"));
         EXPECT_TRUE((slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name()));
         EXPECT_TRUE((slice.hasKey("deleted") && slice.get("deleted").isBoolean() && false == slice.get("deleted").getBoolean())); // has system properties
@@ -4774,7 +4774,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
         std::string error;
 
         EXPECT_TRUE((slice.isObject()));
-        EXPECT_TRUE((14U == slice.length()));
+        EXPECT_EQ(14, slice.length());
         EXPECT_TRUE((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
         EXPECT_TRUE((slice.get("name").copyString() == "testView"));
         EXPECT_TRUE((slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name()));
@@ -4798,7 +4798,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
         std::string error;
 
         EXPECT_TRUE((slice.isObject()));
-        EXPECT_TRUE((18U == slice.length()));
+        EXPECT_EQ(18, slice.length());
         EXPECT_TRUE((slice.get("name").copyString() == "testView"));
         EXPECT_TRUE((slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name()));
         EXPECT_TRUE((slice.hasKey("deleted") && slice.get("deleted").isBoolean() && false == slice.get("deleted").getBoolean())); // has system properties
@@ -4850,7 +4850,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
         std::string error;
 
         EXPECT_TRUE(slice.isObject());
-        EXPECT_TRUE((14U == slice.length()));
+        EXPECT_EQ(14, slice.length());
         EXPECT_TRUE((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
         EXPECT_TRUE(slice.get("name").copyString() == "testView");
         EXPECT_TRUE(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
@@ -4891,7 +4891,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
         std::string error;
 
         EXPECT_TRUE(slice.isObject());
-        EXPECT_TRUE((18U == slice.length()));
+        EXPECT_EQ(18, slice.length());
         EXPECT_TRUE(slice.get("name").copyString() == "testView");
         EXPECT_TRUE(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
         EXPECT_TRUE((slice.hasKey("deleted") && slice.get("deleted").isBoolean() && false == slice.get("deleted").getBoolean())); // has system properties
@@ -4930,7 +4930,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
         std::string error;
 
         EXPECT_TRUE(slice.isObject());
-        EXPECT_TRUE((14U == slice.length()));
+        EXPECT_EQ(14, slice.length());
         EXPECT_TRUE((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
         EXPECT_TRUE(slice.get("name").copyString() == "testView");
         EXPECT_TRUE(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
@@ -4971,7 +4971,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
         std::string error;
 
         EXPECT_TRUE(slice.isObject());
-        EXPECT_TRUE((18U == slice.length()));
+        EXPECT_EQ(18, slice.length());
         EXPECT_TRUE(slice.get("name").copyString() == "testView");
         EXPECT_TRUE(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
         EXPECT_TRUE((slice.hasKey("deleted") && slice.get("deleted").isBoolean() && false == slice.get("deleted").getBoolean())); // has system properties
@@ -5013,7 +5013,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
 
         auto slice = builder.slice();
         EXPECT_TRUE(slice.isObject());
-        EXPECT_TRUE((14U == slice.length()));
+        EXPECT_EQ(14, slice.length());
         EXPECT_TRUE((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
         EXPECT_TRUE(slice.get("name").copyString() == "testView");
         EXPECT_TRUE(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
@@ -5036,7 +5036,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
 
         auto slice = builder.slice();
         EXPECT_TRUE(slice.isObject());
-        EXPECT_TRUE((18U == slice.length()));
+        EXPECT_EQ(18, slice.length());
         EXPECT_TRUE(slice.get("name").copyString() == "testView");
         EXPECT_TRUE(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
         EXPECT_TRUE((slice.hasKey("deleted") && slice.get("deleted").isBoolean() && false == slice.get("deleted").getBoolean())); // has system properties
@@ -5062,7 +5062,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
         builder.close();
 
         auto slice = builder.slice();
-        EXPECT_TRUE((14U == slice.length()));
+        EXPECT_EQ(14, slice.length());
         EXPECT_TRUE((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
         EXPECT_TRUE(slice.get("name").copyString() == "testView");
         EXPECT_TRUE(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
@@ -5084,7 +5084,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
         builder.close();
 
         auto slice = builder.slice();
-        EXPECT_TRUE((18U == slice.length()));
+        EXPECT_EQ(18, slice.length());
         EXPECT_TRUE(slice.get("name").copyString() == "testView");
         EXPECT_TRUE(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
         EXPECT_TRUE((slice.hasKey("deleted") && slice.get("deleted").isBoolean() && false == slice.get("deleted").getBoolean())); // has system properties
@@ -5638,7 +5638,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
       std::string error;
 
       EXPECT_TRUE(slice.isObject());
-      EXPECT_TRUE((14U == slice.length()));
+      EXPECT_EQ(14, slice.length());
       EXPECT_TRUE((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
       EXPECT_TRUE(slice.get("name").copyString() == "testView");
       EXPECT_TRUE(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
@@ -5662,7 +5662,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
       std::string error;
 
       EXPECT_TRUE(slice.isObject());
-      EXPECT_TRUE((18U == slice.length()));
+      EXPECT_EQ(18, slice.length());
       EXPECT_TRUE(slice.get("name").copyString() == "testView");
       EXPECT_TRUE(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
       EXPECT_TRUE((slice.hasKey("deleted") && slice.get("deleted").isBoolean() && false == slice.get("deleted").getBoolean())); // has system properties
@@ -5700,7 +5700,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
       std::string error;
 
       EXPECT_TRUE((slice.isObject()));
-      EXPECT_TRUE((14U == slice.length()));
+      EXPECT_EQ(14, slice.length());
       EXPECT_TRUE((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
       EXPECT_TRUE((slice.get("name").copyString() == "testView"));
       EXPECT_TRUE((slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name()));
@@ -5724,7 +5724,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
       std::string error;
 
       EXPECT_TRUE((slice.isObject()));
-      EXPECT_TRUE((18U == slice.length()));
+      EXPECT_EQ(18, slice.length());
       EXPECT_TRUE((slice.get("name").copyString() == "testView"));
       EXPECT_TRUE((slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name()));
       EXPECT_TRUE((slice.hasKey("deleted") && slice.get("deleted").isBoolean() && false == slice.get("deleted").getBoolean())); // has system properties
@@ -5763,7 +5763,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
       std::string error;
 
       EXPECT_TRUE((slice.isObject()));
-      EXPECT_TRUE((14U == slice.length()));
+      EXPECT_EQ(14, slice.length());
       EXPECT_TRUE((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
       EXPECT_TRUE((slice.get("name").copyString() == "testView"));
       EXPECT_TRUE((slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name()));
@@ -5787,7 +5787,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
       std::string error;
 
       EXPECT_TRUE((slice.isObject()));
-      EXPECT_TRUE((18U == slice.length()));
+      EXPECT_EQ(18, slice.length());
       EXPECT_TRUE((slice.get("name").copyString() == "testView"));
       EXPECT_TRUE((slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name()));
       EXPECT_TRUE((slice.hasKey("deleted") && slice.get("deleted").isBoolean() && false == slice.get("deleted").getBoolean())); // has system properties
@@ -5830,7 +5830,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
       std::string error;
 
       EXPECT_TRUE((slice.isObject()));
-      EXPECT_TRUE((14U == slice.length()));
+      EXPECT_EQ(14, slice.length());
       EXPECT_TRUE((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
       EXPECT_TRUE((slice.get("name").copyString() == "testView"));
       EXPECT_TRUE((slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name()));
@@ -5854,7 +5854,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
       std::string error;
 
       EXPECT_TRUE((slice.isObject()));
-      EXPECT_TRUE((18U == slice.length()));
+      EXPECT_EQ(18, slice.length());
       EXPECT_TRUE((slice.get("name").copyString() == "testView"));
       EXPECT_TRUE((slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name()));
       EXPECT_TRUE((slice.hasKey("deleted") && slice.get("deleted").isBoolean() && false == slice.get("deleted").getBoolean())); // has system properties
@@ -5901,7 +5901,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
         std::string error;
 
         EXPECT_TRUE((slice.isObject()));
-        EXPECT_TRUE((14U == slice.length()));
+        EXPECT_EQ(14, slice.length());
         EXPECT_TRUE((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
         EXPECT_TRUE((slice.get("name").copyString() == "testView"));
         EXPECT_TRUE((slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name()));
@@ -5942,7 +5942,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
         std::string error;
 
         EXPECT_TRUE((slice.isObject()));
-        EXPECT_TRUE((18U == slice.length()));
+        EXPECT_EQ(18, slice.length());
         EXPECT_TRUE((slice.get("name").copyString() == "testView"));
         EXPECT_TRUE((slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name()));
         EXPECT_TRUE((slice.hasKey("deleted") && slice.get("deleted").isBoolean() && false == slice.get("deleted").getBoolean())); // has system properties
@@ -5983,7 +5983,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
         std::string error;
 
         EXPECT_TRUE((slice.isObject()));
-        EXPECT_TRUE((14U == slice.length()));
+        EXPECT_EQ(14, slice.length());
         EXPECT_TRUE((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
         EXPECT_TRUE((slice.get("name").copyString() == "testView"));
         EXPECT_TRUE((slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name()));
@@ -6024,7 +6024,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
         std::string error;
 
         EXPECT_TRUE((slice.isObject()));
-        EXPECT_TRUE((18U == slice.length()));
+        EXPECT_EQ(18, slice.length());
         EXPECT_TRUE((slice.get("name").copyString() == "testView"));
         EXPECT_TRUE((slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name()));
         EXPECT_TRUE((slice.hasKey("deleted") && slice.get("deleted").isBoolean() && false == slice.get("deleted").getBoolean())); // has system properties
@@ -6069,7 +6069,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
 
       auto slice = builder.slice();
       EXPECT_TRUE(slice.isObject());
-      EXPECT_TRUE((14U == slice.length()));
+      EXPECT_EQ(14, slice.length());
       EXPECT_TRUE((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
       EXPECT_TRUE(slice.get("name").copyString() == "testView");
       EXPECT_TRUE(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
@@ -6092,7 +6092,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
 
       auto slice = builder.slice();
       EXPECT_TRUE(slice.isObject());
-      EXPECT_TRUE((18U == slice.length()));
+      EXPECT_EQ(18, slice.length());
       EXPECT_TRUE(slice.get("name").copyString() == "testView");
       EXPECT_TRUE(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
       EXPECT_TRUE((slice.hasKey("deleted") && slice.get("deleted").isBoolean() && false == slice.get("deleted").getBoolean())); // has system properties
@@ -6140,7 +6140,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
       std::string error;
 
       EXPECT_TRUE(slice.isObject());
-      EXPECT_TRUE((14U == slice.length()));
+      EXPECT_EQ(14, slice.length());
       EXPECT_TRUE((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
       EXPECT_TRUE(slice.get("name").copyString() == "testView");
       EXPECT_TRUE(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
@@ -6181,7 +6181,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
       std::string error;
 
       EXPECT_TRUE(slice.isObject());
-      EXPECT_TRUE((18U == slice.length()));
+      EXPECT_EQ(18, slice.length());
       EXPECT_TRUE(slice.get("name").copyString() == "testView");
       EXPECT_TRUE(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
       EXPECT_TRUE((slice.hasKey("deleted") && slice.get("deleted").isBoolean() && false == slice.get("deleted").getBoolean())); // has system properties
@@ -6248,7 +6248,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
       std::string error;
 
       EXPECT_TRUE(slice.isObject());
-      EXPECT_TRUE((14U == slice.length()));
+      EXPECT_EQ(14, slice.length());
       EXPECT_TRUE((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
       EXPECT_TRUE(slice.get("name").copyString() == "testView");
       EXPECT_TRUE(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
@@ -6289,7 +6289,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
       std::string error;
 
       EXPECT_TRUE(slice.isObject());
-      EXPECT_TRUE((18U == slice.length()));
+      EXPECT_EQ(18, slice.length());
       EXPECT_TRUE(slice.get("name").copyString() == "testView");
       EXPECT_TRUE(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
       EXPECT_TRUE((slice.hasKey("deleted") && slice.get("deleted").isBoolean() && false == slice.get("deleted").getBoolean())); // has system properties
@@ -6332,7 +6332,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
       std::string error;
 
       EXPECT_TRUE(slice.isObject());
-      EXPECT_TRUE((14U == slice.length()));
+      EXPECT_EQ(14, slice.length());
       EXPECT_TRUE((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
       EXPECT_TRUE(slice.get("name").copyString() == "testView");
       EXPECT_TRUE(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
@@ -6356,7 +6356,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
       std::string error;
 
       EXPECT_TRUE(slice.isObject());
-      EXPECT_TRUE((18U == slice.length()));
+      EXPECT_EQ(18, slice.length());
       EXPECT_TRUE(slice.get("name").copyString() == "testView");
       EXPECT_TRUE(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
       EXPECT_TRUE((slice.hasKey("deleted") && slice.get("deleted").isBoolean() && false == slice.get("deleted").getBoolean())); // has system properties
@@ -6395,7 +6395,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
 
       auto slice = builder.slice();
       EXPECT_TRUE(slice.isObject());
-      EXPECT_TRUE((14U == slice.length()));
+      EXPECT_EQ(14, slice.length());
       EXPECT_TRUE((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
       EXPECT_TRUE(slice.get("name").copyString() == "testView");
       EXPECT_TRUE(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
@@ -6427,7 +6427,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
 
       auto slice = builder.slice();
       EXPECT_TRUE(slice.isObject());
-      EXPECT_TRUE((14U == slice.length()));
+      EXPECT_EQ(14, slice.length());
       EXPECT_TRUE((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
       EXPECT_TRUE(slice.get("name").copyString() == "testView");
       EXPECT_TRUE(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
@@ -6477,7 +6477,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
         std::string error;
 
         EXPECT_TRUE(slice.isObject());
-        EXPECT_TRUE((14U == slice.length()));
+        EXPECT_EQ(14, slice.length());
         EXPECT_TRUE((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
         EXPECT_TRUE(slice.get("name").copyString() == "testView");
         EXPECT_TRUE(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
@@ -6501,7 +6501,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
         std::string error;
 
         EXPECT_TRUE(slice.isObject());
-        EXPECT_TRUE((18U == slice.length()));
+        EXPECT_EQ(18, slice.length());
         EXPECT_TRUE(slice.get("name").copyString() == "testView");
         EXPECT_TRUE(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
         EXPECT_TRUE((slice.hasKey("deleted") && slice.get("deleted").isBoolean() && false == slice.get("deleted").getBoolean())); // has system properties
@@ -6535,7 +6535,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
         std::string error;
 
         EXPECT_TRUE(slice.isObject());
-        EXPECT_TRUE((14U == slice.length()));
+        EXPECT_EQ(14, slice.length());
         EXPECT_TRUE((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
         EXPECT_TRUE(slice.get("name").copyString() == "testView");
         EXPECT_TRUE(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
@@ -6559,7 +6559,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
         std::string error;
 
         EXPECT_TRUE(slice.isObject());
-        EXPECT_TRUE((18U == slice.length()));
+        EXPECT_EQ(18, slice.length());
         EXPECT_TRUE(slice.get("name").copyString() == "testView");
         EXPECT_TRUE(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
         EXPECT_TRUE((slice.hasKey("deleted") && slice.get("deleted").isBoolean() && false == slice.get("deleted").getBoolean())); // has system properties
@@ -6600,7 +6600,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
       std::string error;
 
       EXPECT_TRUE(slice.isObject());
-      EXPECT_TRUE((14U == slice.length()));
+      EXPECT_EQ(14, slice.length());
       EXPECT_TRUE((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
       EXPECT_TRUE(slice.get("name").copyString() == "testView");
       EXPECT_TRUE(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
@@ -6624,7 +6624,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
       std::string error;
 
       EXPECT_TRUE(slice.isObject());
-      EXPECT_TRUE((18U == slice.length()));
+      EXPECT_EQ(18, slice.length());
       EXPECT_TRUE(slice.get("name").copyString() == "testView");
       EXPECT_TRUE(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
       EXPECT_TRUE((slice.hasKey("deleted") && slice.get("deleted").isBoolean() && false == slice.get("deleted").getBoolean())); // has system properties
@@ -6667,7 +6667,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
       std::string error;
 
       EXPECT_TRUE(slice.isObject());
-      EXPECT_TRUE((14U == slice.length()));
+      EXPECT_EQ(14, slice.length());
       EXPECT_TRUE((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
       EXPECT_TRUE(slice.get("name").copyString() == "testView");
       EXPECT_TRUE(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
@@ -6691,7 +6691,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
       std::string error;
 
       EXPECT_TRUE(slice.isObject());
-      EXPECT_TRUE((18U == slice.length()));
+      EXPECT_EQ(18, slice.length());
       EXPECT_TRUE(slice.get("name").copyString() == "testView");
       EXPECT_TRUE(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
       EXPECT_TRUE((slice.hasKey("deleted") && slice.get("deleted").isBoolean() && false == slice.get("deleted").getBoolean())); // has system properties
@@ -6727,7 +6727,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
 
         auto slice = builder.slice();
         EXPECT_TRUE(slice.isObject());
-        EXPECT_TRUE((14U == slice.length()));
+        EXPECT_EQ(14, slice.length());
         EXPECT_TRUE((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
         EXPECT_TRUE(slice.get("name").copyString() == "testView");
         EXPECT_TRUE(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
@@ -6746,7 +6746,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
 
         auto slice = builder.slice();
         EXPECT_TRUE(slice.isObject());
-        EXPECT_TRUE((18U == slice.length()));
+        EXPECT_EQ(18, slice.length());
         EXPECT_TRUE(slice.get("name").copyString() == "testView");
         EXPECT_TRUE(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
         EXPECT_TRUE((slice.hasKey("deleted") && slice.get("deleted").isBoolean() && false == slice.get("deleted").getBoolean())); // has system properties
@@ -6780,7 +6780,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
 
         auto slice = builder.slice();
         EXPECT_TRUE(slice.isObject());
-        EXPECT_TRUE((14U == slice.length()));
+        EXPECT_EQ(14, slice.length());
         EXPECT_TRUE((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
         EXPECT_TRUE(slice.get("name").copyString() == "testView");
         EXPECT_TRUE(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
@@ -6799,7 +6799,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
 
         auto slice = builder.slice();
         EXPECT_TRUE(slice.isObject());
-        EXPECT_TRUE((18U == slice.length()));
+        EXPECT_EQ(18, slice.length());
         EXPECT_TRUE(slice.get("name").copyString() == "testView");
         EXPECT_TRUE(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
         EXPECT_TRUE((slice.hasKey("deleted") && slice.get("deleted").isBoolean() && false == slice.get("deleted").getBoolean())); // has system properties
@@ -6844,7 +6844,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
 
         auto slice = builder.slice();
         EXPECT_TRUE(slice.isObject());
-        EXPECT_TRUE((14U == slice.length()));
+        EXPECT_EQ(14, slice.length());
         EXPECT_TRUE((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
         EXPECT_TRUE(slice.get("name").copyString() == "testView");
         EXPECT_TRUE(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
@@ -6867,7 +6867,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
 
         auto slice = builder.slice();
         EXPECT_TRUE(slice.isObject());
-        EXPECT_TRUE((18U == slice.length()));
+        EXPECT_EQ(18, slice.length());
         EXPECT_TRUE(slice.get("name").copyString() == "testView");
         EXPECT_TRUE(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
         EXPECT_TRUE((slice.hasKey("deleted") && slice.get("deleted").isBoolean() && false == slice.get("deleted").getBoolean())); // has system properties
@@ -6894,7 +6894,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
 
         auto slice = builder.slice();
         EXPECT_TRUE(slice.isObject());
-        EXPECT_TRUE((14U == slice.length()));
+        EXPECT_EQ(14, slice.length());
         EXPECT_TRUE((slice.hasKey("globallyUniqueId") && slice.get("globallyUniqueId").isString() && false == slice.get("globallyUniqueId").copyString().empty()));
         EXPECT_TRUE(slice.get("name").copyString() == "testView");
         EXPECT_TRUE(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
@@ -6917,7 +6917,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
 
         auto slice = builder.slice();
         EXPECT_TRUE(slice.isObject());
-        EXPECT_TRUE((18U == slice.length()));
+        EXPECT_EQ(18, slice.length());
         EXPECT_TRUE(slice.get("name").copyString() == "testView");
         EXPECT_TRUE(slice.get("type").copyString() == arangodb::iresearch::DATA_SOURCE_TYPE.name());
         EXPECT_TRUE((slice.hasKey("deleted") && slice.get("deleted").isBoolean() && false == slice.get("deleted").getBoolean())); // has system properties

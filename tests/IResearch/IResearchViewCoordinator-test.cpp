@@ -251,7 +251,7 @@ TEST_F(IResearchViewCoordinatorTest, test_defaults) {
       arangodb::iresearch::IResearchViewMeta meta;
       std::string error;
 
-      EXPECT_TRUE((17U == slice.length()));
+      EXPECT_EQ(17, slice.length());
       EXPECT_TRUE((slice.hasKey("globallyUniqueId") &&
                    slice.get("globallyUniqueId").isString() &&
                    false == slice.get("globallyUniqueId").copyString().empty()));
@@ -278,7 +278,7 @@ TEST_F(IResearchViewCoordinatorTest, test_defaults) {
       arangodb::iresearch::IResearchViewMeta meta;
       std::string error;
 
-      EXPECT_TRUE((14U == slice.length()));
+      EXPECT_EQ(14, slice.length());
       EXPECT_TRUE((slice.hasKey("globallyUniqueId") &&
                    slice.get("globallyUniqueId").isString() &&
                    false == slice.get("globallyUniqueId").copyString().empty()));

@@ -258,7 +258,8 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
       \"analyzerDefinitions\": [ \
         { \"name\": \"testAnalyzer0\", \"type\": \"identity\", \"properties\":{}, \"features\":[] } \
       ], \
-      \"analyzers\": [\"testAnalyzer0\" ] \
+      \"analyzers\": [\"testAnalyzer0\" ], \
+      \"storedValues\":[] \
     }");
     EXPECT_EQUAL_SLICES(expected_json->slice(), builder.slice());
   }
@@ -346,7 +347,8 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
       \"analyzerDefinitions\": [ \
         { \"name\": \"testAnalyzer1\", \"type\": \"identity\", \"properties\":{}, \"features\":[] } \
       ], \
-      \"analyzers\": [\"testAnalyzer1\" ] \
+      \"analyzers\": [\"testAnalyzer1\" ], \
+      \"storedValues\":[] \
     }");
     EXPECT_EQUAL_SLICES(expected_json->slice(), builder.slice());
   }
