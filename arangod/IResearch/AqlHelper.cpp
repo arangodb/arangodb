@@ -557,6 +557,7 @@ bool attributeAccessEqual(arangodb::aql::AstNode const* lhs,
   } lhsValue, rhsValue;
 
   // TODO: is the "&" intionally. If yes: why?
+  // cppcheck-suppress unintvar
   while (lhsValue.read(lhs, ctx) & rhsValue.read(rhs, ctx)) {
     if (lhsValue != rhsValue) {
       return false;
