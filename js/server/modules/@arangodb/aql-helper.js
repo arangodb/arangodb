@@ -381,6 +381,9 @@ function removeClusterNodesFromPlan (nodes) {
   });
 }
 
+/// @brief recursively removes keys named "estimatedCost" or "selectivityEstimate" of a given object
+/// used in tests where we do not want to test those values because of floating-point values used in "AsserEqual"
+/// This method should only be used where we explicitly don't want to test those values. 
 function removeCost (obj) {
   if (Array.isArray(obj)) {
     return obj.map(removeCost);
