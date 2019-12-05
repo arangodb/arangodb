@@ -663,7 +663,7 @@ const char* NODE_OPTIONS_PARAM = "options";
 const char* NODE_VOLATILITY_PARAM = "volatility";
 const char* NODE_PRIMARY_SORT_PARAM = "primarySort";
 const char* NODE_PRIMARY_SORT_BUCKETS_PARAM = "primarySortBuckets";
-const char* NODE_VIEW_VALUES_VARS = "ViewValuesVars";
+const char* NODE_VIEW_VALUES_VARS = "viewValuesVars";
 const char* NODE_VIEW_VALUES_VAR_FIELD_NUMBER = "fieldNumber";
 const char* NODE_VIEW_VALUES_VAR_ID = "id";
 const char* NODE_VIEW_VALUES_VAR_NAME = "name";
@@ -924,7 +924,7 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan, velocypack::Slice
     auto const viewValuesVarsSlice = base.get(NODE_VIEW_VALUES_VARS);
     if (!viewValuesVarsSlice.isArray()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                     "\"ViewValuesVars\" attribute should be an array");
+                                     "\"viewValuesVars\" attribute should be an array");
     }
     std::unordered_map<size_t, aql::Variable const*> viewValuesVars;
     viewValuesVars.reserve(viewValuesVarsSlice.length());
@@ -932,7 +932,7 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan, velocypack::Slice
       auto const fieldNumberSlice = indVar.get(NODE_VIEW_VALUES_VAR_FIELD_NUMBER);
       if (!fieldNumberSlice.isNumber<size_t>()) {
         THROW_ARANGO_EXCEPTION_FORMAT(
-            TRI_ERROR_BAD_PARAMETER, "\"ViewValuesVars[*].fieldNumber\" %s should be a number",
+            TRI_ERROR_BAD_PARAMETER, "\"viewValuesVars[*].fieldNumber\" %s should be a number",
               fieldNumberSlice.toString().c_str());
       }
       auto const fieldNumber = fieldNumberSlice.getNumber<size_t>();
@@ -940,7 +940,7 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan, velocypack::Slice
       auto const varIdSlice = indVar.get(NODE_VIEW_VALUES_VAR_ID);
       if (!varIdSlice.isNumber<aql::VariableId>()) {
         THROW_ARANGO_EXCEPTION_FORMAT(
-            TRI_ERROR_BAD_PARAMETER, "\"ViewValuesVars[*].id\" variable id %s should be a number",
+            TRI_ERROR_BAD_PARAMETER, "\"viewValuesVars[*].id\" variable id %s should be a number",
               varIdSlice.toString().c_str());
       }
 
@@ -949,7 +949,7 @@ IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan, velocypack::Slice
 
       if (!var) {
         THROW_ARANGO_EXCEPTION_FORMAT(
-            TRI_ERROR_BAD_PARAMETER, "\"ViewValuesVars[*].id\" unable to find variable by id %d",
+            TRI_ERROR_BAD_PARAMETER, "\"viewValuesVars[*].id\" unable to find variable by id %d",
               varId);
       }
       viewValuesVars.emplace(fieldNumber, var);
