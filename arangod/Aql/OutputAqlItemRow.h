@@ -124,9 +124,7 @@ class OutputAqlItemRow {
    */
   SharedAqlItemBlockPtr stealBlock();
 
-  [[nodiscard]] bool isFull() const {
-    return numRowsWritten() >= block().size() && _call.getLimit() > 0;
-  }
+  [[nodiscard]] bool isFull() const { return numRowsLeft() == 0; }
 
   /**
    * @brief Returns the number of rows that were fully written.
