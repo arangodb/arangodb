@@ -309,42 +309,16 @@ bool isPrefix(std::vector<arangodb::basics::AttributeName> const& prefix,
 }
 
 struct ColumnVariant {
-  latematerialized::AstAndColumnFieldData& afData;
+  latematerialized::AstAndColumnFieldData* afData;
   size_t fieldNum;
   std::vector<arangodb::basics::AttributeName> const* field;
   std::vector<std::string> postfix;
 
-  ColumnVariant(latematerialized::AstAndColumnFieldData& afData,
+  ColumnVariant(latematerialized::AstAndColumnFieldData* afData,
                 size_t fieldNum,
                 std::vector<arangodb::basics::AttributeName> const* field,
                 std::vector<std::string>&& postfix) :
     afData(afData), fieldNum(fieldNum), field(field), postfix(std::move(postfix)) {
-  }
-
-  ColumnVariant(ColumnVariant const& other) : afData(other.afData), fieldNum(other.fieldNum), field(other.field),  postfix(other.postfix) {
-  }
-
-  ColumnVariant(ColumnVariant&& other) noexcept : afData(other.afData), fieldNum(other.fieldNum), field(other.field), postfix(std::move(other.postfix)) {
-  }
-
-  ColumnVariant& operator=(ColumnVariant const& other) {
-    if (this != &other) {
-      afData = other.afData;
-      fieldNum = other.fieldNum;
-      field = other.field;
-      postfix = other.postfix;
-    }
-    return *this;
-  }
-
-  ColumnVariant& operator=(ColumnVariant&& other) noexcept {
-    if (this != &other) {
-      afData = other.afData;
-      fieldNum = other.fieldNum;
-      field = other.field;
-      postfix = std::move(other.postfix);
-    }
-    return *this;
   }
 };
 
@@ -360,7 +334,7 @@ bool attributesMatch(IResearchViewSort const& primarySort, IResearchViewStoredVa
     for (auto const& field : primarySort.fields()) {
       std::vector<std::string> postfix;
       if (isPrefix(field, nodeAttr.attr, false, postfix)) {
-        usedColumnsCounter[IResearchViewNode::SortColumnNumber].emplace_back(ColumnVariant(nodeAttr.afData, fieldNum, &field, std::move(postfix)));
+        usedColumnsCounter[IResearchViewNode::SortColumnNumber].emplace_back(ColumnVariant(&nodeAttr.afData, fieldNum, &field, std::move(postfix)));
         found = true;
         break;
       }
@@ -373,7 +347,7 @@ bool attributesMatch(IResearchViewSort const& primarySort, IResearchViewStoredVa
       for (auto const& field : column.fields) {
         std::vector<std::string> postfix;
         if (isPrefix(field.second, nodeAttr.attr, false, postfix)) {
-          usedColumnsCounter[columnNum].emplace_back(ColumnVariant(nodeAttr.afData, fieldNum, &field.second, std::move(postfix)));
+          usedColumnsCounter[columnNum].emplace_back(ColumnVariant(&nodeAttr.afData, fieldNum, &field.second, std::move(postfix)));
           nodeAttr.attr.clear(); // we do not need later
           nodeAttr.attr.shrink_to_fit();
           found = true;
@@ -406,11 +380,11 @@ void setAttributesMaxMatchedColumns(std::unordered_map<int, std::vector<ColumnVa
   // get values from columns which contain max number of appropriate values
   for (auto& cv : columnVariants) {
     for (auto& f : cv.second) {
-      if (f.afData.field == nullptr) {
-        f.afData.fieldNumber = f.fieldNum;
-        f.afData.field = f.field;
-        f.afData.columnNumber = cv.first;
-        f.afData.postfix = std::move(f.postfix);
+      if (f.afData->field == nullptr) {
+        f.afData->fieldNumber = f.fieldNum;
+        f.afData->field = f.field;
+        f.afData->columnNumber = cv.first;
+        f.afData->postfix = std::move(f.postfix);
       }
     }
   }

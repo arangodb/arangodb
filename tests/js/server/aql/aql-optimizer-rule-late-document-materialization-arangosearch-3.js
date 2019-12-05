@@ -49,7 +49,7 @@ function lateDocumentMaterializationArangoSearch3RuleTestSuite () {
       db._createView(vn, "arangosearch", {
         consolidationIntervalMsec: 5000,
         primarySort: [{"field": "obj.a.a1", "direction": "asc"}, {"field": "obj.b", "direction": "desc"}],
-        storedFields: ["obj.a.a1", "obj.c", ["obj.d.d1", "obj.e.e1"], ["obj.f", "obj.g", "obj.h"]],
+        storedValues: ["obj.a.a1", "obj.c", ["obj.d.d1", "obj.e.e1"], ["obj.f", "obj.g", "obj.h"]],
         links: {
           [cn] : { includeAllFields: true },
           [cn1] : { includeAllFields: true }
