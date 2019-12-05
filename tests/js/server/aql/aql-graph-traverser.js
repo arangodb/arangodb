@@ -1798,7 +1798,7 @@ function complexInternaSuite() {
     testSkipSome: function () {
       var query = `WITH ${vn}
       FOR x, e, p IN 1..2 OUTBOUND @startId @@eCol
-      LIMIT 4, 100
+      SORT x._key, e._from LIMIT 4, 100
       RETURN p.vertices[1]._key`;
       var startId = vn + '/test';
       var bindVars = {
@@ -1835,7 +1835,7 @@ function complexInternaSuite() {
       var plans = AQL_EXPLAIN(query, bindVars, opts).plans;
       plans.forEach(function (plan) {
         var jsonResult = AQL_EXECUTEJSON(plan, { optimizer: { rules: ['-all'] } }).json;
-        assertEqual(jsonResult, result, query);
+        assertEqual(jsonResult, result, query + " " + JSON.stringify(plan));
       });
     },
 
