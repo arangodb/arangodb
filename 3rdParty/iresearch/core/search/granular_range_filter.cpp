@@ -92,7 +92,12 @@ irs::multiterm_state& collect_terms(
 
   auto& meta = terms.attributes().get<irs::term_meta>(); // get term metadata
   const decltype(irs::term_meta::docs_count) NO_DOCS = 0;
-  const auto& docs_count = meta ? meta->docs_count : NO_DOCS;
+
+  // NOTE: we can't use reference to 'docs_count' here, like
+  // 'const auto& docs_count = meta ? meta->docs_count : NO_DOCS;'
+  // since not gcc4.9 nor msvc2015-2019 can handle this correctly
+  // probably due to broken optimization
+  const auto* docs_count = meta ? &meta->docs_count : &NO_DOCS;
 
   do {
     terms.read(); // read attributes
@@ -103,14 +108,14 @@ irs::multiterm_state& collect_terms(
 
     // fill scoring candidates
     scorer.collect(
-      docs_count,
+      *docs_count,
       state.count++, // current term offset in state
       state,
       reader,
       terms
     );
 
-    state.estimation += docs_count;
+    state.estimation += *docs_count;
   } while (terms.next());
 
   return state;

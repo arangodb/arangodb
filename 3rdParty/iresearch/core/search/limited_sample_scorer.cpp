@@ -49,6 +49,7 @@ struct state {
 
 void set_doc_ids(irs::bitset& buf, const irs::term_iterator& term, size_t docs_count) {
   docs_count += (irs::doc_limits::min)();
+
   if (buf.size() < docs_count) {
     buf.reset(docs_count); // ensure we have enough space
   }
@@ -163,7 +164,6 @@ void limited_sample_scorer::collect(
   if (state_term_itr
       && entry.cookie
       && state_term_itr->seek(bytes_ref::NIL, *(entry.cookie))) {
-    assert(entry.state->unscored_docs.size() >= (doc_limits::min)() + entry.segment->docs_count()); // otherwise set will fail
     set_doc_ids(entry.state->unscored_docs, *state_term_itr, entry.segment->docs_count());
   }
 

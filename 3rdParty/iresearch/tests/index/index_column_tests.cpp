@@ -5435,7 +5435,7 @@ TEST_P(index_column_test_case, read_write_doc_attributes_sparse_column_sparse_ma
   }
 }
 
-TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_maskread_write_doc_attributes_sparse_column_sparse_mask) {
+TEST_P(index_column_test_case, read_write_doc_attributes_dense_column_dense_mask) {
   // dense_fixed_length_column<dense_mask_block>
 
   irs::index_writer::init_options options;

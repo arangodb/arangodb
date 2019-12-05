@@ -146,6 +146,7 @@ add_custom_target(${IResearchTests_TARGET_NAME}
 add_executable(${IResearchTests_TARGET_NAME}-shared
   EXCLUDE_FROM_ALL ${IReSearch_sources}
   ${IReSearch_tests_sources} ${IReSearch_tests_headers}
+  $<TARGET_OBJECTS:${IResearch_TARGET_NAME}-ofst>
 )
 
 set_ipo(${IResearchTests_TARGET_NAME}-shared)
@@ -243,10 +244,12 @@ target_link_libraries(${IResearchTests_TARGET_NAME}-static
 if(MSVC)
   target_compile_options(${IResearchTests_TARGET_NAME}-shared
     PRIVATE "$<$<CONFIG:Debug>:/MDd>$<$<NOT:$<CONFIG:Debug>>:/MD>"
+    PRIVATE "$<$<CONFIG:Debug>:/bigobj>"
   )
 
   target_compile_options(${IResearchTests_TARGET_NAME}-static
     PRIVATE "$<$<CONFIG:Debug>:/MDd>$<$<NOT:$<CONFIG:Debug>>:/MD>"
+    PRIVATE "$<$<CONFIG:Debug>:/bigobj>"
   )
 endif()
 

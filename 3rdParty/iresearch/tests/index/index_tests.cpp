@@ -13201,6 +13201,15 @@ INSTANTIATE_TEST_CASE_P(
   tests::to_string
 );
 
+// Separate definition as MSVC parser fails to do conditional defines in macro expansion
+NS_LOCAL
+#if defined(IRESEARCH_SSE2)
+const auto index_test_case_12_values = ::testing::Values("1_2", "1_2simd");
+#else
+const auto index_test_case_12_values = ::testing::Values("1_2");
+#endif
+NS_END
+
 INSTANTIATE_TEST_CASE_P(
   index_test_12,
   index_test_case,
@@ -13210,11 +13219,7 @@ INSTANTIATE_TEST_CASE_P(
       &tests::rot13_cipher_directory<&tests::fs_directory, 16>,
       &tests::rot13_cipher_directory<&tests::mmap_directory, 16>
     ),
-#ifdef IRESEARCH_SSE2
-    ::testing::Values("1_2", "1_2simd")
-#else
-    ::testing::Values("1_2")
-#endif
+    index_test_case_12_values
   ),
   tests::to_string
 );
@@ -13946,6 +13951,15 @@ TEST_P(index_test_case_11, commit_payload) {
   ASSERT_EQ(reader, reader.reopen());
 }
 
+// Separate definition as MSVC parser fails to do conditional defines in macro expansion
+NS_LOCAL
+#ifdef IRESEARCH_SSE2
+const auto index_test_case_11_values = ::testing::Values("1_1", "1_2", "1_2simd");
+#else
+const auto index_test_case_11_values = ::testing::Values("1_1", "1_2");
+#endif
+NS_END
+
 INSTANTIATE_TEST_CASE_P(
   index_test_11,
   index_test_case_11,
@@ -13955,11 +13969,7 @@ INSTANTIATE_TEST_CASE_P(
       &tests::fs_directory,
       &tests::mmap_directory
     ),
-#ifdef IRESEARCH_SSE2
-    ::testing::Values("1_1", "1_2", "1_2simd")
-#else
-    ::testing::Values("1_1", "1_2")
-#endif
+    index_test_case_11_values
   ),
   tests::to_string
 );

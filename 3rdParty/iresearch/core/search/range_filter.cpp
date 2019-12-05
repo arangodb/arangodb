@@ -53,12 +53,17 @@ void collect_terms(
     // get term metadata
     auto& meta = terms.attributes().get<irs::term_meta>();
     const decltype(irs::term_meta::docs_count) NO_DOCS = 0;
-    const auto& docs_count = meta ? meta->docs_count : NO_DOCS;
+
+    // NOTE: we can't use reference to 'docs_count' here, like
+    // 'const auto& docs_count = meta ? meta->docs_count : NO_DOCS;'
+    // since not gcc4.9 nor msvc2015-2019 can handle this correctly
+    // probably due to broken optimization
+    const auto* docs_count = meta ? &meta->docs_count : &NO_DOCS;
 
     do {
       // fill scoring candidates
-      scorer.collect(docs_count, state.count++, state, segment, terms);
-      state.estimation += docs_count;
+      scorer.collect(*docs_count, state.count++, state, segment, terms);
+      state.estimation += *docs_count;
 
       if (!terms.next()) {
         break;

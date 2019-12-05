@@ -32,9 +32,7 @@
 
 extern "C" {
 #include <simdcomp/include/simdcomputil.h>
-
-void simdpackwithoutmask(const uint32_t*  in, __m128i*  out, const uint32_t bit);
-void simdunpack(const __m128i*  in, uint32_t*  out, const uint32_t bit);
+#include <simdcomp/include/simdbitpacking.h>
 }
 
 #ifdef IRESEARCH_SSE4_2
