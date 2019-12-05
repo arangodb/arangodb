@@ -381,20 +381,15 @@ function removeClusterNodesFromPlan (nodes) {
   });
 }
 
-function roundCost (obj) {
+function removeCost (obj) {
   if (Array.isArray(obj)) {
-    return obj.map(roundCost);
+    return obj.map(removeCost);
   } else if (typeof obj === 'object') {
     var result = {};
     for (var key in obj) {
       if (obj.hasOwnProperty(key)) {
-        if (key === "estimatedCost") {
-          result[key] = Math.round(obj[key]);
-        } else if (key === "selectivityEstimate") {
-          // Round the estimate to 3 digits after ,
-          result[key] = obj[key].toFixed(3);
-        } else {
-          result[key] = roundCost(obj[key]);
+        if (key !== "estimatedCost" || key !== "selectivityEstimate") {
+          result[key] = removeCost(obj[key]);
         }
       }
     }
@@ -422,4 +417,4 @@ exports.getQueryMultiplePlansAndExecutions = getQueryMultiplePlansAndExecutions;
 exports.removeAlwaysOnClusterRules = removeAlwaysOnClusterRules;
 exports.removeClusterNodes = removeClusterNodes;
 exports.removeClusterNodesFromPlan = removeClusterNodesFromPlan;
-exports.roundCost = roundCost;
+exports.removeCost = removeCost;
