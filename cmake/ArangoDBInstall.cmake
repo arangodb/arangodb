@@ -90,7 +90,6 @@ install(
 set(APP_FILES
  "frontend/img"
  "react/build"
- "react/public/assets/aqltemplates.json"
 )
 
 set(app_files_source_dir ${PROJECT_SOURCE_DIR}/js/apps/system/_admin/aardvark/APP)
