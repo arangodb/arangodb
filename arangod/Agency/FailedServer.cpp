@@ -381,9 +381,7 @@ JOB_STATUS FailedServer::status() {
 }
 
 arangodb::Result FailedServer::abort(std::string const& reason) {
-  Result result;
-  // cppcheck-suppress uninitvar
-  return result;
+  return Result{};
   // FIXME: No abort procedure, simply throw error or so
   // ??????????????
 }

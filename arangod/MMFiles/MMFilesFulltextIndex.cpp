@@ -207,7 +207,7 @@ Result MMFilesFulltextIndex::insert(transaction::Methods& trx,
                                     LocalDocumentId const& documentId,
                                     velocypack::Slice const& doc,
                                     Index::OperationMode mode) {
-  Result res;
+  Result res{TRI_ERROR_NO_ERROR};
   int r = TRI_ERROR_NO_ERROR;
   std::set<std::string> words = wordlist(doc);
   if (!words.empty()) {
@@ -224,7 +224,7 @@ Result MMFilesFulltextIndex::remove(transaction::Methods& trx,
                                     LocalDocumentId const& documentId,
                                     velocypack::Slice const& doc,
                                     Index::OperationMode mode) {
-  Result res;
+  Result res{TRI_ERROR_NO_ERROR};
   int r = TRI_ERROR_NO_ERROR;
   std::set<std::string> words = wordlist(doc);
 
