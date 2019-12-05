@@ -113,7 +113,7 @@ describe ArangoDB do
 ################################################################################
 
     context "handling exports:" do
-      before do
+      before(:all) do
         @cn = "users"
         ArangoDB.drop_collection(@cn)
         @cid = ArangoDB.create_collection(@cn, false)
@@ -123,7 +123,7 @@ describe ArangoDB do
         }
       end
 
-      after do
+      after(:all) do
         ArangoDB.drop_collection(@cn)
       end
       
@@ -363,7 +363,7 @@ describe ArangoDB do
 
       it "creates a cursor that will expire" do
         cmd = api + "?collection=#{@cn}"
-        body = "{ \"count\" : true, \"batchSize\" : 1, \"ttl\" : 4, \"flush\" : true }"
+        body = "{ \"count\" : true, \"batchSize\" : 1, \"ttl\" : 8, \"flush\" : true }"
         doc = ArangoDB.log_post("#{prefix}-create-ttl", cmd, :body => body)
         
         doc.code.should eq(201)
