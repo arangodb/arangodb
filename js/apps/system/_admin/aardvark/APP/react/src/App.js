@@ -167,7 +167,7 @@ require('../../frontend/js/lib/jquery.csv.min.js');
 require('../../frontend/js/lib/wheelnav.slicePath.js');
 require('../../frontend/js/lib/wheelnav.min.js');
 window.Raphael = require('../../frontend/js/lib/raphael.min.js');
-require('../../frontend/js/lib/raphael.icons.min.js');
+window.icon = require('../../frontend/js/lib/raphael.icons.min.js');
 
 window.randomColor = require('../../frontend/js/lib/randomColor.js');
 //require('../../frontend/src/ace.js');
