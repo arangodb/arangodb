@@ -251,7 +251,7 @@ TEST_F(IResearchViewCoordinatorTest, test_defaults) {
       arangodb::iresearch::IResearchViewMeta meta;
       std::string error;
 
-      EXPECT_TRUE((16U == slice.length()));
+      EXPECT_TRUE((17U == slice.length()));
       EXPECT_TRUE((slice.hasKey("globallyUniqueId") &&
                    slice.get("globallyUniqueId").isString() &&
                    false == slice.get("globallyUniqueId").copyString().empty()));
@@ -278,7 +278,7 @@ TEST_F(IResearchViewCoordinatorTest, test_defaults) {
       arangodb::iresearch::IResearchViewMeta meta;
       std::string error;
 
-      EXPECT_TRUE((13U == slice.length()));
+      EXPECT_TRUE((14U == slice.length()));
       EXPECT_TRUE((slice.hasKey("globallyUniqueId") &&
                    slice.get("globallyUniqueId").isString() &&
                    false == slice.get("globallyUniqueId").copyString().empty()));
@@ -1072,6 +1072,9 @@ TEST_F(IResearchViewCoordinatorTest, test_properties) {
     tmpSlice = slice.get("primarySort");
     EXPECT_TRUE(tmpSlice.isArray());
     EXPECT_EQ(0, tmpSlice.length());
+    tmpSlice = slice.get("storedFields");
+    EXPECT_TRUE(tmpSlice.isArray());
+    EXPECT_EQ(0, tmpSlice.length());
     { // links
       tmpSlice = slice.get("links");
       EXPECT_TRUE(tmpSlice.isObject());
@@ -1137,6 +1140,9 @@ TEST_F(IResearchViewCoordinatorTest, test_properties) {
     tmpSlice = slice.get("primarySort");
     EXPECT_TRUE(tmpSlice.isArray());
     EXPECT_EQ(0, tmpSlice.length());
+    tmpSlice = slice.get("storedFields");
+    EXPECT_TRUE(tmpSlice.isArray());
+    EXPECT_EQ(0, tmpSlice.length());
     tmpSlice = slice.get("version");
     EXPECT_TRUE(tmpSlice.isNumber<uint32_t>() && 1 == tmpSlice.getNumber<uint32_t>());
   }
@@ -1183,6 +1189,9 @@ TEST_F(IResearchViewCoordinatorTest, test_properties) {
     tmpSlice = slice.get("writebufferSizeMax");
     EXPECT_TRUE(tmpSlice.isNumber<size_t>() && 32 * (size_t(1) << 20) == tmpSlice.getNumber<size_t>());
     tmpSlice = slice.get("primarySort");
+    EXPECT_TRUE(tmpSlice.isArray());
+    EXPECT_EQ(0, tmpSlice.length());
+    tmpSlice = slice.get("storedFields");
     EXPECT_TRUE(tmpSlice.isArray());
     EXPECT_EQ(0, tmpSlice.length());
     { // links

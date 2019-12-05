@@ -7416,8 +7416,8 @@ TEST_F(IResearchViewTest, create_view_with_stored_value) {
           "  \"name\": \"testView\", "
           "  \"type\": \"arangosearch\", "
           "  \"storedFields\": [ "
-          "    \"obj.a\", \"obj.b.b1\", "
-          "    [\"obj.c\", \"obj.d\"], [\"obj.e\", \"obj.f.f1\", \"obj.g\"] ] "
+          "    \"obj.a\", \"obj.b.b1\", \"\", [], "
+          "    [\"obj.c\", \"\", \"obj.d\"], [\"obj.e\", \"obj.f.f1\", \"obj.g\"] ] "
           "}");
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
     arangodb::LogicalView::ptr view;

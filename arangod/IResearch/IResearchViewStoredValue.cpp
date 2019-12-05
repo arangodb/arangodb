@@ -71,6 +71,10 @@ bool IResearchViewStoredValue::fromVelocyPack(
     std::vector<irs::string_ref> fieldNames;
     for (auto columnSlice : VPackArrayIterator(slice)) {
       if (columnSlice.isArray()) {
+        // skip empty column
+        if (columnSlice.length() == 0) {
+          continue;
+        }
         fieldNames.clear();
         size_t columnLength = 0;
         StoredColumn sc;
@@ -81,6 +85,10 @@ bool IResearchViewStoredValue::fromVelocyPack(
             return false;
           }
           auto fieldName = arangodb::iresearch::getStringRef(fieldSlice);
+          // skip empty field
+          if (fieldName.empty()) {
+            continue;
+          }
           std::vector<basics::AttributeName> field;
           try {
             // no expansions
@@ -143,6 +151,10 @@ bool IResearchViewStoredValue::fromVelocyPack(
         _storedColumns.emplace_back(std::move(sc));
       } else if (columnSlice.isString()) {
         auto fieldName = arangodb::iresearch::getStringRef(columnSlice);
+        // skip empty field
+        if (fieldName.empty()) {
+          continue;
+        }
         std::vector<basics::AttributeName> field;
         try {
           // no expansions
