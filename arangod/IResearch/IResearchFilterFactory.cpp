@@ -2120,7 +2120,7 @@ arangodb::Result fromFuncStartsWith(irs::boolean_filter* filter, QueryContext co
   if (filter || prefixValue.isConstant()) {
     if (!prefixValue.execute(ctx)) {
       auto message = "'STARTS_WITH' AQL function: Failed to evaluate 2nd argument";
-      LOG_TOPIC("e196b", WARN, arangodb::iresearch::TOPIC) << message;
+      LOG_TOPIC("e196c", WARN, arangodb::iresearch::TOPIC) << message;
       return {TRI_ERROR_BAD_PARAMETER, message};
     }
 
