@@ -1798,7 +1798,7 @@ function complexInternaSuite() {
     testSkipSome: function () {
       var query = `WITH ${vn}
       FOR x, e, p IN 1..2 OUTBOUND @startId @@eCol
-      SORT x._key, e._from LIMIT 4, 100
+      LIMIT 4, 100
       RETURN p.vertices[1]._key`;
       var startId = vn + '/test';
       var bindVars = {
