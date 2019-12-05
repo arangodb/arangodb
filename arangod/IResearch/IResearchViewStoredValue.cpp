@@ -133,9 +133,14 @@ bool IResearchViewStoredValue::fromVelocyPack(
           columnLength += fieldName.size() + 1; // + 1 for FIELDS_DELIMITER
           fieldNames.emplace_back(std::move(fieldName));
         }
+        // skip empty column
+        if (fieldNames.empty()) {
+          continue;
+        }
         // check column uniqueness
         std::sort(fieldNames.begin(), fieldNames.end());
         std::string columnName;
+        TRI_ASSERT(columnLength > 1);
         columnName.reserve(columnLength - 1);
         for (auto const& fieldName : fieldNames) {
           if (!columnName.empty()) {
