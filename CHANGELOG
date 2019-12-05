@@ -1,6 +1,8 @@
 v3.4.9 (XXXX-XX-XX)
 -------------------
 
+* The _users collection is now properly restored when using arangorestore.
+
 * Updated arangosync to 0.7.1.
 
 * Fixed issue #10470: The WebUI now shows potential errors and details which
