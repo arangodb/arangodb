@@ -684,8 +684,8 @@ void BackupFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opti
                      new BooleanParameter(&_options.allowInconsistent));
 
   options->addOption("--ignore-version",
-                     "ignore stored version of a backup"
-                     "restore may not work if version mismatch (restore operation)",
+                     "ignore stored version of a backup. "
+                     "Restore may not work if versions mismatch (restore operation)",
                      new BooleanParameter(&_options.ignoreVersion));
 
   options->addOption("--identifier",
@@ -721,12 +721,12 @@ void BackupFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opti
                      new StringParameter(&_options.statusId));
 
   options->addOption("--rclone-config-file",
-                     "filename of the rclone configuration file used for"
+                     "filename of the Rclone configuration file used for"
                      "file transfer (upload/download operation)",
                      new StringParameter(&_options.rcloneConfigFile));
 
   options->addOption("--remote-path",
-                     "remote rclone path of directory used to store or "
+                     "remote Rclone path of directory used to store or "
                      "receive backups (upload/download operation)",
                      new StringParameter(&_options.remoteDirectory));
 
@@ -736,8 +736,10 @@ void BackupFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opti
                      new BooleanParameter(&_options.abort));
 
   options->addOption("--force",
-                     "abort transactions if needed to ensure a consistent snapshot"
-                     "(create operation)",
+                     "abort transactions if needed to ensure a consistent snapshot. "
+                     "This option can destroy the atomicity of your transactions in the "
+                     "presence of intermediate commits! Use it with great care and only "
+                     "if you really need a consistent backup at all costs (create operation)",
                      new BooleanParameter(&_options.abortTransactionsIfNeeded));
 #endif
   /*
