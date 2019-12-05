@@ -21,7 +21,7 @@ Name of the graph.
 An array of definitions for the relations of the graph.
 Each has the following type:
 
-@RESTBODYPARAM{isSmart,boolean,optional,boolean}
+@RESTBODYPARAM{isSmart,boolean,optional,}
 Define if the created graph should be smart.
 This only has effect in Enterprise Edition.
 

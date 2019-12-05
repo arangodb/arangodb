@@ -15,7 +15,7 @@ then the password will be set the value stored in the environment variable
 `ARANGODB_DEFAULT_ROOT_PASSWORD`. This can be used to pass an instance
 variable into ArangoDB. For example, the instance identifier from Amazon.
 
-@RESTBODYPARAM{active,boolean,optional,boolean}
+@RESTBODYPARAM{active,boolean,optional,}
 An optional flag that specifies whether the user is active.  If not
 specified, this will default to true
 
@@ -500,7 +500,7 @@ The name of the user
 The user password as a string. Specifying a password is mandatory, but
 the empty string is allowed for passwords
 
-@RESTBODYPARAM{active,boolean,optional,boolean}
+@RESTBODYPARAM{active,boolean,optional,}
 An optional flag that specifies whether the user is active.  If not
 specified, this will default to true
 
@@ -565,7 +565,7 @@ The name of the user
 The user password as a string. Specifying a password is mandatory, but
 the empty string is allowed for passwords
 
-@RESTBODYPARAM{active,boolean,optional,boolean}
+@RESTBODYPARAM{active,boolean,optional,}
 An optional flag that specifies whether the user is active.  If not
 specified, this will default to true
 
