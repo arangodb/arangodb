@@ -1495,7 +1495,7 @@ function processQuery(query, explain, planIndex) {
       case 'SubqueryStartNode':
         return `${keyword('LET')} ${variableName(node.subqueryOutVariable)} = ( ${annotation(`/* subquery begin */`)}` ;
       case 'SubqueryEndNode':
-        return `) ${annotation(`/* subquery end */`)}`;
+        return `${keyword('RETURN')}  ${variableName(node.inVariable)} ) ${annotation(`/* subquery end */`)}`;
       case 'InsertNode': {
         modificationFlags = node.modificationFlags;
         let restrictString = '';
