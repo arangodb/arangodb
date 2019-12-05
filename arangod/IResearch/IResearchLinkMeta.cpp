@@ -588,7 +588,7 @@ bool IResearchLinkMeta::init(velocypack::Slice const& slice,
 
   {
     // optional stored values
-    static VPackStringRef const fieldName("storedFields");
+    static VPackStringRef const fieldName("storedValues");
 
     auto const field = slice.get(fieldName);
     mask->_storedValue = field.isArray();
@@ -772,7 +772,7 @@ bool IResearchLinkMeta::json(velocypack::Builder& builder,
 
   if (writeAnalyzerDefinition
       && (!mask || mask->_storedValue)) {
-    velocypack::ArrayBuilder arrayScope(&builder, "storedFields");
+    velocypack::ArrayBuilder arrayScope(&builder, "storedValues");
     if (!_storedValue.toVelocyPack(builder)) {
       return false;
     }

@@ -1072,7 +1072,7 @@ TEST_F(IResearchViewCoordinatorTest, test_properties) {
     tmpSlice = slice.get("primarySort");
     EXPECT_TRUE(tmpSlice.isArray());
     EXPECT_EQ(0, tmpSlice.length());
-    tmpSlice = slice.get("storedFields");
+    tmpSlice = slice.get("storedValues");
     EXPECT_TRUE(tmpSlice.isArray());
     EXPECT_EQ(0, tmpSlice.length());
     { // links
@@ -1140,7 +1140,7 @@ TEST_F(IResearchViewCoordinatorTest, test_properties) {
     tmpSlice = slice.get("primarySort");
     EXPECT_TRUE(tmpSlice.isArray());
     EXPECT_EQ(0, tmpSlice.length());
-    tmpSlice = slice.get("storedFields");
+    tmpSlice = slice.get("storedValues");
     EXPECT_TRUE(tmpSlice.isArray());
     EXPECT_EQ(0, tmpSlice.length());
     tmpSlice = slice.get("version");
@@ -1191,7 +1191,7 @@ TEST_F(IResearchViewCoordinatorTest, test_properties) {
     tmpSlice = slice.get("primarySort");
     EXPECT_TRUE(tmpSlice.isArray());
     EXPECT_EQ(0, tmpSlice.length());
-    tmpSlice = slice.get("storedFields");
+    tmpSlice = slice.get("storedValues");
     EXPECT_TRUE(tmpSlice.isArray());
     EXPECT_EQ(0, tmpSlice.length());
     { // links

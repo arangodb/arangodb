@@ -588,7 +588,7 @@ bool IResearchViewMeta::init(arangodb::velocypack::Slice const& slice, std::stri
 
   {
     // optional object
-    static VPackStringRef const fieldName("storedFields");
+    static VPackStringRef const fieldName("storedValues");
     std::string errorSubField;
 
     auto const field = slice.get(fieldName);
@@ -674,7 +674,7 @@ bool IResearchViewMeta::json(arangodb::velocypack::Builder& builder,
   }
 
   if ((!ignoreEqual || _storedValue != ignoreEqual->_storedValue) && (!mask || mask->_storedValue)) {
-    velocypack::ArrayBuilder arrayScope(&builder, "storedFields");
+    velocypack::ArrayBuilder arrayScope(&builder, "storedValues");
     if (!_storedValue.toVelocyPack(builder)) {
       return false;
     }
