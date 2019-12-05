@@ -177,6 +177,10 @@ class OutputAqlItemRow {
 
   AqlCall const& getClientCall() const;
 
+  AqlCall&& stealClientCall();
+
+  void setCall(AqlCall&& call);
+
   void didSkip(size_t n);
 
  private:

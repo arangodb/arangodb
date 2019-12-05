@@ -44,7 +44,7 @@ class AqlCallStack {
 
   // Get the top most Call element (this must be relevant).
   // This is popped of the stack and caller can take responsibility for it
-  AqlCall&& popCall();
+  AqlCall popCall();
 
   // Peek at the top most Call element (this must be relevant).
   // The responsibility will stay at the stack

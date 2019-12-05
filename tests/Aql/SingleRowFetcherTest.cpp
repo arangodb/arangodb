@@ -69,7 +69,6 @@ class SingleRowFetcherTestPassBlocks : public ::testing::Test {
 
   void validateInputRange(AqlItemBlockInputRange& input,
                           std::vector<std::string> const& result) {
-    EXPECT_EQ(result.size(), input.getEndIndex() - input.getRowIndex());
     for (auto const& value : result) {
       SCOPED_TRACE("Checking for value: " + value);
       // We need more rows
@@ -1229,7 +1228,6 @@ TEST_F(SingleRowFetcherTestPassBlocks, handling_shadowrows_in_execute_oneAndDone
     // First no data row
     auto [state, skipped, input] = testee.execute(stack);
     EXPECT_EQ(input.getRowIndex(), 0);
-    EXPECT_EQ(input.getEndIndex(), 4);
     EXPECT_EQ(skipped, 0);
     EXPECT_EQ(state, ExecutionState::DONE);
   }  // testee is destroyed here
@@ -1267,7 +1265,6 @@ TEST_F(SingleRowFetcherTestPassBlocks, handling_shadowrows_in_execute_twoAndHasM
     EXPECT_EQ(state, ExecutionState::DONE);
     EXPECT_EQ(skipped, 0);
     EXPECT_EQ(input.getRowIndex(), 0);
-    EXPECT_EQ(input.getEndIndex(), 4);
 
     // Now validate the input range
     validateInputRange(input, std::vector<std::string>{"a", "b", "c", "d"});

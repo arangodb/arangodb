@@ -141,8 +141,7 @@ std::tuple<ExecutorState, FilterStats, AqlCall> FilterExecutor::produceRows(
   }
 
   AqlCall upstreamCall{};
-  upstreamCall.softLimit = output.softLimit();
-  upstreamCall.hardLimit = output.hardLimit();
+  upstreamCall.softLimit = output.hardLimit();
   /* We can use this value as a heuristic on overfetching.
    * by default we do not skip, and do not set any soft or hardLimit
    * on upstream

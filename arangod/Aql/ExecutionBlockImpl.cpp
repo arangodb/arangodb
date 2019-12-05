@@ -943,12 +943,14 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::r
 
 template <class Executor>
 void ExecutionBlockImpl<Executor>::ensureOutputBlock(AqlCall&& call) {
-  if (_outputItemRow->isFull()) {
+  if (_outputItemRow == nullptr || _outputItemRow->isFull()) {
     // We need to define the size of this block based on Input / Executor / Subquery depth
     size_t blockSize = ExecutionBlock::DefaultBatchSize();
     SharedAqlItemBlockPtr newBlock =
         _engine->itemBlockManager().requestBlock(blockSize, _infos.numberOfOutputRegisters());
     _outputItemRow = createOutputRow(newBlock, std::move(call));
+  } else {
+    _outputItemRow->setCall(std::move(call));
   }
 }
 
@@ -1009,6 +1011,7 @@ template <>
 std::tuple<ExecutionState, size_t, SharedAqlItemBlockPtr>
 ExecutionBlockImpl<FilterExecutor>::executeWithoutTrace(AqlCallStack stack) {
   ensureOutputBlock(stack.popCall());
+
   /*
   if (!_outputItemRow) {
     // TODO: FIXME Hard coded size
@@ -1082,11 +1085,17 @@ ExecutionBlockImpl<FilterExecutor>::executeWithoutTrace(AqlCallStack stack) {
         size_t skippedLocal = 0;
         stack.pushCall(std::move(executorRequest));
         std::tie(_upstreamState, skippedLocal, _lastRange) = _rowFetcher.execute(stack);
+        if (_upstreamState == ExecutionState::WAITING) {
+          // We do not return anything in WAITING state, also NOT skipped.
+          // TODO: Check if we need to leverage this restriction.
+          TRI_ASSERT(skipped == 0);
+          return {_upstreamState, 0, nullptr};
+        }
         skipped += skippedLocal;
-        auto const& clientCall = _outputItemRow->getClientCall();
+        ensureOutputBlock(_outputItemRow->stealClientCall());
         // Do we need to call it?
         // clientCall.didSkip(skippedLocal);
-        execState = ::NextState(clientCall);
+        execState = ::NextState(_outputItemRow->getClientCall());
         break;
       }
       case ExecState::SHADOWROWS: {
