@@ -331,6 +331,7 @@ void lateDocumentMaterializationArangoSearchRule(Optimizer* opt,
     opt->addPlan(std::move(plan), rule, modified);
   });
       // arangosearch view node supports late materialization
+  //cppcheck-suppress accessMoved
   if (!plan->contains(ExecutionNode::ENUMERATE_IRESEARCH_VIEW) ||
       // we need sort node  to be present  (without sort it will be just skip, nothing to optimize)
       !plan->contains(ExecutionNode::SORT) ||
@@ -461,6 +462,7 @@ void handleViewsRule(Optimizer* opt,
     opt->addPlan(std::move(plan), rule, modified);
   });
 
+  //cppcheck-suppress accessMoved
   if (!plan->contains(ExecutionNode::ENUMERATE_IRESEARCH_VIEW)) {
     // no view present in the query, so no need to do any expensive
     // transformations
