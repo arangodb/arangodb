@@ -1272,6 +1272,11 @@ arangodb::Result RocksDBEngine::dropCollection(TRI_vocbase_t& vocbase,
   auto* rcoll = static_cast<RocksDBMetaCollection*>(coll.getPhysical());
   bool const prefixSameAsStart = true;
   bool const useRangeDelete = rcoll->meta().numberDocuments() >= 32 * 1024;
+  
+  int resLock = rcoll->lockWrite(); // technically not necessary
+  if (resLock != TRI_ERROR_NO_ERROR) {
+    return resLock;
+  }
 
   rocksdb::DB* db = _db->GetRootDB();
 
@@ -1365,6 +1370,14 @@ arangodb::Result RocksDBEngine::dropCollection(TRI_vocbase_t& vocbase,
     // User View remains consistent.
     return TRI_ERROR_NO_ERROR;
   }
+  
+  // run compaction for data only if collection contained a considerable
+  // amount of documents. otherwise don't run compaction, because it will
+  // slow things down a lot, especially during tests that create/drop LOTS
+  // of collections
+  if (useRangeDelete) {
+    rcoll->compact();
+  }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // check if documents have been deleted
@@ -1378,14 +1391,6 @@ arangodb::Result RocksDBEngine::dropCollection(TRI_vocbase_t& vocbase,
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, errorMsg);
   }
 #endif
-
-  // run compaction for data only if collection contained a considerable
-  // amount of documents. otherwise don't run compaction, because it will
-  // slow things down a lot, especially during tests that create/drop LOTS
-  // of collections
-  if (useRangeDelete) {
-    rcoll->compact();
-  }
 
   // if we get here all documents / indexes are gone.
   // We have no data garbage left.

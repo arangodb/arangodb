@@ -699,19 +699,17 @@ Result RocksDBVPackIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd
       if (res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)) {
         // find conflicting document
         LocalDocumentId docId = RocksDBValue::documentId(existing);
-        std::string existingKey;
         auto success = _collection.getPhysical()->readDocumentWithCallback(&trx, docId,
            [&](LocalDocumentId const&, VPackSlice doc) {
-             existingKey = transaction::helpers::extractKeyFromDocument(doc).copyString();
+             VPackSlice key = transaction::helpers::extractKeyFromDocument(doc);
+             if (mode == OperationMode::internal) {
+               res.resetErrorMessage(key.copyString());
+             } else {
+               addErrorMsg(res, key.copyString());
+             }
              return true; // return value does not matter here
            });
         TRI_ASSERT(success);
-        
-        if (mode == OperationMode::internal) {
-          res.resetErrorMessage(std::move(existingKey));
-        } else {
-          addErrorMsg(res, existingKey);
-        }
       } else {
         addErrorMsg(res);
       }
