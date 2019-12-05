@@ -94,7 +94,8 @@ struct IResearchLinkHelper {
     bool isCreation, // definition for index creation
     TRI_vocbase_t const& vocbase, // index vocbase
     IResearchViewSort const* primarySort = nullptr,
-    IResearchViewStoredValue const* storedValue = nullptr
+    IResearchViewStoredValue const* storedValue = nullptr,
+    arangodb::velocypack::Slice idSlice = arangodb::velocypack::Slice() // id for normalized
   );
 
   ////////////////////////////////////////////////////////////////////////////////
