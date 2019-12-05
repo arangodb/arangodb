@@ -421,10 +421,13 @@ TEST_F(FilterExecutorTest, test_skip_datarange_need_more) {
                     {{R"(true)"}, {R"(false)"}, {R"(true)"}, {R"(false)"}, {R"(true)"}});
 
   AqlItemBlockInputRange input{ExecutorState::HASMORE, inBlock, 0, inBlock->size()};
+  AqlCall clientCall;
+  clientCall.offset = 1000;
 
-  auto const [state, skipped, call] = testee.skipRowsRange(1000, input);
+  auto const [state, skipped, call] = testee.skipRowsRange(input, clientCall);
   EXPECT_EQ(state, ExecutorState::HASMORE);
   EXPECT_EQ(skipped, 3);
+  EXPECT_EQ(clientCall.getOffset(), 1000 - 3);
   EXPECT_FALSE(input.hasMore());
 
   // Test the Call we send to upstream
@@ -489,9 +492,12 @@ TEST_F(FilterExecutorTest, test_skip_datarange_has_more) {
                     {{R"(true)"}, {R"(false)"}, {R"(true)"}, {R"(false)"}, {R"(true)"}});
 
   AqlItemBlockInputRange input{ExecutorState::DONE, inBlock, 0, inBlock->size()};
-  auto const [state, skipped, call] = testee.skipRowsRange(2, input);
+  AqlCall clientCall;
+  clientCall.offset = 2;
+  auto const [state, skipped, call] = testee.skipRowsRange(input, clientCall);
   EXPECT_EQ(state, ExecutorState::HASMORE);
   EXPECT_EQ(skipped, 2);
+  EXPECT_EQ(clientCall.getOffset(), 0);
   EXPECT_TRUE(input.hasMore());
   // We still have two values in block: false and true
   {

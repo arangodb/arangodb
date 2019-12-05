@@ -124,7 +124,21 @@ class OutputAqlItemRow {
    */
   SharedAqlItemBlockPtr stealBlock();
 
+  /**
+   * @brief Test if the data-Output is full. This contains checks against
+   *        the client call as well. We are considered full as soon as
+   *        hard or softLimit are reached.
+   */
   [[nodiscard]] bool isFull() const { return numRowsLeft() == 0; }
+
+  /**
+   * @brief Test if all allocated rows are used.
+   *        this does not consider the client call and allows to use
+   *        the left-over space for ShadowRows.
+   */
+  [[nodiscard]] bool allRowsUsed() const {
+    return block().size() <= _baseIndex;
+  }
 
   /**
    * @brief Returns the number of rows that were fully written.
@@ -174,6 +188,8 @@ class OutputAqlItemRow {
   AqlCall::Limit hardLimit() const;
 
   AqlCall const& getClientCall() const;
+
+  AqlCall& getModifiableClientCall();
 
   AqlCall&& stealClientCall();
 
