@@ -156,7 +156,8 @@ void ImportFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opti
   options->addOption("--quote", "quote character(s), used for csv",
                      new StringParameter(&_quote));
 
-  options->addOption("--separator", "field separator, used for csv and tsv",
+  options->addOption("--separator", "field separator, used for csv and tsv. "
+                     "Defaults to a comma (csv) or a tabulation (tsv) character",
                      new StringParameter(&_separator),
                      arangodb::options::makeFlags(arangodb::options::Flags::Dynamic));
 
