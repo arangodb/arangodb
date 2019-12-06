@@ -170,7 +170,7 @@ V8SecurityFeature::V8SecurityFeature(application_features::ApplicationServer& se
 }
 
 void V8SecurityFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("javascript", "Configure the Javascript engine");
+  options->addSection("javascript", "Configure the JavaScript engine");
   options
       ->addOption("--javascript.allow-port-testing",
                   "allow testing of ports from within JavaScript actions",

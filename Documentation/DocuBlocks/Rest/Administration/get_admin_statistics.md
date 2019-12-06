@@ -48,7 +48,6 @@ a descriptive error message
 @RESTREPLYBODY{enabled,boolean,required,}
 *true* if the server has the statistics module enabled. If not, don't expect any values.
 
-
 @RESTREPLYBODY{system,object,required,system_statistics_struct}
 metrics gathered from the system about this process; may depend on the host OS
 
@@ -76,10 +75,8 @@ RSS of process in %
 @RESTSTRUCT{virtualSize,system_statistics_struct,integer,required,}
 VSS of the process
 
-
 @RESTREPLYBODY{client,object,required,client_statistics_struct}
 information about the connected clients and their resource usage
-
 
 @RESTSTRUCT{sum,setof_statistics_struct,number,required,}
 summarized value of all counts
@@ -90,12 +87,11 @@ number of values summarized
 @RESTSTRUCT{counts,setof_statistics_struct,array,required,integer}
 array containing the values
 
-
 @RESTSTRUCT{connectionTime,client_statistics_struct,object,required,setof_statistics_struct}
 total connection times
 
 @RESTSTRUCT{totalTime,client_statistics_struct,object,required,setof_statistics_struct}
-the system time 
+the system time
 
 @RESTSTRUCT{requestTime,client_statistics_struct,object,required,setof_statistics_struct}
 the request times
@@ -112,11 +108,8 @@ number of bytes sent to the clients
 @RESTSTRUCT{bytesReceived,client_statistics_struct,object,required,setof_statistics_struct}
 number of bytes received from the clients
 
-
 @RESTSTRUCT{httpConnections,client_statistics_struct,integer,required,}
 the number of open http connections
-
-
 
 @RESTREPLYBODY{http,object,required,http_statistics_struct}
 the numbers of requests by Verb
@@ -150,7 +143,6 @@ No of requests using the OPTIONS-verb
 
 @RESTSTRUCT{requestsOther,http_statistics_struct,integer,required,}
 No of requests using the none of the above identified verbs
-
 
 @RESTREPLYBODY{server,object,required,server_statistics_struct}
 statistics of the server
@@ -194,7 +186,6 @@ the number of V8 contexts that are free to use
 @RESTSTRUCT{max,v8_context_struct,integer,required,}
 the total number of V8 contexts we may spawn as configured by --javascript.v8-contexts
 
-
 @RESTSTRUCT{memory,v8_context_struct,array,required,v8_isolate_memory}
 a list of V8 memory / garbage collection watermarks; Refreshed on every garbage collection run;
 Preserves min/max memory used at that time for 10 seconds
@@ -213,7 +204,6 @@ High watermark of all garbage collection runs in 10 seconds
 
 @RESTSTRUCT{heapMin,v8_isolate_memory,integer,required,}
 Low watermark of all garbage collection runs in these 10 seconds
-
 
 @RESTSTRUCT{threads,server_statistics_struct,object,required,server_threads_struct}
 Statistics about the server worker threads (excluding V8 specific or jemalloc specific threads and system threads)
@@ -238,4 +228,3 @@ The number of jobs queued up waiting for worker threads becomming available
     logJsonResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

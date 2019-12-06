@@ -121,4 +121,3 @@ Matching an attribute within a sub-document
     db._drop(cn);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

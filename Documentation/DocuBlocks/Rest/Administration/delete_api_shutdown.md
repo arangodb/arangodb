@@ -13,4 +13,3 @@ This call initiates a clean shutdown sequence. Requires administrive privileges
 is returned in all cases, `OK` will be returned in the result buffer on success.
 
 @endDocuBlock
-
