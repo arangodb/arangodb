@@ -17,8 +17,16 @@ Check out our [training center](https://www.arangodb.com/arangodb-training-cente
 to get started and see the full [documentation](https://www.arangodb.com/docs/stable/)
 to dive deeper.
 
-For the impatient: [download](https://www.arangodb.com/download) and install
-ArangoDB. Start the server `arangod` and point your browser to `http://127.0.0.1:8529/`.
+For the impatient:
+
+- Start the ArangoDB Docker container
+
+      docker run -e ARANGO_ROOT_PASSWORD=test123 -p 8529:8529 -d arangodb/arangodb
+
+- Alternatively, [download](https://www.arangodb.com/download) and install ArangoDB.
+  Start the server `arangod` if the installer did not do it for you.
+
+- Point your browser to `http://127.0.0.1:8529/`
 
 Key Features in ArangoDB
 ------------------------
