@@ -365,9 +365,9 @@ bool BenchFeature::report(ClientFeature& client, std::vector<BenchRunResult> res
   }
   printResult(output);
   std::cout <<
-    " Min Request time: " << (minTime * 1000) << "ms" << std::endl <<
-    " Avg Request time: " << (avgTime * 1000) << "ms" << std::endl <<
-    " Max Request time: " << (maxTime * 1000) << "ms" << std::endl;
+    "Min Request time: " << (minTime * 1000) << "ms" << std::endl <<
+    "Avg Request time: " << (avgTime * 1000) << "ms" << std::endl <<
+    "Max Request time: " << (maxTime * 1000) << "ms" << std::endl << std::endl;
   std::cout << histogram;
   if (_junitReportFile.empty()) {
     return true;
