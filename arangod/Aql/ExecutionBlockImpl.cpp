@@ -201,7 +201,9 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<Executor>::g
     }
     TRI_ASSERT(newBlock != nullptr);
     TRI_ASSERT(newBlock->size() > 0);
-    TRI_ASSERT(newBlock->size() <= atMost);
+    // We cannot hold this assertion, if we are on a pass-through
+    // block and the upstream uses execute already.
+    // TRI_ASSERT(newBlock->size() <= atMost);
     _outputItemRow = createOutputRow(newBlock, AqlCall{});
   }
 

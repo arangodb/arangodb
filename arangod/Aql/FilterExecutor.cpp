@@ -101,6 +101,7 @@ std::pair<ExecutionState, size_t> FilterExecutor::expectedNumberOfRows(size_t at
   return _fetcher.preFetchNumberOfRows(atMost);
 }
 
+// TODO Remove me, we are using the getSome skip variant here.
 std::tuple<ExecutorState, size_t, AqlCall> FilterExecutor::skipRowsRange(
     AqlItemBlockInputRange& inputRange, AqlCall& call) {
   ExecutorState state = ExecutorState::HASMORE;
@@ -142,11 +143,10 @@ std::tuple<ExecutorState, FilterStats, AqlCall> FilterExecutor::produceRows(
   }
 
   AqlCall upstreamCall{};
-  upstreamCall.softLimit = output.hardLimit();
-  /* We can use this value as a heuristic on overfetching.
-   * by default we do not skip, and do not set any soft or hardLimit
-   * on upstream
-   * upstreamCall.softLimit = limit;
-   */
+  auto const& clientCall = output.getClientCall();
+  // This is a optimistic fetch. We do not do any overfetching here, only if we
+  // pass through all rows this fetch is correct, otherwise we have too few rows.
+  upstreamCall.softLimit =
+      clientCall.offset() + (std::min)(clientCall.softLimit, clientCall.hardLimit);
   return {inputRange.state(), stats, upstreamCall};
 }

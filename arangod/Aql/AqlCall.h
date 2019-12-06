@@ -109,6 +109,19 @@ struct AqlCall {
   bool needsFullCount() const { return fullCount; }
 };
 
+constexpr bool operator<(AqlCall::Limit const& a, AqlCall::Limit const& b) {
+  if (std::holds_alternative<AqlCall::Infinity>(a)) {
+    return false;
+  }
+  if (std::holds_alternative<AqlCall::Infinity>(b)) {
+    return true;
+  }
+  if (std::get<size_t>(a) < std::get<size_t>(b)) {
+    return true;
+  }
+  return false;
+}
+
 }  // namespace aql
 }  // namespace arangodb
 
