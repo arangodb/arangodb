@@ -1135,8 +1135,14 @@ function processQuery(query, explain, planIndex) {
         if (node.hasOwnProperty('outNmDocId') && node.hasOwnProperty('outNmColPtr')) {
           viewAnnotation += ' with late materialization';
           if (node.hasOwnProperty('viewValuesVars') && node.viewValuesVars.length > 0) {
-            viewVariables = node.viewValuesVars.map(function (viewValuesVar) {
-              return keyword(' LET ') + variableName(viewValuesVar) + ' = ' + variableName(node.outVariable) + '.' + attribute(viewValuesVar.field);
+            viewVariables = node.viewValuesVars.map(function (viewValuesColumn) {
+              if (viewValuesColumn.hasOwnProperty('field')) {
+                return keyword(' LET ') + variableName(viewValuesColumn) + ' = ' + variableName(node.outVariable) + '.' + attribute(viewValuesColumn.field);
+              } else {
+                return viewValuesColumn.viewStoredValuesVars.map(function (viewValuesVar) {
+                  return keyword(' LET ') + variableName(viewValuesVar) + ' = ' + variableName(node.outVariable) + '.' + attribute(viewValuesVar.field);
+                }).join('');
+              }
             }).join('');
           }
         }

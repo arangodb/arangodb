@@ -132,7 +132,7 @@ class IndexNode : public ExecutionNode, public DocumentProducingNode, public Col
     Variable const* var;
   };
 
-  using IndexValuesVars = std::pair<TRI_idx_iid_t, std::unordered_map<size_t, Variable const*>>;
+  using IndexValuesVars = std::pair<TRI_idx_iid_t, std::vector<std::pair<size_t, Variable const*>>>;
 
   using IndexValuesRegisters = std::pair<TRI_idx_iid_t, std::unordered_map<size_t, RegisterId>>;
 
