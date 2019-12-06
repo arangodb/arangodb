@@ -157,7 +157,7 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
   /// @brief we provide a method to provide the index attribute values
   /// while scanning the index
   bool hasCovering() const override {
-    return _index->type() != arangodb::Index::IndexType::TRI_IDX_TYPE_TTL_INDEX; 
+    return _index->type() != arangodb::Index::IndexType::TRI_IDX_TYPE_TTL_INDEX;
   }
 
  private:
@@ -300,7 +300,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
     } else {
       _iterator->Seek(_bounds.start());
     }
-    
+
     // validate that Iterator is in a good shape and hasn't failed
     arangodb::rocksutils::checkIteratorStatus(_iterator.get());
   }
@@ -308,7 +308,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
   /// @brief we provide a method to provide the index attribute values
   /// while scanning the index
   bool hasCovering() const override {
-    return _index->type() != arangodb::Index::IndexType::TRI_IDX_TYPE_TTL_INDEX; 
+    return _index->type() != arangodb::Index::IndexType::TRI_IDX_TYPE_TTL_INDEX;
   }
 
  private:
@@ -694,7 +694,7 @@ Result RocksDBVPackIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd
         break;
       }
     }
-    
+
     if (res.fail()) {
       if (res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)) {
         // find conflicting document
@@ -714,7 +714,7 @@ Result RocksDBVPackIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd
         addErrorMsg(res);
       }
     }
-    
+
   } else {
     // AQL queries never read from the same collection, after writing into it
     IndexingDisabler guard(mthds, trx.state()->hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL));
@@ -728,7 +728,7 @@ Result RocksDBVPackIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd
         break;
       }
     }
-    
+
     if (res.ok()) {
       auto* state = RocksDBTransactionState::toState(&trx);
       auto* trxc = static_cast<RocksDBTransactionCollection*>(state->findCollection(_collection.id()));
@@ -758,7 +758,7 @@ namespace {
       if (second.isExternal()) {
         second = second.resolveExternal();
       }
-      
+
       if (begin->shouldExpand &&
           first.isArray() && second.isArray()) {
         auto next = begin + 1;
@@ -772,7 +772,7 @@ namespace {
         }
         return true;
       }
-      
+
       auto dist = std::distance(begin, end);
       bool notF1 = first.isNone() || (dist == 1 && !first.isObject());
       bool notF2 = second.isNone() || (dist == 1 && !second.isObject());
@@ -783,7 +783,7 @@ namespace {
         break;
       }
     }
-    
+
     return basics::VelocyPackHelper::equal(first, second, true);
   }
 } // namespace
@@ -800,7 +800,7 @@ Result RocksDBVPackIndex::update(transaction::Methods& trx, RocksDBMethods* mthd
     return RocksDBIndex::update(trx, mthds, oldDocumentId, oldDoc,
                                 newDocumentId, newDoc, mode);
   }
-  
+
   if (!std::all_of(_fields.cbegin(), _fields.cend(), [&](auto const& path) {
     return ::attributesEqual(oldDoc, newDoc, path.begin(), path.end());
   })) {
@@ -808,7 +808,7 @@ Result RocksDBVPackIndex::update(transaction::Methods& trx, RocksDBMethods* mthd
     return RocksDBIndex::update(trx, mthds, oldDocumentId, oldDoc,
                                 newDocumentId, newDoc, mode);
   }
-  
+
   Result res;
   // more expensive method to
   ::arangodb::containers::SmallVector<RocksDBKey>::allocator_type::arena_type elementsArena;
@@ -819,12 +819,12 @@ Result RocksDBVPackIndex::update(transaction::Methods& trx, RocksDBMethods* mthd
     // rethrow all types of exceptions from here...
     transaction::BuilderLeaser leased(&trx);
     int r = fillElement(*(leased.get()), newDocumentId, newDoc, elements, hashes);
-    
+
     if (r != TRI_ERROR_NO_ERROR) {
       return addErrorMsg(res, r);
     }
   }
-  
+
   RocksDBValue value = RocksDBValue::UniqueVPackIndexValue(newDocumentId);
   size_t const count = elements.size();
   for (size_t i = 0; i < count; ++i) {
@@ -835,7 +835,7 @@ Result RocksDBVPackIndex::update(transaction::Methods& trx, RocksDBMethods* mthd
       break;
     }
   }
-  
+
   return res;
 }
 
@@ -883,7 +883,7 @@ Result RocksDBVPackIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd
     // non-unique index contain the unique objectID written exactly once
     for (size_t i = 0; i < count; ++i) {
       s = mthds->SingleDelete(_cf, elements[i]);
-      
+
       if (!s.ok()) {
         res.reset(rocksutils::convertStatus(s, rocksutils::index));
       }
@@ -1286,6 +1286,7 @@ void RocksDBVPackIndex::recalculateEstimates() {
   std::unique_ptr<rocksdb::Iterator> it(db->NewIterator(options, _cf));
   for (it->Seek(bounds.start()); it->Valid(); it->Next()) {
     uint64_t hash = RocksDBVPackIndex::HashForKey(it->key());
+    //cppcheck-suppress uninitvar ; doesn't understand above call
     _estimator->insert(hash);
   }
   _estimator->setAppliedSeq(seq);

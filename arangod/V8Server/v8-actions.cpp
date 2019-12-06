@@ -448,7 +448,7 @@ v8::Handle<v8::Object> TRI_RequestCppToV8(v8::Isolate* isolate,
           request->setDefaultContentType();
           digesteable = true;
         }
-      } catch ( ... ) {} 
+      } catch ( ... ) {}
       // ok, no json/vpack after all ;-)
       auto raw = request->rawPayload();
       headers[StaticStrings::ContentLength] =
@@ -462,7 +462,7 @@ v8::Handle<v8::Object> TRI_RequestCppToV8(v8::Isolate* isolate,
         return;
       }
     }
-                                     
+
     if (rest::ContentType::JSON == request->contentType()) {
       VPackStringRef body = request->rawPayload();
       req->Set(RequestBodyKey, TRI_V8_PAIR_STRING(isolate, body.data(), body.size()));
@@ -1362,6 +1362,7 @@ static void JS_RequestParts(v8::FunctionCallbackInfo<v8::Value> const& args) {
         v8::Handle<v8::Object> partObject = v8::Object::New(isolate);
         partObject->Set(TRI_V8_ASCII_STRING(isolate, "headers"), headersObject);
 
+        // cppcheck-suppress nullPointerArithmetic ; cannot get here, if data is nullptr
         V8Buffer* buffer = V8Buffer::New(isolate, data, end - data);
         auto localHandle = v8::Local<v8::Object>::New(isolate, buffer->_handle);
 
@@ -1452,14 +1453,14 @@ static int clusterSendToAllServers(std::string const& dbname,
 
   network::Headers headers;
   fuerte::RestVerb verb = network::arangoRestVerbToFuerte(method);
-  
+
   network::RequestOptions reqOpts;
   reqOpts.database = dbname;
   reqOpts.timeout = network::Timeout(3600);
 
   std::vector<futures::Future<network::Response>> futures;
   futures.reserve(DBServers.size());
-  
+
   // Have to propagate to DB Servers
   for (auto const& sid : DBServers) {
     VPackBuffer<uint8_t> buffer(body.size());
@@ -1759,7 +1760,7 @@ void TRI_InitV8ServerUtils(v8::Isolate* isolate) {
                                                    "SYS_DEBUG_SHOULD_FAILAT"),
                                JS_DebugShouldFailAt);
 #endif
-  
+
   // poll interval for Foxx queues
   auto& server = application_features::ApplicationServer::server();
   FoxxQueuesFeature& foxxQueuesFeature = server.getFeature<FoxxQueuesFeature>();

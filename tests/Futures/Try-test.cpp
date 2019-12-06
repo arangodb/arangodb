@@ -92,13 +92,13 @@ TEST(FuturesTryTest, Basic) {
 }
 
 TEST(FuturesTryTest, in_place) {
-  Try<A> t_a(in_place, 5);
+  Try<A> t_a(std::in_place, 5);
 
   ASSERT_TRUE(5 == t_a.get().x());
 }
 
 TEST(FuturesTryTest, in_place_nested) {
-  Try<Try<A>> t_t_a(in_place, in_place, 5);
+  Try<Try<A>> t_t_a(std::in_place, std::in_place, 5);
 
   ASSERT_TRUE(5 == t_t_a.get().get().x());
 }
@@ -124,8 +124,8 @@ TEST(FuturesTryTest, assignment_with_throwing_ctor) {
   int counter = 0;
 
   {
-    Try<ThrowingCopyConstructor> t1{in_place, counter};
-    Try<ThrowingCopyConstructor> t2{in_place, counter};
+    Try<ThrowingCopyConstructor> t1{std::in_place, counter};
+    Try<ThrowingCopyConstructor> t2{std::in_place, counter};
     ASSERT_TRUE(2 == counter);
     EXPECT_ANY_THROW(t2 = t1);
     EXPECT_ANY_THROW(t2 = t1);
@@ -135,7 +135,7 @@ TEST(FuturesTryTest, assignment_with_throwing_ctor) {
   }
   ASSERT_TRUE(0 == counter);
   {
-    Try<ThrowingCopyConstructor> t1{in_place, counter};
+    Try<ThrowingCopyConstructor> t1{std::in_place, counter};
     Try<ThrowingCopyConstructor> t2;
     ASSERT_TRUE(1 == counter);
     EXPECT_ANY_THROW(t2 = t1);
@@ -173,12 +173,12 @@ TEST(FuturesTryTest, MoveConstRvalue) {
   // where for example MutableContainer has a mutable member that is move only
   // and you want to fetch the value from the Try and move it into a member
   {
-    const Try<MutableContainer> t{in_place};
+    const Try<MutableContainer> t{std::in_place};
     auto val = MoveConstructOnly(std::move(t).get().val);
     static_cast<void>(val);
   }
   {
-    const Try<MutableContainer> t{in_place};
+    const Try<MutableContainer> t{std::in_place};
     auto val = (*(std::move(t))).val;
     static_cast<void>(val);
   }
