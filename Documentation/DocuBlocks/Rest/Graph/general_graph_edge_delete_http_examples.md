@@ -11,10 +11,10 @@ Removes an edge from the collection.
 @RESTURLPARAM{graph,string,required}
 The name of the graph.
 
-@RESTURLPARAM{collection,string,required} 
+@RESTURLPARAM{collection,string,required}
 The name of the edge collection the edge belongs to.
 
-@RESTURLPARAM{edge,string,required} 
+@RESTURLPARAM{edge,string,required}
 The *_key* attribute of the edge.
 
 @RESTQUERYPARAMETERS
@@ -73,8 +73,7 @@ Will only be present if returnOld is true.
 
 @RESTRETURNCODE{403}
 Returned if your user has insufficient rights.
-In order to delete vertices in the graph  you at least need to have the following privileges:
-
+In order to delete vertices in the graph  you at least need to have the following privileges:<br>
   1. `Read Only` access on the Database.
   2. `Write` access on the given collection.
 

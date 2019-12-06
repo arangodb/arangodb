@@ -51,12 +51,12 @@ if set to *true* and the query contains a *LIMIT* clause, then the
 result will have an *extra* attribute with the sub-attributes *stats*
 and *fullCount*, `{ ... , "extra": { "stats": { "fullCount": 123 } } }`.
 The *fullCount* attribute will contain the number of documents in the result before the
-last top-level LIMIT in the query was applied. It can be used to count the number of 
+last top-level LIMIT in the query was applied. It can be used to count the number of
 documents that match certain filter criteria, but only return a subset of them, in one go.
 It is thus similar to MySQL's *SQL_CALC_FOUND_ROWS* hint. Note that setting the option
 will disable a few LIMIT optimizations and may lead to more documents being processed,
 and thus make queries run longer. Note that the *fullCount* attribute may only
-be present in the result if the query has a top-level LIMIT clause and the LIMIT 
+be present in the result if the query has a top-level LIMIT clause and the LIMIT
 clause is actually used in the query.
 
 @RESTSTRUCT{maxPlans,post_api_cursor_opts,integer,optional,int64}
@@ -78,11 +78,11 @@ default value for *failOnWarning* so it does not need to be set on a per-query l
 @RESTSTRUCT{stream,post_api_cursor_opts,boolean,optional,}
 Specify *true* and the query will be executed in a **streaming** fashion. The query result is
 not stored on the server, but calculated on the fly. *Beware*: long-running queries will
-need to hold the collection locks for as long as the query cursor exists. 
-When set to *false* a query will be executed right away in its entirety. 
+need to hold the collection locks for as long as the query cursor exists.
+When set to *false* a query will be executed right away in its entirety.
 In that case query results are either returned right away (if the result set is small enough),
-or stored on the arangod instance and accessible via the cursor API (with respect to the `ttl`). 
-It is advisable to *only* use this option on short-running queries or without exclusive locks 
+or stored on the arangod instance and accessible via the cursor API (with respect to the `ttl`).
+It is advisable to *only* use this option on short-running queries or without exclusive locks
 (write-locks on MMFiles).
 Please note that the query options `cache`, `count` and `fullCount` will not work on streaming queries.
 Additionally query statistics, warnings and profiling data will only be available after the query is finished.
@@ -191,14 +191,11 @@ the HTTP status code
 the server error number
 
 @RESTREPLYBODY{errorMessage,string,required,string}
-a descriptive error message
-
+a descriptive error message<br>
 If the query specification is complete, the server will process the query. If an
 error occurs during query processing, the server will respond with *HTTP 400*.
-Again, the body of the response will contain details about the error.
-
+Again, the body of the response will contain details about the error.<br>
 A [list of query errors can be found here](../../Manual/Appendix/ErrorCodes.html).
-
 
 @RESTRETURNCODE{404}
 The server will respond with *HTTP 404* in case a non-existing collection is
@@ -426,4 +423,3 @@ document
 @END_EXAMPLE_ARANGOSH_RUN
 
 @endDocuBlock
-

@@ -225,4 +225,3 @@ Referring to a non-existing collection
     logJsonResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

@@ -79,8 +79,7 @@ A message created for this error.
 
 @RESTRETURNCODE{403}
 Returned if your user has insufficient rights.
-In order to modify a graph you at least need to have the following privileges:
-
+In order to modify a graph you at least need to have the following privileges:<br>
   1. `Administrate` access on the Database.
 
 @RESTREPLYBODY{error,boolean,required,}

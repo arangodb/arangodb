@@ -97,4 +97,3 @@ Unknown document handle:
     logJsonResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

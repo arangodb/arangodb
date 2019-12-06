@@ -27,7 +27,6 @@ of documents is considered an error.
 
 @RESTSTRUCT{lastValue,key_generator_type,integer,required,}
 
-
 @RESTSTRUCT{isVolatile,collection_info,boolean,required,}
 If *true* then the collection data will be
 kept in memory only and ArangoDB will not write or sync the data
@@ -85,8 +84,6 @@ corrosponds to **statusString**; *Only relevant for the MMFiles storage engine*
   - 4: "unloading"
   - 5: "deleted"
   - 6: "loading"
-
-
 
 @RESTSTRUCT{statusString,collection_info,string,optional,}
 any of: ["unloaded", "loading", "loaded", "unloading", "deleted", "unknown"] *Only relevant for the MMFiles storage engine*

@@ -20,7 +20,7 @@ UUID is created for this part of the ID.
 
 @RESTBODYPARAM{timeout,number,optional,double}
 The time in seconds that the operation tries to get a consistent
-snapshot. The default is 120 seconds. 
+snapshot. The default is 120 seconds.
 
 @RESTBODYPARAM{allowInconsistent,boolean,optional,}
 If this flag is set to `true` and no global transaction lock can be

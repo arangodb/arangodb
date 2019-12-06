@@ -35,7 +35,7 @@ Transaction size limit in bytes. Honored by the RocksDB storage engine only.
 
 @RESTDESCRIPTION
 The transaction description must be passed in the body of the POST request.
-If the transaction can be started on the server, *HTTP 201* will be returned. 
+If the transaction can be started on the server, *HTTP 201* will be returned.
 
 For successfully started transactions, the returned JSON object has the
 following properties:
@@ -62,7 +62,6 @@ details. The object has the following attributes:
 - *errorNum*: the server error number
 
 - *errorMessage*: a descriptive error message
-
 
 @RESTRETURNCODES
 
@@ -120,4 +119,3 @@ Referring to a non-existing collection
     logJsonResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

@@ -59,4 +59,3 @@ returned if a cursor is used after it has been destroyed.
   ~ db._drop(cn);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

@@ -11,7 +11,7 @@ Adds a vertex to the given collection.
 @RESTURLPARAM{graph,string,required}
 The name of the graph.
 
-@RESTURLPARAM{collection,string,required} 
+@RESTURLPARAM{collection,string,required}
 The name of the vertex collection the vertex should be inserted into.
 
 @RESTQUERYPARAMETERS
@@ -69,8 +69,7 @@ Will only be present if returnNew is true.
 
 @RESTRETURNCODE{403}
 Returned if your user has insufficient rights.
-In order to insert vertices into the graph  you at least need to have the following privileges:
-
+In order to insert vertices into the graph  you at least need to have the following privileges:<br>
   1. `Read Only` access on the Database.
   2. `Write` access on the given collection.
 
@@ -122,4 +121,3 @@ A message created for this error.
   examples.dropGraph("social");
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

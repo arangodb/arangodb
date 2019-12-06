@@ -98,8 +98,7 @@ Will only be present if returnOld is true.
 
 @RESTRETURNCODE{403}
 Returned if your user has insufficient rights.
-In order to update edges in the graph  you at least need to have the following privileges:
-
+In order to update edges in the graph  you at least need to have the following privileges:<br>
   1. `Read Only` access on the Database.
   2. `Write` access on the given collection.
 

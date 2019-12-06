@@ -16,7 +16,6 @@ The requested task
 @RESTREPLYBODY{,object,required,api_task_struct}
 The function in question
 
-
 @EXAMPLES
 
 Fetching a single task by its id
@@ -42,4 +41,3 @@ Trying to fetch a non-existing task
 
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

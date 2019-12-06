@@ -17,11 +17,11 @@ The document key.
 Wait until deletion operation has been synced to disk.
 
 @RESTQUERYPARAM{returnOld,boolean,optional}
-Return additionally the complete previous revision of the changed 
+Return additionally the complete previous revision of the changed
 document under the attribute *old* in the result.
 
 @RESTQUERYPARAM{silent,boolean,optional}
-If set to *true*, an empty object will be returned as response. No meta-data 
+If set to *true*, an empty object will be returned as response. No meta-data
 will be returned for the removed document. This option can be used to
 save some network traffic.
 
@@ -32,10 +32,10 @@ You can conditionally remove a document based on a target revision id by
 using the *if-match* HTTP header.
 
 @RESTDESCRIPTION
-If *silent* is not set to *true*, the body of the response contains a JSON 
-object with the information about the handle and the revision. The attribute 
-*_id* contains the known *document-handle* of the removed document, *_key* 
-contains the key which uniquely identifies a document in a given collection, 
+If *silent* is not set to *true*, the body of the response contains a JSON
+object with the information about the handle and the revision. The attribute
+*_id* contains the known *document-handle* of the removed document, *_key*
+contains the key which uniquely identifies a document in a given collection,
 and the attribute *_rev* contains the document revision.
 
 If the *waitForSync* parameter is not specified or set to *false*,

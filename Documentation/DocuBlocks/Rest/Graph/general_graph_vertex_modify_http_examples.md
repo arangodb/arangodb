@@ -14,7 +14,7 @@ The name of the graph.
 @RESTURLPARAM{collection,string,required}
 The name of the vertex collection the vertex belongs to.
 
-@RESTURLPARAM{vertex,string,required} 
+@RESTURLPARAM{vertex,string,required}
 The *_key* attribute of the vertex.
 
 @RESTQUERYPARAMETERS
@@ -98,8 +98,7 @@ Will only be present if returnOld is true.
 
 @RESTRETURNCODE{403}
 Returned if your user has insufficient rights.
-In order to update vertices in the graph  you at least need to have the following privileges:
-
+In order to update vertices in the graph  you at least need to have the following privileges:<br>
   1. `Read Only` access on the Database.
   2. `Write` access on the given collection.
 

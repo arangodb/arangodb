@@ -98,7 +98,7 @@ Creating a database named *example*.
 @END_EXAMPLE_ARANGOSH_RUN
 
 Creating a database named *mydb* with two users, flexible sharding and
-default replication factor of 3 for collections that will be part of 
+default replication factor of 3 for collections that will be part of
 the newly created database.
 
 @EXAMPLE_ARANGOSH_RUN{RestDatabaseCreateUsers}
@@ -133,4 +133,3 @@ the newly created database.
     logJsonResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-
