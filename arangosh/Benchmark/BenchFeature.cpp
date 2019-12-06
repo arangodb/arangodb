@@ -291,22 +291,22 @@ void BenchFeature::start() {
         operationsCounter.incompleteFailures(),
         requestTime,
     });
-    histogrammStr = "Percentile: 85%    90%     95%      99%\n";
+    histogramStr = "Percentile: 85%    90%     95%      99%\n";
     std::vector<uint8_t> percentiles = {85, 90, 95, 99};
     for (size_t i = 0; i < static_cast<size_t>(_concurrency); ++i) {
       threads[i]->aggregateValues(minTime, maxTime, avgTime, counter);
       auto res = threads[i]->getPercentiles(percentiles);
       for (auto time : res) {
-        histogrammStr += std::to_string(time) + "s  ";
+        histogramStr += std::to_string(time) + "s  ";
       }
-      histogrammStr += "\n";
+      histogramStr += "\n";
       delete threads[i];
     }
     threads.clear();
   }
   std::cout << std::endl;
 
-  report(client, results, minTime, maxTime, avgTime, histogrammStr);
+  report(client, results, minTime, maxTime, avgTime, histogramStr);
   if (!ok) {
     std::cout << "At least one of the runs produced failures!" << std::endl;
   }
@@ -319,7 +319,7 @@ void BenchFeature::start() {
   *_result = ret;
 }
 
-bool BenchFeature::report(ClientFeature& client, std::vector<BenchRunResult> results, double minTime, double maxTime, double avgTime, std::string const& histogramm) {
+bool BenchFeature::report(ClientFeature& client, std::vector<BenchRunResult> results, double minTime, double maxTime, double avgTime, std::string const& histogram) {
   std::cout << std::endl;
 
   std::cout << "Total number of operations: " << _operations << ", runs: " << _runs
@@ -368,7 +368,7 @@ bool BenchFeature::report(ClientFeature& client, std::vector<BenchRunResult> res
     " Min Request time: " << minTime << std::endl <<
     " Max Request time: " << maxTime << std::endl <<
     " Avg Request time: " << avgTime << std::endl;
-  std::cout << histogramm;
+  std::cout << histogram;
   if (_junitReportFile.empty()) {
     return true;
   }

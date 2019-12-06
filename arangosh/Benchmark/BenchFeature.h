@@ -71,7 +71,7 @@ class BenchFeature final : public application_features::ApplicationFeature {
 
  private:
   void status(std::string const& value);
-  bool report(ClientFeature&, std::vector<BenchRunResult>, double minTime, double maxTime, double avgTime, std::string const& histogramm);
+  bool report(ClientFeature&, std::vector<BenchRunResult>, double minTime, double maxTime, double avgTime, std::string const& histogram);
   void printResult(BenchRunResult const& result);
   bool writeJunitReport(BenchRunResult const& result);
 

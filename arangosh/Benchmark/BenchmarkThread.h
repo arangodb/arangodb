@@ -81,8 +81,8 @@ class BenchmarkThread : public arangodb::Thread {
         _minTime(-1.0),
         _maxTime(0.0),
         _avgTime(0.0),
-        _histogrammScope(0.0),
-        _histogramm(1000, 0) { }
+        _histogramScope(0.0),
+        _histogram(1000, 0) { }
 
   ~BenchmarkThread() { shutdown(); }
   //////////////////////////////////////////////////////////////////////////////
@@ -100,16 +100,16 @@ class BenchmarkThread : public arangodb::Thread {
 
     _avgTime = ((_avgTime * _counter) + time) / (_counter + 1);
 
-    if (_histogrammScope == 0.0) {
-      _histogrammScope = time * 20;
+    if (_histogramScope == 0.0) {
+      _histogramScope = time * 20;
     }
 
     
-    double val = _histogrammScope / time;
-    if (time > _histogrammScope) {
+    double val = _histogramScope / time;
+    if (time > _histogramScope) {
       val = 1000;
     }
-    _histogramm[round(val)] ++;
+    _histogram[round(val)] ++;
   }
 
   void aggregateValues(double &minTime, double &maxTime, double &avgTime, size_t &counter) {
@@ -143,9 +143,9 @@ class BenchmarkThread : public arangodb::Thread {
     size_t count = 0;
     size_t vecPos = 0;
     while (vecPos < 1000 && i < which.size()) {
-      count += _histogramm[vecPos];
+      count += _histogram[vecPos];
       if (count >= nextCount) {
-        res[i] = _histogrammScope / 1000 * vecPos;
+        res[i] = _histogramScope / 1000 * vecPos;
         i++;
         if (i > which.size()) {
           return res;
