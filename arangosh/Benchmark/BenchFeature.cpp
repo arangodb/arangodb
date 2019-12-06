@@ -213,7 +213,7 @@ void BenchFeature::start() {
   realStep += 10000;
 
   std::vector<BenchmarkThread*> threads;
-  std::string histogrammStr;
+  std::string histogramStr;
   bool ok = true;
   std::vector<BenchRunResult> results;
   for (uint64_t j = 0; j < _runs; j++) {
