@@ -623,7 +623,7 @@ public:
   double _avgTime;
 
   double _histogramScope;
-  std::vector<size_t> _histogramm;
+  std::vector<size_t> _histogram;
 };
 }  // namespace arangobench
 }  // namespace arangodb
