@@ -59,9 +59,15 @@ struct MoveShard : public Job {
   std::string _shard;
   std::string _from;
   std::string _to;
+  std::string _parentJobId = {};
   bool _isLeader;
   bool _remainsFollower;
   bool _toServerIsFollower;
+
+  MoveShard& withParent(std::string parentId) {
+    _parentJobId = std::move(parentId);
+    return *this;
+  }
 
 };
 }  // namespace consensus

@@ -293,10 +293,10 @@ std::vector<bool> Store::applyLogEntries(arangodb::velocypack::Builder const& qu
     for (auto it = in.begin(), end = in.end(); it != end; it = in.upper_bound(it->first)) {
       urls.push_back(it->first);
     }
-    
+
     auto const& nf = _server.getFeature<arangodb::NetworkFeature>();
     network::ConnectionPool* cp = nf.pool();
-    
+
     network::RequestOptions reqOpts;
     reqOpts.timeout = network::Timeout(2);
 
@@ -338,7 +338,7 @@ std::vector<bool> Store::applyLogEntries(arangodb::velocypack::Builder const& qu
 
       std::string endpoint, path;
       if (endpointPathFromUrl(url, endpoint, path)) {
-        
+
         Agent* agent = _agent;
         network::sendRequest(cp, endpoint, fuerte::RestVerb::Post, path,
                              *buffer, reqOpts).thenValue([=](network::Response r) {
@@ -352,9 +352,9 @@ std::vector<bool> Store::applyLogEntries(arangodb::velocypack::Builder const& qu
               agent->trashStoreCallback(url, VPackSlice(buffer->data()));
             }
           }
-          
+
         });
-        
+
       } else {
         LOG_TOPIC("76aca", WARN, Logger::AGENCY) << "Malformed URL " << url;
       }
@@ -433,7 +433,7 @@ check_ret_t Store::check(VPackSlice const& slice, CheckMode mode) const {
               break;
             }
           }
-        } else if (oper == "in") {  // in
+        } else if (oper == "in" || oper == "is-read-locked") {  // in
           if (found) {
             if (node->slice().isArray()) {
               bool found = false;
@@ -473,6 +473,65 @@ check_ret_t Store::check(VPackSlice const& slice, CheckMode mode) const {
           ret.push_back(precond.key);
           if (mode == FIRST_FAIL) {
             break;
+          }
+        } else if (oper == "is-write-locked") {  // is-write-locked
+          // the lock is write locked by the given entity, if node and the value
+          // are strings and both are equal.
+          if (found && op.value.isString() && node->slice().isString()) {
+            if (node->slice().isEqualString(op.value.stringRef())) {
+              continue;
+            }
+          }
+          ret.push_back(precond.key);
+          if (mode == FIRST_FAIL) {
+            break;
+          }
+        } else if (oper == "is-read-locked") {  // is-read-locked
+          // the lock is read locked by the given entity, if node is an
+          // array of strings and the value is a string and if the value is
+          // contained in the node array.
+          if (found && op.value.isString() && node->slice().isArray()) {
+            bool isInArray = false;
+            for (auto const& i : VPackArrayIterator(node->slice())) {
+              if (!i.isString()) {
+                break;  // invalid, only strings allowed
+              }
+              if (i.isEqualString(op.value.stringRef())) {
+                isInArray = true;
+                break;
+              }
+            }
+            if (isInArray) {
+              continue;
+            }
+          }
+          ret.push_back(precond.key);
+          if (mode == FIRST_FAIL) {
+            break;
+          }
+        } else if (oper == "can-read-lock") {  // can-read-lock
+          // a lock can be read locked if the node is either not found
+          // or the node is readLockable.
+          if (!found) {
+            continue;
+          }
+          if (node->isReadLockable() != op.value.getBool()) {
+            ret.push_back(precond.key);
+            if (mode == FIRST_FAIL) {
+              break;
+            }
+          }
+        } else if (oper == "can-write-lock") {  // can-write-lock
+          // a lock can be write locked if the node is either not found
+          // or the node is writeLockable.
+          if (!found) {
+            continue;
+          }
+          if (node->isWriteLockable() != op.value.getBool()) {
+            ret.push_back(precond.key);
+            if (mode == FIRST_FAIL) {
+              break;
+            }
           }
         } else {
           // Objects without any of the above cases are not considered to
@@ -661,19 +720,19 @@ bool Store::applies(arangodb::velocypack::Slice const& transaction) {
   _storeLock.assertLockedByCurrentThread();
 
   auto it = VPackObjectIterator(transaction);
-  
+
   std::vector<std::string> abskeys;
   abskeys.reserve(it.size());
-  
+
   std::vector<std::pair<size_t, VPackSlice>> idx;
   idx.reserve(it.size());
 
   size_t counter = 0;
   while (it.valid()) {
     VPackStringRef key = it.key().stringRef();
-   
+
     // push back an empty string first, so we can avoid a later move
-    abskeys.emplace_back(); 
+    abskeys.emplace_back();
 
     // and now work on this string
     std::string& absoluteKey = abskeys.back();
@@ -709,12 +768,12 @@ bool Store::applies(arangodb::velocypack::Slice const& transaction) {
   }
 
   std::sort(idx.begin(), idx.end(),
-       [&abskeys](std::pair<size_t, VPackSlice> const& i1, std::pair<size_t, VPackSlice> const& i2) noexcept { 
-    return abskeys[i1.first] < abskeys[i2.first]; 
+       [&abskeys](std::pair<size_t, VPackSlice> const& i1, std::pair<size_t, VPackSlice> const& i2) noexcept {
+    return abskeys[i1.first] < abskeys[i2.first];
   });
 
   for (const auto& i : idx) {
-    Slice value = i.second; 
+    Slice value = i.second;
 
     if (value.isObject() && value.hasKey("op")) {
       Slice const op = value.get("op");
@@ -903,7 +962,7 @@ std::vector<std::string> Store::split(std::string const& str) {
   while (p != e && *p == '/') {
     ++p;
   }
-  
+
   // strip trailing forward slashes
   while (p != e && *(e - 1) == '/') {
     --e;

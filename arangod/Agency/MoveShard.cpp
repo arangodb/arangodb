@@ -30,6 +30,8 @@
 using namespace arangodb;
 using namespace arangodb::consensus;
 
+constexpr auto PARENT_JOB_ID = "parentJob";
+
 MoveShard::MoveShard(Node const& snapshot, AgentInterface* agent,
                      std::string const& jobId, std::string const& creator,
                      std::string const& database, std::string const& collection,
@@ -72,6 +74,7 @@ MoveShard::MoveShard(Node const& snapshot, AgentInterface* agent,
   auto tmp_isLeader = _snapshot.hasAsSlice(path + "isLeader");
   auto tmp_remainsFollower = _snapshot.hasAsSlice(path + "remainsFollower");
   auto tmp_creator = _snapshot.hasAsString(path + "creator");
+  auto tmp_parent = _snapshot.hasAsString(path + PARENT_JOB_ID);
 
   if (tmp_database.second && tmp_collection.second && tmp_from.second && tmp_to.second &&
       tmp_shard.second && tmp_creator.second && tmp_isLeader.second) {
@@ -85,6 +88,9 @@ MoveShard::MoveShard(Node const& snapshot, AgentInterface* agent,
         tmp_remainsFollower.second ? tmp_remainsFollower.first.isTrue() : _isLeader;
     _toServerIsFollower = false;
     _creator = tmp_creator.first;
+    if (tmp_parent.second) {
+      _parentJobId = std::move(tmp_parent.first);
+    }
   } else {
     std::stringstream err;
     err << "Failed to find job " << _jobId << " in agency";
@@ -147,6 +153,9 @@ bool MoveShard::create(std::shared_ptr<VPackBuilder> envelope) {
     _jb->add("remainsFollower", VPackValue(_remainsFollower));
     _jb->add("jobId", VPackValue(_jobId));
     _jb->add("timeCreated", VPackValue(now));
+    if (!_parentJobId.empty()) {
+      _jb->add(PARENT_JOB_ID, VPackValue(_parentJobId));
+    }
   }
 
   _status = TODO;

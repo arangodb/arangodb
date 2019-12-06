@@ -47,7 +47,11 @@ enum Operation {
   OBSERVE,
   UNOBSERVE,
   ERASE,
-  REPLACE
+  REPLACE,
+  READ_LOCK,
+  READ_UNLOCK,
+  WRITE_LOCK,
+  WRITE_UNLOCK,
 };
 
 using namespace arangodb::velocypack;
@@ -188,7 +192,7 @@ class Node {
 
   /// brief Normalize node URIs
   static std::string normalize(std::string const& key);
- 
+
 private:
 
   /// @brief Get store if it exists:
@@ -326,6 +330,11 @@ public:
   double getDouble() const;
 
  public:
+  bool isReadLockable() const;
+  bool isReadUnlockable() const;
+  bool isWriteLockable() const;
+  bool isWriteUnlockable() const;
+
   /// @brief Clear key value store
   void clear();
 

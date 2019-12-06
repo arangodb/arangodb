@@ -697,6 +697,75 @@ bool Node::handle<SHIFT>(VPackSlice const& slice) {
   return true;
 }
 
+// Read locks the given slice
+template<>
+bool Node::handle<READ_LOCK>(VPackSlice const& slice) {
+  // check if it is either an empty string (i.e.) unlocked write lock
+  // or an empty array (unlocked read lock)
+  if (isReadLockable()) {
+    return handle<PUSH>(slice);
+  }
+
+  return false;
+}
+
+template <>
+bool Node::handle<READ_UNLOCK>(VPackSlice const& slice) {
+  if (isReadUnlockable()) {
+    return Node::handle<ERASE>(slice);
+  }
+  return false;
+}
+
+template<>
+bool Node::handle<WRITE_LOCK>(VPackSlice const& slice) {
+  if (isWriteLockable()) {
+    return Node::handle<SET>(slice);
+  }
+  return false;
+}
+
+template<>
+bool Node::handle<WRITE_UNLOCK>(VPackSlice const& slice) {
+  if (isWriteUnlockable()) {
+    this->operator=(Slice::nullSlice());
+    return true;
+  }
+  return false;
+}
+
+bool Node::isReadLockable() const {
+  Slice slice = this->slice();
+  // the following states are counted as readLockable
+  // array - when read locked or read lock released
+  // null - when write lock released
+  // empty object - when the node is created
+  return slice.isArray() || slice.isEmptyObject() || slice.isNull();
+}
+
+bool Node::isReadUnlockable() const {
+  Slice slice = this->slice();
+  // the following states are counted as readUnlockable
+  // array of length > 0 - when it was read locked but not all locks released
+  return slice.isArray() && slice.length() > 0;
+}
+
+bool Node::isWriteLockable() const {
+  Slice slice = this->slice();
+  // the following states are counted as writeLockable
+  //  empty array - when the last read lock was released
+  //  empty object - when the node is create
+  //  null - when the write lock was released
+  return slice.isEmptyArray() || slice.isEmptyObject() || slice.isNull();
+}
+
+bool Node::isWriteUnlockable() const {
+  Slice slice = this->slice();
+  // the following states are counted as writeLockable
+  //  string - when write lock was obtained
+  return slice.isString();
+}
+
 }  // namespace consensus
 }  // namespace arangodb
 
@@ -730,6 +799,14 @@ bool Node::applieOp(VPackSlice const& slice) {
     return handle<ERASE>(slice);
   } else if (oper == "replace") {  // "op":"replace"
     return handle<REPLACE>(slice);
+  } else if (oper == "read-lock") {
+    return handle<READ_LOCK>(slice);
+  } else if (oper == "read-unlock") {
+    return handle<READ_UNLOCK>(slice);
+  } else if (oper == "write-lock") {
+    return handle<WRITE_LOCK>(slice);
+  } else if (oper == "write-unlock") {
+    return handle<WRITE_UNLOCK>(slice);
   } else {  // "op" might not be a key word after all
     LOG_TOPIC("fb064", WARN, Logger::AGENCY)
         << "Keyword 'op' without known operation. Handling as regular key: \""
