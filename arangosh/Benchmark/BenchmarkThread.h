@@ -109,7 +109,7 @@ class BenchmarkThread : public arangodb::Thread {
     if (time > _histogramScope) {
       val = 1000;
     }
-    uint16_t bucket = round(val);
+    uint16_t bucket = static_cast<uint16_t>(round(val));
     _histogram[bucket] ++;
   }
 
