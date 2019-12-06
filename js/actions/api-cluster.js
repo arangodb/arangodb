@@ -736,7 +736,7 @@ actions.defineHttp({
     if (req.requestType !== actions.GET &&
         req.requestType !== actions.PUT) {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
-        'only GET and PUT methods are allowed');
+        'only GET and PUT requests are allowed');
       return;
     }
 
@@ -861,7 +861,7 @@ actions.defineHttp({
     }
     if (req.requestType !== actions.POST) {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
-        'only the POST method is allowed');
+        'only POST requests are allowed');
       return;
     }
 
@@ -963,7 +963,7 @@ actions.defineHttp({
     }
     if (req.requestType !== actions.GET) {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
-        'only the GET method is allowed');
+        'only GET requests are allowed');
       return;
     }
 
@@ -1052,7 +1052,7 @@ actions.defineHttp({
     }
     if (req.requestType !== actions.POST) {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
-        'only the POST method is allowed');
+        'only POST requests are allowed');
       return;
     }
 
@@ -1143,7 +1143,7 @@ actions.defineHttp({
     }
     if (req.requestType !== actions.PUT) {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
-        'only the PUT method is allowed');
+        'only PUT requests are allowed');
       return;
     }
 
@@ -1212,7 +1212,7 @@ actions.defineHttp({
     }
     if (req.requestType !== actions.GET) {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
-        'only the GET method is allowed');
+        'only GET requests are allowed');
       return;
     }
 
@@ -1258,7 +1258,7 @@ actions.defineHttp({
     }
     if (req.requestType !== actions.POST) {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
-        'only the POST method is allowed');
+        'only POST requests are allowed');
       return;
     }
 
@@ -1325,7 +1325,7 @@ actions.defineHttp({
     }
     if (req.requestType !== actions.GET) {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
-        'only the GET method is allowed');
+        'only GET requests are allowed');
       return;
     }
 
