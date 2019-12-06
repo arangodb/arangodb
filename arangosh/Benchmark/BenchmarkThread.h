@@ -109,7 +109,7 @@ class BenchmarkThread : public arangodb::Thread {
     if (time > _histogramScope) {
       val = 1000;
     }
-    uint16_t bucket = static_cast<uint16_t>(round(val));
+    uint16_t bucket = static_cast<uint16_t>(lround(val));
     _histogram[bucket] ++;
   }
 
@@ -136,7 +136,7 @@ class BenchmarkThread : public arangodb::Thread {
     std::vector<size_t> counts(which.size());
     size_t i = 0;
     while (i < which.size()) {
-      counts[i] = static_cast<size_t>(round(_counter * which[i] / 100));
+      counts[i] = static_cast<size_t>(lround(_counter * which[i] / 100));
       i++;
     }
     i = 0;
