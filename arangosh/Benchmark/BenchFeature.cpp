@@ -291,13 +291,13 @@ void BenchFeature::start() {
         operationsCounter.incompleteFailures(),
         requestTime,
     });
-    histogramStr = "Percentile: 85%    90%     95%      99%\n";
+    histogramStr = "Percentile: 85%            90%            95%            99%\n";
     std::vector<uint8_t> percentiles = {85, 90, 95, 99};
     for (size_t i = 0; i < static_cast<size_t>(_concurrency); ++i) {
       threads[i]->aggregateValues(minTime, maxTime, avgTime, counter);
       auto res = threads[i]->getPercentiles(percentiles);
       for (auto time : res) {
-        histogramStr += std::to_string(time) + "s  ";
+        histogramStr += "     " + std::to_string(time * 1000) + "ms";
       }
       histogramStr += "\n";
       delete threads[i];
@@ -365,9 +365,9 @@ bool BenchFeature::report(ClientFeature& client, std::vector<BenchRunResult> res
   }
   printResult(output);
   std::cout <<
-    " Min Request time: " << minTime << std::endl <<
-    " Max Request time: " << maxTime << std::endl <<
-    " Avg Request time: " << avgTime << std::endl;
+    " Min Request time: " << (minTime * 1000) << "ms" << std::endl <<
+    " Avg Request time: " << (avgTime * 1000) << "ms" << std::endl <<
+    " Max Request time: " << (maxTime * 1000) << "ms" << std::endl;
   std::cout << histogram;
   if (_junitReportFile.empty()) {
     return true;
