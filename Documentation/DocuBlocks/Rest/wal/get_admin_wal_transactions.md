@@ -35,4 +35,3 @@ is returned when an invalid HTTP method is used.
     logJsonResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

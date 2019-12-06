@@ -26,11 +26,11 @@ If the code specified in *action* ends with a return statement, the
 value returned will also be returned by the REST API in the *result*
 attribute if the transaction committed successfully.
 
-@RESTBODYPARAM{waitForSync,boolean,optional,boolean}
+@RESTBODYPARAM{waitForSync,boolean,optional,}
 an optional boolean flag that, if set, will force the
 transaction to write all data to disk before returning.
 
-@RESTBODYPARAM{allowImplicit,boolean,optional,boolean}
+@RESTBODYPARAM{allowImplicit,boolean,optional,}
 Allow reading from undeclared collections.
 
 @RESTBODYPARAM{lockTimeout,integer,optional,int64}
@@ -225,4 +225,3 @@ Referring to a non-existing collection
     logJsonResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

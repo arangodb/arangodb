@@ -27,4 +27,3 @@ Fetching all tasks
 
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-
