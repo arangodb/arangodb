@@ -24,6 +24,7 @@
 #define ARANGOD_AQL_AQL_CALL_H 1
 
 #include "Aql/ExecutionBlock.h"
+#include "Basics/overload.h"
 
 #include <cstddef>
 #include <variant>
@@ -92,14 +93,15 @@ struct AqlCall {
   }
 
   void didProduce(std::size_t n) {
-    if (std::holds_alternative<std::size_t>(softLimit)) {
-      TRI_ASSERT(n <= std::get<std::size_t>(softLimit));
-      softLimit = std::get<std::size_t>(softLimit) - n;
-    }
-    if (std::holds_alternative<std::size_t>(hardLimit)) {
-      TRI_ASSERT(n <= std::get<std::size_t>(hardLimit));
-      hardLimit = std::get<std::size_t>(hardLimit) - n;
-    }
+    auto minus = overload{
+        [n](size_t& i) {
+          TRI_ASSERT(n <= i);
+          i -= n;
+        },
+        [](auto) {},
+    };
+    std::visit(minus, softLimit);
+    std::visit(minus, hardLimit);
   }
 
   bool hasHardLimit() const {
@@ -120,6 +122,18 @@ constexpr bool operator<(AqlCall::Limit const& a, AqlCall::Limit const& b) {
     return true;
   }
   return false;
+}
+
+constexpr AqlCall::Limit operator+(AqlCall::Limit const& a, size_t n) {
+  return std::visit(overload{[n](size_t const& i) -> AqlCall::Limit {
+                               return i + n;
+                             },
+                             [](auto inf) -> AqlCall::Limit { return inf; }},
+                    a);
+}
+
+constexpr AqlCall::Limit operator+(size_t n, AqlCall::Limit const& a) {
+  return a + n;
 }
 
 }  // namespace aql
