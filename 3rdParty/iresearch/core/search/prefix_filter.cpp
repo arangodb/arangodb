@@ -66,7 +66,12 @@ DEFINE_FACTORY_DEFAULT(by_prefix)
     // get term metadata
     auto& meta = terms->attributes().get<term_meta>();
     const decltype(irs::term_meta::docs_count) NO_DOCS = 0;
-    const auto& docs_count = meta ? meta->docs_count : NO_DOCS;
+
+    // NOTE: we can't use reference to 'docs_count' here, like
+    // 'const auto& docs_count = meta ? meta->docs_count : NO_DOCS;'
+    // since not gcc4.9 nor msvc2015-2019 can handle this correctly
+    // probably due to broken optimization
+    const auto* docs_count = meta ? &meta->docs_count : &NO_DOCS;
 
     if (starts_with(value, prefix)) {
       terms->read();
@@ -77,8 +82,8 @@ DEFINE_FACTORY_DEFAULT(by_prefix)
 
       do {
         // fill scoring candidates
-        scorer.collect(docs_count, state.count++, state, segment, *terms);
-        state.estimation += docs_count; // collect cost
+        scorer.collect(*docs_count, state.count++, state, segment, *terms);
+        state.estimation += *docs_count; // collect cost
 
         if (!terms->next()) {
           break;

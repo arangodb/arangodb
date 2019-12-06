@@ -818,7 +818,7 @@ class automaton_term_iterator final : public term_iterator_base {
   }
 
   virtual doc_iterator::ptr postings(const flags& features) const override {
-    return term_iterator_base::postings(cur_block_ ? cur_block_: nullptr, features);
+    return term_iterator_base::postings(cur_block_, features);
   }
 
  private:

@@ -93,7 +93,7 @@ class limited_sample_scorer : util::noncopyable {
 
  private:
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief a representation of a term cookie with its asociated range_state
+  /// @brief a representation of a term cookie with its associated range_state
   //////////////////////////////////////////////////////////////////////////////
   struct scored_term_state {
     scored_term_state(

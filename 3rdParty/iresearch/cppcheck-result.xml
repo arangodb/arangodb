@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<results version="2">
-    <cppcheck version="1.86"/>
-    <errors>
-        <error id="syntaxError" severity="error" msg="syntax error" verbose="syntax error">
-            <location file="core/utils/bit_packing.cpp" line="45"/>
-        </error>

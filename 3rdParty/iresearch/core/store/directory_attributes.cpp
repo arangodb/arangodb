@@ -66,7 +66,7 @@ DEFINE_FACTORY_DEFAULT(fd_pool_size)
 const size_t FD_POOL_DEFAULT_SIZE = 8;
 
 fd_pool_size::fd_pool_size() noexcept
-  : size(FD_POOL_DEFAULT_SIZE) { // arbitary size
+  : size(FD_POOL_DEFAULT_SIZE) { // arbitrary size
 }
 
 void fd_pool_size::clear() noexcept {

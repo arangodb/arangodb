@@ -2288,7 +2288,7 @@ arangodb::Result fromFuncInRange(irs::boolean_filter* filter, QueryContext const
   return {};
 }
 
-// Analyze(<filter-expression>, analyzer)
+// LIKE(<attribute>, <pattern>)
 arangodb::Result fromFuncLike(
     irs::boolean_filter* filter, QueryContext const& ctx,
     FilterContext const& filterCtx, arangodb::aql::AstNode const& args) {

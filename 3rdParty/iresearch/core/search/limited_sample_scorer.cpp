@@ -107,7 +107,7 @@ void limited_sample_scorer::score(const index_reader& index,
 
     // find term attributes using cached state
     if (!term_itr->seek(bytes_ref::NIL, *(scored_state.cookie))) {
-      continue; // some internal error that caused the term to disapear
+      continue; // some internal error that caused the term to disappear
     }
 
     auto& stats_entry = res.first->second;

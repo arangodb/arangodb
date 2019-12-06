@@ -501,7 +501,7 @@ class unbounded_object_pool_base : private util::noncopyable {
 
   void release(typename T::ptr&& value) noexcept {
     if (!value) {
-      return; // do not hold nullptr values in the pool since emplace(...) uses nullptr to denot creation failure
+      return; // do not hold nullptr values in the pool since emplace(...) uses nullptr to denote creation failure
     }
 
     auto* slot = free_slots_.pop();
