@@ -24,6 +24,8 @@
 #ifndef ARANGODB_BENCHMARK_BENCHMARK_THREAD_H
 #define ARANGODB_BENCHMARK_BENCHMARK_THREAD_H 1
 
+#include <math.h>
+
 #include "Basics/Common.h"
 
 #include "Basics/ConditionLocker.h"
@@ -75,9 +77,85 @@ class BenchmarkThread : public arangodb::Thread {
         _counter(0),
         _time(0.0),
         _errorHeader(basics::StringUtils::tolower(StaticStrings::Errors)),
-        _verbose(verbose) {}
+        _verbose(verbose),
+        _minTime(-1.0),
+        _maxTime(0.0),
+        _avgTime(0.0),
+        _histogrammScope(0.0),
+        _histogramm(1000, 0) { }
 
   ~BenchmarkThread() { shutdown(); }
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief add one time
+  //////////////////////////////////////////////////////////////////////////////
+
+  void oneTime(double time) {
+    if (_minTime == -1.0 || time < _minTime) {
+      _minTime = time;
+    }
+  
+    if (time > _maxTime) {
+      _maxTime = time;
+    }
+
+    _avgTime = ((_avgTime * _counter) + time) / (_counter + 1);
+
+    if (_histogrammScope == 0.0) {
+      _histogrammScope = time * 20;
+    }
+
+    
+    double val = _histogrammScope / time;
+    if (time > _histogrammScope) {
+      val = 1000;
+    }
+    _histogramm[round(val)] ++;
+  }
+
+  void aggregateValues(double &minTime, double &maxTime, double &avgTime, size_t &counter) {
+      if (minTime == -1.0 || minTime < _minTime) {
+        minTime = _minTime;
+      }
+      if (_maxTime > maxTime) {
+        maxTime = _maxTime;
+      }
+      if (counter == 0) {
+        avgTime = _avgTime;
+        counter = _counter;
+      } else {
+        avgTime = ((avgTime * counter) +
+                   (_avgTime * _counter)) /
+          (counter + _counter);
+        counter += _counter;
+      }
+  }
+  
+  std::vector<double> getPercentiles(std::vector<uint8_t> const& which) {
+    std::vector<double> res(which.size(), 0.0);
+    std::vector<size_t> counts(which.size());
+    size_t i = 0;
+    while (i < which.size()) {
+      counts[i] = round(_counter * which[i] / 100);
+      i++;
+    }
+    i = 0;
+    size_t nextCount = counts[i];
+    size_t count = 0;
+    size_t vecPos = 0;
+    while (vecPos < 1000 && i < which.size()) {
+      count += _histogramm[vecPos];
+      if (count >= nextCount) {
+        res[i] = _histogrammScope / 1000 * vecPos;
+        i++;
+        if (i > which.size()) {
+          return res;
+        }
+        nextCount = counts[i];
+      }
+      vecPos ++;
+    }
+    return res;
+  }
 
  protected:
   //////////////////////////////////////////////////////////////////////////////
@@ -261,7 +339,9 @@ class BenchmarkThread : public arangodb::Thread {
     httpclient::SimpleHttpResult* result =
         _httpClient->request(rest::RequestType::POST, "/_api/batch",
                              batchPayload.c_str(), batchPayload.length(), _headers);
-    _time += TRI_microtime() - start;
+    double delta = TRI_microtime() - start;
+    oneTime(delta);
+    _time += delta;
 
     if (result == nullptr || !result->isComplete()) {
       if (result != nullptr) {
@@ -345,7 +425,9 @@ class BenchmarkThread : public arangodb::Thread {
     double start = TRI_microtime();
     httpclient::SimpleHttpResult* result =
         _httpClient->request(type, url, payload, payloadLength, _headers);
-    _time += TRI_microtime() - start;
+    double delta = TRI_microtime() - start;
+    oneTime(delta);
+    _time += delta;
 
     if (mustFree) {
       TRI_Free((void*)payload);
@@ -491,6 +573,7 @@ class BenchmarkThread : public arangodb::Thread {
 
   size_t _offset;
 
+public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief thread counter value
   //////////////////////////////////////////////////////////////////////////////
@@ -520,6 +603,27 @@ class BenchmarkThread : public arangodb::Thread {
   //////////////////////////////////////////////////////////////////////////////
 
   bool _verbose;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief the number of operations done
+  //////////////////////////////////////////////////////////////////////////////
+
+  double _minTime;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief the number of operations done
+  //////////////////////////////////////////////////////////////////////////////
+
+  double _maxTime;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief the number of operations done
+  //////////////////////////////////////////////////////////////////////////////
+
+  double _avgTime;
+
+  double _histogrammScope;
+  std::vector<size_t> _histogramm;
 };
 }  // namespace arangobench
 }  // namespace arangodb
