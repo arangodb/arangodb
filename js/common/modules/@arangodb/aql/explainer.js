@@ -1134,9 +1134,9 @@ function processQuery(query, explain, planIndex) {
         let viewVariables = '';
         if (node.hasOwnProperty('outNmDocId') && node.hasOwnProperty('outNmColPtr')) {
           viewAnnotation += ' with late materialization';
-          if (node.hasOwnProperty('ViewValuesVars') && node.ViewValuesVars.length > 0) {
-            viewVariables = node.ViewValuesVars.map(function (ViewValuesVar) {
-              return keyword(' LET ') + variableName(ViewValuesVar) + ' = ' + variableName(node.outVariable) + '.' + attribute(ViewValuesVar.field);
+          if (node.hasOwnProperty('viewValuesVars') && node.viewValuesVars.length > 0) {
+            viewVariables = node.viewValuesVars.map(function (viewValuesVar) {
+              return keyword(' LET ') + variableName(viewValuesVar) + ' = ' + variableName(node.outVariable) + '.' + attribute(viewValuesVar.field);
             }).join('');
           }
         }
@@ -1153,9 +1153,9 @@ function processQuery(query, explain, planIndex) {
         let indexVariables = '';
         if (node.hasOwnProperty('outNmDocId')) {
           indexAnnotation += '/* with late materialization */';
-          if (node.hasOwnProperty('IndexValuesVars') && node.IndexValuesVars.length > 0) {
-            indexVariables = node.IndexValuesVars.map(function (IndexValuesVar) {
-              return keyword(' LET ') + variableName(IndexValuesVar) + ' = ' + variableName(node.outVariable) + '.' + attribute(IndexValuesVar.field);
+          if (node.hasOwnProperty('indexValuesVars') && node.indexValuesVars.length > 0) {
+            indexVariables = node.indexValuesVars.map(function (indexValuesVar) {
+              return keyword(' LET ') + variableName(indexValuesVar) + ' = ' + variableName(node.outVariable) + '.' + attribute(indexValuesVar.field);
             }).join('');
           }
         }
@@ -1489,7 +1489,7 @@ function processQuery(query, explain, planIndex) {
       case 'SubqueryStartNode':
         return `${keyword('LET')} ${variableName(node.subqueryOutVariable)} = ( ${annotation(`/* subquery begin */`)}` ;
       case 'SubqueryEndNode':
-        return `) ${annotation(`/* subquery end */`)}`;
+        return `${keyword('RETURN')}  ${variableName(node.inVariable)} ) ${annotation(`/* subquery end */`)}`;
       case 'InsertNode': {
         modificationFlags = node.modificationFlags;
         let restrictString = '';

@@ -2,7 +2,7 @@
 @startDocuBlock put_replace_document_MULTI
 @brief replaces multiple documents
 
-@RESTHEADER{PUT /_api/document/{collection},Replace documents, replaceDocument:multiple}
+@RESTHEADER{PUT /_api/document/{collection},Replace documents,replaceDocuments}
 
 @RESTALLBODYPARAM{documents,json,required}
 A JSON representation of an array of documents.

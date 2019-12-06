@@ -1,12 +1,15 @@
 @startDocuBlock delete_remove_document
 @brief removes a document
 
-@RESTHEADER{DELETE /_api/document/{document-handle}, Removes a document, removeDocument}
+@RESTHEADER{DELETE /_api/document/{collection}/{key},Removes a document,removeDocument}
 
 @RESTURLPARAMETERS
 
-@RESTURLPARAM{document-handle,string,required}
-Removes the document identified by *document-handle*.
+@RESTURLPARAM{collection,string,required}
+Name of the *collection* in which the document is to be deleted.
+
+@RESTURLPARAM{key,string,required}
+The document key.
 
 @RESTQUERYPARAMETERS
 

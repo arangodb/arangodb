@@ -29,7 +29,7 @@ Download ID to specify for which download operation progress is queried, or
 the download operation to abort.
 If you specify this, leave out all the above body parameters.
 
-@RESTBODYPARAM{abort,boolean,optional,boolean}
+@RESTBODYPARAM{abort,boolean,optional,}
 Set this to `true` if a running download operation should be aborted. In
 this case, the only other body parameter which is needed is `downloadId`.
 

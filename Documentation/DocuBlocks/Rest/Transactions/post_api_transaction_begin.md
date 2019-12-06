@@ -17,11 +17,11 @@ deadlocks.
 See [locking and isolation](../../Manual/Transactions/LockingAndIsolation.html)
 for more information.
 
-@RESTBODYPARAM{waitForSync,boolean,optional,boolean}
+@RESTBODYPARAM{waitForSync,boolean,optional,}
 an optional boolean flag that, if set, will force the
 transaction to write all data to disk before returning.
 
-@RESTBODYPARAM{allowImplicit,boolean,optional,boolean}
+@RESTBODYPARAM{allowImplicit,boolean,optional,}
 Allow reading from undeclared collections.
 
 @RESTBODYPARAM{lockTimeout,integer,optional,int64}

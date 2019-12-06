@@ -27,7 +27,7 @@ cache of the selected database. Each result is a JSON object with the following 
 
 - *runTime*: the query's run time
 
-- *dataSources*: an array of collections/views the query was using
+- *dataSources*: an array of collections/Views the query was using
 
 @RESTRETURNCODES
 

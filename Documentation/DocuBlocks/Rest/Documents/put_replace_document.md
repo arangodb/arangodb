@@ -2,15 +2,18 @@
 @startDocuBlock put_replace_document
 @brief replaces a document
 
-@RESTHEADER{PUT /_api/document/{document-handle},Replace document, replaceDocument}
+@RESTHEADER{PUT /_api/document/{collection}/{key},Replace document,replaceDocument}
 
 @RESTALLBODYPARAM{document,json,required}
 A JSON representation of a single document.
 
 @RESTURLPARAMETERS
 
-@RESTURLPARAM{document-handle,string,required}
-This URL parameter must be a document handle.
+@RESTURLPARAM{collection,string,required}
+Name of the *collection* in which the document is to be replaced.
+
+@RESTURLPARAM{key,string,required}
+The document key.
 
 @RESTQUERYPARAMETERS
 

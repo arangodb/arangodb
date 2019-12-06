@@ -25,10 +25,12 @@ concurrent modifications to this graph.
 @RESTSTRUCT{replicationFactor,graph_representation,integer,required,}
 The replication factor used for every new collection in the graph.
 
-@RESTSTRUCT{minReplicationFactor,graph_representation,integer,optional,}
-The minimal replication factor used for every new collection in the graph.
-If one shard has less than minReplicationFactor copies, we cannot write
-to this shard, but to all others.
+@RESTSTRUCT{writeConcern,graph_representation,integer,optional,}
+how many copies of each shard are required to be in sync on the different
+DBServers for every new collection in the graph. If there are less then these
+many copies in the cluster a shard will refuse to write.  Writes to shards with
+enough up-to-date copies will succeed at the same time however. The value of
+*writeConcern* can not be larger than *replicationFactor*.
 
 @RESTSTRUCT{isSmart,graph_representation,boolean,required,}
 Flag if the graph is a SmartGraph (Enterprise Edition only) or not.

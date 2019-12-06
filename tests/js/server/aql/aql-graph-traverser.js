@@ -1835,7 +1835,7 @@ function complexInternaSuite() {
       var plans = AQL_EXPLAIN(query, bindVars, opts).plans;
       plans.forEach(function (plan) {
         var jsonResult = AQL_EXECUTEJSON(plan, { optimizer: { rules: ['-all'] } }).json;
-        assertEqual(jsonResult, result, query);
+        assertEqual(jsonResult, result, query + " " + JSON.stringify(plan));
       });
     },
 
