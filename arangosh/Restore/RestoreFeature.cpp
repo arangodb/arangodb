@@ -623,7 +623,7 @@ arangodb::Result restoreIndexes(arangodb::httpclient::SimpleHttpClient& httpClie
                                 arangodb::RestoreFeature::JobData& jobData) {
   using arangodb::Logger;
 
-  arangodb::Result result;
+  arangodb::Result result{};
   VPackSlice const parameters = jobData.collection.get("parameters");
   VPackSlice const indexes = jobData.collection.get("indexes");
   // re-create indexes
@@ -656,6 +656,7 @@ arangodb::Result restoreIndexes(arangodb::httpclient::SimpleHttpClient& httpClie
     }
   }
 
+  // cppcheck-suppress uninitvar ; false positive
   return result;
 }
 
