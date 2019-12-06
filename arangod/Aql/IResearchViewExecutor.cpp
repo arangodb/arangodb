@@ -885,7 +885,7 @@ void IResearchViewExecutor<ordered, materializeType>::fillBuffer(IResearchViewEx
       if (IResearchViewNode::SortColumnNumber == max) {
         ++max;
       }
-      std::vector<irs::bytes_ref> storedValue(static_cast<decltype(storedValue.size())>(max + 1));
+      std::vector<irs::bytes_ref> storedValue(static_cast<size_t>(max + 1));
       auto columnFieldsRegs = columnsFieldsRegs.cbegin();
       if (IResearchViewNode::SortColumnNumber == columnFieldsRegs->first) {
         getStoredValue(storedValue, max);
