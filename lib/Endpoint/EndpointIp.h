@@ -52,6 +52,7 @@ class EndpointIp : public Endpoint {
 
  public:
   TRI_socket_t connect(double, double) override final;
+  // cppcheck-suppress virtualCallInConstructor; bogus
   void disconnect() override final;
   bool initIncoming(TRI_socket_t) override final;
 

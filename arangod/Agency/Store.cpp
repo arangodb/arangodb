@@ -176,6 +176,7 @@ std::vector<apply_ret_t> Store::applyTransactions(query_t const& query,
     THROW_ARANGO_EXCEPTION_MESSAGE(30000,
                                    "Agency request syntax is [[<queries>]]");
   }
+
   return success;
 }
 
@@ -186,13 +187,13 @@ check_ret_t Store::applyTransaction(Slice const& query) {
   MUTEX_LOCKER(storeLocker, _storeLock);
   switch (query.length()) {
     case 1:  // No precondition
-      applies(query[0]);
+      ret.successful(applies(query[0]));
       break;
     case 2:  // precondition
     case 3:  // precondition + clientId
       ret = check(query[1], CheckMode::FULL);
       if (ret.successful()) {
-        applies(query[0]);
+        ret.successful(applies(query[0]));
       } else {  // precondition failed
         LOG_TOPIC("ded9e", TRACE, Logger::AGENCY) << "Precondition failed!";
       }
@@ -772,6 +773,8 @@ bool Store::applies(arangodb::velocypack::Slice const& transaction) {
     return abskeys[i1.first] < abskeys[i2.first];
   });
 
+  bool success = true;
+  
   for (const auto& i : idx) {
     Slice value = i.second;
 
@@ -821,14 +824,16 @@ bool Store::applies(arangodb::velocypack::Slice const& transaction) {
           }
         }
       } else {
-        _node.hasAsWritableNode(abskeys.at(i.first)).first.applieOp(value);
+        auto ret = _node.hasAsWritableNode(abskeys.at(i.first)).first.applieOp(value);
+        success &= ret;
       }
     } else {
-      _node.hasAsWritableNode(abskeys.at(i.first)).first.applies(value);
+      auto ret = _node.hasAsWritableNode(abskeys.at(i.first)).first.applies(value);
+      success &= ret;
     }
   }
 
-  return true;
+  return success;
 }
 
 // Clear my data

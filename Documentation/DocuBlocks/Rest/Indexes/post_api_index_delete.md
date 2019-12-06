@@ -37,4 +37,3 @@ If the *index-handle* is unknown, then an *HTTP 404* is returned.
   ~ db._drop(cn);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

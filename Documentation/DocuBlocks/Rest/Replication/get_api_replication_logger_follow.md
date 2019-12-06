@@ -204,4 +204,3 @@ More events than would fit into the response
     logJsonResponse(response);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

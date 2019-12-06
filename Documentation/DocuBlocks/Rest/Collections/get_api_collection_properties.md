@@ -31,7 +31,6 @@ is returned.
 
 @RESTDESCRIPTION
 
-
 @EXAMPLES
 
 Using an identifier:
@@ -66,4 +65,3 @@ Using a name:
     db._drop(cn);
 @END_EXAMPLE_ARANGOSH_RUN
 @endDocuBlock
-

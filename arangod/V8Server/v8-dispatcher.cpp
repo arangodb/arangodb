@@ -77,7 +77,7 @@ static std::string GetTaskId(v8::Isolate* isolate, v8::Handle<v8::Value> arg) {
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                              Javascript functions
+// --SECTION--                                              JavaScript functions
 // -----------------------------------------------------------------------------
 
 static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
