@@ -95,12 +95,6 @@ inline irs::columnstore_reader::values_reader_f sortColumn(irs::sub_reader const
   return reader ? reader->values() : irs::columnstore_reader::values_reader_f{};
 }
 
-inline irs::columnstore_reader::values_reader_f storedValueColumn(irs::sub_reader const& segment, irs::string_ref const& name) {
-  auto const* reader = segment.column_reader(name);
-
-  return reader ? reader->values() : irs::columnstore_reader::values_reader_f{};
-}
-
 }  // namespace
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -112,7 +106,7 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
     RegisterId firstOutputRegister, RegisterId numScoreRegisters, Query& query,
     std::vector<Scorer> const& scorers,
     std::pair<arangodb::iresearch::IResearchViewSort const*, size_t> const& sort,
-    IResearchViewStoredValue const& storedValue,
+    IResearchViewStoredValues const& storedValues,
     ExecutionPlan const& plan, Variable const& outVariable,
     aql::AstNode const& filterCondition, std::pair<bool, bool> volatility,
     IResearchViewExecutorInfos::VarInfoMap const& varInfoMap, int depth,
@@ -124,7 +118,7 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
       _query(query),
       _scorers(scorers),
       _sort(sort),
-      _storedValue(storedValue),
+      _storedValues(storedValues),
       _plan(plan),
       _outVariable(outVariable),
       _filterCondition(filterCondition),
@@ -200,8 +194,8 @@ const std::pair<const arangodb::iresearch::IResearchViewSort*, size_t>& IResearc
   return _sort;
 }
 
-arangodb::iresearch::IResearchViewStoredValue const& IResearchViewExecutorInfos::storedValue() const noexcept {
-  return _storedValue;
+IResearchViewStoredValues const& IResearchViewExecutorInfos::storedValues() const noexcept {
+  return _storedValues;
 }
 
 bool IResearchViewExecutorInfos::isScoreReg(RegisterId reg) const noexcept {
@@ -297,7 +291,7 @@ std::vector<AqlValue>::iterator IResearchViewExecutorBase<Impl, Traits>::IndexRe
 template <typename Impl, typename Traits>
 template <typename ValueType>
 IResearchViewExecutorBase<Impl, Traits>::IndexReadBuffer<ValueType>::IndexReadBuffer(std::size_t const numScoreRegisters)
-  : _keyBuffer(), _scoreBuffer(), _storedValueBuffer(), _numScoreRegisters(numScoreRegisters), _keyBaseIdx(0) {}
+  : _numScoreRegisters(numScoreRegisters), _keyBaseIdx(0) {}
 
 template <typename Impl, typename Traits>
 template <typename ValueType>
@@ -326,13 +320,13 @@ void IResearchViewExecutorBase<Impl, Traits>::IndexReadBuffer<ValueType>::pushVa
 
 template <typename Impl, typename Traits>
 template <typename ValueType>
-void IResearchViewExecutorBase<Impl, Traits>::IndexReadBuffer<ValueType>::pushStoredValue(std::unordered_map<int, irs::bytes_ref>&& storedValue) {
+void IResearchViewExecutorBase<Impl, Traits>::IndexReadBuffer<ValueType>::pushStoredValue(std::vector<irs::bytes_ref>&& storedValue) {
   _storedValueBuffer.emplace_back(std::move(storedValue));
 }
 
 template <typename Impl, typename Traits>
 template <typename ValueType>
-std::unordered_map<int, irs::bytes_ref> const& IResearchViewExecutorBase<Impl, Traits>::IndexReadBuffer<ValueType>::getStoredValue(
+std::vector<irs::bytes_ref> const& IResearchViewExecutorBase<Impl, Traits>::IndexReadBuffer<ValueType>::getStoredValue(
     const IResearchViewExecutorBase::IndexReadBufferEntry bufferEntry) const noexcept {
   TRI_ASSERT(bufferEntry._keyIdx < _storedValueBuffer.size());
   return _storedValueBuffer[bufferEntry._keyIdx];
@@ -644,6 +638,43 @@ bool IResearchViewExecutorBase<Impl, Traits>::writeLocalDocumentId(
 }
 
 template<typename Impl, typename Traits>
+inline bool IResearchViewExecutorBase<Impl, Traits>::writeStoredValue(ReadContext& ctx, std::vector<irs::bytes_ref> const& storedValues,
+                                                                      int columnNum, std::map<size_t, IResearchViewNode::ViewVariableRegister> const& fieldsRegs) {
+  TRI_ASSERT(static_cast<decltype(storedValues.size())>(columnNum) < storedValues.size());
+  auto const& storedValue = storedValues[static_cast<decltype(storedValues.size())>(columnNum)];
+  TRI_ASSERT(!storedValue.empty());
+  auto s = storedValue.c_str();
+  auto totalSize = storedValue.size();
+  auto slice = VPackSlice(s);
+  size_t size = 0;
+  size_t i = 0;
+  for (auto const& [fieldNum, postfixAndRegisterId] : fieldsRegs) {
+    while (i < fieldNum) {
+      size += slice.byteSize();
+      TRI_ASSERT(size <= totalSize);
+      if (ADB_UNLIKELY(size > totalSize)) {
+        return false;
+      }
+      slice = VPackSlice(s + slice.byteSize());
+      ++i;
+    }
+    if (!postfixAndRegisterId.postfix.empty()) {
+      for (auto const& attr : postfixAndRegisterId.postfix) {
+        slice = slice.get(attr);
+        TRI_ASSERT(!slice.isNone());
+        if (slice.isNull() || slice.isNone()) {
+          break;
+        }
+      }
+    }
+    AqlValue v(slice);
+    AqlValueGuard guard{v, true};
+    ctx.outputRow.moveValueInto(postfixAndRegisterId.registerId, ctx.inputRow, guard);
+  }
+  return true;
+}
+
+template<typename Impl, typename Traits>
 bool IResearchViewExecutorBase<Impl, Traits>::writeRow(ReadContext& ctx,
                                                        IndexReadBufferEntry bufferEntry,
                                                        LocalDocumentId const& documentId,
@@ -676,40 +707,24 @@ bool IResearchViewExecutorBase<Impl, Traits>::writeRow(ReadContext& ctx,
       UNUSED(bufferEntry);
     }
     if constexpr (Traits::MaterializeType == MaterializeType::LateMaterializedWithVars) {
-      auto const& outNonMaterializedViewRegs = infos().getOutNonMaterializedViewRegs();
-      TRI_ASSERT(!outNonMaterializedViewRegs.empty());
-      auto const& storedValue = _indexReadBuffer.getStoredValue(bufferEntry);
-      for (auto const& [columnNum, fieldsRegs] : outNonMaterializedViewRegs) {
-        auto it = storedValue.find(columnNum);
-        TRI_ASSERT(it != storedValue.cend());
-        TRI_ASSERT(!it->second.empty());
-        auto s = it->second.c_str();
-        auto totalSize = it->second.size();
-        auto slice = VPackSlice(s);
-        size_t size = 0;
-        size_t i = 0;
-        for (auto const& [fieldNum, postfixAndRegisterId] : fieldsRegs) {
-          while (i < fieldNum) {
-            size += slice.byteSize();
-            TRI_ASSERT(size <= totalSize);
-            if (ADB_UNLIKELY(size > totalSize)) {
-              return false;
-            }
-            slice = VPackSlice(s + slice.byteSize());
-            ++i;
-          }
-          if (!postfixAndRegisterId.postfix.empty()) {
-            for (auto const& attr : postfixAndRegisterId.postfix) {
-              slice = slice.get(attr);
-              TRI_ASSERT(!slice.isNone());
-              if (slice.isNull() || slice.isNone()) {
-                break;
-              }
-            }
-          }
-          AqlValue v(slice);
-          AqlValueGuard guard{v, true};
-          ctx.outputRow.moveValueInto(postfixAndRegisterId.registerId, ctx.inputRow, guard);
+      auto const& columnsFieldsRegs = infos().getOutNonMaterializedViewRegs();
+      TRI_ASSERT(!columnsFieldsRegs.empty());
+      auto const& storedValues = _indexReadBuffer.getStoredValue(bufferEntry);
+      int max = (--columnsFieldsRegs.end())->first;
+      TRI_ASSERT(max >= IResearchViewNode::SortColumnNumber);
+      if (IResearchViewNode::SortColumnNumber == max) {
+        ++max;
+      }
+      auto columnFieldsRegs = columnsFieldsRegs.cbegin();
+      if (IResearchViewNode::SortColumnNumber == columnFieldsRegs->first) {
+        if (ADB_UNLIKELY(!writeStoredValue(ctx, storedValues, max, columnFieldsRegs->second))) {
+          return false;
+        }
+        ++columnFieldsRegs;
+      }
+      for (; columnFieldsRegs != columnsFieldsRegs.cend(); ++columnFieldsRegs) {
+        if (ADB_UNLIKELY(!writeStoredValue(ctx, storedValues, columnFieldsRegs->first, columnFieldsRegs->second))) {
+          return false;
         }
       }
     }
@@ -728,7 +743,6 @@ template <bool ordered, MaterializeType materializeType>
 IResearchViewExecutor<ordered, materializeType>::IResearchViewExecutor(Fetcher& fetcher, Infos& infos)
     : Base(fetcher, infos),
       _pkReader(),
-      _sortReader(),
       _itr(),
       _readerOffset(0),
       _scr(&irs::score::no_score()),
@@ -776,6 +790,16 @@ bool IResearchViewExecutor<ordered, materializeType>::readPK(LocalDocumentId& do
   }
 
   return false;
+}
+
+template <bool ordered, MaterializeType materializeType>
+inline void IResearchViewExecutor<ordered, materializeType>::getStoredValue(std::vector<irs::bytes_ref>& storedValue, int index) {
+  irs::columnstore_reader::values_reader_f reader = _storedValuesReaders[static_cast<typename decltype(_storedValuesReaders)::size_type>(index)];
+  TRI_ASSERT(reader);
+  irs::bytes_ref value{irs::bytes_ref::NIL}; // column value
+  auto ok = reader(_doc->value, value);
+  TRI_ASSERT(ok);
+  storedValue[static_cast<decltype(storedValue.size())>(index)] = std::move(value);
 }
 
 template <bool ordered, MaterializeType materializeType>
@@ -856,19 +880,19 @@ void IResearchViewExecutor<ordered, materializeType>::fillBuffer(IResearchViewEx
     if constexpr (materializeType == MaterializeType::LateMaterializedWithVars) {
       auto const& columnsFieldsRegs = this->_infos.getOutNonMaterializedViewRegs();
       TRI_ASSERT(!columnsFieldsRegs.empty());
-      std::unordered_map<int, irs::bytes_ref> storedValue;
-      irs::columnstore_reader::values_reader_f reader;
-      for (auto const& columnFieldsRegs : columnsFieldsRegs) {
-        if (columnFieldsRegs.first >= 0) { // not IResearchViewNode::SortColumnNumber
-          reader = _storedValueReaders[columnFieldsRegs.first];
-        } else { // IResearchViewNode::SortColumnNumber
-          reader = _sortReader;
-        }
-        TRI_ASSERT(reader);
-        irs::bytes_ref value{irs::bytes_ref::NIL}; // column value
-        auto ok = reader(_doc->value, value);
-        TRI_ASSERT(ok);
-        storedValue[columnFieldsRegs.first] = std::move(value);
+      int max = (--columnsFieldsRegs.end())->first;
+      TRI_ASSERT(max >= IResearchViewNode::SortColumnNumber);
+      if (IResearchViewNode::SortColumnNumber == max) {
+        ++max;
+      }
+      std::vector<irs::bytes_ref> storedValue(static_cast<decltype(storedValue.size())>(max + 1));
+      auto columnFieldsRegs = columnsFieldsRegs.cbegin();
+      if (IResearchViewNode::SortColumnNumber == columnFieldsRegs->first) {
+        getStoredValue(storedValue, max);
+        ++columnFieldsRegs;
+      }
+      for (; columnFieldsRegs != columnsFieldsRegs.cend(); ++columnFieldsRegs) {
+        getStoredValue(storedValue, columnFieldsRegs->first);
       }
       this->_indexReadBuffer.pushStoredValue(std::move(storedValue));
     }
@@ -908,31 +932,42 @@ bool IResearchViewExecutor<ordered, materializeType>::resetIterator() {
   }
 
   if constexpr (materializeType == MaterializeType::LateMaterializedWithVars) {
-    auto const& columnsfieldsRegs = this->_infos.getOutNonMaterializedViewRegs();
-    if (!columnsfieldsRegs.empty()) {
-      auto storedValue = this->_infos.storedValue();
-      for (auto const& columnfieldsRegs : columnsfieldsRegs) {
-        if (columnfieldsRegs.first >= 0) { // not IResearchViewNode::SortColumnNumber
-          TRI_ASSERT(!storedValue.empty());
-          auto const& columns = storedValue.columns();
-          auto const storedColumnNumber = static_cast<decltype(columns.size())>(columnfieldsRegs.first);
+    auto const& columnsFieldsRegs = this->_infos.getOutNonMaterializedViewRegs();
+    if (!columnsFieldsRegs.empty()) {
+      int max = (--columnsFieldsRegs.cend())->first;
+      TRI_ASSERT(max >= IResearchViewNode::SortColumnNumber);
+      if (IResearchViewNode::SortColumnNumber == max) {
+        ++max;
+      }
+      _storedValuesReaders.resize(static_cast<typename decltype(_storedValuesReaders)::size_type>(max + 1));
+      auto columnFieldsRegs = columnsFieldsRegs.cbegin();
+      if (IResearchViewNode::SortColumnNumber == columnFieldsRegs->first) {
+        auto sortReader = ::sortColumn(segmentReader);
+        if (!sortReader) {
+          LOG_TOPIC("bc5bd", WARN, arangodb::iresearch::TOPIC)
+              << "encountered a sub-reader without a sort column while "
+                 "executing a query, ignoring";
+          return false;
+        }
+        _storedValuesReaders[static_cast<typename decltype(_storedValuesReaders)::size_type>(max)] = sortReader;
+        ++columnFieldsRegs;
+      }
+      // if stored values exist
+      if (max > 0) {
+        auto storedValues = this->_infos.storedValues();
+        for (; columnFieldsRegs != columnsFieldsRegs.cend(); ++columnFieldsRegs) {
+          TRI_ASSERT(!storedValues.empty());
+          auto const& columns = storedValues.columns();
+          auto const storedColumnNumber = static_cast<decltype(columns.size())>(columnFieldsRegs->first);
           TRI_ASSERT(storedColumnNumber < columns.size());
-          auto storedValueColumn = ::storedValueColumn(segmentReader, columns[storedColumnNumber].name);
-          if (!storedValueColumn) {
+          auto storedValuesReader = segmentReader.column_reader(columns[storedColumnNumber].name);
+          if (!storedValuesReader) {
             LOG_TOPIC("af7ec", WARN, arangodb::iresearch::TOPIC)
                 << "encountered a sub-reader without a stored value column while "
                    "executing a query, ignoring";
             return false;
           }
-          _storedValueReaders[columnfieldsRegs.first] = storedValueColumn;
-        } else { // IResearchViewNode::SortColumnNumber
-          _sortReader = ::sortColumn(segmentReader);
-          if (!_sortReader) {
-            LOG_TOPIC("bc5bd", WARN, arangodb::iresearch::TOPIC)
-                << "encountered a sub-reader without a sort column while "
-                   "executing a query, ignoring";
-            return false;
-          }
+          _storedValuesReaders[static_cast<typename decltype(_storedValuesReaders)::size_type>(columnFieldsRegs->first)] = storedValuesReader->values();
         }
       }
     }

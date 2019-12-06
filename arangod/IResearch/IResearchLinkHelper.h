@@ -46,7 +46,7 @@ namespace iresearch {
 class IResearchLink;  // forward declaration
 struct IResearchLinkMeta;
 class IResearchViewSort;
-class IResearchViewStoredValue;
+class IResearchViewStoredValues;
 
 struct IResearchLinkHelper {
  public:
@@ -94,7 +94,7 @@ struct IResearchLinkHelper {
     bool isCreation, // definition for index creation
     TRI_vocbase_t const& vocbase, // index vocbase
     IResearchViewSort const* primarySort = nullptr,
-    IResearchViewStoredValue const* storedValue = nullptr,
+    IResearchViewStoredValues const* storedValues = nullptr,
     arangodb::velocypack::Slice idSlice = arangodb::velocypack::Slice() // id for normalized
   );
 

@@ -134,7 +134,7 @@ void ensureImmutableProperties(
   dst._writebufferIdle = src._writebufferIdle;
   dst._writebufferSizeMax = src._writebufferSizeMax;
   dst._primarySort = src._primarySort;
-  dst._storedValue = src._storedValue;
+  dst._storedValues = src._storedValues;
 }
 
 }

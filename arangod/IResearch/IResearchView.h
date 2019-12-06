@@ -179,10 +179,10 @@ class IResearchView final: public arangodb::LogicalView {
   }
 
   ///////////////////////////////////////////////////////////////////////////////
-  /// @return stored value from links collections
+  /// @return stored values from links collections
   ///////////////////////////////////////////////////////////////////////////////
-  IResearchViewStoredValue const& storedValue() const noexcept {
-    return _meta._storedValue;
+  IResearchViewStoredValues const& storedValues() const noexcept {
+    return _meta._storedValues;
   }
 
  protected:

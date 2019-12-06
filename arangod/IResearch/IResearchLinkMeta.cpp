@@ -545,7 +545,7 @@ bool IResearchLinkMeta::operator==(IResearchLinkMeta const& other) const noexcep
     return false;
   }
 
-  if (_storedValue != other._storedValue) {
+  if (_storedValues != other._storedValues) {
     return false;
   }
 
@@ -591,9 +591,9 @@ bool IResearchLinkMeta::init(velocypack::Slice const& slice,
     static VPackStringRef const fieldName("storedValues");
 
     auto const field = slice.get(fieldName);
-    mask->_storedValue = field.isArray();
+    mask->_storedValues = field.isArray();
 
-    if (readAnalyzerDefinition && mask->_storedValue && !_storedValue.fromVelocyPack(field, errorField)) {
+    if (readAnalyzerDefinition && mask->_storedValues && !_storedValues.fromVelocyPack(field, errorField)) {
       return false;
     }
   }
@@ -771,9 +771,9 @@ bool IResearchLinkMeta::json(velocypack::Builder& builder,
   }
 
   if (writeAnalyzerDefinition
-      && (!mask || mask->_storedValue)) {
+      && (!mask || mask->_storedValues)) {
     velocypack::ArrayBuilder arrayScope(&builder, "storedValues");
-    if (!_storedValue.toVelocyPack(builder)) {
+    if (!_storedValues.toVelocyPack(builder)) {
       return false;
     }
   }
@@ -797,7 +797,7 @@ size_t IResearchLinkMeta::memory() const noexcept {
 
   size += _analyzers.size() * sizeof(decltype(_analyzers)::value_type);
   size += _sort.memory();
-  size += _storedValue.memory();
+  size += _storedValues.memory();
   size += FieldMeta::memory();
 
   return size;

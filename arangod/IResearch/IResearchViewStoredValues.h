@@ -20,8 +20,8 @@
 /// @author Yuriy Popov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_IRESEARCH__IRESEARCH_VIEW_STORED_VALUE_H
-#define ARANGODB_IRESEARCH__IRESEARCH_VIEW_STORED_VALUE_H 1
+#ifndef ARANGODB_IRESEARCH__IRESEARCH_VIEW_STORED_VALUES_H
+#define ARANGODB_IRESEARCH__IRESEARCH_VIEW_STORED_VALUES_H 1
 
 #include "Basics/AttributeNameParser.h"
 #include "Basics/debugging.h"
@@ -36,9 +36,9 @@ class Builder;
 
 namespace iresearch {
 
-class IResearchViewStoredValue {
+class IResearchViewStoredValues {
  public:
-  static constexpr char FIELDS_DELIMITER = '\1';
+  static const char FIELDS_DELIMITER;
 
   struct StoredColumn {
     std::string name;
@@ -53,11 +53,11 @@ class IResearchViewStoredValue {
     }
   };
 
-  bool operator==(IResearchViewStoredValue const& rhs) const noexcept {
+  bool operator==(IResearchViewStoredValues const& rhs) const noexcept {
     return _storedColumns == rhs._storedColumns;
   }
 
-  bool operator!=(IResearchViewStoredValue const& rhs) const noexcept {
+  bool operator!=(IResearchViewStoredValues const& rhs) const noexcept {
     return !(*this == rhs);
   }
 
@@ -80,9 +80,9 @@ class IResearchViewStoredValue {
   }
 
   std::vector<StoredColumn> _storedColumns;
-}; // IResearchViewStoredValue
+}; // IResearchViewStoredValues
 
 } // iresearch
 } // arangodb
 
-#endif // ARANGODB_IRESEARCH__IRESEARCH_VIEW_STORED_VALUE_H
+#endif // ARANGODB_IRESEARCH__IRESEARCH_VIEW_STORED_VALUES_H

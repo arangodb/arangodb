@@ -28,7 +28,7 @@
 #include <unordered_set>
 
 #include "IResearchViewSort.h"
-#include "IResearchViewStoredValue.h"
+#include "IResearchViewStoredValues.h"
 
 #include <velocypack/Builder.h>
 
@@ -87,7 +87,7 @@ struct IResearchViewMeta {
     bool _writebufferIdle;
     bool _writebufferSizeMax;
     bool _primarySort;
-    bool _storedValue;
+    bool _storedValues;
     explicit Mask(bool mask = false) noexcept;
   };
 
@@ -101,7 +101,7 @@ struct IResearchViewMeta {
   size_t _writebufferIdle; // maximum number of segments cached in the pool
   size_t _writebufferSizeMax; // maximum memory byte size per segment before a segment flush is triggered (0 == unlimited)
   IResearchViewSort _primarySort;
-  IResearchViewStoredValue _storedValue;
+  IResearchViewStoredValues _storedValues;
   // NOTE: if adding fields don't forget to modify the default constructor !!!
   // NOTE: if adding fields don't forget to modify the copy constructor !!!
   // NOTE: if adding fields don't forget to modify the move constructor !!!

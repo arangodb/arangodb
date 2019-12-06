@@ -64,14 +64,14 @@ inline IResearchViewSort const& primarySort(arangodb::LogicalView const& view) {
   return viewImpl.primarySort();
 }
 
-inline IResearchViewStoredValue const& storedValue(arangodb::LogicalView const& view) {
+inline IResearchViewStoredValues const& storedValues(arangodb::LogicalView const& view) {
   if (arangodb::ServerState::instance()->isCoordinator()) {
     auto& viewImpl = arangodb::LogicalView::cast<IResearchViewCoordinator>(view);
-    return viewImpl.storedValue();
+    return viewImpl.storedValues();
   }
 
   auto& viewImpl = arangodb::LogicalView::cast<IResearchView>(view);
-  return viewImpl.storedValue();
+  return viewImpl.storedValues();
 }
 
 bool addView(arangodb::LogicalView const& view, Query& query) {
@@ -283,7 +283,6 @@ bool isPrefix(std::vector<arangodb::basics::AttributeName> const& prefix,
   }
 
   decltype(prefix.size()) i = 0;
-  auto it = prefix.cbegin();
   for (; i < prefix.size(); ++i) {
     if (prefix[i].name != attrs[i].name) {
       return false;
@@ -296,11 +295,11 @@ bool isPrefix(std::vector<arangodb::basics::AttributeName> const& prefix,
         return false;
       }
     }
-    ++it;
   }
   if (i < attrs.size()) {
     postfix.reserve(attrs.size() - i);
-    std::transform(it, prefix.cend(), std::back_inserter(postfix), [](auto const& attr) {
+    std::transform(prefix.cbegin() + static_cast<decltype(prefix.cbegin())::difference_type>(i),
+                   prefix.cend(), std::back_inserter(postfix), [](auto const& attr) {
       return attr.name;
     });
   }
@@ -322,7 +321,7 @@ struct ColumnVariant {
   }
 };
 
-bool attributesMatch(IResearchViewSort const& primarySort, IResearchViewStoredValue const& storedValue,
+bool attributesMatch(IResearchViewSort const& primarySort, IResearchViewStoredValues const& storedValues,
                      latematerialized::NodeWithAttrs<latematerialized::AstAndColumnFieldData>& node,
                      std::unordered_map<int, std::vector<ColumnVariant>>& usedColumnsCounter) {
   // check all node attributes to be in sort
@@ -342,7 +341,7 @@ bool attributesMatch(IResearchViewSort const& primarySort, IResearchViewStoredVa
     }
     // try to find in other columns
     int columnNum = 0;
-    for (auto const& column : storedValue.columns()) {
+    for (auto const& column : storedValues.columns()) {
       fieldNum = 0;
       for (auto const& field : column.fields) {
         std::vector<std::string> postfix;
@@ -365,7 +364,7 @@ bool attributesMatch(IResearchViewSort const& primarySort, IResearchViewStoredVa
   return true;
 }
 
-void setAttributesMaxMatchedColumns(std::unordered_map<int, std::vector<ColumnVariant>> const& usedColumnsCounter) {
+void setAttributesMaxMatchedColumns(std::unordered_map<int, std::vector<ColumnVariant>>& usedColumnsCounter) {
   std::vector<std::pair<int, std::vector<ColumnVariant>>> columnVariants;
   columnVariants.reserve(usedColumnsCounter.size());
   columnVariants.assign(std::make_move_iterator(usedColumnsCounter.begin()), std::make_move_iterator(usedColumnsCounter.end()));
@@ -398,8 +397,8 @@ void keepReplacementViewVariables(arangodb::containers::SmallVector<ExecutionNod
     TRI_ASSERT(vNode && ExecutionNode::ENUMERATE_IRESEARCH_VIEW == vNode->getType());
     auto& viewNode = *ExecutionNode::castTo<IResearchViewNode*>(vNode);
     auto const& primarySort = ::primarySort(*viewNode.view());
-    auto const& storedValue = ::storedValue(*viewNode.view());
-    if (primarySort.empty() && storedValue.empty()) {
+    auto const& storedValues = ::storedValues(*viewNode.view());
+    if (primarySort.empty() && storedValues.empty()) {
       // neither primary sort nor stored value
       continue;
     }
@@ -414,7 +413,7 @@ void keepReplacementViewVariables(arangodb::containers::SmallVector<ExecutionNod
       node.node = &calcNode;
       // find attributes referenced to view node out variable
       if (latematerialized::getReferencedAttributes(astNode, &var, node) &&
-          !node.attrs.empty() && attributesMatch(primarySort, storedValue, node, usedColumnsCounter)) {
+          !node.attrs.empty() && attributesMatch(primarySort, storedValues, node, usedColumnsCounter)) {
         nodesToChange.emplace_back(std::move(node));
       }
     }

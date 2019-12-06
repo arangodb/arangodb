@@ -29,7 +29,7 @@
 #include "Aql/types.h"
 #include "IResearch/IResearchOrderFactory.h"
 #include "IResearch/IResearchViewSort.h"
-#include "IResearch/IResearchViewStoredValue.h"
+#include "IResearch/IResearchViewStoredValues.h"
 
 namespace arangodb {
 class LogicalView;
@@ -182,18 +182,24 @@ class IResearchViewNode final : public arangodb::aql::ExecutionNode {
            _outNonMaterializedColPtr != nullptr;
   }
 
-  static constexpr int SortColumnNumber = -1;
+  static const int SortColumnNumber;
 
+  // A variable with a field number in a column and
+  // a postfix to find field in a stored value (end of field path)
   struct ViewVariable {
     size_t fieldNum;
     std::vector<std::string> postfix;
     aql::Variable const* var;
   };
 
+  // A variable with column and field numbers and
+  // a postfix to find field in a stored value (end of field path)
   struct ViewVariableWithColumn : ViewVariable {
     int columnNum;
   };
 
+  // A register id and
+  // a postfix to find field in a stored value (end of field path)
   struct ViewVariableRegister {
     std::vector<irs::string_ref> postfix;
     aql::RegisterId registerId;

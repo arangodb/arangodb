@@ -207,7 +207,7 @@ IResearchViewMeta::Mask::Mask(bool mask /*=false*/) noexcept
       _writebufferIdle(mask),
       _writebufferSizeMax(mask),
       _primarySort(mask),
-      _storedValue(mask) {
+      _storedValues(mask) {
 }
 
 IResearchViewMeta::IResearchViewMeta()
@@ -253,7 +253,7 @@ IResearchViewMeta& IResearchViewMeta::operator=(IResearchViewMeta&& other) noexc
     _writebufferIdle = std::move(other._writebufferIdle);
     _writebufferSizeMax = std::move(other._writebufferSizeMax);
     _primarySort = std::move(other._primarySort);
-    _storedValue = std::move(other._storedValue);
+    _storedValues = std::move(other._storedValues);
   }
 
   return *this;
@@ -271,7 +271,7 @@ IResearchViewMeta& IResearchViewMeta::operator=(IResearchViewMeta const& other) 
     _writebufferIdle = other._writebufferIdle;
     _writebufferSizeMax = other._writebufferSizeMax;
     _primarySort = other._primarySort;
-    _storedValue = other._storedValue;
+    _storedValues = other._storedValues;
   }
 
   return *this;
@@ -309,7 +309,7 @@ bool IResearchViewMeta::operator==(IResearchViewMeta const& other) const noexcep
       _writebufferIdle != other._writebufferIdle ||
       _writebufferSizeMax != other._writebufferSizeMax ||
       _primarySort != other._primarySort ||
-      _storedValue != other._storedValue) {
+      _storedValues != other._storedValues) {
     return false;
   }
 
@@ -593,11 +593,11 @@ bool IResearchViewMeta::init(arangodb::velocypack::Slice const& slice, std::stri
     std::string errorSubField;
 
     auto const field = slice.get(fieldName);
-    mask->_storedValue = field.isArray();
+    mask->_storedValues = field.isArray();
 
-    if (!mask->_storedValue) {
-      _storedValue = defaults._storedValue;
-    } else if (!_storedValue.fromVelocyPack(field, errorSubField)) {
+    if (!mask->_storedValues) {
+      _storedValues = defaults._storedValues;
+    } else if (!_storedValues.fromVelocyPack(field, errorSubField)) {
       errorField = fieldName.toString();
       if (!errorSubField.empty()) {
         errorField += errorSubField;
@@ -674,9 +674,9 @@ bool IResearchViewMeta::json(arangodb::velocypack::Builder& builder,
     }
   }
 
-  if ((!ignoreEqual || _storedValue != ignoreEqual->_storedValue) && (!mask || mask->_storedValue)) {
+  if ((!ignoreEqual || _storedValues != ignoreEqual->_storedValues) && (!mask || mask->_storedValues)) {
     velocypack::ArrayBuilder arrayScope(&builder, "storedValues");
-    if (!_storedValue.toVelocyPack(builder)) {
+    if (!_storedValues.toVelocyPack(builder)) {
       return false;
     }
   }

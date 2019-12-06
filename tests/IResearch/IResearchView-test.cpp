@@ -7434,17 +7434,17 @@ TEST_F(IResearchViewTest, create_view_with_stored_value) {
     EXPECT_EQ(14, slice.length());
     EXPECT_EQ("testView", slice.get("name").copyString());
     EXPECT_TRUE(meta.init(slice, error));
-    ASSERT_EQ(4, meta._storedValue.columns().size());
-    EXPECT_EQ(1, meta._storedValue.columns()[0].fields.size());
-    EXPECT_EQ("obj.a", meta._storedValue.columns()[0].name);
-    EXPECT_EQ(1, meta._storedValue.columns()[1].fields.size());
-    EXPECT_EQ("obj.b.b1", meta._storedValue.columns()[1].name);
-    EXPECT_EQ(2, meta._storedValue.columns()[2].fields.size());
-    EXPECT_EQ(std::string("obj.c") + arangodb::iresearch::IResearchViewStoredValue::FIELDS_DELIMITER + "obj.d",
-              meta._storedValue.columns()[2].name);
-    EXPECT_EQ(3, meta._storedValue.columns()[3].fields.size());
-    EXPECT_EQ(std::string("obj.e") + arangodb::iresearch::IResearchViewStoredValue::FIELDS_DELIMITER +"obj.f.f1" +
-              arangodb::iresearch::IResearchViewStoredValue::FIELDS_DELIMITER + "obj.g", meta._storedValue.columns()[3].name);
+    ASSERT_EQ(4, meta._storedValues.columns().size());
+    EXPECT_EQ(1, meta._storedValues.columns()[0].fields.size());
+    EXPECT_EQ("obj.a", meta._storedValues.columns()[0].name);
+    EXPECT_EQ(1, meta._storedValues.columns()[1].fields.size());
+    EXPECT_EQ("obj.b.b1", meta._storedValues.columns()[1].name);
+    EXPECT_EQ(2, meta._storedValues.columns()[2].fields.size());
+    EXPECT_EQ(std::string("obj.c") + arangodb::iresearch::IResearchViewStoredValues::FIELDS_DELIMITER + "obj.d",
+              meta._storedValues.columns()[2].name);
+    EXPECT_EQ(3, meta._storedValues.columns()[3].fields.size());
+    EXPECT_EQ(std::string("obj.e") + arangodb::iresearch::IResearchViewStoredValues::FIELDS_DELIMITER +"obj.f.f1" +
+              arangodb::iresearch::IResearchViewStoredValues::FIELDS_DELIMITER + "obj.g", meta._storedValues.columns()[3].name);
   }
 
   // repeated fields and columns
@@ -7472,17 +7472,17 @@ TEST_F(IResearchViewTest, create_view_with_stored_value) {
     EXPECT_EQ(14, slice.length());
     EXPECT_EQ("testView", slice.get("name").copyString());
     EXPECT_TRUE(meta.init(slice, error));
-    ASSERT_EQ(5, meta._storedValue.columns().size());
-    EXPECT_EQ(1, meta._storedValue.columns()[0].fields.size());
-    EXPECT_EQ("obj.a", meta._storedValue.columns()[0].name);
-    EXPECT_EQ(1, meta._storedValue.columns()[1].fields.size());
-    EXPECT_EQ("obj.b", meta._storedValue.columns()[1].name);
-    EXPECT_EQ(1, meta._storedValue.columns()[2].fields.size());
-    EXPECT_EQ("obj.c", meta._storedValue.columns()[2].name);
-    EXPECT_EQ(1, meta._storedValue.columns()[3].fields.size());
-    EXPECT_EQ("obj.d", meta._storedValue.columns()[3].name);
-    EXPECT_EQ(2, meta._storedValue.columns()[4].fields.size());
-    EXPECT_EQ(std::string("obj.c") + arangodb::iresearch::IResearchViewStoredValue::FIELDS_DELIMITER + "obj.d",
-              meta._storedValue.columns()[4].name);
+    ASSERT_EQ(5, meta._storedValues.columns().size());
+    EXPECT_EQ(1, meta._storedValues.columns()[0].fields.size());
+    EXPECT_EQ("obj.a", meta._storedValues.columns()[0].name);
+    EXPECT_EQ(1, meta._storedValues.columns()[1].fields.size());
+    EXPECT_EQ("obj.b", meta._storedValues.columns()[1].name);
+    EXPECT_EQ(1, meta._storedValues.columns()[2].fields.size());
+    EXPECT_EQ("obj.c", meta._storedValues.columns()[2].name);
+    EXPECT_EQ(1, meta._storedValues.columns()[3].fields.size());
+    EXPECT_EQ("obj.d", meta._storedValues.columns()[3].name);
+    EXPECT_EQ(2, meta._storedValues.columns()[4].fields.size());
+    EXPECT_EQ(std::string("obj.c") + arangodb::iresearch::IResearchViewStoredValues::FIELDS_DELIMITER + "obj.d",
+              meta._storedValues.columns()[4].name);
   }
 }

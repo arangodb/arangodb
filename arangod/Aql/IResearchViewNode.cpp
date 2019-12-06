@@ -650,14 +650,14 @@ inline IResearchViewSort const& primarySort(arangodb::LogicalView const& view) {
   return viewImpl.primarySort();
 }
 
-inline IResearchViewStoredValue const& storedValue(arangodb::LogicalView const& view) {
+inline IResearchViewStoredValues const& storedValues(arangodb::LogicalView const& view) {
   if (arangodb::ServerState::instance()->isCoordinator()) {
     auto& viewImpl = arangodb::LogicalView::cast<IResearchViewCoordinator>(view);
-    return viewImpl.storedValue();
+    return viewImpl.storedValues();
   }
 
   auto& viewImpl = arangodb::LogicalView::cast<IResearchView>(view);
-  return viewImpl.storedValue();
+  return viewImpl.storedValues();
 }
 
 const char* NODE_DATABASE_PARAM = "database";
@@ -788,10 +788,10 @@ std::unique_ptr<aql::ExecutionBlock> (*executors[])(aql::ExecutionEngine*, IRese
   }
 };
 
-inline int getExecutorIndex(bool sorted, bool ordered, MaterializeType materializeType) {
+inline size_t getExecutorIndex(bool sorted, bool ordered, MaterializeType materializeType) {
   auto index = static_cast<int>(materializeType) + 3 * static_cast<int>(ordered) + 6 * static_cast<int>(sorted);
   TRI_ASSERT(static_cast<std::size_t>(index) <= IRESEARCH_COUNTOF(executors));
-  return index < 9 ? index : index - 1;
+  return static_cast<std::size_t>(index < 9 ? index : index - 1);
 }
 
 }  // namespace
@@ -802,6 +802,8 @@ namespace iresearch {
 // -----------------------------------------------------------------------------
 // --SECTION--                                  IResearchViewNode implementation
 // -----------------------------------------------------------------------------
+
+const int IResearchViewNode::SortColumnNumber = -1;
 
 IResearchViewNode::IResearchViewNode(aql::ExecutionPlan& plan, size_t id,
                                      TRI_vocbase_t& vocbase,
@@ -1107,13 +1109,13 @@ void IResearchViewNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
   // stored value
   {
     auto const& primarySort = ::primarySort(*_view);
-    auto const& storedValue = ::storedValue(*_view);
+    auto const& storedValues = ::storedValues(*_view);
     VPackArrayBuilder arrayScope(&nodes, NODE_VIEW_VALUES_VARS);
     std::string fieldName;
     for (auto const& columnFieldsVars : _outNonMaterializedViewVars) {
       if (columnFieldsVars.first >= 0) { // not SortColumnNumber
         VPackObjectBuilder objectScope(&nodes);
-        auto const& columns = storedValue.columns();
+        auto const& columns = storedValues.columns();
         auto const storedColumnNumber = static_cast<decltype(columns.size())>(columnFieldsVars.first);
         TRI_ASSERT(storedColumnNumber < columns.size());
         nodes.add(NODE_VIEW_VALUES_VAR_COLUMN_NUMBER, VPackValue(columnFieldsVars.first));
@@ -1486,7 +1488,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
                                                 *engine.getQuery(),
                                                 scorers(),
                                                 _sort,
-                                                ::storedValue(*_view),
+                                                ::storedValues(*_view),
                                                 *plan(),
                                                 outVariable(),
                                                 filterCondition(),

@@ -21,7 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/AttributeNameParser.h"
-#include "IResearchViewStoredValue.h"
+#include "IResearchViewStoredValues.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -49,7 +49,9 @@ bool isPrefix(std::vector<arangodb::basics::AttributeName> const& prefix,
 namespace arangodb {
 namespace iresearch {
 
-bool IResearchViewStoredValue::toVelocyPack(velocypack::Builder& builder) const {
+const char IResearchViewStoredValues::FIELDS_DELIMITER = '\1';
+
+bool IResearchViewStoredValues::toVelocyPack(velocypack::Builder& builder) const {
   if (!builder.isOpenArray()) {
     return false;
   }
@@ -62,8 +64,8 @@ bool IResearchViewStoredValue::toVelocyPack(velocypack::Builder& builder) const 
   return true;
 }
 
-bool IResearchViewStoredValue::fromVelocyPack(
-    velocypack::Slice slice, std::string& error) {
+bool IResearchViewStoredValues::fromVelocyPack(
+    velocypack::Slice slice, std::string& errorField) {
   clear();
   if (slice.isArray()) {
     _storedColumns.reserve(slice.length());
@@ -94,7 +96,7 @@ bool IResearchViewStoredValue::fromVelocyPack(
             // no expansions
             arangodb::basics::TRI_ParseAttributeString(fieldName, field, false);
           } catch (...) {
-            error = "." + std::string(fieldName);
+            errorField = fieldName;
             clear();
             return false;
           }
@@ -148,10 +150,9 @@ bool IResearchViewStoredValue::fromVelocyPack(
           }
           columnName += fieldName;
         }
-        if (uniqueColumns.find(columnName) != uniqueColumns.cend()) {
+        if (!uniqueColumns.emplace(columnName).second) {
           continue;
         }
-        uniqueColumns.emplace_hint(uniqueColumns.cend(), columnName);
         sc.name = std::move(columnName);
         _storedColumns.emplace_back(std::move(sc));
       } else if (columnSlice.isString()) {
@@ -165,7 +166,7 @@ bool IResearchViewStoredValue::fromVelocyPack(
           // no expansions
           arangodb::basics::TRI_ParseAttributeString(fieldName, field, false);
         } catch (...) {
-          error = "." + std::string(fieldName);
+          errorField = fieldName;
           clear();
           return false;
         }
@@ -187,8 +188,8 @@ bool IResearchViewStoredValue::fromVelocyPack(
   return false;
 }
 
-size_t IResearchViewStoredValue::memory() const noexcept {
-  size_t size = sizeof(IResearchViewStoredValue);
+size_t IResearchViewStoredValues::memory() const noexcept {
+  size_t size = sizeof(IResearchViewStoredValues);
   size += sizeof(StoredColumn)*_storedColumns.size();
   for (auto const& column : _storedColumns) {
     size += column.name.size();

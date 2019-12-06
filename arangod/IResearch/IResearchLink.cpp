@@ -171,7 +171,7 @@ inline arangodb::Result insertDocument(irs::index_writer::documents_context& ctx
       irs::string_ref fieldName;
     } field; // StoredValue
 
-    for (auto const& column : meta._storedValue.columns()) {
+    for (auto const& column : meta._storedValues.columns()) {
       field.fieldName = column.name;
       for (auto const& storedValue : column.fields) {
         field.slice = arangodb::iresearch::get(document, storedValue.second, VPackSlice::nullSlice());
@@ -1829,8 +1829,8 @@ void IResearchLink::toVelocyPackStats(VPackBuilder& builder) const {
   builder.add("indexSize", VPackValue(stats.indexSize));
 }
 
-IResearchViewStoredValue const& IResearchLink::storedValue() const {
-  return _meta._storedValue;
+IResearchViewStoredValues const& IResearchLink::storedValues() const {
+  return _meta._storedValues;
 }
 
 }  // namespace iresearch
