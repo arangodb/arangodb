@@ -1,5 +1,0 @@
-^SUMMARY.md$
-^node_modules/gitbook-plugin-piwik/README.md$
-^node_modules/gitbook-plugin-toggle-chapters/README.md$
-^node_modules/gitbook-plugin-addcssjs/README.md$
-^node_modules/gitbook-plugin-expandable-chapters/README.md$
