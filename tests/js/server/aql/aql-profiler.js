@@ -1,5 +1,5 @@
 /*jshint globalstrict:true, strict:true, esnext: true */
-/*global AQL_EXPLAIN */
+/*global AQL_EXPLAIN, assertTrue */
 
 "use strict";
 
@@ -349,7 +349,7 @@ function ahuacatlProfilerTestSuite () {
       const genNodeList = (rows) => {
         // This is an array 1..rows where true means it passes the filter
         const list = Array.from(Array(rows)).map((_, index ) => {
-          return ((index + 1) % 13 != 0);
+          return ((index + 1) % 13 !== 0);
         });
 
         const recursiveFilterCallEstimator = (rowsToFetch) => {
@@ -395,7 +395,7 @@ function ahuacatlProfilerTestSuite () {
       const genNodeList = (rows) => {
         // This is an array 1..rows where true means it passes the filter
         const list = Array.from(Array(rows)).map((_, index ) => {
-          return ((index + 1) % 13 == 0);
+          return ((index + 1) % 13 === 0);
         });
         const recursiveFilterCallEstimator = (rowsToFetch) => {
           if (rowsToFetch === 0 || list.length === 0) {
