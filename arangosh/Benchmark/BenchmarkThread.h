@@ -24,7 +24,7 @@
 #ifndef ARANGODB_BENCHMARK_BENCHMARK_THREAD_H
 #define ARANGODB_BENCHMARK_BENCHMARK_THREAD_H 1
 
-#include <math.h>
+#include <cmath>
 
 #include "Basics/Common.h"
 
